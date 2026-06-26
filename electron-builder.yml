@@ -1,0 +1,18 @@
+appId: cn.quniv.aivplayer
+productName: AIVPlayer
+directories:
+  output: release
+files:
+  - out/**
+  - package.json
+mac:
+  category: public.app-category.video
+  target:
+    - dmg
+    - zip
+win:
+  target:
+    - nsis
+linux:
+  target:
+    - AppImage

@@ -1,0 +1,14 @@
+export const IPC_CHANNELS = {
+  OPEN_MEDIA_FILES: 'dialog:open-media-files',
+  CREATE_MEDIA_FILE: 'media:create-file',
+  GET_APP_VERSION: 'app:get-version',
+  ASR_HEALTH_CHECK: 'asr:health-check',
+  ASR_DOWNLOAD_MODEL: 'asr:download-model',
+  ASR_MODEL_DOWNLOAD_PROGRESS: 'asr:model-download-progress',
+  ASR_GENERATE_SUBTITLE: 'asr:generate-subtitle',
+  ASR_JOB_PROGRESS: 'asr:job-progress',
+  NATIVE_PLAYER_STATUS: 'native-player:status',
+  STOP_NATIVE_PLAYER: 'native-player:stop',
+  GET_INITIAL_MEDIA_FILES: 'media:get-initial-files',
+  MEDIA_FILES_OPENED: 'media:files-opened'
+} as const
