@@ -43,7 +43,9 @@ async function main(): Promise<void> {
   console.log(`Message: ${status.message}`)
 
   if (!status.available) {
-    console.log('Next: install whisper.cpp, keep ffmpeg available, and download a ggml model into the model directory above.')
+    console.log(
+      'Next: stage whisper-cli under resources/whisper.cpp, stage ffmpeg under resources/ffmpeg, then download a ggml model into the model directory above.'
+    )
   }
 }
 

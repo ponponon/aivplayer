@@ -27,6 +27,13 @@ export type AsrRuntimeStatus = {
   message: string
 }
 
+export type AsrRuntimeSetupResult = {
+  success: boolean
+  canceled?: boolean
+  message: string
+  status?: AsrRuntimeStatus
+}
+
 export type AsrModelInfo = {
   id: string
   name: string

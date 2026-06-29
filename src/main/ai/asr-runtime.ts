@@ -10,6 +10,8 @@ import type {
 
 export type AsrRuntime = {
   healthCheck: () => Promise<AsrRuntimeStatus>
+  configureWhisperBinaryPath: (binaryPath: string) => Promise<AsrRuntimeStatus>
+  autoConfigureWhisperBinaryPath: () => Promise<AsrRuntimeStatus>
   downloadModel: (
     modelId: string | undefined,
     sourceId: AsrModelSourceId | undefined,
@@ -25,4 +27,5 @@ export type AsrRuntimeOptions = {
   userDataPath: string
   resourcePath: string
   env?: NodeJS.ProcessEnv
+  extraBinaryDirectories?: string[]
 }

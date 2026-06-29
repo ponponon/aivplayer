@@ -177,9 +177,15 @@ async function main(): Promise<void> {
     const asrVisible = await readLayoutMetrics(page)
     const hasDownloadModelButton = await page.getByRole('button', { name: '下载推荐模型' }).count()
     const hasRedownloadModelButton = await page.getByRole('button', { name: '重新下载 / 更换来源' }).count()
-    const hasInstalledModelPill = await page.locator('.asr-status-pill', { hasText: '已安装' }).count()
+    const hasInstalledModelPill = await page.locator('.asr-status-pill', { hasText: '模型文件已安装' }).count()
     const hasGenerateSubtitleButton = await page.getByRole('button', { name: '生成当前视频字幕' }).count()
-    const hasFfmpegStatus = (await page.locator('.asr-runtime-grid').innerText()).includes('ffmpeg')
+    const runtimeGridText = await page.locator('.asr-runtime-grid').innerText()
+    const hasAsrEngineStatus = runtimeGridText.includes('ASR 引擎 whisper.cpp')
+    const hasFfmpegStatus = runtimeGridText.includes('ffmpeg')
+    const hasWhisperBinaryPicker = await page
+      .getByRole('button', { name: /选择 whisper-cli|更换 ASR 引擎/ })
+      .count()
+    const hasWhisperAutoDetect = await page.getByRole('button', { name: '自动检测 whisper-cli' }).count()
     const asrPanelScreenshotPath = join(tmpdir(), 'aivplayer-smoke-asr-panel-state.png')
     await page.screenshot({ path: asrPanelScreenshotPath, fullPage: false })
 
@@ -211,7 +217,10 @@ async function main(): Promise<void> {
         hasRedownloadModelButton,
         hasInstalledModelPill,
         hasGenerateSubtitleButton,
-        hasFfmpegStatus
+        hasAsrEngineStatus,
+        hasFfmpegStatus,
+        hasWhisperBinaryPicker,
+        hasWhisperAutoDetect
       })}`
     )
     console.log(
@@ -257,7 +266,14 @@ async function main(): Promise<void> {
       process.exitCode = 1
     }
 
-    if (hasDownloadModelButton + hasRedownloadModelButton !== 1 || hasGenerateSubtitleButton !== 1 || !hasFfmpegStatus) {
+    if (
+      hasDownloadModelButton + hasRedownloadModelButton !== 1 ||
+      hasGenerateSubtitleButton !== 1 ||
+      !hasAsrEngineStatus ||
+      !hasFfmpegStatus ||
+      hasWhisperBinaryPicker !== 1 ||
+      hasWhisperAutoDetect !== 1
+    ) {
       process.exitCode = 1
     }
 

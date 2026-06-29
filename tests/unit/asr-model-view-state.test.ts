@@ -24,7 +24,7 @@ describe('ASR model view state', () => {
     })
 
     expect(state.installState).toBe('missing')
-    expect(state.statusLabel).toBe('未安装')
+    expect(state.statusLabel).toBe('模型文件未安装')
     expect(state.actionLabel).toBe('下载推荐模型')
     expect(state.shouldShowProgress).toBe(false)
     expect(state.description).toContain('建议预留')
@@ -52,10 +52,10 @@ describe('ASR model view state', () => {
     })
 
     expect(state.installState).toBe('downloading')
-    expect(state.statusLabel).toBe('下载中')
+    expect(state.statusLabel).toBe('模型文件下载中')
     expect(state.actionLabel).toBe('下载中')
     expect(state.shouldShowProgress).toBe(true)
-    expect(state.description).toBe('正在从 ModelScope 下载推荐模型。')
+    expect(state.description).toBe('正在从 ModelScope 下载推荐模型文件。')
   })
 
   it('marks the model as installed and points to the missing runtime separately', () => {
@@ -78,10 +78,10 @@ describe('ASR model view state', () => {
     })
 
     expect(state.installState).toBe('installed-needs-runtime')
-    expect(state.statusLabel).toBe('已安装')
+    expect(state.statusLabel).toBe('模型文件已安装')
     expect(state.actionLabel).toBe('重新下载 / 更换来源')
     expect(state.shouldShowProgress).toBe(false)
-    expect(state.description).toBe('模型已就绪，但还需要安装 whisper.cpp 运行时。')
+    expect(state.description).toBe('模型文件已就绪；字幕生成还缺 ASR 引擎 whisper.cpp。')
   })
 
   it('marks the model as ready when the runtime is also available', () => {
@@ -95,8 +95,8 @@ describe('ASR model view state', () => {
     })
 
     expect(state.installState).toBe('installed-ready')
-    expect(state.statusLabel).toBe('已安装')
+    expect(state.statusLabel).toBe('模型文件已安装')
     expect(state.actionLabel).toBe('重新下载 / 更换来源')
-    expect(state.description).toBe('模型已就绪，可用于本地字幕生成。')
+    expect(state.description).toBe('模型文件已就绪，可用于本地字幕生成。')
   })
 })

@@ -3,6 +3,8 @@ export const IPC_CHANNELS = {
   CREATE_MEDIA_FILE: 'media:create-file',
   GET_APP_VERSION: 'app:get-version',
   ASR_HEALTH_CHECK: 'asr:health-check',
+  ASR_AUTO_DETECT_WHISPER_BINARY: 'asr:auto-detect-whisper-binary',
+  ASR_SELECT_WHISPER_BINARY: 'asr:select-whisper-binary',
   ASR_DOWNLOAD_MODEL: 'asr:download-model',
   ASR_MODEL_DOWNLOAD_PROGRESS: 'asr:model-download-progress',
   ASR_GENERATE_SUBTITLE: 'asr:generate-subtitle',

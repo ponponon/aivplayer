@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain, dialog } from 'electron'
 import { existsSync } from 'node:fs'
 import { join, extname, resolve } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
-import type { AsrModelSourceId, AsrSubtitleRequest, MediaFile } from '../shared/media-types'
+import type { AsrModelSourceId, AsrRuntimeSetupResult, AsrSubtitleRequest, MediaFile } from '../shared/media-types'
 import { createWhisperCppRuntime } from './ai/whisper-cpp-runtime'
 import { createMediaFile, registerMediaProtocolHandler, registerMediaProtocolScheme } from './media/media-protocol'
 import { getNativePlayerStatus, stopNativePlayer } from './media/native-player'
@@ -89,6 +89,53 @@ function registerIpc(): void {
 
   ipcMain.handle(IPC_CHANNELS.ASR_HEALTH_CHECK, async () => {
     return getAsrRuntime().healthCheck()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.ASR_AUTO_DETECT_WHISPER_BINARY, async (): Promise<AsrRuntimeSetupResult> => {
+    const status = await getAsrRuntime().autoConfigureWhisperBinaryPath()
+
+    return {
+      success: Boolean(status.binaryPath),
+      message: status.binaryPath
+        ? `已自动检测到 ASR 引擎：${status.binaryPath}`
+        : '没有找到内置 ASR 引擎组件。正式安装包请重新安装 AIVPlayer；开发调试时可手动选择 whisper-cli。',
+      status
+    }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.ASR_SELECT_WHISPER_BINARY, async (): Promise<AsrRuntimeSetupResult> => {
+    const options: Electron.OpenDialogOptions = {
+      title: '选择 whisper-cli',
+      message: '请选择 whisper.cpp 编译生成的 whisper-cli 可执行文件。',
+      properties: ['openFile'],
+      filters: [
+        { name: 'whisper.cpp binary', extensions: process.platform === 'win32' ? ['exe'] : ['*'] },
+        { name: 'All files', extensions: ['*'] }
+      ]
+    }
+    const result = mainWindow
+      ? await dialog.showOpenDialog(mainWindow, options)
+      : await dialog.showOpenDialog(options)
+
+    if (result.canceled || result.filePaths.length === 0) {
+      return {
+        success: false,
+        canceled: true,
+        message: '已取消选择 ASR 引擎。'
+      }
+    }
+
+    const binaryPath = result.filePaths[0]
+    const status = await getAsrRuntime().configureWhisperBinaryPath(binaryPath)
+
+    return {
+      success: status.binaryPath === binaryPath,
+      message:
+        status.binaryPath === binaryPath
+          ? `已选择 ASR 引擎：${binaryPath}`
+          : '选择的文件暂时无法作为 ASR 引擎使用。',
+      status
+    }
   })
 
   ipcMain.handle(IPC_CHANNELS.ASR_DOWNLOAD_MODEL, async (event, modelId?: string, sourceId?: AsrModelSourceId) => {

@@ -6,6 +6,7 @@ import { getWhisperModelDirectory, listWhisperModels, pathExists, selectWhisperM
 import { getRecommendedWhisperModelManifest } from './asr-models.ts'
 import { downloadWhisperModel } from './model-downloader.ts'
 import { runAsrSubtitleJob } from './asr-subtitle-job.ts'
+import { readAsrRuntimeSettings, saveWhisperBinaryPath } from './asr-settings.ts'
 import type {
   AsrJobProgress,
   AsrModelDownloadProgress,
@@ -44,16 +45,49 @@ function getPathBinaryCandidates(env: NodeJS.ProcessEnv, binaryNames: string[]):
     .flatMap((directory) => binaryNames.map((binaryName) => join(directory, binaryName)))
 }
 
+function getKnownBinaryDirectories(env: NodeJS.ProcessEnv): string[] {
+  if (process.platform === 'darwin') {
+    return ['/opt/homebrew/bin', '/usr/local/bin', '/opt/local/bin']
+  }
+
+  if (process.platform === 'win32') {
+    return [
+      env.LOCALAPPDATA ? join(env.LOCALAPPDATA, 'Microsoft', 'WinGet', 'Links') : null,
+      env.LOCALAPPDATA ? join(env.LOCALAPPDATA, 'Programs', 'whisper.cpp') : null,
+      env.ProgramFiles ? join(env.ProgramFiles, 'whisper.cpp') : null,
+      env.ProgramFiles ? join(env.ProgramFiles, 'ffmpeg', 'bin') : null,
+      env['ProgramFiles(x86)'] ? join(env['ProgramFiles(x86)'], 'whisper.cpp') : null,
+      env.USERPROFILE ? join(env.USERPROFILE, 'scoop', 'shims') : null,
+      'C:\\ProgramData\\chocolatey\\bin'
+    ].filter((directory): directory is string => Boolean(directory))
+  }
+
+  return [
+    '/usr/local/bin',
+    '/usr/bin',
+    '/bin',
+    '/snap/bin',
+    env.HOME ? join(env.HOME, '.local', 'bin') : null
+  ].filter((directory): directory is string => Boolean(directory))
+}
+
+function getDirectoryBinaryCandidates(directories: string[], binaryNames: string[]): string[] {
+  return directories.flatMap((directory) => binaryNames.map((binaryName) => join(directory, binaryName)))
+}
+
 async function resolveExecutablePath(options: {
-  override: string | undefined
+  overrides?: Array<string | undefined>
   resourcePath: string
   resourceDirectory: string
   binaryNames: string[]
   env: NodeJS.ProcessEnv
+  extraBinaryDirectories?: string[]
 }): Promise<string | null> {
+  const binaryDirectories = [...(options.extraBinaryDirectories ?? []), ...getKnownBinaryDirectories(options.env)]
   const candidates = [
-    ...(options.override ? [options.override] : []),
+    ...(options.overrides ?? []).filter((candidate): candidate is string => Boolean(candidate)),
     ...getBundledBinaryCandidates(options.resourcePath, options.resourceDirectory, options.binaryNames),
+    ...getDirectoryBinaryCandidates(binaryDirectories, options.binaryNames),
     ...getPathBinaryCandidates(options.env, options.binaryNames)
   ].filter((candidate) => isAbsolute(candidate))
 
@@ -67,22 +101,39 @@ async function resolveExecutablePath(options: {
 }
 
 async function resolveWhisperBinaryPath(resourcePath: string, env: NodeJS.ProcessEnv): Promise<string | null> {
+  return resolveWhisperBinaryPathWithSettings(resourcePath, env, undefined, undefined)
+}
+
+async function resolveWhisperBinaryPathWithSettings(
+  resourcePath: string,
+  env: NodeJS.ProcessEnv,
+  userDataPath: string | undefined,
+  extraBinaryDirectories: string[] | undefined
+): Promise<string | null> {
+  const settings = userDataPath ? await readAsrRuntimeSettings(userDataPath) : {}
+
   return resolveExecutablePath({
-    override: env.AIVPLAYER_WHISPER_CPP_BIN,
+    overrides: [env.AIVPLAYER_WHISPER_CPP_BIN, settings.whisperBinaryPath],
     resourcePath,
     resourceDirectory: 'whisper.cpp',
     binaryNames: getWhisperBinaryNames(),
-    env
+    env,
+    extraBinaryDirectories
   })
 }
 
-async function resolveFfmpegPath(resourcePath: string, env: NodeJS.ProcessEnv): Promise<string | null> {
+async function resolveFfmpegPath(
+  resourcePath: string,
+  env: NodeJS.ProcessEnv,
+  extraBinaryDirectories: string[] | undefined
+): Promise<string | null> {
   return resolveExecutablePath({
-    override: env.AIVPLAYER_FFMPEG_BIN,
+    overrides: [env.AIVPLAYER_FFMPEG_BIN],
     resourcePath,
     resourceDirectory: 'ffmpeg',
     binaryNames: getFfmpegBinaryNames(),
-    env
+    env,
+    extraBinaryDirectories
   })
 }
 
@@ -107,8 +158,13 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
   const readHealthStatus = async (): Promise<AsrRuntimeStatus> => {
     const modelDirectory = getModelDirectory()
     const [binaryPath, ffmpegPath, installedModels] = await Promise.all([
-      resolveWhisperBinaryPath(options.resourcePath, env),
-      resolveFfmpegPath(options.resourcePath, env),
+      resolveWhisperBinaryPathWithSettings(
+        options.resourcePath,
+        env,
+        options.userDataPath,
+        options.extraBinaryDirectories
+      ),
+      resolveFfmpegPath(options.resourcePath, env, options.extraBinaryDirectories),
       listWhisperModels(modelDirectory)
     ])
 
@@ -122,7 +178,8 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
         installedModels,
         recommendedModel: recommendedModelManifest.fileName,
         recommendedModelManifest,
-        message: '未找到 whisper.cpp，可将 whisper-cli 放到 resources/whisper.cpp，或设置 AIVPLAYER_WHISPER_CPP_BIN。'
+        message:
+          '未找到内置 ASR 引擎组件。正式安装包应内置 whisper.cpp；开发调试时可选择 whisper-cli，或将它放到 resources/whisper.cpp。'
       }
     }
 
@@ -136,7 +193,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
         installedModels,
         recommendedModel: recommendedModelManifest.fileName,
         recommendedModelManifest,
-        message: '未找到 ffmpeg，可将 ffmpeg 放到 resources/ffmpeg，或设置 AIVPLAYER_FFMPEG_BIN。'
+        message: '未找到内置音频处理组件 ffmpeg。正式安装包应内置 ffmpeg；开发调试时可将它放到 resources/ffmpeg。'
       }
     }
 
@@ -160,6 +217,26 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
 
   return {
     healthCheck: readHealthStatus,
+
+    async configureWhisperBinaryPath(binaryPath: string): Promise<AsrRuntimeStatus> {
+      await saveWhisperBinaryPath(options.userDataPath, binaryPath)
+      return readHealthStatus()
+    },
+
+    async autoConfigureWhisperBinaryPath(): Promise<AsrRuntimeStatus> {
+      const binaryPath = await resolveWhisperBinaryPathWithSettings(
+        options.resourcePath,
+        env,
+        options.userDataPath,
+        options.extraBinaryDirectories
+      )
+
+      if (binaryPath) {
+        await saveWhisperBinaryPath(options.userDataPath, binaryPath)
+      }
+
+      return readHealthStatus()
+    },
 
     async downloadModel(
       modelId: string | undefined,

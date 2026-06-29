@@ -37,8 +37,8 @@ export function buildAsrModelViewState(input: AsrModelViewStateInput): AsrModelV
       return {
         installState: 'installed-needs-runtime',
         installedModel,
-        statusLabel: '已安装',
-        description: '模型已就绪，但还需要安装 whisper.cpp 运行时。',
+        statusLabel: '模型文件已安装',
+        description: '模型文件已就绪；字幕生成还缺 ASR 引擎 whisper.cpp。',
         actionLabel: '重新下载 / 更换来源',
         shouldShowProgress: false
       }
@@ -48,8 +48,8 @@ export function buildAsrModelViewState(input: AsrModelViewStateInput): AsrModelV
       return {
         installState: 'installed-needs-runtime',
         installedModel,
-        statusLabel: '已安装',
-        description: '模型已就绪，但还需要安装 ffmpeg。',
+        statusLabel: '模型文件已安装',
+        description: '模型文件已就绪；字幕生成还缺 ffmpeg。',
         actionLabel: '重新下载 / 更换来源',
         shouldShowProgress: false
       }
@@ -58,8 +58,8 @@ export function buildAsrModelViewState(input: AsrModelViewStateInput): AsrModelV
     return {
       installState: 'installed-ready',
       installedModel,
-      statusLabel: '已安装',
-      description: '模型已就绪，可用于本地字幕生成。',
+      statusLabel: '模型文件已安装',
+      description: '模型文件已就绪，可用于本地字幕生成。',
       actionLabel: '重新下载 / 更换来源',
       shouldShowProgress: false
     }
@@ -69,8 +69,8 @@ export function buildAsrModelViewState(input: AsrModelViewStateInput): AsrModelV
     return {
       installState: 'downloading',
       installedModel: null,
-      statusLabel: '下载中',
-      description: `正在从 ${input.downloadProgress?.sourceName ?? '所选来源'} 下载推荐模型。`,
+      statusLabel: '模型文件下载中',
+      description: `正在从 ${input.downloadProgress?.sourceName ?? '所选来源'} 下载推荐模型文件。`,
       actionLabel: '下载中',
       shouldShowProgress: true
     }
@@ -79,7 +79,7 @@ export function buildAsrModelViewState(input: AsrModelViewStateInput): AsrModelV
   return {
     installState: 'missing',
     installedModel: null,
-    statusLabel: '未安装',
+    statusLabel: '模型文件未安装',
     description: `推荐 ${input.recommendedManifest.name}，${input.recommendedManifest.ramRequirement}。`,
     actionLabel: '下载推荐模型',
     shouldShowProgress: false

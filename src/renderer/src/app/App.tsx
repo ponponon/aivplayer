@@ -105,6 +105,9 @@ export function App(): ReactElement {
   const [downloadProgress, setDownloadProgress] = useState<AsrModelDownloadProgress | null>(null)
   const [isAsrBusy, setIsAsrBusy] = useState(false)
   const [isDownloadingModel, setIsDownloadingModel] = useState(false)
+  const [isDetectingWhisperBinary, setIsDetectingWhisperBinary] = useState(false)
+  const [isSelectingWhisperBinary, setIsSelectingWhisperBinary] = useState(false)
+  const [runtimeSetupMessage, setRuntimeSetupMessage] = useState<{ success: boolean; message: string } | null>(null)
   const [isDownloadDialogOpen, setIsDownloadDialogOpen] = useState(false)
   const isSidePanelVisible = state.panelMode !== 'none'
   const installedModelCount = asrStatus?.installedModels.length ?? 0
@@ -270,6 +273,48 @@ export function App(): ReactElement {
     const nextStatus = await window.aiv.checkAsrRuntime()
     setAsrStatus(nextStatus)
     return nextStatus
+  }
+
+  const autoDetectWhisperBinary = async (): Promise<void> => {
+    setIsDetectingWhisperBinary(true)
+    setRuntimeSetupMessage(null)
+
+    try {
+      const result = await window.aiv.autoDetectWhisperBinary()
+
+      if (result.status) {
+        setAsrStatus(result.status)
+      }
+
+      setRuntimeSetupMessage({
+        success: result.success,
+        message: result.message
+      })
+    } finally {
+      setIsDetectingWhisperBinary(false)
+    }
+  }
+
+  const selectWhisperBinary = async (): Promise<void> => {
+    setIsSelectingWhisperBinary(true)
+    setRuntimeSetupMessage(null)
+
+    try {
+      const result = await window.aiv.selectWhisperBinary()
+
+      if (result.status) {
+        setAsrStatus(result.status)
+      }
+
+      if (!result.canceled) {
+        setRuntimeSetupMessage({
+          success: result.success,
+          message: result.message
+        })
+      }
+    } finally {
+      setIsSelectingWhisperBinary(false)
+    }
   }
 
   const openModelDownloadDialog = (): void => {
@@ -739,25 +784,54 @@ export function App(): ReactElement {
                   <div className="asr-card-heading">
                     <div className="asr-card-title">
                       <Sparkles size={18} />
-                      <span>运行时状态</span>
+                      <span>ASR 引擎状态</span>
                     </div>
-                    <button className="mini-tool-button" type="button" onClick={refreshAsrStatus} title="刷新 ASR 状态">
+                    <button className="mini-tool-button" type="button" onClick={refreshAsrStatus} title="刷新 ASR 引擎状态">
                       <RefreshCcw size={14} />
                     </button>
                   </div>
-                  <p>{asrStatus?.message ?? '正在检测 ASR 运行时...'}</p>
+                  <p>{asrStatus?.message ?? '正在检测 ASR 引擎...'}</p>
                   <div className="asr-meta">
                     <span>
                       <Clock size={14} />
-                      {installedModelCount} 个模型
+                      {installedModelCount} 个模型文件
                     </span>
-                    <span>{asrStatus?.available ? '就绪' : asrStatus?.recommendedModel ?? 'whisper.cpp'}</span>
+                    <span>{asrStatus?.available ? '引擎就绪' : '引擎未就绪'}</span>
                   </div>
                   <div className="asr-runtime-grid">
-                    <span>whisper</span>
+                    <span>ASR 引擎 whisper.cpp</span>
                     <strong>{asrStatus?.binaryPath ? '已找到' : '未找到'}</strong>
                     <span>ffmpeg</span>
                     <strong>{asrStatus?.ffmpegPath ? '已找到' : '未找到'}</strong>
+                  </div>
+                  {runtimeSetupMessage ? (
+                    <div className={`asr-result ${runtimeSetupMessage.success ? 'success' : 'failed'}`}>
+                      {runtimeSetupMessage.message}
+                    </div>
+                  ) : null}
+                  <div className="asr-action-row">
+                    <button
+                      className="asr-action-button"
+                      type="button"
+                      onClick={autoDetectWhisperBinary}
+                      disabled={isDetectingWhisperBinary || isSelectingWhisperBinary}
+                      title="自动检测 whisper-cli"
+                      aria-label="自动检测 whisper-cli"
+                    >
+                      <RefreshCcw size={16} />
+                      {isDetectingWhisperBinary ? '检测中' : '自动检测'}
+                    </button>
+                    <button
+                      className="asr-action-button"
+                      type="button"
+                      onClick={selectWhisperBinary}
+                      disabled={isSelectingWhisperBinary || isDetectingWhisperBinary}
+                      title="选择 whisper-cli"
+                      aria-label={asrStatus?.binaryPath ? '更换 ASR 引擎' : '选择 whisper-cli'}
+                    >
+                      <FolderOpen size={16} />
+                      {isSelectingWhisperBinary ? '选择中' : asrStatus?.binaryPath ? '更换引擎' : '选择文件'}
+                    </button>
                   </div>
                 </div>
 
@@ -765,7 +839,7 @@ export function App(): ReactElement {
                   <div className="asr-card-heading">
                     <div className="asr-card-title">
                       <Download size={18} />
-                      <span>模型</span>
+                      <span>模型文件</span>
                     </div>
                     <span className={`asr-status-pill ${modelViewState?.installState ?? 'missing'}`}>
                       {modelViewState?.statusLabel ?? '检测中'}

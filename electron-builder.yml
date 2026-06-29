@@ -5,6 +5,15 @@ directories:
 files:
   - out/**
   - package.json
+extraResources:
+  - from: resources/whisper.cpp
+    to: whisper.cpp
+    filter:
+      - '**/*'
+  - from: resources/ffmpeg
+    to: ffmpeg
+    filter:
+      - '**/*'
 mac:
   category: public.app-category.video
   target:

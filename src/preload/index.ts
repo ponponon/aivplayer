@@ -5,6 +5,7 @@ import type {
   AsrModelDownloadProgress,
   AsrModelDownloadResult,
   AsrModelSourceId,
+  AsrRuntimeSetupResult,
   AsrRuntimeStatus,
   AsrSubtitleRequest,
   AsrSubtitleResult,
@@ -18,6 +19,10 @@ const api = {
   createMediaFile: (filePath: string): Promise<MediaFile> => ipcRenderer.invoke(IPC_CHANNELS.CREATE_MEDIA_FILE, filePath),
   getAppVersion: (): Promise<string> => ipcRenderer.invoke(IPC_CHANNELS.GET_APP_VERSION),
   checkAsrRuntime: (): Promise<AsrRuntimeStatus> => ipcRenderer.invoke(IPC_CHANNELS.ASR_HEALTH_CHECK),
+  autoDetectWhisperBinary: (): Promise<AsrRuntimeSetupResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.ASR_AUTO_DETECT_WHISPER_BINARY),
+  selectWhisperBinary: (): Promise<AsrRuntimeSetupResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.ASR_SELECT_WHISPER_BINARY),
   downloadAsrModel: (modelId?: string, sourceId?: AsrModelSourceId): Promise<AsrModelDownloadResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.ASR_DOWNLOAD_MODEL, modelId, sourceId),
   generateAsrSubtitle: (request: AsrSubtitleRequest): Promise<AsrSubtitleResult> =>
