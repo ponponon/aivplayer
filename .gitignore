@@ -173,3 +173,5 @@ release/
 # Keep important files
 !package.json
 !package-lock.json
+
+resources/

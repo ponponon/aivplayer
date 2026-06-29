@@ -45,11 +45,19 @@ function getInitialMediaFiles(): MediaFile[] {
   return initialMediaFiles
 }
 
+function resolveResourcePath(): string {
+  if (process.env.ELECTRON_RENDERER_URL) {
+    return resolve('resources')
+  }
+
+  return process.resourcesPath
+}
+
 function getAsrRuntime(): ReturnType<typeof createWhisperCppRuntime> {
   if (!asrRuntime) {
     asrRuntime = createWhisperCppRuntime({
       userDataPath: app.getPath('userData'),
-      resourcePath: process.resourcesPath
+      resourcePath: resolveResourcePath()
     })
   }
 
