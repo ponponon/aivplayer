@@ -99,7 +99,9 @@ export type AsrSubtitleResult = {
   success: boolean
   message: string
   subtitlePath?: string
+  subtitleSrtPath?: string
   subtitleUrl?: string
+  subtitleSrtUrl?: string
   model?: AsrModelInfo
 }
 

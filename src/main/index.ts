@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
 import { existsSync } from 'node:fs'
 import { join, extname, resolve } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
@@ -164,11 +164,22 @@ function registerIpc(): void {
     }
 
     const subtitleFile = createMediaFile(result.subtitlePath)
+    const subtitleSrtFile = result.subtitleSrtPath ? createMediaFile(result.subtitleSrtPath) : null
 
     return {
       ...result,
-      subtitleUrl: subtitleFile.url
+      subtitleUrl: subtitleFile.url,
+      subtitleSrtUrl: subtitleSrtFile?.url
     }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.SHOW_ITEM_IN_FOLDER, (_event, filePath: string): boolean => {
+    if (!filePath || !existsSync(filePath)) {
+      return false
+    }
+
+    shell.showItemInFolder(filePath)
+    return true
   })
 }
 

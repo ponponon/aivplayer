@@ -26,6 +26,7 @@ export type RunAsrSubtitleJobOptions = {
 
 export type RunAsrSubtitleJobResult = {
   subtitlePath: string
+  subtitleSrtPath: string
 }
 
 function emitProgress(
@@ -92,6 +93,7 @@ export function buildWhisperSubtitleArgs(options: WhisperSubtitleArgs): string[]
     '-of',
     options.outputBase,
     '-ovtt',
+    '-osrt',
     '-l',
     options.language ?? 'auto'
   ]
@@ -112,6 +114,10 @@ export function getWhisperSubtitleOutputPath(outputBase: string): string {
   return `${outputBase}.vtt`
 }
 
+export function getWhisperSubtitleSrtOutputPath(outputBase: string): string {
+  return `${outputBase}.srt`
+}
+
 export async function runAsrSubtitleJob(options: RunAsrSubtitleJobOptions): Promise<RunAsrSubtitleJobResult> {
   emitProgress(options.onProgress, {
     stage: 'checking',
@@ -127,14 +133,15 @@ export async function runAsrSubtitleJob(options: RunAsrSubtitleJobOptions): Prom
     options.modelId
   )
   const subtitlePath = getWhisperSubtitleOutputPath(outputBase)
+  const subtitleSrtPath = getWhisperSubtitleSrtOutputPath(outputBase)
 
-  if (await pathExists(subtitlePath)) {
+  if ((await pathExists(subtitlePath)) && (await pathExists(subtitleSrtPath))) {
     emitProgress(options.onProgress, {
       stage: 'completed',
       percent: 1,
-      message: '已命中本地字幕缓存。'
+      message: '已命中本地字幕缓存（VTT / SRT）。'
     })
-    return { subtitlePath }
+    return { subtitlePath, subtitleSrtPath }
   }
 
   await mkdir(dirname(outputBase), { recursive: true })
@@ -152,7 +159,7 @@ export async function runAsrSubtitleJob(options: RunAsrSubtitleJobOptions): Prom
     emitProgress(options.onProgress, {
       stage: 'transcribing',
       percent: 0.42,
-      message: '正在用 whisper.cpp 识别语音并生成 VTT 字幕。'
+      message: '正在用 whisper.cpp 识别语音并生成 VTT / SRT 字幕。'
     })
     await runProcess(
       options.whisperBinaryPath,
@@ -165,17 +172,17 @@ export async function runAsrSubtitleJob(options: RunAsrSubtitleJobOptions): Prom
       'whisper.cpp'
     )
 
-    if (!(await pathExists(subtitlePath))) {
-      throw new Error('whisper.cpp 已结束，但没有生成预期的 VTT 字幕文件。')
+    if (!(await pathExists(subtitlePath)) || !(await pathExists(subtitleSrtPath))) {
+      throw new Error('whisper.cpp 已结束，但没有同时生成预期的 VTT / SRT 字幕文件。')
     }
 
     emitProgress(options.onProgress, {
       stage: 'completed',
       percent: 1,
-      message: '字幕已生成并挂载到播放器。'
+      message: '字幕已生成并挂载到播放器，SRT 也已导出。'
     })
 
-    return { subtitlePath }
+    return { subtitlePath, subtitleSrtPath }
   } finally {
     await rm(tempDirectory, { recursive: true, force: true })
   }

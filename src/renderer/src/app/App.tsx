@@ -5,6 +5,7 @@ import {
   Clock,
   CloudDownload,
   Download,
+  FileText,
   FolderOpen,
   ListVideo,
   Maximize2,
@@ -113,6 +114,10 @@ export function App(): ReactElement {
   const installedModelCount = asrStatus?.installedModels.length ?? 0
   const canDownloadRecommendedModel = Boolean(asrStatus && !isDownloadingModel)
   const canGenerateSubtitle = Boolean(state.currentFile && asrStatus?.available && !isAsrBusy && !isDownloadingModel)
+  const subtitlePath = activeSubtitle?.subtitlePath ?? asrResult?.subtitlePath ?? null
+  const subtitleSrtPath = activeSubtitle?.subtitleSrtPath ?? asrResult?.subtitleSrtPath ?? null
+  const canOpenSubtitleFolder = Boolean(subtitlePath)
+  const canOpenSubtitleSrt = Boolean(subtitleSrtPath)
   const recommendedModelManifest = asrStatus?.recommendedModelManifest ?? null
   const modelViewState = recommendedModelManifest
     ? buildAsrModelViewState({
@@ -389,6 +394,22 @@ export function App(): ReactElement {
     } finally {
       setIsAsrBusy(false)
     }
+  }
+
+  const openSubtitleFolder = async (): Promise<void> => {
+    if (!subtitlePath) {
+      return
+    }
+
+    await window.aiv.showItemInFolder(subtitlePath)
+  }
+
+  const openSubtitleSrtFile = async (): Promise<void> => {
+    if (!subtitleSrtPath) {
+      return
+    }
+
+    await window.aiv.showItemInFolder(subtitleSrtPath)
   }
 
   useEffect(() => {
@@ -895,11 +916,24 @@ export function App(): ReactElement {
                 </div>
 
                 <div className="asr-card open">
-                  <div className="asr-card-title">
-                    <Captions size={18} />
-                    <span>生成字幕</span>
+                  <div className="asr-card-heading">
+                    <div className="asr-card-title">
+                      <Captions size={18} />
+                      <span>生成字幕</span>
+                    </div>
+                    {canOpenSubtitleFolder ? (
+                      <button
+                        className="mini-tool-button"
+                        type="button"
+                        onClick={openSubtitleFolder}
+                        title="打开字幕文件夹"
+                        aria-label="打开字幕文件夹"
+                      >
+                        <FolderOpen size={14} />
+                      </button>
+                    ) : null}
                   </div>
-                  <p>VTT / auto / 本地缓存</p>
+                  <p>VTT / SRT / auto / 本地缓存</p>
                   {asrProgress ? (
                     <div className="progress-block">
                       <div className="progress-label">
@@ -919,6 +953,12 @@ export function App(): ReactElement {
                       {asrResult.message}
                     </div>
                   ) : null}
+                  {asrResult?.success && canOpenSubtitleSrt ? (
+                    <button className="asr-action-button" type="button" onClick={openSubtitleSrtFile}>
+                      <FileText size={16} />
+                      打开 SRT 文件
+                    </button>
+                  ) : null}
                   <button
                     className="asr-action-button primary"
                     type="button"
@@ -926,7 +966,7 @@ export function App(): ReactElement {
                     disabled={!canGenerateSubtitle}
                   >
                     <Sparkles size={16} />
-                    {isAsrBusy ? '生成中' : '生成当前视频字幕'}
+                    {isAsrBusy ? '生成中' : subtitlePath ? '重新生成当前视频字幕' : '生成当前视频字幕'}
                   </button>
                 </div>
               </div>

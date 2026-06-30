@@ -42,7 +42,9 @@ npm run dev
    - 切换到右侧面板的 "ASR" 标签
    - 首次使用需下载推荐模型（支持国内 ModelScope 和国际 Hugging Face 源）
    - 点击"生成当前视频字幕"按钮
-   - 生成完成后字幕会自动加载显示
+   - 生成完成后字幕会自动加载显示，字幕文件会缓存到用户数据目录下的 `asr-cache/subtitles/`
+   - 同时会产出 `.vtt` 和 `.srt` 两份字幕文件，其中 VTT 用于播放器挂载，SRT 便于后续导出或外部工具使用
+   - 生成后可点击字幕卡片右上角的文件夹图标，直接打开字幕缓存文件所在位置，也可以点下方按钮直接定位 SRT 文件
 
 ## 开发指南
 
@@ -91,6 +93,8 @@ AIVPlayer 使用 whisper.cpp 作为 ASR 引擎，正式安装包已内置：
 
 - `resources/whisper.cpp/` - whisper.cpp 可执行文件（名称取决于上游版本）
 - `resources/ffmpeg/` - ffmpeg 音频处理工具
+- 生成的字幕默认缓存到 `~/Library/Application Support/AIVPlayer/asr-cache/subtitles/`（macOS），其他平台则在各自的用户数据目录下。
+- 同一份字幕任务会同时生成 `.vtt` 和 `.srt`，前者挂载到播放器，后者保留为可复用的文本字幕。
 
 开发调试时可手动选择系统安装的 whisper.cpp 可执行文件：
 

@@ -374,8 +374,9 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
 
         return {
           success: true,
-          message: '字幕生成完成。',
+          message: '字幕生成完成，VTT 已挂载，SRT 已导出。',
           subtitlePath: result.subtitlePath,
+          subtitleSrtPath: result.subtitleSrtPath,
           model
         }
       } catch (error) {

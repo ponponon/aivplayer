@@ -3,7 +3,8 @@ import {
   buildFfmpegAudioExtractArgs,
   buildWhisperSubtitleArgs,
   createSubtitleOutputBase,
-  getWhisperSubtitleOutputPath
+  getWhisperSubtitleOutputPath,
+  getWhisperSubtitleSrtOutputPath
 } from '../../src/main/ai/asr-subtitle-job'
 
 describe('ASR subtitle job command planning', () => {
@@ -23,7 +24,7 @@ describe('ASR subtitle job command planning', () => {
     ])
   })
 
-  it('asks whisper.cpp to create a VTT subtitle file with auto language detection', () => {
+  it('asks whisper.cpp to create both VTT and SRT subtitle files with auto language detection', () => {
     expect(
       buildWhisperSubtitleArgs({
         modelPath: '/models/ggml-large-v3-turbo-q5_0.bin',
@@ -39,6 +40,7 @@ describe('ASR subtitle job command planning', () => {
       '-of',
       '/tmp/subtitle',
       '-ovtt',
+      '-osrt',
       '-l',
       'auto'
     ])
@@ -51,5 +53,6 @@ describe('ASR subtitle job command planning', () => {
     expect(first).toBe(second)
     expect(first).toContain('/cache/subtitles/movie-large-v3-turbo-q5_0-')
     expect(getWhisperSubtitleOutputPath(first)).toBe(`${first}.vtt`)
+    expect(getWhisperSubtitleSrtOutputPath(first)).toBe(`${first}.srt`)
   })
 })
