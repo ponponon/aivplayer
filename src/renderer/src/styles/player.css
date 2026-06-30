@@ -364,7 +364,6 @@
 .panel-content-subtitles,
 .panel-content-info {
   grid-template-rows: auto minmax(0, 1fr);
-  gap: 12px;
 }
 
 .info-stack {
@@ -495,6 +494,9 @@
 }
 
 .panel-empty {
+  display: grid;
+  place-items: center;
+  min-height: 100%;
   padding: 18px;
   color: var(--text-muted);
   background: rgba(18, 20, 23, 0.86);
@@ -502,6 +504,8 @@
   border-top: 0;
   border-radius: 0 0 var(--radius-lg) var(--radius-lg);
   font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
 }
 
 .playlist-item {
