@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState, type ReactElement } from 'react'
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactElement } from 'react'
 import {
   AudioLines,
   Captions,
   Clock,
   CloudDownload,
+  ChevronDown,
+  Copy,
   Download,
   FileText,
   FolderOpen,
@@ -34,6 +36,11 @@ import { buildAsrModelViewState } from './asr-model-view-state'
 import { clamp, formatTime } from '../lib/time'
 
 const SEEK_STEP_SECONDS = 5
+
+type AsrNotice = {
+  success: boolean
+  message: string
+}
 
 function getPlayFailureMessage(error: unknown): string | null {
   if (error instanceof DOMException && error.name === 'AbortError') {
@@ -98,10 +105,12 @@ function formatPercent(value: number | null | undefined): string {
 
 export function App(): ReactElement {
   const videoRef = useRef<HTMLVideoElement | null>(null)
+  const subtitleActionsRef = useRef<HTMLDetailsElement | null>(null)
   const [state, setState] = useState<PlayerState>(initialPlayerState)
   const [asrStatus, setAsrStatus] = useState<AsrRuntimeStatus | null>(null)
   const [asrProgress, setAsrProgress] = useState<AsrJobProgress | null>(null)
-  const [asrResult, setAsrResult] = useState<AsrSubtitleResult | null>(null)
+  const [subtitleResult, setSubtitleResult] = useState<AsrSubtitleResult | null>(null)
+  const [asrNotice, setAsrNotice] = useState<AsrNotice | null>(null)
   const [activeSubtitle, setActiveSubtitle] = useState<AsrSubtitleResult | null>(null)
   const [downloadProgress, setDownloadProgress] = useState<AsrModelDownloadProgress | null>(null)
   const [isAsrBusy, setIsAsrBusy] = useState(false)
@@ -114,10 +123,11 @@ export function App(): ReactElement {
   const installedModelCount = asrStatus?.installedModels.length ?? 0
   const canDownloadRecommendedModel = Boolean(asrStatus && !isDownloadingModel)
   const canGenerateSubtitle = Boolean(state.currentFile && asrStatus?.available && !isAsrBusy && !isDownloadingModel)
-  const subtitlePath = activeSubtitle?.subtitlePath ?? asrResult?.subtitlePath ?? null
-  const subtitleSrtPath = activeSubtitle?.subtitleSrtPath ?? asrResult?.subtitleSrtPath ?? null
+  const subtitlePath = activeSubtitle?.subtitlePath ?? subtitleResult?.subtitlePath ?? null
+  const subtitleSrtPath = activeSubtitle?.subtitleSrtPath ?? subtitleResult?.subtitleSrtPath ?? null
   const canOpenSubtitleFolder = Boolean(subtitlePath)
   const canOpenSubtitleSrt = Boolean(subtitleSrtPath)
+  const subtitleStatusLabel = activeSubtitle?.subtitleUrl ? '已挂载' : subtitlePath ? '缓存已就绪' : '等待生成'
   const recommendedModelManifest = asrStatus?.recommendedModelManifest ?? null
   const modelViewState = recommendedModelManifest
     ? buildAsrModelViewState({
@@ -136,8 +146,9 @@ export function App(): ReactElement {
     }
 
     setActiveSubtitle(null)
+    setSubtitleResult(null)
+    setAsrNotice(null)
     setAsrProgress(null)
-    setAsrResult(null)
 
     setState((current) => {
       const playlist = mergePlaylist(current.playlist, files)
@@ -209,8 +220,9 @@ export function App(): ReactElement {
 
   const selectFile = (file: MediaFile): void => {
     setActiveSubtitle(null)
+    setSubtitleResult(null)
+    setAsrNotice(null)
     setAsrProgress(null)
-    setAsrResult(null)
 
     setState((current) => ({
       ...current,
@@ -338,7 +350,7 @@ export function App(): ReactElement {
     setIsDownloadDialogOpen(false)
     setIsDownloadingModel(true)
     setDownloadProgress(null)
-    setAsrResult(null)
+    setAsrNotice(null)
 
     try {
       const result = await window.aiv.downloadAsrModel(asrStatus.recommendedModelManifest.id, sourceId)
@@ -370,7 +382,8 @@ export function App(): ReactElement {
     }
 
     setIsAsrBusy(true)
-    setAsrResult(null)
+    setSubtitleResult(null)
+    setAsrNotice(null)
     setAsrProgress({
       stage: 'checking',
       percent: 0,
@@ -384,7 +397,8 @@ export function App(): ReactElement {
         language: 'auto'
       })
 
-      setAsrResult(result)
+      setSubtitleResult(result.success ? result : null)
+      setAsrNotice(result)
 
       if (result.success && result.subtitleUrl) {
         setActiveSubtitle(result)
@@ -401,7 +415,13 @@ export function App(): ReactElement {
       return
     }
 
-    await window.aiv.showItemInFolder(subtitlePath)
+    const success = await window.aiv.showItemInFolder(subtitlePath)
+    if (!success) {
+      setAsrNotice({
+        success: false,
+        message: '无法打开字幕文件夹，请检查文件是否还存在。'
+      })
+    }
   }
 
   const openSubtitleSrtFile = async (): Promise<void> => {
@@ -409,8 +429,89 @@ export function App(): ReactElement {
       return
     }
 
-    await window.aiv.showItemInFolder(subtitleSrtPath)
+    const success = await window.aiv.openPath(subtitleSrtPath)
+    if (!success) {
+      setAsrNotice({
+        success: false,
+        message: '无法打开 SRT 文件，请检查系统默认应用或文件是否还存在。'
+      })
+    }
   }
+
+  const exportSubtitleSrtFile = async (): Promise<void> => {
+    if (!subtitlePath) {
+      return
+    }
+
+    const result = await window.aiv.exportAsrSubtitleSrt({
+      subtitlePath,
+      subtitleSrtPath: subtitleSrtPath ?? undefined
+    })
+
+    setAsrNotice(result)
+  }
+
+  const copySubtitleSrtPath = async (): Promise<void> => {
+    if (!subtitleSrtPath) {
+      return
+    }
+
+    const result = await window.aiv.copyTextToClipboard({
+      text: subtitleSrtPath
+    })
+
+    setAsrNotice(result)
+  }
+
+  const copySubtitleVttPath = async (): Promise<void> => {
+    if (!subtitlePath) {
+      return
+    }
+
+    const result = await window.aiv.copyTextToClipboard({
+      text: subtitlePath
+    })
+
+    setAsrNotice(result)
+  }
+
+  const closeSubtitleActionsMenu = (event: ReactMouseEvent<HTMLButtonElement>): void => {
+    const details = event.currentTarget.closest('details')
+    details?.removeAttribute('open')
+  }
+
+  useEffect(() => {
+    const currentFilePath = state.currentFile?.path
+    const modelId = asrStatus?.recommendedModelManifest.id
+
+    if (!currentFilePath || !modelId) {
+      return
+    }
+
+    let cancelled = false
+
+    const restoreCachedSubtitle = async (): Promise<void> => {
+      const result = await window.aiv.resolveAsrSubtitleCache({
+        mediaPath: currentFilePath,
+        modelId
+      })
+
+      if (cancelled || !result.success || !result.subtitleUrl) {
+        return
+      }
+
+      setActiveSubtitle(result)
+      setSubtitleResult(result)
+      setAsrNotice(result)
+      setAsrProgress(null)
+    }
+
+    void restoreCachedSubtitle()
+
+    return () => {
+      cancelled = true
+    }
+  }, [state.currentFile?.path, asrStatus?.recommendedModelManifest.id])
 
   useEffect(() => {
     const video = videoRef.current
@@ -450,6 +551,14 @@ export function App(): ReactElement {
         return
       }
 
+      if (event.key === 'Escape') {
+        const subtitleActions = subtitleActionsRef.current
+        if (subtitleActions?.open) {
+          subtitleActions.open = false
+          return
+        }
+      }
+
       if (event.code === 'Space') {
         event.preventDefault()
         void togglePlay()
@@ -467,6 +576,24 @@ export function App(): ReactElement {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   })
+
+  useEffect(() => {
+    const handleMouseDown = (event: MouseEvent): void => {
+      const subtitleActions = subtitleActionsRef.current
+      if (!subtitleActions?.open) {
+        return
+      }
+
+      if (event.target instanceof Node && subtitleActions.contains(event.target)) {
+        return
+      }
+
+      subtitleActions.open = false
+    }
+
+    window.addEventListener('mousedown', handleMouseDown)
+    return () => window.removeEventListener('mousedown', handleMouseDown)
+  }, [])
 
   useEffect(() => {
     void refreshAsrStatus()
@@ -793,13 +920,6 @@ export function App(): ReactElement {
 
           {state.panelMode === 'asr' ? (
             <>
-              <div className="panel-header">
-                <div>
-                  <span className="panel-kicker">AI Subtitles</span>
-                  <h2>本地 ASR 字幕</h2>
-                </div>
-                <Captions size={19} />
-              </div>
               <div className="asr-stack">
                 <div className="asr-card open">
                   <div className="asr-card-heading">
@@ -921,19 +1041,89 @@ export function App(): ReactElement {
                       <Captions size={18} />
                       <span>生成字幕</span>
                     </div>
+                  </div>
+                  <p>VTT / SRT / 本地缓存</p>
+                  <div className="subtitle-tools-row">
+                    <span className={`subtitle-status ${activeSubtitle?.subtitleUrl ? 'ready' : subtitlePath ? 'cached' : 'idle'}`}>
+                      {subtitleStatusLabel}
+                    </span>
                     {canOpenSubtitleFolder ? (
-                      <button
-                        className="mini-tool-button"
-                        type="button"
-                        onClick={openSubtitleFolder}
-                        title="打开字幕文件夹"
-                        aria-label="打开字幕文件夹"
-                      >
-                        <FolderOpen size={14} />
-                      </button>
+                      <details ref={subtitleActionsRef} className="subtitle-actions">
+                        <summary className="subtitle-actions-summary" title="字幕工具" aria-label="字幕工具">
+                          <ChevronDown size={12} />
+                          工具
+                        </summary>
+                        <div className="subtitle-actions-menu" role="menu" aria-label="字幕工具菜单">
+                          <button
+                            className="subtitle-action-item"
+                            type="button"
+                            role="menuitem"
+                            onClick={(event) => {
+                              closeSubtitleActionsMenu(event)
+                              void openSubtitleFolder()
+                            }}
+                          >
+                            <FolderOpen size={14} />
+                            打开字幕文件夹
+                          </button>
+                          {canOpenSubtitleSrt ? (
+                            <button
+                              className="subtitle-action-item"
+                              type="button"
+                              role="menuitem"
+                              onClick={(event) => {
+                                closeSubtitleActionsMenu(event)
+                                void openSubtitleSrtFile()
+                              }}
+                            >
+                              <FileText size={14} />
+                              打开 SRT 文件
+                            </button>
+                          ) : null}
+                          {canOpenSubtitleSrt ? (
+                            <button
+                              className="subtitle-action-item"
+                              type="button"
+                              role="menuitem"
+                              onClick={(event) => {
+                                closeSubtitleActionsMenu(event)
+                                void copySubtitleSrtPath()
+                              }}
+                            >
+                              <Copy size={14} />
+                              复制 SRT 路径
+                            </button>
+                          ) : null}
+                          {canOpenSubtitleFolder ? (
+                            <button
+                              className="subtitle-action-item"
+                              type="button"
+                              role="menuitem"
+                              onClick={(event) => {
+                                closeSubtitleActionsMenu(event)
+                                void copySubtitleVttPath()
+                              }}
+                            >
+                              <Copy size={14} />
+                              复制 VTT 路径
+                            </button>
+                          ) : null}
+                          <button
+                            className="subtitle-action-item"
+                            type="button"
+                            role="menuitem"
+                            onClick={(event) => {
+                              closeSubtitleActionsMenu(event)
+                              void exportSubtitleSrtFile()
+                            }}
+                          >
+                            <Download size={14} />
+                            导出 SRT
+                          </button>
+                        </div>
+                      </details>
                     ) : null}
                   </div>
-                  <p>VTT / SRT / auto / 本地缓存</p>
                   {asrProgress ? (
                     <div className="progress-block">
                       <div className="progress-label">
@@ -948,16 +1138,10 @@ export function App(): ReactElement {
                       </div>
                     </div>
                   ) : null}
-                  {asrResult ? (
-                    <div className={`asr-result ${asrResult.success ? 'success' : 'failed'}`}>
-                      {asrResult.message}
+                  {asrNotice ? (
+                    <div className={`asr-result ${asrNotice.success ? 'success' : 'failed'}`}>
+                      {asrNotice.message}
                     </div>
-                  ) : null}
-                  {asrResult?.success && canOpenSubtitleSrt ? (
-                    <button className="asr-action-button" type="button" onClick={openSubtitleSrtFile}>
-                      <FileText size={16} />
-                      打开 SRT 文件
-                    </button>
                   ) : null}
                   <button
                     className="asr-action-button primary"
@@ -995,9 +1179,76 @@ export function App(): ReactElement {
                 </div>
                 <Settings size={19} />
               </div>
-              <div className="panel-empty">
-                {state.currentFile ? state.currentFile.name : '还没有媒体文件。'}
-              </div>
+              {state.currentFile ? (
+                <div className="info-stack">
+                  <section className="info-card">
+                    <div className="info-card-heading">
+                      <FileText size={16} />
+                      <span>当前文件</span>
+                    </div>
+                    <div className="info-hero">
+                      <strong title={state.currentFile.name}>{state.currentFile.name}</strong>
+                      <span>{state.currentFile.extension.toUpperCase()} · 已载入到播放器</span>
+                    </div>
+                    <div className="info-grid">
+                      <div className="info-item">
+                        <span>完整路径</span>
+                        <strong title={state.currentFile.path}>{state.currentFile.path}</strong>
+                      </div>
+                      <div className="info-item">
+                        <span>媒体 URL</span>
+                        <strong title={state.currentFile.url}>{state.currentFile.url}</strong>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section className="info-card">
+                    <div className="info-card-heading">
+                      <Clock size={16} />
+                      <span>播放状态</span>
+                    </div>
+                    <div className="info-grid compact">
+                      <div className="info-item">
+                        <span>当前进度</span>
+                        <strong>
+                          {formatTime(state.currentTime)} / {formatTime(state.duration)}
+                        </strong>
+                      </div>
+                      <div className="info-item">
+                        <span>播放速度</span>
+                        <strong>{state.playbackRate}x</strong>
+                      </div>
+                      <div className="info-item">
+                        <span>音量</span>
+                        <strong>{Math.round((state.muted ? 0 : state.volume) * 100)}%</strong>
+                      </div>
+                      <div className="info-item">
+                        <span>字幕状态</span>
+                        <strong>{subtitleStatusLabel}</strong>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section className="info-card">
+                    <div className="info-card-heading">
+                      <Captions size={16} />
+                      <span>字幕缓存</span>
+                    </div>
+                    <div className="info-grid compact">
+                      <div className="info-item">
+                        <span>VTT</span>
+                        <strong>{subtitlePath ? '已缓存' : '未生成'}</strong>
+                      </div>
+                      <div className="info-item">
+                        <span>SRT</span>
+                        <strong>{subtitleSrtPath ? '已缓存' : '未生成'}</strong>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              ) : (
+                <div className="panel-empty">还没有媒体文件。</div>
+              )}
             </>
           ) : null}
           </div>

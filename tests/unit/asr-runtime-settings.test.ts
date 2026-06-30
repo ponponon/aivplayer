@@ -1,4 +1,4 @@
-import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -198,5 +198,27 @@ describe('ASR runtime settings', () => {
     await expect(readAsrRuntimeSettings(tempDirectory)).resolves.toEqual({
       whisperBinaryPath: replacementWhisperBinaryPath
     })
+  })
+
+  it('exports an SRT file from a VTT subtitle file', async () => {
+    const subtitleDirectory = join(tempDirectory, 'subtitles')
+    const vttPath = join(subtitleDirectory, 'demo.vtt')
+    const srtPath = join(subtitleDirectory, 'demo.srt')
+
+    await mkdir(subtitleDirectory, { recursive: true })
+    await writeFile(vttPath, 'WEBVTT\n\nintro\n00:00:00.000 --> 00:00:01.250\nhello world\n')
+
+    const runtime = createWhisperCppRuntime({
+      userDataPath: tempDirectory,
+      resourcePath: join(tempDirectory, 'resources')
+    })
+
+    const result = await runtime.exportSubtitleSrt({ subtitlePath: vttPath })
+
+    expect(result.success).toBe(true)
+    expect(result.subtitleSrtPath).toBe(srtPath)
+    await expect(readFile(srtPath, 'utf8')).resolves.toBe(
+      '1\n00:00:00,000 --> 00:00:01,250\nhello world\n'
+    )
   })
 })

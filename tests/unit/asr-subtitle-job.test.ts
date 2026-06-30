@@ -1,8 +1,12 @@
+import { mkdir, mkdtemp, stat, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
 import { describe, expect, it } from 'vitest'
 import {
   buildFfmpegAudioExtractArgs,
   buildWhisperSubtitleArgs,
   createSubtitleOutputBase,
+  findWhisperSubtitleCache,
   getWhisperSubtitleOutputPath,
   getWhisperSubtitleSrtOutputPath
 } from '../../src/main/ai/asr-subtitle-job'
@@ -54,5 +58,34 @@ describe('ASR subtitle job command planning', () => {
     expect(first).toContain('/cache/subtitles/movie-large-v3-turbo-q5_0-')
     expect(getWhisperSubtitleOutputPath(first)).toBe(`${first}.vtt`)
     expect(getWhisperSubtitleSrtOutputPath(first)).toBe(`${first}.srt`)
+  })
+
+  it('finds cached VTT and SRT subtitles for the same media file and model', async () => {
+    const cacheDirectory = await mkdtemp(join(tmpdir(), 'aivplayer-cache-'))
+    const mediaPath = join(cacheDirectory, 'video.mp4')
+    await writeFile(mediaPath, 'video')
+
+    const mediaStat = await stat(mediaPath)
+    const outputBase = createSubtitleOutputBase(
+      cacheDirectory,
+      mediaPath,
+      mediaStat.mtimeMs,
+      'large-v3-turbo-q5_0'
+    )
+
+    await mkdir(join(cacheDirectory, 'subtitles'), { recursive: true })
+    await writeFile(getWhisperSubtitleOutputPath(outputBase), 'WEBVTT\n\n00:00.000 --> 00:01.000\nhello\n')
+    await writeFile(getWhisperSubtitleSrtOutputPath(outputBase), '1\n00:00:00,000 --> 00:00:01,000\nhello\n')
+
+    await expect(
+      findWhisperSubtitleCache({
+        cacheDirectory,
+        mediaPath,
+        modelId: 'large-v3-turbo-q5_0'
+      })
+    ).resolves.toMatchObject({
+      subtitlePath: getWhisperSubtitleOutputPath(outputBase),
+      subtitleSrtPath: getWhisperSubtitleSrtOutputPath(outputBase)
+    })
   })
 })

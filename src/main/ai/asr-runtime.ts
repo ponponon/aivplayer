@@ -4,6 +4,8 @@ import type {
   AsrModelDownloadResult,
   AsrModelSourceId,
   AsrRuntimeStatus,
+  AsrSubtitleExportRequest,
+  AsrSubtitleExportResult,
   AsrSubtitleRequest,
   AsrSubtitleResult
 } from '../../shared/media-types.ts'
@@ -21,6 +23,8 @@ export type AsrRuntime = {
     request: AsrSubtitleRequest,
     onProgress?: (progress: AsrJobProgress) => void
   ) => Promise<AsrSubtitleResult>
+  resolveSubtitleCache: (request: AsrSubtitleRequest) => Promise<AsrSubtitleResult>
+  exportSubtitleSrt: (request: AsrSubtitleExportRequest) => Promise<AsrSubtitleExportResult>
 }
 
 export type AsrRuntimeOptions = {

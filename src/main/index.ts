@@ -1,9 +1,19 @@
-import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
+import { app, BrowserWindow, clipboard, ipcMain, dialog, shell } from 'electron'
 import { existsSync } from 'node:fs'
 import { join, extname, resolve } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
-import type { AsrModelSourceId, AsrRuntimeSetupResult, AsrSubtitleRequest, MediaFile } from '../shared/media-types'
+import type {
+  AsrModelSourceId,
+  AsrRuntimeSetupResult,
+  AsrSubtitleExportRequest,
+  AsrSubtitleExportResult,
+  AsrSubtitleRequest,
+  ClipboardWriteTextRequest,
+  ClipboardWriteTextResult,
+  MediaFile
+} from '../shared/media-types'
 import { createWhisperCppRuntime } from './ai/whisper-cpp-runtime'
+import { openPathInDefaultApp } from './system/file-actions'
 import { createMediaFile, registerMediaProtocolHandler, registerMediaProtocolScheme } from './media/media-protocol'
 import { getNativePlayerStatus, stopNativePlayer } from './media/native-player'
 
@@ -171,6 +181,60 @@ function registerIpc(): void {
       subtitleUrl: subtitleFile.url,
       subtitleSrtUrl: subtitleSrtFile?.url
     }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.ASR_RESOLVE_SUBTITLE_CACHE, async (_event, request: AsrSubtitleRequest) => {
+    const result = await getAsrRuntime().resolveSubtitleCache(request)
+
+    if (!result.subtitlePath) {
+      return result
+    }
+
+    const subtitleFile = createMediaFile(result.subtitlePath)
+    const subtitleSrtFile = result.subtitleSrtPath ? createMediaFile(result.subtitleSrtPath) : null
+
+    return {
+      ...result,
+      subtitleUrl: subtitleFile.url,
+      subtitleSrtUrl: subtitleSrtFile?.url
+    }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.ASR_EXPORT_SUBTITLE_SRT, async (_event, request: AsrSubtitleExportRequest) => {
+    const result = await getAsrRuntime().exportSubtitleSrt(request)
+
+    if (!result.subtitleSrtPath) {
+      return result
+    }
+
+    const subtitleSrtFile = createMediaFile(result.subtitleSrtPath)
+
+    return {
+      ...result,
+      subtitleSrtUrl: subtitleSrtFile.url
+    } satisfies AsrSubtitleExportResult
+  })
+
+  ipcMain.handle(IPC_CHANNELS.CLIPBOARD_WRITE_TEXT, (_event, request: ClipboardWriteTextRequest): ClipboardWriteTextResult => {
+    const text = request.text.trim()
+
+    if (!text) {
+      return {
+        success: false,
+        message: '没有可复制的内容。'
+      }
+    }
+
+    clipboard.writeText(request.text)
+
+    return {
+      success: true,
+      message: '已复制到剪贴板。'
+    }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.OPEN_PATH, (_event, filePath: string): Promise<boolean> => {
+    return openPathInDefaultApp(filePath)
   })
 
   ipcMain.handle(IPC_CHANNELS.SHOW_ITEM_IN_FOLDER, (_event, filePath: string): boolean => {

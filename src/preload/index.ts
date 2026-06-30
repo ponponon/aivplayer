@@ -7,6 +7,10 @@ import type {
   AsrModelSourceId,
   AsrRuntimeSetupResult,
   AsrRuntimeStatus,
+  AsrSubtitleExportRequest,
+  AsrSubtitleExportResult,
+  ClipboardWriteTextRequest,
+  ClipboardWriteTextResult,
   AsrSubtitleRequest,
   AsrSubtitleResult,
   MediaFile,
@@ -27,6 +31,13 @@ const api = {
     ipcRenderer.invoke(IPC_CHANNELS.ASR_DOWNLOAD_MODEL, modelId, sourceId),
   generateAsrSubtitle: (request: AsrSubtitleRequest): Promise<AsrSubtitleResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.ASR_GENERATE_SUBTITLE, request),
+  resolveAsrSubtitleCache: (request: AsrSubtitleRequest): Promise<AsrSubtitleResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.ASR_RESOLVE_SUBTITLE_CACHE, request),
+  exportAsrSubtitleSrt: (request: AsrSubtitleExportRequest): Promise<AsrSubtitleExportResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.ASR_EXPORT_SUBTITLE_SRT, request),
+  copyTextToClipboard: (request: ClipboardWriteTextRequest): Promise<ClipboardWriteTextResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CLIPBOARD_WRITE_TEXT, request),
+  openPath: (filePath: string): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.OPEN_PATH, filePath),
   showItemInFolder: (filePath: string): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.SHOW_ITEM_IN_FOLDER, filePath),
   getNativePlayerStatus: (): Promise<NativePlayerStatus> => ipcRenderer.invoke(IPC_CHANNELS.NATIVE_PLAYER_STATUS),
   getInitialMediaFiles: (): Promise<MediaFile[]> => ipcRenderer.invoke(IPC_CHANNELS.GET_INITIAL_MEDIA_FILES),

@@ -29,6 +29,18 @@ export type RunAsrSubtitleJobResult = {
   subtitleSrtPath: string
 }
 
+export type WhisperSubtitleOutputPaths = {
+  outputBase: string
+  subtitlePath: string
+  subtitleSrtPath: string
+}
+
+export type WhisperSubtitleCacheQuery = {
+  cacheDirectory: string
+  mediaPath: string
+  modelId: string
+}
+
 function emitProgress(
   onProgress: ((progress: AsrJobProgress) => void) | undefined,
   progress: AsrJobProgress
@@ -118,6 +130,34 @@ export function getWhisperSubtitleSrtOutputPath(outputBase: string): string {
   return `${outputBase}.srt`
 }
 
+export function getWhisperSubtitleOutputPaths(
+  cacheDirectory: string,
+  mediaPath: string,
+  mediaMtimeMs: number,
+  modelId: string
+): WhisperSubtitleOutputPaths {
+  const outputBase = createSubtitleOutputBase(cacheDirectory, mediaPath, mediaMtimeMs, modelId)
+
+  return {
+    outputBase,
+    subtitlePath: getWhisperSubtitleOutputPath(outputBase),
+    subtitleSrtPath: getWhisperSubtitleSrtOutputPath(outputBase)
+  }
+}
+
+export async function findWhisperSubtitleCache(
+  query: WhisperSubtitleCacheQuery
+): Promise<WhisperSubtitleOutputPaths | null> {
+  const mediaStat = await stat(query.mediaPath)
+  const paths = getWhisperSubtitleOutputPaths(query.cacheDirectory, query.mediaPath, mediaStat.mtimeMs, query.modelId)
+
+  if ((await pathExists(paths.subtitlePath)) && (await pathExists(paths.subtitleSrtPath))) {
+    return paths
+  }
+
+  return null
+}
+
 export async function runAsrSubtitleJob(options: RunAsrSubtitleJobOptions): Promise<RunAsrSubtitleJobResult> {
   emitProgress(options.onProgress, {
     stage: 'checking',
@@ -132,8 +172,12 @@ export async function runAsrSubtitleJob(options: RunAsrSubtitleJobOptions): Prom
     mediaStat.mtimeMs,
     options.modelId
   )
-  const subtitlePath = getWhisperSubtitleOutputPath(outputBase)
-  const subtitleSrtPath = getWhisperSubtitleSrtOutputPath(outputBase)
+  const { subtitlePath, subtitleSrtPath } = getWhisperSubtitleOutputPaths(
+    options.cacheDirectory,
+    options.mediaPath,
+    mediaStat.mtimeMs,
+    options.modelId
+  )
 
   if ((await pathExists(subtitlePath)) && (await pathExists(subtitleSrtPath))) {
     emitProgress(options.onProgress, {

@@ -1,11 +1,13 @@
 import { delimiter, dirname, isAbsolute, join } from 'node:path'
 import { execFile } from 'node:child_process'
+import { readFile, writeFile } from 'node:fs/promises'
 import { promisify } from 'node:util'
 import type { AsrRuntime, AsrRuntimeOptions } from './asr-runtime.ts'
 import { getWhisperModelDirectory, listWhisperModels, pathExists, selectWhisperModel } from './model-manager.ts'
 import { getRecommendedWhisperModelManifest } from './asr-models.ts'
 import { downloadWhisperModel } from './model-downloader.ts'
-import { runAsrSubtitleJob } from './asr-subtitle-job.ts'
+import { findWhisperSubtitleCache, runAsrSubtitleJob } from './asr-subtitle-job.ts'
+import { convertVttToSrt } from './subtitle-writer.ts'
 import { readAsrRuntimeSettings, saveWhisperBinaryPath } from './asr-settings.ts'
 import { getWhisperBinaryNames, parseWhisperBinaryReplacementName } from './whisper-binary.ts'
 import type {
@@ -14,6 +16,8 @@ import type {
   AsrModelDownloadResult,
   AsrModelSourceId,
   AsrRuntimeStatus,
+  AsrSubtitleExportRequest,
+  AsrSubtitleExportResult,
   AsrSubtitleRequest,
   AsrSubtitleResult
 } from '../../shared/media-types.ts'
@@ -28,6 +32,15 @@ function getFfmpegBinaryNames(): string[] {
 
 function getBundledBinaryCandidates(resourcePath: string, resourceDirectory: string, binaryNames: string[]): string[] {
   return binaryNames.map((binaryName) => join(resourcePath, resourceDirectory, binaryName))
+}
+
+export function getSiblingSrtPath(filePath: string): string {
+  if (filePath.endsWith('.vtt')) {
+    return `${filePath.slice(0, -4)}.srt`
+  }
+
+  const lastDotIndex = filePath.lastIndexOf('.')
+  return lastDotIndex > 0 ? `${filePath.slice(0, lastDotIndex)}.srt` : `${filePath}.srt`
 }
 
 function getPathBinaryCandidates(env: NodeJS.ProcessEnv, binaryNames: string[]): string[] {
@@ -390,6 +403,72 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
           success: false,
           message: error instanceof Error ? error.message : String(error),
           model
+        }
+      }
+    },
+
+    async resolveSubtitleCache(request: AsrSubtitleRequest): Promise<AsrSubtitleResult> {
+      const status = await readHealthStatus()
+      const model = selectWhisperModel(status.installedModels, request.modelId)
+
+      if (!model) {
+        return {
+          success: false,
+          message: `还没有可用 ASR 模型，请先下载 ${status.recommendedModel}。`
+        }
+      }
+
+      try {
+        const cached = await findWhisperSubtitleCache({
+          cacheDirectory: getSubtitleCacheDirectory(),
+          mediaPath: request.mediaPath,
+          modelId: model.id
+        })
+
+        if (!cached) {
+          return {
+            success: false,
+            message: '未命中本地字幕缓存。',
+            model
+          }
+        }
+
+        return {
+          success: true,
+          message: '已命中本地字幕缓存（VTT / SRT）。',
+          subtitlePath: cached.subtitlePath,
+          subtitleSrtPath: cached.subtitleSrtPath,
+          model
+        }
+      } catch (error) {
+        return {
+          success: false,
+          message: error instanceof Error ? error.message : String(error),
+          model
+        }
+      }
+    },
+
+    async exportSubtitleSrt(request: AsrSubtitleExportRequest): Promise<AsrSubtitleExportResult> {
+      try {
+        const subtitleSrtPath = request.subtitleSrtPath ?? getSiblingSrtPath(request.subtitlePath)
+        const subtitleVtt = await readFile(request.subtitlePath, 'utf8')
+        const subtitleSrt = convertVttToSrt(subtitleVtt)
+
+        await writeFile(subtitleSrtPath, subtitleSrt, 'utf8')
+
+        return {
+          success: true,
+          message: '已根据 VTT 导出 SRT。',
+          subtitlePath: request.subtitlePath,
+          subtitleSrtPath
+        }
+      } catch (error) {
+        return {
+          success: false,
+          message: error instanceof Error ? error.message : String(error),
+          subtitlePath: request.subtitlePath,
+          subtitleSrtPath: request.subtitleSrtPath
         }
       }
     }

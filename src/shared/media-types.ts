@@ -105,6 +105,28 @@ export type AsrSubtitleResult = {
   model?: AsrModelInfo
 }
 
+export type AsrSubtitleExportRequest = {
+  subtitlePath: string
+  subtitleSrtPath?: string
+}
+
+export type AsrSubtitleExportResult = {
+  success: boolean
+  message: string
+  subtitlePath?: string
+  subtitleSrtPath?: string
+  subtitleSrtUrl?: string
+}
+
+export type ClipboardWriteTextRequest = {
+  text: string
+}
+
+export type ClipboardWriteTextResult = {
+  success: boolean
+  message: string
+}
+
 export type TranscriptSegment = {
   startSeconds: number
   endSeconds: number
