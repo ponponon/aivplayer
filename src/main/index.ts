@@ -106,15 +106,15 @@ function registerIpc(): void {
       success: Boolean(status.binaryPath),
       message: status.binaryPath
         ? `已自动检测到 ASR 引擎：${status.binaryPath}`
-        : '没有找到内置 ASR 引擎组件。正式安装包请重新安装 AIVPlayer；开发调试时可手动选择 whisper-cli。',
+        : '没有找到内置 ASR 引擎组件。正式安装包请重新安装 AIVPlayer；开发调试时可手动选择 whisper.cpp 可执行文件。',
       status
     }
   })
 
   ipcMain.handle(IPC_CHANNELS.ASR_SELECT_WHISPER_BINARY, async (): Promise<AsrRuntimeSetupResult> => {
     const options: Electron.OpenDialogOptions = {
-      title: '选择 whisper-cli',
-      message: '请选择 whisper.cpp 编译生成的 whisper-cli 可执行文件。',
+      title: '选择 whisper.cpp 可执行文件',
+      message: '请选择 whisper.cpp 编译生成的可执行文件。',
       properties: ['openFile'],
       filters: [
         { name: 'whisper.cpp binary', extensions: process.platform === 'win32' ? ['exe'] : ['*'] },
@@ -135,13 +135,15 @@ function registerIpc(): void {
 
     const binaryPath = result.filePaths[0]
     const status = await getAsrRuntime().configureWhisperBinaryPath(binaryPath)
+    const normalizedBinaryPath = status.binaryPath
 
     return {
-      success: status.binaryPath === binaryPath,
-      message:
-        status.binaryPath === binaryPath
+      success: Boolean(normalizedBinaryPath),
+      message: normalizedBinaryPath
+        ? normalizedBinaryPath === binaryPath
           ? `已选择 ASR 引擎：${binaryPath}`
-          : '选择的文件暂时无法作为 ASR 引擎使用。',
+          : `已选择 ASR 引擎：${normalizedBinaryPath}（已自动切换到兼容版本）`
+        : '选择的文件暂时无法作为 ASR 引擎使用。',
       status
     }
   })

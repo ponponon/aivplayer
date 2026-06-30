@@ -1,4 +1,4 @@
-import { delimiter, isAbsolute, join } from 'node:path'
+import { delimiter, dirname, isAbsolute, join } from 'node:path'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import type { AsrRuntime, AsrRuntimeOptions } from './asr-runtime.ts'
@@ -7,6 +7,7 @@ import { getRecommendedWhisperModelManifest } from './asr-models.ts'
 import { downloadWhisperModel } from './model-downloader.ts'
 import { runAsrSubtitleJob } from './asr-subtitle-job.ts'
 import { readAsrRuntimeSettings, saveWhisperBinaryPath } from './asr-settings.ts'
+import { getWhisperBinaryNames, parseWhisperBinaryReplacementName } from './whisper-binary.ts'
 import type {
   AsrJobProgress,
   AsrModelDownloadProgress,
@@ -18,15 +19,8 @@ import type {
 } from '../../shared/media-types.ts'
 
 const execFileAsync = promisify(execFile)
-
-const POSIX_BINARY_NAMES = ['whisper-cli', 'whisper-cpp', 'main']
-const WINDOWS_BINARY_NAMES = ['whisper-cli.exe', 'whisper-cpp.exe', 'main.exe']
 const POSIX_FFMPEG_BINARY_NAMES = ['ffmpeg']
 const WINDOWS_FFMPEG_BINARY_NAMES = ['ffmpeg.exe']
-
-function getWhisperBinaryNames(): string[] {
-  return process.platform === 'win32' ? WINDOWS_BINARY_NAMES : POSIX_BINARY_NAMES
-}
 
 function getFfmpegBinaryNames(): string[] {
   return process.platform === 'win32' ? WINDOWS_FFMPEG_BINARY_NAMES : POSIX_FFMPEG_BINARY_NAMES
@@ -75,6 +69,50 @@ function getDirectoryBinaryCandidates(directories: string[], binaryNames: string
   return directories.flatMap((directory) => binaryNames.map((binaryName) => join(directory, binaryName)))
 }
 
+async function resolveWhisperBinaryReplacement(binaryPath: string): Promise<string | null | undefined> {
+  const replacementCandidates = (replacementName: string): string[] =>
+    process.platform === 'win32' && !replacementName.toLowerCase().endsWith('.exe')
+      ? [replacementName, `${replacementName}.exe`]
+      : [replacementName]
+
+  try {
+    const { stdout, stderr } = await execFileAsync(binaryPath, ['--help'], { timeout: 4000 })
+    const replacementName = parseWhisperBinaryReplacementName(`${stdout}\n${stderr}`)
+
+    if (!replacementName) {
+      return undefined
+    }
+
+    for (const candidateName of replacementCandidates(replacementName)) {
+      const replacementPath = join(dirname(binaryPath), candidateName)
+
+      if (await pathExists(replacementPath)) {
+        return replacementPath
+      }
+    }
+
+    return null
+  } catch (error) {
+    const stdout = error instanceof Error && 'stdout' in error ? String((error as { stdout?: unknown }).stdout ?? '') : ''
+    const stderr = error instanceof Error && 'stderr' in error ? String((error as { stderr?: unknown }).stderr ?? '') : ''
+    const replacementName = parseWhisperBinaryReplacementName(`${stdout}\n${stderr}`)
+
+    if (!replacementName) {
+      return undefined
+    }
+
+    for (const candidateName of replacementCandidates(replacementName)) {
+      const replacementPath = join(dirname(binaryPath), candidateName)
+
+      if (await pathExists(replacementPath)) {
+        return replacementPath
+      }
+    }
+
+    return null
+  }
+}
+
 async function resolveExecutablePath(options: {
   overrides?: Array<string | undefined>
   resourcePath: string
@@ -93,7 +131,12 @@ async function resolveExecutablePath(options: {
 
   for (const candidate of candidates) {
     if (await pathExists(candidate)) {
-      return candidate
+      const replacementPath = await resolveWhisperBinaryReplacement(candidate)
+      if (replacementPath === null) {
+        continue
+      }
+
+      return replacementPath ?? candidate
     }
   }
 
@@ -139,9 +182,23 @@ async function resolveFfmpegPath(
 
 async function readWhisperVersion(binaryPath: string): Promise<string | null> {
   try {
-    const { stdout, stderr } = await execFileAsync(binaryPath, ['--help'], { timeout: 4000 })
-    const output = `${stdout}\n${stderr}`.trim()
-    return output.split('\n')[0] || null
+    const { stdout, stderr } = await execFileAsync(binaryPath, ['--version'], { timeout: 4000 })
+    const output = `${stdout}\n${stderr}`
+      .replace(/\r\n/g, '\n')
+      .split('\n')
+      .map((line) => line.trim())
+      .find(Boolean)
+
+    if (!output) {
+      return null
+    }
+
+    const versionMatch = output.match(/version:\s*(.+)$/i)
+    if (versionMatch?.[1]?.trim()) {
+      return versionMatch[1].trim()
+    }
+
+    return output.length <= 80 && !/^usage:/i.test(output) ? output : null
   } catch {
     return null
   }
@@ -179,7 +236,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
         recommendedModel: recommendedModelManifest.fileName,
         recommendedModelManifest,
         message:
-          '未找到内置 ASR 引擎组件。正式安装包应内置 whisper.cpp；开发调试时可选择 whisper-cli，或将它放到 resources/whisper.cpp。'
+          '未找到内置 ASR 引擎组件。正式安装包应内置 whisper.cpp；开发调试时可选择 whisper.cpp CLI，或将它放到 resources/whisper.cpp。'
       }
     }
 
@@ -219,7 +276,16 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
     healthCheck: readHealthStatus,
 
     async configureWhisperBinaryPath(binaryPath: string): Promise<AsrRuntimeStatus> {
-      await saveWhisperBinaryPath(options.userDataPath, binaryPath)
+      const normalizedBinaryPath = await resolveExecutablePath({
+        overrides: [binaryPath],
+        resourcePath: options.resourcePath,
+        resourceDirectory: 'whisper.cpp',
+        binaryNames: getWhisperBinaryNames(),
+        env,
+        extraBinaryDirectories: options.extraBinaryDirectories
+      })
+
+      await saveWhisperBinaryPath(options.userDataPath, normalizedBinaryPath ?? binaryPath)
       return readHealthStatus()
     },
 

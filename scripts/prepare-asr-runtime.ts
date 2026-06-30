@@ -3,6 +3,10 @@ import { constants } from 'node:fs'
 import { basename, dirname, extname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { checkBundledAsrRuntime } from './check-bundled-asr-runtime.ts'
+import {
+  getWhisperBinaryDestinationName,
+  getWhisperBinaryNames as getSupportedWhisperBinaryNames
+} from '../src/main/ai/whisper-binary.ts'
 
 export type PrepareAsrRuntimeOptions = {
   resourcePath?: string
@@ -22,22 +26,12 @@ export type PrepareAsrRuntimeResult = {
   message: string
 }
 
-const POSIX_WHISPER_BINARY_NAMES = ['whisper-cli', 'whisper-cpp', 'main']
-const WINDOWS_WHISPER_BINARY_NAMES = ['whisper-cli.exe', 'whisper-cpp.exe', 'main.exe']
 const POSIX_FFMPEG_BINARY_NAMES = ['ffmpeg']
 const WINDOWS_FFMPEG_BINARY_NAMES = ['ffmpeg.exe']
 const RUNTIME_SIDECAR_EXTENSIONS = new Set(['.dll', '.dylib', '.metal'])
 
-function getWhisperBinaryNames(platform: NodeJS.Platform): string[] {
-  return platform === 'win32' ? WINDOWS_WHISPER_BINARY_NAMES : POSIX_WHISPER_BINARY_NAMES
-}
-
 function getFfmpegBinaryNames(platform: NodeJS.Platform): string[] {
   return platform === 'win32' ? WINDOWS_FFMPEG_BINARY_NAMES : POSIX_FFMPEG_BINARY_NAMES
-}
-
-function getWhisperDestinationName(platform: NodeJS.Platform): string {
-  return platform === 'win32' ? 'whisper-cli.exe' : 'whisper-cli'
 }
 
 function getFfmpegDestinationName(platform: NodeJS.Platform): string {
@@ -79,12 +73,16 @@ async function findBinaryInDirectory(directory: string, binaryNames: string[], m
 
     const entries = await readdir(current.directory, { withFileTypes: true }).catch(() => [])
 
+    for (const binaryName of binaryNames) {
+      const match = entries.find((entry) => entry.isFile() && entry.name === binaryName)
+
+      if (match) {
+        return join(current.directory, match.name)
+      }
+    }
+
     for (const entry of entries) {
       const entryPath = join(current.directory, entry.name)
-
-      if (entry.isFile() && binaryNames.includes(entry.name)) {
-        return entryPath
-      }
 
       if (entry.isDirectory() && current.depth < maxDepth) {
         queue.push({ directory: entryPath, depth: current.depth + 1 })
@@ -127,11 +125,14 @@ async function resolveRuntimeBinary(options: {
 async function copyRuntimeBinary(options: {
   sourcePath: string
   destinationDirectory: string
-  destinationName: string
   platform: NodeJS.Platform
+  destinationName?: string
 }): Promise<string> {
   await mkdir(options.destinationDirectory, { recursive: true })
-  const destinationPath = join(options.destinationDirectory, options.destinationName)
+  const destinationPath = join(
+    options.destinationDirectory,
+    options.destinationName ?? getWhisperBinaryDestinationName(options.sourcePath, options.platform)
+  )
   await copyFile(options.sourcePath, destinationPath)
   await ensureExecutable(destinationPath, options.platform)
   return destinationPath
@@ -213,7 +214,7 @@ export async function prepareAsrRuntime(options: PrepareAsrRuntimeOptions): Prom
   const whisperSourcePath = await resolveRuntimeBinary({
     explicitBinaryPath: options.whisperBinaryPath,
     sourceDirectory: options.whisperDirectory,
-    binaryNames: getWhisperBinaryNames(platform),
+    binaryNames: getSupportedWhisperBinaryNames(platform),
     componentName: 'whisper.cpp'
   })
   const ffmpegSourcePath = await resolveRuntimeBinary({
@@ -226,7 +227,6 @@ export async function prepareAsrRuntime(options: PrepareAsrRuntimeOptions): Prom
     copyRuntimeBinary({
       sourcePath: whisperSourcePath,
       destinationDirectory: whisperDestinationDirectory,
-      destinationName: getWhisperDestinationName(platform),
       platform
     }),
     copyRuntimeBinary({

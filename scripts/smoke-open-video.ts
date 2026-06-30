@@ -183,9 +183,9 @@ async function main(): Promise<void> {
     const hasAsrEngineStatus = runtimeGridText.includes('ASR 引擎 whisper.cpp')
     const hasFfmpegStatus = runtimeGridText.includes('ffmpeg')
     const hasWhisperBinaryPicker = await page
-      .getByRole('button', { name: /选择 whisper-cli|更换 ASR 引擎/ })
+      .getByRole('button', { name: /选择 whisper.cpp 可执行文件|更换 ASR 引擎/ })
       .count()
-    const hasWhisperAutoDetect = await page.getByRole('button', { name: '自动检测 whisper-cli' }).count()
+    const hasWhisperAutoDetect = await page.getByRole('button', { name: '自动检测 whisper.cpp' }).count()
     const asrPanelScreenshotPath = join(tmpdir(), 'aivplayer-smoke-asr-panel-state.png')
     await page.screenshot({ path: asrPanelScreenshotPath, fullPage: false })
 

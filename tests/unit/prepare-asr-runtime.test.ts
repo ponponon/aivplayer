@@ -46,6 +46,61 @@ describe('prepare ASR runtime', () => {
     expect(check.ok).toBe(true)
   })
 
+  it('preserves recognized whisper binary names when staging runtime resources', async () => {
+    const sourceDirectory = join(tempDirectory, 'source')
+    const resourcePath = join(tempDirectory, 'resources')
+    const whisperSource = join(sourceDirectory, 'whisper-whisper-cli')
+    const ffmpegSource = join(sourceDirectory, 'ffmpeg')
+
+    await mkdir(sourceDirectory, { recursive: true })
+    await writeFile(whisperSource, '#!/bin/sh\necho whisper\n')
+    await writeFile(ffmpegSource, '#!/bin/sh\necho ffmpeg\n')
+    await chmod(whisperSource, 0o755)
+    await chmod(ffmpegSource, 0o755)
+
+    const result = await prepareAsrRuntime({
+      resourcePath,
+      platform: 'darwin',
+      whisperBinaryPath: whisperSource,
+      ffmpegBinaryPath: ffmpegSource
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.whisperBinaryPath).toBe(join(resourcePath, 'whisper.cpp', 'whisper-whisper-cli'))
+    await expect(readFile(result.whisperBinaryPath, 'utf-8')).resolves.toContain('whisper')
+
+    const check = await checkBundledAsrRuntime({ resourcePath, platform: 'darwin' })
+    expect(check.ok).toBe(true)
+    expect(check.whisperBinaryPath).toBe(result.whisperBinaryPath)
+  })
+
+  it('prefers the newer whisper binary name when both old and new executables exist in a source directory', async () => {
+    const sourceDirectory = join(tempDirectory, 'source')
+    const resourcePath = join(tempDirectory, 'resources')
+    const oldWhisperSource = join(sourceDirectory, 'whisper-cli')
+    const newWhisperSource = join(sourceDirectory, 'whisper-whisper-cli')
+    const ffmpegSource = join(sourceDirectory, 'ffmpeg')
+
+    await mkdir(sourceDirectory, { recursive: true })
+    await writeFile(oldWhisperSource, '#!/bin/sh\necho old whisper\n')
+    await writeFile(newWhisperSource, '#!/bin/sh\necho new whisper\n')
+    await writeFile(ffmpegSource, '#!/bin/sh\necho ffmpeg\n')
+    await chmod(oldWhisperSource, 0o755)
+    await chmod(newWhisperSource, 0o755)
+    await chmod(ffmpegSource, 0o755)
+
+    const result = await prepareAsrRuntime({
+      resourcePath,
+      platform: 'darwin',
+      whisperDirectory: sourceDirectory,
+      ffmpegBinaryPath: ffmpegSource
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.whisperBinaryPath).toBe(join(resourcePath, 'whisper.cpp', 'whisper-whisper-cli'))
+    await expect(readFile(result.whisperBinaryPath, 'utf-8')).resolves.toContain('new whisper')
+  })
+
   it('copies whisper.cpp sidecar runtime libraries from a build directory', async () => {
     const whisperDirectory = join(tempDirectory, 'whisper-build')
     const ffmpegDirectory = join(tempDirectory, 'ffmpeg-build')

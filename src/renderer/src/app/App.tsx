@@ -815,8 +815,8 @@ export function App(): ReactElement {
                       type="button"
                       onClick={autoDetectWhisperBinary}
                       disabled={isDetectingWhisperBinary || isSelectingWhisperBinary}
-                      title="自动检测 whisper-cli"
-                      aria-label="自动检测 whisper-cli"
+                      title="自动检测 whisper.cpp"
+                      aria-label="自动检测 whisper.cpp"
                     >
                       <RefreshCcw size={16} />
                       {isDetectingWhisperBinary ? '检测中' : '自动检测'}
@@ -826,8 +826,8 @@ export function App(): ReactElement {
                       type="button"
                       onClick={selectWhisperBinary}
                       disabled={isSelectingWhisperBinary || isDetectingWhisperBinary}
-                      title="选择 whisper-cli"
-                      aria-label={asrStatus?.binaryPath ? '更换 ASR 引擎' : '选择 whisper-cli'}
+                      title="选择 whisper.cpp 可执行文件"
+                      aria-label={asrStatus?.binaryPath ? '更换 ASR 引擎' : '选择 whisper.cpp 可执行文件'}
                     >
                       <FolderOpen size={16} />
                       {isSelectingWhisperBinary ? '选择中' : asrStatus?.binaryPath ? '更换引擎' : '选择文件'}

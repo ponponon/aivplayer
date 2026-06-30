@@ -5,6 +5,7 @@ import { constants } from 'node:fs'
 import { basename, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { prepareAsrRuntime, type PrepareAsrRuntimeOptions } from './prepare-asr-runtime.ts'
+import { getWhisperBinaryNames as getSupportedWhisperBinaryNames } from '../src/main/ai/whisper-binary.ts'
 
 const execFileAsync = promisify(execFile)
 
@@ -36,6 +37,18 @@ async function isDirectory(filePath: string): Promise<boolean> {
   } catch {
     return false
   }
+}
+
+async function findWhisperBinaryPath(binDir: string): Promise<string | null> {
+  for (const binaryName of getSupportedWhisperBinaryNames()) {
+    const candidatePath = join(binDir, binaryName)
+
+    if (await pathExists(candidatePath)) {
+      return candidatePath
+    }
+  }
+
+  return null
 }
 
 function parseArgs(argv: string[]): BuildWhisperMacosOptions {
@@ -161,9 +174,7 @@ async function createResourceSymlinks(resourceDir: string): Promise<void> {
   }
 }
 
-async function fixRpath(binDir: string, binaryName: string): Promise<void> {
-  const binaryPath = join(binDir, binaryName)
-
+async function fixRpath(binaryPath: string): Promise<void> {
   try {
     await execFileAsync('install_name_tool', ['-add_rpath', '@executable_path', binaryPath])
   } catch {
@@ -194,14 +205,14 @@ async function main(): Promise<void> {
   await runCmakeBuild(sourceDir, buildDir, jobs)
 
   const binDir = join(buildDir, 'bin')
-  const whisperCli = join(binDir, 'whisper-cli')
+  const whisperBinaryPath = await findWhisperBinaryPath(binDir)
 
-  if (!(await pathExists(whisperCli))) {
-    throw new Error(`whisper-cli not found at ${whisperCli}`)
+  if (!whisperBinaryPath) {
+    throw new Error(`whisper.cpp binary not found in ${binDir}`)
   }
 
   await resolveDylibSymlinks(binDir)
-  await fixRpath(binDir, 'whisper-cli')
+  await fixRpath(whisperBinaryPath)
 
   const prepareOptions: PrepareAsrRuntimeOptions = {
     whisperDirectory: binDir,

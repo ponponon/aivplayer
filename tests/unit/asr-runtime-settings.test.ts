@@ -52,6 +52,54 @@ describe('ASR runtime settings', () => {
     expect(status.message).toContain('模型目录暂无模型')
   })
 
+  it('uses the compact whisper version output instead of help text in the runtime status message', async () => {
+    const binaryDirectory = join(tempDirectory, 'bin')
+    const whisperBinaryPath = join(binaryDirectory, 'whisper-cli')
+    const ffmpegPath = join(binaryDirectory, 'ffmpeg')
+    const modelDirectory = join(tempDirectory, 'models')
+    const modelPath = join(modelDirectory, 'ggml-large-v3-turbo-q5_0.bin')
+
+    await mkdir(binaryDirectory, { recursive: true })
+    await mkdir(modelDirectory, { recursive: true })
+    await writeFile(
+      whisperBinaryPath,
+      [
+        '#!/bin/sh',
+        'case "$1" in',
+        '  --version)',
+        '    echo "whisper.cpp version: 9.9.9"',
+        '    exit 0',
+        '    ;;',
+        '  --help)',
+        '    echo "usage: /very/long/path/to/whisper-cli [options] file0 file1 ..."',
+        '    exit 0',
+        '    ;;',
+        'esac',
+        'exit 1'
+      ].join('\n')
+    )
+    await writeFile(ffmpegPath, '#!/bin/sh\necho "ffmpeg mock"\n')
+    await writeFile(modelPath, 'mock model')
+    await chmod(whisperBinaryPath, 0o755)
+    await chmod(ffmpegPath, 0o755)
+
+    const runtime = createWhisperCppRuntime({
+      userDataPath: tempDirectory,
+      resourcePath: join(tempDirectory, 'resources'),
+      env: {
+        PATH: '',
+        AIVPLAYER_ASR_MODEL_DIR: modelDirectory
+      },
+      extraBinaryDirectories: [binaryDirectory]
+    })
+
+    const status = await runtime.healthCheck()
+
+    expect(status.available).toBe(true)
+    expect(status.message).toBe('已检测到 whisper.cpp：9.9.9')
+    expect(status.message).not.toContain('usage:')
+  })
+
   it('detects a whisper.cpp binary from known binary directories when PATH is empty', async () => {
     const binaryDirectory = join(tempDirectory, 'bin')
     const whisperBinaryPath = join(binaryDirectory, 'whisper-cli')
@@ -105,6 +153,50 @@ describe('ASR runtime settings', () => {
     expect(status.binaryPath).toBe(whisperBinaryPath)
     await expect(readAsrRuntimeSettings(tempDirectory)).resolves.toEqual({
       whisperBinaryPath
+    })
+  })
+
+  it('prefers the replacement whisper binary when the selected whisper-cli is only a deprecation wrapper', async () => {
+    const binaryDirectory = join(tempDirectory, 'bin')
+    const deprecatedWhisperBinaryPath = join(binaryDirectory, 'whisper-cli')
+    const replacementWhisperBinaryPath = join(binaryDirectory, 'whisper-whisper-cli')
+    const ffmpegPath = join(binaryDirectory, 'ffmpeg')
+
+    await mkdir(binaryDirectory, { recursive: true })
+    await writeFile(
+      deprecatedWhisperBinaryPath,
+      [
+        '#!/bin/sh',
+        "echo \"WARNING: The binary 'whisper-cli' is deprecated.\" >&2",
+        "echo \" Please use 'whisper-whisper-cli' instead.\" >&2",
+        'exit 1'
+      ].join('\n')
+    )
+    await writeFile(replacementWhisperBinaryPath, '#!/bin/sh\necho "whisper.cpp replacement mock"\n')
+    await writeFile(ffmpegPath, '#!/bin/sh\necho "ffmpeg mock"\n')
+    await chmod(deprecatedWhisperBinaryPath, 0o755)
+    await chmod(replacementWhisperBinaryPath, 0o755)
+    await chmod(ffmpegPath, 0o755)
+    await saveWhisperBinaryPath(tempDirectory, deprecatedWhisperBinaryPath)
+
+    const runtime = createWhisperCppRuntime({
+      userDataPath: tempDirectory,
+      resourcePath: join(tempDirectory, 'resources'),
+      env: {
+        PATH: '',
+        AIVPLAYER_ASR_MODEL_DIR: join(tempDirectory, 'models')
+      },
+      extraBinaryDirectories: [binaryDirectory]
+    })
+
+    const status = await runtime.healthCheck()
+
+    expect(status.binaryPath).toBe(replacementWhisperBinaryPath)
+
+    await runtime.autoConfigureWhisperBinaryPath()
+
+    await expect(readAsrRuntimeSettings(tempDirectory)).resolves.toEqual({
+      whisperBinaryPath: replacementWhisperBinaryPath
     })
   })
 })

@@ -2,6 +2,7 @@ import { access } from 'node:fs/promises'
 import { constants } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { getWhisperBinaryNames as getSupportedWhisperBinaryNames } from '../src/main/ai/whisper-binary.ts'
 
 export type BundledAsrRuntimeCheckResult = {
   ok: boolean
@@ -14,13 +15,11 @@ export type BundledAsrRuntimeCheckResult = {
   message: string
 }
 
-const POSIX_WHISPER_BINARY_NAMES = ['whisper-cli', 'whisper-cpp', 'main']
-const WINDOWS_WHISPER_BINARY_NAMES = ['whisper-cli.exe', 'whisper-cpp.exe', 'main.exe']
 const POSIX_FFMPEG_BINARY_NAMES = ['ffmpeg']
 const WINDOWS_FFMPEG_BINARY_NAMES = ['ffmpeg.exe']
 
 function getWhisperBinaryNames(platform = process.platform): string[] {
-  return platform === 'win32' ? WINDOWS_WHISPER_BINARY_NAMES : POSIX_WHISPER_BINARY_NAMES
+  return getSupportedWhisperBinaryNames(platform)
 }
 
 function getFfmpegBinaryNames(platform = process.platform): string[] {

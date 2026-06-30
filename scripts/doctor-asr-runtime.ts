@@ -44,7 +44,7 @@ async function main(): Promise<void> {
 
   if (!status.available) {
     console.log(
-      'Next: stage whisper-cli under resources/whisper.cpp, stage ffmpeg under resources/ffmpeg, then download a ggml model into the model directory above.'
+      'Next: stage a whisper.cpp executable under resources/whisper.cpp, stage ffmpeg under resources/ffmpeg, then download a ggml model into the model directory above.'
     )
   }
 }

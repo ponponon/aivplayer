@@ -89,10 +89,10 @@ aivplayer/
 
 AIVPlayer 使用 whisper.cpp 作为 ASR 引擎，正式安装包已内置：
 
-- `resources/whisper.cpp/` - whisper-cli 可执行文件
+- `resources/whisper.cpp/` - whisper.cpp 可执行文件（名称取决于上游版本）
 - `resources/ffmpeg/` - ffmpeg 音频处理工具
 
-开发调试时可手动选择系统安装的 whisper-cli：
+开发调试时可手动选择系统安装的 whisper.cpp 可执行文件：
 
 ```bash
 # 检查 ASR 运行时状态
