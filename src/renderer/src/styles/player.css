@@ -348,6 +348,7 @@
 .panel-content {
   display: grid;
   min-height: 0;
+  min-width: 0;
   margin-top: 12px;
 }
 
@@ -365,6 +366,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  min-width: 0;
   padding: 16px;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
@@ -436,6 +438,7 @@
 .asr-card {
   display: grid;
   gap: 10px;
+  min-width: 0;
   padding: 14px;
   border-top: 0;
   border-radius: 0 0 var(--radius-lg) var(--radius-lg);
@@ -459,11 +462,13 @@
   align-content: start;
   gap: 12px;
   min-height: 0;
+  min-width: 0;
   margin-top: 12px;
   overflow: auto;
 }
 
 .asr-card-heading {
+  min-width: 0;
   justify-content: space-between;
   gap: 8px;
 }
@@ -543,6 +548,7 @@
 .asr-model-list {
   display: grid;
   gap: 8px;
+  min-width: 0;
 }
 
 .asr-runtime-grid {
@@ -591,6 +597,7 @@
 .progress-block {
   display: grid;
   gap: 7px;
+  min-width: 0;
 }
 
 .progress-label {
@@ -598,6 +605,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  min-width: 0;
   color: var(--text-muted);
   font-size: 11px;
 }
@@ -680,10 +688,15 @@
 }
 
 .asr-result {
+  min-width: 0;
+  max-width: 100%;
   padding: 9px 10px;
   border-radius: var(--radius-sm);
   font-size: 12px;
   line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .asr-result.success {
@@ -713,6 +726,7 @@
   display: grid;
   gap: 14px;
   width: min(560px, calc(100vw - 32px));
+  min-width: 0;
   padding: 18px;
   color: var(--text-primary);
   background: rgba(18, 20, 23, 0.96);
@@ -725,6 +739,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  min-width: 0;
   gap: 14px;
 }
 
@@ -738,10 +753,13 @@
   color: var(--text-secondary);
   font-size: 13px;
   line-height: 1.6;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .download-source-grid {
   display: grid;
+  min-width: 0;
   gap: 10px;
 }
 
@@ -751,6 +769,7 @@
   gap: 12px;
   align-items: center;
   min-height: 88px;
+  min-width: 0;
   padding: 12px;
   color: var(--text-secondary);
   background: rgba(255, 255, 255, 0.045);
@@ -797,6 +816,8 @@
   color: var(--text-secondary);
   font-size: 12px;
   line-height: 1.45;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .download-source-copy small {
