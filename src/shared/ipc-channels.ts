@@ -2,6 +2,8 @@ export const IPC_CHANNELS = {
   OPEN_MEDIA_FILES: 'dialog:open-media-files',
   CREATE_MEDIA_FILE: 'media:create-file',
   GET_APP_VERSION: 'app:get-version',
+  APP_GET_SETTINGS: 'app:get-settings',
+  APP_SET_SETTINGS: 'app:set-settings',
   ASR_HEALTH_CHECK: 'asr:health-check',
   ASR_AUTO_DETECT_WHISPER_BINARY: 'asr:auto-detect-whisper-binary',
   ASR_SELECT_WHISPER_BINARY: 'asr:select-whisper-binary',

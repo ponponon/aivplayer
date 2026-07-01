@@ -1,6 +1,7 @@
 import { app, BrowserWindow, clipboard, dialog, ipcMain, nativeImage, shell } from 'electron'
 import { existsSync } from 'node:fs'
 import { join, extname, resolve } from 'node:path'
+import { readAppSettings, writeAppSettings } from './app-settings'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type {
   AsrModelSourceId,
@@ -121,6 +122,14 @@ function registerIpc(): void {
   ipcMain.handle(IPC_CHANNELS.GET_INITIAL_MEDIA_FILES, () => getInitialMediaFiles())
 
   ipcMain.handle(IPC_CHANNELS.GET_APP_VERSION, () => app.getVersion())
+
+  ipcMain.handle(IPC_CHANNELS.APP_GET_SETTINGS, async () => {
+    return readAppSettings(app.getPath('userData'))
+  })
+
+  ipcMain.handle(IPC_CHANNELS.APP_SET_SETTINGS, async (_event, settings) => {
+    return writeAppSettings(app.getPath('userData'), settings)
+  })
 
   ipcMain.handle(IPC_CHANNELS.NATIVE_PLAYER_STATUS, () => getNativePlayerStatus())
 

@@ -9,20 +9,22 @@ import {
   Download,
   FileText,
   FolderOpen,
+  Info,
   ListVideo,
   Maximize2,
   PanelRight,
   Pause,
   Play,
   RefreshCcw,
-  Settings,
   SkipBack,
   SkipForward,
   Sparkles,
+  Settings2,
   Volume2,
   VolumeX,
   X
 } from 'lucide-react'
+import { createDefaultAppSettings, type AppSettings } from '../../../shared/app-settings'
 import type {
   AsrJobProgress,
   AsrModelDownloadProgress,
@@ -33,6 +35,7 @@ import type {
 } from '../../../shared/media-types'
 import { initialPlayerState, type PanelMode, type PlayerState } from './player-state'
 import { buildAsrModelViewState } from './asr-model-view-state'
+import { SettingsDialog } from './settings-dialog'
 import { clamp, formatTime } from '../lib/time'
 
 const SEEK_STEP_SECONDS = 5
@@ -119,6 +122,8 @@ export function App(): ReactElement {
   const [isSelectingWhisperBinary, setIsSelectingWhisperBinary] = useState(false)
   const [runtimeSetupMessage, setRuntimeSetupMessage] = useState<{ success: boolean; message: string } | null>(null)
   const [isDownloadDialogOpen, setIsDownloadDialogOpen] = useState(false)
+  const [appSettings, setAppSettings] = useState<AppSettings>(createDefaultAppSettings())
+  const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false)
   const isSidePanelVisible = state.panelMode !== 'none'
   const installedModelCount = asrStatus?.installedModels.length ?? 0
   const canDownloadRecommendedModel = Boolean(asrStatus && !isDownloadingModel)
@@ -139,6 +144,14 @@ export function App(): ReactElement {
         hasFfmpegRuntime: Boolean(asrStatus?.ffmpegPath)
       })
     : null
+
+  const patchAppSettings = (updater: (current: AppSettings) => AppSettings): void => {
+    setAppSettings((current) => {
+      const next = updater(current)
+      void window.aiv.setAppSettings(next).catch(() => undefined)
+      return next
+    })
+  }
 
   const loadFiles = (files: MediaFile[]): void => {
     if (files.length === 0) {
@@ -172,10 +185,22 @@ export function App(): ReactElement {
   }
 
   const togglePanelMode = (panelMode: PanelMode): void => {
+    const nextPanelMode = state.panelMode === panelMode ? 'none' : panelMode
+
     setState((current) => ({
       ...current,
-      panelMode: current.panelMode === panelMode ? 'none' : panelMode
+      panelMode: nextPanelMode
     }))
+
+    if (nextPanelMode !== 'none' && nextPanelMode !== 'subtitles') {
+      patchAppSettings((current) => ({
+        ...current,
+        ui: {
+          ...current.ui,
+          defaultPanelMode: nextPanelMode
+        }
+      }))
+    }
   }
 
   const openPanelMode = (panelMode: Exclude<PanelMode, 'none'>): void => {
@@ -183,6 +208,16 @@ export function App(): ReactElement {
       ...current,
       panelMode
     }))
+
+    if (panelMode !== 'subtitles') {
+      patchAppSettings((current) => ({
+        ...current,
+        ui: {
+          ...current.ui,
+          defaultPanelMode: panelMode
+        }
+      }))
+    }
   }
 
   const createMediaFilesFromPaths = async (paths: string[]): Promise<MediaFile[]> => {
@@ -251,7 +286,19 @@ export function App(): ReactElement {
       return
     }
 
-    video.muted = !video.muted
+    const nextMuted = !video.muted
+    video.muted = nextMuted
+
+    setState((current) => ({ ...current, muted: nextMuted }))
+    patchAppSettings((current) => ({
+      ...current,
+      playback: {
+        ...current.playback,
+        lastVolume: state.volume,
+        lastMuted: nextMuted,
+        lastPlaybackRate: state.playbackRate
+      }
+    }))
   }
 
   const toggleFullscreen = async (): Promise<void> => {
@@ -521,7 +568,8 @@ export function App(): ReactElement {
 
     video.volume = state.volume
     video.playbackRate = state.playbackRate
-  }, [state.volume, state.playbackRate])
+    video.muted = state.muted
+  }, [state.volume, state.playbackRate, state.muted])
 
   useEffect(() => {
     const video = videoRef.current
@@ -532,6 +580,7 @@ export function App(): ReactElement {
     video.currentTime = 0
     video.playbackRate = state.playbackRate
     video.volume = state.volume
+    video.muted = state.muted
 
     const playTimer = window.setTimeout(() => {
       void video.play().catch((error: unknown) => {
@@ -547,6 +596,10 @@ export function App(): ReactElement {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
+      if (isDownloadDialogOpen || isSettingsDialogOpen) {
+        return
+      }
+
       if (event.target instanceof HTMLInputElement) {
         return
       }
@@ -600,6 +653,29 @@ export function App(): ReactElement {
   }, [])
 
   useEffect(() => {
+    let cancelled = false
+
+    void window.aiv.getAppSettings().then((settings) => {
+      if (cancelled) {
+        return
+      }
+
+      setAppSettings(settings)
+      setState((current) => ({
+        ...current,
+        panelMode: settings.ui.defaultPanelMode,
+        volume: settings.playback.rememberVolume ? settings.playback.lastVolume : current.volume,
+        muted: settings.playback.rememberVolume ? settings.playback.lastMuted : current.muted,
+        playbackRate: settings.playback.rememberPlaybackRate ? settings.playback.lastPlaybackRate : current.playbackRate
+      }))
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
     if (!isDownloadDialogOpen) {
       return
     }
@@ -613,6 +689,21 @@ export function App(): ReactElement {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isDownloadDialogOpen, isDownloadingModel])
+
+  useEffect(() => {
+    if (!isSettingsDialogOpen) {
+      return
+    }
+
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') {
+        setIsSettingsDialogOpen(false)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isSettingsDialogOpen])
 
   useEffect(() => {
     void window.aiv.getInitialMediaFiles().then(loadFiles)
@@ -691,11 +782,28 @@ export function App(): ReactElement {
           <button
             className={`tool-button ${state.panelMode === 'info' ? 'active' : ''}`}
             type="button"
-            title="Settings"
+            title={state.panelMode === 'info' ? '隐藏媒体信息' : '显示媒体信息'}
+            aria-label={state.panelMode === 'info' ? '隐藏媒体信息' : '显示媒体信息'}
             onClick={() => togglePanelMode('info')}
             aria-pressed={state.panelMode === 'info'}
           >
-            <Settings size={17} />
+            <Info size={17} />
+          </button>
+          <button
+            className={`tool-button ${isSettingsDialogOpen ? 'active' : ''}`}
+            type="button"
+            title={isSettingsDialogOpen ? '关闭设置' : '打开设置'}
+            aria-label={isSettingsDialogOpen ? '关闭设置' : '打开设置'}
+            onClick={() => {
+              if (isDownloadDialogOpen) {
+                return
+              }
+
+              setIsSettingsDialogOpen((current) => !current)
+            }}
+            aria-pressed={isSettingsDialogOpen}
+          >
+            <Settings2 size={17} />
           </button>
         </nav>
       </header>
@@ -817,7 +925,17 @@ export function App(): ReactElement {
                       videoRef.current.volume = nextVolume
                       videoRef.current.muted = nextVolume === 0
                     }
-                    setState((current) => ({ ...current, volume: nextVolume, muted: nextVolume === 0 }))
+                    const nextMuted = nextVolume === 0
+                    setState((current) => ({ ...current, volume: nextVolume, muted: nextMuted }))
+                    patchAppSettings((current) => ({
+                      ...current,
+                      playback: {
+                        ...current.playback,
+                        lastVolume: nextVolume,
+                        lastMuted: nextMuted,
+                        lastPlaybackRate: state.playbackRate
+                      }
+                    }))
                   }}
                   aria-label="Volume"
                 />
@@ -833,6 +951,15 @@ export function App(): ReactElement {
                       videoRef.current.playbackRate = playbackRate
                     }
                     setState((current) => ({ ...current, playbackRate }))
+                    patchAppSettings((current) => ({
+                      ...current,
+                      playback: {
+                        ...current.playback,
+                        lastVolume: state.muted ? 0 : state.volume,
+                        lastMuted: state.muted,
+                        lastPlaybackRate: playbackRate
+                      }
+                    }))
                   }}
                   aria-label="Playback speed"
                 >
@@ -882,7 +1009,7 @@ export function App(): ReactElement {
               aria-selected={state.panelMode === 'info'}
               onClick={() => openPanelMode('info')}
             >
-              <Settings size={15} />
+              <Info size={15} />
               <span>信息</span>
             </button>
           </div>
@@ -1177,7 +1304,7 @@ export function App(): ReactElement {
                   <span className="panel-kicker">Info</span>
                   <h2>媒体信息</h2>
                 </div>
-                <Settings size={19} />
+                <Info size={19} />
               </div>
               {state.currentFile ? (
                 <div className="info-stack">
@@ -1254,6 +1381,18 @@ export function App(): ReactElement {
           </div>
         </aside>
       </main>
+
+      {isSettingsDialogOpen ? (
+        <SettingsDialog
+          settings={appSettings}
+          onChange={patchAppSettings}
+          onClose={() => setIsSettingsDialogOpen(false)}
+          onOpenAsrPanel={() => {
+            setIsSettingsDialogOpen(false)
+            openPanelMode('asr')
+          }}
+        />
+      ) : null}
 
       {isDownloadDialogOpen && recommendedModelManifest ? (
         <div
