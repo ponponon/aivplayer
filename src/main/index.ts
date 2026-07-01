@@ -1,4 +1,4 @@
-import { app, BrowserWindow, clipboard, ipcMain, dialog, shell } from 'electron'
+import { app, BrowserWindow, clipboard, dialog, ipcMain, nativeImage, shell } from 'electron'
 import { existsSync } from 'node:fs'
 import { join, extname, resolve } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
@@ -38,6 +38,27 @@ const VIDEO_EXTENSIONS = [
 let mainWindow: BrowserWindow | null = null
 let asrRuntime: ReturnType<typeof createWhisperCppRuntime> | null = null
 let initialMediaFiles: MediaFile[] | null = null
+
+function resolveAppIconPath(): string | null {
+  const iconPath = process.env.ELECTRON_RENDERER_URL
+    ? resolve(process.cwd(), 'brand/icon.png')
+    : join(process.resourcesPath, 'app-icon.png')
+
+  return existsSync(iconPath) ? iconPath : null
+}
+
+function applyMacDockIcon(): void {
+  if (process.platform !== 'darwin') {
+    return
+  }
+
+  const iconPath = resolveAppIconPath()
+  if (!iconPath) {
+    return
+  }
+
+  app.dock?.setIcon(nativeImage.createFromPath(iconPath))
+}
 
 function getInitialMediaFiles(): MediaFile[] {
   if (initialMediaFiles) {
@@ -248,12 +269,15 @@ function registerIpc(): void {
 }
 
 function createWindow(): void {
+  const iconPath = resolveAppIconPath()
+
   mainWindow = new BrowserWindow({
     width: 1360,
     height: 840,
     minWidth: 980,
     minHeight: 640,
     backgroundColor: '#090a0c',
+    icon: iconPath ?? undefined,
     title: 'AIVPlayer',
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 16, y: 16 },
@@ -290,6 +314,7 @@ function createWindow(): void {
 app.whenReady().then(() => {
   registerMediaProtocolHandler()
   registerIpc()
+  applyMacDockIcon()
   createWindow()
 
   app.on('activate', () => {

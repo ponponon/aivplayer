@@ -6,6 +6,8 @@ files:
   - out/**
   - package.json
 extraResources:
+  - from: brand/icon.png
+    to: app-icon.png
   - from: resources/whisper.cpp
     to: whisper.cpp
     filter:
@@ -16,12 +18,15 @@ extraResources:
       - '**/*'
 mac:
   category: public.app-category.video
+  icon: brand/icon.icns
   target:
     - dmg
     - zip
 win:
+  icon: brand/icon.ico
   target:
     - nsis
 linux:
+  icon: brand/icon.png
   target:
     - AppImage

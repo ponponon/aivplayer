@@ -5,3 +5,7 @@
 ---
 
 执行 git commit 之前，一定要检查一下是否有敏感内容泄露，比如 api key、账号密码密钥等等，如果有，就停止提交，没有你自己自己写 commit 的 message 然后 commit 就行
+
+----
+
+对于 electron 的细节有不清楚的地方，可以直接去查看其源代码：/Users/ponponon/Desktop/code/me/github/electron

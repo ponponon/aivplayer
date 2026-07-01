@@ -31,6 +31,10 @@
 - 推荐模型支持国内 ModelScope 和国际 Hugging Face 两个来源。
 - 下载进度在侧边栏展示，方便定位卡顿或失败。
 
+## 应用图标
+- 已配置 AIVPlayer 自定义应用图标，macOS 开发态 Dock 和正式安装包都不再使用 Electron 默认图标。
+- 图标采用深色圆徽 + 金色波形的极简风格，和当前播放器主题保持一致。
+
 ## ASR 二进制兼容
 - 自动识别 `whisper-whisper-cli`、`whisper-cli`、`whisper-cpp`、`main` 这几类 whisper.cpp 可执行文件。
 - 如果用户选到的是 deprecated wrapper，运行时会优先切换到同目录下真正可用的二进制。
