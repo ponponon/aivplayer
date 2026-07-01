@@ -4,8 +4,10 @@ import {
   APP_SETTINGS_SCHEMA_VERSION,
   createDefaultAppSettings,
   type AppPanelModePreference,
+  type AppSettingsSectionId,
   type AppSettings
 } from '../shared/app-settings'
+import type { AsrModelSourceId } from '../shared/media-types'
 
 function getAppSettingsPath(userDataPath: string): string {
   return join(userDataPath, 'app-settings.json')
@@ -13,6 +15,14 @@ function getAppSettingsPath(userDataPath: string): string {
 
 function isPanelModePreference(value: unknown): value is AppPanelModePreference {
   return value === 'playlist' || value === 'asr' || value === 'info'
+}
+
+function isSettingsSectionId(value: unknown): value is AppSettingsSectionId {
+  return value === 'startup' || value === 'playback' || value === 'asr'
+}
+
+function isAsrModelSourceId(value: unknown): value is AsrModelSourceId {
+  return value === 'modelscope' || value === 'huggingface'
 }
 
 function isFiniteNumber(value: unknown): value is number {
@@ -28,16 +38,26 @@ function sanitizeAppSettings(parsed: unknown): AppSettings {
 
   const value = parsed as Partial<AppSettings> & {
     ui?: Partial<AppSettings['ui']>
+    asr?: Partial<AppSettings['asr']>
     playback?: Partial<AppSettings['playback']>
   }
 
   const ui = (value.ui ?? {}) as Partial<AppSettings['ui']>
+  const asr = (value.asr ?? {}) as Partial<AppSettings['asr']>
   const playback = (value.playback ?? {}) as Partial<AppSettings['playback']>
 
   return {
     schemaVersion: APP_SETTINGS_SCHEMA_VERSION,
     ui: {
-      defaultPanelMode: isPanelModePreference(ui.defaultPanelMode) ? ui.defaultPanelMode : defaults.ui.defaultPanelMode
+      defaultPanelMode: isPanelModePreference(ui.defaultPanelMode) ? ui.defaultPanelMode : defaults.ui.defaultPanelMode,
+      lastSettingsSectionId: isSettingsSectionId(ui.lastSettingsSectionId)
+        ? ui.lastSettingsSectionId
+        : defaults.ui.lastSettingsSectionId
+    },
+    asr: {
+      preferredModelSourceId: isAsrModelSourceId(asr.preferredModelSourceId)
+        ? asr.preferredModelSourceId
+        : defaults.asr.preferredModelSourceId
     },
     playback: {
       rememberVolume: typeof playback.rememberVolume === 'boolean' ? playback.rememberVolume : defaults.playback.rememberVolume,

@@ -23,6 +23,8 @@ describe('app settings', () => {
   it('persists and reloads app settings', async () => {
     const settings = createDefaultAppSettings()
     settings.ui.defaultPanelMode = 'info'
+    settings.ui.lastSettingsSectionId = 'asr'
+    settings.asr.preferredModelSourceId = 'huggingface'
     settings.playback.rememberVolume = false
     settings.playback.lastVolume = 0.42
     settings.playback.lastMuted = true
@@ -33,10 +35,47 @@ describe('app settings', () => {
     await expect(readAppSettings(tempDirectory)).resolves.toEqual(settings)
   })
 
+  it('sanitizes unsupported asr and ui settings', async () => {
+    const settings = createDefaultAppSettings()
+    settings.ui.defaultPanelMode = 'info'
+    settings.playback.rememberVolume = false
+    settings.playback.lastVolume = 0.42
+    settings.playback.lastMuted = true
+    settings.playback.lastPlaybackRate = 1.5
+
+    await writeFile(
+      join(tempDirectory, 'app-settings.json'),
+      `${JSON.stringify(
+        {
+          schemaVersion: 1,
+          ui: {
+            defaultPanelMode: 'info'
+          },
+          playback: settings.playback,
+          asr: {
+            preferredModelSourceId: 'not-a-source'
+          }
+        },
+        null,
+        2
+      )}\n`
+    )
+
+    await expect(readAppSettings(tempDirectory)).resolves.toEqual({
+      ...settings,
+      ui: {
+        defaultPanelMode: 'info',
+        lastSettingsSectionId: 'startup'
+      },
+      asr: {
+        preferredModelSourceId: 'modelscope'
+      }
+    })
+  })
+
   it('falls back to defaults when the settings file is invalid', async () => {
     await writeFile(join(tempDirectory, 'app-settings.json'), '{broken json')
 
     await expect(readAppSettings(tempDirectory)).resolves.toEqual(createDefaultAppSettings())
   })
 })
-

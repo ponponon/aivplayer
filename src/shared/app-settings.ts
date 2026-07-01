@@ -1,11 +1,18 @@
-export const APP_SETTINGS_SCHEMA_VERSION = 1
+import type { AsrModelSourceId } from './media-types'
+
+export const APP_SETTINGS_SCHEMA_VERSION = 3
 
 export type AppPanelModePreference = 'playlist' | 'asr' | 'info'
+export type AppSettingsSectionId = 'startup' | 'playback' | 'asr'
 
 export type AppSettings = {
   schemaVersion: number
   ui: {
     defaultPanelMode: AppPanelModePreference
+    lastSettingsSectionId: AppSettingsSectionId
+  }
+  asr: {
+    preferredModelSourceId: AsrModelSourceId
   }
   playback: {
     rememberVolume: boolean
@@ -20,7 +27,11 @@ export function createDefaultAppSettings(): AppSettings {
   return {
     schemaVersion: APP_SETTINGS_SCHEMA_VERSION,
     ui: {
-      defaultPanelMode: 'playlist'
+      defaultPanelMode: 'playlist',
+      lastSettingsSectionId: 'startup'
+    },
+    asr: {
+      preferredModelSourceId: 'modelscope'
     },
     playback: {
       rememberVolume: true,

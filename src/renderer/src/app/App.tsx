@@ -24,7 +24,7 @@ import {
   VolumeX,
   X
 } from 'lucide-react'
-import { createDefaultAppSettings, type AppSettings } from '../../../shared/app-settings'
+import { createDefaultAppSettings, type AppSettings, type AppSettingsSectionId } from '../../../shared/app-settings'
 import type {
   AsrJobProgress,
   AsrModelDownloadProgress,
@@ -36,6 +36,7 @@ import type {
 import { initialPlayerState, type PanelMode, type PlayerState } from './player-state'
 import { buildAsrModelViewState } from './asr-model-view-state'
 import { SettingsDialog } from './settings-dialog'
+import { useModalFocusTrap } from './use-modal-focus-trap'
 import { clamp, formatTime } from '../lib/time'
 
 const SEEK_STEP_SECONDS = 5
@@ -109,6 +110,7 @@ function formatPercent(value: number | null | undefined): string {
 export function App(): ReactElement {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const subtitleActionsRef = useRef<HTMLDetailsElement | null>(null)
+  const downloadDialogRef = useRef<HTMLElement | null>(null)
   const [state, setState] = useState<PlayerState>(initialPlayerState)
   const [asrStatus, setAsrStatus] = useState<AsrRuntimeStatus | null>(null)
   const [asrProgress, setAsrProgress] = useState<AsrJobProgress | null>(null)
@@ -133,7 +135,16 @@ export function App(): ReactElement {
   const canOpenSubtitleFolder = Boolean(subtitlePath)
   const canOpenSubtitleSrt = Boolean(subtitleSrtPath)
   const subtitleStatusLabel = activeSubtitle?.subtitleUrl ? '已挂载' : subtitlePath ? '缓存已就绪' : '等待生成'
+  const preferredModelSourceId = appSettings.asr.preferredModelSourceId
+  const initialSettingsSectionId: AppSettingsSectionId =
+    state.panelMode === 'asr' ? 'asr' : appSettings.ui.lastSettingsSectionId
   const recommendedModelManifest = asrStatus?.recommendedModelManifest ?? null
+  const recommendedModelSources = recommendedModelManifest
+    ? [
+        ...recommendedModelManifest.sources.filter((source) => source.id === preferredModelSourceId),
+        ...recommendedModelManifest.sources.filter((source) => source.id !== preferredModelSourceId)
+      ]
+    : []
   const modelViewState = recommendedModelManifest
     ? buildAsrModelViewState({
         recommendedManifest: recommendedModelManifest,
@@ -145,12 +156,31 @@ export function App(): ReactElement {
       })
     : null
 
+  useModalFocusTrap(
+    isDownloadDialogOpen && Boolean(recommendedModelManifest),
+    downloadDialogRef,
+    '.download-source-option'
+  )
+
   const patchAppSettings = (updater: (current: AppSettings) => AppSettings): void => {
     setAppSettings((current) => {
       const next = updater(current)
       void window.aiv.setAppSettings(next).catch(() => undefined)
       return next
     })
+  }
+
+  const resetAppSettings = (): void => {
+    const defaults = createDefaultAppSettings()
+    setAppSettings(defaults)
+    setState((current) => ({
+      ...current,
+      panelMode: defaults.ui.defaultPanelMode,
+      volume: defaults.playback.lastVolume,
+      muted: defaults.playback.lastMuted,
+      playbackRate: defaults.playback.lastPlaybackRate
+    }))
+    void window.aiv.setAppSettings(defaults).catch(() => undefined)
   }
 
   const loadFiles = (files: MediaFile[]): void => {
@@ -191,16 +221,6 @@ export function App(): ReactElement {
       ...current,
       panelMode: nextPanelMode
     }))
-
-    if (nextPanelMode !== 'none' && nextPanelMode !== 'subtitles') {
-      patchAppSettings((current) => ({
-        ...current,
-        ui: {
-          ...current.ui,
-          defaultPanelMode: nextPanelMode
-        }
-      }))
-    }
   }
 
   const openPanelMode = (panelMode: Exclude<PanelMode, 'none'>): void => {
@@ -208,16 +228,6 @@ export function App(): ReactElement {
       ...current,
       panelMode
     }))
-
-    if (panelMode !== 'subtitles') {
-      patchAppSettings((current) => ({
-        ...current,
-        ui: {
-          ...current.ui,
-          defaultPanelMode: panelMode
-        }
-      }))
-    }
   }
 
   const createMediaFilesFromPaths = async (paths: string[]): Promise<MediaFile[]> => {
@@ -389,7 +399,7 @@ export function App(): ReactElement {
     setIsDownloadDialogOpen(true)
   }
 
-  const downloadRecommendedModel = async (sourceId: AsrModelSourceId): Promise<void> => {
+  const downloadRecommendedModel = async (sourceId: AsrModelSourceId = preferredModelSourceId): Promise<void> => {
     if (!asrStatus) {
       return
     }
@@ -1077,30 +1087,6 @@ export function App(): ReactElement {
                       {runtimeSetupMessage.message}
                     </div>
                   ) : null}
-                  <div className="asr-action-row">
-                    <button
-                      className="asr-action-button"
-                      type="button"
-                      onClick={autoDetectWhisperBinary}
-                      disabled={isDetectingWhisperBinary || isSelectingWhisperBinary}
-                      title="自动检测 whisper.cpp"
-                      aria-label="自动检测 whisper.cpp"
-                    >
-                      <RefreshCcw size={16} />
-                      {isDetectingWhisperBinary ? '检测中' : '自动检测'}
-                    </button>
-                    <button
-                      className="asr-action-button"
-                      type="button"
-                      onClick={selectWhisperBinary}
-                      disabled={isSelectingWhisperBinary || isDetectingWhisperBinary}
-                      title="选择 whisper.cpp 可执行文件"
-                      aria-label={asrStatus?.binaryPath ? '更换 ASR 引擎' : '选择 whisper.cpp 可执行文件'}
-                    >
-                      <FolderOpen size={16} />
-                      {isSelectingWhisperBinary ? '选择中' : asrStatus?.binaryPath ? '更换引擎' : '选择文件'}
-                    </button>
-                  </div>
                 </div>
 
                 <div className="asr-card open">
@@ -1385,12 +1371,20 @@ export function App(): ReactElement {
       {isSettingsDialogOpen ? (
         <SettingsDialog
           settings={appSettings}
+          asrStatus={asrStatus}
+          runtimeSetupMessage={runtimeSetupMessage}
+          isDetectingWhisperBinary={isDetectingWhisperBinary}
+          isSelectingWhisperBinary={isSelectingWhisperBinary}
+          initialSectionId={initialSettingsSectionId}
           onChange={patchAppSettings}
           onClose={() => setIsSettingsDialogOpen(false)}
+          onAutoDetectWhisperBinary={autoDetectWhisperBinary}
           onOpenAsrPanel={() => {
             setIsSettingsDialogOpen(false)
             openPanelMode('asr')
           }}
+          onSelectWhisperBinary={selectWhisperBinary}
+          onResetDefaults={resetAppSettings}
         />
       ) : null}
 
@@ -1405,7 +1399,9 @@ export function App(): ReactElement {
           }}
         >
           <section
+            ref={downloadDialogRef}
             className="download-dialog"
+            tabIndex={-1}
             role="dialog"
             aria-modal="true"
             aria-labelledby="download-dialog-title"
@@ -1429,33 +1425,41 @@ export function App(): ReactElement {
 
             <p id="download-dialog-description" className="download-dialog-copy">
               中国大陆网络建议走阿里云 ModelScope；海外用户或已经配置稳定国际代理时，走 Hugging Face。
-              两个源下载的是同一个 {recommendedModelManifest.fileName}，约 {formatBytes(recommendedModelManifest.expectedSizeBytes)}。
+              设置里的默认源会排在第一位并标记为默认。两个源下载的是同一个 {recommendedModelManifest.fileName}，
+              约 {formatBytes(recommendedModelManifest.expectedSizeBytes)}。
             </p>
 
             <div className="download-source-grid">
-              {recommendedModelManifest.sources.map((source) => (
-                <button
-                  className="download-source-option"
-                  key={source.id}
-                  type="button"
-                  onClick={() => void downloadRecommendedModel(source.id)}
-                  disabled={isDownloadingModel}
-                  aria-label={`从 ${source.name} 下载推荐 ASR 模型`}
-                >
-                  <span className="download-source-icon">
-                    <CloudDownload size={20} />
-                  </span>
-                  <span className="download-source-copy">
-                    <strong>
-                      {source.id === 'modelscope' ? '国内下载 ModelScope' : '国际下载 Hugging Face'}
-                    </strong>
-                    <span>{source.description}</span>
-                    <small>
-                      {source.region} · {source.name}
-                    </small>
-                  </span>
-                </button>
-              ))}
+              {recommendedModelSources.map((source) => {
+                const isPreferredSource = source.id === preferredModelSourceId
+
+                return (
+                  <button
+                    className={`download-source-option ${isPreferredSource ? 'is-preferred' : ''}`}
+                    key={source.id}
+                    type="button"
+                    onClick={() => void downloadRecommendedModel(source.id)}
+                    disabled={isDownloadingModel}
+                    aria-label={`从 ${source.name} 下载推荐 ASR 模型`}
+                  >
+                    <span className="download-source-icon">
+                      <CloudDownload size={20} />
+                    </span>
+                    <span className="download-source-copy">
+                      <span className="download-source-heading">
+                        <strong>
+                          {source.id === 'modelscope' ? '国内下载 ModelScope' : '国际下载 Hugging Face'}
+                        </strong>
+                        {isPreferredSource ? <span className="download-source-badge">默认</span> : null}
+                      </span>
+                      <span>{source.description}</span>
+                      <small>
+                        {source.region} · {source.name}
+                      </small>
+                    </span>
+                  </button>
+                )
+              })}
             </div>
           </section>
         </div>
