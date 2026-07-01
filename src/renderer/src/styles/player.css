@@ -493,6 +493,15 @@
   border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
 
+.playlist.is-empty {
+  align-content: stretch;
+}
+
+.playlist.is-empty .panel-empty {
+  height: 100%;
+  min-height: 0;
+}
+
 .panel-empty {
   display: grid;
   place-items: center;

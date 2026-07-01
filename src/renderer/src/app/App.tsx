@@ -897,7 +897,7 @@ export function App(): ReactElement {
                 </div>
                 <ListVideo size={19} />
               </div>
-              <div className="playlist">
+              <div className={`playlist ${state.playlist.length === 0 ? 'is-empty' : ''}`}>
                 {state.playlist.length === 0 ? (
                   <div className="panel-empty">还没有媒体文件。</div>
                 ) : (
