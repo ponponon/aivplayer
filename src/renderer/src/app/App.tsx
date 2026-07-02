@@ -1434,19 +1434,19 @@ export function App(): ReactElement {
             <div className="controls-row">
               <div className="control-group">
                 <button className="round-button" type="button" onClick={() => playAdjacent(-1)} title={copy.controls.previous}>
-                  <SkipBack size={18} />
+                  <SkipBack size={16} />
                 </button>
                 <button className="round-button primary" type="button" onClick={togglePlay} title={state.isPlaying ? copy.controls.pause : copy.controls.play}>
-                  {state.isPlaying ? <Pause size={22} /> : <Play size={22} />}
+                  {state.isPlaying ? <Pause size={18} /> : <Play size={18} />}
                 </button>
                 <button className="round-button" type="button" onClick={() => playAdjacent(1)} title={copy.controls.next}>
-                  <SkipForward size={18} />
+                  <SkipForward size={16} />
                 </button>
               </div>
 
               <div className="control-group wide">
                 <button className="round-button" type="button" onClick={toggleMute} title={copy.controls.mute}>
-                  {state.muted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+                  {state.muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
                 </button>
                 <input
                   className="volume"
@@ -1506,7 +1506,7 @@ export function App(): ReactElement {
                   ))}
                 </select>
                 <button className="round-button" type="button" onClick={toggleFullscreen} title={copy.controls.fullscreen}>
-                  <Maximize2 size={18} />
+                  <Maximize2 size={16} />
                 </button>
               </div>
             </div>
