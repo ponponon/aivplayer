@@ -7,6 +7,8 @@ import type {
   AsrModelDownloadSource,
   AsrModelSourceId
 } from '../../shared/media-types.ts'
+import type { AppLocale } from '../../shared/localization'
+import { getAppCopy } from '../../shared/i18n'
 import {
   findWhisperModelManifest,
   getRecommendedWhisperModelManifest,
@@ -20,6 +22,7 @@ export type DownloadWhisperModelOptions = {
   sourceId?: AsrModelSourceId
   fetchImpl?: typeof fetch
   onProgress?: (progress: AsrModelDownloadProgress) => void
+  getLocale?: () => AppLocale
 }
 
 function toPercent(receivedBytes: number, totalBytes: number | null): number | null {
@@ -60,6 +63,7 @@ function emitProgress(
 }
 
 export async function downloadWhisperModel(options: DownloadWhisperModelOptions): Promise<AsrModelInfo> {
+  const copy = getAppCopy(options.getLocale?.())
   const manifest = options.modelId
     ? findWhisperModelManifest(options.modelId) ?? getRecommendedWhisperModelManifest()
     : getRecommendedWhisperModelManifest()
@@ -71,14 +75,14 @@ export async function downloadWhisperModel(options: DownloadWhisperModelOptions)
 
   if (await pathExists(modelPath)) {
     const modelStat = await stat(modelPath)
-    emitProgress(manifest, source, options.onProgress, modelStat.size, modelStat.size, '模型已存在，直接使用本地缓存。')
+    emitProgress(manifest, source, options.onProgress, modelStat.size, modelStat.size, copy.runtime.modelAlreadyCached)
     return toModelInfo(manifest, modelPath, modelStat.size)
   }
 
   const tempPath = join(options.modelDirectory, `${manifest.fileName}.download`)
   await unlink(tempPath).catch(() => undefined)
 
-  emitProgress(manifest, source, options.onProgress, 0, manifest.expectedSizeBytes, `开始从 ${source.name} 下载 ASR 模型。`)
+  emitProgress(manifest, source, options.onProgress, 0, manifest.expectedSizeBytes, copy.runtime.modelDownloadStart(source.name))
 
   const response = await fetchImpl(source.url)
 
@@ -96,7 +100,7 @@ export async function downloadWhisperModel(options: DownloadWhisperModelOptions)
       const content = new Uint8Array(await response.arrayBuffer())
       await file.write(content)
       receivedBytes = content.byteLength
-      emitProgress(manifest, source, options.onProgress, receivedBytes, totalBytes, '模型下载中。')
+      emitProgress(manifest, source, options.onProgress, receivedBytes, totalBytes, copy.runtime.modelDownloading)
     } else {
       const reader = response.body.getReader()
 
@@ -110,7 +114,7 @@ export async function downloadWhisperModel(options: DownloadWhisperModelOptions)
         if (value) {
           await file.write(value)
           receivedBytes += value.byteLength
-          emitProgress(manifest, source, options.onProgress, receivedBytes, totalBytes, '模型下载中。')
+          emitProgress(manifest, source, options.onProgress, receivedBytes, totalBytes, copy.runtime.modelDownloading)
         }
       }
     }
@@ -119,7 +123,7 @@ export async function downloadWhisperModel(options: DownloadWhisperModelOptions)
   }
 
   await rename(tempPath, modelPath)
-  emitProgress(manifest, source, options.onProgress, receivedBytes, totalBytes, '模型下载完成。')
+  emitProgress(manifest, source, options.onProgress, receivedBytes, totalBytes, copy.runtime.modelDownloadComplete)
 
   return toModelInfo(manifest, modelPath, receivedBytes)
 }

@@ -9,6 +9,8 @@ export type PlayerState = PlaybackState & {
   panelMode: PanelMode
   error: string | null
   autoPlayRequestId: number
+  videoWidth: number
+  videoHeight: number
 }
 
 export const initialPlayerState: PlayerState = {
@@ -22,5 +24,7 @@ export const initialPlayerState: PlayerState = {
   duration: 0,
   volume: 0.8,
   muted: false,
-  playbackRate: 1
+  playbackRate: 1,
+  videoWidth: 0,
+  videoHeight: 0
 }

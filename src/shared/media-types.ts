@@ -1,9 +1,37 @@
+import type { ClipExportLengthSeconds, ClipExportMode } from './clip-export'
+
 export type MediaFile = {
   id: string
   name: string
   path: string
   url: string
   extension: string
+}
+
+export type MediaVideoMetadata = {
+  codec: string | null
+  profile: string | null
+  width: number | null
+  height: number | null
+  frameRate: number | null
+  displayAspectRatio: string | null
+  bitRateKbps: number | null
+}
+
+export type MediaAudioMetadata = {
+  codec: string | null
+  profile: string | null
+  channelLayout: string | null
+  sampleRateHz: number | null
+  bitRateKbps: number | null
+}
+
+export type MediaProbeMetadata = {
+  fileSizeBytes: number
+  durationSeconds: number | null
+  overallBitrateKbps: number | null
+  video: MediaVideoMetadata | null
+  audio: MediaAudioMetadata | null
 }
 
 export type PlaybackState = {
@@ -116,6 +144,25 @@ export type AsrSubtitleExportResult = {
   subtitlePath?: string
   subtitleSrtPath?: string
   subtitleSrtUrl?: string
+}
+
+export type MediaClipExportRequest = {
+  mediaPath: string
+  startSeconds: number
+  durationSeconds: ClipExportLengthSeconds
+  mode: ClipExportMode
+  subtitlePath?: string
+  subtitleSrtPath?: string
+}
+
+export type MediaClipExportResult = {
+  success: boolean
+  message: string
+  videoPath?: string
+  videoUrl?: string
+  subtitleSrtPath?: string
+  subtitleSrtUrl?: string
+  canceled?: boolean
 }
 
 export type ClipboardWriteTextRequest = {

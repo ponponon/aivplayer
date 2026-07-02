@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { clamp, formatTime } from '../../src/renderer/src/lib/time'
+import { clamp, formatPlaybackTimeLabel, formatTime } from '../../src/renderer/src/lib/time'
 
 describe('time helpers', () => {
   it('formats short durations', () => {
@@ -9,6 +9,14 @@ describe('time helpers', () => {
 
   it('formats hour-long durations', () => {
     expect(formatTime(3661)).toBe('01:01:01')
+  })
+
+  it('formats remaining playback time by default', () => {
+    expect(formatPlaybackTimeLabel(65, 125, false)).toBe('-01:00')
+  })
+
+  it('formats total playback time when enabled', () => {
+    expect(formatPlaybackTimeLabel(65, 125, true)).toBe('02:05')
   })
 
   it('clamps seek values', () => {

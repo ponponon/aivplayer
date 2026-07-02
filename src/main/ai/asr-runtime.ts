@@ -9,6 +9,7 @@ import type {
   AsrSubtitleRequest,
   AsrSubtitleResult
 } from '../../shared/media-types.ts'
+import type { AppLocale } from '../../shared/localization'
 
 export type AsrRuntime = {
   healthCheck: () => Promise<AsrRuntimeStatus>
@@ -32,4 +33,5 @@ export type AsrRuntimeOptions = {
   resourcePath: string
   env?: NodeJS.ProcessEnv
   extraBinaryDirectories?: string[]
+  getLocale?: () => AppLocale
 }

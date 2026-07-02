@@ -10,6 +10,7 @@ import { findWhisperSubtitleCache, runAsrSubtitleJob } from './asr-subtitle-job.
 import { convertVttToSrt } from './subtitle-writer.ts'
 import { readAsrRuntimeSettings, saveWhisperBinaryPath } from './asr-settings.ts'
 import { getWhisperBinaryNames, parseWhisperBinaryReplacementName } from './whisper-binary.ts'
+import { getAppCopy } from '../../shared/i18n'
 import type {
   AsrJobProgress,
   AsrModelDownloadProgress,
@@ -178,7 +179,7 @@ async function resolveWhisperBinaryPathWithSettings(
   })
 }
 
-async function resolveFfmpegPath(
+export async function resolveFfmpegPath(
   resourcePath: string,
   env: NodeJS.ProcessEnv,
   extraBinaryDirectories: string[] | undefined
@@ -220,12 +221,14 @@ async function readWhisperVersion(binaryPath: string): Promise<string | null> {
 export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime {
   const env = options.env ?? process.env
   const recommendedModelManifest = getRecommendedWhisperModelManifest()
+  const getCopy = (): ReturnType<typeof getAppCopy> => getAppCopy(options.getLocale?.())
 
   const getModelDirectory = (): string => env.AIVPLAYER_ASR_MODEL_DIR || getWhisperModelDirectory(options.userDataPath)
 
   const getSubtitleCacheDirectory = (): string => env.AIVPLAYER_ASR_CACHE_DIR || join(options.userDataPath, 'asr-cache')
 
   const readHealthStatus = async (): Promise<AsrRuntimeStatus> => {
+    const copy = getCopy()
     const modelDirectory = getModelDirectory()
     const [binaryPath, ffmpegPath, installedModels] = await Promise.all([
       resolveWhisperBinaryPathWithSettings(
@@ -248,8 +251,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
         installedModels,
         recommendedModel: recommendedModelManifest.fileName,
         recommendedModelManifest,
-        message:
-          '未找到内置 ASR 引擎组件。正式安装包应内置 whisper.cpp；开发调试时可选择 whisper.cpp CLI，或将它放到 resources/whisper.cpp。'
+        message: copy.runtime.asrEngineMissing
       }
     }
 
@@ -263,7 +265,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
         installedModels,
         recommendedModel: recommendedModelManifest.fileName,
         recommendedModelManifest,
-        message: '未找到内置音频处理组件 ffmpeg。正式安装包应内置 ffmpeg；开发调试时可将它放到 resources/ffmpeg。'
+        message: copy.runtime.ffmpegMissing
       }
     }
 
@@ -280,8 +282,8 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
       recommendedModel: recommendedModelManifest.fileName,
       recommendedModelManifest,
       message: hasModel
-        ? `已检测到 whisper.cpp${version ? `：${version}` : ''}`
-        : `已检测到 whisper.cpp 和 ffmpeg，但模型目录暂无模型；建议下载 ${recommendedModelManifest.fileName}。`
+        ? copy.runtime.detectedWhisper(version)
+        : copy.runtime.detectedWhisperWithoutModels(recommendedModelManifest.fileName)
     }
   }
 
@@ -322,17 +324,19 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
       sourceId: AsrModelSourceId | undefined,
       onProgress?: (progress: AsrModelDownloadProgress) => void
     ): Promise<AsrModelDownloadResult> {
+      const copy = getCopy()
       try {
         const model = await downloadWhisperModel({
           modelDirectory: getModelDirectory(),
           modelId,
           sourceId,
-          onProgress
+          onProgress,
+          getLocale: options.getLocale
         })
 
         return {
           success: true,
-          message: `模型已就绪：${model.name}`,
+          message: copy.runtime.modelDownloaded(model.name),
           sourceId,
           model
         }
@@ -348,6 +352,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
       request: AsrSubtitleRequest,
       onProgress?: (progress: AsrJobProgress) => void
     ): Promise<AsrSubtitleResult> {
+      const copy = getCopy()
       const status = await readHealthStatus()
 
       if (!status.binaryPath) {
@@ -369,7 +374,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
       if (!model) {
         return {
           success: false,
-          message: `还没有可用 ASR 模型，请先下载 ${status.recommendedModel}。`
+          message: copy.runtime.needModel(status.recommendedModel)
         }
       }
 
@@ -382,12 +387,13 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
           mediaPath: request.mediaPath,
           cacheDirectory: getSubtitleCacheDirectory(),
           language: request.language,
-          onProgress
+          onProgress,
+          getLocale: options.getLocale
         })
 
         return {
           success: true,
-          message: '字幕生成完成，VTT 已挂载，SRT 已导出。',
+          message: copy.runtime.subtitleGenerated,
           subtitlePath: result.subtitlePath,
           subtitleSrtPath: result.subtitleSrtPath,
           model
@@ -408,13 +414,14 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
     },
 
     async resolveSubtitleCache(request: AsrSubtitleRequest): Promise<AsrSubtitleResult> {
+      const copy = getCopy()
       const status = await readHealthStatus()
       const model = selectWhisperModel(status.installedModels, request.modelId)
 
       if (!model) {
         return {
           success: false,
-          message: `还没有可用 ASR 模型，请先下载 ${status.recommendedModel}。`
+          message: copy.runtime.needModel(status.recommendedModel)
         }
       }
 
@@ -428,14 +435,14 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
         if (!cached) {
           return {
             success: false,
-            message: '未命中本地字幕缓存。',
+            message: copy.runtime.subtitleCacheMiss,
             model
           }
         }
 
         return {
           success: true,
-          message: '已命中本地字幕缓存（VTT / SRT）。',
+          message: copy.runtime.subtitleCacheHit,
           subtitlePath: cached.subtitlePath,
           subtitleSrtPath: cached.subtitleSrtPath,
           model
@@ -450,6 +457,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
     },
 
     async exportSubtitleSrt(request: AsrSubtitleExportRequest): Promise<AsrSubtitleExportResult> {
+      const copy = getCopy()
       try {
         const subtitleSrtPath = request.subtitleSrtPath ?? getSiblingSrtPath(request.subtitlePath)
         const subtitleVtt = await readFile(request.subtitlePath, 'utf8')
@@ -459,7 +467,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
 
         return {
           success: true,
-          message: '已根据 VTT 导出 SRT。',
+          message: copy.runtime.subtitleExported,
           subtitlePath: request.subtitlePath,
           subtitleSrtPath
         }

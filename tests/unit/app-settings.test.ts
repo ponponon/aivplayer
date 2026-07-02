@@ -23,9 +23,20 @@ describe('app settings', () => {
   it('persists and reloads app settings', async () => {
     const settings = createDefaultAppSettings()
     settings.ui.defaultPanelMode = 'info'
-    settings.ui.lastSettingsSectionId = 'asr'
+    settings.ui.lastSettingsSectionId = 'subtitles'
     settings.asr.preferredModelSourceId = 'huggingface'
+    settings.capture.saveDirectoryPath = tempDirectory
+    settings.capture.copyToClipboard = false
+    settings.capture.imageFormat = 'png'
+    settings.capture.fileNaming = 'timestamp'
+    settings.capture.gifFrameRate = 12
+    settings.capture.gifResolution = '720p'
+    settings.capture.clipExportLengthSeconds = 60
+    settings.capture.clipExportMode = 'burn-subtitle'
     settings.playback.rememberVolume = false
+    settings.playback.autoHideControlDeck = false
+    settings.playback.controlDeckAutoHideSeconds = 7
+    settings.playback.showTotalPlaybackTime = true
     settings.playback.lastVolume = 0.42
     settings.playback.lastMuted = true
     settings.playback.lastPlaybackRate = 1.5
@@ -51,7 +62,12 @@ describe('app settings', () => {
           ui: {
             defaultPanelMode: 'info'
           },
-          playback: settings.playback,
+          playback: {
+            rememberVolume: settings.playback.rememberVolume,
+            lastVolume: settings.playback.lastVolume,
+            lastMuted: settings.playback.lastMuted,
+            lastPlaybackRate: settings.playback.lastPlaybackRate
+          },
           asr: {
             preferredModelSourceId: 'not-a-source'
           }
@@ -65,10 +81,23 @@ describe('app settings', () => {
       ...settings,
       ui: {
         defaultPanelMode: 'info',
-        lastSettingsSectionId: 'startup'
+        lastSettingsSectionId: 'general',
+        locale: 'zh-CN'
+      },
+      capture: {
+        saveDirectoryPath: null,
+        copyToClipboard: true,
+        imageFormat: 'jpg',
+        fileNaming: 'sequential',
+        gifFrameRate: 10,
+        gifResolution: '360p',
+        clipExportLengthSeconds: 30,
+        clipExportMode: 'video'
       },
       asr: {
-        preferredModelSourceId: 'modelscope'
+        preferredModelSourceId: 'modelscope',
+        defaultSubtitleLanguage: 'auto',
+        autoLoadCachedSubtitles: true
       }
     })
   })

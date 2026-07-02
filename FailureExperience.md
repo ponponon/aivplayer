@@ -1,3 +1,8 @@
+## Playwright 浏览器“已安装”不等于“当前可直接用”
+- 不能只看到 `ms-playwright` 目录里有 Chrome / headless shell 二进制，就直接判断 Playwright 完全可用；还要确认 `playwright.chromium.executablePath()` 指向的 revision 是否真的存在，以及当前进程能否成功启动。
+- 如果实际报错来自 macOS 的进程隔离、`bootstrap_check_in` 或 `SIGABRT`，那说明问题已经从“有没有安装”变成“当前环境能不能 launch”，这两件事要分开判断。
+- 以后排查时要同时看三层证据：文件系统里是否有二进制、Playwright 解析出的路径是否正确、真实启动时的系统错误是什么，不能只凭其中一层下结论。
+
 ## ASR 错误消息撑开布局
 - 只给错误文本本身加 `overflow-wrap` 不一定够，长 stderr 还可能通过上层 `grid`/`flex` 容器的自动最小宽度把侧栏撑宽。
 - 处理这类消息时，要同时检查并补齐父容器的 `min-width: 0`，重点是 `panel-content`、`asr-card`、`asr-stack`、`progress-block` 这类布局容器。

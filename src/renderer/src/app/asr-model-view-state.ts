@@ -1,3 +1,4 @@
+import type { LocaleCopy } from '../../../shared/i18n'
 import type {
   AsrModelDownloadProgress,
   AsrModelInfo,
@@ -11,6 +12,7 @@ export type AsrModelInstallState =
   | 'installed-ready'
 
 export type AsrModelViewStateInput = {
+  copy: LocaleCopy
   recommendedManifest: AsrModelManifest
   installedModels: AsrModelInfo[]
   isDownloadingModel: boolean
@@ -37,9 +39,9 @@ export function buildAsrModelViewState(input: AsrModelViewStateInput): AsrModelV
       return {
         installState: 'installed-needs-runtime',
         installedModel,
-        statusLabel: '模型文件已安装',
-        description: '模型文件已就绪；字幕生成还缺 ASR 引擎 whisper.cpp。',
-        actionLabel: '重新下载 / 更换来源',
+        statusLabel: input.copy.modelView.installedLabel,
+        description: input.copy.modelView.installedNeedsWhisper,
+        actionLabel: input.copy.modelView.redownload,
         shouldShowProgress: false
       }
     }
@@ -48,9 +50,9 @@ export function buildAsrModelViewState(input: AsrModelViewStateInput): AsrModelV
       return {
         installState: 'installed-needs-runtime',
         installedModel,
-        statusLabel: '模型文件已安装',
-        description: '模型文件已就绪；字幕生成还缺 ffmpeg。',
-        actionLabel: '重新下载 / 更换来源',
+        statusLabel: input.copy.modelView.installedLabel,
+        description: input.copy.modelView.installedNeedsFfmpeg,
+        actionLabel: input.copy.modelView.redownload,
         shouldShowProgress: false
       }
     }
@@ -58,9 +60,9 @@ export function buildAsrModelViewState(input: AsrModelViewStateInput): AsrModelV
     return {
       installState: 'installed-ready',
       installedModel,
-      statusLabel: '模型文件已安装',
-      description: '模型文件已就绪，可用于本地字幕生成。',
-      actionLabel: '重新下载 / 更换来源',
+      statusLabel: input.copy.modelView.installedLabel,
+      description: input.copy.modelView.installedReady,
+      actionLabel: input.copy.modelView.redownload,
       shouldShowProgress: false
     }
   }
@@ -69,9 +71,9 @@ export function buildAsrModelViewState(input: AsrModelViewStateInput): AsrModelV
     return {
       installState: 'downloading',
       installedModel: null,
-      statusLabel: '模型文件下载中',
-      description: `正在从 ${input.downloadProgress?.sourceName ?? '所选来源'} 下载推荐模型文件。`,
-      actionLabel: '下载中',
+      statusLabel: input.copy.modelView.downloadingLabel,
+      description: input.copy.modelView.downloading(input.downloadProgress?.sourceName ?? input.copy.modelSources[input.recommendedManifest.sources[0].id].title),
+      actionLabel: input.copy.modelView.downloadRecommended,
       shouldShowProgress: true
     }
   }
@@ -79,9 +81,9 @@ export function buildAsrModelViewState(input: AsrModelViewStateInput): AsrModelV
   return {
     installState: 'missing',
     installedModel: null,
-    statusLabel: '模型文件未安装',
-    description: `推荐 ${input.recommendedManifest.name}，${input.recommendedManifest.ramRequirement}。`,
-    actionLabel: '下载推荐模型',
+    statusLabel: input.copy.modelView.missingLabel,
+    description: input.copy.modelView.missing(input.recommendedManifest.name, input.recommendedManifest.ramRequirement),
+    actionLabel: input.copy.modelView.downloadRecommended,
     shouldShowProgress: false
   }
 }

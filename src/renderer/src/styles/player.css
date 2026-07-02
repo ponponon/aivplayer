@@ -94,6 +94,10 @@
   gap: 14px;
 }
 
+.stage.control-deck-hidden {
+  gap: 0;
+}
+
 .video-frame {
   position: relative;
   display: grid;
@@ -208,6 +212,33 @@
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-lg);
   backdrop-filter: blur(18px);
+  visibility: visible;
+  overflow: hidden;
+  max-height: 320px;
+  transition:
+    max-height 220ms ease,
+    opacity 180ms ease,
+    transform 180ms ease,
+    padding 180ms ease,
+    border-color 180ms ease;
+}
+
+.control-deck.is-hidden {
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  opacity: 0;
+  transform: translateY(12px);
+  border-color: transparent;
+  pointer-events: none;
+  visibility: hidden;
+  transition:
+    max-height 220ms ease,
+    opacity 180ms ease,
+    transform 180ms ease,
+    padding 180ms ease,
+    border-color 180ms ease,
+    visibility 0s linear 220ms;
 }
 
 .timeline-row,
@@ -967,8 +998,22 @@
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.46);
 }
 
+.clip-export-dialog {
+  display: grid;
+  gap: 14px;
+  width: min(680px, calc(100vw - 32px));
+  min-width: 0;
+  padding: 18px;
+  color: var(--text-primary);
+  background: rgba(18, 20, 23, 0.96);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.46);
+}
+
 .download-dialog:focus-visible,
-.settings-dialog:focus-visible {
+.settings-dialog:focus-visible,
+.clip-export-dialog:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
@@ -1015,6 +1060,15 @@
 }
 
 .download-dialog-copy {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.clip-export-description {
   margin: 0;
   color: var(--text-secondary);
   font-size: 13px;
@@ -1110,6 +1164,128 @@
   color: var(--text-primary);
   font-size: 14px;
   font-weight: 700;
+}
+
+.settings-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 240px);
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+}
+
+.settings-field-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.settings-field-copy strong {
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.settings-field-copy small {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.settings-inline-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.settings-path-value {
+  flex: 1 1 220px;
+  min-width: 0;
+  min-height: 36px;
+  padding: 8px 12px;
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-checkbox {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.settings-select,
+.settings-number {
+  min-height: 36px;
+  width: 100%;
+  padding: 0 12px;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+}
+
+.settings-select:focus,
+.settings-number:focus {
+  outline: none;
+  border-color: rgba(232, 193, 109, 0.38);
+  box-shadow: 0 0 0 2px rgba(232, 193, 109, 0.12);
+}
+
+.settings-number {
+  max-width: 140px;
+  text-align: right;
+}
+
+.settings-number-compact {
+  max-width: 96px;
+  text-align: center;
+}
+
+.settings-inline-unit {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.settings-note-box {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  background: rgba(232, 193, 109, 0.08);
+  border: 1px solid rgba(232, 193, 109, 0.18);
+  border-radius: var(--radius-md);
+}
+
+.settings-note-title {
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.settings-note-box p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.55;
 }
 
 .settings-choice-list {
@@ -1258,6 +1434,112 @@
   opacity: 0.5;
 }
 
+.clip-export-group {
+  display: grid;
+  gap: 10px;
+}
+
+.clip-export-group-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.clip-export-length-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.clip-export-length-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 12px;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.clip-export-length-option:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.075);
+}
+
+.clip-export-length-option.is-selected {
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-color: transparent;
+}
+
+.clip-export-mode-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.clip-export-mode-option {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  text-align: left;
+  cursor: pointer;
+}
+
+.clip-export-mode-option.is-selected {
+  color: var(--text-primary);
+  border-color: rgba(232, 193, 109, 0.5);
+  background: rgba(232, 193, 109, 0.085);
+}
+
+.clip-export-mode-option:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.075);
+}
+
+.clip-export-mode-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.clip-export-mode-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.clip-export-mode-description {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.clip-export-warning {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.clip-export-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .download-source-icon {
   display: grid;
   width: 38px;
@@ -1342,6 +1624,14 @@
 
   .settings-switcher {
     grid-template-columns: 1fr;
+  }
+
+  .settings-field {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-number {
+    max-width: none;
   }
 
   .asr-action-row {

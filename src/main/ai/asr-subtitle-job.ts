@@ -4,6 +4,8 @@ import { mkdtemp, mkdir, rm, stat } from 'node:fs/promises'
 import { basename, dirname, extname, join } from 'node:path'
 import { tmpdir } from 'node:os'
 import type { AsrJobProgress } from '../../shared/media-types.ts'
+import type { AppLocale } from '../../shared/localization'
+import { getAppCopy } from '../../shared/i18n'
 import { pathExists } from './model-manager.ts'
 
 export type WhisperSubtitleArgs = {
@@ -22,6 +24,7 @@ export type RunAsrSubtitleJobOptions = {
   cacheDirectory: string
   language?: string
   onProgress?: (progress: AsrJobProgress) => void
+  getLocale?: () => AppLocale
 }
 
 export type RunAsrSubtitleJobResult = {
@@ -159,10 +162,11 @@ export async function findWhisperSubtitleCache(
 }
 
 export async function runAsrSubtitleJob(options: RunAsrSubtitleJobOptions): Promise<RunAsrSubtitleJobResult> {
+  const copy = getAppCopy(options.getLocale?.())
   emitProgress(options.onProgress, {
     stage: 'checking',
     percent: 0.05,
-    message: '正在准备音频和字幕缓存。'
+    message: copy.runtime.preparingSubtitleCache
   })
 
   const mediaStat = await stat(options.mediaPath)
@@ -183,7 +187,7 @@ export async function runAsrSubtitleJob(options: RunAsrSubtitleJobOptions): Prom
     emitProgress(options.onProgress, {
       stage: 'completed',
       percent: 1,
-      message: '已命中本地字幕缓存（VTT / SRT）。'
+      message: copy.runtime.subtitleCacheHit
     })
     return { subtitlePath, subtitleSrtPath }
   }
@@ -196,14 +200,14 @@ export async function runAsrSubtitleJob(options: RunAsrSubtitleJobOptions): Prom
     emitProgress(options.onProgress, {
       stage: 'extracting-audio',
       percent: 0.18,
-      message: '正在用 ffmpeg 抽取 16k 单声道音频。'
+      message: copy.runtime.extractingAudio
     })
     await runProcess(options.ffmpegPath, buildFfmpegAudioExtractArgs(options.mediaPath, audioPath), 'ffmpeg')
 
     emitProgress(options.onProgress, {
       stage: 'transcribing',
       percent: 0.42,
-      message: '正在用 whisper.cpp 识别语音并生成 VTT / SRT 字幕。'
+      message: copy.runtime.transcribing
     })
     await runProcess(
       options.whisperBinaryPath,
@@ -217,13 +221,13 @@ export async function runAsrSubtitleJob(options: RunAsrSubtitleJobOptions): Prom
     )
 
     if (!(await pathExists(subtitlePath)) || !(await pathExists(subtitleSrtPath))) {
-      throw new Error('whisper.cpp 已结束，但没有同时生成预期的 VTT / SRT 字幕文件。')
+      throw new Error(copy.runtime.noSubtitleFiles)
     }
 
     emitProgress(options.onProgress, {
       stage: 'completed',
       percent: 1,
-      message: '字幕已生成并挂载到播放器，SRT 也已导出。'
+      message: copy.runtime.subtitleGenerated
     })
 
     return { subtitlePath, subtitleSrtPath }

@@ -25,37 +25,40 @@ import {
   X
 } from 'lucide-react'
 import { createDefaultAppSettings, type AppSettings, type AppSettingsSectionId } from '../../../shared/app-settings'
+import type { ClipExportLengthSeconds, ClipExportMode } from '../../../shared/clip-export'
+import { getAppCopy, type LocaleCopy } from '../../../shared/i18n'
 import type {
   AsrJobProgress,
   AsrModelDownloadProgress,
   AsrModelSourceId,
   AsrRuntimeStatus,
+  MediaClipExportRequest,
   AsrSubtitleResult,
-  MediaFile
+  MediaFile,
+  MediaProbeMetadata
 } from '../../../shared/media-types'
 import { initialPlayerState, type PanelMode, type PlayerState } from './player-state'
 import { buildAsrModelViewState } from './asr-model-view-state'
+import { ClipExportDialog } from './clip-export-dialog'
 import { SettingsDialog } from './settings-dialog'
 import { useModalFocusTrap } from './use-modal-focus-trap'
-import { clamp, formatTime } from '../lib/time'
-
-const SEEK_STEP_SECONDS = 5
+import { clamp, formatPlaybackTimeLabel, formatTime } from '../lib/time'
 
 type AsrNotice = {
   success: boolean
   message: string
 }
 
-function getPlayFailureMessage(error: unknown): string | null {
+function getPlayFailureMessage(copy: LocaleCopy, error: unknown): string | null {
   if (error instanceof DOMException && error.name === 'AbortError') {
     return null
   }
 
   const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error)
-  return `播放器启动失败：${message}`
+  return copy.runtime.playbackStartFailed(message)
 }
 
-function getMediaErrorMessage(video: HTMLVideoElement): string | null {
+function getMediaErrorMessage(copy: LocaleCopy, video: HTMLVideoElement): string | null {
   const error = video.error
 
   if (!error) {
@@ -67,18 +70,18 @@ function getMediaErrorMessage(video: HTMLVideoElement): string | null {
   }
 
   if (error.code === MediaError.MEDIA_ERR_NETWORK) {
-    return `媒体读取失败：${error.message || '文件读取过程中发生网络/文件系统错误。'}`
+    return copy.runtime.mediaReadFailed(error.message || copy.runtime.mediaReadFallback)
   }
 
   if (error.code === MediaError.MEDIA_ERR_DECODE) {
-    return `视频解码失败：${error.message || '当前 Electron/Chromium 解码器无法继续解码这个文件。'}`
+    return copy.runtime.videoDecodeFailed(error.message || copy.runtime.videoDecodeFallback)
   }
 
   if (error.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED) {
-    return `媒体源不受支持或无法读取：${error.message || '请确认文件路径、封装格式和编码是否可用。'}`
+    return copy.runtime.mediaSourceNotSupported(error.message || copy.runtime.mediaSourceNotSupportedFallback)
   }
 
-  return `播放失败：${error.message || `未知媒体错误 ${error.code}。`}`
+  return copy.runtime.playbackFailed(error.message || copy.runtime.unknownMediaError(error.code))
 }
 
 function mergePlaylist(current: MediaFile[], incoming: MediaFile[]): MediaFile[] {
@@ -99,9 +102,131 @@ function formatBytes(bytes: number): string {
   return `${Math.round(bytes / 1024 / 1024)} MB`
 }
 
-function formatPercent(value: number | null | undefined): string {
+const MEDIA_CODEC_LABELS: Record<string, string> = {
+  aac: 'AAC',
+  av1: 'AV1',
+  avc1: 'H.264',
+  flac: 'FLAC',
+  h264: 'H.264',
+  h265: 'HEVC',
+  hevc: 'HEVC',
+  mp3: 'MP3',
+  mpeg4: 'MPEG-4',
+  opus: 'Opus',
+  prores: 'ProRes',
+  vorbis: 'Vorbis',
+  vp9: 'VP9'
+}
+
+function getGreatestCommonDivisor(left: number, right: number): number {
+  let a = Math.abs(left)
+  let b = Math.abs(right)
+
+  while (b !== 0) {
+    const next = b
+    b = a % b
+    a = next
+  }
+
+  return a || 1
+}
+
+function formatFileSize(bytes: number | null | undefined): string {
+  if (bytes == null || !Number.isFinite(bytes) || bytes < 0) {
+    return '--'
+  }
+
+  if (bytes < 1024 * 1024) {
+    return `${Math.max(1, Math.round(bytes / 1024))} KB`
+  }
+
+  const sizeInMb = bytes / (1024 * 1024)
+  return sizeInMb >= 10 ? `${sizeInMb.toFixed(1)} MB` : `${sizeInMb.toFixed(2)} MB`
+}
+
+function formatBitrate(kbps: number | null | undefined): string {
+  if (kbps == null || !Number.isFinite(kbps) || kbps < 0) {
+    return '--'
+  }
+
+  return `${Math.round(kbps)} kb/s`
+}
+
+function formatFrameRate(frameRate: number | null | undefined): string {
+  if (frameRate == null || !Number.isFinite(frameRate) || frameRate <= 0) {
+    return '--'
+  }
+
+  const rounded = Math.round(frameRate * 100) / 100
+  return `${Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toFixed(2)} FPS`
+}
+
+function formatResolution(width: number | null | undefined, height: number | null | undefined): string {
+  if (width == null || height == null || !Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    return '--'
+  }
+
+  return `${Math.round(width)} × ${Math.round(height)}`
+}
+
+function formatAspectRatio(
+  width: number | null | undefined,
+  height: number | null | undefined,
+  displayAspectRatio: string | null | undefined
+): string {
+  if (displayAspectRatio) {
+    return displayAspectRatio
+  }
+
+  if (width == null || height == null || !Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    return '--'
+  }
+
+  const divisor = getGreatestCommonDivisor(Math.round(width), Math.round(height))
+  return `${Math.round(width) / divisor}:${Math.round(height) / divisor}`
+}
+
+function formatCodecLabel(codec: string | null | undefined, profile: string | null | undefined): string {
+  if (!codec) {
+    return '--'
+  }
+
+  const normalizedCodec = MEDIA_CODEC_LABELS[codec.toLowerCase()] ?? codec.replace(/_/g, ' ').toUpperCase()
+  return profile ? `${normalizedCodec} / ${profile}` : normalizedCodec
+}
+
+function formatChannelLayout(channelLayout: string | null | undefined): string {
+  if (!channelLayout) {
+    return '--'
+  }
+
+  return channelLayout.replace(/^([a-z])/, (_, firstLetter: string) => firstLetter.toUpperCase())
+}
+
+function formatSampleRate(sampleRateHz: number | null | undefined): string {
+  if (sampleRateHz == null || !Number.isFinite(sampleRateHz) || sampleRateHz <= 0) {
+    return '--'
+  }
+
+  if (sampleRateHz >= 1000) {
+    const kilohertz = sampleRateHz / 1000
+    return `${Number.isInteger(kilohertz) ? kilohertz.toFixed(0) : kilohertz.toFixed(1)} kHz`
+  }
+
+  return `${Math.round(sampleRateHz)} Hz`
+}
+
+function formatMediaDuration(seconds: number | null | undefined): string {
+  if (seconds == null || !Number.isFinite(seconds) || seconds <= 0) {
+    return '--'
+  }
+
+  return formatTime(seconds)
+}
+
+function formatPercent(value: number | null | undefined, fallbackLabel: string): string {
   if (value == null) {
-    return '处理中'
+    return fallbackLabel
   }
 
   return `${Math.round(value * 100)}%`
@@ -111,6 +236,10 @@ export function App(): ReactElement {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const subtitleActionsRef = useRef<HTMLDetailsElement | null>(null)
   const downloadDialogRef = useRef<HTMLElement | null>(null)
+  const holdRightArrowTimerRef = useRef<number | null>(null)
+  const holdRightArrowRestoreRateRef = useRef<number | null>(null)
+  const controlDeckHideTimerRef = useRef<number | null>(null)
+  const lastSavedProgressRef = useRef<{ path: string | null; time: number }>({ path: null, time: -1 })
   const [state, setState] = useState<PlayerState>(initialPlayerState)
   const [asrStatus, setAsrStatus] = useState<AsrRuntimeStatus | null>(null)
   const [asrProgress, setAsrProgress] = useState<AsrJobProgress | null>(null)
@@ -122,22 +251,33 @@ export function App(): ReactElement {
   const [isDownloadingModel, setIsDownloadingModel] = useState(false)
   const [isDetectingWhisperBinary, setIsDetectingWhisperBinary] = useState(false)
   const [isSelectingWhisperBinary, setIsSelectingWhisperBinary] = useState(false)
+  const [isClipExportDialogOpen, setIsClipExportDialogOpen] = useState(false)
+  const [isExportingClip, setIsExportingClip] = useState(false)
   const [runtimeSetupMessage, setRuntimeSetupMessage] = useState<{ success: boolean; message: string } | null>(null)
   const [isDownloadDialogOpen, setIsDownloadDialogOpen] = useState(false)
   const [appSettings, setAppSettings] = useState<AppSettings>(createDefaultAppSettings())
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false)
+  const [isControlDeckVisible, setIsControlDeckVisible] = useState(true)
+  const [mediaMetadata, setMediaMetadata] = useState<MediaProbeMetadata | null>(null)
+  const copy = getAppCopy(appSettings.ui.locale)
   const isSidePanelVisible = state.panelMode !== 'none'
   const installedModelCount = asrStatus?.installedModels.length ?? 0
   const canDownloadRecommendedModel = Boolean(asrStatus && !isDownloadingModel)
   const canGenerateSubtitle = Boolean(state.currentFile && asrStatus?.available && !isAsrBusy && !isDownloadingModel)
   const subtitlePath = activeSubtitle?.subtitlePath ?? subtitleResult?.subtitlePath ?? null
   const subtitleSrtPath = activeSubtitle?.subtitleSrtPath ?? subtitleResult?.subtitleSrtPath ?? null
+  const canOpenSubtitleTools = Boolean(state.currentFile)
   const canOpenSubtitleFolder = Boolean(subtitlePath)
   const canOpenSubtitleSrt = Boolean(subtitleSrtPath)
-  const subtitleStatusLabel = activeSubtitle?.subtitleUrl ? '已挂载' : subtitlePath ? '缓存已就绪' : '等待生成'
+  const hasClipExportSubtitle = Boolean(subtitlePath || subtitleSrtPath)
+  const subtitleStatusLabel = activeSubtitle?.subtitleUrl
+    ? copy.panels.subtitleStatusReady
+    : subtitlePath
+      ? copy.panels.subtitleStatusCached
+      : copy.panels.subtitleStatusIdle
   const preferredModelSourceId = appSettings.asr.preferredModelSourceId
   const initialSettingsSectionId: AppSettingsSectionId =
-    state.panelMode === 'asr' ? 'asr' : appSettings.ui.lastSettingsSectionId
+    state.panelMode === 'asr' ? 'subtitles' : appSettings.ui.lastSettingsSectionId
   const recommendedModelManifest = asrStatus?.recommendedModelManifest ?? null
   const recommendedModelSources = recommendedModelManifest
     ? [
@@ -147,6 +287,7 @@ export function App(): ReactElement {
     : []
   const modelViewState = recommendedModelManifest
     ? buildAsrModelViewState({
+        copy,
         recommendedManifest: recommendedModelManifest,
         installedModels: asrStatus?.installedModels ?? [],
         isDownloadingModel,
@@ -155,6 +296,30 @@ export function App(): ReactElement {
         hasFfmpegRuntime: Boolean(asrStatus?.ffmpegPath)
       })
     : null
+  const isControlDeckHidden =
+    Boolean(state.currentFile && state.isPlaying && appSettings.playback.autoHideControlDeck) && !isControlDeckVisible
+  const playbackTimeLabel = formatPlaybackTimeLabel(
+    state.currentTime,
+    state.duration,
+    appSettings.playback.showTotalPlaybackTime
+  )
+  const mediaDurationSeconds = state.duration > 0 ? state.duration : mediaMetadata?.durationSeconds ?? null
+  const mediaVideoWidth = state.videoWidth > 0 ? state.videoWidth : mediaMetadata?.video?.width ?? null
+  const mediaVideoHeight = state.videoHeight > 0 ? state.videoHeight : mediaMetadata?.video?.height ?? null
+  const mediaContainerLabel = state.currentFile?.extension ? state.currentFile.extension.toUpperCase() : '--'
+  const mediaVideo = mediaMetadata?.video ?? null
+  const mediaAudio = mediaMetadata?.audio ?? null
+  const mediaFileSizeLabel = formatFileSize(mediaMetadata?.fileSizeBytes)
+  const mediaDurationLabel = formatMediaDuration(mediaDurationSeconds)
+  const mediaOverallBitrateLabel = formatBitrate(mediaMetadata?.overallBitrateKbps)
+  const mediaResolutionLabel = formatResolution(mediaVideoWidth, mediaVideoHeight)
+  const mediaAspectRatioLabel = formatAspectRatio(mediaVideoWidth, mediaVideoHeight, mediaVideo?.displayAspectRatio ?? null)
+  const mediaVideoCodecLabel = formatCodecLabel(mediaVideo?.codec ?? null, mediaVideo?.profile ?? null)
+  const mediaFrameRateLabel = formatFrameRate(mediaVideo?.frameRate)
+  const mediaAudioCodecLabel = formatCodecLabel(mediaAudio?.codec ?? null, mediaAudio?.profile ?? null)
+  const mediaAudioChannelsLabel = formatChannelLayout(mediaAudio?.channelLayout ?? null)
+  const mediaAudioSampleRateLabel = formatSampleRate(mediaAudio?.sampleRateHz)
+  const mediaAudioBitrateLabel = formatBitrate(mediaAudio?.bitRateKbps)
 
   useModalFocusTrap(
     isDownloadDialogOpen && Boolean(recommendedModelManifest),
@@ -170,6 +335,41 @@ export function App(): ReactElement {
     })
   }
 
+  const getInitialPlaybackTime = (filePath: string): number => {
+    if (!appSettings.playback.rememberProgress) {
+      return 0
+    }
+
+    const savedTime = appSettings.playback.lastProgressByPath[filePath]
+    return Number.isFinite(savedTime) && savedTime > 0 ? savedTime : 0
+  }
+
+  const persistPlaybackProgress = (currentTime: number, force = false): void => {
+    const currentFilePath = state.currentFile?.path
+    if (!currentFilePath || !appSettings.playback.rememberProgress) {
+      return
+    }
+
+    const clampedTime = Math.max(0, currentTime)
+    const previous = lastSavedProgressRef.current
+
+    if (!force && previous.path === currentFilePath && clampedTime - previous.time < 5) {
+      return
+    }
+
+    lastSavedProgressRef.current = { path: currentFilePath, time: clampedTime }
+    patchAppSettings((current) => ({
+      ...current,
+      playback: {
+        ...current.playback,
+        lastProgressByPath: {
+          ...current.playback.lastProgressByPath,
+          [currentFilePath]: clampedTime
+        }
+      }
+    }))
+  }
+
   const resetAppSettings = (): void => {
     const defaults = createDefaultAppSettings()
     setAppSettings(defaults)
@@ -180,7 +380,29 @@ export function App(): ReactElement {
       muted: defaults.playback.lastMuted,
       playbackRate: defaults.playback.lastPlaybackRate
     }))
-    void window.aiv.setAppSettings(defaults).catch(() => undefined)
+    void window.aiv.setAppSettings(defaults).then((nextSettings) => setAppSettings(nextSettings)).catch(() => undefined)
+  }
+
+  const clearControlDeckHideTimer = (): void => {
+    if (controlDeckHideTimerRef.current != null) {
+      window.clearTimeout(controlDeckHideTimerRef.current)
+      controlDeckHideTimerRef.current = null
+    }
+  }
+
+  const revealControlDeck = (): void => {
+    clearControlDeckHideTimer()
+    setIsControlDeckVisible(true)
+
+    if (!state.currentFile || !state.isPlaying || !appSettings.playback.autoHideControlDeck) {
+      return
+    }
+
+    const delaySeconds = Math.max(1, appSettings.playback.controlDeckAutoHideSeconds)
+    controlDeckHideTimerRef.current = window.setTimeout(() => {
+      controlDeckHideTimerRef.current = null
+      setIsControlDeckVisible(false)
+    }, delaySeconds * 1000)
   }
 
   const loadFiles = (files: MediaFile[]): void => {
@@ -196,12 +418,16 @@ export function App(): ReactElement {
     setState((current) => {
       const playlist = mergePlaylist(current.playlist, files)
       const currentFile = getPlaylistFileByPath(playlist, files[0])
+      const currentTime = getInitialPlaybackTime(currentFile.path)
+      lastSavedProgressRef.current = { path: currentFile.path, time: currentTime }
       return {
         ...current,
         playlist,
         currentFile,
-        currentTime: 0,
+        currentTime,
         duration: 0,
+        videoWidth: 0,
+        videoHeight: 0,
         isPlaying: false,
         autoPlayRequestId: current.autoPlayRequestId + 1,
         error: null
@@ -212,6 +438,17 @@ export function App(): ReactElement {
   const openFiles = async (): Promise<void> => {
     const files = await window.aiv.openMediaFiles()
     loadFiles(files)
+  }
+
+  const pickDefaultFolder = async (): Promise<string | null> => {
+    return window.aiv.openMediaDirectory()
+  }
+
+  const pickCaptureFolder = async (): Promise<string | null> => {
+    return window.aiv.openFolderPicker({
+      title: copy.settingsDialog.capture.selectFolderDialogTitle,
+      defaultPath: appSettings.capture.saveDirectoryPath
+    })
   }
 
   const togglePanelMode = (panelMode: PanelMode): void => {
@@ -235,6 +472,8 @@ export function App(): ReactElement {
   }
 
   const togglePlay = async (): Promise<void> => {
+    revealControlDeck()
+
     const video = videoRef.current
     if (!video || !state.currentFile) {
       return
@@ -244,7 +483,7 @@ export function App(): ReactElement {
       try {
         await video.play()
       } catch (error) {
-        const message = getPlayFailureMessage(error)
+        const message = getPlayFailureMessage(copy, error)
         if (message) {
           setPlaybackError(message)
         }
@@ -255,6 +494,8 @@ export function App(): ReactElement {
   }
 
   const seekBy = (seconds: number): void => {
+    revealControlDeck()
+
     const video = videoRef.current
     if (!video) {
       return
@@ -268,12 +509,16 @@ export function App(): ReactElement {
     setSubtitleResult(null)
     setAsrNotice(null)
     setAsrProgress(null)
+    const currentTime = getInitialPlaybackTime(file.path)
+    lastSavedProgressRef.current = { path: file.path, time: currentTime }
 
     setState((current) => ({
       ...current,
       currentFile: file,
-      currentTime: 0,
+      currentTime,
       duration: 0,
+      videoWidth: 0,
+      videoHeight: 0,
       isPlaying: false,
       autoPlayRequestId: current.autoPlayRequestId + 1,
       error: null
@@ -281,6 +526,8 @@ export function App(): ReactElement {
   }
 
   const playAdjacent = (direction: -1 | 1): void => {
+    revealControlDeck()
+
     if (!state.currentFile || state.playlist.length === 0) {
       return
     }
@@ -291,6 +538,8 @@ export function App(): ReactElement {
   }
 
   const toggleMute = (): void => {
+    revealControlDeck()
+
     const video = videoRef.current
     if (!video) {
       return
@@ -312,6 +561,8 @@ export function App(): ReactElement {
   }
 
   const toggleFullscreen = async (): Promise<void> => {
+    revealControlDeck()
+
     if (document.fullscreenElement) {
       await document.exitFullscreen()
       return
@@ -333,7 +584,7 @@ export function App(): ReactElement {
 
   const handleMediaError = (event: React.SyntheticEvent<HTMLVideoElement>): void => {
     const video = event.currentTarget
-    const message = getMediaErrorMessage(video)
+    const message = getMediaErrorMessage(copy, video)
 
     if (!message) {
       clearPlaybackError()
@@ -444,14 +695,14 @@ export function App(): ReactElement {
     setAsrProgress({
       stage: 'checking',
       percent: 0,
-      message: '正在创建本地字幕任务。'
+      message: copy.runtime.preparingSubtitleCache
     })
 
     try {
       const result = await window.aiv.generateAsrSubtitle({
         mediaPath: state.currentFile.path,
         modelId: asrStatus?.recommendedModelManifest.id,
-        language: 'auto'
+        language: appSettings.asr.defaultSubtitleLanguage
       })
 
       setSubtitleResult(result.success ? result : null)
@@ -476,7 +727,7 @@ export function App(): ReactElement {
     if (!success) {
       setAsrNotice({
         success: false,
-        message: '无法打开字幕文件夹，请检查文件是否还存在。'
+        message: copy.messages.noSubtitleFolder
       })
     }
   }
@@ -490,7 +741,7 @@ export function App(): ReactElement {
     if (!success) {
       setAsrNotice({
         success: false,
-        message: '无法打开 SRT 文件，请检查系统默认应用或文件是否还存在。'
+        message: copy.messages.noSrtFile
       })
     }
   }
@@ -520,6 +771,56 @@ export function App(): ReactElement {
     setAsrNotice(result)
   }
 
+  const openClipExportDialog = (): void => {
+    if (!state.currentFile || isExportingClip) {
+      return
+    }
+
+    setIsClipExportDialogOpen(true)
+  }
+
+  const confirmClipExport = async (selection: { durationSeconds: ClipExportLengthSeconds; mode: ClipExportMode }): Promise<void> => {
+    const currentFile = state.currentFile
+    if (!currentFile || isExportingClip) {
+      return
+    }
+
+    patchAppSettings((current) => ({
+      ...current,
+      capture: {
+        ...current.capture,
+        clipExportLengthSeconds: selection.durationSeconds,
+        clipExportMode: selection.mode
+      }
+    }))
+
+    setIsClipExportDialogOpen(false)
+    setIsExportingClip(true)
+
+    try {
+      const request: MediaClipExportRequest = {
+        mediaPath: currentFile.path,
+        startSeconds: videoRef.current?.currentTime ?? state.currentTime,
+        durationSeconds: selection.durationSeconds,
+        mode: selection.mode,
+        subtitlePath: subtitlePath ?? undefined,
+        subtitleSrtPath: subtitleSrtPath ?? undefined
+      }
+      const result = await window.aiv.exportMediaClip(request)
+
+      if (!result.canceled) {
+        setAsrNotice(result)
+      }
+    } catch (error) {
+      setAsrNotice({
+        success: false,
+        message: error instanceof Error ? `${copy.runtime.clipExportFailed}：${error.message}` : `${copy.runtime.clipExportFailed}：${String(error)}`
+      })
+    } finally {
+      setIsExportingClip(false)
+    }
+  }
+
   const copySubtitleVttPath = async (): Promise<void> => {
     if (!subtitlePath) {
       return
@@ -541,7 +842,7 @@ export function App(): ReactElement {
     const currentFilePath = state.currentFile?.path
     const modelId = asrStatus?.recommendedModelManifest.id
 
-    if (!currentFilePath || !modelId) {
+    if (!currentFilePath || !modelId || !appSettings.asr.autoLoadCachedSubtitles) {
       return
     }
 
@@ -568,7 +869,17 @@ export function App(): ReactElement {
     return () => {
       cancelled = true
     }
-  }, [state.currentFile?.path, asrStatus?.recommendedModelManifest.id])
+  }, [state.currentFile?.path, asrStatus?.recommendedModelManifest.id, appSettings.asr.autoLoadCachedSubtitles])
+
+  useEffect(() => {
+    revealControlDeck()
+    return clearControlDeckHideTimer
+  }, [
+    state.currentFile?.path,
+    state.isPlaying,
+    appSettings.playback.autoHideControlDeck,
+    appSettings.playback.controlDeckAutoHideSeconds
+  ])
 
   useEffect(() => {
     const video = videoRef.current
@@ -587,14 +898,16 @@ export function App(): ReactElement {
       return
     }
 
-    video.currentTime = 0
+    const startTime = getInitialPlaybackTime(state.currentFile.path)
+    video.currentTime = startTime
     video.playbackRate = state.playbackRate
     video.volume = state.volume
     video.muted = state.muted
+    lastSavedProgressRef.current = { path: state.currentFile.path, time: startTime }
 
     const playTimer = window.setTimeout(() => {
       void video.play().catch((error: unknown) => {
-        const message = getPlayFailureMessage(error)
+        const message = getPlayFailureMessage(copy, error)
         if (message) {
           setPlaybackError(message)
         }
@@ -605,12 +918,60 @@ export function App(): ReactElement {
   }, [state.currentFile?.id, state.autoPlayRequestId])
 
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent): void => {
-      if (isDownloadDialogOpen || isSettingsDialogOpen) {
+    const video = videoRef.current
+    if (!video || !state.currentFile || !appSettings.playback.rememberProgress) {
+      return
+    }
+
+    const nextTime = getInitialPlaybackTime(state.currentFile.path)
+    if (Math.abs(video.currentTime - nextTime) < 0.25) {
+      return
+    }
+
+    video.currentTime = nextTime
+    lastSavedProgressRef.current = { path: state.currentFile.path, time: nextTime }
+    setState((current) => ({ ...current, currentTime: nextTime }))
+  }, [state.currentFile?.path, appSettings.playback.rememberProgress, appSettings.playback.lastProgressByPath])
+
+  useEffect(() => {
+    const clearHoldRightArrowTimer = (): void => {
+      if (holdRightArrowTimerRef.current != null) {
+        window.clearTimeout(holdRightArrowTimerRef.current)
+        holdRightArrowTimerRef.current = null
+      }
+    }
+
+    const restoreHoldRightArrowSpeed = (): void => {
+      clearHoldRightArrowTimer()
+
+      const previousRate = holdRightArrowRestoreRateRef.current
+      if (previousRate == null) {
         return
       }
 
-      if (event.target instanceof HTMLInputElement) {
+      holdRightArrowRestoreRateRef.current = null
+
+      const video = videoRef.current
+      if (video) {
+        video.playbackRate = previousRate
+      }
+
+      setState((current) => ({
+        ...current,
+        playbackRate: previousRate
+      }))
+    }
+
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (isDownloadDialogOpen || isSettingsDialogOpen || isClipExportDialogOpen || isExportingClip) {
+        return
+      }
+
+      if (
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement ||
+        event.target instanceof HTMLSelectElement
+      ) {
         return
       }
 
@@ -624,21 +985,88 @@ export function App(): ReactElement {
 
       if (event.code === 'Space') {
         event.preventDefault()
+        revealControlDeck()
         void togglePlay()
+        return
       }
-      if (event.code === 'ArrowLeft') seekBy(-SEEK_STEP_SECONDS)
-      if (event.code === 'ArrowRight') seekBy(SEEK_STEP_SECONDS)
-      if (event.code === 'KeyO' && (event.metaKey || event.ctrlKey)) void openFiles()
-      if (event.code === 'KeyM') toggleMute()
-      if (event.code === 'KeyF') void toggleFullscreen()
+      if (event.code === 'ArrowLeft') {
+        revealControlDeck()
+        if (!event.repeat) {
+          seekBy(-appSettings.playback.seekStepSeconds)
+        }
+        return
+      }
+      if (event.code === 'ArrowRight') {
+        revealControlDeck()
+        if (event.repeat) {
+          return
+        }
+
+        seekBy(appSettings.playback.seekStepSeconds)
+
+        if (appSettings.playback.holdRightArrowSpeed > 1) {
+          clearHoldRightArrowTimer()
+          holdRightArrowRestoreRateRef.current = state.playbackRate
+          holdRightArrowTimerRef.current = window.setTimeout(() => {
+            const video = videoRef.current
+            if (!video) {
+              return
+            }
+
+            const heldSpeed = appSettings.playback.holdRightArrowSpeed
+            video.playbackRate = heldSpeed
+            setState((current) => ({
+              ...current,
+              playbackRate: heldSpeed
+            }))
+          }, 280)
+        }
+
+        return
+      }
+      if (event.code === 'KeyO' && (event.metaKey || event.ctrlKey)) {
+        revealControlDeck()
+        void openFiles()
+        return
+      }
+      if (event.code === 'KeyM') {
+        revealControlDeck()
+        toggleMute()
+        return
+      }
+      if (event.code === 'KeyF') {
+        revealControlDeck()
+        void toggleFullscreen()
+        return
+      }
       if (event.code === 'KeyL') {
+        revealControlDeck()
         togglePanelMode('playlist')
       }
     }
 
+    const handleKeyUp = (event: KeyboardEvent): void => {
+      if (event.code === 'ArrowRight') {
+        restoreHoldRightArrowSpeed()
+      }
+    }
+
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  })
+    window.addEventListener('keyup', handleKeyUp)
+    return () => {
+      clearHoldRightArrowTimer()
+      restoreHoldRightArrowSpeed()
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keyup', handleKeyUp)
+    }
+  }, [
+    appSettings.playback.holdRightArrowSpeed,
+    appSettings.playback.seekStepSeconds,
+    isDownloadDialogOpen,
+    isSettingsDialogOpen,
+    isClipExportDialogOpen,
+    isExportingClip
+  ])
 
   useEffect(() => {
     const handleMouseDown = (event: MouseEvent): void => {
@@ -659,6 +1087,32 @@ export function App(): ReactElement {
   }, [])
 
   useEffect(() => {
+    if (!appSettings.playback.pauseWhenMinimized) {
+      return
+    }
+
+    const pauseVideo = (): void => {
+      const video = videoRef.current
+      if (video && !video.paused) {
+        video.pause()
+      }
+    }
+
+    const handleVisibilityChange = (): void => {
+      if (document.visibilityState === 'hidden') {
+        pauseVideo()
+      }
+    }
+
+    window.addEventListener('blur', pauseVideo)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      window.removeEventListener('blur', pauseVideo)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [appSettings.playback.pauseWhenMinimized])
+
+  useEffect(() => {
     void refreshAsrStatus()
   }, [])
 
@@ -676,7 +1130,11 @@ export function App(): ReactElement {
         panelMode: settings.ui.defaultPanelMode,
         volume: settings.playback.rememberVolume ? settings.playback.lastVolume : current.volume,
         muted: settings.playback.rememberVolume ? settings.playback.lastMuted : current.muted,
-        playbackRate: settings.playback.rememberPlaybackRate ? settings.playback.lastPlaybackRate : current.playbackRate
+        playbackRate: settings.playback.rememberPlaybackRate ? settings.playback.lastPlaybackRate : current.playbackRate,
+        currentTime:
+          settings.playback.rememberProgress && current.currentFile
+            ? settings.playback.lastProgressByPath[current.currentFile.path] ?? current.currentTime
+            : current.currentTime
       }))
     })
 
@@ -716,6 +1174,21 @@ export function App(): ReactElement {
   }, [isSettingsDialogOpen])
 
   useEffect(() => {
+    if (!isClipExportDialogOpen) {
+      return
+    }
+
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape' && !isExportingClip) {
+        setIsClipExportDialogOpen(false)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isClipExportDialogOpen, isExportingClip])
+
+  useEffect(() => {
     void window.aiv.getInitialMediaFiles().then(loadFiles)
     return window.aiv.onMediaFilesOpened(loadFiles)
   }, [])
@@ -743,12 +1216,42 @@ export function App(): ReactElement {
       }
 
       for (const track of Array.from(video.textTracks)) {
-        track.mode = track.label === 'ASR 字幕' ? 'showing' : 'disabled'
+        track.mode = track.kind === 'subtitles' ? 'showing' : 'disabled'
       }
     }, 0)
 
     return () => window.clearTimeout(timer)
   }, [activeSubtitle?.subtitleUrl])
+
+  useEffect(() => {
+    const filePath = state.currentFile?.path
+
+    if (!filePath) {
+      setMediaMetadata(null)
+      return
+    }
+
+    let cancelled = false
+
+    setMediaMetadata(null)
+
+    void window.aiv
+      .getMediaMetadata(filePath)
+      .then((metadata) => {
+        if (!cancelled) {
+          setMediaMetadata(metadata)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setMediaMetadata(null)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [state.currentFile?.path])
 
   return (
     <div
@@ -765,17 +1268,17 @@ export function App(): ReactElement {
       <header className="titlebar">
         <div className="brand">
           <span className="brand-mark">A</span>
-          <span>AIVPlayer</span>
+          <span>{copy.appName}</span>
         </div>
         <nav className="top-actions" aria-label="Primary">
-          <button className="tool-button" type="button" onClick={openFiles} title="Open media files">
+          <button className="tool-button" type="button" onClick={openFiles} title={copy.topbar.openFiles}>
             <FolderOpen size={17} />
           </button>
           <button
             className={`tool-button ${state.panelMode === 'playlist' ? 'active' : ''}`}
             type="button"
             onClick={() => togglePanelMode('playlist')}
-            title="Toggle playlist"
+            title={copy.topbar.togglePlaylist}
             aria-pressed={state.panelMode === 'playlist'}
           >
             <PanelRight size={17} />
@@ -784,7 +1287,7 @@ export function App(): ReactElement {
             className={`tool-button ${state.panelMode === 'asr' ? 'active' : ''}`}
             type="button"
             onClick={() => togglePanelMode('asr')}
-            title="ASR subtitles"
+            title={copy.topbar.toggleAsr}
             aria-pressed={state.panelMode === 'asr'}
           >
             <Sparkles size={17} />
@@ -792,8 +1295,8 @@ export function App(): ReactElement {
           <button
             className={`tool-button ${state.panelMode === 'info' ? 'active' : ''}`}
             type="button"
-            title={state.panelMode === 'info' ? '隐藏媒体信息' : '显示媒体信息'}
-            aria-label={state.panelMode === 'info' ? '隐藏媒体信息' : '显示媒体信息'}
+            title={copy.topbar.toggleInfo}
+            aria-label={copy.topbar.toggleInfo}
             onClick={() => togglePanelMode('info')}
             aria-pressed={state.panelMode === 'info'}
           >
@@ -802,10 +1305,10 @@ export function App(): ReactElement {
           <button
             className={`tool-button ${isSettingsDialogOpen ? 'active' : ''}`}
             type="button"
-            title={isSettingsDialogOpen ? '关闭设置' : '打开设置'}
-            aria-label={isSettingsDialogOpen ? '关闭设置' : '打开设置'}
+            title={isSettingsDialogOpen ? copy.topbar.closeSettings : copy.topbar.openSettings}
+            aria-label={isSettingsDialogOpen ? copy.topbar.closeSettings : copy.topbar.openSettings}
             onClick={() => {
-              if (isDownloadDialogOpen) {
+              if (isDownloadDialogOpen || isClipExportDialogOpen || isExportingClip) {
                 return
               }
 
@@ -819,7 +1322,12 @@ export function App(): ReactElement {
       </header>
 
       <main className={`workspace ${isSidePanelVisible ? 'with-side-panel' : 'side-panel-collapsed'}`}>
-        <section className="stage" aria-label="Video stage">
+        <section
+          className={`stage ${isControlDeckHidden ? 'control-deck-hidden' : ''}`}
+          aria-label={copy.emptyState.title}
+          onMouseEnter={revealControlDeck}
+          onMouseMove={revealControlDeck}
+        >
           <div className="video-frame">
             {state.currentFile ? (
               <video
@@ -827,17 +1335,35 @@ export function App(): ReactElement {
                 className="video-surface"
                 src={state.currentFile.url}
                 preload="metadata"
+                onClick={() => {
+                  if (appSettings.playback.singleClickPause) {
+                    revealControlDeck()
+                    void togglePlay()
+                  }
+                }}
                 onPlay={() => setState((current) => ({ ...current, isPlaying: true }))}
                 onPlaying={clearPlaybackError}
                 onCanPlay={clearPlaybackError}
-                onPause={() => setState((current) => ({ ...current, isPlaying: false }))}
+                onPause={(event) => {
+                  setState((current) => ({ ...current, isPlaying: false }))
+                  persistPlaybackProgress(event.currentTarget.currentTime, true)
+                }}
+                onEnded={(event) => {
+                  setState((current) => ({ ...current, isPlaying: false }))
+                  persistPlaybackProgress(event.currentTarget.currentTime, true)
+                }}
                 onLoadedMetadata={(event) => {
                   const duration = event.currentTarget.duration || 0
-                  setState((current) => ({ ...current, duration, error: null }))
+                  const currentTime = event.currentTarget.currentTime
+                  const videoWidth = event.currentTarget.videoWidth || 0
+                  const videoHeight = event.currentTarget.videoHeight || 0
+                  setState((current) => ({ ...current, duration, currentTime, videoWidth, videoHeight, error: null }))
+                  persistPlaybackProgress(currentTime, true)
                 }}
                 onTimeUpdate={(event) => {
                   const currentTime = event.currentTarget.currentTime
                   setState((current) => ({ ...current, currentTime, error: null }))
+                  persistPlaybackProgress(currentTime)
                 }}
                 onVolumeChange={(event) => {
                   const volume = event.currentTarget.volume
@@ -852,12 +1378,12 @@ export function App(): ReactElement {
                 controls={false}
               >
                 {activeSubtitle?.subtitleUrl ? (
-                  <track
+                    <track
                     key={activeSubtitle.subtitleUrl}
                     kind="subtitles"
                     src={activeSubtitle.subtitleUrl}
                     srcLang="auto"
-                    label="ASR 字幕"
+                    label={copy.panels.asrSubtitleTrack}
                     default
                   />
                 ) : null}
@@ -867,11 +1393,11 @@ export function App(): ReactElement {
                 <div className="empty-icon">
                   <AudioLines size={46} />
                 </div>
-                <h1>AIVPlayer</h1>
-                <p>拖入视频文件，或从本机选择媒体开始播放。</p>
+                <h1>{copy.emptyState.title}</h1>
+                <p>{copy.emptyState.description}</p>
                 <button className="primary-action" type="button" onClick={openFiles}>
                   <FolderOpen size={18} />
-                  打开视频
+                  {copy.emptyState.openVideo}
                 </button>
               </div>
             )}
@@ -883,7 +1409,7 @@ export function App(): ReactElement {
             </div>
           ) : null}
 
-          <div className="control-deck">
+          <div className={`control-deck ${isControlDeckHidden ? 'is-hidden' : ''}`} aria-hidden={isControlDeckHidden}>
             <div className="timeline-row">
               <span>{formatTime(state.currentTime)}</span>
               <input
@@ -900,26 +1426,26 @@ export function App(): ReactElement {
                   }
                   setState((current) => ({ ...current, currentTime: nextTime }))
                 }}
-                aria-label="Playback position"
+                aria-label={copy.controls.playbackPosition}
               />
-              <span>{formatTime(state.duration)}</span>
+              <span>{playbackTimeLabel}</span>
             </div>
 
             <div className="controls-row">
               <div className="control-group">
-                <button className="round-button" type="button" onClick={() => playAdjacent(-1)} title="Previous">
+                <button className="round-button" type="button" onClick={() => playAdjacent(-1)} title={copy.controls.previous}>
                   <SkipBack size={18} />
                 </button>
-                <button className="round-button primary" type="button" onClick={togglePlay} title="Play or pause">
+                <button className="round-button primary" type="button" onClick={togglePlay} title={state.isPlaying ? copy.controls.pause : copy.controls.play}>
                   {state.isPlaying ? <Pause size={22} /> : <Play size={22} />}
                 </button>
-                <button className="round-button" type="button" onClick={() => playAdjacent(1)} title="Next">
+                <button className="round-button" type="button" onClick={() => playAdjacent(1)} title={copy.controls.next}>
                   <SkipForward size={18} />
                 </button>
               </div>
 
               <div className="control-group wide">
-                <button className="round-button" type="button" onClick={toggleMute} title="Mute">
+                <button className="round-button" type="button" onClick={toggleMute} title={copy.controls.mute}>
                   {state.muted ? <VolumeX size={18} /> : <Volume2 size={18} />}
                 </button>
                 <input
@@ -947,7 +1473,7 @@ export function App(): ReactElement {
                       }
                     }))
                   }}
-                  aria-label="Volume"
+                  aria-label={copy.controls.volume}
                 />
               </div>
 
@@ -971,7 +1497,7 @@ export function App(): ReactElement {
                       }
                     }))
                   }}
-                  aria-label="Playback speed"
+                  aria-label={copy.controls.playbackSpeed}
                 >
                   {[0.5, 0.75, 1, 1.25, 1.5, 2].map((speed) => (
                     <option key={speed} value={speed}>
@@ -979,7 +1505,7 @@ export function App(): ReactElement {
                     </option>
                   ))}
                 </select>
-                <button className="round-button" type="button" onClick={toggleFullscreen} title="Fullscreen">
+                <button className="round-button" type="button" onClick={toggleFullscreen} title={copy.controls.fullscreen}>
                   <Maximize2 size={18} />
                 </button>
               </div>
@@ -989,9 +1515,9 @@ export function App(): ReactElement {
 
         <aside
           className={`side-panel panel-${state.panelMode}`}
-          aria-label="Side panel"
+          aria-label={copy.panels.playlistTitle}
         >
-          <div className="panel-switcher" role="tablist" aria-label="Panel views">
+          <div className="panel-switcher" role="tablist" aria-label={copy.panels.playlistTitle}>
             <button
               className={`panel-tab ${state.panelMode === 'playlist' ? 'active' : ''}`}
               type="button"
@@ -1000,7 +1526,7 @@ export function App(): ReactElement {
               onClick={() => openPanelMode('playlist')}
             >
               <ListVideo size={15} />
-              <span>播放列表</span>
+              <span>{copy.panels.playlistTitle}</span>
             </button>
             <button
               className={`panel-tab ${state.panelMode === 'asr' ? 'active' : ''}`}
@@ -1010,7 +1536,7 @@ export function App(): ReactElement {
               onClick={() => openPanelMode('asr')}
             >
               <Sparkles size={15} />
-              <span>ASR</span>
+              <span>{copy.panels.asrTitle}</span>
             </button>
             <button
               className={`panel-tab ${state.panelMode === 'info' ? 'active' : ''}`}
@@ -1020,7 +1546,7 @@ export function App(): ReactElement {
               onClick={() => openPanelMode('info')}
             >
               <Info size={15} />
-              <span>信息</span>
+              <span>{copy.panels.infoTitle}</span>
             </button>
           </div>
 
@@ -1029,14 +1555,14 @@ export function App(): ReactElement {
             <>
               <div className="panel-header">
                 <div>
-                  <span className="panel-kicker">Queue</span>
-                  <h2>播放列表</h2>
+                  <span className="panel-kicker">{copy.panels.playlistKicker}</span>
+                  <h2>{copy.panels.playlistTitle}</h2>
                 </div>
                 <ListVideo size={19} />
               </div>
               <div className={`playlist ${state.playlist.length === 0 ? 'is-empty' : ''}`}>
                 {state.playlist.length === 0 ? (
-                  <div className="panel-empty">还没有媒体文件。</div>
+                  <div className="panel-empty">{copy.panels.noMedia}</div>
                 ) : (
                   state.playlist.map((file, index) => (
                     <button
@@ -1062,25 +1588,25 @@ export function App(): ReactElement {
                   <div className="asr-card-heading">
                     <div className="asr-card-title">
                       <Sparkles size={18} />
-                      <span>ASR 引擎状态</span>
+                      <span>{copy.asrPanel.engineStatus}</span>
                     </div>
-                    <button className="mini-tool-button" type="button" onClick={refreshAsrStatus} title="刷新 ASR 引擎状态">
+                    <button className="mini-tool-button" type="button" onClick={refreshAsrStatus} title={copy.asrPanel.refreshEngine}>
                       <RefreshCcw size={14} />
                     </button>
                   </div>
-                  <p>{asrStatus?.message ?? '正在检测 ASR 引擎...'}</p>
+                  <p>{asrStatus?.message ?? copy.asrPanel.detectingEngine}</p>
                   <div className="asr-meta">
                     <span>
                       <Clock size={14} />
-                      {installedModelCount} 个模型文件
+                      {installedModelCount} {copy.asrPanel.modelFiles}
                     </span>
-                    <span>{asrStatus?.available ? '引擎就绪' : '引擎未就绪'}</span>
+                    <span>{asrStatus?.available ? copy.asrPanel.engineReady : copy.asrPanel.engineNotReady}</span>
                   </div>
                   <div className="asr-runtime-grid">
-                    <span>ASR 引擎 whisper.cpp</span>
-                    <strong>{asrStatus?.binaryPath ? '已找到' : '未找到'}</strong>
+                    <span>{copy.asrPanel.engineStatus}</span>
+                    <strong>{asrStatus?.binaryPath ? copy.asrPanel.engineReady : copy.asrPanel.engineNotReady}</strong>
                     <span>ffmpeg</span>
-                    <strong>{asrStatus?.ffmpegPath ? '已找到' : '未找到'}</strong>
+                    <strong>{asrStatus?.ffmpegPath ? copy.asrPanel.engineReady : copy.asrPanel.engineNotReady}</strong>
                   </div>
                   {runtimeSetupMessage ? (
                     <div className={`asr-result ${runtimeSetupMessage.success ? 'success' : 'failed'}`}>
@@ -1093,13 +1619,13 @@ export function App(): ReactElement {
                   <div className="asr-card-heading">
                     <div className="asr-card-title">
                       <Download size={18} />
-                      <span>模型文件</span>
+                      <span>{copy.asrPanel.modelFiles}</span>
                     </div>
                     <span className={`asr-status-pill ${modelViewState?.installState ?? 'missing'}`}>
-                      {modelViewState?.statusLabel ?? '检测中'}
+                      {modelViewState?.statusLabel ?? copy.asrModelStatus.progressLabel}
                     </span>
                   </div>
-                  <p>{modelViewState?.description ?? '正在检测本地 ASR 模型。'}</p>
+                  <p>{modelViewState?.description ?? copy.modelView.missing(recommendedModelManifest?.name ?? '', recommendedModelManifest?.ramRequirement ?? '')}</p>
                   <div className="asr-model-list">
                     {asrStatus?.installedModels.length ? (
                       asrStatus.installedModels.map((model) => (
@@ -1110,7 +1636,7 @@ export function App(): ReactElement {
                       ))
                     ) : (
                       <div className="asr-model-item muted">
-                        <span>{recommendedModelManifest?.name ?? asrStatus?.recommendedModel ?? '未安装推荐模型'}</span>
+                        <span>{recommendedModelManifest?.name ?? asrStatus?.recommendedModel ?? copy.asrPanel.noModel}</span>
                         <strong>
                           {recommendedModelManifest
                             ? formatBytes(recommendedModelManifest.expectedSizeBytes)
@@ -1123,7 +1649,7 @@ export function App(): ReactElement {
                     <div className="progress-block">
                       <div className="progress-label">
                         <span>{downloadProgress.message}</span>
-                        <strong>{formatPercent(downloadProgress.percent)}</strong>
+                        <strong>{formatPercent(downloadProgress.percent, copy.asrModelStatus.progressLabel)}</strong>
                       </div>
                       <div className="progress-track">
                         <div
@@ -1144,7 +1670,7 @@ export function App(): ReactElement {
                     ) : (
                       <Download size={16} />
                     )}
-                    {modelViewState?.actionLabel ?? '下载推荐模型'}
+                    {modelViewState?.actionLabel ?? copy.modelView.downloadRecommended}
                   </button>
                 </div>
 
@@ -1152,33 +1678,48 @@ export function App(): ReactElement {
                   <div className="asr-card-heading">
                     <div className="asr-card-title">
                       <Captions size={18} />
-                      <span>生成字幕</span>
+                      <span>{copy.asrPanel.generateSubtitle}</span>
                     </div>
                   </div>
-                  <p>VTT / SRT / 本地缓存</p>
+                  <p>{copy.asrPanel.subtitlesReady}</p>
                   <div className="subtitle-tools-row">
                     <span className={`subtitle-status ${activeSubtitle?.subtitleUrl ? 'ready' : subtitlePath ? 'cached' : 'idle'}`}>
                       {subtitleStatusLabel}
                     </span>
-                    {canOpenSubtitleFolder ? (
+                    {canOpenSubtitleTools ? (
                       <details ref={subtitleActionsRef} className="subtitle-actions">
-                        <summary className="subtitle-actions-summary" title="字幕工具" aria-label="字幕工具">
+                        <summary className="subtitle-actions-summary" title={copy.asrPanel.subtitleTools} aria-label={copy.asrPanel.subtitleTools}>
                           <ChevronDown size={12} />
-                          工具
+                          {copy.asrPanel.subtitleTools}
                         </summary>
-                        <div className="subtitle-actions-menu" role="menu" aria-label="字幕工具菜单">
+                        <div className="subtitle-actions-menu" role="menu" aria-label={copy.asrPanel.subtitleToolsMenu}>
                           <button
                             className="subtitle-action-item"
                             type="button"
                             role="menuitem"
                             onClick={(event) => {
                               closeSubtitleActionsMenu(event)
-                              void openSubtitleFolder()
+                              openClipExportDialog()
                             }}
+                            disabled={isExportingClip}
                           >
-                            <FolderOpen size={14} />
-                            打开字幕文件夹
+                            <ListVideo size={14} />
+                            {copy.asrPanel.clipExport}
                           </button>
+                          {canOpenSubtitleFolder ? (
+                            <button
+                              className="subtitle-action-item"
+                              type="button"
+                              role="menuitem"
+                              onClick={(event) => {
+                                closeSubtitleActionsMenu(event)
+                                void openSubtitleFolder()
+                              }}
+                            >
+                              <FolderOpen size={14} />
+                              {copy.asrPanel.openSubtitleFolder}
+                            </button>
+                          ) : null}
                           {canOpenSubtitleSrt ? (
                             <button
                               className="subtitle-action-item"
@@ -1190,7 +1731,7 @@ export function App(): ReactElement {
                               }}
                             >
                               <FileText size={14} />
-                              打开 SRT 文件
+                              {copy.asrPanel.openSrtFile}
                             </button>
                           ) : null}
                           {canOpenSubtitleSrt ? (
@@ -1204,7 +1745,7 @@ export function App(): ReactElement {
                               }}
                             >
                               <Copy size={14} />
-                              复制 SRT 路径
+                              {copy.asrPanel.copySrtPath}
                             </button>
                           ) : null}
                           {canOpenSubtitleFolder ? (
@@ -1218,21 +1759,23 @@ export function App(): ReactElement {
                               }}
                             >
                               <Copy size={14} />
-                              复制 VTT 路径
+                              {copy.asrPanel.copyVttPath}
                             </button>
                           ) : null}
-                          <button
-                            className="subtitle-action-item"
-                            type="button"
-                            role="menuitem"
-                            onClick={(event) => {
-                              closeSubtitleActionsMenu(event)
-                              void exportSubtitleSrtFile()
-                            }}
-                          >
-                            <Download size={14} />
-                            导出 SRT
-                          </button>
+                          {canOpenSubtitleFolder ? (
+                            <button
+                              className="subtitle-action-item"
+                              type="button"
+                              role="menuitem"
+                              onClick={(event) => {
+                                closeSubtitleActionsMenu(event)
+                                void exportSubtitleSrtFile()
+                              }}
+                            >
+                              <Download size={14} />
+                              {copy.asrPanel.exportSrt}
+                            </button>
+                          ) : null}
                         </div>
                       </details>
                     ) : null}
@@ -1241,7 +1784,7 @@ export function App(): ReactElement {
                     <div className="progress-block">
                       <div className="progress-label">
                         <span>{asrProgress.message}</span>
-                        <strong>{formatPercent(asrProgress.percent)}</strong>
+                        <strong>{formatPercent(asrProgress.percent, copy.asrModelStatus.progressLabel)}</strong>
                       </div>
                       <div className="progress-track">
                         <div
@@ -1263,7 +1806,7 @@ export function App(): ReactElement {
                     disabled={!canGenerateSubtitle}
                   >
                     <Sparkles size={16} />
-                    {isAsrBusy ? '生成中' : subtitlePath ? '重新生成当前视频字幕' : '生成当前视频字幕'}
+                    {isAsrBusy ? copy.asrPanel.generatingSubtitle : copy.asrPanel.generateSubtitle}
                   </button>
                 </div>
               </div>
@@ -1274,12 +1817,12 @@ export function App(): ReactElement {
             <>
               <div className="panel-header">
                 <div>
-                  <span className="panel-kicker">Subtitles</span>
-                  <h2>字幕轨道</h2>
+                  <span className="panel-kicker">{copy.panels.subtitlesKicker}</span>
+                  <h2>{copy.panels.subtitlesTitle}</h2>
                 </div>
                 <Captions size={19} />
               </div>
-              <div className="panel-empty">还没有载入字幕轨道。</div>
+              <div className="panel-empty">{copy.panels.noSubtitles}</div>
             </>
           ) : null}
 
@@ -1287,8 +1830,8 @@ export function App(): ReactElement {
             <>
               <div className="panel-header">
                 <div>
-                  <span className="panel-kicker">Info</span>
-                  <h2>媒体信息</h2>
+                  <span className="panel-kicker">{copy.panels.infoKicker}</span>
+                  <h2>{copy.panels.infoTitle}</h2>
                 </div>
                 <Info size={19} />
               </div>
@@ -1297,19 +1840,39 @@ export function App(): ReactElement {
                   <section className="info-card">
                     <div className="info-card-heading">
                       <FileText size={16} />
-                      <span>当前文件</span>
+                      <span>{copy.panels.currentFile}</span>
                     </div>
                     <div className="info-hero">
                       <strong title={state.currentFile.name}>{state.currentFile.name}</strong>
-                      <span>{state.currentFile.extension.toUpperCase()} · 已载入到播放器</span>
+                      <span>
+                        {mediaContainerLabel} · {copy.panels.loadedToPlayer}
+                      </span>
+                    </div>
+                    <div className="info-grid compact">
+                      <div className="info-item">
+                        <span>{copy.panels.containerFormat}</span>
+                        <strong>{mediaContainerLabel}</strong>
+                      </div>
+                      <div className="info-item">
+                        <span>{copy.panels.fileSize}</span>
+                        <strong>{mediaFileSizeLabel}</strong>
+                      </div>
+                      <div className="info-item">
+                        <span>{copy.panels.duration}</span>
+                        <strong>{mediaDurationLabel}</strong>
+                      </div>
+                      <div className="info-item">
+                        <span>{copy.panels.overallBitrate}</span>
+                        <strong>{mediaOverallBitrateLabel}</strong>
+                      </div>
                     </div>
                     <div className="info-grid">
                       <div className="info-item">
-                        <span>完整路径</span>
+                        <span>{copy.panels.fullPath}</span>
                         <strong title={state.currentFile.path}>{state.currentFile.path}</strong>
                       </div>
                       <div className="info-item">
-                        <span>媒体 URL</span>
+                        <span>{copy.panels.mediaUrl}</span>
                         <strong title={state.currentFile.url}>{state.currentFile.url}</strong>
                       </div>
                     </div>
@@ -1317,26 +1880,76 @@ export function App(): ReactElement {
 
                   <section className="info-card">
                     <div className="info-card-heading">
-                      <Clock size={16} />
-                      <span>播放状态</span>
+                      <ListVideo size={16} />
+                      <span>{copy.panels.videoStream}</span>
                     </div>
                     <div className="info-grid compact">
                       <div className="info-item">
-                        <span>当前进度</span>
+                        <span>{copy.panels.resolution}</span>
+                        <strong>{mediaResolutionLabel}</strong>
+                      </div>
+                      <div className="info-item">
+                        <span>{copy.panels.frameRate}</span>
+                        <strong>{mediaFrameRateLabel}</strong>
+                      </div>
+                      <div className="info-item">
+                        <span>{copy.panels.videoCodec}</span>
+                        <strong>{mediaVideoCodecLabel}</strong>
+                      </div>
+                      <div className="info-item">
+                        <span>{copy.panels.displayAspectRatio}</span>
+                        <strong>{mediaAspectRatioLabel}</strong>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section className="info-card">
+                    <div className="info-card-heading">
+                      <AudioLines size={16} />
+                      <span>{copy.panels.audioStream}</span>
+                    </div>
+                    <div className="info-grid compact">
+                      <div className="info-item">
+                        <span>{copy.panels.audioCodec}</span>
+                        <strong>{mediaAudioCodecLabel}</strong>
+                      </div>
+                      <div className="info-item">
+                        <span>{copy.panels.channels}</span>
+                        <strong>{mediaAudioChannelsLabel}</strong>
+                      </div>
+                      <div className="info-item">
+                        <span>{copy.panels.sampleRate}</span>
+                        <strong>{mediaAudioSampleRateLabel}</strong>
+                      </div>
+                      <div className="info-item">
+                        <span>{copy.panels.audioBitrate}</span>
+                        <strong>{mediaAudioBitrateLabel}</strong>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section className="info-card">
+                    <div className="info-card-heading">
+                      <Clock size={16} />
+                      <span>{copy.panels.playbackState}</span>
+                    </div>
+                    <div className="info-grid compact">
+                      <div className="info-item">
+                        <span>{copy.controls.playbackPosition}</span>
                         <strong>
-                          {formatTime(state.currentTime)} / {formatTime(state.duration)}
+                          {formatTime(state.currentTime)} / {playbackTimeLabel}
                         </strong>
                       </div>
                       <div className="info-item">
-                        <span>播放速度</span>
+                        <span>{copy.controls.playbackSpeed}</span>
                         <strong>{state.playbackRate}x</strong>
                       </div>
                       <div className="info-item">
-                        <span>音量</span>
+                        <span>{copy.controls.volume}</span>
                         <strong>{Math.round((state.muted ? 0 : state.volume) * 100)}%</strong>
                       </div>
                       <div className="info-item">
-                        <span>字幕状态</span>
+                        <span>{copy.asrPanel.cacheState}</span>
                         <strong>{subtitleStatusLabel}</strong>
                       </div>
                     </div>
@@ -1345,22 +1958,22 @@ export function App(): ReactElement {
                   <section className="info-card">
                     <div className="info-card-heading">
                       <Captions size={16} />
-                      <span>字幕缓存</span>
+                      <span>{copy.panels.subtitleCache}</span>
                     </div>
                     <div className="info-grid compact">
                       <div className="info-item">
-                        <span>VTT</span>
-                        <strong>{subtitlePath ? '已缓存' : '未生成'}</strong>
+                        <span>{copy.panels.vtt}</span>
+                        <strong>{subtitlePath ? copy.panels.subtitleStatusCached : copy.panels.subtitleStatusIdle}</strong>
                       </div>
                       <div className="info-item">
-                        <span>SRT</span>
-                        <strong>{subtitleSrtPath ? '已缓存' : '未生成'}</strong>
+                        <span>{copy.panels.srt}</span>
+                        <strong>{subtitleSrtPath ? copy.panels.subtitleStatusCached : copy.panels.subtitleStatusIdle}</strong>
                       </div>
                     </div>
                   </section>
                 </div>
               ) : (
-                <div className="panel-empty">还没有媒体文件。</div>
+                <div className="panel-empty">{copy.panels.noMedia}</div>
               )}
             </>
           ) : null}
@@ -1370,6 +1983,7 @@ export function App(): ReactElement {
 
       {isSettingsDialogOpen ? (
         <SettingsDialog
+          copy={copy}
           settings={appSettings}
           asrStatus={asrStatus}
           runtimeSetupMessage={runtimeSetupMessage}
@@ -1383,8 +1997,21 @@ export function App(): ReactElement {
             setIsSettingsDialogOpen(false)
             openPanelMode('asr')
           }}
+          onPickDefaultFolder={pickDefaultFolder}
+          onPickCaptureFolder={pickCaptureFolder}
           onSelectWhisperBinary={selectWhisperBinary}
           onResetDefaults={resetAppSettings}
+        />
+      ) : null}
+
+      {isClipExportDialogOpen ? (
+        <ClipExportDialog
+          copy={copy}
+          hasSubtitle={hasClipExportSubtitle}
+          initialLengthSeconds={appSettings.capture.clipExportLengthSeconds}
+          initialMode={appSettings.capture.clipExportMode}
+          onClose={() => setIsClipExportDialogOpen(false)}
+          onConfirm={confirmClipExport}
         />
       ) : null}
 
@@ -1409,14 +2036,14 @@ export function App(): ReactElement {
           >
             <div className="download-dialog-header">
               <div>
-                <span className="panel-kicker">Model Source</span>
-                <h2 id="download-dialog-title">选择 ASR 模型下载源</h2>
+                <span className="panel-kicker">{copy.asrPanel.modelSource}</span>
+                <h2 id="download-dialog-title">{copy.downloadDialog.title}</h2>
               </div>
               <button
                 className="mini-tool-button"
                 type="button"
                 onClick={() => setIsDownloadDialogOpen(false)}
-                title="关闭下载源选择"
+                title={copy.downloadDialog.close}
                 disabled={isDownloadingModel}
               >
                 <X size={14} />
@@ -1424,9 +2051,10 @@ export function App(): ReactElement {
             </div>
 
             <p id="download-dialog-description" className="download-dialog-copy">
-              中国大陆网络建议走阿里云 ModelScope；海外用户或已经配置稳定国际代理时，走 Hugging Face。
-              设置里的默认源会排在第一位并标记为默认。两个源下载的是同一个 {recommendedModelManifest.fileName}，
-              约 {formatBytes(recommendedModelManifest.expectedSizeBytes)}。
+              {copy.downloadDialog.description(
+                recommendedModelManifest.fileName,
+                formatBytes(recommendedModelManifest.expectedSizeBytes)
+              )}
             </p>
 
             <div className="download-source-grid">
@@ -1440,7 +2068,7 @@ export function App(): ReactElement {
                     type="button"
                     onClick={() => void downloadRecommendedModel(source.id)}
                     disabled={isDownloadingModel}
-                    aria-label={`从 ${source.name} 下载推荐 ASR 模型`}
+                    aria-label={copy.downloadDialog.sourceAria(source.name)}
                   >
                     <span className="download-source-icon">
                       <CloudDownload size={20} />
@@ -1448,9 +2076,11 @@ export function App(): ReactElement {
                     <span className="download-source-copy">
                       <span className="download-source-heading">
                         <strong>
-                          {source.id === 'modelscope' ? '国内下载 ModelScope' : '国际下载 Hugging Face'}
+                          {source.id === 'modelscope'
+                            ? copy.downloadDialog.sourceDomestic
+                            : copy.downloadDialog.sourceInternational}
                         </strong>
-                        {isPreferredSource ? <span className="download-source-badge">默认</span> : null}
+                        {isPreferredSource ? <span className="download-source-badge">{copy.downloadDialog.defaultBadge}</span> : null}
                       </span>
                       <span>{source.description}</span>
                       <small>

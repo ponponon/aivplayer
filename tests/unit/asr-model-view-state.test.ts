@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { getRecommendedWhisperModelManifest } from '../../src/main/ai/asr-models'
+import { getAppCopy } from '../../src/shared/i18n'
 import { buildAsrModelViewState } from '../../src/renderer/src/app/asr-model-view-state'
 import type { AsrModelDownloadProgress, AsrModelInfo } from '../../src/shared/media-types'
 
 const recommendedManifest = getRecommendedWhisperModelManifest()
+const copy = getAppCopy()
 
 const installedRecommendedModel: AsrModelInfo = {
   id: recommendedManifest.id,
@@ -15,6 +17,7 @@ const installedRecommendedModel: AsrModelInfo = {
 describe('ASR model view state', () => {
   it('asks the user to download when the recommended model is missing', () => {
     const state = buildAsrModelViewState({
+      copy,
       recommendedManifest,
       installedModels: [],
       isDownloadingModel: false,
@@ -24,10 +27,10 @@ describe('ASR model view state', () => {
     })
 
     expect(state.installState).toBe('missing')
-    expect(state.statusLabel).toBe('模型文件未安装')
-    expect(state.actionLabel).toBe('下载推荐模型')
+    expect(state.statusLabel).toBe(copy.modelView.missingLabel)
+    expect(state.actionLabel).toBe(copy.modelView.downloadRecommended)
     expect(state.shouldShowProgress).toBe(false)
-    expect(state.description).toContain('建议预留')
+    expect(state.description).toBe(copy.modelView.missing(recommendedManifest.name, recommendedManifest.ramRequirement))
   })
 
   it('shows the selected source while the model is downloading', () => {
@@ -43,6 +46,7 @@ describe('ASR model view state', () => {
     }
 
     const state = buildAsrModelViewState({
+      copy,
       recommendedManifest,
       installedModels: [],
       isDownloadingModel: true,
@@ -52,14 +56,15 @@ describe('ASR model view state', () => {
     })
 
     expect(state.installState).toBe('downloading')
-    expect(state.statusLabel).toBe('模型文件下载中')
-    expect(state.actionLabel).toBe('下载中')
+    expect(state.statusLabel).toBe(copy.modelView.downloadingLabel)
+    expect(state.actionLabel).toBe(copy.modelView.downloadRecommended)
     expect(state.shouldShowProgress).toBe(true)
-    expect(state.description).toBe('正在从 ModelScope 下载推荐模型文件。')
+    expect(state.description).toBe(copy.modelView.downloading('ModelScope'))
   })
 
   it('marks the model as installed and points to the missing runtime separately', () => {
     const state = buildAsrModelViewState({
+      copy,
       recommendedManifest,
       installedModels: [installedRecommendedModel],
       isDownloadingModel: false,
@@ -78,14 +83,15 @@ describe('ASR model view state', () => {
     })
 
     expect(state.installState).toBe('installed-needs-runtime')
-    expect(state.statusLabel).toBe('模型文件已安装')
-    expect(state.actionLabel).toBe('重新下载 / 更换来源')
+    expect(state.statusLabel).toBe(copy.modelView.installedLabel)
+    expect(state.actionLabel).toBe(copy.modelView.redownload)
     expect(state.shouldShowProgress).toBe(false)
-    expect(state.description).toBe('模型文件已就绪；字幕生成还缺 ASR 引擎 whisper.cpp。')
+    expect(state.description).toBe(copy.modelView.installedNeedsWhisper)
   })
 
   it('marks the model as ready when the runtime is also available', () => {
     const state = buildAsrModelViewState({
+      copy,
       recommendedManifest,
       installedModels: [installedRecommendedModel],
       isDownloadingModel: false,
@@ -95,8 +101,8 @@ describe('ASR model view state', () => {
     })
 
     expect(state.installState).toBe('installed-ready')
-    expect(state.statusLabel).toBe('模型文件已安装')
-    expect(state.actionLabel).toBe('重新下载 / 更换来源')
-    expect(state.description).toBe('模型文件已就绪，可用于本地字幕生成。')
+    expect(state.statusLabel).toBe(copy.modelView.installedLabel)
+    expect(state.actionLabel).toBe(copy.modelView.redownload)
+    expect(state.description).toBe(copy.modelView.installedReady)
   })
 })

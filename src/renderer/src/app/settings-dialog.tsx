@@ -1,10 +1,30 @@
-import { AudioLines, CloudDownload, FolderOpen, PanelRight, RefreshCcw, Sparkles, Volume2, X } from 'lucide-react'
+import {
+  Camera,
+  Captions,
+  Clapperboard,
+  FolderOpen,
+  Keyboard,
+  LayoutGrid,
+  Settings2,
+  Sparkles,
+  X
+} from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState, type ReactElement } from 'react'
-import type { AppPanelModePreference, AppSettings, AppSettingsSectionId } from '../../../shared/app-settings'
+import type {
+  AppPanelModePreference,
+  AppSettings,
+  AppSettingsSectionId,
+  CaptureFileNamingMode,
+  CaptureGifResolution,
+  CaptureImageFormat
+} from '../../../shared/app-settings'
 import type { AsrModelSourceId, AsrRuntimeStatus, AsrRuntimeSetupResult } from '../../../shared/media-types'
+import type { AppLocale, SubtitleLanguageId } from '../../../shared/localization'
+import type { LocaleCopy } from '../../../shared/i18n'
 import { useModalFocusTrap } from './use-modal-focus-trap'
 
 type SettingsDialogProps = {
+  copy: LocaleCopy
   settings: AppSettings
   asrStatus: AsrRuntimeStatus | null
   runtimeSetupMessage: AsrRuntimeSetupResult | null
@@ -15,104 +35,39 @@ type SettingsDialogProps = {
   onClose: () => void
   onAutoDetectWhisperBinary: () => void
   onOpenAsrPanel: () => void
+  onPickDefaultFolder: () => Promise<string | null>
+  onPickCaptureFolder: () => Promise<string | null>
   onSelectWhisperBinary: () => void
   onResetDefaults: () => void
 }
 
-const panelModeOptions: Array<{
-  value: AppPanelModePreference
-  title: string
-  description: string
-}> = [
-  {
-    value: 'playlist',
-    title: '播放列表',
-    description: '启动后先看队列，适合连续切换本地视频。'
-  },
-  {
-    value: 'asr',
-    title: 'ASR',
-    description: '启动后直接进入模型和字幕工作流。'
-  },
-  {
-    value: 'info',
-    title: '媒体信息',
-    description: '启动后先看当前文件与播放状态。'
-  }
-]
-
-const asrModelSourceOptions: Array<{
-  value: AsrModelSourceId
-  title: string
-  description: string
-  hint: string
-}> = [
-  {
-    value: 'modelscope',
-    title: 'ModelScope',
-    description: '中国大陆网络优先，通常不需要额外代理。',
-    hint: '推荐给国内网络'
-  },
-  {
-    value: 'huggingface',
-    title: 'Hugging Face',
-    description: '海外网络或稳定国际代理环境优先。',
-    hint: '推荐给海外网络'
-  }
-]
-
-const settingsSectionTabs: Array<{
-  id: AppSettingsSectionId
-  label: string
-  ariaLabel: string
-  icon: typeof PanelRight
-}> = [
-  {
-    id: 'startup',
-    label: '启动',
-    ariaLabel: '跳到启动侧栏设置',
-    icon: PanelRight
-  },
-  {
-    id: 'playback',
-    label: '播放',
-    ariaLabel: '跳到播放记忆设置',
-    icon: Volume2
-  },
-  {
-    id: 'asr',
-    label: 'ASR',
-    ariaLabel: '跳到 ASR 相关设置',
-    icon: AudioLines
-  }
-]
+const settingsSectionOrder: AppSettingsSectionId[] = ['general', 'interface', 'video', 'subtitles', 'capture', 'shortcuts']
 
 const SETTINGS_SECTION_SCROLL_OFFSET = 78
 
-export function SettingsDialog({
-  settings,
-  asrStatus,
-  runtimeSetupMessage,
-  isDetectingWhisperBinary,
-  isSelectingWhisperBinary,
-  initialSectionId = 'startup',
-  onChange,
-  onClose,
-  onAutoDetectWhisperBinary,
-  onOpenAsrPanel,
-  onSelectWhisperBinary,
-  onResetDefaults
-}: SettingsDialogProps): ReactElement {
+function formatPathLabel(pathValue: string | null, fallback: string): string {
+  return pathValue && pathValue.length > 0 ? pathValue : fallback
+}
+
+export function SettingsDialog(props: SettingsDialogProps): ReactElement {
+  const {
+    copy,
+    settings,
+    asrStatus,
+    initialSectionId = 'general',
+    onChange,
+    onClose,
+    onOpenAsrPanel,
+    onPickDefaultFolder,
+    onPickCaptureFolder,
+    onResetDefaults
+  } = props
   const [activeSectionId, setActiveSectionId] = useState<AppSettingsSectionId>(initialSectionId)
   const hasMountedRef = useRef(false)
   const initialScrollDoneRef = useRef(false)
   const dialogRef = useRef<HTMLElement | null>(null)
   const activeSectionIdRef = useRef<AppSettingsSectionId>(initialSectionId)
   const scrollFrameRef = useRef<number | null>(null)
-  const patchSettings = (updater: (current: AppSettings) => AppSettings): void => {
-    onChange(updater)
-  }
-  const isRuntimeActionBusy = isDetectingWhisperBinary || isSelectingWhisperBinary
 
   useEffect(() => {
     activeSectionIdRef.current = activeSectionId
@@ -150,18 +105,24 @@ export function SettingsDialog({
     setActiveSectionId(settings.ui.lastSettingsSectionId)
   }, [settings.ui.lastSettingsSectionId])
 
+  const patchSettings = (updater: (current: AppSettings) => AppSettings): void => {
+    onChange(updater)
+  }
+
   const selectSection = (sectionId: AppSettingsSectionId): void => {
-    if (activeSectionIdRef.current !== sectionId) {
-      activeSectionIdRef.current = sectionId
-      setActiveSectionId(sectionId)
-      patchSettings((current) => ({
-        ...current,
-        ui: {
-          ...current.ui,
-          lastSettingsSectionId: sectionId
-        }
-      }))
+    if (activeSectionIdRef.current === sectionId) {
+      return
     }
+
+    activeSectionIdRef.current = sectionId
+    setActiveSectionId(sectionId)
+    patchSettings((current) => ({
+      ...current,
+      ui: {
+        ...current.ui,
+        lastSettingsSectionId: sectionId
+      }
+    }))
   }
 
   const syncSectionFromScroll = (): void => {
@@ -176,8 +137,8 @@ export function SettingsDialog({
     let nextSectionId = activeSectionIdRef.current
     let bestDistance = Number.NEGATIVE_INFINITY
 
-    for (const section of settingsSectionTabs) {
-      const element = document.getElementById(`settings-section-${section.id}`)
+    for (const sectionId of settingsSectionOrder) {
+      const element = document.getElementById(`settings-section-${sectionId}`)
       if (!element) {
         continue
       }
@@ -185,7 +146,7 @@ export function SettingsDialog({
       const distance = element.getBoundingClientRect().top - containerTop
       if (distance <= SETTINGS_SECTION_SCROLL_OFFSET && distance > bestDistance) {
         bestDistance = distance
-        nextSectionId = section.id
+        nextSectionId = sectionId
       }
     }
 
@@ -210,6 +171,63 @@ export function SettingsDialog({
     })
   }
 
+  const languageOptions = Object.entries(copy.languageOptions) as Array<
+    [AppLocale, (typeof copy.languageOptions)[AppLocale]]
+  >
+
+  const subtitleLanguageOptions = Object.entries(copy.subtitleLanguageOptions) as Array<
+    [SubtitleLanguageId, (typeof copy.subtitleLanguageOptions)[SubtitleLanguageId]]
+  >
+
+  const sections: Array<{
+    id: AppSettingsSectionId
+    label: string
+    ariaLabel: string
+    icon: typeof Settings2
+  }> = [
+    { id: 'general', label: copy.settingsDialog.tabs.general, ariaLabel: copy.settingsDialog.tabAria.general, icon: Settings2 },
+    { id: 'interface', label: copy.settingsDialog.tabs.interface, ariaLabel: copy.settingsDialog.tabAria.interface, icon: LayoutGrid },
+    { id: 'video', label: copy.settingsDialog.tabs.video, ariaLabel: copy.settingsDialog.tabAria.video, icon: Clapperboard },
+    { id: 'subtitles', label: copy.settingsDialog.tabs.subtitles, ariaLabel: copy.settingsDialog.tabAria.subtitles, icon: Captions },
+    { id: 'capture', label: copy.settingsDialog.tabs.capture, ariaLabel: copy.settingsDialog.tabAria.capture, icon: Camera },
+    { id: 'shortcuts', label: copy.settingsDialog.tabs.shortcuts, ariaLabel: copy.settingsDialog.tabAria.shortcuts, icon: Keyboard }
+  ]
+
+  const startupPanelOptions: Array<{ value: AppPanelModePreference; label: string }> = [
+    { value: 'playlist', label: copy.panels.playlistTitle },
+    { value: 'asr', label: copy.panels.asrTitle },
+    { value: 'info', label: copy.panels.infoTitle }
+  ]
+
+  const modelSourceOptions: Array<{ value: AsrModelSourceId; label: string; description: string }> = [
+    {
+      value: 'modelscope',
+      label: copy.modelSources.modelscope.title,
+      description: copy.modelSources.modelscope.description
+    },
+    {
+      value: 'huggingface',
+      label: copy.modelSources.huggingface.title,
+      description: copy.modelSources.huggingface.description
+    }
+  ]
+
+  const captureImageFormatOptions: Array<{ value: CaptureImageFormat; label: string }> = [
+    { value: 'jpg', label: copy.settingsDialog.capture.formats.jpg },
+    { value: 'png', label: copy.settingsDialog.capture.formats.png }
+  ]
+
+  const captureFileNamingOptions: Array<{ value: CaptureFileNamingMode; label: string }> = [
+    { value: 'sequential', label: copy.settingsDialog.capture.namingOptions.sequential },
+    { value: 'timestamp', label: copy.settingsDialog.capture.namingOptions.timestamp }
+  ]
+
+  const captureGifResolutionOptions: Array<{ value: CaptureGifResolution; label: string }> = [
+    { value: '360p', label: copy.settingsDialog.capture.resolutionOptions['360p'] },
+    { value: '480p', label: copy.settingsDialog.capture.resolutionOptions['480p'] },
+    { value: '720p', label: copy.settingsDialog.capture.resolutionOptions['720p'] }
+  ]
+
   return (
     <div
       className="modal-backdrop"
@@ -232,17 +250,16 @@ export function SettingsDialog({
       >
         <div className="settings-dialog-header">
           <div>
-            <span className="panel-kicker">Preferences</span>
-            <h2 id="settings-dialog-title">设置</h2>
-            <p id="settings-dialog-description">偏好会自动保存到本地，下次启动继续生效。</p>
+            <h2 id="settings-dialog-title">{copy.settingsDialog.title}</h2>
+            <p id="settings-dialog-description">{copy.settingsDialog.description}</p>
           </div>
-          <button className="mini-tool-button" type="button" onClick={onClose} title="关闭设置">
+          <button className="mini-tool-button" type="button" onClick={onClose} title={copy.topbar.closeSettings}>
             <X size={14} />
           </button>
         </div>
 
-        <nav className="settings-switcher" role="tablist" aria-label="设置分组">
-          {settingsSectionTabs.map((section) => {
+        <nav className="settings-switcher" role="tablist" aria-label={copy.settingsDialog.title}>
+          {sections.map((section) => {
             const Icon = section.icon
             const isActive = activeSectionId === section.id
 
@@ -265,42 +282,141 @@ export function SettingsDialog({
         </nav>
 
         <div className="settings-grid">
-          <section className="settings-card settings-card-anchor" id="settings-section-startup">
+          <section className="settings-card settings-card-anchor" id="settings-section-general">
             <div className="settings-card-heading">
-              <PanelRight size={16} />
-              <span>启动侧栏</span>
+              <Settings2 size={16} />
+              <span>{copy.settingsDialog.general.title}</span>
             </div>
-            <div className="settings-choice-list" role="radiogroup" aria-label="启动侧栏">
-              {panelModeOptions.map((option) => (
-                <label className="setting-choice" key={option.value}>
-                  <input
-                    type="radio"
-                    name="default-panel-mode"
-                    checked={settings.ui.defaultPanelMode === option.value}
-                    onChange={() =>
-                      patchSettings((current) => ({
-                        ...current,
-                        ui: {
-                          ...current.ui,
-                          defaultPanelMode: option.value
-                        }
-                      }))
+
+            <div className="settings-field">
+              <div className="settings-field-copy">
+                <strong>{copy.settingsDialog.general.language}</strong>
+              </div>
+              <select
+                className="settings-select"
+                value={settings.ui.locale}
+                onChange={(event) => {
+                  const locale = event.currentTarget.value as AppLocale
+                  patchSettings((current) => ({
+                    ...current,
+                    ui: {
+                      ...current.ui,
+                      locale
                     }
-                  />
-                  <span>
-                    <strong>{option.title}</strong>
-                    <small>{option.description}</small>
-                  </span>
-                </label>
-              ))}
+                  }))
+                }}
+              >
+                {languageOptions.map(([locale, option]) => (
+                  <option key={locale} value={locale}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </div>
+
+            <div className="settings-field">
+              <div className="settings-field-copy">
+                <strong>{copy.settingsDialog.general.startupPanel}</strong>
+                <small>{copy.settingsDialog.general.startupPanelDescription}</small>
+              </div>
+              <select
+                className="settings-select"
+                value={settings.ui.defaultPanelMode}
+                onChange={(event) => {
+                  const defaultPanelMode = event.currentTarget.value as AppPanelModePreference
+                  patchSettings((current) => ({
+                    ...current,
+                    ui: {
+                      ...current.ui,
+                      defaultPanelMode
+                    }
+                  }))
+                }}
+              >
+                {startupPanelOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="settings-field">
+              <div className="settings-field-copy">
+                <strong>{copy.settingsDialog.general.defaultFolder}</strong>
+                <small>{copy.settingsDialog.general.selectFolderDialogTitle}</small>
+              </div>
+              <div className="settings-inline-row">
+                <div className="settings-path-value" title={settings.media.defaultOpenDirectoryPath ?? ''}>
+                  {formatPathLabel(settings.media.defaultOpenDirectoryPath, '—')}
+                </div>
+                <button
+                  className="settings-secondary-button"
+                  type="button"
+                  onClick={async () => {
+                    const folderPath = await onPickDefaultFolder()
+                    if (!folderPath) {
+                      return
+                    }
+
+                    patchSettings((current) => ({
+                      ...current,
+                      media: {
+                        ...current.media,
+                        defaultOpenDirectoryPath: folderPath
+                      }
+                    }))
+                  }}
+                >
+                  <FolderOpen size={14} />
+                  {copy.settingsDialog.general.selectFolder}
+                </button>
+                <button
+                  className="settings-secondary-button"
+                  type="button"
+                  onClick={() =>
+                    patchSettings((current) => ({
+                      ...current,
+                      media: {
+                        ...current.media,
+                        defaultOpenDirectoryPath: null
+                      }
+                    }))
+                  }
+                  disabled={!settings.media.defaultOpenDirectoryPath}
+                >
+                  {copy.settingsDialog.general.clearFolder}
+                </button>
+              </div>
+            </div>
+
+            <label className="setting-toggle">
+              <input
+                type="checkbox"
+                checked={settings.media.autoLoadSameDirectoryFiles}
+                onChange={(event) =>
+                  patchSettings((current) => ({
+                    ...current,
+                    media: {
+                      ...current.media,
+                      autoLoadSameDirectoryFiles: event.currentTarget.checked
+                    }
+                  }))
+                }
+              />
+              <span>
+                <strong>{copy.settingsDialog.general.autoLoadDirectoryFiles}</strong>
+                <small>{copy.settingsDialog.general.autoLoadDirectoryFilesDescription}</small>
+              </span>
+            </label>
           </section>
 
-          <section className="settings-card settings-card-anchor" id="settings-section-playback">
+          <section className="settings-card settings-card-anchor" id="settings-section-interface">
             <div className="settings-card-heading">
-              <Volume2 size={16} />
-              <span>播放记忆</span>
+              <LayoutGrid size={16} />
+              <span>{copy.settingsDialog.interface.title}</span>
             </div>
+
             <label className="setting-toggle">
               <input
                 type="checkbox"
@@ -316,10 +432,11 @@ export function SettingsDialog({
                 }
               />
               <span>
-                <strong>记住音量和静音状态</strong>
-                <small>下次打开视频时沿用最近一次的音量和静音状态。</small>
+                <strong>{copy.settingsDialog.interface.rememberVolume}</strong>
+                <small>{copy.settingsDialog.interface.rememberVolumeDescription}</small>
               </span>
             </label>
+
             <label className="setting-toggle">
               <input
                 type="checkbox"
@@ -335,105 +452,484 @@ export function SettingsDialog({
                 }
               />
               <span>
-                <strong>记住倍速</strong>
-                <small>播放速率会保留到下次启动，适合长期固定习惯。</small>
+                <strong>{copy.settingsDialog.interface.rememberPlaybackRate}</strong>
+                <small>{copy.settingsDialog.interface.rememberPlaybackRateDescription}</small>
+              </span>
+            </label>
+
+            <label className="setting-toggle">
+              <input
+                type="checkbox"
+                checked={settings.playback.rememberProgress}
+                onChange={(event) =>
+                  patchSettings((current) => ({
+                    ...current,
+                    playback: {
+                      ...current.playback,
+                      rememberProgress: event.currentTarget.checked
+                    }
+                  }))
+                }
+              />
+              <span>
+                <strong>{copy.settingsDialog.interface.rememberProgress}</strong>
+                <small>{copy.settingsDialog.interface.rememberProgressDescription}</small>
+              </span>
+            </label>
+
+            <label className="setting-toggle">
+              <input
+                type="checkbox"
+                checked={settings.playback.singleClickPause}
+                onChange={(event) =>
+                  patchSettings((current) => ({
+                    ...current,
+                    playback: {
+                      ...current.playback,
+                      singleClickPause: event.currentTarget.checked
+                    }
+                  }))
+                }
+              />
+              <span>
+                <strong>{copy.settingsDialog.interface.singleClickPause}</strong>
+                <small>{copy.settingsDialog.interface.singleClickPauseDescription}</small>
+              </span>
+            </label>
+
+            <label className="setting-toggle">
+              <input
+                type="checkbox"
+                checked={settings.playback.pauseWhenMinimized}
+                onChange={(event) =>
+                  patchSettings((current) => ({
+                    ...current,
+                    playback: {
+                      ...current.playback,
+                      pauseWhenMinimized: event.currentTarget.checked
+                    }
+                  }))
+                }
+              />
+              <span>
+                <strong>{copy.settingsDialog.interface.pauseWhenMinimized}</strong>
+                <small>{copy.settingsDialog.interface.pauseWhenMinimizedDescription}</small>
+              </span>
+            </label>
+
+            <div className="settings-field">
+              <div className="settings-field-copy">
+                <strong>{copy.settingsDialog.interface.autoHideControlDeck}</strong>
+                <small>{copy.settingsDialog.interface.autoHideControlDeckDescription}</small>
+              </div>
+              <div className="settings-inline-row">
+                <input
+                  className="settings-checkbox"
+                  type="checkbox"
+                  checked={settings.playback.autoHideControlDeck}
+                  onChange={(event) =>
+                    patchSettings((current) => ({
+                      ...current,
+                      playback: {
+                        ...current.playback,
+                        autoHideControlDeck: event.currentTarget.checked
+                      }
+                    }))
+                  }
+                  aria-label={copy.settingsDialog.interface.autoHideControlDeck}
+                />
+                <input
+                  className="settings-number settings-number-compact"
+                  type="number"
+                  min={1}
+                  max={60}
+                  step={1}
+                  value={settings.playback.controlDeckAutoHideSeconds}
+                  disabled={!settings.playback.autoHideControlDeck}
+                  onChange={(event) => {
+                    const controlDeckAutoHideSeconds = Number(event.currentTarget.value)
+                    patchSettings((current) => ({
+                      ...current,
+                      playback: {
+                        ...current.playback,
+                        controlDeckAutoHideSeconds: Number.isFinite(controlDeckAutoHideSeconds)
+                          ? controlDeckAutoHideSeconds
+                          : current.playback.controlDeckAutoHideSeconds
+                      }
+                    }))
+                  }}
+                  aria-label={copy.settingsDialog.interface.autoHideControlDeckDelay}
+                />
+                <span className="settings-inline-unit">{copy.settingsDialog.interface.secondsUnit}</span>
+              </div>
+            </div>
+
+            <label className="setting-toggle">
+              <input
+                type="checkbox"
+                checked={settings.playback.showTotalPlaybackTime}
+                onChange={(event) =>
+                  patchSettings((current) => ({
+                    ...current,
+                    playback: {
+                      ...current.playback,
+                      showTotalPlaybackTime: event.currentTarget.checked
+                    }
+                  }))
+                }
+              />
+              <span>
+                <strong>{copy.settingsDialog.interface.showTotalPlaybackTime}</strong>
+                <small>{copy.settingsDialog.interface.showTotalPlaybackTimeDescription}</small>
               </span>
             </label>
           </section>
 
-          <section className="settings-card settings-card-wide settings-card-anchor" id="settings-section-asr">
+          <section className="settings-card settings-card-anchor" id="settings-section-video">
             <div className="settings-card-heading">
-              <AudioLines size={16} />
-              <span>ASR 引擎</span>
+              <Clapperboard size={16} />
+              <span>{copy.settingsDialog.video.title}</span>
             </div>
-            <p className="settings-card-note">
-              这个区域只负责配置 whisper.cpp 和 ffmpeg 的位置。模型下载与字幕生成继续留在 ASR 工作区。
-            </p>
-            <div className="asr-runtime-grid">
-              <span>ASR 引擎 whisper.cpp</span>
-              <strong>{asrStatus?.binaryPath ? asrStatus.binaryPath : '未找到'}</strong>
-              <span>ffmpeg</span>
-              <strong>{asrStatus?.ffmpegPath ? asrStatus.ffmpegPath : '未找到'}</strong>
-            </div>
-            {runtimeSetupMessage ? (
-              <div className={`asr-result ${runtimeSetupMessage.success ? 'success' : 'failed'}`}>
-                {runtimeSetupMessage.message}
+
+            <div className="settings-field">
+              <div className="settings-field-copy">
+                <strong>{copy.settingsDialog.video.seekStepSeconds}</strong>
+                <small>{copy.settingsDialog.video.seekStepSecondsDescription}</small>
               </div>
-            ) : null}
-            <div className="asr-action-row">
-              <button
-                className="asr-action-button"
-                type="button"
-                onClick={onAutoDetectWhisperBinary}
-                disabled={isRuntimeActionBusy}
-                title="自动检测 whisper.cpp"
-                aria-label="自动检测 whisper.cpp"
-              >
-                <RefreshCcw size={16} />
-                {isDetectingWhisperBinary ? '检测中' : '自动检测'}
-              </button>
-              <button
-                className="asr-action-button"
-                type="button"
-                onClick={onSelectWhisperBinary}
-                disabled={isRuntimeActionBusy}
-                title="选择 whisper.cpp 可执行文件"
-                aria-label={asrStatus?.binaryPath ? '更换 ASR 引擎' : '选择 whisper.cpp 可执行文件'}
-              >
-                <FolderOpen size={16} />
-                {isSelectingWhisperBinary ? '选择中' : asrStatus?.binaryPath ? '更换引擎' : '选择文件'}
-              </button>
+              <input
+                className="settings-number"
+                type="number"
+                min={1}
+                max={120}
+                step={1}
+                value={settings.playback.seekStepSeconds}
+                onChange={(event) => {
+                  const seekStepSeconds = Number(event.currentTarget.value)
+                  patchSettings((current) => ({
+                    ...current,
+                    playback: {
+                      ...current.playback,
+                      seekStepSeconds: Number.isFinite(seekStepSeconds) ? seekStepSeconds : current.playback.seekStepSeconds
+                    }
+                  }))
+                }}
+              />
+            </div>
+
+            <div className="settings-field">
+              <div className="settings-field-copy">
+                <strong>{copy.settingsDialog.video.holdRightArrowSpeed}</strong>
+                <small>{copy.settingsDialog.video.holdRightArrowSpeedDescription}</small>
+              </div>
+              <input
+                className="settings-number"
+                type="number"
+                min={1}
+                max={16}
+                step={1}
+                value={settings.playback.holdRightArrowSpeed}
+                onChange={(event) => {
+                  const holdRightArrowSpeed = Number(event.currentTarget.value)
+                  patchSettings((current) => ({
+                    ...current,
+                    playback: {
+                      ...current.playback,
+                      holdRightArrowSpeed: Number.isFinite(holdRightArrowSpeed)
+                        ? holdRightArrowSpeed
+                        : current.playback.holdRightArrowSpeed
+                    }
+                  }))
+                }}
+              />
+            </div>
+
+            <div className="settings-note-box">
+              <span className="settings-note-title">{copy.settingsDialog.video.hardwareAcceleration}</span>
+              <p>{copy.settingsDialog.video.hardwareAccelerationDescription}</p>
             </div>
           </section>
 
-          <section className="settings-card settings-card-wide">
+          <section className="settings-card settings-card-anchor" id="settings-section-subtitles">
             <div className="settings-card-heading">
-              <CloudDownload size={16} />
-              <span>ASR 模型下载</span>
+              <Captions size={16} />
+              <span>{copy.settingsDialog.subtitles.title}</span>
             </div>
-            <div className="settings-choice-list" role="radiogroup" aria-label="ASR 模型默认下载源">
-              {asrModelSourceOptions.map((option) => (
-                <label className="setting-choice" key={option.value}>
-                  <input
-                    type="radio"
-                    name="default-asr-model-source"
-                    checked={settings.asr.preferredModelSourceId === option.value}
-                    onChange={() =>
-                      patchSettings((current) => ({
-                        ...current,
-                        asr: {
-                          ...current.asr,
-                          preferredModelSourceId: option.value
-                        }
-                      }))
+
+            <div className="settings-field">
+              <div className="settings-field-copy">
+                <strong>{copy.settingsDialog.subtitles.subtitleLanguage}</strong>
+                <small>{copy.settingsDialog.subtitles.subtitleLanguageDescription}</small>
+              </div>
+              <select
+                className="settings-select"
+                value={settings.asr.defaultSubtitleLanguage}
+                onChange={(event) => {
+                  const defaultSubtitleLanguage = event.currentTarget.value as SubtitleLanguageId
+                  patchSettings((current) => ({
+                    ...current,
+                    asr: {
+                      ...current.asr,
+                      defaultSubtitleLanguage
                     }
-                  />
-                  <span>
-                    <strong>{option.title}</strong>
-                    <small>{option.description}</small>
-                    <small>{option.hint}</small>
-                  </span>
-                </label>
-              ))}
+                  }))
+                }}
+              >
+                {subtitleLanguageOptions.map(([languageId, option]) => (
+                  <option key={languageId} value={languageId}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </div>
-            <p className="settings-card-note">
-              下载弹窗会优先把这里选中的源排在前面，但你仍然可以在弹窗里临时切换。
-            </p>
+
+            <label className="setting-toggle">
+              <input
+                type="checkbox"
+                checked={settings.asr.autoLoadCachedSubtitles}
+                onChange={(event) =>
+                  patchSettings((current) => ({
+                    ...current,
+                    asr: {
+                      ...current.asr,
+                      autoLoadCachedSubtitles: event.currentTarget.checked
+                    }
+                  }))
+                }
+              />
+              <span>
+                <strong>{copy.settingsDialog.subtitles.autoLoadCachedSubtitles}</strong>
+                <small>{copy.settingsDialog.subtitles.autoLoadCachedSubtitlesDescription}</small>
+              </span>
+            </label>
+
+            <div className="settings-field">
+              <div className="settings-field-copy">
+                <strong>{copy.settingsDialog.subtitles.modelSource}</strong>
+                <small>{copy.settingsDialog.subtitles.modelSourceDescription}</small>
+              </div>
+              <select
+                className="settings-select"
+                value={settings.asr.preferredModelSourceId}
+                onChange={(event) => {
+                  const preferredModelSourceId = event.currentTarget.value as AsrModelSourceId
+                  patchSettings((current) => ({
+                    ...current,
+                    asr: {
+                      ...current.asr,
+                      preferredModelSourceId
+                    }
+                  }))
+                }}
+              >
+                {modelSourceOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {asrStatus ? (
+              <div className="settings-note-box">
+                <span className="settings-note-title">{copy.asrPanel.engineStatus}</span>
+                <p>{asrStatus.message}</p>
+              </div>
+            ) : null}
+          </section>
+
+          <section className="settings-card settings-card-anchor settings-card-wide" id="settings-section-capture">
+            <div className="settings-card-heading">
+              <Camera size={16} />
+              <span>{copy.settingsDialog.capture.title}</span>
+            </div>
+
+            <div className="settings-field">
+              <div className="settings-field-copy">
+                <strong>{copy.settingsDialog.capture.saveFolder}</strong>
+                <small>{copy.settingsDialog.capture.saveFolderDescription}</small>
+              </div>
+              <div className="settings-inline-row">
+                <div className="settings-path-value" title={settings.capture.saveDirectoryPath ?? ''}>
+                  {formatPathLabel(settings.capture.saveDirectoryPath, '—')}
+                </div>
+                <button
+                  className="settings-secondary-button"
+                  type="button"
+                  onClick={async () => {
+                    const folderPath = await onPickCaptureFolder()
+                    if (!folderPath) {
+                      return
+                    }
+
+                    patchSettings((current) => ({
+                      ...current,
+                      capture: {
+                        ...current.capture,
+                        saveDirectoryPath: folderPath
+                      }
+                    }))
+                  }}
+                >
+                  <FolderOpen size={14} />
+                  {copy.settingsDialog.capture.selectFolder}
+                </button>
+              </div>
+            </div>
+
+            <label className="setting-toggle">
+              <input
+                type="checkbox"
+                checked={settings.capture.copyToClipboard}
+                onChange={(event) =>
+                  patchSettings((current) => ({
+                    ...current,
+                    capture: {
+                      ...current.capture,
+                      copyToClipboard: event.currentTarget.checked
+                    }
+                  }))
+                }
+              />
+              <span>
+                <strong>{copy.settingsDialog.capture.copyToClipboard}</strong>
+                <small>{copy.settingsDialog.capture.copyToClipboardDescription}</small>
+              </span>
+            </label>
+
+            <div className="settings-field">
+              <div className="settings-field-copy">
+                <strong>{copy.settingsDialog.capture.imageFormat}</strong>
+                <small>{copy.settingsDialog.capture.imageFormatDescription}</small>
+              </div>
+              <select
+                className="settings-select"
+                value={settings.capture.imageFormat}
+                onChange={(event) => {
+                  const imageFormat = event.currentTarget.value as CaptureImageFormat
+                  patchSettings((current) => ({
+                    ...current,
+                    capture: {
+                      ...current.capture,
+                      imageFormat
+                    }
+                  }))
+                }}
+              >
+                {captureImageFormatOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="settings-field">
+              <div className="settings-field-copy">
+                <strong>{copy.settingsDialog.capture.fileNaming}</strong>
+                <small>{copy.settingsDialog.capture.fileNamingDescription}</small>
+              </div>
+              <select
+                className="settings-select"
+                value={settings.capture.fileNaming}
+                onChange={(event) => {
+                  const fileNaming = event.currentTarget.value as CaptureFileNamingMode
+                  patchSettings((current) => ({
+                    ...current,
+                    capture: {
+                      ...current.capture,
+                      fileNaming
+                    }
+                  }))
+                }}
+              >
+                {captureFileNamingOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="settings-field">
+              <div className="settings-field-copy">
+                <strong>{copy.settingsDialog.capture.gifFrameRate}</strong>
+                <small>{copy.settingsDialog.capture.gifFrameRateDescription}</small>
+              </div>
+              <input
+                className="settings-number"
+                type="number"
+                min={1}
+                max={60}
+                step={1}
+                value={settings.capture.gifFrameRate}
+                onChange={(event) => {
+                  const gifFrameRate = Number(event.currentTarget.value)
+                  patchSettings((current) => ({
+                    ...current,
+                    capture: {
+                      ...current.capture,
+                      gifFrameRate: Number.isFinite(gifFrameRate) ? gifFrameRate : current.capture.gifFrameRate
+                    }
+                  }))
+                }}
+              />
+            </div>
+
+            <div className="settings-field">
+              <div className="settings-field-copy">
+                <strong>{copy.settingsDialog.capture.gifResolution}</strong>
+                <small>{copy.settingsDialog.capture.gifResolutionDescription}</small>
+              </div>
+              <select
+                className="settings-select"
+                value={settings.capture.gifResolution}
+                onChange={(event) => {
+                  const gifResolution = event.currentTarget.value as CaptureGifResolution
+                  patchSettings((current) => ({
+                    ...current,
+                    capture: {
+                      ...current.capture,
+                      gifResolution
+                    }
+                  }))
+                }}
+              >
+                {captureGifResolutionOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="settings-card-note">{copy.settingsDialog.capture.description}</div>
+          </section>
+
+          <section className="settings-card settings-card-anchor settings-card-wide" id="settings-section-shortcuts">
+            <div className="settings-card-heading">
+              <Keyboard size={16} />
+              <span>{copy.settingsDialog.shortcuts.title}</span>
+            </div>
+            <div className="settings-note-box">
+              <span className="settings-note-title">{copy.settingsDialog.shortcuts.title}</span>
+              <p>{copy.settingsDialog.shortcuts.description}</p>
+            </div>
+            <div className="settings-card-note">{copy.settingsDialog.comingSoon}</div>
           </section>
         </div>
 
         <div className="settings-footer">
           <div className="settings-note">
             <Sparkles size={14} />
-            <span>ASR 引擎、模型下载默认源和播放偏好都集中在这里，ASR 面板只保留运行态操作。</span>
+            <span>{copy.settingsDialog.note}</span>
           </div>
           <div className="settings-footer-actions">
             <button className="settings-secondary-button" type="button" onClick={onResetDefaults}>
-              恢复默认设置
+              {copy.settingsDialog.restoreDefaults}
             </button>
             <button className="asr-action-button" type="button" onClick={onOpenAsrPanel}>
               <Sparkles size={16} />
-              打开 ASR 面板
+              {copy.settingsDialog.openAsrPanel}
             </button>
           </div>
         </div>

@@ -1,7 +1,9 @@
 import { app, BrowserWindow, clipboard, dialog, ipcMain, nativeImage, shell } from 'electron'
 import { existsSync } from 'node:fs'
-import { join, extname, resolve } from 'node:path'
+import { readdir } from 'node:fs/promises'
+import { dirname, extname, join, resolve } from 'node:path'
 import { readAppSettings, writeAppSettings } from './app-settings'
+import { createDefaultAppSettings } from '../shared/app-settings'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type {
   AsrModelSourceId,
@@ -11,9 +13,16 @@ import type {
   AsrSubtitleRequest,
   ClipboardWriteTextRequest,
   ClipboardWriteTextResult,
+  MediaClipExportRequest,
+  MediaClipExportResult,
+  MediaProbeMetadata,
   MediaFile
 } from '../shared/media-types'
-import { createWhisperCppRuntime } from './ai/whisper-cpp-runtime'
+import { getAppCopy } from '../shared/i18n'
+import type { AppLocale } from '../shared/localization'
+import { createWhisperCppRuntime, resolveFfmpegPath } from './ai/whisper-cpp-runtime'
+import { buildClipExportDefaultVideoPath, runClipExport } from './media/clip-export'
+import { createMediaProbeMetadata } from './media/media-metadata'
 import { openPathInDefaultApp } from './system/file-actions'
 import { createMediaFile, registerMediaProtocolHandler, registerMediaProtocolScheme } from './media/media-protocol'
 import { getNativePlayerStatus, stopNativePlayer } from './media/native-player'
@@ -39,6 +48,7 @@ const VIDEO_EXTENSIONS = [
 let mainWindow: BrowserWindow | null = null
 let asrRuntime: ReturnType<typeof createWhisperCppRuntime> | null = null
 let initialMediaFiles: MediaFile[] | null = null
+let currentAppSettings = createDefaultAppSettings()
 
 function resolveAppIconPath(): string | null {
   const iconPath = process.env.ELECTRON_RENDERER_URL
@@ -85,20 +95,100 @@ function resolveResourcePath(): string {
   return process.resourcesPath
 }
 
+function getCurrentLocale(): AppLocale {
+  return currentAppSettings.ui.locale
+}
+
 function getAsrRuntime(): ReturnType<typeof createWhisperCppRuntime> {
   if (!asrRuntime) {
     asrRuntime = createWhisperCppRuntime({
       userDataPath: app.getPath('userData'),
-      resourcePath: resolveResourcePath()
+      resourcePath: resolveResourcePath(),
+      getLocale: getCurrentLocale
     })
   }
 
   return asrRuntime
 }
 
+async function listMediaFilesInDirectory(directoryPath: string): Promise<MediaFile[]> {
+  if (!directoryPath || !existsSync(directoryPath)) {
+    return []
+  }
+
+  const entries = await readdir(directoryPath, { withFileTypes: true })
+  const mediaPaths = entries
+    .filter((entry) => entry.isFile())
+    .map((entry) => join(directoryPath, entry.name))
+    .filter((filePath) => VIDEO_EXTENSIONS.includes(extname(filePath).replace('.', '').toLowerCase()))
+
+  return Promise.all(mediaPaths.map((filePath) => createMediaFile(filePath)))
+}
+
+async function expandMediaFiles(files: MediaFile[]): Promise<MediaFile[]> {
+  if (files.length !== 1 || !currentAppSettings.media.autoLoadSameDirectoryFiles) {
+    return files
+  }
+
+  const selectedFile = files[0]
+  const directoryPath = dirname(selectedFile.path)
+  const siblingFiles = await listMediaFilesInDirectory(directoryPath)
+  const uniqueFiles = new Map<string, MediaFile>()
+
+  for (const file of [...siblingFiles, ...files]) {
+    uniqueFiles.set(file.path, file)
+  }
+
+  return Array.from(uniqueFiles.values())
+}
+
+async function promptForDirectory(options: {
+  title: string
+  defaultPath?: string | null
+}): Promise<string | null> {
+  const dialogOptions: Electron.OpenDialogOptions = {
+    title: options.title,
+    defaultPath: options.defaultPath ?? undefined,
+    properties: ['openDirectory', 'createDirectory']
+  }
+
+  const result = mainWindow ? await dialog.showOpenDialog(mainWindow, dialogOptions) : await dialog.showOpenDialog(dialogOptions)
+
+  if (result.canceled || result.filePaths.length === 0) {
+    return null
+  }
+
+  return result.filePaths[0]
+}
+
+async function promptForSavePath(options: {
+  title: string
+  defaultPath?: string | null
+  buttonLabel?: string
+  filters?: Electron.FileFilter[]
+}): Promise<string | null> {
+  const dialogOptions: Electron.SaveDialogOptions = {
+    title: options.title,
+    defaultPath: options.defaultPath ?? undefined,
+    buttonLabel: options.buttonLabel,
+    filters: options.filters
+  }
+
+  const result = mainWindow ? await dialog.showSaveDialog(mainWindow, dialogOptions) : await dialog.showSaveDialog(dialogOptions)
+
+  if (result.canceled || !result.filePath) {
+    return null
+  }
+
+  return result.filePath
+}
+
 function registerIpc(): void {
   ipcMain.handle(IPC_CHANNELS.OPEN_MEDIA_FILES, async () => {
+    const copy = getAppCopy(getCurrentLocale())
     const options: Electron.OpenDialogOptions = {
+      defaultPath: currentAppSettings.media.defaultOpenDirectoryPath ?? undefined,
+      title: copy.topbar.openFiles,
       properties: ['openFile', 'multiSelections'],
       filters: [
         { name: 'Video files', extensions: VIDEO_EXTENSIONS },
@@ -114,47 +204,74 @@ function registerIpc(): void {
       return []
     }
 
-    return result.filePaths.map(createMediaFile)
+    const files = await Promise.all(result.filePaths.map((filePath) => createMediaFile(filePath)))
+    const expandedFiles = await expandMediaFiles(files)
+    return expandedFiles
+  })
+
+  ipcMain.handle(IPC_CHANNELS.OPEN_MEDIA_DIRECTORY, async () => {
+    const copy = getAppCopy(getCurrentLocale())
+    return promptForDirectory({
+      title: copy.settingsDialog.general.selectFolderDialogTitle,
+      defaultPath: currentAppSettings.media.defaultOpenDirectoryPath
+    })
+  })
+
+  ipcMain.handle(IPC_CHANNELS.OPEN_FOLDER_PICKER, async (_event, request: { title: string; defaultPath?: string | null }) => {
+    return promptForDirectory(request)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.LIST_MEDIA_FILES_IN_DIRECTORY, async (_event, directoryPath: string) => {
+    return listMediaFilesInDirectory(directoryPath)
   })
 
   ipcMain.handle(IPC_CHANNELS.CREATE_MEDIA_FILE, (_event, filePath: string) => createMediaFile(filePath))
+
+  ipcMain.handle(IPC_CHANNELS.GET_MEDIA_METADATA, async (_event, filePath: string): Promise<MediaProbeMetadata | null> => {
+    return createMediaProbeMetadata(filePath, {
+      resourcePath: resolveResourcePath(),
+      env: process.env
+    })
+  })
 
   ipcMain.handle(IPC_CHANNELS.GET_INITIAL_MEDIA_FILES, () => getInitialMediaFiles())
 
   ipcMain.handle(IPC_CHANNELS.GET_APP_VERSION, () => app.getVersion())
 
   ipcMain.handle(IPC_CHANNELS.APP_GET_SETTINGS, async () => {
-    return readAppSettings(app.getPath('userData'))
+    currentAppSettings = await readAppSettings(app.getPath('userData'), app.getPath('videos'))
+    return currentAppSettings
   })
 
   ipcMain.handle(IPC_CHANNELS.APP_SET_SETTINGS, async (_event, settings) => {
-    return writeAppSettings(app.getPath('userData'), settings)
+    currentAppSettings = await writeAppSettings(app.getPath('userData'), settings, app.getPath('videos'))
+    return currentAppSettings
   })
 
-  ipcMain.handle(IPC_CHANNELS.NATIVE_PLAYER_STATUS, () => getNativePlayerStatus())
+  ipcMain.handle(IPC_CHANNELS.NATIVE_PLAYER_STATUS, () => getNativePlayerStatus(getCurrentLocale))
 
-  ipcMain.handle(IPC_CHANNELS.STOP_NATIVE_PLAYER, () => stopNativePlayer())
+  ipcMain.handle(IPC_CHANNELS.STOP_NATIVE_PLAYER, () => stopNativePlayer(getCurrentLocale))
 
   ipcMain.handle(IPC_CHANNELS.ASR_HEALTH_CHECK, async () => {
     return getAsrRuntime().healthCheck()
   })
 
   ipcMain.handle(IPC_CHANNELS.ASR_AUTO_DETECT_WHISPER_BINARY, async (): Promise<AsrRuntimeSetupResult> => {
+    const copy = getAppCopy(getCurrentLocale())
     const status = await getAsrRuntime().autoConfigureWhisperBinaryPath()
 
     return {
       success: Boolean(status.binaryPath),
-      message: status.binaryPath
-        ? `已自动检测到 ASR 引擎：${status.binaryPath}`
-        : '没有找到内置 ASR 引擎组件。正式安装包请重新安装 AIVPlayer；开发调试时可手动选择 whisper.cpp 可执行文件。',
+      message: status.binaryPath ? copy.runtimeDialog.autoDetectSuccess(status.binaryPath) : copy.runtimeDialog.autoDetectMessage,
       status
     }
   })
 
   ipcMain.handle(IPC_CHANNELS.ASR_SELECT_WHISPER_BINARY, async (): Promise<AsrRuntimeSetupResult> => {
+    const copy = getAppCopy(getCurrentLocale())
     const options: Electron.OpenDialogOptions = {
-      title: '选择 whisper.cpp 可执行文件',
-      message: '请选择 whisper.cpp 编译生成的可执行文件。',
+      title: copy.runtimeDialog.selectWhisperTitle,
+      message: copy.runtimeDialog.selectWhisperMessage,
       properties: ['openFile'],
       filters: [
         { name: 'whisper.cpp binary', extensions: process.platform === 'win32' ? ['exe'] : ['*'] },
@@ -169,7 +286,7 @@ function registerIpc(): void {
       return {
         success: false,
         canceled: true,
-        message: '已取消选择 ASR 引擎。'
+        message: copy.runtimeDialog.selectWhisperCancel
       }
     }
 
@@ -181,9 +298,9 @@ function registerIpc(): void {
       success: Boolean(normalizedBinaryPath),
       message: normalizedBinaryPath
         ? normalizedBinaryPath === binaryPath
-          ? `已选择 ASR 引擎：${binaryPath}`
-          : `已选择 ASR 引擎：${normalizedBinaryPath}（已自动切换到兼容版本）`
-        : '选择的文件暂时无法作为 ASR 引擎使用。',
+          ? copy.runtimeDialog.selectWhisperSuccess(binaryPath)
+          : copy.runtimeDialog.selectWhisperCompatSuccess(normalizedBinaryPath)
+        : copy.runtimeDialog.selectWhisperFailed,
       status
     }
   })
@@ -245,13 +362,85 @@ function registerIpc(): void {
     } satisfies AsrSubtitleExportResult
   })
 
+  ipcMain.handle(IPC_CHANNELS.MEDIA_EXPORT_CLIP, async (_event, request: MediaClipExportRequest) => {
+    const copy = getAppCopy(getCurrentLocale())
+    const ffmpegPath = await resolveFfmpegPath(resolveResourcePath(), process.env, undefined)
+
+    if (!ffmpegPath) {
+      return {
+        success: false,
+        message: copy.runtime.ffmpegMissing,
+        canceled: false
+      }
+    }
+
+    const defaultVideoPath = buildClipExportDefaultVideoPath(
+      request.mediaPath,
+      request.startSeconds,
+      request.durationSeconds,
+      request.mode
+    )
+    const selectedVideoPath = await promptForSavePath({
+      title: copy.runtimeDialog.clipExportSaveTitle,
+      defaultPath: defaultVideoPath,
+      buttonLabel: copy.runtimeDialog.clipExportSaveConfirm,
+      filters: [{ name: 'MP4 video', extensions: ['mp4'] }]
+    })
+
+    if (!selectedVideoPath) {
+      return {
+        success: false,
+        message: '',
+        canceled: true
+      } satisfies MediaClipExportResult
+    }
+
+    try {
+      const result = await runClipExport({
+        ffmpegPath,
+        mediaPath: request.mediaPath,
+        outputVideoPath: selectedVideoPath,
+        startSeconds: request.startSeconds,
+        durationSeconds: request.durationSeconds,
+        mode: request.mode,
+        subtitlePath: request.subtitlePath,
+        subtitleSrtPath: request.subtitleSrtPath,
+        getLocale: getCurrentLocale
+      })
+
+      const videoFile = createMediaFile(result.videoPath)
+      const subtitleSrtFile = result.subtitleSrtPath ? createMediaFile(result.subtitleSrtPath) : null
+
+      return {
+        success: true,
+        message:
+          request.mode === 'burn-subtitle'
+            ? copy.runtime.clipExportBurnedSuccess
+            : request.mode === 'external-subtitle'
+              ? copy.runtime.clipExportWithSubtitleSuccess
+              : copy.runtime.clipExportSuccess,
+        videoPath: result.videoPath,
+        videoUrl: videoFile.url,
+        subtitleSrtPath: subtitleSrtFile?.path,
+        subtitleSrtUrl: subtitleSrtFile?.url
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : String(error),
+        canceled: false
+      }
+    }
+  })
+
   ipcMain.handle(IPC_CHANNELS.CLIPBOARD_WRITE_TEXT, (_event, request: ClipboardWriteTextRequest): ClipboardWriteTextResult => {
+    const copy = getAppCopy(getCurrentLocale())
     const text = request.text.trim()
 
     if (!text) {
       return {
         success: false,
-        message: '没有可复制的内容。'
+        message: copy.messages.noCopyContent
       }
     }
 
@@ -259,7 +448,7 @@ function registerIpc(): void {
 
     return {
       success: true,
-      message: '已复制到剪贴板。'
+      message: copy.messages.copied
     }
   })
 
@@ -320,7 +509,8 @@ function createWindow(): void {
   })
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  currentAppSettings = await readAppSettings(app.getPath('userData'), app.getPath('videos'))
   registerMediaProtocolHandler()
   registerIpc()
   applyMacDockIcon()

@@ -4,6 +4,8 @@ import { delimiter, isAbsolute, join } from 'node:path'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import type { NativePlaybackResult, NativePlayerStatus } from '../../shared/media-types'
+import { getAppCopy } from '../../shared/i18n'
+import type { AppLocale } from '../../shared/localization'
 
 const execFileAsync = promisify(execFile)
 
@@ -48,7 +50,11 @@ export async function resolveMpvBinary(env: NodeJS.ProcessEnv = process.env): Pr
   return null
 }
 
-export async function getNativePlayerStatus(env: NodeJS.ProcessEnv = process.env): Promise<NativePlayerStatus> {
+export async function getNativePlayerStatus(
+  getLocale?: () => AppLocale,
+  env: NodeJS.ProcessEnv = process.env
+): Promise<NativePlayerStatus> {
+  const copy = getAppCopy(getLocale?.())
   const binaryPath = await resolveMpvBinary(env)
 
   if (!binaryPath) {
@@ -57,7 +63,7 @@ export async function getNativePlayerStatus(env: NodeJS.ProcessEnv = process.env
       backend: 'mpv',
       binaryPath: null,
       version: null,
-      message: '未找到 mpv。可以安装 mpv，或设置 AIVPLAYER_MPV_BIN 指向 mpv 可执行文件。'
+      message: copy.runtime.openMpvMissing
     }
   }
 
@@ -70,7 +76,7 @@ export async function getNativePlayerStatus(env: NodeJS.ProcessEnv = process.env
       backend: 'mpv',
       binaryPath,
       version,
-      message: version ? `已检测到 ${version}` : `已检测到 mpv：${binaryPath}`
+      message: version ? copy.runtime.openMpvDetected(version) : copy.runtime.openMpvDetected(binaryPath)
     }
   } catch {
     return {
@@ -78,14 +84,15 @@ export async function getNativePlayerStatus(env: NodeJS.ProcessEnv = process.env
       backend: 'mpv',
       binaryPath,
       version: null,
-      message: `已检测到 mpv：${binaryPath}`
+      message: copy.runtime.openMpvDetected(binaryPath)
     }
   }
 }
 
-export function stopNativePlayer(): NativePlaybackResult {
+export function stopNativePlayer(getLocale?: () => AppLocale): NativePlaybackResult {
+  const copy = getAppCopy(getLocale?.())
   return {
     success: true,
-    message: '当前版本未启用外部 mpv 播放进程。'
+    message: copy.runtime.stopNativePlayer
   }
 }
