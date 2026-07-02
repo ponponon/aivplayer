@@ -45,6 +45,8 @@ const VIDEO_EXTENSIONS = [
   'mpeg'
 ]
 
+const DEFAULT_WINDOW_ZOOM_FACTOR = 3
+
 let mainWindow: BrowserWindow | null = null
 let asrRuntime: ReturnType<typeof createWhisperCppRuntime> | null = null
 let initialMediaFiles: MediaFile[] | null = null
@@ -486,6 +488,9 @@ function createWindow(): void {
       sandbox: false
     }
   })
+
+  // Keep the default renderer a little more compact than the platform baseline.
+  mainWindow.webContents.setZoomFactor(DEFAULT_WINDOW_ZOOM_FACTOR)
 
   if (process.env.ELECTRON_RENDERER_URL) {
     mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL)
