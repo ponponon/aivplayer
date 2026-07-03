@@ -40,6 +40,7 @@ import type {
 import { initialPlayerState, type PanelMode, type PlayerState } from './player-state'
 import { buildAsrModelViewState } from './asr-model-view-state'
 import { ClipExportDialog } from './clip-export-dialog'
+import { InfoValue } from './info-value'
 import { MediaDetailsDialog } from './media-details-dialog'
 import { SettingsDialog } from './settings-dialog'
 import { useModalFocusTrap } from './use-modal-focus-trap'
@@ -334,6 +335,11 @@ export function App(): ReactElement {
   const mediaAudioChannelsLabel = formatChannelLayout(mediaAudio?.channelLayout ?? null)
   const mediaAudioSampleRateLabel = formatSampleRate(mediaAudio?.sampleRateHz)
   const mediaAudioBitrateLabel = formatBitrate(mediaAudio?.bitRateKbps)
+  const playbackPositionInfoLabel = `${formatTime(state.currentTime)} / ${playbackTimeLabel}`
+  const playbackSpeedInfoLabel = `${state.playbackRate}x`
+  const playbackVolumeInfoLabel = `${Math.round((state.muted ? 0 : state.volume) * 100)}%`
+  const subtitleVttStatusLabel = subtitlePath ? copy.panels.subtitleStatusCached : copy.panels.subtitleStatusIdle
+  const subtitleSrtStatusLabel = subtitleSrtPath ? copy.panels.subtitleStatusCached : copy.panels.subtitleStatusIdle
 
   useModalFocusTrap(
     isDownloadDialogOpen && Boolean(recommendedModelManifest),
@@ -1871,19 +1877,19 @@ export function App(): ReactElement {
                     <div className="info-grid compact">
                       <div className="info-item">
                         <span>{copy.panels.containerFormat}</span>
-                        <strong>{mediaContainerLabel}</strong>
+                        <InfoValue value={mediaContainerLabel} />
                       </div>
                       <div className="info-item">
                         <span>{copy.panels.fileSize}</span>
-                        <strong>{mediaFileSizeLabel}</strong>
+                        <InfoValue value={mediaFileSizeLabel} />
                       </div>
                       <div className="info-item">
                         <span>{copy.panels.duration}</span>
-                        <strong>{mediaDurationLabel}</strong>
+                        <InfoValue value={mediaDurationLabel} />
                       </div>
                       <div className="info-item">
                         <span>{copy.panels.overallBitrate}</span>
-                        <strong>{mediaOverallBitrateLabel}</strong>
+                        <InfoValue value={mediaOverallBitrateLabel} />
                       </div>
                     </div>
                     <div className="info-grid">
@@ -1916,19 +1922,19 @@ export function App(): ReactElement {
                     <div className="info-grid compact">
                       <div className="info-item">
                         <span>{copy.panels.resolution}</span>
-                        <strong>{mediaResolutionLabel}</strong>
+                        <InfoValue value={mediaResolutionLabel} />
                       </div>
                       <div className="info-item">
                         <span>{copy.panels.frameRate}</span>
-                        <strong>{mediaFrameRateLabel}</strong>
+                        <InfoValue value={mediaFrameRateLabel} />
                       </div>
                       <div className="info-item">
                         <span>{copy.panels.videoCodec}</span>
-                        <strong>{mediaVideoCodecLabel}</strong>
+                        <InfoValue value={mediaVideoCodecLabel} />
                       </div>
                       <div className="info-item">
                         <span>{copy.panels.displayAspectRatio}</span>
-                        <strong>{mediaAspectRatioLabel}</strong>
+                        <InfoValue value={mediaAspectRatioLabel} />
                       </div>
                     </div>
                   </section>
@@ -1941,19 +1947,19 @@ export function App(): ReactElement {
                     <div className="info-grid compact">
                       <div className="info-item">
                         <span>{copy.panels.audioCodec}</span>
-                        <strong>{mediaAudioCodecLabel}</strong>
+                        <InfoValue value={mediaAudioCodecLabel} />
                       </div>
                       <div className="info-item">
                         <span>{copy.panels.channels}</span>
-                        <strong>{mediaAudioChannelsLabel}</strong>
+                        <InfoValue value={mediaAudioChannelsLabel} />
                       </div>
                       <div className="info-item">
                         <span>{copy.panels.sampleRate}</span>
-                        <strong>{mediaAudioSampleRateLabel}</strong>
+                        <InfoValue value={mediaAudioSampleRateLabel} />
                       </div>
                       <div className="info-item">
                         <span>{copy.panels.audioBitrate}</span>
-                        <strong>{mediaAudioBitrateLabel}</strong>
+                        <InfoValue value={mediaAudioBitrateLabel} />
                       </div>
                     </div>
                   </section>
@@ -1966,21 +1972,19 @@ export function App(): ReactElement {
                     <div className="info-grid compact">
                       <div className="info-item">
                         <span>{copy.controls.playbackPosition}</span>
-                        <strong>
-                          {formatTime(state.currentTime)} / {playbackTimeLabel}
-                        </strong>
+                        <InfoValue value={playbackPositionInfoLabel} />
                       </div>
                       <div className="info-item">
                         <span>{copy.controls.playbackSpeed}</span>
-                        <strong>{state.playbackRate}x</strong>
+                        <InfoValue value={playbackSpeedInfoLabel} />
                       </div>
                       <div className="info-item">
                         <span>{copy.controls.volume}</span>
-                        <strong>{Math.round((state.muted ? 0 : state.volume) * 100)}%</strong>
+                        <InfoValue value={playbackVolumeInfoLabel} />
                       </div>
                       <div className="info-item">
                         <span>{copy.asrPanel.cacheState}</span>
-                        <strong>{subtitleStatusLabel}</strong>
+                        <InfoValue value={subtitleStatusLabel} />
                       </div>
                     </div>
                   </section>
@@ -1993,11 +1997,11 @@ export function App(): ReactElement {
                     <div className="info-grid compact">
                       <div className="info-item">
                         <span>{copy.panels.vtt}</span>
-                        <strong>{subtitlePath ? copy.panels.subtitleStatusCached : copy.panels.subtitleStatusIdle}</strong>
+                        <InfoValue value={subtitleVttStatusLabel} tooltip={subtitlePath ?? subtitleVttStatusLabel} />
                       </div>
                       <div className="info-item">
                         <span>{copy.panels.srt}</span>
-                        <strong>{subtitleSrtPath ? copy.panels.subtitleStatusCached : copy.panels.subtitleStatusIdle}</strong>
+                        <InfoValue value={subtitleSrtStatusLabel} tooltip={subtitleSrtPath ?? subtitleSrtStatusLabel} />
                       </div>
                     </div>
                   </section>

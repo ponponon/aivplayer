@@ -1,3 +1,8 @@
+## 原生 title 不等于可靠的可见 Tooltip
+- 用户要求“鼠标悬停显示完整内容”时，不能只给元素加 `title` 就当完成；Electron / Chromium 的原生 title 显示有延迟、样式不可控，也不一定符合用户对“可见浮层”的预期。
+- 对明确的 UI 交互需求，应该实现项目内可控的 tooltip / popover，至少要能在 hover 和键盘 focus 时稳定显示，且要考虑滚动容器、窄侧栏、文本换行和左右边界。
+- 验证这类修复时不能只跑 typecheck，要实际对照目标 DOM 和 CSS 看浮层是否可见；必要时补一个组件级测试，确保不是继续依赖原生 title。
+
 ## Playwright 浏览器“已安装”不等于“当前可直接用”
 - 不能只看到 `ms-playwright` 目录里有 Chrome / headless shell 二进制，就直接判断 Playwright 完全可用；还要确认 `playwright.chromium.executablePath()` 指向的 revision 是否真的存在，以及当前进程能否成功启动。
 - 如果实际报错来自 macOS 的进程隔离、`bootstrap_check_in` 或 `SIGABRT`，那说明问题已经从“有没有安装”变成“当前环境能不能 launch”，这两件事要分开判断。
