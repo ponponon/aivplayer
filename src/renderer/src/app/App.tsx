@@ -40,6 +40,7 @@ import type {
 import { initialPlayerState, type PanelMode, type PlayerState } from './player-state'
 import { buildAsrModelViewState } from './asr-model-view-state'
 import { ClipExportDialog } from './clip-export-dialog'
+import { MediaDetailsDialog } from './media-details-dialog'
 import { SettingsDialog } from './settings-dialog'
 import { useModalFocusTrap } from './use-modal-focus-trap'
 import { clamp, formatPlaybackTimeLabel, formatTime } from '../lib/time'
@@ -253,6 +254,7 @@ export function App(): ReactElement {
   const [isSelectingWhisperBinary, setIsSelectingWhisperBinary] = useState(false)
   const [isClipExportDialogOpen, setIsClipExportDialogOpen] = useState(false)
   const [isExportingClip, setIsExportingClip] = useState(false)
+  const [isMediaDetailsDialogOpen, setIsMediaDetailsDialogOpen] = useState(false)
   const [runtimeSetupMessage, setRuntimeSetupMessage] = useState<{ success: boolean; message: string } | null>(null)
   const [isDownloadDialogOpen, setIsDownloadDialogOpen] = useState(false)
   const [appSettings, setAppSettings] = useState<AppSettings>(createDefaultAppSettings())
@@ -303,10 +305,22 @@ export function App(): ReactElement {
     state.duration,
     appSettings.playback.showTotalPlaybackTime
   )
+  const mediaFormat = mediaMetadata?.details?.format ?? null
   const mediaDurationSeconds = state.duration > 0 ? state.duration : mediaMetadata?.durationSeconds ?? null
   const mediaVideoWidth = state.videoWidth > 0 ? state.videoWidth : mediaMetadata?.video?.width ?? null
   const mediaVideoHeight = state.videoHeight > 0 ? state.videoHeight : mediaMetadata?.video?.height ?? null
-  const mediaContainerLabel = state.currentFile?.extension ? state.currentFile.extension.toUpperCase() : '--'
+  const mediaContainerName =
+    typeof mediaFormat?.format_name === 'string' && mediaFormat.format_name.trim().length > 0
+      ? mediaFormat.format_name.trim()
+      : null
+  const mediaContainerLabel =
+    typeof mediaFormat?.format_long_name === 'string' && mediaFormat.format_long_name.trim().length > 0
+      ? mediaFormat.format_long_name.trim()
+      : typeof mediaFormat?.format_name === 'string' && mediaFormat.format_name.trim().length > 0
+        ? mediaFormat.format_name.trim()
+        : state.currentFile?.extension
+          ? state.currentFile.extension.toUpperCase()
+          : '--'
   const mediaVideo = mediaMetadata?.video ?? null
   const mediaAudio = mediaMetadata?.audio ?? null
   const mediaFileSizeLabel = formatFileSize(mediaMetadata?.fileSizeBytes)
@@ -1253,6 +1267,12 @@ export function App(): ReactElement {
     }
   }, [state.currentFile?.path])
 
+  useEffect(() => {
+    if (!state.currentFile) {
+      setIsMediaDetailsDialogOpen(false)
+    }
+  }, [state.currentFile])
+
   return (
     <div
       className="app-shell"
@@ -1845,7 +1865,7 @@ export function App(): ReactElement {
                     <div className="info-hero">
                       <strong title={state.currentFile.name}>{state.currentFile.name}</strong>
                       <span>
-                        {mediaContainerLabel} · {copy.panels.loadedToPlayer}
+                        {(mediaContainerName ?? mediaContainerLabel) || '--'} · {copy.panels.loadedToPlayer}
                       </span>
                     </div>
                     <div className="info-grid compact">
@@ -1875,6 +1895,16 @@ export function App(): ReactElement {
                         <span>{copy.panels.mediaUrl}</span>
                         <strong title={state.currentFile.url}>{state.currentFile.url}</strong>
                       </div>
+                    </div>
+                    <div className="info-card-actions">
+                      <button
+                        className="settings-secondary-button info-card-more-button"
+                        type="button"
+                        onClick={() => setIsMediaDetailsDialogOpen(true)}
+                        disabled={!mediaMetadata}
+                      >
+                        {copy.panels.moreDetails}
+                      </button>
                     </div>
                   </section>
 
@@ -2093,6 +2123,14 @@ export function App(): ReactElement {
             </div>
           </section>
         </div>
+      ) : null}
+
+      {isMediaDetailsDialogOpen ? (
+        <MediaDetailsDialog
+          copy={copy}
+          metadata={mediaMetadata}
+          onClose={() => setIsMediaDetailsDialogOpen(false)}
+        />
       ) : null}
     </div>
   )

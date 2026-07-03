@@ -9,14 +9,18 @@ export type BundledAsrRuntimeCheckResult = {
   resourcePath: string
   whisperCandidates: string[]
   ffmpegCandidates: string[]
+  ffprobeCandidates: string[]
   whisperBinaryPath: string | null
   ffmpegPath: string | null
+  ffprobePath: string | null
   missing: string[]
   message: string
 }
 
 const POSIX_FFMPEG_BINARY_NAMES = ['ffmpeg']
 const WINDOWS_FFMPEG_BINARY_NAMES = ['ffmpeg.exe']
+const POSIX_FFPROBE_BINARY_NAMES = ['ffprobe']
+const WINDOWS_FFPROBE_BINARY_NAMES = ['ffprobe.exe']
 
 function getWhisperBinaryNames(platform = process.platform): string[] {
   return getSupportedWhisperBinaryNames(platform)
@@ -24,6 +28,10 @@ function getWhisperBinaryNames(platform = process.platform): string[] {
 
 function getFfmpegBinaryNames(platform = process.platform): string[] {
   return platform === 'win32' ? WINDOWS_FFMPEG_BINARY_NAMES : POSIX_FFMPEG_BINARY_NAMES
+}
+
+function getFfprobeBinaryNames(platform = process.platform): string[] {
+  return platform === 'win32' ? WINDOWS_FFPROBE_BINARY_NAMES : POSIX_FFPROBE_BINARY_NAMES
 }
 
 function getExecutableAccessMode(platform = process.platform): number {
@@ -55,21 +63,25 @@ export async function checkBundledAsrRuntime(options?: {
     join(resourcePath, 'whisper.cpp', binaryName)
   )
   const ffmpegCandidates = getFfmpegBinaryNames(platform).map((binaryName) => join(resourcePath, 'ffmpeg', binaryName))
-  const [whisperBinaryPath, ffmpegPath] = await Promise.all([
+  const ffprobeCandidates = getFfprobeBinaryNames(platform).map((binaryName) => join(resourcePath, 'ffmpeg', binaryName))
+  const [whisperBinaryPath, ffmpegPath, ffprobePath] = await Promise.all([
     findExecutable(whisperCandidates, platform),
-    findExecutable(ffmpegCandidates, platform)
+    findExecutable(ffmpegCandidates, platform),
+    findExecutable(ffprobeCandidates, platform)
   ])
   const missing = [
     ...(whisperBinaryPath ? [] : ['whisper.cpp']),
-    ...(ffmpegPath ? [] : ['ffmpeg'])
+    ...(ffmpegPath ? [] : ['ffmpeg']),
+    ...(ffprobePath ? [] : ['ffprobe'])
   ]
   const ok = missing.length === 0
   const message = ok
-    ? `ASR runtime is ready: ${whisperBinaryPath} + ${ffmpegPath}`
+    ? `ASR runtime is ready: ${whisperBinaryPath} + ${ffmpegPath} + ${ffprobePath}`
     : [
         'ASR runtime is missing from the release resources.',
         `Expected whisper.cpp binary in ${join(resourcePath, 'whisper.cpp')} (default: resources/whisper.cpp).`,
         `Expected ffmpeg binary in ${join(resourcePath, 'ffmpeg')} (default: resources/ffmpeg).`,
+        `Expected ffprobe binary in ${join(resourcePath, 'ffmpeg')} (default: resources/ffmpeg).`,
         'Stage platform-specific binaries before running npm run dist.'
       ].join('\n')
 
@@ -78,8 +90,10 @@ export async function checkBundledAsrRuntime(options?: {
     resourcePath,
     whisperCandidates,
     ffmpegCandidates,
+    ffprobeCandidates,
     whisperBinaryPath,
     ffmpegPath,
+    ffprobePath,
     missing,
     message
   }

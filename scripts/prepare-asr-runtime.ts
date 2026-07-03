@@ -22,20 +22,31 @@ export type PrepareAsrRuntimeResult = {
   resourcePath: string
   whisperBinaryPath: string
   ffmpegPath: string
+  ffprobePath: string
   copiedFiles: string[]
   message: string
 }
 
 const POSIX_FFMPEG_BINARY_NAMES = ['ffmpeg']
 const WINDOWS_FFMPEG_BINARY_NAMES = ['ffmpeg.exe']
+const POSIX_FFPROBE_BINARY_NAMES = ['ffprobe']
+const WINDOWS_FFPROBE_BINARY_NAMES = ['ffprobe.exe']
 const RUNTIME_SIDECAR_EXTENSIONS = new Set(['.dll', '.dylib', '.metal'])
 
 function getFfmpegBinaryNames(platform: NodeJS.Platform): string[] {
   return platform === 'win32' ? WINDOWS_FFMPEG_BINARY_NAMES : POSIX_FFMPEG_BINARY_NAMES
 }
 
+function getFfprobeBinaryNames(platform: NodeJS.Platform): string[] {
+  return platform === 'win32' ? WINDOWS_FFPROBE_BINARY_NAMES : POSIX_FFPROBE_BINARY_NAMES
+}
+
 function getFfmpegDestinationName(platform: NodeJS.Platform): string {
   return platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg'
+}
+
+function getFfprobeDestinationName(platform: NodeJS.Platform): string {
+  return platform === 'win32' ? 'ffprobe.exe' : 'ffprobe'
 }
 
 function isLinuxSharedObject(fileName: string): boolean {
@@ -223,7 +234,12 @@ export async function prepareAsrRuntime(options: PrepareAsrRuntimeOptions): Prom
     binaryNames: getFfmpegBinaryNames(platform),
     componentName: 'ffmpeg'
   })
-  const [whisperBinaryPath, ffmpegPath] = await Promise.all([
+  const ffprobeSourcePath = await resolveRuntimeBinary({
+    sourceDirectory: dirname(ffmpegSourcePath),
+    binaryNames: getFfprobeBinaryNames(platform),
+    componentName: 'ffprobe'
+  })
+  const [whisperBinaryPath, ffmpegPath, ffprobePath] = await Promise.all([
     copyRuntimeBinary({
       sourcePath: whisperSourcePath,
       destinationDirectory: whisperDestinationDirectory,
@@ -233,6 +249,12 @@ export async function prepareAsrRuntime(options: PrepareAsrRuntimeOptions): Prom
       sourcePath: ffmpegSourcePath,
       destinationDirectory: ffmpegDestinationDirectory,
       destinationName: getFfmpegDestinationName(platform),
+      platform
+    }),
+    copyRuntimeBinary({
+      sourcePath: ffprobeSourcePath,
+      destinationDirectory: ffmpegDestinationDirectory,
+      destinationName: getFfprobeDestinationName(platform),
       platform
     })
   ])
@@ -244,12 +266,13 @@ export async function prepareAsrRuntime(options: PrepareAsrRuntimeOptions): Prom
     throw new Error(check.message)
   }
 
-  const copiedFiles = [whisperBinaryPath, ffmpegPath, ...whisperSidecars, ...ffmpegSidecars]
+  const copiedFiles = [whisperBinaryPath, ffmpegPath, ffprobePath, ...whisperSidecars, ...ffmpegSidecars]
   const message = [
     'ASR runtime staged for release.',
     `whisper.cpp: ${whisperBinaryPath}`,
     `ffmpeg: ${ffmpegPath}`,
-    copiedFiles.length > 2 ? `sidecars: ${copiedFiles.length - 2}` : 'sidecars: 0'
+    `ffprobe: ${ffprobePath}`,
+    copiedFiles.length > 3 ? `sidecars: ${copiedFiles.length - 3}` : 'sidecars: 0'
   ].join('\n')
 
   for (const filePath of copiedFiles) {
@@ -265,6 +288,7 @@ export async function prepareAsrRuntime(options: PrepareAsrRuntimeOptions): Prom
     resourcePath,
     whisperBinaryPath,
     ffmpegPath,
+    ffprobePath,
     copiedFiles,
     message
   }

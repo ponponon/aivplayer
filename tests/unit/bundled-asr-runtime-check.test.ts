@@ -15,22 +15,26 @@ describe('bundled ASR runtime check', () => {
     await rm(tempDirectory, { recursive: true, force: true })
   })
 
-  it('passes when whisper.cpp and ffmpeg binaries are staged in resources', async () => {
+  it('passes when whisper.cpp, ffmpeg, and ffprobe binaries are staged in resources', async () => {
     const whisperPath = join(tempDirectory, 'whisper.cpp', 'whisper-cli')
     const ffmpegPath = join(tempDirectory, 'ffmpeg', 'ffmpeg')
+    const ffprobePath = join(tempDirectory, 'ffmpeg', 'ffprobe')
 
     await mkdir(join(tempDirectory, 'whisper.cpp'), { recursive: true })
     await mkdir(join(tempDirectory, 'ffmpeg'), { recursive: true })
     await writeFile(whisperPath, '#!/bin/sh\necho "whisper.cpp mock"\n')
     await writeFile(ffmpegPath, '#!/bin/sh\necho "ffmpeg mock"\n')
+    await writeFile(ffprobePath, '#!/bin/sh\necho "ffprobe mock"\n')
     await chmod(whisperPath, 0o755)
     await chmod(ffmpegPath, 0o755)
+    await chmod(ffprobePath, 0o755)
 
     const result = await checkBundledAsrRuntime({ resourcePath: tempDirectory })
 
     expect(result.ok).toBe(true)
     expect(result.whisperBinaryPath).toBe(whisperPath)
     expect(result.ffmpegPath).toBe(ffmpegPath)
+    expect(result.ffprobePath).toBe(ffprobePath)
     expect(result.missing).toEqual([])
   })
 
@@ -38,7 +42,7 @@ describe('bundled ASR runtime check', () => {
     const result = await checkBundledAsrRuntime({ resourcePath: tempDirectory })
 
     expect(result.ok).toBe(false)
-    expect(result.missing).toEqual(['whisper.cpp', 'ffmpeg'])
+    expect(result.missing).toEqual(['whisper.cpp', 'ffmpeg', 'ffprobe'])
     expect(result.message).toContain('resources/whisper.cpp')
     expect(result.message).toContain('resources/ffmpeg')
   })

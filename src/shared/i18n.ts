@@ -74,6 +74,16 @@ export type LocaleCopy = {
     srt: string
     openAsrPanel: string
     asrSubtitleTrack: string
+    moreDetails: string
+  }
+  mediaDetailsDialog: {
+    title: string
+    description: string
+    close: string
+    sourceLabel: string
+    formatTitle: string
+    streamsTitle: string
+    noDetails: string
   }
   asrPanel: {
     engineStatus: string
@@ -367,7 +377,17 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       vtt: 'VTT',
       srt: 'SRT',
       openAsrPanel: '打开 ASR 面板',
-      asrSubtitleTrack: 'ASR 字幕'
+      asrSubtitleTrack: 'ASR 字幕',
+      moreDetails: '查看完整详情'
+    },
+    mediaDetailsDialog: {
+      title: '完整媒体详情',
+      description: '点击可查看由 ffprobe 提取的完整格式与流字段。',
+      close: '关闭',
+      sourceLabel: '探测来源',
+      formatTitle: '格式信息',
+      streamsTitle: '流信息',
+      noDetails: '当前没有可展示的详细探测数据。'
     },
     asrPanel: {
       engineStatus: 'ASR 引擎状态',
@@ -708,7 +728,17 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       vtt: 'VTT',
       srt: 'SRT',
       openAsrPanel: 'Open ASR panel',
-      asrSubtitleTrack: 'ASR subtitles'
+      asrSubtitleTrack: 'ASR subtitles',
+      moreDetails: 'View full details'
+    },
+    mediaDetailsDialog: {
+      title: 'Full media details',
+      description: 'View the full format and stream fields extracted by ffprobe.',
+      close: 'Close',
+      sourceLabel: 'Probe source',
+      formatTitle: 'Format info',
+      streamsTitle: 'Stream info',
+      noDetails: 'No detailed probe data is available right now.'
     },
     asrPanel: {
       engineStatus: 'ASR engine status',
@@ -1049,7 +1079,17 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       vtt: 'VTT',
       srt: 'SRT',
       openAsrPanel: 'ASR パネルを開く',
-      asrSubtitleTrack: 'ASR 字幕'
+      asrSubtitleTrack: 'ASR 字幕',
+      moreDetails: '詳細を表示'
+    },
+    mediaDetailsDialog: {
+      title: 'メディアの詳細',
+      description: 'ffprobe で取得したフォーマットとストリームの詳細を表示します。',
+      close: '閉じる',
+      sourceLabel: '取得元',
+      formatTitle: 'フォーマット情報',
+      streamsTitle: 'ストリーム情報',
+      noDetails: '表示できる詳細な解析データがありません。'
     },
     asrPanel: {
       engineStatus: 'ASR エンジンの状態',
@@ -1390,7 +1430,17 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       vtt: 'VTT',
       srt: 'SRT',
       openAsrPanel: 'ASR 패널 열기',
-      asrSubtitleTrack: 'ASR 자막'
+      asrSubtitleTrack: 'ASR 자막',
+      moreDetails: '자세한 정보'
+    },
+    mediaDetailsDialog: {
+      title: '전체 미디어 정보',
+      description: 'ffprobe로 추출한 포맷과 스트림의 모든 필드를 확인합니다.',
+      close: '닫기',
+      sourceLabel: '탐지 도구',
+      formatTitle: '포맷 정보',
+      streamsTitle: '스트림 정보',
+      noDetails: '표시할 자세한 탐지 데이터가 없습니다.'
     },
     asrPanel: {
       engineStatus: 'ASR 엔진 상태',

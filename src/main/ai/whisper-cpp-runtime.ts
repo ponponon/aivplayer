@@ -26,9 +26,15 @@ import type {
 const execFileAsync = promisify(execFile)
 const POSIX_FFMPEG_BINARY_NAMES = ['ffmpeg']
 const WINDOWS_FFMPEG_BINARY_NAMES = ['ffmpeg.exe']
+const POSIX_FFPROBE_BINARY_NAMES = ['ffprobe']
+const WINDOWS_FFPROBE_BINARY_NAMES = ['ffprobe.exe']
 
 function getFfmpegBinaryNames(): string[] {
   return process.platform === 'win32' ? WINDOWS_FFMPEG_BINARY_NAMES : POSIX_FFMPEG_BINARY_NAMES
+}
+
+function getFfprobeBinaryNames(): string[] {
+  return process.platform === 'win32' ? WINDOWS_FFPROBE_BINARY_NAMES : POSIX_FFPROBE_BINARY_NAMES
 }
 
 function getBundledBinaryCandidates(resourcePath: string, resourceDirectory: string, binaryNames: string[]): string[] {
@@ -189,6 +195,21 @@ export async function resolveFfmpegPath(
     resourcePath,
     resourceDirectory: 'ffmpeg',
     binaryNames: getFfmpegBinaryNames(),
+    env,
+    extraBinaryDirectories
+  })
+}
+
+export async function resolveFfprobePath(
+  resourcePath: string,
+  env: NodeJS.ProcessEnv,
+  extraBinaryDirectories: string[] | undefined
+): Promise<string | null> {
+  return resolveExecutablePath({
+    overrides: [env.AIVPLAYER_FFPROBE_BIN],
+    resourcePath,
+    resourceDirectory: 'ffmpeg',
+    binaryNames: getFfprobeBinaryNames(),
     env,
     extraBinaryDirectories
   })

@@ -8,6 +8,19 @@ export type MediaFile = {
   extension: string
 }
 
+export type MediaProbeDetailScalar = string | number | boolean | null
+
+export interface MediaProbeDetailObject {
+  [key: string]: MediaProbeDetailValue
+}
+
+export type MediaProbeDetailValue = MediaProbeDetailScalar | MediaProbeDetailObject | MediaProbeDetailValue[]
+
+export type MediaProbeDetails = {
+  format: MediaProbeDetailObject | null
+  streams: MediaProbeDetailObject[]
+}
+
 export type MediaVideoMetadata = {
   codec: string | null
   profile: string | null
@@ -32,6 +45,8 @@ export type MediaProbeMetadata = {
   overallBitrateKbps: number | null
   video: MediaVideoMetadata | null
   audio: MediaAudioMetadata | null
+  probeSource: 'ffprobe' | 'ffmpeg' | null
+  details: MediaProbeDetails | null
 }
 
 export type PlaybackState = {

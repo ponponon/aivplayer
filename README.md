@@ -105,7 +105,7 @@ aivplayer/
 AIVPlayer 使用 whisper.cpp 作为 ASR 引擎，正式安装包已内置：
 
 - `resources/whisper.cpp/` - whisper.cpp 可执行文件（名称取决于上游版本）
-- `resources/ffmpeg/` - ffmpeg 音频处理工具
+- `resources/ffmpeg/` - ffmpeg / ffprobe 音频与媒体探测工具
 - 生成的字幕默认缓存到 `~/Library/Application Support/AIVPlayer/asr-cache/subtitles/`（macOS），其他平台则在各自的用户数据目录下。
 - 同一份字幕任务会同时生成 `.vtt` 和 `.srt`，前者挂载到播放器，后者保留为可复用的文本字幕。
 

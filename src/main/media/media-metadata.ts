@@ -2,14 +2,73 @@ import { existsSync } from 'node:fs'
 import { stat } from 'node:fs/promises'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { resolveFfmpegPath } from '../ai/whisper-cpp-runtime'
-import type { MediaAudioMetadata, MediaProbeMetadata, MediaVideoMetadata } from '../../shared/media-types'
+import { resolveFfprobePath, resolveFfmpegPath } from '../ai/whisper-cpp-runtime'
+import type {
+  MediaAudioMetadata,
+  MediaProbeDetailObject,
+  MediaProbeDetails,
+  MediaProbeMetadata,
+  MediaVideoMetadata
+} from '../../shared/media-types'
 
 const execFileAsync = promisify(execFile)
-const PROBE_TIMEOUT_MS = 6000
-const PROBE_MAX_BUFFER_BYTES = 1024 * 1024
+const FFPROBE_TIMEOUT_MS = 6000
+const FFPROBE_MAX_BUFFER_BYTES = 2 * 1024 * 1024
+const FFMPEG_TIMEOUT_MS = 6000
+const FFMPEG_MAX_BUFFER_BYTES = 1024 * 1024
 
+let cachedFfprobePathPromise: Promise<string | null> | null = null
 let cachedFfmpegPathPromise: Promise<string | null> | null = null
+
+type ProbeSummary = {
+  durationSeconds: number | null
+  overallBitrateKbps: number | null
+  video: MediaVideoMetadata | null
+  audio: MediaAudioMetadata | null
+}
+
+type FfprobeProbe = ProbeSummary & {
+  details: MediaProbeDetails
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
+function toText(value: unknown): string | null {
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    return trimmed.length > 0 ? trimmed : null
+  }
+
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value)
+  }
+
+  if (typeof value === 'boolean') {
+    return value ? 'true' : 'false'
+  }
+
+  return null
+}
+
+function toNumber(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value
+  }
+
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  const trimmed = value.trim()
+  if (trimmed.length === 0) {
+    return null
+  }
+
+  const parsed = Number(trimmed)
+  return Number.isFinite(parsed) ? parsed : null
+}
 
 function parseClockTimeToSeconds(value: string): number | null {
   const match = /^(?:(\d+):)?(\d+):(\d+(?:\.\d+)?)$/.exec(value.trim())
@@ -27,6 +86,41 @@ function parseClockTimeToSeconds(value: string): number | null {
   }
 
   return hours * 3600 + minutes * 60 + seconds
+}
+
+function parseFractionToNumber(value: unknown): number | null {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null
+  }
+
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  const trimmed = value.trim()
+  if (trimmed.length === 0 || trimmed === '0/0') {
+    return null
+  }
+
+  const fractionMatch = /^(-?\d+(?:\.\d+)?)(?:\/(-?\d+(?:\.\d+)?))?$/.exec(trimmed)
+  if (!fractionMatch) {
+    const parsed = Number(trimmed)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+
+  const numerator = Number(fractionMatch[1])
+  const denominator = fractionMatch[2] == null ? 1 : Number(fractionMatch[2])
+
+  if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator === 0) {
+    return null
+  }
+
+  return numerator / denominator
+}
+
+function parseBitRateKbps(value: unknown): number | null {
+  const bitsPerSecond = toNumber(value)
+  return bitsPerSecond == null ? null : bitsPerSecond / 1000
 }
 
 function parseCodecToken(token: string): { codec: string | null; profile: string | null } {
@@ -62,7 +156,7 @@ function splitStreamTokens(line: string, streamLabel: 'Video' | 'Audio'): string
     .filter(Boolean)
 }
 
-function parseVideoStream(line: string): MediaVideoMetadata | null {
+function parseVideoStreamLine(line: string): MediaVideoMetadata | null {
   const tokens = splitStreamTokens(line, 'Video')
 
   if (tokens.length === 0) {
@@ -104,7 +198,7 @@ function parseVideoStream(line: string): MediaVideoMetadata | null {
   return video
 }
 
-function parseAudioStream(line: string): MediaAudioMetadata | null {
+function parseAudioStreamLine(line: string): MediaAudioMetadata | null {
   const tokens = splitStreamTokens(line, 'Audio')
 
   if (tokens.length === 0) {
@@ -141,7 +235,43 @@ function parseAudioStream(line: string): MediaAudioMetadata | null {
   return audio
 }
 
-export function parseMediaProbeOutput(output: string): Omit<MediaProbeMetadata, 'fileSizeBytes'> {
+function normalizeDetailsObject(value: unknown): MediaProbeDetailObject | null {
+  return isRecord(value) ? (value as MediaProbeDetailObject) : null
+}
+
+function summarizeVideoStream(stream: MediaProbeDetailObject | null): MediaVideoMetadata | null {
+  if (!stream) {
+    return null
+  }
+
+  const codecInfo = parseCodecToken(toText(stream.codec_name) ?? '')
+  return {
+    codec: codecInfo.codec,
+    profile: toText(stream.profile),
+    width: toNumber(stream.width),
+    height: toNumber(stream.height),
+    frameRate: parseFractionToNumber(stream.avg_frame_rate) ?? parseFractionToNumber(stream.r_frame_rate),
+    displayAspectRatio: toText(stream.display_aspect_ratio),
+    bitRateKbps: parseBitRateKbps(stream.bit_rate)
+  }
+}
+
+function summarizeAudioStream(stream: MediaProbeDetailObject | null): MediaAudioMetadata | null {
+  if (!stream) {
+    return null
+  }
+
+  const codecInfo = parseCodecToken(toText(stream.codec_name) ?? '')
+  return {
+    codec: codecInfo.codec,
+    profile: toText(stream.profile),
+    channelLayout: toText(stream.channel_layout),
+    sampleRateHz: toNumber(stream.sample_rate),
+    bitRateKbps: parseBitRateKbps(stream.bit_rate)
+  }
+}
+
+export function parseMediaProbeOutput(output: string): ProbeSummary {
   const normalizedOutput = output.replace(/\r\n/g, '\n')
   const lines = normalizedOutput.split('\n')
 
@@ -154,9 +284,72 @@ export function parseMediaProbeOutput(output: string): Omit<MediaProbeMetadata, 
   return {
     durationSeconds: Number.isFinite(durationSeconds ?? Number.NaN) ? durationSeconds : null,
     overallBitrateKbps: overallBitrateMatch ? Number(overallBitrateMatch[1]) : null,
-    video: videoLine ? parseVideoStream(videoLine) : null,
-    audio: audioLine ? parseAudioStream(audioLine) : null
+    video: videoLine ? parseVideoStreamLine(videoLine) : null,
+    audio: audioLine ? parseAudioStreamLine(audioLine) : null
   }
+}
+
+export function parseFfprobeOutput(output: string): FfprobeProbe | null {
+  const normalizedOutput = output.trim()
+  if (!normalizedOutput) {
+    return null
+  }
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(normalizedOutput)
+  } catch {
+    return null
+  }
+
+  if (!isRecord(parsed)) {
+    return null
+  }
+
+  const format = normalizeDetailsObject(parsed.format)
+  const streams = Array.isArray(parsed.streams)
+    ? parsed.streams.map((stream) => normalizeDetailsObject(stream)).filter((stream): stream is MediaProbeDetailObject => Boolean(stream))
+    : []
+
+  const details: MediaProbeDetails = {
+    format,
+    streams
+  }
+
+  const videoStream = streams.find((stream) => toText(stream.codec_type) === 'video') ?? null
+  const audioStream = streams.find((stream) => toText(stream.codec_type) === 'audio') ?? null
+
+  return {
+    durationSeconds: parseNumberField(format?.duration),
+    overallBitrateKbps: parseBitRateKbps(format?.bit_rate),
+    video: summarizeVideoStream(videoStream),
+    audio: summarizeAudioStream(audioStream),
+    details
+  }
+}
+
+function parseNumberField(value: unknown): number | null {
+  const parsed = toNumber(value)
+  if (parsed != null) {
+    return parsed
+  }
+
+  if (typeof value === 'string') {
+    const durationSeconds = parseClockTimeToSeconds(value)
+    if (durationSeconds != null) {
+      return durationSeconds
+    }
+  }
+
+  return null
+}
+
+async function getFfprobePath(resourcePath: string, env: NodeJS.ProcessEnv): Promise<string | null> {
+  if (!cachedFfprobePathPromise) {
+    cachedFfprobePathPromise = resolveFfprobePath(resourcePath, env, undefined)
+  }
+
+  return cachedFfprobePathPromise
 }
 
 async function getFfmpegPath(resourcePath: string, env: NodeJS.ProcessEnv): Promise<string | null> {
@@ -167,21 +360,42 @@ async function getFfmpegPath(resourcePath: string, env: NodeJS.ProcessEnv): Prom
   return cachedFfmpegPathPromise
 }
 
-async function readProbeOutput(ffmpegPath: string, filePath: string): Promise<string> {
+async function readProbeOutput(
+  binaryPath: string,
+  args: string[],
+  outputChannel: 'stdout' | 'stderr',
+  timeoutMs: number,
+  maxBufferBytes: number
+): Promise<string> {
   try {
-    await execFileAsync(ffmpegPath, ['-hide_banner', '-i', filePath], {
-      timeout: PROBE_TIMEOUT_MS,
-      maxBuffer: PROBE_MAX_BUFFER_BYTES,
+    const result = await execFileAsync(binaryPath, args, {
+      timeout: timeoutMs,
+      maxBuffer: maxBufferBytes,
       windowsHide: true
     })
-    return ''
+
+    return outputChannel === 'stdout' ? String(result.stdout ?? '') : String(result.stderr ?? '')
   } catch (error) {
-    if (error && typeof error === 'object' && 'stderr' in error) {
-      return String((error as { stderr?: unknown }).stderr ?? '')
+    if (error && typeof error === 'object' && outputChannel in error) {
+      return String((error as { stdout?: unknown; stderr?: unknown })[outputChannel] ?? '')
     }
 
     return ''
   }
+}
+
+async function readFfprobeOutput(ffprobePath: string, filePath: string): Promise<string> {
+  return readProbeOutput(
+    ffprobePath,
+    ['-v', 'quiet', '-print_format', 'json', '-show_format', '-show_streams', filePath],
+    'stdout',
+    FFPROBE_TIMEOUT_MS,
+    FFPROBE_MAX_BUFFER_BYTES
+  )
+}
+
+async function readFfmpegOutput(ffmpegPath: string, filePath: string): Promise<string> {
+  return readProbeOutput(ffmpegPath, ['-hide_banner', '-i', filePath], 'stderr', FFMPEG_TIMEOUT_MS, FFMPEG_MAX_BUFFER_BYTES)
 }
 
 export async function createMediaProbeMetadata(
@@ -196,23 +410,42 @@ export async function createMediaProbeMetadata(
   }
 
   const fileStat = await stat(filePath)
-  const ffmpegPath = await getFfmpegPath(options.resourcePath, options.env ?? process.env)
+  const ffprobePath = await getFfprobePath(options.resourcePath, options.env ?? process.env)
 
-  if (!ffmpegPath) {
-    return {
-      fileSizeBytes: fileStat.size,
-      durationSeconds: null,
-      overallBitrateKbps: null,
-      video: null,
-      audio: null
+  if (ffprobePath) {
+    const output = await readFfprobeOutput(ffprobePath, filePath)
+    const probe = parseFfprobeOutput(output)
+
+    if (probe) {
+      return {
+        fileSizeBytes: fileStat.size,
+        probeSource: 'ffprobe',
+        ...probe
+      }
     }
   }
 
-  const output = await readProbeOutput(ffmpegPath, filePath)
-  const probe = parseMediaProbeOutput(output)
+  const ffmpegPath = await getFfmpegPath(options.resourcePath, options.env ?? process.env)
+
+  if (ffmpegPath) {
+    const output = await readFfmpegOutput(ffmpegPath, filePath)
+    const probe = parseMediaProbeOutput(output)
+
+    return {
+      fileSizeBytes: fileStat.size,
+      probeSource: 'ffmpeg',
+      details: null,
+      ...probe
+    }
+  }
 
   return {
     fileSizeBytes: fileStat.size,
-    ...probe
+    durationSeconds: null,
+    overallBitrateKbps: null,
+    video: null,
+    audio: null,
+    probeSource: null,
+    details: null
   }
 }
