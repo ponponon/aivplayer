@@ -70,7 +70,25 @@ function formatDetailValue(value: unknown): string {
   return String(value)
 }
 
-function humanizeKey(key: string): string {
+function humanizeKey(key: string, probeFieldLabels?: Record<string, string>): string {
+  // 尝试精确匹配
+  if (probeFieldLabels?.[key]) {
+    return probeFieldLabels[key]
+  }
+
+  // 尝试小写匹配
+  const lowerKey = key.toLowerCase()
+  if (probeFieldLabels?.[lowerKey]) {
+    return probeFieldLabels[lowerKey]
+  }
+
+  // 尝试带点号的匹配（如 tags.major_brand）
+  const dottedKey = key.replace(/_/g, '.')
+  if (probeFieldLabels?.[dottedKey]) {
+    return probeFieldLabels[dottedKey]
+  }
+
+  // 回退到原有的格式化逻辑
   return key
     .replace(/\[(\d+)\]/g, ' [$1]')
     .split('.')
