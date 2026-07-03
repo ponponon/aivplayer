@@ -1,8 +1,9 @@
-import { app, BrowserWindow, clipboard, dialog, ipcMain, nativeImage, shell } from 'electron'
+import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeImage, shell } from 'electron'
 import { existsSync } from 'node:fs'
 import { readdir } from 'node:fs/promises'
 import { dirname, extname, join, resolve } from 'node:path'
 import { readAppSettings, writeAppSettings } from './app-settings'
+import { APP_NAME, createApplicationMenuTemplate } from './app-menu'
 import { createDefaultAppSettings } from '../shared/app-settings'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type {
@@ -28,6 +29,7 @@ import { createMediaFile, registerMediaProtocolHandler, registerMediaProtocolSch
 import { getNativePlayerStatus, stopNativePlayer } from './media/native-player'
 
 registerMediaProtocolScheme()
+app.setName(APP_NAME)
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 
 const VIDEO_EXTENSIONS = [
@@ -69,6 +71,10 @@ function applyMacDockIcon(): void {
   }
 
   app.dock?.setIcon(nativeImage.createFromPath(iconPath))
+}
+
+function installApplicationMenu(): void {
+  Menu.setApplicationMenu(Menu.buildFromTemplate(createApplicationMenuTemplate(process.platform)))
 }
 
 function getInitialMediaFiles(): MediaFile[] {
@@ -476,7 +482,7 @@ function createWindow(): void {
     minHeight: 640,
     backgroundColor: '#090a0c',
     icon: iconPath ?? undefined,
-    title: 'AIVPlayer',
+    title: APP_NAME,
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 16, y: 16 },
     webPreferences: {
@@ -513,6 +519,8 @@ app.whenReady().then(async () => {
   currentAppSettings = await readAppSettings(app.getPath('userData'), app.getPath('videos'))
   registerMediaProtocolHandler()
   registerIpc()
+  app.setAboutPanelOptions({ applicationName: APP_NAME })
+  installApplicationMenu()
   applyMacDockIcon()
   createWindow()
 

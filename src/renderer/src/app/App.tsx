@@ -16,10 +16,10 @@ import {
   Pause,
   Play,
   RefreshCcw,
+  Settings,
   SkipBack,
   SkipForward,
   Sparkles,
-  Settings2,
   Volume2,
   VolumeX,
   X
@@ -1342,7 +1342,7 @@ export function App(): ReactElement {
             }}
             aria-pressed={isSettingsDialogOpen}
           >
-            <Settings2 size={17} />
+            <Settings size={17} />
           </button>
         </nav>
       </header>

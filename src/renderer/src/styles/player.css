@@ -1129,7 +1129,7 @@
 .settings-dialog {
   display: grid;
   gap: 16px;
-  width: min(720px, calc(100vw - 32px));
+  width: min(880px, calc(100vw - 32px));
   min-width: 0;
   max-height: calc(100dvh - 48px);
   padding: 18px;
@@ -1391,9 +1391,9 @@
 
 .settings-field {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(180px, 240px);
-  gap: 12px;
-  align-items: center;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  align-items: stretch;
   padding: 12px;
   color: var(--text-secondary);
   background: rgba(255, 255, 255, 0.045);
@@ -1425,6 +1425,12 @@
   gap: 8px;
   min-width: 0;
   flex-wrap: wrap;
+}
+
+.settings-field > .settings-inline-row,
+.settings-field > .settings-select,
+.settings-field > .settings-number {
+  justify-self: stretch;
 }
 
 .settings-path-value {
