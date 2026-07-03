@@ -698,7 +698,7 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       'time_base': '时间基准',
       'start_pts': '起始 PTS',
       'start_time.2': '起始时间',
-      'disposition': ' disposition',
+      'disposition': '处置',
       'channel_layout': '声道布局',
       'channels': '声道数',
       'bits_per_sample': '采样位数',
