@@ -231,7 +231,7 @@ export function MediaDetailsDialog(props: MediaDetailsDialogProps): ReactElement
                 <FileText size={16} />
                 <span>{copy.mediaDetailsDialog.formatTitle}</span>
               </div>
-              {formatDetails ? renderProbeEntries(flattenProbeEntries(formatDetails)) : <div className="media-details-empty">{copy.mediaDetailsDialog.noDetails}</div>}
+              {formatDetails ? renderProbeEntries(flattenProbeEntries(formatDetails), copy.probeFieldLabels) : <div className="media-details-empty">{copy.mediaDetailsDialog.noDetails}</div>}
             </section>
 
             <section className="media-details-card">
@@ -245,7 +245,7 @@ export function MediaDetailsDialog(props: MediaDetailsDialogProps): ReactElement
                     <div className="media-details-subcard-heading">
                       <strong>{getStreamTitle(stream, index)}</strong>
                     </div>
-                    {renderProbeEntries(flattenProbeEntries(stream))}
+                    {renderProbeEntries(flattenProbeEntries(stream), copy.probeFieldLabels)}
                   </section>
                 ))}
               </div>
