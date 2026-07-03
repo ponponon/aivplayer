@@ -131,12 +131,12 @@ function flattenProbeEntries(value: unknown, prefix = ''): MediaProbeEntry[] {
   return prefix ? [{ key: prefix, value }] : []
 }
 
-function renderProbeEntries(entries: MediaProbeEntry[]): ReactElement {
+function renderProbeEntries(entries: MediaProbeEntry[], probeFieldLabels?: Record<string, string>): ReactElement {
   return (
     <div className="media-details-grid">
       {entries.map((entry) => (
         <div className="media-details-item" key={entry.key}>
-          <span>{humanizeKey(entry.key)}</span>
+          <span>{humanizeKey(entry.key, probeFieldLabels)}</span>
           <strong title={formatDetailValue(entry.value)}>{formatDetailValue(entry.value)}</strong>
         </div>
       ))}
