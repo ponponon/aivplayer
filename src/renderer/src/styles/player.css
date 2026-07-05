@@ -1478,12 +1478,12 @@
 
 .settings-number {
   max-width: 140px;
-  text-align: right;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
 }
 
 .settings-number-compact {
   max-width: 96px;
-  text-align: center;
 }
 
 .settings-inline-unit {

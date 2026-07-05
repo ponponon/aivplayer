@@ -18,4 +18,18 @@ describe('settings UI source constraints', () => {
 
     expect(playerCss).toMatch(/\.settings-field\s*\{[^}]*grid-template-columns:\s*1fr;/s)
   })
+
+  it('keeps settings number values centered across compact and full-width controls', () => {
+    const playerCss = readFileSync(join(projectRoot, 'src/renderer/src/styles/player.css'), 'utf-8')
+    const numberTextAlignRules = Array.from(
+      playerCss.matchAll(/(?<selector>[^{}]*\.settings-number[^{}]*)\{(?<body>[^}]*)\}/g)
+    )
+      .map((match) => ({
+        selector: match.groups?.selector.replace(/\s+/g, ' ').trim(),
+        textAlign: match.groups?.body.match(/text-align:\s*([^;]+);/)?.[1]
+      }))
+      .filter((rule) => rule.textAlign != null)
+
+    expect(numberTextAlignRules).toEqual([{ selector: '.settings-number', textAlign: 'center' }])
+  })
 })
