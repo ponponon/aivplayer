@@ -1127,6 +1127,9 @@
 }
 
 .settings-dialog {
+  --settings-control-height: 36px;
+  --settings-control-padding-x: 12px;
+  --settings-control-radius: var(--radius-md);
   display: grid;
   gap: 16px;
   width: min(880px, calc(100vw - 32px));
@@ -1436,12 +1439,12 @@
 .settings-path-value {
   flex: 1 1 220px;
   min-width: 0;
-  min-height: 36px;
-  padding: 8px 12px;
+  min-height: var(--settings-control-height);
+  padding: 8px var(--settings-control-padding-x);
   color: var(--text-primary);
   background: rgba(255, 255, 255, 0.035);
   border: 1px solid var(--border-soft);
-  border-radius: var(--radius-md);
+  border-radius: var(--settings-control-radius);
   font-size: 12px;
   line-height: 1.35;
   overflow: hidden;
@@ -1459,13 +1462,13 @@
 
 .settings-select,
 .settings-number {
-  min-height: 36px;
+  height: var(--settings-control-height);
   width: 100%;
-  padding: 0 12px;
+  padding: 0 var(--settings-control-padding-x);
   color: var(--text-secondary);
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid var(--border-soft);
-  border-radius: var(--radius-md);
+  border-radius: var(--settings-control-radius);
   font-size: 13px;
 }
 
@@ -1600,12 +1603,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 36px;
-  padding: 0 14px;
+  min-height: var(--settings-control-height);
+  padding: 0 calc(var(--settings-control-padding-x) + 2px);
   color: var(--text-secondary);
   background: transparent;
   border: 1px solid var(--border-soft);
-  border-radius: var(--radius-md);
+  border-radius: var(--settings-control-radius);
   cursor: pointer;
   font-size: 13px;
   font-weight: 700;

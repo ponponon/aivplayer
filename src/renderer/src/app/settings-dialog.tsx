@@ -9,7 +9,7 @@ import {
   Sparkles,
   X
 } from 'lucide-react'
-import { useEffect, useLayoutEffect, useRef, useState, type ReactElement } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactElement, type ReactNode } from 'react'
 import type {
   AppPanelModePreference,
   AppSettings,
@@ -47,6 +47,155 @@ const SETTINGS_SECTION_SCROLL_OFFSET = 78
 
 function formatPathLabel(pathValue: string | null, fallback: string): string {
   return pathValue && pathValue.length > 0 ? pathValue : fallback
+}
+
+type SettingsFieldProps = {
+  title: ReactNode
+  description?: ReactNode
+  children: ReactNode
+}
+
+function SettingsField({ title, description, children }: SettingsFieldProps): ReactElement {
+  return (
+    <div className="settings-field">
+      <div className="settings-field-copy">
+        <strong>{title}</strong>
+        {description ? <small>{description}</small> : null}
+      </div>
+      {children}
+    </div>
+  )
+}
+
+type SettingsToggleProps = {
+  title: ReactNode
+  description?: ReactNode
+  checked: boolean
+  onChange: (checked: boolean) => void
+}
+
+function SettingsToggle({ title, description, checked, onChange }: SettingsToggleProps): ReactElement {
+  return (
+    <label className="setting-toggle">
+      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.currentTarget.checked)} />
+      <span>
+        <strong>{title}</strong>
+        {description ? <small>{description}</small> : null}
+      </span>
+    </label>
+  )
+}
+
+type SettingsFolderPickerProps = {
+  pathValue: string | null
+  fallback: string
+  selectLabel: ReactNode
+  clearLabel?: ReactNode
+  onPickFolder: () => Promise<string | null>
+  onChange: (pathValue: string | null) => void
+}
+
+function SettingsFolderPicker({
+  pathValue,
+  fallback,
+  selectLabel,
+  clearLabel,
+  onPickFolder,
+  onChange
+}: SettingsFolderPickerProps): ReactElement {
+  return (
+    <div className="settings-inline-row">
+      <div className="settings-path-value" title={pathValue ?? ''}>
+        {formatPathLabel(pathValue, fallback)}
+      </div>
+      <button
+        className="settings-secondary-button"
+        type="button"
+        onClick={async () => {
+          const folderPath = await onPickFolder()
+          if (!folderPath) {
+            return
+          }
+
+          onChange(folderPath)
+        }}
+      >
+        <FolderOpen size={14} />
+        {selectLabel}
+      </button>
+      {clearLabel ? (
+        <button className="settings-secondary-button" type="button" onClick={() => onChange(null)} disabled={!pathValue}>
+          {clearLabel}
+        </button>
+      ) : null}
+    </div>
+  )
+}
+
+type SettingsSelectOption<TValue extends string> = {
+  value: TValue
+  label: string
+}
+
+type SettingsSelectProps<TValue extends string> = {
+  value: TValue
+  options: ReadonlyArray<SettingsSelectOption<TValue>>
+  onChange: (value: TValue) => void
+}
+
+function SettingsSelect<TValue extends string>({ value, options, onChange }: SettingsSelectProps<TValue>): ReactElement {
+  return (
+    <select className="settings-select" value={value} onChange={(event) => onChange(event.currentTarget.value as TValue)}>
+      {options.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
+  )
+}
+
+type SettingsNumberInputProps = {
+  value: number
+  min: number
+  max: number
+  step?: number
+  compact?: boolean
+  disabled?: boolean
+  ariaLabel?: string
+  onChange: (value: number) => void
+}
+
+function SettingsNumberInput({
+  value,
+  min,
+  max,
+  step = 1,
+  compact = false,
+  disabled = false,
+  ariaLabel,
+  onChange
+}: SettingsNumberInputProps): ReactElement {
+  const settingsNumberClassName = compact ? 'settings-number settings-number-compact' : 'settings-number'
+
+  return (
+    <input
+      className={settingsNumberClassName}
+      type="number"
+      min={min}
+      max={max}
+      step={step}
+      value={value}
+      disabled={disabled}
+      aria-label={ariaLabel}
+      onChange={(event) => {
+        const nextValue = Number(event.currentTarget.value)
+        if (Number.isFinite(nextValue)) {
+          onChange(nextValue)
+        }
+      }}
+    />
+  )
 }
 
 export function SettingsDialog(props: SettingsDialogProps): ReactElement {
@@ -171,13 +320,19 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
     })
   }
 
-  const languageOptions = Object.entries(copy.languageOptions) as Array<
-    [AppLocale, (typeof copy.languageOptions)[AppLocale]]
-  >
+  const languageOptions: Array<SettingsSelectOption<AppLocale>> = Object.entries(copy.languageOptions).map(
+    ([locale, option]) => ({
+      value: locale as AppLocale,
+      label: option.label
+    })
+  )
 
-  const subtitleLanguageOptions = Object.entries(copy.subtitleLanguageOptions) as Array<
-    [SubtitleLanguageId, (typeof copy.subtitleLanguageOptions)[SubtitleLanguageId]]
-  >
+  const subtitleLanguageOptions: Array<SettingsSelectOption<SubtitleLanguageId>> = Object.entries(
+    copy.subtitleLanguageOptions
+  ).map(([languageId, option]) => ({
+    value: languageId as SubtitleLanguageId,
+    label: option.label
+  }))
 
   const sections: Array<{
     id: AppSettingsSectionId
@@ -288,15 +443,11 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
               <span>{copy.settingsDialog.general.title}</span>
             </div>
 
-            <div className="settings-field">
-              <div className="settings-field-copy">
-                <strong>{copy.settingsDialog.general.language}</strong>
-              </div>
-              <select
-                className="settings-select"
+            <SettingsField title={copy.settingsDialog.general.language}>
+              <SettingsSelect
                 value={settings.ui.locale}
-                onChange={(event) => {
-                  const locale = event.currentTarget.value as AppLocale
+                options={languageOptions}
+                onChange={(locale) => {
                   patchSettings((current) => ({
                     ...current,
                     ui: {
@@ -305,25 +456,17 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
                     }
                   }))
                 }}
-              >
-                {languageOptions.map(([locale, option]) => (
-                  <option key={locale} value={locale}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+              />
+            </SettingsField>
 
-            <div className="settings-field">
-              <div className="settings-field-copy">
-                <strong>{copy.settingsDialog.general.startupPanel}</strong>
-                <small>{copy.settingsDialog.general.startupPanelDescription}</small>
-              </div>
-              <select
-                className="settings-select"
+            <SettingsField
+              title={copy.settingsDialog.general.startupPanel}
+              description={copy.settingsDialog.general.startupPanelDescription}
+            >
+              <SettingsSelect
                 value={settings.ui.defaultPanelMode}
-                onChange={(event) => {
-                  const defaultPanelMode = event.currentTarget.value as AppPanelModePreference
+                options={startupPanelOptions}
+                onChange={(defaultPanelMode) => {
                   patchSettings((current) => ({
                     ...current,
                     ui: {
@@ -332,83 +475,45 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
                     }
                   }))
                 }}
-              >
-                {startupPanelOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+              />
+            </SettingsField>
 
-            <div className="settings-field">
-              <div className="settings-field-copy">
-                <strong>{copy.settingsDialog.general.defaultFolder}</strong>
-                <small>{copy.settingsDialog.general.selectFolderDialogTitle}</small>
-              </div>
-              <div className="settings-inline-row">
-                <div className="settings-path-value" title={settings.media.defaultOpenDirectoryPath ?? ''}>
-                  {formatPathLabel(settings.media.defaultOpenDirectoryPath, '—')}
-                </div>
-                <button
-                  className="settings-secondary-button"
-                  type="button"
-                  onClick={async () => {
-                    const folderPath = await onPickDefaultFolder()
-                    if (!folderPath) {
-                      return
-                    }
-
-                    patchSettings((current) => ({
-                      ...current,
-                      media: {
-                        ...current.media,
-                        defaultOpenDirectoryPath: folderPath
-                      }
-                    }))
-                  }}
-                >
-                  <FolderOpen size={14} />
-                  {copy.settingsDialog.general.selectFolder}
-                </button>
-                <button
-                  className="settings-secondary-button"
-                  type="button"
-                  onClick={() =>
-                    patchSettings((current) => ({
-                      ...current,
-                      media: {
-                        ...current.media,
-                        defaultOpenDirectoryPath: null
-                      }
-                    }))
-                  }
-                  disabled={!settings.media.defaultOpenDirectoryPath}
-                >
-                  {copy.settingsDialog.general.clearFolder}
-                </button>
-              </div>
-            </div>
-
-            <label className="setting-toggle">
-              <input
-                type="checkbox"
-                checked={settings.media.autoLoadSameDirectoryFiles}
-                onChange={(event) =>
+            <SettingsField
+              title={copy.settingsDialog.general.defaultFolder}
+              description={copy.settingsDialog.general.selectFolderDialogTitle}
+            >
+              <SettingsFolderPicker
+                pathValue={settings.media.defaultOpenDirectoryPath}
+                fallback="—"
+                selectLabel={copy.settingsDialog.general.selectFolder}
+                clearLabel={copy.settingsDialog.general.clearFolder}
+                onPickFolder={onPickDefaultFolder}
+                onChange={(defaultOpenDirectoryPath) =>
                   patchSettings((current) => ({
                     ...current,
                     media: {
                       ...current.media,
-                      autoLoadSameDirectoryFiles: event.currentTarget.checked
+                      defaultOpenDirectoryPath
                     }
                   }))
                 }
               />
-              <span>
-                <strong>{copy.settingsDialog.general.autoLoadDirectoryFiles}</strong>
-                <small>{copy.settingsDialog.general.autoLoadDirectoryFilesDescription}</small>
-              </span>
-            </label>
+            </SettingsField>
+
+            <SettingsToggle
+              title={copy.settingsDialog.general.autoLoadDirectoryFiles}
+              description={copy.settingsDialog.general.autoLoadDirectoryFilesDescription}
+              checked={settings.media.autoLoadSameDirectoryFiles}
+              onChange={(autoLoadSameDirectoryFiles) =>
+                patchSettings((current) => ({
+                  ...current,
+                  media: {
+                    ...current.media,
+                    autoLoadSameDirectoryFiles
+                  }
+                }))
+              }
+            />
           </section>
 
           <section className="settings-card settings-card-anchor" id="settings-section-interface">
@@ -417,111 +522,85 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
               <span>{copy.settingsDialog.interface.title}</span>
             </div>
 
-            <label className="setting-toggle">
-              <input
-                type="checkbox"
-                checked={settings.playback.rememberVolume}
-                onChange={(event) =>
-                  patchSettings((current) => ({
-                    ...current,
-                    playback: {
-                      ...current.playback,
-                      rememberVolume: event.currentTarget.checked
-                    }
-                  }))
-                }
-              />
-              <span>
-                <strong>{copy.settingsDialog.interface.rememberVolume}</strong>
-                <small>{copy.settingsDialog.interface.rememberVolumeDescription}</small>
-              </span>
-            </label>
+            <SettingsToggle
+              title={copy.settingsDialog.interface.rememberVolume}
+              description={copy.settingsDialog.interface.rememberVolumeDescription}
+              checked={settings.playback.rememberVolume}
+              onChange={(rememberVolume) =>
+                patchSettings((current) => ({
+                  ...current,
+                  playback: {
+                    ...current.playback,
+                    rememberVolume
+                  }
+                }))
+              }
+            />
 
-            <label className="setting-toggle">
-              <input
-                type="checkbox"
-                checked={settings.playback.rememberPlaybackRate}
-                onChange={(event) =>
-                  patchSettings((current) => ({
-                    ...current,
-                    playback: {
-                      ...current.playback,
-                      rememberPlaybackRate: event.currentTarget.checked
-                    }
-                  }))
-                }
-              />
-              <span>
-                <strong>{copy.settingsDialog.interface.rememberPlaybackRate}</strong>
-                <small>{copy.settingsDialog.interface.rememberPlaybackRateDescription}</small>
-              </span>
-            </label>
+            <SettingsToggle
+              title={copy.settingsDialog.interface.rememberPlaybackRate}
+              description={copy.settingsDialog.interface.rememberPlaybackRateDescription}
+              checked={settings.playback.rememberPlaybackRate}
+              onChange={(rememberPlaybackRate) =>
+                patchSettings((current) => ({
+                  ...current,
+                  playback: {
+                    ...current.playback,
+                    rememberPlaybackRate
+                  }
+                }))
+              }
+            />
 
-            <label className="setting-toggle">
-              <input
-                type="checkbox"
-                checked={settings.playback.rememberProgress}
-                onChange={(event) =>
-                  patchSettings((current) => ({
-                    ...current,
-                    playback: {
-                      ...current.playback,
-                      rememberProgress: event.currentTarget.checked
-                    }
-                  }))
-                }
-              />
-              <span>
-                <strong>{copy.settingsDialog.interface.rememberProgress}</strong>
-                <small>{copy.settingsDialog.interface.rememberProgressDescription}</small>
-              </span>
-            </label>
+            <SettingsToggle
+              title={copy.settingsDialog.interface.rememberProgress}
+              description={copy.settingsDialog.interface.rememberProgressDescription}
+              checked={settings.playback.rememberProgress}
+              onChange={(rememberProgress) =>
+                patchSettings((current) => ({
+                  ...current,
+                  playback: {
+                    ...current.playback,
+                    rememberProgress
+                  }
+                }))
+              }
+            />
 
-            <label className="setting-toggle">
-              <input
-                type="checkbox"
-                checked={settings.playback.singleClickPause}
-                onChange={(event) =>
-                  patchSettings((current) => ({
-                    ...current,
-                    playback: {
-                      ...current.playback,
-                      singleClickPause: event.currentTarget.checked
-                    }
-                  }))
-                }
-              />
-              <span>
-                <strong>{copy.settingsDialog.interface.singleClickPause}</strong>
-                <small>{copy.settingsDialog.interface.singleClickPauseDescription}</small>
-              </span>
-            </label>
+            <SettingsToggle
+              title={copy.settingsDialog.interface.singleClickPause}
+              description={copy.settingsDialog.interface.singleClickPauseDescription}
+              checked={settings.playback.singleClickPause}
+              onChange={(singleClickPause) =>
+                patchSettings((current) => ({
+                  ...current,
+                  playback: {
+                    ...current.playback,
+                    singleClickPause
+                  }
+                }))
+              }
+            />
 
-            <label className="setting-toggle">
-              <input
-                type="checkbox"
-                checked={settings.playback.pauseWhenMinimized}
-                onChange={(event) =>
-                  patchSettings((current) => ({
-                    ...current,
-                    playback: {
-                      ...current.playback,
-                      pauseWhenMinimized: event.currentTarget.checked
-                    }
-                  }))
-                }
-              />
-              <span>
-                <strong>{copy.settingsDialog.interface.pauseWhenMinimized}</strong>
-                <small>{copy.settingsDialog.interface.pauseWhenMinimizedDescription}</small>
-              </span>
-            </label>
+            <SettingsToggle
+              title={copy.settingsDialog.interface.pauseWhenMinimized}
+              description={copy.settingsDialog.interface.pauseWhenMinimizedDescription}
+              checked={settings.playback.pauseWhenMinimized}
+              onChange={(pauseWhenMinimized) =>
+                patchSettings((current) => ({
+                  ...current,
+                  playback: {
+                    ...current.playback,
+                    pauseWhenMinimized
+                  }
+                }))
+              }
+            />
 
-            <div className="settings-field">
-              <div className="settings-field-copy">
-                <strong>{copy.settingsDialog.interface.autoHideControlDeck}</strong>
-                <small>{copy.settingsDialog.interface.autoHideControlDeckDescription}</small>
-              </div>
+            <SettingsField
+              title={copy.settingsDialog.interface.autoHideControlDeck}
+              description={copy.settingsDialog.interface.autoHideControlDeckDescription}
+            >
               <div className="settings-inline-row">
                 <input
                   className="settings-checkbox"
@@ -538,51 +617,41 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
                   }
                   aria-label={copy.settingsDialog.interface.autoHideControlDeck}
                 />
-                <input
-                  className="settings-number settings-number-compact"
-                  type="number"
+                <SettingsNumberInput
                   min={1}
                   max={60}
-                  step={1}
                   value={settings.playback.controlDeckAutoHideSeconds}
+                  compact
                   disabled={!settings.playback.autoHideControlDeck}
-                  onChange={(event) => {
-                    const controlDeckAutoHideSeconds = Number(event.currentTarget.value)
+                  ariaLabel={copy.settingsDialog.interface.autoHideControlDeckDelay}
+                  onChange={(controlDeckAutoHideSeconds) => {
                     patchSettings((current) => ({
                       ...current,
                       playback: {
                         ...current.playback,
-                        controlDeckAutoHideSeconds: Number.isFinite(controlDeckAutoHideSeconds)
-                          ? controlDeckAutoHideSeconds
-                          : current.playback.controlDeckAutoHideSeconds
+                        controlDeckAutoHideSeconds
                       }
                     }))
                   }}
-                  aria-label={copy.settingsDialog.interface.autoHideControlDeckDelay}
                 />
                 <span className="settings-inline-unit">{copy.settingsDialog.interface.secondsUnit}</span>
               </div>
-            </div>
+            </SettingsField>
 
-            <label className="setting-toggle">
-              <input
-                type="checkbox"
-                checked={settings.playback.showTotalPlaybackTime}
-                onChange={(event) =>
-                  patchSettings((current) => ({
-                    ...current,
-                    playback: {
-                      ...current.playback,
-                      showTotalPlaybackTime: event.currentTarget.checked
-                    }
-                  }))
-                }
-              />
-              <span>
-                <strong>{copy.settingsDialog.interface.showTotalPlaybackTime}</strong>
-                <small>{copy.settingsDialog.interface.showTotalPlaybackTimeDescription}</small>
-              </span>
-            </label>
+            <SettingsToggle
+              title={copy.settingsDialog.interface.showTotalPlaybackTime}
+              description={copy.settingsDialog.interface.showTotalPlaybackTimeDescription}
+              checked={settings.playback.showTotalPlaybackTime}
+              onChange={(showTotalPlaybackTime) =>
+                patchSettings((current) => ({
+                  ...current,
+                  playback: {
+                    ...current.playback,
+                    showTotalPlaybackTime
+                  }
+                }))
+              }
+            />
           </section>
 
           <section className="settings-card settings-card-anchor" id="settings-section-video">
@@ -591,57 +660,45 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
               <span>{copy.settingsDialog.video.title}</span>
             </div>
 
-            <div className="settings-field">
-              <div className="settings-field-copy">
-                <strong>{copy.settingsDialog.video.seekStepSeconds}</strong>
-                <small>{copy.settingsDialog.video.seekStepSecondsDescription}</small>
-              </div>
-              <input
-                className="settings-number"
-                type="number"
+            <SettingsField
+              title={copy.settingsDialog.video.seekStepSeconds}
+              description={copy.settingsDialog.video.seekStepSecondsDescription}
+            >
+              <SettingsNumberInput
                 min={1}
                 max={120}
-                step={1}
                 value={settings.playback.seekStepSeconds}
-                onChange={(event) => {
-                  const seekStepSeconds = Number(event.currentTarget.value)
+                onChange={(seekStepSeconds) => {
                   patchSettings((current) => ({
                     ...current,
                     playback: {
                       ...current.playback,
-                      seekStepSeconds: Number.isFinite(seekStepSeconds) ? seekStepSeconds : current.playback.seekStepSeconds
+                      seekStepSeconds
                     }
                   }))
                 }}
               />
-            </div>
+            </SettingsField>
 
-            <div className="settings-field">
-              <div className="settings-field-copy">
-                <strong>{copy.settingsDialog.video.holdRightArrowSpeed}</strong>
-                <small>{copy.settingsDialog.video.holdRightArrowSpeedDescription}</small>
-              </div>
-              <input
-                className="settings-number"
-                type="number"
+            <SettingsField
+              title={copy.settingsDialog.video.holdRightArrowSpeed}
+              description={copy.settingsDialog.video.holdRightArrowSpeedDescription}
+            >
+              <SettingsNumberInput
                 min={1}
                 max={16}
-                step={1}
                 value={settings.playback.holdRightArrowSpeed}
-                onChange={(event) => {
-                  const holdRightArrowSpeed = Number(event.currentTarget.value)
+                onChange={(holdRightArrowSpeed) => {
                   patchSettings((current) => ({
                     ...current,
                     playback: {
                       ...current.playback,
-                      holdRightArrowSpeed: Number.isFinite(holdRightArrowSpeed)
-                        ? holdRightArrowSpeed
-                        : current.playback.holdRightArrowSpeed
+                      holdRightArrowSpeed
                     }
                   }))
                 }}
               />
-            </div>
+            </SettingsField>
 
             <div className="settings-note-box">
               <span className="settings-note-title">{copy.settingsDialog.video.hardwareAcceleration}</span>
@@ -655,16 +712,14 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
               <span>{copy.settingsDialog.subtitles.title}</span>
             </div>
 
-            <div className="settings-field">
-              <div className="settings-field-copy">
-                <strong>{copy.settingsDialog.subtitles.subtitleLanguage}</strong>
-                <small>{copy.settingsDialog.subtitles.subtitleLanguageDescription}</small>
-              </div>
-              <select
-                className="settings-select"
+            <SettingsField
+              title={copy.settingsDialog.subtitles.subtitleLanguage}
+              description={copy.settingsDialog.subtitles.subtitleLanguageDescription}
+            >
+              <SettingsSelect
                 value={settings.asr.defaultSubtitleLanguage}
-                onChange={(event) => {
-                  const defaultSubtitleLanguage = event.currentTarget.value as SubtitleLanguageId
+                options={subtitleLanguageOptions}
+                onChange={(defaultSubtitleLanguage) => {
                   patchSettings((current) => ({
                     ...current,
                     asr: {
@@ -673,45 +728,32 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
                     }
                   }))
                 }}
-              >
-                {subtitleLanguageOptions.map(([languageId, option]) => (
-                  <option key={languageId} value={languageId}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <label className="setting-toggle">
-              <input
-                type="checkbox"
-                checked={settings.asr.autoLoadCachedSubtitles}
-                onChange={(event) =>
-                  patchSettings((current) => ({
-                    ...current,
-                    asr: {
-                      ...current.asr,
-                      autoLoadCachedSubtitles: event.currentTarget.checked
-                    }
-                  }))
-                }
               />
-              <span>
-                <strong>{copy.settingsDialog.subtitles.autoLoadCachedSubtitles}</strong>
-                <small>{copy.settingsDialog.subtitles.autoLoadCachedSubtitlesDescription}</small>
-              </span>
-            </label>
+            </SettingsField>
 
-            <div className="settings-field">
-              <div className="settings-field-copy">
-                <strong>{copy.settingsDialog.subtitles.modelSource}</strong>
-                <small>{copy.settingsDialog.subtitles.modelSourceDescription}</small>
-              </div>
-              <select
-                className="settings-select"
+            <SettingsToggle
+              title={copy.settingsDialog.subtitles.autoLoadCachedSubtitles}
+              description={copy.settingsDialog.subtitles.autoLoadCachedSubtitlesDescription}
+              checked={settings.asr.autoLoadCachedSubtitles}
+              onChange={(autoLoadCachedSubtitles) =>
+                patchSettings((current) => ({
+                  ...current,
+                  asr: {
+                    ...current.asr,
+                    autoLoadCachedSubtitles
+                  }
+                }))
+              }
+            />
+
+            <SettingsField
+              title={copy.settingsDialog.subtitles.modelSource}
+              description={copy.settingsDialog.subtitles.modelSourceDescription}
+            >
+              <SettingsSelect
                 value={settings.asr.preferredModelSourceId}
-                onChange={(event) => {
-                  const preferredModelSourceId = event.currentTarget.value as AsrModelSourceId
+                options={modelSourceOptions}
+                onChange={(preferredModelSourceId) => {
                   patchSettings((current) => ({
                     ...current,
                     asr: {
@@ -720,14 +762,8 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
                     }
                   }))
                 }}
-              >
-                {modelSourceOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+              />
+            </SettingsField>
 
             {asrStatus ? (
               <div className="settings-note-box">
@@ -743,69 +779,50 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
               <span>{copy.settingsDialog.capture.title}</span>
             </div>
 
-            <div className="settings-field">
-              <div className="settings-field-copy">
-                <strong>{copy.settingsDialog.capture.saveFolder}</strong>
-                <small>{copy.settingsDialog.capture.saveFolderDescription}</small>
-              </div>
-              <div className="settings-inline-row">
-                <div className="settings-path-value" title={settings.capture.saveDirectoryPath ?? ''}>
-                  {formatPathLabel(settings.capture.saveDirectoryPath, '—')}
-                </div>
-                <button
-                  className="settings-secondary-button"
-                  type="button"
-                  onClick={async () => {
-                    const folderPath = await onPickCaptureFolder()
-                    if (!folderPath) {
-                      return
-                    }
-
-                    patchSettings((current) => ({
-                      ...current,
-                      capture: {
-                        ...current.capture,
-                        saveDirectoryPath: folderPath
-                      }
-                    }))
-                  }}
-                >
-                  <FolderOpen size={14} />
-                  {copy.settingsDialog.capture.selectFolder}
-                </button>
-              </div>
-            </div>
-
-            <label className="setting-toggle">
-              <input
-                type="checkbox"
-                checked={settings.capture.copyToClipboard}
-                onChange={(event) =>
+            <SettingsField
+              title={copy.settingsDialog.capture.saveFolder}
+              description={copy.settingsDialog.capture.saveFolderDescription}
+            >
+              <SettingsFolderPicker
+                pathValue={settings.capture.saveDirectoryPath}
+                fallback="—"
+                selectLabel={copy.settingsDialog.capture.selectFolder}
+                onPickFolder={onPickCaptureFolder}
+                onChange={(saveDirectoryPath) =>
                   patchSettings((current) => ({
                     ...current,
                     capture: {
                       ...current.capture,
-                      copyToClipboard: event.currentTarget.checked
+                      saveDirectoryPath
                     }
                   }))
                 }
               />
-              <span>
-                <strong>{copy.settingsDialog.capture.copyToClipboard}</strong>
-                <small>{copy.settingsDialog.capture.copyToClipboardDescription}</small>
-              </span>
-            </label>
+            </SettingsField>
 
-            <div className="settings-field">
-              <div className="settings-field-copy">
-                <strong>{copy.settingsDialog.capture.imageFormat}</strong>
-                <small>{copy.settingsDialog.capture.imageFormatDescription}</small>
-              </div>
-              <select
-                className="settings-select"
+            <SettingsToggle
+              title={copy.settingsDialog.capture.copyToClipboard}
+              description={copy.settingsDialog.capture.copyToClipboardDescription}
+              checked={settings.capture.copyToClipboard}
+              onChange={(copyToClipboard) =>
+                patchSettings((current) => ({
+                  ...current,
+                  capture: {
+                    ...current.capture,
+                    copyToClipboard
+                  }
+                }))
+              }
+            />
+
+            <SettingsField
+              title={copy.settingsDialog.capture.imageFormat}
+              description={copy.settingsDialog.capture.imageFormatDescription}
+            >
+              <SettingsSelect
                 value={settings.capture.imageFormat}
-                onChange={(event) => {
-                  const imageFormat = event.currentTarget.value as CaptureImageFormat
+                options={captureImageFormatOptions}
+                onChange={(imageFormat) => {
                   patchSettings((current) => ({
                     ...current,
                     capture: {
@@ -814,25 +831,17 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
                     }
                   }))
                 }}
-              >
-                {captureImageFormatOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+              />
+            </SettingsField>
 
-            <div className="settings-field">
-              <div className="settings-field-copy">
-                <strong>{copy.settingsDialog.capture.fileNaming}</strong>
-                <small>{copy.settingsDialog.capture.fileNamingDescription}</small>
-              </div>
-              <select
-                className="settings-select"
+            <SettingsField
+              title={copy.settingsDialog.capture.fileNaming}
+              description={copy.settingsDialog.capture.fileNamingDescription}
+            >
+              <SettingsSelect
                 value={settings.capture.fileNaming}
-                onChange={(event) => {
-                  const fileNaming = event.currentTarget.value as CaptureFileNamingMode
+                options={captureFileNamingOptions}
+                onChange={(fileNaming) => {
                   patchSettings((current) => ({
                     ...current,
                     capture: {
@@ -841,50 +850,37 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
                     }
                   }))
                 }}
-              >
-                {captureFileNamingOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+              />
+            </SettingsField>
 
-            <div className="settings-field">
-              <div className="settings-field-copy">
-                <strong>{copy.settingsDialog.capture.gifFrameRate}</strong>
-                <small>{copy.settingsDialog.capture.gifFrameRateDescription}</small>
-              </div>
-              <input
-                className="settings-number"
-                type="number"
+            <SettingsField
+              title={copy.settingsDialog.capture.gifFrameRate}
+              description={copy.settingsDialog.capture.gifFrameRateDescription}
+            >
+              <SettingsNumberInput
                 min={1}
                 max={60}
-                step={1}
                 value={settings.capture.gifFrameRate}
-                onChange={(event) => {
-                  const gifFrameRate = Number(event.currentTarget.value)
+                onChange={(gifFrameRate) => {
                   patchSettings((current) => ({
                     ...current,
                     capture: {
                       ...current.capture,
-                      gifFrameRate: Number.isFinite(gifFrameRate) ? gifFrameRate : current.capture.gifFrameRate
+                      gifFrameRate
                     }
                   }))
                 }}
               />
-            </div>
+            </SettingsField>
 
-            <div className="settings-field">
-              <div className="settings-field-copy">
-                <strong>{copy.settingsDialog.capture.gifResolution}</strong>
-                <small>{copy.settingsDialog.capture.gifResolutionDescription}</small>
-              </div>
-              <select
-                className="settings-select"
+            <SettingsField
+              title={copy.settingsDialog.capture.gifResolution}
+              description={copy.settingsDialog.capture.gifResolutionDescription}
+            >
+              <SettingsSelect
                 value={settings.capture.gifResolution}
-                onChange={(event) => {
-                  const gifResolution = event.currentTarget.value as CaptureGifResolution
+                options={captureGifResolutionOptions}
+                onChange={(gifResolution) => {
                   patchSettings((current) => ({
                     ...current,
                     capture: {
@@ -893,14 +889,8 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
                     }
                   }))
                 }}
-              >
-                {captureGifResolutionOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+              />
+            </SettingsField>
 
             <div className="settings-card-note">{copy.settingsDialog.capture.description}</div>
           </section>
