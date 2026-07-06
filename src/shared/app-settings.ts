@@ -57,6 +57,42 @@ export type AppSettings = {
   }
 }
 
+export type AppSettingsSectionKey = Exclude<keyof AppSettings, 'schemaVersion'>
+export type AppSettingsSectionUpdate<TSection extends AppSettingsSectionKey> =
+  | Partial<AppSettings[TSection]>
+  | ((currentSection: AppSettings[TSection]) => AppSettings[TSection])
+export type AppSettingsSectionPatcher = <TSection extends AppSettingsSectionKey>(
+  section: TSection,
+  patchOrUpdater: AppSettingsSectionUpdate<TSection>
+) => void
+
+export function updateAppSettingsSection<TSection extends AppSettingsSectionKey>(
+  current: AppSettings,
+  section: TSection,
+  patchOrUpdater: AppSettingsSectionUpdate<TSection>
+): AppSettings {
+  const nextSection =
+    typeof patchOrUpdater === 'function'
+      ? patchOrUpdater(current[section])
+      : {
+          ...current[section],
+          ...patchOrUpdater
+        }
+
+  return {
+    ...current,
+    [section]: nextSection
+  }
+}
+
+export function createAppSettingsSectionPatcher(
+  onChange: (updater: (current: AppSettings) => AppSettings) => void
+): AppSettingsSectionPatcher {
+  return (section, patchOrUpdater) => {
+    onChange((current) => updateAppSettingsSection(current, section, patchOrUpdater))
+  }
+}
+
 export function createDefaultAppSettings(): AppSettings {
   return {
     schemaVersion: APP_SETTINGS_SCHEMA_VERSION,

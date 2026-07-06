@@ -24,7 +24,13 @@ import {
   VolumeX,
   X
 } from 'lucide-react'
-import { createDefaultAppSettings, type AppSettings, type AppSettingsSectionId } from '../../../shared/app-settings'
+import {
+  createDefaultAppSettings,
+  createAppSettingsSectionPatcher,
+  type AppSettings,
+  type AppSettingsSectionPatcher,
+  type AppSettingsSectionId
+} from '../../../shared/app-settings'
 import type { ClipExportLengthSeconds, ClipExportMode } from '../../../shared/clip-export'
 import { getAppCopy, type LocaleCopy } from '../../../shared/i18n'
 import type {
@@ -355,6 +361,8 @@ export function App(): ReactElement {
     })
   }
 
+  const patchAppSettingsSection: AppSettingsSectionPatcher = createAppSettingsSectionPatcher(patchAppSettings)
+
   const getInitialPlaybackTime = (filePath: string): number => {
     if (!appSettings.playback.rememberProgress) {
       return 0
@@ -378,16 +386,28 @@ export function App(): ReactElement {
     }
 
     lastSavedProgressRef.current = { path: currentFilePath, time: clampedTime }
-    patchAppSettings((current) => ({
-      ...current,
-      playback: {
-        ...current.playback,
-        lastProgressByPath: {
-          ...current.playback.lastProgressByPath,
-          [currentFilePath]: clampedTime
-        }
+    patchAppSettingsSection('playback', (currentPlayback) => ({
+      ...currentPlayback,
+      lastProgressByPath: {
+        ...currentPlayback.lastProgressByPath,
+        [currentFilePath]: clampedTime
       }
     }))
+  }
+
+  const syncPlaybackMemory = (volume: number, muted: boolean, playbackRate: number): void => {
+    patchAppSettingsSection('playback', {
+      lastVolume: muted ? 0 : volume,
+      lastMuted: muted,
+      lastPlaybackRate: playbackRate
+    })
+  }
+
+  const syncClipExportPreferences = (durationSeconds: ClipExportLengthSeconds, mode: ClipExportMode): void => {
+    patchAppSettingsSection('capture', {
+      clipExportLengthSeconds: durationSeconds,
+      clipExportMode: mode
+    })
   }
 
   const resetAppSettings = (): void => {
@@ -569,15 +589,7 @@ export function App(): ReactElement {
     video.muted = nextMuted
 
     setState((current) => ({ ...current, muted: nextMuted }))
-    patchAppSettings((current) => ({
-      ...current,
-      playback: {
-        ...current.playback,
-        lastVolume: state.volume,
-        lastMuted: nextMuted,
-        lastPlaybackRate: state.playbackRate
-      }
-    }))
+    syncPlaybackMemory(state.volume, nextMuted, state.playbackRate)
   }
 
   const toggleFullscreen = async (): Promise<void> => {
@@ -805,14 +817,7 @@ export function App(): ReactElement {
       return
     }
 
-    patchAppSettings((current) => ({
-      ...current,
-      capture: {
-        ...current.capture,
-        clipExportLengthSeconds: selection.durationSeconds,
-        clipExportMode: selection.mode
-      }
-    }))
+    syncClipExportPreferences(selection.durationSeconds, selection.mode)
 
     setIsClipExportDialogOpen(false)
     setIsExportingClip(true)
@@ -1489,15 +1494,7 @@ export function App(): ReactElement {
                     }
                     const nextMuted = nextVolume === 0
                     setState((current) => ({ ...current, volume: nextVolume, muted: nextMuted }))
-                    patchAppSettings((current) => ({
-                      ...current,
-                      playback: {
-                        ...current.playback,
-                        lastVolume: nextVolume,
-                        lastMuted: nextMuted,
-                        lastPlaybackRate: state.playbackRate
-                      }
-                    }))
+                    syncPlaybackMemory(nextVolume, nextMuted, state.playbackRate)
                   }}
                   aria-label={copy.controls.volume}
                 />
@@ -1513,15 +1510,7 @@ export function App(): ReactElement {
                       videoRef.current.playbackRate = playbackRate
                     }
                     setState((current) => ({ ...current, playbackRate }))
-                    patchAppSettings((current) => ({
-                      ...current,
-                      playback: {
-                        ...current.playback,
-                        lastVolume: state.muted ? 0 : state.volume,
-                        lastMuted: state.muted,
-                        lastPlaybackRate: playbackRate
-                      }
-                    }))
+                    syncPlaybackMemory(state.volume, state.muted, playbackRate)
                   }}
                   aria-label={copy.controls.playbackSpeed}
                 >
@@ -2024,7 +2013,7 @@ export function App(): ReactElement {
           isDetectingWhisperBinary={isDetectingWhisperBinary}
           isSelectingWhisperBinary={isSelectingWhisperBinary}
           initialSectionId={initialSettingsSectionId}
-          onChange={patchAppSettings}
+          patchSettingsSection={patchAppSettingsSection}
           onClose={() => setIsSettingsDialogOpen(false)}
           onAutoDetectWhisperBinary={autoDetectWhisperBinary}
           onOpenAsrPanel={() => {

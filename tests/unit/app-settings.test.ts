@@ -2,7 +2,11 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { createDefaultAppSettings } from '../../src/shared/app-settings'
+import {
+  createAppSettingsSectionPatcher,
+  createDefaultAppSettings,
+  updateAppSettingsSection
+} from '../../src/shared/app-settings'
 import { readAppSettings, writeAppSettings } from '../../src/main/app-settings'
 
 describe('app settings', () => {
@@ -102,9 +106,116 @@ describe('app settings', () => {
     })
   })
 
+  it.each([
+    ['startup', 'general'],
+    ['playback', 'interface'],
+    ['asr', 'subtitles']
+  ])('maps legacy settings section id %s to %s', async (legacySectionId, expectedSectionId) => {
+    await writeFile(
+      join(tempDirectory, 'app-settings.json'),
+      `${JSON.stringify(
+        {
+          schemaVersion: 1,
+          ui: {
+            lastSettingsSectionId: legacySectionId
+          }
+        },
+        null,
+        2
+      )}\n`
+    )
+
+    const settings = await readAppSettings(tempDirectory)
+    expect(settings.ui.lastSettingsSectionId).toBe(expectedSectionId)
+  })
+
   it('falls back to defaults when the settings file is invalid', async () => {
     await writeFile(join(tempDirectory, 'app-settings.json'), '{broken json')
 
     await expect(readAppSettings(tempDirectory)).resolves.toEqual(createDefaultAppSettings())
+  })
+
+  it('merges section patches without mutating unrelated sections', () => {
+    const current = createDefaultAppSettings()
+    const next = updateAppSettingsSection(current, 'ui', {
+      defaultPanelMode: 'info'
+    })
+
+    expect(next).not.toBe(current)
+    expect(next.ui.defaultPanelMode).toBe('info')
+    expect(next.ui.locale).toBe(current.ui.locale)
+    expect(next.media).toBe(current.media)
+    expect(next.capture).toBe(current.capture)
+    expect(next.playback).toBe(current.playback)
+    expect(next.asr).toBe(current.asr)
+  })
+
+  it('supports updater callbacks for deep section merges', () => {
+    const current = createDefaultAppSettings()
+    current.playback.lastProgressByPath = {
+      '/existing/video.mp4': 12
+    }
+
+    const next = updateAppSettingsSection(current, 'playback', (playback) => ({
+      ...playback,
+      lastProgressByPath: {
+        ...playback.lastProgressByPath,
+        '/new/video.mp4': 42
+      }
+    }))
+
+    expect(next.playback.lastProgressByPath).toEqual({
+      '/existing/video.mp4': 12,
+      '/new/video.mp4': 42
+    })
+    expect(current.playback.lastProgressByPath).toEqual({
+      '/existing/video.mp4': 12
+    })
+    expect(next.ui).toBe(current.ui)
+    expect(next.media).toBe(current.media)
+  })
+
+  it('creates reusable section patchers from a generic change handler', () => {
+    const updates: Array<(current: ReturnType<typeof createDefaultAppSettings>) => ReturnType<typeof createDefaultAppSettings>> = []
+    const patch = createAppSettingsSectionPatcher((updater) => {
+      updates.push(updater)
+    })
+
+    patch('capture', {
+      gifFrameRate: 24
+    })
+    patch('playback', (playback) => ({
+      ...playback,
+      lastMuted: true
+    }))
+
+    const current = createDefaultAppSettings()
+    const nextCapture = updates[0](current)
+    const nextPlayback = updates[1](current)
+
+    expect(nextCapture.capture.gifFrameRate).toBe(24)
+    expect(nextCapture.ui).toBe(current.ui)
+    expect(nextPlayback.playback.lastMuted).toBe(true)
+    expect(nextPlayback.capture).toBe(current.capture)
+  })
+
+  it('sanitizes capture fallbacks and playback progress maps', async () => {
+    const settings = createDefaultAppSettings()
+    settings.capture.saveDirectoryPath = '/missing/capture-path'
+    settings.playback.lastProgressByPath = {
+      '/existing/video.mp4': 12,
+      'relative/video.mp4': 18,
+      '/existing/negative.mp4': -1
+    }
+
+    const expected = createDefaultAppSettings()
+    expected.capture.saveDirectoryPath = tempDirectory
+    expected.playback.lastProgressByPath = {
+      '/existing/video.mp4': 12
+    }
+
+    await writeAppSettings(tempDirectory, settings, tempDirectory)
+
+    await expect(readAppSettings(tempDirectory, tempDirectory)).resolves.toEqual(expected)
   })
 })

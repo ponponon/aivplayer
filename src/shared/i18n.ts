@@ -6,7 +6,7 @@ import {
   DEFAULT_SUBTITLE_LANGUAGE,
   type AppLocale,
   type SubtitleLanguageId
-} from './localization'
+} from './localization.ts'
 
 export type LocaleCopy = {
   appName: string

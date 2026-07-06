@@ -39,6 +39,73 @@ describe('settings UI source constraints', () => {
     expect(countMatches(settingsDialogSource, /className="settings-number/g)).toBe(0)
   })
 
+  it('routes settings section writes through one shared patch helper', () => {
+    const settingsDialogSource = readSource('src/renderer/src/app/settings-dialog.tsx')
+    const sharedSettingsSource = readSource('src/shared/app-settings.ts')
+
+    expect(settingsDialogSource).toContain('patchSettingsSection: AppSettingsSectionPatcher')
+    expect(settingsDialogSource).toContain('AppSettingsSectionPatcher')
+    expect(settingsDialogSource).not.toContain('createAppSettingsSectionPatcher')
+    expect(settingsDialogSource).not.toContain('onChange: (updater: (current: AppSettings) => AppSettings) => void')
+    expect(sharedSettingsSource).toContain('export function updateAppSettingsSection')
+    expect(sharedSettingsSource).toContain('export function createAppSettingsSectionPatcher')
+    expect(sharedSettingsSource).toContain('export type AppSettingsSectionPatcher')
+    expect(countMatches(settingsDialogSource, /patchSettings\(\(current\) => \(\{/g)).toBe(0)
+    expect(countMatches(settingsDialogSource, /patchSettingsSection\('/g)).toBeGreaterThan(0)
+    expect(
+      countMatches(
+        settingsDialogSource,
+        /patchUiSettings|patchMediaSettings|patchPlaybackSettings|patchAsrSettings|patchCaptureSettings/g
+      )
+    ).toBe(0)
+  })
+
+  it('routes app settings section writes through the shared update helper', () => {
+    const appSource = readSource('src/renderer/src/app/App.tsx')
+    const sharedSettingsSource = readSource('src/shared/app-settings.ts')
+
+    expect(appSource).toContain('const patchAppSettingsSection')
+    expect(appSource).toContain('createAppSettingsSectionPatcher(patchAppSettings)')
+    expect(appSource).toContain('patchSettingsSection={patchAppSettingsSection}')
+    expect(appSource).not.toContain('onChange={patchAppSettings}')
+    expect(appSource).toContain('AppSettingsSectionPatcher')
+    expect(appSource).toContain('const syncPlaybackMemory')
+    expect(appSource).toContain('const syncClipExportPreferences')
+    expect(sharedSettingsSource).toContain('export function updateAppSettingsSection')
+    expect(sharedSettingsSource).toContain('export function createAppSettingsSectionPatcher')
+    expect(sharedSettingsSource).toContain('export type AppSettingsSectionPatcher')
+    expect(countMatches(appSource, /patchAppSettingsSection\('/g)).toBe(3)
+    expect(countMatches(appSource, /syncPlaybackMemory\(/g)).toBe(3)
+    expect(countMatches(appSource, /syncClipExportPreferences\(/g)).toBe(1)
+    expect(countMatches(appSource, /patchAppSettingsSection\('playback', \{/g)).toBe(1)
+    expect(countMatches(appSource, /patchAppSettingsSection\('capture', \{/g)).toBe(1)
+    expect(appSource).not.toContain('...current.playback.lastProgressByPath')
+    expect(appSource).not.toContain('nextSectionUpdater')
+    expect(countMatches(appSource, /patchAppSettings\(\(current\) => \(\{/g)).toBe(0)
+  })
+
+  it('exposes the settings dialog smoke script from package scripts', () => {
+    const packageJson = JSON.parse(readSource('package.json')) as {
+      scripts?: Record<string, string>
+    }
+
+    expect(packageJson.scripts?.['smoke:settings-dialog']).toBe(
+      'node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-settings-dialog.ts'
+    )
+    expect(packageJson.scripts?.['smoke:settings-dialog:en']).toBe(
+      'node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-settings-dialog.ts --locale en-US'
+    )
+    expect(packageJson.scripts?.['smoke:settings-dialog:ja']).toBe(
+      'node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-settings-dialog.ts --locale ja-JP'
+    )
+    expect(packageJson.scripts?.['smoke:settings-dialog:ko']).toBe(
+      'node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-settings-dialog.ts --locale ko-KR'
+    )
+    expect(packageJson.scripts?.['smoke:settings-dialog:all']).toBe(
+      'npm run smoke:settings-dialog && npm run smoke:settings-dialog:en && npm run smoke:settings-dialog:ja && npm run smoke:settings-dialog:ko'
+    )
+  })
+
   it('routes settings toggle rows through the shared SettingsToggle structure', () => {
     const settingsDialogSource = readSource('src/renderer/src/app/settings-dialog.tsx')
     const settingsToggleComponentBody = getNamedBody(
@@ -68,6 +135,22 @@ describe('settings UI source constraints', () => {
     expect(folderPickerComponentBody).toContain('clearLabel ?')
   })
 
+  it('routes compact toggle value rows through the shared SettingsToggleValueRow structure', () => {
+    const settingsDialogSource = readSource('src/renderer/src/app/settings-dialog.tsx')
+    const toggleValueRowComponentBody = getNamedBody(
+      settingsDialogSource,
+      /function SettingsToggleValueRow[\s\S]*?<div className="settings-inline-row">(?<body>[\s\S]*?)<\/div>\s*\)\s*\}/
+    )
+
+    expect(settingsDialogSource).toContain('function SettingsToggleValueRow')
+    expect(countMatches(settingsDialogSource, /className="settings-checkbox"/g)).toBe(1)
+    expect(countMatches(settingsDialogSource, /className="settings-inline-unit"/g)).toBe(1)
+    expect(countMatches(settingsDialogSource, /className="settings-inline-row"/g)).toBe(2)
+    expect(toggleValueRowComponentBody).toContain('SettingsNumberInput')
+    expect(toggleValueRowComponentBody).toContain('aria-label={checkboxAriaLabel}')
+    expect(toggleValueRowComponentBody).toContain('ariaLabel={valueAriaLabel}')
+  })
+
   it('keeps settings form control dimensions on shared local tokens', () => {
     const playerCss = readSource('src/renderer/src/styles/player.css')
     const inputControlRule = playerCss.match(/\.settings-select,\s*\.settings-number\s*\{(?<body>[^}]*)\}/s)
@@ -85,7 +168,7 @@ describe('settings UI source constraints', () => {
     expect(playerCss).toMatch(/\.settings-secondary-button\s*\{[^}]*padding:\s*0 calc\(var\(--settings-control-padding-x\) \+ 2px\);/s)
   })
 
-  it('keeps settings number values centered across compact and full-width controls', () => {
+  it('keeps settings number values right-aligned across compact and full-width controls', () => {
     const playerCss = readSource('src/renderer/src/styles/player.css')
     const numberTextAlignRules = Array.from(
       playerCss.matchAll(/(?<selector>[^{}]*\.settings-number[^{}]*)\{(?<body>[^}]*)\}/g)
@@ -96,6 +179,25 @@ describe('settings UI source constraints', () => {
       }))
       .filter((rule) => rule.textAlign != null)
 
-    expect(numberTextAlignRules).toEqual([{ selector: '.settings-number', textAlign: 'center' }])
+    expect(numberTextAlignRules).toEqual([{ selector: '.settings-number', textAlign: 'right' }])
+  })
+
+  it('checks settings dialog alignment in the smoke screenshot script', () => {
+    const smokeScript = readSource('scripts/smoke-settings-dialog.ts')
+
+    expect(smokeScript).toContain("'zh-CN': '打开设置'")
+    expect(smokeScript).toContain("'en-US': 'Open settings'")
+    expect(smokeScript).toContain("'ja-JP': '設定を開く'")
+    expect(smokeScript).toContain("'ko-KR': '설정 열기'")
+    expect(smokeScript).toContain('getArgValue(\'--locale\')')
+    expect(smokeScript).toContain('await page.reload({ waitUntil: \'domcontentloaded\' })')
+    expect(smokeScript).toContain('mkdtemp')
+    expect(smokeScript).toContain("'aivplayer-smoke-settings-home-'")
+    expect(smokeScript).toContain("join(smokeHomeDirectory, 'aivplayer-smoke-settings-dialog.png')")
+    expect(smokeScript).toContain('window.aiv.getAppSettings()')
+    expect(smokeScript).toContain('openSettingsLabelByLocale')
+    expect(smokeScript).toContain("page.screenshot({ path: screenshotPath, fullPage: false })")
+    expect(smokeScript).toContain("textAlign !== 'right'")
+    expect(smokeScript).toContain("page.locator('[data-settings-tab=\"interface\"]').click()")
   })
 })

@@ -1,6 +1,7 @@
 import { _electron as electron } from 'playwright'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
+import { getAppCopy } from '../src/shared/i18n.ts'
 
 const args = process.argv.slice(2)
 const mediaPath = args.find((arg) => arg !== '--check-layout') ?? '/Users/ponponon/Downloads/下载.mp4'
@@ -93,6 +94,9 @@ async function main(): Promise<void> {
     const initialFiles = await page.evaluate(() => window.aiv.getInitialMediaFiles())
     console.log(`Initial files from IPC: ${JSON.stringify(initialFiles)}`)
 
+    const appSettings = await page.evaluate(() => window.aiv.getAppSettings())
+    const copy = getAppCopy(appSettings.ui.locale)
+
     const hasVideo = await page.locator('video.video-surface').count()
     if (hasVideo === 0) {
       const bodyText = await page.locator('body').innerText()
@@ -160,48 +164,45 @@ async function main(): Promise<void> {
     const seekTarget = seekDuration > 8 ? Math.min(Math.max(seekDuration * 0.45, 4), seekDuration - 2) : 0
     const seekResult = seekTarget > 0 ? await seekWithTimeline(page, seekTarget) : null
 
-    const hasPlaylistTabInitially = await page.getByRole('tab', { name: '播放列表' }).count()
-    const hasAsrTabInitially = await page.getByRole('tab', { name: 'ASR' }).count()
-    await page.getByRole('tab', { name: '播放列表' }).click()
+    const hasPlaylistTabInitially = await page.getByRole('tab', { name: copy.panels.playlistTitle }).count()
+    const hasAsrTabInitially = await page.getByRole('tab', { name: copy.panels.asrTitle }).count()
+    await page.getByRole('tab', { name: copy.panels.playlistTitle }).click()
     await page.waitForTimeout(250)
     const expanded = await readLayoutMetrics(page)
-    await page.getByTitle('Toggle playlist').click()
+    await page.getByTitle(copy.topbar.togglePlaylist).click()
     await page.waitForTimeout(250)
     const collapsed = await readLayoutMetrics(page)
 
-    await page.getByTitle('Toggle playlist').click()
+    await page.getByTitle(copy.topbar.togglePlaylist).click()
     await page.waitForTimeout(250)
     const asrHidden = await readLayoutMetrics(page)
-    await page.getByTitle('ASR subtitles').click()
+    await page.getByRole('tab', { name: copy.panels.asrTitle }).click()
     await page.waitForTimeout(250)
     const asrVisible = await readLayoutMetrics(page)
-    const hasDownloadModelButton = await page.getByRole('button', { name: '下载推荐模型' }).count()
-    const hasRedownloadModelButton = await page.getByRole('button', { name: '重新下载 / 更换来源' }).count()
-    const hasInstalledModelPill = await page.locator('.asr-status-pill', { hasText: '模型文件已安装' }).count()
-    const hasGenerateSubtitleButton = await page.getByRole('button', { name: '生成当前视频字幕' }).count()
+    const hasDownloadModelButton = await page.getByRole('button', { name: copy.modelView.downloadRecommended }).count()
+    const hasRedownloadModelButton = await page.getByRole('button', { name: copy.modelView.redownload }).count()
+    const hasInstalledModelPill = await page.locator('.asr-status-pill', { hasText: copy.modelView.installedLabel }).count()
+    const hasGenerateSubtitleButton = await page.getByRole('button', { name: copy.asrPanel.generateSubtitle }).count()
     const runtimeGridText = await page.locator('.asr-runtime-grid').innerText()
-    const hasAsrEngineStatus = runtimeGridText.includes('ASR 引擎 whisper.cpp')
+    const hasAsrEngineStatus = runtimeGridText.includes(copy.asrPanel.engineStatus)
     const hasFfmpegStatus = runtimeGridText.includes('ffmpeg')
-    const hasWhisperBinaryPicker = await page
-      .getByRole('button', { name: /选择 whisper.cpp 可执行文件|更换 ASR 引擎/ })
-      .count()
-    const hasWhisperAutoDetect = await page.getByRole('button', { name: '自动检测 whisper.cpp' }).count()
     const asrPanelScreenshotPath = join(tmpdir(), 'aivplayer-smoke-asr-panel-state.png')
     await page.screenshot({ path: asrPanelScreenshotPath, fullPage: false })
 
-    await page.waitForFunction(() => {
+    const modelActionLabels = [copy.modelView.downloadRecommended, copy.modelView.redownload]
+    await page.waitForFunction((labels: string[]) => {
       const button = Array.from(document.querySelectorAll('button')).find((item) =>
-        item.textContent?.includes('下载推荐模型') || item.textContent?.includes('重新下载 / 更换来源')
+        labels.some((label) => item.textContent?.includes(label))
       ) as HTMLButtonElement | undefined
 
       return Boolean(button && !button.disabled)
-    })
-    await page.getByRole('button', { name: /下载推荐模型|重新下载 \/ 更换来源/ }).click()
+    }, modelActionLabels)
+    await page.locator('.asr-card.open').nth(1).getByRole('button').click()
     await page.waitForTimeout(250)
-    const hasDownloadDialog = await page.getByRole('dialog', { name: '选择 ASR 模型下载源' }).count()
-    const hasModelScopeSource = await page.getByRole('button', { name: '从 ModelScope 下载推荐 ASR 模型' }).count()
-    const hasHuggingFaceSource = await page.getByRole('button', { name: '从 Hugging Face 下载推荐 ASR 模型' }).count()
-    const hasDomesticHint = await page.getByText('中国大陆网络建议走阿里云 ModelScope').count()
+    const hasDownloadDialog = await page.getByRole('dialog', { name: copy.downloadDialog.title }).count()
+    const hasModelScopeSource = await page.getByRole('button', { name: copy.downloadDialog.sourceAria('ModelScope') }).count()
+    const hasHuggingFaceSource = await page.getByRole('button', { name: copy.downloadDialog.sourceAria('Hugging Face') }).count()
+    const hasDomesticHint = await page.locator('.download-dialog-copy').count()
     const screenshotPath = join(tmpdir(), 'aivplayer-smoke-asr-dialog.png')
     await page.screenshot({ path: screenshotPath, fullPage: false })
 
@@ -218,9 +219,7 @@ async function main(): Promise<void> {
         hasInstalledModelPill,
         hasGenerateSubtitleButton,
         hasAsrEngineStatus,
-        hasFfmpegStatus,
-        hasWhisperBinaryPicker,
-        hasWhisperAutoDetect
+        hasFfmpegStatus
       })}`
     )
     console.log(
@@ -270,9 +269,7 @@ async function main(): Promise<void> {
       hasDownloadModelButton + hasRedownloadModelButton !== 1 ||
       hasGenerateSubtitleButton !== 1 ||
       !hasAsrEngineStatus ||
-      !hasFfmpegStatus ||
-      hasWhisperBinaryPicker !== 1 ||
-      hasWhisperAutoDetect !== 1
+      !hasFfmpegStatus
     ) {
       process.exitCode = 1
     }

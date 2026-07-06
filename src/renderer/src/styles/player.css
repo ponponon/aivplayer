@@ -1482,7 +1482,7 @@
 .settings-number {
   max-width: 140px;
   font-variant-numeric: tabular-nums;
-  text-align: center;
+  text-align: right;
 }
 
 .settings-number-compact {

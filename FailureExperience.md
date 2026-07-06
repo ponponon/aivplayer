@@ -2,6 +2,16 @@
 - 同一语义的数字输入控件必须把文本对齐、数字字形这类视觉规则放在基础类上，不能让普通版和 compact 版分别写 `right` / `center`，否则同一设置页会出现一眼可见的不统一。
 - compact 这类变体应该只改宽度、间距这类尺寸属性；如果要改视觉语义，先补源码约束测试，避免后续新增设置项继续复制出第二套规则。
 - 数字输入建议使用 `font-variant-numeric: tabular-nums`，这样多位数和个位数在同一个控件族里更稳定，不会因为字形宽度造成轻微漂移。
+- 这种 UI 对齐问题最好配一条可运行的 smoke screenshot 脚本，直接打开 settings dialog、切到 interface section 并校验 `.settings-number` 的 computed style，避免以后只剩源码测试而丢了可视化回归。
+- smoke 脚本最好先根据当前 locale 选对“打开设置”按钮文案，不然一旦用户切过语言，回归脚本会先死在入口按钮而不是死在真正需要验证的布局上。
+- 如果要额外验证多语言布局，最好把 smoke 脚本做成可参数化的 locale 覆盖入口，而不是硬拷贝两份脚本；这样既能保留默认语言回归，也能单独跑英文/其他语言，维护成本更低。
+- 当多语言 smoke 已经拆成多个 locale 入口时，最好再补一个 `:all` 聚合命令，让完整回归变成一条命令，而不是靠人手拼四次；这样更容易在真正改版前把所有语言跑一遍。
+- smoke 的运行目录最好每次都用独立的临时 HOME，别复用固定目录；否则上一次跑出来的 locale 和配置会污染下一次回归，导致结果不稳定。
+- smoke 的截图文件也最好放在对应的临时 HOME 里，不要写到固定 tmp 路径上；否则默认语言和英文语言跑完后只会剩最后一张图，排查时缺少证据链。
+- 当应用支持多个 locale 时，smoke 的 package 入口最好按 locale 一次性补齐，而不是只留默认值和一两个示例入口，不然回归覆盖会随着语言支持扩展慢慢漏掉。
+- smoke 脚本里要点按按钮或等待弹窗时，别再把某个 locale 的文案写死在脚本里；应该先从 `getAppCopy(appSettings.ui.locale)` 取当前语言词条，再拿这些词条去找控件，不然一切到英文 / 日文 / 韩文，等待条件就会先失效。
+- 像剪辑导出和媒体详情这种高频弹窗，最好同样给出 `smoke:...` 入口并统一一个 `:all` 聚合命令，别只给设置页配完整回归，其他弹窗却继续裸奔。
+- 当项目已经有 settings、dialogs 和 open-video 三类 smoke 时，最好再往上收一个真正的 `smoke:all` 总入口，别让回归入口散成三四串，做一次完整检查还得人手拼命令。
 - 设置页表单控件的高度、横向 padding、圆角不要分散写在 `select / number / path / button` 各自规则里；应该在设置域上定义局部 CSS 变量，让同类控件共享同一底座，后续只改一个地方就能整体对齐。
 - 原生 `select` 不能只靠 `min-height` 控制高度，否则浏览器默认控件可能实际渲染得更高；需要和 `number` 输入一样用明确的 `height` 才能避免控件族再次出现高低不齐。
 
@@ -140,6 +150,28 @@
 - 这类基础控件应该统一通过 `SettingsSelect` / `SettingsNumberInput` 渲染，让 option 输出、数字合法性判断、compact class 拼接都集中在一个地方。
 - 源码约束测试要同时卡住 `settings-select` 和 `settings-number` 的出现方式，避免控件外壳统一了，内部控件又开始各写各的。
 
+## 设置页 section 写回不要各自起炉灶
+- `ui / media / playback / asr / capture` 这种分组写回如果每个都单独封一套 helper，代码看起来只是整齐了一点，实际上只是把同一种 partial spread 复制了五遍。
+- 应该先收口成一个 `createAppSettingsSectionPatcher` 绑定器，再让各个调用点只传 section key 和 patch 内容；实际的对象合并逻辑放到 shared 的 `updateAppSettingsSection`，它既能吃 partial patch，也能吃 updater callback，适合浅层和深层更新一起收口。
+- `SettingsDialog` 既然已经只做 section 级写回，就应该直接接收 `AppSettingsSectionPatcher`，不要把整份 settings updater 继续往下传再在组件内部转一层。
+- 这类共享 section patch 的参数类型也应该用 `AppSettingsSectionUpdate` 统一命名，避免每个调用点再重复声明一遍同样的联合类型。
+- `SettingsDialog` 的 props 边界也应该直接叫 `patchSettingsSection`，不要再保留一个语义更虚的 `onChange` 再去兜转 section patcher，边界越短越不容易回退。
+- section patcher 本身也值得有 `AppSettingsSectionPatcher` 这种共享命名，调用方一看就知道这是正式工具而不是临时闭包。
+- 需要改 section 字段时，优先检查通用 helper 的类型约束和源码测试，不要再为单个分组新开一套 `patchXxxSettings`。
+
+## 播放记忆不要在三个入口各写一套
+- 音量、静音和倍速是同一组播放记忆，应该统一通过 `syncPlaybackMemory` 这种语义入口更新，不要在静音按钮、音量滑条和倍速选择器里分别散写 `lastVolume / lastMuted / lastPlaybackRate`。
+- 这类共享更新最好把“业务语义”放在函数名里，而不是让每个调用点自己拼字段，后面改记忆规则时才不会漏掉某个入口。
+
+## 截图导出偏好不要直接散写
+- `clipExportLengthSeconds` 和 `clipExportMode` 是同一个导出偏好组，应该统一通过 `syncClipExportPreferences` 这种业务入口更新，不要让导出对话框直接自己 patch capture section。
+- 这种入口名最好直接说出业务对象，后续调整导出默认值或确认流程时，能一眼定位到真正需要改的地方。
+
+## 主进程 settings 清洗不要堆成一坨
+- `readAppSettings` / `writeAppSettings` 这类入口最后还是要落到 section 级 sanitizer 上，ui / media / capture / playback / asr 分开后，未来加字段时更容易看出该去哪个分组补校验。
+- 播放进度这种带列表结构的字段最好单独抽 `sanitizePlaybackProgressByPath`，不要把过滤、截断、路径检查和 section 组装全压在一个大对象里。
+- 旧版 `startup / playback / asr` 这类 section id 要显式映射到当前 `general / interface / subtitles` 语义，不要把老值直接当成合法新值放过去，否则读取历史配置时会把设置页定位到错误分组。
+
 ## 设置页开关项也不要散写
 - 卡片式开关项如果每处都手写 `setting-toggle`、checkbox、标题和说明，后续新增开关时很容易漏说明、调换顺序，或者把 `event.currentTarget.checked` 写回到错误字段。
 - 应该统一通过 `SettingsToggle` 渲染，把 checkbox 事件转换、标题/说明结构和卡片式开关 DOM 固定下来，业务代码只负责传 `checked` 和写回布尔值。
@@ -149,6 +181,11 @@
 - 目录型设置如果每处都手写路径展示、文件夹按钮和清空按钮，后续新增目录项时很容易漏掉空值占位、图标、禁用态或按钮间距。
 - 应该统一通过 `SettingsFolderPicker` 渲染，把 `settings-path-value`、`FolderOpen`、picker 空值防护和可选清空按钮固定下来，调用处只负责选择函数和写回路径。
 - 源码约束测试要卡住 `className="settings-path-value"` 的出现次数，确保路径展示只从共享目录组件出来。
+
+## 设置页紧凑开关 + 数值行也不要散写
+- 像“自动隐藏控制条延迟”这种 checkbox + 数值 + 单位的组合行，如果每处都手写，很容易把 `settings-checkbox`、`settings-inline-unit` 和 `SettingsNumberInput` 的组合写乱。
+- 应该统一通过 `SettingsToggleValueRow` 渲染，把紧凑布局、禁用态和 aria 文案都固定下来，业务代码只传 checked/value 和两个回调。
+- 源码约束测试要卡住 `className="settings-checkbox"` 和 `className="settings-inline-unit"` 的出现次数，避免这种组合行继续分叉。
 
 ## Modal 要锁住焦点并还原焦点
 - 只做 backdrop 和 ESC 关闭还不够，弹窗打开后必须把 Tab 键限制在弹窗内部，不然键盘用户会不小心跳到背景界面。

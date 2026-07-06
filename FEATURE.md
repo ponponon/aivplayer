@@ -31,12 +31,31 @@
 - 设置面板补齐了截图和录屏的配置项，包括保存文件夹、复制到剪贴板、图片格式、文件命名、GIF 帧率和 GIF 分辨率。
 - 设置面板的截图 / 录屏目录选择改成通用文件夹选择器，后续其他目录型设置也能复用。
 - 设置面板支持一键恢复默认设置，方便试配置后快速回滚。
-- 设置面板的数字输入框统一采用居中数值和等宽数字，compact 变体只调整宽度，避免同类控件出现靠右 / 居中混用。
+- 设置面板的数字输入框统一采用右对齐数值和等宽数字，compact 变体只调整宽度，避免同类控件再次出现靠右 / 居中混用。
+- 设置页现在有 `smoke:settings-dialog` 视觉回归脚本，会直接打开 settings dialog、切到 interface section 并检查 `.settings-number` 的 computed style，避免以后只靠源码测试而漏掉真实渲染偏差。
+- `smoke:settings-dialog` 还会按当前 locale 选择“打开设置”按钮文案，避免 smoke 在中文 / 英文 / 日文 / 韩文配置下因为入口文案不同而失效。
+- `smoke:settings-dialog:en` 可以强制把设置页切到英文 locale，再验一次设置对齐和入口文案，方便抓住多语言下的布局偏差。
+- `smoke:settings-dialog:ja` 和 `smoke:settings-dialog:ko` 可以直接覆盖日文 / 韩文的设置页回归，和默认中文、英文一起把 4 个支持 locale 都串起来。
+- `smoke:settings-dialog:all` 可以一键顺序跑完中文 / 英文 / 日文 / 韩文，方便做完整的设置页多语言回归。
+- settings-dialog smoke 每次都会用独立的临时 HOME，避免不同 locale 运行之间互相污染。
+- settings-dialog smoke 的截图也会写到各自的临时 HOME 里，默认 / 英文跑出来的证据不会互相覆盖。
+- `smoke:clip-export-dialog` 和 `smoke:media-details-dialog` 分别覆盖剪辑导出和媒体详情两个高频弹窗，`smoke:dialogs:all` 可以一条命令把它们顺序跑完。
+- `smoke:all` 会把 settings、clip export、media details 和 open-video 四类回归一口气串起来，做完整手工验收时只需要记这一条。
 - 设置面板把输入框、选择框、路径展示和次级按钮的高度、横向间距、圆角收口到设置域内的共享控件变量，后续新增表单项可以直接沿用同一底座。
 - 设置面板的字段结构统一通过 `SettingsField` 渲染，说明区始终在控件前面，避免新增设置项时漏掉说明容器或写乱 DOM 顺序。
 - 设置面板的下拉框和数字输入统一通过 `SettingsSelect` / `SettingsNumberInput` 渲染，避免新增表单控件时漏掉 class、数字解析或 compact 变体规则。
 - 设置面板的卡片式开关项统一通过 `SettingsToggle` 渲染，避免标题、说明、checkbox 顺序和开关写回逻辑在新增设置时再次分叉。
 - 设置面板的目录选择行统一通过 `SettingsFolderPicker` 渲染，路径展示、文件夹按钮、空值占位和可选清空按钮保持一致。
+- 设置面板的紧凑开关 + 数值行统一通过 `SettingsToggleValueRow` 渲染，避免类似“自动隐藏控制条延迟”这类组合控件再次手写布局。
+- 设置面板的分组写回统一通过 `createAppSettingsSectionPatcher` 绑定，实际合并由 shared 的 `updateAppSettingsSection` 承担，ui / media / playback / asr / capture 共用同一种 partial / updater 模板，避免以后再长出多套同构 helper。
+- 设置面板本身直接接收 `AppSettingsSectionPatcher`，不再额外暴露整份 settings updater，确保 dialog 只保留自己真正需要的 section 级写回能力。
+- 设置面板的分组 patch 类型统一通过 `AppSettingsSectionUpdate` 这一种共享别名描述，避免 App 和 settings dialog 各自重复写一遍 partial / updater 联合类型。
+- 设置面板的 props 边界直接暴露 `patchSettingsSection`，避免 dialog 再绕一层 `onChange` 才拿到 section patcher，调用链更短也更不容易回退到旧写法。
+- 设置面板的 section patcher 统一通过 `AppSettingsSectionPatcher` 命名，便于调用方明确自己拿到的是共享的 section 更新工具而不是临时闭包。
+- 播放器对音量、静音和倍速的记忆统一通过 `syncPlaybackMemory` 收口，避免三个入口分别写一套 `lastVolume / lastMuted / lastPlaybackRate`。
+- 截图 / 录屏导出的偏好统一通过 `syncClipExportPreferences` 收口，避免导出对话框直接散写 `clipExportLengthSeconds / clipExportMode`。
+- 主进程的 app-settings 清洗逻辑按 ui / media / capture / playback / asr 拆成 section 级 sanitizer，和前端的 section patch 结构保持对称，后面补字段更不容易漏校验。
+- 主进程会把旧版 `startup / playback / asr` section id 显式归一到 `general / interface / subtitles`，避免读取老配置时把设置页落到错误分组。
 - 设置会自动保存到本地配置文件，下次启动继续生效。
 
 ## 多语言

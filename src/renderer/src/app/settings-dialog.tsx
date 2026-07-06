@@ -13,6 +13,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactElement, type R
 import type {
   AppPanelModePreference,
   AppSettings,
+  AppSettingsSectionPatcher,
   AppSettingsSectionId,
   CaptureFileNamingMode,
   CaptureGifResolution,
@@ -31,7 +32,7 @@ type SettingsDialogProps = {
   isDetectingWhisperBinary: boolean
   isSelectingWhisperBinary: boolean
   initialSectionId?: AppSettingsSectionId
-  onChange: (updater: (current: AppSettings) => AppSettings) => void
+  patchSettingsSection: AppSettingsSectionPatcher
   onClose: () => void
   onAutoDetectWhisperBinary: () => void
   onOpenAsrPanel: () => void
@@ -132,6 +133,52 @@ function SettingsFolderPicker({
   )
 }
 
+type SettingsToggleValueRowProps = {
+  checked: boolean
+  onCheckedChange: (checked: boolean) => void
+  value: number
+  onValueChange: (value: number) => void
+  min: number
+  max: number
+  checkboxAriaLabel: string
+  valueAriaLabel: string
+  unit: ReactNode
+}
+
+function SettingsToggleValueRow({
+  checked,
+  onCheckedChange,
+  value,
+  onValueChange,
+  min,
+  max,
+  checkboxAriaLabel,
+  valueAriaLabel,
+  unit
+}: SettingsToggleValueRowProps): ReactElement {
+  return (
+    <div className="settings-inline-row">
+      <input
+        className="settings-checkbox"
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onCheckedChange(event.currentTarget.checked)}
+        aria-label={checkboxAriaLabel}
+      />
+      <SettingsNumberInput
+        min={min}
+        max={max}
+        value={value}
+        compact
+        disabled={!checked}
+        ariaLabel={valueAriaLabel}
+        onChange={onValueChange}
+      />
+      <span className="settings-inline-unit">{unit}</span>
+    </div>
+  )
+}
+
 type SettingsSelectOption<TValue extends string> = {
   value: TValue
   label: string
@@ -204,7 +251,7 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
     settings,
     asrStatus,
     initialSectionId = 'general',
-    onChange,
+    patchSettingsSection,
     onClose,
     onOpenAsrPanel,
     onPickDefaultFolder,
@@ -254,10 +301,6 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
     setActiveSectionId(settings.ui.lastSettingsSectionId)
   }, [settings.ui.lastSettingsSectionId])
 
-  const patchSettings = (updater: (current: AppSettings) => AppSettings): void => {
-    onChange(updater)
-  }
-
   const selectSection = (sectionId: AppSettingsSectionId): void => {
     if (activeSectionIdRef.current === sectionId) {
       return
@@ -265,13 +308,7 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
 
     activeSectionIdRef.current = sectionId
     setActiveSectionId(sectionId)
-    patchSettings((current) => ({
-      ...current,
-      ui: {
-        ...current.ui,
-        lastSettingsSectionId: sectionId
-      }
-    }))
+    patchSettingsSection('ui', { lastSettingsSectionId: sectionId })
   }
 
   const syncSectionFromScroll = (): void => {
@@ -448,13 +485,7 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
                 value={settings.ui.locale}
                 options={languageOptions}
                 onChange={(locale) => {
-                  patchSettings((current) => ({
-                    ...current,
-                    ui: {
-                      ...current.ui,
-                      locale
-                    }
-                  }))
+                  patchSettingsSection('ui', { locale })
                 }}
               />
             </SettingsField>
@@ -467,13 +498,7 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
                 value={settings.ui.defaultPanelMode}
                 options={startupPanelOptions}
                 onChange={(defaultPanelMode) => {
-                  patchSettings((current) => ({
-                    ...current,
-                    ui: {
-                      ...current.ui,
-                      defaultPanelMode
-                    }
-                  }))
+                  patchSettingsSection('ui', { defaultPanelMode })
                 }}
               />
             </SettingsField>
@@ -488,15 +513,9 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
                 selectLabel={copy.settingsDialog.general.selectFolder}
                 clearLabel={copy.settingsDialog.general.clearFolder}
                 onPickFolder={onPickDefaultFolder}
-                onChange={(defaultOpenDirectoryPath) =>
-                  patchSettings((current) => ({
-                    ...current,
-                    media: {
-                      ...current.media,
-                      defaultOpenDirectoryPath
-                    }
-                  }))
-                }
+                onChange={(defaultOpenDirectoryPath) => {
+                  patchSettingsSection('media', { defaultOpenDirectoryPath })
+                }}
               />
             </SettingsField>
 
@@ -504,15 +523,9 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
               title={copy.settingsDialog.general.autoLoadDirectoryFiles}
               description={copy.settingsDialog.general.autoLoadDirectoryFilesDescription}
               checked={settings.media.autoLoadSameDirectoryFiles}
-              onChange={(autoLoadSameDirectoryFiles) =>
-                patchSettings((current) => ({
-                  ...current,
-                  media: {
-                    ...current.media,
-                    autoLoadSameDirectoryFiles
-                  }
-                }))
-              }
+              onChange={(autoLoadSameDirectoryFiles) => {
+                patchSettingsSection('media', { autoLoadSameDirectoryFiles })
+              }}
             />
           </section>
 
@@ -526,131 +539,75 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
               title={copy.settingsDialog.interface.rememberVolume}
               description={copy.settingsDialog.interface.rememberVolumeDescription}
               checked={settings.playback.rememberVolume}
-              onChange={(rememberVolume) =>
-                patchSettings((current) => ({
-                  ...current,
-                  playback: {
-                    ...current.playback,
-                    rememberVolume
-                  }
-                }))
-              }
+              onChange={(rememberVolume) => {
+                patchSettingsSection('playback', { rememberVolume })
+              }}
             />
 
             <SettingsToggle
               title={copy.settingsDialog.interface.rememberPlaybackRate}
               description={copy.settingsDialog.interface.rememberPlaybackRateDescription}
               checked={settings.playback.rememberPlaybackRate}
-              onChange={(rememberPlaybackRate) =>
-                patchSettings((current) => ({
-                  ...current,
-                  playback: {
-                    ...current.playback,
-                    rememberPlaybackRate
-                  }
-                }))
-              }
+              onChange={(rememberPlaybackRate) => {
+                patchSettingsSection('playback', { rememberPlaybackRate })
+              }}
             />
 
             <SettingsToggle
               title={copy.settingsDialog.interface.rememberProgress}
               description={copy.settingsDialog.interface.rememberProgressDescription}
               checked={settings.playback.rememberProgress}
-              onChange={(rememberProgress) =>
-                patchSettings((current) => ({
-                  ...current,
-                  playback: {
-                    ...current.playback,
-                    rememberProgress
-                  }
-                }))
-              }
+              onChange={(rememberProgress) => {
+                patchSettingsSection('playback', { rememberProgress })
+              }}
             />
 
             <SettingsToggle
               title={copy.settingsDialog.interface.singleClickPause}
               description={copy.settingsDialog.interface.singleClickPauseDescription}
               checked={settings.playback.singleClickPause}
-              onChange={(singleClickPause) =>
-                patchSettings((current) => ({
-                  ...current,
-                  playback: {
-                    ...current.playback,
-                    singleClickPause
-                  }
-                }))
-              }
+              onChange={(singleClickPause) => {
+                patchSettingsSection('playback', { singleClickPause })
+              }}
             />
 
             <SettingsToggle
               title={copy.settingsDialog.interface.pauseWhenMinimized}
               description={copy.settingsDialog.interface.pauseWhenMinimizedDescription}
               checked={settings.playback.pauseWhenMinimized}
-              onChange={(pauseWhenMinimized) =>
-                patchSettings((current) => ({
-                  ...current,
-                  playback: {
-                    ...current.playback,
-                    pauseWhenMinimized
-                  }
-                }))
-              }
+              onChange={(pauseWhenMinimized) => {
+                patchSettingsSection('playback', { pauseWhenMinimized })
+              }}
             />
 
             <SettingsField
               title={copy.settingsDialog.interface.autoHideControlDeck}
               description={copy.settingsDialog.interface.autoHideControlDeckDescription}
             >
-              <div className="settings-inline-row">
-                <input
-                  className="settings-checkbox"
-                  type="checkbox"
-                  checked={settings.playback.autoHideControlDeck}
-                  onChange={(event) =>
-                    patchSettings((current) => ({
-                      ...current,
-                      playback: {
-                        ...current.playback,
-                        autoHideControlDeck: event.currentTarget.checked
-                      }
-                    }))
-                  }
-                  aria-label={copy.settingsDialog.interface.autoHideControlDeck}
-                />
-                <SettingsNumberInput
-                  min={1}
-                  max={60}
-                  value={settings.playback.controlDeckAutoHideSeconds}
-                  compact
-                  disabled={!settings.playback.autoHideControlDeck}
-                  ariaLabel={copy.settingsDialog.interface.autoHideControlDeckDelay}
-                  onChange={(controlDeckAutoHideSeconds) => {
-                    patchSettings((current) => ({
-                      ...current,
-                      playback: {
-                        ...current.playback,
-                        controlDeckAutoHideSeconds
-                      }
-                    }))
-                  }}
-                />
-                <span className="settings-inline-unit">{copy.settingsDialog.interface.secondsUnit}</span>
-              </div>
+              <SettingsToggleValueRow
+                checked={settings.playback.autoHideControlDeck}
+                onCheckedChange={(autoHideControlDeck) => {
+                  patchSettingsSection('playback', { autoHideControlDeck })
+                }}
+                value={settings.playback.controlDeckAutoHideSeconds}
+                onValueChange={(controlDeckAutoHideSeconds) => {
+                  patchSettingsSection('playback', { controlDeckAutoHideSeconds })
+                }}
+                min={1}
+                max={60}
+                checkboxAriaLabel={copy.settingsDialog.interface.autoHideControlDeck}
+                valueAriaLabel={copy.settingsDialog.interface.autoHideControlDeckDelay}
+                unit={copy.settingsDialog.interface.secondsUnit}
+              />
             </SettingsField>
 
             <SettingsToggle
               title={copy.settingsDialog.interface.showTotalPlaybackTime}
               description={copy.settingsDialog.interface.showTotalPlaybackTimeDescription}
               checked={settings.playback.showTotalPlaybackTime}
-              onChange={(showTotalPlaybackTime) =>
-                patchSettings((current) => ({
-                  ...current,
-                  playback: {
-                    ...current.playback,
-                    showTotalPlaybackTime
-                  }
-                }))
-              }
+              onChange={(showTotalPlaybackTime) => {
+                patchSettingsSection('playback', { showTotalPlaybackTime })
+              }}
             />
           </section>
 
@@ -669,13 +626,7 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
                 max={120}
                 value={settings.playback.seekStepSeconds}
                 onChange={(seekStepSeconds) => {
-                  patchSettings((current) => ({
-                    ...current,
-                    playback: {
-                      ...current.playback,
-                      seekStepSeconds
-                    }
-                  }))
+                  patchSettingsSection('playback', { seekStepSeconds })
                 }}
               />
             </SettingsField>
@@ -689,13 +640,7 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
                 max={16}
                 value={settings.playback.holdRightArrowSpeed}
                 onChange={(holdRightArrowSpeed) => {
-                  patchSettings((current) => ({
-                    ...current,
-                    playback: {
-                      ...current.playback,
-                      holdRightArrowSpeed
-                    }
-                  }))
+                  patchSettingsSection('playback', { holdRightArrowSpeed })
                 }}
               />
             </SettingsField>
@@ -720,13 +665,7 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
                 value={settings.asr.defaultSubtitleLanguage}
                 options={subtitleLanguageOptions}
                 onChange={(defaultSubtitleLanguage) => {
-                  patchSettings((current) => ({
-                    ...current,
-                    asr: {
-                      ...current.asr,
-                      defaultSubtitleLanguage
-                    }
-                  }))
+                  patchSettingsSection('asr', { defaultSubtitleLanguage })
                 }}
               />
             </SettingsField>
@@ -735,15 +674,9 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
               title={copy.settingsDialog.subtitles.autoLoadCachedSubtitles}
               description={copy.settingsDialog.subtitles.autoLoadCachedSubtitlesDescription}
               checked={settings.asr.autoLoadCachedSubtitles}
-              onChange={(autoLoadCachedSubtitles) =>
-                patchSettings((current) => ({
-                  ...current,
-                  asr: {
-                    ...current.asr,
-                    autoLoadCachedSubtitles
-                  }
-                }))
-              }
+              onChange={(autoLoadCachedSubtitles) => {
+                patchSettingsSection('asr', { autoLoadCachedSubtitles })
+              }}
             />
 
             <SettingsField
@@ -754,13 +687,7 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
                 value={settings.asr.preferredModelSourceId}
                 options={modelSourceOptions}
                 onChange={(preferredModelSourceId) => {
-                  patchSettings((current) => ({
-                    ...current,
-                    asr: {
-                      ...current.asr,
-                      preferredModelSourceId
-                    }
-                  }))
+                  patchSettingsSection('asr', { preferredModelSourceId })
                 }}
               />
             </SettingsField>
@@ -788,15 +715,9 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
                 fallback="—"
                 selectLabel={copy.settingsDialog.capture.selectFolder}
                 onPickFolder={onPickCaptureFolder}
-                onChange={(saveDirectoryPath) =>
-                  patchSettings((current) => ({
-                    ...current,
-                    capture: {
-                      ...current.capture,
-                      saveDirectoryPath
-                    }
-                  }))
-                }
+                onChange={(saveDirectoryPath) => {
+                  patchSettingsSection('capture', { saveDirectoryPath })
+                }}
               />
             </SettingsField>
 
@@ -804,15 +725,9 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
               title={copy.settingsDialog.capture.copyToClipboard}
               description={copy.settingsDialog.capture.copyToClipboardDescription}
               checked={settings.capture.copyToClipboard}
-              onChange={(copyToClipboard) =>
-                patchSettings((current) => ({
-                  ...current,
-                  capture: {
-                    ...current.capture,
-                    copyToClipboard
-                  }
-                }))
-              }
+              onChange={(copyToClipboard) => {
+                patchSettingsSection('capture', { copyToClipboard })
+              }}
             />
 
             <SettingsField
@@ -823,13 +738,7 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
                 value={settings.capture.imageFormat}
                 options={captureImageFormatOptions}
                 onChange={(imageFormat) => {
-                  patchSettings((current) => ({
-                    ...current,
-                    capture: {
-                      ...current.capture,
-                      imageFormat
-                    }
-                  }))
+                  patchSettingsSection('capture', { imageFormat })
                 }}
               />
             </SettingsField>
@@ -842,13 +751,7 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
                 value={settings.capture.fileNaming}
                 options={captureFileNamingOptions}
                 onChange={(fileNaming) => {
-                  patchSettings((current) => ({
-                    ...current,
-                    capture: {
-                      ...current.capture,
-                      fileNaming
-                    }
-                  }))
+                  patchSettingsSection('capture', { fileNaming })
                 }}
               />
             </SettingsField>
@@ -862,13 +765,7 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
                 max={60}
                 value={settings.capture.gifFrameRate}
                 onChange={(gifFrameRate) => {
-                  patchSettings((current) => ({
-                    ...current,
-                    capture: {
-                      ...current.capture,
-                      gifFrameRate
-                    }
-                  }))
+                  patchSettingsSection('capture', { gifFrameRate })
                 }}
               />
             </SettingsField>
@@ -881,13 +778,7 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
                 value={settings.capture.gifResolution}
                 options={captureGifResolutionOptions}
                 onChange={(gifResolution) => {
-                  patchSettings((current) => ({
-                    ...current,
-                    capture: {
-                      ...current.capture,
-                      gifResolution
-                    }
-                  }))
+                  patchSettingsSection('capture', { gifResolution })
                 }}
               />
             </SettingsField>
