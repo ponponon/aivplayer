@@ -51,6 +51,7 @@ import { MediaDetailsDialog } from './media-details-dialog'
 import { SettingsDialog } from './settings-dialog'
 import { useModalFocusTrap } from './use-modal-focus-trap'
 import { clamp, formatPlaybackTimeLabel, formatTime } from '../lib/time'
+import { resolvePlaybackStartTime } from './playback-progress'
 
 type AsrNotice = {
   success: boolean
@@ -247,6 +248,7 @@ export function App(): ReactElement {
   const holdRightArrowTimerRef = useRef<number | null>(null)
   const holdRightArrowRestoreRateRef = useRef<number | null>(null)
   const controlDeckHideTimerRef = useRef<number | null>(null)
+  const playbackEndedRef = useRef(false)
   const lastSavedProgressRef = useRef<{ path: string | null; time: number }>({ path: null, time: -1 })
   const [state, setState] = useState<PlayerState>(initialPlayerState)
   const [asrStatus, setAsrStatus] = useState<AsrRuntimeStatus | null>(null)
@@ -450,6 +452,7 @@ export function App(): ReactElement {
       return
     }
 
+    playbackEndedRef.current = false
     setActiveSubtitle(null)
     setSubtitleResult(null)
     setAsrNotice(null)
@@ -545,6 +548,7 @@ export function App(): ReactElement {
   }
 
   const selectFile = (file: MediaFile): void => {
+    playbackEndedRef.current = false
     setActiveSubtitle(null)
     setSubtitleResult(null)
     setAsrNotice(null)
@@ -948,7 +952,13 @@ export function App(): ReactElement {
       return
     }
 
-    const nextTime = getInitialPlaybackTime(state.currentFile.path)
+    const savedTime = appSettings.playback.lastProgressByPath[state.currentFile.path] ?? 0
+    const nextTime = resolvePlaybackStartTime(savedTime, mediaDurationSeconds)
+
+    if (nextTime === 0 && playbackEndedRef.current) {
+      return
+    }
+
     if (Math.abs(video.currentTime - nextTime) < 0.25) {
       return
     }
@@ -956,7 +966,7 @@ export function App(): ReactElement {
     video.currentTime = nextTime
     lastSavedProgressRef.current = { path: state.currentFile.path, time: nextTime }
     setState((current) => ({ ...current, currentTime: nextTime }))
-  }, [state.currentFile?.path, appSettings.playback.rememberProgress, appSettings.playback.lastProgressByPath])
+  }, [state.currentFile?.path, appSettings.playback.rememberProgress, appSettings.playback.lastProgressByPath, mediaDurationSeconds])
 
   useEffect(() => {
     const clearHoldRightArrowTimer = (): void => {
@@ -1380,16 +1390,21 @@ export function App(): ReactElement {
                   persistPlaybackProgress(event.currentTarget.currentTime, true)
                 }}
                 onEnded={(event) => {
+                  playbackEndedRef.current = true
                   setState((current) => ({ ...current, isPlaying: false }))
-                  persistPlaybackProgress(event.currentTarget.currentTime, true)
+                  persistPlaybackProgress(0, true)
                 }}
                 onLoadedMetadata={(event) => {
                   const duration = event.currentTarget.duration || 0
                   const currentTime = event.currentTarget.currentTime
+                  const resumeTime = resolvePlaybackStartTime(currentTime, duration)
                   const videoWidth = event.currentTarget.videoWidth || 0
                   const videoHeight = event.currentTarget.videoHeight || 0
-                  setState((current) => ({ ...current, duration, currentTime, videoWidth, videoHeight, error: null }))
-                  persistPlaybackProgress(currentTime, true)
+                  if (Math.abs(currentTime - resumeTime) > 0.25) {
+                    event.currentTarget.currentTime = resumeTime
+                  }
+                  setState((current) => ({ ...current, duration, currentTime: resumeTime, videoWidth, videoHeight, error: null }))
+                  persistPlaybackProgress(resumeTime, true)
                 }}
                 onTimeUpdate={(event) => {
                   const currentTime = event.currentTarget.currentTime

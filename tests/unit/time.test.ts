@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { clamp, formatPlaybackTimeLabel, formatTime } from '../../src/renderer/src/lib/time'
+import { resolvePlaybackStartTime } from '../../src/renderer/src/app/playback-progress'
 
 describe('time helpers', () => {
   it('formats short durations', () => {
@@ -23,5 +24,10 @@ describe('time helpers', () => {
     expect(clamp(-5, 0, 10)).toBe(0)
     expect(clamp(15, 0, 10)).toBe(10)
     expect(clamp(4, 0, 10)).toBe(4)
+  })
+
+  it('resets resume time when playback is already at the end', () => {
+    expect(resolvePlaybackStartTime(59.9, 60)).toBe(0)
+    expect(resolvePlaybackStartTime(30, 60)).toBe(30)
   })
 })
