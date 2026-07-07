@@ -25,16 +25,18 @@ export type LocaleCopy = {
     description: string
     openVideo: string
   }
-  controls: {
-    previous: string
-    play: string
-    pause: string
-    next: string
-    mute: string
-    fullscreen: string
-    playbackPosition: string
-    volume: string
-    playbackSpeed: string
+    controls: {
+      previous: string
+      play: string
+      pause: string
+      next: string
+      stop: string
+      stopAndReset: string
+      mute: string
+      fullscreen: string
+      playbackPosition: string
+      volume: string
+      playbackSpeed: string
   }
   panels: {
     playlistKicker: string
@@ -335,6 +337,8 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       play: '播放',
       pause: '暂停',
       next: '下一条',
+      stop: '停止',
+      stopAndReset: '停止并回到开头',
       mute: '静音',
       fullscreen: '全屏',
       playbackPosition: '播放进度',
@@ -761,6 +765,8 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       play: 'Play',
       pause: 'Pause',
       next: 'Next',
+      stop: 'Stop',
+      stopAndReset: 'Stop and return to start',
       mute: 'Mute',
       fullscreen: 'Fullscreen',
       playbackPosition: 'Playback position',
@@ -1187,6 +1193,8 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       play: '再生',
       pause: '一時停止',
       next: '次へ',
+      stop: '停止',
+      stopAndReset: '停止して先頭に戻る',
       mute: 'ミュート',
       fullscreen: '全画面',
       playbackPosition: '再生位置',
@@ -1613,6 +1621,8 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       play: '재생',
       pause: '일시 정지',
       next: '다음',
+      stop: '정지',
+      stopAndReset: '정지하고 처음으로 이동',
       mute: '음소거',
       fullscreen: '전체 화면',
       playbackPosition: '재생 위치',

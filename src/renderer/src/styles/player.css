@@ -74,6 +74,47 @@
   border-color: var(--border-soft);
 }
 
+.tool-button:focus-visible,
+.round-button:focus-visible,
+.speed-select:focus-visible,
+.timeline:focus-visible,
+.volume:focus-visible {
+  outline: 2px solid rgba(232, 193, 109, 0.72);
+  outline-offset: 2px;
+}
+
+.tool-button:disabled,
+.round-button:disabled,
+.speed-select:disabled,
+.timeline:disabled,
+.volume:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.tool-button:disabled:hover,
+.round-button:disabled:hover {
+  color: var(--text-secondary);
+  background: transparent;
+  border-color: transparent;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tool-button,
+  .round-button {
+    transition:
+      transform 120ms ease,
+      background-color 120ms ease,
+      color 120ms ease,
+      border-color 120ms ease;
+  }
+
+  .tool-button:active,
+  .round-button:active {
+    transform: translateY(1px) scale(0.98);
+  }
+}
+
 .workspace {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -90,7 +131,7 @@
   grid-template-rows: minmax(0, 1fr) auto;
   min-width: 0;
   min-height: 0;
-  padding: 10px;
+  padding: 14px 10px 10px;
   gap: 8px;
 }
 
@@ -121,7 +162,7 @@
   place-items: center;
   align-content: center;
   gap: 16px;
-  padding: 32px;
+  padding: clamp(72px, 10vh, 108px) 32px 24px;
   text-align: center;
 }
 
@@ -246,10 +287,27 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+}
+
+.timeline-row {
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+}
+
+.controls-primary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 0 1 auto;
 }
 
 .timeline-row span {
-  width: 44px;
+  flex: 0 0 44px;
+  text-align: center;
   color: var(--text-muted);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
@@ -262,15 +320,87 @@
 }
 
 .controls-row {
-  justify-content: space-between;
+  justify-content: center;
+  gap: 14px;
 }
 
 .control-group {
+  display: inline-flex;
+  align-items: center;
   gap: 4px;
+  min-width: 0;
 }
 
-.control-group.wide {
-  min-width: 140px;
+.control-group.transport-group {
+  flex: 0 0 auto;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+}
+
+.control-group.volume-group {
+  flex: 0 1 320px;
+  min-width: 160px;
+  max-width: 320px;
+  padding: 4px 10px 4px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+}
+
+.controls-secondary {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.control-group.secondary-group {
+  gap: 6px;
+  padding: 4px 10px 4px 8px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+}
+
+.speed-control {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  min-width: 78px;
+  height: var(--control-size);
+  padding: 0 8px;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    color 120ms ease,
+    background-color 120ms ease,
+    border-color 120ms ease;
+}
+
+.speed-control:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.085);
+}
+
+.speed-control:focus-within {
+  outline: 2px solid rgba(232, 193, 109, 0.72);
+  outline-offset: 2px;
+}
+
+.speed-control-icon {
+  position: absolute;
+  right: 7px;
+  pointer-events: none;
+  color: var(--text-muted);
+}
+
+.speed-control:hover .speed-control-icon {
+  color: var(--text-secondary);
 }
 
 .round-button {
@@ -290,19 +420,68 @@
   background: var(--accent-strong);
 }
 
+.round-button.primary:disabled {
+  color: var(--text-muted);
+  background: rgba(232, 193, 109, 0.18);
+  border-color: transparent;
+}
+
+.round-button.primary:disabled:hover {
+  color: var(--text-muted);
+  background: rgba(232, 193, 109, 0.18);
+}
+
+.round-button.stop-button {
+  display: inline-flex;
+  width: auto;
+  min-width: 72px;
+  padding: 0 10px;
+  gap: 6px;
+  color: rgba(255, 128, 124, 0.96);
+  background: rgba(255, 115, 111, 0.08);
+  border-color: rgba(255, 115, 111, 0.22);
+}
+
+.round-button.stop-button:hover {
+  color: #ffb7b4;
+  background: rgba(255, 115, 111, 0.14);
+  border-color: rgba(255, 115, 111, 0.3);
+}
+
+.round-button.stop-button span {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
 .volume {
-  width: 90px;
+  width: 100%;
+  min-width: 96px;
   accent-color: var(--accent);
 }
 
 .speed-select {
-  height: var(--control-size);
-  padding: 0 8px;
-  color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-sm);
+  width: 100%;
+  min-width: 0;
+  padding: 0 14px 0 0;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
   font-size: 12px;
+  cursor: pointer;
+}
+
+.speed-select:disabled {
+  color: var(--text-muted);
+  background: transparent;
+}
+
+.speed-control .speed-select:focus-visible {
+  outline: none;
 }
 
 .side-panel {
@@ -311,7 +490,7 @@
   align-content: start;
   min-width: 0;
   min-height: 0;
-  padding: 10px 10px 10px 0;
+  padding: 14px 10px 10px 0;
   overflow-x: hidden;
   transform: translateX(0);
   transition: opacity 180ms ease;
@@ -1843,7 +2022,50 @@
   }
 
   .controls-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .controls-primary {
+    width: 100%;
+    flex-direction: row;
     flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 10px 12px;
+  }
+
+  .controls-secondary {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .control-group.transport-group {
+    align-self: center;
+  }
+
+  .stop-button {
+    align-self: center;
+  }
+
+  .round-button.stop-button {
+    min-width: 32px;
+    padding: 0;
+  }
+
+  .round-button.stop-button span {
+    display: none;
+  }
+
+  .control-group.volume-group {
+    flex: none;
+    width: 100%;
+    max-width: none;
+  }
+
+  .control-group.secondary-group {
+    align-self: center;
   }
 
   .modal-backdrop {

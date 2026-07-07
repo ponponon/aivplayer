@@ -19,6 +19,7 @@ import {
   Settings,
   SkipBack,
   SkipForward,
+  Square,
   Sparkles,
   Volume2,
   VolumeX,
@@ -278,6 +279,7 @@ export function App(): ReactElement {
   const subtitlePath = activeSubtitle?.subtitlePath ?? subtitleResult?.subtitlePath ?? null
   const subtitleSrtPath = activeSubtitle?.subtitleSrtPath ?? subtitleResult?.subtitleSrtPath ?? null
   const canOpenSubtitleTools = Boolean(state.currentFile)
+  const hasCurrentFile = Boolean(state.currentFile)
   const canOpenSubtitleFolder = Boolean(subtitlePath)
   const canOpenSubtitleSrt = Boolean(subtitleSrtPath)
   const hasClipExportSubtitle = Boolean(subtitlePath || subtitleSrtPath)
@@ -545,6 +547,34 @@ export function App(): ReactElement {
     }
 
     video.currentTime = clamp(video.currentTime + seconds, 0, video.duration || 0)
+  }
+
+  const stopPlayback = (): void => {
+    if (!state.currentFile) {
+      return
+    }
+
+    revealControlDeck()
+
+    const currentFile = state.currentFile
+    const video = videoRef.current
+
+    if (video && currentFile) {
+      playbackEndedRef.current = false
+      video.currentTime = 0
+      video.pause()
+
+      setState((current) => ({
+        ...current,
+        isPlaying: false,
+        currentTime: 0
+      }))
+
+      lastSavedProgressRef.current = { path: currentFile.path, time: 0 }
+      persistPlaybackProgress(0, true)
+    }
+
+    void window.aiv.stopNativePlayer().catch(() => undefined)
   }
 
   const selectFile = (file: MediaFile): void => {
@@ -1064,19 +1094,30 @@ export function App(): ReactElement {
         void openFiles()
         return
       }
+      if (event.code === 'KeyL') {
+        revealControlDeck()
+        togglePanelMode('playlist')
+        return
+      }
+
+      if (!state.currentFile) {
+        return
+      }
+
       if (event.code === 'KeyM') {
         revealControlDeck()
         toggleMute()
+        return
+      }
+      if (event.code === 'KeyS') {
+        revealControlDeck()
+        stopPlayback()
         return
       }
       if (event.code === 'KeyF') {
         revealControlDeck()
         void toggleFullscreen()
         return
-      }
-      if (event.code === 'KeyL') {
-        revealControlDeck()
-        togglePanelMode('playlist')
       }
     }
 
@@ -1455,92 +1496,113 @@ export function App(): ReactElement {
             </div>
           ) : null}
 
-          <div className={`control-deck ${isControlDeckHidden ? 'is-hidden' : ''}`} aria-hidden={isControlDeckHidden}>
-            <div className="timeline-row">
-              <span>{formatTime(state.currentTime)}</span>
-              <input
-                className="timeline"
-                type="range"
-                min="0"
-                max={state.duration || 0}
-                value={state.currentTime}
-                step="0.1"
-                onChange={(event) => {
-                  const nextTime = Number(event.currentTarget.value)
-                  if (videoRef.current) {
-                    videoRef.current.currentTime = nextTime
-                  }
-                  setState((current) => ({ ...current, currentTime: nextTime }))
-                }}
-                aria-label={copy.controls.playbackPosition}
-              />
-              <span>{playbackTimeLabel}</span>
-            </div>
-
-            <div className="controls-row">
-              <div className="control-group">
-                <button className="round-button" type="button" onClick={() => playAdjacent(-1)} title={copy.controls.previous}>
-                  <SkipBack size={16} />
-                </button>
-                <button className="round-button primary" type="button" onClick={togglePlay} title={state.isPlaying ? copy.controls.pause : copy.controls.play}>
-                  {state.isPlaying ? <Pause size={18} /> : <Play size={18} />}
-                </button>
-                <button className="round-button" type="button" onClick={() => playAdjacent(1)} title={copy.controls.next}>
-                  <SkipForward size={16} />
-                </button>
-              </div>
-
-              <div className="control-group wide">
-                <button className="round-button" type="button" onClick={toggleMute} title={copy.controls.mute}>
-                  {state.muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
-                </button>
+          {hasCurrentFile ? (
+            <div className={`control-deck ${isControlDeckHidden ? 'is-hidden' : ''}`} aria-hidden={isControlDeckHidden}>
+              <div className="timeline-row">
+                <span>{formatTime(state.currentTime)}</span>
                 <input
-                  className="volume"
+                  className="timeline"
                   type="range"
                   min="0"
-                  max="1"
-                  step="0.01"
-                  value={state.muted ? 0 : state.volume}
+                  max={state.duration || 0}
+                  value={state.currentTime}
+                  step="0.1"
                   onChange={(event) => {
-                    const nextVolume = Number(event.currentTarget.value)
+                    const nextTime = Number(event.currentTarget.value)
                     if (videoRef.current) {
-                      videoRef.current.volume = nextVolume
-                      videoRef.current.muted = nextVolume === 0
+                      videoRef.current.currentTime = nextTime
                     }
-                    const nextMuted = nextVolume === 0
-                    setState((current) => ({ ...current, volume: nextVolume, muted: nextMuted }))
-                    syncPlaybackMemory(nextVolume, nextMuted, state.playbackRate)
+                    setState((current) => ({ ...current, currentTime: nextTime }))
                   }}
-                  aria-label={copy.controls.volume}
+                  aria-label={copy.controls.playbackPosition}
                 />
+                <span>{playbackTimeLabel}</span>
               </div>
 
-              <div className="control-group">
-                <select
-                  className="speed-select"
-                  value={state.playbackRate}
-                  onChange={(event) => {
-                    const playbackRate = Number(event.currentTarget.value)
-                    if (videoRef.current) {
-                      videoRef.current.playbackRate = playbackRate
-                    }
-                    setState((current) => ({ ...current, playbackRate }))
-                    syncPlaybackMemory(state.volume, state.muted, playbackRate)
-                  }}
-                  aria-label={copy.controls.playbackSpeed}
-                >
-                  {[0.5, 0.75, 1, 1.25, 1.5, 2].map((speed) => (
-                    <option key={speed} value={speed}>
-                      {speed}x
-                    </option>
-                  ))}
-                </select>
-                <button className="round-button" type="button" onClick={toggleFullscreen} title={copy.controls.fullscreen}>
-                  <Maximize2 size={16} />
-                </button>
+              <div className="controls-row">
+                <div className="controls-primary">
+                  <div className="control-group transport-group">
+                    <button className="round-button" type="button" onClick={() => playAdjacent(-1)} title={copy.controls.previous}>
+                      <SkipBack size={16} />
+                    </button>
+                    <button className="round-button primary" type="button" onClick={togglePlay} title={state.isPlaying ? copy.controls.pause : copy.controls.play}>
+                      {state.isPlaying ? <Pause size={18} /> : <Play size={18} />}
+                    </button>
+                    <button className="round-button" type="button" onClick={() => playAdjacent(1)} title={copy.controls.next}>
+                      <SkipForward size={16} />
+                    </button>
+                  </div>
+
+                  <button
+                    className="round-button stop-button"
+                    type="button"
+                    onClick={stopPlayback}
+                    title={`${copy.controls.stopAndReset} (S)`}
+                    aria-label={copy.controls.stopAndReset}
+                    aria-keyshortcuts="S"
+                  >
+                    <Square size={14} fill="currentColor" stroke="none" />
+                    <span>{copy.controls.stop}</span>
+                  </button>
+
+                  <div className="control-group volume-group">
+                    <button className="round-button" type="button" onClick={toggleMute} title={copy.controls.mute}>
+                      {state.muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                    </button>
+                    <input
+                      className="volume"
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      value={state.muted ? 0 : state.volume}
+                      onChange={(event) => {
+                        const nextVolume = Number(event.currentTarget.value)
+                        if (videoRef.current) {
+                          videoRef.current.volume = nextVolume
+                          videoRef.current.muted = nextVolume === 0
+                        }
+                        const nextMuted = nextVolume === 0
+                        setState((current) => ({ ...current, volume: nextVolume, muted: nextMuted }))
+                        syncPlaybackMemory(nextVolume, nextMuted, state.playbackRate)
+                      }}
+                      aria-label={copy.controls.volume}
+                    />
+                  </div>
+                </div>
+
+                <div className="controls-secondary">
+                  <div className="control-group secondary-group">
+                    <div className="speed-control">
+                      <select
+                        className="speed-select"
+                        value={state.playbackRate}
+                        onChange={(event) => {
+                          const playbackRate = Number(event.currentTarget.value)
+                          if (videoRef.current) {
+                            videoRef.current.playbackRate = playbackRate
+                          }
+                          setState((current) => ({ ...current, playbackRate }))
+                          syncPlaybackMemory(state.volume, state.muted, playbackRate)
+                        }}
+                        aria-label={copy.controls.playbackSpeed}
+                      >
+                        {[0.5, 0.75, 1, 1.25, 1.5, 2].map((speed) => (
+                          <option key={speed} value={speed}>
+                            {speed}x
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="speed-control-icon" size={12} aria-hidden="true" />
+                    </div>
+                    <button className="round-button" type="button" onClick={toggleFullscreen} title={copy.controls.fullscreen}>
+                      <Maximize2 size={16} />
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          ) : null}
         </section>
 
         <aside
