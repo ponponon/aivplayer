@@ -13,7 +13,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 12px 0 78px;
+  padding: 0 12px 0 92px;
   border-bottom: 1px solid var(--border-soft);
   -webkit-app-region: drag;
 }
@@ -33,6 +33,8 @@
   color: var(--text-secondary);
   font-size: 12px;
   font-weight: 650;
+  line-height: 1;
+  transform: translateY(2px);
 }
 
 .brand-mark {
