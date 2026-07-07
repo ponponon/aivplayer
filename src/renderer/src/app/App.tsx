@@ -25,6 +25,7 @@ import {
   VolumeX,
   X
 } from 'lucide-react'
+import { SubtitleOverlay } from '../subtitle-overlay'
 import {
   createDefaultAppSettings,
   createAppSettingsSectionPatcher,
@@ -244,7 +245,6 @@ function formatPercent(value: number | null | undefined, fallbackLabel: string):
 
 export function App(): ReactElement {
   const videoRef = useRef<HTMLVideoElement | null>(null)
-  const trackRef = useRef<HTMLTrackElement | null>(null)
   const subtitleActionsRef = useRef<HTMLDetailsElement | null>(null)
   const downloadDialogRef = useRef<HTMLElement | null>(null)
   const holdRightArrowTimerRef = useRef<number | null>(null)
@@ -1281,34 +1281,6 @@ export function App(): ReactElement {
   }, [])
 
   useEffect(() => {
-    const track = trackRef.current
-
-    if (!track) {
-      return
-    }
-
-    if (activeSubtitle?.subtitleUrl) {
-      track.src = activeSubtitle.subtitleUrl
-      track.default = true
-    } else {
-      track.src = ''
-      track.default = false
-    }
-  }, [activeSubtitle?.subtitleUrl])
-
-  useEffect(() => {
-    const video = videoRef.current
-
-    if (!video) {
-      return
-    }
-
-    for (const track of Array.from(video.textTracks)) {
-      track.mode = track.kind === 'subtitles' ? 'showing' : 'disabled'
-    }
-  }, [activeSubtitle?.subtitleUrl])
-
-  useEffect(() => {
     const filePath = state.currentFile?.path
 
     if (!filePath) {
@@ -1472,15 +1444,7 @@ export function App(): ReactElement {
                 }}
                 onError={handleMediaError}
                 controls={false}
-              >
-                <track
-                  ref={trackRef}
-                  kind="subtitles"
-                  src=""
-                  srcLang="auto"
-                  label={copy.panels.asrSubtitleTrack}
-                />
-              </video>
+              />
             ) : (
               <div className="empty-state">
                 <div className="empty-icon">
@@ -1495,6 +1459,11 @@ export function App(): ReactElement {
               </div>
             )}
           </div>
+
+          <SubtitleOverlay
+            subtitlePath={activeSubtitle?.subtitlePath ?? null}
+            currentTime={state.currentTime}
+          />
 
           {state.error ? (
             <div className="status-banner">

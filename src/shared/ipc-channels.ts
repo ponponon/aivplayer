@@ -5,6 +5,7 @@ export const IPC_CHANNELS = {
   CREATE_MEDIA_FILE: 'media:create-file',
   LIST_MEDIA_FILES_IN_DIRECTORY: 'media:list-files-in-directory',
   GET_MEDIA_METADATA: 'media:get-metadata',
+  READ_FILE_CONTENT: 'media:read-file-content',
   GET_APP_VERSION: 'app:get-version',
   APP_GET_SETTINGS: 'app:get-settings',
   APP_SET_SETTINGS: 'app:set-settings',

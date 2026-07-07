@@ -233,6 +233,11 @@ function registerIpc(): void {
 
   ipcMain.handle(IPC_CHANNELS.CREATE_MEDIA_FILE, (_event, filePath: string) => createMediaFile(filePath))
 
+  ipcMain.handle(IPC_CHANNELS.READ_FILE_CONTENT, async (_event, filePath: string): Promise<string> => {
+    const { readFile } = await import('node:fs/promises')
+    return readFile(filePath, 'utf-8')
+  })
+
   ipcMain.handle(IPC_CHANNELS.GET_MEDIA_METADATA, async (_event, filePath: string): Promise<MediaProbeMetadata | null> => {
     return createMediaProbeMetadata(filePath, {
       resourcePath: resolveResourcePath(),
