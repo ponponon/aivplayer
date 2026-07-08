@@ -41,6 +41,10 @@ describe('app settings', () => {
     settings.playback.autoHideControlDeck = false
     settings.playback.controlDeckAutoHideSeconds = 7
     settings.playback.showTotalPlaybackTime = true
+    settings.subtitles.fontSizePx = 22
+    settings.subtitles.lineHeight = 'relaxed'
+    settings.subtitles.displayMode = 'bilingual'
+    settings.subtitles.targetLanguage = 'zh'
     settings.playback.lastVolume = 0.42
     settings.playback.lastMuted = true
     settings.playback.lastPlaybackRate = 1.5
@@ -102,6 +106,62 @@ describe('app settings', () => {
         preferredModelSourceId: 'modelscope',
         defaultSubtitleLanguage: 'auto',
         autoLoadCachedSubtitles: true
+      }
+    })
+  })
+
+  it('sanitizes unsupported subtitle display settings', async () => {
+    await writeFile(
+      join(tempDirectory, 'app-settings.json'),
+      `${JSON.stringify(
+        {
+          schemaVersion: 1,
+          subtitles: {
+            fontSizePx: 999,
+            lineHeight: 'giant',
+            displayMode: 'ghost',
+            targetLanguage: 'not-a-language'
+          }
+        },
+        null,
+        2
+      )}\n`
+    )
+
+    const settings = await readAppSettings(tempDirectory)
+
+    expect(settings.subtitles).toEqual({
+      fontSizePx: 14,
+      lineHeight: 'normal',
+      displayMode: 'source',
+      targetLanguage: 'zh'
+    })
+  })
+
+  it('clamps subtitle font size settings', async () => {
+    await writeFile(
+      join(tempDirectory, 'app-settings.json'),
+      `${JSON.stringify(
+        {
+          schemaVersion: 1,
+          subtitles: {
+            fontSizePx: 11.4,
+            lineHeight: 'compact',
+            displayMode: 'translation',
+            targetLanguage: 'en'
+          }
+        },
+        null,
+        2
+      )}\n`
+    )
+
+    await expect(readAppSettings(tempDirectory)).resolves.toMatchObject({
+      subtitles: {
+        fontSizePx: 12,
+        lineHeight: 'compact',
+        displayMode: 'translation',
+        targetLanguage: 'en'
       }
     })
   })

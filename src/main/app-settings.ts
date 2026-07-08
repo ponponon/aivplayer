@@ -9,7 +9,9 @@ import {
   type CaptureImageFormat,
   type AppPanelModePreference,
   type AppSettingsSectionId,
-  type AppSettings
+  type AppSettings,
+  type SubtitleDisplayMode,
+  type SubtitleLineHeight
 } from '../shared/app-settings'
 import { isClipExportLengthSeconds, isClipExportMode } from '../shared/clip-export'
 import type { AsrModelSourceId } from '../shared/media-types'
@@ -41,6 +43,14 @@ function isCaptureFileNamingMode(value: unknown): value is CaptureFileNamingMode
 
 function isCaptureGifResolution(value: unknown): value is CaptureGifResolution {
   return value === '360p' || value === '480p' || value === '720p'
+}
+
+function isSubtitleLineHeight(value: unknown): value is SubtitleLineHeight {
+  return value === 'compact' || value === 'normal' || value === 'relaxed'
+}
+
+function isSubtitleDisplayMode(value: unknown): value is SubtitleDisplayMode {
+  return value === 'source' || value === 'translation' || value === 'bilingual'
 }
 
 function normalizeSettingsSectionId(value: unknown, fallback: AppSettingsSectionId): AppSettingsSectionId {
@@ -203,6 +213,30 @@ function sanitizePlaybackSettings(
   }
 }
 
+function sanitizeSubtitleSettings(
+  value: Partial<AppSettings['subtitles']> | undefined,
+  defaults: AppSettings['subtitles']
+): AppSettings['subtitles'] {
+  const subtitles = value ?? {}
+  const roundedFontSizePx =
+    typeof subtitles.fontSizePx === 'number' && Number.isFinite(subtitles.fontSizePx)
+      ? Math.round(subtitles.fontSizePx)
+      : null
+  const fontSizePx =
+    roundedFontSizePx === null || roundedFontSizePx > 28
+      ? defaults.fontSizePx
+      : Math.max(12, roundedFontSizePx)
+
+  return {
+    fontSizePx,
+    lineHeight: isSubtitleLineHeight(subtitles.lineHeight) ? subtitles.lineHeight : defaults.lineHeight,
+    displayMode: isSubtitleDisplayMode(subtitles.displayMode) ? subtitles.displayMode : defaults.displayMode,
+    targetLanguage: isSubtitleLanguageId(subtitles.targetLanguage)
+      ? subtitles.targetLanguage
+      : defaults.targetLanguage
+  }
+}
+
 function sanitizeAsrSettings(
   value: Partial<AppSettings['asr']> | undefined,
   defaults: AppSettings['asr']
@@ -236,6 +270,7 @@ function sanitizeAppSettings(parsed: unknown, captureDefaultDirectoryPath: strin
     media?: Partial<AppSettings['media']>
     capture?: Partial<AppSettings['capture']>
     playback?: Partial<AppSettings['playback']>
+    subtitles?: Partial<AppSettings['subtitles']>
     asr?: Partial<AppSettings['asr']>
   }
 
@@ -245,6 +280,7 @@ function sanitizeAppSettings(parsed: unknown, captureDefaultDirectoryPath: strin
     media: sanitizeMediaSettings(value.media, defaults.media),
     capture: sanitizeCaptureSettings(value.capture, defaults.capture, captureDefaultDirectoryPath),
     playback: sanitizePlaybackSettings(value.playback, defaults.playback),
+    subtitles: sanitizeSubtitleSettings(value.subtitles, defaults.subtitles),
     asr: sanitizeAsrSettings(value.asr, defaults.asr)
   }
 }
