@@ -12,6 +12,7 @@ export function SubtitleOverlay({ subtitlePath, currentTime }: SubtitleOverlayPr
   const [cues, setCues] = useState<SubtitleCue[]>([])
   const [activeCue, setActiveCue] = useState<SubtitleCue | null>(null)
   const prevSubtitlePathRef = useRef<string | null>(null)
+  const hasSubtitles = cues.length > 0
 
   useEffect(() => {
     if (!subtitlePath) {
@@ -50,13 +51,13 @@ export function SubtitleOverlay({ subtitlePath, currentTime }: SubtitleOverlayPr
     setActiveCue(cue)
   }, [cues, currentTime])
 
-  if (!activeCue) {
+  if (!hasSubtitles) {
     return <div className="subtitle-overlay empty" />
   }
 
   return (
     <div className="subtitle-overlay">
-      <div className="subtitle-text">{activeCue.text}</div>
+      <div className="subtitle-text">{activeCue?.text ?? '\u00A0'}</div>
     </div>
   )
 }
