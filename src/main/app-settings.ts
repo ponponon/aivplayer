@@ -218,14 +218,10 @@ function sanitizeSubtitleSettings(
   defaults: AppSettings['subtitles']
 ): AppSettings['subtitles'] {
   const subtitles = value ?? {}
-  const roundedFontSizePx =
-    typeof subtitles.fontSizePx === 'number' && Number.isFinite(subtitles.fontSizePx)
-      ? Math.round(subtitles.fontSizePx)
-      : null
   const fontSizePx =
-    roundedFontSizePx === null || roundedFontSizePx > 28
-      ? defaults.fontSizePx
-      : Math.max(12, roundedFontSizePx)
+    typeof subtitles.fontSizePx === 'number' && Number.isFinite(subtitles.fontSizePx)
+      ? Math.min(28, Math.max(12, Math.round(subtitles.fontSizePx)))
+      : defaults.fontSizePx
 
   return {
     fontSizePx,

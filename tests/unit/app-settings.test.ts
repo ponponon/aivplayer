@@ -131,7 +131,7 @@ describe('app settings', () => {
     const settings = await readAppSettings(tempDirectory)
 
     expect(settings.subtitles).toEqual({
-      fontSizePx: 14,
+      fontSizePx: 28,
       lineHeight: 'normal',
       displayMode: 'source',
       targetLanguage: 'zh'
