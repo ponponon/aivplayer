@@ -246,6 +246,7 @@ function formatPercent(value: number | null | undefined, fallbackLabel: string):
 export function App(): ReactElement {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const subtitleActionsRef = useRef<HTMLDetailsElement | null>(null)
+  const subtitleDisplayControlsRef = useRef<HTMLDetailsElement | null>(null)
   const downloadDialogRef = useRef<HTMLElement | null>(null)
   const holdRightArrowTimerRef = useRef<number | null>(null)
   const holdRightArrowRestoreRateRef = useRef<number | null>(null)
@@ -1033,20 +1034,26 @@ export function App(): ReactElement {
         return
       }
 
+      if (event.key === 'Escape') {
+        const subtitleDisplayControls = subtitleDisplayControlsRef.current
+        if (subtitleDisplayControls?.open) {
+          subtitleDisplayControls.open = false
+          return
+        }
+
+        const subtitleActions = subtitleActionsRef.current
+        if (subtitleActions?.open) {
+          subtitleActions.open = false
+          return
+        }
+      }
+
       if (
         event.target instanceof HTMLInputElement ||
         event.target instanceof HTMLTextAreaElement ||
         event.target instanceof HTMLSelectElement
       ) {
         return
-      }
-
-      if (event.key === 'Escape') {
-        const subtitleActions = subtitleActionsRef.current
-        if (subtitleActions?.open) {
-          subtitleActions.open = false
-          return
-        }
       }
 
       if (event.code === 'Space') {
@@ -1161,6 +1168,24 @@ export function App(): ReactElement {
 
     window.addEventListener('mousedown', handleMouseDown)
     return () => window.removeEventListener('mousedown', handleMouseDown)
+  }, [])
+
+  useEffect(() => {
+    const handlePointerDown = (event: PointerEvent): void => {
+      const controls = subtitleDisplayControlsRef.current
+      if (!controls?.open) {
+        return
+      }
+
+      if (event.target instanceof Node && controls.contains(event.target)) {
+        return
+      }
+
+      controls.open = false
+    }
+
+    window.addEventListener('pointerdown', handlePointerDown)
+    return () => window.removeEventListener('pointerdown', handlePointerDown)
   }, [])
 
   useEffect(() => {
@@ -1463,6 +1488,15 @@ export function App(): ReactElement {
           <SubtitleOverlay
             subtitlePath={activeSubtitle?.subtitlePath ?? null}
             currentTime={state.currentTime}
+            settings={appSettings.subtitles}
+            copy={copy}
+            controlsRef={subtitleDisplayControlsRef}
+            onSettingsChange={(patch) => {
+              patchAppSettingsSection('subtitles', patch)
+            }}
+            onResetSettings={() => {
+              patchAppSettingsSection('subtitles', createDefaultAppSettings().subtitles)
+            }}
           />
 
           {state.error ? (
