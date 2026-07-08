@@ -17,7 +17,9 @@ import type {
   AppSettingsSectionId,
   CaptureFileNamingMode,
   CaptureGifResolution,
-  CaptureImageFormat
+  CaptureImageFormat,
+  SubtitleDisplayMode,
+  SubtitleLineHeight
 } from '../../../shared/app-settings'
 import type { AsrModelSourceId, AsrRuntimeStatus, AsrRuntimeSetupResult } from '../../../shared/media-types'
 import type { AppLocale, SubtitleLanguageId } from '../../../shared/localization'
@@ -371,6 +373,20 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
     label: option.label
   }))
 
+  const subtitleLineHeightOptions: Array<SettingsSelectOption<SubtitleLineHeight>> = Object.entries(
+    copy.subtitleDisplay.lineHeightOptions
+  ).map(([lineHeight, label]) => ({
+    value: lineHeight as SubtitleLineHeight,
+    label
+  }))
+
+  const subtitleDisplayModeOptions: Array<SettingsSelectOption<SubtitleDisplayMode>> = Object.entries(
+    copy.subtitleDisplay.displayModeOptions
+  ).map(([displayMode, label]) => ({
+    value: displayMode as SubtitleDisplayMode,
+    label
+  }))
+
   const sections: Array<{
     id: AppSettingsSectionId
     label: string
@@ -656,6 +672,69 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
               <Captions size={16} />
               <span>{copy.settingsDialog.subtitles.title}</span>
             </div>
+
+            <div className="settings-note-box">
+              <span className="settings-note-title">{copy.settingsDialog.subtitles.displayHeading}</span>
+              <p>{copy.settingsDialog.subtitles.fontSizeDescription}</p>
+            </div>
+
+            <SettingsField
+              title={copy.settingsDialog.subtitles.fontSize}
+              description={copy.settingsDialog.subtitles.fontSizeDescription}
+            >
+              <div className="settings-inline-row">
+                <SettingsNumberInput
+                  min={12}
+                  max={28}
+                  value={settings.subtitles.fontSizePx}
+                  compact
+                  ariaLabel={copy.settingsDialog.subtitles.fontSize}
+                  onChange={(fontSizePx) => {
+                    patchSettingsSection('subtitles', { fontSizePx })
+                  }}
+                />
+                <span className="settings-inline-unit">px</span>
+              </div>
+            </SettingsField>
+
+            <SettingsField
+              title={copy.settingsDialog.subtitles.lineHeight}
+              description={copy.settingsDialog.subtitles.lineHeightDescription}
+            >
+              <SettingsSelect
+                value={settings.subtitles.lineHeight}
+                options={subtitleLineHeightOptions}
+                onChange={(lineHeight) => {
+                  patchSettingsSection('subtitles', { lineHeight })
+                }}
+              />
+            </SettingsField>
+
+            <SettingsField
+              title={copy.settingsDialog.subtitles.displayMode}
+              description={copy.settingsDialog.subtitles.displayModeDescription}
+            >
+              <SettingsSelect
+                value={settings.subtitles.displayMode}
+                options={subtitleDisplayModeOptions}
+                onChange={(displayMode) => {
+                  patchSettingsSection('subtitles', { displayMode })
+                }}
+              />
+            </SettingsField>
+
+            <SettingsField
+              title={copy.settingsDialog.subtitles.targetLanguage}
+              description={copy.settingsDialog.subtitles.targetLanguageDescription}
+            >
+              <SettingsSelect
+                value={settings.subtitles.targetLanguage}
+                options={subtitleLanguageOptions}
+                onChange={(targetLanguage) => {
+                  patchSettingsSection('subtitles', { targetLanguage })
+                }}
+              />
+            </SettingsField>
 
             <SettingsField
               title={copy.settingsDialog.subtitles.subtitleLanguage}

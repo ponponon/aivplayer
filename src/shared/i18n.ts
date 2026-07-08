@@ -1,4 +1,4 @@
-import type { AppSettingsSectionId } from './app-settings'
+import type { AppSettingsSectionId, SubtitleDisplayMode, SubtitleLineHeight } from './app-settings'
 import type { ClipExportLengthSeconds, ClipExportMode } from './clip-export'
 import type { AsrModelSourceId } from './media-types'
 import {
@@ -25,18 +25,31 @@ export type LocaleCopy = {
     description: string
     openVideo: string
   }
-    controls: {
-      previous: string
-      play: string
-      pause: string
-      next: string
-      stop: string
-      stopAndReset: string
-      mute: string
-      fullscreen: string
-      playbackPosition: string
-      volume: string
-      playbackSpeed: string
+  controls: {
+    previous: string
+    play: string
+    pause: string
+    next: string
+    stop: string
+    stopAndReset: string
+    mute: string
+    fullscreen: string
+    playbackPosition: string
+    volume: string
+    playbackSpeed: string
+  }
+  subtitleDisplay: {
+    menuLabel: string
+    fontSize: string
+    fontSizeValue: (value: number) => string
+    decreaseFontSize: string
+    increaseFontSize: string
+    lineHeight: string
+    displayMode: string
+    translationUnavailable: string
+    reset: string
+    lineHeightOptions: Record<SubtitleLineHeight, string>
+    displayModeOptions: Record<SubtitleDisplayMode, string>
   }
   panels: {
     playlistKicker: string
@@ -181,6 +194,15 @@ export type LocaleCopy = {
     }
     subtitles: {
       title: string
+      displayHeading: string
+      fontSize: string
+      fontSizeDescription: string
+      lineHeight: string
+      lineHeightDescription: string
+      displayMode: string
+      displayModeDescription: string
+      targetLanguage: string
+      targetLanguageDescription: string
       subtitleLanguage: string
       subtitleLanguageDescription: string
       autoLoadCachedSubtitles: string
@@ -344,6 +366,27 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       playbackPosition: '播放进度',
       volume: '音量',
       playbackSpeed: '播放速度'
+    },
+    subtitleDisplay: {
+      menuLabel: '字幕显示设置',
+      fontSize: '字号',
+      fontSizeValue: (value) => `${value}px`,
+      decreaseFontSize: '减小字幕字号',
+      increaseFontSize: '增大字幕字号',
+      lineHeight: '行高',
+      displayMode: '显示模式',
+      translationUnavailable: '译文模式会在翻译字幕生成后可用。',
+      reset: '恢复默认',
+      lineHeightOptions: {
+        compact: '紧凑',
+        normal: '标准',
+        relaxed: '宽松'
+      },
+      displayModeOptions: {
+        source: '原文',
+        translation: '译文',
+        bilingual: '双语'
+      }
     },
     panels: {
       playlistKicker: '队列',
@@ -520,6 +563,15 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       },
       subtitles: {
         title: '字幕',
+        displayHeading: '字幕显示',
+        fontSize: '字幕字号',
+        fontSizeDescription: '控制播放器字幕栏中文本的默认大小。',
+        lineHeight: '字幕行高',
+        lineHeightDescription: '控制多行字幕之间的垂直间距。',
+        displayMode: '默认显示模式',
+        displayModeDescription: '翻译功能上线后可在原文、译文和双语之间切换。',
+        targetLanguage: '目标翻译语言',
+        targetLanguageDescription: '翻译字幕默认输出到这个语言。',
         subtitleLanguage: '默认字幕语言',
         subtitleLanguageDescription: '生成字幕时优先使用这个语言，或保持自动识别。',
         autoLoadCachedSubtitles: '自动加载本地字幕缓存',
@@ -773,6 +825,27 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       volume: 'Volume',
       playbackSpeed: 'Playback speed'
     },
+    subtitleDisplay: {
+      menuLabel: 'Subtitle display settings',
+      fontSize: 'Font size',
+      fontSizeValue: (value) => `${value}px`,
+      decreaseFontSize: 'Decrease subtitle font size',
+      increaseFontSize: 'Increase subtitle font size',
+      lineHeight: 'Line height',
+      displayMode: 'Display mode',
+      translationUnavailable: 'Translated modes become available after translated subtitles are generated.',
+      reset: 'Reset defaults',
+      lineHeightOptions: {
+        compact: 'Compact',
+        normal: 'Normal',
+        relaxed: 'Relaxed'
+      },
+      displayModeOptions: {
+        source: 'Source',
+        translation: 'Translation',
+        bilingual: 'Bilingual'
+      }
+    },
     panels: {
       playlistKicker: 'Queue',
       playlistTitle: 'Playlist',
@@ -948,6 +1021,15 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       },
       subtitles: {
         title: 'Subtitles',
+        displayHeading: 'Subtitle display',
+        fontSize: 'Subtitle font size',
+        fontSizeDescription: 'Controls the default text size in the subtitle bar.',
+        lineHeight: 'Subtitle line height',
+        lineHeightDescription: 'Controls vertical spacing for multiline subtitles.',
+        displayMode: 'Default display mode',
+        displayModeDescription: 'Switch between source, translation, and bilingual modes when translation is available.',
+        targetLanguage: 'Target translation language',
+        targetLanguageDescription: 'Translated subtitles will default to this language.',
         subtitleLanguage: 'Default subtitle language',
         subtitleLanguageDescription: 'Use this language first, or keep auto-detect.',
         autoLoadCachedSubtitles: 'Auto-load local subtitle cache',
@@ -1201,6 +1283,27 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       volume: '音量',
       playbackSpeed: '再生速度'
     },
+    subtitleDisplay: {
+      menuLabel: '字幕表示設定',
+      fontSize: 'フォントサイズ',
+      fontSizeValue: (value) => `${value}px`,
+      decreaseFontSize: '字幕サイズを小さくする',
+      increaseFontSize: '字幕サイズを大きくする',
+      lineHeight: '行間',
+      displayMode: '表示モード',
+      translationUnavailable: '翻訳字幕の生成後に翻訳モードを使用できます。',
+      reset: '既定に戻す',
+      lineHeightOptions: {
+        compact: 'コンパクト',
+        normal: '標準',
+        relaxed: '広め'
+      },
+      displayModeOptions: {
+        source: '原文',
+        translation: '翻訳',
+        bilingual: '二言語'
+      }
+    },
     panels: {
       playlistKicker: 'キュー',
       playlistTitle: 'プレイリスト',
@@ -1376,6 +1479,15 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       },
       subtitles: {
         title: '字幕',
+        displayHeading: '字幕表示',
+        fontSize: '字幕フォントサイズ',
+        fontSizeDescription: '字幕バーに表示する文字サイズの既定値を設定します。',
+        lineHeight: '字幕の行間',
+        lineHeightDescription: '複数行字幕の縦方向の間隔を設定します。',
+        displayMode: '既定の表示モード',
+        displayModeDescription: '翻訳が利用可能になったら、原文、翻訳、二言語を切り替えます。',
+        targetLanguage: '翻訳先言語',
+        targetLanguageDescription: '翻訳字幕の既定の出力言語です。',
         subtitleLanguage: '既定の字幕言語',
         subtitleLanguageDescription: '字幕生成ではこの言語を優先するか、自動判定のままにします。',
         autoLoadCachedSubtitles: 'ローカル字幕キャッシュを自動読み込み',
@@ -1629,6 +1741,27 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       volume: '볼륨',
       playbackSpeed: '재생 속도'
     },
+    subtitleDisplay: {
+      menuLabel: '자막 표시 설정',
+      fontSize: '글자 크기',
+      fontSizeValue: (value) => `${value}px`,
+      decreaseFontSize: '자막 글자 크기 줄이기',
+      increaseFontSize: '자막 글자 크기 키우기',
+      lineHeight: '줄 높이',
+      displayMode: '표시 모드',
+      translationUnavailable: '번역 자막을 생성한 뒤 번역 모드를 사용할 수 있습니다.',
+      reset: '기본값으로',
+      lineHeightOptions: {
+        compact: '촘촘하게',
+        normal: '표준',
+        relaxed: '넓게'
+      },
+      displayModeOptions: {
+        source: '원문',
+        translation: '번역',
+        bilingual: '이중 언어'
+      }
+    },
     panels: {
       playlistKicker: '대기열',
       playlistTitle: '재생 목록',
@@ -1804,6 +1937,15 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       },
       subtitles: {
         title: '자막',
+        displayHeading: '자막 표시',
+        fontSize: '자막 글자 크기',
+        fontSizeDescription: '자막 바에 표시되는 기본 글자 크기를 조정합니다.',
+        lineHeight: '자막 줄 높이',
+        lineHeightDescription: '여러 줄 자막의 세로 간격을 조정합니다.',
+        displayMode: '기본 표시 모드',
+        displayModeDescription: '번역을 사용할 수 있을 때 원문, 번역, 이중 언어 모드를 전환합니다.',
+        targetLanguage: '번역 대상 언어',
+        targetLanguageDescription: '번역 자막의 기본 출력 언어입니다.',
         subtitleLanguage: '기본 자막 언어',
         subtitleLanguageDescription: '자막 생성 시 이 언어를 우선하거나 자동 감지를 유지합니다.',
         autoLoadCachedSubtitles: '로컬 자막 캐시 자동 로드',

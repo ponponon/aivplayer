@@ -60,6 +60,17 @@ describe('settings UI source constraints', () => {
     ).toBe(0)
   })
 
+  it('routes subtitle display settings through shared settings controls', () => {
+    const settingsDialogSource = readSource('src/renderer/src/app/settings-dialog.tsx')
+
+    expect(settingsDialogSource).toContain('subtitleLineHeightOptions')
+    expect(settingsDialogSource).toContain('subtitleDisplayModeOptions')
+    expect(settingsDialogSource).toContain("patchSettingsSection('subtitles', { fontSizePx })")
+    expect(settingsDialogSource).toContain("patchSettingsSection('subtitles', { lineHeight })")
+    expect(settingsDialogSource).toContain("patchSettingsSection('subtitles', { displayMode })")
+    expect(settingsDialogSource).toContain("patchSettingsSection('subtitles', { targetLanguage })")
+  })
+
   it('routes app settings section writes through the shared update helper', () => {
     const appSource = readSource('src/renderer/src/app/App.tsx')
     const sharedSettingsSource = readSource('src/shared/app-settings.ts')
@@ -144,8 +155,8 @@ describe('settings UI source constraints', () => {
 
     expect(settingsDialogSource).toContain('function SettingsToggleValueRow')
     expect(countMatches(settingsDialogSource, /className="settings-checkbox"/g)).toBe(1)
-    expect(countMatches(settingsDialogSource, /className="settings-inline-unit"/g)).toBe(1)
-    expect(countMatches(settingsDialogSource, /className="settings-inline-row"/g)).toBe(2)
+    expect(countMatches(settingsDialogSource, /className="settings-inline-unit"/g)).toBe(2)
+    expect(countMatches(settingsDialogSource, /className="settings-inline-row"/g)).toBe(3)
     expect(toggleValueRowComponentBody).toContain('SettingsNumberInput')
     expect(toggleValueRowComponentBody).toContain('aria-label={checkboxAriaLabel}')
     expect(toggleValueRowComponentBody).toContain('ariaLabel={valueAriaLabel}')
