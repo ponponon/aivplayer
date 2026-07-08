@@ -373,6 +373,8 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
     label: option.label
   }))
 
+  const targetLanguageOptions = subtitleLanguageOptions.filter((option) => option.value !== 'auto')
+
   const subtitleLineHeightOptions: Array<SettingsSelectOption<SubtitleLineHeight>> = Object.entries(
     copy.subtitleDisplay.lineHeightOptions
   ).map(([lineHeight, label]) => ({
@@ -729,7 +731,7 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
             >
               <SettingsSelect
                 value={settings.subtitles.targetLanguage}
-                options={subtitleLanguageOptions}
+                options={targetLanguageOptions}
                 onChange={(targetLanguage) => {
                   patchSettingsSection('subtitles', { targetLanguage })
                 }}

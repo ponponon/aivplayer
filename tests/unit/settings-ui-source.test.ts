@@ -62,13 +62,32 @@ describe('settings UI source constraints', () => {
 
   it('routes subtitle display settings through shared settings controls', () => {
     const settingsDialogSource = readSource('src/renderer/src/app/settings-dialog.tsx')
+    const subtitlesSectionSource = settingsDialogSource.slice(
+      settingsDialogSource.indexOf('id="settings-section-subtitles"'),
+      settingsDialogSource.indexOf('id="settings-section-capture"')
+    )
 
     expect(settingsDialogSource).toContain('subtitleLineHeightOptions')
     expect(settingsDialogSource).toContain('subtitleDisplayModeOptions')
+    expect(settingsDialogSource).toContain('targetLanguageOptions')
+    expect(settingsDialogSource).toContain("subtitleLanguageOptions.filter((option) => option.value !== 'auto')")
+    expect(subtitlesSectionSource).toContain('SettingsNumberInput')
+    expect(subtitlesSectionSource).toContain('SettingsSelect')
+    expect(settingsDialogSource).toContain('value={settings.subtitles.fontSizePx}')
+    expect(settingsDialogSource).toContain('value={settings.subtitles.lineHeight}')
+    expect(settingsDialogSource).toContain('options={subtitleLineHeightOptions}')
+    expect(settingsDialogSource).toContain('value={settings.subtitles.displayMode}')
+    expect(settingsDialogSource).toContain('options={subtitleDisplayModeOptions}')
+    expect(settingsDialogSource).toContain('value={settings.subtitles.targetLanguage}')
+    expect(settingsDialogSource).toContain('options={targetLanguageOptions}')
     expect(settingsDialogSource).toContain("patchSettingsSection('subtitles', { fontSizePx })")
     expect(settingsDialogSource).toContain("patchSettingsSection('subtitles', { lineHeight })")
     expect(settingsDialogSource).toContain("patchSettingsSection('subtitles', { displayMode })")
     expect(settingsDialogSource).toContain("patchSettingsSection('subtitles', { targetLanguage })")
+    expectInOrder(subtitlesSectionSource, 'value={settings.subtitles.fontSizePx}', "patchSettingsSection('subtitles', { fontSizePx })")
+    expectInOrder(subtitlesSectionSource, 'options={subtitleLineHeightOptions}', "patchSettingsSection('subtitles', { lineHeight })")
+    expectInOrder(subtitlesSectionSource, 'options={subtitleDisplayModeOptions}', "patchSettingsSection('subtitles', { displayMode })")
+    expectInOrder(subtitlesSectionSource, 'options={targetLanguageOptions}', "patchSettingsSection('subtitles', { targetLanguage })")
   })
 
   it('routes app settings section writes through the shared update helper', () => {
