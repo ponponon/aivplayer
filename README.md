@@ -1,80 +1,154 @@
-# AIVPlayer
+<p align="center">
+  <img src="brand/icon.png" width="120" alt="AIVPlayer Logo">
+</p>
 
-> 一款现代化的跨平台桌面视频播放器，支持本地 AI 字幕生成
+<h1 align="center">AIVPlayer</h1>
 
-## 核心特性
+<p align="center">
+  <strong>本地 AI 字幕生成的跨平台桌面视频播放器</strong>
+</p>
 
-- 🎬 **本地视频播放** - 支持 MP4、WebM、MOV、MKV、AVI 等常见格式
-- 🎤 **AI 字幕生成** - 基于 whisper.cpp 的本地 ASR，支持多语言语音识别
-- 🎨 **现代 UI 设计** - 深色影院风格，视频优先，控制栏自动隐藏
-- 📦 **跨平台支持** - macOS、Windows、Linux 三平台打包
+<p align="center">
+  <a href="https://github.com/ponponon/aivplayer/releases">
+    <img src="https://img.shields.io/github/v/release/ponponon/aivplayer" alt="Release">
+  </a>
+  <a href="https://github.com/ponponon/aivplayer/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/ponponon/aivplayer" alt="License">
+  </a>
+  <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-blue" alt="Platform">
+</p>
+
+<p align="center">
+  <a href="#features">功能特性</a> ·
+  <a href="#installation">安装指南</a> ·
+  <a href="#development">开发指南</a> ·
+  <a href="#contributing">参与贡献</a> ·
+  <a href="#license">开源协议</a>
+</p>
+
+---
+
+## 关于
+
+AIVPlayer 是一款基于 Electron 的现代化桌面视频播放器，核心亮点是集成了 [whisper.cpp](https://github.com/ggerganov/whisper.cpp) 本地 ASR 引擎，可以在不联网的情况下为视频自动生成高质量字幕。
+
+### 为什么做这个？
+
+现有播放器大多依赖在线字幕服务，存在隐私泄露、需要付费、网络依赖等问题。AIVPlayer 选择将 AI 能力完全本地化，让你的视频和字幕数据始终留在自己手里。
+
+---
+
+## 功能特性
+
+### 视频播放
+
+- 支持 MP4、WebM、MOV、MKV、AVI 等主流视频格式
+- 拖拽导入或文件选择器打开视频
+- 播放列表支持，快捷键切换上一条/下一条
+- 音量、倍速、进度控制
+- 单击画面暂停/恢复
+- 全屏播放
+
+### AI 字幕生成
+
+- 基于 whisper.cpp 的离线语音识别，无需联网
+- 支持多语言语音识别（中文、英文、日语、韩语等）
+- 同时生成 VTT 和 SRT 两种字幕格式
+- 自动缓存字幕，重复打开同一视频直接加载
+- 支持从 ModelScope（国内源）和 Hugging Face 下载模型
+
+### 片段导出
+
+- 基于当前播放位置快速导出短片段
+- 支持 15 秒、30 秒、60 秒三档长度
+- 导出模式：纯视频 / 外挂字幕 / 字幕烧录
+
+### 截图与录屏
+
+- 截取当前画面为图片
+- 录制指定时长的视频片段
+- 支持 GIF 导出
+
+### 多语言界面
+
+- 简体中文、English、日本語、한국어
+- 系统语言自动匹配，也可手动切换
+
+### 现代化 UI
+
+- 深色影院风格，视频优先
+- 控制栏自动隐藏，沉浸式体验
+- 响应式布局，适配不同窗口尺寸
+
+---
 
 ## 安装
 
-### 开发环境
+### 系统要求
+
+- **macOS**: 10.15+
+- **Windows**: 10+
+- **Linux**: Ubuntu 18.04+ / 同等发行版
+
+### 下载安装包
+
+从 [Releases](https://github.com/ponponon/aivplayer/releases) 页面下载对应平台的安装包：
+
+| 平台 | 格式 |
+|------|------|
+| macOS | `.dmg` / `.zip` |
+| Windows | `.exe` (NSIS 安装器) |
+| Linux | `.AppImage` |
+
+### 从源码构建
 
 ```bash
-# 克隆项目
-git clone <repository-url>
+# 克隆仓库
+git clone https://github.com/ponponon/aivplayer.git
 cd aivplayer
 
-# 安装依赖（需要代理访问 npm）
+# 安装依赖（需要 Node.js 18+）
 npm install
 
-# 启动开发环境
+# 启动开发模式
 npm run dev
 ```
 
-### 正式安装包
+> **注意**：部分网络环境访问 npm 可能需要配置代理。
 
-从 [Release 页面](https://github.com/ponponon/aivplayer/releases) 下载对应平台的安装包：
-
-- macOS：`.dmg` 或 `.zip`
-- Windows：`.exe` (NSIS)
-- Linux：`.AppImage`
-
-## 快速开始
-
-1. 启动 AIVPlayer 应用
-2. 拖入视频文件到窗口，或点击"打开视频"按钮选择文件
-3. 使用底部控制栏播放、暂停、调节音量和进度
-4. 如需生成字幕：
-   - 切换到右侧面板的 "ASR" 标签
-   - 首次使用需下载推荐模型（支持国内 ModelScope 和国际 Hugging Face 源）
-   - 点击"生成当前视频字幕"按钮
-   - 生成完成后字幕会自动加载显示，字幕文件会缓存到用户数据目录下的 `asr-cache/subtitles/`
-   - 同时会产出 `.vtt` 和 `.srt` 两份字幕文件，其中 VTT 用于播放器挂载，SRT 便于后续导出或外部工具使用
-   - 下次重新打开同一个视频时，应用会先探测本地字幕缓存，命中后自动回填到播放器
-   - 生成后可点击字幕卡片右上角的文件夹菜单，直接打开字幕缓存文件所在位置，也可以定位 SRT 文件
-   - 字幕操作菜单里还可以把当前 VTT 导出成 SRT，适合只保留一份外部字幕文件的场景
-   - 字幕操作菜单里也可以直接复制 VTT / SRT 路径，方便你粘贴给终端或其他工具
-   - 目前字幕导出和转换会自动兼容带 UTF-8 BOM 的 VTT 文件，空字幕文件也会保持干净输出
-   - 解析 VTT 时会自动跳过 `NOTE / STYLE / REGION` 这类元数据块
-   - 导出/转换时会保留 cue 内换行，适合多行字幕和强调式排版
-   - `VTT -> SRT` 时会自动去掉 `<v Speaker>` 语音标签，避免导出结果带上外部格式不兼容的标记
-   - `VTT -> SRT` 时也会清理常见的 `i / b / u / c` 这类内联格式标签
-   - `VTT -> SRT` 时会去掉 `ruby / rt / rp` 注音标记，只保留正文文字
-   - `VTT -> SRT` 时会解码 `&amp; / &lt; / &gt; / &nbsp;` 等常见 HTML 实体
-   - `VTT -> SRT` 时会继续解码常见排版实体，如省略号、长破折号、引号等
-   - `VTT -> SRT` 时会容忍非法数值实体，不会因为脏数据直接中断导出
-   - `writeVtt` 会自动转义普通文本中的 `& / < / >`，输出更稳
+---
 
 ## 开发指南
+
+### 环境准备
+
+- Node.js 18+
+- npm 或 pnpm
+- macOS 需要 Xcode Command Line Tools
+- Windows 需要 Visual Studio Build Tools
 
 ### 可用命令
 
 ```bash
-npm run dev              # 启动开发环境
-npm run build            # 构建项目
+# 开发
+npm run dev              # 启动开发服务器
+
+# 构建
+npm run build            # 构建生产版本
 npm run preview          # 预览构建结果
+npm run pack             # 打包（不生成安装程序）
+npm run dist             # 完整打包（生成安装程序）
+
+# 检查
 npm run typecheck        # TypeScript 类型检查
 npm run test             # 运行单元测试
+npm run doctor:backend   # 检查后端依赖
+npm run doctor:asr       # 检查 ASR 运行时
 
-npm run doctor:backend   # 检查后端依赖（mpv）
-npm run doctor:asr       # 检查 ASR 运行时（whisper.cpp）
-
-npm run pack             # 打包（不发布）
-npm run dist             # 完整打包流程（含运行时检查）
+# ASR 相关
+npm run release:prepare-runtime -- \
+  --whisper-dir /path/to/whisper.cpp/build/bin \
+  --ffmpeg-bin /path/to/ffmpeg
 ```
 
 ### 项目结构
@@ -84,44 +158,22 @@ aivplayer/
 ├── src/
 │   ├── main/            # Electron 主进程
 │   │   ├── index.ts     # 应用入口
-│   │   ├── ai/          # ASR 相关模块
+│   │   ├── ai/          # ASR 语音识别模块
 │   │   └── media/       # 媒体播放模块
-│   ├── preload/         # 预加载脚本
+│   ├── preload/         # 预加载脚本（IPC 桥接）
 │   ├── renderer/        # React 渲染进程
-│   │   ├── src/
-│   │   │   ├── app/     # 应用组件
-│   │   │   ├── lib/     # 工具函数
-│   │   │   └── styles/  # 样式文件
-│   │   └── index.html
-│   └── shared/          # 共享类型定义
+│   │   └── src/
+│   │       ├── app/     # UI 组件
+│   │       ├── lib/     # 工具函数
+│   │       └── styles/  # 样式
+│   └── shared/          # 主进程与渲染进程共享类型
+├── resources/           # 运行时资源（whisper.cpp、ffmpeg）
+├── scripts/             # 构建与工具脚本
 ├── tests/               # 测试文件
-├── scripts/             # 工具脚本
-├── resources/           # 运行时资源
 └── docs/                # 文档
 ```
 
-### ASR 运行时
-
-AIVPlayer 使用 whisper.cpp 作为 ASR 引擎，正式安装包已内置：
-
-- `resources/whisper.cpp/` - whisper.cpp 可执行文件（名称取决于上游版本）
-- `resources/ffmpeg/` - ffmpeg / ffprobe 音频与媒体探测工具
-- 生成的字幕默认缓存到 `~/Library/Application Support/AIVPlayer/asr-cache/subtitles/`（macOS），其他平台则在各自的用户数据目录下。
-- 同一份字幕任务会同时生成 `.vtt` 和 `.srt`，前者挂载到播放器，后者保留为可复用的文本字幕。
-
-开发调试时可手动选择系统安装的 whisper.cpp 可执行文件：
-
-```bash
-# 检查 ASR 运行时状态
-npm run doctor:asr
-
-# 准备 ASR 运行时（用于打包）
-npm run release:prepare-runtime -- \
-  --whisper-dir /path/to/whisper.cpp/build/bin \
-  --ffmpeg-bin /path/to/ffmpeg
-```
-
-## 技术栈
+### 技术栈
 
 | 类别 | 技术 |
 |------|------|
@@ -131,14 +183,50 @@ npm run release:prepare-runtime -- \
 | 类型系统 | TypeScript |
 | 图标库 | lucide-react |
 | ASR 引擎 | whisper.cpp |
-| 测试框架 | Vitest |
-| E2E 测试 | Playwright |
+| 测试框架 | Vitest + Playwright |
 | 打包工具 | electron-builder |
 
-## 许可证
+---
 
-MIT License
+## 参与贡献
 
-## 作者
+欢迎提交 Issue 和 Pull Request！
 
-ponponon
+1. Fork 本仓库
+2. 创建特性分支 (`git checkout -b feature/amazing-feature`)
+3. 提交更改 (`git commit -m 'feat: add amazing feature'`)
+4. 推送到分支 (`git push origin feature/amazing-feature`)
+5. 创建 Pull Request
+
+### 提交规范
+
+请遵循 [Conventional Commits](https://www.conventionalcommits.org/) 规范：
+
+- `feat:` 新功能
+- `fix:` 修复 Bug
+- `docs:` 文档更新
+- `style:` 代码格式（不影响功能）
+- `refactor:` 重构
+- `test:` 测试相关
+- `chore:` 构建/工具相关
+
+---
+
+## 开源协议
+
+本项目基于 [MIT License](LICENSE) 开源。
+
+---
+
+## 致谢
+
+- [whisper.cpp](https://github.com/ggerganov/whisper.cpp) - 本地语音识别引擎
+- [Electron](https://electronjs.org/) - 跨平台桌面应用框架
+- [React](https://react.dev/) - UI 框架
+- [lucide-react](https://lucide.dev/) - 图标库
+
+---
+
+<p align="center">
+  如果觉得有用，请给个 ⭐ Star 支持一下！
+</p>
