@@ -18,12 +18,15 @@ import type {
   CaptureFileNamingMode,
   CaptureGifResolution,
   CaptureImageFormat,
+  AppLocale,
+  SubtitleLanguageId,
   SubtitleDisplayMode,
-  SubtitleLineHeight
+  SubtitleLineHeight,
+  SubtitleTargetLanguageId
 } from '../../../shared/app-settings'
 import type { AsrModelSourceId, AsrRuntimeStatus, AsrRuntimeSetupResult } from '../../../shared/media-types'
-import type { AppLocale, SubtitleLanguageId } from '../../../shared/localization'
 import type { LocaleCopy } from '../../../shared/i18n'
+import { clampSubtitleFontSize } from './subtitle-display-settings'
 import { useModalFocusTrap } from './use-modal-focus-trap'
 
 type SettingsDialogProps = {
@@ -373,7 +376,9 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
     label: option.label
   }))
 
-  const targetLanguageOptions = subtitleLanguageOptions.filter((option) => option.value !== 'auto')
+  const targetLanguageOptions: Array<SettingsSelectOption<SubtitleTargetLanguageId>> = subtitleLanguageOptions.filter(
+    (option): option is SettingsSelectOption<SubtitleTargetLanguageId> => option.value !== 'auto'
+  )
 
   const subtitleLineHeightOptions: Array<SettingsSelectOption<SubtitleLineHeight>> = Object.entries(
     copy.subtitleDisplay.lineHeightOptions
@@ -692,7 +697,7 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
                   compact
                   ariaLabel={copy.settingsDialog.subtitles.fontSize}
                   onChange={(fontSizePx) => {
-                    patchSettingsSection('subtitles', { fontSizePx })
+                    patchSettingsSection('subtitles', { fontSizePx: clampSubtitleFontSize(fontSizePx) })
                   }}
                 />
                 <span className="settings-inline-unit">px</span>

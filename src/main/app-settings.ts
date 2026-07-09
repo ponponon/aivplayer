@@ -11,7 +11,8 @@ import {
   type AppSettingsSectionId,
   type AppSettings,
   type SubtitleDisplayMode,
-  type SubtitleLineHeight
+  type SubtitleLineHeight,
+  type SubtitleTargetLanguageId
 } from '../shared/app-settings'
 import { isClipExportLengthSeconds, isClipExportMode } from '../shared/clip-export'
 import type { AsrModelSourceId } from '../shared/media-types'
@@ -51,6 +52,10 @@ function isSubtitleLineHeight(value: unknown): value is SubtitleLineHeight {
 
 function isSubtitleDisplayMode(value: unknown): value is SubtitleDisplayMode {
   return value === 'source' || value === 'translation' || value === 'bilingual'
+}
+
+function isSubtitleTargetLanguageId(value: unknown): value is SubtitleTargetLanguageId {
+  return isSubtitleLanguageId(value) && value !== 'auto'
 }
 
 function normalizeSettingsSectionId(value: unknown, fallback: AppSettingsSectionId): AppSettingsSectionId {
@@ -227,7 +232,7 @@ function sanitizeSubtitleSettings(
     fontSizePx,
     lineHeight: isSubtitleLineHeight(subtitles.lineHeight) ? subtitles.lineHeight : defaults.lineHeight,
     displayMode: isSubtitleDisplayMode(subtitles.displayMode) ? subtitles.displayMode : defaults.displayMode,
-    targetLanguage: isSubtitleLanguageId(subtitles.targetLanguage)
+    targetLanguage: isSubtitleTargetLanguageId(subtitles.targetLanguage)
       ? subtitles.targetLanguage
       : defaults.targetLanguage
   }

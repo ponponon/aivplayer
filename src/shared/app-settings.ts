@@ -9,6 +9,7 @@ export type CaptureFileNamingMode = 'sequential' | 'timestamp'
 export type CaptureGifResolution = '360p' | '480p' | '720p'
 export type SubtitleDisplayMode = 'source' | 'translation' | 'bilingual'
 export type SubtitleLineHeight = 'compact' | 'normal' | 'relaxed'
+export type SubtitleTargetLanguageId = Exclude<SubtitleLanguageId, 'auto'>
 
 export type AppPanelModePreference = 'playlist' | 'asr' | 'info'
 export type AppSettingsSectionId = 'general' | 'interface' | 'video' | 'subtitles' | 'capture' | 'shortcuts'
@@ -56,7 +57,7 @@ export type AppSettings = {
     fontSizePx: number
     lineHeight: SubtitleLineHeight
     displayMode: SubtitleDisplayMode
-    targetLanguage: SubtitleLanguageId
+    targetLanguage: SubtitleTargetLanguageId
   }
   asr: {
     preferredModelSourceId: AsrModelSourceId

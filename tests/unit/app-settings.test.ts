@@ -138,6 +138,34 @@ describe('app settings', () => {
     })
   })
 
+  it('sanitizes auto subtitle target language back to the translation default', async () => {
+    await writeFile(
+      join(tempDirectory, 'app-settings.json'),
+      `${JSON.stringify(
+        {
+          schemaVersion: 1,
+          subtitles: {
+            fontSizePx: 18,
+            lineHeight: 'normal',
+            displayMode: 'translation',
+            targetLanguage: 'auto'
+          }
+        },
+        null,
+        2
+      )}\n`
+    )
+
+    await expect(readAppSettings(tempDirectory)).resolves.toMatchObject({
+      subtitles: {
+        fontSizePx: 18,
+        lineHeight: 'normal',
+        displayMode: 'translation',
+        targetLanguage: 'zh'
+      }
+    })
+  })
+
   it('clamps subtitle font size settings', async () => {
     await writeFile(
       join(tempDirectory, 'app-settings.json'),

@@ -70,7 +70,9 @@ describe('settings UI source constraints', () => {
     expect(settingsDialogSource).toContain('subtitleLineHeightOptions')
     expect(settingsDialogSource).toContain('subtitleDisplayModeOptions')
     expect(settingsDialogSource).toContain('targetLanguageOptions')
-    expect(settingsDialogSource).toContain("subtitleLanguageOptions.filter((option) => option.value !== 'auto')")
+    expect(settingsDialogSource).toContain('SubtitleTargetLanguageId')
+    expect(settingsDialogSource).toContain('option is SettingsSelectOption<SubtitleTargetLanguageId>')
+    expect(settingsDialogSource).toContain("option.value !== 'auto'")
     expect(subtitlesSectionSource).toContain('SettingsNumberInput')
     expect(subtitlesSectionSource).toContain('SettingsSelect')
     expect(settingsDialogSource).toContain('value={settings.subtitles.fontSizePx}')
@@ -80,11 +82,15 @@ describe('settings UI source constraints', () => {
     expect(settingsDialogSource).toContain('options={subtitleDisplayModeOptions}')
     expect(settingsDialogSource).toContain('value={settings.subtitles.targetLanguage}')
     expect(settingsDialogSource).toContain('options={targetLanguageOptions}')
-    expect(settingsDialogSource).toContain("patchSettingsSection('subtitles', { fontSizePx })")
+    expect(settingsDialogSource).toContain("patchSettingsSection('subtitles', { fontSizePx: clampSubtitleFontSize(fontSizePx) })")
     expect(settingsDialogSource).toContain("patchSettingsSection('subtitles', { lineHeight })")
     expect(settingsDialogSource).toContain("patchSettingsSection('subtitles', { displayMode })")
     expect(settingsDialogSource).toContain("patchSettingsSection('subtitles', { targetLanguage })")
-    expectInOrder(subtitlesSectionSource, 'value={settings.subtitles.fontSizePx}', "patchSettingsSection('subtitles', { fontSizePx })")
+    expectInOrder(
+      subtitlesSectionSource,
+      'value={settings.subtitles.fontSizePx}',
+      "patchSettingsSection('subtitles', { fontSizePx: clampSubtitleFontSize(fontSizePx) })"
+    )
     expectInOrder(subtitlesSectionSource, 'options={subtitleLineHeightOptions}', "patchSettingsSection('subtitles', { lineHeight })")
     expectInOrder(subtitlesSectionSource, 'options={subtitleDisplayModeOptions}', "patchSettingsSection('subtitles', { displayMode })")
     expectInOrder(subtitlesSectionSource, 'options={targetLanguageOptions}', "patchSettingsSection('subtitles', { targetLanguage })")

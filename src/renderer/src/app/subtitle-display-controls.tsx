@@ -7,6 +7,7 @@ import {
   type SubtitleLineHeight
 } from '../../../shared/app-settings'
 import type { LocaleCopy } from '../../../shared/i18n'
+import { clampSubtitleFontSize, maxSubtitleFontSize, minSubtitleFontSize } from './subtitle-display-settings'
 
 type SubtitleDisplaySettings = AppSettings['subtitles']
 
@@ -19,15 +20,8 @@ type SubtitleDisplayControlsProps = {
   onReset: () => void
 }
 
-const minSubtitleFontSize = 12
-const maxSubtitleFontSize = 28
-
 const subtitleLineHeightValues: SubtitleLineHeight[] = ['compact', 'normal', 'relaxed']
 const subtitleDisplayModeValues: SubtitleDisplayMode[] = ['source', 'translation', 'bilingual']
-
-function clampSubtitleFontSize(value: number): number {
-  return Math.min(maxSubtitleFontSize, Math.max(minSubtitleFontSize, Math.round(value)))
-}
 
 export function SubtitleDisplayControls({
   copy,
