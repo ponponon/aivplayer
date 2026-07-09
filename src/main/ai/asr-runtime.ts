@@ -6,6 +6,8 @@ import type {
   AsrRuntimeStatus,
   AsrSubtitleExportRequest,
   AsrSubtitleExportResult,
+  AsrSubtitleTranslationRequest,
+  AsrSubtitleTranslationResult,
   AsrSubtitleRequest,
   AsrSubtitleResult
 } from '../../shared/media-types.ts'
@@ -26,6 +28,7 @@ export type AsrRuntime = {
   ) => Promise<AsrSubtitleResult>
   resolveSubtitleCache: (request: AsrSubtitleRequest) => Promise<AsrSubtitleResult>
   exportSubtitleSrt: (request: AsrSubtitleExportRequest) => Promise<AsrSubtitleExportResult>
+  translateSubtitle: (request: AsrSubtitleTranslationRequest) => Promise<AsrSubtitleTranslationResult>
 }
 
 export type AsrRuntimeOptions = {
@@ -33,5 +36,6 @@ export type AsrRuntimeOptions = {
   resourcePath: string
   env?: NodeJS.ProcessEnv
   extraBinaryDirectories?: string[]
+  translationFetch?: (url: string, init?: RequestInit) => Promise<Response>
   getLocale?: () => AppLocale
 }

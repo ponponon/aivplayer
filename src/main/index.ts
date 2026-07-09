@@ -11,6 +11,8 @@ import type {
   AsrRuntimeSetupResult,
   AsrSubtitleExportRequest,
   AsrSubtitleExportResult,
+  AsrSubtitleTranslationRequest,
+  AsrSubtitleTranslationResult,
   AsrSubtitleRequest,
   ClipboardWriteTextRequest,
   ClipboardWriteTextResult,
@@ -371,6 +373,23 @@ function registerIpc(): void {
       ...result,
       subtitleSrtUrl: subtitleSrtFile.url
     } satisfies AsrSubtitleExportResult
+  })
+
+  ipcMain.handle(IPC_CHANNELS.ASR_TRANSLATE_SUBTITLE, async (_event, request: AsrSubtitleTranslationRequest) => {
+    const result = await getAsrRuntime().translateSubtitle(request)
+
+    if (!result.subtitlePath) {
+      return result
+    }
+
+    const subtitleFile = createMediaFile(result.subtitlePath)
+    const subtitleSrtFile = result.subtitleSrtPath ? createMediaFile(result.subtitleSrtPath) : null
+
+    return {
+      ...result,
+      subtitleUrl: subtitleFile.url,
+      subtitleSrtUrl: subtitleSrtFile?.url
+    } satisfies AsrSubtitleTranslationResult
   })
 
   ipcMain.handle(IPC_CHANNELS.MEDIA_EXPORT_CLIP, async (_event, request: MediaClipExportRequest) => {

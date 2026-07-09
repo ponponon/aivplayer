@@ -109,6 +109,8 @@ export type LocaleCopy = {
     modelFiles: string
     generateSubtitle: string
     generatingSubtitle: string
+    translateSubtitle: (languageLabel: string) => string
+    translatingSubtitle: string
     subtitleTools: string
     subtitleToolsMenu: string
     openSubtitleFolder: string
@@ -284,6 +286,8 @@ export type LocaleCopy = {
     subtitleCacheMiss: string
     subtitleCacheHit: string
     subtitleExported: string
+    subtitleTranslated: string
+    translationServiceMissing: string
     clipExportSuccess: string
     clipExportWithSubtitleSuccess: string
     clipExportBurnedSuccess: string
@@ -446,6 +450,8 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       modelFiles: '模型文件',
       generateSubtitle: '生成字幕',
       generatingSubtitle: '生成中',
+      translateSubtitle: (languageLabel) => `翻译为${languageLabel}`,
+      translatingSubtitle: '翻译中',
       subtitleTools: '字幕工具',
       subtitleToolsMenu: '字幕工具菜单',
       openSubtitleFolder: '打开字幕文件夹',
@@ -656,6 +662,9 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       subtitleCacheMiss: '未命中本地字幕缓存。',
       subtitleCacheHit: '已命中本地字幕缓存（VTT / SRT）。',
       subtitleExported: '已根据 VTT 导出 SRT。',
+      subtitleTranslated: '字幕翻译完成，译文 VTT 已挂载，SRT 已导出。',
+      translationServiceMissing:
+        '翻译服务未配置。请通过环境变量 AIVPLAYER_TRANSLATION_BASE_URL、AIVPLAYER_TRANSLATION_API_KEY 和 AIVPLAYER_TRANSLATION_MODEL 启用。',
       clipExportSuccess: '片段导出完成。',
       clipExportWithSubtitleSuccess: '片段和外挂字幕导出完成。',
       clipExportBurnedSuccess: '片段导出完成，字幕已烧录。',
@@ -904,6 +913,8 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       modelFiles: 'Model files',
       generateSubtitle: 'Generate subtitles',
       generatingSubtitle: 'Generating',
+      translateSubtitle: (languageLabel) => `Translate to ${languageLabel}`,
+      translatingSubtitle: 'Translating',
       subtitleTools: 'Subtitle tools',
       subtitleToolsMenu: 'Subtitle tools menu',
       openSubtitleFolder: 'Open subtitle folder',
@@ -1114,6 +1125,9 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       subtitleCacheMiss: 'No local subtitle cache was found.',
       subtitleCacheHit: 'Local subtitle cache hit (VTT / SRT).',
       subtitleExported: 'SRT exported from VTT.',
+      subtitleTranslated: 'Subtitle translation completed. Translated VTT is mounted and SRT has been exported.',
+      translationServiceMissing:
+        'Translation service is not configured. Set AIVPLAYER_TRANSLATION_BASE_URL, AIVPLAYER_TRANSLATION_API_KEY, and AIVPLAYER_TRANSLATION_MODEL.',
       clipExportSuccess: 'Clip export completed.',
       clipExportWithSubtitleSuccess: 'Clip and external subtitle export completed.',
       clipExportBurnedSuccess: 'Clip export completed with burned subtitles.',
@@ -1362,6 +1376,8 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       modelFiles: 'モデルファイル',
       generateSubtitle: '字幕を生成',
       generatingSubtitle: '生成中',
+      translateSubtitle: (languageLabel) => `${languageLabel}に翻訳`,
+      translatingSubtitle: '翻訳中',
       subtitleTools: '字幕ツール',
       subtitleToolsMenu: '字幕ツールメニュー',
       openSubtitleFolder: '字幕フォルダを開く',
@@ -1572,6 +1588,9 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       subtitleCacheMiss: 'ローカル字幕キャッシュが見つかりませんでした。',
       subtitleCacheHit: 'ローカル字幕キャッシュにヒットしました（VTT / SRT）。',
       subtitleExported: 'VTT から SRT を書き出しました。',
+      subtitleTranslated: '字幕の翻訳が完了しました。翻訳 VTT はマウント済みで、SRT は書き出し済みです。',
+      translationServiceMissing:
+        '翻訳サービスが設定されていません。AIVPLAYER_TRANSLATION_BASE_URL、AIVPLAYER_TRANSLATION_API_KEY、AIVPLAYER_TRANSLATION_MODEL を設定してください。',
       clipExportSuccess: 'クリップの書き出しが完了しました。',
       clipExportWithSubtitleSuccess: 'クリップと外部字幕の書き出しが完了しました。',
       clipExportBurnedSuccess: '字幕を焼き込んだクリップの書き出しが完了しました。',
@@ -1820,6 +1839,8 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       modelFiles: '모델 파일',
       generateSubtitle: '자막 생성',
       generatingSubtitle: '생성 중',
+      translateSubtitle: (languageLabel) => `${languageLabel}(으)로 번역`,
+      translatingSubtitle: '번역 중',
       subtitleTools: '자막 도구',
       subtitleToolsMenu: '자막 도구 메뉴',
       openSubtitleFolder: '자막 폴더 열기',
@@ -2030,6 +2051,9 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       subtitleCacheMiss: '로컬 자막 캐시를 찾지 못했습니다.',
       subtitleCacheHit: '로컬 자막 캐시가 있습니다(VTT / SRT).',
       subtitleExported: 'VTT에서 SRT를 내보냈습니다.',
+      subtitleTranslated: '자막 번역이 완료되었습니다. 번역 VTT는 마운트됐고 SRT는 내보냈습니다.',
+      translationServiceMissing:
+        '번역 서비스가 설정되지 않았습니다. AIVPLAYER_TRANSLATION_BASE_URL, AIVPLAYER_TRANSLATION_API_KEY, AIVPLAYER_TRANSLATION_MODEL을 설정하세요.',
       clipExportSuccess: '클립 내보내기가 완료되었습니다.',
       clipExportWithSubtitleSuccess: '클립과 외부 자막 내보내기가 완료되었습니다.',
       clipExportBurnedSuccess: '자막을 굽은 클립 내보내기가 완료되었습니다.',

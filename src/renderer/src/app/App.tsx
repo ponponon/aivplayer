@@ -10,6 +10,7 @@ import {
   FileText,
   FolderOpen,
   Info,
+  Languages,
   ListVideo,
   Maximize2,
   PanelRight,
@@ -41,6 +42,7 @@ import type {
   AsrModelSourceId,
   AsrRuntimeStatus,
   MediaClipExportRequest,
+  AsrSubtitleTranslationResult,
   AsrSubtitleResult,
   MediaFile,
   MediaProbeMetadata
@@ -257,6 +259,7 @@ export function App(): ReactElement {
   const [asrStatus, setAsrStatus] = useState<AsrRuntimeStatus | null>(null)
   const [asrProgress, setAsrProgress] = useState<AsrJobProgress | null>(null)
   const [subtitleResult, setSubtitleResult] = useState<AsrSubtitleResult | null>(null)
+  const [translatedSubtitleResult, setTranslatedSubtitleResult] = useState<AsrSubtitleTranslationResult | null>(null)
   const [asrNotice, setAsrNotice] = useState<AsrNotice | null>(null)
   const [activeSubtitle, setActiveSubtitle] = useState<AsrSubtitleResult | null>(null)
   const [downloadProgress, setDownloadProgress] = useState<AsrModelDownloadProgress | null>(null)
@@ -266,6 +269,7 @@ export function App(): ReactElement {
   const [isSelectingWhisperBinary, setIsSelectingWhisperBinary] = useState(false)
   const [isClipExportDialogOpen, setIsClipExportDialogOpen] = useState(false)
   const [isExportingClip, setIsExportingClip] = useState(false)
+  const [isTranslatingSubtitle, setIsTranslatingSubtitle] = useState(false)
   const [isMediaDetailsDialogOpen, setIsMediaDetailsDialogOpen] = useState(false)
   const [runtimeSetupMessage, setRuntimeSetupMessage] = useState<{ success: boolean; message: string } | null>(null)
   const [isDownloadDialogOpen, setIsDownloadDialogOpen] = useState(false)
@@ -277,9 +281,13 @@ export function App(): ReactElement {
   const isSidePanelVisible = state.panelMode !== 'none'
   const installedModelCount = asrStatus?.installedModels.length ?? 0
   const canDownloadRecommendedModel = Boolean(asrStatus && !isDownloadingModel)
-  const canGenerateSubtitle = Boolean(state.currentFile && asrStatus?.available && !isAsrBusy && !isDownloadingModel)
+  const canGenerateSubtitle = Boolean(
+    state.currentFile && asrStatus?.available && !isAsrBusy && !isDownloadingModel && !isTranslatingSubtitle
+  )
   const subtitlePath = activeSubtitle?.subtitlePath ?? subtitleResult?.subtitlePath ?? null
   const subtitleSrtPath = activeSubtitle?.subtitleSrtPath ?? subtitleResult?.subtitleSrtPath ?? null
+  const canTranslateSubtitle = Boolean(subtitlePath && !isAsrBusy && !isTranslatingSubtitle)
+  const subtitleTargetLanguageLabel = copy.subtitleLanguageOptions[appSettings.subtitles.targetLanguage].label
   const canOpenSubtitleTools = Boolean(state.currentFile)
   const hasCurrentFile = Boolean(state.currentFile)
   const canOpenSubtitleFolder = Boolean(subtitlePath)
@@ -467,6 +475,7 @@ export function App(): ReactElement {
     playbackEndedRef.current = false
     setActiveSubtitle(null)
     setSubtitleResult(null)
+    setTranslatedSubtitleResult(null)
     setAsrNotice(null)
     setAsrProgress(null)
 
@@ -591,6 +600,7 @@ export function App(): ReactElement {
     playbackEndedRef.current = false
     setActiveSubtitle(null)
     setSubtitleResult(null)
+    setTranslatedSubtitleResult(null)
     setAsrNotice(null)
     setAsrProgress(null)
     const currentTime = getInitialPlaybackTime(file.path)
@@ -767,6 +777,7 @@ export function App(): ReactElement {
 
     setIsAsrBusy(true)
     setSubtitleResult(null)
+    setTranslatedSubtitleResult(null)
     setAsrNotice(null)
     setAsrProgress({
       stage: 'checking',
@@ -833,6 +844,33 @@ export function App(): ReactElement {
     })
 
     setAsrNotice(result)
+  }
+
+  const translateSubtitle = async (): Promise<void> => {
+    if (!subtitlePath || isTranslatingSubtitle) {
+      return
+    }
+
+    setIsTranslatingSubtitle(true)
+    setAsrNotice(null)
+
+    try {
+      const result = await window.aiv.translateAsrSubtitle({
+        subtitlePath,
+        subtitleSrtPath: subtitleSrtPath ?? undefined,
+        sourceLanguage: appSettings.asr.defaultSubtitleLanguage,
+        targetLanguage: appSettings.subtitles.targetLanguage
+      })
+
+      setTranslatedSubtitleResult(result.success ? result : null)
+      setAsrNotice(result)
+
+      if (result.success && result.subtitleUrl && appSettings.subtitles.displayMode === 'source') {
+        patchSubtitleDisplaySettings({ displayMode: 'translation' })
+      }
+    } finally {
+      setIsTranslatingSubtitle(false)
+    }
   }
 
   const copySubtitleSrtPath = async (): Promise<void> => {
@@ -1495,6 +1533,7 @@ export function App(): ReactElement {
 
           <SubtitleOverlay
             subtitlePath={activeSubtitle?.subtitlePath ?? null}
+            translationPath={translatedSubtitleResult?.subtitlePath ?? null}
             currentTime={state.currentTime}
             settings={appSettings.subtitles}
             copy={copy}
@@ -1904,15 +1943,28 @@ export function App(): ReactElement {
                       {asrNotice.message}
                     </div>
                   ) : null}
-                  <button
-                    className="asr-action-button primary"
-                    type="button"
-                    onClick={generateSubtitle}
-                    disabled={!canGenerateSubtitle}
-                  >
-                    <Sparkles size={16} />
-                    {isAsrBusy ? copy.asrPanel.generatingSubtitle : copy.asrPanel.generateSubtitle}
-                  </button>
+                  <div className="asr-action-row">
+                    <button
+                      className="asr-action-button primary"
+                      type="button"
+                      onClick={generateSubtitle}
+                      disabled={!canGenerateSubtitle}
+                    >
+                      <Sparkles size={16} />
+                      {isAsrBusy ? copy.asrPanel.generatingSubtitle : copy.asrPanel.generateSubtitle}
+                    </button>
+                    <button
+                      className="asr-action-button"
+                      type="button"
+                      onClick={translateSubtitle}
+                      disabled={!canTranslateSubtitle}
+                    >
+                      <Languages size={16} />
+                      {isTranslatingSubtitle
+                        ? copy.asrPanel.translatingSubtitle
+                        : copy.asrPanel.translateSubtitle(subtitleTargetLanguageLabel)}
+                    </button>
+                  </div>
                 </div>
               </div>
             </>

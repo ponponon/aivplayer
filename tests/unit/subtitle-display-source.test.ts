@@ -17,6 +17,23 @@ describe('subtitle display source constraints', () => {
     expect(overlaySource).toContain('--subtitle-line-height')
   })
 
+  it('wires translated subtitle results into the overlay and ASR panel', () => {
+    const appSource = readSource('src/renderer/src/app/App.tsx')
+    const preloadSource = readSource('src/preload/index.ts')
+    const ipcSource = readSource('src/shared/ipc-channels.ts')
+    const mediaTypesSource = readSource('src/shared/media-types.ts')
+
+    expect(ipcSource).toContain('ASR_TRANSLATE_SUBTITLE')
+    expect(preloadSource).toContain('translateAsrSubtitle')
+    expect(mediaTypesSource).toContain('AsrSubtitleTranslationRequest')
+    expect(mediaTypesSource).toContain('AsrSubtitleTranslationResult')
+    expect(appSource).toContain('Languages,')
+    expect(appSource).toContain('const [translatedSubtitleResult')
+    expect(appSource).toContain('window.aiv.translateAsrSubtitle')
+    expect(appSource).toContain('translationPath={translatedSubtitleResult?.subtitlePath ?? null}')
+    expect(appSource).toContain('setTranslatedSubtitleResult(result.success ? result : null)')
+  })
+
   it('shows source mode when translation display is unavailable', () => {
     const controlsSource = readSource('src/renderer/src/app/subtitle-display-controls.tsx')
 

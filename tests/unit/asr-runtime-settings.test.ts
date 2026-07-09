@@ -221,4 +221,75 @@ describe('ASR runtime settings', () => {
       '1\n00:00:00,000 --> 00:00:01,250\nhello world\n'
     )
   })
+
+  it('translates a VTT subtitle file through the configured OpenAI-compatible provider', async () => {
+    const subtitleDirectory = join(tempDirectory, 'subtitles')
+    const vttPath = join(subtitleDirectory, 'demo.vtt')
+    const requests: Array<{ authorization: string | null; model: string | undefined }> = []
+
+    await mkdir(subtitleDirectory, { recursive: true })
+    await writeFile(
+      vttPath,
+      [
+        'WEBVTT',
+        '',
+        '00:00:00.000 --> 00:00:01.000',
+        'hello',
+        '',
+        '00:00:02.000 --> 00:00:03.000',
+        'technology'
+      ].join('\n')
+    )
+
+    const runtime = createWhisperCppRuntime({
+      userDataPath: tempDirectory,
+      resourcePath: join(tempDirectory, 'resources'),
+      env: {
+        AIVPLAYER_TRANSLATION_BASE_URL: 'https://example.test/v1/chat/completions',
+        AIVPLAYER_TRANSLATION_API_KEY: 'test-key',
+        AIVPLAYER_TRANSLATION_MODEL: 'translation-model'
+      },
+      translationFetch: async (_url, init) => {
+        const body = JSON.parse(String(init?.body ?? '{}')) as { model?: string }
+        requests.push({
+          authorization: init?.headers instanceof Headers ? init.headers.get('Authorization') : null,
+          model: body.model
+        })
+
+        return new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify([
+                    { id: 'cue-1', text: '你好' },
+                    { id: 'cue-2', text: '技术' }
+                  ])
+                }
+              }
+            ]
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        )
+      }
+    })
+
+    const result = await runtime.translateSubtitle({
+      subtitlePath: vttPath,
+      sourceLanguage: 'en',
+      targetLanguage: 'zh'
+    })
+
+    expect(result.success).toBe(true)
+    expect(result.subtitlePath).toContain('translated-subtitles')
+    expect(result.subtitleSrtPath).toContain('translated-subtitles')
+    expect(requests).toEqual([
+      {
+        authorization: 'Bearer test-key',
+        model: 'translation-model'
+      }
+    ])
+    await expect(readFile(result.subtitlePath ?? '', 'utf8')).resolves.toContain('你好')
+    await expect(readFile(result.subtitleSrtPath ?? '', 'utf8')).resolves.toContain('技术')
+  })
 })

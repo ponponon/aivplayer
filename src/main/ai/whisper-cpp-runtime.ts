@@ -19,9 +19,12 @@ import type {
   AsrRuntimeStatus,
   AsrSubtitleExportRequest,
   AsrSubtitleExportResult,
+  AsrSubtitleTranslationRequest,
+  AsrSubtitleTranslationResult,
   AsrSubtitleRequest,
   AsrSubtitleResult
 } from '../../shared/media-types.ts'
+import { createOpenAiCompatibleTranslationProvider, runSubtitleTranslationJob } from './subtitle-translation.ts'
 
 const execFileAsync = promisify(execFile)
 const POSIX_FFMPEG_BINARY_NAMES = ['ffmpeg']
@@ -247,6 +250,23 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
   const getModelDirectory = (): string => env.AIVPLAYER_ASR_MODEL_DIR || getWhisperModelDirectory(options.userDataPath)
 
   const getSubtitleCacheDirectory = (): string => env.AIVPLAYER_ASR_CACHE_DIR || join(options.userDataPath, 'asr-cache')
+
+  const createTranslationProvider = () => {
+    const baseUrl = env.AIVPLAYER_TRANSLATION_BASE_URL?.trim()
+    const apiKey = env.AIVPLAYER_TRANSLATION_API_KEY?.trim()
+    const model = env.AIVPLAYER_TRANSLATION_MODEL?.trim()
+
+    if (!baseUrl || !apiKey || !model) {
+      return null
+    }
+
+    return createOpenAiCompatibleTranslationProvider({
+      baseUrl,
+      apiKey,
+      model,
+      fetchImpl: options.translationFetch
+    })
+  }
 
   const readHealthStatus = async (): Promise<AsrRuntimeStatus> => {
     const copy = getCopy()
@@ -498,6 +518,43 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
           message: error instanceof Error ? error.message : String(error),
           subtitlePath: request.subtitlePath,
           subtitleSrtPath: request.subtitleSrtPath
+        }
+      }
+    },
+
+    async translateSubtitle(request: AsrSubtitleTranslationRequest): Promise<AsrSubtitleTranslationResult> {
+      const copy = getCopy()
+      const provider = createTranslationProvider()
+
+      if (!provider) {
+        return {
+          success: false,
+          message: copy.runtime.translationServiceMissing,
+          sourceSubtitlePath: request.subtitlePath
+        }
+      }
+
+      try {
+        const result = await runSubtitleTranslationJob({
+          sourceSubtitlePath: request.subtitlePath,
+          cacheDirectory: getSubtitleCacheDirectory(),
+          sourceLanguage: request.sourceLanguage,
+          targetLanguage: request.targetLanguage,
+          provider
+        })
+
+        return {
+          success: true,
+          message: copy.runtime.subtitleTranslated,
+          sourceSubtitlePath: request.subtitlePath,
+          subtitlePath: result.subtitlePath,
+          subtitleSrtPath: result.subtitleSrtPath
+        }
+      } catch (error) {
+        return {
+          success: false,
+          message: error instanceof Error ? error.message : String(error),
+          sourceSubtitlePath: request.subtitlePath
         }
       }
     }

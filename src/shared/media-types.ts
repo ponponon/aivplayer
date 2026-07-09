@@ -1,4 +1,5 @@
 import type { ClipExportLengthSeconds, ClipExportMode } from './clip-export'
+import type { SubtitleTargetLanguageId } from './app-settings'
 
 export type MediaFile = {
   id: string
@@ -158,6 +159,23 @@ export type AsrSubtitleExportResult = {
   message: string
   subtitlePath?: string
   subtitleSrtPath?: string
+  subtitleSrtUrl?: string
+}
+
+export type AsrSubtitleTranslationRequest = {
+  subtitlePath: string
+  subtitleSrtPath?: string
+  sourceLanguage?: string
+  targetLanguage: SubtitleTargetLanguageId
+}
+
+export type AsrSubtitleTranslationResult = {
+  success: boolean
+  message: string
+  sourceSubtitlePath?: string
+  subtitlePath?: string
+  subtitleSrtPath?: string
+  subtitleUrl?: string
   subtitleSrtUrl?: string
 }
 

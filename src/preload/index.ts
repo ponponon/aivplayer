@@ -12,6 +12,8 @@ import type {
   MediaClipExportResult,
   AsrSubtitleExportRequest,
   AsrSubtitleExportResult,
+  AsrSubtitleTranslationRequest,
+  AsrSubtitleTranslationResult,
   ClipboardWriteTextRequest,
   ClipboardWriteTextResult,
   AsrSubtitleRequest,
@@ -49,6 +51,8 @@ const api = {
     ipcRenderer.invoke(IPC_CHANNELS.ASR_RESOLVE_SUBTITLE_CACHE, request),
   exportAsrSubtitleSrt: (request: AsrSubtitleExportRequest): Promise<AsrSubtitleExportResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.ASR_EXPORT_SUBTITLE_SRT, request),
+  translateAsrSubtitle: (request: AsrSubtitleTranslationRequest): Promise<AsrSubtitleTranslationResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.ASR_TRANSLATE_SUBTITLE, request),
   exportMediaClip: (request: MediaClipExportRequest): Promise<MediaClipExportResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.MEDIA_EXPORT_CLIP, request),
   copyTextToClipboard: (request: ClipboardWriteTextRequest): Promise<ClipboardWriteTextResult> =>
