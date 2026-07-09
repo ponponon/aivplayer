@@ -8,7 +8,8 @@ import {
   createSubtitleOutputBase,
   findWhisperSubtitleCache,
   getWhisperSubtitleOutputPath,
-  getWhisperSubtitleSrtOutputPath
+  getWhisperSubtitleSrtOutputPath,
+  readWhisperSubtitleLanguage
 } from '../../src/main/ai/asr-subtitle-job'
 
 describe('ASR subtitle job command planning', () => {
@@ -45,6 +46,7 @@ describe('ASR subtitle job command planning', () => {
       '/tmp/subtitle',
       '-ovtt',
       '-osrt',
+      '-oj',
       '-l',
       'auto'
     ])
@@ -87,5 +89,27 @@ describe('ASR subtitle job command planning', () => {
       subtitlePath: getWhisperSubtitleOutputPath(outputBase),
       subtitleSrtPath: getWhisperSubtitleSrtOutputPath(outputBase)
     })
+  })
+
+  it('reads the whisper.cpp subtitle language from the JSON sidecar', async () => {
+    const cacheDirectory = await mkdtemp(join(tmpdir(), 'aivplayer-cache-'))
+    const outputBase = join(cacheDirectory, 'subtitles', 'demo-large-v3-turbo-q5_0-123456789abc')
+    const jsonPath = `${outputBase}.json`
+
+    await mkdir(join(cacheDirectory, 'subtitles'), { recursive: true })
+    await writeFile(
+      jsonPath,
+      JSON.stringify(
+        {
+          result: {
+            language: 'ja'
+          }
+        },
+        null,
+        2
+      )
+    )
+
+    await expect(readWhisperSubtitleLanguage(outputBase)).resolves.toBe('ja')
   })
 })

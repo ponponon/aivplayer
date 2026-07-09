@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { spawn } from 'node:child_process'
-import { mkdtemp, mkdir, rm, stat } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, rm, stat } from 'node:fs/promises'
 import { basename, dirname, extname, join } from 'node:path'
 import { tmpdir } from 'node:os'
 import type { AsrJobProgress } from '../../shared/media-types.ts'
@@ -30,6 +30,7 @@ export type RunAsrSubtitleJobOptions = {
 export type RunAsrSubtitleJobResult = {
   subtitlePath: string
   subtitleSrtPath: string
+  subtitleLanguage?: string
 }
 
 export type WhisperSubtitleOutputPaths = {
@@ -109,9 +110,32 @@ export function buildWhisperSubtitleArgs(options: WhisperSubtitleArgs): string[]
     options.outputBase,
     '-ovtt',
     '-osrt',
+    '-oj',
     '-l',
     options.language ?? 'auto'
   ]
+}
+
+export function getWhisperSubtitleJsonOutputPath(outputBase: string): string {
+  return `${outputBase}.json`
+}
+
+export async function readWhisperSubtitleLanguage(outputBase: string): Promise<string | null> {
+  const jsonPath = getWhisperSubtitleJsonOutputPath(outputBase)
+
+  try {
+    const text = await readFile(jsonPath, 'utf8')
+    const parsed = JSON.parse(text) as {
+      result?: {
+        language?: unknown
+      }
+    }
+    const language = parsed.result?.language
+
+    return typeof language === 'string' && language.trim().length > 0 ? language.trim() : null
+  } catch {
+    return null
+  }
 }
 
 export function createSubtitleOutputBase(
@@ -184,12 +208,18 @@ export async function runAsrSubtitleJob(options: RunAsrSubtitleJobOptions): Prom
   )
 
   if ((await pathExists(subtitlePath)) && (await pathExists(subtitleSrtPath))) {
+    const subtitleLanguage = await readWhisperSubtitleLanguage(outputBase)
+
     emitProgress(options.onProgress, {
       stage: 'completed',
       percent: 1,
       message: copy.runtime.subtitleCacheHit
     })
-    return { subtitlePath, subtitleSrtPath }
+    return {
+      subtitlePath,
+      subtitleSrtPath,
+      subtitleLanguage: subtitleLanguage ?? undefined
+    }
   }
 
   await mkdir(dirname(outputBase), { recursive: true })
@@ -224,13 +254,19 @@ export async function runAsrSubtitleJob(options: RunAsrSubtitleJobOptions): Prom
       throw new Error(copy.runtime.noSubtitleFiles)
     }
 
+    const subtitleLanguage = await readWhisperSubtitleLanguage(outputBase)
+
     emitProgress(options.onProgress, {
       stage: 'completed',
       percent: 1,
       message: copy.runtime.subtitleGenerated
     })
 
-    return { subtitlePath, subtitleSrtPath }
+    return {
+      subtitlePath,
+      subtitleSrtPath,
+      subtitleLanguage: subtitleLanguage ?? undefined
+    }
   } finally {
     await rm(tempDirectory, { recursive: true, force: true })
   }

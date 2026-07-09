@@ -146,6 +146,7 @@ export type AsrSubtitleResult = {
   subtitleSrtPath?: string
   subtitleUrl?: string
   subtitleSrtUrl?: string
+  subtitleLanguage?: string
   model?: AsrModelInfo
 }
 

@@ -27,11 +27,15 @@ describe('subtitle display source constraints', () => {
     expect(preloadSource).toContain('translateAsrSubtitle')
     expect(mediaTypesSource).toContain('AsrSubtitleTranslationRequest')
     expect(mediaTypesSource).toContain('AsrSubtitleTranslationResult')
+    expect(mediaTypesSource).toContain('subtitleLanguage?: string')
     expect(appSource).toContain('Languages,')
     expect(appSource).toContain('const [translatedSubtitleResult')
     expect(appSource).toContain('window.aiv.translateAsrSubtitle')
     expect(appSource).toContain('translationPath={translatedSubtitleResult?.subtitlePath ?? null}')
     expect(appSource).toContain('setTranslatedSubtitleResult(result.success ? result : null)')
+    expect(appSource).toContain('const subtitleSourceLanguage =')
+    expect(appSource).toContain('subtitleResult?.subtitleLanguage')
+    expect(appSource).toContain('sourceLanguage: subtitleSourceLanguage')
   })
 
   it('shows source mode when translation display is unavailable', () => {

@@ -851,6 +851,9 @@ export function App(): ReactElement {
       return
     }
 
+    const subtitleSourceLanguage =
+      activeSubtitle?.subtitleLanguage ?? subtitleResult?.subtitleLanguage ?? appSettings.asr.defaultSubtitleLanguage
+
     setIsTranslatingSubtitle(true)
     setAsrNotice(null)
 
@@ -858,7 +861,7 @@ export function App(): ReactElement {
       const result = await window.aiv.translateAsrSubtitle({
         subtitlePath,
         subtitleSrtPath: subtitleSrtPath ?? undefined,
-        sourceLanguage: appSettings.asr.defaultSubtitleLanguage,
+        sourceLanguage: subtitleSourceLanguage,
         targetLanguage: appSettings.subtitles.targetLanguage
       })
 

@@ -123,6 +123,7 @@
 - 翻译字幕使用 OpenAI-compatible Chat Completions 接口，通过 `AIVPLAYER_TRANSLATION_BASE_URL`、`AIVPLAYER_TRANSLATION_API_KEY` 和 `AIVPLAYER_TRANSLATION_MODEL` 环境变量启用，避免把密钥写进普通设置文件。
 - 翻译服务也可以直接在字幕设置里配置，接口地址、模型和 API key 统一从字幕分组读写，API key 会通过系统安全存储加密落盘。
 - 播放器字幕栏支持在原文、译文、双语之间切换；翻译完成后如果仍处于原文模式，会自动切到译文模式便于立即验收效果。
+- ASR 结果会记录 whisper.cpp 实际识别到的字幕语言，翻译时会优先沿用这份真实语言信息，重开同一个视频后也能继续用同一来源语言翻译。
 
 ## 片段导出
 - ASR 面板新增「导出片段」入口，支持基于当前播放位置快速导出短片段。

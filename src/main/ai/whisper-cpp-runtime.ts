@@ -6,7 +6,11 @@ import type { AsrRuntime, AsrRuntimeOptions } from './asr-runtime.ts'
 import { getWhisperModelDirectory, listWhisperModels, pathExists, selectWhisperModel } from './model-manager.ts'
 import { getRecommendedWhisperModelManifest } from './asr-models.ts'
 import { downloadWhisperModel } from './model-downloader.ts'
-import { findWhisperSubtitleCache, runAsrSubtitleJob } from './asr-subtitle-job.ts'
+import {
+  findWhisperSubtitleCache,
+  readWhisperSubtitleLanguage,
+  runAsrSubtitleJob
+} from './asr-subtitle-job.ts'
 import { convertVttToSrt } from './subtitle-writer.ts'
 import { readAsrRuntimeSettings, saveWhisperBinaryPath } from './asr-settings.ts'
 import { getWhisperBinaryNames, parseWhisperBinaryReplacementName } from './whisper-binary.ts'
@@ -438,6 +442,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
           message: copy.runtime.subtitleGenerated,
           subtitlePath: result.subtitlePath,
           subtitleSrtPath: result.subtitleSrtPath,
+          subtitleLanguage: result.subtitleLanguage,
           model
         }
       } catch (error) {
@@ -487,6 +492,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
           message: copy.runtime.subtitleCacheHit,
           subtitlePath: cached.subtitlePath,
           subtitleSrtPath: cached.subtitleSrtPath,
+          subtitleLanguage: (await readWhisperSubtitleLanguage(cached.outputBase)) ?? undefined,
           model
         }
       } catch (error) {
