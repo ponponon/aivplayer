@@ -24,7 +24,8 @@
     "smoke:clip-export-dialog": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-clip-export-dialog.ts",
     "smoke:media-details-dialog": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-media-details-dialog.ts",
     "smoke:dialogs:all": "npm run smoke:clip-export-dialog && npm run smoke:media-details-dialog",
-    "smoke:all": "npm run smoke:settings-dialog:all && npm run smoke:dialogs:all && npm run smoke:open-video",
+    "smoke:subtitle-settings": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-subtitle-settings.ts",
+    "smoke:all": "npm run smoke:settings-dialog:all && npm run smoke:dialogs:all && npm run smoke:subtitle-settings && npm run smoke:open-video",
     "pack": "npm run build && electron-builder --dir",
     "dist": "npm run build && npm run release:check-runtime && electron-builder"
   },

@@ -16,8 +16,11 @@ describe('dialog smoke source constraints', () => {
     expect(packageJson.scripts?.['smoke:dialogs:all']).toBe(
       'npm run smoke:clip-export-dialog && npm run smoke:media-details-dialog'
     )
+    expect(packageJson.scripts?.['smoke:subtitle-settings']).toBe(
+      'node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-subtitle-settings.ts'
+    )
     expect(packageJson.scripts?.['smoke:all']).toBe(
-      'npm run smoke:settings-dialog:all && npm run smoke:dialogs:all && npm run smoke:open-video'
+      'npm run smoke:settings-dialog:all && npm run smoke:dialogs:all && npm run smoke:subtitle-settings && npm run smoke:open-video'
     )
   })
 
@@ -41,6 +44,16 @@ describe('dialog smoke source constraints', () => {
     expect(smokeScript).toContain("page.waitForFunction(() => {")
     expect(smokeScript).toContain("page.locator('.info-card-more-button').click()")
     expect(smokeScript).toContain("page.locator('.media-details-dialog').waitFor")
+    expect(smokeScript).toContain("page.screenshot({ path: screenshotPath, fullPage: false })")
+  })
+
+  it('uses stable selectors in the subtitle settings smoke script', () => {
+    const smokeScript = readSource('scripts/smoke-subtitle-settings.ts')
+
+    expect(smokeScript).toContain("aivplayer-smoke-subtitle-settings-home-")
+    expect(smokeScript).toContain("page.locator('[data-settings-tab=\"subtitles\"]').click()")
+    expect(smokeScript).toContain("document.querySelector('.settings-dialog')")
+    expect(smokeScript).toContain("window.aiv.setAppSettings")
     expect(smokeScript).toContain("page.screenshot({ path: screenshotPath, fullPage: false })")
   })
 
