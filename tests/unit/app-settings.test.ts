@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -29,6 +29,9 @@ describe('app settings', () => {
     settings.ui.defaultPanelMode = 'info'
     settings.ui.lastSettingsSectionId = 'subtitles'
     settings.asr.preferredModelSourceId = 'huggingface'
+    settings.asr.translationBaseUrl = 'https://example.test/v1/chat/completions'
+    settings.asr.translationModel = 'translation-model'
+    settings.asr.translationApiKey = 'secret-key'
     settings.capture.saveDirectoryPath = tempDirectory
     settings.capture.copyToClipboard = false
     settings.capture.imageFormat = 'png'
@@ -105,7 +108,10 @@ describe('app settings', () => {
       asr: {
         preferredModelSourceId: 'modelscope',
         defaultSubtitleLanguage: 'auto',
-        autoLoadCachedSubtitles: true
+        autoLoadCachedSubtitles: true,
+        translationBaseUrl: null,
+        translationModel: null,
+        translationApiKey: null
       }
     })
   })
@@ -192,6 +198,27 @@ describe('app settings', () => {
         targetLanguage: 'en'
       }
     })
+  })
+
+  it('encrypts and decrypts the translation API key when a secret codec is available', async () => {
+    const secretCodec = {
+      encryptString: (value: string) => Buffer.from(`cipher:${value}`, 'utf8').toString('base64'),
+      decryptString: (value: string) => Buffer.from(value, 'base64').toString('utf8').replace(/^cipher:/, '')
+    }
+
+    const settings = createDefaultAppSettings()
+    settings.asr.translationBaseUrl = 'https://example.test/v1/chat/completions'
+    settings.asr.translationModel = 'translation-model'
+    settings.asr.translationApiKey = 'secret-key'
+    settings.capture.saveDirectoryPath = tempDirectory
+
+    await writeAppSettings(tempDirectory, settings, tempDirectory, secretCodec)
+
+    const rawContent = await readFile(join(tempDirectory, 'app-settings.json'), 'utf8')
+    expect(rawContent).not.toContain('secret-key')
+    expect(rawContent).toContain('safe:')
+
+    await expect(readAppSettings(tempDirectory, tempDirectory, secretCodec)).resolves.toEqual(settings)
   })
 
   it.each([

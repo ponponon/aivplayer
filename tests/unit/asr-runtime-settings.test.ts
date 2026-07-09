@@ -292,4 +292,72 @@ describe('ASR runtime settings', () => {
     await expect(readFile(result.subtitlePath ?? '', 'utf8')).resolves.toContain('你好')
     await expect(readFile(result.subtitleSrtPath ?? '', 'utf8')).resolves.toContain('技术')
   })
+
+  it('prefers saved translation settings when translating subtitles', async () => {
+    const subtitleDirectory = join(tempDirectory, 'subtitles')
+    const vttPath = join(subtitleDirectory, 'demo.vtt')
+    const requests: Array<{ url: string; authorization: string | null; model: string | undefined }> = []
+
+    await mkdir(subtitleDirectory, { recursive: true })
+    await writeFile(
+      vttPath,
+      [
+        'WEBVTT',
+        '',
+        '00:00:00.000 --> 00:00:01.000',
+        'hello'
+      ].join('\n')
+    )
+
+    const runtime = createWhisperCppRuntime({
+      userDataPath: tempDirectory,
+      resourcePath: join(tempDirectory, 'resources'),
+      env: {
+        AIVPLAYER_TRANSLATION_BASE_URL: 'https://env.invalid/v1/chat/completions',
+        AIVPLAYER_TRANSLATION_API_KEY: 'env-key',
+        AIVPLAYER_TRANSLATION_MODEL: 'env-model'
+      },
+      getTranslationServiceSettings: () => ({
+        translationBaseUrl: 'https://example.test/v1/chat/completions',
+        translationApiKey: 'saved-key',
+        translationModel: 'saved-model'
+      }),
+      translationFetch: async (url, init) => {
+        const body = JSON.parse(String(init?.body ?? '{}')) as { model?: string }
+        requests.push({
+          url,
+          authorization: init?.headers instanceof Headers ? init.headers.get('Authorization') : null,
+          model: body.model
+        })
+
+        return new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify([{ id: 'cue-1', text: '你好' }])
+                }
+              }
+            ]
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        )
+      }
+    })
+
+    const result = await runtime.translateSubtitle({
+      subtitlePath: vttPath,
+      sourceLanguage: 'en',
+      targetLanguage: 'zh'
+    })
+
+    expect(result.success).toBe(true)
+    expect(requests).toEqual([
+      {
+        url: 'https://example.test/v1/chat/completions',
+        authorization: 'Bearer saved-key',
+        model: 'saved-model'
+      }
+    ])
+  })
 })

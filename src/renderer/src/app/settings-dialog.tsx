@@ -250,6 +250,41 @@ function SettingsNumberInput({
   )
 }
 
+type SettingsTextInputProps = {
+  value: string
+  type?: 'text' | 'password'
+  placeholder?: string
+  autoComplete?: string
+  spellCheck?: boolean
+  ariaLabel?: string
+  onChange: (value: string) => void
+}
+
+function SettingsTextInput({
+  value,
+  type = 'text',
+  placeholder,
+  autoComplete,
+  spellCheck = false,
+  ariaLabel,
+  onChange
+}: SettingsTextInputProps): ReactElement {
+  const settingsTextClassName = 'settings-text'
+
+  return (
+    <input
+      className={settingsTextClassName}
+      type={type}
+      value={value}
+      placeholder={placeholder}
+      autoComplete={autoComplete}
+      spellCheck={spellCheck}
+      aria-label={ariaLabel}
+      onChange={(event) => onChange(event.currentTarget.value)}
+    />
+  )
+}
+
 export function SettingsDialog(props: SettingsDialogProps): ReactElement {
   const {
     copy,
@@ -774,6 +809,51 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
                 options={modelSourceOptions}
                 onChange={(preferredModelSourceId) => {
                   patchSettingsSection('asr', { preferredModelSourceId })
+                }}
+              />
+            </SettingsField>
+
+            <div className="settings-note-box">
+              <span className="settings-note-title">{copy.settingsDialog.subtitles.translationServiceTitle}</span>
+              <p>{copy.settingsDialog.subtitles.translationServiceDescription}</p>
+            </div>
+
+            <SettingsField
+              title={copy.settingsDialog.subtitles.translationBaseUrl}
+              description={copy.settingsDialog.subtitles.translationBaseUrlDescription}
+            >
+              <SettingsTextInput
+                value={settings.asr.translationBaseUrl ?? ''}
+                autoComplete="off"
+                onChange={(translationBaseUrl) => {
+                  patchSettingsSection('asr', { translationBaseUrl: translationBaseUrl.trim() || null })
+                }}
+              />
+            </SettingsField>
+
+            <SettingsField
+              title={copy.settingsDialog.subtitles.translationModel}
+              description={copy.settingsDialog.subtitles.translationModelDescription}
+            >
+              <SettingsTextInput
+                value={settings.asr.translationModel ?? ''}
+                autoComplete="off"
+                onChange={(translationModel) => {
+                  patchSettingsSection('asr', { translationModel: translationModel.trim() || null })
+                }}
+              />
+            </SettingsField>
+
+            <SettingsField
+              title={copy.settingsDialog.subtitles.translationApiKey}
+              description={copy.settingsDialog.subtitles.translationApiKeyDescription}
+            >
+              <SettingsTextInput
+                type="password"
+                value={settings.asr.translationApiKey ?? ''}
+                autoComplete="new-password"
+                onChange={(translationApiKey) => {
+                  patchSettingsSection('asr', { translationApiKey: translationApiKey.trim() || null })
                 }}
               />
             </SettingsField>

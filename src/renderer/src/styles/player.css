@@ -1770,7 +1770,8 @@
 
 .settings-field > .settings-inline-row,
 .settings-field > .settings-select,
-.settings-field > .settings-number {
+.settings-field > .settings-number,
+.settings-field > .settings-text {
   justify-self: stretch;
 }
 
@@ -1799,7 +1800,8 @@
 }
 
 .settings-select,
-.settings-number {
+.settings-number,
+.settings-text {
   height: var(--settings-control-height);
   width: 100%;
   padding: 0 var(--settings-control-padding-x);
@@ -1811,7 +1813,8 @@
 }
 
 .settings-select:focus,
-.settings-number:focus {
+.settings-number:focus,
+.settings-text:focus {
   outline: none;
   border-color: rgba(232, 193, 109, 0.38);
   box-shadow: 0 0 0 2px rgba(232, 193, 109, 0.12);

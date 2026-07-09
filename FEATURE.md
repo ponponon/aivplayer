@@ -121,6 +121,7 @@
 - 设置面板的字幕分组新增显示设置，为后续原文、译文、双语字幕切换预留入口。
 - 支持把已生成的 VTT 字幕翻译为目标语言字幕，译文会写入独立的 VTT / SRT 缓存文件。
 - 翻译字幕使用 OpenAI-compatible Chat Completions 接口，通过 `AIVPLAYER_TRANSLATION_BASE_URL`、`AIVPLAYER_TRANSLATION_API_KEY` 和 `AIVPLAYER_TRANSLATION_MODEL` 环境变量启用，避免把密钥写进普通设置文件。
+- 翻译服务也可以直接在字幕设置里配置，接口地址、模型和 API key 统一从字幕分组读写，API key 会通过系统安全存储加密落盘。
 - 播放器字幕栏支持在原文、译文、双语之间切换；翻译完成后如果仍处于原文模式，会自动切到译文模式便于立即验收效果。
 
 ## 片段导出

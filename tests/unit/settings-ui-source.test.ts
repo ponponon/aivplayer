@@ -34,8 +34,10 @@ describe('settings UI source constraints', () => {
 
     expect(settingsDialogSource).toContain('function SettingsSelect')
     expect(settingsDialogSource).toContain('function SettingsNumberInput')
+    expect(settingsDialogSource).toContain('function SettingsTextInput')
     expect(countMatches(settingsDialogSource, /className="settings-select"/g)).toBe(1)
     expect(countMatches(settingsDialogSource, /className=\{settingsNumberClassName\}/g)).toBe(1)
+    expect(countMatches(settingsDialogSource, /className=\{settingsTextClassName\}/g)).toBe(1)
     expect(countMatches(settingsDialogSource, /className="settings-number/g)).toBe(0)
   })
 
@@ -82,10 +84,17 @@ describe('settings UI source constraints', () => {
     expect(settingsDialogSource).toContain('options={subtitleDisplayModeOptions}')
     expect(settingsDialogSource).toContain('value={settings.subtitles.targetLanguage}')
     expect(settingsDialogSource).toContain('options={targetLanguageOptions}')
+    expect(settingsDialogSource).toContain('translationServiceTitle')
+    expect(settingsDialogSource).toContain('translationBaseUrl')
+    expect(settingsDialogSource).toContain('translationModel')
+    expect(settingsDialogSource).toContain('translationApiKey')
     expect(settingsDialogSource).toContain("patchSettingsSection('subtitles', { fontSizePx: clampSubtitleFontSize(fontSizePx) })")
     expect(settingsDialogSource).toContain("patchSettingsSection('subtitles', { lineHeight })")
     expect(settingsDialogSource).toContain("patchSettingsSection('subtitles', { displayMode })")
     expect(settingsDialogSource).toContain("patchSettingsSection('subtitles', { targetLanguage })")
+    expect(settingsDialogSource).toContain("patchSettingsSection('asr', { translationBaseUrl: translationBaseUrl.trim() || null })")
+    expect(settingsDialogSource).toContain("patchSettingsSection('asr', { translationModel: translationModel.trim() || null })")
+    expect(settingsDialogSource).toContain("patchSettingsSection('asr', { translationApiKey: translationApiKey.trim() || null })")
     expectInOrder(
       subtitlesSectionSource,
       'value={settings.subtitles.fontSizePx}',
@@ -94,6 +103,7 @@ describe('settings UI source constraints', () => {
     expectInOrder(subtitlesSectionSource, 'options={subtitleLineHeightOptions}', "patchSettingsSection('subtitles', { lineHeight })")
     expectInOrder(subtitlesSectionSource, 'options={subtitleDisplayModeOptions}', "patchSettingsSection('subtitles', { displayMode })")
     expectInOrder(subtitlesSectionSource, 'options={targetLanguageOptions}', "patchSettingsSection('subtitles', { targetLanguage })")
+    expectInOrder(subtitlesSectionSource, 'translationServiceTitle', "patchSettingsSection('asr', { translationBaseUrl: translationBaseUrl.trim() || null })")
   })
 
   it('routes app settings section writes through the shared update helper', () => {
@@ -194,7 +204,7 @@ describe('settings UI source constraints', () => {
 
   it('keeps settings form control dimensions on shared local tokens', () => {
     const playerCss = readSource('src/renderer/src/styles/player.css')
-    const inputControlRule = playerCss.match(/\.settings-select,\s*\.settings-number\s*\{(?<body>[^}]*)\}/s)
+    const inputControlRule = playerCss.match(/\.settings-select,\s*\.settings-number,\s*\.settings-text\s*\{(?<body>[^}]*)\}/s)
     const inputControlRuleBody = inputControlRule?.groups?.body ?? ''
 
     expect(playerCss).toMatch(/\.settings-dialog\s*\{[^}]*--settings-control-height:\s*36px;/s)
@@ -202,7 +212,7 @@ describe('settings UI source constraints', () => {
     expect(playerCss).toMatch(/\.settings-dialog\s*\{[^}]*--settings-control-radius:\s*var\(--radius-md\);/s)
     expect(inputControlRuleBody).toMatch(/(?:^|[\n\r;])\s*height:\s*var\(--settings-control-height\);/)
     expect(inputControlRuleBody).not.toMatch(/min-height:\s*var\(--settings-control-height\);/)
-    expect(playerCss).toMatch(/\.settings-select,\s*\.settings-number\s*\{[^}]*padding:\s*0 var\(--settings-control-padding-x\);/s)
+    expect(playerCss).toMatch(/\.settings-select,\s*\.settings-number,\s*\.settings-text\s*\{[^}]*padding:\s*0 var\(--settings-control-padding-x\);/s)
     expect(playerCss).toMatch(/\.settings-path-value\s*\{[^}]*min-height:\s*var\(--settings-control-height\);/s)
     expect(playerCss).toMatch(/\.settings-path-value\s*\{[^}]*padding:\s*8px var\(--settings-control-padding-x\);/s)
     expect(playerCss).toMatch(/\.settings-secondary-button\s*\{[^}]*min-height:\s*var\(--settings-control-height\);/s)

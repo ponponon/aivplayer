@@ -211,6 +211,14 @@ export type LocaleCopy = {
       autoLoadCachedSubtitlesDescription: string
       modelSource: string
       modelSourceDescription: string
+      translationServiceTitle: string
+      translationServiceDescription: string
+      translationBaseUrl: string
+      translationBaseUrlDescription: string
+      translationModel: string
+      translationModelDescription: string
+      translationApiKey: string
+      translationApiKeyDescription: string
     }
     capture: {
       title: string
@@ -583,7 +591,15 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
         autoLoadCachedSubtitles: '自动加载本地字幕缓存',
         autoLoadCachedSubtitlesDescription: '重新打开同一个视频时，优先命中缓存中的 VTT / SRT。',
         modelSource: 'ASR 模型默认下载源',
-        modelSourceDescription: '下载弹窗会优先把这里选中的源排在前面。'
+        modelSourceDescription: '下载弹窗会优先把这里选中的源排在前面。',
+        translationServiceTitle: '翻译服务',
+        translationServiceDescription: '填写 OpenAI-compatible Chat Completions 接口后，字幕就能直接翻译成目标语言。API key 会使用系统安全存储加密保存在本机。',
+        translationBaseUrl: '翻译接口地址',
+        translationBaseUrlDescription: '填写完整的 Chat Completions 接口地址，例如 /v1/chat/completions。',
+        translationModel: '翻译模型',
+        translationModelDescription: '填写用于翻译的模型名，例如 mimo-v2.5。',
+        translationApiKey: 'API Key',
+        translationApiKeyDescription: 'API Key 会加密保存在本机，不会以明文写入普通设置文件。'
       },
       capture: {
         title: '截图和录屏',
@@ -664,7 +680,7 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       subtitleExported: '已根据 VTT 导出 SRT。',
       subtitleTranslated: '字幕翻译完成，译文 VTT 已挂载，SRT 已导出。',
       translationServiceMissing:
-        '翻译服务未配置。请通过环境变量 AIVPLAYER_TRANSLATION_BASE_URL、AIVPLAYER_TRANSLATION_API_KEY 和 AIVPLAYER_TRANSLATION_MODEL 启用。',
+        '翻译服务未配置。请在设置中填写接口地址、模型和 API Key，或通过环境变量 AIVPLAYER_TRANSLATION_BASE_URL、AIVPLAYER_TRANSLATION_API_KEY 和 AIVPLAYER_TRANSLATION_MODEL 启用。',
       clipExportSuccess: '片段导出完成。',
       clipExportWithSubtitleSuccess: '片段和外挂字幕导出完成。',
       clipExportBurnedSuccess: '片段导出完成，字幕已烧录。',
@@ -1046,7 +1062,16 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
         autoLoadCachedSubtitles: 'Auto-load local subtitle cache',
         autoLoadCachedSubtitlesDescription: 'Restore cached VTT / SRT when the same video is opened again.',
         modelSource: 'Preferred ASR model source',
-        modelSourceDescription: 'The download dialog will show this source first.'
+        modelSourceDescription: 'The download dialog will show this source first.',
+        translationServiceTitle: 'Translation service',
+        translationServiceDescription:
+          'Fill in an OpenAI-compatible Chat Completions endpoint and subtitles can be translated directly into the target language. The API key is encrypted locally with the system secure store.',
+        translationBaseUrl: 'Translation endpoint',
+        translationBaseUrlDescription: 'Enter the full Chat Completions endpoint, for example /v1/chat/completions.',
+        translationModel: 'Translation model',
+        translationModelDescription: 'Enter the model name used for translation, for example mimo-v2.5.',
+        translationApiKey: 'API key',
+        translationApiKeyDescription: 'The API key is encrypted locally and is never written in plain text to the normal settings file.'
       },
       capture: {
         title: 'Capture & record',
@@ -1127,7 +1152,7 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       subtitleExported: 'SRT exported from VTT.',
       subtitleTranslated: 'Subtitle translation completed. Translated VTT is mounted and SRT has been exported.',
       translationServiceMissing:
-        'Translation service is not configured. Set AIVPLAYER_TRANSLATION_BASE_URL, AIVPLAYER_TRANSLATION_API_KEY, and AIVPLAYER_TRANSLATION_MODEL.',
+        'Translation service is not configured. Fill in the endpoint, model, and API key in settings, or set AIVPLAYER_TRANSLATION_BASE_URL, AIVPLAYER_TRANSLATION_API_KEY, and AIVPLAYER_TRANSLATION_MODEL.',
       clipExportSuccess: 'Clip export completed.',
       clipExportWithSubtitleSuccess: 'Clip and external subtitle export completed.',
       clipExportBurnedSuccess: 'Clip export completed with burned subtitles.',
@@ -1509,7 +1534,16 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
         autoLoadCachedSubtitles: 'ローカル字幕キャッシュを自動読み込み',
         autoLoadCachedSubtitlesDescription: '同じ動画を再度開いたときに、キャッシュ済みの VTT / SRT を復元します。',
         modelSource: '既定の ASR モデルソース',
-        modelSourceDescription: 'ダウンロードダイアログでは、このソースが先頭に表示されます。'
+        modelSourceDescription: 'ダウンロードダイアログでは、このソースが先頭に表示されます。',
+        translationServiceTitle: '翻訳サービス',
+        translationServiceDescription:
+          'OpenAI互換の Chat Completions エンドポイントを設定すると、字幕をそのまま翻訳できます。API key はシステムの安全な保存先で暗号化して保存します。',
+        translationBaseUrl: '翻訳エンドポイント',
+        translationBaseUrlDescription: 'Chat Completions の完全なエンドポイントを入力してください。例: /v1/chat/completions。',
+        translationModel: '翻訳モデル',
+        translationModelDescription: '翻訳に使うモデル名を入力してください。例: mimo-v2.5。',
+        translationApiKey: 'API key',
+        translationApiKeyDescription: 'API key はローカルに暗号化して保存され、通常の設定ファイルへ平文で書き込まれません。'
       },
       capture: {
         title: 'キャプチャと録画',
@@ -1590,7 +1624,7 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       subtitleExported: 'VTT から SRT を書き出しました。',
       subtitleTranslated: '字幕の翻訳が完了しました。翻訳 VTT はマウント済みで、SRT は書き出し済みです。',
       translationServiceMissing:
-        '翻訳サービスが設定されていません。AIVPLAYER_TRANSLATION_BASE_URL、AIVPLAYER_TRANSLATION_API_KEY、AIVPLAYER_TRANSLATION_MODEL を設定してください。',
+        '翻訳サービスが設定されていません。設定画面でエンドポイント、モデル、API key を入力するか、AIVPLAYER_TRANSLATION_BASE_URL、AIVPLAYER_TRANSLATION_API_KEY、AIVPLAYER_TRANSLATION_MODEL を設定してください。',
       clipExportSuccess: 'クリップの書き出しが完了しました。',
       clipExportWithSubtitleSuccess: 'クリップと外部字幕の書き出しが完了しました。',
       clipExportBurnedSuccess: '字幕を焼き込んだクリップの書き出しが完了しました。',
@@ -1972,7 +2006,16 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
         autoLoadCachedSubtitles: '로컬 자막 캐시 자동 로드',
         autoLoadCachedSubtitlesDescription: '같은 비디오를 다시 열면 캐시된 VTT / SRT를 복원합니다.',
         modelSource: '기본 ASR 모델 소스',
-        modelSourceDescription: '다운로드 대화상자에서 이 소스를 먼저 표시합니다.'
+        modelSourceDescription: '다운로드 대화상자에서 이 소스를 먼저 표시합니다.',
+        translationServiceTitle: '번역 서비스',
+        translationServiceDescription:
+          'OpenAI 호환 Chat Completions 엔드포인트를 입력하면 자막을 바로 목표 언어로 번역할 수 있습니다. API key는 시스템 보안 저장소를 사용해 로컬에 암호화해서 저장합니다.',
+        translationBaseUrl: '번역 엔드포인트',
+        translationBaseUrlDescription: 'Chat Completions의 전체 엔드포인트를 입력하세요. 예: /v1/chat/completions.',
+        translationModel: '번역 모델',
+        translationModelDescription: '번역에 사용할 모델 이름을 입력하세요. 예: mimo-v2.5.',
+        translationApiKey: 'API key',
+        translationApiKeyDescription: 'API key는 로컬에 암호화되어 저장되며 일반 설정 파일에 평문으로 기록되지 않습니다.'
       },
       capture: {
         title: '캡처 및 녹화',
@@ -2053,7 +2096,7 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       subtitleExported: 'VTT에서 SRT를 내보냈습니다.',
       subtitleTranslated: '자막 번역이 완료되었습니다. 번역 VTT는 마운트됐고 SRT는 내보냈습니다.',
       translationServiceMissing:
-        '번역 서비스가 설정되지 않았습니다. AIVPLAYER_TRANSLATION_BASE_URL, AIVPLAYER_TRANSLATION_API_KEY, AIVPLAYER_TRANSLATION_MODEL을 설정하세요.',
+        '번역 서비스가 설정되지 않았습니다. 설정에서 엔드포인트, 모델, API key를 입력하거나 AIVPLAYER_TRANSLATION_BASE_URL, AIVPLAYER_TRANSLATION_API_KEY, AIVPLAYER_TRANSLATION_MODEL을 설정하세요.',
       clipExportSuccess: '클립 내보내기가 완료되었습니다.',
       clipExportWithSubtitleSuccess: '클립과 외부 자막 내보내기가 완료되었습니다.',
       clipExportBurnedSuccess: '자막을 굽은 클립 내보내기가 완료되었습니다.',

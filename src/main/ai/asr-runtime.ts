@@ -11,6 +11,7 @@ import type {
   AsrSubtitleRequest,
   AsrSubtitleResult
 } from '../../shared/media-types.ts'
+import type { AppSettings } from '../../shared/app-settings'
 import type { AppLocale } from '../../shared/localization'
 
 export type AsrRuntime = {
@@ -37,5 +38,8 @@ export type AsrRuntimeOptions = {
   env?: NodeJS.ProcessEnv
   extraBinaryDirectories?: string[]
   translationFetch?: (url: string, init?: RequestInit) => Promise<Response>
+  getTranslationServiceSettings?: () =>
+    | Pick<AppSettings['asr'], 'translationBaseUrl' | 'translationModel' | 'translationApiKey'>
+    | null
   getLocale?: () => AppLocale
 }

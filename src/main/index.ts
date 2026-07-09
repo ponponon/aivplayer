@@ -112,7 +112,12 @@ function getAsrRuntime(): ReturnType<typeof createWhisperCppRuntime> {
     asrRuntime = createWhisperCppRuntime({
       userDataPath: app.getPath('userData'),
       resourcePath: resolveResourcePath(),
-      getLocale: getCurrentLocale
+      getLocale: getCurrentLocale,
+      getTranslationServiceSettings: () => ({
+        translationBaseUrl: currentAppSettings.asr.translationBaseUrl,
+        translationModel: currentAppSettings.asr.translationModel,
+        translationApiKey: currentAppSettings.asr.translationApiKey
+      })
     })
   }
 

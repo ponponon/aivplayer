@@ -252,9 +252,10 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
   const getSubtitleCacheDirectory = (): string => env.AIVPLAYER_ASR_CACHE_DIR || join(options.userDataPath, 'asr-cache')
 
   const createTranslationProvider = () => {
-    const baseUrl = env.AIVPLAYER_TRANSLATION_BASE_URL?.trim()
-    const apiKey = env.AIVPLAYER_TRANSLATION_API_KEY?.trim()
-    const model = env.AIVPLAYER_TRANSLATION_MODEL?.trim()
+    const translationSettings = options.getTranslationServiceSettings?.()
+    const baseUrl = translationSettings?.translationBaseUrl?.trim() || env.AIVPLAYER_TRANSLATION_BASE_URL?.trim()
+    const apiKey = translationSettings?.translationApiKey?.trim() || env.AIVPLAYER_TRANSLATION_API_KEY?.trim()
+    const model = translationSettings?.translationModel?.trim() || env.AIVPLAYER_TRANSLATION_MODEL?.trim()
 
     if (!baseUrl || !apiKey || !model) {
       return null

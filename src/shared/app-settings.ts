@@ -2,7 +2,7 @@ import type { AsrModelSourceId } from './media-types'
 import type { ClipExportLengthSeconds, ClipExportMode } from './clip-export'
 import { DEFAULT_APP_LOCALE, DEFAULT_SUBTITLE_LANGUAGE, type AppLocale, type SubtitleLanguageId } from './localization'
 
-export const APP_SETTINGS_SCHEMA_VERSION = 9
+export const APP_SETTINGS_SCHEMA_VERSION = 10
 
 export type CaptureImageFormat = 'jpg' | 'png'
 export type CaptureFileNamingMode = 'sequential' | 'timestamp'
@@ -63,6 +63,9 @@ export type AppSettings = {
     preferredModelSourceId: AsrModelSourceId
     defaultSubtitleLanguage: SubtitleLanguageId
     autoLoadCachedSubtitles: boolean
+    translationBaseUrl: string | null
+    translationModel: string | null
+    translationApiKey: string | null
   }
 }
 
@@ -149,7 +152,10 @@ export function createDefaultAppSettings(): AppSettings {
     asr: {
       preferredModelSourceId: 'modelscope',
       defaultSubtitleLanguage: DEFAULT_SUBTITLE_LANGUAGE,
-      autoLoadCachedSubtitles: true
+      autoLoadCachedSubtitles: true,
+      translationBaseUrl: null,
+      translationModel: null,
+      translationApiKey: null
     }
   }
 }

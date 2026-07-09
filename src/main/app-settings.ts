@@ -18,6 +18,14 @@ import { isClipExportLengthSeconds, isClipExportMode } from '../shared/clip-expo
 import type { AsrModelSourceId } from '../shared/media-types'
 import { isAppLocale, isSubtitleLanguageId } from '../shared/localization'
 
+export type AppSettingsSecretCodec = {
+  encryptString: (value: string) => string
+  decryptString: (value: string) => string
+}
+
+const APP_SETTINGS_SECRET_PREFIX = 'safe:'
+let appSettingsSecretCodecPromise: Promise<AppSettingsSecretCodec | null> | null = null
+
 function getAppSettingsPath(userDataPath: string): string {
   return join(userDataPath, 'app-settings.json')
 }
@@ -56,6 +64,74 @@ function isSubtitleDisplayMode(value: unknown): value is SubtitleDisplayMode {
 
 function isSubtitleTargetLanguageId(value: unknown): value is SubtitleTargetLanguageId {
   return isSubtitleLanguageId(value) && value !== 'auto'
+}
+
+async function resolveAppSettingsSecretCodec(): Promise<AppSettingsSecretCodec | null> {
+  if (!appSettingsSecretCodecPromise) {
+    appSettingsSecretCodecPromise = (async () => {
+      try {
+        const { safeStorage } = await import('electron')
+
+        if (!safeStorage.isEncryptionAvailable()) {
+          return null
+        }
+
+        return {
+          encryptString: (value: string) => safeStorage.encryptString(value).toString('base64'),
+          decryptString: (value: string) => safeStorage.decryptString(Buffer.from(value, 'base64'))
+        }
+      } catch {
+        return null
+      }
+    })()
+  }
+
+  return appSettingsSecretCodecPromise
+}
+
+export function resetAppSettingsSecretCodecCache(): void {
+  appSettingsSecretCodecPromise = null
+}
+
+function normalizeTextField(value: unknown, fallback: string | null): string | null {
+  if (typeof value !== 'string') {
+    return fallback
+  }
+
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : fallback
+}
+
+function encodeSecretValue(value: string | null | undefined, codec: AppSettingsSecretCodec | null): string | null {
+  if (typeof value !== 'string' || value.length === 0) {
+    return null
+  }
+
+  if (!codec) {
+    return value
+  }
+
+  return `${APP_SETTINGS_SECRET_PREFIX}${codec.encryptString(value)}`
+}
+
+function decodeSecretValue(value: unknown, codec: AppSettingsSecretCodec | null): string | null {
+  if (typeof value !== 'string' || value.length === 0) {
+    return null
+  }
+
+  if (!value.startsWith(APP_SETTINGS_SECRET_PREFIX)) {
+    return value
+  }
+
+  if (!codec) {
+    return null
+  }
+
+  try {
+    return codec.decryptString(value.slice(APP_SETTINGS_SECRET_PREFIX.length))
+  } catch {
+    return null
+  }
 }
 
 function normalizeSettingsSectionId(value: unknown, fallback: AppSettingsSectionId): AppSettingsSectionId {
@@ -252,7 +328,20 @@ function sanitizeAsrSettings(
       ? asr.defaultSubtitleLanguage
       : defaults.defaultSubtitleLanguage,
     autoLoadCachedSubtitles:
-      typeof asr.autoLoadCachedSubtitles === 'boolean' ? asr.autoLoadCachedSubtitles : defaults.autoLoadCachedSubtitles
+      typeof asr.autoLoadCachedSubtitles === 'boolean' ? asr.autoLoadCachedSubtitles : defaults.autoLoadCachedSubtitles,
+    translationBaseUrl: normalizeTextField(asr.translationBaseUrl, defaults.translationBaseUrl),
+    translationModel: normalizeTextField(asr.translationModel, defaults.translationModel),
+    translationApiKey: normalizeTextField(asr.translationApiKey, defaults.translationApiKey)
+  }
+}
+
+function encodeAppSettingsForDisk(settings: AppSettings, secretCodec: AppSettingsSecretCodec | null): AppSettings {
+  return {
+    ...settings,
+    asr: {
+      ...settings.asr,
+      translationApiKey: encodeSecretValue(settings.asr.translationApiKey, secretCodec)
+    }
   }
 }
 
@@ -288,11 +377,29 @@ function sanitizeAppSettings(parsed: unknown, captureDefaultDirectoryPath: strin
 
 export async function readAppSettings(
   userDataPath: string,
-  captureDefaultDirectoryPath: string | null = null
+  captureDefaultDirectoryPath: string | null = null,
+  secretCodec: AppSettingsSecretCodec | null = null
 ): Promise<AppSettings> {
   try {
     const content = await readFile(getAppSettingsPath(userDataPath), 'utf-8')
-    return sanitizeAppSettings(JSON.parse(content) as unknown, captureDefaultDirectoryPath)
+    const parsed = JSON.parse(content) as Partial<AppSettings> & {
+      asr?: Partial<AppSettings['asr']> & {
+        translationApiKey?: unknown
+      }
+    }
+
+    if (
+      parsed.asr &&
+      typeof parsed.asr.translationApiKey === 'string' &&
+      parsed.asr.translationApiKey.startsWith(APP_SETTINGS_SECRET_PREFIX)
+    ) {
+      parsed.asr = {
+        ...parsed.asr,
+        translationApiKey: decodeSecretValue(parsed.asr.translationApiKey, secretCodec ?? (await resolveAppSettingsSecretCodec()))
+      }
+    }
+
+    return sanitizeAppSettings(parsed as unknown, captureDefaultDirectoryPath)
   } catch {
     return sanitizeAppSettings(null, captureDefaultDirectoryPath)
   }
@@ -301,13 +408,19 @@ export async function readAppSettings(
 export async function writeAppSettings(
   userDataPath: string,
   settings: AppSettings,
-  captureDefaultDirectoryPath: string | null = null
+  captureDefaultDirectoryPath: string | null = null,
+  secretCodec: AppSettingsSecretCodec | null = null
 ): Promise<AppSettings> {
   const nextSettings = sanitizeAppSettings(settings, captureDefaultDirectoryPath)
   const settingsPath = getAppSettingsPath(userDataPath)
+  const codec =
+    typeof nextSettings.asr.translationApiKey === 'string' && nextSettings.asr.translationApiKey.length > 0
+      ? secretCodec ?? (await resolveAppSettingsSecretCodec())
+      : secretCodec
+  const diskSettings = encodeAppSettingsForDisk(nextSettings, codec)
 
   await mkdir(dirname(settingsPath), { recursive: true })
-  await writeFile(settingsPath, `${JSON.stringify(nextSettings, null, 2)}\n`)
+  await writeFile(settingsPath, `${JSON.stringify(diskSettings, null, 2)}\n`)
 
   return nextSettings
 }
