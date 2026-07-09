@@ -107,6 +107,7 @@ export type LocaleCopy = {
     engineReady: string
     engineNotReady: string
     modelFiles: string
+    subtitleLanguage: string
     generateSubtitle: string
     generatingSubtitle: string
     translateSubtitle: (languageLabel: string) => string
@@ -456,6 +457,7 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       engineReady: '引擎就绪',
       engineNotReady: '引擎未就绪',
       modelFiles: '模型文件',
+      subtitleLanguage: '识别语言',
       generateSubtitle: '生成字幕',
       generatingSubtitle: '生成中',
       translateSubtitle: (languageLabel) => `翻译为${languageLabel}`,
@@ -927,6 +929,7 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       engineReady: 'Engine ready',
       engineNotReady: 'Engine not ready',
       modelFiles: 'Model files',
+      subtitleLanguage: 'Detected language',
       generateSubtitle: 'Generate subtitles',
       generatingSubtitle: 'Generating',
       translateSubtitle: (languageLabel) => `Translate to ${languageLabel}`,
@@ -1399,6 +1402,7 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       engineReady: 'エンジン準備完了',
       engineNotReady: 'エンジン未準備',
       modelFiles: 'モデルファイル',
+      subtitleLanguage: '認識言語',
       generateSubtitle: '字幕を生成',
       generatingSubtitle: '生成中',
       translateSubtitle: (languageLabel) => `${languageLabel}に翻訳`,
@@ -1871,6 +1875,7 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       engineReady: '엔진 준비 완료',
       engineNotReady: '엔진 준비 안 됨',
       modelFiles: '모델 파일',
+      subtitleLanguage: '감지 언어',
       generateSubtitle: '자막 생성',
       generatingSubtitle: '생성 중',
       translateSubtitle: (languageLabel) => `${languageLabel}(으)로 번역`,

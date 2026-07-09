@@ -33,9 +33,13 @@ describe('subtitle display source constraints', () => {
     expect(appSource).toContain('window.aiv.translateAsrSubtitle')
     expect(appSource).toContain('translationPath={translatedSubtitleResult?.subtitlePath ?? null}')
     expect(appSource).toContain('setTranslatedSubtitleResult(result.success ? result : null)')
+    expect(appSource).toContain('formatSubtitleLanguageLabel')
     expect(appSource).toContain('const subtitleSourceLanguage =')
+    expect(appSource).toContain('const subtitleSourceLanguageLabel =')
     expect(appSource).toContain('subtitleResult?.subtitleLanguage')
     expect(appSource).toContain('sourceLanguage: subtitleSourceLanguage')
+    expect(appSource).toContain('copy.asrPanel.subtitleLanguage')
+    expect(appSource).toContain('className="subtitle-language-row"')
   })
 
   it('shows source mode when translation display is unavailable', () => {
@@ -68,5 +72,13 @@ describe('subtitle display source constraints', () => {
 
     expect(playerCss).toContain('.subtitle-display-controls-menu')
     expect(playerCss).toMatch(/\.subtitle-display-controls-menu\s*\{[^}]*position:\s*absolute;/s)
+  })
+
+  it('styles the subtitle language status as a compact inline pill', () => {
+    const playerCss = readSource('src/renderer/src/styles/player.css')
+
+    expect(playerCss).toContain('.subtitle-language-row')
+    expect(playerCss).toMatch(/\.subtitle-language-row\s*\{[^}]*display:\s*inline-flex;/s)
+    expect(playerCss).toMatch(/\.subtitle-language-row\s*\{[^}]*border-radius:\s*var\(--radius-sm\);/s)
   })
 })

@@ -32,7 +32,8 @@ import {
   createAppSettingsSectionPatcher,
   type AppSettings,
   type AppSettingsSectionPatcher,
-  type AppSettingsSectionId
+  type AppSettingsSectionId,
+  type SubtitleLanguageId
 } from '../../../shared/app-settings'
 import type { ClipExportLengthSeconds, ClipExportMode } from '../../../shared/clip-export'
 import { getAppCopy, type LocaleCopy } from '../../../shared/i18n'
@@ -95,6 +96,14 @@ function getMediaErrorMessage(copy: LocaleCopy, video: HTMLVideoElement): string
   }
 
   return copy.runtime.playbackFailed(error.message || copy.runtime.unknownMediaError(error.code))
+}
+
+function formatSubtitleLanguageLabel(copy: LocaleCopy, subtitleLanguage: string | null | undefined): string | null {
+  if (!subtitleLanguage) {
+    return null
+  }
+
+  return copy.subtitleLanguageOptions[subtitleLanguage as SubtitleLanguageId]?.label ?? subtitleLanguage
 }
 
 function mergePlaylist(current: MediaFile[], incoming: MediaFile[]): MediaFile[] {
@@ -288,6 +297,8 @@ export function App(): ReactElement {
   const subtitleSrtPath = activeSubtitle?.subtitleSrtPath ?? subtitleResult?.subtitleSrtPath ?? null
   const canTranslateSubtitle = Boolean(subtitlePath && !isAsrBusy && !isTranslatingSubtitle)
   const subtitleTargetLanguageLabel = copy.subtitleLanguageOptions[appSettings.subtitles.targetLanguage].label
+  const subtitleSourceLanguage = activeSubtitle?.subtitleLanguage ?? subtitleResult?.subtitleLanguage ?? null
+  const subtitleSourceLanguageLabel = formatSubtitleLanguageLabel(copy, subtitleSourceLanguage)
   const canOpenSubtitleTools = Boolean(state.currentFile)
   const hasCurrentFile = Boolean(state.currentFile)
   const canOpenSubtitleFolder = Boolean(subtitlePath)
@@ -1927,6 +1938,12 @@ export function App(): ReactElement {
                       </details>
                     ) : null}
                   </div>
+                  {subtitleSourceLanguageLabel ? (
+                    <div className="subtitle-language-row">
+                      <span>{copy.asrPanel.subtitleLanguage}</span>
+                      <strong>{subtitleSourceLanguageLabel}</strong>
+                    </div>
+                  ) : null}
                   {asrProgress ? (
                     <div className="progress-block">
                       <div className="progress-label">

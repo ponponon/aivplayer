@@ -9,7 +9,8 @@ import {
   findWhisperSubtitleCache,
   getWhisperSubtitleOutputPath,
   getWhisperSubtitleSrtOutputPath,
-  readWhisperSubtitleLanguage
+  readWhisperSubtitleLanguage,
+  runAsrSubtitleJob
 } from '../../src/main/ai/asr-subtitle-job'
 
 describe('ASR subtitle job command planning', () => {
@@ -111,5 +112,47 @@ describe('ASR subtitle job command planning', () => {
     )
 
     await expect(readWhisperSubtitleLanguage(outputBase)).resolves.toBe('ja')
+  })
+
+  it('returns the cached subtitle language when the ASR job hits an existing cache', async () => {
+    const cacheDirectory = await mkdtemp(join(tmpdir(), 'aivplayer-cache-'))
+    const mediaPath = join(cacheDirectory, 'video.mp4')
+    const modelId = 'large-v3-turbo-q5_0'
+
+    await writeFile(mediaPath, 'video')
+
+    const mediaStat = await stat(mediaPath)
+    const outputBase = createSubtitleOutputBase(cacheDirectory, mediaPath, mediaStat.mtimeMs, modelId)
+
+    await mkdir(join(cacheDirectory, 'subtitles'), { recursive: true })
+    await writeFile(getWhisperSubtitleOutputPath(outputBase), 'WEBVTT\n\n00:00.000 --> 00:01.000\nhello\n')
+    await writeFile(getWhisperSubtitleSrtOutputPath(outputBase), '1\n00:00:00,000 --> 00:00:01,000\nhello\n')
+    await writeFile(
+      `${outputBase}.json`,
+      JSON.stringify(
+        {
+          result: {
+            language: 'ja'
+          }
+        },
+        null,
+        2
+      )
+    )
+
+    await expect(
+      runAsrSubtitleJob({
+        ffmpegPath: '/bin/true',
+        whisperBinaryPath: '/bin/true',
+        modelPath: '/models/ggml-large-v3-turbo-q5_0.bin',
+        modelId,
+        mediaPath,
+        cacheDirectory
+      })
+    ).resolves.toMatchObject({
+      subtitlePath: getWhisperSubtitleOutputPath(outputBase),
+      subtitleSrtPath: getWhisperSubtitleSrtOutputPath(outputBase),
+      subtitleLanguage: 'ja'
+    })
   })
 })
