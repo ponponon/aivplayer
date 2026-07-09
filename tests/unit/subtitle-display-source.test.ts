@@ -5,12 +5,33 @@ describe('subtitle display source constraints', () => {
   it('feeds app subtitle settings into the subtitle overlay', () => {
     const appSource = readSource('src/renderer/src/app/App.tsx')
     const overlaySource = readSource('src/renderer/src/subtitle-overlay.tsx')
+    const controlsSource = readSource('src/renderer/src/app/subtitle-display-controls.tsx')
 
     expect(appSource).toContain('settings={appSettings.subtitles}')
-    expect(appSource).toContain("patchAppSettingsSection('subtitles', patch)")
+    expect(appSource).toContain('const patchSubtitleDisplaySettings')
+    expect(appSource).toContain('onSettingsChange={patchSubtitleDisplaySettings}')
+    expect(appSource).toContain('onResetSettings={resetSubtitleDisplaySettings}')
     expect(overlaySource).toContain('SubtitleDisplayControls')
+    expect(controlsSource).toContain('effectiveDisplayMode')
     expect(overlaySource).toContain('--subtitle-font-size')
     expect(overlaySource).toContain('--subtitle-line-height')
+  })
+
+  it('shows source mode when translation display is unavailable', () => {
+    const controlsSource = readSource('src/renderer/src/app/subtitle-display-controls.tsx')
+
+    expect(controlsSource).toContain(
+      "const effectiveDisplayMode = !hasTranslation && settings.displayMode !== 'source' ? 'source' : settings.displayMode"
+    )
+    expect(controlsSource).toContain('value={effectiveDisplayMode}')
+    expect(controlsSource).toContain("{!hasTranslation && settings.displayMode !== 'source' ? (")
+  })
+
+  it('does not use menu roles for form-based quick controls', () => {
+    const controlsSource = readSource('src/renderer/src/app/subtitle-display-controls.tsx')
+
+    expect(controlsSource).toContain('className="subtitle-display-controls-menu"')
+    expect(controlsSource).not.toContain('className="subtitle-display-controls-menu" role="menu"')
   })
 
   it('uses css variables for subtitle text sizing', () => {

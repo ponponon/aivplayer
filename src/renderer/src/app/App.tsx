@@ -416,6 +416,14 @@ export function App(): ReactElement {
     })
   }
 
+  const patchSubtitleDisplaySettings = (patch: Partial<AppSettings['subtitles']>): void => {
+    patchAppSettingsSection('subtitles', patch)
+  }
+
+  const resetSubtitleDisplaySettings = (): void => {
+    patchAppSettingsSection('subtitles', createDefaultAppSettings().subtitles)
+  }
+
   const resetAppSettings = (): void => {
     const defaults = createDefaultAppSettings()
     setAppSettings(defaults)
@@ -1491,12 +1499,8 @@ export function App(): ReactElement {
             settings={appSettings.subtitles}
             copy={copy}
             controlsRef={subtitleDisplayControlsRef}
-            onSettingsChange={(patch) => {
-              patchAppSettingsSection('subtitles', patch)
-            }}
-            onResetSettings={() => {
-              patchAppSettingsSection('subtitles', createDefaultAppSettings().subtitles)
-            }}
+            onSettingsChange={patchSubtitleDisplaySettings}
+            onResetSettings={resetSubtitleDisplaySettings}
           />
 
           {state.error ? (

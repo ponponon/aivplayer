@@ -39,6 +39,7 @@ export function SubtitleDisplayControls({
 }: SubtitleDisplayControlsProps): ReactElement {
   const canDecrease = settings.fontSizePx > minSubtitleFontSize
   const canIncrease = settings.fontSizePx < maxSubtitleFontSize
+  const effectiveDisplayMode = !hasTranslation && settings.displayMode !== 'source' ? 'source' : settings.displayMode
 
   return (
     <details ref={controlsRef} className="subtitle-display-controls">
@@ -49,7 +50,7 @@ export function SubtitleDisplayControls({
       >
         <ChevronDown size={14} />
       </summary>
-      <div className="subtitle-display-controls-menu" role="menu" aria-label={copy.subtitleDisplay.menuLabel}>
+      <div className="subtitle-display-controls-menu" aria-label={copy.subtitleDisplay.menuLabel}>
         <div className="subtitle-display-control-row">
           <span>{copy.subtitleDisplay.fontSize}</span>
           <div className="subtitle-display-stepper">
@@ -90,7 +91,7 @@ export function SubtitleDisplayControls({
         <label className="subtitle-display-control-row">
           <span>{copy.subtitleDisplay.displayMode}</span>
           <select
-            value={settings.displayMode}
+            value={effectiveDisplayMode}
             onChange={(event) => onChange({ displayMode: event.currentTarget.value as SubtitleDisplayMode })}
           >
             {subtitleDisplayModeValues.map((displayMode) => (
