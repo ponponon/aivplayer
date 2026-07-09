@@ -54,6 +54,9 @@ describe('dialog smoke source constraints', () => {
     expect(smokeScript).toContain("page.locator('[data-settings-tab=\"subtitles\"]').click()")
     expect(smokeScript).toContain("document.querySelector('.settings-dialog')")
     expect(smokeScript).toContain("window.aiv.setAppSettings")
+    expect(smokeScript).toContain("persistedSettings.subtitles.displayMode !== 'source'")
+    expect(smokeScript).toContain("persistedSettings.subtitles.targetLanguage !== 'zh'")
+    expect(smokeScript).toContain("dialogState.selectValues.includes('zh')")
     expect(smokeScript).toContain("page.screenshot({ path: screenshotPath, fullPage: false })")
   })
 

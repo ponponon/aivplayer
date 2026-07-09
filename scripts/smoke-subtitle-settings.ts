@@ -4,6 +4,13 @@ import { join } from 'node:path'
 import { _electron as electron } from 'playwright'
 import { getAppCopy } from '../src/shared/i18n.ts'
 
+const expectedSubtitleSettings = {
+  fontSizePx: 21,
+  lineHeight: 'relaxed',
+  displayMode: 'source',
+  targetLanguage: 'zh'
+} as const
+
 async function main(): Promise<void> {
   const smokeHomeDirectory = await mkdtemp(join(tmpdir(), 'aivplayer-smoke-subtitle-settings-home-'))
 
@@ -38,10 +45,7 @@ async function main(): Promise<void> {
         ...current,
         subtitles: {
           ...current.subtitles,
-          fontSizePx: 21,
-          lineHeight: 'relaxed',
-          displayMode: 'source',
-          targetLanguage: 'zh'
+          ...expectedSubtitleSettings
         }
       })
     })
@@ -73,14 +77,23 @@ async function main(): Promise<void> {
     await page.screenshot({ path: screenshotPath, fullPage: false })
 
     console.log(`Subtitle settings: ${JSON.stringify(persistedSettings.subtitles)}`)
+    console.log(`Expected subtitle settings: ${JSON.stringify(expectedSubtitleSettings)}`)
     console.log(`Subtitle dialog state: ${JSON.stringify(dialogState)}`)
     console.log(`Subtitle settings screenshot: ${screenshotPath}`)
 
-    if (persistedSettings.subtitles.fontSizePx !== 21) {
+    if (persistedSettings.subtitles.fontSizePx !== expectedSubtitleSettings.fontSizePx) {
       process.exitCode = 1
     }
 
-    if (persistedSettings.subtitles.lineHeight !== 'relaxed') {
+    if (persistedSettings.subtitles.lineHeight !== expectedSubtitleSettings.lineHeight) {
+      process.exitCode = 1
+    }
+
+    if (persistedSettings.subtitles.displayMode !== 'source') {
+      process.exitCode = 1
+    }
+
+    if (persistedSettings.subtitles.targetLanguage !== 'zh') {
       process.exitCode = 1
     }
 
@@ -88,7 +101,11 @@ async function main(): Promise<void> {
       process.exitCode = 1
     }
 
-    if (!dialogState.selectValues.includes('relaxed') || !dialogState.selectValues.includes('source')) {
+    if (
+      !dialogState.selectValues.includes(expectedSubtitleSettings.lineHeight) ||
+      !dialogState.selectValues.includes(expectedSubtitleSettings.displayMode) ||
+      !dialogState.selectValues.includes('zh')
+    ) {
       process.exitCode = 1
     }
   } finally {
