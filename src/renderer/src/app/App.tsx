@@ -299,6 +299,10 @@ export function App(): ReactElement {
   const subtitleTargetLanguageLabel = copy.subtitleLanguageOptions[appSettings.subtitles.targetLanguage].label
   const subtitleSourceLanguage = activeSubtitle?.subtitleLanguage ?? subtitleResult?.subtitleLanguage ?? null
   const subtitleSourceLanguageLabel = formatSubtitleLanguageLabel(copy, subtitleSourceLanguage)
+  const subtitleLanguagePairLabel = subtitleSourceLanguageLabel
+    ? `${subtitleSourceLanguageLabel} → ${subtitleTargetLanguageLabel}`
+    : null
+  const translatedSubtitleReadyLabel = translatedSubtitleResult?.subtitleUrl ? copy.asrPanel.translatedSubtitleReady : null
   const canOpenSubtitleTools = Boolean(state.currentFile)
   const hasCurrentFile = Boolean(state.currentFile)
   const canOpenSubtitleFolder = Boolean(subtitlePath)
@@ -1844,6 +1848,9 @@ export function App(): ReactElement {
                     <span className={`subtitle-status ${activeSubtitle?.subtitleUrl ? 'ready' : subtitlePath ? 'cached' : 'idle'}`}>
                       {subtitleStatusLabel}
                     </span>
+                    {translatedSubtitleReadyLabel ? (
+                      <span className="subtitle-status ready">{translatedSubtitleReadyLabel}</span>
+                    ) : null}
                     {canOpenSubtitleTools ? (
                       <details ref={subtitleActionsRef} className="subtitle-actions">
                         <summary className="subtitle-actions-summary" title={copy.asrPanel.subtitleTools} aria-label={copy.asrPanel.subtitleTools}>
@@ -1938,10 +1945,10 @@ export function App(): ReactElement {
                       </details>
                     ) : null}
                   </div>
-                  {subtitleSourceLanguageLabel ? (
+                  {subtitleLanguagePairLabel ? (
                     <div className="subtitle-language-row">
-                      <span>{copy.asrPanel.subtitleLanguage}</span>
-                      <strong>{subtitleSourceLanguageLabel}</strong>
+                      <span>{copy.asrPanel.translationLanguagePair}</span>
+                      <strong>{subtitleLanguagePairLabel}</strong>
                     </div>
                   ) : null}
                   {asrProgress ? (

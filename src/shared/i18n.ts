@@ -100,19 +100,21 @@ export type LocaleCopy = {
     streamsTitle: string
     noDetails: string
   }
-  asrPanel: {
-    engineStatus: string
-    refreshEngine: string
-    detectingEngine: string
-    engineReady: string
-    engineNotReady: string
-    modelFiles: string
-    subtitleLanguage: string
-    generateSubtitle: string
-    generatingSubtitle: string
-    translateSubtitle: (languageLabel: string) => string
-    translatingSubtitle: string
-    subtitleTools: string
+    asrPanel: {
+      engineStatus: string
+      refreshEngine: string
+      detectingEngine: string
+      engineReady: string
+      engineNotReady: string
+      modelFiles: string
+      translationLanguagePair: string
+      subtitleLanguage: string
+      generateSubtitle: string
+      generatingSubtitle: string
+      translateSubtitle: (languageLabel: string) => string
+      translatingSubtitle: string
+      translatedSubtitleReady: string
+      subtitleTools: string
     subtitleToolsMenu: string
     openSubtitleFolder: string
     openSrtFile: string
@@ -457,11 +459,13 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       engineReady: '引擎就绪',
       engineNotReady: '引擎未就绪',
       modelFiles: '模型文件',
+      translationLanguagePair: '语言对',
       subtitleLanguage: '识别语言',
       generateSubtitle: '生成字幕',
       generatingSubtitle: '生成中',
       translateSubtitle: (languageLabel) => `翻译为${languageLabel}`,
       translatingSubtitle: '翻译中',
+      translatedSubtitleReady: '译文已就绪',
       subtitleTools: '字幕工具',
       subtitleToolsMenu: '字幕工具菜单',
       openSubtitleFolder: '打开字幕文件夹',
@@ -929,11 +933,13 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       engineReady: 'Engine ready',
       engineNotReady: 'Engine not ready',
       modelFiles: 'Model files',
+      translationLanguagePair: 'Language pair',
       subtitleLanguage: 'Detected language',
       generateSubtitle: 'Generate subtitles',
       generatingSubtitle: 'Generating',
       translateSubtitle: (languageLabel) => `Translate to ${languageLabel}`,
       translatingSubtitle: 'Translating',
+      translatedSubtitleReady: 'Translation ready',
       subtitleTools: 'Subtitle tools',
       subtitleToolsMenu: 'Subtitle tools menu',
       openSubtitleFolder: 'Open subtitle folder',
@@ -1402,11 +1408,13 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       engineReady: 'エンジン準備完了',
       engineNotReady: 'エンジン未準備',
       modelFiles: 'モデルファイル',
+      translationLanguagePair: '言語ペア',
       subtitleLanguage: '認識言語',
       generateSubtitle: '字幕を生成',
       generatingSubtitle: '生成中',
       translateSubtitle: (languageLabel) => `${languageLabel}に翻訳`,
       translatingSubtitle: '翻訳中',
+      translatedSubtitleReady: '翻訳完了',
       subtitleTools: '字幕ツール',
       subtitleToolsMenu: '字幕ツールメニュー',
       openSubtitleFolder: '字幕フォルダを開く',
@@ -1875,11 +1883,13 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       engineReady: '엔진 준비 완료',
       engineNotReady: '엔진 준비 안 됨',
       modelFiles: '모델 파일',
+      translationLanguagePair: '언어 쌍',
       subtitleLanguage: '감지 언어',
       generateSubtitle: '자막 생성',
       generatingSubtitle: '생성 중',
       translateSubtitle: (languageLabel) => `${languageLabel}(으)로 번역`,
       translatingSubtitle: '번역 중',
+      translatedSubtitleReady: '번역 완료',
       subtitleTools: '자막 도구',
       subtitleToolsMenu: '자막 도구 메뉴',
       openSubtitleFolder: '자막 폴더 열기',

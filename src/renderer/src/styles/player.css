@@ -950,6 +950,7 @@
 .subtitle-tools-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 12px;
   min-width: 0;
 }
