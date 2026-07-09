@@ -38,17 +38,17 @@ async function main(): Promise<void> {
     const initialSettings = await page.evaluate(() => window.aiv.getAppSettings())
     const copy = getAppCopy(initialSettings.ui.locale)
 
-    await page.evaluate(async () => {
+    await page.evaluate(async (settings) => {
       const current = await window.aiv.getAppSettings()
 
       await window.aiv.setAppSettings({
         ...current,
         subtitles: {
           ...current.subtitles,
-          ...expectedSubtitleSettings
+          ...settings
         }
       })
-    })
+    }, expectedSubtitleSettings)
 
     await page.reload({ waitUntil: 'domcontentloaded' })
     await page.waitForSelector('#root', { timeout: 10_000 })
@@ -63,13 +63,19 @@ async function main(): Promise<void> {
 
     const dialogState = await page.evaluate(() => {
       const dialog = document.querySelector('.settings-dialog')
-      const inputs = Array.from(document.querySelectorAll('.settings-number')) as HTMLInputElement[]
-      const selects = Array.from(document.querySelectorAll('.settings-select')) as HTMLSelectElement[]
+      const subtitleSection = document.querySelector('#settings-section-subtitles')
+      const inputs = subtitleSection
+        ? (Array.from(subtitleSection.querySelectorAll('.settings-number')) as HTMLInputElement[])
+        : []
+      const selects = subtitleSection
+        ? (Array.from(subtitleSection.querySelectorAll('.settings-select')) as HTMLSelectElement[])
+        : []
 
       return {
         hasDialog: Boolean(dialog),
-        numberValues: inputs.map((input) => input.value),
-        selectValues: selects.map((select) => select.value)
+        hasSubtitleSection: Boolean(subtitleSection),
+        subtitleSectionNumberValues: inputs.map((input) => input.value),
+        subtitleSectionSelectValues: selects.map((select) => select.value)
       }
     })
 
@@ -97,14 +103,18 @@ async function main(): Promise<void> {
       process.exitCode = 1
     }
 
-    if (!dialogState.hasDialog || !dialogState.numberValues.includes('21')) {
+    if (
+      !dialogState.hasDialog ||
+      !dialogState.hasSubtitleSection ||
+      !dialogState.subtitleSectionNumberValues.includes('21')
+    ) {
       process.exitCode = 1
     }
 
     if (
-      !dialogState.selectValues.includes('relaxed') ||
-      !dialogState.selectValues.includes('source') ||
-      !dialogState.selectValues.includes('zh')
+      !dialogState.subtitleSectionSelectValues.includes('relaxed') ||
+      !dialogState.subtitleSectionSelectValues.includes('source') ||
+      !dialogState.subtitleSectionSelectValues.includes('zh')
     ) {
       process.exitCode = 1
     }
