@@ -81,11 +81,11 @@ async function main(): Promise<void> {
     console.log(`Subtitle dialog state: ${JSON.stringify(dialogState)}`)
     console.log(`Subtitle settings screenshot: ${screenshotPath}`)
 
-    if (persistedSettings.subtitles.fontSizePx !== expectedSubtitleSettings.fontSizePx) {
+    if (persistedSettings.subtitles.fontSizePx !== 21) {
       process.exitCode = 1
     }
 
-    if (persistedSettings.subtitles.lineHeight !== expectedSubtitleSettings.lineHeight) {
+    if (persistedSettings.subtitles.lineHeight !== 'relaxed') {
       process.exitCode = 1
     }
 
@@ -102,8 +102,8 @@ async function main(): Promise<void> {
     }
 
     if (
-      !dialogState.selectValues.includes(expectedSubtitleSettings.lineHeight) ||
-      !dialogState.selectValues.includes(expectedSubtitleSettings.displayMode) ||
+      !dialogState.selectValues.includes('relaxed') ||
+      !dialogState.selectValues.includes('source') ||
       !dialogState.selectValues.includes('zh')
     ) {
       process.exitCode = 1
