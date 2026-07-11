@@ -13,6 +13,7 @@ import type {
   AsrSubtitleExportResult,
   AsrSubtitleTranslationRequest,
   AsrSubtitleTranslationResult,
+  AsrTranslationServiceTestRequest,
   AsrSubtitleRequest,
   ClipboardWriteTextRequest,
   ClipboardWriteTextResult,
@@ -53,6 +54,7 @@ let mainWindow: BrowserWindow | null = null
 let asrRuntime: ReturnType<typeof createWhisperCppRuntime> | null = null
 let initialMediaFiles: MediaFile[] | null = null
 let currentAppSettings = createDefaultAppSettings()
+const translationAbortControllers = new Map<number, AbortController>()
 
 function resolveAppIconPath(): string | null {
   const iconPath = process.env.ELECTRON_RENDERER_URL
@@ -96,7 +98,11 @@ function getInitialMediaFiles(): MediaFile[] {
 }
 
 function resolveResourcePath(): string {
-  if (process.env.ELECTRON_RENDERER_URL) {
+  if (process.env.AIVPLAYER_RESOURCE_DIR) {
+    return resolve(process.env.AIVPLAYER_RESOURCE_DIR)
+  }
+
+  if (process.env.ELECTRON_RENDERER_URL || !app.isPackaged) {
     return resolve('resources')
   }
 
@@ -116,7 +122,8 @@ function getAsrRuntime(): ReturnType<typeof createWhisperCppRuntime> {
       getTranslationServiceSettings: () => ({
         translationBaseUrl: currentAppSettings.asr.translationBaseUrl,
         translationModel: currentAppSettings.asr.translationModel,
-        translationApiKey: currentAppSettings.asr.translationApiKey
+        translationApiKey: currentAppSettings.asr.translationApiKey,
+        translationGlossary: currentAppSettings.asr.translationGlossary
       })
     })
   }
@@ -365,6 +372,23 @@ function registerIpc(): void {
     }
   })
 
+  ipcMain.handle(IPC_CHANNELS.ASR_RESOLVE_TRANSLATED_SUBTITLE_CACHE, async (_event, request: AsrSubtitleTranslationRequest) => {
+    const result = await getAsrRuntime().resolveTranslatedSubtitleCache(request)
+
+    if (!result.subtitlePath) {
+      return result
+    }
+
+    const subtitleFile = createMediaFile(result.subtitlePath)
+    const subtitleSrtFile = result.subtitleSrtPath ? createMediaFile(result.subtitleSrtPath) : null
+
+    return {
+      ...result,
+      subtitleUrl: subtitleFile.url,
+      subtitleSrtUrl: subtitleSrtFile?.url
+    } satisfies AsrSubtitleTranslationResult
+  })
+
   ipcMain.handle(IPC_CHANNELS.ASR_EXPORT_SUBTITLE_SRT, async (_event, request: AsrSubtitleExportRequest) => {
     const result = await getAsrRuntime().exportSubtitleSrt(request)
 
@@ -381,20 +405,51 @@ function registerIpc(): void {
   })
 
   ipcMain.handle(IPC_CHANNELS.ASR_TRANSLATE_SUBTITLE, async (_event, request: AsrSubtitleTranslationRequest) => {
-    const result = await getAsrRuntime().translateSubtitle(request)
+    const controller = new AbortController()
+    const senderId = _event.sender.id
+    translationAbortControllers.get(senderId)?.abort()
+    translationAbortControllers.set(senderId, controller)
 
-    if (!result.subtitlePath) {
-      return result
+    try {
+      const result = await getAsrRuntime().translateSubtitle(request, {
+        signal: controller.signal,
+        onProgress: (progress) => {
+          _event.sender.send(IPC_CHANNELS.ASR_JOB_PROGRESS, progress)
+        }
+      })
+
+      if (!result.subtitlePath) {
+        return result
+      }
+
+      const subtitleFile = createMediaFile(result.subtitlePath)
+      const subtitleSrtFile = result.subtitleSrtPath ? createMediaFile(result.subtitleSrtPath) : null
+
+      return {
+        ...result,
+        subtitleUrl: subtitleFile.url,
+        subtitleSrtUrl: subtitleSrtFile?.url
+      } satisfies AsrSubtitleTranslationResult
+    } finally {
+      if (translationAbortControllers.get(senderId) === controller) {
+        translationAbortControllers.delete(senderId)
+      }
+    }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.ASR_CANCEL_TRANSLATION, (event) => {
+    const controller = translationAbortControllers.get(event.sender.id)
+
+    if (!controller) {
+      return false
     }
 
-    const subtitleFile = createMediaFile(result.subtitlePath)
-    const subtitleSrtFile = result.subtitleSrtPath ? createMediaFile(result.subtitleSrtPath) : null
+    controller.abort()
+    return true
+  })
 
-    return {
-      ...result,
-      subtitleUrl: subtitleFile.url,
-      subtitleSrtUrl: subtitleSrtFile?.url
-    } satisfies AsrSubtitleTranslationResult
+  ipcMain.handle(IPC_CHANNELS.ASR_TEST_TRANSLATION_SERVICE, async (_event, request: AsrTranslationServiceTestRequest) => {
+    return getAsrRuntime().testTranslationService(request)
   })
 
   ipcMain.handle(IPC_CHANNELS.MEDIA_EXPORT_CLIP, async (_event, request: MediaClipExportRequest) => {

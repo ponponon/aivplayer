@@ -30,10 +30,12 @@ import { SubtitleOverlay } from '../subtitle-overlay'
 import {
   createDefaultAppSettings,
   createAppSettingsSectionPatcher,
+  normalizeTranslationGlossary,
   type AppSettings,
   type AppSettingsSectionPatcher,
   type AppSettingsSectionId,
-  type SubtitleLanguageId
+  type SubtitleLanguageId,
+  type SubtitleTargetLanguageId
 } from '../../../shared/app-settings'
 import type { ClipExportLengthSeconds, ClipExportMode } from '../../../shared/clip-export'
 import { getAppCopy, type LocaleCopy } from '../../../shared/i18n'
@@ -43,6 +45,7 @@ import type {
   AsrModelSourceId,
   AsrRuntimeStatus,
   MediaClipExportRequest,
+  AsrTranslationServiceTestResult,
   AsrSubtitleTranslationResult,
   AsrSubtitleResult,
   MediaFile,
@@ -62,6 +65,8 @@ type AsrNotice = {
   success: boolean
   message: string
 }
+
+const subtitleTargetLanguageIds: SubtitleTargetLanguageId[] = ['zh', 'en', 'ja', 'ko']
 
 function getPlayFailureMessage(copy: LocaleCopy, error: unknown): string | null {
   if (error instanceof DOMException && error.name === 'AbortError') {
@@ -281,6 +286,9 @@ export function App(): ReactElement {
   const [isTranslatingSubtitle, setIsTranslatingSubtitle] = useState(false)
   const [isMediaDetailsDialogOpen, setIsMediaDetailsDialogOpen] = useState(false)
   const [runtimeSetupMessage, setRuntimeSetupMessage] = useState<{ success: boolean; message: string } | null>(null)
+  const [translationServiceTestMessage, setTranslationServiceTestMessage] =
+    useState<AsrTranslationServiceTestResult | null>(null)
+  const [isTestingTranslationService, setIsTestingTranslationService] = useState(false)
   const [isDownloadDialogOpen, setIsDownloadDialogOpen] = useState(false)
   const [appSettings, setAppSettings] = useState<AppSettings>(createDefaultAppSettings())
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false)
@@ -299,10 +307,26 @@ export function App(): ReactElement {
   const subtitleTargetLanguageLabel = copy.subtitleLanguageOptions[appSettings.subtitles.targetLanguage].label
   const subtitleSourceLanguage = activeSubtitle?.subtitleLanguage ?? subtitleResult?.subtitleLanguage ?? null
   const subtitleSourceLanguageLabel = formatSubtitleLanguageLabel(copy, subtitleSourceLanguage)
+  const subtitleTranslationSourceLanguage = subtitleSourceLanguage ?? appSettings.asr.defaultSubtitleLanguage
+  const subtitleTranslationModel = appSettings.asr.translationModel?.trim() ?? ''
+  const subtitleTranslationGlossary = normalizeTranslationGlossary(appSettings.asr.translationGlossary) ?? ''
   const subtitleLanguagePairLabel = subtitleSourceLanguageLabel
     ? `${subtitleSourceLanguageLabel} → ${subtitleTargetLanguageLabel}`
     : null
+  const subtitleTranslationModelLabel = translatedSubtitleResult?.translationModel ?? subtitleTranslationModel
   const translatedSubtitleReadyLabel = translatedSubtitleResult?.subtitleUrl ? copy.asrPanel.translatedSubtitleReady : null
+  const translationServiceStatusLabel = translationServiceTestMessage
+    ? translationServiceTestMessage.success
+      ? copy.asrPanel.translationServiceReady
+      : copy.asrPanel.translationServiceUnavailable
+    : subtitleTranslationModel
+      ? copy.asrPanel.translationServiceNotChecked
+      : null
+  const translationServiceStatusTone = translationServiceTestMessage
+    ? translationServiceTestMessage.success
+      ? 'ready'
+      : 'failed'
+    : 'pending'
   const canOpenSubtitleTools = Boolean(state.currentFile)
   const hasCurrentFile = Boolean(state.currentFile)
   const canOpenSubtitleFolder = Boolean(subtitlePath)
@@ -743,6 +767,45 @@ export function App(): ReactElement {
     }
   }
 
+  const testTranslationService = async (): Promise<void> => {
+    if (isTestingTranslationService) {
+      return
+    }
+
+    setIsTestingTranslationService(true)
+    setTranslationServiceTestMessage(null)
+
+    try {
+      const result = await window.aiv.testAsrTranslationService({
+        sourceLanguage: subtitleTranslationSourceLanguage,
+        targetLanguage: appSettings.subtitles.targetLanguage
+      })
+
+      setTranslationServiceTestMessage(result)
+    } catch (error) {
+      setTranslationServiceTestMessage({
+        success: false,
+        message: error instanceof Error ? error.message : String(error),
+        sourceLanguage: subtitleTranslationSourceLanguage,
+        targetLanguage: appSettings.subtitles.targetLanguage,
+        translationModel: subtitleTranslationModel || undefined,
+        translationBaseUrlSummary: appSettings.asr.translationBaseUrl?.trim() || undefined
+      })
+    } finally {
+      setIsTestingTranslationService(false)
+    }
+  }
+
+  useEffect(() => {
+    setTranslationServiceTestMessage(null)
+  }, [
+    appSettings.asr.translationBaseUrl,
+    appSettings.asr.translationModel,
+    subtitleTranslationGlossary,
+    subtitleTranslationSourceLanguage,
+    appSettings.subtitles.targetLanguage
+  ])
+
   const openModelDownloadDialog = (): void => {
     if (!canDownloadRecommendedModel) {
       return
@@ -866,17 +929,19 @@ export function App(): ReactElement {
       return
     }
 
-    const subtitleSourceLanguage =
-      activeSubtitle?.subtitleLanguage ?? subtitleResult?.subtitleLanguage ?? appSettings.asr.defaultSubtitleLanguage
-
     setIsTranslatingSubtitle(true)
     setAsrNotice(null)
+    setAsrProgress({
+      stage: 'translating',
+      percent: 0,
+      message: copy.asrPanel.translatingSubtitle
+    })
 
     try {
       const result = await window.aiv.translateAsrSubtitle({
         subtitlePath,
         subtitleSrtPath: subtitleSrtPath ?? undefined,
-        sourceLanguage: subtitleSourceLanguage,
+        sourceLanguage: subtitleTranslationSourceLanguage,
         targetLanguage: appSettings.subtitles.targetLanguage
       })
 
@@ -888,7 +953,29 @@ export function App(): ReactElement {
       }
     } finally {
       setIsTranslatingSubtitle(false)
+      setAsrProgress(null)
     }
+  }
+
+  const cancelTranslation = async (): Promise<void> => {
+    if (!isTranslatingSubtitle) {
+      return
+    }
+
+    await window.aiv.cancelAsrTranslation()
+  }
+
+  const changeSubtitleTargetLanguage = (targetLanguage: SubtitleTargetLanguageId): void => {
+    if (
+      targetLanguage === appSettings.subtitles.targetLanguage ||
+      isAsrBusy ||
+      isTranslatingSubtitle
+    ) {
+      return
+    }
+
+    setAsrNotice(null)
+    patchAppSettingsSection('subtitles', { targetLanguage })
   }
 
   const copySubtitleSrtPath = async (): Promise<void> => {
@@ -995,6 +1082,109 @@ export function App(): ReactElement {
       cancelled = true
     }
   }, [state.currentFile?.path, asrStatus?.recommendedModelManifest.id, appSettings.asr.autoLoadCachedSubtitles])
+
+  const translatedSubtitleMatchesCurrentContext = (result: AsrSubtitleTranslationResult | null): boolean => {
+    if (!result?.subtitleUrl || result.sourceSubtitlePath !== subtitlePath) {
+      return false
+    }
+
+    if ((result.sourceLanguage ?? 'auto') !== subtitleTranslationSourceLanguage) {
+      return false
+    }
+
+    if (result.targetLanguage !== appSettings.subtitles.targetLanguage) {
+      return false
+    }
+
+    if (subtitleTranslationModel && (result.translationModel ?? '') !== subtitleTranslationModel) {
+      return false
+    }
+
+    if ((result.translationGlossary ?? '') !== subtitleTranslationGlossary) {
+      return false
+    }
+
+    return true
+  }
+
+  useEffect(() => {
+    if (!translatedSubtitleResult?.subtitleUrl) {
+      return
+    }
+
+    if (translatedSubtitleMatchesCurrentContext(translatedSubtitleResult)) {
+      return
+    }
+
+    setTranslatedSubtitleResult(null)
+  }, [
+    translatedSubtitleResult?.subtitleUrl,
+    translatedSubtitleResult?.sourceSubtitlePath,
+    translatedSubtitleResult?.sourceLanguage,
+    translatedSubtitleResult?.targetLanguage,
+    translatedSubtitleResult?.translationModel,
+    translatedSubtitleResult?.translationGlossary,
+    subtitlePath,
+    subtitleTranslationSourceLanguage,
+    subtitleTranslationModel,
+    subtitleTranslationGlossary,
+    appSettings.subtitles.targetLanguage
+  ])
+
+  useEffect(() => {
+    if (
+      !state.currentFile ||
+      !subtitlePath ||
+      !appSettings.asr.autoLoadCachedSubtitles ||
+      isTranslatingSubtitle ||
+      translatedSubtitleMatchesCurrentContext(translatedSubtitleResult)
+    ) {
+      return
+    }
+
+    let cancelled = false
+
+    const restoreTranslatedSubtitle = async (): Promise<void> => {
+      const result = await window.aiv.resolveTranslatedAsrSubtitleCache({
+        subtitlePath,
+        subtitleSrtPath: subtitleSrtPath ?? undefined,
+        sourceLanguage: subtitleTranslationSourceLanguage,
+        targetLanguage: appSettings.subtitles.targetLanguage
+      })
+
+      if (cancelled || !result.success || !result.subtitleUrl) {
+        return
+      }
+
+      setTranslatedSubtitleResult(result)
+
+      if (appSettings.subtitles.displayMode === 'source') {
+        patchSubtitleDisplaySettings({ displayMode: 'translation' })
+      }
+    }
+
+    void restoreTranslatedSubtitle()
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    state.currentFile?.path,
+    subtitlePath,
+    subtitleSrtPath,
+    subtitleTranslationSourceLanguage,
+    subtitleTranslationModel,
+    subtitleTranslationGlossary,
+    appSettings.asr.autoLoadCachedSubtitles,
+    appSettings.subtitles.targetLanguage,
+    appSettings.subtitles.displayMode,
+    isTranslatingSubtitle,
+    translatedSubtitleResult?.subtitleUrl,
+    translatedSubtitleResult?.sourceSubtitlePath,
+    translatedSubtitleResult?.sourceLanguage,
+    translatedSubtitleResult?.targetLanguage,
+    translatedSubtitleResult?.translationModel
+  ])
 
   useEffect(() => {
     revealControlDeck()
@@ -1951,6 +2141,47 @@ export function App(): ReactElement {
                       <strong>{subtitleLanguagePairLabel}</strong>
                     </div>
                   ) : null}
+                  <div className="subtitle-target-language-row">
+                    <span>{copy.asrPanel.translationTargetLanguage}</span>
+                    <div
+                      className="subtitle-display-choice-group subtitle-target-language-group"
+                      role="group"
+                      aria-label={copy.asrPanel.translationTargetLanguage}
+                    >
+                      {subtitleTargetLanguageIds.map((targetLanguage) => {
+                        const isSelected = appSettings.subtitles.targetLanguage === targetLanguage
+
+                        return (
+                          <button
+                            key={targetLanguage}
+                            className={`subtitle-display-choice subtitle-target-language-choice ${isSelected ? 'is-selected' : ''}`}
+                            type="button"
+                            onClick={() => changeSubtitleTargetLanguage(targetLanguage)}
+                            disabled={isAsrBusy || isTranslatingSubtitle}
+                            aria-pressed={isSelected}
+                            title={copy.subtitleLanguageOptions[targetLanguage].description}
+                          >
+                            {copy.subtitleLanguageOptions[targetLanguage].label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                  {subtitleTranslationModelLabel ? (
+                    <div className="subtitle-translation-row">
+                      <span>{copy.asrPanel.translationModel}</span>
+                      <strong>{subtitleTranslationModelLabel}</strong>
+                    </div>
+                  ) : null}
+                  {translationServiceStatusLabel ? (
+                    <div
+                      className={`subtitle-translation-row translation-service-status ${translationServiceStatusTone}`}
+                      title={translationServiceTestMessage?.message ?? undefined}
+                    >
+                      <span>{copy.asrPanel.translationServiceStatus}</span>
+                      <strong>{translationServiceStatusLabel}</strong>
+                    </div>
+                  ) : null}
                   {asrProgress ? (
                     <div className="progress-block">
                       <div className="progress-label">
@@ -1983,12 +2214,12 @@ export function App(): ReactElement {
                     <button
                       className="asr-action-button"
                       type="button"
-                      onClick={translateSubtitle}
-                      disabled={!canTranslateSubtitle}
+                      onClick={isTranslatingSubtitle ? cancelTranslation : translateSubtitle}
+                      disabled={!canTranslateSubtitle && !isTranslatingSubtitle}
                     >
-                      <Languages size={16} />
+                      {isTranslatingSubtitle ? <X size={16} /> : <Languages size={16} />}
                       {isTranslatingSubtitle
-                        ? copy.asrPanel.translatingSubtitle
+                        ? copy.asrPanel.cancelTranslation
                         : copy.asrPanel.translateSubtitle(subtitleTargetLanguageLabel)}
                     </button>
                   </div>
@@ -2179,8 +2410,10 @@ export function App(): ReactElement {
           settings={appSettings}
           asrStatus={asrStatus}
           runtimeSetupMessage={runtimeSetupMessage}
+          translationServiceTestMessage={translationServiceTestMessage}
           isDetectingWhisperBinary={isDetectingWhisperBinary}
           isSelectingWhisperBinary={isSelectingWhisperBinary}
+          isTestingTranslationService={isTestingTranslationService}
           initialSectionId={initialSettingsSectionId}
           patchSettingsSection={patchAppSettingsSection}
           onClose={() => setIsSettingsDialogOpen(false)}
@@ -2192,6 +2425,7 @@ export function App(): ReactElement {
           onPickDefaultFolder={pickDefaultFolder}
           onPickCaptureFolder={pickCaptureFolder}
           onSelectWhisperBinary={selectWhisperBinary}
+          onTestTranslationService={testTranslationService}
           onResetDefaults={resetAppSettings}
         />
       ) : null}

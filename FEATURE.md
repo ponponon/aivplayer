@@ -117,14 +117,33 @@
 - 导出 SRT 时会容忍非法数值实体，避免脏字幕文件直接导致转换失败。
 - 生成 VTT 时会自动转义普通文本里的 `& / < / >`，确保输出始终是合法 VTT。
 - 字幕栏支持便捷调整字号，播放时可以直接放大或缩小当前字幕文本。
+- 字幕栏的 quick controls 里提供字号预设按钮，常用字号可以一键切换，不用反复点加减号。
+- 字幕栏的 quick controls 里也把行高和显示模式做成了按钮组，原文 / 译文 / 双语切换和紧凑 / 标准 / 宽松切换都可以直接点，不用再钻下拉框。
 - 字幕显示偏好会保存到本地设置，重新打开应用后继续沿用最近一次的字幕字号和行高。
 - 设置面板的字幕分组新增显示设置，为后续原文、译文、双语字幕切换预留入口。
 - 支持把已生成的 VTT 字幕翻译为目标语言字幕，译文会写入独立的 VTT / SRT 缓存文件。
-- 翻译字幕使用 OpenAI-compatible Chat Completions 接口，通过 `AIVPLAYER_TRANSLATION_BASE_URL`、`AIVPLAYER_TRANSLATION_API_KEY` 和 `AIVPLAYER_TRANSLATION_MODEL` 环境变量启用，避免把密钥写进普通设置文件。
+- 翻译字幕使用 OpenAI-compatible Chat Completions 接口，通过 `AIVPLAYER_TRANSLATION_BASE_URL`、`AIVPLAYER_TRANSLATION_API_KEY` 和 `AIVPLAYER_TRANSLATION_MODEL` 环境变量启用，术语表也可通过 `AIVPLAYER_TRANSLATION_GLOSSARY` 提供，避免把密钥写进普通设置文件。
 - 翻译服务也可以直接在字幕设置里配置，接口地址、模型和 API key 统一从字幕分组读写，API key 会通过系统安全存储加密落盘。
+- 翻译服务设置里新增了自检按钮，可以用当前接口、模型和 API key 直接发送样例字幕，快速确认返回结果是否可解析，并在成功后展示一条样例译文预览。
+- 翻译服务自检结果会额外展示源语言、目标语言、模型和接口摘要，方便一眼看出这次请求到底是拿什么配置去测的。
+- ASR 面板会同步展示翻译服务的“未检测 / 可用 / 不可用”状态；当接口、模型或语言上下文变化时会清理旧状态，避免把过期的自检结果误当成当前配置。
+- 翻译服务和正式翻译流程会把失败原因细分成网络错误、HTTP 状态错误、JSON 解析错误、响应结构错误和空结果，便于定位到底是接口不可达、鉴权异常还是模型输出不符合约定。
+- 字幕设置支持可编辑术语表，每行使用 `原词=固定译词`；术语会同时用于服务自检、正式翻译 prompt 和缓存上下文，修改术语后会自动避开旧译文缓存。
+- 字幕翻译会按最多 30 条 cue 分批请求，网络错误、HTTP 429 和 5xx 会自动重试，并通过 ASR job 进度通道展示当前批次。
+- 跨批次翻译会自动携带前后各 2 条邻近字幕；后续批次还会带上上一批已翻译文本，帮助模型保持术语、指代和语气一致，同时要求接口只返回当前批次 cue。
+- 翻译进行中可以直接取消，取消信号会传到请求层；未完成的翻译不会写入新的 VTT / SRT 缓存文件。
+- 新增 `smoke:translation`，通过隔离的本地 mock OpenAI-compatible 服务验证翻译 IPC、批次进度、译文落盘和取消链路，`smoke:all` 会一并执行。
+- 新增 `smoke:translation:player`，用真实 Electron 播放窗口验证字幕缓存回填、点击翻译、译文 overlay 挂载、自动切到译文模式，以及重启后的译文缓存恢复。
+- `smoke:translation:player` 默认使用本地 Mock；临时提供 `AIVPLAYER_SMOKE_TRANSLATION_BASE_URL`、`AIVPLAYER_SMOKE_TRANSLATION_MODEL` 和 `AIVPLAYER_SMOKE_TRANSLATION_API_KEY` 时，会在隔离用户目录中验证真实 OpenAI-compatible 接口，进程结束后连同设置文件一起清理，不把 Key 写入产品代码；额外设置 `AIVPLAYER_SMOKE_TRANSLATION_GLOSSARY` 可验证固定译法。
 - 播放器字幕栏支持在原文、译文、双语之间切换；翻译完成后如果仍处于原文模式，会自动切到译文模式便于立即验收效果。
 - ASR 结果会记录 whisper.cpp 实际识别到的字幕语言，翻译时会优先沿用这份真实语言信息，重开同一个视频后也能继续用同一来源语言翻译。
+- 翻译后的字幕缓存会在重新打开同一个视频时自动回填，译文不需要每次都重新点翻译按钮。
 - ASR 面板会显示当前字幕的语言对，并在译文生成后提示“译文已就绪”，方便确认这次翻译到底是从哪种源语言翻到目标语言，以及结果是否已经产出。
+- ASR 面板还会显示当前翻译模型，便于确认译文缓存、设置项和实际生成结果是否来自同一条模型配置链路。
+- ASR 面板新增中文、English、日本語、한국어目标语言快捷切换；切换时会复用对应缓存，没有缓存才重新请求翻译，翻译进行中会暂时锁定语言按钮。
+- whisper.cpp 在 macOS Metal buffer 分配失败时会自动改用 CPU 重试，正常机器仍优先使用 GPU；回退过程会通过 ASR 进度状态展示。
+- 开发态 Electron 会从项目 `resources/` 解析 whisper.cpp 和 ffmpeg，打包态则使用 `process.resourcesPath`，避免开发环境误报运行时缺失。
+- 新增 `smoke:asr:player`，使用真实 whisper.cpp、真实模型和真实视频验证音频抽取、ASR 生成、VTT / SRT / JSON 落盘、语言探测和播放器字幕挂载；它不纳入默认 `smoke:all`，避免完整回归被 547MB 模型运行时间拖慢。
 
 ## 片段导出
 - ASR 面板新增「导出片段」入口，支持基于当前播放位置快速导出短片段。

@@ -125,7 +125,15 @@ export type AsrModelDownloadResult = {
   model?: AsrModelInfo
 }
 
-export type AsrJobStage = 'checking' | 'extracting-audio' | 'transcribing' | 'loading-subtitle' | 'completed' | 'failed'
+export type AsrJobStage =
+  | 'checking'
+  | 'extracting-audio'
+  | 'transcribing'
+  | 'translating'
+  | 'loading-subtitle'
+  | 'completed'
+  | 'cancelled'
+  | 'failed'
 
 export type AsrJobProgress = {
   stage: AsrJobStage
@@ -173,11 +181,32 @@ export type AsrSubtitleTranslationRequest = {
 export type AsrSubtitleTranslationResult = {
   success: boolean
   message: string
+  canceled?: boolean
   sourceSubtitlePath?: string
+  sourceLanguage?: string
+  targetLanguage?: SubtitleTargetLanguageId
+  translationModel?: string
+  translationGlossary?: string
   subtitlePath?: string
   subtitleSrtPath?: string
   subtitleUrl?: string
   subtitleSrtUrl?: string
+}
+
+export type AsrTranslationServiceTestRequest = {
+  sourceLanguage?: string
+  targetLanguage: SubtitleTargetLanguageId
+}
+
+export type AsrTranslationServiceTestResult = {
+  success: boolean
+  message: string
+  sourceLanguage?: string
+  targetLanguage?: SubtitleTargetLanguageId
+  translationModel?: string
+  translationBaseUrlSummary?: string
+  sampleSourceText?: string
+  sampleTranslatedText?: string
 }
 
 export type MediaClipExportRequest = {

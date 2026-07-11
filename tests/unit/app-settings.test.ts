@@ -111,7 +111,22 @@ describe('app settings', () => {
         autoLoadCachedSubtitles: true,
         translationBaseUrl: null,
         translationModel: null,
-        translationApiKey: null
+        translationApiKey: null,
+        translationGlossary: null
+      }
+    })
+  })
+
+  it('normalizes translation glossary entries before persisting them', async () => {
+    const settings = createDefaultAppSettings()
+    settings.asr.translationGlossary = ' Technology = 技术\n\ninvalid line\nAIVPlayer= AIV 播放器 '
+
+    const persisted = await writeAppSettings(tempDirectory, settings)
+
+    expect(persisted.asr.translationGlossary).toBe('Technology=技术\nAIVPlayer=AIV 播放器')
+    await expect(readAppSettings(tempDirectory)).resolves.toMatchObject({
+      asr: {
+        translationGlossary: 'Technology=技术\nAIVPlayer=AIV 播放器'
       }
     })
   })

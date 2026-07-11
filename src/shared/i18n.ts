@@ -108,11 +108,19 @@ export type LocaleCopy = {
       engineNotReady: string
       modelFiles: string
       translationLanguagePair: string
+      translationTargetLanguage: string
       subtitleLanguage: string
+      translationModel: string
+      translationServiceStatus: string
+      translationServiceReady: string
+      translationServiceNotChecked: string
+      translationServiceUnavailable: string
       generateSubtitle: string
       generatingSubtitle: string
       translateSubtitle: (languageLabel: string) => string
       translatingSubtitle: string
+      translationProgress: (completedBatches: number, totalBatches: number) => string
+      cancelTranslation: string
       translatedSubtitleReady: string
       subtitleTools: string
     subtitleToolsMenu: string
@@ -222,6 +230,14 @@ export type LocaleCopy = {
       translationModelDescription: string
       translationApiKey: string
       translationApiKeyDescription: string
+      translationGlossary: string
+      translationGlossaryDescription: string
+      translationServiceCheckTitle: string
+      translationServiceCheckDescription: string
+      translationServiceCheck: string
+      translationServiceChecking: string
+      translationServiceResultTitle: string
+      translationServicePreviewTitle: string
     }
     capture: {
       title: string
@@ -297,9 +313,16 @@ export type LocaleCopy = {
     subtitleCacheMiss: string
     subtitleCacheHit: string
     subtitleExported: string
-    subtitleTranslated: string
-    translationServiceMissing: string
-    clipExportSuccess: string
+      subtitleTranslated: string
+      subtitleTranslationCanceled: string
+      translationServiceMissing: string
+      translationServiceReady: (model: string) => string
+      translationServiceNetworkError: string
+      translationServiceHttpError: (status: number, statusText: string | null) => string
+      translationServiceInvalidJson: string
+      translationServiceInvalidResponse: string
+      translationServiceEmptyResponse: string
+      clipExportSuccess: string
     clipExportWithSubtitleSuccess: string
     clipExportBurnedSuccess: string
     clipExportFailed: string
@@ -311,6 +334,7 @@ export type LocaleCopy = {
     preparingSubtitleCache: string
     extractingAudio: string
     transcribing: string
+    asrGpuFallback: string
     noSubtitleFiles: string
     openMpvMissing: string
     openMpvDetected: (versionOrPath: string) => string
@@ -460,11 +484,19 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       engineNotReady: '引擎未就绪',
       modelFiles: '模型文件',
       translationLanguagePair: '语言对',
+      translationTargetLanguage: '目标语言',
       subtitleLanguage: '识别语言',
+      translationModel: '翻译模型',
+      translationServiceStatus: '服务状态',
+      translationServiceReady: '可用',
+      translationServiceNotChecked: '未检测',
+      translationServiceUnavailable: '不可用',
       generateSubtitle: '生成字幕',
       generatingSubtitle: '生成中',
       translateSubtitle: (languageLabel) => `翻译为${languageLabel}`,
       translatingSubtitle: '翻译中',
+      translationProgress: (completedBatches, totalBatches) => `正在翻译第 ${completedBatches} / ${totalBatches} 批`,
+      cancelTranslation: '取消翻译',
       translatedSubtitleReady: '译文已就绪',
       subtitleTools: '字幕工具',
       subtitleToolsMenu: '字幕工具菜单',
@@ -605,7 +637,15 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
         translationModel: '翻译模型',
         translationModelDescription: '填写用于翻译的模型名，例如 mimo-v2.5。',
         translationApiKey: 'API Key',
-        translationApiKeyDescription: 'API Key 会加密保存在本机，不会以明文写入普通设置文件。'
+        translationApiKeyDescription: 'API Key 会加密保存在本机，不会以明文写入普通设置文件。',
+        translationGlossary: '术语表',
+        translationGlossaryDescription: '每行填写一条固定译法，格式为“原词=固定译词”，例如 Technology=技术。',
+        translationServiceCheckTitle: '翻译服务自检',
+        translationServiceCheckDescription: '发送一条样例字幕给当前接口，确认模型和 API Key 能返回可解析的结果。',
+        translationServiceCheck: '测试翻译服务',
+        translationServiceChecking: '测试中',
+        translationServiceResultTitle: '测试结果',
+        translationServicePreviewTitle: '预览结果',
       },
       capture: {
         title: '截图和录屏',
@@ -685,8 +725,16 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       subtitleCacheHit: '已命中本地字幕缓存（VTT / SRT）。',
       subtitleExported: '已根据 VTT 导出 SRT。',
       subtitleTranslated: '字幕翻译完成，译文 VTT 已挂载，SRT 已导出。',
+      subtitleTranslationCanceled: '字幕翻译已取消，未生成新的译文缓存。',
       translationServiceMissing:
         '翻译服务未配置。请在设置中填写接口地址、模型和 API Key，或通过环境变量 AIVPLAYER_TRANSLATION_BASE_URL、AIVPLAYER_TRANSLATION_API_KEY 和 AIVPLAYER_TRANSLATION_MODEL 启用。',
+      translationServiceReady: (model) => `翻译服务可用，${model} 已返回有效结果。`,
+      translationServiceNetworkError: '翻译服务网络请求失败。',
+      translationServiceHttpError: (status, statusText) =>
+        `翻译接口返回 HTTP ${status}${statusText ? ` ${statusText}` : ''}。`,
+      translationServiceInvalidJson: '翻译接口返回了无法解析的 JSON。',
+      translationServiceInvalidResponse: '翻译接口返回了无效的响应内容。',
+      translationServiceEmptyResponse: '翻译接口返回了空结果。',
       clipExportSuccess: '片段导出完成。',
       clipExportWithSubtitleSuccess: '片段和外挂字幕导出完成。',
       clipExportBurnedSuccess: '片段导出完成，字幕已烧录。',
@@ -699,6 +747,7 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       preparingSubtitleCache: '正在准备音频和字幕缓存。',
       extractingAudio: '正在用 ffmpeg 抽取 16k 单声道音频。',
       transcribing: '正在用 whisper.cpp 识别语音并生成 VTT / SRT 字幕。',
+      asrGpuFallback: 'GPU 加速暂不可用，正在回退到 CPU 继续识别。',
       noSubtitleFiles: 'whisper.cpp 已结束，但没有同时生成预期的 VTT / SRT 字幕文件。',
       openMpvMissing: '未找到 mpv。可以安装 mpv，或设置 AIVPLAYER_MPV_BIN 指向 mpv 可执行文件。',
       openMpvDetected: (versionOrPath) => `已检测到 mpv：${versionOrPath}`,
@@ -934,11 +983,19 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       engineNotReady: 'Engine not ready',
       modelFiles: 'Model files',
       translationLanguagePair: 'Language pair',
+      translationTargetLanguage: 'Target language',
       subtitleLanguage: 'Detected language',
+      translationModel: 'Translation model',
+      translationServiceStatus: 'Service status',
+      translationServiceReady: 'Ready',
+      translationServiceNotChecked: 'Not checked',
+      translationServiceUnavailable: 'Unavailable',
       generateSubtitle: 'Generate subtitles',
       generatingSubtitle: 'Generating',
       translateSubtitle: (languageLabel) => `Translate to ${languageLabel}`,
       translatingSubtitle: 'Translating',
+      translationProgress: (completedBatches, totalBatches) => `Translating batch ${completedBatches} / ${totalBatches}`,
+      cancelTranslation: 'Cancel translation',
       translatedSubtitleReady: 'Translation ready',
       subtitleTools: 'Subtitle tools',
       subtitleToolsMenu: 'Subtitle tools menu',
@@ -1080,7 +1137,16 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
         translationModel: 'Translation model',
         translationModelDescription: 'Enter the model name used for translation, for example mimo-v2.5.',
         translationApiKey: 'API key',
-        translationApiKeyDescription: 'The API key is encrypted locally and is never written in plain text to the normal settings file.'
+        translationApiKeyDescription: 'The API key is encrypted locally and is never written in plain text to the normal settings file.',
+        translationGlossary: 'Glossary',
+        translationGlossaryDescription: 'Add one fixed translation per line as source=target, for example Technology=技术.',
+        translationServiceCheckTitle: 'Translation service check',
+        translationServiceCheckDescription:
+          'Send a sample subtitle to the current endpoint and confirm the model and API key can return parseable output.',
+        translationServiceCheck: 'Test translation service',
+        translationServiceChecking: 'Testing',
+        translationServiceResultTitle: 'Test result',
+        translationServicePreviewTitle: 'Preview result'
       },
       capture: {
         title: 'Capture & record',
@@ -1160,8 +1226,16 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       subtitleCacheHit: 'Local subtitle cache hit (VTT / SRT).',
       subtitleExported: 'SRT exported from VTT.',
       subtitleTranslated: 'Subtitle translation completed. Translated VTT is mounted and SRT has been exported.',
+      subtitleTranslationCanceled: 'Subtitle translation was cancelled. No new translated cache was written.',
       translationServiceMissing:
         'Translation service is not configured. Fill in the endpoint, model, and API key in settings, or set AIVPLAYER_TRANSLATION_BASE_URL, AIVPLAYER_TRANSLATION_API_KEY, and AIVPLAYER_TRANSLATION_MODEL.',
+      translationServiceReady: (model) => `Translation service is ready. ${model} returned a valid result.`,
+      translationServiceNetworkError: 'Translation service network request failed.',
+      translationServiceHttpError: (status, statusText) =>
+        `Translation endpoint returned HTTP ${status}${statusText ? ` ${statusText}` : ''}.`,
+      translationServiceInvalidJson: 'Translation endpoint returned invalid JSON.',
+      translationServiceInvalidResponse: 'Translation endpoint returned invalid response content.',
+      translationServiceEmptyResponse: 'Translation endpoint returned an empty result.',
       clipExportSuccess: 'Clip export completed.',
       clipExportWithSubtitleSuccess: 'Clip and external subtitle export completed.',
       clipExportBurnedSuccess: 'Clip export completed with burned subtitles.',
@@ -1174,6 +1248,7 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       preparingSubtitleCache: 'Preparing audio and subtitle cache.',
       extractingAudio: 'Extracting 16 kHz mono audio with ffmpeg.',
       transcribing: 'Transcribing speech and generating VTT / SRT with whisper.cpp.',
+      asrGpuFallback: 'GPU acceleration is unavailable, so transcription is continuing on the CPU.',
       noSubtitleFiles: 'whisper.cpp finished, but the expected VTT / SRT files were not created.',
       openMpvMissing: 'mpv was not found. You can install mpv or set AIVPLAYER_MPV_BIN to the mpv executable.',
       openMpvDetected: (versionOrPath) => `Detected mpv: ${versionOrPath}`,
@@ -1409,11 +1484,19 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       engineNotReady: 'エンジン未準備',
       modelFiles: 'モデルファイル',
       translationLanguagePair: '言語ペア',
+      translationTargetLanguage: '翻訳先',
       subtitleLanguage: '認識言語',
+      translationModel: '翻訳モデル',
+      translationServiceStatus: 'サービス状態',
+      translationServiceReady: '利用可能',
+      translationServiceNotChecked: '未確認',
+      translationServiceUnavailable: '利用不可',
       generateSubtitle: '字幕を生成',
       generatingSubtitle: '生成中',
       translateSubtitle: (languageLabel) => `${languageLabel}に翻訳`,
       translatingSubtitle: '翻訳中',
+      translationProgress: (completedBatches, totalBatches) => `第 ${completedBatches} / ${totalBatches} バッチを翻訳中`,
+      cancelTranslation: '翻訳をキャンセル',
       translatedSubtitleReady: '翻訳完了',
       subtitleTools: '字幕ツール',
       subtitleToolsMenu: '字幕ツールメニュー',
@@ -1555,7 +1638,16 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
         translationModel: '翻訳モデル',
         translationModelDescription: '翻訳に使うモデル名を入力してください。例: mimo-v2.5。',
         translationApiKey: 'API key',
-        translationApiKeyDescription: 'API key はローカルに暗号化して保存され、通常の設定ファイルへ平文で書き込まれません。'
+        translationApiKeyDescription: 'API key はローカルに暗号化して保存され、通常の設定ファイルへ平文で書き込まれません。',
+        translationGlossary: '用語集',
+        translationGlossaryDescription: '1 行に 1 つ、source=target の形式で固定訳を入力します。例: Technology=技術。',
+        translationServiceCheckTitle: '翻訳サービス確認',
+        translationServiceCheckDescription:
+          '現在のエンドポイントにサンプル字幕を送り、モデルと API key が解析可能な結果を返せるか確認します。',
+        translationServiceCheck: '翻訳サービスをテスト',
+        translationServiceChecking: 'テスト中',
+        translationServiceResultTitle: 'テスト結果',
+        translationServicePreviewTitle: 'プレビュー結果'
       },
       capture: {
         title: 'キャプチャと録画',
@@ -1635,8 +1727,16 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       subtitleCacheHit: 'ローカル字幕キャッシュにヒットしました（VTT / SRT）。',
       subtitleExported: 'VTT から SRT を書き出しました。',
       subtitleTranslated: '字幕の翻訳が完了しました。翻訳 VTT はマウント済みで、SRT は書き出し済みです。',
+      subtitleTranslationCanceled: '字幕の翻訳をキャンセルしました。新しい翻訳キャッシュは作成されていません。',
       translationServiceMissing:
         '翻訳サービスが設定されていません。設定画面でエンドポイント、モデル、API key を入力するか、AIVPLAYER_TRANSLATION_BASE_URL、AIVPLAYER_TRANSLATION_API_KEY、AIVPLAYER_TRANSLATION_MODEL を設定してください。',
+      translationServiceReady: (model) => `翻訳サービスは利用できます。${model} が有効な結果を返しました。`,
+      translationServiceNetworkError: '翻訳サービスへのネットワークリクエストに失敗しました。',
+      translationServiceHttpError: (status, statusText) =>
+        `翻訳エンドポイントが HTTP ${status}${statusText ? ` ${statusText}` : ''} を返しました。`,
+      translationServiceInvalidJson: '翻訳エンドポイントの JSON を解析できませんでした。',
+      translationServiceInvalidResponse: '翻訳エンドポイントが無効な応答内容を返しました。',
+      translationServiceEmptyResponse: '翻訳エンドポイントが空の結果を返しました。',
       clipExportSuccess: 'クリップの書き出しが完了しました。',
       clipExportWithSubtitleSuccess: 'クリップと外部字幕の書き出しが完了しました。',
       clipExportBurnedSuccess: '字幕を焼き込んだクリップの書き出しが完了しました。',
@@ -1649,6 +1749,7 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       preparingSubtitleCache: '音声と字幕キャッシュを準備しています。',
       extractingAudio: 'ffmpeg で 16k モノラル音声を抽出しています。',
       transcribing: 'whisper.cpp で音声を認識し、VTT / SRT 字幕を生成しています。',
+      asrGpuFallback: 'GPU を利用できないため、CPU に切り替えて認識を続けます。',
       noSubtitleFiles: 'whisper.cpp は終了しましたが、期待された VTT / SRT ファイルが生成されませんでした。',
       openMpvMissing: 'mpv が見つかりません。mpv をインストールするか、AIVPLAYER_MPV_BIN で mpv 実行ファイルを指定してください。',
       openMpvDetected: (versionOrPath) => `mpv を検出しました: ${versionOrPath}`,
@@ -1884,11 +1985,19 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       engineNotReady: '엔진 준비 안 됨',
       modelFiles: '모델 파일',
       translationLanguagePair: '언어 쌍',
+      translationTargetLanguage: '번역 대상',
       subtitleLanguage: '감지 언어',
+      translationModel: '번역 모델',
+      translationServiceStatus: '서비스 상태',
+      translationServiceReady: '사용 가능',
+      translationServiceNotChecked: '확인 안 됨',
+      translationServiceUnavailable: '사용 불가',
       generateSubtitle: '자막 생성',
       generatingSubtitle: '생성 중',
       translateSubtitle: (languageLabel) => `${languageLabel}(으)로 번역`,
       translatingSubtitle: '번역 중',
+      translationProgress: (completedBatches, totalBatches) => `${completedBatches} / ${totalBatches} 배치를 번역하는 중`,
+      cancelTranslation: '번역 취소',
       translatedSubtitleReady: '번역 완료',
       subtitleTools: '자막 도구',
       subtitleToolsMenu: '자막 도구 메뉴',
@@ -2030,7 +2139,16 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
         translationModel: '번역 모델',
         translationModelDescription: '번역에 사용할 모델 이름을 입력하세요. 예: mimo-v2.5.',
         translationApiKey: 'API key',
-        translationApiKeyDescription: 'API key는 로컬에 암호화되어 저장되며 일반 설정 파일에 평문으로 기록되지 않습니다.'
+        translationApiKeyDescription: 'API key는 로컬에 암호화되어 저장되며 일반 설정 파일에 평문으로 기록되지 않습니다.',
+        translationGlossary: '용어집',
+        translationGlossaryDescription: '한 줄에 하나씩 source=target 형식으로 고정 번역을 입력하세요. 예: Technology=기술.',
+        translationServiceCheckTitle: '번역 서비스 확인',
+        translationServiceCheckDescription:
+          '현재 엔드포인트에 샘플 자막을 보내 모델과 API key가 파싱 가능한 결과를 반환하는지 확인합니다.',
+        translationServiceCheck: '번역 서비스 테스트',
+        translationServiceChecking: '테스트 중',
+        translationServiceResultTitle: '테스트 결과',
+        translationServicePreviewTitle: '미리보기 결과'
       },
       capture: {
         title: '캡처 및 녹화',
@@ -2110,8 +2228,16 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       subtitleCacheHit: '로컬 자막 캐시가 있습니다(VTT / SRT).',
       subtitleExported: 'VTT에서 SRT를 내보냈습니다.',
       subtitleTranslated: '자막 번역이 완료되었습니다. 번역 VTT는 마운트됐고 SRT는 내보냈습니다.',
+      subtitleTranslationCanceled: '자막 번역을 취소했습니다. 새 번역 캐시는 생성되지 않았습니다.',
       translationServiceMissing:
         '번역 서비스가 설정되지 않았습니다. 설정에서 엔드포인트, 모델, API key를 입력하거나 AIVPLAYER_TRANSLATION_BASE_URL, AIVPLAYER_TRANSLATION_API_KEY, AIVPLAYER_TRANSLATION_MODEL을 설정하세요.',
+      translationServiceReady: (model) => `번역 서비스를 사용할 수 있습니다. ${model}이 유효한 결과를 반환했습니다.`,
+      translationServiceNetworkError: '번역 서비스 네트워크 요청에 실패했습니다.',
+      translationServiceHttpError: (status, statusText) =>
+        `번역 엔드포인트가 HTTP ${status}${statusText ? ` ${statusText}` : ''}를 반환했습니다.`,
+      translationServiceInvalidJson: '번역 엔드포인트의 JSON을 해석할 수 없습니다.',
+      translationServiceInvalidResponse: '번역 엔드포인트가 잘못된 응답 내용을 반환했습니다.',
+      translationServiceEmptyResponse: '번역 엔드포인트가 빈 결과를 반환했습니다.',
       clipExportSuccess: '클립 내보내기가 완료되었습니다.',
       clipExportWithSubtitleSuccess: '클립과 외부 자막 내보내기가 완료되었습니다.',
       clipExportBurnedSuccess: '자막을 굽은 클립 내보내기가 완료되었습니다.',
@@ -2124,6 +2250,7 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       preparingSubtitleCache: '오디오와 자막 캐시를 준비하는 중입니다.',
       extractingAudio: 'ffmpeg로 16k 모노 오디오를 추출하는 중입니다.',
       transcribing: 'whisper.cpp로 음성을 인식해 VTT / SRT 자막을 만드는 중입니다.',
+      asrGpuFallback: 'GPU 가속을 사용할 수 없어 CPU로 전환해 인식을 계속합니다.',
       noSubtitleFiles: 'whisper.cpp가 종료됐지만 기대한 VTT / SRT 파일이 생성되지 않았습니다.',
       openMpvMissing: 'mpv를 찾지 못했습니다. mpv를 설치하거나 AIVPLAYER_MPV_BIN으로 mpv 실행 파일을 지정하세요.',
       openMpvDetected: (versionOrPath) => `mpv를 감지했습니다: ${versionOrPath}`,

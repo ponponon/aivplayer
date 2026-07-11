@@ -24,7 +24,12 @@ import type {
   SubtitleLineHeight,
   SubtitleTargetLanguageId
 } from '../../../shared/app-settings'
-import type { AsrModelSourceId, AsrRuntimeStatus, AsrRuntimeSetupResult } from '../../../shared/media-types'
+import type {
+  AsrModelSourceId,
+  AsrRuntimeStatus,
+  AsrRuntimeSetupResult,
+  AsrTranslationServiceTestResult
+} from '../../../shared/media-types'
 import type { LocaleCopy } from '../../../shared/i18n'
 import { clampSubtitleFontSize } from './subtitle-display-settings'
 import { useModalFocusTrap } from './use-modal-focus-trap'
@@ -34,8 +39,10 @@ type SettingsDialogProps = {
   settings: AppSettings
   asrStatus: AsrRuntimeStatus | null
   runtimeSetupMessage: AsrRuntimeSetupResult | null
+  translationServiceTestMessage: AsrTranslationServiceTestResult | null
   isDetectingWhisperBinary: boolean
   isSelectingWhisperBinary: boolean
+  isTestingTranslationService: boolean
   initialSectionId?: AppSettingsSectionId
   patchSettingsSection: AppSettingsSectionPatcher
   onClose: () => void
@@ -44,6 +51,7 @@ type SettingsDialogProps = {
   onPickDefaultFolder: () => Promise<string | null>
   onPickCaptureFolder: () => Promise<string | null>
   onSelectWhisperBinary: () => void
+  onTestTranslationService: () => void
   onResetDefaults: () => void
 }
 
@@ -53,6 +61,25 @@ const SETTINGS_SECTION_SCROLL_OFFSET = 78
 
 function formatPathLabel(pathValue: string | null, fallback: string): string {
   return pathValue && pathValue.length > 0 ? pathValue : fallback
+}
+
+function formatTranslationLanguageLabel(
+  copy: LocaleCopy,
+  languageId: string | undefined
+): string {
+  if (!languageId) {
+    return '—'
+  }
+
+  if (languageId === 'auto') {
+    return copy.subtitleLanguageOptions.auto.label
+  }
+
+  return copy.subtitleLanguageOptions[languageId as SubtitleLanguageId]?.label ?? languageId
+}
+
+function formatTranslationEndpointLabel(value: string | undefined): string {
+  return value && value.length > 0 ? value : '—'
 }
 
 type SettingsFieldProps = {
@@ -285,19 +312,49 @@ function SettingsTextInput({
   )
 }
 
+type SettingsTextareaProps = {
+  value: string
+  placeholder?: string
+  ariaLabel?: string
+  rows?: number
+  onChange: (value: string) => void
+}
+
+function SettingsTextarea({ value, placeholder, ariaLabel, rows = 4, onChange }: SettingsTextareaProps): ReactElement {
+  return (
+    <textarea
+      className="settings-textarea"
+      value={value}
+      placeholder={placeholder}
+      aria-label={ariaLabel}
+      rows={rows}
+      spellCheck={false}
+      onChange={(event) => onChange(event.currentTarget.value)}
+    />
+  )
+}
+
 export function SettingsDialog(props: SettingsDialogProps): ReactElement {
   const {
     copy,
     settings,
     asrStatus,
+    translationServiceTestMessage,
+    isTestingTranslationService,
     initialSectionId = 'general',
     patchSettingsSection,
     onClose,
     onOpenAsrPanel,
     onPickDefaultFolder,
     onPickCaptureFolder,
+    onTestTranslationService,
     onResetDefaults
   } = props
+  const translationServiceSourceLanguageLabel = formatTranslationLanguageLabel(copy, translationServiceTestMessage?.sourceLanguage)
+  const translationServiceTargetLanguageLabel = formatTranslationLanguageLabel(copy, translationServiceTestMessage?.targetLanguage)
+  const translationServiceEndpointSummary = formatTranslationEndpointLabel(
+    translationServiceTestMessage?.translationBaseUrlSummary
+  )
   const [activeSectionId, setActiveSectionId] = useState<AppSettingsSectionId>(initialSectionId)
   const hasMountedRef = useRef(false)
   const initialScrollDoneRef = useRef(false)
@@ -856,6 +913,69 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
                   patchSettingsSection('asr', { translationApiKey: translationApiKey.trim() || null })
                 }}
               />
+            </SettingsField>
+
+            <SettingsField
+              title={copy.settingsDialog.subtitles.translationGlossary}
+              description={copy.settingsDialog.subtitles.translationGlossaryDescription}
+            >
+              <SettingsTextarea
+                value={settings.asr.translationGlossary ?? ''}
+                ariaLabel={copy.settingsDialog.subtitles.translationGlossary}
+                onChange={(translationGlossary) => {
+                  patchSettingsSection('asr', { translationGlossary: translationGlossary.trim() || null })
+                }}
+              />
+            </SettingsField>
+
+            <SettingsField
+              title={copy.settingsDialog.subtitles.translationServiceCheckTitle}
+              description={copy.settingsDialog.subtitles.translationServiceCheckDescription}
+            >
+              <div className="settings-inline-row">
+                <button className="settings-secondary-button" type="button" onClick={onTestTranslationService} disabled={isTestingTranslationService}>
+                  <Sparkles size={14} />
+                  {isTestingTranslationService
+                    ? copy.settingsDialog.subtitles.translationServiceChecking
+                    : copy.settingsDialog.subtitles.translationServiceCheck}
+                </button>
+              </div>
+              {translationServiceTestMessage ? (
+                <div className={`asr-result ${translationServiceTestMessage.success ? 'success' : 'failed'}`}>
+                  {translationServiceTestMessage.message}
+                </div>
+              ) : null}
+              {translationServiceTestMessage ? (
+                <div className="settings-note-box">
+                  <span className="settings-note-title">{copy.settingsDialog.subtitles.translationServiceResultTitle}</span>
+                  <div className="settings-meta-grid">
+                    <div className="settings-meta-item">
+                      <span>{copy.asrPanel.translationLanguagePair}</span>
+                      <strong>
+                        {translationServiceSourceLanguageLabel} → {translationServiceTargetLanguageLabel}
+                      </strong>
+                    </div>
+                    <div className="settings-meta-item">
+                      <span>{copy.asrPanel.translationModel}</span>
+                      <strong>{translationServiceTestMessage.translationModel ?? '—'}</strong>
+                    </div>
+                    <div className="settings-meta-item">
+                      <span>{copy.settingsDialog.subtitles.translationBaseUrl}</span>
+                      <strong>{translationServiceEndpointSummary}</strong>
+                    </div>
+                  </div>
+                  {translationServiceTestMessage.success &&
+                  translationServiceTestMessage.sampleSourceText &&
+                  translationServiceTestMessage.sampleTranslatedText ? (
+                    <>
+                      <span className="settings-note-title">{copy.settingsDialog.subtitles.translationServicePreviewTitle}</span>
+                      <p>
+                        {translationServiceTestMessage.sampleSourceText} → {translationServiceTestMessage.sampleTranslatedText}
+                      </p>
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
             </SettingsField>
 
             {asrStatus ? (

@@ -2,7 +2,7 @@ import { delimiter, dirname, isAbsolute, join } from 'node:path'
 import { execFile } from 'node:child_process'
 import { readFile, writeFile } from 'node:fs/promises'
 import { promisify } from 'node:util'
-import type { AsrRuntime, AsrRuntimeOptions } from './asr-runtime.ts'
+import type { AsrRuntime, AsrRuntimeOptions, AsrTranslationJobOptions } from './asr-runtime.ts'
 import { getWhisperModelDirectory, listWhisperModels, pathExists, selectWhisperModel } from './model-manager.ts'
 import { getRecommendedWhisperModelManifest } from './asr-models.ts'
 import { downloadWhisperModel } from './model-downloader.ts'
@@ -25,10 +25,18 @@ import type {
   AsrSubtitleExportResult,
   AsrSubtitleTranslationRequest,
   AsrSubtitleTranslationResult,
+  AsrTranslationServiceTestRequest,
+  AsrTranslationServiceTestResult,
   AsrSubtitleRequest,
   AsrSubtitleResult
 } from '../../shared/media-types.ts'
-import { createOpenAiCompatibleTranslationProvider, runSubtitleTranslationJob } from './subtitle-translation.ts'
+import {
+  createOpenAiCompatibleTranslationProvider,
+  createSubtitleTranslationProviderRef,
+  findSubtitleTranslationCache,
+  runSubtitleTranslationJob,
+  SubtitleTranslationError
+} from './subtitle-translation.ts'
 
 const execFileAsync = promisify(execFile)
 const POSIX_FFMPEG_BINARY_NAMES = ['ffmpeg']
@@ -246,6 +254,65 @@ async function readWhisperVersion(binaryPath: string): Promise<string | null> {
   }
 }
 
+function getTranslationServiceProbeText(sourceLanguage: string): string {
+  switch (sourceLanguage) {
+    case 'ja':
+      return '今日はいい天気ですね。字幕の翻訳を試しています。'
+    case 'zh':
+      return '今天的天气很好，我们正在测试字幕翻译。'
+    case 'ko':
+      return '오늘은 날씨가 정말 좋네요. 자막 번역을 시험하고 있습니다.'
+    case 'en':
+    default:
+      return 'When you hear the word technology, you think about phones, you think about air.'
+  }
+}
+
+function summarizeTranslationServiceEndpoint(baseUrl: string): string {
+  const trimmed = baseUrl.trim()
+
+  if (!trimmed) {
+    return ''
+  }
+
+  try {
+    const url = new URL(trimmed)
+    return `${url.protocol}//${url.host}${url.pathname}`.replace(/\/+$/, '')
+  } catch {
+    return trimmed.replace(/[?#].*$/, '')
+  }
+}
+
+function formatTranslationServiceError(
+  copy: ReturnType<typeof getAppCopy>,
+  error: unknown
+): { message: string } {
+  if (error instanceof SubtitleTranslationError) {
+    switch (error.code) {
+      case 'cancelled':
+        return { message: copy.runtime.subtitleTranslationCanceled }
+      case 'network-error':
+        return { message: copy.runtime.translationServiceNetworkError }
+      case 'http-error':
+        return {
+          message: copy.runtime.translationServiceHttpError(error.status ?? 0, error.statusText ?? null)
+        }
+      case 'invalid-json':
+        return { message: copy.runtime.translationServiceInvalidJson }
+      case 'invalid-response':
+        return { message: copy.runtime.translationServiceInvalidResponse }
+      default:
+        return { message: error.message }
+    }
+  }
+
+  if (error instanceof Error) {
+    return { message: error.message }
+  }
+
+  return { message: String(error) }
+}
+
 export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime {
   const env = options.env ?? process.env
   const recommendedModelManifest = getRecommendedWhisperModelManifest()
@@ -255,11 +322,28 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
 
   const getSubtitleCacheDirectory = (): string => env.AIVPLAYER_ASR_CACHE_DIR || join(options.userDataPath, 'asr-cache')
 
-  const createTranslationProvider = () => {
+  const getTranslationServiceConfig = (): {
+    baseUrl: string | null
+    apiKey: string | null
+    model: string | null
+    glossary: string | null
+  } => {
     const translationSettings = options.getTranslationServiceSettings?.()
-    const baseUrl = translationSettings?.translationBaseUrl?.trim() || env.AIVPLAYER_TRANSLATION_BASE_URL?.trim()
-    const apiKey = translationSettings?.translationApiKey?.trim() || env.AIVPLAYER_TRANSLATION_API_KEY?.trim()
-    const model = translationSettings?.translationModel?.trim() || env.AIVPLAYER_TRANSLATION_MODEL?.trim()
+    return {
+      baseUrl: translationSettings?.translationBaseUrl?.trim() || env.AIVPLAYER_TRANSLATION_BASE_URL?.trim() || null,
+      apiKey: translationSettings?.translationApiKey?.trim() || env.AIVPLAYER_TRANSLATION_API_KEY?.trim() || null,
+      model: translationSettings?.translationModel?.trim() || env.AIVPLAYER_TRANSLATION_MODEL?.trim() || null,
+      glossary:
+        translationSettings?.translationGlossary?.trim() || env.AIVPLAYER_TRANSLATION_GLOSSARY?.trim() || null
+    }
+  }
+
+  const getTranslationModel = (): string | null => {
+    return getTranslationServiceConfig().model
+  }
+
+  const createTranslationProvider = () => {
+    const { baseUrl, apiKey, model, glossary } = getTranslationServiceConfig()
 
     if (!baseUrl || !apiKey || !model) {
       return null
@@ -269,8 +353,14 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
       baseUrl,
       apiKey,
       model,
+      glossary,
       fetchImpl: options.translationFetch
     })
+  }
+
+  const getTranslationProviderRef = () => {
+    const config = getTranslationServiceConfig()
+    return createSubtitleTranslationProviderRef(config.model, config.glossary)
   }
 
   const readHealthStatus = async (): Promise<AsrRuntimeStatus> => {
@@ -504,6 +594,70 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
       }
     },
 
+    async resolveTranslatedSubtitleCache(
+      request: AsrSubtitleTranslationRequest
+    ): Promise<AsrSubtitleTranslationResult> {
+      const copy = getCopy()
+      const sourceLanguage = request.sourceLanguage ?? 'auto'
+      const provider = getTranslationProviderRef()
+      const translationGlossary = getTranslationServiceConfig().glossary ?? undefined
+
+      if (!provider) {
+        return {
+          success: false,
+          message: copy.runtime.translationServiceMissing,
+          sourceSubtitlePath: request.subtitlePath,
+          sourceLanguage,
+          targetLanguage: request.targetLanguage,
+          translationGlossary
+        }
+      }
+
+      try {
+        const cached = await findSubtitleTranslationCache({
+          cacheDirectory: getSubtitleCacheDirectory(),
+          sourceSubtitlePath: request.subtitlePath,
+          sourceLanguage,
+          targetLanguage: request.targetLanguage,
+          provider
+        })
+
+        if (!cached) {
+          return {
+            success: false,
+            message: copy.runtime.subtitleCacheMiss,
+            sourceSubtitlePath: request.subtitlePath,
+            sourceLanguage,
+            targetLanguage: request.targetLanguage,
+            translationModel: provider.model,
+            translationGlossary: provider.glossary ?? undefined
+          }
+        }
+
+        return {
+          success: true,
+          message: copy.runtime.subtitleTranslated,
+          sourceSubtitlePath: request.subtitlePath,
+          sourceLanguage,
+          targetLanguage: request.targetLanguage,
+          translationModel: provider.model,
+          translationGlossary: provider.glossary ?? undefined,
+          subtitlePath: cached.subtitlePath,
+          subtitleSrtPath: cached.subtitleSrtPath
+        }
+      } catch (error) {
+        return {
+          success: false,
+          ...formatTranslationServiceError(copy, error),
+          sourceSubtitlePath: request.subtitlePath,
+          sourceLanguage,
+          targetLanguage: request.targetLanguage,
+          translationModel: provider.model,
+          translationGlossary: provider.glossary ?? undefined
+        }
+      }
+    },
+
     async exportSubtitleSrt(request: AsrSubtitleExportRequest): Promise<AsrSubtitleExportResult> {
       const copy = getCopy()
       try {
@@ -529,39 +683,164 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
       }
     },
 
-    async translateSubtitle(request: AsrSubtitleTranslationRequest): Promise<AsrSubtitleTranslationResult> {
+    async translateSubtitle(
+      request: AsrSubtitleTranslationRequest,
+      jobOptions: AsrTranslationJobOptions = {}
+    ): Promise<AsrSubtitleTranslationResult> {
       const copy = getCopy()
+      const sourceLanguage = request.sourceLanguage ?? 'auto'
       const provider = createTranslationProvider()
 
       if (!provider) {
         return {
           success: false,
           message: copy.runtime.translationServiceMissing,
-          sourceSubtitlePath: request.subtitlePath
+          sourceSubtitlePath: request.subtitlePath,
+          sourceLanguage,
+          targetLanguage: request.targetLanguage,
+          translationGlossary: getTranslationServiceConfig().glossary ?? undefined
         }
       }
 
       try {
+        jobOptions.onProgress?.({
+          stage: 'translating',
+          percent: 0,
+          message: copy.asrPanel.translatingSubtitle
+        })
+
         const result = await runSubtitleTranslationJob({
           sourceSubtitlePath: request.subtitlePath,
           cacheDirectory: getSubtitleCacheDirectory(),
-          sourceLanguage: request.sourceLanguage,
+          sourceLanguage,
           targetLanguage: request.targetLanguage,
-          provider
+          provider,
+          signal: jobOptions.signal,
+          onProgress: (progress) => {
+            jobOptions.onProgress?.({
+              stage: 'translating',
+              percent: progress.percent,
+              message: copy.asrPanel.translationProgress(
+                progress.completedBatches,
+                progress.totalBatches
+              )
+            })
+          }
+        })
+
+        jobOptions.onProgress?.({
+          stage: 'completed',
+          percent: 1,
+          message: copy.runtime.subtitleTranslated
         })
 
         return {
           success: true,
           message: copy.runtime.subtitleTranslated,
           sourceSubtitlePath: request.subtitlePath,
+          sourceLanguage,
+          targetLanguage: request.targetLanguage,
+          translationModel: provider.model,
+          translationGlossary: provider.glossary ?? undefined,
           subtitlePath: result.subtitlePath,
           subtitleSrtPath: result.subtitleSrtPath
         }
       } catch (error) {
+        const failure = formatTranslationServiceError(copy, error)
+        const canceled = error instanceof SubtitleTranslationError && error.code === 'cancelled'
+        jobOptions.onProgress?.({
+          stage: canceled ? 'cancelled' : 'failed',
+          percent: null,
+          message: failure.message
+        })
+
         return {
           success: false,
-          message: error instanceof Error ? error.message : String(error),
-          sourceSubtitlePath: request.subtitlePath
+          message: failure.message,
+          canceled,
+          sourceSubtitlePath: request.subtitlePath,
+          sourceLanguage,
+          targetLanguage: request.targetLanguage,
+          translationModel: provider.model,
+          translationGlossary: provider.glossary ?? undefined
+        }
+      }
+    },
+    async testTranslationService(
+      request: AsrTranslationServiceTestRequest
+    ): Promise<AsrTranslationServiceTestResult> {
+      const copy = getCopy()
+      const sourceLanguage = request.sourceLanguage ?? 'auto'
+      const translationServiceConfig = getTranslationServiceConfig()
+      const provider =
+        translationServiceConfig.baseUrl && translationServiceConfig.apiKey && translationServiceConfig.model
+          ? createOpenAiCompatibleTranslationProvider({
+              baseUrl: translationServiceConfig.baseUrl,
+              apiKey: translationServiceConfig.apiKey,
+              model: translationServiceConfig.model,
+              glossary: translationServiceConfig.glossary,
+              fetchImpl: options.translationFetch
+            })
+          : null
+      const translationModel = provider?.model ?? translationServiceConfig.model ?? undefined
+      const translationBaseUrlSummary = translationServiceConfig.baseUrl
+        ? summarizeTranslationServiceEndpoint(translationServiceConfig.baseUrl)
+        : undefined
+      const sampleSourceText = getTranslationServiceProbeText(sourceLanguage)
+
+      if (!provider) {
+        return {
+          success: false,
+          message: copy.runtime.translationServiceMissing,
+          sourceLanguage,
+          targetLanguage: request.targetLanguage,
+          translationModel,
+          translationBaseUrlSummary,
+          sampleSourceText
+        }
+      }
+
+      try {
+        const translatedSegments = await provider.translateBatch({
+          sourceLanguage,
+          targetLanguage: request.targetLanguage,
+          segments: [{ id: 'cue-1', text: sampleSourceText }]
+        })
+        const sampleTranslatedText = translatedSegments[0]?.text?.trim()
+
+        if (!sampleTranslatedText) {
+          return {
+            success: false,
+            message: copy.runtime.translationServiceEmptyResponse,
+            sourceLanguage,
+            targetLanguage: request.targetLanguage,
+            translationModel,
+            translationBaseUrlSummary,
+            sampleSourceText
+          }
+        }
+
+        return {
+          success: true,
+          message: copy.runtime.translationServiceReady(provider.model),
+          sourceLanguage,
+          targetLanguage: request.targetLanguage,
+          translationModel,
+          translationBaseUrlSummary,
+          sampleSourceText,
+          sampleTranslatedText
+        }
+      } catch (error) {
+        const failure = formatTranslationServiceError(copy, error)
+
+        return {
+          success: false,
+          message: failure.message,
+          sourceLanguage,
+          targetLanguage: request.targetLanguage,
+          translationModel,
+          translationBaseUrlSummary,
+          sampleSourceText
         }
       }
     }

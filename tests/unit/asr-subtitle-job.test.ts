@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, stat, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, mkdtemp, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { describe, expect, it } from 'vitest'
@@ -9,6 +9,7 @@ import {
   findWhisperSubtitleCache,
   getWhisperSubtitleOutputPath,
   getWhisperSubtitleSrtOutputPath,
+  isWhisperGpuResourceFailure,
   readWhisperSubtitleLanguage,
   runAsrSubtitleJob
 } from '../../src/main/ai/asr-subtitle-job'
@@ -51,6 +52,33 @@ describe('ASR subtitle job command planning', () => {
       '-l',
       'auto'
     ])
+  })
+
+  it('can append the whisper.cpp CPU fallback flag without changing the default command', () => {
+    expect(
+      buildWhisperSubtitleArgs({
+        modelPath: '/models/model.bin',
+        audioPath: '/tmp/audio.wav',
+        outputBase: '/tmp/subtitle',
+        disableGpu: true
+      }).at(-1)
+    ).toBe('-ng')
+  })
+
+  it('only classifies Metal buffer allocation crashes as GPU resource failures', () => {
+    expect(
+      isWhisperGpuResourceFailure({
+        exitCode: 139,
+        signal: 'SIGSEGV',
+        output: 'ggml_metal_buffer_init: error: failed to allocate buffer'
+      })
+    ).toBe(true)
+    expect(
+      isWhisperGpuResourceFailure({
+        exitCode: 1,
+        output: 'whisper.cpp failed to parse the media'
+      })
+    ).toBe(false)
   })
 
   it('creates deterministic cache paths per media file and model', () => {
@@ -153,6 +181,38 @@ describe('ASR subtitle job command planning', () => {
       subtitlePath: getWhisperSubtitleOutputPath(outputBase),
       subtitleSrtPath: getWhisperSubtitleSrtOutputPath(outputBase),
       subtitleLanguage: 'ja'
+    })
+  })
+
+  it('retries whisper.cpp with CPU when the GPU process crashes during Metal allocation', async () => {
+    const cacheDirectory = await mkdtemp(join(tmpdir(), 'aivplayer-gpu-fallback-'))
+    const mediaPath = join(cacheDirectory, 'video.mp4')
+    const ffmpegPath = join(cacheDirectory, 'mock-ffmpeg')
+    const whisperPath = join(cacheDirectory, 'mock-whisper')
+
+    await writeFile(mediaPath, 'video')
+    await writeFile(
+      ffmpegPath,
+      `#!${process.execPath}\nconst fs = require('node:fs')\nfs.writeFileSync(process.argv.at(-1), 'wav')\n`
+    )
+    await writeFile(
+      whisperPath,
+      `#!${process.execPath}\nconst fs = require('node:fs')\nconst args = process.argv.slice(2)\nconst outputBase = args[args.indexOf('-of') + 1]\nif (!args.includes('-ng')) {\n  process.stderr.write('ggml_metal_buffer_init: error: failed to allocate buffer')\n  process.exit(139)\n}\nfs.writeFileSync(outputBase + '.vtt', 'WEBVTT\\n\\n00:00.000 --> 00:01.000\\nhello\\n')\nfs.writeFileSync(outputBase + '.srt', '1\\n00:00:00,000 --> 00:00:01,000\\nhello\\n')\nfs.writeFileSync(outputBase + '.json', JSON.stringify({ result: { language: 'en' } }))\n`
+    )
+    await chmod(ffmpegPath, 0o755)
+    await chmod(whisperPath, 0o755)
+
+    await expect(
+      runAsrSubtitleJob({
+        ffmpegPath,
+        whisperBinaryPath: whisperPath,
+        modelPath: '/models/model.bin',
+        modelId: 'large-v3-turbo-q5_0',
+        mediaPath,
+        cacheDirectory
+      })
+    ).resolves.toMatchObject({
+      subtitleLanguage: 'en'
     })
   })
 })

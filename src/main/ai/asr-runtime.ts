@@ -8,6 +8,8 @@ import type {
   AsrSubtitleExportResult,
   AsrSubtitleTranslationRequest,
   AsrSubtitleTranslationResult,
+  AsrTranslationServiceTestRequest,
+  AsrTranslationServiceTestResult,
   AsrSubtitleRequest,
   AsrSubtitleResult
 } from '../../shared/media-types.ts'
@@ -28,8 +30,18 @@ export type AsrRuntime = {
     onProgress?: (progress: AsrJobProgress) => void
   ) => Promise<AsrSubtitleResult>
   resolveSubtitleCache: (request: AsrSubtitleRequest) => Promise<AsrSubtitleResult>
+  resolveTranslatedSubtitleCache: (request: AsrSubtitleTranslationRequest) => Promise<AsrSubtitleTranslationResult>
   exportSubtitleSrt: (request: AsrSubtitleExportRequest) => Promise<AsrSubtitleExportResult>
-  translateSubtitle: (request: AsrSubtitleTranslationRequest) => Promise<AsrSubtitleTranslationResult>
+  translateSubtitle: (
+    request: AsrSubtitleTranslationRequest,
+    options?: AsrTranslationJobOptions
+  ) => Promise<AsrSubtitleTranslationResult>
+  testTranslationService: (request: AsrTranslationServiceTestRequest) => Promise<AsrTranslationServiceTestResult>
+}
+
+export type AsrTranslationJobOptions = {
+  signal?: AbortSignal
+  onProgress?: (progress: AsrJobProgress) => void
 }
 
 export type AsrRuntimeOptions = {
@@ -39,7 +51,8 @@ export type AsrRuntimeOptions = {
   extraBinaryDirectories?: string[]
   translationFetch?: (url: string, init?: RequestInit) => Promise<Response>
   getTranslationServiceSettings?: () =>
-    | Pick<AppSettings['asr'], 'translationBaseUrl' | 'translationModel' | 'translationApiKey'>
+    | (Pick<AppSettings['asr'], 'translationBaseUrl' | 'translationModel' | 'translationApiKey'> &
+        Partial<Pick<AppSettings['asr'], 'translationGlossary'>>)
     | null
   getLocale?: () => AppLocale
 }

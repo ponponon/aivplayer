@@ -4,6 +4,7 @@ import { dirname, isAbsolute, join } from 'node:path'
 import {
   APP_SETTINGS_SCHEMA_VERSION,
   createDefaultAppSettings,
+  normalizeTranslationGlossary,
   type CaptureFileNamingMode,
   type CaptureGifResolution,
   type CaptureImageFormat,
@@ -331,7 +332,8 @@ function sanitizeAsrSettings(
       typeof asr.autoLoadCachedSubtitles === 'boolean' ? asr.autoLoadCachedSubtitles : defaults.autoLoadCachedSubtitles,
     translationBaseUrl: normalizeTextField(asr.translationBaseUrl, defaults.translationBaseUrl),
     translationModel: normalizeTextField(asr.translationModel, defaults.translationModel),
-    translationApiKey: normalizeTextField(asr.translationApiKey, defaults.translationApiKey)
+    translationApiKey: normalizeTextField(asr.translationApiKey, defaults.translationApiKey),
+    translationGlossary: normalizeTranslationGlossary(asr.translationGlossary) ?? defaults.translationGlossary
   }
 }
 

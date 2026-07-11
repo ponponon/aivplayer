@@ -22,6 +22,7 @@ type SubtitleDisplayControlsProps = {
 
 const subtitleLineHeightValues: SubtitleLineHeight[] = ['compact', 'normal', 'relaxed']
 const subtitleDisplayModeValues: SubtitleDisplayMode[] = ['source', 'translation', 'bilingual']
+const subtitleFontSizePresets = [12, 14, 16, 18] as const
 
 export function SubtitleDisplayControls({
   copy,
@@ -34,6 +35,9 @@ export function SubtitleDisplayControls({
   const canDecrease = settings.fontSizePx > minSubtitleFontSize
   const canIncrease = settings.fontSizePx < maxSubtitleFontSize
   const effectiveDisplayMode = !hasTranslation && settings.displayMode !== 'source' ? 'source' : settings.displayMode
+  const setFontSize = (fontSizePx: number): void => {
+    onChange({ fontSizePx: clampSubtitleFontSize(fontSizePx) })
+  }
 
   return (
     <details ref={controlsRef} className="subtitle-display-controls">
@@ -45,60 +49,99 @@ export function SubtitleDisplayControls({
         <ChevronDown size={14} />
       </summary>
       <div className="subtitle-display-controls-menu" aria-label={copy.subtitleDisplay.menuLabel}>
-        <div className="subtitle-display-control-row">
+        <div className="subtitle-display-control-row subtitle-display-font-size-row">
           <span>{copy.subtitleDisplay.fontSize}</span>
-          <div className="subtitle-display-stepper">
-            <button
-              type="button"
-              onClick={() => onChange({ fontSizePx: clampSubtitleFontSize(settings.fontSizePx - 1) })}
-              disabled={!canDecrease}
-              aria-label={copy.subtitleDisplay.decreaseFontSize}
-            >
-              <Minus size={13} />
-            </button>
-            <strong>{copy.subtitleDisplay.fontSizeValue(settings.fontSizePx)}</strong>
-            <button
-              type="button"
-              onClick={() => onChange({ fontSizePx: clampSubtitleFontSize(settings.fontSizePx + 1) })}
-              disabled={!canIncrease}
-              aria-label={copy.subtitleDisplay.increaseFontSize}
-            >
-              <Plus size={13} />
-            </button>
+          <div className="subtitle-display-font-size-controls">
+            <div className="subtitle-display-preset-group" role="group" aria-label={copy.subtitleDisplay.fontSize}>
+              {subtitleFontSizePresets.map((fontSizePx) => {
+                const isActive = settings.fontSizePx === fontSizePx
+
+                return (
+                  <button
+                    key={fontSizePx}
+                    className={`subtitle-display-preset ${isActive ? 'active' : ''}`}
+                    type="button"
+                    onClick={() => setFontSize(fontSizePx)}
+                    aria-label={copy.subtitleDisplay.fontSizeValue(fontSizePx)}
+                    aria-pressed={isActive}
+                    title={copy.subtitleDisplay.fontSizeValue(fontSizePx)}
+                  >
+                    {fontSizePx}
+                  </button>
+                )
+              })}
+            </div>
+            <div className="subtitle-display-stepper">
+              <button
+                type="button"
+                onClick={() => setFontSize(settings.fontSizePx - 1)}
+                disabled={!canDecrease}
+                aria-label={copy.subtitleDisplay.decreaseFontSize}
+              >
+                <Minus size={13} />
+              </button>
+              <strong>{copy.subtitleDisplay.fontSizeValue(settings.fontSizePx)}</strong>
+              <button
+                type="button"
+                onClick={() => setFontSize(settings.fontSizePx + 1)}
+                disabled={!canIncrease}
+                aria-label={copy.subtitleDisplay.increaseFontSize}
+              >
+                <Plus size={13} />
+              </button>
+            </div>
           </div>
         </div>
 
-        <label className="subtitle-display-control-row">
+        <div className="subtitle-display-control-row subtitle-display-choice-row">
           <span>{copy.subtitleDisplay.lineHeight}</span>
-          <select
-            value={settings.lineHeight}
-            onChange={(event) => onChange({ lineHeight: event.currentTarget.value as SubtitleLineHeight })}
-          >
-            {subtitleLineHeightValues.map((lineHeight) => (
-              <option key={lineHeight} value={lineHeight}>
-                {copy.subtitleDisplay.lineHeightOptions[lineHeight]}
-              </option>
-            ))}
-          </select>
-        </label>
+          <div className="subtitle-display-choice-group" role="group" aria-label={copy.subtitleDisplay.lineHeight}>
+            {subtitleLineHeightValues.map((lineHeight) => {
+              const isSelected = settings.lineHeight === lineHeight
 
-        <label className="subtitle-display-control-row">
+              return (
+                <button
+                  key={lineHeight}
+                  className={`subtitle-display-choice ${isSelected ? 'is-selected' : ''}`}
+                  type="button"
+                  onClick={() => onChange({ lineHeight })}
+                  aria-pressed={isSelected}
+                  title={copy.subtitleDisplay.lineHeightOptions[lineHeight]}
+                >
+                  {copy.subtitleDisplay.lineHeightOptions[lineHeight]}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="subtitle-display-control-row subtitle-display-choice-row">
           <span>{copy.subtitleDisplay.displayMode}</span>
-          <select
-            value={effectiveDisplayMode}
-            onChange={(event) => onChange({ displayMode: event.currentTarget.value as SubtitleDisplayMode })}
-          >
-            {subtitleDisplayModeValues.map((displayMode) => (
-              <option
-                key={displayMode}
-                value={displayMode}
-                disabled={!hasTranslation && displayMode !== 'source'}
-              >
-                {copy.subtitleDisplay.displayModeOptions[displayMode]}
-              </option>
-            ))}
-          </select>
-        </label>
+          <div className="subtitle-display-choice-group" role="group" aria-label={copy.subtitleDisplay.displayMode}>
+            {subtitleDisplayModeValues.map((displayMode) => {
+              const isSelected = effectiveDisplayMode === displayMode
+              const isDisabled = !hasTranslation && displayMode !== 'source'
+
+              return (
+                <button
+                  key={displayMode}
+                  className={`subtitle-display-choice ${isSelected ? 'is-selected' : ''}`}
+                  type="button"
+                  onClick={() => {
+                    if (!isDisabled) {
+                      onChange({ displayMode })
+                    }
+                  }}
+                  disabled={isDisabled}
+                  aria-pressed={isSelected}
+                  title={copy.subtitleDisplay.displayModeOptions[displayMode]}
+                >
+                  {copy.subtitleDisplay.displayModeOptions[displayMode]}
+                </button>
+              )
+            })}
+          </div>
+        </div>
 
         {!hasTranslation && settings.displayMode !== 'source' ? (
           <p className="subtitle-display-hint">{copy.subtitleDisplay.translationUnavailable}</p>

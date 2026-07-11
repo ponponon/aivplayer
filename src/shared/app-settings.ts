@@ -66,6 +66,7 @@ export type AppSettings = {
     translationBaseUrl: string | null
     translationModel: string | null
     translationApiKey: string | null
+    translationGlossary: string | null
   }
 }
 
@@ -103,6 +104,39 @@ export function createAppSettingsSectionPatcher(
   return (section, patchOrUpdater) => {
     onChange((current) => updateAppSettingsSection(current, section, patchOrUpdater))
   }
+}
+
+export function normalizeTranslationGlossary(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  const lines: string[] = []
+  let length = 0
+
+  for (const rawLine of value.split(/\r?\n/)) {
+    const separatorIndex = rawLine.indexOf('=')
+    if (separatorIndex <= 0) {
+      continue
+    }
+
+    const source = rawLine.slice(0, separatorIndex).trim()
+    const target = rawLine.slice(separatorIndex + 1).trim()
+    if (!source || !target) {
+      continue
+    }
+
+    const normalizedLine = `${source}=${target}`
+    const nextLength = length + normalizedLine.length + (lines.length > 0 ? 1 : 0)
+    if (nextLength > 4096) {
+      break
+    }
+
+    lines.push(normalizedLine)
+    length = nextLength
+  }
+
+  return lines.length > 0 ? lines.join('\n') : null
 }
 
 export function createDefaultAppSettings(): AppSettings {
@@ -155,7 +189,8 @@ export function createDefaultAppSettings(): AppSettings {
       autoLoadCachedSubtitles: true,
       translationBaseUrl: null,
       translationModel: null,
-      translationApiKey: null
+      translationApiKey: null,
+      translationGlossary: null
     }
   }
 }

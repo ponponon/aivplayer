@@ -10,6 +10,7 @@ const expectedSubtitleSettings = {
   displayMode: 'source',
   targetLanguage: 'zh'
 } as const
+const expectedTranslationGlossary = 'Technology=技术\nAIVPlayer=AIV 播放器'
 
 async function main(): Promise<void> {
   const smokeHomeDirectory = await mkdtemp(join(tmpdir(), 'aivplayer-smoke-subtitle-settings-home-'))
@@ -38,7 +39,7 @@ async function main(): Promise<void> {
     const initialSettings = await page.evaluate(() => window.aiv.getAppSettings())
     const copy = getAppCopy(initialSettings.ui.locale)
 
-    await page.evaluate(async (settings) => {
+    await page.evaluate(async ({ settings, glossary }) => {
       const current = await window.aiv.getAppSettings()
 
       await window.aiv.setAppSettings({
@@ -46,9 +47,13 @@ async function main(): Promise<void> {
         subtitles: {
           ...current.subtitles,
           ...settings
+        },
+        asr: {
+          ...current.asr,
+          translationGlossary: glossary
         }
       })
-    }, expectedSubtitleSettings)
+    }, { settings: expectedSubtitleSettings, glossary: expectedTranslationGlossary })
 
     await page.reload({ waitUntil: 'domcontentloaded' })
     await page.waitForSelector('#root', { timeout: 10_000 })
@@ -70,12 +75,14 @@ async function main(): Promise<void> {
       const selects = subtitleSection
         ? (Array.from(subtitleSection.querySelectorAll('.settings-select')) as HTMLSelectElement[])
         : []
+      const glossary = subtitleSection?.querySelector('.settings-textarea') as HTMLTextAreaElement | null
 
       return {
         hasDialog: Boolean(dialog),
         hasSubtitleSection: Boolean(subtitleSection),
         subtitleSectionNumberValues: inputs.map((input) => input.value),
-        subtitleSectionSelectValues: selects.map((select) => select.value)
+        subtitleSectionSelectValues: selects.map((select) => select.value),
+        translationGlossary: glossary?.value ?? ''
       }
     })
 
@@ -83,6 +90,7 @@ async function main(): Promise<void> {
     await page.screenshot({ path: screenshotPath, fullPage: false })
 
     console.log(`Subtitle settings: ${JSON.stringify(persistedSettings.subtitles)}`)
+    console.log(`Translation glossary: ${persistedSettings.asr.translationGlossary}`)
     console.log(`Expected subtitle settings: ${JSON.stringify(expectedSubtitleSettings)}`)
     console.log(`Subtitle dialog state: ${JSON.stringify(dialogState)}`)
     console.log(`Subtitle settings screenshot: ${screenshotPath}`)
@@ -103,10 +111,15 @@ async function main(): Promise<void> {
       process.exitCode = 1
     }
 
+    if (persistedSettings.asr.translationGlossary !== expectedTranslationGlossary) {
+      process.exitCode = 1
+    }
+
     if (
       !dialogState.hasDialog ||
       !dialogState.hasSubtitleSection ||
-      !dialogState.subtitleSectionNumberValues.includes('21')
+      !dialogState.subtitleSectionNumberValues.includes('21') ||
+      dialogState.translationGlossary !== expectedTranslationGlossary
     ) {
       process.exitCode = 1
     }

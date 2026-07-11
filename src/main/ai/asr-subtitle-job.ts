@@ -13,6 +13,7 @@ export type WhisperSubtitleArgs = {
   audioPath: string
   outputBase: string
   language?: string
+  disableGpu?: boolean
 }
 
 export type RunAsrSubtitleJobOptions = {
@@ -69,6 +70,12 @@ function tailOutput(output: string): string {
   return normalized.length > 1800 ? normalized.slice(-1800) : normalized
 }
 
+type ProcessExecutionError = Error & {
+  exitCode?: number | null
+  signal?: NodeJS.Signals | null
+  output?: string
+}
+
 async function runProcess(command: string, args: string[], label: string): Promise<void> {
   await new Promise<void>((resolve, reject) => {
     const child = spawn(command, args, {
@@ -85,13 +92,19 @@ async function runProcess(command: string, args: string[], label: string): Promi
     })
 
     child.on('error', reject)
-    child.on('close', (code) => {
+    child.on('close', (code, signal) => {
       if (code === 0) {
         resolve()
         return
       }
 
-      reject(new Error(`${label} 失败，退出码 ${code ?? 'unknown'}：${tailOutput(output)}`))
+      const error = new Error(
+        `${label} 失败，退出码 ${code ?? 'unknown'}${signal ? `，信号 ${signal}` : ''}：${tailOutput(output)}`
+      ) as ProcessExecutionError
+      error.exitCode = code
+      error.signal = signal
+      error.output = output
+      reject(error)
     })
   })
 }
@@ -101,7 +114,7 @@ export function buildFfmpegAudioExtractArgs(mediaPath: string, audioPath: string
 }
 
 export function buildWhisperSubtitleArgs(options: WhisperSubtitleArgs): string[] {
-  return [
+  const args = [
     '-m',
     options.modelPath,
     '-f',
@@ -114,6 +127,31 @@ export function buildWhisperSubtitleArgs(options: WhisperSubtitleArgs): string[]
     '-l',
     options.language ?? 'auto'
   ]
+
+  if (options.disableGpu) {
+    args.push('-ng')
+  }
+
+  return args
+}
+
+export function isWhisperGpuResourceFailure(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false
+  }
+
+  const candidate = error as ProcessExecutionError
+  const output = candidate.output?.toLowerCase() ?? ''
+  const mentionsGpuAllocation =
+    output.includes('ggml_metal_buffer_init') ||
+    output.includes('failed to allocate buffer') ||
+    (output.includes('metal') && output.includes('allocate'))
+
+  if (!mentionsGpuAllocation) {
+    return false
+  }
+
+  return candidate.signal === 'SIGSEGV' || candidate.exitCode === 139
 }
 
 export function getWhisperSubtitleJsonOutputPath(outputBase: string): string {
@@ -239,16 +277,36 @@ export async function runAsrSubtitleJob(options: RunAsrSubtitleJobOptions): Prom
       percent: 0.42,
       message: copy.runtime.transcribing
     })
-    await runProcess(
-      options.whisperBinaryPath,
-      buildWhisperSubtitleArgs({
-        modelPath: options.modelPath,
-        audioPath,
-        outputBase,
-        language: options.language
-      }),
-      'whisper.cpp'
-    )
+    const whisperArgs = {
+      modelPath: options.modelPath,
+      audioPath,
+      outputBase,
+      language: options.language
+    }
+
+    try {
+      await runProcess(options.whisperBinaryPath, buildWhisperSubtitleArgs(whisperArgs), 'whisper.cpp')
+    } catch (error) {
+      if (!isWhisperGpuResourceFailure(error)) {
+        throw error
+      }
+
+      await Promise.all([
+        rm(`${outputBase}.vtt`, { force: true }),
+        rm(`${outputBase}.srt`, { force: true }),
+        rm(`${outputBase}.json`, { force: true })
+      ])
+      emitProgress(options.onProgress, {
+        stage: 'transcribing',
+        percent: 0.42,
+        message: copy.runtime.asrGpuFallback
+      })
+      await runProcess(
+        options.whisperBinaryPath,
+        buildWhisperSubtitleArgs({ ...whisperArgs, disableGpu: true }),
+        'whisper.cpp CPU fallback'
+      )
+    }
 
     if (!(await pathExists(subtitlePath)) || !(await pathExists(subtitleSrtPath))) {
       throw new Error(copy.runtime.noSubtitleFiles)
