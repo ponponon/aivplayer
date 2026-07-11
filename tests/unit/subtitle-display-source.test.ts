@@ -73,6 +73,9 @@ describe('subtitle display source constraints', () => {
     expect(appSource).toContain("stage: 'translating'")
     expect(appSource).toContain('translationServiceStatusTone')
     expect(appSource).toContain('copy.asrPanel.translatedSubtitleReady')
+    expect(appSource).toContain('copy.asrPanel.openTranslatedSrtFile')
+    expect(appSource).toContain('copy.asrPanel.copyTranslatedSrtPath')
+    expect(appSource).toContain('copy.asrPanel.copyTranslatedVttPath')
     expect(appSource).toContain('className="subtitle-language-row"')
     expect(appSource).toContain('className="subtitle-translation-row"')
     expect(appSource).toContain('window.aiv.testAsrTranslationService')
@@ -105,7 +108,7 @@ describe('subtitle display source constraints', () => {
     expect(controlsSource).toContain('aria-pressed={isSelected}')
     expect(controlsSource).toContain('onChange({ lineHeight })')
     expect(controlsSource).toContain('onChange({ displayMode })')
-    expect(controlsSource).toContain("{!hasTranslation && settings.displayMode !== 'source' ? (")
+    expect(controlsSource).toContain('{!hasTranslation ? (')
   })
 
   it('offers one-tap subtitle font size presets alongside the stepper', () => {

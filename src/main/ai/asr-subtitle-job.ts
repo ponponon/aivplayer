@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { spawn } from 'node:child_process'
-import { mkdtemp, mkdir, readFile, rm, stat } from 'node:fs/promises'
+import { copyFile, mkdtemp, mkdir, readFile, rm, stat } from 'node:fs/promises'
 import { basename, dirname, extname, join } from 'node:path'
 import { tmpdir } from 'node:os'
 import type { AsrJobProgress } from '../../shared/media-types.ts'
@@ -182,6 +182,15 @@ export function createSubtitleOutputBase(
   mediaMtimeMs: number,
   modelId: string
 ): string {
+  return `${createLegacySubtitleOutputBase(cacheDirectory, mediaPath, mediaMtimeMs, modelId)}-raw`
+}
+
+function createLegacySubtitleOutputBase(
+  cacheDirectory: string,
+  mediaPath: string,
+  mediaMtimeMs: number,
+  modelId: string
+): string {
   const safeStem = sanitizeFileStem(mediaPath)
   const cacheKey = createCacheKey(mediaPath, mediaMtimeMs, modelId)
   return join(cacheDirectory, 'subtitles', `${safeStem}-${modelId}-${cacheKey}`)
@@ -210,17 +219,67 @@ export function getWhisperSubtitleOutputPaths(
   }
 }
 
+export function getLegacyWhisperSubtitleOutputPaths(
+  cacheDirectory: string,
+  mediaPath: string,
+  mediaMtimeMs: number,
+  modelId: string
+): WhisperSubtitleOutputPaths {
+  const outputBase = createLegacySubtitleOutputBase(cacheDirectory, mediaPath, mediaMtimeMs, modelId)
+
+  return {
+    outputBase,
+    subtitlePath: getWhisperSubtitleOutputPath(outputBase),
+    subtitleSrtPath: getWhisperSubtitleSrtOutputPath(outputBase)
+  }
+}
+
+async function hasSubtitlePair(paths: Pick<WhisperSubtitleOutputPaths, 'subtitlePath' | 'subtitleSrtPath'>): Promise<boolean> {
+  return (await pathExists(paths.subtitlePath)) && (await pathExists(paths.subtitleSrtPath))
+}
+
+async function copyLegacySubtitleCache(
+  legacyPaths: WhisperSubtitleOutputPaths,
+  currentPaths: WhisperSubtitleOutputPaths
+): Promise<void> {
+  await mkdir(dirname(currentPaths.outputBase), { recursive: true })
+
+  await copyFile(legacyPaths.subtitlePath, currentPaths.subtitlePath)
+  await copyFile(legacyPaths.subtitleSrtPath, currentPaths.subtitleSrtPath)
+
+  const legacyJsonPath = getWhisperSubtitleJsonOutputPath(legacyPaths.outputBase)
+  if (await pathExists(legacyJsonPath)) {
+    await copyFile(legacyJsonPath, getWhisperSubtitleJsonOutputPath(currentPaths.outputBase))
+  }
+}
+
 export async function findWhisperSubtitleCache(
   query: WhisperSubtitleCacheQuery
 ): Promise<WhisperSubtitleOutputPaths | null> {
   const mediaStat = await stat(query.mediaPath)
   const paths = getWhisperSubtitleOutputPaths(query.cacheDirectory, query.mediaPath, mediaStat.mtimeMs, query.modelId)
 
-  if ((await pathExists(paths.subtitlePath)) && (await pathExists(paths.subtitleSrtPath))) {
+  if (await hasSubtitlePair(paths)) {
     return paths
   }
 
-  return null
+  const legacyPaths = getLegacyWhisperSubtitleOutputPaths(
+    query.cacheDirectory,
+    query.mediaPath,
+    mediaStat.mtimeMs,
+    query.modelId
+  )
+
+  if (!(await hasSubtitlePair(legacyPaths))) {
+    return null
+  }
+
+  try {
+    await copyLegacySubtitleCache(legacyPaths, paths)
+    return (await hasSubtitlePair(paths)) ? paths : legacyPaths
+  } catch {
+    return legacyPaths
+  }
 }
 
 export async function runAsrSubtitleJob(options: RunAsrSubtitleJobOptions): Promise<RunAsrSubtitleJobResult> {
@@ -232,20 +291,14 @@ export async function runAsrSubtitleJob(options: RunAsrSubtitleJobOptions): Prom
   })
 
   const mediaStat = await stat(options.mediaPath)
-  const outputBase = createSubtitleOutputBase(
-    options.cacheDirectory,
-    options.mediaPath,
-    mediaStat.mtimeMs,
-    options.modelId
-  )
-  const { subtitlePath, subtitleSrtPath } = getWhisperSubtitleOutputPaths(
+  const { outputBase, subtitlePath, subtitleSrtPath } = getWhisperSubtitleOutputPaths(
     options.cacheDirectory,
     options.mediaPath,
     mediaStat.mtimeMs,
     options.modelId
   )
 
-  if ((await pathExists(subtitlePath)) && (await pathExists(subtitleSrtPath))) {
+  if (await hasSubtitlePair({ subtitlePath, subtitleSrtPath })) {
     const subtitleLanguage = await readWhisperSubtitleLanguage(outputBase)
 
     emitProgress(options.onProgress, {
@@ -256,6 +309,39 @@ export async function runAsrSubtitleJob(options: RunAsrSubtitleJobOptions): Prom
     return {
       subtitlePath,
       subtitleSrtPath,
+      subtitleLanguage: subtitleLanguage ?? undefined
+    }
+  }
+
+  const legacyPaths = getLegacyWhisperSubtitleOutputPaths(
+    options.cacheDirectory,
+    options.mediaPath,
+    mediaStat.mtimeMs,
+    options.modelId
+  )
+
+  if (await hasSubtitlePair(legacyPaths)) {
+    let cachedPaths = legacyPaths
+
+    try {
+      await copyLegacySubtitleCache(legacyPaths, { outputBase, subtitlePath, subtitleSrtPath })
+      if (await hasSubtitlePair({ subtitlePath, subtitleSrtPath })) {
+        cachedPaths = { outputBase, subtitlePath, subtitleSrtPath }
+      }
+    } catch {
+      // Keep using the legacy cache when promotion cannot be completed.
+    }
+
+    const subtitleLanguage = await readWhisperSubtitleLanguage(cachedPaths.outputBase)
+
+    emitProgress(options.onProgress, {
+      stage: 'completed',
+      percent: 1,
+      message: copy.runtime.subtitleCacheHit
+    })
+    return {
+      subtitlePath: cachedPaths.subtitlePath,
+      subtitleSrtPath: cachedPaths.subtitleSrtPath,
       subtitleLanguage: subtitleLanguage ?? undefined
     }
   }

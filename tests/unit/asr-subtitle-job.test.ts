@@ -7,6 +7,7 @@ import {
   buildWhisperSubtitleArgs,
   createSubtitleOutputBase,
   findWhisperSubtitleCache,
+  getLegacyWhisperSubtitleOutputPaths,
   getWhisperSubtitleOutputPath,
   getWhisperSubtitleSrtOutputPath,
   isWhisperGpuResourceFailure,
@@ -87,6 +88,7 @@ describe('ASR subtitle job command planning', () => {
 
     expect(first).toBe(second)
     expect(first).toContain('/cache/subtitles/movie-large-v3-turbo-q5_0-')
+    expect(first).toMatch(/-raw$/)
     expect(getWhisperSubtitleOutputPath(first)).toBe(`${first}.vtt`)
     expect(getWhisperSubtitleSrtOutputPath(first)).toBe(`${first}.srt`)
   })
@@ -118,6 +120,34 @@ describe('ASR subtitle job command planning', () => {
       subtitlePath: getWhisperSubtitleOutputPath(outputBase),
       subtitleSrtPath: getWhisperSubtitleSrtOutputPath(outputBase)
     })
+  })
+
+  it('promotes legacy raw subtitle caches to the explicitly marked filename', async () => {
+    const cacheDirectory = await mkdtemp(join(tmpdir(), 'aivplayer-legacy-cache-'))
+    const mediaPath = join(cacheDirectory, 'video.mp4')
+    const modelId = 'large-v3-turbo-q5_0'
+    await writeFile(mediaPath, 'video')
+
+    const mediaStat = await stat(mediaPath)
+    const legacyPaths = getLegacyWhisperSubtitleOutputPaths(cacheDirectory, mediaPath, mediaStat.mtimeMs, modelId)
+    await mkdir(join(cacheDirectory, 'subtitles'), { recursive: true })
+    await writeFile(legacyPaths.subtitlePath, 'WEBVTT\n\n00:00.000 --> 00:01.000\nhello\n')
+    await writeFile(legacyPaths.subtitleSrtPath, '1\n00:00:00,000 --> 00:01:00,000\nhello\n')
+    await writeFile(
+      `${legacyPaths.outputBase}.json`,
+      JSON.stringify({ result: { language: 'en' } })
+    )
+
+    const resolved = await findWhisperSubtitleCache({
+      cacheDirectory,
+      mediaPath,
+      modelId
+    })
+
+    expect(resolved?.subtitlePath).toMatch(/-raw\.vtt$/)
+    expect(resolved?.subtitleSrtPath).toMatch(/-raw\.srt$/)
+    await expect(stat(resolved?.subtitlePath ?? '')).resolves.toBeTruthy()
+    await expect(readWhisperSubtitleLanguage(resolved?.outputBase ?? '')).resolves.toBe('en')
   })
 
   it('reads the whisper.cpp subtitle language from the JSON sidecar', async () => {

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
-import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises'
-import { basename, extname, join } from 'node:path'
+import { copyFile, mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises'
+import { basename, dirname, extname, join } from 'node:path'
 import type { SubtitleTargetLanguageId } from '../../shared/app-settings.ts'
 import type { TranscriptSegment } from '../../shared/media-types.ts'
 import { parseVtt, writeSrt, writeVtt } from './subtitle-writer.ts'
@@ -161,6 +161,20 @@ function sanitizePathPart(value: string): string {
     .slice(0, 80) || 'default'
 }
 
+function getLegacySourceSubtitlePath(sourceSubtitlePath: string): string | null {
+  const sourceStem = basename(sourceSubtitlePath, extname(sourceSubtitlePath))
+  if (!sourceStem.endsWith('-raw')) {
+    return null
+  }
+
+  return join(dirname(sourceSubtitlePath), `${sourceStem.slice(0, -4)}${extname(sourceSubtitlePath)}`)
+}
+
+function getTranslationFileStem(sourceSubtitlePath: string): string {
+  const safeStem = sanitizeFileStem(sourceSubtitlePath)
+  return safeStem.endsWith('-raw') ? safeStem.slice(0, -4) : safeStem
+}
+
 function createTranslationCacheKey(options: {
   sourceSubtitlePath: string
   sourceSubtitleText: string
@@ -193,10 +207,34 @@ function getTranslatedSubtitleOutputBase(options: {
   targetLanguage: SubtitleTargetLanguageId
   provider: SubtitleTranslationProviderRef
 }): string {
-  const safeStem = sanitizeFileStem(options.sourceSubtitlePath)
+  const safeStem = getTranslationFileStem(options.sourceSubtitlePath)
   const safeProvider = sanitizePathPart(options.provider.id)
   const safeModel = sanitizePathPart(options.provider.model)
   const cacheKey = createTranslationCacheKey(options)
+
+  return join(
+    options.cacheDirectory,
+    'subtitles',
+    `${safeStem}-translated-${options.targetLanguage}-${safeProvider}-${safeModel}-${cacheKey}`
+  )
+}
+
+function getLegacyTranslatedSubtitleOutputBase(options: {
+  cacheDirectory: string
+  sourceSubtitlePath: string
+  sourceSubtitleText: string
+  sourceLanguage: string
+  targetLanguage: SubtitleTargetLanguageId
+  provider: SubtitleTranslationProviderRef
+}): string {
+  const legacySourceSubtitlePath = getLegacySourceSubtitlePath(options.sourceSubtitlePath) ?? options.sourceSubtitlePath
+  const safeStem = getTranslationFileStem(legacySourceSubtitlePath)
+  const safeProvider = sanitizePathPart(options.provider.id)
+  const safeModel = sanitizePathPart(options.provider.model)
+  const cacheKey = createTranslationCacheKey({
+    ...options,
+    sourceSubtitlePath: legacySourceSubtitlePath
+  })
 
   return join(
     options.cacheDirectory,
@@ -210,6 +248,19 @@ function getTranslatedSubtitleOutputPaths(outputBase: string): RunSubtitleTransl
     subtitlePath: `${outputBase}.vtt`,
     subtitleSrtPath: `${outputBase}.srt`
   }
+}
+
+async function hasTranslationPair(paths: RunSubtitleTranslationJobResult): Promise<boolean> {
+  return (await pathExists(paths.subtitlePath)) && (await pathExists(paths.subtitleSrtPath))
+}
+
+async function copyLegacyTranslationCache(
+  legacyPaths: RunSubtitleTranslationJobResult,
+  currentPaths: RunSubtitleTranslationJobResult
+): Promise<void> {
+  await mkdir(dirname(currentPaths.subtitlePath), { recursive: true })
+  await copyFile(legacyPaths.subtitlePath, currentPaths.subtitlePath)
+  await copyFile(legacyPaths.subtitleSrtPath, currentPaths.subtitleSrtPath)
 }
 
 export function createSubtitleTranslationProviderRef(
@@ -462,8 +513,32 @@ export async function runSubtitleTranslationJob(
   })
   const outputPaths = getTranslatedSubtitleOutputPaths(outputBase)
 
-  if ((await pathExists(outputPaths.subtitlePath)) && (await pathExists(outputPaths.subtitleSrtPath))) {
+  if (await hasTranslationPair(outputPaths)) {
     return outputPaths
+  }
+
+  const legacyOutputPaths = getTranslatedSubtitleOutputPaths(
+    getLegacyTranslatedSubtitleOutputBase({
+      cacheDirectory: options.cacheDirectory,
+      sourceSubtitlePath: options.sourceSubtitlePath,
+      sourceSubtitleText,
+      sourceLanguage,
+      targetLanguage: options.targetLanguage,
+      provider: options.provider
+    })
+  )
+
+  if (await hasTranslationPair(legacyOutputPaths)) {
+    try {
+      await copyLegacyTranslationCache(legacyOutputPaths, outputPaths)
+      if (await hasTranslationPair(outputPaths)) {
+        return outputPaths
+      }
+    } catch {
+      // Keep using the legacy cache when promotion cannot be completed.
+    }
+
+    return legacyOutputPaths
   }
 
   throwIfTranslationAborted(options.signal)
@@ -484,7 +559,7 @@ export async function runSubtitleTranslationJob(
     retryDelaysMs: options.retryDelaysMs ?? defaultTranslationRetryDelaysMs
   })
 
-  await mkdir(join(options.cacheDirectory, 'translated-subtitles'), { recursive: true })
+  await mkdir(dirname(outputBase), { recursive: true })
   const temporaryVttPath = `${outputPaths.subtitlePath}.tmp`
   const temporarySrtPath = `${outputPaths.subtitleSrtPath}.tmp`
 
@@ -517,11 +592,31 @@ export async function findSubtitleTranslationCache(
     })
     const outputPaths = getTranslatedSubtitleOutputPaths(outputBase)
 
-    if ((await pathExists(outputPaths.subtitlePath)) && (await pathExists(outputPaths.subtitleSrtPath))) {
+    if (await hasTranslationPair(outputPaths)) {
       return outputPaths
     }
 
-    return null
+    const legacyOutputPaths = getTranslatedSubtitleOutputPaths(
+      getLegacyTranslatedSubtitleOutputBase({
+        cacheDirectory: query.cacheDirectory,
+        sourceSubtitlePath: query.sourceSubtitlePath,
+        sourceSubtitleText,
+        sourceLanguage: query.sourceLanguage ?? 'auto',
+        targetLanguage: query.targetLanguage,
+        provider: query.provider
+      })
+    )
+
+    if (!(await hasTranslationPair(legacyOutputPaths))) {
+      return null
+    }
+
+    try {
+      await copyLegacyTranslationCache(legacyOutputPaths, outputPaths)
+      return (await hasTranslationPair(outputPaths)) ? outputPaths : legacyOutputPaths
+    } catch {
+      return legacyOutputPaths
+    }
   } catch {
     return null
   }

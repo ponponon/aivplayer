@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { createHash } from 'node:crypto'
-import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { basename, extname, join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { _electron as electron } from 'playwright'
@@ -20,6 +20,25 @@ type TranslationSmokeService = {
   setResponseDelay: (delayMs: number) => void
   setRejectRequests: (rejectRequests: boolean) => void
   close: () => Promise<void>
+}
+
+function getWhisperSubtitleOutputPaths(
+  cacheDirectory: string,
+  mediaPath: string,
+  mediaMtimeMs: number,
+  modelId: string
+): { outputBase: string; subtitlePath: string; subtitleSrtPath: string } {
+  const safeStem = basename(mediaPath, extname(mediaPath))
+    .replace(/[^a-zA-Z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'media'
+  const cacheKey = createHash('sha1').update(`${mediaPath}:${mediaMtimeMs}:${modelId}`).digest('hex').slice(0, 12)
+  const outputBase = join(cacheDirectory, 'subtitles', `${safeStem}-${modelId}-${cacheKey}-raw`)
+
+  return {
+    outputBase,
+    subtitlePath: `${outputBase}.vtt`,
+    subtitleSrtPath: `${outputBase}.srt`
+  }
 }
 
 function readRequestBody(request: IncomingMessage): Promise<string> {
@@ -137,25 +156,6 @@ async function startTranslationSmokeService(): Promise<TranslationSmokeService> 
     setResponseDelay: () => undefined,
     setRejectRequests: () => undefined,
     close: async () => undefined
-  }
-}
-
-function getWhisperSubtitleOutputPaths(
-  cacheDirectory: string,
-  mediaPath: string,
-  mediaMtimeMs: number,
-  modelId: string
-): { outputBase: string; subtitlePath: string; subtitleSrtPath: string } {
-  const safeStem = basename(mediaPath, extname(mediaPath))
-    .replace(/[^a-zA-Z0-9._-]+/g, '-')
-    .replace(/^-+|-+$/g, '') || 'media'
-  const cacheKey = createHash('sha1').update(`${mediaPath}:${mediaMtimeMs}:${modelId}`).digest('hex').slice(0, 12)
-  const outputBase = join(cacheDirectory, 'subtitles', `${safeStem}-${modelId}-${cacheKey}`)
-
-  return {
-    outputBase,
-    subtitlePath: `${outputBase}.vtt`,
-    subtitleSrtPath: `${outputBase}.srt`
   }
 }
 
@@ -284,6 +284,7 @@ try {
   const asrTab = page.getByRole('tab', { name: 'ASR 面板' })
   await assertUnique(asrTab, 'ASR panel tab')
   await asrTab.click()
+  await page.getByText(translationService.model, { exact: true }).waitFor({ state: 'visible', timeout: 10_000 })
   const sourceReady = page.locator('.subtitle-status.ready')
   await sourceReady.waitFor({ state: 'visible', timeout: 10_000 })
 
@@ -296,16 +297,14 @@ try {
   if (englishTargetSettings.subtitles.targetLanguage !== 'en') {
     throw new Error(`Target language quick switch did not write English: ${englishTargetSettings.subtitles.targetLanguage}`)
   }
+  await page.getByText('译文已就绪', { exact: true }).waitFor({ state: 'visible', timeout: 10_000 })
+
+  translationService.setResponseDelay(350)
   await chineseTargetButton.click()
   const chineseTargetSettings = await page.evaluate(() => window.aiv.getAppSettings())
   if (chineseTargetSettings.subtitles.targetLanguage !== 'zh') {
     throw new Error(`Target language quick switch did not restore Chinese: ${chineseTargetSettings.subtitles.targetLanguage}`)
   }
-
-  const translateButton = page.getByRole('button', { name: '翻译为中文' })
-  await assertUnique(translateButton, 'translate button')
-  translationService.setResponseDelay(350)
-  await translateButton.click()
 
   if (translationService.mode === 'mock') {
     const cancelButton = page.getByRole('button', { name: '取消翻译' })
@@ -326,6 +325,8 @@ try {
     translationService.mode,
     { timeout: 10_000 }
   )
+  const translateButton = page.getByRole('button', { name: '翻译为中文' })
+  await assertUnique(translateButton, 'translate button')
   const savedSettings = await page.evaluate(() => window.aiv.getAppSettings())
   if (savedSettings.subtitles.displayMode !== 'translation') {
     throw new Error(`Translation did not switch display mode: ${savedSettings.subtitles.displayMode}`)
@@ -340,6 +341,24 @@ try {
   ) {
     throw new Error(`Translated overlay text was not mounted: ${translatedText}`)
   }
+
+  const subtitleCacheEntries = await readdir(join(cacheDirectory, 'subtitles'))
+  if (!subtitleCacheEntries.some((entry) => entry.endsWith('-raw.vtt'))) {
+    throw new Error(`Raw subtitle cache was not marked in the shared folder: ${subtitleCacheEntries.join(', ')}`)
+  }
+  if (!subtitleCacheEntries.some((entry) => entry.includes('-translated-zh-') && entry.endsWith('.vtt'))) {
+    throw new Error(`Translated subtitle cache was not written to the shared folder: ${subtitleCacheEntries.join(', ')}`)
+  }
+
+  const subtitleToolsSummary = page.locator('.subtitle-actions-summary')
+  await assertUnique(subtitleToolsSummary, 'subtitle tools trigger')
+  await subtitleToolsSummary.click()
+  const translatedSrtAction = page.getByRole('menuitem', { name: '打开译文 SRT 文件', exact: true })
+  await assertUnique(translatedSrtAction, 'translated SRT action')
+  await translatedSrtAction.waitFor({ state: 'visible', timeout: 10_000 })
+  const translatedMenuScreenshot = join(tmpdir(), `aivplayer-smoke-translation-player-menu-${Date.now()}.png`)
+  await page.screenshot({ path: translatedMenuScreenshot, fullPage: false })
+  await subtitleToolsSummary.click()
 
   const glossaryTarget = translationService.glossary
     .split(/\r?\n/)
@@ -432,6 +451,7 @@ try {
   console.log(`Translated overlay: ${translatedText}`)
   console.log(`Restored overlay: ${restoredText}`)
   console.log(`In-progress screenshot: ${translatingScreenshot}`)
+  console.log(`Translated menu screenshot: ${translatedMenuScreenshot}`)
 } finally {
   await app?.close()
   await translationService.close()

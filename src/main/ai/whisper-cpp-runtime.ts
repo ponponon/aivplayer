@@ -387,6 +387,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
         installedModels,
         recommendedModel: recommendedModelManifest.fileName,
         recommendedModelManifest,
+        whisperVersion: null,
         message: copy.runtime.asrEngineMissing
       }
     }
@@ -401,6 +402,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
         installedModels,
         recommendedModel: recommendedModelManifest.fileName,
         recommendedModelManifest,
+        whisperVersion: null,
         message: copy.runtime.ffmpegMissing
       }
     }
@@ -417,6 +419,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
       installedModels,
       recommendedModel: recommendedModelManifest.fileName,
       recommendedModelManifest,
+      whisperVersion: version,
       message: hasModel
         ? copy.runtime.detectedWhisper(version)
         : copy.runtime.detectedWhisperWithoutModels(recommendedModelManifest.fileName)

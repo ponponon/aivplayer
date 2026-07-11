@@ -111,6 +111,24 @@ function formatSubtitleLanguageLabel(copy: LocaleCopy, subtitleLanguage: string 
   return copy.subtitleLanguageOptions[subtitleLanguage as SubtitleLanguageId]?.label ?? subtitleLanguage
 }
 
+function getAsrRuntimeStatusMessage(copy: LocaleCopy, status: AsrRuntimeStatus | null): string {
+  if (!status) {
+    return copy.asrPanel.detectingEngine
+  }
+
+  if (!status.binaryPath) {
+    return copy.runtime.asrEngineMissing
+  }
+
+  if (!status.ffmpegPath) {
+    return copy.runtime.ffmpegMissing
+  }
+
+  return status.installedModels.length > 0
+    ? copy.runtime.detectedWhisper(status.whisperVersion)
+    : copy.runtime.detectedWhisperWithoutModels(status.recommendedModel)
+}
+
 function mergePlaylist(current: MediaFile[], incoming: MediaFile[]): MediaFile[] {
   const seen = new Set(current.map((item) => item.path))
   const additions = incoming.filter((item) => !seen.has(item.path))
@@ -303,6 +321,8 @@ export function App(): ReactElement {
   )
   const subtitlePath = activeSubtitle?.subtitlePath ?? subtitleResult?.subtitlePath ?? null
   const subtitleSrtPath = activeSubtitle?.subtitleSrtPath ?? subtitleResult?.subtitleSrtPath ?? null
+  const translatedSubtitlePath = translatedSubtitleResult?.subtitlePath ?? null
+  const translatedSubtitleSrtPath = translatedSubtitleResult?.subtitleSrtPath ?? null
   const canTranslateSubtitle = Boolean(subtitlePath && !isAsrBusy && !isTranslatingSubtitle)
   const subtitleTargetLanguageLabel = copy.subtitleLanguageOptions[appSettings.subtitles.targetLanguage].label
   const subtitleSourceLanguage = activeSubtitle?.subtitleLanguage ?? subtitleResult?.subtitleLanguage ?? null
@@ -331,6 +351,7 @@ export function App(): ReactElement {
   const hasCurrentFile = Boolean(state.currentFile)
   const canOpenSubtitleFolder = Boolean(subtitlePath)
   const canOpenSubtitleSrt = Boolean(subtitleSrtPath)
+  const canOpenTranslatedSubtitleSrt = Boolean(translatedSubtitleSrtPath)
   const hasClipExportSubtitle = Boolean(subtitlePath || subtitleSrtPath)
   const subtitleStatusLabel = activeSubtitle?.subtitleUrl
     ? copy.panels.subtitleStatusReady
@@ -911,6 +932,20 @@ export function App(): ReactElement {
     }
   }
 
+  const openTranslatedSubtitleSrtFile = async (): Promise<void> => {
+    if (!translatedSubtitleSrtPath) {
+      return
+    }
+
+    const success = await window.aiv.openPath(translatedSubtitleSrtPath)
+    if (!success) {
+      setAsrNotice({
+        success: false,
+        message: copy.messages.noSrtFile
+      })
+    }
+  }
+
   const exportSubtitleSrtFile = async (): Promise<void> => {
     if (!subtitlePath) {
       return
@@ -924,7 +959,9 @@ export function App(): ReactElement {
     setAsrNotice(result)
   }
 
-  const translateSubtitle = async (): Promise<void> => {
+  const translateSubtitle = async (
+    targetLanguage: SubtitleTargetLanguageId = appSettings.subtitles.targetLanguage
+  ): Promise<void> => {
     if (!subtitlePath || isTranslatingSubtitle) {
       return
     }
@@ -942,7 +979,7 @@ export function App(): ReactElement {
         subtitlePath,
         subtitleSrtPath: subtitleSrtPath ?? undefined,
         sourceLanguage: subtitleTranslationSourceLanguage,
-        targetLanguage: appSettings.subtitles.targetLanguage
+        targetLanguage
       })
 
       setTranslatedSubtitleResult(result.success ? result : null)
@@ -966,16 +1003,16 @@ export function App(): ReactElement {
   }
 
   const changeSubtitleTargetLanguage = (targetLanguage: SubtitleTargetLanguageId): void => {
-    if (
-      targetLanguage === appSettings.subtitles.targetLanguage ||
-      isAsrBusy ||
-      isTranslatingSubtitle
-    ) {
+    if (isAsrBusy || isTranslatingSubtitle) {
       return
     }
 
     setAsrNotice(null)
-    patchAppSettingsSection('subtitles', { targetLanguage })
+    setTranslatedSubtitleResult(null)
+    if (targetLanguage !== appSettings.subtitles.targetLanguage) {
+      patchAppSettingsSection('subtitles', { targetLanguage })
+    }
+    void translateSubtitle(targetLanguage)
   }
 
   const copySubtitleSrtPath = async (): Promise<void> => {
@@ -1040,6 +1077,30 @@ export function App(): ReactElement {
 
     const result = await window.aiv.copyTextToClipboard({
       text: subtitlePath
+    })
+
+    setAsrNotice(result)
+  }
+
+  const copyTranslatedSubtitleSrtPath = async (): Promise<void> => {
+    if (!translatedSubtitleSrtPath) {
+      return
+    }
+
+    const result = await window.aiv.copyTextToClipboard({
+      text: translatedSubtitleSrtPath
+    })
+
+    setAsrNotice(result)
+  }
+
+  const copyTranslatedSubtitleVttPath = async (): Promise<void> => {
+    if (!translatedSubtitlePath) {
+      return
+    }
+
+    const result = await window.aiv.copyTextToClipboard({
+      text: translatedSubtitlePath
     })
 
     setAsrNotice(result)
@@ -1946,7 +2007,7 @@ export function App(): ReactElement {
                       <RefreshCcw size={14} />
                     </button>
                   </div>
-                  <p>{asrStatus?.message ?? copy.asrPanel.detectingEngine}</p>
+                  <p>{getAsrRuntimeStatusMessage(copy, asrStatus)}</p>
                   <div className="asr-meta">
                     <span>
                       <Clock size={14} />
@@ -2089,6 +2150,20 @@ export function App(): ReactElement {
                               {copy.asrPanel.openSrtFile}
                             </button>
                           ) : null}
+                          {canOpenTranslatedSubtitleSrt ? (
+                            <button
+                              className="subtitle-action-item"
+                              type="button"
+                              role="menuitem"
+                              onClick={(event) => {
+                                closeSubtitleActionsMenu(event)
+                                void openTranslatedSubtitleSrtFile()
+                              }}
+                            >
+                              <FileText size={14} />
+                              {copy.asrPanel.openTranslatedSrtFile}
+                            </button>
+                          ) : null}
                           {canOpenSubtitleSrt ? (
                             <button
                               className="subtitle-action-item"
@@ -2103,6 +2178,20 @@ export function App(): ReactElement {
                               {copy.asrPanel.copySrtPath}
                             </button>
                           ) : null}
+                          {canOpenTranslatedSubtitleSrt ? (
+                            <button
+                              className="subtitle-action-item"
+                              type="button"
+                              role="menuitem"
+                              onClick={(event) => {
+                                closeSubtitleActionsMenu(event)
+                                void copyTranslatedSubtitleSrtPath()
+                              }}
+                            >
+                              <Copy size={14} />
+                              {copy.asrPanel.copyTranslatedSrtPath}
+                            </button>
+                          ) : null}
                           {canOpenSubtitleFolder ? (
                             <button
                               className="subtitle-action-item"
@@ -2115,6 +2204,20 @@ export function App(): ReactElement {
                             >
                               <Copy size={14} />
                               {copy.asrPanel.copyVttPath}
+                            </button>
+                          ) : null}
+                          {canOpenTranslatedSubtitleSrt ? (
+                            <button
+                              className="subtitle-action-item"
+                              type="button"
+                              role="menuitem"
+                              onClick={(event) => {
+                                closeSubtitleActionsMenu(event)
+                                void copyTranslatedSubtitleVttPath()
+                              }}
+                            >
+                              <Copy size={14} />
+                              {copy.asrPanel.copyTranslatedVttPath}
                             </button>
                           ) : null}
                           {canOpenSubtitleFolder ? (
@@ -2214,7 +2317,13 @@ export function App(): ReactElement {
                     <button
                       className="asr-action-button"
                       type="button"
-                      onClick={isTranslatingSubtitle ? cancelTranslation : translateSubtitle}
+                      onClick={() => {
+                        if (isTranslatingSubtitle) {
+                          void cancelTranslation()
+                        } else {
+                          void translateSubtitle()
+                        }
+                      }}
                       disabled={!canTranslateSubtitle && !isTranslatingSubtitle}
                     >
                       {isTranslatingSubtitle ? <X size={16} /> : <Languages size={16} />}

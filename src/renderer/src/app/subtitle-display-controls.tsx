@@ -134,7 +134,11 @@ export function SubtitleDisplayControls({
                   }}
                   disabled={isDisabled}
                   aria-pressed={isSelected}
-                  title={copy.subtitleDisplay.displayModeOptions[displayMode]}
+                  title={
+                    isDisabled
+                      ? copy.subtitleDisplay.translationUnavailable
+                      : copy.subtitleDisplay.displayModeOptions[displayMode]
+                  }
                 >
                   {copy.subtitleDisplay.displayModeOptions[displayMode]}
                 </button>
@@ -143,7 +147,7 @@ export function SubtitleDisplayControls({
           </div>
         </div>
 
-        {!hasTranslation && settings.displayMode !== 'source' ? (
+        {!hasTranslation ? (
           <p className="subtitle-display-hint">{copy.subtitleDisplay.translationUnavailable}</p>
         ) : null}
 

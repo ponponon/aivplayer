@@ -16,6 +16,12 @@ describe('settings UI source constraints', () => {
     expect(playerCss).toMatch(/\.settings-field\s*\{[^}]*grid-template-columns:\s*1fr;/s)
   })
 
+  it('keeps two-column settings cards at their own content height', () => {
+    const playerCss = readSource('src/renderer/src/styles/player.css')
+
+    expect(playerCss).toMatch(/\.settings-grid\s*\{[^}]*align-items:\s*start;/s)
+  })
+
   it('routes every settings field through the shared SettingsField structure', () => {
     const settingsDialogSource = readSource('src/renderer/src/app/settings-dialog.tsx')
     const settingsFieldComponentBody = getNamedBody(
@@ -269,5 +275,7 @@ describe('settings UI source constraints', () => {
     expect(smokeScript).toContain("page.screenshot({ path: screenshotPath, fullPage: false })")
     expect(smokeScript).toContain("textAlign !== 'right'")
     expect(smokeScript).toContain("page.locator('[data-settings-tab=\"interface\"]').click()")
+    expect(smokeScript).toContain("page.locator('[data-settings-tab=\"video\"]').click()")
+    expect(smokeScript).toContain('videoCardHeight.alignItems !== \'start\'')
   })
 })

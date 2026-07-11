@@ -1005,7 +1005,7 @@
 
 .subtitle-target-language-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+  grid-template-columns: max-content minmax(0, 1fr);
   align-items: center;
   gap: 10px;
   min-width: 0;
@@ -1020,11 +1020,13 @@
 
 .subtitle-target-language-row > span {
   min-width: 0;
+  white-space: nowrap;
 }
 
 .subtitle-target-language-group {
   justify-content: flex-end;
   gap: 4px;
+  min-width: 0;
 }
 
 .subtitle-target-language-choice {
@@ -1855,6 +1857,7 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+  align-items: start;
 }
 
 .settings-card {

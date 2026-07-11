@@ -68,6 +68,7 @@ export type AsrRuntimeStatus = {
   installedModels: AsrModelInfo[]
   recommendedModel: string
   recommendedModelManifest: AsrModelManifest
+  whisperVersion: string | null
   message: string
 }
 

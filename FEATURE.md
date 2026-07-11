@@ -72,6 +72,7 @@
 - 设置面板的卡片式开关项统一通过 `SettingsToggle` 渲染，避免标题、说明、checkbox 顺序和开关写回逻辑在新增设置时再次分叉。
 - 设置面板的目录选择行统一通过 `SettingsFolderPicker` 渲染，路径展示、文件夹按钮、空值占位和可选清空按钮保持一致。
 - 设置面板的紧凑开关 + 数值行统一通过 `SettingsToggleValueRow` 渲染，避免类似“自动隐藏控制条延迟”这类组合控件再次手写布局。
+- 设置弹窗的两栏卡片按各自内容高度对齐，右侧字幕翻译配置变长时不会再把左侧视频 / 播放设置卡片拉伸出大块空白。
 - 设置面板的分组写回统一通过 `createAppSettingsSectionPatcher` 绑定，实际合并由 shared 的 `updateAppSettingsSection` 承担，ui / media / playback / asr / capture 共用同一种 partial / updater 模板，避免以后再长出多套同构 helper。
 - 设置面板本身直接接收 `AppSettingsSectionPatcher`，不再额外暴露整份 settings updater，确保 dialog 只保留自己真正需要的 section 级写回能力。
 - 设置面板的分组 patch 类型统一通过 `AppSettingsSectionUpdate` 这一种共享别名描述，避免 App 和 settings dialog 各自重复写一遍 partial / updater 联合类型。
@@ -140,7 +141,13 @@
 - 翻译后的字幕缓存会在重新打开同一个视频时自动回填，译文不需要每次都重新点翻译按钮。
 - ASR 面板会显示当前字幕的语言对，并在译文生成后提示“译文已就绪”，方便确认这次翻译到底是从哪种源语言翻到目标语言，以及结果是否已经产出。
 - ASR 面板还会显示当前翻译模型，便于确认译文缓存、设置项和实际生成结果是否来自同一条模型配置链路。
+- 原文字幕和译文字幕统一写入 `asr-cache/subtitles`，文件名分别带 `-raw` 和 `-translated-目标语言-服务商-模型-缓存标识`，打开字幕文件夹即可看到同一视频的全部字幕结果。
+- 旧版无 `-raw` 原文缓存和 `translated-subtitles` 译文缓存会在命中时安全复制到新目录，旧文件保留作回退，避免升级后丢失已有字幕。
+- 字幕工具菜单会明确区分原文 / 译文 SRT 和 VTT 路径，避免用户打开原文文件却误以为翻译没有生成。
 - ASR 面板新增中文、English、日本語、한국어目标语言快捷切换；切换时会复用对应缓存，没有缓存才重新请求翻译，翻译进行中会暂时锁定语言按钮。
+- 点击 ASR 面板中的目标语言（包括当前已选语言）会立即复用或生成对应译文，并在成功后自动切换到译文显示；不再只保存目标语言设置却继续显示原文。
+- ASR 运行状态的版本信息与界面语言解耦，切换语言后不会继续残留上一种语言的状态文案。
+- 目标语言卡片在窄侧栏中保持标签横向显示，译文模式未生成前会明确提示需要先完成翻译。
 - whisper.cpp 在 macOS Metal buffer 分配失败时会自动改用 CPU 重试，正常机器仍优先使用 GPU；回退过程会通过 ASR 进度状态展示。
 - 开发态 Electron 会从项目 `resources/` 解析 whisper.cpp 和 ffmpeg，打包态则使用 `process.resourcesPath`，避免开发环境误报运行时缺失。
 - 新增 `smoke:asr:player`，使用真实 whisper.cpp、真实模型和真实视频验证音频抽取、ASR 生成、VTT / SRT / JSON 落盘、语言探测和播放器字幕挂载；它不纳入默认 `smoke:all`，避免完整回归被 547MB 模型运行时间拖慢。

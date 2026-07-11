@@ -126,8 +126,11 @@ export type LocaleCopy = {
     subtitleToolsMenu: string
     openSubtitleFolder: string
     openSrtFile: string
+    openTranslatedSrtFile: string
     copySrtPath: string
+    copyTranslatedSrtPath: string
     copyVttPath: string
+    copyTranslatedVttPath: string
     exportSrt: string
     noModel: string
     cacheState: string
@@ -501,10 +504,13 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       subtitleTools: '字幕工具',
       subtitleToolsMenu: '字幕工具菜单',
       openSubtitleFolder: '打开字幕文件夹',
-      openSrtFile: '打开 SRT 文件',
-      copySrtPath: '复制 SRT 路径',
-      copyVttPath: '复制 VTT 路径',
-      exportSrt: '导出 SRT',
+      openSrtFile: '打开原文 SRT 文件',
+      openTranslatedSrtFile: '打开译文 SRT 文件',
+      copySrtPath: '复制原文 SRT 路径',
+      copyTranslatedSrtPath: '复制译文 SRT 路径',
+      copyVttPath: '复制原文 VTT 路径',
+      copyTranslatedVttPath: '复制译文 VTT 路径',
+      exportSrt: '导出原文 SRT',
       clipExport: '导出片段',
       noModel: '未安装推荐模型',
       cacheState: '字幕缓存',
@@ -1000,10 +1006,13 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       subtitleTools: 'Subtitle tools',
       subtitleToolsMenu: 'Subtitle tools menu',
       openSubtitleFolder: 'Open subtitle folder',
-      openSrtFile: 'Open SRT file',
-      copySrtPath: 'Copy SRT path',
-      copyVttPath: 'Copy VTT path',
-      exportSrt: 'Export SRT',
+      openSrtFile: 'Open raw SRT file',
+      openTranslatedSrtFile: 'Open translated SRT file',
+      copySrtPath: 'Copy raw SRT path',
+      copyTranslatedSrtPath: 'Copy translated SRT path',
+      copyVttPath: 'Copy raw VTT path',
+      copyTranslatedVttPath: 'Copy translated VTT path',
+      exportSrt: 'Export raw SRT',
       clipExport: 'Export clip',
       noModel: 'Recommended model not installed',
       cacheState: 'Subtitle cache',
@@ -1501,10 +1510,13 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       subtitleTools: '字幕ツール',
       subtitleToolsMenu: '字幕ツールメニュー',
       openSubtitleFolder: '字幕フォルダを開く',
-      openSrtFile: 'SRT ファイルを開く',
-      copySrtPath: 'SRT のパスをコピー',
-      copyVttPath: 'VTT のパスをコピー',
-      exportSrt: 'SRT を書き出す',
+      openSrtFile: '原文 SRT を開く',
+      openTranslatedSrtFile: '訳文 SRT を開く',
+      copySrtPath: '原文 SRT のパスをコピー',
+      copyTranslatedSrtPath: '訳文 SRT のパスをコピー',
+      copyVttPath: '原文 VTT のパスをコピー',
+      copyTranslatedVttPath: '訳文 VTT のパスをコピー',
+      exportSrt: '原文 SRT を書き出す',
       clipExport: 'クリップを書き出す',
       noModel: '推奨モデルは未インストールです',
       cacheState: '字幕キャッシュ',
@@ -2002,10 +2014,13 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       subtitleTools: '자막 도구',
       subtitleToolsMenu: '자막 도구 메뉴',
       openSubtitleFolder: '자막 폴더 열기',
-      openSrtFile: 'SRT 파일 열기',
-      copySrtPath: 'SRT 경로 복사',
-      copyVttPath: 'VTT 경로 복사',
-      exportSrt: 'SRT 내보내기',
+      openSrtFile: '원문 SRT 파일 열기',
+      openTranslatedSrtFile: '번역 SRT 파일 열기',
+      copySrtPath: '원문 SRT 경로 복사',
+      copyTranslatedSrtPath: '번역 SRT 경로 복사',
+      copyVttPath: '원문 VTT 경로 복사',
+      copyTranslatedVttPath: '번역 VTT 경로 복사',
+      exportSrt: '원문 SRT 내보내기',
       clipExport: '클립 내보내기',
       noModel: '추천 모델이 설치되지 않았습니다',
       cacheState: '자막 캐시',

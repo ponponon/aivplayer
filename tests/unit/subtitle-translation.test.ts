@@ -1,5 +1,5 @@
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises'
+import { basename, join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
@@ -76,6 +76,9 @@ describe('subtitle translation', () => {
 
     expect(first).toEqual(second)
     expect(callCount).toBe(1)
+    expect(first.subtitlePath).toContain(join(cacheDirectory, 'subtitles'))
+    expect(first.subtitlePath).toContain('-translated-zh-')
+    expect(first.subtitleSrtPath).toContain('-translated-zh-')
     await expect(readFile(first.subtitlePath, 'utf8')).resolves.toBe(
       [
         'WEBVTT',
@@ -149,6 +152,58 @@ describe('subtitle translation', () => {
         }
       })
     ).resolves.toEqual(translated)
+  })
+
+  it('promotes legacy translated caches after the raw source filename changes', async () => {
+    const subtitleDirectory = join(tempDirectory, 'subtitles')
+    const legacySourceSubtitlePath = join(subtitleDirectory, 'source.vtt')
+    const rawSourceSubtitlePath = join(subtitleDirectory, 'source-raw.vtt')
+    const cacheDirectory = join(tempDirectory, 'cache')
+    let callCount = 0
+    const provider: SubtitleTranslationProvider = {
+      id: 'mock',
+      model: 'mock-model',
+      translateBatch: async ({ segments }) => {
+        callCount += 1
+        return segments.map((segment) => ({ id: segment.id, text: `中文：${segment.text}` }))
+      }
+    }
+
+    await mkdir(subtitleDirectory, { recursive: true })
+    await writeFile(
+      legacySourceSubtitlePath,
+      ['WEBVTT', '', '00:00:00.000 --> 00:00:01.000', 'hello'].join('\n')
+    )
+    await writeFile(rawSourceSubtitlePath, await readFile(legacySourceSubtitlePath))
+
+    const legacyTranslation = await runSubtitleTranslationJob({
+      sourceSubtitlePath: legacySourceSubtitlePath,
+      cacheDirectory,
+      sourceLanguage: 'en',
+      targetLanguage: 'zh',
+      provider
+    })
+    const currentBaseName = basename(legacyTranslation.subtitlePath, '.vtt')
+    const legacyBaseName = currentBaseName.replace('-translated-', '-')
+    await mkdir(join(cacheDirectory, 'translated-subtitles'), { recursive: true })
+    await rename(legacyTranslation.subtitlePath, join(cacheDirectory, 'translated-subtitles', `${legacyBaseName}.vtt`))
+    await rename(
+      legacyTranslation.subtitleSrtPath,
+      join(cacheDirectory, 'translated-subtitles', `${legacyBaseName}.srt`)
+    )
+
+    const restored = await runSubtitleTranslationJob({
+      sourceSubtitlePath: rawSourceSubtitlePath,
+      cacheDirectory,
+      sourceLanguage: 'en',
+      targetLanguage: 'zh',
+      provider
+    })
+
+    expect(restored.subtitlePath).toContain(join(cacheDirectory, 'subtitles'))
+    expect(restored.subtitlePath).toContain('-translated-zh-')
+    expect(callCount).toBe(1)
+    await expect(readFile(restored.subtitlePath, 'utf8')).resolves.toContain('中文：hello')
   })
 
   it('does not reuse translated subtitle cache when the glossary changes', async () => {
@@ -319,7 +374,7 @@ describe('subtitle translation', () => {
     controller.abort()
 
     await expect(translation).rejects.toMatchObject({ code: 'cancelled' })
-    expect((await readdir(join(cacheDirectory, 'translated-subtitles')).catch(() => [])).length).toBe(0)
+    expect((await readdir(join(cacheDirectory, 'subtitles')).catch(() => [])).length).toBe(0)
   })
 
   it('does not reuse translated subtitle cache when the source language changes', async () => {

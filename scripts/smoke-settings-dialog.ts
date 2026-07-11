@@ -80,6 +80,23 @@ async function main(): Promise<void> {
     await page.locator('[data-settings-tab="interface"]').click()
     await page.waitForTimeout(500)
 
+    await page.locator('[data-settings-tab="video"]').click()
+    await page.waitForTimeout(500)
+
+    const videoCardHeight = await page.evaluate(() => {
+      const card = document.querySelector('#settings-section-video') as HTMLElement | null
+
+      if (!card) {
+        return null
+      }
+
+      return {
+        clientHeight: card.clientHeight,
+        scrollHeight: card.scrollHeight,
+        alignItems: window.getComputedStyle(document.querySelector('.settings-grid') as HTMLElement).alignItems
+      }
+    })
+
     const numberStyles = await page.evaluate(() => {
       const inputs = Array.from(document.querySelectorAll('.settings-number')) as HTMLInputElement[]
 
@@ -98,9 +115,16 @@ async function main(): Promise<void> {
     await page.screenshot({ path: screenshotPath, fullPage: false })
 
     console.log(`Settings number styles: ${JSON.stringify(numberStyles)}`)
+    console.log(`Video settings card height: ${JSON.stringify(videoCardHeight)}`)
     console.log(`Settings dialog screenshot: ${screenshotPath}`)
 
-    if (numberStyles.length === 0 || numberStyles.some((style) => style.textAlign !== 'right')) {
+    if (
+      numberStyles.length === 0 ||
+      numberStyles.some((style) => style.textAlign !== 'right') ||
+      !videoCardHeight ||
+      videoCardHeight.alignItems !== 'start' ||
+      videoCardHeight.clientHeight > videoCardHeight.scrollHeight + 1
+    ) {
       process.exitCode = 1
     }
   } finally {

@@ -282,8 +282,9 @@ describe('ASR runtime settings', () => {
     })
 
     expect(result.success).toBe(true)
-    expect(result.subtitlePath).toContain('translated-subtitles')
-    expect(result.subtitleSrtPath).toContain('translated-subtitles')
+    expect(result.subtitlePath).toContain(`${join(tempDirectory, 'asr-cache', 'subtitles')}`)
+    expect(result.subtitlePath).toContain('-translated-zh-')
+    expect(result.subtitleSrtPath).toContain('-translated-zh-')
     expect(requests).toEqual([
       {
         authorization: 'Bearer test-key',
@@ -373,8 +374,9 @@ describe('ASR runtime settings', () => {
     expect(resolved.sourceLanguage).toBe('en')
     expect(resolved.targetLanguage).toBe('zh')
     expect(resolved.translationModel).toBe('translation-model')
-    expect(resolved.subtitlePath).toContain('translated-subtitles')
-    expect(resolved.subtitleSrtPath).toContain('translated-subtitles')
+    expect(resolved.subtitlePath).toContain(`${join(tempDirectory, 'asr-cache', 'subtitles')}`)
+    expect(resolved.subtitlePath).toContain('-translated-zh-')
+    expect(resolved.subtitleSrtPath).toContain('-translated-zh-')
   })
 
   it('does not resolve translated subtitle cache when the translation model changes', async () => {
