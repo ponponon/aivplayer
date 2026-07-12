@@ -96,6 +96,9 @@ describe('dialog smoke source constraints', () => {
   it('uses locale copy instead of hardcoded button labels in the open video smoke script', () => {
     const smokeScript = readSource('scripts/smoke-open-video.ts')
 
+    expect(smokeScript).toContain("'aivplayer-smoke-open-video-home-'")
+    expect(smokeScript).toContain("'aivplayer-smoke-open-video-user-data-'")
+    expect(smokeScript).toContain('--user-data-dir=')
     expect(smokeScript).toContain("getAppCopy(appSettings.ui.locale)")
     expect(smokeScript).toContain("copy.panels.playlistTitle")
     expect(smokeScript).toContain("copy.panels.asrTitle")

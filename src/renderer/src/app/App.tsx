@@ -13,6 +13,7 @@ import {
   Languages,
   ListVideo,
   Maximize2,
+  Minimize2,
   PanelRight,
   Pause,
   Play,
@@ -311,6 +312,7 @@ export function App(): ReactElement {
   const [appSettings, setAppSettings] = useState<AppSettings>(createDefaultAppSettings())
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false)
   const [isControlDeckVisible, setIsControlDeckVisible] = useState(true)
+  const [isFullscreen, setIsFullscreen] = useState(false)
   const [mediaMetadata, setMediaMetadata] = useState<MediaProbeMetadata | null>(null)
   const copy = getAppCopy(appSettings.ui.locale)
   const isSidePanelVisible = state.panelMode !== 'none'
@@ -709,12 +711,17 @@ export function App(): ReactElement {
   const toggleFullscreen = async (): Promise<void> => {
     revealControlDeck()
 
+    const video = videoRef.current
+    if (!video) {
+      return
+    }
+
     if (document.fullscreenElement) {
       await document.exitFullscreen()
       return
     }
 
-    await document.documentElement.requestFullscreen()
+    await video.requestFullscreen()
   }
 
   const clearPlaybackError = (): void => {
@@ -1350,6 +1357,12 @@ export function App(): ReactElement {
       }
 
       if (event.key === 'Escape') {
+        if (document.fullscreenElement) {
+          event.preventDefault()
+          void document.exitFullscreen()
+          return
+        }
+
         const subtitleDisplayControls = subtitleDisplayControlsRef.current
         if (subtitleDisplayControls?.open) {
           subtitleDisplayControls.open = false
@@ -1366,12 +1379,17 @@ export function App(): ReactElement {
       if (
         event.target instanceof HTMLInputElement ||
         event.target instanceof HTMLTextAreaElement ||
-        event.target instanceof HTMLSelectElement
+        event.target instanceof HTMLSelectElement ||
+        (event.target instanceof HTMLElement && event.target.isContentEditable)
       ) {
         return
       }
 
       if (event.code === 'Space') {
+        if (event.repeat || event.target instanceof HTMLButtonElement) {
+          return
+        }
+
         event.preventDefault()
         revealControlDeck()
         void togglePlay()
@@ -1461,10 +1479,18 @@ export function App(): ReactElement {
   }, [
     appSettings.playback.holdRightArrowSpeed,
     appSettings.playback.seekStepSeconds,
+    appSettings.playback.autoHideControlDeck,
+    appSettings.playback.controlDeckAutoHideSeconds,
     isDownloadDialogOpen,
     isSettingsDialogOpen,
     isClipExportDialogOpen,
-    isExportingClip
+    isExportingClip,
+    state.currentFile?.path,
+    state.isPlaying,
+    state.panelMode,
+    state.playbackRate,
+    state.playlist,
+    state.volume
   ])
 
   useEffect(() => {
@@ -1604,6 +1630,19 @@ export function App(): ReactElement {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isClipExportDialogOpen, isExportingClip])
+
+  useEffect(() => {
+    const handleFullscreenChange = (): void => {
+      setIsFullscreen(document.fullscreenElement === videoRef.current)
+    }
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    handleFullscreenChange()
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange)
+    }
+  }, [])
 
   useEffect(() => {
     void window.aiv.getInitialMediaFiles().then(loadFiles)
@@ -1846,7 +1885,13 @@ export function App(): ReactElement {
                     <button className="round-button" type="button" onClick={() => playAdjacent(-1)} title={copy.controls.previous}>
                       <SkipBack size={16} />
                     </button>
-                    <button className="round-button primary" type="button" onClick={togglePlay} title={state.isPlaying ? copy.controls.pause : copy.controls.play}>
+                    <button
+                      className="round-button primary"
+                      type="button"
+                      onClick={togglePlay}
+                      title={`${state.isPlaying ? copy.controls.pause : copy.controls.play} (Space)`}
+                      aria-keyshortcuts="Space"
+                    >
                       {state.isPlaying ? <Pause size={18} /> : <Play size={18} />}
                     </button>
                     <button className="round-button" type="button" onClick={() => playAdjacent(1)} title={copy.controls.next}>
@@ -1916,8 +1961,16 @@ export function App(): ReactElement {
                       </select>
                       <ChevronDown className="speed-control-icon" size={12} aria-hidden="true" />
                     </div>
-                    <button className="round-button" type="button" onClick={toggleFullscreen} title={copy.controls.fullscreen}>
-                      <Maximize2 size={16} />
+                    <button
+                      className="round-button"
+                      type="button"
+                      onClick={() => void toggleFullscreen()}
+                      title={isFullscreen ? copy.controls.exitFullscreen : copy.controls.fullscreen}
+                      aria-label={isFullscreen ? copy.controls.exitFullscreen : copy.controls.fullscreen}
+                      aria-pressed={isFullscreen}
+                      aria-keyshortcuts="F"
+                    >
+                      {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
                     </button>
                   </div>
                 </div>

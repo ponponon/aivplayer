@@ -23,9 +23,10 @@ async function main(): Promise<void> {
   const targetLocale = getArgValue('--locale')
   const resolvedLocale: AppLocale | null = targetLocale && isAppLocale(targetLocale) ? targetLocale : null
   const smokeHomeDirectory = await mkdtemp(join(tmpdir(), 'aivplayer-smoke-settings-home-'))
+  const smokeUserDataDirectory = await mkdtemp(join(tmpdir(), 'aivplayer-smoke-settings-user-data-'))
 
   const app = await electron.launch({
-    args: ['out/main/index.js'],
+    args: [`--user-data-dir=${smokeUserDataDirectory}`, 'out/main/index.js'],
     env: {
       ...process.env,
       HOME: smokeHomeDirectory
@@ -111,19 +112,39 @@ async function main(): Promise<void> {
       })
     })
 
+    await page.locator('[data-settings-tab="shortcuts"]').click()
+    await page.waitForTimeout(250)
+
+    const shortcutCount = await page.locator('.settings-shortcut').count()
+    const shortcutPanelState = await page.evaluate(() => {
+      const panel = document.querySelector('#settings-section-shortcuts') as HTMLElement | null
+
+      return {
+        display: panel ? window.getComputedStyle(panel).display : 'missing',
+        ariaHidden: panel?.getAttribute('aria-hidden') ?? 'missing'
+      }
+    })
+
     const screenshotPath = join(smokeHomeDirectory, 'aivplayer-smoke-settings-dialog.png')
     await page.screenshot({ path: screenshotPath, fullPage: false })
+    const shortcutScreenshotPath = join(smokeHomeDirectory, 'aivplayer-smoke-settings-shortcuts.png')
+    await page.screenshot({ path: shortcutScreenshotPath, fullPage: false })
 
     console.log(`Settings number styles: ${JSON.stringify(numberStyles)}`)
     console.log(`Video settings card height: ${JSON.stringify(videoCardHeight)}`)
+    console.log(`Shortcut panel: ${JSON.stringify({ shortcutCount, ...shortcutPanelState })}`)
     console.log(`Settings dialog screenshot: ${screenshotPath}`)
+    console.log(`Shortcut settings screenshot: ${shortcutScreenshotPath}`)
 
     if (
       numberStyles.length === 0 ||
       numberStyles.some((style) => style.textAlign !== 'right') ||
       !videoCardHeight ||
       videoCardHeight.alignItems !== 'start' ||
-      videoCardHeight.clientHeight > videoCardHeight.scrollHeight + 1
+      videoCardHeight.clientHeight > videoCardHeight.scrollHeight + 1 ||
+      shortcutCount !== 8 ||
+      shortcutPanelState.display !== 'grid' ||
+      shortcutPanelState.ariaHidden !== 'false'
     ) {
       process.exitCode = 1
     }

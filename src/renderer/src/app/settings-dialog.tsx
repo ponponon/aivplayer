@@ -9,7 +9,7 @@ import {
   Sparkles,
   X
 } from 'lucide-react'
-import { useEffect, useLayoutEffect, useRef, useState, type ReactElement, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react'
 import type {
   AppPanelModePreference,
   AppSettings,
@@ -54,10 +54,6 @@ type SettingsDialogProps = {
   onTestTranslationService: () => void
   onResetDefaults: () => void
 }
-
-const settingsSectionOrder: AppSettingsSectionId[] = ['general', 'interface', 'video', 'subtitles', 'capture', 'shortcuts']
-
-const SETTINGS_SECTION_SCROLL_OFFSET = 78
 
 function formatPathLabel(pathValue: string | null, fallback: string): string {
   return pathValue && pathValue.length > 0 ? pathValue : fallback
@@ -357,37 +353,14 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
   )
   const [activeSectionId, setActiveSectionId] = useState<AppSettingsSectionId>(initialSectionId)
   const hasMountedRef = useRef(false)
-  const initialScrollDoneRef = useRef(false)
   const dialogRef = useRef<HTMLElement | null>(null)
   const activeSectionIdRef = useRef<AppSettingsSectionId>(initialSectionId)
-  const scrollFrameRef = useRef<number | null>(null)
 
   useEffect(() => {
     activeSectionIdRef.current = activeSectionId
   }, [activeSectionId])
 
-  useLayoutEffect(() => {
-    if (initialScrollDoneRef.current) {
-      return
-    }
-
-    initialScrollDoneRef.current = true
-    const element = document.getElementById(`settings-section-${initialSectionId}`)
-    element?.scrollIntoView({
-      behavior: 'auto',
-      block: 'start'
-    })
-  }, [initialSectionId])
-
   useModalFocusTrap(true, dialogRef, '.settings-tab.active')
-
-  useEffect(() => {
-    return () => {
-      if (scrollFrameRef.current != null) {
-        window.cancelAnimationFrame(scrollFrameRef.current)
-      }
-    }
-  }, [])
 
   useEffect(() => {
     if (!hasMountedRef.current) {
@@ -406,52 +379,6 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
     activeSectionIdRef.current = sectionId
     setActiveSectionId(sectionId)
     patchSettingsSection('ui', { lastSettingsSectionId: sectionId })
-  }
-
-  const syncSectionFromScroll = (): void => {
-    scrollFrameRef.current = null
-
-    const container = dialogRef.current
-    if (!container) {
-      return
-    }
-
-    const containerTop = container.getBoundingClientRect().top
-    let nextSectionId = activeSectionIdRef.current
-    let bestDistance = Number.NEGATIVE_INFINITY
-
-    for (const sectionId of settingsSectionOrder) {
-      const element = document.getElementById(`settings-section-${sectionId}`)
-      if (!element) {
-        continue
-      }
-
-      const distance = element.getBoundingClientRect().top - containerTop
-      if (distance <= SETTINGS_SECTION_SCROLL_OFFSET && distance > bestDistance) {
-        bestDistance = distance
-        nextSectionId = sectionId
-      }
-    }
-
-    selectSection(nextSectionId)
-  }
-
-  const handleDialogScroll = (): void => {
-    if (scrollFrameRef.current != null) {
-      return
-    }
-
-    scrollFrameRef.current = window.requestAnimationFrame(syncSectionFromScroll)
-  }
-
-  const scrollToSection = (sectionId: AppSettingsSectionId): void => {
-    selectSection(sectionId)
-
-    const element = document.getElementById(`settings-section-${sectionId}`)
-    element?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'start'
-    })
   }
 
   const languageOptions: Array<SettingsSelectOption<AppLocale>> = Object.entries(copy.languageOptions).map(
@@ -553,7 +480,6 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
         aria-modal="true"
         aria-labelledby="settings-dialog-title"
         aria-describedby="settings-dialog-description"
-        onScroll={handleDialogScroll}
       >
         <div className="settings-dialog-header">
           <div>
@@ -565,31 +491,40 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
           </button>
         </div>
 
-        <nav className="settings-switcher" role="tablist" aria-label={copy.settingsDialog.title}>
-          {sections.map((section) => {
-            const Icon = section.icon
-            const isActive = activeSectionId === section.id
+        <div className="settings-body">
+          <nav className="settings-switcher" role="tablist" aria-label={copy.settingsDialog.title}>
+            {sections.map((section) => {
+              const Icon = section.icon
+              const isActive = activeSectionId === section.id
 
-            return (
-              <button
-                className={`settings-tab ${isActive ? 'active' : ''}`}
-                key={section.id}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                aria-label={section.ariaLabel}
-                data-settings-tab={section.id}
-                onClick={() => scrollToSection(section.id)}
-              >
-                <Icon size={14} />
-                <span>{section.label}</span>
-              </button>
-            )
-          })}
-        </nav>
+              return (
+                <button
+                  className={`settings-tab ${isActive ? 'active' : ''}`}
+                  id={`settings-tab-${section.id}`}
+                  key={section.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  aria-controls={`settings-section-${section.id}`}
+                  aria-label={section.ariaLabel}
+                  data-settings-tab={section.id}
+                  onClick={() => selectSection(section.id)}
+                >
+                  <Icon size={14} />
+                  <span>{section.label}</span>
+                </button>
+              )
+            })}
+          </nav>
 
-        <div className="settings-grid">
-          <section className="settings-card settings-card-anchor" id="settings-section-general">
+          <div className="settings-grid">
+          <section
+            className={`settings-card settings-card-anchor ${activeSectionId === 'general' ? '' : 'is-hidden'}`}
+            id="settings-section-general"
+            role="tabpanel"
+            aria-labelledby="settings-tab-general"
+            aria-hidden={activeSectionId !== 'general'}
+          >
             <div className="settings-card-heading">
               <Settings2 size={16} />
               <span>{copy.settingsDialog.general.title}</span>
@@ -644,7 +579,13 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
             />
           </section>
 
-          <section className="settings-card settings-card-anchor" id="settings-section-interface">
+          <section
+            className={`settings-card settings-card-anchor ${activeSectionId === 'interface' ? '' : 'is-hidden'}`}
+            id="settings-section-interface"
+            role="tabpanel"
+            aria-labelledby="settings-tab-interface"
+            aria-hidden={activeSectionId !== 'interface'}
+          >
             <div className="settings-card-heading">
               <LayoutGrid size={16} />
               <span>{copy.settingsDialog.interface.title}</span>
@@ -726,7 +667,13 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
             />
           </section>
 
-          <section className="settings-card settings-card-anchor" id="settings-section-video">
+          <section
+            className={`settings-card settings-card-anchor ${activeSectionId === 'video' ? '' : 'is-hidden'}`}
+            id="settings-section-video"
+            role="tabpanel"
+            aria-labelledby="settings-tab-video"
+            aria-hidden={activeSectionId !== 'video'}
+          >
             <div className="settings-card-heading">
               <Clapperboard size={16} />
               <span>{copy.settingsDialog.video.title}</span>
@@ -766,7 +713,13 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
             </div>
           </section>
 
-          <section className="settings-card settings-card-anchor" id="settings-section-subtitles">
+          <section
+            className={`settings-card settings-card-anchor ${activeSectionId === 'subtitles' ? '' : 'is-hidden'}`}
+            id="settings-section-subtitles"
+            role="tabpanel"
+            aria-labelledby="settings-tab-subtitles"
+            aria-hidden={activeSectionId !== 'subtitles'}
+          >
             <div className="settings-card-heading">
               <Captions size={16} />
               <span>{copy.settingsDialog.subtitles.title}</span>
@@ -986,7 +939,13 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
             ) : null}
           </section>
 
-          <section className="settings-card settings-card-anchor settings-card-wide" id="settings-section-capture">
+          <section
+            className={`settings-card settings-card-anchor settings-card-wide ${activeSectionId === 'capture' ? '' : 'is-hidden'}`}
+            id="settings-section-capture"
+            role="tabpanel"
+            aria-labelledby="settings-tab-capture"
+            aria-hidden={activeSectionId !== 'capture'}
+          >
             <div className="settings-card-heading">
               <Camera size={16} />
               <span>{copy.settingsDialog.capture.title}</span>
@@ -1072,17 +1031,31 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
             <div className="settings-card-note">{copy.settingsDialog.capture.description}</div>
           </section>
 
-          <section className="settings-card settings-card-anchor settings-card-wide" id="settings-section-shortcuts">
+          <section
+            className={`settings-card settings-card-anchor settings-card-wide ${activeSectionId === 'shortcuts' ? '' : 'is-hidden'}`}
+            id="settings-section-shortcuts"
+            role="tabpanel"
+            aria-labelledby="settings-tab-shortcuts"
+            aria-hidden={activeSectionId !== 'shortcuts'}
+          >
             <div className="settings-card-heading">
               <Keyboard size={16} />
               <span>{copy.settingsDialog.shortcuts.title}</span>
             </div>
-            <div className="settings-note-box">
-              <span className="settings-note-title">{copy.settingsDialog.shortcuts.title}</span>
-              <p>{copy.settingsDialog.shortcuts.description}</p>
+            <p className="settings-card-note">{copy.settingsDialog.shortcuts.description}</p>
+            <div className="settings-shortcuts">
+              {Object.entries(copy.settingsDialog.shortcuts.items).map(([shortcutId, shortcut]) => (
+                <div className="settings-shortcut" key={shortcutId}>
+                  <kbd>{shortcut.keys}</kbd>
+                  <div className="settings-shortcut-copy">
+                    <strong>{shortcut.label}</strong>
+                    <small>{shortcut.description}</small>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div className="settings-card-note">{copy.settingsDialog.comingSoon}</div>
           </section>
+        </div>
         </div>
 
         <div className="settings-footer">

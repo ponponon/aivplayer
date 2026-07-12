@@ -196,6 +196,18 @@ describe('settings UI source constraints', () => {
     expect(settingsToggleComponentBody).toContain('{description ? <small>{description}</small> : null}')
   })
 
+  it('renders a compact read-only shortcut reference', () => {
+    const settingsDialogSource = readSource('src/renderer/src/app/settings-dialog.tsx')
+    const playerCss = readSource('src/renderer/src/styles/player.css')
+
+    expect(settingsDialogSource).toContain('settingsDialog.shortcuts.items')
+    expect(settingsDialogSource).toContain('<kbd>{shortcut.keys}</kbd>')
+    expect(settingsDialogSource).toContain('settings-shortcut-copy')
+    expect(playerCss).toContain('.settings-shortcuts {')
+    expect(playerCss).toContain('grid-template-columns: repeat(2, minmax(0, 1fr));')
+    expect(playerCss).toContain('.settings-shortcut kbd')
+  })
+
   it('routes settings folder picker rows through the shared SettingsFolderPicker structure', () => {
     const settingsDialogSource = readSource('src/renderer/src/app/settings-dialog.tsx')
     const folderPickerComponentBody = getNamedBody(
@@ -269,6 +281,8 @@ describe('settings UI source constraints', () => {
     expect(smokeScript).toContain('await page.reload({ waitUntil: \'domcontentloaded\' })')
     expect(smokeScript).toContain('mkdtemp')
     expect(smokeScript).toContain("'aivplayer-smoke-settings-home-'")
+    expect(smokeScript).toContain("'aivplayer-smoke-settings-user-data-'")
+    expect(smokeScript).toContain('--user-data-dir=')
     expect(smokeScript).toContain("join(smokeHomeDirectory, 'aivplayer-smoke-settings-dialog.png')")
     expect(smokeScript).toContain('window.aiv.getAppSettings()')
     expect(smokeScript).toContain('openSettingsLabelByLocale')

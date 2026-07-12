@@ -1,4 +1,5 @@
 import { _electron as electron } from 'playwright'
+import { mkdtemp } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { getAppCopy } from '../src/shared/i18n.ts'
@@ -74,8 +75,15 @@ async function seekWithTimeline(page: any, targetSeconds: number): Promise<{
 }
 
 async function main(): Promise<void> {
+  const smokeHomeDirectory = await mkdtemp(join(tmpdir(), 'aivplayer-smoke-open-video-home-'))
+  const smokeUserDataDirectory = await mkdtemp(join(tmpdir(), 'aivplayer-smoke-open-video-user-data-'))
+
   const app = await electron.launch({
-    args: ['out/main/index.js', mediaPath]
+    args: [`--user-data-dir=${smokeUserDataDirectory}`, 'out/main/index.js', mediaPath],
+    env: {
+      ...process.env,
+      HOME: smokeHomeDirectory
+    }
   })
 
   try {
@@ -134,6 +142,24 @@ async function main(): Promise<void> {
         : {
             bodyText: await page.locator('body').innerText()
           }
+    const videoLocator = page.locator('video.video-surface')
+    await videoLocator.evaluate(async (video) => {
+      const element = video as HTMLVideoElement
+      if (element.ended) {
+        element.currentTime = 0
+      }
+
+      if (element.paused) {
+        await element.play()
+      }
+    })
+    await page.waitForTimeout(250)
+    await videoLocator.press('Space')
+    await page.waitForTimeout(250)
+    const pausedBySpace = await videoLocator.evaluate((video) => (video as HTMLVideoElement).paused)
+    await videoLocator.press('Space')
+    await page.waitForTimeout(250)
+    const resumedBySpace = await videoLocator.evaluate((video) => (video as HTMLVideoElement).paused)
     const stopResult = await page.evaluate(() => window.aiv.stopNativePlayer())
 
     console.log('AIVPlayer Smoke Open Video')
@@ -141,6 +167,7 @@ async function main(): Promise<void> {
     console.log(`Video src: ${videoSrc}`)
     console.log(`Status banner: ${statusText ?? 'not shown'}`)
     console.log(`Video state: ${JSON.stringify(videoState)}`)
+    console.log(`Space shortcut: ${JSON.stringify({ pausedBySpace, resumedBySpace })}`)
     console.log(`Stop native player: ${stopResult.message}`)
 
     if (!videoSrc.startsWith('aiv-media://')) {
@@ -157,6 +184,10 @@ async function main(): Promise<void> {
     const playbackActiveOrCompleted = 'ended' in videoState && (!videoState.paused || videoState.ended)
 
     if (!playbackAdvanced || !playbackActiveOrCompleted || !('errorCode' in videoState) || videoState.errorCode !== null) {
+      process.exitCode = 1
+    }
+
+    if (!pausedBySpace || resumedBySpace) {
       process.exitCode = 1
     }
 

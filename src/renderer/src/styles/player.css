@@ -1626,7 +1626,7 @@
   --settings-control-radius: var(--radius-md);
   display: grid;
   gap: 16px;
-  width: min(880px, calc(100vw - 32px));
+  width: min(1000px, calc(100vw - 32px));
   min-width: 0;
   max-height: calc(100dvh - 48px);
   padding: 18px;
@@ -1804,12 +1804,20 @@
   line-height: 1.6;
 }
 
+.settings-body {
+  display: grid;
+  grid-template-columns: 148px minmax(0, 1fr);
+  gap: 16px;
+  min-width: 0;
+  align-items: start;
+}
+
 .settings-switcher {
   position: sticky;
   top: 0;
   z-index: 2;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 6px;
   padding: 6px;
   background: rgba(18, 20, 23, 0.92);
@@ -1855,19 +1863,25 @@
 
 .settings-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
+  min-width: 0;
   align-items: start;
 }
 
 .settings-card {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   min-width: 0;
   padding: 14px;
   background: rgba(255, 255, 255, 0.045);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-lg);
+}
+
+.settings-card.is-hidden {
+  display: none;
 }
 
 .settings-card-anchor {
@@ -1885,6 +1899,15 @@
   color: var(--text-primary);
   font-size: 14px;
   font-weight: 700;
+  grid-column: 1 / -1;
+}
+
+.settings-card > .settings-note-box,
+.settings-card > .settings-card-note,
+.settings-card > .settings-shortcuts,
+.settings-card > .settings-field:has(.settings-textarea),
+.settings-card > .settings-field:has(.asr-result) {
+  grid-column: 1 / -1;
 }
 
 .settings-field {
@@ -2165,6 +2188,59 @@
   line-height: 1.55;
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+.settings-shortcuts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+
+.settings-shortcut {
+  display: grid;
+  grid-template-columns: minmax(76px, auto) minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  min-width: 0;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+}
+
+.settings-shortcut kbd {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+  color: var(--accent);
+  background: rgba(232, 193, 109, 0.1);
+  border: 1px solid rgba(232, 193, 109, 0.28);
+  border-radius: var(--radius-sm);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.settings-shortcut-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.settings-shortcut-copy strong {
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.settings-shortcut-copy small {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.45;
 }
 
 .download-source-grid {
@@ -2449,6 +2525,21 @@
   }
 
   .settings-switcher {
+    position: static;
+    display: flex;
+    overflow-x: auto;
+  }
+
+  .settings-body {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-tab {
+    flex: 0 0 auto;
+  }
+
+  .settings-card,
+  .settings-shortcuts {
     grid-template-columns: 1fr;
   }
 

@@ -34,6 +34,7 @@ export type LocaleCopy = {
     stopAndReset: string
     mute: string
     fullscreen: string
+    exitFullscreen: string
     playbackPosition: string
     volume: string
     playbackSpeed: string
@@ -167,7 +168,6 @@ export type LocaleCopy = {
     restoreDefaults: string
     openAsrPanel: string
     note: string
-    comingSoon: string
     general: {
       title: string
       language: string
@@ -276,6 +276,16 @@ export type LocaleCopy = {
     shortcuts: {
       title: string
       description: string
+      items: {
+        playPause: { keys: string; label: string; description: string }
+        seek: { keys: string; label: string; description: string }
+        mute: { keys: string; label: string; description: string }
+        stop: { keys: string; label: string; description: string }
+        fullscreen: { keys: string; label: string; description: string }
+        open: { keys: string; label: string; description: string }
+        playlist: { keys: string; label: string; description: string }
+        escape: { keys: string; label: string; description: string }
+      }
     }
   }
   modelView: {
@@ -405,6 +415,7 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       stopAndReset: '停止并回到开头',
       mute: '静音',
       fullscreen: '全屏',
+      exitFullscreen: '退出全屏',
       playbackPosition: '播放进度',
       volume: '音量',
       playbackSpeed: '播放速度'
@@ -577,8 +588,7 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       },
       restoreDefaults: '恢复默认设置',
       openAsrPanel: '打开 ASR 面板',
-      note: '截图和录屏设置已经可以编辑，快捷键功能后续再补。',
-      comingSoon: '快捷键自定义暂未实现，后续会继续补齐。',
+      note: '设置会自动保存，快捷键可以在「快捷键」分组里直接查看。',
       general: {
         title: '通用',
         language: '界面语言',
@@ -686,7 +696,17 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       },
       shortcuts: {
         title: '快捷键',
-        description: '快捷键设置先不实现，后续如果补键位配置，会沿用这个入口。'
+        description: '这里列出 AIVPlayer 当前支持的基础快捷键，按下即可操作。',
+        items: {
+          playPause: { keys: 'Space', label: '播放 / 暂停', description: '切换当前视频的播放状态。' },
+          seek: { keys: '← / →', label: '快退 / 快进', description: '按视频设置里的步长跳转；长按右方向键可临时倍速。' },
+          mute: { keys: 'M', label: '静音 / 取消静音', description: '切换当前视频的静音状态。' },
+          stop: { keys: 'S', label: '停止并回到开头', description: '暂停视频，并把播放位置重置到 00:00。' },
+          fullscreen: { keys: 'F', label: '视频画面全屏', description: '只将当前视频画面切换为全屏。' },
+          open: { keys: '⌘ / Ctrl + O', label: '打开媒体文件', description: '打开本地媒体文件选择器。' },
+          playlist: { keys: 'L', label: '显示播放列表', description: '打开或隐藏右侧播放列表面板。' },
+          escape: { keys: 'Esc', label: '关闭当前浮层', description: '关闭菜单、弹窗，或退出视频全屏。' }
+        }
       }
     },
     modelView: {
@@ -907,6 +927,7 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       stopAndReset: 'Stop and return to start',
       mute: 'Mute',
       fullscreen: 'Fullscreen',
+      exitFullscreen: 'Exit fullscreen',
       playbackPosition: 'Playback position',
       volume: 'Volume',
       playbackSpeed: 'Playback speed'
@@ -1079,8 +1100,7 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       },
       restoreDefaults: 'Restore defaults',
       openAsrPanel: 'Open ASR panel',
-      note: 'Capture and recording settings are editable now, and shortcut customization will come later.',
-      comingSoon: 'Shortcut customization is not implemented yet.',
+      note: 'Settings are saved automatically. You can view the supported shortcuts in the Shortcuts section.',
       general: {
         title: 'General',
         language: 'Interface language',
@@ -1190,7 +1210,17 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       },
       shortcuts: {
         title: 'Shortcuts',
-        description: 'Shortcut customization is not implemented yet.'
+        description: 'These are the basic shortcuts currently supported by AIVPlayer.',
+        items: {
+          playPause: { keys: 'Space', label: 'Play / pause', description: 'Toggle playback for the current video.' },
+          seek: { keys: '← / →', label: 'Seek backward / forward', description: 'Jump by the configured step; hold the right arrow for temporary fast playback.' },
+          mute: { keys: 'M', label: 'Mute / unmute', description: 'Toggle mute for the current video.' },
+          stop: { keys: 'S', label: 'Stop and return to start', description: 'Pause the video and reset its position to 00:00.' },
+          fullscreen: { keys: 'F', label: 'Fullscreen video', description: 'Toggle fullscreen for the current video surface.' },
+          open: { keys: '⌘ / Ctrl + O', label: 'Open media file', description: 'Open the local media file picker.' },
+          playlist: { keys: 'L', label: 'Show playlist', description: 'Show or hide the playlist panel.' },
+          escape: { keys: 'Esc', label: 'Close the current overlay', description: 'Close menus and dialogs, or exit video fullscreen.' }
+        }
       }
     },
     modelView: {
@@ -1411,6 +1441,7 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       stopAndReset: '停止して先頭に戻る',
       mute: 'ミュート',
       fullscreen: '全画面',
+      exitFullscreen: '全画面を終了',
       playbackPosition: '再生位置',
       volume: '音量',
       playbackSpeed: '再生速度'
@@ -1583,8 +1614,7 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       },
       restoreDefaults: '既定値に戻す',
       openAsrPanel: 'ASR パネルを開く',
-      note: 'キャプチャ設定は編集できます。ショートカットのカスタマイズは後日追加します。',
-      comingSoon: 'ショートカットのカスタマイズはまだ実装していません。',
+      note: '設定は自動保存されます。対応しているショートカットはショートカット設定で確認できます。',
       general: {
         title: '一般',
         language: 'インターフェース言語',
@@ -1694,7 +1724,17 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       },
       shortcuts: {
         title: 'ショートカット',
-        description: 'ショートカットのカスタマイズはまだ実装していません。'
+        description: 'AIVPlayer が現在サポートしている基本ショートカットです。',
+        items: {
+          playPause: { keys: 'Space', label: '再生 / 一時停止', description: '現在の動画の再生状態を切り替えます。' },
+          seek: { keys: '← / →', label: '巻き戻し / 早送り', description: '設定した間隔で移動します。右キー長押しで一時的に高速再生します。' },
+          mute: { keys: 'M', label: 'ミュート / 解除', description: '現在の動画のミュート状態を切り替えます。' },
+          stop: { keys: 'S', label: '停止して先頭に戻る', description: '動画を一時停止し、再生位置を 00:00 に戻します。' },
+          fullscreen: { keys: 'F', label: '動画を全画面表示', description: '現在の動画画面だけを全画面に切り替えます。' },
+          open: { keys: '⌘ / Ctrl + O', label: 'メディアファイルを開く', description: 'ローカルメディアのファイル選択を開きます。' },
+          playlist: { keys: 'L', label: 'プレイリストを表示', description: 'プレイリストパネルを表示または非表示にします。' },
+          escape: { keys: 'Esc', label: '現在のオーバーレイを閉じる', description: 'メニューやダイアログを閉じ、動画の全画面を終了します。' }
+        }
       }
     },
     modelView: {
@@ -1915,6 +1955,7 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       stopAndReset: '정지하고 처음으로 이동',
       mute: '음소거',
       fullscreen: '전체 화면',
+      exitFullscreen: '전체 화면 종료',
       playbackPosition: '재생 위치',
       volume: '볼륨',
       playbackSpeed: '재생 속도'
@@ -2087,8 +2128,7 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       },
       restoreDefaults: '기본값 복원',
       openAsrPanel: 'ASR 패널 열기',
-      note: '캡처 및 녹화 설정은 이제 수정할 수 있고, 단축키 사용자 지정은 나중에 추가됩니다.',
-      comingSoon: '단축키 사용자 지정은 아직 구현되지 않았습니다.',
+      note: '설정은 자동으로 저장됩니다. 지원되는 단축키는 단축키 설정에서 확인할 수 있습니다.',
       general: {
         title: '일반',
         language: '인터페이스 언어',
@@ -2198,7 +2238,17 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       },
       shortcuts: {
         title: '단축키',
-        description: '단축키 사용자 지정은 아직 구현하지 않았습니다.'
+        description: 'AIVPlayer에서 현재 지원하는 기본 단축키입니다.',
+        items: {
+          playPause: { keys: 'Space', label: '재생 / 일시 정지', description: '현재 비디오의 재생 상태를 전환합니다.' },
+          seek: { keys: '← / →', label: '되감기 / 빨리 감기', description: '설정한 간격만큼 이동하며, 오른쪽 방향키를 길게 누르면 임시로 빠르게 재생합니다.' },
+          mute: { keys: 'M', label: '음소거 / 음소거 해제', description: '현재 비디오의 음소거 상태를 전환합니다.' },
+          stop: { keys: 'S', label: '정지하고 처음으로 이동', description: '비디오를 일시 정지하고 재생 위치를 00:00으로 되돌립니다.' },
+          fullscreen: { keys: 'F', label: '비디오 전체 화면', description: '현재 비디오 화면만 전체 화면으로 전환합니다.' },
+          open: { keys: '⌘ / Ctrl + O', label: '미디어 파일 열기', description: '로컬 미디어 파일 선택기를 엽니다.' },
+          playlist: { keys: 'L', label: '재생 목록 표시', description: '재생 목록 패널을 표시하거나 숨깁니다.' },
+          escape: { keys: 'Esc', label: '현재 오버레이 닫기', description: '메뉴와 대화상자를 닫거나 비디오 전체 화면을 종료합니다.' }
+        }
       }
     },
     modelView: {
