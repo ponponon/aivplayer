@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIVPlayer - 本地 AI 字幕生成的跨平台视频播放器</title>
+    <meta name="description" content="AIVPlayer 是一款基于 Electron 的现代化桌面视频播放器，集成了 whisper.cpp 本地 ASR 引擎，无需联网即可为视频自动生成高质量字幕。">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="assets/icon.png">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#1a1a2e',
+                        accent: '#e94560',
+                        'accent-hover': '#d63851',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-white text-gray-800 font-sans antialiased">
+
+    <!-- Navigation -->
+    <nav class="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-md border-b border-gray-100 z-50">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo -->
+                <a href="#" class="flex items-center space-x-2">
+                    <img src="assets/icon.png" alt="AIVPlayer" class="w-8 h-8">
+                    <span class="text-xl font-bold text-primary">AIVPlayer</span>
+                </a>
+
+                <!-- Desktop Navigation -->
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="#features" class="text-gray-600 hover:text-primary transition-colors">功能特性</a>
+                    <a href="#download" class="text-gray-600 hover:text-primary transition-colors">下载</a>
+                    <a href="#quickstart" class="text-gray-600 hover:text-primary transition-colors">快速开始</a>
+                    <a href="https://github.com/ponponon/aivplayer" target="_blank" class="text-gray-600 hover:text-primary transition-colors">
+                        GitHub
+                    </a>
+                </div>
+
+                <!-- Mobile Menu Button -->
+                <button id="mobile-menu-btn" class="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Mobile Navigation -->
+            <div id="mobile-menu" class="hidden md:hidden pb-4">
+                <div class="flex flex-col space-y-3">
+                    <a href="#features" class="text-gray-600 hover:text-primary transition-colors py-2">功能特性</a>
+                    <a href="#download" class="text-gray-600 hover:text-primary transition-colors py-2">下载</a>
+                    <a href="#quickstart" class="text-gray-600 hover:text-primary transition-colors py-2">快速开始</a>
+                    <a href="https://github.com/ponponon/aivplayer" target="_blank" class="text-gray-600 hover:text-primary transition-colors py-2">
+                        GitHub
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-6xl mx-auto text-center">
+            <div class="flex justify-center mb-8">
+                <img src="assets/icon.png" alt="AIVPlayer Logo" class="w-24 h-24 sm:w-32 sm:h-32">
+            </div>
+            <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold text-primary mb-6">
+                AIVPlayer
+            </h1>
+            <p class="text-xl sm:text-2xl text-gray-600 mb-8 max-w-3xl mx-auto">
+                本地 AI 字幕生成的跨平台视频播放器
+            </p>
+            <p class="text-lg text-gray-500 mb-12 max-w-2xl mx-auto">
+                基于 whisper.cpp 的离线语音识别，无需联网即可为视频自动生成高质量字幕。
+                你的视频和字幕数据始终留在自己手里。
+            </p>
+
+            <!-- Download Buttons -->
+            <div class="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-4">
+                <a href="https://github.com/ponponon/aivplayer/releases" target="_blank"
+                   class="w-full sm:w-auto inline-flex items-center justify-center px-8 py-4 bg-primary text-white rounded-xl hover:bg-gray-800 transition-colors text-lg font-medium">
+                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                    </svg>
+                    GitHub 下载
+                </a>
+                <a href="https://gitee.com/ponponon/aivplayer/releases" target="_blank"
+                   class="w-full sm:w-auto inline-flex items-center justify-center px-8 py-4 bg-white text-primary border-2 border-primary rounded-xl hover:bg-gray-50 transition-colors text-lg font-medium">
+                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M11.984 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.016 0zm6.09 5.333c.328 0 .593.13.862.398l1.333 1.333c.27.27.398.534.398.862s-.13.593-.398.862l-1.333 1.333c-.27.27-.534.398-.862.398s-.593-.13-.862-.398L15.89 8.796c-.27-.27-.398-.534-.398-.862s.13-.593.398-.862l1.333-1.333c.27-.27.534-.398.862-.398zM8.667 5.333c.328 0 .593.13.862.398l1.333 1.333c.27.27.398.534.398.862s-.13.593-.398.862L9.53 10.12c-.27.27-.534.398-.862.398s-.593-.13-.862-.398L6.473 8.788c-.27-.27-.398-.534-.398-.862s.13-.593.398-.862l1.333-1.333c.27-.27.534-.398.862-.398zm4.666 0c.328 0 .593.13.862.398l1.333 1.333c.27.27.398.534.398.862s-.13.593-.398.862l-1.333 1.333c-.27.27-.534.398-.862.398s-.593-.13-.862-.398L11.13 7.13c-.27-.27-.398-.534-.398-.862s.13-.593.398-.862l1.333-1.333c.27-.27.534-.398.862-.398z"/>
+                    </svg>
+                    Gitee 下载（国内）
+                </a>
+            </div>
+
+            <p class="mt-6 text-sm text-gray-500">
+                支持 macOS · Windows · Linux
+            </p>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
+        <div class="max-w-6xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl sm:text-4xl font-bold text-primary mb-4">功能特性</h2>
+                <p class="text-lg text-gray-600">强大的本地 AI 能力，保护你的隐私</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Feature 1 -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                    <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-4">
+                        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-primary mb-2">本地 AI 字幕</h3>
+                    <p class="text-gray-600">基于 whisper.cpp 的离线语音识别，无需联网即可为视频自动生成高质量字幕，支持中英日韩等多语言。</p>
+                </div>
+
+                <!-- Feature 2 -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                    <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mb-4">
+                        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-primary mb-2">多格式支持</h3>
+                    <p class="text-gray-600">支持 MP4、WebM、MOV、MKV、AVI 等主流视频格式，拖拽导入或文件选择器打开。</p>
+                </div>
+
+                <!-- Feature 3 -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                    <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mb-4">
+                        <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2m-9 0h10m-10 0a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V6a2 2 0 00-2-2m-5 4v6m-3-3h6"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-primary mb-2">片段导出</h3>
+                    <p class="text-gray-600">基于当前播放位置快速导出短片段，支持 15/30/60 秒三档长度，可选纯视频、外挂字幕或字幕烧录。</p>
+                </div>
+
+                <!-- Feature 4 -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                    <div class="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mb-4">
+                        <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-primary mb-2">字幕翻译</h3>
+                    <p class="text-gray-600">支持将生成的字幕翻译为目标语言，使用 OpenAI 兼容接口，支持自定义术语表。</p>
+                </div>
+
+                <!-- Feature 5 -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                    <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center mb-4">
+                        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-primary mb-2">截图录屏</h3>
+                    <p class="text-gray-600">截取当前画面为图片，录制指定时长的视频片段，支持 GIF 导出。</p>
+                </div>
+
+                <!-- Feature 6 -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                    <div class="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center mb-4">
+                        <svg class="w-6 h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-primary mb-2">多语言界面</h3>
+                    <p class="text-gray-600">支持简体中文、English、日本語、한국어 四种语言，系统语言自动匹配。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Screenshots Section -->
+    <section class="py-20 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-6xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl sm:text-4xl font-bold text-primary mb-4">界面预览</h2>
+                <p class="text-lg text-gray-600">现代化的深色影院风格，视频优先</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="bg-gray-100 rounded-2xl aspect-video flex items-center justify-center">
+                    <div class="text-center">
+                        <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                        </svg>
+                        <p class="text-gray-500">播放器主界面截图</p>
+                    </div>
+                </div>
+                <div class="bg-gray-100 rounded-2xl aspect-video flex items-center justify-center">
+                    <div class="text-center">
+                        <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                        <p class="text-gray-500">设置面板截图</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Download Section -->
+    <section id="download" class="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
+        <div class="max-w-6xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl sm:text-4xl font-bold text-primary mb-4">下载安装</h2>
+                <p class="text-lg text-gray-600">选择你的平台开始使用</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- macOS -->
+                <div class="download-card bg-white p-8 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-primary">
+                    <div class="text-center">
+                        <div class="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-8 h-8 text-gray-700" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-semibold text-primary mb-2">macOS</h3>
+                        <p class="text-gray-600 mb-6">需要 macOS 10.15 或更高版本</p>
+                        <div class="space-y-3">
+                            <a href="https://github.com/ponponon/aivplayer/releases" target="_blank"
+                               class="block w-full py-3 px-4 bg-primary text-white rounded-xl hover:bg-gray-800 transition-colors font-medium">
+                                下载 .dmg
+                            </a>
+                            <a href="https://gitee.com/ponponon/aivplayer/releases" target="_blank"
+                               class="block w-full py-3 px-4 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors font-medium">
+                                Gitee（国内）
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Windows -->
+                <div class="download-card bg-white p-8 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-primary">
+                    <div class="text-center">
+                        <div class="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-8 h-8 text-gray-700" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M3 12V6.75l6-1.32v6.48L3 12zm6.5.02l.01-6.74L19.5 3v8.98l-9.99.04zM3 12.98l6 .01v6.35l-6-1.31V12.98zm6.5.02v6.57l9.99-2.02V13l-9.99-.01z"/>
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-semibold text-primary mb-2">Windows</h3>
+                        <p class="text-gray-600 mb-6">需要 Windows 10 或更高版本</p>
+                        <div class="space-y-3">
+                            <a href="https://github.com/ponponon/aivplayer/releases" target="_blank"
+                               class="block w-full py-3 px-4 bg-primary text-white rounded-xl hover:bg-gray-800 transition-colors font-medium">
+                                下载 .exe
+                            </a>
+                            <a href="https://gitee.com/ponponon/aivplayer/releases" target="_blank"
+                               class="block w-full py-3 px-4 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors font-medium">
+                                Gitee（国内）
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Linux -->
+                <div class="download-card bg-white p-8 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-primary">
+                    <div class="text-center">
+                        <div class="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-8 h-8 text-gray-700" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12.504 0c-.155 0-.315.008-.48.021-4.226.333-3.105 4.807-3.17 6.298-.076 1.092-.3 1.953-1.05 3.02-.885 1.051-2.127 2.75-2.716 4.521-.278.832-.41 1.684-.287 2.489a.424.424 0 00-.11.135c-.26.268-.45.6-.663.839-.199.199-.485.267-.797.4-.313.136-.658.269-.864.68-.09.189-.136.394-.132.602 0 .199.027.4.055.536.058.399.116.728.04.97-.249.68-.28 1.145-.106 1.484.174.334.535.47.94.601.81.2 1.91.135 2.774.6.926.466 1.866.67 2.616.47.526-.116.97-.464 1.208-.946.587-.003 1.23-.269 2.26-.334.699-.058 1.574.267 2.577.2.025.134.063.198.114.333l.003.003c.391.778 1.113 1.368 1.884 1.43.199.045.397-.02.596-.075.2-.054.4-.116.599-.116.2 0 .4.062.599.116.2.055.397.12.596.075.771-.062 1.493-.652 1.884-1.43l.003-.003c.051-.135.089-.199.114-.333 1.003.065 1.878-.26 2.577-.2 1.03.065 1.673.331 2.26.334.238.482.682.83 1.208.946.75.2 1.69-.004 2.616-.47.864-.465 1.964-.4 2.774-.6.405-.132.766-.267.94-.601.175-.339.144-.804-.105-1.484-.076-.242-.018-.571.04-.97.028-.136.055-.337.055-.536.004-.208-.042-.413-.132-.602-.206-.411-.551-.544-.864-.68-.312-.133-.598-.201-.797-.4-.213-.239-.403-.571-.663-.839a.424.424 0 00-.11-.135c.123-.805-.009-1.657-.287-2.489-.589-1.771-1.831-3.47-2.716-4.521-.75-1.067-.974-1.928-1.05-3.02-.065-1.491 1.056-5.965-3.17-6.298A5.095 5.095 0 0012.504 0z"/>
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-semibold text-primary mb-2">Linux</h3>
+                        <p class="text-gray-600 mb-6">Ubuntu 18.04 或同等发行版</p>
+                        <div class="space-y-3">
+                            <a href="https://github.com/ponponon/aivplayer/releases" target="_blank"
+                               class="block w-full py-3 px-4 bg-primary text-white rounded-xl hover:bg-gray-800 transition-colors font-medium">
+                                下载 .AppImage
+                            </a>
+                            <a href="https://gitee.com/ponponon/aivplayer/releases" target="_blank"
+                               class="block w-full py-3 px-4 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors font-medium">
+                                Gitee（国内）
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Start Section -->
+    <section id="quickstart" class="py-20 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-4xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl sm:text-4xl font-bold text-primary mb-4">快速开始</h2>
+                <p class="text-lg text-gray-600">从源码构建或直接下载使用</p>
+            </div>
+
+            <div class="space-y-8">
+                <!-- Option 1: Download -->
+                <div class="bg-gray-50 p-8 rounded-2xl">
+                    <h3 class="text-xl font-semibold text-primary mb-4 flex items-center">
+                        <span class="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center text-sm font-bold mr-3">1</span>
+                        直接下载（推荐）
+                    </h3>
+                    <p class="text-gray-600 mb-4">从 Release 页面下载对应平台的安装包，双击即可安装使用。</p>
+                    <div class="bg-white p-4 rounded-xl">
+                        <p class="text-sm text-gray-500 mb-2">下载地址：</p>
+                        <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
+                            <a href="https://github.com/ponponon/aivplayer/releases" target="_blank" class="text-primary hover:underline">GitHub Releases</a>
+                            <a href="https://gitee.com/ponponon/aivplayer/releases" target="_blank" class="text-primary hover:underline">Gitee Releases（国内）</a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Option 2: Build from source -->
+                <div class="bg-gray-50 p-8 rounded-2xl">
+                    <h3 class="text-xl font-semibold text-primary mb-4 flex items-center">
+                        <span class="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center text-sm font-bold mr-3">2</span>
+                        从源码构建
+                    </h3>
+                    <p class="text-gray-600 mb-4">适合开发者，需要 Node.js 18+ 环境。</p>
+                    <div class="bg-gray-900 text-gray-100 p-6 rounded-xl overflow-x-auto">
+                        <pre><code><span class="text-green-400"># 克隆仓库</span>
+git clone https://github.com/ponponon/aivplayer.git
+cd aivplayer
+
+<span class="text-green-400"># 安装依赖</span>
+npm install
+
+<span class="text-green-400"># 启动开发模式</span>
+npm run dev
+
+<span class="text-green-400"># 构建生产版本</span>
+npm run build
+
+<span class="text-green-400"># 打包安装程序</span>
+npm run dist</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tech Stack Section -->
+    <section class="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50">
+        <div class="max-w-6xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl sm:text-4xl font-bold text-primary mb-4">技术栈</h2>
+                <p class="text-lg text-gray-600">现代化的技术选型</p>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                <div class="bg-white p-6 rounded-2xl text-center hover:shadow-md transition-shadow">
+                    <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+                        <svg class="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                        </svg>
+                    </div>
+                    <h4 class="font-semibold text-primary">Electron</h4>
+                    <p class="text-sm text-gray-500">桌面框架</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl text-center hover:shadow-md transition-shadow">
+                    <div class="w-12 h-12 bg-cyan-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+                        <svg class="w-6 h-6 text-cyan-600" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                        </svg>
+                    </div>
+                    <h4 class="font-semibold text-primary">React</h4>
+                    <p class="text-sm text-gray-500">UI 框架</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl text-center hover:shadow-md transition-shadow">
+                    <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+                        <svg class="w-6 h-6 text-purple-600" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                        </svg>
+                    </div>
+                    <h4 class="font-semibold text-primary">Vite</h4>
+                    <p class="text-sm text-gray-500">构建工具</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl text-center hover:shadow-md transition-shadow">
+                    <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+                        <svg class="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                        </svg>
+                    </div>
+                    <h4 class="font-semibold text-primary">whisper.cpp</h4>
+                    <p class="text-sm text-gray-500">AI 语音识别</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-12 px-4 sm:px-6 lg:px-8 bg-primary">
+        <div class="max-w-6xl mx-auto">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- Logo & Description -->
+                <div>
+                    <div class="flex items-center space-x-2 mb-4">
+                        <img src="assets/icon.png" alt="AIVPlayer" class="w-8 h-8">
+                        <span class="text-xl font-bold text-white">AIVPlayer</span>
+                    </div>
+                    <p class="text-gray-400">本地 AI 字幕生成的跨平台视频播放器</p>
+                </div>
+
+                <!-- Links -->
+                <div>
+                    <h4 class="text-white font-semibold mb-4">链接</h4>
+                    <ul class="space-y-2">
+                        <li><a href="https://github.com/ponponon/aivplayer" target="_blank" class="text-gray-400 hover:text-white transition-colors">GitHub</a></li>
+                        <li><a href="https://gitee.com/ponponon/aivplayer" target="_blank" class="text-gray-400 hover:text-white transition-colors">Gitee</a></li>
+                        <li><a href="https://github.com/ponponon/aivplayer/issues" target="_blank" class="text-gray-400 hover:text-white transition-colors">问题反馈</a></li>
+                    </ul>
+                </div>
+
+                <!-- License -->
+                <div>
+                    <h4 class="text-white font-semibold mb-4">开源协议</h4>
+                    <p class="text-gray-400">本项目基于 MIT License 开源</p>
+                    <p class="text-gray-400 mt-2">Copyright © 2024 ponponon</p>
+                </div>
+            </div>
+
+            <div class="border-t border-gray-700 mt-8 pt-8 text-center">
+                <p class="text-gray-400 text-sm">
+                    如果觉得有用，请给个 ⭐ Star 支持一下！
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Back to Top Button -->
+    <button id="back-to-top" class="fixed bottom-8 right-8 w-12 h-12 bg-primary text-white rounded-full shadow-lg hover:bg-gray-800 transition-all duration-300 opacity-0 invisible z-50">
+        <svg class="w-6 h-6 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
+        </svg>
+    </button>
+
+    <!-- Scripts -->
+    <script src="script.js"></script>
+</body>
+</html>
