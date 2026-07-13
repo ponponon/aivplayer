@@ -68,6 +68,7 @@ type AsrNotice = {
 }
 
 const subtitleTargetLanguageIds: SubtitleTargetLanguageId[] = ['zh', 'en', 'ja', 'ko']
+const VIDEO_SINGLE_CLICK_DELAY_MS = 220
 
 function getPlayFailureMessage(copy: LocaleCopy, error: unknown): string | null {
   if (error instanceof DOMException && error.name === 'AbortError') {
@@ -283,6 +284,7 @@ export function App(): ReactElement {
   const subtitleActionsRef = useRef<HTMLDetailsElement | null>(null)
   const subtitleDisplayControlsRef = useRef<HTMLDetailsElement | null>(null)
   const downloadDialogRef = useRef<HTMLElement | null>(null)
+  const videoClickTimerRef = useRef<number | null>(null)
   const holdRightArrowTimerRef = useRef<number | null>(null)
   const holdRightArrowRestoreRateRef = useRef<number | null>(null)
   const controlDeckHideTimerRef = useRef<number | null>(null)
@@ -722,6 +724,34 @@ export function App(): ReactElement {
     }
 
     await video.requestFullscreen()
+  }
+
+  const clearVideoClickTimer = (): void => {
+    if (videoClickTimerRef.current == null) {
+      return
+    }
+
+    window.clearTimeout(videoClickTimerRef.current)
+    videoClickTimerRef.current = null
+  }
+
+  const handleVideoClick = (): void => {
+    revealControlDeck()
+
+    if (!appSettings.playback.singleClickPause) {
+      return
+    }
+
+    clearVideoClickTimer()
+    videoClickTimerRef.current = window.setTimeout(() => {
+      videoClickTimerRef.current = null
+      void togglePlay()
+    }, VIDEO_SINGLE_CLICK_DELAY_MS)
+  }
+
+  const handleVideoDoubleClick = (): void => {
+    clearVideoClickTimer()
+    void toggleFullscreen()
   }
 
   const clearPlaybackError = (): void => {
@@ -1645,6 +1675,10 @@ export function App(): ReactElement {
   }, [])
 
   useEffect(() => {
+    return clearVideoClickTimer
+  }, [])
+
+  useEffect(() => {
     void window.aiv.getInitialMediaFiles().then(loadFiles)
     return window.aiv.onMediaFilesOpened(loadFiles)
   }, [])
@@ -1782,12 +1816,8 @@ export function App(): ReactElement {
                 }
                 src={state.currentFile.url}
                 preload="metadata"
-                onClick={() => {
-                  if (appSettings.playback.singleClickPause) {
-                    revealControlDeck()
-                    void togglePlay()
-                  }
-                }}
+                onClick={handleVideoClick}
+                onDoubleClick={handleVideoDoubleClick}
                 onPlay={() => setState((current) => ({ ...current, isPlaying: true }))}
                 onPlaying={clearPlaybackError}
                 onCanPlay={clearPlaybackError}

@@ -366,12 +366,20 @@ function sanitizeAppSettings(parsed: unknown, captureDefaultDirectoryPath: strin
     asr?: Partial<AppSettings['asr']>
   }
 
+  const legacyPlayback = typeof value.schemaVersion !== 'number' || value.schemaVersion < APP_SETTINGS_SCHEMA_VERSION
+  const playback = legacyPlayback
+    ? {
+        ...value.playback,
+        singleClickPause: true
+      }
+    : value.playback
+
   return {
     schemaVersion: APP_SETTINGS_SCHEMA_VERSION,
     ui: sanitizeUiSettings(value.ui, defaults.ui),
     media: sanitizeMediaSettings(value.media, defaults.media),
     capture: sanitizeCaptureSettings(value.capture, defaults.capture, captureDefaultDirectoryPath),
-    playback: sanitizePlaybackSettings(value.playback, defaults.playback),
+    playback: sanitizePlaybackSettings(playback, defaults.playback),
     subtitles: sanitizeSubtitleSettings(value.subtitles, defaults.subtitles),
     asr: sanitizeAsrSettings(value.asr, defaults.asr)
   }

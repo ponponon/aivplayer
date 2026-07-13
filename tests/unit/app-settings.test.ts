@@ -117,6 +117,29 @@ describe('app settings', () => {
     })
   })
 
+  it('enables video surface gestures when upgrading legacy settings', async () => {
+    await writeFile(
+      join(tempDirectory, 'app-settings.json'),
+      `${JSON.stringify(
+        {
+          schemaVersion: 10,
+          playback: {
+            singleClickPause: false
+          }
+        },
+        null,
+        2
+      )}\n`
+    )
+
+    await expect(readAppSettings(tempDirectory)).resolves.toMatchObject({
+      schemaVersion: 11,
+      playback: {
+        singleClickPause: true
+      }
+    })
+  })
+
   it('normalizes translation glossary entries before persisting them', async () => {
     const settings = createDefaultAppSettings()
     settings.asr.translationGlossary = ' Technology = 技术\n\ninvalid line\nAIVPlayer= AIV 播放器 '

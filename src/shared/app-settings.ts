@@ -2,7 +2,7 @@ import type { AsrModelSourceId } from './media-types'
 import type { ClipExportLengthSeconds, ClipExportMode } from './clip-export'
 import { DEFAULT_APP_LOCALE, DEFAULT_SUBTITLE_LANGUAGE, type AppLocale, type SubtitleLanguageId } from './localization'
 
-export const APP_SETTINGS_SCHEMA_VERSION = 10
+export const APP_SETTINGS_SCHEMA_VERSION = 11
 
 export type CaptureImageFormat = 'jpg' | 'png'
 export type CaptureFileNamingMode = 'sequential' | 'timestamp'
@@ -169,7 +169,7 @@ export function createDefaultAppSettings(): AppSettings {
       controlDeckAutoHideSeconds: 3,
       showTotalPlaybackTime: false,
       seekStepSeconds: 10,
-      singleClickPause: false,
+      singleClickPause: true,
       pauseWhenMinimized: false,
       holdRightArrowSpeed: 4,
       lastVolume: 0.8,
