@@ -46,4 +46,27 @@ describe('bundled ASR runtime check', () => {
     expect(result.message).toContain('resources/whisper.cpp')
     expect(result.message).toContain('resources/ffmpeg')
   })
+
+  it('reports binaries that exist but abort when executed', async () => {
+    const whisperPath = join(tempDirectory, 'whisper.cpp', 'whisper-cli')
+    const ffmpegPath = join(tempDirectory, 'ffmpeg', 'ffmpeg')
+    const ffprobePath = join(tempDirectory, 'ffmpeg', 'ffprobe')
+
+    await mkdir(join(tempDirectory, 'whisper.cpp'), { recursive: true })
+    await mkdir(join(tempDirectory, 'ffmpeg'), { recursive: true })
+    await writeFile(whisperPath, '#!/bin/sh\necho "whisper.cpp mock"\n')
+    await writeFile(ffmpegPath, '#!/bin/sh\nexit 134\n')
+    await writeFile(ffprobePath, '#!/bin/sh\nexit 134\n')
+    await chmod(whisperPath, 0o755)
+    await chmod(ffmpegPath, 0o755)
+    await chmod(ffprobePath, 0o755)
+
+    const result = await checkBundledAsrRuntime({ resourcePath: tempDirectory })
+
+    expect(result.ok).toBe(false)
+    expect(result.missing).toEqual([])
+    expect(result.executionErrors).toEqual(
+      expect.arrayContaining([expect.stringContaining('ffmpeg'), expect.stringContaining('ffprobe')])
+    )
+  })
 })

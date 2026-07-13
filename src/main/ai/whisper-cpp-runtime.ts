@@ -155,6 +155,7 @@ async function resolveExecutablePath(options: {
   binaryNames: string[]
   env: NodeJS.ProcessEnv
   extraBinaryDirectories?: string[]
+  validate?: (binaryPath: string) => Promise<boolean>
 }): Promise<string | null> {
   const binaryDirectories = [...(options.extraBinaryDirectories ?? []), ...getKnownBinaryDirectories(options.env)]
   const candidates = [
@@ -171,11 +172,28 @@ async function resolveExecutablePath(options: {
         continue
       }
 
-      return replacementPath ?? candidate
+      const resolvedPath = replacementPath ?? candidate
+      if (options.validate && !(await options.validate(resolvedPath))) {
+        continue
+      }
+
+      return resolvedPath
     }
   }
 
   return null
+}
+
+async function canExecuteMediaBinary(binaryPath: string): Promise<boolean> {
+  try {
+    await execFileAsync(binaryPath, ['-version'], {
+      timeout: 5000,
+      maxBuffer: 256 * 1024
+    })
+    return true
+  } catch {
+    return false
+  }
 }
 
 async function resolveWhisperBinaryPath(resourcePath: string, env: NodeJS.ProcessEnv): Promise<string | null> {
@@ -211,7 +229,8 @@ export async function resolveFfmpegPath(
     resourceDirectory: 'ffmpeg',
     binaryNames: getFfmpegBinaryNames(),
     env,
-    extraBinaryDirectories
+    extraBinaryDirectories,
+    validate: canExecuteMediaBinary
   })
 }
 
@@ -226,7 +245,8 @@ export async function resolveFfprobePath(
     resourceDirectory: 'ffmpeg',
     binaryNames: getFfprobeBinaryNames(),
     env,
-    extraBinaryDirectories
+    extraBinaryDirectories,
+    validate: canExecuteMediaBinary
   })
 }
 

@@ -334,3 +334,8 @@
 
 - `<video>` 同时监听单击和双击时，不能在 `click` 里立即切换播放状态，否则一次双击会先触发一次播放 / 暂停，再触发全屏，用户会感觉双击误改了播放状态。应给单击留出很短的判定窗口，双击到来时取消待执行的单击动作；全屏必须继续作用于当前 `<video>`，`Esc` 则通过 `fullscreenchange` 同步退出状态。新旧设置升级时还要保证默认开启这组符合常用播放器习惯的手势。
 - 全屏 `<video>` 还可能带有 Chromium 的媒体默认点击行为；如果自定义 `click` / `dblclick` 不调用 `preventDefault()`，单击可能先执行自定义暂停，随后又被浏览器默认动作重新播放。全屏视频的播放控制应只保留自定义事件路径，并忽略双击序列中 `detail > 1` 的第二个 `click`。
+
+## macOS 的 ffmpeg 不能直接复制 Homebrew 动态链接二进制
+
+- `/opt/homebrew/bin/ffmpeg` 只是一个依赖 Homebrew Cellar 和多个 `/opt/homebrew/opt/*` 动态库的开发机二进制。直接复制到 `resources/ffmpeg` 后，二进制仍会把旧版本 Cellar 绝对路径写进 `LC_LOAD_DYLIB`；Homebrew 升级后，播放器就会在真正执行时以 `SIGABRT` 报 `dyld: Library not loaded`。
+- runtime resolver 不能只判断 ffmpeg 文件路径存在就认为组件可用；必须在 staging / CI 阶段用 `otool -L` 检查外部依赖，并实际执行 `ffmpeg -version` 和 `ffprobe -version`。正式资源应使用静态构建，或把完整 dylib 依赖复制到资源目录并改成 `@loader_path` 相对依赖，不能依赖用户机器上的 Homebrew 路径。

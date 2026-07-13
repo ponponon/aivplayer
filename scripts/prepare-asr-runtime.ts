@@ -1,4 +1,4 @@
-import { access, chmod, copyFile, mkdir, readdir, stat } from 'node:fs/promises'
+import { access, chmod, copyFile, mkdir, readdir, stat, unlink } from 'node:fs/promises'
 import { constants } from 'node:fs'
 import { basename, dirname, extname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -7,6 +7,7 @@ import {
   getWhisperBinaryDestinationName,
   getWhisperBinaryNames as getSupportedWhisperBinaryNames
 } from '../src/main/ai/whisper-binary.ts'
+import { bundleMachODependencies, clearRuntimeSidecars } from './macos-runtime-dependencies.ts'
 
 export type PrepareAsrRuntimeOptions = {
   resourcePath?: string
@@ -85,7 +86,9 @@ async function findBinaryInDirectory(directory: string, binaryNames: string[], m
     const entries = await readdir(current.directory, { withFileTypes: true }).catch(() => [])
 
     for (const binaryName of binaryNames) {
-      const match = entries.find((entry) => entry.isFile() && entry.name === binaryName)
+      const match = entries.find(
+        (entry) => (entry.isFile() || entry.isSymbolicLink()) && entry.name === binaryName
+      )
 
       if (match) {
         return join(current.directory, match.name)
@@ -144,6 +147,7 @@ async function copyRuntimeBinary(options: {
     options.destinationDirectory,
     options.destinationName ?? getWhisperBinaryDestinationName(options.sourcePath, options.platform)
   )
+  await unlink(destinationPath).catch(() => undefined)
   await copyFile(options.sourcePath, destinationPath)
   await ensureExecutable(destinationPath, options.platform)
   return destinationPath
@@ -258,15 +262,34 @@ export async function prepareAsrRuntime(options: PrepareAsrRuntimeOptions): Prom
       platform
     })
   ])
+  if (platform === 'darwin') {
+    await clearRuntimeSidecars(ffmpegDestinationDirectory)
+  }
+
   const whisperSidecars = await copySidecars(whisperSourcePath, whisperDestinationDirectory)
   const ffmpegSidecars = await copySidecars(ffmpegSourcePath, ffmpegDestinationDirectory)
+  const ffmpegDependencies = await bundleMachODependencies({
+    platform,
+    destinationDirectory: ffmpegDestinationDirectory,
+    entries: [
+      { sourcePath: ffmpegSourcePath, destinationPath: ffmpegPath },
+      { sourcePath: ffprobeSourcePath, destinationPath: ffprobePath }
+    ]
+  })
   const check = await checkBundledAsrRuntime({ resourcePath, platform })
 
   if (!check.ok) {
     throw new Error(check.message)
   }
 
-  const copiedFiles = [whisperBinaryPath, ffmpegPath, ffprobePath, ...whisperSidecars, ...ffmpegSidecars]
+  const copiedFiles = [
+    whisperBinaryPath,
+    ffmpegPath,
+    ffprobePath,
+    ...whisperSidecars,
+    ...ffmpegSidecars,
+    ...ffmpegDependencies.copiedFiles
+  ]
   const message = [
     'ASR runtime staged for release.',
     `whisper.cpp: ${whisperBinaryPath}`,

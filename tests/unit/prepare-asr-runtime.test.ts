@@ -1,4 +1,4 @@
-import { access, chmod, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { access, chmod, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { constants } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -110,6 +110,36 @@ describe('prepare ASR runtime', () => {
     expect(result.ok).toBe(true)
     expect(result.whisperBinaryPath).toBe(join(resourcePath, 'whisper.cpp', 'whisper-whisper-cli'))
     await expect(readFile(result.whisperBinaryPath, 'utf-8')).resolves.toContain('new whisper')
+  })
+
+  it('finds ffprobe when a Homebrew-style source directory exposes it through a symlink', async () => {
+    const whisperDirectory = join(tempDirectory, 'whisper-build')
+    const ffmpegDirectory = join(tempDirectory, 'ffmpeg-build')
+    const resourcePath = join(tempDirectory, 'resources')
+    const whisperSource = join(whisperDirectory, 'whisper-cli')
+    const ffmpegSource = join(ffmpegDirectory, 'ffmpeg')
+    const ffprobeTarget = join(tempDirectory, 'ffprobe-real')
+    const ffprobeSource = join(ffmpegDirectory, 'ffprobe')
+
+    await mkdir(whisperDirectory, { recursive: true })
+    await mkdir(ffmpegDirectory, { recursive: true })
+    await writeFile(whisperSource, '#!/bin/sh\necho whisper\n')
+    await writeFile(ffmpegSource, '#!/bin/sh\necho ffmpeg\n')
+    await writeFile(ffprobeTarget, '#!/bin/sh\necho ffprobe\n')
+    await symlink(ffprobeTarget, ffprobeSource)
+    await chmod(whisperSource, 0o755)
+    await chmod(ffmpegSource, 0o755)
+    await chmod(ffprobeTarget, 0o755)
+
+    const result = await prepareAsrRuntime({
+      resourcePath,
+      platform: 'darwin',
+      whisperDirectory,
+      ffmpegDirectory
+    })
+
+    expect(result.ffprobePath).toBe(join(resourcePath, 'ffmpeg', 'ffprobe'))
+    await expect(readFile(result.ffprobePath, 'utf-8')).resolves.toContain('ffprobe')
   })
 
   it('copies whisper.cpp sidecar runtime libraries from a build directory', async () => {

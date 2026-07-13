@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { readAsrRuntimeSettings, saveWhisperBinaryPath } from '../../src/main/ai/asr-settings'
-import { createWhisperCppRuntime } from '../../src/main/ai/whisper-cpp-runtime'
+import { createWhisperCppRuntime, resolveFfmpegPath } from '../../src/main/ai/whisper-cpp-runtime'
 import { getAppCopy } from '../../src/shared/i18n'
 
 describe('ASR runtime settings', () => {
@@ -126,6 +126,24 @@ describe('ASR runtime settings', () => {
 
     expect(status.binaryPath).toBe(whisperBinaryPath)
     expect(status.ffmpegPath).toBe(ffmpegPath)
+  })
+
+  it('skips an ffmpeg candidate that exists but cannot execute', async () => {
+    const brokenDirectory = join(tempDirectory, 'broken-bin')
+    const workingDirectory = join(tempDirectory, 'working-bin')
+    const brokenFfmpegPath = join(brokenDirectory, 'ffmpeg')
+    const workingFfmpegPath = join(workingDirectory, 'ffmpeg')
+
+    await mkdir(brokenDirectory, { recursive: true })
+    await mkdir(workingDirectory, { recursive: true })
+    await writeFile(brokenFfmpegPath, '#!/bin/sh\nexit 134\n')
+    await writeFile(workingFfmpegPath, '#!/bin/sh\necho "ffmpeg mock"\n')
+    await chmod(brokenFfmpegPath, 0o755)
+    await chmod(workingFfmpegPath, 0o755)
+
+    await expect(
+      resolveFfmpegPath(join(tempDirectory, 'resources'), { PATH: '' }, [brokenDirectory, workingDirectory])
+    ).resolves.toBe(workingFfmpegPath)
   })
 
   it('persists the discovered whisper.cpp binary when auto-configuring the runtime', async () => {
