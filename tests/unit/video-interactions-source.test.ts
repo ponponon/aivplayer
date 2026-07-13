@@ -8,6 +8,8 @@ describe('video surface interaction source constraints', () => {
 
     expect(appSource).toContain('onClick={handleVideoClick}')
     expect(appSource).toContain('onDoubleClick={handleVideoDoubleClick}')
+    expect(appSource).toContain('event.preventDefault()')
+    expect(appSource).toContain('if (event.detail > 1)')
     expect(appSource).toContain('clearVideoClickTimer()')
     expect(appSource).toContain('void togglePlay()')
     expect(appSource).toContain('void toggleFullscreen()')

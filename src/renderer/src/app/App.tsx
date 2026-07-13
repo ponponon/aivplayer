@@ -735,7 +735,13 @@ export function App(): ReactElement {
     videoClickTimerRef.current = null
   }
 
-  const handleVideoClick = (): void => {
+  const handleVideoClick = (event: ReactMouseEvent<HTMLVideoElement>): void => {
+    event.preventDefault()
+
+    if (event.detail > 1) {
+      return
+    }
+
     revealControlDeck()
 
     if (!appSettings.playback.singleClickPause) {
@@ -749,7 +755,8 @@ export function App(): ReactElement {
     }, VIDEO_SINGLE_CLICK_DELAY_MS)
   }
 
-  const handleVideoDoubleClick = (): void => {
+  const handleVideoDoubleClick = (event: ReactMouseEvent<HTMLVideoElement>): void => {
+    event.preventDefault()
     clearVideoClickTimer()
     void toggleFullscreen()
   }
