@@ -1775,6 +1775,11 @@ export function App(): ReactElement {
               <video
                 ref={videoRef}
                 className="video-surface"
+                style={
+                  state.videoWidth > 0 && state.videoHeight > 0
+                    ? { aspectRatio: `${state.videoWidth} / ${state.videoHeight}` }
+                    : undefined
+                }
                 src={state.currentFile.url}
                 preload="metadata"
                 onClick={() => {
