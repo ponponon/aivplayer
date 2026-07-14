@@ -345,3 +345,9 @@
 - Electron 的 macOS 菜单属于主进程原生 UI；即使 React 播放器和设置页已经支持多语言，`Menu.buildFromTemplate` 里写死的英文仍会直接显示在系统状态栏。
 - 菜单文案应和主进程读取到的 `AppSettings.ui.locale` 共用同一份 i18n 词条，并在 `APP_SET_SETTINGS` 完成后重新 `Menu.setApplicationMenu`，否则用户切换语言后只能重启应用才能看到变化。
 - 菜单里的应用级动作（打开媒体、设置）要通过主进程现有工作流或受控 IPC 触发，不能复制一套文件选择和设置状态逻辑，否则菜单入口与窗口按钮很容易行为不一致。
+
+## 仅处理 process.argv 不能覆盖系统的“打开方式”
+
+- macOS Finder 通过 `open-file` 事件把文件交给已运行的 Electron 应用，Windows 和 Linux 则通常通过命令行参数以及 Electron 的 `second-instance` 事件传递；只在窗口创建时读取一次 `process.argv` 会漏掉后续双击打开的视频。
+- 安装包必须声明 `fileAssociations`，否则系统的“打开方式”不会把 AIVPlayer 注册为视频查看器；声明后仍要在主进程处理首个启动参数、macOS `open-file` 和跨平台二次启动转发。
+- 文件路径过滤应集中成共享清单，并统一做扩展名大小写、选项参数、文件存在性和重复路径处理，避免安装包支持的格式与运行时支持的格式不一致。

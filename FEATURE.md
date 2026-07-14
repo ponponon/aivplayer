@@ -176,6 +176,9 @@
 - macOS 菜单栏应用名称会显示为 AIVPlayer，开发态也不会再保留 Electron 默认名称。
 - macOS 原生应用菜单已接入简体中文、English、日本語、한국어四套文案，应用菜单、文件、编辑、显示和窗口菜单会跟随设置中的界面语言即时刷新。
 - macOS 菜单补齐了“打开媒体文件”和“设置…”入口，并沿用播放器现有的文件选择与设置弹窗，不需要用户先回到窗口内寻找按钮。
+- 安装包声明了 MP4、M4V、MOV、WebM、MKV、AVI、FLV、WMV、TS、M2TS、MPG、MPEG 视频关联，macOS、Windows、Linux 的“打开方式”可以识别 AIVPlayer。
+- 从 Finder、Windows 资源管理器、Linux 文件管理器或命令行打开视频时，AIVPlayer 会把文件传给已有窗口；不会因为系统再次启动一个实例而丢失视频。
+- Linux 同时提供 AppImage 和 deb 安装目标；deb 安装会把 desktop MIME 关联正式写入系统，AppImage 则保留便携分发能力。
 
 ## ASR 二进制兼容
 - 自动识别 `whisper-whisper-cli`、`whisper-cli`、`whisper-cpp`、`main` 这几类 whisper.cpp 可执行文件。

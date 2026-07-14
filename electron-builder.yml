@@ -16,6 +16,67 @@ extraResources:
     to: ffmpeg
     filter:
       - '**/*'
+fileAssociations:
+  - ext: mp4
+    name: MPEG-4 video
+    description: Play MPEG-4 videos with AIVPlayer
+    mimeType: video/mp4
+    role: Viewer
+  - ext: m4v
+    name: MPEG-4 video
+    description: Play MPEG-4 videos with AIVPlayer
+    mimeType: video/mp4
+    role: Viewer
+  - ext: mov
+    name: QuickTime video
+    description: Play QuickTime videos with AIVPlayer
+    mimeType: video/quicktime
+    role: Viewer
+  - ext: webm
+    name: WebM video
+    description: Play WebM videos with AIVPlayer
+    mimeType: video/webm
+    role: Viewer
+  - ext: mkv
+    name: Matroska video
+    description: Play Matroska videos with AIVPlayer
+    mimeType: video/x-matroska
+    role: Viewer
+  - ext: avi
+    name: AVI video
+    description: Play AVI videos with AIVPlayer
+    mimeType: video/x-msvideo
+    role: Viewer
+  - ext: flv
+    name: Flash video
+    description: Play Flash videos with AIVPlayer
+    mimeType: video/x-flv
+    role: Viewer
+  - ext: wmv
+    name: Windows Media video
+    description: Play Windows Media videos with AIVPlayer
+    mimeType: video/x-ms-wmv
+    role: Viewer
+  - ext: ts
+    name: MPEG transport stream
+    description: Play MPEG transport streams with AIVPlayer
+    mimeType: video/mp2t
+    role: Viewer
+  - ext: m2ts
+    name: MPEG-2 transport stream
+    description: Play MPEG-2 transport streams with AIVPlayer
+    mimeType: video/mp2t
+    role: Viewer
+  - ext: mpg
+    name: MPEG video
+    description: Play MPEG videos with AIVPlayer
+    mimeType: video/mpeg
+    role: Viewer
+  - ext: mpeg
+    name: MPEG video
+    description: Play MPEG videos with AIVPlayer
+    mimeType: video/mpeg
+    role: Viewer
 mac:
   category: public.app-category.video
   icon: brand/icon.icns
@@ -28,5 +89,7 @@ win:
     - nsis
 linux:
   icon: brand/icon.png
+  category: AudioVideo
   target:
     - AppImage
+    - deb

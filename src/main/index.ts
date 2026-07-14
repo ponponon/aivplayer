@@ -27,6 +27,7 @@ import type { AppLocale } from '../shared/localization'
 import { createWhisperCppRuntime, resolveFfmpegPath } from './ai/whisper-cpp-runtime'
 import { buildClipExportDefaultVideoPath, runClipExport } from './media/clip-export'
 import { createMediaProbeMetadata } from './media/media-metadata'
+import { extractVideoFilePaths, isVideoFilePath, VIDEO_EXTENSIONS } from './media/file-opening'
 import { openPathInDefaultApp } from './system/file-actions'
 import { createMediaFile, registerMediaProtocolHandler, registerMediaProtocolScheme } from './media/media-protocol'
 import { getNativePlayerStatus, stopNativePlayer } from './media/native-player'
@@ -35,24 +36,10 @@ registerMediaProtocolScheme()
 app.setName(APP_NAME)
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 
-const VIDEO_EXTENSIONS = [
-  'mp4',
-  'm4v',
-  'mov',
-  'webm',
-  'mkv',
-  'avi',
-  'flv',
-  'wmv',
-  'ts',
-  'm2ts',
-  'mpg',
-  'mpeg'
-]
-
 let mainWindow: BrowserWindow | null = null
 let asrRuntime: ReturnType<typeof createWhisperCppRuntime> | null = null
 let initialMediaFiles: MediaFile[] | null = null
+let pendingMediaPaths: string[] = []
 let currentAppSettings = createDefaultAppSettings()
 const translationAbortControllers = new Map<number, AbortController>()
 
@@ -101,15 +88,68 @@ function getInitialMediaFiles(): MediaFile[] {
     return initialMediaFiles
   }
 
-  initialMediaFiles = process.argv
-    .slice(1)
-    .filter((value) => !value.startsWith('-'))
-    .map((value) => resolve(value))
-    .filter((filePath) => existsSync(filePath))
-    .filter((filePath) => VIDEO_EXTENSIONS.includes(extname(filePath).replace('.', '').toLowerCase()))
-    .map(createMediaFile)
+  const startupPaths = extractVideoFilePaths([...process.argv.slice(1), ...pendingMediaPaths])
+  initialMediaFiles = startupPaths.map(createMediaFile)
+  pendingMediaPaths = []
 
   return initialMediaFiles
+}
+
+function focusMainWindow(): void {
+  if (!mainWindow) {
+    return
+  }
+
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore()
+  }
+
+  mainWindow.show()
+  mainWindow.focus()
+}
+
+async function deliverMediaPaths(filePaths: string[]): Promise<void> {
+  if (!mainWindow || mainWindow.webContents.isLoading()) {
+    pendingMediaPaths.push(...filePaths)
+    return
+  }
+
+  const files = await Promise.all(filePaths.map((filePath) => createMediaFile(filePath)))
+  const expandedFiles = await expandMediaFiles(files)
+
+  if (expandedFiles.length === 0) {
+    return
+  }
+
+  focusMainWindow()
+  mainWindow.webContents.send(IPC_CHANNELS.MEDIA_FILES_OPENED, expandedFiles)
+}
+
+function queueIncomingMediaPaths(filePaths: readonly string[]): void {
+  const validPaths = extractVideoFilePaths(filePaths)
+
+  if (validPaths.length === 0) {
+    return
+  }
+
+  if (!initialMediaFiles || !mainWindow || mainWindow.webContents.isLoading()) {
+    pendingMediaPaths.push(...validPaths)
+    return
+  }
+
+  void deliverMediaPaths(validPaths)
+}
+
+function flushPendingMediaPaths(): void {
+  if (!initialMediaFiles || pendingMediaPaths.length === 0) {
+    return
+  }
+
+  const paths = extractVideoFilePaths(pendingMediaPaths)
+  pendingMediaPaths = []
+  if (paths.length > 0) {
+    void deliverMediaPaths(paths)
+  }
 }
 
 function resolveResourcePath(): string {
@@ -155,7 +195,7 @@ async function listMediaFilesInDirectory(directoryPath: string): Promise<MediaFi
   const mediaPaths = entries
     .filter((entry) => entry.isFile())
     .map((entry) => join(directoryPath, entry.name))
-    .filter((filePath) => VIDEO_EXTENSIONS.includes(extname(filePath).replace('.', '').toLowerCase()))
+    .filter(isVideoFilePath)
 
   return Promise.all(mediaPaths.map((filePath) => createMediaFile(filePath)))
 }
@@ -184,7 +224,7 @@ async function promptForMediaFiles(): Promise<MediaFile[]> {
     title: copy.topbar.openFiles,
     properties: ['openFile', 'multiSelections'],
     filters: [
-      { name: 'Video files', extensions: VIDEO_EXTENSIONS },
+      { name: 'Video files', extensions: [...VIDEO_EXTENSIONS] },
       { name: 'All files', extensions: ['*'] }
     ]
   }
@@ -605,6 +645,7 @@ function createWindow(): void {
     if (initialFiles.length > 0) {
       mainWindow?.webContents.send(IPC_CHANNELS.MEDIA_FILES_OPENED, initialFiles)
     }
+    flushPendingMediaPaths()
   })
 
   if (process.argv.includes('--devtools')) {
@@ -616,21 +657,37 @@ function createWindow(): void {
   })
 }
 
-app.whenReady().then(async () => {
-  currentAppSettings = await readAppSettings(app.getPath('userData'), app.getPath('videos'))
-  registerMediaProtocolHandler()
-  registerIpc()
-  app.setAboutPanelOptions({ applicationName: APP_NAME })
-  installApplicationMenu()
-  applyMacDockIcon()
-  createWindow()
+const hasSingleInstanceLock = app.requestSingleInstanceLock()
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow()
-    }
+if (!hasSingleInstanceLock) {
+  app.quit()
+} else {
+  app.on('open-file', (event, filePath) => {
+    event.preventDefault()
+    queueIncomingMediaPaths([filePath])
   })
-})
+
+  app.on('second-instance', (_event, commandLine) => {
+    queueIncomingMediaPaths(commandLine)
+    focusMainWindow()
+  })
+
+  app.whenReady().then(async () => {
+    currentAppSettings = await readAppSettings(app.getPath('userData'), app.getPath('videos'))
+    registerMediaProtocolHandler()
+    registerIpc()
+    app.setAboutPanelOptions({ applicationName: APP_NAME })
+    installApplicationMenu()
+    applyMacDockIcon()
+    createWindow()
+
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) {
+        createWindow()
+      }
+    })
+  })
+}
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {

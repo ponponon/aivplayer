@@ -98,7 +98,7 @@ AIVPlayer 是一款基于 Electron 的现代化桌面视频播放器，核心亮
 |------|------|
 | macOS | `.dmg` / `.zip` |
 | Windows | `.exe` (NSIS 安装器) |
-| Linux | `.AppImage` |
+| Linux | `.AppImage` / `.deb` |
 
 ### 从源码构建
 
