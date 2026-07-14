@@ -1,7 +1,7 @@
 {
   "name": "aivplayer",
   "productName": "AIVPlayer",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "A modern cross-platform desktop video player with local ASR subtitle generation.",
   "main": "out/main/index.js",
   "scripts": {
