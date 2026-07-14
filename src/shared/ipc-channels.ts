@@ -9,6 +9,7 @@ export const IPC_CHANNELS = {
   GET_APP_VERSION: 'app:get-version',
   APP_GET_SETTINGS: 'app:get-settings',
   APP_SET_SETTINGS: 'app:set-settings',
+  APP_MENU_OPEN_SETTINGS: 'app-menu:open-settings',
   ASR_HEALTH_CHECK: 'asr:health-check',
   ASR_AUTO_DETECT_WHISPER_BINARY: 'asr:auto-detect-whisper-binary',
   ASR_SELECT_WHISPER_BINARY: 'asr:select-whisper-binary',

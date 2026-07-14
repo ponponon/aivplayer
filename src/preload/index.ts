@@ -75,6 +75,11 @@ const api = {
     ipcRenderer.on(IPC_CHANNELS.MEDIA_FILES_OPENED, listener)
     return () => ipcRenderer.removeListener(IPC_CHANNELS.MEDIA_FILES_OPENED, listener)
   },
+  onAppMenuOpenSettings: (callback: () => void): (() => void) => {
+    const listener = (): void => callback()
+    ipcRenderer.on(IPC_CHANNELS.APP_MENU_OPEN_SETTINGS, listener)
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.APP_MENU_OPEN_SETTINGS, listener)
+  },
   onAsrModelDownloadProgress: (callback: (progress: AsrModelDownloadProgress) => void): (() => void) => {
     const listener = (_event: Electron.IpcRendererEvent, progress: AsrModelDownloadProgress): void => callback(progress)
     ipcRenderer.on(IPC_CHANNELS.ASR_MODEL_DOWNLOAD_PROGRESS, listener)

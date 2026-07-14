@@ -78,7 +78,22 @@ function applyMacDockIcon(): void {
 }
 
 function installApplicationMenu(): void {
-  Menu.setApplicationMenu(Menu.buildFromTemplate(createApplicationMenuTemplate(process.platform)))
+  Menu.setApplicationMenu(
+    Menu.buildFromTemplate(
+      createApplicationMenuTemplate(process.platform, getCurrentLocale(), {
+        openFiles: () => {
+          void promptForMediaFiles().then((files) => {
+            if (files.length > 0) {
+              mainWindow?.webContents.send(IPC_CHANNELS.MEDIA_FILES_OPENED, files)
+            }
+          })
+        },
+        openSettings: () => {
+          mainWindow?.webContents.send(IPC_CHANNELS.APP_MENU_OPEN_SETTINGS)
+        }
+      })
+    )
+  )
 }
 
 function getInitialMediaFiles(): MediaFile[] {
@@ -162,6 +177,30 @@ async function expandMediaFiles(files: MediaFile[]): Promise<MediaFile[]> {
   return Array.from(uniqueFiles.values())
 }
 
+async function promptForMediaFiles(): Promise<MediaFile[]> {
+  const copy = getAppCopy(getCurrentLocale())
+  const options: Electron.OpenDialogOptions = {
+    defaultPath: currentAppSettings.media.defaultOpenDirectoryPath ?? undefined,
+    title: copy.topbar.openFiles,
+    properties: ['openFile', 'multiSelections'],
+    filters: [
+      { name: 'Video files', extensions: VIDEO_EXTENSIONS },
+      { name: 'All files', extensions: ['*'] }
+    ]
+  }
+
+  const result = mainWindow
+    ? await dialog.showOpenDialog(mainWindow, options)
+    : await dialog.showOpenDialog(options)
+
+  if (result.canceled) {
+    return []
+  }
+
+  const files = await Promise.all(result.filePaths.map((filePath) => createMediaFile(filePath)))
+  return expandMediaFiles(files)
+}
+
 async function promptForDirectory(options: {
   title: string
   defaultPath?: string | null
@@ -204,30 +243,7 @@ async function promptForSavePath(options: {
 }
 
 function registerIpc(): void {
-  ipcMain.handle(IPC_CHANNELS.OPEN_MEDIA_FILES, async () => {
-    const copy = getAppCopy(getCurrentLocale())
-    const options: Electron.OpenDialogOptions = {
-      defaultPath: currentAppSettings.media.defaultOpenDirectoryPath ?? undefined,
-      title: copy.topbar.openFiles,
-      properties: ['openFile', 'multiSelections'],
-      filters: [
-        { name: 'Video files', extensions: VIDEO_EXTENSIONS },
-        { name: 'All files', extensions: ['*'] }
-      ]
-    }
-
-    const result = mainWindow
-      ? await dialog.showOpenDialog(mainWindow, options)
-      : await dialog.showOpenDialog(options)
-
-    if (result.canceled) {
-      return []
-    }
-
-    const files = await Promise.all(result.filePaths.map((filePath) => createMediaFile(filePath)))
-    const expandedFiles = await expandMediaFiles(files)
-    return expandedFiles
-  })
+  ipcMain.handle(IPC_CHANNELS.OPEN_MEDIA_FILES, () => promptForMediaFiles())
 
   ipcMain.handle(IPC_CHANNELS.OPEN_MEDIA_DIRECTORY, async () => {
     const copy = getAppCopy(getCurrentLocale())
@@ -270,6 +286,7 @@ function registerIpc(): void {
 
   ipcMain.handle(IPC_CHANNELS.APP_SET_SETTINGS, async (_event, settings) => {
     currentAppSettings = await writeAppSettings(app.getPath('userData'), settings, app.getPath('videos'))
+    installApplicationMenu()
     return currentAppSettings
   })
 

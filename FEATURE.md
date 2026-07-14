@@ -174,6 +174,8 @@
 - 已配置 AIVPlayer 自定义应用图标，macOS 开发态 Dock 和正式安装包都不再使用 Electron 默认图标。
 - 图标采用深色圆徽 + 金色波形的极简风格，和当前播放器主题保持一致。
 - macOS 菜单栏应用名称会显示为 AIVPlayer，开发态也不会再保留 Electron 默认名称。
+- macOS 原生应用菜单已接入简体中文、English、日本語、한국어四套文案，应用菜单、文件、编辑、显示和窗口菜单会跟随设置中的界面语言即时刷新。
+- macOS 菜单补齐了“打开媒体文件”和“设置…”入口，并沿用播放器现有的文件选择与设置弹窗，不需要用户先回到窗口内寻找按钮。
 
 ## ASR 二进制兼容
 - 自动识别 `whisper-whisper-cli`、`whisper-cli`、`whisper-cpp`、`main` 这几类 whisper.cpp 可执行文件。

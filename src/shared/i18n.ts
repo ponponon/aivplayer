@@ -10,6 +10,37 @@ import {
 
 export type LocaleCopy = {
   appName: string
+  menu: {
+    about: string
+    settings: string
+    file: string
+    openFiles: string
+    close: string
+    edit: string
+    undo: string
+    redo: string
+    cut: string
+    copy: string
+    paste: string
+    selectAll: string
+    view: string
+    reload: string
+    forceReload: string
+    toggleDevTools: string
+    resetZoom: string
+    zoomIn: string
+    zoomOut: string
+    toggleFullscreen: string
+    window: string
+    minimize: string
+    zoom: string
+    front: string
+    services: string
+    hide: string
+    hideOthers: string
+    showAll: string
+    quit: string
+  }
   languageOptions: Record<AppLocale, { label: string; description: string }>
   subtitleLanguageOptions: Record<SubtitleLanguageId, { label: string; description: string }>
   topbar: {
@@ -380,6 +411,37 @@ export type LocaleCopy = {
 const APP_COPY: Record<AppLocale, LocaleCopy> = {
   'zh-CN': {
     appName: 'AIVPlayer',
+    menu: {
+      about: '关于 AIVPlayer',
+      settings: '设置…',
+      file: '文件',
+      openFiles: '打开媒体文件…',
+      close: '关闭窗口',
+      edit: '编辑',
+      undo: '撤销',
+      redo: '重做',
+      cut: '剪切',
+      copy: '拷贝',
+      paste: '粘贴',
+      selectAll: '全选',
+      view: '显示',
+      reload: '重新载入页面',
+      forceReload: '强制重新载入页面',
+      toggleDevTools: '切换开发者工具',
+      resetZoom: '实际大小',
+      zoomIn: '放大',
+      zoomOut: '缩小',
+      toggleFullscreen: '进入全屏',
+      window: '窗口',
+      minimize: '最小化',
+      zoom: '缩放',
+      front: '将全部置于最前',
+      services: '服务',
+      hide: '隐藏 AIVPlayer',
+      hideOthers: '隐藏其他',
+      showAll: '显示全部',
+      quit: '退出 AIVPlayer'
+    },
     languageOptions: {
       'zh-CN': { label: '简体中文', description: '界面、提示和设置使用简体中文。' },
       'en-US': { label: 'English', description: 'Use English for the interface and prompts.' },
@@ -892,6 +954,37 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
   },
   'en-US': {
     appName: 'AIVPlayer',
+    menu: {
+      about: 'About AIVPlayer',
+      settings: 'Settings…',
+      file: 'File',
+      openFiles: 'Open media files…',
+      close: 'Close Window',
+      edit: 'Edit',
+      undo: 'Undo',
+      redo: 'Redo',
+      cut: 'Cut',
+      copy: 'Copy',
+      paste: 'Paste',
+      selectAll: 'Select All',
+      view: 'View',
+      reload: 'Reload',
+      forceReload: 'Force Reload',
+      toggleDevTools: 'Toggle Developer Tools',
+      resetZoom: 'Actual Size',
+      zoomIn: 'Zoom In',
+      zoomOut: 'Zoom Out',
+      toggleFullscreen: 'Toggle Full Screen',
+      window: 'Window',
+      minimize: 'Minimize',
+      zoom: 'Zoom',
+      front: 'Bring All to Front',
+      services: 'Services',
+      hide: 'Hide AIVPlayer',
+      hideOthers: 'Hide Others',
+      showAll: 'Show All',
+      quit: 'Quit AIVPlayer'
+    },
     languageOptions: {
       'zh-CN': { label: '简体中文', description: 'Use Simplified Chinese for the interface and prompts.' },
       'en-US': { label: 'English', description: 'Use English for the interface and prompts.' },
@@ -1406,6 +1499,37 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
   },
   'ja-JP': {
     appName: 'AIVPlayer',
+    menu: {
+      about: 'AIVPlayer について',
+      settings: '設定…',
+      file: 'ファイル',
+      openFiles: 'メディアファイルを開く…',
+      close: 'ウインドウを閉じる',
+      edit: '編集',
+      undo: '取り消す',
+      redo: 'やり直す',
+      cut: 'カット',
+      copy: 'コピー',
+      paste: 'ペースト',
+      selectAll: 'すべてを選択',
+      view: '表示',
+      reload: '再読み込み',
+      forceReload: '強制的に再読み込み',
+      toggleDevTools: '開発者ツールを切り替え',
+      resetZoom: '実際のサイズ',
+      zoomIn: '拡大',
+      zoomOut: '縮小',
+      toggleFullscreen: 'フルスクリーンを切り替え',
+      window: 'ウインドウ',
+      minimize: 'しまう',
+      zoom: '拡大 / 縮小',
+      front: 'すべてを手前に移動',
+      services: 'サービス',
+      hide: 'AIVPlayer を隠す',
+      hideOthers: 'ほかを隠す',
+      showAll: 'すべてを表示',
+      quit: 'AIVPlayer を終了'
+    },
     languageOptions: {
       'zh-CN': { label: '简体中文', description: 'インターフェースと案内を簡体中文で表示します。' },
       'en-US': { label: 'English', description: 'インターフェースと案内を英語で表示します。' },
@@ -1920,6 +2044,37 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
   },
   'ko-KR': {
     appName: 'AIVPlayer',
+    menu: {
+      about: 'AIVPlayer 정보',
+      settings: '설정…',
+      file: '파일',
+      openFiles: '미디어 파일 열기…',
+      close: '윈도우 닫기',
+      edit: '편집',
+      undo: '실행 취소',
+      redo: '다시 실행',
+      cut: '오려두기',
+      copy: '복사',
+      paste: '붙이기',
+      selectAll: '모두 선택',
+      view: '보기',
+      reload: '새로고침',
+      forceReload: '강제 새로고침',
+      toggleDevTools: '개발자 도구 전환',
+      resetZoom: '실제 크기',
+      zoomIn: '확대',
+      zoomOut: '축소',
+      toggleFullscreen: '전체 화면 전환',
+      window: '윈도우',
+      minimize: '최소화',
+      zoom: '확대/축소',
+      front: '모두 앞으로 가져오기',
+      services: '서비스',
+      hide: 'AIVPlayer 가리기',
+      hideOthers: '다른 앱 가리기',
+      showAll: '모두 보기',
+      quit: 'AIVPlayer 종료'
+    },
     languageOptions: {
       'zh-CN': { label: '简体中文', description: '인터페이스와 안내를 간체 중국어로 표시합니다.' },
       'en-US': { label: 'English', description: '인터페이스와 안내를 영어로 표시합니다.' },

@@ -339,3 +339,9 @@
 
 - `/opt/homebrew/bin/ffmpeg` 只是一个依赖 Homebrew Cellar 和多个 `/opt/homebrew/opt/*` 动态库的开发机二进制。直接复制到 `resources/ffmpeg` 后，二进制仍会把旧版本 Cellar 绝对路径写进 `LC_LOAD_DYLIB`；Homebrew 升级后，播放器就会在真正执行时以 `SIGABRT` 报 `dyld: Library not loaded`。
 - runtime resolver 不能只判断 ffmpeg 文件路径存在就认为组件可用；必须在 staging / CI 阶段用 `otool -L` 检查外部依赖，并实际执行 `ffmpeg -version` 和 `ffprobe -version`。正式资源应使用静态构建，或把完整 dylib 依赖复制到资源目录并改成 `@loader_path` 相对依赖，不能依赖用户机器上的 Homebrew 路径。
+
+## macOS 原生菜单不能和 Web 界面各写一套语言
+
+- Electron 的 macOS 菜单属于主进程原生 UI；即使 React 播放器和设置页已经支持多语言，`Menu.buildFromTemplate` 里写死的英文仍会直接显示在系统状态栏。
+- 菜单文案应和主进程读取到的 `AppSettings.ui.locale` 共用同一份 i18n 词条，并在 `APP_SET_SETTINGS` 完成后重新 `Menu.setApplicationMenu`，否则用户切换语言后只能重启应用才能看到变化。
+- 菜单里的应用级动作（打开媒体、设置）要通过主进程现有工作流或受控 IPC 触发，不能复制一套文件选择和设置状态逻辑，否则菜单入口与窗口按钮很容易行为不一致。

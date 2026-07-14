@@ -1691,6 +1691,12 @@ export function App(): ReactElement {
   }, [])
 
   useEffect(() => {
+    return window.aiv.onAppMenuOpenSettings(() => {
+      setIsSettingsDialogOpen(true)
+    })
+  }, [])
+
+  useEffect(() => {
     const cleanupDownload = window.aiv.onAsrModelDownloadProgress(setDownloadProgress)
     const cleanupJob = window.aiv.onAsrJobProgress(setAsrProgress)
 
