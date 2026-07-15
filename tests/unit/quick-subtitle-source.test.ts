@@ -19,7 +19,7 @@ describe('quick target-language subtitle source constraints', () => {
     expect(appSource).toContain("event.code === 'KeyC'")
     expect(appSource).toContain('event.metaKey || event.ctrlKey')
     expect(appSource).toContain('aria-keyshortcuts="Meta+Shift+C Control+Shift+C"')
-    expect(appSource).toContain('<kbd>⌘/Ctrl + Shift + C</kbd>')
+    expect(appSource).not.toContain('<kbd>⌘/Ctrl + Shift + C</kbd>')
     expect(i18nSource).toContain('quickTargetSubtitle')
     expect(i18nSource).not.toContain('quickChineseSubtitle')
     expect(appSource).toContain('className="controls-secondary"')

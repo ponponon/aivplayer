@@ -9,11 +9,11 @@ import {
   Copy,
   Download,
   FileText,
+  Fullscreen,
   FolderOpen,
   Info,
   Languages,
   ListVideo,
-  Maximize2,
   Minimize2,
   PanelRight,
   Pause,
@@ -2236,7 +2236,7 @@ export function App(): ReactElement {
                       aria-pressed={isFullscreen}
                       aria-keyshortcuts="F"
                     >
-                      {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                      {isFullscreen ? <Minimize2 size={16} /> : <Fullscreen size={16} />}
                     </button>
                   </div>
                   </div>
@@ -2257,7 +2257,6 @@ export function App(): ReactElement {
                       <strong>{quickSubtitleLabel}</strong>
                       <small>{copy.quickSubtitle.hint}</small>
                     </span>
-                    <kbd>⌘/Ctrl + Shift + C</kbd>
                   </button>
                 </div>
               </div>

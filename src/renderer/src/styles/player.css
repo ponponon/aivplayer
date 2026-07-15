@@ -239,19 +239,6 @@
   overflow-wrap: anywhere;
 }
 
-.quick-subtitle-button kbd {
-  flex: 0 0 auto;
-  padding: 3px 5px;
-  color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.055);
-  border: 1px solid var(--border-soft);
-  border-radius: 4px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 9px;
-  line-height: 1;
-  white-space: nowrap;
-}
-
 @media (prefers-reduced-motion: no-preference) {
   .quick-subtitle-button {
     transition:
@@ -2662,8 +2649,7 @@
     width: min(100%, 420px);
   }
 
-  .quick-subtitle-copy small,
-  .quick-subtitle-button kbd {
+  .quick-subtitle-copy small {
     display: none;
   }
 
