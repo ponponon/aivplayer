@@ -351,3 +351,9 @@
 - macOS Finder 通过 `open-file` 事件把文件交给已运行的 Electron 应用，Windows 和 Linux 则通常通过命令行参数以及 Electron 的 `second-instance` 事件传递；只在窗口创建时读取一次 `process.argv` 会漏掉后续双击打开的视频。
 - 安装包必须声明 `fileAssociations`，否则系统的“打开方式”不会把 AIVPlayer 注册为视频查看器；声明后仍要在主进程处理首个启动参数、macOS `open-file` 和跨平台二次启动转发。
 - 文件路径过滤应集中成共享清单，并统一做扩展名大小写、选项参数、文件存在性和重复路径处理，避免安装包支持的格式与运行时支持的格式不一致。
+
+## 快速字幕配置和快捷键必须保持可见且安全
+
+- 快速字幕不能只依赖源码里的默认配置；翻译接口、模型和 API Key 必须写入用户级配置，API Key 通过 Electron `safeStorage` 加密，不能提交到 Git 或写死在代码里。
+- `Ctrl + C` 是系统复制快捷键，快速生成中文字幕应使用 `⌘/Ctrl + Shift + C`；按钮、提示、`aria-keyshortcuts` 和快捷键设置页必须显示同一套完整文案，不能用容易误读的缩写。
+- 外部恢复用户级配置后，运行中的 main / renderer 进程可能仍保留旧配置；恢复完成后要明确提示用户重启应用，或提供重新加载配置的机制。

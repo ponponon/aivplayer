@@ -70,6 +70,17 @@ export type LocaleCopy = {
     volume: string
     playbackSpeed: string
   }
+  quickSubtitle: {
+    generate: string
+    translate: string
+    generating: string
+    translating: string
+    ready: string
+    setup: string
+    detecting: string
+    hint: string
+    shortcut: string
+  }
   subtitleDisplay: {
     menuLabel: string
     fontSize: string
@@ -152,6 +163,10 @@ export type LocaleCopy = {
       translateSubtitle: (languageLabel: string) => string
       translatingSubtitle: string
       translationProgress: (completedBatches: number, totalBatches: number) => string
+      translationElapsed: (duration: string) => string
+      translationStats: (cueCount: number, batchCount: number) => string
+      translationCacheHit: string
+      translationEndToEnd: (duration: string) => string
       cancelTranslation: string
       translatedSubtitleReady: string
       subtitleTools: string
@@ -313,6 +328,7 @@ export type LocaleCopy = {
         mute: { keys: string; label: string; description: string }
         stop: { keys: string; label: string; description: string }
         fullscreen: { keys: string; label: string; description: string }
+        quickChineseSubtitle: { keys: string; label: string; description: string }
         open: { keys: string; label: string; description: string }
         playlist: { keys: string; label: string; description: string }
         escape: { keys: string; label: string; description: string }
@@ -482,6 +498,17 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       volume: '音量',
       playbackSpeed: '播放速度'
     },
+    quickSubtitle: {
+      generate: '生成中文字幕',
+      translate: '翻译成中文',
+      generating: '正在生成字幕…',
+      translating: '正在翻译成中文…',
+      ready: '中文字幕已就绪',
+      setup: '配置字幕引擎',
+      detecting: '正在检查字幕引擎…',
+      hint: '自动生成并翻译，无需打开 ASR 面板',
+      shortcut: '生成或翻译中文字幕（⌘/Ctrl + Shift + C）'
+    },
     subtitleDisplay: {
       menuLabel: '字幕显示设置',
       fontSize: '字号',
@@ -572,6 +599,10 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       translateSubtitle: (languageLabel) => `翻译为${languageLabel}`,
       translatingSubtitle: '翻译中',
       translationProgress: (completedBatches, totalBatches) => `正在翻译第 ${completedBatches} / ${totalBatches} 批`,
+      translationElapsed: (duration) => `已耗时 ${duration}`,
+      translationStats: (cueCount, batchCount) => `${cueCount} 条字幕 · ${batchCount} 批`,
+      translationCacheHit: '命中本地缓存',
+      translationEndToEnd: (duration) => `一键流程 ${duration}`,
       cancelTranslation: '取消翻译',
       translatedSubtitleReady: '译文已就绪',
       subtitleTools: '字幕工具',
@@ -765,6 +796,7 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
           mute: { keys: 'M', label: '静音 / 取消静音', description: '切换当前视频的静音状态。' },
           stop: { keys: 'S', label: '停止并回到开头', description: '暂停视频，并把播放位置重置到 00:00。' },
           fullscreen: { keys: 'F', label: '视频画面全屏', description: '只将当前视频画面切换为全屏。' },
+          quickChineseSubtitle: { keys: '⌘ / Ctrl + Shift + C', label: '快速生成中文字幕', description: '自动生成原文字幕并翻译成中文，不用打开 ASR 面板。' },
           open: { keys: '⌘ / Ctrl + O', label: '打开媒体文件', description: '打开本地媒体文件选择器。' },
           playlist: { keys: 'L', label: '显示播放列表', description: '打开或隐藏右侧播放列表面板。' },
           escape: { keys: 'Esc', label: '关闭当前浮层', description: '关闭菜单、弹窗，或退出视频全屏。' }
@@ -1025,6 +1057,17 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       volume: 'Volume',
       playbackSpeed: 'Playback speed'
     },
+    quickSubtitle: {
+      generate: 'Generate Chinese subtitles',
+      translate: 'Translate to Chinese',
+      generating: 'Generating subtitles…',
+      translating: 'Translating to Chinese…',
+      ready: 'Chinese subtitles ready',
+      setup: 'Set up subtitle engine',
+      detecting: 'Checking subtitle engine…',
+      hint: 'Generate and translate in one click, without opening the ASR panel',
+      shortcut: 'Generate or translate Chinese subtitles (⌘/Ctrl + Shift + C)'
+    },
     subtitleDisplay: {
       menuLabel: 'Subtitle display settings',
       fontSize: 'Font size',
@@ -1115,6 +1158,10 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       translateSubtitle: (languageLabel) => `Translate to ${languageLabel}`,
       translatingSubtitle: 'Translating',
       translationProgress: (completedBatches, totalBatches) => `Translating batch ${completedBatches} / ${totalBatches}`,
+      translationElapsed: (duration) => `Elapsed ${duration}`,
+      translationStats: (cueCount, batchCount) => `${cueCount} cues · ${batchCount} batches`,
+      translationCacheHit: 'Local cache hit',
+      translationEndToEnd: (duration) => `One-click flow ${duration}`,
       cancelTranslation: 'Cancel translation',
       translatedSubtitleReady: 'Translation ready',
       subtitleTools: 'Subtitle tools',
@@ -1310,6 +1357,7 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
           mute: { keys: 'M', label: 'Mute / unmute', description: 'Toggle mute for the current video.' },
           stop: { keys: 'S', label: 'Stop and return to start', description: 'Pause the video and reset its position to 00:00.' },
           fullscreen: { keys: 'F', label: 'Fullscreen video', description: 'Toggle fullscreen for the current video surface.' },
+          quickChineseSubtitle: { keys: '⌘ / Ctrl + Shift + C', label: 'Quick Chinese subtitles', description: 'Generate source subtitles and translate them to Chinese without opening the ASR panel.' },
           open: { keys: '⌘ / Ctrl + O', label: 'Open media file', description: 'Open the local media file picker.' },
           playlist: { keys: 'L', label: 'Show playlist', description: 'Show or hide the playlist panel.' },
           escape: { keys: 'Esc', label: 'Close the current overlay', description: 'Close menus and dialogs, or exit video fullscreen.' }
@@ -1570,6 +1618,17 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       volume: '音量',
       playbackSpeed: '再生速度'
     },
+    quickSubtitle: {
+      generate: '中国語字幕を生成',
+      translate: '中国語に翻訳',
+      generating: '字幕を生成中…',
+      translating: '中国語に翻訳中…',
+      ready: '中国語字幕の準備完了',
+      setup: '字幕エンジンを設定',
+      detecting: '字幕エンジンを確認中…',
+      hint: 'ASR パネルを開かずに、生成から翻訳までワンクリック',
+      shortcut: '中国語字幕を生成または翻訳（⌘/Ctrl + Shift + C）'
+    },
     subtitleDisplay: {
       menuLabel: '字幕表示設定',
       fontSize: 'フォントサイズ',
@@ -1660,6 +1719,10 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       translateSubtitle: (languageLabel) => `${languageLabel}に翻訳`,
       translatingSubtitle: '翻訳中',
       translationProgress: (completedBatches, totalBatches) => `第 ${completedBatches} / ${totalBatches} バッチを翻訳中`,
+      translationElapsed: (duration) => `経過時間 ${duration}`,
+      translationStats: (cueCount, batchCount) => `${cueCount} 字幕 · ${batchCount} バッチ`,
+      translationCacheHit: 'ローカルキャッシュを使用',
+      translationEndToEnd: (duration) => `ワンクリック処理 ${duration}`,
       cancelTranslation: '翻訳をキャンセル',
       translatedSubtitleReady: '翻訳完了',
       subtitleTools: '字幕ツール',
@@ -1855,6 +1918,7 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
           mute: { keys: 'M', label: 'ミュート / 解除', description: '現在の動画のミュート状態を切り替えます。' },
           stop: { keys: 'S', label: '停止して先頭に戻る', description: '動画を一時停止し、再生位置を 00:00 に戻します。' },
           fullscreen: { keys: 'F', label: '動画を全画面表示', description: '現在の動画画面だけを全画面に切り替えます。' },
+          quickChineseSubtitle: { keys: '⌘ / Ctrl + Shift + C', label: '中国語字幕をすぐ生成', description: 'ASR パネルを開かずに、原文字幕の生成と中国語への翻訳を行います。' },
           open: { keys: '⌘ / Ctrl + O', label: 'メディアファイルを開く', description: 'ローカルメディアのファイル選択を開きます。' },
           playlist: { keys: 'L', label: 'プレイリストを表示', description: 'プレイリストパネルを表示または非表示にします。' },
           escape: { keys: 'Esc', label: '現在のオーバーレイを閉じる', description: 'メニューやダイアログを閉じ、動画の全画面を終了します。' }
@@ -2115,6 +2179,17 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       volume: '볼륨',
       playbackSpeed: '재생 속도'
     },
+    quickSubtitle: {
+      generate: '중국어 자막 생성',
+      translate: '중국어로 번역',
+      generating: '자막 생성 중…',
+      translating: '중국어로 번역 중…',
+      ready: '중국어 자막 준비 완료',
+      setup: '자막 엔진 설정',
+      detecting: '자막 엔진 확인 중…',
+      hint: 'ASR 패널을 열지 않고 한 번에 생성하고 번역합니다',
+      shortcut: '중국어 자막 생성 또는 번역 (⌘/Ctrl + Shift + C)'
+    },
     subtitleDisplay: {
       menuLabel: '자막 표시 설정',
       fontSize: '글자 크기',
@@ -2205,6 +2280,10 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       translateSubtitle: (languageLabel) => `${languageLabel}(으)로 번역`,
       translatingSubtitle: '번역 중',
       translationProgress: (completedBatches, totalBatches) => `${completedBatches} / ${totalBatches} 배치를 번역하는 중`,
+      translationElapsed: (duration) => `경과 시간 ${duration}`,
+      translationStats: (cueCount, batchCount) => `${cueCount}개 자막 · ${batchCount}개 배치`,
+      translationCacheHit: '로컬 캐시 사용',
+      translationEndToEnd: (duration) => `원클릭 처리 ${duration}`,
       cancelTranslation: '번역 취소',
       translatedSubtitleReady: '번역 완료',
       subtitleTools: '자막 도구',
@@ -2400,6 +2479,7 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
           mute: { keys: 'M', label: '음소거 / 음소거 해제', description: '현재 비디오의 음소거 상태를 전환합니다.' },
           stop: { keys: 'S', label: '정지하고 처음으로 이동', description: '비디오를 일시 정지하고 재생 위치를 00:00으로 되돌립니다.' },
           fullscreen: { keys: 'F', label: '비디오 전체 화면', description: '현재 비디오 화면만 전체 화면으로 전환합니다.' },
+          quickChineseSubtitle: { keys: '⌘ / Ctrl + Shift + C', label: '중국어 자막 빠르게 생성', description: 'ASR 패널을 열지 않고 원문 자막을 생성한 뒤 중국어로 번역합니다.' },
           open: { keys: '⌘ / Ctrl + O', label: '미디어 파일 열기', description: '로컬 미디어 파일 선택기를 엽니다.' },
           playlist: { keys: 'L', label: '재생 목록 표시', description: '재생 목록 패널을 표시하거나 숨깁니다.' },
           escape: { keys: 'Esc', label: '현재 오버레이 닫기', description: '메뉴와 대화상자를 닫거나 비디오 전체 화면을 종료합니다.' }

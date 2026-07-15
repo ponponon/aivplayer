@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import { copyFile, mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises'
 import { basename, dirname, extname, join } from 'node:path'
 import type { SubtitleTargetLanguageId } from '../../shared/app-settings.ts'
-import type { TranscriptSegment } from '../../shared/media-types.ts'
+import type { AsrSubtitleTranslationStats, TranscriptSegment } from '../../shared/media-types.ts'
 import { parseVtt, writeSrt, writeVtt } from './subtitle-writer.ts'
 import { pathExists } from './model-manager.ts'
 
@@ -92,9 +92,13 @@ export type RunSubtitleTranslationJobOptions = {
   retryDelaysMs?: readonly number[]
 }
 
-export type RunSubtitleTranslationJobResult = {
+export type SubtitleTranslationOutputPaths = {
   subtitlePath: string
   subtitleSrtPath: string
+}
+
+export type RunSubtitleTranslationJobResult = SubtitleTranslationOutputPaths & {
+  translationStats: AsrSubtitleTranslationStats
 }
 
 export type SubtitleTranslationCacheQuery = {
@@ -243,20 +247,20 @@ function getLegacyTranslatedSubtitleOutputBase(options: {
   )
 }
 
-function getTranslatedSubtitleOutputPaths(outputBase: string): RunSubtitleTranslationJobResult {
+function getTranslatedSubtitleOutputPaths(outputBase: string): SubtitleTranslationOutputPaths {
   return {
     subtitlePath: `${outputBase}.vtt`,
     subtitleSrtPath: `${outputBase}.srt`
   }
 }
 
-async function hasTranslationPair(paths: RunSubtitleTranslationJobResult): Promise<boolean> {
+async function hasTranslationPair(paths: SubtitleTranslationOutputPaths): Promise<boolean> {
   return (await pathExists(paths.subtitlePath)) && (await pathExists(paths.subtitleSrtPath))
 }
 
 async function copyLegacyTranslationCache(
-  legacyPaths: RunSubtitleTranslationJobResult,
-  currentPaths: RunSubtitleTranslationJobResult
+  legacyPaths: SubtitleTranslationOutputPaths,
+  currentPaths: SubtitleTranslationOutputPaths
 ): Promise<void> {
   await mkdir(dirname(currentPaths.subtitlePath), { recursive: true })
   await copyFile(legacyPaths.subtitlePath, currentPaths.subtitlePath)
@@ -501,8 +505,17 @@ function parseProviderContent(content: string): SubtitleTranslationSegment[] {
 export async function runSubtitleTranslationJob(
   options: RunSubtitleTranslationJobOptions
 ): Promise<RunSubtitleTranslationJobResult> {
+  const startedAt = performance.now()
   const sourceLanguage = options.sourceLanguage ?? 'auto'
   const sourceSubtitleText = await readFile(options.sourceSubtitlePath, 'utf8')
+  const sourceSegments = parseVtt(sourceSubtitleText)
+  const translationBatchCount = Math.ceil(sourceSegments.length / translationBatchSize)
+  const createTranslationStats = (cacheHit: boolean): AsrSubtitleTranslationStats => ({
+    elapsedMs: Math.max(0, Math.round(performance.now() - startedAt)),
+    subtitleCueCount: sourceSegments.length,
+    translationBatchCount,
+    cacheHit
+  })
   const outputBase = getTranslatedSubtitleOutputBase({
     cacheDirectory: options.cacheDirectory,
     sourceSubtitlePath: options.sourceSubtitlePath,
@@ -514,7 +527,7 @@ export async function runSubtitleTranslationJob(
   const outputPaths = getTranslatedSubtitleOutputPaths(outputBase)
 
   if (await hasTranslationPair(outputPaths)) {
-    return outputPaths
+    return { ...outputPaths, translationStats: createTranslationStats(true) }
   }
 
   const legacyOutputPaths = getTranslatedSubtitleOutputPaths(
@@ -532,18 +545,16 @@ export async function runSubtitleTranslationJob(
     try {
       await copyLegacyTranslationCache(legacyOutputPaths, outputPaths)
       if (await hasTranslationPair(outputPaths)) {
-        return outputPaths
+        return { ...outputPaths, translationStats: createTranslationStats(true) }
       }
     } catch {
       // Keep using the legacy cache when promotion cannot be completed.
     }
 
-    return legacyOutputPaths
+    return { ...legacyOutputPaths, translationStats: createTranslationStats(true) }
   }
 
   throwIfTranslationAborted(options.signal)
-
-  const sourceSegments = parseVtt(sourceSubtitleText)
 
   if (sourceSegments.length === 0) {
     throw new Error('当前字幕没有可翻译的内容。')
@@ -574,12 +585,12 @@ export async function runSubtitleTranslationJob(
     await unlink(temporarySrtPath).catch(() => undefined)
   }
 
-  return outputPaths
+  return { ...outputPaths, translationStats: createTranslationStats(false) }
 }
 
 export async function findSubtitleTranslationCache(
   query: SubtitleTranslationCacheQuery
-): Promise<RunSubtitleTranslationJobResult | null> {
+): Promise<SubtitleTranslationOutputPaths | null> {
   try {
     const sourceSubtitleText = await readFile(query.sourceSubtitlePath, 'utf8')
     const outputBase = getTranslatedSubtitleOutputBase({

@@ -74,7 +74,20 @@ describe('subtitle translation', () => {
       provider
     })
 
-    expect(first).toEqual(second)
+    expect(first.subtitlePath).toBe(second.subtitlePath)
+    expect(first.subtitleSrtPath).toBe(second.subtitleSrtPath)
+    expect(first.translationStats).toMatchObject({
+      subtitleCueCount: 2,
+      translationBatchCount: 1,
+      cacheHit: false
+    })
+    expect(second.translationStats).toMatchObject({
+      subtitleCueCount: 2,
+      translationBatchCount: 1,
+      cacheHit: true
+    })
+    expect(first.translationStats.elapsedMs).toBeGreaterThanOrEqual(0)
+    expect(second.translationStats.elapsedMs).toBeGreaterThanOrEqual(0)
     expect(callCount).toBe(1)
     expect(first.subtitlePath).toContain(join(cacheDirectory, 'subtitles'))
     expect(first.subtitlePath).toContain('-translated-zh-')
@@ -151,7 +164,10 @@ describe('subtitle translation', () => {
           model: 'mock-model'
         }
       })
-    ).resolves.toEqual(translated)
+    ).resolves.toEqual({
+      subtitlePath: translated.subtitlePath,
+      subtitleSrtPath: translated.subtitleSrtPath
+    })
   })
 
   it('promotes legacy translated caches after the raw source filename changes', async () => {
@@ -282,6 +298,11 @@ describe('subtitle translation', () => {
     })
 
     expect(callCount).toBe(3)
+    expect(result.translationStats).toMatchObject({
+      subtitleCueCount: 31,
+      translationBatchCount: 2,
+      cacheHit: false
+    })
     expect(progress).toEqual([
       { completedBatches: 1, totalBatches: 2, percent: 0.5 },
       { completedBatches: 2, totalBatches: 2, percent: 1 }

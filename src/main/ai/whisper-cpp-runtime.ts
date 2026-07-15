@@ -765,6 +765,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
           targetLanguage: request.targetLanguage,
           translationModel: provider.model,
           translationGlossary: provider.glossary ?? undefined,
+          translationStats: result.translationStats,
           subtitlePath: result.subtitlePath,
           subtitleSrtPath: result.subtitleSrtPath
         }

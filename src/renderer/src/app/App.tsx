@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type R
 import {
   AudioLines,
   Captions,
+  Check,
   Clock,
   CloudDownload,
   ChevronDown,
@@ -279,6 +280,20 @@ function formatPercent(value: number | null | undefined, fallbackLabel: string):
   return `${Math.round(value * 100)}%`
 }
 
+function formatElapsedTime(durationMs: number | null | undefined): string {
+  if (durationMs == null || !Number.isFinite(durationMs) || durationMs < 0) {
+    return '—'
+  }
+
+  const totalSeconds = Math.round(durationMs / 1000)
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  const pad = (value: number): string => String(value).padStart(2, '0')
+
+  return hours > 0 ? `${pad(hours)}:${pad(minutes)}:${pad(seconds)}` : `${pad(minutes)}:${pad(seconds)}`
+}
+
 export function App(): ReactElement {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const subtitleActionsRef = useRef<HTMLDetailsElement | null>(null)
@@ -288,6 +303,7 @@ export function App(): ReactElement {
   const holdRightArrowTimerRef = useRef<number | null>(null)
   const holdRightArrowRestoreRateRef = useRef<number | null>(null)
   const controlDeckHideTimerRef = useRef<number | null>(null)
+  const translationStartedAtRef = useRef<number | null>(null)
   const playbackEndedRef = useRef(false)
   const lastSavedProgressRef = useRef<{ path: string | null; time: number }>({ path: null, time: -1 })
   const [state, setState] = useState<PlayerState>(initialPlayerState)
@@ -305,6 +321,7 @@ export function App(): ReactElement {
   const [isClipExportDialogOpen, setIsClipExportDialogOpen] = useState(false)
   const [isExportingClip, setIsExportingClip] = useState(false)
   const [isTranslatingSubtitle, setIsTranslatingSubtitle] = useState(false)
+  const [translationElapsedMs, setTranslationElapsedMs] = useState<number | null>(null)
   const [isMediaDetailsDialogOpen, setIsMediaDetailsDialogOpen] = useState(false)
   const [runtimeSetupMessage, setRuntimeSetupMessage] = useState<{ success: boolean; message: string } | null>(null)
   const [translationServiceTestMessage, setTranslationServiceTestMessage] =
@@ -424,6 +441,31 @@ export function App(): ReactElement {
   const playbackVolumeInfoLabel = `${Math.round((state.muted ? 0 : state.volume) * 100)}%`
   const subtitleVttStatusLabel = subtitlePath ? copy.panels.subtitleStatusCached : copy.panels.subtitleStatusIdle
   const subtitleSrtStatusLabel = subtitleSrtPath ? copy.panels.subtitleStatusCached : copy.panels.subtitleStatusIdle
+  const isChineseSourceSubtitle = Boolean(subtitlePath && /^zh(?:-|$)/i.test(subtitleSourceLanguage ?? ''))
+  const isChineseSubtitleReady = Boolean(
+    isChineseSourceSubtitle || (translatedSubtitleResult?.subtitleUrl && translatedSubtitleResult.targetLanguage === 'zh')
+  )
+  const quickSubtitleLabel = isAsrBusy
+    ? copy.quickSubtitle.generating
+    : isTranslatingSubtitle
+      ? copy.quickSubtitle.translating
+      : isChineseSubtitleReady
+        ? copy.quickSubtitle.ready
+        : !asrStatus
+          ? copy.quickSubtitle.detecting
+          : !asrStatus.available
+            ? copy.quickSubtitle.setup
+            : subtitlePath
+              ? copy.quickSubtitle.translate
+              : copy.quickSubtitle.generate
+  const canQuickSubtitleAction = Boolean(
+    state.currentFile &&
+      asrStatus &&
+      !isAsrBusy &&
+      !isTranslatingSubtitle &&
+      !isDownloadingModel &&
+      !isChineseSubtitleReady
+  )
 
   useModalFocusTrap(
     isDownloadDialogOpen && Boolean(recommendedModelManifest),
@@ -542,6 +584,8 @@ export function App(): ReactElement {
     setTranslatedSubtitleResult(null)
     setAsrNotice(null)
     setAsrProgress(null)
+    translationStartedAtRef.current = null
+    setTranslationElapsedMs(null)
 
     setState((current) => {
       const playlist = mergePlaylist(current.playlist, files)
@@ -667,6 +711,8 @@ export function App(): ReactElement {
     setTranslatedSubtitleResult(null)
     setAsrNotice(null)
     setAsrProgress(null)
+    translationStartedAtRef.current = null
+    setTranslationElapsedMs(null)
     const currentTime = getInitialPlaybackTime(file.path)
     lastSavedProgressRef.current = { path: file.path, time: currentTime }
 
@@ -913,9 +959,9 @@ export function App(): ReactElement {
     }
   }
 
-  const generateSubtitle = async (): Promise<void> => {
+  const generateSubtitle = async (): Promise<AsrSubtitleResult | null> => {
     if (!state.currentFile) {
-      return
+      return null
     }
 
     setIsAsrBusy(true)
@@ -943,6 +989,7 @@ export function App(): ReactElement {
       }
 
       await refreshAsrStatus()
+      return result.success && result.subtitlePath ? result : null
     } finally {
       setIsAsrBusy(false)
     }
@@ -1004,12 +1051,20 @@ export function App(): ReactElement {
   }
 
   const translateSubtitle = async (
-    targetLanguage: SubtitleTargetLanguageId = appSettings.subtitles.targetLanguage
-  ): Promise<void> => {
-    if (!subtitlePath || isTranslatingSubtitle) {
-      return
+    targetLanguage: SubtitleTargetLanguageId = appSettings.subtitles.targetLanguage,
+    sourceSubtitle: AsrSubtitleResult | null = null,
+    flowStartedAt?: number
+  ): Promise<AsrSubtitleTranslationResult | null> => {
+    const sourceSubtitlePath = sourceSubtitle?.subtitlePath ?? subtitlePath
+    const sourceSubtitleSrtPath = sourceSubtitle?.subtitleSrtPath ?? subtitleSrtPath
+    const sourceLanguage = sourceSubtitle?.subtitleLanguage ?? subtitleTranslationSourceLanguage
+
+    if (!sourceSubtitlePath || isTranslatingSubtitle) {
+      return null
     }
 
+    translationStartedAtRef.current = performance.now()
+    setTranslationElapsedMs(0)
     setIsTranslatingSubtitle(true)
     setAsrNotice(null)
     setAsrProgress({
@@ -1020,21 +1075,36 @@ export function App(): ReactElement {
 
     try {
       const result = await window.aiv.translateAsrSubtitle({
-        subtitlePath,
-        subtitleSrtPath: subtitleSrtPath ?? undefined,
-        sourceLanguage: subtitleTranslationSourceLanguage,
+        subtitlePath: sourceSubtitlePath,
+        subtitleSrtPath: sourceSubtitleSrtPath ?? undefined,
+        sourceLanguage,
         targetLanguage
       })
 
-      setTranslatedSubtitleResult(result.success ? result : null)
-      setAsrNotice(result)
+      const resultWithTiming =
+        result.success && result.translationStats && flowStartedAt != null
+          ? {
+              ...result,
+              translationStats: {
+                ...result.translationStats,
+                endToEndElapsedMs: Math.max(0, Math.round(performance.now() - flowStartedAt))
+              }
+            }
+          : result
 
-      if (result.success && result.subtitleUrl && appSettings.subtitles.displayMode === 'source') {
+      setTranslationElapsedMs(resultWithTiming.translationStats?.elapsedMs ?? translationElapsedMs)
+      setTranslatedSubtitleResult(resultWithTiming.success ? resultWithTiming : null)
+      setAsrNotice(resultWithTiming)
+
+      if (resultWithTiming.success && resultWithTiming.subtitleUrl && appSettings.subtitles.displayMode === 'source') {
         patchSubtitleDisplaySettings({ displayMode: 'translation' })
       }
+
+      return resultWithTiming
     } finally {
       setIsTranslatingSubtitle(false)
       setAsrProgress(null)
+      translationStartedAtRef.current = null
     }
   }
 
@@ -1057,6 +1127,47 @@ export function App(): ReactElement {
       patchAppSettingsSection('subtitles', { targetLanguage })
     }
     void translateSubtitle(targetLanguage)
+  }
+
+  const runQuickChineseSubtitle = async (): Promise<void> => {
+    if (!state.currentFile || !asrStatus || isAsrBusy || isTranslatingSubtitle || isDownloadingModel) {
+      return
+    }
+
+    if (!asrStatus.available) {
+      openPanelMode('asr')
+      return
+    }
+
+    if (isChineseSubtitleReady) {
+      patchSubtitleDisplaySettings({ displayMode: 'source', targetLanguage: 'zh' })
+      return
+    }
+
+    setAsrNotice(null)
+    setTranslatedSubtitleResult(null)
+    if (appSettings.subtitles.targetLanguage !== 'zh') {
+      patchSubtitleDisplaySettings({ targetLanguage: 'zh' })
+    }
+
+    const flowStartedAt = performance.now()
+
+    if (subtitlePath) {
+      await translateSubtitle('zh', null, flowStartedAt)
+      return
+    }
+
+    const generatedSubtitle = await generateSubtitle()
+    if (!generatedSubtitle?.subtitlePath) {
+      return
+    }
+
+    if (/^zh(?:-|$)/i.test(generatedSubtitle.subtitleLanguage ?? '')) {
+      patchSubtitleDisplaySettings({ displayMode: 'source', targetLanguage: 'zh' })
+      return
+    }
+
+    await translateSubtitle('zh', generatedSubtitle, flowStartedAt)
   }
 
   const copySubtitleSrtPath = async (): Promise<void> => {
@@ -1478,6 +1589,17 @@ export function App(): ReactElement {
         return
       }
 
+      if (event.code === 'KeyC' && event.shiftKey && (event.metaKey || event.ctrlKey)) {
+        if (event.repeat || !state.currentFile) {
+          return
+        }
+
+        event.preventDefault()
+        revealControlDeck()
+        void runQuickChineseSubtitle()
+        return
+      }
+
       if (!state.currentFile) {
         return
       }
@@ -1527,7 +1649,21 @@ export function App(): ReactElement {
     state.panelMode,
     state.playbackRate,
     state.playlist,
-    state.volume
+    state.volume,
+    asrStatus,
+    appSettings.subtitles.targetLanguage,
+    isAsrBusy,
+    isDownloadingModel,
+    isTranslatingSubtitle,
+    isChineseSubtitleReady,
+    subtitlePath,
+    subtitleSrtPath,
+    subtitleTranslationSourceLanguage,
+    subtitleTranslationModel,
+    subtitleTranslationGlossary,
+    appSettings.asr.defaultSubtitleLanguage,
+    appSettings.subtitles.displayMode,
+    appSettings.ui.locale
   ])
 
   useEffect(() => {
@@ -1705,6 +1841,25 @@ export function App(): ReactElement {
       cleanupJob()
     }
   }, [])
+
+  useEffect(() => {
+    if (!isTranslatingSubtitle) {
+      return
+    }
+
+    const updateElapsedTime = (): void => {
+      if (translationStartedAtRef.current == null) {
+        return
+      }
+
+      setTranslationElapsedMs(Math.max(0, performance.now() - translationStartedAtRef.current))
+    }
+
+    updateElapsedTime()
+    const timer = window.setInterval(updateElapsedTime, 250)
+
+    return () => window.clearInterval(timer)
+  }, [isTranslatingSubtitle])
 
   useEffect(() => {
     const filePath = state.currentFile?.path
@@ -1885,6 +2040,27 @@ export function App(): ReactElement {
                 </button>
               </div>
             )}
+            {state.currentFile ? (
+              <div className="quick-subtitle-action">
+                <button
+                  className={`quick-subtitle-button ${isChineseSubtitleReady ? 'is-ready' : ''}`}
+                  type="button"
+                  onClick={() => void runQuickChineseSubtitle()}
+                  disabled={!canQuickSubtitleAction}
+                  title={copy.quickSubtitle.shortcut}
+                  aria-keyshortcuts="Meta+Shift+C Control+Shift+C"
+                >
+                  <span className="quick-subtitle-icon" aria-hidden="true">
+                    {isChineseSubtitleReady ? <Check size={16} /> : subtitlePath ? <Languages size={16} /> : <Captions size={16} />}
+                  </span>
+                  <span className="quick-subtitle-copy">
+                    <strong>{quickSubtitleLabel}</strong>
+                    <small>{copy.quickSubtitle.hint}</small>
+                  </span>
+                  <kbd>⌘/Ctrl + Shift + C</kbd>
+                </button>
+              </div>
+            ) : null}
           </div>
 
           <SubtitleOverlay
@@ -2390,7 +2566,12 @@ export function App(): ReactElement {
                     <div className="progress-block">
                       <div className="progress-label">
                         <span>{asrProgress.message}</span>
-                        <strong>{formatPercent(asrProgress.percent, copy.asrModelStatus.progressLabel)}</strong>
+                        <div className="progress-meta">
+                          {isTranslatingSubtitle && translationElapsedMs != null ? (
+                            <span>{copy.asrPanel.translationElapsed(formatElapsedTime(translationElapsedMs))}</span>
+                          ) : null}
+                          <strong>{formatPercent(asrProgress.percent, copy.asrModelStatus.progressLabel)}</strong>
+                        </div>
                       </div>
                       <div className="progress-track">
                         <div
@@ -2403,6 +2584,33 @@ export function App(): ReactElement {
                   {asrNotice ? (
                     <div className={`asr-result ${asrNotice.success ? 'success' : 'failed'}`}>
                       {asrNotice.message}
+                    </div>
+                  ) : null}
+                  {translatedSubtitleResult?.success && translatedSubtitleResult.translationStats ? (
+                    <div className="translation-summary">
+                      <div className="translation-summary-main">
+                        <Clock size={14} />
+                        <span>{copy.asrPanel.translationElapsed(formatElapsedTime(translatedSubtitleResult.translationStats.elapsedMs))}</span>
+                        <strong>{formatElapsedTime(translatedSubtitleResult.translationStats.elapsedMs)}</strong>
+                      </div>
+                      <div className="translation-summary-meta">
+                        <span>
+                          {copy.asrPanel.translationStats(
+                            translatedSubtitleResult.translationStats.subtitleCueCount,
+                            translatedSubtitleResult.translationStats.translationBatchCount
+                          )}
+                        </span>
+                        {translatedSubtitleResult.translationStats.cacheHit ? (
+                          <span className="translation-cache-badge">{copy.asrPanel.translationCacheHit}</span>
+                        ) : null}
+                        {translatedSubtitleResult.translationStats.endToEndElapsedMs != null ? (
+                          <span>
+                            {copy.asrPanel.translationEndToEnd(
+                              formatElapsedTime(translatedSubtitleResult.translationStats.endToEndElapsedMs)
+                            )}
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                   ) : null}
                   <div className="asr-action-row">

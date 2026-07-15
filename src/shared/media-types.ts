@@ -179,6 +179,14 @@ export type AsrSubtitleTranslationRequest = {
   targetLanguage: SubtitleTargetLanguageId
 }
 
+export type AsrSubtitleTranslationStats = {
+  elapsedMs: number
+  subtitleCueCount: number
+  translationBatchCount: number
+  cacheHit: boolean
+  endToEndElapsedMs?: number
+}
+
 export type AsrSubtitleTranslationResult = {
   success: boolean
   message: string
@@ -188,6 +196,7 @@ export type AsrSubtitleTranslationResult = {
   targetLanguage?: SubtitleTargetLanguageId
   translationModel?: string
   translationGlossary?: string
+  translationStats?: AsrSubtitleTranslationStats
   subtitlePath?: string
   subtitleSrtPath?: string
   subtitleUrl?: string
