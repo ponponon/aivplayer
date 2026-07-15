@@ -511,20 +511,28 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
       request: AsrSubtitleRequest,
       onProgress?: (progress: AsrJobProgress) => void
     ): Promise<AsrSubtitleResult> {
+      const startedAt = performance.now()
+      const createFailureStats = () => ({
+        elapsedMs: Math.max(0, Math.round(performance.now() - startedAt)),
+        subtitleCueCount: 0,
+        cacheHit: false
+      })
       const copy = getCopy()
       const status = await readHealthStatus()
 
       if (!status.binaryPath) {
         return {
           success: false,
-          message: status.message
+          message: status.message,
+          generationStats: createFailureStats()
         }
       }
 
       if (!status.ffmpegPath) {
         return {
           success: false,
-          message: status.message
+          message: status.message,
+          generationStats: createFailureStats()
         }
       }
 
@@ -533,7 +541,8 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
       if (!model) {
         return {
           success: false,
-          message: copy.runtime.needModel(status.recommendedModel)
+          message: copy.runtime.needModel(status.recommendedModel),
+          generationStats: createFailureStats()
         }
       }
 
@@ -556,7 +565,8 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
           subtitlePath: result.subtitlePath,
           subtitleSrtPath: result.subtitleSrtPath,
           subtitleLanguage: result.subtitleLanguage,
-          model
+          model,
+          generationStats: result.generationStats
         }
       } catch (error) {
         onProgress?.({
@@ -568,7 +578,8 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
         return {
           success: false,
           message: error instanceof Error ? error.message : String(error),
-          model
+          model,
+          generationStats: createFailureStats()
         }
       }
     },

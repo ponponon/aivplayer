@@ -3,10 +3,11 @@ import { spawn } from 'node:child_process'
 import { copyFile, mkdtemp, mkdir, readFile, rm, stat } from 'node:fs/promises'
 import { basename, dirname, extname, join } from 'node:path'
 import { tmpdir } from 'node:os'
-import type { AsrJobProgress } from '../../shared/media-types.ts'
+import type { AsrJobProgress, AsrSubtitleGenerationStats } from '../../shared/media-types.ts'
 import type { AppLocale } from '../../shared/localization'
 import { getAppCopy } from '../../shared/i18n'
 import { pathExists } from './model-manager.ts'
+import { parseVtt } from './subtitle-writer.ts'
 
 export type WhisperSubtitleArgs = {
   modelPath: string
@@ -32,6 +33,7 @@ export type RunAsrSubtitleJobResult = {
   subtitlePath: string
   subtitleSrtPath: string
   subtitleLanguage?: string
+  generationStats: AsrSubtitleGenerationStats
 }
 
 export type WhisperSubtitleOutputPaths = {
@@ -283,6 +285,7 @@ export async function findWhisperSubtitleCache(
 }
 
 export async function runAsrSubtitleJob(options: RunAsrSubtitleJobOptions): Promise<RunAsrSubtitleJobResult> {
+  const startedAt = performance.now()
   const copy = getAppCopy(options.getLocale?.())
   emitProgress(options.onProgress, {
     stage: 'checking',
@@ -298,6 +301,23 @@ export async function runAsrSubtitleJob(options: RunAsrSubtitleJobOptions): Prom
     options.modelId
   )
 
+  const createGenerationStats = async (subtitleFilePath: string, cacheHit: boolean) => {
+    let subtitleCueCount = 0
+
+    try {
+      subtitleCueCount = parseVtt(await readFile(subtitleFilePath, 'utf8')).length
+    } catch {
+      // Timing and cache state should remain available even if a malformed subtitle
+      // prevents us from counting cues for the summary card.
+    }
+
+    return {
+      elapsedMs: Math.max(0, Math.round(performance.now() - startedAt)),
+      subtitleCueCount,
+      cacheHit
+    }
+  }
+
   if (await hasSubtitlePair({ subtitlePath, subtitleSrtPath })) {
     const subtitleLanguage = await readWhisperSubtitleLanguage(outputBase)
 
@@ -309,7 +329,8 @@ export async function runAsrSubtitleJob(options: RunAsrSubtitleJobOptions): Prom
     return {
       subtitlePath,
       subtitleSrtPath,
-      subtitleLanguage: subtitleLanguage ?? undefined
+      subtitleLanguage: subtitleLanguage ?? undefined,
+      generationStats: await createGenerationStats(subtitlePath, true)
     }
   }
 
@@ -342,7 +363,8 @@ export async function runAsrSubtitleJob(options: RunAsrSubtitleJobOptions): Prom
     return {
       subtitlePath: cachedPaths.subtitlePath,
       subtitleSrtPath: cachedPaths.subtitleSrtPath,
-      subtitleLanguage: subtitleLanguage ?? undefined
+      subtitleLanguage: subtitleLanguage ?? undefined,
+      generationStats: await createGenerationStats(cachedPaths.subtitlePath, true)
     }
   }
 
@@ -409,7 +431,8 @@ export async function runAsrSubtitleJob(options: RunAsrSubtitleJobOptions): Prom
     return {
       subtitlePath,
       subtitleSrtPath,
-      subtitleLanguage: subtitleLanguage ?? undefined
+      subtitleLanguage: subtitleLanguage ?? undefined,
+      generationStats: await createGenerationStats(subtitlePath, false)
     }
   } finally {
     await rm(tempDirectory, { recursive: true, force: true })

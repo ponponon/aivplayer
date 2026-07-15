@@ -72,6 +72,8 @@ describe('subtitle display source constraints', () => {
     expect(appSource).toContain('copy.asrPanel.cancelTranslation')
     expect(appSource).toContain('copy.asrPanel.translationElapsed')
     expect(appSource).toContain('copy.asrPanel.translationStats')
+    expect(appSource).toContain('copy.asrPanel.subtitleGenerationElapsed')
+    expect(appSource).toContain('subtitleResult.generationStats')
     expect(appSource).toContain('copy.asrPanel.translationCacheHit')
     expect(appSource).toContain("stage: 'translating'")
     expect(appSource).toContain('translationServiceStatusTone')

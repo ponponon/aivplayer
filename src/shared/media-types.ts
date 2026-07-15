@@ -148,6 +148,12 @@ export type AsrSubtitleRequest = {
   language?: string
 }
 
+export type AsrSubtitleGenerationStats = {
+  elapsedMs: number
+  subtitleCueCount: number
+  cacheHit: boolean
+}
+
 export type AsrSubtitleResult = {
   success: boolean
   message: string
@@ -157,6 +163,7 @@ export type AsrSubtitleResult = {
   subtitleSrtUrl?: string
   subtitleLanguage?: string
   model?: AsrModelInfo
+  generationStats?: AsrSubtitleGenerationStats
 }
 
 export type AsrSubtitleExportRequest = {

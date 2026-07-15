@@ -210,7 +210,11 @@ describe('ASR subtitle job command planning', () => {
     ).resolves.toMatchObject({
       subtitlePath: getWhisperSubtitleOutputPath(outputBase),
       subtitleSrtPath: getWhisperSubtitleSrtOutputPath(outputBase),
-      subtitleLanguage: 'ja'
+      subtitleLanguage: 'ja',
+      generationStats: {
+        subtitleCueCount: 1,
+        cacheHit: true
+      }
     })
   })
 
@@ -242,7 +246,11 @@ describe('ASR subtitle job command planning', () => {
         cacheDirectory
       })
     ).resolves.toMatchObject({
-      subtitleLanguage: 'en'
+      subtitleLanguage: 'en',
+      generationStats: {
+        subtitleCueCount: 1,
+        cacheHit: false
+      }
     })
   })
 })
