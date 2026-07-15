@@ -60,17 +60,19 @@ export class SubtitleTranslationError extends Error {
   readonly code: SubtitleTranslationErrorCode
   readonly status?: number
   readonly statusText?: string
+  readonly responseBody?: string
 
   constructor(
     code: SubtitleTranslationErrorCode,
     message: string,
-    options?: { cause?: unknown; status?: number; statusText?: string }
+    options?: { cause?: unknown; status?: number; statusText?: string; responseBody?: string }
   ) {
     super(message)
     this.name = 'SubtitleTranslationError'
     this.code = code
     this.status = options?.status
     this.statusText = options?.statusText
+    this.responseBody = options?.responseBody
     if (options?.cause !== undefined) {
       ;(this as Error & { cause?: unknown }).cause = options.cause
     }
@@ -120,6 +122,17 @@ export type OpenAiCompatibleTranslationProviderOptions = {
 const translationBatchSize = 30
 const translationContextWindowSize = 2
 const defaultTranslationRetryDelaysMs = [250, 1000] as const
+
+const diagnosticBodyMaxLength = 12_000
+
+function truncateDiagnosticBody(value: string): string {
+  const normalized = value.trim()
+  if (normalized.length <= diagnosticBodyMaxLength) {
+    return normalized
+  }
+
+  return `${normalized.slice(0, diagnosticBodyMaxLength)}\n… [truncated]`
+}
 
 export function parseSubtitleTranslationGlossary(value: string | null | undefined): SubtitleTranslationGlossaryEntry[] {
   if (!value) {
@@ -698,18 +711,22 @@ export function createOpenAiCompatibleTranslationProvider(
           `翻译服务请求失败：HTTP ${response.status}${statusText ? ` ${statusText}` : ''}。`,
           {
             status: response.status,
-            statusText: response.statusText || undefined
+            statusText: response.statusText || undefined,
+            responseBody: truncateDiagnosticBody(await response.text().catch(() => ''))
           }
         )
       }
 
       let payload: { choices?: Array<{ message?: { content?: unknown } }> }
+      let responseBody = ''
 
       try {
-        payload = (await response.json()) as { choices?: Array<{ message?: { content?: unknown } }> }
+        responseBody = await response.text()
+        payload = JSON.parse(responseBody) as { choices?: Array<{ message?: { content?: unknown } }> }
       } catch (error) {
         throw new SubtitleTranslationError('invalid-json', '翻译服务返回的内容不是有效 JSON。', {
-          cause: error
+          cause: error,
+          responseBody: truncateDiagnosticBody(responseBody ?? '')
         })
       }
 

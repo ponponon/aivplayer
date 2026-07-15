@@ -47,6 +47,7 @@ export type LocaleCopy = {
     openFiles: string
     togglePlaylist: string
     toggleAsr: string
+    toggleBatch: string
     toggleInfo: string
     openSettings: string
     closeSettings: string
@@ -100,6 +101,8 @@ export type LocaleCopy = {
     noMedia: string
     asrKicker: string
     asrTitle: string
+    batchKicker: string
+    batchTitle: string
     subtitlesKicker: string
     subtitlesTitle: string
     infoKicker: string
@@ -172,6 +175,9 @@ export type LocaleCopy = {
       translationEndToEnd: (duration: string) => string
       cancelTranslation: string
       translatedSubtitleReady: string
+      errorDetails: string
+      openLogs: string
+      openLogsFailed: string
       subtitleTools: string
     subtitleToolsMenu: string
     openSubtitleFolder: string
@@ -187,7 +193,52 @@ export type LocaleCopy = {
     modelSource: string
     subtitlesReady: string
     subtitlesWaiting: string
-    clipExport: string
+      clipExport: string
+    }
+  batchSubtitle: {
+    title: string
+    description: string
+    chooseFolder: string
+    includeSubfolders: string
+    onlyMissing: string
+    concurrency: string
+    concurrencyValue: (count: number) => string
+    scan: string
+    scanning: string
+    noFiles: string
+    selectAll: string
+    clearSelection: string
+    selectedCount: (count: number) => string
+    targetLanguage: string
+    start: string
+    running: string
+    pause: string
+    pauseRequested: string
+    resume: string
+    cancel: string
+    retryFailed: string
+    openLogs: string
+    openLogsFailed: string
+    errorDetails: string
+    recoveredTask: string
+    currentFile: string
+    progress: (completed: number, total: number) => string
+    emptyTask: string
+    itemStatus: {
+      queued: string
+      asr: string
+      translating: string
+      completed: string
+      failed: string
+      cancelled: string
+    }
+    jobStatus: {
+      running: string
+      paused: string
+      completed: string
+      cancelled: string
+      failed: string
+    }
   }
   clipExportDialog: {
     title: string
@@ -478,6 +529,7 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       openFiles: '打开媒体文件',
       togglePlaylist: '切换播放列表',
       toggleAsr: '切换 ASR 面板',
+      toggleBatch: '打开批量字幕任务中心',
       toggleInfo: '显示或隐藏媒体信息',
       openSettings: '打开设置',
       closeSettings: '关闭设置'
@@ -539,6 +591,8 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       noMedia: '还没有媒体文件。',
       asrKicker: 'ASR',
       asrTitle: 'ASR 面板',
+      batchKicker: '任务中心',
+      batchTitle: '批量字幕',
       subtitlesKicker: '字幕',
       subtitlesTitle: '字幕轨道',
       infoKicker: '信息',
@@ -611,6 +665,9 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       translationEndToEnd: (duration) => `一键流程 ${duration}`,
       cancelTranslation: '取消翻译',
       translatedSubtitleReady: '译文已就绪',
+      errorDetails: '查看错误详情',
+      openLogs: '打开日志文件夹',
+      openLogsFailed: '无法打开日志文件夹',
       subtitleTools: '字幕工具',
       subtitleToolsMenu: '字幕工具菜单',
       openSubtitleFolder: '打开字幕文件夹',
@@ -627,6 +684,38 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       modelSource: '模型源',
       subtitlesReady: 'VTT / SRT / 本地缓存',
       subtitlesWaiting: '等待生成'
+    },
+    batchSubtitle: {
+      title: '批量字幕任务中心',
+      description: '选择文件夹后，一次性为多个视频生成并翻译目标语言字幕。ASR 始终单路运行，翻译可设置 1–3 路；单个文件失败不会阻塞后续任务。',
+      chooseFolder: '选择视频文件夹',
+      includeSubfolders: '包含子文件夹',
+      onlyMissing: '跳过已有字幕缓存',
+      concurrency: '并行度',
+      concurrencyValue: (count) => `${count} 路（ASR 单路）`,
+      scan: '扫描视频',
+      scanning: '扫描中…',
+      noFiles: '还没有扫描到视频文件。',
+      selectAll: '全选',
+      clearSelection: '清空选择',
+      selectedCount: (count) => `已选择 ${count} 个视频`,
+      targetLanguage: '目标语言',
+      start: '开始批量生成',
+      running: '正在处理',
+      pause: '暂停队列',
+      pauseRequested: '当前文件完成后暂停',
+      resume: '继续队列',
+      cancel: '停止队列',
+      retryFailed: '重试失败项',
+      openLogs: '打开日志文件夹',
+      openLogsFailed: '无法打开日志文件夹',
+      errorDetails: '查看错误详情',
+      recoveredTask: '上次任务未完成，已暂停，可继续处理',
+      currentFile: '当前文件',
+      progress: (completed, total) => `已完成 ${completed} / ${total}`,
+      emptyTask: '还没有批量任务。',
+      itemStatus: { queued: '排队中', asr: '生成字幕', translating: '翻译中', completed: '已完成', failed: '失败', cancelled: '已取消' },
+      jobStatus: { running: '处理中', paused: '已暂停', completed: '已完成', cancelled: '已停止', failed: '任务异常' }
     },
     clipExportDialog: {
       title: '一键片段导出',
@@ -1040,6 +1129,7 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       openFiles: 'Open media files',
       togglePlaylist: 'Toggle playlist',
       toggleAsr: 'Toggle ASR panel',
+      toggleBatch: 'Open batch subtitle task center',
       toggleInfo: 'Show or hide media info',
       openSettings: 'Open settings',
       closeSettings: 'Close settings'
@@ -1101,6 +1191,8 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       noMedia: 'No media files yet.',
       asrKicker: 'ASR',
       asrTitle: 'ASR panel',
+      batchKicker: 'Task center',
+      batchTitle: 'Batch subtitles',
       subtitlesKicker: 'Subtitles',
       subtitlesTitle: 'Subtitle tracks',
       infoKicker: 'Info',
@@ -1173,6 +1265,9 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       translationEndToEnd: (duration) => `One-click flow ${duration}`,
       cancelTranslation: 'Cancel translation',
       translatedSubtitleReady: 'Translation ready',
+      errorDetails: 'View error details',
+      openLogs: 'Open log folder',
+      openLogsFailed: 'Could not open log folder',
       subtitleTools: 'Subtitle tools',
       subtitleToolsMenu: 'Subtitle tools menu',
       openSubtitleFolder: 'Open subtitle folder',
@@ -1189,6 +1284,38 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       modelSource: 'Model source',
       subtitlesReady: 'VTT / SRT / local cache',
       subtitlesWaiting: 'Waiting'
+    },
+    batchSubtitle: {
+      title: 'Batch subtitle task center',
+      description: 'Choose a folder to generate and translate target-language subtitles for multiple videos. ASR stays at one lane, translation can use 1–3 lanes, and one failure will not block the rest.',
+      chooseFolder: 'Choose video folder',
+      includeSubfolders: 'Include subfolders',
+      onlyMissing: 'Skip existing subtitle caches',
+      concurrency: 'Concurrency',
+      concurrencyValue: (count) => `${count} lanes (ASR stays at 1)`,
+      scan: 'Scan videos',
+      scanning: 'Scanning…',
+      noFiles: 'No video files found yet.',
+      selectAll: 'Select all',
+      clearSelection: 'Clear selection',
+      selectedCount: (count) => `${count} video${count === 1 ? '' : 's'} selected`,
+      targetLanguage: 'Target language',
+      start: 'Start batch',
+      running: 'Processing',
+      pause: 'Pause queue',
+      pauseRequested: 'Pausing after current file',
+      resume: 'Resume queue',
+      cancel: 'Stop queue',
+      retryFailed: 'Retry failed',
+      openLogs: 'Open log folder',
+      openLogsFailed: 'Could not open the log folder',
+      errorDetails: 'View error details',
+      recoveredTask: 'The previous task was paused after restart. Resume when ready.',
+      currentFile: 'Current file',
+      progress: (completed, total) => `${completed} / ${total} completed`,
+      emptyTask: 'No batch task yet.',
+      itemStatus: { queued: 'Queued', asr: 'Generating', translating: 'Translating', completed: 'Completed', failed: 'Failed', cancelled: 'Cancelled' },
+      jobStatus: { running: 'Processing', paused: 'Paused', completed: 'Completed', cancelled: 'Stopped', failed: 'Task error' }
     },
     clipExportDialog: {
       title: 'One-click clip export',
@@ -1604,6 +1731,7 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       openFiles: 'メディアファイルを開く',
       togglePlaylist: 'プレイリストを切り替え',
       toggleAsr: 'ASR パネルを切り替え',
+      toggleBatch: '一括字幕タスクセンターを開く',
       toggleInfo: 'メディア情報を表示 / 非表示',
       openSettings: '設定を開く',
       closeSettings: '設定を閉じる'
@@ -1665,6 +1793,8 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       noMedia: 'まだメディアファイルがありません。',
       asrKicker: 'ASR',
       asrTitle: 'ASR パネル',
+      batchKicker: 'タスクセンター',
+      batchTitle: '一括字幕',
       subtitlesKicker: '字幕',
       subtitlesTitle: '字幕トラック',
       infoKicker: '情報',
@@ -1737,6 +1867,9 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       translationEndToEnd: (duration) => `ワンクリック処理 ${duration}`,
       cancelTranslation: '翻訳をキャンセル',
       translatedSubtitleReady: '翻訳完了',
+      errorDetails: 'エラー詳細を表示',
+      openLogs: 'ログフォルダを開く',
+      openLogsFailed: 'ログフォルダを開けません',
       subtitleTools: '字幕ツール',
       subtitleToolsMenu: '字幕ツールメニュー',
       openSubtitleFolder: '字幕フォルダを開く',
@@ -1753,6 +1886,38 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       modelSource: 'モデルソース',
       subtitlesReady: 'VTT / SRT / ローカルキャッシュ',
       subtitlesWaiting: '待機中'
+    },
+    batchSubtitle: {
+      title: '一括字幕タスクセンター',
+      description: 'フォルダを選ぶと、複数の動画に対象言語の字幕を生成・翻訳します。ASR は 1 並列、翻訳は 1〜3 並列に設定でき、1つの失敗で後続を止めません。',
+      chooseFolder: '動画フォルダを選択',
+      includeSubfolders: 'サブフォルダを含める',
+      onlyMissing: '既存の字幕キャッシュをスキップ',
+      concurrency: '並列数',
+      concurrencyValue: (count) => `${count} 並列（ASR は 1）`,
+      scan: '動画をスキャン',
+      scanning: 'スキャン中…',
+      noFiles: '動画ファイルがまだ見つかりません。',
+      selectAll: 'すべて選択',
+      clearSelection: '選択をクリア',
+      selectedCount: (count) => `${count} 件の動画を選択`,
+      targetLanguage: '対象言語',
+      start: '一括生成を開始',
+      running: '処理中',
+      pause: 'キューを一時停止',
+      pauseRequested: '現在のファイル後に一時停止',
+      resume: 'キューを再開',
+      cancel: 'キューを停止',
+      retryFailed: '失敗を再試行',
+      openLogs: 'ログフォルダを開く',
+      openLogsFailed: 'ログフォルダを開けませんでした',
+      errorDetails: 'エラー詳細を表示',
+      recoveredTask: '前回のタスクは再起動後に一時停止されました。準備ができたら再開してください。',
+      currentFile: '現在のファイル',
+      progress: (completed, total) => `${completed} / ${total} 完了`,
+      emptyTask: '一括タスクはまだありません。',
+      itemStatus: { queued: '待機中', asr: '字幕生成', translating: '翻訳中', completed: '完了', failed: '失敗', cancelled: 'キャンセル済み' },
+      jobStatus: { running: '処理中', paused: '一時停止', completed: '完了', cancelled: '停止済み', failed: 'タスクエラー' }
     },
     clipExportDialog: {
       title: 'クリップのワンクリック書き出し',
@@ -2168,6 +2333,7 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       openFiles: '미디어 파일 열기',
       togglePlaylist: '재생 목록 전환',
       toggleAsr: 'ASR 패널 전환',
+      toggleBatch: '일괄 자막 작업 센터 열기',
       toggleInfo: '미디어 정보 표시 / 숨기기',
       openSettings: '설정 열기',
       closeSettings: '설정 닫기'
@@ -2229,6 +2395,8 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       noMedia: '아직 미디어 파일이 없습니다.',
       asrKicker: 'ASR',
       asrTitle: 'ASR 패널',
+      batchKicker: '작업 센터',
+      batchTitle: '일괄 자막',
       subtitlesKicker: '자막',
       subtitlesTitle: '자막 트랙',
       infoKicker: '정보',
@@ -2301,6 +2469,9 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       translationEndToEnd: (duration) => `원클릭 처리 ${duration}`,
       cancelTranslation: '번역 취소',
       translatedSubtitleReady: '번역 완료',
+      errorDetails: '오류 상세 보기',
+      openLogs: '로그 폴더 열기',
+      openLogsFailed: '로그 폴더를 열 수 없습니다',
       subtitleTools: '자막 도구',
       subtitleToolsMenu: '자막 도구 메뉴',
       openSubtitleFolder: '자막 폴더 열기',
@@ -2317,6 +2488,38 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       modelSource: '모델 소스',
       subtitlesReady: 'VTT / SRT / 로컬 캐시',
       subtitlesWaiting: '대기 중'
+    },
+    batchSubtitle: {
+      title: '일괄 자막 작업 센터',
+      description: '폴더를 선택하면 여러 동영상에 대상 언어 자막을 생성하고 번역합니다. ASR은 1개로 유지하고 번역은 1–3개로 설정할 수 있으며 한 파일의 실패가 다음 작업을 막지 않습니다.',
+      chooseFolder: '동영상 폴더 선택',
+      includeSubfolders: '하위 폴더 포함',
+      onlyMissing: '기존 자막 캐시 건너뛰기',
+      concurrency: '동시 처리 수',
+      concurrencyValue: (count) => `${count}개 (ASR는 1개)`,
+      scan: '동영상 스캔',
+      scanning: '스캔 중…',
+      noFiles: '아직 동영상 파일을 찾지 못했습니다.',
+      selectAll: '모두 선택',
+      clearSelection: '선택 지우기',
+      selectedCount: (count) => `${count}개 동영상 선택됨`,
+      targetLanguage: '대상 언어',
+      start: '일괄 생성 시작',
+      running: '처리 중',
+      pause: '대기열 일시 정지',
+      pauseRequested: '현재 파일 후 일시 정지',
+      resume: '대기열 재개',
+      cancel: '대기열 중지',
+      retryFailed: '실패 항목 재시도',
+      openLogs: '로그 폴더 열기',
+      openLogsFailed: '로그 폴더를 열 수 없습니다',
+      errorDetails: '오류 세부 정보 보기',
+      recoveredTask: '이전 작업은 재시작 후 일시 정지되었습니다. 준비되면 재개하세요.',
+      currentFile: '현재 파일',
+      progress: (completed, total) => `${completed} / ${total} 완료`,
+      emptyTask: '아직 일괄 작업이 없습니다.',
+      itemStatus: { queued: '대기 중', asr: '자막 생성', translating: '번역 중', completed: '완료', failed: '실패', cancelled: '취소됨' },
+      jobStatus: { running: '처리 중', paused: '일시 정지', completed: '완료', cancelled: '중지됨', failed: '작업 오류' }
     },
     clipExportDialog: {
       title: '원클릭 클립 내보내기',

@@ -17,6 +17,7 @@ import { getWhisperBinaryNames, parseWhisperBinaryReplacementName } from './whis
 import { getAppCopy } from '../../shared/i18n'
 import type {
   AsrJobProgress,
+  AsrErrorDetails,
   AsrModelDownloadProgress,
   AsrModelDownloadResult,
   AsrModelSourceId,
@@ -306,23 +307,33 @@ function summarizeTranslationServiceEndpoint(baseUrl: string): string {
 function formatTranslationServiceError(
   copy: ReturnType<typeof getAppCopy>,
   error: unknown
-): { message: string } {
+): { message: string; errorDetails?: AsrErrorDetails } {
   if (error instanceof SubtitleTranslationError) {
+    const errorDetails: AsrErrorDetails = {
+      code: error.code,
+      status: error.status,
+      statusText: error.statusText,
+      responseBody: error.responseBody
+        ?.replace(/Bearer\s+[^\s"']+/gi, 'Bearer [REDACTED]')
+        .replace(/\bsk-[A-Za-z0-9_-]{10,}\b/g, '[REDACTED_API_KEY]') || undefined
+    }
+
     switch (error.code) {
       case 'cancelled':
-        return { message: copy.runtime.subtitleTranslationCanceled }
+        return { message: copy.runtime.subtitleTranslationCanceled, errorDetails }
       case 'network-error':
-        return { message: copy.runtime.translationServiceNetworkError }
+        return { message: copy.runtime.translationServiceNetworkError, errorDetails }
       case 'http-error':
         return {
-          message: copy.runtime.translationServiceHttpError(error.status ?? 0, error.statusText ?? null)
+          message: copy.runtime.translationServiceHttpError(error.status ?? 0, error.statusText ?? null),
+          errorDetails
         }
       case 'invalid-json':
-        return { message: copy.runtime.translationServiceInvalidJson }
+        return { message: copy.runtime.translationServiceInvalidJson, errorDetails }
       case 'invalid-response':
-        return { message: copy.runtime.translationServiceInvalidResponse }
+        return { message: copy.runtime.translationServiceInvalidResponse, errorDetails }
       default:
-        return { message: error.message }
+        return { message: error.message, errorDetails }
     }
   }
 
@@ -875,7 +886,8 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
           targetLanguage: request.targetLanguage,
           translationModel,
           translationBaseUrlSummary,
-          sampleSourceText
+          sampleSourceText,
+          errorDetails: failure.errorDetails
         }
       }
     }

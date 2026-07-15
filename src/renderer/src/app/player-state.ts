@@ -1,7 +1,7 @@
 import type { MediaFile, PlaybackState } from '../../../shared/media-types'
 
 export type PlaylistItem = MediaFile
-export type PanelMode = 'none' | 'playlist' | 'asr' | 'subtitles' | 'info'
+export type PanelMode = 'none' | 'playlist' | 'asr' | 'batch' | 'subtitles' | 'info'
 
 export type PlayerState = PlaybackState & {
   currentFile: PlaylistItem | null

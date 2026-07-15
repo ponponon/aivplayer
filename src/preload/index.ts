@@ -20,6 +20,9 @@ import type {
   ClipboardWriteTextResult,
   AsrSubtitleRequest,
   AsrSubtitleResult,
+  BatchSubtitleJob,
+  BatchSubtitleScanRequest,
+  BatchSubtitleStartRequest,
   MediaFile,
   MediaProbeMetadata,
   NativePlaybackResult,
@@ -35,6 +38,22 @@ const api = {
   readFileContent: (filePath: string): Promise<string> => ipcRenderer.invoke(IPC_CHANNELS.READ_FILE_CONTENT, filePath),
   listMediaFilesInDirectory: (directoryPath: string): Promise<MediaFile[]> =>
     ipcRenderer.invoke(IPC_CHANNELS.LIST_MEDIA_FILES_IN_DIRECTORY, directoryPath),
+  scanBatchSubtitleDirectory: (request: BatchSubtitleScanRequest): Promise<MediaFile[]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.BATCH_SUBTITLE_SCAN_DIRECTORY, request),
+  startBatchSubtitle: (request: BatchSubtitleStartRequest): Promise<BatchSubtitleJob> =>
+    ipcRenderer.invoke(IPC_CHANNELS.BATCH_SUBTITLE_START, request),
+  pauseBatchSubtitle: (): Promise<BatchSubtitleJob | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.BATCH_SUBTITLE_PAUSE),
+  resumeBatchSubtitle: (): Promise<BatchSubtitleJob | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.BATCH_SUBTITLE_RESUME),
+  cancelBatchSubtitle: (): Promise<BatchSubtitleJob | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.BATCH_SUBTITLE_CANCEL),
+  retryFailedBatchSubtitle: (): Promise<BatchSubtitleJob | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.BATCH_SUBTITLE_RETRY_FAILED),
+  getCurrentBatchSubtitle: (): Promise<BatchSubtitleJob | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.BATCH_SUBTITLE_GET_CURRENT),
+  openBatchSubtitleLogDirectory: (): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.BATCH_SUBTITLE_OPEN_LOG_DIRECTORY),
   getMediaMetadata: (filePath: string): Promise<MediaProbeMetadata | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.GET_MEDIA_METADATA, filePath),
   getAppVersion: (): Promise<string> => ipcRenderer.invoke(IPC_CHANNELS.GET_APP_VERSION),
@@ -61,6 +80,7 @@ const api = {
   testAsrTranslationService: (
     request: AsrTranslationServiceTestRequest
   ): Promise<AsrTranslationServiceTestResult> => ipcRenderer.invoke(IPC_CHANNELS.ASR_TEST_TRANSLATION_SERVICE, request),
+  openAsrLogDirectory: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.ASR_OPEN_LOG_DIRECTORY),
   exportMediaClip: (request: MediaClipExportRequest): Promise<MediaClipExportResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.MEDIA_EXPORT_CLIP, request),
   copyTextToClipboard: (request: ClipboardWriteTextRequest): Promise<ClipboardWriteTextResult> =>
@@ -89,6 +109,11 @@ const api = {
     const listener = (_event: Electron.IpcRendererEvent, progress: AsrJobProgress): void => callback(progress)
     ipcRenderer.on(IPC_CHANNELS.ASR_JOB_PROGRESS, listener)
     return () => ipcRenderer.removeListener(IPC_CHANNELS.ASR_JOB_PROGRESS, listener)
+  },
+  onBatchSubtitleProgress: (callback: (job: BatchSubtitleJob) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, job: BatchSubtitleJob): void => callback(job)
+    ipcRenderer.on(IPC_CHANNELS.BATCH_SUBTITLE_PROGRESS, listener)
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.BATCH_SUBTITLE_PROGRESS, listener)
   },
   getPathForFile: (file: File): string => webUtils.getPathForFile(file)
 }

@@ -13,6 +13,7 @@ import {
   FolderOpen,
   Info,
   Languages,
+  ListChecks,
   ListVideo,
   Minimize2,
   PanelRight,
@@ -46,6 +47,7 @@ import type {
   AsrModelDownloadProgress,
   AsrModelSourceId,
   AsrRuntimeStatus,
+  AsrErrorDetails,
   MediaClipExportRequest,
   AsrTranslationServiceTestResult,
   AsrSubtitleTranslationResult,
@@ -59,6 +61,7 @@ import { ClipExportDialog } from './clip-export-dialog'
 import { InfoValue } from './info-value'
 import { MediaDetailsDialog } from './media-details-dialog'
 import { SettingsDialog } from './settings-dialog'
+import { BatchSubtitlePanel } from './batch-subtitle-panel'
 import { useModalFocusTrap } from './use-modal-focus-trap'
 import { clamp, formatPlaybackTimeLabel, formatTime } from '../lib/time'
 import { resolvePlaybackStartTime } from './playback-progress'
@@ -66,6 +69,7 @@ import { resolvePlaybackStartTime } from './playback-progress'
 type AsrNotice = {
   success: boolean
   message: string
+  errorDetails?: AsrErrorDetails
 }
 
 const subtitleTargetLanguageIds: SubtitleTargetLanguageId[] = ['zh', 'en', 'ja', 'ko']
@@ -371,6 +375,7 @@ export function App(): ReactElement {
     : null
   const subtitleTranslationModelLabel = translatedSubtitleResult?.translationModel ?? subtitleTranslationModel
   const translatedSubtitleReadyLabel = translatedSubtitleResult?.subtitleUrl ? copy.asrPanel.translatedSubtitleReady : null
+  const asrErrorDetails = asrNotice && !asrNotice.success ? asrNotice.errorDetails : undefined
   const translationServiceStatusLabel = translationServiceTestMessage
     ? translationServiceTestMessage.success
       ? copy.asrPanel.translationServiceReady
@@ -1146,6 +1151,16 @@ export function App(): ReactElement {
     await window.aiv.cancelAsrTranslation()
   }
 
+  const openAsrLogDirectory = async (): Promise<void> => {
+    const opened = await window.aiv.openAsrLogDirectory()
+    if (!opened) {
+      setAsrNotice({
+        success: false,
+        message: copy.asrPanel.openLogsFailed
+      })
+    }
+  }
+
   const changeSubtitleTargetLanguage = (targetLanguage: SubtitleTargetLanguageId): void => {
     if (isAsrBusy || isTranslatingSubtitle) {
       return
@@ -1163,6 +1178,13 @@ export function App(): ReactElement {
     }
 
     void translateSubtitle(targetLanguage)
+  }
+
+  const changeBatchTargetLanguage = (targetLanguage: SubtitleTargetLanguageId): void => {
+    if (targetLanguage !== appSettings.subtitles.targetLanguage) {
+      const subtitleSettingsSection = 'subtitles' as const
+      patchAppSettingsSection(subtitleSettingsSection, { targetLanguage })
+    }
   }
 
   const runQuickTargetSubtitle = async (): Promise<void> => {
@@ -1999,6 +2021,16 @@ export function App(): ReactElement {
             <Sparkles size={17} />
           </button>
           <button
+            className={`tool-button ${state.panelMode === 'batch' ? 'active' : ''}`}
+            type="button"
+            onClick={() => togglePanelMode('batch')}
+            title={copy.topbar.toggleBatch}
+            aria-label={copy.topbar.toggleBatch}
+            aria-pressed={state.panelMode === 'batch'}
+          >
+            <ListChecks size={17} />
+          </button>
+          <button
             className={`tool-button ${state.panelMode === 'info' ? 'active' : ''}`}
             type="button"
             title={copy.topbar.toggleInfo}
@@ -2288,6 +2320,16 @@ export function App(): ReactElement {
             >
               <Sparkles size={15} />
               <span>{copy.panels.asrTitle}</span>
+            </button>
+            <button
+              className={`panel-tab ${state.panelMode === 'batch' ? 'active' : ''}`}
+              type="button"
+              role="tab"
+              aria-selected={state.panelMode === 'batch'}
+              onClick={() => openPanelMode('batch')}
+            >
+              <ListChecks size={15} />
+              <span>{copy.panels.batchTitle}</span>
             </button>
             <button
               className={`panel-tab ${state.panelMode === 'info' ? 'active' : ''}`}
@@ -2649,6 +2691,26 @@ export function App(): ReactElement {
                       {asrNotice.message}
                     </div>
                   ) : null}
+                  {asrNotice && !asrNotice.success ? (
+                    <div className="asr-error-diagnostics">
+                      {asrErrorDetails ? (
+                        <details className="asr-error-details">
+                          <summary>{copy.asrPanel.errorDetails}</summary>
+                          <div className="asr-error-details-body">
+                            {asrErrorDetails.code ? <span>Code: {asrErrorDetails.code}</span> : null}
+                            {asrErrorDetails.status ? (
+                              <span>HTTP {asrErrorDetails.status} {asrErrorDetails.statusText ?? ''}</span>
+                            ) : null}
+                            {asrErrorDetails.responseBody ? <pre>{asrErrorDetails.responseBody}</pre> : null}
+                          </div>
+                        </details>
+                      ) : null}
+                      <button className="batch-log-button" type="button" onClick={() => void openAsrLogDirectory()}>
+                        <FolderOpen size={14} />
+                        {copy.asrPanel.openLogs}
+                      </button>
+                    </div>
+                  ) : null}
                   {subtitleResult?.success && subtitleResult.generationStats ? (
                     <div className="translation-summary generation-summary">
                       <div className="translation-summary-main">
@@ -2728,6 +2790,15 @@ export function App(): ReactElement {
                 </div>
               </div>
             </>
+          ) : null}
+
+          {state.panelMode === 'batch' ? (
+            <BatchSubtitlePanel
+              copy={copy}
+              targetLanguage={appSettings.subtitles.targetLanguage}
+              modelId={asrStatus?.recommendedModelManifest.id}
+              onTargetLanguageChange={changeBatchTargetLanguage}
+            />
           ) : null}
 
           {state.panelMode === 'subtitles' ? (

@@ -164,6 +164,14 @@ export type AsrSubtitleResult = {
   subtitleLanguage?: string
   model?: AsrModelInfo
   generationStats?: AsrSubtitleGenerationStats
+  errorDetails?: AsrErrorDetails
+}
+
+export type AsrErrorDetails = {
+  code?: string
+  status?: number
+  statusText?: string
+  responseBody?: string
 }
 
 export type AsrSubtitleExportRequest = {
@@ -208,6 +216,79 @@ export type AsrSubtitleTranslationResult = {
   subtitleSrtPath?: string
   subtitleUrl?: string
   subtitleSrtUrl?: string
+  errorDetails?: AsrErrorDetails
+}
+
+export type BatchSubtitleItemStatus =
+  | 'queued'
+  | 'asr'
+  | 'translating'
+  | 'completed'
+  | 'failed'
+  | 'cancelled'
+
+export type BatchSubtitleJobStatus = 'running' | 'paused' | 'completed' | 'cancelled' | 'failed'
+
+export type BatchSubtitleItem = {
+  id: string
+  file: MediaFile
+  status: BatchSubtitleItemStatus
+  percent: number | null
+  message: string
+  error?: string
+  errorDetails?: AsrErrorDetails
+  attempts: number
+  cacheHit?: boolean
+  asrElapsedMs?: number
+  translationElapsedMs?: number
+  subtitlePath?: string
+  translatedSubtitlePath?: string
+  elapsedMs?: number
+  startedAt?: number
+  completedAt?: number
+}
+
+export type BatchSubtitleSummary = {
+  total: number
+  queued: number
+  processing: number
+  completed: number
+  failed: number
+  cancelled: number
+}
+
+export type BatchSubtitleJob = {
+  id: string
+  rootPath: string
+  targetLanguage: SubtitleTargetLanguageId
+  onlyMissing: boolean
+  maxConcurrent: number
+  modelId?: string
+  sourceLanguage?: string
+  status: BatchSubtitleJobStatus
+  pauseRequested: boolean
+  currentItemId: string | null
+  message: string
+  items: BatchSubtitleItem[]
+  summary: BatchSubtitleSummary
+  startedAt: number
+  completedAt?: number
+  elapsedMs?: number
+}
+
+export type BatchSubtitleScanRequest = {
+  directoryPath: string
+  recursive?: boolean
+}
+
+export type BatchSubtitleStartRequest = {
+  rootPath: string
+  files: MediaFile[]
+  targetLanguage: SubtitleTargetLanguageId
+  onlyMissing?: boolean
+  maxConcurrent?: number
+  modelId?: string
+  sourceLanguage?: string
 }
 
 export type AsrTranslationServiceTestRequest = {
@@ -224,6 +305,7 @@ export type AsrTranslationServiceTestResult = {
   translationBaseUrlSummary?: string
   sampleSourceText?: string
   sampleTranslatedText?: string
+  errorDetails?: AsrErrorDetails
 }
 
 export type MediaClipExportRequest = {

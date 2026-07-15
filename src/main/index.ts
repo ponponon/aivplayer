@@ -1,6 +1,6 @@
 import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeImage, shell } from 'electron'
 import { existsSync } from 'node:fs'
-import { readdir } from 'node:fs/promises'
+import { mkdir, readdir } from 'node:fs/promises'
 import { dirname, extname, join, resolve } from 'node:path'
 import { readAppSettings, writeAppSettings } from './app-settings'
 import { APP_NAME, createApplicationMenuTemplate } from './app-menu'
@@ -15,6 +15,9 @@ import type {
   AsrSubtitleTranslationResult,
   AsrTranslationServiceTestRequest,
   AsrSubtitleRequest,
+  BatchSubtitleJob,
+  BatchSubtitleScanRequest,
+  BatchSubtitleStartRequest,
   ClipboardWriteTextRequest,
   ClipboardWriteTextResult,
   MediaClipExportRequest,
@@ -25,6 +28,12 @@ import type {
 import { getAppCopy } from '../shared/i18n'
 import type { AppLocale } from '../shared/localization'
 import { createWhisperCppRuntime, resolveFfmpegPath } from './ai/whisper-cpp-runtime'
+import {
+  BatchSubtitleManager,
+  getBatchSubtitleLogDirectoryPath,
+  getBatchSubtitleStatePath
+} from './ai/batch-subtitle-manager'
+import { appendAsrDiagnosticLog, getAsrLogDirectoryPath, redactAsrErrorDetails } from './ai/asr-diagnostics'
 import { buildClipExportDefaultVideoPath, runClipExport } from './media/clip-export'
 import { createMediaProbeMetadata } from './media/media-metadata'
 import { extractVideoFilePaths, isVideoFilePath, VIDEO_EXTENSIONS } from './media/file-opening'
@@ -42,6 +51,7 @@ let initialMediaFiles: MediaFile[] | null = null
 let pendingMediaPaths: string[] = []
 let currentAppSettings = createDefaultAppSettings()
 const translationAbortControllers = new Map<number, AbortController>()
+let batchSubtitleManager: BatchSubtitleManager | null = null
 
 function resolveAppIconPath(): string | null {
   const iconPath = process.env.ELECTRON_RENDERER_URL
@@ -186,7 +196,7 @@ function getAsrRuntime(): ReturnType<typeof createWhisperCppRuntime> {
   return asrRuntime
 }
 
-async function listMediaFilesInDirectory(directoryPath: string): Promise<MediaFile[]> {
+async function listMediaFilesInDirectory(directoryPath: string, recursive = false): Promise<MediaFile[]> {
   if (!directoryPath || !existsSync(directoryPath)) {
     return []
   }
@@ -197,7 +207,23 @@ async function listMediaFilesInDirectory(directoryPath: string): Promise<MediaFi
     .map((entry) => join(directoryPath, entry.name))
     .filter(isVideoFilePath)
 
-  return Promise.all(mediaPaths.map((filePath) => createMediaFile(filePath)))
+  if (recursive) {
+    const nestedMediaPaths = await Promise.all(
+      entries
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => listMediaFilesInDirectory(join(directoryPath, entry.name), true))
+    )
+
+    return [...(await Promise.all(mediaPaths.map((filePath) => createMediaFile(filePath)))), ...nestedMediaPaths.flat()].sort(
+      (left, right) => left.path.localeCompare(right.path, undefined, { numeric: true, sensitivity: 'base' })
+    )
+  }
+
+  return Promise.all(
+    mediaPaths
+      .sort((left, right) => left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' }))
+      .map((filePath) => createMediaFile(filePath))
+  )
 }
 
 async function expandMediaFiles(files: MediaFile[]): Promise<MediaFile[]> {
@@ -301,6 +327,10 @@ function registerIpc(): void {
     return listMediaFilesInDirectory(directoryPath)
   })
 
+  ipcMain.handle(IPC_CHANNELS.BATCH_SUBTITLE_SCAN_DIRECTORY, async (_event, request: BatchSubtitleScanRequest) => {
+    return listMediaFilesInDirectory(request.directoryPath, request.recursive === true)
+  })
+
   ipcMain.handle(IPC_CHANNELS.CREATE_MEDIA_FILE, (_event, filePath: string) => createMediaFile(filePath))
 
   ipcMain.handle(IPC_CHANNELS.READ_FILE_CONTENT, async (_event, filePath: string): Promise<string> => {
@@ -394,21 +424,45 @@ function registerIpc(): void {
   })
 
   ipcMain.handle(IPC_CHANNELS.ASR_GENERATE_SUBTITLE, async (event, request: AsrSubtitleRequest) => {
-    const result = await getAsrRuntime().generateSubtitle(request, (progress) => {
-      event.sender.send(IPC_CHANNELS.ASR_JOB_PROGRESS, progress)
+    const logDirectoryPath = getAsrLogDirectoryPath(app.getPath('userData'))
+    await appendAsrDiagnosticLog(logDirectoryPath, 'subtitle-generation-started', {
+      mediaPath: request.mediaPath,
+      modelId: request.modelId,
+      language: request.language
     })
 
-    if (!result.subtitlePath) {
-      return result
-    }
+    try {
+      const result = await getAsrRuntime().generateSubtitle(request, (progress) => {
+        event.sender.send(IPC_CHANNELS.ASR_JOB_PROGRESS, progress)
+      })
 
-    const subtitleFile = createMediaFile(result.subtitlePath)
-    const subtitleSrtFile = result.subtitleSrtPath ? createMediaFile(result.subtitleSrtPath) : null
+      await appendAsrDiagnosticLog(logDirectoryPath, 'subtitle-generation-finished', {
+        mediaPath: request.mediaPath,
+        success: result.success,
+        message: result.message,
+        subtitlePath: result.subtitlePath,
+        generationStats: result.generationStats,
+        errorDetails: redactAsrErrorDetails(result.errorDetails)
+      })
 
-    return {
-      ...result,
-      subtitleUrl: subtitleFile.url,
-      subtitleSrtUrl: subtitleSrtFile?.url
+      if (!result.subtitlePath) {
+        return result
+      }
+
+      const subtitleFile = createMediaFile(result.subtitlePath)
+      const subtitleSrtFile = result.subtitleSrtPath ? createMediaFile(result.subtitleSrtPath) : null
+
+      return {
+        ...result,
+        subtitleUrl: subtitleFile.url,
+        subtitleSrtUrl: subtitleSrtFile?.url
+      }
+    } catch (error) {
+      await appendAsrDiagnosticLog(logDirectoryPath, 'subtitle-generation-threw', {
+        mediaPath: request.mediaPath,
+        message: error instanceof Error ? error.message : String(error)
+      })
+      throw error
     }
   })
 
@@ -462,10 +516,17 @@ function registerIpc(): void {
   })
 
   ipcMain.handle(IPC_CHANNELS.ASR_TRANSLATE_SUBTITLE, async (_event, request: AsrSubtitleTranslationRequest) => {
+    const logDirectoryPath = getAsrLogDirectoryPath(app.getPath('userData'))
     const controller = new AbortController()
     const senderId = _event.sender.id
     translationAbortControllers.get(senderId)?.abort()
     translationAbortControllers.set(senderId, controller)
+
+    await appendAsrDiagnosticLog(logDirectoryPath, 'subtitle-translation-started', {
+      subtitlePath: request.subtitlePath,
+      sourceLanguage: request.sourceLanguage,
+      targetLanguage: request.targetLanguage
+    })
 
     try {
       const result = await getAsrRuntime().translateSubtitle(request, {
@@ -475,9 +536,17 @@ function registerIpc(): void {
         }
       })
 
-      if (!result.subtitlePath) {
-        return result
-      }
+      await appendAsrDiagnosticLog(logDirectoryPath, 'subtitle-translation-finished', {
+        subtitlePath: request.subtitlePath,
+        targetLanguage: request.targetLanguage,
+        success: result.success,
+        canceled: result.canceled,
+        message: result.message,
+        translationStats: result.translationStats,
+        errorDetails: redactAsrErrorDetails(result.errorDetails)
+      })
+
+      if (!result.subtitlePath) return result
 
       const subtitleFile = createMediaFile(result.subtitlePath)
       const subtitleSrtFile = result.subtitleSrtPath ? createMediaFile(result.subtitleSrtPath) : null
@@ -487,6 +556,13 @@ function registerIpc(): void {
         subtitleUrl: subtitleFile.url,
         subtitleSrtUrl: subtitleSrtFile?.url
       } satisfies AsrSubtitleTranslationResult
+    } catch (error) {
+      await appendAsrDiagnosticLog(logDirectoryPath, 'subtitle-translation-threw', {
+        subtitlePath: request.subtitlePath,
+        targetLanguage: request.targetLanguage,
+        message: error instanceof Error ? error.message : String(error)
+      })
+      throw error
     } finally {
       if (translationAbortControllers.get(senderId) === controller) {
         translationAbortControllers.delete(senderId)
@@ -506,7 +582,54 @@ function registerIpc(): void {
   })
 
   ipcMain.handle(IPC_CHANNELS.ASR_TEST_TRANSLATION_SERVICE, async (_event, request: AsrTranslationServiceTestRequest) => {
-    return getAsrRuntime().testTranslationService(request)
+    const logDirectoryPath = getAsrLogDirectoryPath(app.getPath('userData'))
+    const result = await getAsrRuntime().testTranslationService(request)
+    await appendAsrDiagnosticLog(logDirectoryPath, 'translation-service-test', {
+      sourceLanguage: request.sourceLanguage,
+      targetLanguage: request.targetLanguage,
+      success: result.success,
+      message: result.message,
+      translationModel: result.translationModel,
+      translationBaseUrlSummary: result.translationBaseUrlSummary,
+      errorDetails: redactAsrErrorDetails(result.errorDetails)
+    })
+    return result
+  })
+
+  ipcMain.handle(IPC_CHANNELS.ASR_OPEN_LOG_DIRECTORY, async () => {
+    const logDirectoryPath = getAsrLogDirectoryPath(app.getPath('userData'))
+    await mkdir(logDirectoryPath, { recursive: true })
+    return openPathInDefaultApp(logDirectoryPath)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.BATCH_SUBTITLE_GET_CURRENT, async (event) => {
+    return getBatchSubtitleManager(event.sender).getCurrent()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.BATCH_SUBTITLE_START, async (event, request: BatchSubtitleStartRequest) => {
+    return getBatchSubtitleManager(event.sender).start(request)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.BATCH_SUBTITLE_PAUSE, async (event) => {
+    return getBatchSubtitleManager(event.sender).pause()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.BATCH_SUBTITLE_RESUME, async (event) => {
+    return getBatchSubtitleManager(event.sender).resume()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.BATCH_SUBTITLE_CANCEL, async (event) => {
+    return getBatchSubtitleManager(event.sender).cancel()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.BATCH_SUBTITLE_RETRY_FAILED, async (event) => {
+    return getBatchSubtitleManager(event.sender).retryFailed()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.BATCH_SUBTITLE_OPEN_LOG_DIRECTORY, async () => {
+    const logDirectoryPath = getBatchSubtitleLogDirectoryPath(app.getPath('userData'))
+    await mkdir(logDirectoryPath, { recursive: true })
+    return openPathInDefaultApp(logDirectoryPath)
   })
 
   ipcMain.handle(IPC_CHANNELS.MEDIA_EXPORT_CLIP, async (_event, request: MediaClipExportRequest) => {
@@ -611,6 +734,27 @@ function registerIpc(): void {
     shell.showItemInFolder(filePath)
     return true
   })
+}
+
+function getBatchSubtitleManager(sender: Electron.WebContents): BatchSubtitleManager {
+  const emit = (job: BatchSubtitleJob): void => {
+    if (!sender.isDestroyed()) {
+      sender.send(IPC_CHANNELS.BATCH_SUBTITLE_PROGRESS, job)
+    }
+  }
+
+  if (!batchSubtitleManager) {
+    batchSubtitleManager = new BatchSubtitleManager({
+      runtime: getAsrRuntime(),
+      stateFilePath: getBatchSubtitleStatePath(app.getPath('userData')),
+      logDirectoryPath: getBatchSubtitleLogDirectoryPath(app.getPath('userData')),
+      emit
+    })
+  } else {
+    batchSubtitleManager.setEmitter(emit)
+  }
+
+  return batchSubtitleManager
 }
 
 function createWindow(): void {

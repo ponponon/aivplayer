@@ -520,7 +520,8 @@ describe('subtitle translation', () => {
     ).rejects.toMatchObject({
       code: 'http-error',
       status: 502,
-      statusText: 'Bad Gateway'
+      statusText: 'Bad Gateway',
+      responseBody: 'server error'
     })
   })
 
@@ -543,7 +544,8 @@ describe('subtitle translation', () => {
         segments: [{ id: 'cue-1', text: 'hello' }]
       })
     ).rejects.toMatchObject({
-      code: 'invalid-json'
+      code: 'invalid-json',
+      responseBody: 'not-json'
     })
   })
 
