@@ -11,3 +11,20 @@
 ---
 
 对于 electron 的细节有不清楚的地方，可以直接去查看其源代码：/Users/ponponon/Desktop/code/me/github/electron
+
+---
+
+这个项目的页面已经部署到了 cloudflare pages，对应的代码是 docs/index.html ，对应的网页是 https://aivplayer.pages.dev/
+后面如果有一些更新是希望用户可以知道的，则可以加到 cloudflare pages 页面，方便用户可以知道
+
+---
+
+注意，后面打包的软件发布都要协同
+
+github 发版要注意打上 tag，github releases 页面的东西也不要忘了
+
+对了 gitee 也要，因为还要走 gitee 的 releases 让国内用户有良好的下载速度
+
+打包出来的 windows、macos、linux 的，要上传可被用户下载
+
+要保证流程的一致性，别出现纰漏
