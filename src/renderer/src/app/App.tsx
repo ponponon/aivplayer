@@ -2040,27 +2040,6 @@ export function App(): ReactElement {
                 </button>
               </div>
             )}
-            {state.currentFile ? (
-              <div className="quick-subtitle-action">
-                <button
-                  className={`quick-subtitle-button ${isChineseSubtitleReady ? 'is-ready' : ''}`}
-                  type="button"
-                  onClick={() => void runQuickChineseSubtitle()}
-                  disabled={!canQuickSubtitleAction}
-                  title={copy.quickSubtitle.shortcut}
-                  aria-keyshortcuts="Meta+Shift+C Control+Shift+C"
-                >
-                  <span className="quick-subtitle-icon" aria-hidden="true">
-                    {isChineseSubtitleReady ? <Check size={16} /> : subtitlePath ? <Languages size={16} /> : <Captions size={16} />}
-                  </span>
-                  <span className="quick-subtitle-copy">
-                    <strong>{quickSubtitleLabel}</strong>
-                    <small>{copy.quickSubtitle.hint}</small>
-                  </span>
-                  <kbd>⌘/Ctrl + Shift + C</kbd>
-                </button>
-              </div>
-            ) : null}
           </div>
 
           <SubtitleOverlay
@@ -2104,7 +2083,8 @@ export function App(): ReactElement {
               </div>
 
               <div className="controls-row">
-                <div className="controls-primary">
+                <div className="controls-center-group">
+                  <div className="controls-primary">
                   <div className="control-group transport-group">
                     <button className="round-button" type="button" onClick={() => playAdjacent(-1)} title={copy.controls.previous}>
                       <SkipBack size={16} />
@@ -2161,7 +2141,7 @@ export function App(): ReactElement {
                   </div>
                 </div>
 
-                <div className="controls-secondary">
+                  <div className="controls-secondary">
                   <div className="control-group secondary-group">
                     <div className="speed-control">
                       <select
@@ -2197,6 +2177,26 @@ export function App(): ReactElement {
                       {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
                     </button>
                   </div>
+                  </div>
+                </div>
+                <div className="quick-subtitle-action">
+                  <button
+                    className={`quick-subtitle-button ${isChineseSubtitleReady ? 'is-ready' : ''}`}
+                    type="button"
+                    onClick={() => void runQuickChineseSubtitle()}
+                    disabled={!canQuickSubtitleAction}
+                    title={copy.quickSubtitle.shortcut}
+                    aria-keyshortcuts="Meta+Shift+C Control+Shift+C"
+                  >
+                    <span className="quick-subtitle-icon" aria-hidden="true">
+                      {isChineseSubtitleReady ? <Check size={16} /> : subtitlePath ? <Languages size={16} /> : <Captions size={16} />}
+                    </span>
+                    <span className="quick-subtitle-copy">
+                      <strong>{quickSubtitleLabel}</strong>
+                      <small>{copy.quickSubtitle.hint}</small>
+                    </span>
+                    <kbd>⌘/Ctrl + Shift + C</kbd>
+                  </button>
                 </div>
               </div>
             </div>
