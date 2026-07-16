@@ -13,6 +13,8 @@ describe('video surface interaction source constraints', () => {
     expect(appSource).toContain('clearVideoClickTimer()')
     expect(appSource).toContain('void togglePlay()')
     expect(appSource).toContain('void toggleFullscreen()')
+    expect(appSource).toContain('const { volume, muted } = event.currentTarget')
+    expect(appSource).not.toContain('volume: event.currentTarget.volume')
     expect(appSource).toContain('app.isFullscreen ? <Minimize2 size={16} /> : <Fullscreen size={16} />')
     expect(appSource).toContain("if (event.key === 'Escape')")
     expect(appSource).toContain('void document.exitFullscreen()')

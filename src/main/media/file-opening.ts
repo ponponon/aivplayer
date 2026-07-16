@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs'
 import { extname, resolve } from 'node:path'
+import type { MediaFile } from '../../shared/media-types'
 
 export const VIDEO_EXTENSIONS = [
   'mp4',
@@ -38,4 +39,13 @@ export function extractVideoFilePaths(
     .filter(isVideoFilePath)
 
   return Array.from(new Set(paths))
+}
+
+export function mergeMediaFiles(current: readonly MediaFile[], incoming: readonly MediaFile[]): MediaFile[] {
+  const seen = new Set(current.map((file) => file.path))
+  return [...current, ...incoming.filter((file) => {
+    if (seen.has(file.path)) return false
+    seen.add(file.path)
+    return true
+  })]
 }

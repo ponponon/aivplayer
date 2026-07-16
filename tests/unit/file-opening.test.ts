@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { extractVideoFilePaths, isVideoFilePath, VIDEO_EXTENSIONS } from '../../src/main/media/file-opening'
+import { extractVideoFilePaths, isVideoFilePath, mergeMediaFiles, VIDEO_EXTENSIONS } from '../../src/main/media/file-opening'
 
 describe('video file opening', () => {
   it('keeps the supported extensions shared by runtime and packaging', () => {
@@ -20,5 +20,13 @@ describe('video file opening', () => {
         }
       )
     ).toEqual(['/videos/one.mp4', '/videos/two.mkv'])
+  })
+
+  it('remembers files delivered after the first window load without duplicating the playlist', () => {
+    const firstFile = { id: 'one', name: 'one.mp4', path: '/videos/one.mp4', url: 'aiv-media://file/one', extension: 'mp4' }
+    const secondFile = { id: 'two', name: 'two.mp4', path: '/videos/two.mp4', url: 'aiv-media://file/two', extension: 'mp4' }
+    const duplicateWithNewId = { ...firstFile, id: 'one-new', url: 'aiv-media://file/one-new' }
+
+    expect(mergeMediaFiles([firstFile], [duplicateWithNewId, secondFile])).toEqual([firstFile, secondFile])
   })
 })

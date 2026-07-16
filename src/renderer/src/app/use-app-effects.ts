@@ -22,7 +22,7 @@ export function useAppEffects(model: AppModel, derived: AppDerived, actions: {
   stopPlayback: () => void
   toggleFullscreen: () => Promise<void>
   openFiles: () => Promise<void>
-  runQuickTargetSubtitle: () => Promise<void>
+  runQuickComplete: () => Promise<void>
 }, patchDisplay: (patch: { displayMode?: 'source' | 'translation' | 'bilingual' }) => void): void {
   useAppStartupEffects(model, actions.loadFiles, actions.refreshAsrStatus)
   useElapsedTimeEffects(model)

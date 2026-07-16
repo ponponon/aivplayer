@@ -23,8 +23,9 @@ export function useAppStartupEffects(model: AppModel, loadFiles: (files: MediaFi
   }, [])
 
   useEffect(() => {
+    const removeMediaFilesListener = window.aiv.onMediaFilesOpened(loadFiles)
     void window.aiv.getInitialMediaFiles().then(loadFiles)
-    return window.aiv.onMediaFilesOpened(loadFiles)
+    return removeMediaFilesListener
   }, [])
 
   useEffect(() => window.aiv.onAppMenuOpenSettings(() => model.setIsSettingsDialogOpen(true)), [])

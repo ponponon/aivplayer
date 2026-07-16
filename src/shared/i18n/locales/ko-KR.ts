@@ -81,8 +81,8 @@
       ready: (languageLabel: string) => `${languageLabel} 자막 준비 완료`,
       setup: '자막 엔진 설정',
       detecting: '자막 엔진 확인 중…',
-      hint: 'ASR 패널을 열지 않고 한 번에 생성하고 번역합니다',
-      shortcut: '목표 언어 자막 생성 또는 번역 (⌘/Ctrl + Shift + C)'
+      hint: '패널을 열지 않고 ASR·자막 번역·AI 요약을 한 번에 완료합니다',
+      shortcut: 'ASR·자막 번역·AI 요약을 한 번에 완료 (⌘/Ctrl + Shift + C)'
     },
     subtitleDisplay: {
       menuLabel: '자막 표시 설정',

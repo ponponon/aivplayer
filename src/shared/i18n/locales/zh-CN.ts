@@ -81,8 +81,8 @@
       ready: (languageLabel: string) => `${languageLabel}字幕已就绪`,
       setup: '配置字幕引擎',
       detecting: '正在检查字幕引擎…',
-      hint: '自动生成并翻译，无需打开 ASR 面板',
-      shortcut: '生成或翻译目标语言字幕（⌘/Ctrl + Shift + C）'
+      hint: '一键完成 ASR、字幕翻译和 AI 内容总结，无需打开面板',
+      shortcut: '一键完成 ASR、字幕翻译和 AI 内容总结（⌘/Ctrl + Shift + C）'
     },
     subtitleDisplay: {
       menuLabel: '字幕显示设置',

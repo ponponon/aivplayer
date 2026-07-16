@@ -41,7 +41,7 @@ export function useAppDerived(model: AppModel) {
     translationServiceStatusLabel: model.translationServiceTestMessage ? model.translationServiceTestMessage.success ? subtitle.copy.asrPanel.translationServiceReady : subtitle.copy.asrPanel.translationServiceUnavailable : subtitle.subtitleTranslationModel ? subtitle.copy.asrPanel.translationServiceNotChecked : null,
     translationServiceStatusTone: model.translationServiceTestMessage ? model.translationServiceTestMessage.success ? 'ready' as const : 'failed' as const : 'pending' as const,
     subtitleTranslationGlossary,
-    canQuickSubtitleAction: Boolean(model.state.currentFile && !model.isAsrBusy && !model.isTranslatingSubtitle && !model.isDownloadingModel && !subtitle.isTargetSubtitleReady),
+    canQuickSubtitleAction: Boolean(model.state.currentFile && !model.isAsrBusy && !model.isTranslatingSubtitle && !model.isSummarizingSubtitle && !model.isDownloadingModel),
     formatBytes,
     formatElapsedTime
   }

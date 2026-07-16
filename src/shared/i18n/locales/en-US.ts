@@ -81,8 +81,8 @@
       ready: (languageLabel: string) => `${languageLabel} subtitles ready`,
       setup: 'Set up subtitle engine',
       detecting: 'Checking subtitle engine…',
-      hint: 'Generate and translate in one click, without opening the ASR panel',
-      shortcut: 'Generate or translate target-language subtitles (⌘/Ctrl + Shift + C)'
+      hint: 'Complete ASR, subtitle translation, and AI summary in one click without opening a panel',
+      shortcut: 'Complete ASR, subtitle translation, and AI summary in one click (⌘/Ctrl + Shift + C)'
     },
     subtitleDisplay: {
       menuLabel: 'Subtitle display settings',

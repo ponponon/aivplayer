@@ -3,7 +3,7 @@ import { join, resolve } from 'node:path'
 import { APP_NAME } from './main-settings'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import { createMediaFile } from './media/media-protocol'
-import { extractVideoFilePaths, isVideoFilePath } from './media/file-opening'
+import { extractVideoFilePaths, isVideoFilePath, mergeMediaFiles } from './media/file-opening'
 import { expandMediaFiles, getInitialMediaFiles } from './media-dialogs'
 import { mainState } from './main-state'
 import { resolveAppIconPath } from './main-services'
@@ -27,6 +27,7 @@ export async function deliverMediaPaths(filePaths: string[]): Promise<void> {
   const files = await Promise.all(filePaths.map((path) => createMediaFile(path)))
   const expandedFiles = await expandMediaFiles(files)
   if (expandedFiles.length === 0) return
+  mainState.initialMediaFiles = mergeMediaFiles(mainState.initialMediaFiles ?? [], expandedFiles)
   focusMainWindow()
   mainState.mainWindow.webContents.send(IPC_CHANNELS.MEDIA_FILES_OPENED, expandedFiles)
 }

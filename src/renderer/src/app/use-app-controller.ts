@@ -30,8 +30,8 @@ export function useAppController() {
     derived,
     playback.openPanelMode,
     settings.patchSubtitleDisplaySettings,
-    generation.generateSubtitle,
-    translation.translateSubtitle
+    translation.translateSubtitle,
+    aiWorkflow.startAiWorkflow
   )
   const clip = useClipExportActions(model, derived, settings.syncClipExportPreferences)
   useAppEffects(model, derived, { ...playback, ...runtime, ...quickSubtitle }, settings.patchSubtitleDisplaySettings)

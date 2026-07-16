@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { readSource } from './test-source-utils'
 
-describe('quick target-language subtitle source constraints', () => {
-  it('keeps the one-click generation and translation flow on the player surface', () => {
+describe('quick complete workflow source constraints', () => {
+  it('keeps one complete ASR, translation, and summary action on the player surface', () => {
     const appSource = `${readSource('src/renderer/src/app/use-quick-subtitle-action.ts')}\n${readSource('src/renderer/src/app/quick-subtitle-button.tsx')}\n${readSource('src/renderer/src/app/use-keyboard-shortcuts.ts')}\n${readSource('src/renderer/src/app/subtitle-result-summary.tsx')}\n${readSource('src/renderer/src/app/playback-controls.tsx')}`
     const playerCss = readSource('src/renderer/src/styles/player.css')
     const i18nSource = readSource('src/shared/i18n.ts')
 
     expect(appSource).toContain('quick-subtitle-action')
-    expect(appSource).toContain('runQuickTargetSubtitle')
-    expect(appSource).toContain('translateSubtitle(derived.quickTargetLanguage, generated, startedAt)')
+    expect(appSource).toContain('runQuickComplete')
+    expect(appSource).toContain("startAiWorkflow('complete')")
     expect(appSource).toContain('isSubtitleLanguageMatch')
     expect(appSource).toContain('subtitleGenerationElapsed')
     expect(appSource).toContain('generationStats')
@@ -28,5 +28,11 @@ describe('quick target-language subtitle source constraints', () => {
     expect(playerCss).not.toMatch(/\.quick-subtitle-action\s*\{[^}]*grid-column:/s)
     expect(playerCss).not.toContain('.control-status-row')
     expect(playerCss).toMatch(/\.quick-subtitle-button\.is-ready\s*\{[^}]*color:\s*var\(--ok\);/s)
+    expect(appSource).toContain('app.copy.asrPanel.workflowComplete')
+    expect(appSource).toContain('app.runQuickComplete()')
+    expect(appSource).not.toContain('quick-action-list')
+    expect(appSource).not.toContain('runQuickTargetSubtitle')
+    expect(appSource).not.toContain('runQuickAsr')
+    expect(appSource).not.toContain('runQuickSummary')
   })
 })

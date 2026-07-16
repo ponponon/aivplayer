@@ -81,8 +81,8 @@
       ready: (languageLabel: string) => `${languageLabel}字幕の準備完了`,
       setup: '字幕エンジンを設定',
       detecting: '字幕エンジンを確認中…',
-      hint: 'ASR パネルを開かずに、生成から翻訳までワンクリック',
-      shortcut: '目標言語の字幕を生成または翻訳（⌘/Ctrl + Shift + C）'
+      hint: 'パネルを開かずに、ASR・字幕翻訳・AI要約をワンクリックで完了',
+      shortcut: 'ASR・字幕翻訳・AI要約をワンクリックで完了（⌘/Ctrl + Shift + C）'
     },
     subtitleDisplay: {
       menuLabel: '字幕表示設定',

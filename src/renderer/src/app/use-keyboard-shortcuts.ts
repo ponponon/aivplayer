@@ -10,7 +10,7 @@ type KeyboardActions = {
   stopPlayback: () => void
   toggleFullscreen: () => Promise<void>
   openFiles: () => Promise<void>
-  runQuickTargetSubtitle: () => Promise<void>
+  runQuickComplete: () => Promise<void>
 }
 
 export function useKeyboardShortcuts(model: AppModel, actions: KeyboardActions): void {
@@ -59,7 +59,7 @@ export function useKeyboardShortcuts(model: AppModel, actions: KeyboardActions):
       if (event.code === 'KeyO' && (event.metaKey || event.ctrlKey)) { actions.revealControlDeck(); void actions.openFiles(); return }
       if (event.code === 'KeyL') { actions.revealControlDeck(); actions.togglePanelMode('playlist'); return }
       if (event.code === 'KeyC' && event.shiftKey && (event.metaKey || event.ctrlKey)) {
-        if (!event.repeat && model.state.currentFile) { event.preventDefault(); actions.revealControlDeck(); void actions.runQuickTargetSubtitle() }
+        if (!event.repeat && model.state.currentFile) { event.preventDefault(); actions.revealControlDeck(); void actions.runQuickComplete() }
         return
       }
       if (!model.state.currentFile) return
