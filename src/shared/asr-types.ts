@@ -13,7 +13,7 @@ export type AsrJobProgress = { stage: AsrJobStage; percent: number | null; messa
 export type AsrSubtitleRequest = { mediaPath: string; modelId?: string; language?: string }
 export type AsrSubtitleGenerationStats = { elapsedMs: number; subtitleCueCount: number; cacheHit: boolean }
 export type AsrErrorDetails = { code?: string; status?: number; statusText?: string; responseBody?: string }
-export type AsrSubtitleResult = { success: boolean; message: string; subtitlePath?: string; subtitleSrtPath?: string; subtitleUrl?: string; subtitleSrtUrl?: string; subtitleLanguage?: string; model?: AsrModelInfo; generationStats?: AsrSubtitleGenerationStats; errorDetails?: AsrErrorDetails }
+export type AsrSubtitleResult = { success: boolean; message: string; canceled?: boolean; subtitlePath?: string; subtitleSrtPath?: string; subtitleUrl?: string; subtitleSrtUrl?: string; subtitleLanguage?: string; model?: AsrModelInfo; generationStats?: AsrSubtitleGenerationStats; errorDetails?: AsrErrorDetails }
 export type AsrDiagnosticLogEntry = { timestamp: string; event: string; [key: string]: unknown }
 export type AsrDiagnosticLogResult = { success: boolean; message: string; entries: AsrDiagnosticLogEntry[] }
 export type AsrSubtitleExportRequest = { subtitlePath: string; subtitleSrtPath?: string }
@@ -25,6 +25,8 @@ export type AsrTranslationServiceTestRequest = { sourceLanguage?: string; target
 export type AsrTranslationServiceTestResult = { success: boolean; message: string; sourceLanguage?: string; targetLanguage?: SubtitleTargetLanguageId; translationModel?: string; translationBaseUrlSummary?: string; sampleSourceText?: string; sampleTranslatedText?: string; errorDetails?: AsrErrorDetails }
 
 export type AsrSubtitleSummaryCharacter = { name: string; role: string }
+export type AsrSubtitleSummaryMode = 'quick' | 'detailed'
+export type AsrSubtitleSummaryChapter = { title: string; timeSeconds: number; summary: string }
 export type AsrSubtitleSummary = {
   title: string
   overview: string
@@ -32,8 +34,12 @@ export type AsrSubtitleSummary = {
   keyPoints: string[]
   characters: AsrSubtitleSummaryCharacter[]
   themes: string[]
+  chapters: AsrSubtitleSummaryChapter[]
   ending: string
 }
 export type AsrSubtitleSummaryStats = { elapsedMs: number; subtitleCueCount: number; chunkCount: number; cacheHit: boolean; inputCharacterCount: number }
-export type AsrSubtitleSummaryRequest = { subtitlePath: string; sourceLanguage?: string; targetLanguage: SubtitleTargetLanguageId; force?: boolean }
-export type AsrSubtitleSummaryResult = { success: boolean; message: string; canceled?: boolean; sourceSubtitlePath?: string; sourceLanguage?: string; targetLanguage?: SubtitleTargetLanguageId; summaryModel?: string; summary?: AsrSubtitleSummary; summaryStats?: AsrSubtitleSummaryStats; errorDetails?: AsrErrorDetails }
+export type AsrSubtitleSummaryRequest = { subtitlePath: string; sourceLanguage?: string; targetLanguage: SubtitleTargetLanguageId; mode?: AsrSubtitleSummaryMode; force?: boolean }
+export type AsrSubtitleSummaryResult = { success: boolean; message: string; canceled?: boolean; sourceSubtitlePath?: string; sourceLanguage?: string; targetLanguage?: SubtitleTargetLanguageId; mode?: AsrSubtitleSummaryMode; summaryModel?: string; summary?: AsrSubtitleSummary; summaryStats?: AsrSubtitleSummaryStats; errorDetails?: AsrErrorDetails }
+export type AsrSubtitleSummaryExportFormat = 'markdown' | 'txt' | 'json'
+export type AsrSubtitleSummaryExportRequest = { format: AsrSubtitleSummaryExportFormat; content: string; defaultFileName?: string }
+export type AsrSubtitleSummaryExportResult = { success: boolean; canceled?: boolean; message: string; format?: AsrSubtitleSummaryExportFormat; filePath?: string }

@@ -31,5 +31,9 @@ export function useSubtitleGeneration(model: AppModel, derived: AppDerived) {
     }
   }
 
-  return { generateSubtitle }
+  const cancelSubtitle = async (): Promise<void> => {
+    if (model.isAsrBusy) await window.aiv.cancelAsrSubtitle()
+  }
+
+  return { generateSubtitle, cancelSubtitle }
 }

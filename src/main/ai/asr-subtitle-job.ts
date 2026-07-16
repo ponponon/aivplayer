@@ -25,6 +25,7 @@ export type RunAsrSubtitleJobOptions = {
   mediaPath: string
   cacheDirectory: string
   language?: string
+  signal?: AbortSignal
   onProgress?: (progress: AsrJobProgress) => void
   getLocale?: () => AppLocale
 }
@@ -78,12 +79,28 @@ type ProcessExecutionError = Error & {
   output?: string
 }
 
-async function runProcess(command: string, args: string[], label: string): Promise<void> {
+async function runProcess(command: string, args: string[], label: string, abortSignal?: AbortSignal): Promise<void> {
   await new Promise<void>((resolve, reject) => {
     const child = spawn(command, args, {
       stdio: ['ignore', 'pipe', 'pipe']
     })
     let output = ''
+    let settled = false
+    const handleAbort = (): void => {
+      if (settled) return
+      settled = true
+      child.kill()
+      cleanup()
+      reject(new Error('ASR process cancelled'))
+    }
+    const cleanup = (): void => abortSignal?.removeEventListener('abort', handleAbort)
+
+    if (abortSignal?.aborted) {
+      child.kill()
+      reject(new Error('ASR process cancelled'))
+      return
+    }
+    abortSignal?.addEventListener('abort', handleAbort, { once: true })
 
     child.stdout.on('data', (chunk: Buffer) => {
       output += chunk.toString()
@@ -93,18 +110,30 @@ async function runProcess(command: string, args: string[], label: string): Promi
       output += chunk.toString()
     })
 
-    child.on('error', reject)
-    child.on('close', (code, signal) => {
+    child.on('error', (error) => {
+      if (settled) return
+      settled = true
+      cleanup()
+      reject(error)
+    })
+    child.on('close', (code, processSignal) => {
+      if (settled) return
+      settled = true
+      cleanup()
+      if (abortSignal?.aborted) {
+        reject(new Error('ASR process cancelled'))
+        return
+      }
       if (code === 0) {
         resolve()
         return
       }
 
       const error = new Error(
-        `${label} 失败，退出码 ${code ?? 'unknown'}${signal ? `，信号 ${signal}` : ''}：${tailOutput(output)}`
+        `${label} 失败，退出码 ${code ?? 'unknown'}${processSignal ? `，信号 ${processSignal}` : ''}：${tailOutput(output)}`
       ) as ProcessExecutionError
       error.exitCode = code
-      error.signal = signal
+      error.signal = processSignal
       error.output = output
       reject(error)
     })
@@ -378,7 +407,7 @@ export async function runAsrSubtitleJob(options: RunAsrSubtitleJobOptions): Prom
       percent: 0.18,
       message: copy.runtime.extractingAudio
     })
-    await runProcess(options.ffmpegPath, buildFfmpegAudioExtractArgs(options.mediaPath, audioPath), 'ffmpeg')
+    await runProcess(options.ffmpegPath, buildFfmpegAudioExtractArgs(options.mediaPath, audioPath), 'ffmpeg', options.signal)
 
     emitProgress(options.onProgress, {
       stage: 'transcribing',
@@ -393,7 +422,7 @@ export async function runAsrSubtitleJob(options: RunAsrSubtitleJobOptions): Prom
     }
 
     try {
-      await runProcess(options.whisperBinaryPath, buildWhisperSubtitleArgs(whisperArgs), 'whisper.cpp')
+      await runProcess(options.whisperBinaryPath, buildWhisperSubtitleArgs(whisperArgs), 'whisper.cpp', options.signal)
     } catch (error) {
       if (!isWhisperGpuResourceFailure(error)) {
         throw error
@@ -412,7 +441,8 @@ export async function runAsrSubtitleJob(options: RunAsrSubtitleJobOptions): Prom
       await runProcess(
         options.whisperBinaryPath,
         buildWhisperSubtitleArgs({ ...whisperArgs, disableGpu: true }),
-        'whisper.cpp CPU fallback'
+        'whisper.cpp CPU fallback',
+        options.signal
       )
     }
 

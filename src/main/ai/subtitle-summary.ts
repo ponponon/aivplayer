@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { basename, dirname, extname, join } from 'node:path'
 import type { SubtitleTargetLanguageId } from '../../shared/app-settings.ts'
-import type { AsrSubtitleSummary, AsrSubtitleSummaryCharacter, AsrSubtitleSummaryStats, TranscriptSegment } from '../../shared/media-types.ts'
+import type { AsrSubtitleSummary, AsrSubtitleSummaryChapter, AsrSubtitleSummaryCharacter, AsrSubtitleSummaryMode, AsrSubtitleSummaryStats, TranscriptSegment } from '../../shared/media-types.ts'
 import { parseVtt } from './subtitle-writer.ts'
 import { pathExists } from './model-manager.ts'
 
@@ -18,6 +18,7 @@ export type SubtitleSummaryJobOptions = {
   cacheDirectory: string
   sourceLanguage?: string
   targetLanguage: SubtitleTargetLanguageId
+  mode?: AsrSubtitleSummaryMode
   force?: boolean
   provider: SubtitleSummaryProvider
   signal?: AbortSignal
@@ -56,7 +57,7 @@ export class SubtitleSummaryError extends Error {
   }
 }
 
-const summaryPromptVersion = 'summary-v1'
+const summaryPromptVersion = 'summary-v3'
 const summaryChunkMaxCharacters = 10_000
 const summaryNoteMaxCharacters = 1_800
 const summaryNotesMaxCharacters = 32_000
@@ -79,16 +80,16 @@ function throwIfSummaryAborted(signal: AbortSignal | undefined): void {
   if (signal?.aborted) throw new SubtitleSummaryError('cancelled', 'AI 内容总结已取消。')
 }
 
-function createSummaryCacheKey(options: { sourceSubtitlePath: string; sourceSubtitleText: string; sourceLanguage: string; targetLanguage: SubtitleTargetLanguageId; provider: SubtitleSummaryProviderRef }): string {
+function createSummaryCacheKey(options: { sourceSubtitlePath: string; sourceSubtitleText: string; sourceLanguage: string; targetLanguage: SubtitleTargetLanguageId; mode: AsrSubtitleSummaryMode; provider: SubtitleSummaryProviderRef }): string {
   const sourceTextHash = createHash('sha1').update(options.sourceSubtitleText).digest('hex')
-  return createHash('sha1').update([summaryPromptVersion, options.sourceSubtitlePath, sourceTextHash, options.sourceLanguage, options.targetLanguage, options.provider.id, options.provider.model].join('\n')).digest('hex').slice(0, 12)
+  return createHash('sha1').update([summaryPromptVersion, options.sourceSubtitlePath, sourceTextHash, options.sourceLanguage, options.targetLanguage, options.mode, options.provider.id, options.provider.model].join('\n')).digest('hex').slice(0, 12)
 }
 
-function getSummaryOutputPath(options: { cacheDirectory: string; sourceSubtitlePath: string; sourceSubtitleText: string; sourceLanguage: string; targetLanguage: SubtitleTargetLanguageId; provider: SubtitleSummaryProviderRef }): string {
+function getSummaryOutputPath(options: { cacheDirectory: string; sourceSubtitlePath: string; sourceSubtitleText: string; sourceLanguage: string; targetLanguage: SubtitleTargetLanguageId; mode: AsrSubtitleSummaryMode; provider: SubtitleSummaryProviderRef }): string {
   const stem = sanitizeFileStem(options.sourceSubtitlePath)
   const model = sanitizePathPart(options.provider.model)
   const key = createSummaryCacheKey(options)
-  return join(options.cacheDirectory, 'summaries', `${stem}-summary-${options.targetLanguage}-${model}-${key}.json`)
+  return join(options.cacheDirectory, 'summaries', `${stem}-summary-${options.targetLanguage}-${options.mode}-${model}-${key}.json`)
 }
 
 function formatTranscriptTime(seconds: number): string {
@@ -151,7 +152,25 @@ function characterArrayValue(value: unknown): AsrSubtitleSummaryCharacter[] {
   }).slice(0, 8)
 }
 
-function parseSummaryContent(content: string): AsrSubtitleSummary {
+function finiteNumberValue(value: unknown): number | null {
+  const number = typeof value === 'number' ? value : typeof value === 'string' ? Number(value.trim()) : NaN
+  return Number.isFinite(number) && number >= 0 ? number : null
+}
+
+function chapterArrayValue(value: unknown, mode: AsrSubtitleSummaryMode): AsrSubtitleSummaryChapter[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((item) => {
+    if (!item || typeof item !== 'object') return []
+    const record = item as Record<string, unknown>
+    const title = stringValue(record.title)
+    const timeSeconds = finiteNumberValue(record.timeSeconds ?? record.startSeconds)
+    const summary = stringValue(record.summary)
+    if (!title || timeSeconds == null) return []
+    return [{ title, timeSeconds, summary }]
+  }).sort((left, right) => left.timeSeconds - right.timeSeconds).slice(0, mode === 'quick' ? 8 : 12)
+}
+
+function parseSummaryContent(content: string, mode: AsrSubtitleSummaryMode = 'detailed'): AsrSubtitleSummary {
   let parsed: unknown
   try {
     parsed = JSON.parse(extractJsonObjectText(content)) as unknown
@@ -167,16 +186,17 @@ function parseSummaryContent(content: string): AsrSubtitleSummary {
     keyPoints: stringArrayValue(value.keyPoints),
     characters: characterArrayValue(value.characters),
     themes: stringArrayValue(value.themes),
-    ending: stringValue(value.ending)
+    chapters: chapterArrayValue(value.chapters, mode),
+    ending: mode === 'quick' ? '' : stringValue(value.ending)
   }
   if (!summary.overview && !summary.synopsis && summary.keyPoints.length === 0) throw new SubtitleSummaryError('invalid-response', '总结服务返回的内容为空。')
   return summary
 }
 
-function readCachedSummary(value: string): AsrSubtitleSummary | null {
+function readCachedSummary(value: string, mode: AsrSubtitleSummaryMode = 'detailed'): AsrSubtitleSummary | null {
   try {
     const parsed = JSON.parse(value) as { summary?: unknown }
-    return parsed.summary ? parseSummaryContent(JSON.stringify(parsed.summary)) : null
+    return parsed.summary ? parseSummaryContent(JSON.stringify(parsed.summary), mode) : null
   } catch {
     return null
   }
@@ -230,16 +250,17 @@ export function createSubtitleSummaryProviderRef(model: string | null | undefine
 export async function runSubtitleSummaryJob(options: SubtitleSummaryJobOptions): Promise<SubtitleSummaryJobResult> {
   const startedAt = performance.now()
   const sourceLanguage = options.sourceLanguage ?? 'auto'
+  const mode = options.mode ?? 'quick'
   const sourceSubtitleText = await readFile(options.sourceSubtitlePath, 'utf8')
   const segments = parseVtt(sourceSubtitleText)
   if (segments.length === 0) throw new Error('当前字幕没有可总结的内容。')
   const chunks = createTranscriptChunks(segments)
   const providerRef: SubtitleSummaryProviderRef = { id: options.provider.id, model: options.provider.model }
-  const outputPath = getSummaryOutputPath({ cacheDirectory: options.cacheDirectory, sourceSubtitlePath: options.sourceSubtitlePath, sourceSubtitleText, sourceLanguage, targetLanguage: options.targetLanguage, provider: providerRef })
+  const outputPath = getSummaryOutputPath({ cacheDirectory: options.cacheDirectory, sourceSubtitlePath: options.sourceSubtitlePath, sourceSubtitleText, sourceLanguage, targetLanguage: options.targetLanguage, mode, provider: providerRef })
   const createStats = (cacheHit: boolean): AsrSubtitleSummaryStats => ({ elapsedMs: Math.max(0, Math.round(performance.now() - startedAt)), subtitleCueCount: segments.length, chunkCount: chunks.length, cacheHit, inputCharacterCount: sourceSubtitleText.length })
 
   if (!options.force && await hasFile(outputPath)) {
-    const cached = readCachedSummary(await readFile(outputPath, 'utf8'))
+    const cached = readCachedSummary(await readFile(outputPath, 'utf8'), mode)
     if (cached) return { summary: cached, summaryStats: createStats(true) }
   }
 
@@ -260,13 +281,15 @@ export async function runSubtitleSummaryJob(options: SubtitleSummaryJobOptions):
   const notesText = notes.map((note, index) => `阶段 ${index + 1}\n${note}`).join('\n\n').slice(0, summaryNotesMaxCharacters)
   const summary = parseSummaryContent(await options.provider.complete({
     signal: options.signal,
-    system: `你是专业的电影解说编辑。请使用${options.targetLanguage}，根据阶段性剧情笔记生成一份准确、易读、允许剧透的内容总结。不要补写笔记中没有证据的细节。必须只返回 JSON 对象，不要 Markdown 代码块，字段必须是：title（标题）、overview（一句话概览）、synopsis（按时间顺序的剧情梗概，2-5 段）、keyPoints（3-8 条关键事件或看点）、characters（最多 8 个重要人物，每项包含 name 和 role）、themes（1-5 个主题）、ending（结局和后续，若字幕不足以判断则写“字幕信息不足，无法确认”）。`,
+    system: mode === 'quick'
+      ? `你是专业的电影导读编辑。请使用${options.targetLanguage}，根据阶段性剧情笔记生成一份准确、简洁、无剧透的快速导读。只能写故事设定、前提、主要人物的初始关系、主题和不涉及关键转折的看点；严禁透露结局、凶手、真实身份反转、关键死亡、胜负结果或任何需要看完才知道的信息。不要补写笔记中没有证据的细节。必须只返回 JSON 对象，不要 Markdown 代码块，字段必须是：title（标题）、overview（一句话概览）、synopsis（设定与开端，1-2 段）、keyPoints（3-5 条无剧透看点）、characters（最多 8 个主要人物，每项包含 name 和 role，角色描述不得暗示后续剧情）、themes（1-5 个主题）、chapters（最多 8 个章节，每项包含 title、timeSeconds、summary；timeSeconds 必须是阶段笔记时间标记对应的章节开始秒数，按时间递增；标题和说明不得暗示后续剧情）、ending（必须为空字符串）。`
+      : `你是专业的电影解说编辑。请使用${options.targetLanguage}，根据阶段性剧情笔记生成一份准确、易读、允许剧透的内容总结。不要补写笔记中没有证据的细节。必须只返回 JSON 对象，不要 Markdown 代码块，字段必须是：title（标题）、overview（一句话概览）、synopsis（按时间顺序的剧情梗概，2-5 段）、keyPoints（3-8 条关键事件或看点）、characters（最多 8 个重要人物，每项包含 name 和 role）、themes（1-5 个主题）、chapters（最多 12 个章节，每项包含 title、timeSeconds、summary；timeSeconds 必须是阶段笔记时间标记对应的章节开始秒数，按时间递增）、ending（结局和后续，若字幕不足以判断则写“字幕信息不足，无法确认”）。`,
     user: `以下是整部内容的阶段性剧情笔记：\n${notesText}`
-  }))
+  }), mode)
 
   await mkdir(dirname(outputPath), { recursive: true })
   const temporaryPath = `${outputPath}.tmp`
-  await writeFile(temporaryPath, `${JSON.stringify({ summary }, null, 2)}\n`, 'utf8')
+  await writeFile(temporaryPath, `${JSON.stringify({ mode, summary }, null, 2)}\n`, 'utf8')
   throwIfSummaryAborted(options.signal)
   await rename(temporaryPath, outputPath)
   options.onProgress?.({ completedSteps: totalSteps, totalSteps, percent: 1 })
@@ -276,9 +299,9 @@ export async function runSubtitleSummaryJob(options: SubtitleSummaryJobOptions):
 export async function findSubtitleSummaryCache(query: SubtitleSummaryCacheQuery): Promise<AsrSubtitleSummary | null> {
   try {
     const sourceSubtitleText = await readFile(query.sourceSubtitlePath, 'utf8')
-    const outputPath = getSummaryOutputPath({ cacheDirectory: query.cacheDirectory, sourceSubtitlePath: query.sourceSubtitlePath, sourceSubtitleText, sourceLanguage: query.sourceLanguage ?? 'auto', targetLanguage: query.targetLanguage, provider: query.provider })
+    const outputPath = getSummaryOutputPath({ cacheDirectory: query.cacheDirectory, sourceSubtitlePath: query.sourceSubtitlePath, sourceSubtitleText, sourceLanguage: query.sourceLanguage ?? 'auto', targetLanguage: query.targetLanguage, mode: query.mode ?? 'quick', provider: query.provider })
     if (!(await hasFile(outputPath))) return null
-    return readCachedSummary(await readFile(outputPath, 'utf8'))
+    return readCachedSummary(await readFile(outputPath, 'utf8'), query.mode ?? 'quick')
   } catch {
     return null
   }

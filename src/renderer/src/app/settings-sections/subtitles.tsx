@@ -8,7 +8,7 @@ import type { SettingsSectionProps } from '../settings-section-types'
 
 export function SubtitlesSettingsSection(props: SettingsSectionProps): ReactElement {
   const { copy, settings, patchSettingsSection, activeSectionId, subtitleLanguageOptions, targetLanguageOptions,
-    subtitleLineHeightOptions, subtitleDisplayModeOptions, modelSourceOptions } = props
+    aiAutomationModeOptions, subtitleLineHeightOptions, subtitleDisplayModeOptions, modelSourceOptions } = props
 
   return (
     <section
@@ -57,6 +57,9 @@ export function SubtitlesSettingsSection(props: SettingsSectionProps): ReactElem
         checked={settings.asr.autoLoadCachedSubtitles}
         onChange={(autoLoadCachedSubtitles) => patchSettingsSection('asr', { autoLoadCachedSubtitles })}
       />
+      <SettingsField title={copy.settingsDialog.subtitles.aiAutomation} description={copy.settingsDialog.subtitles.aiAutomationDescription}>
+        <SettingsSelect value={settings.ai.openMode} options={aiAutomationModeOptions} onChange={(openMode) => patchSettingsSection('ai', { openMode })} />
+      </SettingsField>
       <SettingsField title={copy.settingsDialog.subtitles.modelSource} description={copy.settingsDialog.subtitles.modelSourceDescription}>
         <SettingsSelect value={settings.asr.preferredModelSourceId} options={modelSourceOptions} onChange={(preferredModelSourceId) => patchSettingsSection('asr', { preferredModelSourceId })} />
       </SettingsField>

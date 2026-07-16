@@ -1,5 +1,6 @@
 import type {
   AppLocale,
+  AiAutomationMode,
   AppSettings,
   AppSettingsSectionId,
   AppSettingsSectionPatcher,
@@ -23,6 +24,7 @@ export type SettingsSectionProps = {
   languageOptions: ReadonlyArray<SettingsSelectOption<AppLocale>>
   subtitleLanguageOptions: ReadonlyArray<SettingsSelectOption<SubtitleLanguageId>>
   targetLanguageOptions: ReadonlyArray<SettingsSelectOption<SubtitleTargetLanguageId>>
+  aiAutomationModeOptions: ReadonlyArray<SettingsSelectOption<AiAutomationMode>>
   subtitleLineHeightOptions: ReadonlyArray<SettingsSelectOption<SubtitleLineHeight>>
   subtitleDisplayModeOptions: ReadonlyArray<SettingsSelectOption<SubtitleDisplayMode>>
   startupPanelOptions: ReadonlyArray<{ value: AppSettings['ui']['defaultPanelMode']; label: string }>

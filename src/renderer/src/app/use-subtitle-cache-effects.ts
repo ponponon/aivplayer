@@ -55,18 +55,18 @@ export function useSubtitleCacheEffects(model: AppModel, derived: AppDerived, pa
     if (!model.state.currentFile || !sourcePath || !model.appSettings.asr.autoLoadCachedSubtitles || model.isSummarizingSubtitle) return
     const sourceLanguage = derived.summarySourceLanguage
     const current = model.subtitleSummaryResult
-    if (current?.summary && (current.sourceSubtitlePath !== sourcePath || current.targetLanguage !== model.appSettings.subtitles.targetLanguage || current.summaryModel !== derived.subtitleTranslationModel)) {
+    if (current?.summary && (current.sourceSubtitlePath !== sourcePath || current.targetLanguage !== model.appSettings.subtitles.targetLanguage || current.summaryModel !== derived.subtitleTranslationModel || (current.mode ?? 'detailed') !== model.summaryMode)) {
       model.setSubtitleSummaryResult(null)
       model.setSummaryNotice(null)
       return
     }
-    if (current?.success && current.sourceSubtitlePath === sourcePath && current.targetLanguage === model.appSettings.subtitles.targetLanguage) return
+    if (current?.success && current.sourceSubtitlePath === sourcePath && current.targetLanguage === model.appSettings.subtitles.targetLanguage && (current.mode ?? 'detailed') === model.summaryMode) return
     let cancelled = false
-    void window.aiv.resolveAsrSubtitleSummaryCache({ subtitlePath: sourcePath, sourceLanguage, targetLanguage: model.appSettings.subtitles.targetLanguage }).then((result) => {
+    void window.aiv.resolveAsrSubtitleSummaryCache({ subtitlePath: sourcePath, sourceLanguage, targetLanguage: model.appSettings.subtitles.targetLanguage, mode: model.summaryMode }).then((result) => {
       if (cancelled || !result.success || !result.summary) return
       model.setSubtitleSummaryResult(result)
       model.setSummaryNotice(result)
     })
     return () => { cancelled = true }
-  }, [model.state.currentFile?.path, derived.summarySourcePath, derived.summarySourceLanguage, derived.subtitleTranslationModel, model.appSettings.asr.autoLoadCachedSubtitles, model.appSettings.subtitles.targetLanguage, model.isSummarizingSubtitle, model.subtitleSummaryResult?.sourceSubtitlePath, model.subtitleSummaryResult?.summaryModel])
+  }, [model.state.currentFile?.path, derived.summarySourcePath, derived.summarySourceLanguage, derived.subtitleTranslationModel, model.appSettings.asr.autoLoadCachedSubtitles, model.appSettings.subtitles.targetLanguage, model.summaryMode, model.isSummarizingSubtitle, model.subtitleSummaryResult?.sourceSubtitlePath, model.subtitleSummaryResult?.summaryModel, model.subtitleSummaryResult?.mode])
 }

@@ -1,0 +1,149 @@
+.ai-workflow-bar {
+  position: fixed;
+  top: 50px;
+  right: 18px;
+  z-index: 8;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: min(520px, calc(100vw - 36px));
+  padding: 10px 12px;
+  color: var(--text-secondary);
+  background: rgba(18, 20, 23, 0.96);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.3);
+}
+
+.ai-workflow-bar-main,
+.ai-workflow-bar-side,
+.ai-workflow-actions {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+}
+
+.ai-workflow-bar-main > div {
+  min-width: 0;
+}
+
+.ai-workflow-bar-main strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 11px;
+}
+
+.ai-workflow-bar-main p {
+  margin: 3px 0 0;
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-workflow-icon {
+  display: inline-grid;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  place-items: center;
+  color: var(--accent);
+  background: rgba(232, 193, 109, 0.1);
+  border: 1px solid rgba(232, 193, 109, 0.2);
+  border-radius: 8px;
+}
+
+.ai-workflow-icon.spinning {
+  animation: ai-workflow-pulse 1.5s ease-in-out infinite;
+}
+
+.ai-workflow-bar-side {
+  justify-content: flex-end;
+}
+
+.ai-workflow-progress-label {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ai-workflow-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 0 9px;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 720;
+  white-space: nowrap;
+}
+
+.ai-workflow-button:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.ai-workflow-button.primary {
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.ai-workflow-button.primary:hover {
+  background: var(--accent-strong);
+}
+
+.ai-workflow-button.quiet {
+  color: var(--text-muted);
+  background: transparent;
+  border-color: transparent;
+}
+
+.ai-workflow-progress {
+  grid-column: 1 / -1;
+  height: 3px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 99px;
+}
+
+.ai-workflow-progress span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: inherit;
+  transition: width 180ms ease;
+}
+
+.ai-workflow-prompt {
+  align-items: start;
+}
+
+.ai-workflow-prompt .ai-workflow-actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.ai-workflow-failed {
+  border-color: rgba(255, 115, 111, 0.35);
+}
+
+.ai-workflow-failed .ai-workflow-icon {
+  color: var(--danger);
+  background: rgba(255, 115, 111, 0.1);
+  border-color: rgba(255, 115, 111, 0.2);
+}
+
+.ai-workflow-completed {
+  border-color: rgba(127, 211, 164, 0.3);
+}

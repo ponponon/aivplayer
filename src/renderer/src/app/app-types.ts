@@ -6,6 +6,7 @@ import type {
   AsrRuntimeStatus,
   AsrSubtitleResult,
   AsrSubtitleTranslationResult,
+  AsrSubtitleSummaryMode,
   AsrSubtitleSummaryResult,
   AsrTranslationServiceTestResult,
   MediaProbeMetadata
@@ -41,6 +42,7 @@ export type AppStateSetters = {
   setSubtitleResult: React.Dispatch<React.SetStateAction<AsrSubtitleResult | null>>
   setTranslatedSubtitleResult: React.Dispatch<React.SetStateAction<AsrSubtitleTranslationResult | null>>
   setSubtitleSummaryResult: React.Dispatch<React.SetStateAction<AsrSubtitleSummaryResult | null>>
+  setSummaryMode: React.Dispatch<React.SetStateAction<AsrSubtitleSummaryMode>>
   setAsrNotice: React.Dispatch<React.SetStateAction<AsrNotice | null>>
   setSummaryNotice: React.Dispatch<React.SetStateAction<AsrNotice | null>>
   setActiveSubtitle: React.Dispatch<React.SetStateAction<AsrSubtitleResult | null>>
@@ -76,6 +78,7 @@ export type AppModel = AppRefs &
     subtitleResult: AsrSubtitleResult | null
     translatedSubtitleResult: AsrSubtitleTranslationResult | null
     subtitleSummaryResult: AsrSubtitleSummaryResult | null
+    summaryMode: AsrSubtitleSummaryMode
     asrNotice: AsrNotice | null
     summaryNotice: AsrNotice | null
     activeSubtitle: AsrSubtitleResult | null

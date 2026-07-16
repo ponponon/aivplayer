@@ -564,7 +564,8 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
 
     async generateSubtitle(
       request: AsrSubtitleRequest,
-      onProgress?: (progress: AsrJobProgress) => void
+      onProgress?: (progress: AsrJobProgress) => void,
+      jobOptions: { signal?: AbortSignal } = {}
     ): Promise<AsrSubtitleResult> {
       const startedAt = performance.now()
       const createFailureStats = () => ({
@@ -610,6 +611,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
           mediaPath: request.mediaPath,
           cacheDirectory: getSubtitleCacheDirectory(),
           language: request.language,
+          signal: jobOptions.signal,
           onProgress,
           getLocale: options.getLocale
         })
@@ -624,15 +626,17 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
           generationStats: result.generationStats
         }
       } catch (error) {
+        const canceled = jobOptions.signal?.aborted === true
         onProgress?.({
-          stage: 'failed',
+          stage: canceled ? 'cancelled' : 'failed',
           percent: null,
-          message: error instanceof Error ? error.message : String(error)
+          message: canceled ? copy.runtime.subtitleGenerationCanceled : error instanceof Error ? error.message : String(error)
         })
 
         return {
           success: false,
-          message: error instanceof Error ? error.message : String(error),
+          message: canceled ? copy.runtime.subtitleGenerationCanceled : error instanceof Error ? error.message : String(error),
+          canceled,
           model,
           generationStats: createFailureStats()
         }
@@ -861,17 +865,19 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
     ): Promise<AsrSubtitleSummaryResult> {
       const copy = getCopy()
       const sourceLanguage = request.sourceLanguage ?? 'auto'
+      const mode = request.mode ?? 'quick'
       const provider = getSummaryProviderRef()
-      if (!provider) return { success: false, message: copy.runtime.summaryServiceMissing, sourceSubtitlePath: request.subtitlePath, sourceLanguage, targetLanguage: request.targetLanguage }
+      if (!provider) return { success: false, message: copy.runtime.summaryServiceMissing, sourceSubtitlePath: request.subtitlePath, sourceLanguage, targetLanguage: request.targetLanguage, mode }
       const summary = await findSubtitleSummaryCache({
         sourceSubtitlePath: request.subtitlePath,
         cacheDirectory: getSubtitleCacheDirectory(),
         sourceLanguage,
         targetLanguage: request.targetLanguage,
+        mode,
         provider
       })
-      if (!summary) return { success: false, message: copy.runtime.subtitleSummaryCacheMiss, sourceSubtitlePath: request.subtitlePath, sourceLanguage, targetLanguage: request.targetLanguage, summaryModel: provider.model }
-      return { success: true, message: copy.runtime.subtitleSummaryCacheHit, sourceSubtitlePath: request.subtitlePath, sourceLanguage, targetLanguage: request.targetLanguage, summaryModel: provider.model, summary }
+      if (!summary) return { success: false, message: copy.runtime.subtitleSummaryCacheMiss, sourceSubtitlePath: request.subtitlePath, sourceLanguage, targetLanguage: request.targetLanguage, mode, summaryModel: provider.model }
+      return { success: true, message: copy.runtime.subtitleSummaryCacheHit, sourceSubtitlePath: request.subtitlePath, sourceLanguage, targetLanguage: request.targetLanguage, mode, summaryModel: provider.model, summary }
     },
     async summarizeSubtitle(
       request: AsrSubtitleSummaryRequest,
@@ -879,8 +885,9 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
     ): Promise<AsrSubtitleSummaryResult> {
       const copy = getCopy()
       const sourceLanguage = request.sourceLanguage ?? 'auto'
+      const mode = request.mode ?? 'quick'
       const provider = createSummaryProvider()
-      if (!provider) return { success: false, message: copy.runtime.summaryServiceMissing, sourceSubtitlePath: request.subtitlePath, sourceLanguage, targetLanguage: request.targetLanguage }
+      if (!provider) return { success: false, message: copy.runtime.summaryServiceMissing, sourceSubtitlePath: request.subtitlePath, sourceLanguage, targetLanguage: request.targetLanguage, mode }
       try {
         jobOptions.onProgress?.({ stage: 'summarizing', percent: 0, message: copy.asrPanel.summarizingSubtitle })
         const result = await runSubtitleSummaryJob({
@@ -888,18 +895,19 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
           cacheDirectory: getSubtitleCacheDirectory(),
           sourceLanguage,
           targetLanguage: request.targetLanguage,
+          mode,
           force: request.force,
           provider,
           signal: jobOptions.signal,
           onProgress: (progress) => jobOptions.onProgress?.({ stage: 'summarizing', percent: progress.percent, message: copy.asrPanel.summaryProgress(progress.completedSteps, progress.totalSteps) })
         })
         jobOptions.onProgress?.({ stage: 'completed', percent: 1, message: copy.runtime.subtitleSummaryGenerated })
-        return { success: true, message: copy.runtime.subtitleSummaryGenerated, sourceSubtitlePath: request.subtitlePath, sourceLanguage, targetLanguage: request.targetLanguage, summaryModel: provider.model, summary: result.summary, summaryStats: result.summaryStats }
+        return { success: true, message: copy.runtime.subtitleSummaryGenerated, sourceSubtitlePath: request.subtitlePath, sourceLanguage, targetLanguage: request.targetLanguage, mode, summaryModel: provider.model, summary: result.summary, summaryStats: result.summaryStats }
       } catch (error) {
         const failure = formatSummaryServiceError(copy, error)
         const canceled = error instanceof SubtitleSummaryError && error.code === 'cancelled'
         jobOptions.onProgress?.({ stage: canceled ? 'cancelled' : 'failed', percent: null, message: failure.message })
-        return { success: false, message: failure.message, canceled, sourceSubtitlePath: request.subtitlePath, sourceLanguage, targetLanguage: request.targetLanguage, summaryModel: provider.model, errorDetails: failure.errorDetails }
+        return { success: false, message: failure.message, canceled, sourceSubtitlePath: request.subtitlePath, sourceLanguage, targetLanguage: request.targetLanguage, mode, summaryModel: provider.model, errorDetails: failure.errorDetails }
       }
     },
     async testTranslationService(

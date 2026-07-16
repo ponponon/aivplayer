@@ -133,7 +133,7 @@ describe('app settings', () => {
     )
 
     await expect(readAppSettings(tempDirectory)).resolves.toMatchObject({
-      schemaVersion: 11,
+      schemaVersion: 12,
       playback: {
         singleClickPause: true
       }

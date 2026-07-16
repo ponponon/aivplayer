@@ -2,7 +2,7 @@ import type { AsrModelSourceId } from './media-types'
 import type { ClipExportLengthSeconds, ClipExportMode } from './clip-export'
 import { DEFAULT_APP_LOCALE, DEFAULT_SUBTITLE_LANGUAGE, type AppLocale, type SubtitleLanguageId } from './localization'
 
-export const APP_SETTINGS_SCHEMA_VERSION = 11
+export const APP_SETTINGS_SCHEMA_VERSION = 12
 
 export type CaptureImageFormat = 'jpg' | 'png'
 export type CaptureFileNamingMode = 'sequential' | 'timestamp'
@@ -10,6 +10,7 @@ export type CaptureGifResolution = '360p' | '480p' | '720p'
 export type SubtitleDisplayMode = 'source' | 'translation' | 'bilingual'
 export type SubtitleLineHeight = 'compact' | 'normal' | 'relaxed'
 export type SubtitleTargetLanguageId = Exclude<SubtitleLanguageId, 'auto'>
+export type AiAutomationMode = 'cache-only' | 'ask' | 'guide' | 'complete'
 
 export type AppPanelModePreference = 'playlist' | 'asr' | 'info'
 export type AppSettingsSectionId = 'general' | 'interface' | 'video' | 'subtitles' | 'capture' | 'shortcuts'
@@ -58,6 +59,9 @@ export type AppSettings = {
     lineHeight: SubtitleLineHeight
     displayMode: SubtitleDisplayMode
     targetLanguage: SubtitleTargetLanguageId
+  }
+  ai: {
+    openMode: AiAutomationMode
   }
   asr: {
     preferredModelSourceId: AsrModelSourceId
@@ -182,6 +186,9 @@ export function createDefaultAppSettings(): AppSettings {
       lineHeight: 'normal',
       displayMode: 'source',
       targetLanguage: 'zh'
+    },
+    ai: {
+      openMode: 'cache-only'
     },
     asr: {
       preferredModelSourceId: 'modelscope',

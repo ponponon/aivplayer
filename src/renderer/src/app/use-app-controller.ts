@@ -9,6 +9,8 @@ import { useSubtitleFileActions } from './use-subtitle-file-actions'
 import { useSubtitleGeneration } from './use-subtitle-generation'
 import { useSubtitleTranslation } from './use-subtitle-translation'
 import { useSubtitleSummary } from './use-subtitle-summary'
+import { useSummaryExport } from './use-summary-export'
+import { useAiWorkflow } from './use-ai-workflow'
 import { useAppEffects } from './use-app-effects'
 
 export function useAppController() {
@@ -20,6 +22,8 @@ export function useAppController() {
   const generation = useSubtitleGeneration(model, derived)
   const translation = useSubtitleTranslation(model, derived, settings.patchSubtitleDisplaySettings)
   const summary = useSubtitleSummary(model, derived, generation.generateSubtitle, playback.openPanelMode)
+  const summaryExport = useSummaryExport(model, derived)
+  const aiWorkflow = useAiWorkflow(model, derived, generation.generateSubtitle, generation.cancelSubtitle, translation, summary, playback.openPanelMode)
   const subtitleFiles = useSubtitleFileActions(model, derived)
   const quickSubtitle = useQuickSubtitleAction(
     model,
@@ -32,5 +36,5 @@ export function useAppController() {
   const clip = useClipExportActions(model, derived, settings.syncClipExportPreferences)
   useAppEffects(model, derived, { ...playback, ...runtime, ...quickSubtitle }, settings.patchSubtitleDisplaySettings)
 
-  return { ...model, ...derived, ...settings, ...playback, ...runtime, ...generation, ...translation, ...summary, ...subtitleFiles, ...quickSubtitle, ...clip }
+  return { ...model, ...derived, ...settings, ...playback, ...runtime, ...generation, ...translation, ...summary, ...summaryExport, ...aiWorkflow, ...subtitleFiles, ...quickSubtitle, ...clip }
 }

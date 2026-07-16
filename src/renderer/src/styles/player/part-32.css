@@ -88,7 +88,7 @@
 }
 
 .panel-content-asr .summary-action-button {
-  grid-column: 1 / -1;
+  grid-column: auto;
 }
 
 @media (max-width: 920px) {

@@ -67,6 +67,10 @@ export function createSettingsSectionProps(input: SettingsSectionPropsInput): Se
     })),
     subtitleLanguageOptions,
     targetLanguageOptions,
+    aiAutomationModeOptions: (['cache-only', 'ask', 'guide', 'complete'] as const).map((value) => ({
+      value,
+      label: copy.settingsDialog.subtitles.aiAutomationOptions[value]
+    })),
     subtitleLineHeightOptions: Object.entries(copy.subtitleDisplay.lineHeightOptions).map(([value, label]) => ({
       value: value as SubtitleLineHeight,
       label

@@ -29,7 +29,8 @@ export type AsrRuntime = {
   ) => Promise<AsrModelDownloadResult>
   generateSubtitle: (
     request: AsrSubtitleRequest,
-    onProgress?: (progress: AsrJobProgress) => void
+    onProgress?: (progress: AsrJobProgress) => void,
+    options?: { signal?: AbortSignal }
   ) => Promise<AsrSubtitleResult>
   resolveSubtitleCache: (request: AsrSubtitleRequest) => Promise<AsrSubtitleResult>
   resolveTranslatedSubtitleCache: (request: AsrSubtitleTranslationRequest) => Promise<AsrSubtitleTranslationResult>

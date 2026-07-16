@@ -10,6 +10,7 @@ export const mainState: {
   initialMediaFiles: MediaFile[] | null
   pendingMediaPaths: string[]
   currentAppSettings: AppSettings
+  asrAbortControllers: Map<number, AbortController>
   translationAbortControllers: Map<number, AbortController>
   summaryAbortControllers: Map<number, AbortController>
   batchSubtitleManager: BatchSubtitleManager | null
@@ -19,6 +20,7 @@ export const mainState: {
   initialMediaFiles: null,
   pendingMediaPaths: [],
   currentAppSettings: createDefaultAppSettings(),
+  asrAbortControllers: new Map(),
   translationAbortControllers: new Map(),
   summaryAbortControllers: new Map(),
   batchSubtitleManager: null

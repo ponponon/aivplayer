@@ -6,6 +6,7 @@ import type {
   AsrRuntimeStatus,
   AsrSubtitleResult,
   AsrSubtitleTranslationResult,
+  AsrSubtitleSummaryMode,
   AsrSubtitleSummaryResult,
   AsrTranslationServiceTestResult,
   MediaProbeMetadata
@@ -22,6 +23,7 @@ export function useAppModel(): AppModel {
   const [subtitleResult, setSubtitleResult] = useState<AsrSubtitleResult | null>(null)
   const [translatedSubtitleResult, setTranslatedSubtitleResult] = useState<AsrSubtitleTranslationResult | null>(null)
   const [subtitleSummaryResult, setSubtitleSummaryResult] = useState<AsrSubtitleSummaryResult | null>(null)
+  const [summaryMode, setSummaryMode] = useState<AsrSubtitleSummaryMode>('quick')
   const [asrNotice, setAsrNotice] = useState<AsrNotice | null>(null)
   const [summaryNotice, setSummaryNotice] = useState<AsrNotice | null>(null)
   const [activeSubtitle, setActiveSubtitle] = useState<AsrSubtitleResult | null>(null)
@@ -62,6 +64,8 @@ export function useAppModel(): AppModel {
     setTranslatedSubtitleResult,
     subtitleSummaryResult,
     setSubtitleSummaryResult,
+    summaryMode,
+    setSummaryMode,
     asrNotice,
     setAsrNotice,
     summaryNotice,

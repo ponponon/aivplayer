@@ -17,15 +17,26 @@ function withSubtitleUrls<T extends { subtitlePath?: string; subtitleSrtPath?: s
 export function registerAsrSubtitleIpc(): void {
   ipcMain.handle(IPC_CHANNELS.ASR_GENERATE_SUBTITLE, async (event, request: AsrSubtitleRequest) => {
     const logDirectoryPath = getAsrLogDirectoryPath(app.getPath('userData'))
+    const controller = new AbortController()
+    mainState.asrAbortControllers.get(event.sender.id)?.abort()
+    mainState.asrAbortControllers.set(event.sender.id, controller)
     await appendAsrDiagnosticLog(logDirectoryPath, 'subtitle-generation-started', { mediaPath: request.mediaPath, modelId: request.modelId, language: request.language })
     try {
-      const result = await getAsrRuntime().generateSubtitle(request, (progress) => event.sender.send(IPC_CHANNELS.ASR_JOB_PROGRESS, progress))
+      const result = await getAsrRuntime().generateSubtitle(request, (progress) => event.sender.send(IPC_CHANNELS.ASR_JOB_PROGRESS, progress), { signal: controller.signal })
       await appendAsrDiagnosticLog(logDirectoryPath, 'subtitle-generation-finished', { mediaPath: request.mediaPath, success: result.success, message: result.message, subtitlePath: result.subtitlePath, generationStats: result.generationStats, errorDetails: redactAsrErrorDetails(result.errorDetails) })
       return withSubtitleUrls(result)
     } catch (error) {
       await appendAsrDiagnosticLog(logDirectoryPath, 'subtitle-generation-threw', { mediaPath: request.mediaPath, message: error instanceof Error ? error.message : String(error) })
       throw error
+    } finally {
+      if (mainState.asrAbortControllers.get(event.sender.id) === controller) mainState.asrAbortControllers.delete(event.sender.id)
     }
+  })
+  ipcMain.handle(IPC_CHANNELS.ASR_CANCEL_SUBTITLE, (event) => {
+    const controller = mainState.asrAbortControllers.get(event.sender.id)
+    if (!controller) return false
+    controller.abort()
+    return true
   })
   ipcMain.handle(IPC_CHANNELS.ASR_RESOLVE_SUBTITLE_CACHE, async (_event, request: AsrSubtitleRequest) => withSubtitleUrls(await getAsrRuntime().resolveSubtitleCache(request)))
   ipcMain.handle(IPC_CHANNELS.ASR_RESOLVE_TRANSLATED_SUBTITLE_CACHE, async (_event, request: AsrSubtitleTranslationRequest) => withSubtitleUrls(await getAsrRuntime().resolveTranslatedSubtitleCache(request)) satisfies AsrSubtitleTranslationResult)

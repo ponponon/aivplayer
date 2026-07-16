@@ -1,0 +1,24 @@
+@keyframes ai-workflow-pulse {
+  0%,
+  100% { opacity: 0.55; transform: scale(0.96); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+@media (max-width: 760px) {
+  .ai-workflow-bar {
+    top: 48px;
+    right: 10px;
+    left: 10px;
+    width: auto;
+  }
+
+  .ai-workflow-prompt,
+  .ai-workflow-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-workflow-actions,
+  .ai-workflow-bar-side {
+    justify-content: flex-start;
+  }
+}

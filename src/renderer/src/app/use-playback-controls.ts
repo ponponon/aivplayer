@@ -37,5 +37,17 @@ export function usePlaybackControls(model: AppModel, derived: AppDerived, memory
   const handleVideoClick = (event: ReactMouseEvent<HTMLVideoElement>): void => { event.preventDefault(); if (event.detail > 1) return; revealControlDeck(); if (!model.appSettings.playback.singleClickPause) return; clearVideoClickTimer(); model.videoClickTimerRef.current = window.setTimeout(() => { model.videoClickTimerRef.current = null; void togglePlay() }, VIDEO_SINGLE_CLICK_DELAY_MS) }
   const handleVideoDoubleClick = (event: ReactMouseEvent<HTMLVideoElement>): void => { event.preventDefault(); clearVideoClickTimer(); void toggleFullscreen() }
   const handleMediaError = (event: SyntheticEvent<HTMLVideoElement>): void => { const message = getMediaErrorMessage(derived.copy, event.currentTarget); if (message) setPlaybackError(message); else clearPlaybackError() }
-  return { clearControlDeckHideTimer, revealControlDeck, togglePanelMode, openPanelMode, setPlaybackError, clearPlaybackError, togglePlay, seekBy, stopPlayback, playAdjacent, toggleMute, toggleFullscreen, handleVideoClick, handleVideoDoubleClick, handleMediaError }
+  const seekTo = (seconds: number): void => {
+    revealControlDeck()
+    const video = model.videoRef.current
+    const maxTime = video?.duration || model.state.duration
+    const nextTime = maxTime > 0 ? clamp(seconds, 0, maxTime) : Math.max(0, seconds)
+    if (video) { model.playbackEndedRef.current = false; video.currentTime = nextTime }
+    model.setState((current) => ({ ...current, currentTime: nextTime }))
+    if (model.state.currentFile) {
+      model.lastSavedProgressRef.current = { path: model.state.currentFile.path, time: nextTime }
+      memory.persistPlaybackProgress(nextTime, true)
+    }
+  }
+  return { clearControlDeckHideTimer, revealControlDeck, togglePanelMode, openPanelMode, setPlaybackError, clearPlaybackError, togglePlay, seekBy, seekTo, stopPlayback, playAdjacent, toggleMute, toggleFullscreen, handleVideoClick, handleVideoDoubleClick, handleMediaError }
 }

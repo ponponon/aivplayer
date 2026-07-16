@@ -11,6 +11,7 @@ import {
   type AppPanelModePreference,
   type AppSettingsSectionId,
   type AppSettings,
+  type AiAutomationMode,
   type SubtitleDisplayMode,
   type SubtitleLineHeight,
   type SubtitleTargetLanguageId
@@ -65,6 +66,10 @@ function isSubtitleDisplayMode(value: unknown): value is SubtitleDisplayMode {
 
 function isSubtitleTargetLanguageId(value: unknown): value is SubtitleTargetLanguageId {
   return isSubtitleLanguageId(value) && value !== 'auto'
+}
+
+function isAiAutomationMode(value: unknown): value is AiAutomationMode {
+  return value === 'cache-only' || value === 'ask' || value === 'guide' || value === 'complete'
 }
 
 async function resolveAppSettingsSecretCodec(): Promise<AppSettingsSecretCodec | null> {
@@ -315,6 +320,17 @@ function sanitizeSubtitleSettings(
   }
 }
 
+function sanitizeAiSettings(
+  value: Partial<AppSettings['ai']> | undefined,
+  defaults: AppSettings['ai']
+): AppSettings['ai'] {
+  const ai = value ?? {}
+
+  return {
+    openMode: isAiAutomationMode(ai.openMode) ? ai.openMode : defaults.openMode
+  }
+}
+
 function sanitizeAsrSettings(
   value: Partial<AppSettings['asr']> | undefined,
   defaults: AppSettings['asr']
@@ -363,6 +379,7 @@ function sanitizeAppSettings(parsed: unknown, captureDefaultDirectoryPath: strin
     capture?: Partial<AppSettings['capture']>
     playback?: Partial<AppSettings['playback']>
     subtitles?: Partial<AppSettings['subtitles']>
+    ai?: Partial<AppSettings['ai']>
     asr?: Partial<AppSettings['asr']>
   }
 
@@ -381,6 +398,7 @@ function sanitizeAppSettings(parsed: unknown, captureDefaultDirectoryPath: strin
     capture: sanitizeCaptureSettings(value.capture, defaults.capture, captureDefaultDirectoryPath),
     playback: sanitizePlaybackSettings(playback, defaults.playback),
     subtitles: sanitizeSubtitleSettings(value.subtitles, defaults.subtitles),
+    ai: sanitizeAiSettings(value.ai, defaults.ai),
     asr: sanitizeAsrSettings(value.asr, defaults.asr)
   }
 }
