@@ -378,3 +378,8 @@
 - CSS 不能简单按累计行数切割；第一次机械拆分把 selector 的逗号列表切在两个文件之间，PostCSS 最终报 `Unknown word`。拆分器必须按完整 brace block 工作，超长 `@media` 再按内部完整规则拆成多个同条件 wrapper。
 - 多语言对象不能只按字符串出现位置提取；嵌套的 `languageOptions` 等字段可能误命中。应定位顶层 locale key，拆分后立即跑 TypeScript 和生产构建。
 - 大型 React 页面不能把整个函数原样搬到另一个同样巨大的文件；应同时拆状态模型、动作 Hook、副作用 Hook 和 UI 区块，并用上下文或窄 props 连接它们，否则只是换文件名，没有降低维护成本。
+
+## IPC 拆分后必须检查通道唯一注册
+
+- 将主进程入口拆分为多个 IPC 注册模块时，不能只检查新模块是否注册了通道，还要核对原有设置模块是否仍保留同一通道。`ipcMain.handle` 不允许重复注册，重复的 `batch-subtitle:scan-directory` 会在应用启动阶段直接导致未处理 Promise 异常。
+- 以后拆分 IPC 前后应对 `IPC_CHANNELS` 做唯一性扫描，并至少执行一次真实 Electron 启动检查，不能只依赖 TypeScript、单元测试和生产构建。

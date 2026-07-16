@@ -1,7 +1,7 @@
 import { app, ipcMain } from 'electron'
 import { readFile } from 'node:fs/promises'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
-import type { BatchSubtitleScanRequest, MediaProbeMetadata } from '../shared/media-types'
+import type { MediaProbeMetadata } from '../shared/media-types'
 import { getAppCopy } from '../shared/i18n'
 import { createMediaProbeMetadata } from './media/media-metadata'
 import { createMediaFile, } from './media/media-protocol'
@@ -16,7 +16,6 @@ export function registerSettingsIpc(): void {
   ipcMain.handle(IPC_CHANNELS.OPEN_MEDIA_DIRECTORY, async () => promptForDirectory({ title: getAppCopy(getCurrentLocale()).settingsDialog.general.selectFolderDialogTitle, defaultPath: mainState.currentAppSettings.media.defaultOpenDirectoryPath }))
   ipcMain.handle(IPC_CHANNELS.OPEN_FOLDER_PICKER, (_event, request: { title: string; defaultPath?: string | null }) => promptForDirectory(request))
   ipcMain.handle(IPC_CHANNELS.LIST_MEDIA_FILES_IN_DIRECTORY, (_event, directoryPath: string) => listMediaFilesInDirectory(directoryPath))
-  ipcMain.handle(IPC_CHANNELS.BATCH_SUBTITLE_SCAN_DIRECTORY, (_event, request: BatchSubtitleScanRequest) => listMediaFilesInDirectory(request.directoryPath, request.recursive === true))
   ipcMain.handle(IPC_CHANNELS.CREATE_MEDIA_FILE, (_event, filePath: string) => createMediaFile(filePath))
   ipcMain.handle(IPC_CHANNELS.READ_FILE_CONTENT, (_event, filePath: string): Promise<string> => readFile(filePath, 'utf-8'))
   ipcMain.handle(IPC_CHANNELS.GET_MEDIA_METADATA, (_event, filePath: string): Promise<MediaProbeMetadata | null> => createMediaProbeMetadata(filePath, { resourcePath: resolveResourcePath(), env: process.env }))
