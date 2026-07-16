@@ -62,6 +62,7 @@ import { InfoValue } from './info-value'
 import { MediaDetailsDialog } from './media-details-dialog'
 import { SettingsDialog } from './settings-dialog'
 import { BatchSubtitlePanel } from './batch-subtitle-panel'
+import { DiagnosticLogViewer } from './diagnostic-log-viewer'
 import { useModalFocusTrap } from './use-modal-focus-trap'
 import { clamp, formatPlaybackTimeLabel, formatTime } from '../lib/time'
 import { resolvePlaybackStartTime } from './playback-progress'
@@ -2709,6 +2710,7 @@ export function App(): ReactElement {
                         <FolderOpen size={14} />
                         {copy.asrPanel.openLogs}
                       </button>
+                      <DiagnosticLogViewer copy={copy.diagnostics} />
                     </div>
                   ) : null}
                   {subtitleResult?.success && subtitleResult.generationStats ? (

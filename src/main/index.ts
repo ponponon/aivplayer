@@ -30,10 +30,16 @@ import type { AppLocale } from '../shared/localization'
 import { createWhisperCppRuntime, resolveFfmpegPath } from './ai/whisper-cpp-runtime'
 import {
   BatchSubtitleManager,
+  getBatchSubtitleHistoryPath,
   getBatchSubtitleLogDirectoryPath,
   getBatchSubtitleStatePath
 } from './ai/batch-subtitle-manager'
-import { appendAsrDiagnosticLog, getAsrLogDirectoryPath, redactAsrErrorDetails } from './ai/asr-diagnostics'
+import {
+  appendAsrDiagnosticLog,
+  getAsrLogDirectoryPath,
+  readRecentAsrDiagnosticLogs,
+  redactAsrErrorDetails
+} from './ai/asr-diagnostics'
 import { buildClipExportDefaultVideoPath, runClipExport } from './media/clip-export'
 import { createMediaProbeMetadata } from './media/media-metadata'
 import { extractVideoFilePaths, isVideoFilePath, VIDEO_EXTENSIONS } from './media/file-opening'
@@ -602,8 +608,28 @@ function registerIpc(): void {
     return openPathInDefaultApp(logDirectoryPath)
   })
 
+  ipcMain.handle(IPC_CHANNELS.ASR_GET_RECENT_LOGS, async () => {
+    try {
+      const entries = await readRecentAsrDiagnosticLogs([
+        getAsrLogDirectoryPath(app.getPath('userData')),
+        getBatchSubtitleLogDirectoryPath(app.getPath('userData'))
+      ])
+      return { success: true, message: '', entries }
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : String(error),
+        entries: []
+      }
+    }
+  })
+
   ipcMain.handle(IPC_CHANNELS.BATCH_SUBTITLE_GET_CURRENT, async (event) => {
     return getBatchSubtitleManager(event.sender).getCurrent()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.BATCH_SUBTITLE_GET_HISTORY, async (event) => {
+    return getBatchSubtitleManager(event.sender).getHistory()
   })
 
   ipcMain.handle(IPC_CHANNELS.BATCH_SUBTITLE_START, async (event, request: BatchSubtitleStartRequest) => {
@@ -622,8 +648,12 @@ function registerIpc(): void {
     return getBatchSubtitleManager(event.sender).cancel()
   })
 
-  ipcMain.handle(IPC_CHANNELS.BATCH_SUBTITLE_RETRY_FAILED, async (event) => {
-    return getBatchSubtitleManager(event.sender).retryFailed()
+  ipcMain.handle(IPC_CHANNELS.BATCH_SUBTITLE_RETRY_FAILED, async (event, retryableOnly?: boolean) => {
+    return getBatchSubtitleManager(event.sender).retryFailed(retryableOnly === true)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.BATCH_SUBTITLE_RETRY_HISTORY, async (event, jobId: string, retryableOnly?: boolean) => {
+    return getBatchSubtitleManager(event.sender).retryHistory(jobId, retryableOnly === true)
   })
 
   ipcMain.handle(IPC_CHANNELS.BATCH_SUBTITLE_OPEN_LOG_DIRECTORY, async () => {
@@ -748,6 +778,7 @@ function getBatchSubtitleManager(sender: Electron.WebContents): BatchSubtitleMan
       runtime: getAsrRuntime(),
       stateFilePath: getBatchSubtitleStatePath(app.getPath('userData')),
       logDirectoryPath: getBatchSubtitleLogDirectoryPath(app.getPath('userData')),
+      historyFilePath: getBatchSubtitleHistoryPath(app.getPath('userData')),
       emit
     })
   } else {

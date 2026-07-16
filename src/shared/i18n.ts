@@ -203,6 +203,8 @@ export type LocaleCopy = {
     onlyMissing: string
     concurrency: string
     concurrencyValue: (count: number) => string
+    autoRetry: string
+    retryCount: (count: number) => string
     scan: string
     scanning: string
     noFiles: string
@@ -217,17 +219,34 @@ export type LocaleCopy = {
     resume: string
     cancel: string
     retryFailed: string
+    retryRetryable: string
+    failureRetryable: string
+    failureNeedsAttention: string
     openLogs: string
     openLogsFailed: string
     errorDetails: string
     recoveredTask: string
     currentFile: string
     progress: (completed: number, total: number) => string
+    timingElapsed: string
+    timingAverage: string
+    timingRemaining: string
+    timingActive: (active: number, max: number) => string
+    timingCalculating: string
     emptyTask: string
+    historyTitle: string
+    historyRefresh: string
+    historyLoading: string
+    historyEmpty: string
+    historyLoadFailed: string
+    historyRetry: string
+    historyRoot: string
+    historyFiles: (completed: number, total: number, failed: number) => string
     itemStatus: {
       queued: string
       asr: string
       translating: string
+      retrying: string
       completed: string
       failed: string
       cancelled: string
@@ -239,6 +258,24 @@ export type LocaleCopy = {
       cancelled: string
       failed: string
     }
+  }
+  diagnostics: {
+    open: string
+    close: string
+    refresh: string
+    filterLabel: string
+    filterAll: string
+    filterFailures: string
+    filterAsr: string
+    filterBatch: string
+    copyEntry: string
+    copyVisible: string
+    copied: string
+    copyFailed: string
+    loading: string
+    empty: string
+    emptyFiltered: string
+    loadFailed: string
   }
   clipExportDialog: {
     title: string
@@ -687,12 +724,14 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
     },
     batchSubtitle: {
       title: '批量字幕任务中心',
-      description: '选择文件夹后，一次性为多个视频生成并翻译目标语言字幕。ASR 始终单路运行，翻译可设置 1–3 路；单个文件失败不会阻塞后续任务。',
+      description: '选择文件夹后，一次性为多个视频生成并翻译目标语言字幕。ASR 始终单路运行，翻译可设置 1–3 路；网络错误、429 和 5xx 会按设置自动重试（默认 2 次）。',
       chooseFolder: '选择视频文件夹',
       includeSubfolders: '包含子文件夹',
       onlyMissing: '跳过已有字幕缓存',
       concurrency: '并行度',
       concurrencyValue: (count) => `${count} 路（ASR 单路）`,
+      autoRetry: '自动重试',
+      retryCount: (count) => count === 0 ? '关闭' : `${count} 次`,
       scan: '扫描视频',
       scanning: '扫描中…',
       noFiles: '还没有扫描到视频文件。',
@@ -707,15 +746,49 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       resume: '继续队列',
       cancel: '停止队列',
       retryFailed: '重试失败项',
+      retryRetryable: '重试可恢复项',
+      failureRetryable: '可恢复',
+      failureNeedsAttention: '需检查配置',
       openLogs: '打开日志文件夹',
       openLogsFailed: '无法打开日志文件夹',
       errorDetails: '查看错误详情',
       recoveredTask: '上次任务未完成，已暂停，可继续处理',
       currentFile: '当前文件',
       progress: (completed, total) => `已完成 ${completed} / ${total}`,
+      timingElapsed: '已耗时',
+      timingAverage: '平均单文件',
+      timingRemaining: '预计剩余',
+      timingActive: (active, max) => `运行中 ${active} / ${max}`,
+      timingCalculating: '计算中',
       emptyTask: '还没有批量任务。',
-      itemStatus: { queued: '排队中', asr: '生成字幕', translating: '翻译中', completed: '已完成', failed: '失败', cancelled: '已取消' },
+      historyTitle: '历史任务',
+      historyRefresh: '刷新历史',
+      historyLoading: '正在读取历史…',
+      historyEmpty: '还没有已完成的历史任务。',
+      historyLoadFailed: '无法读取任务历史。',
+      historyRetry: '重试失败项',
+      historyRoot: '文件夹',
+      historyFiles: (completed, total, failed) => `${completed}/${total} 完成 · ${failed} 个失败`,
+      itemStatus: { queued: '排队中', asr: '生成字幕', translating: '翻译中', retrying: '等待重试', completed: '已完成', failed: '失败', cancelled: '已取消' },
       jobStatus: { running: '处理中', paused: '已暂停', completed: '已完成', cancelled: '已停止', failed: '任务异常' }
+    },
+    diagnostics: {
+      open: '查看最近日志',
+      close: '收起日志',
+      refresh: '刷新',
+      filterLabel: '日志筛选',
+      filterAll: '全部',
+      filterFailures: '失败',
+      filterAsr: 'ASR',
+      filterBatch: '批量',
+      copyEntry: '复制此条',
+      copyVisible: '复制当前结果',
+      copied: '已复制',
+      copyFailed: '复制失败',
+      loading: '正在读取日志…',
+      empty: '暂无诊断日志。',
+      emptyFiltered: '当前筛选没有日志。',
+      loadFailed: '无法读取诊断日志。'
     },
     clipExportDialog: {
       title: '一键片段导出',
@@ -1287,12 +1360,14 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
     },
     batchSubtitle: {
       title: 'Batch subtitle task center',
-      description: 'Choose a folder to generate and translate target-language subtitles for multiple videos. ASR stays at one lane, translation can use 1–3 lanes, and one failure will not block the rest.',
+      description: 'Choose a folder to generate and translate target-language subtitles for multiple videos. ASR stays at one lane, translation uses 1–3 lanes, and network, 429, and 5xx errors retry by policy (2 by default).',
       chooseFolder: 'Choose video folder',
       includeSubfolders: 'Include subfolders',
       onlyMissing: 'Skip existing subtitle caches',
       concurrency: 'Concurrency',
       concurrencyValue: (count) => `${count} lanes (ASR stays at 1)`,
+      autoRetry: 'Auto retry',
+      retryCount: (count) => count === 0 ? 'Off' : `${count} ${count === 1 ? 'time' : 'times'}`,
       scan: 'Scan videos',
       scanning: 'Scanning…',
       noFiles: 'No video files found yet.',
@@ -1307,15 +1382,49 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       resume: 'Resume queue',
       cancel: 'Stop queue',
       retryFailed: 'Retry failed',
+      retryRetryable: 'Retry recoverable',
+      failureRetryable: 'Recoverable',
+      failureNeedsAttention: 'Needs attention',
       openLogs: 'Open log folder',
       openLogsFailed: 'Could not open the log folder',
       errorDetails: 'View error details',
       recoveredTask: 'The previous task was paused after restart. Resume when ready.',
       currentFile: 'Current file',
       progress: (completed, total) => `${completed} / ${total} completed`,
+      timingElapsed: 'Elapsed',
+      timingAverage: 'Average / file',
+      timingRemaining: 'Remaining',
+      timingActive: (active, max) => `Active ${active} / ${max}`,
+      timingCalculating: 'Calculating',
       emptyTask: 'No batch task yet.',
-      itemStatus: { queued: 'Queued', asr: 'Generating', translating: 'Translating', completed: 'Completed', failed: 'Failed', cancelled: 'Cancelled' },
+      historyTitle: 'Task history',
+      historyRefresh: 'Refresh history',
+      historyLoading: 'Loading history…',
+      historyEmpty: 'No completed batch tasks yet.',
+      historyLoadFailed: 'Could not read task history.',
+      historyRetry: 'Retry failed items',
+      historyRoot: 'Folder',
+      historyFiles: (completed, total, failed) => `${completed}/${total} completed · ${failed} failed`,
+      itemStatus: { queued: 'Queued', asr: 'Generating', translating: 'Translating', retrying: 'Retrying', completed: 'Completed', failed: 'Failed', cancelled: 'Cancelled' },
       jobStatus: { running: 'Processing', paused: 'Paused', completed: 'Completed', cancelled: 'Stopped', failed: 'Task error' }
+    },
+    diagnostics: {
+      open: 'View recent logs',
+      close: 'Hide logs',
+      refresh: 'Refresh',
+      filterLabel: 'Log filters',
+      filterAll: 'All',
+      filterFailures: 'Failures',
+      filterAsr: 'ASR',
+      filterBatch: 'Batch',
+      copyEntry: 'Copy entry',
+      copyVisible: 'Copy filtered logs',
+      copied: 'Copied',
+      copyFailed: 'Copy failed',
+      loading: 'Loading logs…',
+      empty: 'No diagnostic logs yet.',
+      emptyFiltered: 'No logs match this filter.',
+      loadFailed: 'Could not read diagnostic logs.'
     },
     clipExportDialog: {
       title: 'One-click clip export',
@@ -1889,12 +1998,14 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
     },
     batchSubtitle: {
       title: '一括字幕タスクセンター',
-      description: 'フォルダを選ぶと、複数の動画に対象言語の字幕を生成・翻訳します。ASR は 1 並列、翻訳は 1〜3 並列に設定でき、1つの失敗で後続を止めません。',
+      description: 'フォルダを選ぶと、複数の動画に対象言語の字幕を生成・翻訳します。ASR は 1 並列、翻訳は 1〜3 並列に設定でき、ネットワーク・429・5xx エラーは設定回数（初期値 2 回）再試行します。',
       chooseFolder: '動画フォルダを選択',
       includeSubfolders: 'サブフォルダを含める',
       onlyMissing: '既存の字幕キャッシュをスキップ',
       concurrency: '並列数',
       concurrencyValue: (count) => `${count} 並列（ASR は 1）`,
+      autoRetry: '自動再試行',
+      retryCount: (count) => count === 0 ? 'オフ' : `${count} 回`,
       scan: '動画をスキャン',
       scanning: 'スキャン中…',
       noFiles: '動画ファイルがまだ見つかりません。',
@@ -1909,15 +2020,49 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       resume: 'キューを再開',
       cancel: 'キューを停止',
       retryFailed: '失敗を再試行',
+      retryRetryable: '復旧可能な項目を再試行',
+      failureRetryable: '復旧可能',
+      failureNeedsAttention: '設定を確認',
       openLogs: 'ログフォルダを開く',
       openLogsFailed: 'ログフォルダを開けませんでした',
       errorDetails: 'エラー詳細を表示',
       recoveredTask: '前回のタスクは再起動後に一時停止されました。準備ができたら再開してください。',
       currentFile: '現在のファイル',
       progress: (completed, total) => `${completed} / ${total} 完了`,
+      timingElapsed: '経過時間',
+      timingAverage: '平均 / ファイル',
+      timingRemaining: '残り時間',
+      timingActive: (active, max) => `処理中 ${active} / ${max}`,
+      timingCalculating: '計算中',
       emptyTask: '一括タスクはまだありません。',
-      itemStatus: { queued: '待機中', asr: '字幕生成', translating: '翻訳中', completed: '完了', failed: '失敗', cancelled: 'キャンセル済み' },
+      historyTitle: '履歴タスク',
+      historyRefresh: '履歴を更新',
+      historyLoading: '履歴を読み込み中…',
+      historyEmpty: '完了した一括タスクはまだありません。',
+      historyLoadFailed: 'タスク履歴を読み込めません。',
+      historyRetry: '失敗項目を再試行',
+      historyRoot: 'フォルダ',
+      historyFiles: (completed, total, failed) => `${completed}/${total} 完了 · ${failed} 件失敗`,
+      itemStatus: { queued: '待機中', asr: '字幕生成', translating: '翻訳中', retrying: '再試行待ち', completed: '完了', failed: '失敗', cancelled: 'キャンセル済み' },
       jobStatus: { running: '処理中', paused: '一時停止', completed: '完了', cancelled: '停止済み', failed: 'タスクエラー' }
+    },
+    diagnostics: {
+      open: '最近のログを表示',
+      close: 'ログを閉じる',
+      refresh: '更新',
+      filterLabel: 'ログの絞り込み',
+      filterAll: 'すべて',
+      filterFailures: '失敗',
+      filterAsr: 'ASR',
+      filterBatch: '一括',
+      copyEntry: 'このログをコピー',
+      copyVisible: '表示中のログをコピー',
+      copied: 'コピーしました',
+      copyFailed: 'コピーに失敗しました',
+      loading: 'ログを読み込み中…',
+      empty: '診断ログはまだありません。',
+      emptyFiltered: 'この条件に一致するログはありません。',
+      loadFailed: '診断ログを読み込めません。'
     },
     clipExportDialog: {
       title: 'クリップのワンクリック書き出し',
@@ -2491,12 +2636,14 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
     },
     batchSubtitle: {
       title: '일괄 자막 작업 센터',
-      description: '폴더를 선택하면 여러 동영상에 대상 언어 자막을 생성하고 번역합니다. ASR은 1개로 유지하고 번역은 1–3개로 설정할 수 있으며 한 파일의 실패가 다음 작업을 막지 않습니다.',
+      description: '폴더를 선택하면 여러 동영상에 대상 언어 자막을 생성하고 번역합니다. ASR은 1개로 유지하고 번역은 1–3개로 설정할 수 있으며 네트워크·429·5xx 오류는 설정 횟수(기본 2회)만큼 자동 재시도합니다.',
       chooseFolder: '동영상 폴더 선택',
       includeSubfolders: '하위 폴더 포함',
       onlyMissing: '기존 자막 캐시 건너뛰기',
       concurrency: '동시 처리 수',
       concurrencyValue: (count) => `${count}개 (ASR는 1개)`,
+      autoRetry: '자동 재시도',
+      retryCount: (count) => count === 0 ? '끔' : `${count}회`,
       scan: '동영상 스캔',
       scanning: '스캔 중…',
       noFiles: '아직 동영상 파일을 찾지 못했습니다.',
@@ -2511,15 +2658,49 @@ const APP_COPY: Record<AppLocale, LocaleCopy> = {
       resume: '대기열 재개',
       cancel: '대기열 중지',
       retryFailed: '실패 항목 재시도',
+      retryRetryable: '복구 가능한 항목 재시도',
+      failureRetryable: '복구 가능',
+      failureNeedsAttention: '설정 확인 필요',
       openLogs: '로그 폴더 열기',
       openLogsFailed: '로그 폴더를 열 수 없습니다',
       errorDetails: '오류 세부 정보 보기',
       recoveredTask: '이전 작업은 재시작 후 일시 정지되었습니다. 준비되면 재개하세요.',
       currentFile: '현재 파일',
       progress: (completed, total) => `${completed} / ${total} 완료`,
+      timingElapsed: '경과 시간',
+      timingAverage: '파일 평균',
+      timingRemaining: '예상 남은 시간',
+      timingActive: (active, max) => `처리 중 ${active} / ${max}`,
+      timingCalculating: '계산 중',
       emptyTask: '아직 일괄 작업이 없습니다.',
-      itemStatus: { queued: '대기 중', asr: '자막 생성', translating: '번역 중', completed: '완료', failed: '실패', cancelled: '취소됨' },
+      historyTitle: '작업 기록',
+      historyRefresh: '기록 새로 고침',
+      historyLoading: '기록을 읽는 중…',
+      historyEmpty: '완료된 일괄 작업이 없습니다.',
+      historyLoadFailed: '작업 기록을 읽을 수 없습니다.',
+      historyRetry: '실패 항목 재시도',
+      historyRoot: '폴더',
+      historyFiles: (completed, total, failed) => `${completed}/${total} 완료 · ${failed}개 실패`,
+      itemStatus: { queued: '대기 중', asr: '자막 생성', translating: '번역 중', retrying: '재시도 대기', completed: '완료', failed: '실패', cancelled: '취소됨' },
       jobStatus: { running: '처리 중', paused: '일시 정지', completed: '완료', cancelled: '중지됨', failed: '작업 오류' }
+    },
+    diagnostics: {
+      open: '최근 로그 보기',
+      close: '로그 접기',
+      refresh: '새로 고침',
+      filterLabel: '로그 필터',
+      filterAll: '전체',
+      filterFailures: '실패',
+      filterAsr: 'ASR',
+      filterBatch: '일괄',
+      copyEntry: '이 로그 복사',
+      copyVisible: '현재 결과 복사',
+      copied: '복사됨',
+      copyFailed: '복사하지 못했습니다',
+      loading: '로그를 읽는 중…',
+      empty: '진단 로그가 없습니다.',
+      emptyFiltered: '현재 필터에 해당하는 로그가 없습니다.',
+      loadFailed: '진단 로그를 읽을 수 없습니다.'
     },
     clipExportDialog: {
       title: '원클릭 클립 내보내기',

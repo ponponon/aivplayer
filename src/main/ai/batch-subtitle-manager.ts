@@ -10,15 +10,20 @@ import type {
   MediaFile
 } from '../../shared/media-types.ts'
 import type { AsrRuntime } from './asr-runtime.ts'
+import { isBatchSubtitleRetryableError } from '../../shared/batch-subtitle-utils.ts'
 
 type BatchSubtitleManagerOptions = {
   runtime: AsrRuntime
   stateFilePath: string
   logDirectoryPath?: string
+  historyFilePath?: string
+  retryDelaysMs?: readonly number[]
   emit: (job: BatchSubtitleJob) => void
 }
 
 const maxBatchConcurrency = 3
+const maxBatchHistory = 10
+const defaultBatchRetryDelaysMs = [1000, 3000] as const
 
 function normalizeBatchConcurrency(value: number | undefined): number {
   if (!Number.isFinite(value)) {
@@ -26,6 +31,14 @@ function normalizeBatchConcurrency(value: number | undefined): number {
   }
 
   return Math.min(maxBatchConcurrency, Math.max(1, Math.floor(value ?? 1)))
+}
+
+function normalizeBatchRetries(value: number | undefined): number {
+  if (!Number.isFinite(value)) {
+    return 2
+  }
+
+  return Math.min(3, Math.max(0, Math.floor(value ?? 2)))
 }
 
 class BatchCancelledError extends Error {
@@ -54,7 +67,7 @@ function createSummary(items: BatchSubtitleItem[]): BatchSubtitleJob['summary'] 
   return {
     total: items.length,
     queued: items.filter((item) => item.status === 'queued').length,
-    processing: items.filter((item) => item.status === 'asr' || item.status === 'translating').length,
+    processing: items.filter((item) => item.status === 'asr' || item.status === 'translating' || item.status === 'retrying').length,
     completed: items.filter((item) => item.status === 'completed').length,
     failed: items.filter((item) => item.status === 'failed').length,
     cancelled: items.filter((item) => item.status === 'cancelled').length
@@ -74,7 +87,7 @@ function createItems(files: MediaFile[]): BatchSubtitleItem[] {
 
 function normalizeLoadedJob(job: BatchSubtitleJob): BatchSubtitleJob {
   const items = job.items.map((item) => {
-    if (item.status === 'asr' || item.status === 'translating') {
+    if (item.status === 'asr' || item.status === 'translating' || item.status === 'retrying') {
       return {
         ...item,
         status: 'queued' as const,
@@ -90,6 +103,7 @@ function normalizeLoadedJob(job: BatchSubtitleJob): BatchSubtitleJob {
     ...job,
     onlyMissing: job.onlyMissing ?? true,
     maxConcurrent: normalizeBatchConcurrency(job.maxConcurrent),
+    maxRetries: normalizeBatchRetries(job.maxRetries),
     status: job.status === 'running' ? 'paused' : job.status,
     pauseRequested: job.status === 'running' ? true : job.pauseRequested,
     currentItemId: null,
@@ -103,6 +117,8 @@ export class BatchSubtitleManager {
   private readonly runtime: AsrRuntime
   private readonly stateFilePath: string
   private readonly logDirectoryPath: string
+  private readonly historyFilePath: string
+  private readonly retryDelaysMs: readonly number[]
   private emitJob: (job: BatchSubtitleJob) => void
   private job: BatchSubtitleJob | null = null
   private runPromise: Promise<void> | null = null
@@ -116,6 +132,8 @@ export class BatchSubtitleManager {
     this.runtime = options.runtime
     this.stateFilePath = options.stateFilePath
     this.logDirectoryPath = options.logDirectoryPath ?? join(dirname(options.stateFilePath), 'logs')
+    this.historyFilePath = options.historyFilePath ?? join(dirname(options.stateFilePath), 'batch-subtitle-history.json')
+    this.retryDelaysMs = options.retryDelaysMs ?? defaultBatchRetryDelaysMs
     this.emitJob = options.emit
   }
 
@@ -125,7 +143,18 @@ export class BatchSubtitleManager {
 
   async getCurrent(): Promise<BatchSubtitleJob | null> {
     await this.ensureLoaded()
+    if (this.job && (this.job.status === 'completed' || this.job.status === 'cancelled' || this.job.status === 'failed') && this.runPromise) {
+      try {
+        await this.runPromise
+      } catch {
+        // The terminal job state is still useful even if a final persistence step failed.
+      }
+    }
     return this.job
+  }
+
+  async getHistory(): Promise<BatchSubtitleJob[]> {
+    return this.readHistory()
   }
 
   async start(request: BatchSubtitleStartRequest): Promise<BatchSubtitleJob> {
@@ -147,6 +176,7 @@ export class BatchSubtitleManager {
       targetLanguage: request.targetLanguage,
       onlyMissing: request.onlyMissing !== false,
       maxConcurrent: normalizeBatchConcurrency(request.maxConcurrent),
+      maxRetries: normalizeBatchRetries(request.maxRetries),
       modelId: request.modelId,
       sourceLanguage: request.sourceLanguage,
       status: 'running',
@@ -164,6 +194,7 @@ export class BatchSubtitleManager {
       targetLanguage: this.job.targetLanguage,
       onlyMissing: this.job.onlyMissing,
       maxConcurrent: this.job.maxConcurrent,
+      maxRetries: this.job.maxRetries,
       modelId: this.job.modelId
     })
     await this.persistAndEmit()
@@ -219,40 +250,43 @@ export class BatchSubtitleManager {
       this.job.elapsedMs = this.job.completedAt - this.job.startedAt
     }
 
+    if (!this.runPromise && this.job.status === 'cancelled') {
+      await this.persistHistory(this.job)
+    }
     await this.persistAndEmit()
     return this.job
   }
 
-  async retryFailed(): Promise<BatchSubtitleJob | null> {
+  async retryFailed(retryableOnly = false): Promise<BatchSubtitleJob | null> {
     await this.ensureLoaded()
     if (!this.job || this.runPromise) {
       return this.job
     }
 
-    const failedItems = this.job.items.filter((item) => item.status === 'failed')
-    if (failedItems.length === 0) {
+    if (!this.resetFailedItems(this.job, retryableOnly)) {
       return this.job
     }
 
-    for (const item of failedItems) {
-      item.status = 'queued'
-      item.percent = 0
-      item.message = 'queued'
-      item.error = undefined
-      item.errorDetails = undefined
-      item.cacheHit = undefined
-      item.asrElapsedMs = undefined
-      item.translationElapsedMs = undefined
-      item.subtitlePath = undefined
-      item.translatedSubtitlePath = undefined
+    this.prepareRetry(this.job)
+    await this.persistAndEmit()
+    this.runInBackground()
+    return this.job
+  }
+
+  async retryHistory(jobId: string, retryableOnly = false): Promise<BatchSubtitleJob | null> {
+    await this.ensureLoaded()
+    if (this.runPromise) {
+      return this.job
     }
 
-    this.job.status = 'running'
-    this.job.pauseRequested = false
-    this.job.message = 'retrying'
-    this.job.completedAt = undefined
-    this.job.elapsedMs = undefined
-    this.cancelRequested = false
+    const historyJob = (await this.readHistory()).find((candidate) => candidate.id === jobId)
+    if (!historyJob || !this.resetFailedItems(historyJob, retryableOnly)) {
+      return this.job
+    }
+
+    this.job = historyJob
+    this.prepareRetry(this.job)
+    await this.appendLog(this.job, 'task-retry-started', { source: 'history' })
     await this.persistAndEmit()
     this.runInBackground()
     return this.job
@@ -298,6 +332,7 @@ export class BatchSubtitleManager {
           elapsedMs: job.elapsedMs,
           summary: job.summary
         })
+        await this.persistHistory(job)
         await this.persistAndEmit()
         return
       }
@@ -320,11 +355,15 @@ export class BatchSubtitleManager {
         elapsedMs: job.elapsedMs,
         summary: job.summary
       })
+      await this.persistHistory(job)
       await this.persistAndEmit()
     } catch (error) {
       job.status = 'failed'
       job.message = error instanceof Error ? error.message : String(error)
       job.currentItemId = null
+      job.completedAt = Date.now()
+      job.elapsedMs = job.completedAt - job.startedAt
+      await this.persistHistory(job)
       await this.persistAndEmit()
     } finally {
       this.translationControllers.clear()
@@ -342,7 +381,7 @@ export class BatchSubtitleManager {
       item.percent = 0
       item.message = 'asr'
       item.attempts += 1
-      item.startedAt = Date.now()
+      item.startedAt ??= Date.now()
       item.completedAt = undefined
       item.elapsedMs = undefined
       item.error = undefined
@@ -356,7 +395,11 @@ export class BatchSubtitleManager {
       await this.persistAndEmit()
 
       try {
-        await this.processItem(job, item)
+        const completed = await this.processItemWithRetry(job, item)
+        if (!completed) {
+          return
+        }
+
         item.status = 'completed'
         item.percent = 1
         item.message = 'completed'
@@ -396,6 +439,90 @@ export class BatchSubtitleManager {
         await this.persistAndEmit()
       }
     }
+  }
+
+  private async processItemWithRetry(job: BatchSubtitleJob, item: BatchSubtitleItem): Promise<boolean> {
+    for (let retryIndex = 0; ; retryIndex += 1) {
+      try {
+        await this.processItem(job, item)
+        return true
+      } catch (error) {
+        if (error instanceof BatchCancelledError || this.cancelRequested) {
+          throw error
+        }
+
+        if (job.pauseRequested) {
+          item.status = 'queued'
+          item.percent = 0
+          item.message = 'queued'
+          return false
+        }
+
+        if (!isBatchSubtitleRetryableError(error instanceof BatchItemError ? error.details : undefined) || retryIndex >= job.maxRetries) {
+          throw error
+        }
+
+        const delayMs = this.retryDelaysMs[Math.min(retryIndex, Math.max(0, this.retryDelaysMs.length - 1))] ?? 0
+        item.status = 'retrying'
+        item.percent = null
+        item.message = 'retrying'
+        await this.appendLog(job, 'file-retry-scheduled', {
+          itemId: item.id,
+          filePath: item.file.path,
+          retryNumber: retryIndex + 1,
+          maxRetries: job.maxRetries,
+          delayMs,
+          message: error instanceof Error ? error.message : String(error),
+          errorDetails: error instanceof BatchItemError ? error.details : undefined
+        })
+        await this.persistAndEmit()
+
+        const shouldContinue = await this.waitForBatchRetry(job, delayMs)
+        if (!shouldContinue) {
+          item.status = 'queued'
+          item.percent = 0
+          item.message = 'queued'
+          await this.persistAndEmit()
+          return false
+        }
+
+        item.status = 'asr'
+        item.percent = 0
+        item.message = 'asr'
+        item.error = undefined
+        item.errorDetails = undefined
+        item.cacheHit = undefined
+        item.asrElapsedMs = undefined
+        item.translationElapsedMs = undefined
+        item.subtitlePath = undefined
+        item.translatedSubtitlePath = undefined
+        item.attempts += 1
+        await this.appendLog(job, 'file-started', {
+          itemId: item.id,
+          filePath: item.file.path,
+          attempt: item.attempts,
+          retry: true
+        })
+        await this.persistAndEmit()
+      }
+    }
+  }
+
+  private async waitForBatchRetry(job: BatchSubtitleJob, delayMs: number): Promise<boolean> {
+    const startedAt = Date.now()
+    while (Date.now() - startedAt < delayMs) {
+      if (this.cancelRequested) {
+        throw new BatchCancelledError()
+      }
+      if (job.pauseRequested) {
+        return false
+      }
+
+      const remainingMs = delayMs - (Date.now() - startedAt)
+      await new Promise((resolve) => setTimeout(resolve, Math.min(100, Math.max(1, remainingMs))))
+    }
+
+    return !this.cancelRequested && !job.pauseRequested
   }
 
   private async processItem(job: BatchSubtitleJob, item: BatchSubtitleItem): Promise<void> {
@@ -518,12 +645,47 @@ export class BatchSubtitleManager {
     }
 
     for (const item of this.job.items) {
-      if (item.status === 'queued' || item.status === 'asr' || item.status === 'translating') {
+      if (item.status === 'queued' || item.status === 'asr' || item.status === 'translating' || item.status === 'retrying') {
         item.status = 'cancelled'
         item.percent = null
         item.message = 'cancelled'
       }
     }
+  }
+
+  private resetFailedItems(job: BatchSubtitleJob, retryableOnly = false): boolean {
+    const failedItems = job.items.filter((item) => item.status === 'failed' && (
+      !retryableOnly || isBatchSubtitleRetryableError(item.errorDetails)
+    ))
+    if (failedItems.length === 0) {
+      return false
+    }
+
+    for (const item of failedItems) {
+      item.status = 'queued'
+      item.percent = 0
+      item.message = 'queued'
+      item.error = undefined
+      item.errorDetails = undefined
+      item.cacheHit = undefined
+      item.asrElapsedMs = undefined
+      item.translationElapsedMs = undefined
+      item.subtitlePath = undefined
+      item.translatedSubtitlePath = undefined
+      item.startedAt = undefined
+      item.completedAt = undefined
+    }
+    return true
+  }
+
+  private prepareRetry(job: BatchSubtitleJob): void {
+    job.status = 'running'
+    job.pauseRequested = false
+    job.message = 'retrying'
+    job.completedAt = undefined
+    job.elapsedMs = undefined
+    job.currentItemId = null
+    this.cancelRequested = false
   }
 
   private requireJob(): BatchSubtitleJob {
@@ -563,6 +725,41 @@ export class BatchSubtitleManager {
       )
     } catch {
       // Logging must never stop a subtitle task.
+    }
+  }
+
+  private async readHistory(): Promise<BatchSubtitleJob[]> {
+    try {
+      const content = await readFile(this.historyFilePath, 'utf8')
+      const parsed: unknown = JSON.parse(content)
+      if (!Array.isArray(parsed)) {
+        return []
+      }
+
+      return parsed.filter((candidate): candidate is BatchSubtitleJob => {
+        if (!candidate || typeof candidate !== 'object') {
+          return false
+        }
+
+        const job = candidate as Partial<BatchSubtitleJob>
+        return typeof job.id === 'string' && Array.isArray(job.items) && typeof job.startedAt === 'number'
+      }).slice(0, maxBatchHistory)
+    } catch {
+      return []
+    }
+  }
+
+  private async persistHistory(job: BatchSubtitleJob): Promise<void> {
+    try {
+      const history = await this.readHistory()
+      const snapshot = JSON.parse(JSON.stringify(job)) as BatchSubtitleJob
+      const nextHistory = [snapshot, ...history.filter((entry) => entry.id !== job.id)].slice(0, maxBatchHistory)
+      await mkdir(dirname(this.historyFilePath), { recursive: true })
+      const temporaryPath = join(dirname(this.historyFilePath), `${basename(this.historyFilePath)}.tmp`)
+      await writeFile(temporaryPath, `${JSON.stringify(nextHistory, null, 2)}\n`, 'utf8')
+      await rename(temporaryPath, this.historyFilePath)
+    } catch {
+      // Task history is useful for recovery, but must never fail the task itself.
     }
   }
 
@@ -614,4 +811,8 @@ export function getBatchSubtitleStatePath(userDataPath: string): string {
 
 export function getBatchSubtitleLogDirectoryPath(userDataPath: string): string {
   return join(userDataPath, 'logs', 'batch-subtitles')
+}
+
+export function getBatchSubtitleHistoryPath(userDataPath: string): string {
+  return join(userDataPath, 'batch-subtitle-history.json')
 }

@@ -1,8 +1,12 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { appendAsrDiagnosticLog, redactAsrErrorDetails } from '../../src/main/ai/asr-diagnostics'
+import {
+  appendAsrDiagnosticLog,
+  readRecentAsrDiagnosticLogs,
+  redactAsrErrorDetails
+} from '../../src/main/ai/asr-diagnostics'
 
 describe('asr diagnostics', () => {
   let tempDirectory: string
@@ -41,5 +45,21 @@ describe('asr diagnostics', () => {
       success: false,
       responseBody: '[REDACTED_API_KEY]'
     })
+  })
+
+  it('loads valid recent entries across JSONL files and ignores broken lines', async () => {
+    await writeFile(
+      join(tempDirectory, 'batch-1.jsonl'),
+      [
+        JSON.stringify({ timestamp: '2026-07-16T10:00:00.000Z', event: 'old-entry' }),
+        'incomplete-json',
+        JSON.stringify({ timestamp: '2026-07-16T10:02:00.000Z', event: 'new-entry' })
+      ].join('\n'),
+      'utf8'
+    )
+
+    const entries = await readRecentAsrDiagnosticLogs([tempDirectory], 1)
+
+    expect(entries).toEqual([{ timestamp: '2026-07-16T10:02:00.000Z', event: 'new-entry' }])
   })
 })

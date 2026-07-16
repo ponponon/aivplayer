@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactElement } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react'
 import { Check, FolderOpen, Pause, Play, RefreshCcw, Square } from 'lucide-react'
 import type { LocaleCopy } from '../../../shared/i18n'
 import type {
@@ -7,6 +7,8 @@ import type {
   MediaFile
 } from '../../../shared/media-types'
 import type { SubtitleTargetLanguageId } from '../../../shared/app-settings'
+import { getBatchSubtitleFailureCategory } from '../../../shared/batch-subtitle-utils'
+import { DiagnosticLogViewer } from './diagnostic-log-viewer'
 
 type BatchSubtitlePanelProps = {
   copy: LocaleCopy
@@ -36,6 +38,34 @@ function getJobStatusLabel(copy: LocaleCopy, job: BatchSubtitleJob): string {
   return copy.batchSubtitle.jobStatus[job.status]
 }
 
+function formatHistoryTimestamp(timestamp: number | undefined): string {
+  if (!timestamp) {
+    return '—'
+  }
+
+  return new Date(timestamp).toLocaleString()
+}
+
+type BatchTimingStats = {
+  elapsedMs: number
+  averageItemElapsedMs: number | null
+  estimatedRemainingMs: number | null
+}
+
+function getBatchTimingStats(job: BatchSubtitleJob, now: number): BatchTimingStats {
+  const elapsedMs = job.elapsedMs ?? Math.max(0, (job.completedAt ?? now) - job.startedAt)
+  const measuredItems = job.items.filter((item) => item.status === 'completed' && item.elapsedMs != null)
+  const averageItemElapsedMs = measuredItems.length > 0
+    ? Math.round(measuredItems.reduce((total, item) => total + (item.elapsedMs ?? 0), 0) / measuredItems.length)
+    : null
+  const remainingCount = job.summary.queued + job.summary.processing
+  const estimatedRemainingMs = averageItemElapsedMs != null && remainingCount > 0
+    ? Math.round((averageItemElapsedMs * remainingCount) / Math.max(1, job.maxConcurrent))
+    : null
+
+  return { elapsedMs, averageItemElapsedMs, estimatedRemainingMs }
+}
+
 export function BatchSubtitlePanel({
   copy,
   targetLanguage,
@@ -48,9 +78,14 @@ export function BatchSubtitlePanel({
   const [includeSubfolders, setIncludeSubfolders] = useState(false)
   const [onlyMissing, setOnlyMissing] = useState(true)
   const [maxConcurrent, setMaxConcurrent] = useState(1)
+  const [maxRetries, setMaxRetries] = useState(2)
   const [isScanning, setIsScanning] = useState(false)
   const [job, setJob] = useState<BatchSubtitleJob | null>(null)
+  const [history, setHistory] = useState<BatchSubtitleJob[]>([])
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false)
+  const [historyNotice, setHistoryNotice] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [timingNow, setTimingNow] = useState(() => Date.now())
 
   const activeJob = job?.status === 'running' || job?.status === 'paused'
   const selectedFiles = useMemo(
@@ -60,6 +95,32 @@ export function BatchSubtitlePanel({
   const currentItem = job?.currentItemId ? job.items.find((item) => item.id === job.currentItemId) ?? null : null
   const completedCount = job?.summary.completed ?? 0
   const canRetry = Boolean(job?.summary.failed && !activeJob)
+  const failedItems = job?.items.filter((item) => item.status === 'failed') ?? []
+  const retryableFailedCount = failedItems.filter((item) => getBatchSubtitleFailureCategory(item) === 'retryable').length
+  const needsAttentionFailedCount = failedItems.length - retryableFailedCount
+  const timingStats = job ? getBatchTimingStats(job, timingNow) : null
+
+  const loadHistory = useCallback(async (): Promise<void> => {
+    setIsHistoryLoading(true)
+    setHistoryNotice(null)
+    try {
+      setHistory(await window.aiv.getBatchSubtitleHistory())
+    } catch (error) {
+      setHistoryNotice(error instanceof Error ? error.message : copy.batchSubtitle.historyLoadFailed)
+    } finally {
+      setIsHistoryLoading(false)
+    }
+  }, [copy.batchSubtitle.historyLoadFailed])
+
+  useEffect(() => {
+    if (!activeJob) {
+      return
+    }
+
+    setTimingNow(Date.now())
+    const timer = window.setInterval(() => setTimingNow(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [activeJob])
 
   useEffect(() => {
     let disposed = false
@@ -70,6 +131,7 @@ export function BatchSubtitlePanel({
         if (currentJob) {
           setOnlyMissing(currentJob.onlyMissing)
           setMaxConcurrent(currentJob.maxConcurrent)
+          setMaxRetries(currentJob.maxRetries)
         }
       }
     })
@@ -79,6 +141,7 @@ export function BatchSubtitlePanel({
         setJob(nextJob)
         setOnlyMissing(nextJob.onlyMissing)
         setMaxConcurrent(nextJob.maxConcurrent)
+        setMaxRetries(nextJob.maxRetries)
       }
     })
 
@@ -87,6 +150,16 @@ export function BatchSubtitlePanel({
       cleanup()
     }
   }, [])
+
+  useEffect(() => {
+    void loadHistory()
+  }, [loadHistory])
+
+  useEffect(() => {
+    if (job && (job.status === 'completed' || job.status === 'cancelled' || job.status === 'failed')) {
+      void loadHistory()
+    }
+  }, [job?.id, job?.status, loadHistory])
 
   const scanDirectory = async (path: string): Promise<void> => {
     setIsScanning(true)
@@ -147,7 +220,8 @@ export function BatchSubtitlePanel({
         targetLanguage,
         modelId,
         onlyMissing,
-        maxConcurrent
+        maxConcurrent,
+        maxRetries
       })
       setJob(nextJob)
     } catch (error) {
@@ -166,8 +240,18 @@ export function BatchSubtitlePanel({
     setJob(await window.aiv.cancelBatchSubtitle())
   }
 
-  const retryFailed = async (): Promise<void> => {
-    setJob(await window.aiv.retryFailedBatchSubtitle())
+  const retryFailed = async (retryableOnly = false): Promise<void> => {
+    setJob(await window.aiv.retryFailedBatchSubtitle(retryableOnly))
+  }
+
+  const retryHistory = async (historyJobId: string, retryableOnly = false): Promise<void> => {
+    setHistoryNotice(null)
+    try {
+      const nextJob = await window.aiv.retryHistoryBatchSubtitle(historyJobId, retryableOnly)
+      setJob(nextJob)
+    } catch (error) {
+      setHistoryNotice(error instanceof Error ? error.message : copy.batchSubtitle.historyLoadFailed)
+    }
   }
 
   const openLogDirectory = async (): Promise<void> => {
@@ -233,6 +317,24 @@ export function BatchSubtitlePanel({
               onClick={() => setMaxConcurrent(count)}
             >
               {copy.batchSubtitle.concurrencyValue(count)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="batch-concurrency-row">
+        <span>{copy.batchSubtitle.autoRetry}</span>
+        <div className="subtitle-display-choice-group" role="group" aria-label={copy.batchSubtitle.autoRetry}>
+          {[0, 1, 2, 3].map((count) => (
+            <button
+              key={count}
+              className={`subtitle-display-choice ${maxRetries === count ? 'is-selected' : ''}`}
+              type="button"
+              disabled={isScanning || activeJob}
+              aria-pressed={maxRetries === count}
+              onClick={() => setMaxRetries(count)}
+            >
+              {copy.batchSubtitle.retryCount(count)}
             </button>
           ))}
         </div>
@@ -306,6 +408,30 @@ export function BatchSubtitlePanel({
           <div className="batch-progress-track">
             <div className="progress-fill" style={{ width: `${job.summary.total ? Math.round((completedCount / job.summary.total) * 100) : 0}%` }} />
           </div>
+          {timingStats ? (
+            <div className="batch-timing-grid">
+              <div className="batch-timing-item">
+                <span>{copy.batchSubtitle.timingElapsed}</span>
+                <strong>{formatElapsed(timingStats.elapsedMs) ?? '—'}</strong>
+              </div>
+              <div className="batch-timing-item">
+                <span>{copy.batchSubtitle.timingAverage}</span>
+                <strong>
+                  {formatElapsed(timingStats.averageItemElapsedMs ?? undefined) ?? (
+                    job.status === 'running' ? copy.batchSubtitle.timingCalculating : '—'
+                  )}
+                </strong>
+              </div>
+              <div className="batch-timing-item">
+                <span>{copy.batchSubtitle.timingRemaining}</span>
+                <strong>{formatElapsed(timingStats.estimatedRemainingMs ?? undefined) ?? '—'}</strong>
+              </div>
+              <div className="batch-timing-item">
+                <span>{copy.batchSubtitle.timingActive(job.summary.processing, job.maxConcurrent)}</span>
+                <strong>{job.summary.completed} / {job.summary.total}</strong>
+              </div>
+            </div>
+          ) : null}
           {currentItem ? (
             <div className="batch-current-file">
               <span>{copy.batchSubtitle.currentFile}</span>
@@ -315,6 +441,16 @@ export function BatchSubtitlePanel({
           ) : null}
           {job.pauseRequested && job.status === 'running' ? <div className="batch-task-hint">{copy.batchSubtitle.pauseRequested}</div> : null}
           {job.message === 'paused-after-restart' ? <div className="batch-task-hint">{copy.batchSubtitle.recoveredTask}</div> : null}
+          {failedItems.length > 0 ? (
+            <div className="batch-failure-summary">
+              {retryableFailedCount > 0 ? (
+                <span className="retryable">{copy.batchSubtitle.failureRetryable} {retryableFailedCount}</span>
+              ) : null}
+              {needsAttentionFailedCount > 0 ? (
+                <span className="needs-attention">{copy.batchSubtitle.failureNeedsAttention} {needsAttentionFailedCount}</span>
+              ) : null}
+            </div>
+          ) : null}
           <div className="batch-task-actions">
             {activeJob ? (
               <>
@@ -328,10 +464,20 @@ export function BatchSubtitlePanel({
                 </button>
               </>
           ) : canRetry ? (
-              <button className="asr-action-button" type="button" onClick={() => void retryFailed()}>
-                <RefreshCcw size={15} />
-                {copy.batchSubtitle.retryFailed}
-              </button>
+              <>
+                {retryableFailedCount > 0 ? (
+                  <button className="asr-action-button" type="button" onClick={() => void retryFailed(true)}>
+                    <RefreshCcw size={15} />
+                    {copy.batchSubtitle.retryRetryable}
+                  </button>
+                ) : null}
+                {needsAttentionFailedCount > 0 ? (
+                  <button className="asr-action-button" type="button" onClick={() => void retryFailed()}>
+                    <RefreshCcw size={15} />
+                    {copy.batchSubtitle.retryFailed}
+                  </button>
+                ) : null}
+              </>
             ) : null}
             <button className="batch-log-button" type="button" onClick={() => void openLogDirectory()}>
               <FolderOpen size={14} />
@@ -343,6 +489,75 @@ export function BatchSubtitlePanel({
         <div className="batch-task-card muted">{copy.batchSubtitle.emptyTask}</div>
       )}
 
+      <DiagnosticLogViewer copy={copy.diagnostics} />
+
+      <section className="batch-history-card">
+        <div className="batch-history-heading">
+          <strong>{copy.batchSubtitle.historyTitle}</strong>
+          <button
+            className="batch-log-button"
+            type="button"
+            onClick={() => void loadHistory()}
+            disabled={isHistoryLoading}
+          >
+            <RefreshCcw size={13} className={isHistoryLoading ? 'diagnostic-log-refreshing' : undefined} />
+            {copy.batchSubtitle.historyRefresh}
+          </button>
+        </div>
+        {isHistoryLoading ? <div className="batch-history-empty">{copy.batchSubtitle.historyLoading}</div> : null}
+        {!isHistoryLoading && historyNotice ? <div className="batch-history-empty failed">{historyNotice}</div> : null}
+        {!isHistoryLoading && !historyNotice && history.length === 0 ? (
+          <div className="batch-history-empty">{copy.batchSubtitle.historyEmpty}</div>
+        ) : null}
+        {!isHistoryLoading && !historyNotice && history.length > 0 ? (
+          <div className="batch-history-list">
+            {history.map((historyJob) => {
+              const failedItems = historyJob.items.filter((item) => item.status === 'failed')
+              const retryableHistoryItems = failedItems.filter((item) => getBatchSubtitleFailureCategory(item) === 'retryable')
+              return (
+                <details className="batch-history-entry" key={historyJob.id}>
+                  <summary>
+                    <span className="batch-history-summary-main">
+                      <strong>{getJobStatusLabel(copy, historyJob)}</strong>
+                      <span>{formatHistoryTimestamp(historyJob.completedAt ?? historyJob.startedAt)}</span>
+                    </span>
+                    <span className="batch-history-summary-meta">
+                      {formatElapsed(historyJob.elapsedMs) ?? '—'} · {copy.batchSubtitle.historyFiles(historyJob.summary.completed, historyJob.summary.total, historyJob.summary.failed)}
+                    </span>
+                  </summary>
+                  <div className="batch-history-body">
+                    <div className="batch-history-meta">
+                      <span>{copy.subtitleLanguageOptions[historyJob.targetLanguage].label}</span>
+                      <span>{copy.batchSubtitle.concurrencyValue(historyJob.maxConcurrent)}</span>
+                    </div>
+                    <div className="batch-history-root" title={historyJob.rootPath}>
+                      {copy.batchSubtitle.historyRoot}: {historyJob.rootPath}
+                    </div>
+                    {failedItems.length > 0 ? (
+                      <div className="batch-history-failures">
+                        {failedItems.slice(0, 3).map((item) => (
+                          <div className={getBatchSubtitleFailureCategory(item) === 'retryable' ? 'retryable' : 'needs-attention'} key={item.id} title={item.error}>
+                            <span>{getBatchSubtitleFailureCategory(item) === 'retryable' ? copy.batchSubtitle.failureRetryable : copy.batchSubtitle.failureNeedsAttention}</span>
+                            {item.file.name}: {item.error}
+                          </div>
+                        ))}
+                        {failedItems.length > 3 ? <div>… +{failedItems.length - 3}</div> : null}
+                      </div>
+                    ) : null}
+                    {failedItems.length > 0 && !activeJob ? (
+                      <button className="asr-action-button" type="button" onClick={() => void retryHistory(historyJob.id, retryableHistoryItems.length > 0)}>
+                        <RefreshCcw size={14} />
+                        {retryableHistoryItems.length > 0 ? copy.batchSubtitle.retryRetryable : copy.batchSubtitle.historyRetry}
+                      </button>
+                    ) : null}
+                  </div>
+                </details>
+              )
+            })}
+          </div>
+        ) : null}
+      </section>
+
       {job ? (
         <div className="batch-task-list">
           {job.items.map((item) => {
@@ -350,7 +565,7 @@ export function BatchSubtitlePanel({
             return (
               <div className={`batch-task-item ${item.status}`} key={item.id}>
                 <span className="batch-task-icon">
-                  {item.status === 'completed' ? <Check size={13} /> : item.status === 'failed' ? '!' : item.status === 'cancelled' ? '×' : item.status === 'asr' || item.status === 'translating' ? '…' : '·'}
+                  {item.status === 'completed' ? <Check size={13} /> : item.status === 'failed' ? '!' : item.status === 'cancelled' ? '×' : item.status === 'asr' || item.status === 'translating' || item.status === 'retrying' ? '…' : '·'}
                 </span>
                 <span className="batch-task-name" title={item.file.path}>{item.file.name}</span>
                 <span className="batch-task-status">{getItemStatusLabel(copy, item)}</span>

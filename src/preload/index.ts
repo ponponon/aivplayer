@@ -16,6 +16,7 @@ import type {
   AsrSubtitleTranslationResult,
   AsrTranslationServiceTestRequest,
   AsrTranslationServiceTestResult,
+  AsrDiagnosticLogResult,
   ClipboardWriteTextRequest,
   ClipboardWriteTextResult,
   AsrSubtitleRequest,
@@ -48,10 +49,14 @@ const api = {
     ipcRenderer.invoke(IPC_CHANNELS.BATCH_SUBTITLE_RESUME),
   cancelBatchSubtitle: (): Promise<BatchSubtitleJob | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.BATCH_SUBTITLE_CANCEL),
-  retryFailedBatchSubtitle: (): Promise<BatchSubtitleJob | null> =>
-    ipcRenderer.invoke(IPC_CHANNELS.BATCH_SUBTITLE_RETRY_FAILED),
+  retryFailedBatchSubtitle: (retryableOnly = false): Promise<BatchSubtitleJob | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.BATCH_SUBTITLE_RETRY_FAILED, retryableOnly),
   getCurrentBatchSubtitle: (): Promise<BatchSubtitleJob | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.BATCH_SUBTITLE_GET_CURRENT),
+  getBatchSubtitleHistory: (): Promise<BatchSubtitleJob[]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.BATCH_SUBTITLE_GET_HISTORY),
+  retryHistoryBatchSubtitle: (jobId: string, retryableOnly = false): Promise<BatchSubtitleJob | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.BATCH_SUBTITLE_RETRY_HISTORY, jobId, retryableOnly),
   openBatchSubtitleLogDirectory: (): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.BATCH_SUBTITLE_OPEN_LOG_DIRECTORY),
   getMediaMetadata: (filePath: string): Promise<MediaProbeMetadata | null> =>
@@ -81,6 +86,7 @@ const api = {
     request: AsrTranslationServiceTestRequest
   ): Promise<AsrTranslationServiceTestResult> => ipcRenderer.invoke(IPC_CHANNELS.ASR_TEST_TRANSLATION_SERVICE, request),
   openAsrLogDirectory: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.ASR_OPEN_LOG_DIRECTORY),
+  getRecentAsrLogs: (): Promise<AsrDiagnosticLogResult> => ipcRenderer.invoke(IPC_CHANNELS.ASR_GET_RECENT_LOGS),
   exportMediaClip: (request: MediaClipExportRequest): Promise<MediaClipExportResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.MEDIA_EXPORT_CLIP, request),
   copyTextToClipboard: (request: ClipboardWriteTextRequest): Promise<ClipboardWriteTextResult> =>

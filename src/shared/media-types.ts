@@ -174,6 +174,18 @@ export type AsrErrorDetails = {
   responseBody?: string
 }
 
+export type AsrDiagnosticLogEntry = {
+  timestamp: string
+  event: string
+  [key: string]: unknown
+}
+
+export type AsrDiagnosticLogResult = {
+  success: boolean
+  message: string
+  entries: AsrDiagnosticLogEntry[]
+}
+
 export type AsrSubtitleExportRequest = {
   subtitlePath: string
   subtitleSrtPath?: string
@@ -223,6 +235,7 @@ export type BatchSubtitleItemStatus =
   | 'queued'
   | 'asr'
   | 'translating'
+  | 'retrying'
   | 'completed'
   | 'failed'
   | 'cancelled'
@@ -263,6 +276,7 @@ export type BatchSubtitleJob = {
   targetLanguage: SubtitleTargetLanguageId
   onlyMissing: boolean
   maxConcurrent: number
+  maxRetries: number
   modelId?: string
   sourceLanguage?: string
   status: BatchSubtitleJobStatus
@@ -287,6 +301,7 @@ export type BatchSubtitleStartRequest = {
   targetLanguage: SubtitleTargetLanguageId
   onlyMissing?: boolean
   maxConcurrent?: number
+  maxRetries?: number
   modelId?: string
   sourceLanguage?: string
 }

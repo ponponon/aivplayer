@@ -33,6 +33,23 @@ async function waitForJob(
   throw new Error('Timed out waiting for batch task')
 }
 
+async function waitForHistory(
+  manager: BatchSubtitleManager,
+  predicate: (history: BatchSubtitleJob[]) => boolean
+): Promise<BatchSubtitleJob[]> {
+  const startedAt = Date.now()
+  while (Date.now() - startedAt <= 2_000) {
+    const history = await manager.getHistory()
+    if (predicate(history)) {
+      return history
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 5))
+  }
+
+  throw new Error('Timed out waiting for batch history')
+}
+
 describe('batch subtitle manager', () => {
   let tempDirectory: string
 
@@ -148,6 +165,48 @@ describe('batch subtitle manager', () => {
     expect(persisted.items[0]?.attempts).toBe(2)
   })
 
+  it('keeps terminal tasks in history and retries failed files from history', async () => {
+    let shouldFail = true
+    const runtime = {
+      generateSubtitle: async (request: { mediaPath: string }) => {
+        if (shouldFail) {
+          shouldFail = false
+          return { success: false, message: 'temporary failure' }
+        }
+
+        return {
+          success: true,
+          message: 'generated',
+          subtitlePath: `${request.mediaPath}.vtt`,
+          subtitleLanguage: 'zh',
+          generationStats: { elapsedMs: 2, subtitleCueCount: 1, cacheHit: false }
+        }
+      },
+      translateSubtitle: async () => {
+        throw new Error('translation should be skipped for matching language')
+      }
+    } as unknown as AsrRuntime
+    const manager = new BatchSubtitleManager({
+      runtime,
+      stateFilePath: join(tempDirectory, 'batch.json'),
+      emit: () => undefined
+    })
+
+    await manager.start({ rootPath: '/videos', files: [createFile('history.mp4')], targetLanguage: 'zh', onlyMissing: false })
+    const firstJob = await waitForJob(manager, (job) => job.status === 'completed' && job.summary.failed === 1)
+    const firstHistory = await waitForHistory(manager, (history) => history.length === 1)
+
+    expect(firstHistory[0]).toMatchObject({ id: firstJob.id, summary: { failed: 1 } })
+
+    await manager.retryHistory(firstJob.id)
+    const retriedJob = await waitForJob(manager, (job) => job.status === 'completed' && job.summary.failed === 0)
+    const latestHistory = await waitForHistory(manager, (history) => history[0]?.summary.failed === 0)
+
+    expect(retriedJob.items[0]?.attempts).toBe(2)
+    expect(latestHistory).toHaveLength(1)
+    expect(latestHistory[0]).toMatchObject({ id: firstJob.id, summary: { completed: 1, failed: 0 } })
+  })
+
   it('keeps ASR single-threaded while allowing configured translation concurrency', async () => {
     let activeAsr = 0
     let maxActiveAsr = 0
@@ -200,6 +259,148 @@ describe('batch subtitle manager', () => {
     expect(job.maxConcurrent).toBe(2)
     expect(maxActiveAsr).toBe(1)
     expect(maxActiveTranslations).toBe(2)
+  })
+
+  it('automatically retries transient translation failures and records the retry', async () => {
+    let translationCalls = 0
+    const logDirectory = join(tempDirectory, 'logs')
+    const runtime = {
+      generateSubtitle: async (request: { mediaPath: string }) => ({
+        success: true,
+        message: 'generated',
+        subtitlePath: `${request.mediaPath}.vtt`,
+        subtitleLanguage: 'en',
+        generationStats: { elapsedMs: 2, subtitleCueCount: 1, cacheHit: false }
+      }),
+      translateSubtitle: async (request: { subtitlePath: string }) => {
+        translationCalls += 1
+        if (translationCalls === 1) {
+          return {
+            success: false,
+            message: 'service unavailable',
+            errorDetails: { code: 'http-error', status: 503, responseBody: 'temporary outage' }
+          }
+        }
+
+        return {
+          success: true,
+          message: 'translated',
+          subtitlePath: `${request.subtitlePath}.zh.vtt`,
+          translationStats: { elapsedMs: 3, subtitleCueCount: 1, translationBatchCount: 1, cacheHit: false }
+        }
+      }
+    } as unknown as AsrRuntime
+    const manager = new BatchSubtitleManager({
+      runtime,
+      stateFilePath: join(tempDirectory, 'batch.json'),
+      logDirectoryPath: logDirectory,
+      retryDelaysMs: [0],
+      emit: () => undefined
+    })
+
+    await manager.start({ rootPath: '/videos', files: [createFile('transient.mp4')], targetLanguage: 'zh', onlyMissing: false, maxRetries: 2 })
+    const job = await waitForJob(manager, (currentJob) => currentJob.status === 'completed')
+    const log = await readFile(join(logDirectory, `${job.id}.jsonl`), 'utf8')
+
+    expect(translationCalls).toBe(2)
+    expect(job.items[0]).toMatchObject({ status: 'completed', attempts: 2 })
+    expect(log).toContain('"event":"file-retry-scheduled"')
+    expect(log).toContain('"retryNumber":1')
+  })
+
+  it('does not automatically retry authentication failures', async () => {
+    let translationCalls = 0
+    const runtime = {
+      generateSubtitle: async (request: { mediaPath: string }) => ({
+        success: true,
+        message: 'generated',
+        subtitlePath: `${request.mediaPath}.vtt`,
+        subtitleLanguage: 'en',
+        generationStats: { elapsedMs: 2, subtitleCueCount: 1, cacheHit: false }
+      }),
+      translateSubtitle: async () => {
+        translationCalls += 1
+        return {
+          success: false,
+          message: 'unauthorized',
+          errorDetails: { code: 'http-error', status: 401, responseBody: 'invalid api key' }
+        }
+      }
+    } as unknown as AsrRuntime
+    const manager = new BatchSubtitleManager({
+      runtime,
+      stateFilePath: join(tempDirectory, 'batch.json'),
+      retryDelaysMs: [0],
+      emit: () => undefined
+    })
+
+    await manager.start({ rootPath: '/videos', files: [createFile('auth.mp4')], targetLanguage: 'zh', onlyMissing: false, maxRetries: 3 })
+    const job = await waitForJob(manager, (currentJob) => currentJob.status === 'completed')
+
+    expect(translationCalls).toBe(1)
+    expect(job.summary.failed).toBe(1)
+    expect(job.items[0]?.errorDetails?.status).toBe(401)
+  })
+
+  it('can retry only recoverable failed files without touching configuration failures', async () => {
+    const translationCalls = new Map<string, number>()
+    const runtime = {
+      generateSubtitle: async (request: { mediaPath: string }) => ({
+        success: true,
+        message: 'generated',
+        subtitlePath: `${request.mediaPath}.vtt`,
+        subtitleLanguage: 'en',
+        generationStats: { elapsedMs: 2, subtitleCueCount: 1, cacheHit: false }
+      }),
+      translateSubtitle: async (request: { subtitlePath: string }) => {
+        const calls = (translationCalls.get(request.subtitlePath) ?? 0) + 1
+        translationCalls.set(request.subtitlePath, calls)
+        if (request.subtitlePath.includes('recoverable') && calls === 1) {
+          return {
+            success: false,
+            message: 'temporary outage',
+            errorDetails: { code: 'http-error', status: 503 }
+          }
+        }
+        if (request.subtitlePath.includes('configuration')) {
+          return {
+            success: false,
+            message: 'invalid api key',
+            errorDetails: { code: 'http-error', status: 401 }
+          }
+        }
+
+        return {
+          success: true,
+          message: 'translated',
+          subtitlePath: `${request.subtitlePath}.zh.vtt`,
+          translationStats: { elapsedMs: 3, subtitleCueCount: 1, translationBatchCount: 1, cacheHit: false }
+        }
+      }
+    } as unknown as AsrRuntime
+    const manager = new BatchSubtitleManager({
+      runtime,
+      stateFilePath: join(tempDirectory, 'batch.json'),
+      retryDelaysMs: [0],
+      emit: () => undefined
+    })
+
+    await manager.start({
+      rootPath: '/videos',
+      files: [createFile('recoverable.mp4'), createFile('configuration.mp4')],
+      targetLanguage: 'zh',
+      onlyMissing: false,
+      maxRetries: 0
+    })
+    const firstJob = await waitForJob(manager, (currentJob) => currentJob.status === 'completed' && currentJob.summary.failed === 2)
+    const firstStatuses = firstJob.items.map((item) => item.status)
+
+    await manager.retryFailed(true)
+    const retriedJob = await waitForJob(manager, (currentJob) => currentJob.status === 'completed' && currentJob.summary.failed === 1)
+
+    expect(firstStatuses).toEqual(['failed', 'failed'])
+    expect(retriedJob.items.map((item) => item.status)).toEqual(['completed', 'failed'])
+    expect(translationCalls.get('/videos/configuration.mp4.vtt')).toBe(1)
   })
 
   it('skips existing source and translated caches and writes a structured log', async () => {
