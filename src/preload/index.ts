@@ -1,6 +1,14 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type { AppSettings } from '../shared/app-settings'
+
+// 在 DOM 加载后添加平台类名，供 CSS 使用
+if (typeof document !== 'undefined') {
+  const platform = process.platform
+  document.addEventListener('DOMContentLoaded', () => {
+    document.body.classList.add(`platform-${platform}`)
+  })
+}
 import type {
   AsrJobProgress,
   AsrCacheClearResult,
