@@ -10,7 +10,7 @@
 
 ---
 
-对于 electron 的细节有不清楚的地方，可以直接去查看其源代码：/Users/ponponon/Desktop/code/me/github/electron
+对于 electron 的细节有不清楚的地方，可以直接去查看其源代码：~/Desktop/code/me/github/electron
 
 ---
 
