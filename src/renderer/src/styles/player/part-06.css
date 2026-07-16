@@ -54,7 +54,7 @@
 
 .panel-switcher {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 4px;
   padding: 4px;
   border-radius: var(--radius-md);
@@ -66,8 +66,8 @@
   justify-content: center;
   gap: 5px;
   min-width: 0;
-  height: 28px;
-  padding: 0 6px;
+  height: 32px;
+  padding: 0 8px;
   color: var(--text-muted);
   background: transparent;
   border: 1px solid transparent;
@@ -79,8 +79,8 @@
 
 .panel-tab span {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow: visible;
+  text-overflow: clip;
   white-space: nowrap;
 }
 
