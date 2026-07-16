@@ -49,7 +49,6 @@ function flushPendingMediaPaths(): void {
 export function createWindow(): void {
   const iconPath = resolveAppIconPath()
   const isMac = process.platform === 'darwin'
-  const isLinux = process.platform === 'linux'
   mainState.mainWindow = new BrowserWindow({
     width: 1360,
     height: 840,
@@ -60,11 +59,7 @@ export function createWindow(): void {
     title: APP_NAME,
     ...(isMac
       ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 16, y: 16 } }
-      : {
-          titleBarStyle: 'hidden',
-          frame: false,
-          titleBarOverlay: true
-        }
+      : { titleBarStyle: 'hidden', titleBarOverlay: true }
     ),
     webPreferences: { preload: join(__dirname, '../preload/index.js'), contextIsolation: true, nodeIntegration: false, sandbox: false }
   })
