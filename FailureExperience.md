@@ -404,3 +404,18 @@
 
 - 右侧面板固定为 280px 时，四列标签每列只有约 64px；图标、间距和多语言文字会互相挤压，最终导致所有标签只显示省略号。
 - 侧栏标签应根据最小可用宽度选择两列两行布局，并保留完整文本和辅助提示；不能只依赖 `text-overflow: ellipsis` 掩盖布局不足。
+
+## 开始工作前必须先读 FEATURE.md 和 FailureExperience.md
+
+- 不能一上来就直接改代码，必须先读这两个文件了解项目上下文。
+- FEATURE.md 记录了所有已实现的功能，避免重复实现或遗漏记录。
+- FailureExperience.md 记录了历史错误经验，避免重蹈覆辙。
+- 每次新增功能要加到 FEATURE.md，每次犯错被指正要加到 FailureExperience.md。
+- 这个规则是为了保证换一个 AI 时可以从 0 到 1 重新创建项目。
+
+## Electron 跨平台窗口配置要注意平台差异
+
+- `titleBarStyle: 'hiddenInset'` 是 macOS 专用选项，在 Linux/Windows 上会导致窗口无法正常调整大小。
+- 跨平台 Electron 应用应该用 `process.platform === 'darwin'` 判断平台，分别配置窗口选项。
+- macOS 可用 `hiddenInset` + `trafficLightPosition`；Linux/Windows 应用 `titleBarStyle: 'hidden'` + `titleBarOverlay: true`。
+- 修改窗口配置后要在所有目标平台测试调整大小、最大化、最小化等功能。

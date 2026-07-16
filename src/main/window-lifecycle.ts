@@ -48,7 +48,21 @@ function flushPendingMediaPaths(): void {
 
 export function createWindow(): void {
   const iconPath = resolveAppIconPath()
-  mainState.mainWindow = new BrowserWindow({ width: 1360, height: 840, minWidth: 980, minHeight: 640, backgroundColor: '#090a0c', icon: iconPath ?? undefined, title: APP_NAME, titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 16, y: 16 }, webPreferences: { preload: join(__dirname, '../preload/index.js'), contextIsolation: true, nodeIntegration: false, sandbox: false } })
+  const isMac = process.platform === 'darwin'
+  mainState.mainWindow = new BrowserWindow({
+    width: 1360,
+    height: 840,
+    minWidth: 980,
+    minHeight: 640,
+    backgroundColor: '#090a0c',
+    icon: iconPath ?? undefined,
+    title: APP_NAME,
+    ...(isMac
+      ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 16, y: 16 } }
+      : { titleBarStyle: 'hidden', titleBarOverlay: true }
+    ),
+    webPreferences: { preload: join(__dirname, '../preload/index.js'), contextIsolation: true, nodeIntegration: false, sandbox: false }
+  })
   if (process.env.ELECTRON_RENDERER_URL) mainState.mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL)
   else mainState.mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   mainState.mainWindow.webContents.once('did-finish-load', () => {
