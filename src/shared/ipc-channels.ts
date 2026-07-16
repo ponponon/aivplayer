@@ -11,6 +11,8 @@ export const IPC_CHANNELS = {
   APP_SET_SETTINGS: 'app:set-settings',
   APP_MENU_OPEN_SETTINGS: 'app-menu:open-settings',
   ASR_HEALTH_CHECK: 'asr:health-check',
+  ASR_CACHE_STATS: 'asr:cache-stats',
+  ASR_CACHE_CLEAR_STALE: 'asr:cache-clear-stale',
   ASR_AUTO_DETECT_WHISPER_BINARY: 'asr:auto-detect-whisper-binary',
   ASR_SELECT_WHISPER_BINARY: 'asr:select-whisper-binary',
   ASR_DOWNLOAD_MODEL: 'asr:download-model',

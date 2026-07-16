@@ -11,8 +11,10 @@ import {
   readWhisperSubtitleLanguage,
   runAsrSubtitleJob
 } from './asr-subtitle-job.ts'
+import { recordSubtitleCacheManifest } from './subtitle-cache-manifest.ts'
 import { convertVttToSrt } from './subtitle-writer.ts'
 import { readAsrRuntimeSettings, saveWhisperBinaryPath } from './asr-settings.ts'
+import { clearStaleSubtitleCache, getSubtitleCacheStats } from './subtitle-cache-management.ts'
 import { getWhisperBinaryNames, parseWhisperBinaryReplacementName } from './whisper-binary.ts'
 import { getAppCopy } from '../../shared/i18n'
 import type {
@@ -44,6 +46,7 @@ import {
   createOpenAiCompatibleSummaryProvider,
   createSubtitleSummaryProviderRef,
   findSubtitleSummaryCache,
+  getSubtitleSummaryCachePath,
   runSubtitleSummaryJob,
   SubtitleSummaryError
 } from './subtitle-summary.ts'
@@ -503,6 +506,8 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
 
   return {
     healthCheck: readHealthStatus,
+    getAsrCacheStats: () => getSubtitleCacheStats(getSubtitleCacheDirectory()),
+    clearStaleAsrCache: () => clearStaleSubtitleCache(getSubtitleCacheDirectory()),
 
     async configureWhisperBinaryPath(binaryPath: string): Promise<AsrRuntimeStatus> {
       const normalizedBinaryPath = await resolveExecutablePath({
@@ -616,6 +621,12 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
           getLocale: options.getLocale
         })
 
+        await recordSubtitleCacheManifest({
+          cacheDirectory: getSubtitleCacheDirectory(),
+          mediaPath: request.mediaPath,
+          artifact: { kind: 'asr', modelId: model.id, subtitleLanguage: result.subtitleLanguage, subtitlePath: result.subtitlePath, subtitleSrtPath: result.subtitleSrtPath }
+        })
+
         return {
           success: true,
           message: copy.runtime.subtitleGenerated,
@@ -669,6 +680,12 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
             model
           }
         }
+
+        await recordSubtitleCacheManifest({
+          cacheDirectory: getSubtitleCacheDirectory(),
+          mediaPath: request.mediaPath,
+          artifact: { kind: 'asr', modelId: model.id, subtitleLanguage: (await readWhisperSubtitleLanguage(cached.outputBase)) ?? undefined, subtitlePath: cached.subtitlePath, subtitleSrtPath: cached.subtitleSrtPath }
+        })
 
         return {
           success: true,
@@ -726,6 +743,12 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
             translationGlossary: provider.glossary ?? undefined
           }
         }
+
+        await recordSubtitleCacheManifest({
+          cacheDirectory: getSubtitleCacheDirectory(),
+          mediaPath: request.mediaPath,
+          artifact: { kind: 'translation', sourceSubtitlePath: request.subtitlePath, sourceLanguage, targetLanguage: request.targetLanguage, model: provider.model, glossary: provider.glossary, subtitlePath: cached.subtitlePath, subtitleSrtPath: cached.subtitleSrtPath }
+        })
 
         return {
           success: true,
@@ -821,6 +844,12 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
           }
         })
 
+        await recordSubtitleCacheManifest({
+          cacheDirectory: getSubtitleCacheDirectory(),
+          mediaPath: request.mediaPath,
+          artifact: { kind: 'translation', sourceSubtitlePath: request.subtitlePath, sourceLanguage, targetLanguage: request.targetLanguage, model: provider.model, glossary: provider.glossary, subtitlePath: result.subtitlePath, subtitleSrtPath: result.subtitleSrtPath }
+        })
+
         jobOptions.onProgress?.({
           stage: 'completed',
           percent: 1,
@@ -867,7 +896,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
       const sourceLanguage = request.sourceLanguage ?? 'auto'
       const mode = request.mode ?? 'quick'
       const provider = getSummaryProviderRef()
-      if (!provider) return { success: false, message: copy.runtime.summaryServiceMissing, sourceSubtitlePath: request.subtitlePath, sourceLanguage, targetLanguage: request.targetLanguage, mode }
+      if (!provider) return { success: false, message: copy.runtime.summaryServiceMissing, sourceSubtitlePath: request.subtitlePath, sourceLanguage, sourceType: request.sourceType ?? 'raw', targetLanguage: request.targetLanguage, mode }
       const summary = await findSubtitleSummaryCache({
         sourceSubtitlePath: request.subtitlePath,
         cacheDirectory: getSubtitleCacheDirectory(),
@@ -876,8 +905,18 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
         mode,
         provider
       })
-      if (!summary) return { success: false, message: copy.runtime.subtitleSummaryCacheMiss, sourceSubtitlePath: request.subtitlePath, sourceLanguage, targetLanguage: request.targetLanguage, mode, summaryModel: provider.model }
-      return { success: true, message: copy.runtime.subtitleSummaryCacheHit, sourceSubtitlePath: request.subtitlePath, sourceLanguage, targetLanguage: request.targetLanguage, mode, summaryModel: provider.model, summary }
+      if (!summary) return { success: false, message: copy.runtime.subtitleSummaryCacheMiss, sourceSubtitlePath: request.subtitlePath, sourceLanguage, sourceType: request.sourceType ?? 'raw', targetLanguage: request.targetLanguage, mode, summaryModel: provider.model }
+      try {
+        const summaryPath = await getSubtitleSummaryCachePath({ sourceSubtitlePath: request.subtitlePath, sourceLanguage, sourceType: request.sourceType ?? 'raw', cacheDirectory: getSubtitleCacheDirectory(), targetLanguage: request.targetLanguage, mode, provider })
+        await recordSubtitleCacheManifest({
+          cacheDirectory: getSubtitleCacheDirectory(),
+          mediaPath: request.mediaPath,
+          artifact: { kind: 'summary', sourceSubtitlePath: request.subtitlePath, sourceLanguage, sourceType: request.sourceType ?? 'raw', targetLanguage: request.targetLanguage, mode, model: provider.model, summaryPath }
+        })
+      } catch {
+        // Indexing is best effort and must not turn a valid cache hit into a failure.
+      }
+      return { success: true, message: copy.runtime.subtitleSummaryCacheHit, sourceSubtitlePath: request.subtitlePath, sourceLanguage, sourceType: request.sourceType ?? 'raw', targetLanguage: request.targetLanguage, mode, summaryModel: provider.model, summary }
     },
     async summarizeSubtitle(
       request: AsrSubtitleSummaryRequest,
@@ -887,13 +926,14 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
       const sourceLanguage = request.sourceLanguage ?? 'auto'
       const mode = request.mode ?? 'quick'
       const provider = createSummaryProvider()
-      if (!provider) return { success: false, message: copy.runtime.summaryServiceMissing, sourceSubtitlePath: request.subtitlePath, sourceLanguage, targetLanguage: request.targetLanguage, mode }
+      if (!provider) return { success: false, message: copy.runtime.summaryServiceMissing, sourceSubtitlePath: request.subtitlePath, sourceLanguage, sourceType: request.sourceType ?? 'raw', targetLanguage: request.targetLanguage, mode }
       try {
         jobOptions.onProgress?.({ stage: 'summarizing', percent: 0, message: copy.asrPanel.summarizingSubtitle })
         const result = await runSubtitleSummaryJob({
           sourceSubtitlePath: request.subtitlePath,
           cacheDirectory: getSubtitleCacheDirectory(),
           sourceLanguage,
+          sourceType: request.sourceType ?? 'raw',
           targetLanguage: request.targetLanguage,
           mode,
           force: request.force,
@@ -901,13 +941,23 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
           signal: jobOptions.signal,
           onProgress: (progress) => jobOptions.onProgress?.({ stage: 'summarizing', percent: progress.percent, message: copy.asrPanel.summaryProgress(progress.completedSteps, progress.totalSteps) })
         })
+        try {
+          const summaryPath = await getSubtitleSummaryCachePath({ sourceSubtitlePath: request.subtitlePath, sourceLanguage, sourceType: result.sourceType, cacheDirectory: getSubtitleCacheDirectory(), targetLanguage: request.targetLanguage, mode, provider })
+          await recordSubtitleCacheManifest({
+            cacheDirectory: getSubtitleCacheDirectory(),
+            mediaPath: request.mediaPath,
+            artifact: { kind: 'summary', sourceSubtitlePath: request.subtitlePath, sourceLanguage, sourceType: result.sourceType, targetLanguage: request.targetLanguage, mode, model: provider.model, summaryPath }
+          })
+        } catch {
+          // Indexing is best effort and must not turn a valid summary into a failure.
+        }
         jobOptions.onProgress?.({ stage: 'completed', percent: 1, message: copy.runtime.subtitleSummaryGenerated })
-        return { success: true, message: copy.runtime.subtitleSummaryGenerated, sourceSubtitlePath: request.subtitlePath, sourceLanguage, targetLanguage: request.targetLanguage, mode, summaryModel: provider.model, summary: result.summary, summaryStats: result.summaryStats }
+        return { success: true, message: copy.runtime.subtitleSummaryGenerated, sourceSubtitlePath: request.subtitlePath, sourceLanguage, sourceType: result.sourceType, targetLanguage: request.targetLanguage, mode, summaryModel: provider.model, summary: result.summary, summaryStats: result.summaryStats }
       } catch (error) {
         const failure = formatSummaryServiceError(copy, error)
         const canceled = error instanceof SubtitleSummaryError && error.code === 'cancelled'
         jobOptions.onProgress?.({ stage: canceled ? 'cancelled' : 'failed', percent: null, message: failure.message })
-        return { success: false, message: failure.message, canceled, sourceSubtitlePath: request.subtitlePath, sourceLanguage, targetLanguage: request.targetLanguage, mode, summaryModel: provider.model, errorDetails: failure.errorDetails }
+        return { success: false, message: failure.message, canceled, sourceSubtitlePath: request.subtitlePath, sourceLanguage, sourceType: request.sourceType ?? 'raw', targetLanguage: request.targetLanguage, mode, summaryModel: provider.model, errorDetails: failure.errorDetails }
       }
     },
     async testTranslationService(

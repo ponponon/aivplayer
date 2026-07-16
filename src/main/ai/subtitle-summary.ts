@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { basename, dirname, extname, join } from 'node:path'
 import type { SubtitleTargetLanguageId } from '../../shared/app-settings.ts'
-import type { AsrSubtitleSummary, AsrSubtitleSummaryChapter, AsrSubtitleSummaryCharacter, AsrSubtitleSummaryMode, AsrSubtitleSummaryStats, TranscriptSegment } from '../../shared/media-types.ts'
+import type { AsrSubtitleSummary, AsrSubtitleSummaryChapter, AsrSubtitleSummaryCharacter, AsrSubtitleSummaryMode, AsrSubtitleSummarySourceType, AsrSubtitleSummaryStats, TranscriptSegment } from '../../shared/media-types.ts'
 import { parseVtt } from './subtitle-writer.ts'
 import { pathExists } from './model-manager.ts'
 
@@ -17,6 +17,7 @@ export type SubtitleSummaryJobOptions = {
   sourceSubtitlePath: string
   cacheDirectory: string
   sourceLanguage?: string
+  sourceType?: AsrSubtitleSummarySourceType
   targetLanguage: SubtitleTargetLanguageId
   mode?: AsrSubtitleSummaryMode
   force?: boolean
@@ -30,6 +31,7 @@ export type SubtitleSummaryCacheQuery = Omit<SubtitleSummaryJobOptions, 'signal'
 export type SubtitleSummaryJobResult = {
   summary: AsrSubtitleSummary
   summaryStats: AsrSubtitleSummaryStats
+  sourceType: AsrSubtitleSummarySourceType
 }
 export type OpenAiCompatibleSummaryProviderOptions = {
   baseUrl: string
@@ -90,6 +92,11 @@ function getSummaryOutputPath(options: { cacheDirectory: string; sourceSubtitleP
   const model = sanitizePathPart(options.provider.model)
   const key = createSummaryCacheKey(options)
   return join(options.cacheDirectory, 'summaries', `${stem}-summary-${options.targetLanguage}-${options.mode}-${model}-${key}.json`)
+}
+
+export async function getSubtitleSummaryCachePath(query: SubtitleSummaryCacheQuery): Promise<string> {
+  const sourceSubtitleText = await readFile(query.sourceSubtitlePath, 'utf8')
+  return getSummaryOutputPath({ cacheDirectory: query.cacheDirectory, sourceSubtitlePath: query.sourceSubtitlePath, sourceSubtitleText, sourceLanguage: query.sourceLanguage ?? 'auto', targetLanguage: query.targetLanguage, mode: query.mode ?? 'quick', provider: query.provider })
 }
 
 function formatTranscriptTime(seconds: number): string {
@@ -250,6 +257,7 @@ export function createSubtitleSummaryProviderRef(model: string | null | undefine
 export async function runSubtitleSummaryJob(options: SubtitleSummaryJobOptions): Promise<SubtitleSummaryJobResult> {
   const startedAt = performance.now()
   const sourceLanguage = options.sourceLanguage ?? 'auto'
+  const sourceType = options.sourceType ?? 'raw'
   const mode = options.mode ?? 'quick'
   const sourceSubtitleText = await readFile(options.sourceSubtitlePath, 'utf8')
   const segments = parseVtt(sourceSubtitleText)
@@ -261,7 +269,7 @@ export async function runSubtitleSummaryJob(options: SubtitleSummaryJobOptions):
 
   if (!options.force && await hasFile(outputPath)) {
     const cached = readCachedSummary(await readFile(outputPath, 'utf8'), mode)
-    if (cached) return { summary: cached, summaryStats: createStats(true) }
+    if (cached) return { summary: cached, summaryStats: createStats(true), sourceType }
   }
 
   const totalSteps = chunks.length + 1
@@ -289,17 +297,16 @@ export async function runSubtitleSummaryJob(options: SubtitleSummaryJobOptions):
 
   await mkdir(dirname(outputPath), { recursive: true })
   const temporaryPath = `${outputPath}.tmp`
-  await writeFile(temporaryPath, `${JSON.stringify({ mode, summary }, null, 2)}\n`, 'utf8')
+  await writeFile(temporaryPath, `${JSON.stringify({ mode, sourceType, summary }, null, 2)}\n`, 'utf8')
   throwIfSummaryAborted(options.signal)
   await rename(temporaryPath, outputPath)
   options.onProgress?.({ completedSteps: totalSteps, totalSteps, percent: 1 })
-  return { summary, summaryStats: createStats(false) }
+  return { summary, summaryStats: createStats(false), sourceType }
 }
 
 export async function findSubtitleSummaryCache(query: SubtitleSummaryCacheQuery): Promise<AsrSubtitleSummary | null> {
   try {
-    const sourceSubtitleText = await readFile(query.sourceSubtitlePath, 'utf8')
-    const outputPath = getSummaryOutputPath({ cacheDirectory: query.cacheDirectory, sourceSubtitlePath: query.sourceSubtitlePath, sourceSubtitleText, sourceLanguage: query.sourceLanguage ?? 'auto', targetLanguage: query.targetLanguage, mode: query.mode ?? 'quick', provider: query.provider })
+    const outputPath = await getSubtitleSummaryCachePath(query)
     if (!(await hasFile(outputPath))) return null
     return readCachedSummary(await readFile(outputPath, 'utf8'), query.mode ?? 'quick')
   } catch {

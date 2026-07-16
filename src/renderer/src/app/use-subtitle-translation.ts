@@ -24,7 +24,7 @@ export function useSubtitleTranslation(model: AppModel, derived: AppDerived, pat
     model.setAsrNotice(null)
     model.setAsrProgress({ stage: 'translating', percent: 0, message: derived.copy.asrPanel.translatingSubtitle })
     try {
-      const result = await window.aiv.translateAsrSubtitle({ subtitlePath: sourceSubtitlePath, subtitleSrtPath: sourceSubtitleSrtPath ?? undefined, sourceLanguage, targetLanguage })
+      const result = await window.aiv.translateAsrSubtitle({ mediaPath: model.state.currentFile?.path, subtitlePath: sourceSubtitlePath, subtitleSrtPath: sourceSubtitleSrtPath ?? undefined, sourceLanguage, targetLanguage })
       const timedResult = result.success && result.translationStats && flowStartedAt != null
         ? { ...result, translationStats: { ...result.translationStats, endToEndElapsedMs: Math.max(0, Math.round(performance.now() - flowStartedAt)) } }
         : result

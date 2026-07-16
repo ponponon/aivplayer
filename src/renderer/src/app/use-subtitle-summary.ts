@@ -1,4 +1,4 @@
-import type { AsrSubtitleResult, AsrSubtitleSummaryMode, AsrSubtitleSummaryResult } from '../../../shared/media-types'
+import type { AsrSubtitleResult, AsrSubtitleSummaryMode, AsrSubtitleSummaryResult, AsrSubtitleSummarySourceType } from '../../../shared/media-types'
 import type { AppDerived } from './use-app-derived'
 import type { AppModel } from './app-types'
 
@@ -10,6 +10,7 @@ export type SubtitleSummaryActions = {
 export type SubtitleSummarySource = {
   subtitlePath: string
   sourceLanguage?: string | null
+  sourceType?: AsrSubtitleSummarySourceType
 }
 
 export type SubtitleSummaryOptions = {
@@ -29,12 +30,14 @@ export function useSubtitleSummary(
     if (options.openPanel !== false) openPanelMode('summary')
     let sourcePath = options.source?.subtitlePath ?? derived.summarySourcePath
     let sourceLanguage = options.source?.sourceLanguage ?? derived.summarySourceLanguage
+    let sourceType = options.source?.sourceType ?? derived.summarySourceType
 
     if (!sourcePath) {
       const generated = await generateSubtitle()
       if (!generated?.subtitlePath) return null
       sourcePath = generated.subtitlePath
       sourceLanguage = generated.subtitleLanguage ?? 'auto'
+      sourceType = 'raw'
     }
 
     model.summaryStartedAtRef.current = performance.now()
@@ -46,7 +49,7 @@ export function useSubtitleSummary(
     try {
       const summaryMode = options.mode ?? model.summaryMode
       const force = Boolean(model.subtitleSummaryResult?.summary && (model.subtitleSummaryResult.mode ?? 'detailed') === summaryMode)
-      const result = await window.aiv.summarizeAsrSubtitle({ subtitlePath: sourcePath, sourceLanguage: sourceLanguage ?? undefined, targetLanguage: model.appSettings.subtitles.targetLanguage, mode: summaryMode, force })
+      const result = await window.aiv.summarizeAsrSubtitle({ mediaPath: model.state.currentFile.path, subtitlePath: sourcePath, sourceLanguage: sourceLanguage ?? undefined, sourceType, targetLanguage: model.appSettings.subtitles.targetLanguage, mode: summaryMode, force })
       model.setSummaryElapsedMs(result.summaryStats?.elapsedMs ?? (model.summaryStartedAtRef.current ? Math.max(0, Math.round(performance.now() - model.summaryStartedAtRef.current)) : 0))
       model.setSubtitleSummaryResult(result.success ? result : null)
       model.setSummaryNotice(result)

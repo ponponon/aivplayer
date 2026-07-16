@@ -70,6 +70,14 @@
   border-color: rgba(143, 212, 155, 0.24);
 }
 
+.summary-source-badge {
+  padding: 3px 6px;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-soft);
+  border-radius: 4px;
+}
+
 .summary-chapter-list {
   display: grid;
   gap: 6px;

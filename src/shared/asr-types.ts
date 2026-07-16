@@ -18,7 +18,7 @@ export type AsrDiagnosticLogEntry = { timestamp: string; event: string; [key: st
 export type AsrDiagnosticLogResult = { success: boolean; message: string; entries: AsrDiagnosticLogEntry[] }
 export type AsrSubtitleExportRequest = { subtitlePath: string; subtitleSrtPath?: string }
 export type AsrSubtitleExportResult = { success: boolean; message: string; subtitlePath?: string; subtitleSrtPath?: string; subtitleSrtUrl?: string }
-export type AsrSubtitleTranslationRequest = { subtitlePath: string; subtitleSrtPath?: string; sourceLanguage?: string; targetLanguage: SubtitleTargetLanguageId }
+export type AsrSubtitleTranslationRequest = { mediaPath?: string; subtitlePath: string; subtitleSrtPath?: string; sourceLanguage?: string; targetLanguage: SubtitleTargetLanguageId }
 export type AsrSubtitleTranslationStats = { elapsedMs: number; subtitleCueCount: number; translationBatchCount: number; cacheHit: boolean; endToEndElapsedMs?: number }
 export type AsrSubtitleTranslationResult = { success: boolean; message: string; canceled?: boolean; sourceSubtitlePath?: string; sourceLanguage?: string; targetLanguage?: SubtitleTargetLanguageId; translationModel?: string; translationGlossary?: string; translationStats?: AsrSubtitleTranslationStats; subtitlePath?: string; subtitleSrtPath?: string; subtitleUrl?: string; subtitleSrtUrl?: string; errorDetails?: AsrErrorDetails }
 export type AsrTranslationServiceTestRequest = { sourceLanguage?: string; targetLanguage: SubtitleTargetLanguageId }
@@ -26,6 +26,7 @@ export type AsrTranslationServiceTestResult = { success: boolean; message: strin
 
 export type AsrSubtitleSummaryCharacter = { name: string; role: string }
 export type AsrSubtitleSummaryMode = 'quick' | 'detailed'
+export type AsrSubtitleSummarySourceType = 'raw' | 'translated'
 export type AsrSubtitleSummaryChapter = { title: string; timeSeconds: number; summary: string }
 export type AsrSubtitleSummary = {
   title: string
@@ -38,8 +39,25 @@ export type AsrSubtitleSummary = {
   ending: string
 }
 export type AsrSubtitleSummaryStats = { elapsedMs: number; subtitleCueCount: number; chunkCount: number; cacheHit: boolean; inputCharacterCount: number }
-export type AsrSubtitleSummaryRequest = { subtitlePath: string; sourceLanguage?: string; targetLanguage: SubtitleTargetLanguageId; mode?: AsrSubtitleSummaryMode; force?: boolean }
-export type AsrSubtitleSummaryResult = { success: boolean; message: string; canceled?: boolean; sourceSubtitlePath?: string; sourceLanguage?: string; targetLanguage?: SubtitleTargetLanguageId; mode?: AsrSubtitleSummaryMode; summaryModel?: string; summary?: AsrSubtitleSummary; summaryStats?: AsrSubtitleSummaryStats; errorDetails?: AsrErrorDetails }
+export type AsrSubtitleSummaryRequest = { mediaPath?: string; subtitlePath: string; sourceLanguage?: string; sourceType?: AsrSubtitleSummarySourceType; targetLanguage: SubtitleTargetLanguageId; mode?: AsrSubtitleSummaryMode; force?: boolean }
+export type AsrSubtitleSummaryResult = { success: boolean; message: string; canceled?: boolean; sourceSubtitlePath?: string; sourceLanguage?: string; sourceType?: AsrSubtitleSummarySourceType; targetLanguage?: SubtitleTargetLanguageId; mode?: AsrSubtitleSummaryMode; summaryModel?: string; summary?: AsrSubtitleSummary; summaryStats?: AsrSubtitleSummaryStats; errorDetails?: AsrErrorDetails }
 export type AsrSubtitleSummaryExportFormat = 'markdown' | 'txt' | 'json'
 export type AsrSubtitleSummaryExportRequest = { format: AsrSubtitleSummaryExportFormat; content: string; defaultFileName?: string }
 export type AsrSubtitleSummaryExportResult = { success: boolean; canceled?: boolean; message: string; format?: AsrSubtitleSummaryExportFormat; filePath?: string }
+
+export type AsrCacheStats = {
+  cacheDirectory: string
+  totalBytes: number
+  totalFiles: number
+  subtitleBytes: number
+  subtitleFiles: number
+  summaryBytes: number
+  summaryFiles: number
+  indexBytes: number
+  indexFiles: number
+  otherBytes: number
+  otherFiles: number
+  staleIndexFiles: number
+}
+export type AsrCacheStatsResult = { success: boolean; message: string; stats: AsrCacheStats }
+export type AsrCacheClearResult = { success: boolean; message: string; deletedFiles: number; deletedBytes: number; stats: AsrCacheStats }

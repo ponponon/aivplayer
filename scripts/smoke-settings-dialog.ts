@@ -112,6 +112,19 @@ async function main(): Promise<void> {
       })
     })
 
+    await page.locator('[data-settings-tab="subtitles"]').click()
+    await page.waitForTimeout(500)
+
+    const cachePanelState = await page.evaluate(() => {
+      const panel = document.querySelector('#settings-section-subtitles') as HTMLElement | null
+      const cachePanel = panel?.querySelector('.settings-cache-management') as HTMLElement | null
+      return {
+        display: panel ? window.getComputedStyle(panel).display : 'missing',
+        cachePanel: cachePanel ? 'present' : 'missing',
+        cacheButtons: cachePanel?.querySelectorAll('.settings-cache-actions button').length ?? 0
+      }
+    })
+
     await page.locator('[data-settings-tab="shortcuts"]').click()
     await page.waitForTimeout(250)
 
@@ -132,6 +145,7 @@ async function main(): Promise<void> {
 
     console.log(`Settings number styles: ${JSON.stringify(numberStyles)}`)
     console.log(`Video settings card height: ${JSON.stringify(videoCardHeight)}`)
+    console.log(`Subtitle cache panel: ${JSON.stringify(cachePanelState)}`)
     console.log(`Shortcut panel: ${JSON.stringify({ shortcutCount, ...shortcutPanelState })}`)
     console.log(`Settings dialog screenshot: ${screenshotPath}`)
     console.log(`Shortcut settings screenshot: ${shortcutScreenshotPath}`)
@@ -142,7 +156,10 @@ async function main(): Promise<void> {
       !videoCardHeight ||
       videoCardHeight.alignItems !== 'start' ||
       videoCardHeight.clientHeight > videoCardHeight.scrollHeight + 1 ||
-      shortcutCount !== 8 ||
+      cachePanelState.display !== 'grid' ||
+      cachePanelState.cachePanel !== 'present' ||
+      cachePanelState.cacheButtons !== 2 ||
+      shortcutCount !== 9 ||
       shortcutPanelState.display !== 'grid' ||
       shortcutPanelState.ariaHidden !== 'false'
     ) {

@@ -29,7 +29,7 @@ export async function runAiWorkflow(context: AiWorkflowRunnerContext): Promise<v
   assertWorkflowCanContinue(filePath)
 
   if (mode === 'guide' && derived.summarySourcePath) {
-    source = { subtitlePath: derived.summarySourcePath, sourceLanguage: derived.summarySourceLanguage }
+    source = { subtitlePath: derived.summarySourcePath, sourceLanguage: derived.summarySourceLanguage, sourceType: derived.summarySourceType }
   } else {
     updateWorkflow({ stage: 'asr', progress: 0, message: workflowCopy.workflowAsr })
     generatedSubtitle = derived.subtitlePath ? null : await generateSubtitle()
@@ -39,7 +39,8 @@ export async function runAiWorkflow(context: AiWorkflowRunnerContext): Promise<v
     if (!rawSubtitlePath) throw new AiWorkflowFailureError(derived.copy.summary.openSubtitleTools)
     source = {
       subtitlePath: rawSubtitlePath,
-      sourceLanguage: generatedSubtitle?.subtitleLanguage ?? derived.subtitleTranslationSourceLanguage
+      sourceLanguage: generatedSubtitle?.subtitleLanguage ?? derived.subtitleTranslationSourceLanguage,
+      sourceType: 'raw'
     }
   }
 
@@ -47,7 +48,7 @@ export async function runAiWorkflow(context: AiWorkflowRunnerContext): Promise<v
     if (isSubtitleLanguageMatch(source.sourceLanguage, targetLanguage)) {
       updateWorkflow({ stage: 'translation', progress: 1, message: workflowCopy.workflowTranslationSkipped })
     } else if (hasUsableTranslation(model.translatedSubtitleResult, source.subtitlePath, targetLanguage)) {
-      source = { subtitlePath: model.translatedSubtitleResult.subtitlePath, sourceLanguage: targetLanguage }
+      source = { subtitlePath: model.translatedSubtitleResult.subtitlePath, sourceLanguage: targetLanguage, sourceType: 'translated' }
       updateWorkflow({ stage: 'translation', progress: 1, message: workflowCopy.workflowTranslationSkipped })
     } else {
       updateWorkflow({ stage: 'translation', progress: 0, message: workflowCopy.workflowTranslation })
@@ -56,7 +57,7 @@ export async function runAiWorkflow(context: AiWorkflowRunnerContext): Promise<v
       if (!translated?.success || !translated.subtitlePath) {
         throw new AiWorkflowFailureError(translated?.message ?? workflowCopy.workflowTranslation)
       }
-      source = { subtitlePath: translated.subtitlePath, sourceLanguage: targetLanguage }
+      source = { subtitlePath: translated.subtitlePath, sourceLanguage: targetLanguage, sourceType: 'translated' }
     }
   }
 

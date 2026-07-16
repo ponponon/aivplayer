@@ -9,6 +9,21 @@ import { mainState } from './main-state'
 import { promptForSavePath } from './media-dialogs'
 import { getAppCopy } from '../shared/i18n'
 import { getCurrentLocale } from './main-settings'
+import { SingleFlight } from './ai/single-flight'
+
+const summarySingleFlight = new SingleFlight<Awaited<ReturnType<ReturnType<typeof getAsrRuntime>['summarizeSubtitle']>>, AbortController>()
+
+function summaryRequestKey(request: AsrSubtitleSummaryRequest): string {
+  return JSON.stringify({
+    mediaPath: request.mediaPath ?? '',
+    subtitlePath: request.subtitlePath,
+    sourceLanguage: request.sourceLanguage ?? 'auto',
+    sourceType: request.sourceType ?? 'raw',
+    targetLanguage: request.targetLanguage,
+    mode: request.mode ?? 'quick',
+    force: Boolean(request.force)
+  })
+}
 
 function exportExtension(format: AsrSubtitleSummaryExportRequest['format']): string {
   return format === 'markdown' ? 'md' : format
@@ -32,23 +47,37 @@ function ensureExtension(filePath: string, format: AsrSubtitleSummaryExportReque
 export function registerAsrSummaryIpc(): void {
   ipcMain.handle(IPC_CHANNELS.ASR_SUMMARIZE_SUBTITLE, async (event, request: AsrSubtitleSummaryRequest) => {
     const logDirectoryPath = getAsrLogDirectoryPath(app.getPath('userData'))
-    const controller = new AbortController()
     const senderId = event.sender.id
-    mainState.summaryAbortControllers.get(senderId)?.abort()
-    mainState.summaryAbortControllers.set(senderId, controller)
-    await appendAsrDiagnosticLog(logDirectoryPath, 'subtitle-summary-started', { subtitlePath: request.subtitlePath, sourceLanguage: request.sourceLanguage, targetLanguage: request.targetLanguage, mode: request.mode ?? 'quick' })
+    const key = summaryRequestKey(request)
+    if (!summarySingleFlight.has(key)) mainState.summaryAbortControllers.get(senderId)?.abort()
+    const flight = summarySingleFlight.start(key, () => {
+      const controller = new AbortController()
+      mainState.summaryAbortControllers.set(senderId, controller)
+      return {
+        context: controller,
+        task: async (sharedController) => {
+          await appendAsrDiagnosticLog(logDirectoryPath, 'subtitle-summary-started', { subtitlePath: request.subtitlePath, sourceLanguage: request.sourceLanguage, sourceType: request.sourceType, targetLanguage: request.targetLanguage, mode: request.mode ?? 'quick' })
+          try {
+            const result = await getAsrRuntime().summarizeSubtitle(request, {
+              signal: sharedController.signal,
+              onProgress: (progress) => event.sender.send(IPC_CHANNELS.ASR_JOB_PROGRESS, progress)
+            })
+            await appendAsrDiagnosticLog(logDirectoryPath, 'subtitle-summary-finished', { subtitlePath: request.subtitlePath, targetLanguage: request.targetLanguage, mode: result.mode, success: result.success, canceled: result.canceled, message: result.message, summaryStats: result.summaryStats, errorDetails: redactAsrErrorDetails(result.errorDetails) })
+            return result
+          } catch (error) {
+            await appendAsrDiagnosticLog(logDirectoryPath, 'subtitle-summary-threw', { subtitlePath: request.subtitlePath, targetLanguage: request.targetLanguage, message: error instanceof Error ? error.message : String(error) })
+            throw error
+          } finally {
+            if (mainState.summaryAbortControllers.get(senderId) === sharedController) mainState.summaryAbortControllers.delete(senderId)
+          }
+        }
+      }
+    })
+    if (flight.joined) mainState.summaryAbortControllers.set(senderId, flight.context)
     try {
-      const result = await getAsrRuntime().summarizeSubtitle(request, {
-        signal: controller.signal,
-        onProgress: (progress) => event.sender.send(IPC_CHANNELS.ASR_JOB_PROGRESS, progress)
-      })
-      await appendAsrDiagnosticLog(logDirectoryPath, 'subtitle-summary-finished', { subtitlePath: request.subtitlePath, targetLanguage: request.targetLanguage, mode: result.mode, success: result.success, canceled: result.canceled, message: result.message, summaryStats: result.summaryStats, errorDetails: redactAsrErrorDetails(result.errorDetails) })
-      return result
-    } catch (error) {
-      await appendAsrDiagnosticLog(logDirectoryPath, 'subtitle-summary-threw', { subtitlePath: request.subtitlePath, targetLanguage: request.targetLanguage, message: error instanceof Error ? error.message : String(error) })
-      throw error
+      return await flight.promise
     } finally {
-      if (mainState.summaryAbortControllers.get(senderId) === controller) mainState.summaryAbortControllers.delete(senderId)
+      if (mainState.summaryAbortControllers.get(senderId) === flight.context) mainState.summaryAbortControllers.delete(senderId)
     }
   })
   ipcMain.handle(IPC_CHANNELS.ASR_CANCEL_SUMMARY, (event) => {

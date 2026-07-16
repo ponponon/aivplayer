@@ -270,7 +270,10 @@
       characterFallback: '역할 정보 없음',
       noMedia: '비디오를 열면 여기에 콘텐츠 요약이 표시됩니다.',
       generatedMeta: (duration: string, cacheHit: boolean) => cacheHit ? `${duration}에 생성 · 로컬 캐시` : `${duration}에 생성`,
-      sourceMeta: (cueCount: number) => `${cueCount}개 자막 기반`
+      sourceMeta: (cueCount: number) => `${cueCount}개 자막 기반`,
+      sourceRaw: '원문 자막 기반',
+      sourceTranslated: '번역 자막 기반',
+      regenerateFromTranslation: '번역 자막으로 다시 생성'
     },
     batchSubtitle: {
       title: '일괄 자막 작업 센터',
@@ -482,7 +485,23 @@
         translationServiceCheck: '번역 서비스 테스트',
         translationServiceChecking: '테스트 중',
         translationServiceResultTitle: '테스트 결과',
-        translationServicePreviewTitle: '미리보기 결과'
+        translationServicePreviewTitle: '미리보기 결과',
+        cache: {
+          title: '로컬 AI 캐시',
+          description: '자막, 번역, 요약 및 캐시 인덱스는 로컬에 저장됩니다. 정리는 오래된 인덱스와 1시간이 지난 임시 파일만 삭제하며 사용 가능한 콘텐츠는 보존합니다.',
+          total: '전체 캐시 (크기 · 파일)',
+          subtitles: '자막 캐시 (크기 · 파일)',
+          summaries: '요약 캐시 (크기 · 파일)',
+          indexes: '인덱스 파일 (크기 · 파일)',
+          staleIndexes: (count: number) => `정리할 오래된 인덱스: ${count}개`,
+          loading: '캐시 통계를 읽는 중…',
+          unavailable: '캐시 통계를 읽을 수 없습니다.',
+          refresh: '통계 새로 고침',
+          refreshing: '새로 고치는 중…',
+          clearStale: '오래된 캐시 정리',
+          clearing: '정리 중…',
+          clearDone: (files: number, bytes: number) => files > 0 ? `${files}개의 오래된 파일을 정리하고 ${Math.max(1, Math.round(bytes / 1024))}KB를 확보했습니다.` : '정리할 오래된 캐시가 없습니다.'
+        }
       },
       capture: {
         title: '캡처 및 녹화',

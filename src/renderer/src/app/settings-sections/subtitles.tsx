@@ -1,14 +1,16 @@
-import { Captions } from 'lucide-react'
+import { Captions, RefreshCcw, Trash2 } from 'lucide-react'
 import type { ReactElement } from 'react'
 import { SettingsField, SettingsSelect, SettingsToggle } from '../settings-controls'
 import { SettingsNumberInput } from '../settings-inputs'
+import { formatBytes } from '../app-helpers'
 import { clampSubtitleFontSize } from '../subtitle-display-settings'
 import { TranslationServiceSettings } from '../translation-service-settings'
 import type { SettingsSectionProps } from '../settings-section-types'
 
 export function SubtitlesSettingsSection(props: SettingsSectionProps): ReactElement {
   const { copy, settings, patchSettingsSection, activeSectionId, subtitleLanguageOptions, targetLanguageOptions,
-    aiAutomationModeOptions, subtitleLineHeightOptions, subtitleDisplayModeOptions, modelSourceOptions } = props
+    aiAutomationModeOptions, subtitleLineHeightOptions, subtitleDisplayModeOptions, modelSourceOptions, cacheStats,
+    cacheStatus, isLoadingCacheStats, isClearingCache, onRefreshCacheStats, onClearStaleCache } = props
 
   return (
     <section
@@ -63,6 +65,34 @@ export function SubtitlesSettingsSection(props: SettingsSectionProps): ReactElem
       <SettingsField title={copy.settingsDialog.subtitles.modelSource} description={copy.settingsDialog.subtitles.modelSourceDescription}>
         <SettingsSelect value={settings.asr.preferredModelSourceId} options={modelSourceOptions} onChange={(preferredModelSourceId) => patchSettingsSection('asr', { preferredModelSourceId })} />
       </SettingsField>
+      <div className="settings-field settings-card-wide settings-cache-management">
+        <div className="settings-field-copy">
+          <strong>{copy.settingsDialog.subtitles.cache.title}</strong>
+          <small>{copy.settingsDialog.subtitles.cache.description}</small>
+        </div>
+        {cacheStats ? (
+          <div className="settings-meta-grid">
+            <div className="settings-meta-item"><span>{copy.settingsDialog.subtitles.cache.total}</span><strong>{formatBytes(cacheStats.totalBytes)} · {cacheStats.totalFiles}</strong></div>
+            <div className="settings-meta-item"><span>{copy.settingsDialog.subtitles.cache.subtitles}</span><strong>{formatBytes(cacheStats.subtitleBytes)} · {cacheStats.subtitleFiles}</strong></div>
+            <div className="settings-meta-item"><span>{copy.settingsDialog.subtitles.cache.summaries}</span><strong>{formatBytes(cacheStats.summaryBytes)} · {cacheStats.summaryFiles}</strong></div>
+            <div className="settings-meta-item"><span>{copy.settingsDialog.subtitles.cache.indexes}</span><strong>{formatBytes(cacheStats.indexBytes)} · {cacheStats.indexFiles}</strong></div>
+          </div>
+        ) : (
+          <p className="settings-card-note">{isLoadingCacheStats ? copy.settingsDialog.subtitles.cache.loading : copy.settingsDialog.subtitles.cache.unavailable}</p>
+        )}
+        {cacheStats ? <p className="settings-card-note">{copy.settingsDialog.subtitles.cache.staleIndexes(cacheStats.staleIndexFiles)}</p> : null}
+        <div className="settings-inline-row settings-cache-actions">
+          <button className="settings-secondary-button" type="button" onClick={onRefreshCacheStats} disabled={isLoadingCacheStats || isClearingCache}>
+            <RefreshCcw size={14} />
+            {isLoadingCacheStats ? copy.settingsDialog.subtitles.cache.refreshing : copy.settingsDialog.subtitles.cache.refresh}
+          </button>
+          <button className="settings-secondary-button" type="button" onClick={onClearStaleCache} disabled={isLoadingCacheStats || isClearingCache}>
+            <Trash2 size={14} />
+            {isClearingCache ? copy.settingsDialog.subtitles.cache.clearing : copy.settingsDialog.subtitles.cache.clearStale}
+          </button>
+        </div>
+        {cacheStatus ? <p className={`settings-card-note settings-cache-status ${cacheStatus.success ? 'is-success' : 'is-error'}`}>{cacheStatus.message}</p> : null}
+      </div>
       <TranslationServiceSettings {...props} />
     </section>
   )

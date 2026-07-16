@@ -58,7 +58,7 @@ describe('AI workflow runner', () => {
 
     expect(context.translation.translateSubtitle).not.toHaveBeenCalled()
     expect(context.summary.summarizeSubtitle).toHaveBeenCalledWith({
-      source: { subtitlePath: '/cache/raw.vtt', sourceLanguage: 'zh' },
+      source: { subtitlePath: '/cache/raw.vtt', sourceLanguage: 'zh', sourceType: 'raw' },
       openPanel: false
     })
   })
@@ -82,7 +82,7 @@ describe('AI workflow runner', () => {
 
     expect(translateSubtitle).toHaveBeenCalledWith('zh', null)
     expect(context.summary.summarizeSubtitle).toHaveBeenCalledWith({
-      source: { subtitlePath: '/cache/translated.vtt', sourceLanguage: 'zh' },
+      source: { subtitlePath: '/cache/translated.vtt', sourceLanguage: 'zh', sourceType: 'translated' },
       openPanel: false
     })
   })

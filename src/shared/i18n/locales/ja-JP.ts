@@ -270,7 +270,10 @@
       characterFallback: '役割の記載なし',
       noMedia: '動画を開くと、ここにコンテンツ要約が表示されます。',
       generatedMeta: (duration: string, cacheHit: boolean) => cacheHit ? `${duration} で生成 · ローカルキャッシュ` : `${duration} で生成`,
-      sourceMeta: (cueCount: number) => `${cueCount} 件の字幕を使用`
+      sourceMeta: (cueCount: number) => `${cueCount} 件の字幕を使用`,
+      sourceRaw: '原文字幕を使用',
+      sourceTranslated: '翻訳字幕を使用',
+      regenerateFromTranslation: '翻訳字幕から再生成'
     },
     batchSubtitle: {
       title: '一括字幕タスクセンター',
@@ -482,7 +485,23 @@
         translationServiceCheck: '翻訳サービスをテスト',
         translationServiceChecking: 'テスト中',
         translationServiceResultTitle: 'テスト結果',
-        translationServicePreviewTitle: 'プレビュー結果'
+        translationServicePreviewTitle: 'プレビュー結果',
+        cache: {
+          title: 'ローカル AI キャッシュ',
+          description: '字幕、翻訳、要約、キャッシュインデックスはローカルに保存されます。クリーンアップでは無効なインデックスと 1 時間以上経過した一時ファイルだけを削除し、有効な内容は保持します。',
+          total: 'すべてのキャッシュ（サイズ・ファイル）',
+          subtitles: '字幕キャッシュ（サイズ・ファイル）',
+          summaries: '要約キャッシュ（サイズ・ファイル）',
+          indexes: 'インデックス（サイズ・ファイル）',
+          staleIndexes: (count: number) => `削除対象の無効なインデックス: ${count} 件`,
+          loading: 'キャッシュ統計を読み込み中…',
+          unavailable: 'キャッシュ統計を読み込めません。',
+          refresh: '統計を更新',
+          refreshing: '更新中…',
+          clearStale: '無効なキャッシュを削除',
+          clearing: '削除中…',
+          clearDone: (files: number, bytes: number) => files > 0 ? `${files} 件の無効なファイルを削除し、${Math.max(1, Math.round(bytes / 1024))} KB 解放しました。` : '削除する無効なキャッシュはありません。'
+        }
       },
       capture: {
         title: 'キャプチャと録画',

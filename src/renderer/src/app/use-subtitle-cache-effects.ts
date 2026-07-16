@@ -38,6 +38,7 @@ export function useSubtitleCacheEffects(model: AppModel, derived: AppDerived, pa
     if (!model.state.currentFile || !derived.subtitlePath || !model.appSettings.asr.autoLoadCachedSubtitles || model.isTranslatingSubtitle || matchesCurrentContext(model.translatedSubtitleResult)) return
     let cancelled = false
     void window.aiv.resolveTranslatedAsrSubtitleCache({
+      mediaPath: model.state.currentFile.path,
       subtitlePath: derived.subtitlePath,
       subtitleSrtPath: derived.subtitleSrtPath ?? undefined,
       sourceLanguage: derived.subtitleTranslationSourceLanguage,
@@ -55,14 +56,25 @@ export function useSubtitleCacheEffects(model: AppModel, derived: AppDerived, pa
     if (!model.state.currentFile || !sourcePath || !model.appSettings.asr.autoLoadCachedSubtitles || model.isSummarizingSubtitle) return
     const sourceLanguage = derived.summarySourceLanguage
     const current = model.subtitleSummaryResult
-    if (current?.summary && (current.sourceSubtitlePath !== sourcePath || current.targetLanguage !== model.appSettings.subtitles.targetLanguage || current.summaryModel !== derived.subtitleTranslationModel || (current.mode ?? 'detailed') !== model.summaryMode)) {
+    const currentSourceType = current?.sourceType ?? 'raw'
+    const currentContextMatches = Boolean(current?.summary && current.targetLanguage === model.appSettings.subtitles.targetLanguage && current.summaryModel === derived.subtitleTranslationModel && (current.mode ?? 'detailed') === model.summaryMode)
+    const currentSourceIsAvailable = currentSourceType === 'translated'
+      ? current?.sourceSubtitlePath === model.translatedSubtitleResult?.subtitlePath
+      : current?.sourceSubtitlePath === derived.subtitlePath
+    if (currentContextMatches && currentSourceIsAvailable) return
+    if (current?.summary && currentContextMatches && !currentSourceIsAvailable) {
+      model.setSubtitleSummaryResult(null)
+      model.setSummaryNotice(null)
+      return
+    }
+    if (current?.summary && (current.targetLanguage !== model.appSettings.subtitles.targetLanguage || current.summaryModel !== derived.subtitleTranslationModel || (current.mode ?? 'detailed') !== model.summaryMode)) {
       model.setSubtitleSummaryResult(null)
       model.setSummaryNotice(null)
       return
     }
     if (current?.success && current.sourceSubtitlePath === sourcePath && current.targetLanguage === model.appSettings.subtitles.targetLanguage && (current.mode ?? 'detailed') === model.summaryMode) return
     let cancelled = false
-    void window.aiv.resolveAsrSubtitleSummaryCache({ subtitlePath: sourcePath, sourceLanguage, targetLanguage: model.appSettings.subtitles.targetLanguage, mode: model.summaryMode }).then((result) => {
+    void window.aiv.resolveAsrSubtitleSummaryCache({ mediaPath: model.state.currentFile.path, subtitlePath: sourcePath, sourceLanguage, sourceType: derived.summarySourceType, targetLanguage: model.appSettings.subtitles.targetLanguage, mode: model.summaryMode }).then((result) => {
       if (cancelled || !result.success || !result.summary) return
       model.setSubtitleSummaryResult(result)
       model.setSummaryNotice(result)

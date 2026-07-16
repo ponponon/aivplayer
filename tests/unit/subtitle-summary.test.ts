@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -37,6 +37,7 @@ describe('subtitle summary', () => {
     const second = await runSubtitleSummaryJob({ sourceSubtitlePath, cacheDirectory, sourceLanguage: 'ja', targetLanguage: 'zh', mode: 'quick', provider })
 
     expect(first.summary.title).toBe('夜航')
+    expect(first.sourceType).toBe('raw')
     expect(first.summary.chapters).toEqual([{ title: '调查开始', timeSeconds: 2, summary: '记者发现关键线索。' }])
     expect(first.summaryStats).toMatchObject({ subtitleCueCount: 2, chunkCount: 1, cacheHit: false, inputCharacterCount: expect.any(Number) })
     expect(second.summary).toEqual(first.summary)
@@ -44,6 +45,32 @@ describe('subtitle summary', () => {
     expect(callCount).toBe(2)
     await expect(findSubtitleSummaryCache({ sourceSubtitlePath, cacheDirectory, sourceLanguage: 'ja', targetLanguage: 'zh', mode: 'quick', provider: { id: 'openai-compatible', model: 'summary-model' } })).resolves.toEqual(first.summary)
     expect(first.summary.ending).toBe('')
+  })
+
+  it('persists the subtitle source type with the summary cache', async () => {
+    const sourceSubtitlePath = join(tempDirectory, 'translated-movie.vtt')
+    const cacheDirectory = join(tempDirectory, 'cache')
+    let callCount = 0
+    const provider: SubtitleSummaryProvider = {
+      id: 'openai-compatible',
+      model: 'summary-model',
+      complete: async () => {
+        callCount += 1
+        return callCount === 1
+          ? '阶段笔记：主角开始调查。'
+          : '{"title":"夜航","overview":"主角开始调查。","synopsis":"主角开始调查。","keyPoints":["发现线索"],"characters":[],"themes":[],"ending":""}'
+      }
+    }
+    await writeFile(sourceSubtitlePath, ['WEBVTT', '', '00:00:00.000 --> 00:00:01.000', '主角开始调查。'].join('\n'))
+
+    const result = await runSubtitleSummaryJob({ sourceSubtitlePath, cacheDirectory, sourceType: 'translated', targetLanguage: 'zh', mode: 'quick', provider })
+
+    expect(result.sourceType).toBe('translated')
+    const cachedFile = (await readdir(join(cacheDirectory, 'summaries')))[0]
+    expect(cachedFile).toBeTruthy()
+    if (!cachedFile) throw new Error('summary cache file was not written')
+    const cached = JSON.parse(await readFile(join(cacheDirectory, 'summaries', cachedFile), 'utf8')) as { sourceType?: string }
+    expect(cached.sourceType).toBe('translated')
   })
 
   it('keeps quick and detailed summaries in separate caches', async () => {

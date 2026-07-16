@@ -270,7 +270,10 @@
       characterFallback: 'Role not specified',
       noMedia: 'Open a video to see its content summary here.',
       generatedMeta: (duration: string, cacheHit: boolean) => cacheHit ? `Generated in ${duration} · local cache` : `Generated in ${duration}`,
-      sourceMeta: (cueCount: number) => `Based on ${cueCount} subtitle cues`
+      sourceMeta: (cueCount: number) => `Based on ${cueCount} subtitle cues`,
+      sourceRaw: 'Based on original subtitles',
+      sourceTranslated: 'Based on translated subtitles',
+      regenerateFromTranslation: 'Regenerate from translation'
     },
     batchSubtitle: {
       title: 'Batch subtitle task center',
@@ -482,7 +485,23 @@
         translationServiceCheck: 'Test translation service',
         translationServiceChecking: 'Testing',
         translationServiceResultTitle: 'Test result',
-        translationServicePreviewTitle: 'Preview result'
+        translationServicePreviewTitle: 'Preview result',
+        cache: {
+          title: 'Local AI cache',
+          description: 'Subtitles, translations, summaries, and cache indexes are stored locally. Cleanup only removes stale indexes and temporary files older than one hour; usable content is kept.',
+          total: 'All cache (size · files)',
+          subtitles: 'Subtitle cache (size · files)',
+          summaries: 'Summary cache (size · files)',
+          indexes: 'Index files (size · files)',
+          staleIndexes: (count: number) => `Stale indexes to clean: ${count}`,
+          loading: 'Reading cache statistics…',
+          unavailable: 'Cache statistics are temporarily unavailable.',
+          refresh: 'Refresh stats',
+          refreshing: 'Refreshing…',
+          clearStale: 'Clean stale cache',
+          clearing: 'Cleaning…',
+          clearDone: (files: number, bytes: number) => files > 0 ? `Cleaned ${files} stale files and freed ${Math.max(1, Math.round(bytes / 1024))} KB.` : 'There is no stale cache to clean.'
+        }
       },
       capture: {
         title: 'Capture & record',

@@ -58,6 +58,23 @@
   background: rgba(255, 255, 255, 0.06);
 }
 
+.settings-secondary-button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.settings-cache-actions button {
+  gap: 6px;
+}
+
+.settings-cache-status.is-success {
+  color: var(--ok);
+}
+
+.settings-cache-status.is-error {
+  color: var(--danger);
+}
+
 .settings-card-note {
   margin: 0;
   color: var(--text-secondary);

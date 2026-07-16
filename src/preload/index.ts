@@ -3,6 +3,8 @@ import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type { AppSettings } from '../shared/app-settings'
 import type {
   AsrJobProgress,
+  AsrCacheClearResult,
+  AsrCacheStatsResult,
   AsrModelDownloadProgress,
   AsrModelDownloadResult,
   AsrModelSourceId,
@@ -69,6 +71,8 @@ const api = {
   getAppSettings: (): Promise<AppSettings> => ipcRenderer.invoke(IPC_CHANNELS.APP_GET_SETTINGS),
   setAppSettings: (settings: AppSettings): Promise<AppSettings> => ipcRenderer.invoke(IPC_CHANNELS.APP_SET_SETTINGS, settings),
   checkAsrRuntime: (): Promise<AsrRuntimeStatus> => ipcRenderer.invoke(IPC_CHANNELS.ASR_HEALTH_CHECK),
+  getAsrCacheStats: (): Promise<AsrCacheStatsResult> => ipcRenderer.invoke(IPC_CHANNELS.ASR_CACHE_STATS),
+  clearStaleAsrCache: (): Promise<AsrCacheClearResult> => ipcRenderer.invoke(IPC_CHANNELS.ASR_CACHE_CLEAR_STALE),
   autoDetectWhisperBinary: (): Promise<AsrRuntimeSetupResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.ASR_AUTO_DETECT_WHISPER_BINARY),
   selectWhisperBinary: (): Promise<AsrRuntimeSetupResult> =>

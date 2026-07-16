@@ -1,4 +1,4 @@
-import { BookOpen, Clock, FileText, Sparkles, X } from 'lucide-react'
+import { BookOpen, Clock, FileText, Languages, Sparkles, X } from 'lucide-react'
 import type { ReactElement, ReactNode } from 'react'
 import { useAppContext } from './app-context'
 import { SummaryChapters } from './summary-chapters'
@@ -58,9 +58,12 @@ function SummaryArticle(): ReactElement | null {
   if (!summary) return null
   const stats = app.subtitleSummaryResult?.summaryStats
   const isQuickMode = app.summaryMode === 'quick'
+  const sourceType = result?.sourceType ?? 'raw'
+  const translatedSubtitle = app.translatedSubtitleResult
+  const canRegenerateFromTranslation = sourceType === 'raw' && Boolean(translatedSubtitle?.subtitlePath && translatedSubtitle.sourceSubtitlePath === app.subtitlePath && translatedSubtitle.targetLanguage === app.appSettings.subtitles.targetLanguage)
   return <article className="summary-article">
     <SummaryModeSelector />
-    <div className="summary-article-topline"><span className={`summary-spoiler-badge ${isQuickMode ? 'is-safe' : ''}`}>{isQuickMode ? app.copy.summary.noSpoilerBadge : app.copy.summary.spoilerBadge}</span><span>{app.copy.summary.languageLabel(app.subtitleTargetLanguageLabel)}</span></div>
+    <div className="summary-article-topline"><span className={`summary-spoiler-badge ${isQuickMode ? 'is-safe' : ''}`}>{isQuickMode ? app.copy.summary.noSpoilerBadge : app.copy.summary.spoilerBadge}</span><span className="summary-source-badge">{sourceType === 'translated' ? app.copy.summary.sourceTranslated : app.copy.summary.sourceRaw}</span><span>{app.copy.summary.languageLabel(app.subtitleTargetLanguageLabel)}</span></div>
     <h3>{summary.title}</h3>
     <p className="summary-overview">{summary.overview}</p>
     <SummarySection title={app.copy.summary.synopsisTitle}><div className="summary-prose">{summary.synopsis || app.copy.summary.notEnoughContent}</div></SummarySection>
@@ -71,6 +74,7 @@ function SummaryArticle(): ReactElement | null {
     {!isQuickMode ? <SummarySection title={app.copy.summary.endingTitle}><div className="summary-prose">{summary.ending || app.copy.summary.notEnoughContent}</div></SummarySection> : null}
     {stats ? <div className="summary-meta"><Clock size={13} /><span>{app.copy.summary.generatedMeta(app.formatElapsedTime(stats.elapsedMs), stats.cacheHit)}</span><span>{app.copy.summary.sourceMeta(stats.subtitleCueCount)}</span></div> : null}
     <SummaryExportActions />
+    {canRegenerateFromTranslation ? <button className="summary-regenerate-button summary-source-action" type="button" onClick={() => void app.summarizeSubtitle({ source: { subtitlePath: translatedSubtitle?.subtitlePath ?? '', sourceLanguage: app.appSettings.subtitles.targetLanguage, sourceType: 'translated' } })} disabled={!app.canGenerateSummary}><Languages size={14} />{app.copy.summary.regenerateFromTranslation}</button> : null}
     <button className="summary-regenerate-button" type="button" onClick={() => void app.summarizeSubtitle()} disabled={!app.canGenerateSummary}><Sparkles size={14} />{app.copy.summary.regenerate}</button>
   </article>
 }

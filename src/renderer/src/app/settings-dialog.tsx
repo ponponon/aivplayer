@@ -8,6 +8,7 @@ import type {
 import type { AsrRuntimeSetupResult, AsrRuntimeStatus, AsrTranslationServiceTestResult } from '../../../shared/media-types'
 import type { LocaleCopy } from '../../../shared/i18n'
 import { useModalFocusTrap } from './use-modal-focus-trap'
+import { useSettingsCacheManagement } from './use-settings-cache-management'
 import { getSettingsTabs, createSettingsSectionProps, type SettingsTab } from './settings-dialog-model'
 import {
   CaptureSettingsSection,
@@ -68,6 +69,7 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
   const [activeSectionId, setActiveSectionId] = useState<AppSettingsSectionId>(initialSectionId)
   const activeSectionIdRef = useRef<AppSettingsSectionId>(initialSectionId)
   const dialogRef = useRef<HTMLElement | null>(null)
+  const cacheManagement = useSettingsCacheManagement(copy)
 
   useEffect(() => {
     activeSectionIdRef.current = activeSectionId
@@ -97,9 +99,12 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
     asrStatus,
     translationServiceTestMessage,
     isTestingTranslationService,
+    ...cacheManagement,
     onPickDefaultFolder,
     onPickCaptureFolder,
-    onTestTranslationService
+    onTestTranslationService,
+    onRefreshCacheStats: cacheManagement.refreshCacheStats,
+    onClearStaleCache: cacheManagement.clearStaleCache
   })
 
   return (

@@ -15,11 +15,14 @@ import type {
   AsrSubtitleRequest,
   AsrSubtitleResult
 } from '../../shared/media-types.ts'
+import type { AsrCacheClearResult, AsrCacheStatsResult } from '../../shared/media-types.ts'
 import type { AppSettings } from '../../shared/app-settings'
 import type { AppLocale } from '../../shared/localization'
 
 export type AsrRuntime = {
   healthCheck: () => Promise<AsrRuntimeStatus>
+  getAsrCacheStats: () => Promise<AsrCacheStatsResult>
+  clearStaleAsrCache: () => Promise<AsrCacheClearResult>
   configureWhisperBinaryPath: (binaryPath: string) => Promise<AsrRuntimeStatus>
   autoConfigureWhisperBinaryPath: () => Promise<AsrRuntimeStatus>
   downloadModel: (

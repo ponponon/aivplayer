@@ -270,7 +270,10 @@
       characterFallback: '角色信息未标注',
       noMedia: '打开视频后，这里会显示对应的内容总结。',
       generatedMeta: (duration: string, cacheHit: boolean) => cacheHit ? `生成用时 ${duration} · 本地缓存` : `生成用时 ${duration}`,
-      sourceMeta: (cueCount: number) => `基于 ${cueCount} 条字幕`
+      sourceMeta: (cueCount: number) => `基于 ${cueCount} 条字幕`,
+      sourceRaw: '基于原始字幕',
+      sourceTranslated: '基于目标语言译文',
+      regenerateFromTranslation: '基于译文重新生成'
     },
     batchSubtitle: {
       title: '批量字幕任务中心',
@@ -481,6 +484,22 @@
         translationServiceChecking: '测试中',
         translationServiceResultTitle: '测试结果',
         translationServicePreviewTitle: '预览结果',
+        cache: {
+          title: '本地 AI 缓存',
+          description: '字幕、翻译、内容总结和缓存索引都保存在本机。清理操作只删除失效索引和超过 1 小时的临时文件，不会删除可用内容。',
+          total: '全部缓存（大小 · 文件）',
+          subtitles: '字幕缓存（大小 · 文件）',
+          summaries: '总结缓存（大小 · 文件）',
+          indexes: '索引文件（大小 · 文件）',
+          staleIndexes: (count: number) => `待清理失效索引：${count} 个`,
+          loading: '正在读取缓存统计…',
+          unavailable: '暂时无法读取缓存统计。',
+          refresh: '刷新统计',
+          refreshing: '刷新中…',
+          clearStale: '清理失效缓存',
+          clearing: '清理中…',
+          clearDone: (files: number, bytes: number) => files > 0 ? `已清理 ${files} 个失效文件，释放 ${Math.max(1, Math.round(bytes / 1024))} KB。` : '没有需要清理的失效缓存。'
+        },
       },
       capture: {
         title: '截图和录屏',

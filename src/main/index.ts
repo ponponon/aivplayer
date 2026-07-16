@@ -4,6 +4,7 @@ import { APP_NAME, installApplicationMenu, loadAppSettings } from './main-settin
 import { registerBatchSubtitleIpc } from './ipc-batch-subtitle'
 import { registerClipExportIpc } from './ipc-clip-export'
 import { registerAsrRuntimeIpc } from './ipc-asr-runtime'
+import { registerAsrCacheIpc } from './ipc-asr-cache'
 import { registerAsrSubtitleIpc } from './ipc-asr-subtitles'
 import { registerAsrTranslationIpc } from './ipc-asr-translation'
 import { registerAsrSummaryIpc } from './ipc-asr-summary'
@@ -18,6 +19,7 @@ app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 function registerIpc(): void {
   registerSettingsIpc()
   registerAsrRuntimeIpc()
+  registerAsrCacheIpc()
   registerAsrSubtitleIpc()
   registerAsrTranslationIpc()
   registerAsrSummaryIpc()
