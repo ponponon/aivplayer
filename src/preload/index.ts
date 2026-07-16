@@ -14,6 +14,8 @@ import type {
   AsrSubtitleExportResult,
   AsrSubtitleTranslationRequest,
   AsrSubtitleTranslationResult,
+  AsrSubtitleSummaryRequest,
+  AsrSubtitleSummaryResult,
   AsrTranslationServiceTestRequest,
   AsrTranslationServiceTestResult,
   AsrDiagnosticLogResult,
@@ -82,6 +84,11 @@ const api = {
   translateAsrSubtitle: (request: AsrSubtitleTranslationRequest): Promise<AsrSubtitleTranslationResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.ASR_TRANSLATE_SUBTITLE, request),
   cancelAsrTranslation: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.ASR_CANCEL_TRANSLATION),
+  summarizeAsrSubtitle: (request: AsrSubtitleSummaryRequest): Promise<AsrSubtitleSummaryResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.ASR_SUMMARIZE_SUBTITLE, request),
+  cancelAsrSummary: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.ASR_CANCEL_SUMMARY),
+  resolveAsrSubtitleSummaryCache: (request: AsrSubtitleSummaryRequest): Promise<AsrSubtitleSummaryResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.ASR_RESOLVE_SUBTITLE_SUMMARY_CACHE, request),
   testAsrTranslationService: (
     request: AsrTranslationServiceTestRequest
   ): Promise<AsrTranslationServiceTestResult> => ipcRenderer.invoke(IPC_CHANNELS.ASR_TEST_TRANSLATION_SERVICE, request),

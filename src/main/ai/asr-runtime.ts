@@ -8,6 +8,8 @@ import type {
   AsrSubtitleExportResult,
   AsrSubtitleTranslationRequest,
   AsrSubtitleTranslationResult,
+  AsrSubtitleSummaryRequest,
+  AsrSubtitleSummaryResult,
   AsrTranslationServiceTestRequest,
   AsrTranslationServiceTestResult,
   AsrSubtitleRequest,
@@ -36,6 +38,11 @@ export type AsrRuntime = {
     request: AsrSubtitleTranslationRequest,
     options?: AsrTranslationJobOptions
   ) => Promise<AsrSubtitleTranslationResult>
+  resolveSubtitleSummaryCache: (request: AsrSubtitleSummaryRequest) => Promise<AsrSubtitleSummaryResult>
+  summarizeSubtitle: (
+    request: AsrSubtitleSummaryRequest,
+    options?: AsrTranslationJobOptions
+  ) => Promise<AsrSubtitleSummaryResult>
   testTranslationService: (request: AsrTranslationServiceTestRequest) => Promise<AsrTranslationServiceTestResult>
 }
 

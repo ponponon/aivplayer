@@ -6,6 +6,7 @@ import type {
   AsrRuntimeStatus,
   AsrSubtitleResult,
   AsrSubtitleTranslationResult,
+  AsrSubtitleSummaryResult,
   AsrTranslationServiceTestResult,
   MediaProbeMetadata
 } from '../../../shared/media-types'
@@ -28,6 +29,7 @@ export type AppRefs = {
   controlDeckHideTimerRef: MutableRefObject<number | null>
   asrStartedAtRef: MutableRefObject<number | null>
   translationStartedAtRef: MutableRefObject<number | null>
+  summaryStartedAtRef: MutableRefObject<number | null>
   playbackEndedRef: MutableRefObject<boolean>
   lastSavedProgressRef: MutableRefObject<{ path: string | null; time: number }>
 }
@@ -38,7 +40,9 @@ export type AppStateSetters = {
   setAsrProgress: React.Dispatch<React.SetStateAction<AsrJobProgress | null>>
   setSubtitleResult: React.Dispatch<React.SetStateAction<AsrSubtitleResult | null>>
   setTranslatedSubtitleResult: React.Dispatch<React.SetStateAction<AsrSubtitleTranslationResult | null>>
+  setSubtitleSummaryResult: React.Dispatch<React.SetStateAction<AsrSubtitleSummaryResult | null>>
   setAsrNotice: React.Dispatch<React.SetStateAction<AsrNotice | null>>
+  setSummaryNotice: React.Dispatch<React.SetStateAction<AsrNotice | null>>
   setActiveSubtitle: React.Dispatch<React.SetStateAction<AsrSubtitleResult | null>>
   setDownloadProgress: React.Dispatch<React.SetStateAction<AsrModelDownloadProgress | null>>
   setIsAsrBusy: React.Dispatch<React.SetStateAction<boolean>>
@@ -50,6 +54,8 @@ export type AppStateSetters = {
   setIsExportingClip: React.Dispatch<React.SetStateAction<boolean>>
   setIsTranslatingSubtitle: React.Dispatch<React.SetStateAction<boolean>>
   setTranslationElapsedMs: React.Dispatch<React.SetStateAction<number | null>>
+  setIsSummarizingSubtitle: React.Dispatch<React.SetStateAction<boolean>>
+  setSummaryElapsedMs: React.Dispatch<React.SetStateAction<number | null>>
   setIsMediaDetailsDialogOpen: React.Dispatch<React.SetStateAction<boolean>>
   setRuntimeSetupMessage: React.Dispatch<React.SetStateAction<{ success: boolean; message: string } | null>>
   setTranslationServiceTestMessage: React.Dispatch<React.SetStateAction<AsrTranslationServiceTestResult | null>>
@@ -69,7 +75,9 @@ export type AppModel = AppRefs &
     asrProgress: AsrJobProgress | null
     subtitleResult: AsrSubtitleResult | null
     translatedSubtitleResult: AsrSubtitleTranslationResult | null
+    subtitleSummaryResult: AsrSubtitleSummaryResult | null
     asrNotice: AsrNotice | null
+    summaryNotice: AsrNotice | null
     activeSubtitle: AsrSubtitleResult | null
     downloadProgress: AsrModelDownloadProgress | null
     isAsrBusy: boolean
@@ -81,6 +89,8 @@ export type AppModel = AppRefs &
     isExportingClip: boolean
     isTranslatingSubtitle: boolean
     translationElapsedMs: number | null
+    isSummarizingSubtitle: boolean
+    summaryElapsedMs: number | null
     isMediaDetailsDialogOpen: boolean
     runtimeSetupMessage: { success: boolean; message: string } | null
     translationServiceTestMessage: AsrTranslationServiceTestResult | null

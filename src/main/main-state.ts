@@ -11,6 +11,7 @@ export const mainState: {
   pendingMediaPaths: string[]
   currentAppSettings: AppSettings
   translationAbortControllers: Map<number, AbortController>
+  summaryAbortControllers: Map<number, AbortController>
   batchSubtitleManager: BatchSubtitleManager | null
 } = {
   mainWindow: null,
@@ -19,5 +20,6 @@ export const mainState: {
   pendingMediaPaths: [],
   currentAppSettings: createDefaultAppSettings(),
   translationAbortControllers: new Map(),
+  summaryAbortControllers: new Map(),
   batchSubtitleManager: null
 }

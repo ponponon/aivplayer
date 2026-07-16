@@ -22,7 +22,7 @@ export function usePlaybackMemoryActions(model: AppModel, patchSection: AppSetti
     patchSection('playback', { lastVolume: muted ? 0 : volume, lastMuted: muted, lastPlaybackRate: playbackRate })
   }
   const resetSubtitleState = (): void => {
-    model.setActiveSubtitle(null); model.setSubtitleResult(null); model.setTranslatedSubtitleResult(null); model.setAsrNotice(null); model.setAsrProgress(null); model.asrStartedAtRef.current = null; model.setAsrElapsedMs(null); model.translationStartedAtRef.current = null; model.setTranslationElapsedMs(null)
+    model.setActiveSubtitle(null); model.setSubtitleResult(null); model.setTranslatedSubtitleResult(null); model.setSubtitleSummaryResult(null); model.setAsrNotice(null); model.setSummaryNotice(null); model.setAsrProgress(null); model.asrStartedAtRef.current = null; model.setAsrElapsedMs(null); model.translationStartedAtRef.current = null; model.setTranslationElapsedMs(null); model.summaryStartedAtRef.current = null; model.setSummaryElapsedMs(null); model.setIsSummarizingSubtitle(false)
   }
   const loadFiles = (files: MediaFile[]): void => {
     if (files.length === 0) return

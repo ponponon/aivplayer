@@ -6,6 +6,7 @@ import type {
   AsrRuntimeStatus,
   AsrSubtitleResult,
   AsrSubtitleTranslationResult,
+  AsrSubtitleSummaryResult,
   AsrTranslationServiceTestResult,
   MediaProbeMetadata
 } from '../../../shared/media-types'
@@ -20,7 +21,9 @@ export function useAppModel(): AppModel {
   const [asrProgress, setAsrProgress] = useState<AsrJobProgress | null>(null)
   const [subtitleResult, setSubtitleResult] = useState<AsrSubtitleResult | null>(null)
   const [translatedSubtitleResult, setTranslatedSubtitleResult] = useState<AsrSubtitleTranslationResult | null>(null)
+  const [subtitleSummaryResult, setSubtitleSummaryResult] = useState<AsrSubtitleSummaryResult | null>(null)
   const [asrNotice, setAsrNotice] = useState<AsrNotice | null>(null)
+  const [summaryNotice, setSummaryNotice] = useState<AsrNotice | null>(null)
   const [activeSubtitle, setActiveSubtitle] = useState<AsrSubtitleResult | null>(null)
   const [downloadProgress, setDownloadProgress] = useState<AsrModelDownloadProgress | null>(null)
   const [isAsrBusy, setIsAsrBusy] = useState(false)
@@ -32,6 +35,8 @@ export function useAppModel(): AppModel {
   const [isExportingClip, setIsExportingClip] = useState(false)
   const [isTranslatingSubtitle, setIsTranslatingSubtitle] = useState(false)
   const [translationElapsedMs, setTranslationElapsedMs] = useState<number | null>(null)
+  const [isSummarizingSubtitle, setIsSummarizingSubtitle] = useState(false)
+  const [summaryElapsedMs, setSummaryElapsedMs] = useState<number | null>(null)
   const [isMediaDetailsDialogOpen, setIsMediaDetailsDialogOpen] = useState(false)
   const [runtimeSetupMessage, setRuntimeSetupMessage] = useState<{ success: boolean; message: string } | null>(null)
   const [translationServiceTestMessage, setTranslationServiceTestMessage] = useState<AsrTranslationServiceTestResult | null>(null)
@@ -55,8 +60,12 @@ export function useAppModel(): AppModel {
     setSubtitleResult,
     translatedSubtitleResult,
     setTranslatedSubtitleResult,
+    subtitleSummaryResult,
+    setSubtitleSummaryResult,
     asrNotice,
     setAsrNotice,
+    summaryNotice,
+    setSummaryNotice,
     activeSubtitle,
     setActiveSubtitle,
     downloadProgress,
@@ -79,6 +88,10 @@ export function useAppModel(): AppModel {
     setIsTranslatingSubtitle,
     translationElapsedMs,
     setTranslationElapsedMs,
+    isSummarizingSubtitle,
+    setIsSummarizingSubtitle,
+    summaryElapsedMs,
+    setSummaryElapsedMs,
     isMediaDetailsDialogOpen,
     setIsMediaDetailsDialogOpen,
     runtimeSetupMessage,

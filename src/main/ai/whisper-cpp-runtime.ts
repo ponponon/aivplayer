@@ -26,6 +26,8 @@ import type {
   AsrSubtitleExportResult,
   AsrSubtitleTranslationRequest,
   AsrSubtitleTranslationResult,
+  AsrSubtitleSummaryRequest,
+  AsrSubtitleSummaryResult,
   AsrTranslationServiceTestRequest,
   AsrTranslationServiceTestResult,
   AsrSubtitleRequest,
@@ -38,6 +40,13 @@ import {
   runSubtitleTranslationJob,
   SubtitleTranslationError
 } from './subtitle-translation.ts'
+import {
+  createOpenAiCompatibleSummaryProvider,
+  createSubtitleSummaryProviderRef,
+  findSubtitleSummaryCache,
+  runSubtitleSummaryJob,
+  SubtitleSummaryError
+} from './subtitle-summary.ts'
 
 const execFileAsync = promisify(execFile)
 const POSIX_FFMPEG_BINARY_NAMES = ['ffmpeg']
@@ -344,6 +353,33 @@ function formatTranslationServiceError(
   return { message: String(error) }
 }
 
+function formatSummaryServiceError(
+  copy: ReturnType<typeof getAppCopy>,
+  error: unknown
+): { message: string; errorDetails?: AsrErrorDetails } {
+  if (error instanceof SubtitleSummaryError) {
+    const errorDetails: AsrErrorDetails = {
+      code: error.code,
+      status: error.status,
+      statusText: error.statusText,
+      responseBody: error.responseBody
+        ?.replace(/Bearer\s+[^\s"']+/gi, 'Bearer [REDACTED]')
+        .replace(/\bsk-[A-Za-z0-9_-]{10,}\b/g, '[REDACTED_API_KEY]') || undefined
+    }
+
+    switch (error.code) {
+      case 'cancelled': return { message: copy.runtime.subtitleSummaryCanceled, errorDetails }
+      case 'network-error': return { message: copy.runtime.summaryServiceNetworkError, errorDetails }
+      case 'http-error': return { message: copy.runtime.summaryServiceHttpError(error.status ?? 0, error.statusText ?? null), errorDetails }
+      case 'invalid-json': return { message: copy.runtime.summaryServiceInvalidJson, errorDetails }
+      case 'invalid-response': return { message: copy.runtime.summaryServiceInvalidResponse, errorDetails }
+      default: return { message: error.message, errorDetails }
+    }
+  }
+
+  return { message: error instanceof Error ? error.message : String(error) }
+}
+
 export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime {
   const env = options.env ?? process.env
   const recommendedModelManifest = getRecommendedWhisperModelManifest()
@@ -393,6 +429,14 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
     const config = getTranslationServiceConfig()
     return createSubtitleTranslationProviderRef(config.model, config.glossary)
   }
+
+  const createSummaryProvider = () => {
+    const { baseUrl, apiKey, model } = getTranslationServiceConfig()
+    if (!baseUrl || !apiKey || !model) return null
+    return createOpenAiCompatibleSummaryProvider({ baseUrl, apiKey, model, fetchImpl: options.translationFetch })
+  }
+
+  const getSummaryProviderRef = () => createSubtitleSummaryProviderRef(getTranslationServiceConfig().model)
 
   const readHealthStatus = async (): Promise<AsrRuntimeStatus> => {
     const copy = getCopy()
@@ -810,6 +854,52 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
           translationModel: provider.model,
           translationGlossary: provider.glossary ?? undefined
         }
+      }
+    },
+    async resolveSubtitleSummaryCache(
+      request: AsrSubtitleSummaryRequest
+    ): Promise<AsrSubtitleSummaryResult> {
+      const copy = getCopy()
+      const sourceLanguage = request.sourceLanguage ?? 'auto'
+      const provider = getSummaryProviderRef()
+      if (!provider) return { success: false, message: copy.runtime.summaryServiceMissing, sourceSubtitlePath: request.subtitlePath, sourceLanguage, targetLanguage: request.targetLanguage }
+      const summary = await findSubtitleSummaryCache({
+        sourceSubtitlePath: request.subtitlePath,
+        cacheDirectory: getSubtitleCacheDirectory(),
+        sourceLanguage,
+        targetLanguage: request.targetLanguage,
+        provider
+      })
+      if (!summary) return { success: false, message: copy.runtime.subtitleSummaryCacheMiss, sourceSubtitlePath: request.subtitlePath, sourceLanguage, targetLanguage: request.targetLanguage, summaryModel: provider.model }
+      return { success: true, message: copy.runtime.subtitleSummaryCacheHit, sourceSubtitlePath: request.subtitlePath, sourceLanguage, targetLanguage: request.targetLanguage, summaryModel: provider.model, summary }
+    },
+    async summarizeSubtitle(
+      request: AsrSubtitleSummaryRequest,
+      jobOptions: AsrTranslationJobOptions = {}
+    ): Promise<AsrSubtitleSummaryResult> {
+      const copy = getCopy()
+      const sourceLanguage = request.sourceLanguage ?? 'auto'
+      const provider = createSummaryProvider()
+      if (!provider) return { success: false, message: copy.runtime.summaryServiceMissing, sourceSubtitlePath: request.subtitlePath, sourceLanguage, targetLanguage: request.targetLanguage }
+      try {
+        jobOptions.onProgress?.({ stage: 'summarizing', percent: 0, message: copy.asrPanel.summarizingSubtitle })
+        const result = await runSubtitleSummaryJob({
+          sourceSubtitlePath: request.subtitlePath,
+          cacheDirectory: getSubtitleCacheDirectory(),
+          sourceLanguage,
+          targetLanguage: request.targetLanguage,
+          force: request.force,
+          provider,
+          signal: jobOptions.signal,
+          onProgress: (progress) => jobOptions.onProgress?.({ stage: 'summarizing', percent: progress.percent, message: copy.asrPanel.summaryProgress(progress.completedSteps, progress.totalSteps) })
+        })
+        jobOptions.onProgress?.({ stage: 'completed', percent: 1, message: copy.runtime.subtitleSummaryGenerated })
+        return { success: true, message: copy.runtime.subtitleSummaryGenerated, sourceSubtitlePath: request.subtitlePath, sourceLanguage, targetLanguage: request.targetLanguage, summaryModel: provider.model, summary: result.summary, summaryStats: result.summaryStats }
+      } catch (error) {
+        const failure = formatSummaryServiceError(copy, error)
+        const canceled = error instanceof SubtitleSummaryError && error.code === 'cancelled'
+        jobOptions.onProgress?.({ stage: canceled ? 'cancelled' : 'failed', percent: null, message: failure.message })
+        return { success: false, message: failure.message, canceled, sourceSubtitlePath: request.subtitlePath, sourceLanguage, targetLanguage: request.targetLanguage, summaryModel: provider.model, errorDetails: failure.errorDetails }
       }
     },
     async testTranslationService(

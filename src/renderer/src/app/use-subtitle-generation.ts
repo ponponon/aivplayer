@@ -10,6 +10,8 @@ export function useSubtitleGeneration(model: AppModel, derived: AppDerived) {
     model.setIsAsrBusy(true)
     model.setSubtitleResult(null)
     model.setTranslatedSubtitleResult(null)
+    model.setSubtitleSummaryResult(null)
+    model.setSummaryNotice(null)
     model.setAsrNotice(null)
     model.setAsrProgress({ stage: 'checking', percent: 0, message: derived.copy.runtime.preparingSubtitleCache })
     try {

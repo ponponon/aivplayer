@@ -13,6 +13,7 @@ export function useAppRefs(): AppRefs {
     controlDeckHideTimerRef: useRef<number | null>(null),
     asrStartedAtRef: useRef<number | null>(null),
     translationStartedAtRef: useRef<number | null>(null),
+    summaryStartedAtRef: useRef<number | null>(null),
     playbackEndedRef: useRef(false),
     lastSavedProgressRef: useRef({ path: null, time: -1 })
   }

@@ -8,7 +8,7 @@ export type AsrModelDownloadSource = { id: AsrModelSourceId; name: string; regio
 export type AsrModelManifest = { id: string; name: string; fileName: string; sources: AsrModelDownloadSource[]; expectedSizeBytes: number; ramRequirement: string; description: string }
 export type AsrModelDownloadProgress = { modelId: string; fileName: string; sourceId: AsrModelSourceId; sourceName: string; receivedBytes: number; totalBytes: number | null; percent: number | null; message: string }
 export type AsrModelDownloadResult = { success: boolean; message: string; sourceId?: AsrModelSourceId; sourceName?: string; model?: AsrModelInfo }
-export type AsrJobStage = 'checking' | 'extracting-audio' | 'transcribing' | 'translating' | 'loading-subtitle' | 'completed' | 'cancelled' | 'failed'
+export type AsrJobStage = 'checking' | 'extracting-audio' | 'transcribing' | 'translating' | 'summarizing' | 'loading-subtitle' | 'completed' | 'cancelled' | 'failed'
 export type AsrJobProgress = { stage: AsrJobStage; percent: number | null; message: string }
 export type AsrSubtitleRequest = { mediaPath: string; modelId?: string; language?: string }
 export type AsrSubtitleGenerationStats = { elapsedMs: number; subtitleCueCount: number; cacheHit: boolean }
@@ -23,3 +23,17 @@ export type AsrSubtitleTranslationStats = { elapsedMs: number; subtitleCueCount:
 export type AsrSubtitleTranslationResult = { success: boolean; message: string; canceled?: boolean; sourceSubtitlePath?: string; sourceLanguage?: string; targetLanguage?: SubtitleTargetLanguageId; translationModel?: string; translationGlossary?: string; translationStats?: AsrSubtitleTranslationStats; subtitlePath?: string; subtitleSrtPath?: string; subtitleUrl?: string; subtitleSrtUrl?: string; errorDetails?: AsrErrorDetails }
 export type AsrTranslationServiceTestRequest = { sourceLanguage?: string; targetLanguage: SubtitleTargetLanguageId }
 export type AsrTranslationServiceTestResult = { success: boolean; message: string; sourceLanguage?: string; targetLanguage?: SubtitleTargetLanguageId; translationModel?: string; translationBaseUrlSummary?: string; sampleSourceText?: string; sampleTranslatedText?: string; errorDetails?: AsrErrorDetails }
+
+export type AsrSubtitleSummaryCharacter = { name: string; role: string }
+export type AsrSubtitleSummary = {
+  title: string
+  overview: string
+  synopsis: string
+  keyPoints: string[]
+  characters: AsrSubtitleSummaryCharacter[]
+  themes: string[]
+  ending: string
+}
+export type AsrSubtitleSummaryStats = { elapsedMs: number; subtitleCueCount: number; chunkCount: number; cacheHit: boolean; inputCharacterCount: number }
+export type AsrSubtitleSummaryRequest = { subtitlePath: string; sourceLanguage?: string; targetLanguage: SubtitleTargetLanguageId; force?: boolean }
+export type AsrSubtitleSummaryResult = { success: boolean; message: string; canceled?: boolean; sourceSubtitlePath?: string; sourceLanguage?: string; targetLanguage?: SubtitleTargetLanguageId; summaryModel?: string; summary?: AsrSubtitleSummary; summaryStats?: AsrSubtitleSummaryStats; errorDetails?: AsrErrorDetails }

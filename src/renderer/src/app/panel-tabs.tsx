@@ -1,4 +1,4 @@
-import { Info, ListChecks, ListVideo, Sparkles } from 'lucide-react'
+import { FileText, Info, ListChecks, ListVideo, Sparkles } from 'lucide-react'
 import type { PanelMode } from './player-state'
 import { useAppContext } from './app-context'
 
@@ -6,6 +6,7 @@ const tabs: Array<{ id: Exclude<PanelMode, 'none' | 'subtitles'>; icon: typeof I
   { id: 'playlist', icon: ListVideo, label: (copy) => copy.panels.playlistTitle },
   { id: 'asr', icon: Sparkles, label: (copy) => copy.panels.asrTitle },
   { id: 'batch', icon: ListChecks, label: (copy) => copy.panels.batchTitle },
+  { id: 'summary', icon: FileText, label: (copy) => copy.panels.summaryTitle },
   { id: 'info', icon: Info, label: (copy) => copy.panels.infoTitle }
 ]
 

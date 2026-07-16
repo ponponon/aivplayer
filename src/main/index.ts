@@ -6,6 +6,7 @@ import { registerClipExportIpc } from './ipc-clip-export'
 import { registerAsrRuntimeIpc } from './ipc-asr-runtime'
 import { registerAsrSubtitleIpc } from './ipc-asr-subtitles'
 import { registerAsrTranslationIpc } from './ipc-asr-translation'
+import { registerAsrSummaryIpc } from './ipc-asr-summary'
 import { registerSettingsIpc } from './ipc-settings'
 import { registerUtilityIpc } from './ipc-utility'
 import { applyMacDockIcon, createWindow, focusMainWindow, queueIncomingMediaPaths } from './window-lifecycle'
@@ -19,6 +20,7 @@ function registerIpc(): void {
   registerAsrRuntimeIpc()
   registerAsrSubtitleIpc()
   registerAsrTranslationIpc()
+  registerAsrSummaryIpc()
   registerBatchSubtitleIpc()
   registerClipExportIpc()
   registerUtilityIpc()

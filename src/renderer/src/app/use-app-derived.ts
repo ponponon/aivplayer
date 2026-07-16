@@ -13,6 +13,7 @@ export function useAppDerived(model: AppModel) {
   const recommendedModelSources = recommendedModelManifest ? [...recommendedModelManifest.sources.filter((source) => source.id === preferredModelSourceId), ...recommendedModelManifest.sources.filter((source) => source.id !== preferredModelSourceId)] : []
   const modelViewState = recommendedModelManifest ? buildAsrModelViewState({ copy: subtitle.copy, recommendedManifest: recommendedModelManifest, installedModels: model.asrStatus?.installedModels ?? [], isDownloadingModel: model.isDownloadingModel, downloadProgress: model.downloadProgress, hasWhisperRuntime: Boolean(model.asrStatus?.binaryPath), hasFfmpegRuntime: Boolean(model.asrStatus?.ffmpegPath) }) : null
   const subtitleTranslationGlossary = normalizeTranslationGlossary(model.appSettings.asr.translationGlossary) ?? ''
+  const summaryUsesTranslation = Boolean(model.translatedSubtitleResult?.subtitlePath && model.translatedSubtitleResult.targetLanguage === model.appSettings.subtitles.targetLanguage)
   return {
     ...subtitle,
     ...media,
@@ -25,6 +26,9 @@ export function useAppDerived(model: AppModel) {
     canOpenSubtitleFolder: Boolean(subtitle.subtitlePath),
     canOpenSubtitleSrt: Boolean(subtitle.subtitleSrtPath),
     canOpenTranslatedSubtitleSrt: Boolean(subtitle.translatedSubtitleSrtPath),
+    summarySourcePath: summaryUsesTranslation ? subtitle.translatedSubtitlePath : subtitle.subtitlePath,
+    summarySourceLanguage: summaryUsesTranslation ? model.appSettings.subtitles.targetLanguage : subtitle.subtitleTranslationSourceLanguage,
+    canGenerateSummary: Boolean(model.state.currentFile && !model.isAsrBusy && !model.isTranslatingSubtitle && !model.isSummarizingSubtitle && !model.isDownloadingModel && (subtitle.subtitlePath || model.asrStatus?.available)),
     hasClipExportSubtitle: Boolean(subtitle.subtitlePath || subtitle.subtitleSrtPath),
     initialSettingsSectionId: model.state.panelMode === 'asr' ? 'subtitles' as const : model.appSettings.ui.lastSettingsSectionId,
     preferredModelSourceId,
