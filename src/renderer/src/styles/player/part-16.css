@@ -1,0 +1,121 @@
+
+.subtitle-status.cached {
+  color: var(--accent);
+}
+
+.subtitle-language-row,
+.subtitle-translation-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 10px;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.subtitle-language-row span,
+.subtitle-translation-row span {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.subtitle-language-row strong,
+.subtitle-translation-row strong {
+  color: var(--text-secondary);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.subtitle-target-language-row {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 8px 10px;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.subtitle-target-language-row > span {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.subtitle-target-language-group {
+  justify-content: flex-end;
+  gap: 4px;
+  min-width: 0;
+}
+
+.subtitle-target-language-choice {
+  min-height: 26px;
+  padding: 0 8px;
+  font-size: 11px;
+}
+
+.translation-service-status.ready strong {
+  color: var(--ok);
+}
+
+.translation-service-status.failed strong {
+  color: var(--danger);
+}
+
+.translation-service-status.pending strong {
+  color: var(--text-muted);
+}
+
+.subtitle-actions > summary {
+  list-style: none;
+}
+
+.subtitle-actions > summary::-webkit-details-marker {
+  display: none;
+}
+
+.subtitle-actions-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  padding: 0 10px;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  user-select: none;
+}
+
+.subtitle-actions-summary:hover,
+.subtitle-actions[open] .subtitle-actions-summary {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.subtitle-actions-menu {
+  display: grid;
+  gap: 8px;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(220px, calc(100vw - 48px));
+  padding: 10px;
+  background: rgba(18, 20, 23, 0.96);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-heavy);
+  z-index: 5;
+}

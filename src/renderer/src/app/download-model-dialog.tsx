@@ -1,0 +1,12 @@
+import { CloudDownload, X } from 'lucide-react'
+import { formatBytes } from './app-helpers'
+import { useAppContext } from './app-context'
+import { useModalFocusTrap } from './use-modal-focus-trap'
+
+export function DownloadModelDialog(): React.ReactElement | null {
+  const app = useAppContext()
+  const manifest = app.recommendedModelManifest
+  useModalFocusTrap(app.isDownloadDialogOpen && Boolean(manifest), app.downloadDialogRef, '.download-source-option')
+  if (!app.isDownloadDialogOpen || !manifest) return null
+  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !app.isDownloadingModel) app.setIsDownloadDialogOpen(false) }}><section ref={app.downloadDialogRef} className="download-dialog" tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="download-dialog-title" aria-describedby="download-dialog-description"><div className="download-dialog-header"><div><span className="panel-kicker">{app.copy.asrPanel.modelSource}</span><h2 id="download-dialog-title">{app.copy.downloadDialog.title}</h2></div><button className="mini-tool-button" type="button" onClick={() => app.setIsDownloadDialogOpen(false)} title={app.copy.downloadDialog.close} disabled={app.isDownloadingModel}><X size={14} /></button></div><p id="download-dialog-description" className="download-dialog-copy">{app.copy.downloadDialog.description(manifest.fileName, formatBytes(manifest.expectedSizeBytes))}</p><div className="download-source-grid">{app.recommendedModelSources.map((source) => { const preferred = source.id === app.preferredModelSourceId; return <button className={`download-source-option ${preferred ? 'is-preferred' : ''}`} key={source.id} type="button" onClick={() => void app.downloadRecommendedModel(source.id)} disabled={app.isDownloadingModel} aria-label={app.copy.downloadDialog.sourceAria(source.name)}><span className="download-source-icon"><CloudDownload size={20} /></span><span className="download-source-copy"><span className="download-source-heading"><strong>{source.id === 'modelscope' ? app.copy.downloadDialog.sourceDomestic : app.copy.downloadDialog.sourceInternational}</strong>{preferred ? <span className="download-source-badge">{app.copy.downloadDialog.defaultBadge}</span> : null}</span><span>{source.description}</span><small>{source.region} · {source.name}</small></span></button> })}</div></section></div>
+}

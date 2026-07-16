@@ -1,0 +1,71 @@
+
+.clip-export-warning {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.clip-export-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.download-source-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  color: var(--accent);
+  background: rgba(232, 193, 109, 0.11);
+  border: 1px solid rgba(232, 193, 109, 0.2);
+  border-radius: var(--radius-md);
+}
+
+.download-source-copy {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.download-source-heading {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.download-source-copy strong {
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.download-source-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 0 7px;
+  color: var(--accent);
+  background: rgba(232, 193, 109, 0.12);
+  border: 1px solid rgba(232, 193, 109, 0.2);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.download-source-copy span {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.download-source-copy small {
+  color: var(--text-muted);
+  font-size: 11px;
+}

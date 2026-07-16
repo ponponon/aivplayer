@@ -1,0 +1,129 @@
+
+.batch-intro {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.batch-folder-row,
+.batch-selection-toolbar,
+.batch-target-row,
+.batch-task-heading,
+.batch-current-file,
+.batch-task-actions {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+}
+
+.batch-folder-row,
+.batch-selection-toolbar,
+.batch-target-row,
+.batch-task-heading {
+  justify-content: space-between;
+}
+
+.batch-folder-row .asr-action-button {
+  flex: 1 1 auto;
+}
+
+.batch-scan-button {
+  min-height: 36px;
+  padding: 0 10px;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 720;
+  white-space: nowrap;
+}
+
+.batch-scan-button:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.batch-scan-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.batch-check-option {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.batch-option-secondary {
+  justify-content: flex-start;
+  padding: 0 2px;
+}
+
+.batch-check-option input,
+.batch-file-option input {
+  accent-color: var(--accent);
+}
+
+.batch-folder-path {
+  min-width: 0;
+  padding: 8px 10px;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.batch-selection-toolbar {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.batch-selection-toolbar > div {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.batch-text-button {
+  padding: 0;
+  color: var(--accent);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.batch-text-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.batch-empty-state {
+  padding: 16px 10px;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px dashed var(--border-soft);
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  text-align: center;
+}
+
+.batch-file-list,
+.batch-task-list {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  max-height: 190px;
+  overflow-y: auto;
+}

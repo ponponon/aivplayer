@@ -214,3 +214,9 @@
 - 完整媒体详情弹窗支持多语言翻译，使用 `probeFieldLabels` 映射 ffprobe 字段名。
 - `humanizeKey` 函数支持精确匹配、小写匹配、带点号匹配三种查找策略，找不到时回退到原有的格式化逻辑。
 - 四种语言（zh-CN、en-US、ja-JP、ko-KR）均已添加 `probeFieldLabels` 翻译。
+
+## 工程结构治理
+- 播放器主界面拆为状态模型、派生数据、播放/字幕动作、副作用和页面区块，`App.tsx` 只负责 Provider 与 Shell 组装。
+- 设置页、媒体详情、批量字幕和 ASR 面板按职责拆成独立组件与 Hook，避免 API、业务状态和 UI 渲染继续混在同一个文件里。
+- 主进程入口按窗口生命周期、媒体对话框、设置 IPC、ASR IPC、批量字幕 IPC 和剪辑导出 IPC 拆分，主入口只保留应用启动编排。
+- `player.css` 按完整 CSS block 拆为多个局部文件；国际化、媒体类型也按 locale / 领域拆分，并新增 `npm run check:file-limits` 作为行数门禁。

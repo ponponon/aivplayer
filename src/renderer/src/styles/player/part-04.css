@@ -1,0 +1,124 @@
+
+.status-banner button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 10px;
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 720;
+  white-space: nowrap;
+}
+
+.status-banner button:hover {
+  background: var(--accent-strong);
+}
+
+.control-deck {
+  display: grid;
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--bg-control);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(18px);
+  visibility: visible;
+  overflow: hidden;
+  max-height: 200px;
+  transition:
+    max-height 220ms ease,
+    opacity 180ms ease,
+    transform 180ms ease,
+    padding 180ms ease,
+    border-color 180ms ease;
+}
+
+.control-deck.is-hidden {
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  opacity: 0;
+  transform: translateY(12px);
+  border-color: transparent;
+  pointer-events: none;
+  visibility: hidden;
+  transition:
+    max-height 220ms ease,
+    opacity 180ms ease,
+    transform 180ms ease,
+    padding 180ms ease,
+    border-color 180ms ease,
+    visibility 0s linear 220ms;
+}
+
+.timeline-row,
+.controls-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.timeline-row {
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+}
+
+.controls-primary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.timeline-row span {
+  flex: 0 0 44px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.timeline {
+  flex: 1;
+  min-width: 80px;
+  accent-color: var(--accent);
+}
+
+.controls-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+}
+
+.controls-center-group {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.control-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.control-group.transport-group {
+  flex: 0 0 auto;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+}

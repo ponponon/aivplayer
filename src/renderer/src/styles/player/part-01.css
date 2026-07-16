@@ -1,0 +1,129 @@
+
+.app-shell {
+  display: grid;
+  grid-template-rows: 40px 1fr;
+  width: 100%;
+  height: 100%;
+  background:
+    linear-gradient(135deg, rgba(232, 193, 109, 0.11), transparent 32%),
+    radial-gradient(circle at 82% 8%, rgba(73, 119, 112, 0.18), transparent 30%),
+    var(--bg-app);
+}
+
+.titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px 0 92px;
+  border-bottom: 1px solid var(--border-soft);
+  -webkit-app-region: drag;
+}
+
+.brand,
+.top-actions,
+.control-group,
+.asr-meta,
+.asr-card-heading,
+.asr-card-title {
+  display: flex;
+  align-items: center;
+}
+
+.brand {
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1;
+  transform: translateY(2px);
+}
+
+.brand-mark {
+  display: inline-grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  color: var(--accent);
+}
+
+.top-actions {
+  gap: 4px;
+  -webkit-app-region: no-drag;
+}
+
+.tool-button,
+.round-button {
+  display: inline-grid;
+  place-items: center;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.tool-button {
+  width: 28px;
+  height: 28px;
+}
+
+.tool-button:hover,
+.tool-button.active,
+.round-button:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--border-soft);
+}
+
+.tool-button:focus-visible,
+.round-button:focus-visible,
+.subtitle-display-preset:focus-visible,
+.subtitle-display-choice:focus-visible,
+.speed-select:focus-visible,
+.timeline:focus-visible,
+.volume:focus-visible,
+.subtitle-display-stepper button:focus-visible,
+.subtitle-display-reset:focus-visible {
+  outline: 2px solid rgba(232, 193, 109, 0.72);
+  outline-offset: 2px;
+}
+
+.tool-button:disabled,
+.round-button:disabled,
+.speed-select:disabled,
+.timeline:disabled,
+.volume:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.tool-button:disabled:hover,
+.round-button:disabled:hover {
+  color: var(--text-secondary);
+  background: transparent;
+  border-color: transparent;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tool-button,
+  .round-button {
+    transition:
+      transform 120ms ease,
+      background-color 120ms ease,
+      color 120ms ease,
+      border-color 120ms ease;
+  }
+
+  .tool-button:active,
+  .round-button:active {
+    transform: translateY(1px) scale(0.98);
+  }
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 0;
+}

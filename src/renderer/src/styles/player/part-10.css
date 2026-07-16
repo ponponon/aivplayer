@@ -1,0 +1,126 @@
+
+.batch-history-list {
+  display: grid;
+  gap: 5px;
+  max-height: 270px;
+  overflow-y: auto;
+}
+
+.batch-history-entry {
+  min-width: 0;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+}
+
+.batch-history-entry[open] {
+  border-color: var(--border-soft);
+}
+
+.batch-history-entry > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  gap: 8px;
+  padding: 8px;
+  cursor: pointer;
+  list-style-position: inside;
+  font-size: 10px;
+}
+
+.batch-history-entry > summary::-webkit-details-marker {
+  color: var(--text-muted);
+}
+
+.batch-history-summary-main,
+.batch-history-summary-meta {
+  display: inline-flex;
+  min-width: 0;
+  gap: 6px;
+}
+
+.batch-history-summary-main {
+  flex: 1 1 auto;
+  align-items: center;
+  overflow: hidden;
+}
+
+.batch-history-summary-main strong,
+.batch-history-summary-main span,
+.batch-history-summary-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.batch-history-summary-main strong {
+  color: var(--text-primary);
+}
+
+.batch-history-summary-main span,
+.batch-history-summary-meta {
+  color: var(--text-muted);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+
+.batch-history-summary-meta {
+  flex: 0 1 auto;
+  justify-content: flex-end;
+}
+
+.batch-history-body {
+  display: grid;
+  gap: 7px;
+  padding: 0 9px 9px 25px;
+}
+
+.batch-history-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.batch-history-root {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.batch-history-failures {
+  display: grid;
+  gap: 3px;
+  padding: 6px 7px;
+  color: #ff9b9b;
+  background: rgba(255, 94, 94, 0.07);
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.batch-history-failures > div {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.batch-history-failures > div > span {
+  flex: 0 0 auto;
+}
+
+.batch-history-body .asr-action-button {
+  width: auto;
+  min-height: 30px;
+  justify-self: start;
+  font-size: 10px;
+}

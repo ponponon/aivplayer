@@ -1,0 +1,129 @@
+
+.speed-select {
+  width: 100%;
+  min-width: 0;
+  padding: 0 14px 0 0;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.speed-select:disabled {
+  color: var(--text-muted);
+  background: transparent;
+}
+
+.speed-control .speed-select:focus-visible {
+  outline: none;
+}
+
+.side-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: start;
+  min-width: 0;
+  min-height: 0;
+  padding: 14px 10px 10px 0;
+  overflow-x: hidden;
+  transform: translateX(0);
+  transition: opacity 180ms ease;
+}
+
+.workspace.side-panel-collapsed .side-panel {
+  display: none;
+  width: 0;
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.panel-header,
+.panel-switcher,
+.playlist,
+.asr-card {
+  background: rgba(18, 20, 23, 0.86);
+  border: 1px solid var(--border-soft);
+}
+
+.panel-switcher {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--radius-md);
+}
+
+.panel-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 0;
+  height: 28px;
+  padding: 0 6px;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 720;
+}
+
+.panel-tab span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.panel-tab:hover,
+.panel-tab.active {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--border-soft);
+}
+
+.panel-tab.active {
+  color: var(--accent);
+}
+
+.panel-content {
+  display: grid;
+  min-height: 0;
+  min-width: 0;
+  margin-top: 8px;
+}
+
+.panel-content-playlist {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.panel-content-asr {
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.panel-content-subtitles,
+.panel-content-info {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.panel-content-batch {
+  display: block;
+  overflow-y: auto;
+  padding-bottom: 8px;
+}
+
+.batch-panel {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+}

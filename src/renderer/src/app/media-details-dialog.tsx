@@ -1,9 +1,16 @@
 import { FileText, Info, X } from 'lucide-react'
 import { useEffect, useRef, type ReactElement } from 'react'
-import type { MediaProbeDetailObject, MediaProbeMetadata } from '../../../shared/media-types'
+import type { MediaProbeMetadata } from '../../../shared/media-types'
 import type { LocaleCopy } from '../../../shared/i18n'
-import { formatTime } from '../lib/time'
 import { useModalFocusTrap } from './use-modal-focus-trap'
+import {
+  flattenProbeEntries,
+  formatBitrate,
+  formatDuration,
+  formatFileSize,
+  getStreamTitle
+} from './media-details-formatters'
+import { MediaDetailsEntryGrid } from './media-details-entry-grid'
 
 type MediaDetailsDialogProps = {
   copy: LocaleCopy
@@ -11,148 +18,8 @@ type MediaDetailsDialogProps = {
   onClose: () => void
 }
 
-type MediaProbeEntry = {
-  key: string
-  value: unknown
-}
-
-function formatFileSize(bytes: number | null | undefined): string {
-  if (bytes == null || !Number.isFinite(bytes) || bytes < 0) {
-    return '--'
-  }
-
-  if (bytes < 1024 * 1024) {
-    return `${Math.max(1, Math.round(bytes / 1024))} KB`
-  }
-
-  const sizeInMb = bytes / (1024 * 1024)
-  return sizeInMb >= 10 ? `${sizeInMb.toFixed(1)} MB` : `${sizeInMb.toFixed(2)} MB`
-}
-
-function formatBitrate(kbps: number | null | undefined): string {
-  if (kbps == null || !Number.isFinite(kbps) || kbps < 0) {
-    return '--'
-  }
-
-  return `${Math.round(kbps)} kb/s`
-}
-
-function formatDuration(seconds: number | null | undefined): string {
-  if (seconds == null || !Number.isFinite(seconds) || seconds <= 0) {
-    return '--'
-  }
-
-  return formatTime(seconds)
-}
-
-function formatDetailValue(value: unknown): string {
-  if (value == null) {
-    return '--'
-  }
-
-  if (typeof value === 'string') {
-    return value.length > 0 ? value : '--'
-  }
-
-  if (typeof value === 'number') {
-    if (!Number.isFinite(value)) {
-      return '--'
-    }
-
-    const rounded = Math.round(value * 1000) / 1000
-    return Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toFixed(3).replace(/\.?0+$/, '')
-  }
-
-  if (typeof value === 'boolean') {
-    return value ? 'true' : 'false'
-  }
-
-  return String(value)
-}
-
-function humanizeKey(key: string, probeFieldLabels?: Record<string, string>): string {
-  // 尝试精确匹配
-  if (probeFieldLabels?.[key]) {
-    return probeFieldLabels[key]
-  }
-
-  // 尝试小写匹配
-  const lowerKey = key.toLowerCase()
-  if (probeFieldLabels?.[lowerKey]) {
-    return probeFieldLabels[lowerKey]
-  }
-
-  // 尝试带点号的匹配（如 tags.major_brand）
-  const dottedKey = key.replace(/_/g, '.')
-  if (probeFieldLabels?.[dottedKey]) {
-    return probeFieldLabels[dottedKey]
-  }
-
-  // 回退到原有的格式化逻辑
-  return key
-    .replace(/\[(\d+)\]/g, ' [$1]')
-    .split('.')
-    .map((part) => {
-      const normalized = part.replace(/_/g, ' ').trim()
-      if (normalized.length === 0) {
-        return normalized
-      }
-
-      return normalized.replace(/\b[a-z]/gi, (character) => character.toUpperCase())
-    })
-    .join(' · ')
-}
-
-function flattenProbeEntries(value: unknown, prefix = ''): MediaProbeEntry[] {
-  if (Array.isArray(value)) {
-    if (value.length === 0) {
-      return prefix ? [{ key: prefix, value: '[]' }] : []
-    }
-
-    return value.flatMap((item, index) => {
-      const nextPrefix = prefix ? `${prefix}[${index}]` : `[${index}]`
-      return flattenProbeEntries(item, nextPrefix)
-    })
-  }
-
-  if (value && typeof value === 'object') {
-    const entries = Object.entries(value as Record<string, unknown>)
-
-    if (entries.length === 0) {
-      return prefix ? [{ key: prefix, value: '{}' }] : []
-    }
-
-    return entries.flatMap(([key, item]) => {
-      const nextPrefix = prefix ? `${prefix}.${key}` : key
-      return flattenProbeEntries(item, nextPrefix)
-    })
-  }
-
-  return prefix ? [{ key: prefix, value }] : []
-}
-
-function renderProbeEntries(entries: MediaProbeEntry[], probeFieldLabels?: Record<string, string>): ReactElement {
-  return (
-    <div className="media-details-grid">
-      {entries.map((entry) => (
-        <div className="media-details-item" key={entry.key}>
-          <span>{humanizeKey(entry.key, probeFieldLabels)}</span>
-          <strong title={formatDetailValue(entry.value)}>{formatDetailValue(entry.value)}</strong>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function getStreamTitle(stream: MediaProbeDetailObject, index: number): string {
-  const codecType = typeof stream.codec_type === 'string' && stream.codec_type.trim().length > 0 ? stream.codec_type.trim() : 'stream'
-  return `Stream #${index + 1} · ${codecType}`
-}
-
-export function MediaDetailsDialog(props: MediaDetailsDialogProps): ReactElement {
-  const { copy, metadata, onClose } = props
+export function MediaDetailsDialog({ copy, metadata, onClose }: MediaDetailsDialogProps): ReactElement {
   const dialogRef = useRef<HTMLElement | null>(null)
-
   useModalFocusTrap(true, dialogRef, '.media-details-close')
 
   useEffect(() => {
@@ -161,27 +28,20 @@ export function MediaDetailsDialog(props: MediaDetailsDialogProps): ReactElement
         onClose()
       }
     }
-
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [onClose])
 
   const formatDetails = metadata?.details?.format ?? null
   const streamDetails = metadata?.details?.streams ?? []
-  const summaryFileSize = formatFileSize(metadata?.fileSizeBytes)
-  const summaryDuration = formatDuration(metadata?.durationSeconds)
-  const summaryBitrate = formatBitrate(metadata?.overallBitrateKbps)
+  const summary = {
+    fileSize: formatFileSize(metadata?.fileSizeBytes),
+    duration: formatDuration(metadata?.durationSeconds),
+    bitrate: formatBitrate(metadata?.overallBitrateKbps)
+  }
 
   return (
-    <div
-      className="modal-backdrop"
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) {
-          onClose()
-        }
-      }}
-    >
+    <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <section
         ref={dialogRef}
         className="media-details-dialog"
@@ -200,52 +60,35 @@ export function MediaDetailsDialog(props: MediaDetailsDialogProps): ReactElement
             <X size={14} />
           </button>
         </div>
-
         <p id="media-details-dialog-description" className="media-details-description">
           {copy.mediaDetailsDialog.description}
         </p>
-
         <div className="media-details-summary">
           <div className="media-details-summary-item">
             <span>{copy.mediaDetailsDialog.sourceLabel}</span>
             <strong>{metadata?.probeSource ?? '--'}</strong>
           </div>
-          <div className="media-details-summary-item">
-            <span>{copy.panels.fileSize}</span>
-            <strong>{summaryFileSize}</strong>
-          </div>
-          <div className="media-details-summary-item">
-            <span>{copy.panels.duration}</span>
-            <strong>{summaryDuration}</strong>
-          </div>
-          <div className="media-details-summary-item">
-            <span>{copy.panels.overallBitrate}</span>
-            <strong>{summaryBitrate}</strong>
-          </div>
+          <div className="media-details-summary-item"><span>{copy.panels.fileSize}</span><strong>{summary.fileSize}</strong></div>
+          <div className="media-details-summary-item"><span>{copy.panels.duration}</span><strong>{summary.duration}</strong></div>
+          <div className="media-details-summary-item"><span>{copy.panels.overallBitrate}</span><strong>{summary.bitrate}</strong></div>
         </div>
-
         {formatDetails || streamDetails.length > 0 ? (
           <div className="media-details-stack">
             <section className="media-details-card">
-              <div className="media-details-card-heading">
-                <FileText size={16} />
-                <span>{copy.mediaDetailsDialog.formatTitle}</span>
-              </div>
-              {formatDetails ? renderProbeEntries(flattenProbeEntries(formatDetails), copy.probeFieldLabels) : <div className="media-details-empty">{copy.mediaDetailsDialog.noDetails}</div>}
+              <div className="media-details-card-heading"><FileText size={16} /><span>{copy.mediaDetailsDialog.formatTitle}</span></div>
+              {formatDetails ? (
+                <MediaDetailsEntryGrid entries={flattenProbeEntries(formatDetails)} probeFieldLabels={copy.probeFieldLabels} />
+              ) : (
+                <div className="media-details-empty">{copy.mediaDetailsDialog.noDetails}</div>
+              )}
             </section>
-
             <section className="media-details-card">
-              <div className="media-details-card-heading">
-                <Info size={16} />
-                <span>{copy.mediaDetailsDialog.streamsTitle}</span>
-              </div>
+              <div className="media-details-card-heading"><Info size={16} /><span>{copy.mediaDetailsDialog.streamsTitle}</span></div>
               <div className="media-details-stack">
                 {streamDetails.map((stream, index) => (
                   <section className="media-details-subcard" key={`${stream.index ?? index}-${stream.codec_type ?? 'stream'}`}>
-                    <div className="media-details-subcard-heading">
-                      <strong>{getStreamTitle(stream, index)}</strong>
-                    </div>
-                    {renderProbeEntries(flattenProbeEntries(stream), copy.probeFieldLabels)}
+                    <div className="media-details-subcard-heading"><strong>{getStreamTitle(stream, index)}</strong></div>
+                    <MediaDetailsEntryGrid entries={flattenProbeEntries(stream)} probeFieldLabels={copy.probeFieldLabels} />
                   </section>
                 ))}
               </div>

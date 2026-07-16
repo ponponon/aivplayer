@@ -1,0 +1,128 @@
+
+.batch-timing-item {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 6px 7px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+}
+
+.batch-timing-item span {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.batch-timing-item strong {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.batch-current-file {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.batch-current-file strong {
+  min-width: 0;
+  flex: 1 1 auto;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.batch-failure-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.batch-failure-summary span,
+.batch-history-failures span {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 5px;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-sm);
+  font-size: 9px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.batch-failure-summary .retryable,
+.batch-history-failures .retryable {
+  color: var(--accent);
+}
+
+.batch-failure-summary .needs-attention,
+.batch-history-failures .needs-attention {
+  color: #ff9b9b;
+}
+
+.batch-task-actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.batch-task-actions .asr-action-button {
+  width: auto;
+  min-height: 32px;
+  font-size: 11px;
+}
+
+.batch-log-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 32px;
+  padding: 0 8px;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.batch-log-button:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--border-soft);
+}
+
+.batch-history-card {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+}
+
+.batch-history-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  gap: 8px;
+}
+
+.batch-history-heading strong {
+  color: var(--text-secondary);
+  font-size: 11px;
+}

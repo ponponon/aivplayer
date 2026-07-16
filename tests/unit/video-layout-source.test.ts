@@ -4,7 +4,7 @@ import { readSource } from './test-source-utils'
 describe('video layout source constraints', () => {
   it('keeps the video element proportional and centered inside the frame', () => {
     const playerCss = readSource('src/renderer/src/styles/player.css')
-    const appSource = readSource('src/renderer/src/app/App.tsx')
+    const appSource = readSource('src/renderer/src/app/video-surface.tsx')
 
     expect(playerCss).toMatch(/\.video-frame\s*\{[^}]*place-items:\s*center;/s)
     expect(playerCss).toMatch(

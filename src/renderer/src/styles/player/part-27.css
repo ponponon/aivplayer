@@ -1,0 +1,124 @@
+
+.download-source-option {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  min-height: 88px;
+  min-width: 0;
+  padding: 12px;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  text-align: left;
+  cursor: pointer;
+}
+
+.download-source-option.is-preferred {
+  border-color: rgba(232, 193, 109, 0.5);
+  background: rgba(232, 193, 109, 0.085);
+}
+
+.download-source-option:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.075);
+  border-color: rgba(232, 193, 109, 0.34);
+}
+
+.download-source-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.clip-export-group {
+  display: grid;
+  gap: 10px;
+}
+
+.clip-export-group-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.clip-export-length-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.clip-export-length-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 12px;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.clip-export-length-option:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.075);
+}
+
+.clip-export-length-option.is-selected {
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-color: transparent;
+}
+
+.clip-export-mode-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.clip-export-mode-option {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  text-align: left;
+  cursor: pointer;
+}
+
+.clip-export-mode-option.is-selected {
+  color: var(--text-primary);
+  border-color: rgba(232, 193, 109, 0.5);
+  background: rgba(232, 193, 109, 0.085);
+}
+
+.clip-export-mode-option:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.075);
+}
+
+.clip-export-mode-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.clip-export-mode-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.clip-export-mode-description {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}

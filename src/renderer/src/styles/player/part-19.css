@@ -1,0 +1,126 @@
+
+.asr-card p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.asr-meta {
+  justify-content: space-between;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.asr-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mini-tool-button {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.mini-tool-button:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.asr-runtime-grid,
+.asr-model-list {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.asr-runtime-grid {
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding-top: 2px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.asr-runtime-grid span,
+.asr-model-item span,
+.progress-label span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.asr-runtime-grid strong {
+  color: var(--text-secondary);
+  font-weight: 650;
+}
+
+.asr-model-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 0 10px;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+}
+
+.asr-model-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.asr-model-item strong {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.asr-model-item.muted {
+  color: var(--text-muted);
+}
+
+.progress-block {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.progress-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.progress-label span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.progress-label strong {
+  color: var(--text-secondary);
+  font-weight: 700;
+  white-space: nowrap;
+}

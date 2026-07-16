@@ -1,0 +1,127 @@
+
+.setting-choice small,
+.setting-toggle small {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.settings-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-width: 0;
+}
+
+.settings-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.settings-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.settings-note span {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.settings-secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--settings-control-height);
+  padding: 0 calc(var(--settings-control-padding-x) + 2px);
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--settings-control-radius);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.settings-secondary-button:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.settings-card-note {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.settings-shortcuts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+
+.settings-shortcut {
+  display: grid;
+  grid-template-columns: minmax(76px, auto) minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  min-width: 0;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+}
+
+.settings-shortcut kbd {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+  color: var(--accent);
+  background: rgba(232, 193, 109, 0.1);
+  border: 1px solid rgba(232, 193, 109, 0.28);
+  border-radius: var(--radius-sm);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.settings-shortcut-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.settings-shortcut-copy strong {
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.settings-shortcut-copy small {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.download-source-grid {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+}

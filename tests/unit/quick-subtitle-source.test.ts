@@ -3,13 +3,13 @@ import { readSource } from './test-source-utils'
 
 describe('quick target-language subtitle source constraints', () => {
   it('keeps the one-click generation and translation flow on the player surface', () => {
-    const appSource = readSource('src/renderer/src/app/App.tsx')
+    const appSource = `${readSource('src/renderer/src/app/use-quick-subtitle-action.ts')}\n${readSource('src/renderer/src/app/quick-subtitle-button.tsx')}\n${readSource('src/renderer/src/app/use-keyboard-shortcuts.ts')}\n${readSource('src/renderer/src/app/subtitle-result-summary.tsx')}\n${readSource('src/renderer/src/app/playback-controls.tsx')}`
     const playerCss = readSource('src/renderer/src/styles/player.css')
     const i18nSource = readSource('src/shared/i18n.ts')
 
     expect(appSource).toContain('quick-subtitle-action')
     expect(appSource).toContain('runQuickTargetSubtitle')
-    expect(appSource).toContain('await translateSubtitle(quickTargetLanguage, generatedSubtitle, flowStartedAt)')
+    expect(appSource).toContain('translateSubtitle(derived.quickTargetLanguage, generated, startedAt)')
     expect(appSource).toContain('isSubtitleLanguageMatch')
     expect(appSource).toContain('subtitleGenerationElapsed')
     expect(appSource).toContain('generationStats')
@@ -22,7 +22,7 @@ describe('quick target-language subtitle source constraints', () => {
     expect(appSource).not.toContain('<kbd>⌘/Ctrl + Shift + C</kbd>')
     expect(i18nSource).toContain('quickTargetSubtitle')
     expect(i18nSource).not.toContain('quickChineseSubtitle')
-    expect(appSource).toContain('className="controls-secondary"')
+    expect(appSource).toContain('className="control-group secondary-group"')
     expect(playerCss).toMatch(/\.controls-row\s*\{[^}]*display:\s*flex;[^}]*justify-content:\s*center;/s)
     expect(playerCss).toMatch(/\.quick-subtitle-button\s*\{[^}]*max-width:\s*min\(420px, 100%\);/s)
     expect(playerCss).not.toMatch(/\.quick-subtitle-action\s*\{[^}]*grid-column:/s)

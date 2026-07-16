@@ -1,0 +1,52 @@
+import { useEffect } from 'react'
+import type { AppSettings } from '../../../shared/app-settings'
+import type { AsrSubtitleTranslationResult } from '../../../shared/media-types'
+import type { AppDerived } from './use-app-derived'
+import type { AppModel } from './app-types'
+
+type DisplayPatcher = (patch: Partial<AppSettings['subtitles']>) => void
+
+export function useSubtitleCacheEffects(model: AppModel, derived: AppDerived, patchDisplay: DisplayPatcher): void {
+  const matchesCurrentContext = (result: AsrSubtitleTranslationResult | null): boolean => {
+    if (!result?.subtitleUrl || result.sourceSubtitlePath !== derived.subtitlePath) return false
+    if ((result.sourceLanguage ?? 'auto') !== derived.subtitleTranslationSourceLanguage) return false
+    if (result.targetLanguage !== model.appSettings.subtitles.targetLanguage) return false
+    if (derived.subtitleTranslationModel && (result.translationModel ?? '') !== derived.subtitleTranslationModel) return false
+    return (result.translationGlossary ?? '') === derived.subtitleTranslationGlossary
+  }
+
+  useEffect(() => {
+    const currentFilePath = model.state.currentFile?.path
+    const modelId = model.asrStatus?.recommendedModelManifest.id
+    if (!currentFilePath || !modelId || !model.appSettings.asr.autoLoadCachedSubtitles) return
+    let cancelled = false
+    void window.aiv.resolveAsrSubtitleCache({ mediaPath: currentFilePath, modelId }).then((result) => {
+      if (cancelled || !result.success || !result.subtitleUrl) return
+      model.setActiveSubtitle(result)
+      model.setSubtitleResult(result)
+      model.setAsrNotice(result)
+      model.setAsrProgress(null)
+    })
+    return () => { cancelled = true }
+  }, [model.state.currentFile?.path, model.asrStatus?.recommendedModelManifest.id, model.appSettings.asr.autoLoadCachedSubtitles])
+
+  useEffect(() => {
+    if (model.translatedSubtitleResult?.subtitleUrl && !matchesCurrentContext(model.translatedSubtitleResult)) model.setTranslatedSubtitleResult(null)
+  }, [model.translatedSubtitleResult?.subtitleUrl, model.translatedSubtitleResult?.sourceSubtitlePath, model.translatedSubtitleResult?.targetLanguage, derived.subtitlePath, derived.subtitleTranslationSourceLanguage, derived.subtitleTranslationModel, derived.subtitleTranslationGlossary, model.appSettings.subtitles.targetLanguage])
+
+  useEffect(() => {
+    if (!model.state.currentFile || !derived.subtitlePath || !model.appSettings.asr.autoLoadCachedSubtitles || model.isTranslatingSubtitle || matchesCurrentContext(model.translatedSubtitleResult)) return
+    let cancelled = false
+    void window.aiv.resolveTranslatedAsrSubtitleCache({
+      subtitlePath: derived.subtitlePath,
+      subtitleSrtPath: derived.subtitleSrtPath ?? undefined,
+      sourceLanguage: derived.subtitleTranslationSourceLanguage,
+      targetLanguage: model.appSettings.subtitles.targetLanguage
+    }).then((result) => {
+      if (cancelled || !result.success || !result.subtitleUrl) return
+      model.setTranslatedSubtitleResult(result)
+      if (model.appSettings.subtitles.displayMode === 'source') patchDisplay({ displayMode: 'translation' })
+    })
+    return () => { cancelled = true }
+  }, [model.state.currentFile?.path, derived.subtitlePath, derived.subtitleSrtPath, derived.subtitleTranslationSourceLanguage, derived.subtitleTranslationModel, derived.subtitleTranslationGlossary, model.appSettings.asr.autoLoadCachedSubtitles, model.appSettings.subtitles.targetLanguage, model.appSettings.subtitles.displayMode, model.isTranslatingSubtitle, model.translatedSubtitleResult?.subtitleUrl])
+}

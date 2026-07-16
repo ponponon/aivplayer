@@ -1,0 +1,126 @@
+
+.subtitle-display-choice-group {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+}
+
+.subtitle-display-choice {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.subtitle-display-choice.is-selected {
+  color: var(--text-primary);
+  background: rgba(232, 193, 109, 0.16);
+  border-color: rgba(232, 193, 109, 0.42);
+}
+
+.subtitle-display-choice:not(:disabled):hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.subtitle-display-choice:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.subtitle-display-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.subtitle-display-stepper button,
+.subtitle-display-reset {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.subtitle-display-stepper button {
+  width: 28px;
+  padding: 0;
+}
+
+.subtitle-display-stepper button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.subtitle-display-stepper strong {
+  min-width: 42px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.subtitle-display-reset {
+  gap: 6px;
+  width: 100%;
+  padding: 0 10px;
+}
+
+.subtitle-display-stepper button:not(:disabled):hover,
+.subtitle-display-reset:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.subtitle-display-hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.asr-status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  padding: 0 9px;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 720;
+  white-space: nowrap;
+}
+
+.asr-status-pill.downloading {
+  color: var(--accent);
+  background: rgba(232, 193, 109, 0.1);
+  border-color: rgba(232, 193, 109, 0.22);
+}
+
+.asr-status-pill.installed-ready,
+.asr-status-pill.installed-needs-runtime {
+  color: var(--ok);
+  background: rgba(143, 212, 155, 0.09);
+  border-color: rgba(143, 212, 155, 0.22);
+}

@@ -1,0 +1,130 @@
+
+.panel-empty {
+  display: grid;
+  place-items: center;
+  min-height: 100%;
+  padding: 12px;
+  color: var(--text-muted);
+  background: rgba(18, 20, 23, 0.86);
+  border: 1px solid var(--border-soft);
+  border-top: 0;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.playlist-item {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 10px;
+  color: var(--text-secondary);
+  background: transparent;
+  border-bottom: 1px solid var(--border-soft);
+  text-align: left;
+  cursor: pointer;
+}
+
+.playlist-item:hover,
+.playlist-item.active {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.playlist-index,
+.playlist-ext {
+  color: var(--text-muted);
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.playlist-name {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.asr-card {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px;
+  border-top: 0;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  overflow: hidden;
+}
+
+.asr-card > * {
+  min-width: 0;
+}
+
+.panel-content-asr .asr-card {
+  border-radius: var(--radius-lg);
+}
+
+.panel-content-asr .asr-card {
+  border-top: 1px solid var(--border-soft);
+}
+
+.panel-content-asr .asr-card.open {
+  overflow: visible;
+}
+
+.asr-card:not(.open) {
+  display: none;
+}
+
+.asr-stack {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.asr-card-heading {
+  min-width: 0;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.asr-card-title {
+  gap: 8px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.subtitle-actions {
+  position: relative;
+  display: inline-grid;
+  gap: 8px;
+  min-width: 0;
+  margin-left: auto;
+}
+
+.subtitle-tools-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  min-width: 0;
+}
+
+.subtitle-status {
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.subtitle-status.ready {
+  color: var(--ok);
+}

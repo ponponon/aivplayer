@@ -1,0 +1,124 @@
+
+.settings-card {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+}
+
+.settings-card.is-hidden {
+  display: none;
+}
+
+.settings-card-anchor {
+  scroll-margin-top: 78px;
+}
+
+.settings-card-wide {
+  grid-column: 1 / -1;
+}
+
+.settings-card-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 700;
+  grid-column: 1 / -1;
+}
+
+.settings-card > .settings-note-box,
+.settings-card > .settings-card-note,
+.settings-card > .settings-shortcuts,
+.settings-card > .settings-field:has(.settings-textarea),
+.settings-card > .settings-field:has(.asr-result) {
+  grid-column: 1 / -1;
+}
+
+.settings-field {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  align-items: stretch;
+  padding: 12px;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+}
+
+.settings-field-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.settings-field-copy strong {
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.settings-field-copy small {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.settings-inline-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.settings-field > .settings-inline-row,
+.settings-field > .settings-select,
+.settings-field > .settings-number,
+.settings-field > .settings-text,
+.settings-field > .settings-textarea {
+  justify-self: stretch;
+}
+
+.settings-path-value {
+  flex: 1 1 220px;
+  min-width: 0;
+  min-height: var(--settings-control-height);
+  padding: 8px var(--settings-control-padding-x);
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--settings-control-radius);
+  font-size: 12px;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-checkbox {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.settings-select,
+.settings-number,
+.settings-text {
+  height: var(--settings-control-height);
+  width: 100%;
+  padding: 0 var(--settings-control-padding-x);
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--settings-control-radius);
+  font-size: 13px;
+}

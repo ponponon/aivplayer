@@ -1,0 +1,128 @@
+
+.info-value::after {
+  content: attr(data-tooltip);
+  top: calc(100% + 7px);
+  width: max-content;
+  max-width: min(320px, calc(100vw - 40px));
+  padding: 8px 10px;
+  color: var(--text-primary);
+  background: rgba(9, 10, 12, 0.97);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-heavy);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  text-transform: none;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.info-grid.compact .info-item:nth-child(2n) .info-value::before,
+.info-grid.compact .info-item:nth-child(2n) .info-value::after {
+  right: 0;
+  left: auto;
+}
+
+.info-grid.compact .info-item:nth-child(2n) .info-value::before {
+  margin-right: 10px;
+  margin-left: 0;
+}
+
+.info-value:hover::before,
+.info-value:hover::after,
+.info-value:focus-visible::before,
+.info-value:focus-visible::after {
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible;
+}
+
+.info-value:hover::before,
+.info-value:focus-visible::before {
+  transform: translateY(0) rotate(45deg);
+}
+
+.info-grid.compact .info-item strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.info-item {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.info-item span {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.info-item strong {
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.info-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 0;
+  padding-top: 2px;
+}
+
+.info-card-more-button {
+  min-height: 32px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+.panel-kicker {
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.panel-header h2 {
+  margin: 2px 0 0;
+  font-size: 14px;
+}
+
+.playlist {
+  display: grid;
+  align-content: start;
+  overflow: auto;
+  border-top: 0;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+}
+
+.playlist.is-empty {
+  align-content: stretch;
+}
+
+.playlist.is-empty .panel-empty {
+  height: 100%;
+  min-height: 0;
+}

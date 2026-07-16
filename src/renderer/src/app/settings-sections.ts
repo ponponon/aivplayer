@@ -1,0 +1,6 @@
+export { CaptureSettingsSection } from './settings-sections/capture'
+export { GeneralSettingsSection } from './settings-sections/general'
+export { InterfaceSettingsSection } from './settings-sections/interface'
+export { ShortcutsSettingsSection } from './settings-sections/shortcuts'
+export { SubtitlesSettingsSection } from './settings-sections/subtitles'
+export { VideoSettingsSection } from './settings-sections/video'

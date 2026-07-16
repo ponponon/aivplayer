@@ -1,0 +1,124 @@
+
+.control-group.volume-group {
+  flex: 0 1 320px;
+  min-width: 160px;
+  max-width: 320px;
+  padding: 4px 10px 4px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+}
+
+.controls-secondary {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 1 auto;
+  gap: 8px;
+  min-width: 0;
+}
+
+.control-group.secondary-group {
+  gap: 6px;
+  padding: 4px 10px 4px 8px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+}
+
+.speed-control {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  min-width: 78px;
+  height: var(--control-size);
+  padding: 0 8px;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    color 120ms ease,
+    background-color 120ms ease,
+    border-color 120ms ease;
+}
+
+.speed-control:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.085);
+}
+
+.speed-control:focus-within {
+  outline: 2px solid rgba(232, 193, 109, 0.72);
+  outline-offset: 2px;
+}
+
+.speed-control-icon {
+  position: absolute;
+  right: 7px;
+  pointer-events: none;
+  color: var(--text-muted);
+}
+
+.speed-control:hover .speed-control-icon {
+  color: var(--text-secondary);
+}
+
+.round-button {
+  width: var(--control-size);
+  height: var(--control-size);
+}
+
+.round-button.primary {
+  width: 40px;
+  height: 40px;
+  color: var(--accent-ink);
+  background: var(--accent);
+}
+
+.round-button.primary:hover {
+  color: var(--accent-ink);
+  background: var(--accent-strong);
+}
+
+.round-button.primary:disabled {
+  color: var(--text-muted);
+  background: rgba(232, 193, 109, 0.18);
+  border-color: transparent;
+}
+
+.round-button.primary:disabled:hover {
+  color: var(--text-muted);
+  background: rgba(232, 193, 109, 0.18);
+}
+
+.round-button.stop-button {
+  display: inline-flex;
+  width: auto;
+  min-width: 72px;
+  padding: 0 10px;
+  gap: 6px;
+  color: rgba(255, 128, 124, 0.96);
+  background: rgba(255, 115, 111, 0.08);
+  border-color: rgba(255, 115, 111, 0.22);
+}
+
+.round-button.stop-button:hover {
+  color: #ffb7b4;
+  background: rgba(255, 115, 111, 0.14);
+  border-color: rgba(255, 115, 111, 0.3);
+}
+
+.round-button.stop-button span {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.volume {
+  width: 100%;
+  min-width: 96px;
+  accent-color: var(--accent);
+}
