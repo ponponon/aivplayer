@@ -83,6 +83,8 @@ mac:
   target:
     - dmg
     - zip
+  identity: null
+  hardenedRuntime: false
 win:
   icon: brand/icon.ico
   target:
