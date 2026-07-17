@@ -120,6 +120,15 @@ const api = {
   getNativePlayerStatus: (): Promise<NativePlayerStatus> => ipcRenderer.invoke(IPC_CHANNELS.NATIVE_PLAYER_STATUS),
   getInitialMediaFiles: (): Promise<MediaFile[]> => ipcRenderer.invoke(IPC_CHANNELS.GET_INITIAL_MEDIA_FILES),
   stopNativePlayer: (): Promise<NativePlaybackResult> => ipcRenderer.invoke(IPC_CHANNELS.STOP_NATIVE_PLAYER),
+  minimizeWindow: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.WINDOW_MINIMIZE),
+  toggleMaximizeWindow: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.WINDOW_TOGGLE_MAXIMIZE),
+  closeWindow: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.WINDOW_CLOSE),
+  getWindowMaximized: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.WINDOW_GET_STATE),
+  onWindowMaximizedChanged: (callback: (isMaximized: boolean) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, isMaximized: boolean): void => callback(isMaximized)
+    ipcRenderer.on(IPC_CHANNELS.WINDOW_STATE_CHANGED, listener)
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.WINDOW_STATE_CHANGED, listener)
+  },
   onMediaFilesOpened: (callback: (files: MediaFile[]) => void): (() => void) => {
     const listener = (_event: Electron.IpcRendererEvent, files: MediaFile[]): void => callback(files)
     ipcRenderer.on(IPC_CHANNELS.MEDIA_FILES_OPENED, listener)

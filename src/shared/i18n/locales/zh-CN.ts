@@ -52,7 +52,11 @@
       toggleSummary: '打开 AI 内容总结',
       toggleInfo: '显示或隐藏媒体信息',
       openSettings: '打开设置',
-      closeSettings: '关闭设置'
+      closeSettings: '关闭设置',
+      minimizeWindow: '最小化窗口',
+      maximizeWindow: '最大化窗口',
+      restoreWindow: '还原窗口',
+      closeWindow: '关闭窗口'
     },
     emptyState: {
       title: 'AIVPlayer',
@@ -165,6 +169,8 @@
       engineReady: '引擎就绪',
       engineNotReady: '引擎未就绪',
       modelFiles: '模型文件',
+      setupGuide: '字幕生成准备',
+      setupDescription: '先确认运行时，再下载模型，最后生成字幕。',
       translationLanguagePair: '语言对',
       translationTargetLanguage: '目标语言',
       subtitleLanguage: '识别语言',

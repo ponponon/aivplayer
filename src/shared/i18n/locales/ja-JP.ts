@@ -52,7 +52,11 @@
       toggleSummary: 'AI 要約を開く',
       toggleInfo: 'メディア情報を表示 / 非表示',
       openSettings: '設定を開く',
-      closeSettings: '設定を閉じる'
+      closeSettings: '設定を閉じる',
+      minimizeWindow: 'ウィンドウを最小化',
+      maximizeWindow: 'ウィンドウを最大化',
+      restoreWindow: 'ウィンドウを元に戻す',
+      closeWindow: 'ウィンドウを閉じる'
     },
     emptyState: {
       title: 'AIVPlayer',
@@ -165,6 +169,8 @@
       engineReady: 'エンジン準備完了',
       engineNotReady: 'エンジン未準備',
       modelFiles: 'モデルファイル',
+      setupGuide: '字幕生成の準備',
+      setupDescription: 'ランタイムを確認し、モデルをダウンロードしてから字幕を生成します。',
       translationLanguagePair: '言語ペア',
       translationTargetLanguage: '翻訳先',
       subtitleLanguage: '認識言語',

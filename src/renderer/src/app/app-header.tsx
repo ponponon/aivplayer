@@ -1,5 +1,39 @@
-import { FileText, FolderOpen, Info, ListChecks, PanelRight, Settings, Sparkles } from 'lucide-react'
+import { FileText, FolderOpen, Info, ListChecks, Minus, PanelRight, Settings, Square, Sparkles, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { useAppContext } from './app-context'
+
+function WindowControls(): React.ReactElement {
+  const app = useAppContext()
+  const [isMaximized, setIsMaximized] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    void window.aiv.getWindowMaximized().then((next) => {
+      if (active) setIsMaximized(next)
+    })
+    return () => { active = false }
+  }, [])
+
+  useEffect(() => window.aiv.onWindowMaximizedChanged(setIsMaximized), [])
+
+  const toggleMaximize = (): void => {
+    void window.aiv.toggleMaximizeWindow().then(setIsMaximized)
+  }
+
+  return (
+    <div className="window-controls">
+      <button className="window-control" type="button" onClick={() => void window.aiv.minimizeWindow()} title={app.copy.topbar.minimizeWindow} aria-label={app.copy.topbar.minimizeWindow}>
+        <Minus size={16} strokeWidth={1.8} />
+      </button>
+      <button className="window-control" type="button" onClick={toggleMaximize} title={isMaximized ? app.copy.topbar.restoreWindow : app.copy.topbar.maximizeWindow} aria-label={isMaximized ? app.copy.topbar.restoreWindow : app.copy.topbar.maximizeWindow}>
+        <Square size={14} strokeWidth={1.8} />
+      </button>
+      <button className="window-control window-control-close" type="button" onClick={() => void window.aiv.closeWindow()} title={app.copy.topbar.closeWindow} aria-label={app.copy.topbar.closeWindow}>
+        <X size={17} strokeWidth={1.8} />
+      </button>
+    </div>
+  )
+}
 
 export function AppHeader(): React.ReactElement {
   const app = useAppContext()
@@ -20,6 +54,7 @@ export function AppHeader(): React.ReactElement {
         <button className={`tool-button ${state.panelMode === 'info' ? 'active' : ''}`} type="button" onClick={() => app.togglePanelMode('info')} title={copy.topbar.toggleInfo} aria-pressed={state.panelMode === 'info'}><Info size={17} /></button>
         <button className={`tool-button ${app.isSettingsDialogOpen ? 'active' : ''}`} type="button" onClick={toggleSettings} title={app.isSettingsDialogOpen ? copy.topbar.closeSettings : copy.topbar.openSettings} aria-label={app.isSettingsDialogOpen ? copy.topbar.closeSettings : copy.topbar.openSettings} aria-pressed={app.isSettingsDialogOpen}><Settings size={17} /></button>
       </nav>
+      <WindowControls />
     </header>
   )
 }

@@ -52,7 +52,11 @@
       toggleSummary: 'AI 요약 열기',
       toggleInfo: '미디어 정보 표시 / 숨기기',
       openSettings: '설정 열기',
-      closeSettings: '설정 닫기'
+      closeSettings: '설정 닫기',
+      minimizeWindow: '창 최소화',
+      maximizeWindow: '창 최대화',
+      restoreWindow: '창 복원',
+      closeWindow: '창 닫기'
     },
     emptyState: {
       title: 'AIVPlayer',
@@ -165,6 +169,8 @@
       engineReady: '엔진 준비 완료',
       engineNotReady: '엔진 준비 안 됨',
       modelFiles: '모델 파일',
+      setupGuide: '자막 생성 준비',
+      setupDescription: '런타임을 확인하고 모델을 다운로드한 뒤 자막을 생성하세요.',
       translationLanguagePair: '언어 쌍',
       translationTargetLanguage: '번역 대상',
       subtitleLanguage: '감지 언어',

@@ -52,7 +52,11 @@
       toggleSummary: 'Open AI summary',
       toggleInfo: 'Show or hide media info',
       openSettings: 'Open settings',
-      closeSettings: 'Close settings'
+      closeSettings: 'Close settings',
+      minimizeWindow: 'Minimize window',
+      maximizeWindow: 'Maximize window',
+      restoreWindow: 'Restore window',
+      closeWindow: 'Close window'
     },
     emptyState: {
       title: 'AIVPlayer',
@@ -165,6 +169,8 @@
       engineReady: 'Engine ready',
       engineNotReady: 'Engine not ready',
       modelFiles: 'Model files',
+      setupGuide: 'Subtitle setup',
+      setupDescription: 'Check the runtime, download a model, then generate subtitles.',
       translationLanguagePair: 'Language pair',
       translationTargetLanguage: 'Target language',
       subtitleLanguage: 'Detected language',

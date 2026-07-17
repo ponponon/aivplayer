@@ -19,12 +19,6 @@
   -webkit-app-region: drag;
 }
 
-/* Linux/Windows: 为原生窗口控件预留空间 */
-.platform-linux .titlebar,
-.platform-win32 .titlebar {
-  padding-right: 148px;
-}
-
 .brand,
 .top-actions,
 .control-group,

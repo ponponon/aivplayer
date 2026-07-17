@@ -49,6 +49,7 @@ function flushPendingMediaPaths(): void {
 export function createWindow(): void {
   const iconPath = resolveAppIconPath()
   const isMac = process.platform === 'darwin'
+  const useCustomWindowControls = process.platform === 'linux' || process.platform === 'win32'
   mainState.mainWindow = new BrowserWindow({
     width: 1360,
     height: 840,
@@ -59,22 +60,21 @@ export function createWindow(): void {
     title: APP_NAME,
     ...(isMac
       ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 16, y: 16 } }
-      : { titleBarStyle: 'hidden', titleBarOverlay: true }
+      : useCustomWindowControls
+        ? { titleBarStyle: 'hidden', frame: false }
+        : { titleBarStyle: 'hidden', titleBarOverlay: true }
     ),
     webPreferences: { preload: join(__dirname, '../preload/index.js'), contextIsolation: true, nodeIntegration: false, sandbox: false }
   })
   
-  // Linux/Windows: 窗口准备好后更新原生窗口控件颜色
-  if (!isMac && mainState.mainWindow) {
-    const updateColors = () => {
-      mainState.mainWindow?.setTitleBarOverlay({
-        color: '#090a0c',
-        symbolColor: '#e8c16d',
-        height: 40
-      })
+  if (useCustomWindowControls && mainState.mainWindow) {
+    const sendMaximizedState = (): void => {
+      if (!mainState.mainWindow || mainState.mainWindow.isDestroyed()) return
+      mainState.mainWindow.webContents.send(IPC_CHANNELS.WINDOW_STATE_CHANGED, mainState.mainWindow.isMaximized())
     }
-    mainState.mainWindow.once('ready-to-show', updateColors)
-    mainState.mainWindow.on('focus', updateColors)
+    mainState.mainWindow.on('maximize', sendMaximizedState)
+    mainState.mainWindow.on('unmaximize', sendMaximizedState)
+    mainState.mainWindow.on('restore', sendMaximizedState)
   }
   if (process.env.ELECTRON_RENDERER_URL) mainState.mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL)
   else mainState.mainWindow.loadFile(join(__dirname, '../renderer/index.html'))

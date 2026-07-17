@@ -417,5 +417,11 @@
 
 - `titleBarStyle: 'hiddenInset'` 是 macOS 专用选项，在 Linux/Windows 上会导致窗口无法正常调整大小。
 - 跨平台 Electron 应用应该用 `process.platform === 'darwin'` 判断平台，分别配置窗口选项。
-- macOS 可用 `hiddenInset` + `trafficLightPosition`；Linux/Windows 应用 `titleBarStyle: 'hidden'` + `titleBarOverlay: true`。
+- macOS 可用 `hiddenInset` + `trafficLightPosition`；Linux/Windows 如果接受系统控件外观可用 `titleBarStyle: 'hidden'` + `titleBarOverlay: true`，如果要求按钮完全融入应用主题则改用 `frame: false` + 自绘控件。
 - 修改窗口配置后要在所有目标平台测试调整大小、最大化、最小化等功能。
+
+## Linux 原生 titleBarOverlay 不能保证视觉融入
+
+- Electron 的 `titleBarOverlay` 只能设置窗口控件区域的基础颜色和图标颜色，Linux 不同窗口管理器仍可能给最小化、最大化、关闭按钮绘制独立背景。
+- 如果产品要求窗口按钮与网页顶栏完全统一，应像 VS Code 一样使用 `frame: false`，把窗口控件放进页面并通过受控 IPC 调用 `BrowserWindow` 的最小化、最大化 / 还原和关闭。
+- 自绘控件必须明确设置 `-webkit-app-region: no-drag`，否则拖拽区会吞掉按钮点击；macOS 仍应保留原生 traffic lights，不要跨平台复用 Linux/Windows 控件。

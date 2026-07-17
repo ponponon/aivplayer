@@ -49,6 +49,11 @@ export const IPC_CHANNELS = {
   SHOW_ITEM_IN_FOLDER: 'shell:show-item-in-folder',
   NATIVE_PLAYER_STATUS: 'native-player:status',
   STOP_NATIVE_PLAYER: 'native-player:stop',
+  WINDOW_MINIMIZE: 'window:minimize',
+  WINDOW_TOGGLE_MAXIMIZE: 'window:toggle-maximize',
+  WINDOW_CLOSE: 'window:close',
+  WINDOW_GET_STATE: 'window:get-state',
+  WINDOW_STATE_CHANGED: 'window:state-changed',
   GET_INITIAL_MEDIA_FILES: 'media:get-initial-files',
   MEDIA_FILES_OPENED: 'media:files-opened'
 } as const
