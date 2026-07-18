@@ -8,7 +8,9 @@ export type SubtitleTranslationActions = {
   cancelTranslation: () => Promise<void>
 }
 
-export function useSubtitleTranslation(model: AppModel, derived: AppDerived, patchSubtitleDisplaySettings: (patch: Partial<AppSettings['subtitles']>) => void): SubtitleTranslationActions {
+export type TranslationSetupGuard = (resumeAction: () => Promise<void>) => boolean
+
+export function useSubtitleTranslation(model: AppModel, derived: AppDerived, patchSubtitleDisplaySettings: (patch: Partial<AppSettings['subtitles']>) => void, onSetupRequired?: TranslationSetupGuard): SubtitleTranslationActions {
   const translateSubtitle = async (
     targetLanguage: SubtitleTargetLanguageId = model.appSettings.subtitles.targetLanguage,
     sourceSubtitle: AsrSubtitleResult | null = null,
@@ -18,6 +20,7 @@ export function useSubtitleTranslation(model: AppModel, derived: AppDerived, pat
     const sourceSubtitleSrtPath = sourceSubtitle?.subtitleSrtPath ?? derived.subtitleSrtPath
     const sourceLanguage = sourceSubtitle?.subtitleLanguage ?? derived.subtitleTranslationSourceLanguage
     if (!sourceSubtitlePath || model.isTranslatingSubtitle) return null
+    if (onSetupRequired?.(async () => { await translateSubtitle(targetLanguage, sourceSubtitle, flowStartedAt) })) return null
     model.translationStartedAtRef.current = performance.now()
     model.setTranslationElapsedMs(0)
     model.setIsTranslatingSubtitle(true)

@@ -1,0 +1,148 @@
+.ai-setup-backdrop {
+  z-index: 19;
+}
+
+.ai-setup-dialog {
+  display: grid;
+  gap: 16px;
+  width: min(680px, calc(100vw - 32px));
+  max-height: calc(100dvh - 48px);
+  min-width: 0;
+  padding: 20px;
+  overflow: auto;
+  color: var(--text-primary);
+  background:
+    radial-gradient(circle at 92% 0%, rgba(232, 193, 109, 0.12), transparent 34%),
+    rgba(18, 20, 23, 0.98);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-heavy);
+}
+
+.ai-setup-dialog:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.ai-setup-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.ai-setup-header h2 {
+  margin: 4px 0 0;
+  font-size: 21px;
+  letter-spacing: -0.02em;
+}
+
+.ai-setup-header p {
+  max-width: 58ch;
+  margin: 7px 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.ai-setup-steps {
+  display: grid;
+  gap: 8px;
+}
+
+.ai-setup-step {
+  min-width: 0;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+.ai-setup-step.is-active {
+  background: rgba(255, 255, 255, 0.055);
+  border-color: var(--border-strong);
+}
+
+.ai-setup-step.is-ready {
+  background: rgba(143, 212, 155, 0.045);
+}
+
+.ai-setup-step-toggle {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) max-content 15px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 66px;
+  padding: 10px 12px;
+  color: var(--text-primary);
+  text-align: left;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.ai-setup-step-toggle:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.ai-setup-step-toggle:focus-visible,
+.ai-setup-dialog .settings-text:focus-visible,
+.ai-setup-dialog .settings-secondary-button:focus-visible,
+.ai-setup-dialog .asr-action-button:focus-visible {
+  outline: 2px solid rgba(232, 193, 109, 0.76);
+  outline-offset: 2px;
+}
+
+.ai-setup-step-icon {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  color: var(--accent);
+  background: rgba(232, 193, 109, 0.1);
+  border: 1px solid rgba(232, 193, 109, 0.2);
+  border-radius: 9px;
+}
+
+.ai-setup-step-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.ai-setup-step-copy strong {
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.ai-setup-step-copy small {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.ai-setup-step-status,
+.ai-setup-test-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ai-setup-step-status.ready,
+.ai-setup-test-state.is-ready {
+  color: var(--ok);
+}
+
+.ai-setup-step-status.action {
+  color: var(--accent);
+}
+
+.ai-setup-step-status.checking {
+  color: var(--text-secondary);
+}

@@ -14,13 +14,18 @@ export function useAppDerived(model: AppModel) {
   const modelViewState = recommendedModelManifest ? buildAsrModelViewState({ copy: subtitle.copy, recommendedManifest: recommendedModelManifest, installedModels: model.asrStatus?.installedModels ?? [], isDownloadingModel: model.isDownloadingModel, downloadProgress: model.downloadProgress, hasWhisperRuntime: Boolean(model.asrStatus?.binaryPath), hasFfmpegRuntime: Boolean(model.asrStatus?.ffmpegPath) }) : null
   const subtitleTranslationGlossary = normalizeTranslationGlossary(model.appSettings.asr.translationGlossary) ?? ''
   const summaryUsesTranslation = Boolean(model.translatedSubtitleResult?.subtitlePath && model.translatedSubtitleResult.targetLanguage === model.appSettings.subtitles.targetLanguage)
+  const isTranslationConfigured = Boolean(
+    model.appSettings.asr.translationBaseUrl?.trim() &&
+      model.appSettings.asr.translationModel?.trim() &&
+      model.appSettings.asr.translationApiKey?.trim()
+  )
   return {
     ...subtitle,
     ...media,
     isSidePanelVisible: model.state.panelMode !== 'none',
     installedModelCount: model.asrStatus?.installedModels.length ?? 0,
     canDownloadRecommendedModel: Boolean(model.asrStatus && !model.isDownloadingModel),
-    canGenerateSubtitle: Boolean(model.state.currentFile && model.asrStatus?.available && !model.isAsrBusy && !model.isDownloadingModel && !model.isTranslatingSubtitle),
+    canGenerateSubtitle: Boolean(model.state.currentFile && !model.isAsrBusy && !model.isDownloadingModel && !model.isTranslatingSubtitle),
     canOpenSubtitleTools: Boolean(model.state.currentFile),
     hasCurrentFile: Boolean(model.state.currentFile),
     canOpenSubtitleFolder: Boolean(subtitle.subtitlePath),
@@ -38,8 +43,8 @@ export function useAppDerived(model: AppModel) {
     modelViewState,
     isControlDeckHidden: Boolean(model.state.currentFile && model.state.isPlaying && model.appSettings.playback.autoHideControlDeck) && !model.isControlDeckVisible,
     asrErrorDetails: model.asrNotice && !model.asrNotice.success ? model.asrNotice.errorDetails : undefined,
-    translationServiceStatusLabel: model.translationServiceTestMessage ? model.translationServiceTestMessage.success ? subtitle.copy.asrPanel.translationServiceReady : subtitle.copy.asrPanel.translationServiceUnavailable : subtitle.subtitleTranslationModel ? subtitle.copy.asrPanel.translationServiceNotChecked : null,
-    translationServiceStatusTone: model.translationServiceTestMessage ? model.translationServiceTestMessage.success ? 'ready' as const : 'failed' as const : 'pending' as const,
+    translationServiceStatusLabel: model.translationServiceTestMessage ? model.translationServiceTestMessage.success ? subtitle.copy.asrPanel.translationServiceReady : subtitle.copy.asrPanel.translationServiceUnavailable : isTranslationConfigured ? subtitle.copy.asrPanel.translationServiceConfigured : subtitle.copy.asrPanel.translationServiceNotConfigured,
+    translationServiceStatusTone: model.translationServiceTestMessage ? model.translationServiceTestMessage.success ? 'ready' as const : 'failed' as const : isTranslationConfigured ? 'pending' as const : 'unconfigured' as const,
     subtitleTranslationGlossary,
     canQuickSubtitleAction: Boolean(model.state.currentFile && !model.isAsrBusy && !model.isTranslatingSubtitle && !model.isSummarizingSubtitle && !model.isDownloadingModel),
     formatBytes,

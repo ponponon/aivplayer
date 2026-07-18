@@ -1,0 +1,75 @@
+/* 首次引导可能在设置面板样式上下文之外出现，操作按钮需要自带完整样式，
+   避免不同平台把原生焦点框直接绘制在文字周围。 */
+.ai-setup-dialog .settings-secondary-button,
+.ai-setup-translation-test-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 11px;
+  box-sizing: border-box;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 720;
+  line-height: 1.2;
+}
+
+.ai-setup-dialog .settings-secondary-button:hover:not(:disabled),
+.ai-setup-translation-test-button:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--border-strong);
+}
+
+.ai-setup-dialog .settings-secondary-button:disabled,
+.ai-setup-translation-test-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.ai-setup-dialog .settings-secondary-button:focus-visible,
+.ai-setup-translation-test-button:focus-visible {
+  outline: 2px solid rgba(232, 193, 109, 0.76);
+  outline-offset: 2px;
+}
+
+.translation-service-status {
+  flex-wrap: wrap;
+}
+
+.translation-service-status.unconfigured strong {
+  color: var(--accent);
+}
+
+.subtitle-service-status-action {
+  min-height: 22px;
+  margin-left: 2px;
+  padding: 0 7px;
+  color: var(--accent);
+  background: rgba(232, 193, 109, 0.08);
+  border: 1px solid rgba(232, 193, 109, 0.24);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1;
+}
+
+.subtitle-service-status-action:hover:not(:disabled) {
+  color: var(--accent-ink);
+  background: var(--accent);
+}
+
+.subtitle-service-status-action:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}

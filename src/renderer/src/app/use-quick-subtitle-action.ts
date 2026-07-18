@@ -3,15 +3,17 @@ import type { AppDerived } from './use-app-derived'
 import type { AppModel } from './app-types'
 import type { SubtitleTranslationActions } from './use-subtitle-translation'
 import type { AiWorkflowActions } from './use-ai-workflow'
+import type { AiSetupActions, AiSetupIntent, AiSetupResumeAction } from './use-ai-setup'
 import { isSubtitleLanguageMatch } from './app-helpers'
 
 export function useQuickSubtitleAction(
   model: AppModel,
   derived: AppDerived,
-  openPanelMode: (panel: 'asr' | 'summary') => void,
   patchDisplay: (patch: Partial<AppSettings['subtitles']>) => void,
   translateSubtitle: SubtitleTranslationActions['translateSubtitle'],
-  startAiWorkflow: AiWorkflowActions['startAiWorkflow']
+  startAiWorkflow: AiWorkflowActions['startAiWorkflow'],
+  isReadyForAiSetup: AiSetupActions['isReadyForAiSetup'],
+  openAiSetup: (intent: AiSetupIntent, resumeAction: AiSetupResumeAction) => void
 ) {
   const isQuickActionBusy = (): boolean => Boolean(model.isAsrBusy || model.isTranslatingSubtitle || model.isSummarizingSubtitle || model.isDownloadingModel)
 
@@ -26,7 +28,10 @@ export function useQuickSubtitleAction(
 
   const runQuickComplete = async (): Promise<void> => {
     if (!model.state.currentFile || isQuickActionBusy()) return
-    if (!derived.subtitlePath && !model.asrStatus?.available) { openPanelMode('asr'); return }
+    if (!isReadyForAiSetup('quick-complete')) {
+      openAiSetup('quick-complete', () => startAiWorkflow('complete'))
+      return
+    }
     await startAiWorkflow('complete')
   }
 

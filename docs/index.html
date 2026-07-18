@@ -200,6 +200,37 @@
         </div>
     </section>
 
+    <!-- Quick Start Section -->
+    <section id="quickstart" class="py-20 px-4 sm:px-6 lg:px-8 bg-primary text-white">
+        <div class="max-w-6xl mx-auto">
+            <div class="max-w-3xl mb-12">
+                <p class="text-sm font-semibold tracking-widest text-yellow-200 uppercase mb-3">第一次使用</p>
+                <h2 class="text-3xl sm:text-4xl font-bold mb-4">点击翻译前，只需要准备三件事</h2>
+                <p class="text-lg text-gray-300">AIVPlayer 会在应用内自动检查并打开准备向导。你不需要手动寻找模型目录，也不需要先理解 whisper.cpp。</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <article class="quickstart-card bg-white/10 border border-white/15 rounded-2xl p-6">
+                    <span class="text-yellow-200 text-sm font-semibold">01 · 本地引擎</span>
+                    <h3 class="text-xl font-semibold mt-3 mb-2">准备字幕引擎</h3>
+                    <p class="text-gray-300 leading-7">正式安装包会自带 whisper.cpp 和 ffmpeg。它们负责在本机把视频语音识别成原文字幕，不需要 API Key。</p>
+                </article>
+                <article class="quickstart-card bg-white/10 border border-white/15 rounded-2xl p-6">
+                    <span class="text-yellow-200 text-sm font-semibold">02 · 下载模型</span>
+                    <h3 class="text-xl font-semibold mt-3 mb-2">下载推荐 ASR 模型</h3>
+                    <p class="text-gray-300 leading-7">模型文件体积较大，只需下载一次。中国大陆网络优先选择 ModelScope，海外网络可选择 Hugging Face。</p>
+                </article>
+                <article class="quickstart-card bg-white/10 border border-white/15 rounded-2xl p-6">
+                    <span class="text-yellow-200 text-sm font-semibold">03 · 配置翻译</span>
+                    <h3 class="text-xl font-semibold mt-3 mb-2">填写并测试 AI 服务</h3>
+                    <p class="text-gray-300 leading-7">填入 OpenAI 兼容接口地址、模型名称和 API Key，点击测试连接。翻译可能产生服务商费用，请确认自己的 API 额度。</p>
+                </article>
+            </div>
+            <div class="mt-8 bg-white/10 border border-yellow-200/30 rounded-2xl p-5 text-gray-200 leading-7">
+                <strong class="text-yellow-200">隐私提示：</strong>视频和原文字幕默认留在本机；执行翻译或 AI 总结时，字幕文本才会发送到你配置的服务。API Key 会保存在系统安全存储中，不会上传到 AIVPlayer。
+            </div>
+        </div>
+    </section>
+
     <!-- Screenshots Section -->
     <section class="py-20 px-4 sm:px-6 lg:px-8">
         <div class="max-w-6xl mx-auto">
@@ -312,7 +343,7 @@
     </section>
 
     <!-- Quick Start Section -->
-    <section id="quickstart" class="py-20 px-4 sm:px-6 lg:px-8">
+    <section id="build" class="py-20 px-4 sm:px-6 lg:px-8">
         <div class="max-w-4xl mx-auto">
             <div class="text-center mb-16">
                 <h2 class="text-3xl sm:text-4xl font-bold text-primary mb-4">快速开始</h2>
