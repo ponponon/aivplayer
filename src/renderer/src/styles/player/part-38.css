@@ -91,3 +91,122 @@
     align-items: center;
   }
 }
+
+.ai-setup-step-detail {
+  display: grid;
+  gap: 12px;
+  padding: 0 14px 14px 52px;
+}
+
+.ai-setup-detail-copy,
+.ai-setup-detail-note {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.ai-setup-detail-note {
+  color: var(--danger);
+}
+
+.ai-setup-inline-actions,
+.ai-setup-translation-actions,
+.ai-setup-footer-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ai-setup-translation-form {
+  display: grid;
+  gap: 10px;
+}
+
+.ai-setup-translation-form .settings-field {
+  grid-template-columns: 1fr;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+}
+
+.ai-setup-translation-form .settings-field-copy {
+  gap: 3px;
+}
+
+.ai-setup-translation-form .settings-field-copy small {
+  max-width: 62ch;
+}
+
+.ai-setup-translation-actions {
+  justify-content: space-between;
+  padding-top: 2px;
+}
+
+.ai-setup-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 2px;
+}
+
+.ai-setup-security-note {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 6px;
+  max-width: 42ch;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.ai-setup-security-note svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--accent);
+}
+
+.ai-setup-spin {
+  animation: ai-setup-spin 1s linear infinite;
+}
+
+@keyframes ai-setup-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 640px) {
+  .ai-setup-dialog {
+    padding: 16px;
+  }
+
+  .ai-setup-step-toggle {
+    grid-template-columns: 30px minmax(0, 1fr) 15px;
+  }
+
+  .ai-setup-step-status {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: start;
+  }
+
+  .ai-setup-step-toggle > svg:last-child {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .ai-setup-step-detail {
+    padding-left: 14px;
+  }
+
+  .ai-setup-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ai-setup-footer-actions {
+    justify-content: flex-end;
+  }
+}

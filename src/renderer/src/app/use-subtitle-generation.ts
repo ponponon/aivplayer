@@ -2,9 +2,12 @@ import type { AsrSubtitleResult } from '../../../shared/media-types'
 import type { AppDerived } from './use-app-derived'
 import type { AppModel } from './app-types'
 
-export function useSubtitleGeneration(model: AppModel, derived: AppDerived) {
+export type SubtitleSetupGuard = (resumeAction: () => Promise<void>) => boolean
+
+export function useSubtitleGeneration(model: AppModel, derived: AppDerived, onSetupRequired?: SubtitleSetupGuard) {
   const generateSubtitle = async (): Promise<AsrSubtitleResult | null> => {
     if (!model.state.currentFile) return null
+    if (onSetupRequired?.(async () => { await generateSubtitle() })) return null
     model.asrStartedAtRef.current = performance.now()
     model.setAsrElapsedMs(0)
     model.setIsAsrBusy(true)
