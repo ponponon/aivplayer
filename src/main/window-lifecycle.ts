@@ -8,6 +8,8 @@ import { expandMediaFiles, getInitialMediaFiles } from './media-dialogs'
 import { mainState } from './main-state'
 import { resolveAppIconPath } from './main-services'
 
+const DEFAULT_WINDOW_ZOOM_FACTOR = 3
+
 export function applyMacDockIcon(): void {
   if (process.platform === 'darwin') {
     const iconPath = resolveAppIconPath()
@@ -76,6 +78,7 @@ export function createWindow(): void {
     mainState.mainWindow.on('unmaximize', sendMaximizedState)
     mainState.mainWindow.on('restore', sendMaximizedState)
   }
+  mainState.mainWindow.webContents.setZoomFactor(DEFAULT_WINDOW_ZOOM_FACTOR)
   if (process.env.ELECTRON_RENDERER_URL) mainState.mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL)
   else mainState.mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   mainState.mainWindow.webContents.once('did-finish-load', () => {

@@ -241,6 +241,10 @@
 - 从 Finder、Windows 资源管理器、Linux 文件管理器或命令行打开视频时，AIVPlayer 会把文件传给已有窗口；不会因为系统再次启动一个实例而丢失视频。
 - Linux 同时提供 AppImage 和 deb 安装目标；deb 安装会把 desktop MIME 关联正式写入系统，AppImage 则保留便携分发能力。
 
+## 默认界面缩放
+- 应用窗口默认使用略微收紧的渲染缩放基线，让字体、图标、按钮和卡片整体比系统默认更小一档。
+- 这层缩放是窗口级默认值，不需要用户额外手动调整，也不会依赖浏览器或系统的页面缩放状态。
+
 ## ASR 二进制兼容
 - 自动识别 `whisper-whisper-cli`、`whisper-cli`、`whisper-cpp`、`main` 这几类 whisper.cpp 可执行文件。
 - 如果用户选到的是 deprecated wrapper，运行时会优先切换到同目录下真正可用的二进制。
