@@ -1,8 +1,9 @@
 import type { AsrModelSourceId } from './media-types'
 import type { ClipExportLengthSeconds, ClipExportMode } from './clip-export'
+import type { PlaybackHistoryEntry } from './playback-history'
 import { DEFAULT_APP_LOCALE, DEFAULT_SUBTITLE_LANGUAGE, type AppLocale, type SubtitleLanguageId } from './localization'
 
-export const APP_SETTINGS_SCHEMA_VERSION = 12
+export const APP_SETTINGS_SCHEMA_VERSION = 13
 
 export type CaptureImageFormat = 'jpg' | 'png'
 export type CaptureFileNamingMode = 'sequential' | 'timestamp'
@@ -53,6 +54,7 @@ export type AppSettings = {
     lastMuted: boolean
     lastPlaybackRate: number
     lastProgressByPath: Record<string, number>
+    history: PlaybackHistoryEntry[]
   }
   subtitles: {
     fontSizePx: number
@@ -179,7 +181,8 @@ export function createDefaultAppSettings(): AppSettings {
       lastVolume: 0.8,
       lastMuted: false,
       lastPlaybackRate: 1,
-      lastProgressByPath: {}
+      lastProgressByPath: {},
+      history: []
     },
     subtitles: {
       fontSizePx: 14,

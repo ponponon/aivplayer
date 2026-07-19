@@ -3,6 +3,7 @@ export const IPC_CHANNELS = {
   OPEN_MEDIA_DIRECTORY: 'dialog:open-media-directory',
   OPEN_FOLDER_PICKER: 'dialog:open-folder-picker',
   CREATE_MEDIA_FILE: 'media:create-file',
+  CHECK_MEDIA_FILE: 'media:check-file',
   LIST_MEDIA_FILES_IN_DIRECTORY: 'media:list-files-in-directory',
   GET_MEDIA_METADATA: 'media:get-metadata',
   READ_FILE_CONTENT: 'media:read-file-content',

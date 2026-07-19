@@ -19,6 +19,7 @@ import {
 import { isClipExportLengthSeconds, isClipExportMode } from '../shared/clip-export'
 import type { AsrModelSourceId } from '../shared/media-types'
 import { isAppLocale, isSubtitleLanguageId } from '../shared/localization'
+import { MAX_PLAYBACK_HISTORY_ITEMS, type PlaybackHistoryEntry } from '../shared/playback-history'
 
 export type AppSettingsSecretCodec = {
   encryptString: (value: string) => string
@@ -252,6 +253,31 @@ function sanitizePlaybackProgressByPath(
   return Object.fromEntries(sanitizedEntries)
 }
 
+function sanitizePlaybackHistory(value: unknown, fallback: PlaybackHistoryEntry[]): PlaybackHistoryEntry[] {
+  if (!Array.isArray(value)) {
+    return fallback
+  }
+
+  const seen = new Set<string>()
+  return value
+    .filter((entry): entry is Partial<PlaybackHistoryEntry> => Boolean(entry) && typeof entry === 'object')
+    .map((entry) => ({
+      path: typeof entry.path === 'string' ? entry.path : '',
+      name: typeof entry.name === 'string' ? entry.name.trim() : '',
+      extension: typeof entry.extension === 'string' ? entry.extension.trim().toLowerCase() : '',
+      lastPlayedAt: typeof entry.lastPlayedAt === 'number' ? entry.lastPlayedAt : 0,
+      durationSeconds: isFiniteNumber(entry.durationSeconds) && entry.durationSeconds > 0 ? entry.durationSeconds : null
+    }))
+    .filter((entry) => {
+      if (seen.has(entry.path)) return false
+      if (!entry.path || !isAbsolute(entry.path) || !entry.name || !isFiniteNumber(entry.lastPlayedAt) || entry.lastPlayedAt <= 0) return false
+      seen.add(entry.path)
+      return true
+    })
+    .sort((left, right) => right.lastPlayedAt - left.lastPlayedAt)
+    .slice(0, MAX_PLAYBACK_HISTORY_ITEMS)
+}
+
 function sanitizePlaybackSettings(
   value: Partial<AppSettings['playback']> | undefined,
   defaults: AppSettings['playback']
@@ -296,7 +322,8 @@ function sanitizePlaybackSettings(
       isFiniteNumber(playback.lastPlaybackRate) && playback.lastPlaybackRate > 0
         ? Math.min(16, playback.lastPlaybackRate)
         : defaults.lastPlaybackRate,
-    lastProgressByPath: sanitizePlaybackProgressByPath(playback.lastProgressByPath, defaults.lastProgressByPath)
+    lastProgressByPath: sanitizePlaybackProgressByPath(playback.lastProgressByPath, defaults.lastProgressByPath),
+    history: sanitizePlaybackHistory(playback.history, defaults.history)
   }
 }
 
@@ -383,7 +410,7 @@ function sanitizeAppSettings(parsed: unknown, captureDefaultDirectoryPath: strin
     asr?: Partial<AppSettings['asr']>
   }
 
-  const legacyPlayback = typeof value.schemaVersion !== 'number' || value.schemaVersion < APP_SETTINGS_SCHEMA_VERSION
+  const legacyPlayback = typeof value.schemaVersion !== 'number' || value.schemaVersion < 12
   const playback = legacyPlayback
     ? {
         ...value.playback,

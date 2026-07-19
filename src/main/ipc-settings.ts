@@ -7,6 +7,7 @@ import { createMediaProbeMetadata } from './media/media-metadata'
 import { createMediaFile, } from './media/media-protocol'
 import { getNativePlayerStatus, stopNativePlayer } from './media/native-player'
 import { listMediaFilesInDirectory, promptForDirectory, promptForMediaFiles, getInitialMediaFiles } from './media-dialogs'
+import { isMediaFileAvailable } from './media/file-opening'
 import { getCurrentLocale, loadAppSettings, saveAppSettings } from './main-settings'
 import { resolveResourcePath } from './main-services'
 import { mainState } from './main-state'
@@ -17,6 +18,7 @@ export function registerSettingsIpc(): void {
   ipcMain.handle(IPC_CHANNELS.OPEN_FOLDER_PICKER, (_event, request: { title: string; defaultPath?: string | null }) => promptForDirectory(request))
   ipcMain.handle(IPC_CHANNELS.LIST_MEDIA_FILES_IN_DIRECTORY, (_event, directoryPath: string) => listMediaFilesInDirectory(directoryPath))
   ipcMain.handle(IPC_CHANNELS.CREATE_MEDIA_FILE, (_event, filePath: string) => createMediaFile(filePath))
+  ipcMain.handle(IPC_CHANNELS.CHECK_MEDIA_FILE, (_event, filePath: string) => isMediaFileAvailable(filePath))
   ipcMain.handle(IPC_CHANNELS.READ_FILE_CONTENT, (_event, filePath: string): Promise<string> => readFile(filePath, 'utf-8'))
   ipcMain.handle(IPC_CHANNELS.GET_MEDIA_METADATA, (_event, filePath: string): Promise<MediaProbeMetadata | null> => createMediaProbeMetadata(filePath, { resourcePath: resolveResourcePath(), env: process.env }))
   ipcMain.handle(IPC_CHANNELS.GET_INITIAL_MEDIA_FILES, () => getInitialMediaFiles())

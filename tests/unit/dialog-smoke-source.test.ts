@@ -13,6 +13,9 @@ describe('dialog smoke source constraints', () => {
     expect(packageJson.scripts?.['smoke:media-details-dialog']).toBe(
       'node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-media-details-dialog.ts'
     )
+    expect(packageJson.scripts?.['smoke:playback-history']).toBe(
+      'node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-playback-history.ts'
+    )
     expect(packageJson.scripts?.['smoke:dialogs:all']).toBe(
       'npm run smoke:clip-export-dialog && npm run smoke:media-details-dialog'
     )
@@ -29,7 +32,7 @@ describe('dialog smoke source constraints', () => {
       'node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-translation-player.ts'
     )
     expect(packageJson.scripts?.['smoke:all']).toBe(
-      'npm run smoke:settings-dialog:all && npm run smoke:dialogs:all && npm run smoke:subtitle-settings && npm run smoke:translation && npm run smoke:translation:player && npm run smoke:open-video'
+      'npm run smoke:settings-dialog:all && npm run smoke:dialogs:all && npm run smoke:subtitle-settings && npm run smoke:translation && npm run smoke:translation:player && npm run smoke:playback-history && npm run smoke:open-video'
     )
   })
 
@@ -51,6 +54,27 @@ describe('dialog smoke source constraints', () => {
     expect(smokeScript).toContain("page.locator('.info-card-more-button').click()")
     expect(smokeScript).toContain("page.locator('.media-details-dialog').waitFor")
     expect(smokeScript).toContain("page.screenshot({ path: screenshotPath, fullPage: false })")
+  })
+
+  it('covers unavailable playback history and cleanup in the playback history smoke script', () => {
+    const smokeScript = readSource('scripts/smoke-playback-history.ts')
+
+    expect(smokeScript).toContain("aivplayer-smoke-playback-history-home-")
+    expect(smokeScript).toContain("window.aiv.getAppSettings()")
+    expect(smokeScript).toContain(".history-item.is-unavailable")
+    expect(smokeScript).toContain(".history-progress-fill")
+    expect(smokeScript).toContain(".history-filter-button")
+    expect(smokeScript).toContain(".history-filter-reset")
+    expect(smokeScript).toContain(".history-clear-unavailable-button")
+    expect(smokeScript).toContain(".history-unavailable-count")
+    expect(smokeScript).toContain(".history-context-menu")
+    expect(smokeScript).toContain("button: 'right'")
+    expect(smokeScript).toContain("page.keyboard.press('Escape')")
+    expect(smokeScript).toContain("aria-pressed")
+    expect(smokeScript).toContain('durationSeconds: 600')
+    expect(smokeScript).toContain(".history-remove")
+    expect(smokeScript).toContain(".panel-header-action-danger")
+    expect(smokeScript).toContain("page.screenshot({ path: historyScreenshotPath, fullPage: false })")
   })
 
   it('uses stable selectors in the subtitle settings smoke script', () => {

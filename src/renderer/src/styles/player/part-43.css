@@ -1,0 +1,150 @@
+.panel-header-heading {
+  min-width: 0;
+}
+.panel-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 12px;
+}
+.panel-header-action {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.panel-header-action:hover:not(:disabled),
+.panel-header-action:focus-visible {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.07);
+  border-color: var(--border-soft);
+}
+.panel-header-action:active:not(:disabled),
+.history-remove:active {
+  transform: scale(0.96);
+}
+.panel-header-action:disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+.panel-header-action-danger:hover:not(:disabled),
+.panel-header-action-danger:focus-visible {
+  color: var(--danger);
+}
+.history-count {
+  position: absolute;
+  top: -2px;
+  right: -3px;
+  display: grid;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  place-items: center;
+  color: var(--accent-ink);
+  background: var(--accent);
+  border: 2px solid var(--bg-panel);
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 800;
+  line-height: 1;
+}
+.playlist.is-history {
+  align-content: start;
+}
+.playlist.is-history .panel-empty {
+  align-content: center;
+  gap: 8px;
+}
+.panel-empty svg {
+  color: var(--accent);
+  opacity: 0.7;
+}
+
+.panel-empty small {
+  max-width: 190px;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.history-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px;
+  align-items: stretch;
+  min-width: 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.history-item-main {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 52px;
+  padding: 6px 4px 6px 10px;
+  color: var(--text-secondary);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.history-item-main:hover,
+.history-item-main.active {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.history-index,
+.history-ext,
+.history-meta {
+  color: var(--text-muted);
+  font-size: 10px;
+  text-transform: uppercase;
+}
+.history-copy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+.history-name {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.history-meta {
+  overflow: hidden;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  text-transform: none;
+  white-space: nowrap;
+}
+.history-item.is-unavailable .history-meta {
+  color: var(--danger);
+}
+
+.history-remove {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  min-height: 52px;
+  padding: 0;
+  color: var(--text-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.history-remove:hover,
+.history-remove:focus-visible {
+  color: var(--danger);
+  background: rgba(255, 115, 111, 0.08);
+}

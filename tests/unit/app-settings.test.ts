@@ -51,6 +51,13 @@ describe('app settings', () => {
     settings.playback.lastVolume = 0.42
     settings.playback.lastMuted = true
     settings.playback.lastPlaybackRate = 1.5
+    settings.playback.history = [{
+      path: `${tempDirectory}/history.mp4`,
+      name: 'history.mp4',
+      extension: 'mp4',
+      lastPlayedAt: 123,
+      durationSeconds: 600
+    }]
 
     await writeAppSettings(tempDirectory, settings)
 
@@ -133,7 +140,7 @@ describe('app settings', () => {
     )
 
     await expect(readAppSettings(tempDirectory)).resolves.toMatchObject({
-      schemaVersion: 12,
+      schemaVersion: 13,
       playback: {
         singleClickPause: true
       }
@@ -370,5 +377,24 @@ describe('app settings', () => {
     await writeAppSettings(tempDirectory, settings, tempDirectory)
 
     await expect(readAppSettings(tempDirectory, tempDirectory)).resolves.toEqual(expected)
+  })
+
+  it('sanitizes playback history paths, ordering, duplicates, and size', async () => {
+    const settings = createDefaultAppSettings()
+    settings.playback.history = [
+      { path: '/videos/older.mp4', name: 'older.mp4', extension: 'MP4', lastPlayedAt: 100, durationSeconds: 600 },
+      { path: '/videos/newer.mkv', name: 'newer.mkv', extension: 'MKV', lastPlayedAt: 200, durationSeconds: 900 },
+      { path: '/videos/older.mp4', name: 'duplicate.mp4', extension: 'mp4', lastPlayedAt: 300, durationSeconds: 700 },
+      { path: 'relative.mp4', name: 'relative.mp4', extension: 'mp4', lastPlayedAt: 400, durationSeconds: 400 },
+      { path: '/videos/invalid.mp4', name: 'invalid.mp4', extension: 'mp4', lastPlayedAt: 0, durationSeconds: 300 }
+    ]
+
+    const persisted = await writeAppSettings(tempDirectory, settings)
+
+    expect(persisted.playback.history).toEqual([
+      { path: '/videos/newer.mkv', name: 'newer.mkv', extension: 'mkv', lastPlayedAt: 200, durationSeconds: 900 },
+      { path: '/videos/older.mp4', name: 'older.mp4', extension: 'mp4', lastPlayedAt: 100, durationSeconds: 600 }
+    ])
+    await expect(readAppSettings(tempDirectory)).resolves.toMatchObject({ playback: { history: persisted.playback.history } })
   })
 })

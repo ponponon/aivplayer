@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { existsSync, statSync } from 'node:fs'
 import { extname, resolve } from 'node:path'
 import type { MediaFile } from '../../shared/media-types'
 
@@ -21,6 +21,16 @@ const VIDEO_EXTENSION_SET = new Set<string>(VIDEO_EXTENSIONS)
 
 export function isVideoFilePath(filePath: string): boolean {
   return VIDEO_EXTENSION_SET.has(extname(filePath).replace('.', '').toLowerCase())
+}
+
+export function isMediaFileAvailable(filePath: string): boolean {
+  if (!isVideoFilePath(filePath)) return false
+
+  try {
+    return statSync(filePath).isFile()
+  } catch {
+    return false
+  }
 }
 
 export function extractVideoFilePaths(

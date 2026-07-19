@@ -50,6 +50,7 @@ const api = {
   openFolderPicker: (request: { title: string; defaultPath?: string | null }): Promise<string | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.OPEN_FOLDER_PICKER, request),
   createMediaFile: (filePath: string): Promise<MediaFile> => ipcRenderer.invoke(IPC_CHANNELS.CREATE_MEDIA_FILE, filePath),
+  isMediaFileAvailable: (filePath: string): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.CHECK_MEDIA_FILE, filePath),
   readFileContent: (filePath: string): Promise<string> => ipcRenderer.invoke(IPC_CHANNELS.READ_FILE_CONTENT, filePath),
   listMediaFilesInDirectory: (directoryPath: string): Promise<MediaFile[]> =>
     ipcRenderer.invoke(IPC_CHANNELS.LIST_MEDIA_FILES_IN_DIRECTORY, directoryPath),

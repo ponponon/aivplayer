@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { extractVideoFilePaths, isVideoFilePath, mergeMediaFiles, VIDEO_EXTENSIONS } from '../../src/main/media/file-opening'
+import { extractVideoFilePaths, isMediaFileAvailable, isVideoFilePath, mergeMediaFiles, VIDEO_EXTENSIONS } from '../../src/main/media/file-opening'
 
 describe('video file opening', () => {
   it('keeps the supported extensions shared by runtime and packaging', () => {
     expect(VIDEO_EXTENSIONS).toContain('mp4')
     expect(isVideoFilePath('/tmp/movie.MP4')).toBe(true)
     expect(isVideoFilePath('/tmp/subtitles.srt')).toBe(false)
+  })
+
+  it('reports missing or unsupported history files as unavailable', () => {
+    expect(isMediaFileAvailable('/videos/missing.mp4')).toBe(false)
+    expect(isMediaFileAvailable('/videos/subtitles.srt')).toBe(false)
   })
 
   it('extracts existing video paths from startup and second-instance arguments', () => {
