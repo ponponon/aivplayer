@@ -1,0 +1,99 @@
+.clip-editor-time-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) minmax(120px, 0.8fr);
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.clip-editor-time-field,
+.clip-editor-duration-card {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.clip-editor-time-field > span,
+.clip-editor-duration-card > span {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.clip-editor-time-field input {
+  width: 100%;
+  min-height: 34px;
+  padding: 0 9px;
+  color: var(--text-primary);
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  font: 650 13px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.clip-editor-time-field input:focus-visible {
+  border-color: var(--accent);
+  outline: 2px solid rgba(232, 193, 109, 0.22);
+  outline-offset: 1px;
+}
+
+.clip-editor-duration-card {
+  min-height: 34px;
+  padding: 6px 9px;
+  background: rgba(232, 193, 109, 0.08);
+  border: 1px solid rgba(232, 193, 109, 0.18);
+  border-radius: var(--radius-sm);
+}
+
+.clip-editor-duration-card strong {
+  color: var(--accent-strong);
+  font: 700 14px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.clip-editor-selection-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 2px;
+}
+
+.clip-editor-selection-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+@media (max-width: 640px) {
+  .clip-editor-dialog {
+    max-height: calc(100dvh - 20px);
+  }
+
+  .clip-editor-preview-frame {
+    min-height: 160px;
+  }
+
+  .clip-editor-preview-hint {
+    width: 100%;
+    margin-left: 0;
+    text-align: left;
+  }
+
+  .clip-editor-selection-group .clip-export-group-heading {
+    display: grid;
+  }
+
+  .clip-editor-selection-group .clip-export-group-heading > span {
+    text-align: left;
+  }
+
+  .clip-editor-time-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .clip-editor-duration-card {
+    grid-column: 1 / -1;
+  }
+}

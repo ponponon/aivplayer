@@ -1,4 +1,4 @@
-import type { ClipExportLengthSeconds, ClipExportMode } from './clip-export'
+import type { ClipExportMode } from './clip-export'
 
 export type MediaFile = { id: string; name: string; path: string; url: string; extension: string }
 export type MediaProbeDetailScalar = string | number | boolean | null
@@ -9,7 +9,7 @@ export type MediaVideoMetadata = { codec: string | null; profile: string | null;
 export type MediaAudioMetadata = { codec: string | null; profile: string | null; channelLayout: string | null; sampleRateHz: number | null; bitRateKbps: number | null }
 export type MediaProbeMetadata = { fileSizeBytes: number; durationSeconds: number | null; overallBitrateKbps: number | null; video: MediaVideoMetadata | null; audio: MediaAudioMetadata | null; probeSource: 'ffprobe' | 'ffmpeg' | null; details: MediaProbeDetails | null }
 export type PlaybackState = { isPlaying: boolean; currentTime: number; duration: number; volume: number; muted: boolean; playbackRate: number }
-export type MediaClipExportRequest = { mediaPath: string; startSeconds: number; durationSeconds: ClipExportLengthSeconds; mode: ClipExportMode; subtitlePath?: string; subtitleSrtPath?: string }
+export type MediaClipExportRequest = { mediaPath: string; startSeconds: number; durationSeconds: number; mode: ClipExportMode; subtitlePath?: string; subtitleSrtPath?: string }
 export type MediaClipExportResult = { success: boolean; message: string; videoPath?: string; videoUrl?: string; subtitleSrtPath?: string; subtitleSrtUrl?: string; canceled?: boolean }
 export type ClipboardWriteTextRequest = { text: string }
 export type ClipboardWriteTextResult = { success: boolean; message: string }

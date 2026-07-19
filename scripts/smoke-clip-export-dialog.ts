@@ -40,12 +40,7 @@ async function main(): Promise<void> {
       return
     }
 
-    await page.locator('.panel-switcher [role="tab"]').nth(1).click()
-    await page.waitForTimeout(250)
-
-    await page.locator('.subtitle-actions-summary').click()
-    await page.locator('.subtitle-actions[open]').waitFor({ timeout: 10_000 })
-    await page.locator('.subtitle-actions-menu [role="menuitem"]').first().click()
+    await page.locator('.clip-editor-tool-button').click()
     await page.locator('.clip-export-dialog').waitFor({ timeout: 10_000 })
 
     const dialogState = await page.evaluate(() => {
@@ -57,11 +52,17 @@ async function main(): Promise<void> {
       const lengthOptionCount = dialog.querySelectorAll('.clip-export-length-option').length
       const modeOptionCount = dialog.querySelectorAll('.clip-export-mode-option').length
       const disabledModeOptionCount = dialog.querySelectorAll('.clip-export-mode-option:disabled').length
+      const rangeInputCount = dialog.querySelectorAll('.clip-editor-range').length
+      const timeInputCount = dialog.querySelectorAll('.clip-editor-time-field input').length
+      const previewVideoCount = dialog.querySelectorAll('.clip-editor-preview-video').length
 
       return {
         lengthOptionCount,
         modeOptionCount,
-        disabledModeOptionCount
+        disabledModeOptionCount,
+        rangeInputCount,
+        timeInputCount,
+        previewVideoCount
       }
     })
 
@@ -71,7 +72,7 @@ async function main(): Promise<void> {
     console.log(`Clip export dialog state: ${JSON.stringify(dialogState)}`)
     console.log(`Clip export dialog screenshot: ${screenshotPath}`)
 
-    if (dialogState.lengthOptionCount !== 3 || dialogState.modeOptionCount !== 3) {
+    if (dialogState.lengthOptionCount !== 3 || dialogState.modeOptionCount !== 3 || dialogState.rangeInputCount !== 2 || dialogState.timeInputCount !== 2 || dialogState.previewVideoCount !== 1) {
       process.exitCode = 1
     }
   } finally {

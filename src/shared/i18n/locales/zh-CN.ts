@@ -46,6 +46,7 @@
     },
     topbar: {
       openFiles: '打开媒体文件',
+      openClipEditor: '打开剪辑',
       togglePlaylist: '切换播放列表',
       toggleAsr: '切换 ASR 面板',
       toggleBatch: '打开批量字幕任务中心',
@@ -234,6 +235,7 @@
       copyVttPath: '复制原文 VTT 路径',
       copyTranslatedVttPath: '复制译文 VTT 路径',
       exportSrt: '导出原文 SRT',
+      clipEditor: '剪辑',
       clipExport: '导出片段',
       noModel: '未安装推荐模型',
       cacheState: '字幕缓存',
@@ -388,8 +390,19 @@
       loadFailed: '无法读取诊断日志。'
     },
     clipExportDialog: {
-      title: '一键片段导出',
-      description: '从当前播放位置向后导出一个片段，导出设置会记住上次选择。',
+      title: '基础剪辑',
+      description: '拖动时间轴两端选择入点和出点，再导出当前片段。',
+      preview: '片段预览',
+      previewHint: '预览只播放当前选区，不会修改原视频。',
+      pausePreview: '暂停预览',
+      selectionTitle: '剪辑区间',
+      selectionHint: '拖动两端手柄，或直接输入秒数。',
+      startLabel: '入点',
+      endLabel: '出点',
+      durationLabel: '选区时长',
+      setStart: '当前位置设入点',
+      setEnd: '当前位置设出点',
+      resetSelection: '恢复整段',
       lengthTitle: '片段长度',
       lengthOptions: {
         15: '15 秒',

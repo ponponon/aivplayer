@@ -37,10 +37,7 @@ describe('dialog smoke source constraints', () => {
     const smokeScript = readSource('scripts/smoke-clip-export-dialog.ts')
 
     expect(smokeScript).toContain("aivplayer-smoke-clip-export-home-")
-    expect(smokeScript).toContain("page.locator('.panel-switcher [role=\"tab\"]').nth(1).click()")
-    expect(smokeScript).toContain("page.locator('.subtitle-actions-summary').click()")
-    expect(smokeScript).toContain("page.locator('.subtitle-actions[open]').waitFor")
-    expect(smokeScript).toContain("page.locator('.subtitle-actions-menu [role=\"menuitem\"]').first().click()")
+    expect(smokeScript).toContain("page.locator('.clip-editor-tool-button').click()")
     expect(smokeScript).toContain("page.locator('.clip-export-dialog').waitFor")
     expect(smokeScript).toContain("page.screenshot({ path: screenshotPath, fullPage: false })")
   })

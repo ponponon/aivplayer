@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { convertVttToSrt, writeSrt } from '../ai/subtitle-writer.ts'
 import { getAppCopy } from '../../shared/i18n'
 import type { AppLocale } from '../../shared/localization'
-import type { ClipExportMode } from '../../shared/clip-export'
+import { MIN_CLIP_DURATION_SECONDS, type ClipExportMode } from '../../shared/clip-export'
 import type { TranscriptSegment } from '../../shared/media-types.ts'
 
 const SRT_TIMESTAMP_PATTERN = /^(?:(\d+):)?(\d{2}):(\d{2}),(\d{3})$/
@@ -270,7 +270,7 @@ export function trimSrtToClip(text: string, startSeconds: number, durationSecond
 export async function runClipExport(options: RunClipExportOptions): Promise<RunClipExportResult> {
   const copy = getAppCopy(options.getLocale?.())
   const safeStartSeconds = Math.max(0, options.startSeconds)
-  const safeDurationSeconds = Math.max(1, options.durationSeconds)
+  const safeDurationSeconds = Math.max(MIN_CLIP_DURATION_SECONDS, options.durationSeconds)
   const shouldExportSubtitle = options.mode === 'external-subtitle' || options.mode === 'burn-subtitle'
   const subtitleSourceText = shouldExportSubtitle ? await resolveSubtitleSourceText(options) : null
 

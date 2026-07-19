@@ -46,6 +46,7 @@
     },
     topbar: {
       openFiles: 'メディアファイルを開く',
+      openClipEditor: 'クリップ編集を開く',
       togglePlaylist: 'プレイリストを切り替え',
       toggleAsr: 'ASR パネルを切り替え',
       toggleBatch: '一括字幕タスクセンターを開く',
@@ -234,6 +235,7 @@
       copyVttPath: '原文 VTT のパスをコピー',
       copyTranslatedVttPath: '訳文 VTT のパスをコピー',
       exportSrt: '原文 SRT を書き出す',
+      clipEditor: '編集',
       clipExport: 'クリップを書き出す',
       noModel: '推奨モデルは未インストールです',
       cacheState: '字幕キャッシュ',
@@ -388,8 +390,19 @@
       loadFailed: '診断ログを読み込めません。'
     },
     clipExportDialog: {
-      title: 'クリップのワンクリック書き出し',
-      description: '現在の再生位置から先のクリップを書き出し、最後の選択を記憶します。',
+      title: '基本編集',
+      description: 'タイムラインのハンドルで開始点と終了点を選び、クリップを書き出します。',
+      preview: 'クリップをプレビュー',
+      previewHint: '選択範囲だけを再生し、元の動画は変更しません。',
+      pausePreview: 'プレビューを一時停止',
+      selectionTitle: '編集範囲',
+      selectionHint: 'ハンドルをドラッグするか、秒数を直接入力します。',
+      startLabel: '開始点',
+      endLabel: '終了点',
+      durationLabel: '選択時間',
+      setStart: '現在位置を開始点にする',
+      setEnd: '現在位置を終了点にする',
+      resetSelection: '全体に戻す',
       lengthTitle: 'クリップ長',
       lengthOptions: {
         15: '15 秒',

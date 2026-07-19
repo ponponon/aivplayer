@@ -46,6 +46,7 @@
     },
     topbar: {
       openFiles: 'Open media files',
+      openClipEditor: 'Open clip editor',
       togglePlaylist: 'Toggle playlist',
       toggleAsr: 'Toggle ASR panel',
       toggleBatch: 'Open batch subtitle task center',
@@ -234,6 +235,7 @@
       copyVttPath: 'Copy raw VTT path',
       copyTranslatedVttPath: 'Copy translated VTT path',
       exportSrt: 'Export raw SRT',
+      clipEditor: 'Edit',
       clipExport: 'Export clip',
       noModel: 'Recommended model not installed',
       cacheState: 'Subtitle cache',
@@ -388,8 +390,19 @@
       loadFailed: 'Could not read diagnostic logs.'
     },
     clipExportDialog: {
-      title: 'One-click clip export',
-      description: 'Export a short clip starting from the current playhead, and remember the last choice.',
+      title: 'Basic editing',
+      description: 'Drag the timeline handles to choose an in point and out point, then export the selected clip.',
+      preview: 'Clip preview',
+      previewHint: 'Preview only plays the selected range and does not change the source video.',
+      pausePreview: 'Pause preview',
+      selectionTitle: 'Edit range',
+      selectionHint: 'Drag either handle or enter the time in seconds.',
+      startLabel: 'In point',
+      endLabel: 'Out point',
+      durationLabel: 'Selection length',
+      setStart: 'Set in point here',
+      setEnd: 'Set out point here',
+      resetSelection: 'Reset to full video',
       lengthTitle: 'Clip length',
       lengthOptions: {
         15: '15 sec',

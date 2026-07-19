@@ -46,6 +46,7 @@
     },
     topbar: {
       openFiles: '미디어 파일 열기',
+      openClipEditor: '클립 편집 열기',
       togglePlaylist: '재생 목록 전환',
       toggleAsr: 'ASR 패널 전환',
       toggleBatch: '일괄 자막 작업 센터 열기',
@@ -234,6 +235,7 @@
       copyVttPath: '원문 VTT 경로 복사',
       copyTranslatedVttPath: '번역 VTT 경로 복사',
       exportSrt: '원문 SRT 내보내기',
+      clipEditor: '편집',
       clipExport: '클립 내보내기',
       noModel: '추천 모델이 설치되지 않았습니다',
       cacheState: '자막 캐시',
@@ -388,8 +390,19 @@
       loadFailed: '진단 로그를 읽을 수 없습니다.'
     },
     clipExportDialog: {
-      title: '원클릭 클립 내보내기',
-      description: '현재 재생 위치부터 이어지는 클립을 내보내고, 마지막 선택을 기억합니다.',
+      title: '기본 편집',
+      description: '타임라인 핸들로 시작점과 끝점을 선택한 후 클립을 내보냅니다.',
+      preview: '클립 미리보기',
+      previewHint: '선택한 구간만 재생하며 원본 영상은 변경하지 않습니다.',
+      pausePreview: '미리보기 일시정지',
+      selectionTitle: '편집 구간',
+      selectionHint: '핸들을 드래그하거나 초 단위로 직접 입력하세요.',
+      startLabel: '시작점',
+      endLabel: '끝점',
+      durationLabel: '선택 길이',
+      setStart: '현재 위치를 시작점으로',
+      setEnd: '현재 위치를 끝점으로',
+      resetSelection: '전체 영상으로 복원',
       lengthTitle: '클립 길이',
       lengthOptions: {
         15: '15초',
