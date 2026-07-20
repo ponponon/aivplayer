@@ -33,6 +33,7 @@ export const IPC_CHANNELS = {
   ASR_OPEN_LOG_DIRECTORY: 'asr:open-log-directory',
   ASR_GET_RECENT_LOGS: 'asr:get-recent-logs',
   MEDIA_EXPORT_CLIP: 'media:export-clip',
+  IMAGE_SAVE: 'image:save',
   ASR_JOB_PROGRESS: 'asr:job-progress',
   BATCH_SUBTITLE_SCAN_DIRECTORY: 'batch-subtitle:scan-directory',
   BATCH_SUBTITLE_START: 'batch-subtitle:start',

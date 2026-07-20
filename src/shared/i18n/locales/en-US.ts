@@ -47,6 +47,7 @@
     topbar: {
       openFiles: 'Open media files',
       openClipEditor: 'Open clip editor',
+      openImageEditor: 'Open image workspace',
       togglePlaylist: 'Toggle playlist',
       toggleAsr: 'Toggle ASR panel',
       toggleBatch: 'Open batch subtitle task center',
@@ -63,6 +64,9 @@
       title: 'AIVPlayer',
       description: 'Drop in a video or choose local media to start playing.',
       openVideo: 'Open video'
+    },
+    imageWorkspace: {
+      title: 'Image workspace', subtitle: 'View and edit', backToVideo: 'Return to video player', open: 'Open images', import: 'Import images', dropTitle: 'Drop images to start', dropDescription: 'JPG, PNG, WebP, GIF and BMP supported', fileCount: (count: number) => `${count} images`, noImages: 'No images yet', preview: 'Preview', editor: 'Edit settings', original: 'Original', output: 'Output', width: 'Width', height: 'Height', keepRatio: 'Lock ratio', format: 'Output format', formatOriginal: 'Original', formatJpeg: 'JPG', formatPng: 'PNG', formatWebp: 'WebP', quality: 'Quality', targetSize: 'Target size', targetSizeHint: 'Adjust quality automatically, then reduce dimensions if needed', targetSizePlaceholder: 'Target size', kb: 'KB', mb: 'MB', quickAdjust: 'Quick resize', originalSize: 'Original size', halfSize: '50% size', webSize: 'Web size', rotateLeft: 'Rotate left 90°', rotateRight: 'Rotate right 90°', flipHorizontal: 'Flip horizontally', flipVertical: 'Flip vertically', reset: 'Reset settings', export: 'Export current image', exportAll: 'Export all', overwriteOriginal: 'Overwrite originals', chooseOutputFolder: 'Choose output folder', overwriteConfirm: (count: number) => `This will overwrite ${count} original images. Continue?`, formatMismatch: 'Overwrite requires a compatible output format. Use Original or Export all instead.', batchExporting: (current: number, total: number) => `Exporting ${current} / ${total}`, batchExported: (count: number) => `Exported ${count} images`, batchExportFailed: (count: number) => `${count} images failed`, selected: 'Selected', remove: 'Remove', outputSize: 'Output dimensions', outputFileSize: 'Output size', reduction: (percent: number) => `Estimated ${percent}% smaller`, targetPngHint: 'PNG has no quality control; target size will reduce dimensions instead.', rendering: 'Rendering preview…', exportReady: 'Export complete'
     },
     controls: {
       previous: 'Previous',

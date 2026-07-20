@@ -47,6 +47,7 @@
     topbar: {
       openFiles: 'メディアファイルを開く',
       openClipEditor: 'クリップ編集を開く',
+      openImageEditor: '画像ワークスペースを開く',
       togglePlaylist: 'プレイリストを切り替え',
       toggleAsr: 'ASR パネルを切り替え',
       toggleBatch: '一括字幕タスクセンターを開く',
@@ -63,6 +64,9 @@
       title: 'AIVPlayer',
       description: '動画をドラッグするか、ローカルメディアを選んで再生を開始します。',
       openVideo: '動画を開く'
+    },
+    imageWorkspace: {
+      title: '画像ワークスペース', subtitle: '表示と編集', backToVideo: '動画プレーヤーに戻る', open: '画像を開く', import: '画像を追加', dropTitle: '画像をドロップして開始', dropDescription: 'JPG、PNG、WebP、GIF、BMP に対応', fileCount: (count: number) => `${count} 枚`, noImages: '画像がありません', preview: 'プレビュー', editor: '編集設定', original: '元画像', output: '出力', width: '幅', height: '高さ', keepRatio: '比率を固定', format: '出力形式', formatOriginal: '元画像に合わせる', formatJpeg: 'JPG', formatPng: 'PNG', formatWebp: 'WebP', quality: '品質', targetSize: '目標サイズ', targetSizeHint: '品質を自動調整し、必要なら解像度も下げます', targetSizePlaceholder: '目標サイズ', kb: 'KB', mb: 'MB', quickAdjust: 'クイック調整', originalSize: '元のサイズ', halfSize: '50% に縮小', webSize: 'Web 用', rotateLeft: '左に 90° 回転', rotateRight: '右に 90° 回転', flipHorizontal: '左右反転', flipVertical: '上下反転', reset: '設定をリセット', export: '現在の画像を出力', exportAll: 'すべて出力', overwriteOriginal: '元画像を上書き', chooseOutputFolder: '出力フォルダーを選択', overwriteConfirm: (count: number) => `${count} 枚の元画像を上書きします。続行しますか？`, formatMismatch: '元画像の上書きには互換形式が必要です。「元画像に合わせる」か通常の一括出力を使用してください。', batchExporting: (current: number, total: number) => `出力中 ${current} / ${total}`, batchExported: (count: number) => `${count} 枚を出力しました`, batchExportFailed: (count: number) => `${count} 枚の出力に失敗しました`, selected: '選択中', remove: '削除', outputSize: '出力解像度', outputFileSize: '出力サイズ', reduction: (percent: number) => `約 ${percent}% 削減`, targetPngHint: 'PNG は品質調整に対応しないため、解像度を下げてサイズを調整します。', rendering: 'プレビューを生成中…', exportReady: '出力完了'
     },
     controls: {
       previous: '前へ',

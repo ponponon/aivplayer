@@ -68,11 +68,13 @@ export type AppStateSetters = {
   setIsControlDeckVisible: React.Dispatch<React.SetStateAction<boolean>>
   setIsFullscreen: React.Dispatch<React.SetStateAction<boolean>>
   setMediaMetadata: React.Dispatch<React.SetStateAction<MediaProbeMetadata | null>>
+  setViewMode: React.Dispatch<React.SetStateAction<'video' | 'image'>>
 }
 
 export type AppModel = AppRefs &
   AppStateSetters & {
     state: PlayerState
+  viewMode: 'video' | 'image'
     asrStatus: AsrRuntimeStatus | null
     asrProgress: AsrJobProgress | null
     subtitleResult: AsrSubtitleResult | null

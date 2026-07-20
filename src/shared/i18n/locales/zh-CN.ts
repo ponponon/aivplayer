@@ -47,6 +47,7 @@
     topbar: {
       openFiles: '打开媒体文件',
       openClipEditor: '打开剪辑',
+      openImageEditor: '打开图片工作区',
       togglePlaylist: '切换播放列表',
       toggleAsr: '切换 ASR 面板',
       toggleBatch: '打开批量字幕任务中心',
@@ -63,6 +64,9 @@
       title: 'AIVPlayer',
       description: '拖入视频文件，或从本机选择媒体开始播放。',
       openVideo: '打开视频'
+    },
+    imageWorkspace: {
+      title: '图片工作区', subtitle: '看图与编辑', backToVideo: '返回视频播放器', open: '打开图片', import: '导入图片', dropTitle: '拖入图片开始', dropDescription: '支持 JPG、PNG、WebP、GIF 和 BMP', fileCount: (count: number) => `${count} 张图片`, noImages: '还没有图片', preview: '预览', editor: '编辑参数', original: '原图', output: '输出', width: '宽度', height: '高度', keepRatio: '锁定比例', format: '输出格式', formatOriginal: '跟随原图', formatJpeg: 'JPG', formatPng: 'PNG', formatWebp: 'WebP', quality: '质量', targetSize: '目标体积', targetSizeHint: '自动调节质量，必要时缩小分辨率', targetSizePlaceholder: '输入目标大小', kb: 'KB', mb: 'MB', quickAdjust: '快速调整', originalSize: '原始尺寸', halfSize: '缩小到 50%', webSize: '网页尺寸', rotateLeft: '向左旋转 90°', rotateRight: '向右旋转 90°', flipHorizontal: '水平翻转', flipVertical: '垂直翻转', reset: '恢复原图设置', export: '导出当前图片', exportAll: '批量导出', overwriteOriginal: '覆盖原图', chooseOutputFolder: '选择输出文件夹', overwriteConfirm: (count: number) => `将覆盖 ${count} 张原图，是否继续？`, formatMismatch: '覆盖原图要求输出格式与原格式兼容，请改用跟随原图或选择批量导出。', batchExporting: (current: number, total: number) => `正在导出 ${current} / ${total}`, batchExported: (count: number) => `已导出 ${count} 张图片`, batchExportFailed: (count: number) => `${count} 张图片导出失败`, selected: '已选择', remove: '移除', outputSize: '输出尺寸', outputFileSize: '输出体积', reduction: (percent: number) => `预计减小 ${percent}%`, targetPngHint: 'PNG 不支持质量调节，目标体积会通过缩小分辨率实现。', rendering: '正在生成预览…', exportReady: '导出完成'
     },
     controls: {
       previous: '上一条',

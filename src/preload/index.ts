@@ -40,6 +40,8 @@ import type {
   BatchSubtitleStartRequest,
   MediaFile,
   MediaProbeMetadata,
+  ImageSaveRequest,
+  ImageSaveResult,
   NativePlaybackResult,
   NativePlayerStatus
 } from '../shared/media-types'
@@ -114,6 +116,7 @@ const api = {
   getRecentAsrLogs: (): Promise<AsrDiagnosticLogResult> => ipcRenderer.invoke(IPC_CHANNELS.ASR_GET_RECENT_LOGS),
   exportMediaClip: (request: MediaClipExportRequest): Promise<MediaClipExportResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.MEDIA_EXPORT_CLIP, request),
+  saveImage: (request: ImageSaveRequest): Promise<ImageSaveResult> => ipcRenderer.invoke(IPC_CHANNELS.IMAGE_SAVE, request),
   copyTextToClipboard: (request: ClipboardWriteTextRequest): Promise<ClipboardWriteTextResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.CLIPBOARD_WRITE_TEXT, request),
   openPath: (filePath: string): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.OPEN_PATH, filePath),

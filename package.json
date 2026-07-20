@@ -17,6 +17,7 @@
     "release:prepare-runtime": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/prepare-asr-runtime.ts",
     "release:check-runtime": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/check-bundled-asr-runtime.ts",
     "smoke:open-video": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-open-video.ts",
+    "smoke:image-editor": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-image-editor.ts",
     "smoke:settings-dialog": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-settings-dialog.ts",
     "smoke:settings-dialog:en": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-settings-dialog.ts --locale en-US",
     "smoke:settings-dialog:all": "npm run smoke:settings-dialog && npm run smoke:settings-dialog:en && npm run smoke:settings-dialog:ja && npm run smoke:settings-dialog:ko",

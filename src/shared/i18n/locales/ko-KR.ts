@@ -47,6 +47,7 @@
     topbar: {
       openFiles: '미디어 파일 열기',
       openClipEditor: '클립 편집 열기',
+      openImageEditor: '이미지 작업 공간 열기',
       togglePlaylist: '재생 목록 전환',
       toggleAsr: 'ASR 패널 전환',
       toggleBatch: '일괄 자막 작업 센터 열기',
@@ -63,6 +64,9 @@
       title: 'AIVPlayer',
       description: '동영상을 끌어다 놓거나 로컬 미디어를 선택해서 재생을 시작하세요.',
       openVideo: '비디오 열기'
+    },
+    imageWorkspace: {
+      title: '이미지 작업 공간', subtitle: '보기 및 편집', backToVideo: '비디오 플레이어로 돌아가기', open: '이미지 열기', import: '이미지 추가', dropTitle: '이미지를 끌어다 놓으세요', dropDescription: 'JPG, PNG, WebP, GIF, BMP 지원', fileCount: (count: number) => `${count}개 이미지`, noImages: '이미지가 없습니다', preview: '미리보기', editor: '편집 설정', original: '원본', output: '출력', width: '너비', height: '높이', keepRatio: '비율 고정', format: '출력 형식', formatOriginal: '원본 형식', formatJpeg: 'JPG', formatPng: 'PNG', formatWebp: 'WebP', quality: '품질', targetSize: '목표 용량', targetSizeHint: '품질을 자동 조절하고 필요하면 해상도를 줄입니다', targetSizePlaceholder: '목표 용량', kb: 'KB', mb: 'MB', quickAdjust: '빠른 조정', originalSize: '원본 크기', halfSize: '50%로 축소', webSize: '웹용', rotateLeft: '왼쪽으로 90° 회전', rotateRight: '오른쪽으로 90° 회전', flipHorizontal: '좌우 반전', flipVertical: '상하 반전', reset: '설정 초기화', export: '현재 이미지 내보내기', exportAll: '모두 내보내기', overwriteOriginal: '원본 덮어쓰기', chooseOutputFolder: '출력 폴더 선택', overwriteConfirm: (count: number) => `${count}개의 원본 이미지를 덮어씁니다. 계속할까요?`, formatMismatch: '원본 덮어쓰기는 호환되는 출력 형식에서만 사용할 수 있습니다. 원본 형식 또는 모두 내보내기를 사용하세요.', batchExporting: (current: number, total: number) => `내보내는 중 ${current} / ${total}`, batchExported: (count: number) => `${count}개 이미지 내보내기 완료`, batchExportFailed: (count: number) => `${count}개 이미지 내보내기 실패`, selected: '선택됨', remove: '삭제', outputSize: '출력 해상도', outputFileSize: '출력 용량', reduction: (percent: number) => `약 ${percent}% 감소`, targetPngHint: 'PNG는 품질 조절을 지원하지 않아 해상도를 줄여 용량을 맞춥니다.', rendering: '미리보기 생성 중…', exportReady: '내보내기 완료'
     },
     controls: {
       previous: '이전',

@@ -18,6 +18,7 @@ import { useAppRefs } from './use-app-refs'
 export function useAppModel(): AppModel {
   const refs = useAppRefs()
   const [state, setState] = useState(initialPlayerState)
+  const [viewMode, setViewMode] = useState<'video' | 'image'>('video')
   const [asrStatus, setAsrStatus] = useState<AsrRuntimeStatus | null>(null)
   const [asrProgress, setAsrProgress] = useState<AsrJobProgress | null>(null)
   const [subtitleResult, setSubtitleResult] = useState<AsrSubtitleResult | null>(null)
@@ -53,6 +54,8 @@ export function useAppModel(): AppModel {
   return {
     ...refs,
     state,
+    viewMode,
+    setViewMode,
     setState,
     asrStatus,
     setAsrStatus,

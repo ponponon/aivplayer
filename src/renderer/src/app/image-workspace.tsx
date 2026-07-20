@@ -1,0 +1,18 @@
+import { ArrowLeft, Copy, Download, FolderOpen, Image as ImageIcon } from 'lucide-react'
+import { useRef } from 'react'
+import { useAppContext } from './app-context'
+import { ImageEditorControls } from './image-editor-controls'
+import { ImageLibrary } from './image-library'
+import { ImagePreview } from './image-preview'
+import { useImageEditor } from './use-image-editor'
+
+export function ImageWorkspace(): React.ReactElement {
+  const app = useAppContext()
+  const inputRef = useRef<HTMLInputElement>(null)
+  const copy = app.copy.imageWorkspace
+  const editor = useImageEditor(copy)
+  const openPicker = (): void => inputRef.current?.click()
+  const onInputChange = (event: React.ChangeEvent<HTMLInputElement>): void => { const files = Array.from(event.currentTarget.files ?? []); event.currentTarget.value = ''; void editor.addFiles(files) }
+  const onDrop = (event: React.DragEvent<HTMLElement>): void => { event.preventDefault(); event.stopPropagation(); void editor.addFiles(Array.from(event.dataTransfer.files)) }
+  return <main className="image-workspace" onDragOver={(event) => { event.preventDefault(); event.stopPropagation() }} onDrop={onDrop}><input ref={inputRef} className="image-file-input" type="file" accept="image/*" multiple onChange={onInputChange} /><header className="image-workspace-header"><div className="image-workspace-heading"><button className="image-back-button" type="button" onClick={() => app.setViewMode('video')} title={copy.backToVideo} aria-label={copy.backToVideo}><ArrowLeft size={16} /></button><span className="image-brand-mark"><ImageIcon size={16} /></span><div><h1>{copy.title}</h1><span>{copy.subtitle}</span></div></div><div className="image-workspace-actions"><span className="image-count-label">{editor.batchProgress ? copy.batchExporting(editor.batchProgress.current, editor.batchProgress.total) : copy.fileCount(editor.images.length)}</span><button className="image-secondary-button" type="button" onClick={openPicker}><FolderOpen size={15} />{copy.import}</button><button className="image-secondary-button" type="button" disabled={editor.images.length === 0 || editor.isBatchExporting} onClick={() => void editor.exportAllImages(false)}><Download size={15} />{copy.exportAll}</button><button className="image-danger-button" type="button" disabled={!editor.canOverwriteOriginal || editor.isBatchExporting} onClick={() => void editor.exportAllImages(true)}><Copy size={15} />{copy.overwriteOriginal}</button></div></header><div className="image-workspace-body"><ImageLibrary copy={copy} images={editor.images} selectedId={editor.selectedId} onSelect={editor.setSelectedId} onOpen={openPicker} /><ImagePreview copy={copy} image={editor.selected} settings={editor.settings} previewUrl={editor.previewUrl} preview={editor.preview} isRendering={editor.isRendering} onUpdate={editor.updateSettings} onReset={editor.resetSettings} onOpen={openPicker} />{editor.selected && editor.settings ? <ImageEditorControls copy={copy} image={editor.selected} settings={editor.settings} preview={editor.preview} isRendering={editor.isRendering} onUpdate={editor.updateSettings} onReset={editor.resetSettings} onExport={() => void editor.exportImage()} onRemove={() => editor.removeImage(editor.selected!.id)} /> : <aside className="image-inspector image-inspector-empty"><ImageIcon size={22} /><span>{copy.editor}</span></aside>}</div>{editor.error ? <div className="image-workspace-notice error" role="alert">{editor.error}</div> : editor.batchProgress ? <div className="image-workspace-notice" role="status">{copy.batchExporting(editor.batchProgress.current, editor.batchProgress.total)}</div> : editor.status ? <div className="image-workspace-notice" role="status">{editor.status}</div> : null}</main>
+}
