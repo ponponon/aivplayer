@@ -9,6 +9,7 @@ const smokeInputDirectory = await mkdtemp(join(tmpdir(), 'aivplayer-smoke-image-
 const smokeOutputDirectory = await mkdtemp(join(tmpdir(), 'aivplayer-smoke-image-output-'))
 const screenshotPath = join(tmpdir(), `aivplayer-smoke-image-editor-${Date.now()}.png`)
 const inputImagePaths = [join(smokeInputDirectory, 'smoke-photo-a.png'), join(smokeInputDirectory, 'smoke-photo-b.png')]
+const portraitSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="800"><rect width="400" height="800" fill="#283746"/><circle cx="200" cy="220" r="120" fill="#e8c16d"/><text x="70" y="520" fill="white" font-family="Arial" font-size="46">PORTRAIT</text></svg>'
 await copyFile(join(process.cwd(), 'docs/assets/icon.png'), inputImagePaths[0])
 await copyFile(join(process.cwd(), 'docs/assets/icon.png'), inputImagePaths[1])
 
@@ -19,6 +20,18 @@ try {
   await page.waitForSelector('#root', { timeout: 10_000 })
   await page.locator('.image-editor-tool-button').click()
   await page.waitForSelector('.image-workspace')
+  await page.locator('input[type=file]').setInputFiles({ name: 'portrait-preview.svg', mimeType: 'image/svg+xml', buffer: Buffer.from(portraitSvg) })
+  await page.waitForFunction(() => {
+    const image = document.querySelector('.image-preview-media') as HTMLImageElement | null
+    return image !== null && image.naturalWidth === 400 && image.naturalHeight === 800
+  }, undefined, { timeout: 10_000 })
+  const previewCanvasBox = await page.locator('.image-preview-canvas').boundingBox()
+  const portraitBox = await page.locator('.image-preview-media').boundingBox()
+  if (!previewCanvasBox || !portraitBox || Math.abs(portraitBox.width / portraitBox.height - 0.5) > 0.02 || portraitBox.width > previewCanvasBox.width || portraitBox.height > previewCanvasBox.height) {
+    throw new Error(`Portrait image was not contained naturally: ${JSON.stringify({ previewCanvasBox, portraitBox })}`)
+  }
+  await page.locator('.image-inspector-heading .image-ghost-button.danger').click()
+  await page.locator('.image-preview-empty').waitFor()
   await page.locator('input[type=file]').setInputFiles(inputImagePaths)
   await page.locator('.image-library-item').nth(1).waitFor()
   await page.locator('.image-preset-row button').nth(1).click()

@@ -43,10 +43,10 @@ export function ClipEditorPreview(props: ClipEditorPreviewProps): ReactElement {
 
   return (
     <section className="clip-editor-preview-panel" aria-label={copy.clipExportDialog.preview}>
-      <div className="clip-editor-preview-frame">
+      <div className="clip-editor-preview-frame media-preview-frame">
         <video
           ref={videoRef}
-          className="clip-editor-preview-video"
+          className="clip-editor-preview-video media-preview-content"
           src={mediaUrl}
           preload="metadata"
           onLoadedMetadata={(event) => {
