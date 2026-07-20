@@ -7,9 +7,8 @@ const projectRoot = process.cwd()
 export const readSource = (filePath: string): string => {
   const source = readFileSync(join(projectRoot, filePath), 'utf-8')
   if (filePath === 'src/renderer/src/styles/player.css') {
-    const parts = readdirSync(join(projectRoot, 'src/renderer/src/styles/player'))
-      .filter((name) => name.endsWith('.css'))
-      .sort()
+    const parts = Array.from(source.matchAll(/@import\s+['"]\.\/player\/([^'"]+\.css)['"]\s*;/g))
+      .map((match) => match[1])
       .map((name) => readFileSync(join(projectRoot, 'src/renderer/src/styles/player', name), 'utf-8'))
     return `${source}\n${parts.join('\n')}`
   }

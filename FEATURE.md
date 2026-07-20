@@ -1,5 +1,6 @@
 # AIVPlayer 功能列表
 
+- 播放器 CSS 已按页面职责改为语义化文件名，保留稳定的加载顺序，并通过自动检查禁止新增 `part-数字.css`，降低多分支并行开发时的文件名冲突。
 - Linux / Windows 使用与应用主题一致的自绘窗口控件，最小化、最大化 / 还原和关闭按钮不再依赖突兀的原生 title bar overlay；macOS 继续使用原生 traffic lights。
 - ASR 面板在 whisper.cpp 或 ffmpeg 未就绪时直接提供自动检测和手动选择入口，模型文件与运行时组件的安装顺序更清晰。
 

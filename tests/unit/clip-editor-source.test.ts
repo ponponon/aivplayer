@@ -3,7 +3,7 @@ import { readSource } from './test-source-utils'
 
 describe('clip editor preview source constraints', () => {
   it('keeps preview video dimensions natural inside the preview canvas', () => {
-    const previewStyles = readSource('src/renderer/src/styles/player/part-40.css')
+    const previewStyles = readSource('src/renderer/src/styles/player/clip-editor-preview.css')
 
     expect(previewStyles).toMatch(/\.clip-editor-preview-frame\s*\{[^}]*place-items:\s*center;/s)
     expect(previewStyles).toMatch(/\.clip-editor-preview-video\s*\{[^}]*width:\s*auto;[^}]*height:\s*auto;/s)
