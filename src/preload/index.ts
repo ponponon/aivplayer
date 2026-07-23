@@ -46,6 +46,9 @@ import type {
   NativePlayerStatus,
   VisionIndexProgress,
   VisionIndexRequest,
+  VisionDirectoryScanProgress,
+  VisionDirectoryScanRequest,
+  VisionDirectoryScanResult,
   VisionRuntimeStatus,
   VisionSearchRequest,
   VisionSearchResult
@@ -130,6 +133,9 @@ const api = {
   getInitialMediaFiles: (): Promise<MediaFile[]> => ipcRenderer.invoke(IPC_CHANNELS.GET_INITIAL_MEDIA_FILES),
   getVisionStatus: (): Promise<VisionRuntimeStatus> => ipcRenderer.invoke(IPC_CHANNELS.VISION_STATUS),
   startVisionIndex: (request: VisionIndexRequest): Promise<VisionIndexProgress> => ipcRenderer.invoke(IPC_CHANNELS.VISION_INDEX_START, request),
+  enqueueVisionIndex: (request: VisionIndexRequest): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.VISION_INDEX_AUTO_START, request),
+  scanVisionDirectory: (request: VisionDirectoryScanRequest): Promise<VisionDirectoryScanResult> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SCAN_DIRECTORY_START, request),
+  cancelVisionDirectoryScan: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SCAN_DIRECTORY_CANCEL),
   cancelVisionIndex: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.VISION_INDEX_CANCEL),
   searchVisionText: (request: VisionSearchRequest): Promise<VisionSearchResult[]> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SEARCH_TEXT, request),
   searchVisionImage: (request: VisionSearchRequest): Promise<VisionSearchResult[]> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SEARCH_IMAGE, request),
@@ -173,6 +179,11 @@ const api = {
     const listener = (_event: Electron.IpcRendererEvent, progress: VisionIndexProgress): void => callback(progress)
     ipcRenderer.on(IPC_CHANNELS.VISION_INDEX_PROGRESS, listener)
     return () => ipcRenderer.removeListener(IPC_CHANNELS.VISION_INDEX_PROGRESS, listener)
+  },
+  onVisionDirectoryScanProgress: (callback: (progress: VisionDirectoryScanProgress) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, progress: VisionDirectoryScanProgress): void => callback(progress)
+    ipcRenderer.on(IPC_CHANNELS.VISION_SCAN_DIRECTORY_PROGRESS, listener)
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.VISION_SCAN_DIRECTORY_PROGRESS, listener)
   },
   getPathForFile: (file: File): string => webUtils.getPathForFile(file)
 }

@@ -48,6 +48,7 @@ describe('app settings', () => {
     settings.subtitles.lineHeight = 'relaxed'
     settings.subtitles.displayMode = 'bilingual'
     settings.subtitles.targetLanguage = 'zh'
+    settings.vision.libraryDirectories = [join(tempDirectory, 'library-one'), join(tempDirectory, 'library-two')]
     settings.playback.lastVolume = 0.42
     settings.playback.lastMuted = true
     settings.playback.lastPlaybackRate = 1.5
@@ -140,7 +141,7 @@ describe('app settings', () => {
     )
 
     await expect(readAppSettings(tempDirectory)).resolves.toMatchObject({
-      schemaVersion: 13,
+      schemaVersion: 14,
       playback: {
         singleClickPause: true
       }

@@ -60,8 +60,12 @@ export const IPC_CHANNELS = {
   MEDIA_FILES_OPENED: 'media:files-opened',
   VISION_STATUS: 'vision:status',
   VISION_INDEX_START: 'vision:index-start',
+  VISION_INDEX_AUTO_START: 'vision:index-auto-start',
   VISION_INDEX_CANCEL: 'vision:index-cancel',
   VISION_INDEX_PROGRESS: 'vision:index-progress',
+  VISION_SCAN_DIRECTORY_START: 'vision:scan-directory-start',
+  VISION_SCAN_DIRECTORY_CANCEL: 'vision:scan-directory-cancel',
+  VISION_SCAN_DIRECTORY_PROGRESS: 'vision:scan-directory-progress',
   VISION_SEARCH_TEXT: 'vision:search-text',
   VISION_SEARCH_IMAGE: 'vision:search-image',
   VISION_READ_THUMBNAIL: 'vision:read-thumbnail'

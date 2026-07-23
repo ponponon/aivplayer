@@ -3,7 +3,7 @@ import type { ClipExportLengthSeconds, ClipExportMode } from './clip-export'
 import type { PlaybackHistoryEntry } from './playback-history'
 import { DEFAULT_APP_LOCALE, DEFAULT_SUBTITLE_LANGUAGE, type AppLocale, type SubtitleLanguageId } from './localization'
 
-export const APP_SETTINGS_SCHEMA_VERSION = 13
+export const APP_SETTINGS_SCHEMA_VERSION = 14
 
 export type CaptureImageFormat = 'jpg' | 'png'
 export type CaptureFileNamingMode = 'sequential' | 'timestamp'
@@ -64,6 +64,9 @@ export type AppSettings = {
   }
   ai: {
     openMode: AiAutomationMode
+  }
+  vision: {
+    libraryDirectories: string[]
   }
   asr: {
     preferredModelSourceId: AsrModelSourceId
@@ -192,6 +195,9 @@ export function createDefaultAppSettings(): AppSettings {
     },
     ai: {
       openMode: 'cache-only'
+    },
+    vision: {
+      libraryDirectories: []
     },
     asr: {
       preferredModelSourceId: 'modelscope',

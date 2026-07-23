@@ -1,0 +1,99 @@
+.vision-folder-actions,
+.vision-folder-summary,
+.vision-scan-progress {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+}
+
+.vision-folder-actions {
+  flex-wrap: wrap;
+}
+
+.vision-folder-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.vision-folder-option input {
+  accent-color: var(--accent);
+}
+
+.vision-folder-path {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vision-saved-folders {
+  display: grid;
+  gap: 4px;
+}
+
+.vision-saved-folders small {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.vision-saved-folder {
+  display: flex;
+  min-width: 0;
+  gap: 4px;
+}
+
+.vision-saved-folder button:first-child {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  padding: 3px 5px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  font-size: 10px;
+}
+
+.vision-saved-folder button:first-child:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.vision-saved-folder button:last-child {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  color: var(--text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.vision-saved-folder button:last-child:hover:not(:disabled) {
+  color: var(--danger, #ef8a8a);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.vision-folder-summary,
+.vision-scan-progress {
+  justify-content: space-between;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.vision-scan-progress span:last-child {
+  max-width: 48%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

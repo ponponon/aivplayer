@@ -4,6 +4,7 @@ import type { MediaFile } from '../shared/media-types'
 import { BatchSubtitleManager } from './ai/batch-subtitle-manager'
 import { createWhisperCppRuntime } from './ai/whisper-cpp-runtime'
 import { VisionLibrary } from './ai/vision-library'
+import { VisionIndexQueue } from './ai/vision-index-queue'
 
 export const mainState: {
   mainWindow: BrowserWindow | null
@@ -15,6 +16,8 @@ export const mainState: {
   translationAbortControllers: Map<number, AbortController>
   summaryAbortControllers: Map<number, AbortController>
   visionLibrary: VisionLibrary | null
+  visionIndexQueue: VisionIndexQueue | null
+  visionScanAbortControllers: Map<number, AbortController>
   visionAbortControllers: Map<number, AbortController>
   batchSubtitleManager: BatchSubtitleManager | null
 } = {
@@ -27,6 +30,8 @@ export const mainState: {
   translationAbortControllers: new Map(),
   summaryAbortControllers: new Map(),
   visionLibrary: null,
+  visionIndexQueue: null,
+  visionScanAbortControllers: new Map(),
   visionAbortControllers: new Map(),
   batchSubtitleManager: null
 }

@@ -2,6 +2,9 @@ import { Database, ImageUp, ScanSearch, Search, Square } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { VisionIndexProgress, VisionRuntimeStatus, VisionSearchResult } from '../../../shared/media-types'
 import { useAppContext } from './app-context'
+import { useVisionLibraryFolder } from './use-vision-library-folder'
+import { VisionLibraryFolder } from './vision-library-folder'
+import { VisionSearchResults } from './vision-search-results'
 
 export function VisionPanel(): React.ReactElement {
   const app = useAppContext()
@@ -15,6 +18,8 @@ export function VisionPanel(): React.ReactElement {
   const [isSearching, setIsSearching] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const isIndexing = progress?.status === 'loading' || progress?.status === 'indexing'
+  const folder = useVisionLibraryFolder(app, isIndexing, { onError: setError })
+  const isBusy = folder.isBusy
 
   useEffect(() => {
     let active = true
@@ -51,7 +56,7 @@ export function VisionPanel(): React.ReactElement {
   }, [results])
 
   const startIndex = (): void => {
-    if (app.state.playlist.length === 0 || isIndexing) return
+    if (app.state.playlist.length === 0 || isBusy) return
     setError(null)
     setProgress(null)
     void window.aiv.startVisionIndex({ mediaPaths: app.state.playlist.map((file) => file.path), intervalSeconds: 3 }).catch((reason: unknown) => {
@@ -59,15 +64,25 @@ export function VisionPanel(): React.ReactElement {
     })
   }
 
-  const cancelIndex = (): void => {
-    void window.aiv.cancelVisionIndex()
+  const startFolderIndex = (): void => {
+    if (folder.videoPaths.length === 0 || isBusy) return
+    setError(null)
+    setProgress(null)
+    void window.aiv.startVisionIndex({ mediaPaths: folder.videoPaths, intervalSeconds: 3 }).catch((reason: unknown) => {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    })
+  }
+
+  const cancelCurrentTask = (): void => {
+    if (folder.isScanning) void window.aiv.cancelVisionDirectoryScan()
+    else void window.aiv.cancelVisionIndex()
   }
 
   const runTextSearch = (): void => {
     if (!query.trim() || isSearching) return
     setIsSearching(true)
     setError(null)
-    void window.aiv.searchVisionText({ query, limit: 24 }).then(setResults).catch((reason: unknown) => {
+    void window.aiv.searchVisionText({ query, limit: 24, mode: 'hybrid' }).then(setResults).catch((reason: unknown) => {
       setResults([])
       setError(reason instanceof Error ? reason.message : String(reason))
     }).finally(() => setIsSearching(false))
@@ -103,9 +118,11 @@ export function VisionPanel(): React.ReactElement {
   const progressLabel = progress?.status === 'loading'
     ? app.copy.vision.loading
     : progress?.status === 'indexing'
-      ? app.copy.vision.indexing(progress.processedFrames, progress.totalFrames)
+      ? app.copy.vision.indexing(progress.processedFrames, progress.totalFrames, progress.currentVideoIndex, progress.totalVideos)
       : progress?.status === 'completed'
-        ? app.copy.vision.completed(progress.processedFrames)
+        ? progress.skippedVideos > 0 || progress.captionOnlyVideos > 0
+          ? app.copy.vision.completedIncremental(progress.processedFrames, progress.skippedVideos, progress.captionOnlyVideos)
+          : app.copy.vision.completed(progress.processedFrames)
         : progress?.status === 'cancelled'
           ? app.copy.vision.cancelled
           : status?.indexedFrameCount
@@ -118,9 +135,10 @@ export function VisionPanel(): React.ReactElement {
       <p>{app.copy.vision.description}</p>
       <div className="vision-model-status"><Database size={14} /><span>{status?.available ? app.copy.vision.model : app.copy.vision.unavailable}</span><small>{status?.indexedFrameCount ?? 0}</small></div>
       {!status?.available ? <small className="vision-error">{status?.message ?? app.copy.vision.unavailable}</small> : null}
+      <VisionLibraryFolder copy={app.copy.vision} folderPath={folder.folderPath} savedFolders={folder.savedFolders} videoPaths={folder.videoPaths} includeSubfolders={folder.includeSubfolders} scanProgress={folder.scanProgress} batchScanProgress={folder.batchScanProgress} isBusy={isBusy} onChooseFolder={folder.chooseFolder} onScanFolder={folder.scanCurrentFolder} onScanAllFolders={folder.scanAllFolders} onIncludeSubfoldersChange={folder.setIncludeSubfolders} onStartIndex={startFolderIndex} onUseFolder={folder.useSavedFolder} onRemoveFolder={folder.removeSavedFolder} />
       <div className="vision-index-actions">
-        <button className="vision-primary-action" type="button" onClick={startIndex} disabled={isIndexing || app.state.playlist.length === 0}><Database size={15} />{app.copy.vision.indexPlaylist}</button>
-        {isIndexing ? <button className="vision-secondary-action" type="button" onClick={cancelIndex}><Square size={13} />{app.copy.vision.cancelIndex}</button> : null}
+        <button className="vision-primary-action" type="button" onClick={startIndex} disabled={isBusy || app.state.playlist.length === 0}><Database size={15} />{app.copy.vision.indexPlaylist}</button>
+        {isBusy ? <button className="vision-secondary-action" type="button" onClick={cancelCurrentTask}><Square size={13} />{app.copy.vision.cancelIndex}</button> : null}
       </div>
       {progressLabel ? <div className="vision-progress" role="status"><span>{progressLabel}</span><span>{progress?.currentVideoPath ? progress.currentVideoPath.split(/[\\/]/).pop() : ''}</span></div> : null}
     </section>
@@ -128,7 +146,7 @@ export function VisionPanel(): React.ReactElement {
     <section className="vision-card vision-search-card">
       <form className="vision-text-search" onSubmit={(event) => { event.preventDefault(); runTextSearch() }}>
         <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={app.copy.vision.textPlaceholder} aria-label={app.copy.vision.textPlaceholder} />
-        <button className="vision-search-button" type="submit" disabled={!query.trim() || isSearching}><Search size={15} />{app.copy.vision.searchText}</button>
+        <button className="vision-search-button" type="submit" disabled={!query.trim() || isSearching}><Search size={15} />{app.copy.vision.hybridSearch}</button>
       </form>
       <div className="vision-image-search">
         <label className="vision-file-picker"><ImageUp size={15} /><span>{sampleImageName ?? app.copy.vision.chooseImage}</span><input type="file" accept="image/*" onChange={handleImageChange} /></label>
@@ -137,18 +155,6 @@ export function VisionPanel(): React.ReactElement {
     </section>
 
     {error ? <div className="vision-error vision-error-card" role="alert">{error}</div> : null}
-    <section className="vision-results" aria-live="polite">
-      {results.length === 0 ? <div className="vision-empty">{app.copy.vision.noResults}</div> : results.map((result) => <button className="vision-result" key={result.id} type="button" onClick={() => openResult(result)} title={app.copy.vision.clickResult}>
-        {thumbnailUrls[result.id] ? <img src={thumbnailUrls[result.id]} alt="" /> : <span className="vision-result-placeholder"><ScanSearch size={18} /></span>}
-        <span className="vision-result-copy"><strong>{result.fileName}</strong><span>{formatTimestamp(result.timestampSeconds)} · {app.copy.vision.score(result.score)}</span></span>
-      </button>)}
-    </section>
+    <VisionSearchResults copy={app.copy.vision} results={results} thumbnailUrls={thumbnailUrls} onOpenResult={openResult} />
   </div>
-}
-
-function formatTimestamp(seconds: number): string {
-  const totalSeconds = Math.max(0, Math.floor(seconds))
-  const minutes = Math.floor(totalSeconds / 60)
-  const remainder = String(totalSeconds % 60).padStart(2, '0')
-  return `${minutes}:${remainder}`
 }

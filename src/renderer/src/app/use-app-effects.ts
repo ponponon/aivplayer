@@ -8,6 +8,7 @@ import { useMediaMetadataEffect } from './use-media-metadata-effect'
 import { usePlaybackEffects } from './use-playback-effects'
 import { useSubtitleCacheEffects } from './use-subtitle-cache-effects'
 import { useWindowEffects } from './use-window-effects'
+import { useVisionIndexEffect } from './use-vision-index-effect'
 
 export function useAppEffects(model: AppModel, derived: AppDerived, actions: {
   loadFiles: (files: MediaFile[]) => void
@@ -31,4 +32,5 @@ export function useAppEffects(model: AppModel, derived: AppDerived, actions: {
   useSubtitleCacheEffects(model, derived, patchDisplay)
   useKeyboardShortcuts(model, actions)
   useWindowEffects(model)
+  useVisionIndexEffect(model)
 }

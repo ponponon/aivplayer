@@ -11,6 +11,7 @@ export type VisionRuntimeStatus = {
   modelDirectory: string
   indexDirectory: string
   indexedFrameCount: number
+  indexedVideoCount: number
   message: string
 }
 
@@ -19,22 +20,65 @@ export type VisionIndexRequest = {
   intervalSeconds?: number
 }
 
+export type VisionDirectoryScanRequest = {
+  directoryPath: string
+  recursive: boolean
+}
+
+export type VisionDirectoryScanStatus = 'scanning' | 'completed' | 'cancelled' | 'error'
+
+export type VisionDirectoryScanProgress = {
+  status: VisionDirectoryScanStatus
+  directoryPath: string
+  scannedDirectories: number
+  discoveredVideos: number
+  currentPath?: string
+  message?: string
+  error?: string
+}
+
+export type VisionDirectoryScanResult = {
+  status: 'completed' | 'cancelled'
+  directoryPath: string
+  files: string[]
+  scannedDirectories: number
+  discoveredVideos: number
+}
+
+export type VisionDirectoryBatchScanProgress = {
+  status: 'scanning' | 'completed' | 'cancelled'
+  totalDirectories: number
+  currentDirectoryIndex: number
+  completedDirectories: number
+  discoveredVideos: number
+  failedDirectories: number
+  currentDirectoryPath?: string
+  currentPath?: string
+}
+
 export type VisionIndexProgress = {
   status: VisionIndexStatus
   totalVideos: number
   currentVideoIndex: number
   totalFrames: number
   processedFrames: number
+  skippedVideos: number
+  captionOnlyVideos: number
   currentVideoPath?: string
   message?: string
   error?: string
 }
 
+export type VisionSearchMode = 'visual' | 'hybrid'
+
 export type VisionSearchRequest = {
   query?: string
   imagePath?: string
   limit?: number
+  mode?: VisionSearchMode
 }
+
+export type VisionMatchSource = 'visual' | 'subtitle' | 'filename' | 'both'
 
 export type VisionSearchResult = {
   id: string
@@ -43,6 +87,10 @@ export type VisionSearchResult = {
   timestampSeconds: number
   thumbnailPath: string
   score: number
+  visualScore?: number
+  lexicalScore?: number
+  matchedText?: string
+  matchSource?: VisionMatchSource
   modelId: string
   modelVariant: string
 }

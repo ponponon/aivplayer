@@ -65,6 +65,12 @@
   font-variant-numeric: tabular-nums;
 }
 
+.vision-result-copy .vision-result-match {
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-variant-numeric: normal;
+}
+
 .vision-empty {
   padding: 18px 8px;
   color: var(--text-muted);

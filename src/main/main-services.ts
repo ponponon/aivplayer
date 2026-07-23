@@ -4,6 +4,7 @@ import { join, resolve } from 'node:path'
 import { getBatchSubtitleHistoryPath, getBatchSubtitleLogDirectoryPath, getBatchSubtitleStatePath, BatchSubtitleManager } from './ai/batch-subtitle-manager'
 import { createWhisperCppRuntime } from './ai/whisper-cpp-runtime'
 import { VisionLibrary } from './ai/vision-library'
+import { VisionIndexQueue } from './ai/vision-index-queue'
 import { getCurrentLocale } from './main-settings'
 import { mainState } from './main-state'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
@@ -45,6 +46,15 @@ export function getVisionLibrary(): VisionLibrary {
     })
   }
   return mainState.visionLibrary
+}
+
+export function getVisionIndexQueue(): VisionIndexQueue {
+  if (!mainState.visionIndexQueue) {
+    mainState.visionIndexQueue = new VisionIndexQueue((mediaPaths, intervalSeconds, signal, onProgress) =>
+      getVisionLibrary().indexVideos(mediaPaths, intervalSeconds, signal, onProgress)
+    )
+  }
+  return mainState.visionIndexQueue
 }
 
 export function getBatchSubtitleManager(sender: Electron.WebContents): BatchSubtitleManager {

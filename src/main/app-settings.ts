@@ -358,6 +358,24 @@ function sanitizeAiSettings(
   }
 }
 
+function sanitizeVisionSettings(
+  value: Partial<AppSettings['vision']> | undefined,
+  defaults: AppSettings['vision']
+): AppSettings['vision'] {
+  const vision = value ?? {}
+  if (!Array.isArray(vision.libraryDirectories)) return defaults
+
+  const directories: string[] = []
+  for (const rawPath of vision.libraryDirectories) {
+    if (typeof rawPath !== 'string') continue
+    const directoryPath = rawPath.trim()
+    if (!directoryPath || directoryPath.length > 4096 || !isAbsolute(directoryPath) || directories.includes(directoryPath)) continue
+    directories.push(directoryPath)
+    if (directories.length >= 50) break
+  }
+  return { libraryDirectories: directories }
+}
+
 function sanitizeAsrSettings(
   value: Partial<AppSettings['asr']> | undefined,
   defaults: AppSettings['asr']
@@ -407,6 +425,7 @@ function sanitizeAppSettings(parsed: unknown, captureDefaultDirectoryPath: strin
     playback?: Partial<AppSettings['playback']>
     subtitles?: Partial<AppSettings['subtitles']>
     ai?: Partial<AppSettings['ai']>
+    vision?: Partial<AppSettings['vision']>
     asr?: Partial<AppSettings['asr']>
   }
 
@@ -426,6 +445,7 @@ function sanitizeAppSettings(parsed: unknown, captureDefaultDirectoryPath: strin
     playback: sanitizePlaybackSettings(playback, defaults.playback),
     subtitles: sanitizeSubtitleSettings(value.subtitles, defaults.subtitles),
     ai: sanitizeAiSettings(value.ai, defaults.ai),
+    vision: sanitizeVisionSettings(value.vision, defaults.vision),
     asr: sanitizeAsrSettings(value.asr, defaults.asr)
   }
 }
