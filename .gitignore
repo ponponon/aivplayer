@@ -40,3 +40,6 @@ resources/
 # Misc
 *.csv
 *.jpg
+
+.wrangler
+.workbuddy
