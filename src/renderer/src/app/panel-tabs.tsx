@@ -1,4 +1,4 @@
-import { FileText, Info, ListChecks, ListVideo, ScanSearch, Sparkles } from 'lucide-react'
+import { Clapperboard, FileText, Info, ListChecks, ListVideo, ScanSearch, Sparkles } from 'lucide-react'
 import type { PanelMode } from './player-state'
 import { useAppContext } from './app-context'
 
@@ -8,6 +8,7 @@ const tabs: Array<{ id: Exclude<PanelMode, 'none' | 'subtitles'>; icon: typeof I
   { id: 'batch', icon: ListChecks, label: (copy) => copy.panels.batchTitle },
   { id: 'summary', icon: FileText, label: (copy) => copy.panels.summaryTitle },
   { id: 'vision', icon: ScanSearch, label: (copy) => copy.panels.visionTitle },
+  { id: 'drama', icon: Clapperboard, label: (copy) => copy.panels.dramaTitle },
   { id: 'info', icon: Info, label: (copy) => copy.panels.infoTitle }
 ]
 

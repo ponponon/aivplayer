@@ -5,6 +5,11 @@ import { getBatchSubtitleHistoryPath, getBatchSubtitleLogDirectoryPath, getBatch
 import { createWhisperCppRuntime } from './ai/whisper-cpp-runtime'
 import { VisionLibrary } from './ai/vision-library'
 import { VisionIndexQueue } from './ai/vision-index-queue'
+import { createDramaProviderFromConfig, createDramaProviderFromEnvironment, DramaProviderError } from './drama/drama-provider'
+import { DramaStore } from './drama/drama-store'
+import { DramaWorkflow } from './drama/drama-workflow'
+import type { DramaProviderSettings, DramaProviderSettingsInput, DramaProviderTestResult } from '../shared/drama-types'
+import { saveAppSettings } from './main-settings'
 import { getCurrentLocale } from './main-settings'
 import { mainState } from './main-state'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
@@ -71,4 +76,68 @@ export function getBatchSubtitleManager(sender: Electron.WebContents): BatchSubt
     })
   } else mainState.batchSubtitleManager.setEmitter(emit)
   return mainState.batchSubtitleManager
+}
+
+export function getDramaStore(): DramaStore {
+  if (!mainState.dramaStore) mainState.dramaStore = new DramaStore(app.getPath('userData'))
+  return mainState.dramaStore
+}
+
+export function getDramaWorkflow(): DramaWorkflow {
+  return new DramaWorkflow(getDramaStore(), getDramaProvider())
+}
+
+export function getDramaProviderSettings(): DramaProviderSettings {
+  const drama = mainState.currentAppSettings.drama
+  return {
+    apiBaseUrl: drama.apiBaseUrl,
+    model: drama.model,
+    useMock: drama.useMock,
+    apiKeyConfigured: Boolean(drama.apiKey)
+  }
+}
+
+export async function saveDramaProviderSettings(input: DramaProviderSettingsInput): Promise<DramaProviderSettings> {
+  const current = mainState.currentAppSettings
+  const drama = current.drama
+  const next = {
+    ...current,
+    drama: {
+      apiBaseUrl: typeof input.apiBaseUrl === 'string' ? input.apiBaseUrl.trim() || null : input.apiBaseUrl === null ? null : drama.apiBaseUrl,
+      model: typeof input.model === 'string' ? input.model.trim() || null : input.model === null ? null : drama.model,
+      apiKey: input.apiKey === undefined ? drama.apiKey : typeof input.apiKey === 'string' ? input.apiKey.trim() || null : null,
+      useMock: typeof input.useMock === 'boolean' ? input.useMock : drama.useMock
+    }
+  }
+  await saveAppSettings(next)
+  return getDramaProviderSettings()
+}
+
+export async function testDramaProvider(): Promise<DramaProviderTestResult> {
+  const settings = mainState.currentAppSettings.drama
+  const usedMock = settings.useMock
+  try {
+    const provider = getDramaProvider()
+    const response = await provider.generate({
+      stage: 'events',
+      system: '只返回一句简短测试文本。',
+      user: '请回复“短剧服务连接成功”。'
+    })
+    return { success: Boolean(response.trim()), message: usedMock ? '本地 Mock 短剧服务可用' : '短剧 AI 服务连接成功', model: settings.model, usedMock }
+  } catch (error) {
+    return { success: false, message: error instanceof Error ? error.message : String(error), model: settings.model, usedMock }
+  }
+}
+
+function getDramaProvider() {
+  const settings = mainState.currentAppSettings.drama
+  if (settings.useMock || settings.apiBaseUrl || settings.model || settings.apiKey) {
+    return createDramaProviderFromConfig({ baseUrl: settings.apiBaseUrl, apiKey: settings.apiKey, model: settings.model, useMock: settings.useMock })
+  }
+  try {
+    return createDramaProviderFromEnvironment()
+  } catch (error) {
+    if (error instanceof DramaProviderError) throw error
+    throw error
+  }
 }

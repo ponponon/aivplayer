@@ -376,6 +376,19 @@ function sanitizeVisionSettings(
   return { libraryDirectories: directories }
 }
 
+function sanitizeDramaSettings(
+  value: Partial<AppSettings['drama']> | undefined,
+  defaults: AppSettings['drama']
+): AppSettings['drama'] {
+  const drama = value ?? {}
+  return {
+    apiBaseUrl: normalizeTextField(drama.apiBaseUrl, defaults.apiBaseUrl),
+    model: normalizeTextField(drama.model, defaults.model),
+    apiKey: normalizeTextField(drama.apiKey, defaults.apiKey),
+    useMock: typeof drama.useMock === 'boolean' ? drama.useMock : defaults.useMock
+  }
+}
+
 function sanitizeAsrSettings(
   value: Partial<AppSettings['asr']> | undefined,
   defaults: AppSettings['asr']
@@ -401,6 +414,10 @@ function sanitizeAsrSettings(
 function encodeAppSettingsForDisk(settings: AppSettings, secretCodec: AppSettingsSecretCodec | null): AppSettings {
   return {
     ...settings,
+    drama: {
+      ...settings.drama,
+      apiKey: encodeSecretValue(settings.drama.apiKey, secretCodec)
+    },
     asr: {
       ...settings.asr,
       translationApiKey: encodeSecretValue(settings.asr.translationApiKey, secretCodec)
@@ -426,6 +443,7 @@ function sanitizeAppSettings(parsed: unknown, captureDefaultDirectoryPath: strin
     subtitles?: Partial<AppSettings['subtitles']>
     ai?: Partial<AppSettings['ai']>
     vision?: Partial<AppSettings['vision']>
+    drama?: Partial<AppSettings['drama']>
     asr?: Partial<AppSettings['asr']>
   }
 
@@ -446,6 +464,7 @@ function sanitizeAppSettings(parsed: unknown, captureDefaultDirectoryPath: strin
     subtitles: sanitizeSubtitleSettings(value.subtitles, defaults.subtitles),
     ai: sanitizeAiSettings(value.ai, defaults.ai),
     vision: sanitizeVisionSettings(value.vision, defaults.vision),
+    drama: sanitizeDramaSettings(value.drama, defaults.drama),
     asr: sanitizeAsrSettings(value.asr, defaults.asr)
   }
 }
@@ -461,6 +480,9 @@ export async function readAppSettings(
       asr?: Partial<AppSettings['asr']> & {
         translationApiKey?: unknown
       }
+      drama?: Partial<AppSettings['drama']> & {
+        apiKey?: unknown
+      }
     }
 
     if (
@@ -471,6 +493,17 @@ export async function readAppSettings(
       parsed.asr = {
         ...parsed.asr,
         translationApiKey: decodeSecretValue(parsed.asr.translationApiKey, secretCodec ?? (await resolveAppSettingsSecretCodec()))
+      }
+    }
+
+    if (
+      parsed.drama &&
+      typeof parsed.drama.apiKey === 'string' &&
+      parsed.drama.apiKey.startsWith(APP_SETTINGS_SECRET_PREFIX)
+    ) {
+      parsed.drama = {
+        ...parsed.drama,
+        apiKey: decodeSecretValue(parsed.drama.apiKey, secretCodec ?? (await resolveAppSettingsSecretCodec()))
       }
     }
 

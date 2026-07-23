@@ -1,6 +1,17 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type { AppSettings } from '../shared/app-settings'
+import type {
+  DramaCreateProjectInput,
+  DramaImportChapterInput,
+  DramaProgress,
+  DramaProject,
+  DramaProjectData,
+  DramaProviderSettings,
+  DramaProviderSettingsInput,
+  DramaProviderTestResult,
+  DramaStageResult
+} from '../shared/drama-types'
 
 // 在 DOM 加载后添加平台类名，供 CSS 使用
 if (typeof document !== 'undefined') {
@@ -184,6 +195,33 @@ const api = {
     const listener = (_event: Electron.IpcRendererEvent, progress: VisionDirectoryScanProgress): void => callback(progress)
     ipcRenderer.on(IPC_CHANNELS.VISION_SCAN_DIRECTORY_PROGRESS, listener)
     return () => ipcRenderer.removeListener(IPC_CHANNELS.VISION_SCAN_DIRECTORY_PROGRESS, listener)
+  },
+  listDramaProjects: (): Promise<DramaProject[]> => ipcRenderer.invoke(IPC_CHANNELS.DRAMA_LIST_PROJECTS),
+  createDramaProject: (input: DramaCreateProjectInput): Promise<DramaProject> => ipcRenderer.invoke(IPC_CHANNELS.DRAMA_CREATE_PROJECT, input),
+  importDramaChapters: (projectId: string, chapters: DramaImportChapterInput[]): Promise<DramaProjectData['chapters']> =>
+    ipcRenderer.invoke(IPC_CHANNELS.DRAMA_IMPORT_CHAPTERS, projectId, chapters),
+  importDramaText: (projectId: string, text: string): Promise<DramaProjectData['chapters']> =>
+    ipcRenderer.invoke(IPC_CHANNELS.DRAMA_IMPORT_TEXT, projectId, text),
+  getDramaProjectData: (projectId: string): Promise<DramaProjectData> => ipcRenderer.invoke(IPC_CHANNELS.DRAMA_GET_PROJECT_DATA, projectId),
+  generateDramaEvents: (projectId: string, force = false): Promise<DramaStageResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.DRAMA_GENERATE_EVENTS, projectId, force),
+  generateDramaSkeleton: (projectId: string, force = false): Promise<{ result: DramaStageResult; skeleton: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.DRAMA_GENERATE_SKELETON, projectId, force),
+  generateDramaAdaptation: (projectId: string, force = false): Promise<{ result: DramaStageResult; adaptationStrategy: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.DRAMA_GENERATE_ADAPTATION, projectId, force),
+  generateDramaScript: (projectId: string, episodeIndex: number, force = false): Promise<{ result: DramaStageResult; script: DramaProjectData['scripts'][number] }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.DRAMA_GENERATE_SCRIPT, projectId, episodeIndex, force),
+  generateDramaAssets: (projectId: string, force = false): Promise<DramaStageResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.DRAMA_GENERATE_ASSETS, projectId, force),
+  generateDramaStoryboard: (projectId: string, episodeIndex: number, force = false): Promise<{ result: DramaStageResult; storyboard: DramaProjectData['storyboards'] }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.DRAMA_GENERATE_STORYBOARD, projectId, episodeIndex, force),
+  getDramaProviderSettings: (): Promise<DramaProviderSettings> => ipcRenderer.invoke(IPC_CHANNELS.DRAMA_GET_PROVIDER_SETTINGS),
+  setDramaProviderSettings: (input: DramaProviderSettingsInput): Promise<DramaProviderSettings> => ipcRenderer.invoke(IPC_CHANNELS.DRAMA_SET_PROVIDER_SETTINGS, input),
+  testDramaProvider: (): Promise<DramaProviderTestResult> => ipcRenderer.invoke(IPC_CHANNELS.DRAMA_TEST_PROVIDER),
+  onDramaProgress: (callback: (progress: DramaProgress) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, progress: DramaProgress): void => callback(progress)
+    ipcRenderer.on(IPC_CHANNELS.DRAMA_PROGRESS, listener)
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.DRAMA_PROGRESS, listener)
   },
   getPathForFile: (file: File): string => webUtils.getPathForFile(file)
 }

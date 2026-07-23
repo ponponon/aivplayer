@@ -1,0 +1,37 @@
+.panel-content-drama { display: block; overflow-y: auto; padding-bottom: 8px; }
+.drama-panel { display: grid; align-content: start; gap: 10px; min-width: 0; }
+.drama-card { display: grid; gap: 10px; min-width: 0; padding: 12px; color: var(--text-secondary); background: rgba(18, 20, 23, 0.86); border: 1px solid var(--border-soft); border-radius: var(--radius-lg); }
+.drama-heading, .drama-section-heading, .drama-project-meta, .drama-stage-row, .drama-actions { display: flex; align-items: center; min-width: 0; gap: 8px; }
+.drama-heading, .drama-section-heading, .drama-project-meta, .drama-stage-row { justify-content: space-between; }
+.drama-heading h2 { margin: 3px 0 0; color: var(--text-primary); font-size: 15px; }
+.drama-card p { margin: 0; color: var(--text-muted); font-size: 11px; line-height: 1.55; }
+.drama-provider-card > input, .drama-provider-card .drama-create-fields input { width: 100%; min-width: 0; height: 30px; padding: 0 9px; color: var(--text-primary); background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); font: inherit; font-size: 11px; }
+.drama-provider-toggle { display: flex; align-items: flex-start; gap: 8px; color: var(--text-secondary); font-size: 11px; }
+.drama-provider-toggle input { margin: 2px 0 0; accent-color: var(--accent); }
+.drama-provider-toggle span { display: grid; gap: 3px; }
+.drama-provider-toggle small { color: var(--text-muted); font-size: 10px; line-height: 1.4; }
+.drama-hint { color: var(--text-muted); font-size: 10px; line-height: 1.45; overflow-wrap: anywhere; }
+.drama-section-heading strong, .drama-project-meta strong { color: var(--text-primary); font-size: 12px; }
+.drama-project-meta span { color: var(--text-muted); font-size: 10px; }
+.drama-project-card select, .drama-create-fields input { width: 100%; min-width: 0; height: 30px; padding: 0 9px; color: var(--text-primary); background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); font: inherit; font-size: 11px; }
+.drama-create-fields { display: grid; grid-template-columns: 1fr 0.72fr; gap: 6px; }
+.drama-actions { flex-wrap: wrap; }
+.drama-primary-action, .drama-secondary-action, .drama-icon-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 30px; padding: 0 10px; color: var(--text-secondary); background: rgba(255, 255, 255, 0.06); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); cursor: pointer; font-size: 11px; font-weight: 700; }
+.drama-primary-action { color: var(--accent-ink); background: var(--accent); border-color: transparent; }
+.drama-primary-action:hover:not(:disabled) { background: var(--accent-strong); }
+.drama-secondary-action:hover:not(:disabled), .drama-icon-button:hover:not(:disabled) { color: var(--text-primary); background: rgba(255, 255, 255, 0.1); }
+.drama-primary-action:disabled, .drama-secondary-action:disabled { cursor: not-allowed; opacity: 0.45; }
+.drama-icon-button { width: 28px; min-height: 28px; padding: 0; }
+.drama-file-input { display: none; }
+.drama-empty { display: grid; justify-items: center; gap: 5px; padding: 18px 8px; color: var(--text-muted); text-align: center; font-size: 11px; }
+.drama-empty small { max-width: 230px; font-size: 10px; line-height: 1.45; }
+.drama-stage-list { display: grid; gap: 6px; padding: 8px; background: rgba(255, 255, 255, 0.03); border-radius: var(--radius-sm); }
+.drama-stage-row { color: var(--text-secondary); font-size: 11px; }
+.drama-stage-row small { color: var(--text-muted); font-size: 14px; }
+.drama-stage-row small.ready { color: var(--ok); }
+.drama-stage-actions { align-items: stretch; }
+.drama-progress { padding: 8px; color: var(--accent); background: rgba(232, 193, 109, 0.08); border-radius: var(--radius-sm); font-size: 10px; line-height: 1.45; overflow-wrap: anywhere; }
+.drama-script-preview { display: grid; gap: 6px; max-height: 180px; padding: 9px; overflow: auto; background: rgba(0, 0, 0, 0.18); border-radius: var(--radius-sm); }
+.drama-script-preview strong { color: var(--text-primary); font-size: 11px; }
+.drama-script-preview p { white-space: pre-wrap; }
+.drama-error { padding: 9px; color: #ffd2d0; background: rgba(255, 115, 111, 0.08); border: 1px solid rgba(255, 115, 111, 0.35); border-radius: var(--radius-sm); font-size: 10px; line-height: 1.45; overflow-wrap: anywhere; }

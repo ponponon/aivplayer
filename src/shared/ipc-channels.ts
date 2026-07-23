@@ -68,5 +68,20 @@ export const IPC_CHANNELS = {
   VISION_SCAN_DIRECTORY_PROGRESS: 'vision:scan-directory-progress',
   VISION_SEARCH_TEXT: 'vision:search-text',
   VISION_SEARCH_IMAGE: 'vision:search-image',
-  VISION_READ_THUMBNAIL: 'vision:read-thumbnail'
+  VISION_READ_THUMBNAIL: 'vision:read-thumbnail',
+  DRAMA_LIST_PROJECTS: 'drama:list-projects',
+  DRAMA_CREATE_PROJECT: 'drama:create-project',
+  DRAMA_IMPORT_CHAPTERS: 'drama:import-chapters',
+  DRAMA_IMPORT_TEXT: 'drama:import-text',
+  DRAMA_GET_PROJECT_DATA: 'drama:get-project-data',
+  DRAMA_GENERATE_EVENTS: 'drama:generate-events',
+  DRAMA_GENERATE_SKELETON: 'drama:generate-skeleton',
+  DRAMA_GENERATE_ADAPTATION: 'drama:generate-adaptation',
+  DRAMA_GENERATE_SCRIPT: 'drama:generate-script',
+  DRAMA_GENERATE_ASSETS: 'drama:generate-assets',
+  DRAMA_GENERATE_STORYBOARD: 'drama:generate-storyboard',
+  DRAMA_GET_PROVIDER_SETTINGS: 'drama:get-provider-settings',
+  DRAMA_SET_PROVIDER_SETTINGS: 'drama:set-provider-settings',
+  DRAMA_TEST_PROVIDER: 'drama:test-provider',
+  DRAMA_PROGRESS: 'drama:progress'
 } as const

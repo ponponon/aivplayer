@@ -1,4 +1,4 @@
-import { FileText, FolderOpen, Image as ImageIcon, Info, ListChecks, Minus, PanelRight, ScanSearch, Scissors, Settings, Square, Sparkles, X } from 'lucide-react'
+import { Clapperboard, FileText, FolderOpen, Image as ImageIcon, Info, ListChecks, Minus, PanelRight, ScanSearch, Scissors, Settings, Square, Sparkles, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useAppContext } from './app-context'
 
@@ -54,6 +54,7 @@ export function AppHeader(): React.ReactElement {
         <button className={`tool-button ${state.panelMode === 'batch' ? 'active' : ''}`} type="button" onClick={() => app.togglePanelMode('batch')} title={copy.topbar.toggleBatch} aria-pressed={state.panelMode === 'batch'}><ListChecks size={17} /></button>
         <button className={`tool-button ${state.panelMode === 'summary' ? 'active' : ''}`} type="button" onClick={() => app.togglePanelMode('summary')} title={copy.topbar.toggleSummary} aria-pressed={state.panelMode === 'summary'}><FileText size={17} /></button>
         <button className={`tool-button ${state.panelMode === 'vision' ? 'active' : ''}`} type="button" onClick={() => app.togglePanelMode('vision')} title={copy.topbar.toggleVision} aria-pressed={state.panelMode === 'vision'}><ScanSearch size={17} /></button>
+        <button className={`tool-button ${state.panelMode === 'drama' ? 'active' : ''}`} type="button" onClick={() => app.togglePanelMode('drama')} title={copy.topbar.toggleDrama} aria-pressed={state.panelMode === 'drama'}><Clapperboard size={17} /></button>
         <button className={`tool-button ${state.panelMode === 'info' ? 'active' : ''}`} type="button" onClick={() => app.togglePanelMode('info')} title={copy.topbar.toggleInfo} aria-pressed={state.panelMode === 'info'}><Info size={17} /></button>
         <button className={`tool-button ${app.isSettingsDialogOpen ? 'active' : ''}`} type="button" onClick={toggleSettings} title={app.isSettingsDialogOpen ? copy.topbar.closeSettings : copy.topbar.openSettings} aria-label={app.isSettingsDialogOpen ? copy.topbar.closeSettings : copy.topbar.openSettings} aria-pressed={app.isSettingsDialogOpen}><Settings size={17} /></button>
       </nav>

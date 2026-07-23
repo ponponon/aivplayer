@@ -12,6 +12,7 @@ import { registerSettingsIpc } from './ipc-settings'
 import { registerUtilityIpc } from './ipc-utility'
 import { registerWindowControlsIpc } from './ipc-window-controls'
 import { registerVisionIpc } from './ipc-vision'
+import { registerDramaIpc } from './ipc-drama'
 import { applyMacDockIcon, createWindow, focusMainWindow, queueIncomingMediaPaths } from './window-lifecycle'
 import { runCli } from '../cli/cli-main'
 
@@ -34,6 +35,7 @@ function registerIpc(): void {
   registerUtilityIpc()
   registerWindowControlsIpc()
   registerVisionIpc()
+  registerDramaIpc()
 }
 
 if (isCliInvocation) {

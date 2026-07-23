@@ -11,6 +11,7 @@ import type { AsrSubtitleResult, AsrSubtitleTranslationRequest, AsrSubtitleTrans
 import { getCliOption, hasCliOption, parseCliArgs, type ParsedCliArgs } from './cli-parser'
 import { formatBatchResult, runBatch } from './cli-batch'
 import { BatchPlanError } from './cli-batch-plan'
+import { runDrama } from './cli-drama'
 
 const FALLBACK_CLI_VERSION = '0.1.0'
 
@@ -92,6 +93,17 @@ function printHelp(): void {
   aivcli library index <directory-or-video...> [--recursive] [--interval seconds]
   aivcli library search <text> [--limit 24] [--mode hybrid|visual]
   aivcli library search --image <image> [--limit 24]
+  aivcli drama list
+  aivcli drama create <title> [--intro text] [--genre name] [--episodes N] [--duration seconds]
+  aivcli drama import <project-id> <novel.txt>
+  aivcli drama show <project-id>
+  aivcli drama provider show|test
+  aivcli drama events generate <project-id> [--force]
+  aivcli drama plan generate <project-id> --stage skeleton|adaptation [--force]
+  aivcli drama script generate <project-id> --episode N [--force]
+  aivcli drama assets generate <project-id> [--force]
+  aivcli drama storyboard generate <project-id> --episode N [--force]
+  aivcli drama run <project-id> --episode N [--force]
 
 全局选项：
   --json       将结果输出为机器可读 JSON
@@ -440,6 +452,7 @@ async function runCommand(parsed: ParsedCliArgs): Promise<number> {
     return result.ok ? 0 : 4
   }
   if (parsed.command === 'library') return runLibrary(parsed)
+  if (parsed.command === 'drama') return runDrama(parsed, (message) => reportProgress(parsed, message))
   throw new CliError(`未知命令：${parsed.command}`)
 }
 

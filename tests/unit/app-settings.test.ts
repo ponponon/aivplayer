@@ -141,7 +141,7 @@ describe('app settings', () => {
     )
 
     await expect(readAppSettings(tempDirectory)).resolves.toMatchObject({
-      schemaVersion: 14,
+      schemaVersion: 15,
       playback: {
         singleClickPause: true
       }
@@ -256,12 +256,16 @@ describe('app settings', () => {
     settings.asr.translationBaseUrl = 'https://example.test/v1/chat/completions'
     settings.asr.translationModel = 'translation-model'
     settings.asr.translationApiKey = 'secret-key'
+    settings.drama.apiBaseUrl = 'https://example.test/v1/chat/completions'
+    settings.drama.model = 'drama-model'
+    settings.drama.apiKey = 'drama-secret-key'
     settings.capture.saveDirectoryPath = tempDirectory
 
     await writeAppSettings(tempDirectory, settings, tempDirectory, secretCodec)
 
     const rawContent = await readFile(join(tempDirectory, 'app-settings.json'), 'utf8')
     expect(rawContent).not.toContain('secret-key')
+    expect(rawContent).not.toContain('drama-secret-key')
     expect(rawContent).toContain('safe:')
 
     await expect(readAppSettings(tempDirectory, tempDirectory, secretCodec)).resolves.toEqual(settings)

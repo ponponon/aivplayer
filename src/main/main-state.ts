@@ -5,6 +5,7 @@ import { BatchSubtitleManager } from './ai/batch-subtitle-manager'
 import { createWhisperCppRuntime } from './ai/whisper-cpp-runtime'
 import { VisionLibrary } from './ai/vision-library'
 import { VisionIndexQueue } from './ai/vision-index-queue'
+import { DramaStore } from './drama/drama-store'
 
 export const mainState: {
   mainWindow: BrowserWindow | null
@@ -20,6 +21,7 @@ export const mainState: {
   visionScanAbortControllers: Map<number, AbortController>
   visionAbortControllers: Map<number, AbortController>
   batchSubtitleManager: BatchSubtitleManager | null
+  dramaStore: DramaStore | null
 } = {
   mainWindow: null,
   asrRuntime: null,
@@ -33,5 +35,6 @@ export const mainState: {
   visionIndexQueue: null,
   visionScanAbortControllers: new Map(),
   visionAbortControllers: new Map(),
-  batchSubtitleManager: null
+  batchSubtitleManager: null,
+  dramaStore: null
 }
