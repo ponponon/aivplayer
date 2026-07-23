@@ -8,6 +8,7 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
+    "cli": "electron-vite dev -- --cli",
     "typecheck": "tsc --noEmit",
     "check:file-limits": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/check-file-limits.ts",
     "test": "vitest run",

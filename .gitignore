@@ -30,6 +30,23 @@ release/
 # Project specific
 resources/
 
+# Keep CLI launchers and installer hooks; continue ignoring bundled binaries.
+!resources/
+resources/*
+!resources/cli/
+resources/cli/*
+!resources/cli/aivcli
+!resources/cli/aivcli.cmd
+
+!build/
+build/*
+!build/pkg-scripts/
+build/pkg-scripts/*
+!build/pkg-scripts/postinstall
+!build/installer.nsh
+!build/deb-after-install.sh
+!build/deb-after-remove.sh
+
 # Lib directory (ignore root lib, but allow src/renderer/src/lib)
 /lib/
 !src/renderer/src/lib/

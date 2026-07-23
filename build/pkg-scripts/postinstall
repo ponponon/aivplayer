@@ -1,0 +1,21 @@
+#!/bin/sh
+set -eu
+
+APP_BINARY="/Applications/AIVPlayer.app/Contents/MacOS/AIVPlayer"
+CLI_PATH="/usr/local/bin/aivcli"
+
+if [ ! -x "$APP_BINARY" ]; then
+  exit 0
+fi
+
+if [ -e "$CLI_PATH" ] && [ ! -L "$CLI_PATH" ]; then
+  exit 0
+fi
+
+mkdir -p "$(dirname "$CLI_PATH")"
+rm -f "$CLI_PATH"
+cat > "$CLI_PATH" <<'EOF'
+#!/bin/sh
+exec "/Applications/AIVPlayer.app/Contents/MacOS/AIVPlayer" --cli "$@"
+EOF
+chmod 0755 "$CLI_PATH"

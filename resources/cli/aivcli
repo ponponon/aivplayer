@@ -1,0 +1,17 @@
+#!/bin/sh
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+
+if [ -x "$SCRIPT_DIR/aivplayer" ]; then
+  APP_BINARY="$SCRIPT_DIR/aivplayer"
+elif [ -x "$SCRIPT_DIR/AIVPlayer" ]; then
+  APP_BINARY="$SCRIPT_DIR/AIVPlayer"
+elif [ -x "$SCRIPT_DIR/MacOS/AIVPlayer" ]; then
+  APP_BINARY="$SCRIPT_DIR/MacOS/AIVPlayer"
+else
+  echo "AIVPlayer executable was not found next to aivcli" >&2
+  exit 127
+fi
+
+exec "$APP_BINARY" --cli "$@"

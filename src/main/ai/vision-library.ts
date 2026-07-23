@@ -115,6 +115,11 @@ type VisionLibraryOptions = {
 }
 
 type ProgressCallback = (progress: VisionIndexProgress) => void
+
+export type VisionIndexOptions = {
+  subtitlePaths?: ReadonlyMap<string, string>
+}
+
 type VisionTimingPhase = Exclude<keyof VisionIndexTimings, 'totalMs'>
 
 const VISION_TIMING_PHASE_BY_STAGE: Partial<Record<VisionIndexStage, VisionTimingPhase>> = {
@@ -326,10 +331,14 @@ export class VisionLibrary {
     }
   }
 
-  private async getSubtitleSnapshot(videoPath: string): Promise<SubtitleSnapshot> {
+  private async getSubtitleSnapshot(videoPath: string, preferredSubtitlePath?: string): Promise<SubtitleSnapshot> {
     const extension = extname(videoPath)
     const basePath = videoPath.slice(0, videoPath.length - extension.length)
-    for (const subtitlePath of [`${basePath}.vtt`, `${basePath}.srt`]) {
+    const sidecarPaths = [`${basePath}.vtt`, `${basePath}.srt`]
+    const subtitlePaths = preferredSubtitlePath
+      ? [preferredSubtitlePath, ...sidecarPaths.filter((path) => path !== preferredSubtitlePath)]
+      : sidecarPaths
+    for (const subtitlePath of subtitlePaths) {
       try {
         const subtitleFile = await stat(subtitlePath)
         if (!subtitleFile.isFile()) continue
@@ -348,13 +357,13 @@ export class VisionLibrary {
     return { path: '', sizeBytes: 0, mtimeMs: 0, segments: [] }
   }
 
-  private async getVideoSourceSnapshot(videoPath: string): Promise<VideoSourceSnapshot> {
+  private async getVideoSourceSnapshot(videoPath: string, preferredSubtitlePath?: string): Promise<VideoSourceSnapshot> {
     const file = await stat(videoPath)
     if (!file.isFile()) throw new Error(`视频路径不是有效文件：${videoPath}`)
     return {
       sizeBytes: file.size,
       mtimeMs: file.mtimeMs,
-      subtitle: await this.getSubtitleSnapshot(videoPath)
+      subtitle: await this.getSubtitleSnapshot(videoPath, preferredSubtitlePath)
     }
   }
 
@@ -682,7 +691,8 @@ export class VisionLibrary {
     mediaPaths: string[],
     intervalSeconds: number = VISION_FRAME_INTERVAL_SECONDS,
     signal: AbortSignal = new AbortController().signal,
-    onProgress: ProgressCallback = () => undefined
+    onProgress: ProgressCallback = () => undefined,
+    options: VisionIndexOptions = {}
   ): Promise<VisionIndexProgress> {
     const paths = Array.from(new Set(mediaPaths.filter((filePath) => isVideoFilePath(filePath))))
     const interval = Number.isFinite(intervalSeconds) && intervalSeconds > 0 ? intervalSeconds : VISION_FRAME_INTERVAL_SECONDS
@@ -728,7 +738,7 @@ export class VisionLibrary {
       emitProgress({ status: 'indexing', stage: 'planning', totalVideos: paths.length, currentVideoIndex: 0, totalFrames, processedFrames, skippedVideos, captionOnlyVideos, message: '正在检查影视库变化…' })
       for (const videoPath of paths) {
         throwIfAborted(signal)
-        const snapshot = await this.getVideoSourceSnapshot(videoPath)
+        const snapshot = await this.getVideoSourceSnapshot(videoPath, options.subtitlePaths?.get(videoPath))
         const source = await this.getSourceRow(videoPath)
         if (source && this.isVideoSourceUnchanged(source, snapshot, interval)) {
           if (this.isSubtitleUnchanged(source, snapshot.subtitle)) {

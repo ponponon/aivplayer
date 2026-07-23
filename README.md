@@ -57,6 +57,28 @@ AIVPlayer 是一款基于 Electron 的现代化桌面视频播放器，核心亮
 - 自动缓存字幕，重复打开同一视频直接加载
 - 支持从 ModelScope（国内源）和 Hugging Face 下载模型
 
+### 命令行工具
+
+安装 AIVPlayer 后会同时提供 `aivcli` 命令；CLI 与桌面端共用本地 ASR 模型、字幕缓存和视觉影视库。
+
+```bash
+aivcli doctor
+aivcli media info ./movie.mp4
+aivcli asr ./movie.mp4 --format both --output-dir ./subtitles
+aivcli subtitle convert ./movie.vtt
+aivcli subtitle translate ./movie.vtt --to zh --output-dir ./subtitles
+aivcli library index ./Videos --recursive
+aivcli library search "海边场景"
+aivcli batch ./Videos --recursive --asr --translate zh --index --output-dir ./subtitles
+aivcli batch ./Videos --recursive --asr --translate zh --index --resume
+```
+
+`batch` 会按视频顺序执行 ASR、字幕翻译和影视库索引；默认单个视频失败后继续处理，其余任务仍会完成。任务状态默认保存到 AIVPlayer 用户数据目录，也可以通过 `--state-file ./batch-state.json` 指定位置。任务中断后使用相同参数加 `--resume`，已完成且产物仍存在的阶段会跳过；视频文件大小或修改时间变化后，该视频的阶段会自动失效并重跑。需要遇到错误立即停止时使用 `--fail-fast`，需要放弃旧状态重新开始时使用 `--reset-state`。
+
+如果只指定 `--translate` 而不指定 `--asr`，会读取视频旁边同名的 `.vtt` 文件；指定 `--output-dir` 且同时翻译时，译文会追加目标语言后缀（例如 `movie.zh.vtt`），避免覆盖原文字幕。
+
+所有主要命令支持 `--json`，方便批处理脚本消费结构化结果。
+
 ### 片段导出
 
 - 基于当前播放位置快速导出短片段
@@ -99,6 +121,8 @@ AIVPlayer 是一款基于 Electron 的现代化桌面视频播放器，核心亮
 | macOS | `.dmg` / `.zip` |
 | Windows | `.exe` (NSIS 安装器) |
 | Linux | `.AppImage` / `.deb` |
+
+Windows NSIS、macOS `.pkg` 和 Linux `.deb` 会同时安装 `aivcli` 命令。macOS `.dmg` / `.zip` 与 Linux `.AppImage` 是便携式分发格式，不会自动修改系统 PATH；这两种格式可以直接使用应用可执行文件的 `--cli` 模式，或自行建立启动器。
 
 ### 从源码构建
 

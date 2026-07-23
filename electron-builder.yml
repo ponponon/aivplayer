@@ -2,6 +2,11 @@ appId: cn.quniv.aivplayer
 productName: AIVPlayer
 directories:
   output: release
+extraFiles:
+  - from: resources/cli/aivcli.cmd
+    to: aivcli.cmd
+  - from: resources/cli/aivcli
+    to: aivcli
 files:
   - out/**
   - package.json
@@ -95,15 +100,26 @@ mac:
   target:
     - dmg
     - zip
+    - pkg
   identity: null
   hardenedRuntime: false
+pkg:
+  installLocation: /Applications
+  allowCurrentUserHome: false
+  scripts: pkg-scripts
 win:
   icon: brand/icon.ico
   target:
     - nsis
+nsis:
+  include: build/installer.nsh
 linux:
   icon: brand/icon.png
+  executableName: aivplayer
   category: AudioVideo
   target:
     - AppImage
     - deb
+deb:
+  afterInstall: build/deb-after-install.sh
+  afterRemove: build/deb-after-remove.sh

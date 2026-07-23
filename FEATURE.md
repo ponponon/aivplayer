@@ -1,5 +1,11 @@
 # AIVPlayer 功能列表
 
+- 新增无界面 `aivcli` 入口，复用 AIVPlayer 的 ASR、字幕翻译、媒体信息和视觉影视库服务；支持 `doctor`、`asr`、`subtitle convert/translate`、`media info`、`library scan/index/status/search`，默认复用已有字幕缓存，并提供 `--json` 输出，便于终端和自动化脚本使用。
+- `aivcli batch` 支持对目录或多个视频顺序执行 ASR、字幕翻译和影视库索引；任务可用 `--asr`、`--translate`、`--index` 组合，默认单个视频失败后继续，支持 `--fail-fast`、`--recursive`、`--force`、`--output-dir` 和 `--json`；只做翻译时会读取视频旁边同名的 `.vtt` 文件。
+- `aivcli batch` 支持断点续跑：状态默认保存到 AIVPlayer 用户数据目录，也可通过 `--state-file` 指定；`--resume` 会校验任务参数并跳过已完成且产物仍存在的阶段，视频大小或修改时间变化会自动失效对应状态，`--reset-state` 可安全创建新的任务状态。
+- `aivcli batch` 对 ASR 和字幕翻译增加可恢复错误重试：默认每个阶段最多重试 2 次，可用 `--retry 0..5` 调整；网络、429、5xx 和超时使用指数退避，认证、参数、字幕缺失等不可恢复错误不会重试；每次等待前会把阶段、尝试次数、错误和下一次重试时间写入断点状态，进程中断后可配合 `--resume` 继续。
+- 桌面安装包集成 `aivcli` 启动器：Windows NSIS 将启动器加入用户 PATH，macOS `.pkg` 在 `/usr/local/bin/aivcli` 安装命令，Linux `.deb` 在 `/usr/bin/aivcli` 安装命令；启动器只转发到 AIVPlayer 的 `--cli` 模式，不重复打包业务运行时。
+
 - 播放器 CSS 已按页面职责改为语义化文件名，保留稳定的加载顺序，并通过自动检查禁止新增 `part-数字.css`，降低多分支并行开发时的文件名冲突。
 - Linux / Windows 使用与应用主题一致的自绘窗口控件，最小化、最大化 / 还原和关闭按钮不再依赖突兀的原生 title bar overlay；macOS 继续使用原生 traffic lights。
 - ASR 面板在 whisper.cpp 或 ffmpeg 未就绪时直接提供自动检测和手动选择入口，模型文件与运行时组件的安装顺序更清晰。
