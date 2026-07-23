@@ -3,6 +3,7 @@ import { createDefaultAppSettings, type AppSettings } from '../shared/app-settin
 import type { MediaFile } from '../shared/media-types'
 import { BatchSubtitleManager } from './ai/batch-subtitle-manager'
 import { createWhisperCppRuntime } from './ai/whisper-cpp-runtime'
+import { VisionLibrary } from './ai/vision-library'
 
 export const mainState: {
   mainWindow: BrowserWindow | null
@@ -13,6 +14,8 @@ export const mainState: {
   asrAbortControllers: Map<number, AbortController>
   translationAbortControllers: Map<number, AbortController>
   summaryAbortControllers: Map<number, AbortController>
+  visionLibrary: VisionLibrary | null
+  visionAbortControllers: Map<number, AbortController>
   batchSubtitleManager: BatchSubtitleManager | null
 } = {
   mainWindow: null,
@@ -23,5 +26,7 @@ export const mainState: {
   asrAbortControllers: new Map(),
   translationAbortControllers: new Map(),
   summaryAbortControllers: new Map(),
+  visionLibrary: null,
+  visionAbortControllers: new Map(),
   batchSubtitleManager: null
 }

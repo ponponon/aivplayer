@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { getBatchSubtitleHistoryPath, getBatchSubtitleLogDirectoryPath, getBatchSubtitleStatePath, BatchSubtitleManager } from './ai/batch-subtitle-manager'
 import { createWhisperCppRuntime } from './ai/whisper-cpp-runtime'
+import { VisionLibrary } from './ai/vision-library'
 import { getCurrentLocale } from './main-settings'
 import { mainState } from './main-state'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
@@ -33,6 +34,17 @@ export function getAsrRuntime(): ReturnType<typeof createWhisperCppRuntime> {
     })
   }
   return mainState.asrRuntime
+}
+
+export function getVisionLibrary(): VisionLibrary {
+  if (!mainState.visionLibrary) {
+    mainState.visionLibrary = new VisionLibrary({
+      userDataPath: app.getPath('userData'),
+      resourcePath: resolveResourcePath(),
+      env: process.env
+    })
+  }
+  return mainState.visionLibrary
 }
 
 export function getBatchSubtitleManager(sender: Electron.WebContents): BatchSubtitleManager {

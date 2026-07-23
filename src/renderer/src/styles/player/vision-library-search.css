@@ -1,0 +1,47 @@
+.vision-search-card {
+  display: grid;
+  gap: 8px;
+}
+
+.vision-text-search input {
+  min-width: 0;
+  flex: 1;
+  height: 30px;
+  padding: 0 9px;
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  outline: none;
+  font-size: 11px;
+}
+
+.vision-text-search input:focus {
+  border-color: var(--accent);
+}
+
+.vision-image-search {
+  align-items: stretch;
+}
+
+.vision-file-picker {
+  min-width: 0;
+  flex: 1;
+  justify-content: flex-start;
+}
+
+.vision-file-picker span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vision-file-picker input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

@@ -1,0 +1,141 @@
+.vision-panel {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.vision-card,
+.vision-error-card,
+.vision-results {
+  min-width: 0;
+  padding: 12px;
+  color: var(--text-secondary);
+  background: rgba(18, 20, 23, 0.86);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+}
+
+.vision-intro {
+  display: grid;
+  gap: 10px;
+}
+
+.vision-heading,
+.vision-model-status,
+.vision-index-actions,
+.vision-text-search,
+.vision-image-search,
+.vision-progress {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+}
+
+.vision-heading {
+  justify-content: space-between;
+}
+
+.vision-heading h2 {
+  margin: 3px 0 0;
+  color: var(--text-primary);
+  font-size: 15px;
+}
+
+.vision-intro p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.vision-model-status {
+  color: var(--accent);
+  font-size: 11px;
+}
+
+.vision-model-status span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vision-model-status small {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.vision-index-actions {
+  flex-wrap: wrap;
+}
+
+.vision-primary-action,
+.vision-secondary-action,
+.vision-search-button,
+.vision-file-picker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.vision-primary-action,
+.vision-search-button {
+  color: var(--accent-ink);
+  background: var(--accent);
+}
+
+.vision-secondary-action,
+.vision-file-picker {
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-soft);
+}
+
+.vision-primary-action:hover:not(:disabled),
+.vision-search-button:hover:not(:disabled) {
+  background: var(--accent-strong);
+}
+
+.vision-secondary-action:hover:not(:disabled),
+.vision-file-picker:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.vision-primary-action:disabled,
+.vision-secondary-action:disabled,
+.vision-search-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.vision-progress {
+  justify-content: space-between;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.vision-progress span:last-child {
+  max-width: 48%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vision-error {
+  color: var(--danger, #ef8a8a);
+  font-size: 10px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}

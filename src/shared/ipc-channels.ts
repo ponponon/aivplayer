@@ -57,5 +57,12 @@ export const IPC_CHANNELS = {
   WINDOW_GET_STATE: 'window:get-state',
   WINDOW_STATE_CHANGED: 'window:state-changed',
   GET_INITIAL_MEDIA_FILES: 'media:get-initial-files',
-  MEDIA_FILES_OPENED: 'media:files-opened'
+  MEDIA_FILES_OPENED: 'media:files-opened',
+  VISION_STATUS: 'vision:status',
+  VISION_INDEX_START: 'vision:index-start',
+  VISION_INDEX_CANCEL: 'vision:index-cancel',
+  VISION_INDEX_PROGRESS: 'vision:index-progress',
+  VISION_SEARCH_TEXT: 'vision:search-text',
+  VISION_SEARCH_IMAGE: 'vision:search-image',
+  VISION_READ_THUMBNAIL: 'vision:read-thumbnail'
 } as const

@@ -43,7 +43,12 @@ import type {
   ImageSaveRequest,
   ImageSaveResult,
   NativePlaybackResult,
-  NativePlayerStatus
+  NativePlayerStatus,
+  VisionIndexProgress,
+  VisionIndexRequest,
+  VisionRuntimeStatus,
+  VisionSearchRequest,
+  VisionSearchResult
 } from '../shared/media-types'
 
 const api = {
@@ -123,6 +128,12 @@ const api = {
   showItemInFolder: (filePath: string): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.SHOW_ITEM_IN_FOLDER, filePath),
   getNativePlayerStatus: (): Promise<NativePlayerStatus> => ipcRenderer.invoke(IPC_CHANNELS.NATIVE_PLAYER_STATUS),
   getInitialMediaFiles: (): Promise<MediaFile[]> => ipcRenderer.invoke(IPC_CHANNELS.GET_INITIAL_MEDIA_FILES),
+  getVisionStatus: (): Promise<VisionRuntimeStatus> => ipcRenderer.invoke(IPC_CHANNELS.VISION_STATUS),
+  startVisionIndex: (request: VisionIndexRequest): Promise<VisionIndexProgress> => ipcRenderer.invoke(IPC_CHANNELS.VISION_INDEX_START, request),
+  cancelVisionIndex: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.VISION_INDEX_CANCEL),
+  searchVisionText: (request: VisionSearchRequest): Promise<VisionSearchResult[]> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SEARCH_TEXT, request),
+  searchVisionImage: (request: VisionSearchRequest): Promise<VisionSearchResult[]> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SEARCH_IMAGE, request),
+  readVisionThumbnail: (thumbnailPath: string): Promise<string> => ipcRenderer.invoke(IPC_CHANNELS.VISION_READ_THUMBNAIL, thumbnailPath),
   stopNativePlayer: (): Promise<NativePlaybackResult> => ipcRenderer.invoke(IPC_CHANNELS.STOP_NATIVE_PLAYER),
   minimizeWindow: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.WINDOW_MINIMIZE),
   toggleMaximizeWindow: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.WINDOW_TOGGLE_MAXIMIZE),
@@ -157,6 +168,11 @@ const api = {
     const listener = (_event: Electron.IpcRendererEvent, job: BatchSubtitleJob): void => callback(job)
     ipcRenderer.on(IPC_CHANNELS.BATCH_SUBTITLE_PROGRESS, listener)
     return () => ipcRenderer.removeListener(IPC_CHANNELS.BATCH_SUBTITLE_PROGRESS, listener)
+  },
+  onVisionIndexProgress: (callback: (progress: VisionIndexProgress) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, progress: VisionIndexProgress): void => callback(progress)
+    ipcRenderer.on(IPC_CHANNELS.VISION_INDEX_PROGRESS, listener)
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.VISION_INDEX_PROGRESS, listener)
   },
   getPathForFile: (file: File): string => webUtils.getPathForFile(file)
 }

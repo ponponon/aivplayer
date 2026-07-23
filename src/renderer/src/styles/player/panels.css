@@ -121,6 +121,12 @@
   padding-bottom: 8px;
 }
 
+.panel-content-vision {
+  display: block;
+  overflow-y: auto;
+  padding-bottom: 8px;
+}
+
 .batch-panel {
   display: grid;
   align-content: start;

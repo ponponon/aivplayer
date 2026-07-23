@@ -11,6 +11,7 @@ import { registerAsrSummaryIpc } from './ipc-asr-summary'
 import { registerSettingsIpc } from './ipc-settings'
 import { registerUtilityIpc } from './ipc-utility'
 import { registerWindowControlsIpc } from './ipc-window-controls'
+import { registerVisionIpc } from './ipc-vision'
 import { applyMacDockIcon, createWindow, focusMainWindow, queueIncomingMediaPaths } from './window-lifecycle'
 
 registerMediaProtocolScheme()
@@ -28,6 +29,7 @@ function registerIpc(): void {
   registerClipExportIpc()
   registerUtilityIpc()
   registerWindowControlsIpc()
+  registerVisionIpc()
 }
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock()

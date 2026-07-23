@@ -16,6 +16,18 @@ extraResources:
     to: ffmpeg
     filter:
       - '**/*'
+  - from: resources/vision/siglip2-base-patch16-224-ONNX
+    to: vision/siglip2-base-patch16-224-ONNX
+    filter:
+      - config.json
+      - preprocessor_config.json
+      - quantize_config.json
+      - special_tokens_map.json
+      - tokenizer.json
+      - tokenizer.model
+      - tokenizer_config.json
+      - onnx/text_model_uint8.onnx
+      - onnx/vision_model_uint8.onnx
 fileAssociations:
   - ext: mp4
     name: MPEG-4 video

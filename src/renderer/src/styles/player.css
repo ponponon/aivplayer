@@ -52,3 +52,6 @@
 @import './player/image-workspace.css';
 @import './player/image-workspace-panels.css';
 @import './player/image-workspace-responsive.css';
+@import './player/vision-library.css';
+@import './player/vision-library-search.css';
+@import './player/vision-library-results.css';
