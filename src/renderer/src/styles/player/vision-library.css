@@ -63,9 +63,14 @@
 }
 
 .vision-model-status small {
+  min-width: 0;
+  max-width: 62%;
+  overflow: hidden;
   margin-left: auto;
   color: var(--text-muted);
+  text-overflow: ellipsis;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .vision-index-actions {

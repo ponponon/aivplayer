@@ -13,7 +13,12 @@ import {
   VISION_FRAME_INTERVAL_SECONDS,
   VISION_MODEL_ID,
   VISION_MODEL_VARIANT,
+  VISION_VECTOR_DISTANCE_TYPE,
+  VISION_VECTOR_INDEX_MIN_ROWS,
+  VISION_VECTOR_INDEX_TYPE,
   type VisionIndexProgress,
+  type VisionIndexStage,
+  type VisionIndexTimings,
   type VisionMatchSource,
   type VisionRuntimeStatus,
   type VisionSearchMode,
@@ -26,6 +31,11 @@ const SOURCE_TABLE_NAME = 'video_sources'
 const CAPTION_TABLE_NAME = 'video_captions'
 const SEARCH_DOCUMENT_TABLE_NAME = 'video_search_documents'
 const SEARCH_TEXT_COLUMN = 'search_text'
+const VECTOR_COLUMN = 'embedding'
+const VECTOR_INDEX_NAME = `${VECTOR_COLUMN}_idx`
+const VECTOR_INDEX_MAX_PARTITIONS = 256
+const VECTOR_INDEX_OPTIMIZE_MIN_UNINDEXED_ROWS = 256
+const VECTOR_INDEX_OPTIMIZE_RATIO = 0.05
 const METADATA_SCAN_LIMIT = 1_000_000
 
 type VisionFrameRow = {
@@ -105,6 +115,15 @@ type VisionLibraryOptions = {
 }
 
 type ProgressCallback = (progress: VisionIndexProgress) => void
+type VisionTimingPhase = Exclude<keyof VisionIndexTimings, 'totalMs'>
+
+const VISION_TIMING_PHASE_BY_STAGE: Partial<Record<VisionIndexStage, VisionTimingPhase>> = {
+  planning: 'planningMs',
+  'loading-model': 'modelLoadingMs',
+  frames: 'framesMs',
+  'vector-index': 'vectorIndexMs',
+  'text-index': 'textIndexMs'
+}
 
 type VisualSearchCandidate = {
   result: VisionSearchResult
@@ -202,6 +221,7 @@ export class VisionLibrary {
   private readonly databaseDirectory: string
   private dbPromise: ReturnType<typeof connect> | null = null
   private searchDocumentMaintenancePromise: Promise<void> | null = null
+  private vectorIndexMaintenancePromise: Promise<void> | null = null
   private searchDocumentsReady = false
 
   private readonly options: VisionLibraryOptions
@@ -268,6 +288,10 @@ export class VisionLibrary {
 
   async getStatus(): Promise<VisionRuntimeStatus> {
     const available = this.model.isAvailable()
+    const vectorIndex = await this.getVectorIndexStatus()
+    // Do not make opening the panel wait for IVF training. Search and indexing
+    // share the same promise, so a concurrent operation still waits for it.
+    void this.ensureVectorIndex(false).catch(() => undefined)
     return {
       available,
       modelId: VISION_MODEL_ID,
@@ -276,7 +300,29 @@ export class VisionLibrary {
       indexDirectory: this.indexDirectory,
       indexedFrameCount: await this.countRows(),
       indexedVideoCount: await this.countIndexedVideos(),
+      ...vectorIndex,
       message: this.model.getStatusMessage()
+    }
+  }
+
+  private async getVectorIndex(): Promise<{ name: string; columns: string[]; indexType: string } | null> {
+    const table = await this.getTable()
+    if (!table) return null
+    const index = (await table.listIndices()).find((candidate) => candidate.name === VECTOR_INDEX_NAME || candidate.columns.includes(VECTOR_COLUMN))
+    return index ? { name: index.name, columns: index.columns, indexType: index.indexType } : null
+  }
+
+  private async getVectorIndexStatus(): Promise<Pick<VisionRuntimeStatus, 'vectorIndexType' | 'vectorIndexDistanceType' | 'vectorIndexIndexedRows' | 'vectorIndexUnindexedRows'>> {
+    const table = await this.getTable()
+    if (!table) return { vectorIndexType: null, vectorIndexDistanceType: null, vectorIndexIndexedRows: 0, vectorIndexUnindexedRows: 0 }
+    const index = (await table.listIndices()).find((candidate) => candidate.name === VECTOR_INDEX_NAME || candidate.columns.includes(VECTOR_COLUMN))
+    if (!index) return { vectorIndexType: null, vectorIndexDistanceType: null, vectorIndexIndexedRows: 0, vectorIndexUnindexedRows: 0 }
+    const stats = await table.indexStats(index.name)
+    return {
+      vectorIndexType: stats?.indexType ?? index.indexType,
+      vectorIndexDistanceType: stats?.distanceType ?? null,
+      vectorIndexIndexedRows: stats?.numIndexedRows ?? index.numIndexedRows ?? 0,
+      vectorIndexUnindexedRows: stats?.numUnindexedRows ?? index.numUnindexedRows ?? 0
     }
   }
 
@@ -460,6 +506,42 @@ export class VisionLibrary {
     return this.searchDocumentMaintenancePromise
   }
 
+  private async maintainVectorIndex(shouldOptimize: boolean): Promise<void> {
+    const table = await this.getTable()
+    if (!table) return
+    let vectorIndex = await this.getVectorIndex()
+    if (vectorIndex) {
+      const stats = await table.indexStats(vectorIndex.name)
+      const isCompatible = stats?.indexType === VISION_VECTOR_INDEX_TYPE && stats.distanceType?.toLowerCase() === VISION_VECTOR_DISTANCE_TYPE
+      if (!isCompatible) {
+        await table.dropIndex(vectorIndex.name)
+        await table.optimize()
+        vectorIndex = null
+      } else if (shouldOptimize) {
+        const unindexedRows = stats?.numUnindexedRows ?? 0
+        const indexedRows = stats?.numIndexedRows ?? 0
+        const optimizeThreshold = Math.max(VECTOR_INDEX_OPTIMIZE_MIN_UNINDEXED_ROWS, Math.ceil(indexedRows * VECTOR_INDEX_OPTIMIZE_RATIO))
+        if (unindexedRows >= optimizeThreshold) await table.optimize()
+        return
+      } else {
+        return
+      }
+    }
+
+    const rowCount = await table.countRows()
+    if (rowCount < VISION_VECTOR_INDEX_MIN_ROWS) return
+    const numPartitions = Math.max(16, Math.min(VECTOR_INDEX_MAX_PARTITIONS, Math.round(Math.sqrt(rowCount) / 4)))
+    await table.createIndex(VECTOR_COLUMN, {
+      config: Index.ivfFlat({ distanceType: VISION_VECTOR_DISTANCE_TYPE, numPartitions }),
+      waitTimeoutSeconds: 300
+    })
+  }
+
+  private async ensureVectorIndex(shouldOptimize: boolean): Promise<void> {
+    this.vectorIndexMaintenancePromise ??= this.maintainVectorIndex(shouldOptimize).finally(() => { this.vectorIndexMaintenancePromise = null })
+    return this.vectorIndexMaintenancePromise
+  }
+
   private async ensureSearchDocuments(): Promise<Table | null> {
     if (this.searchDocumentsReady) return this.getSearchDocumentTable()
     let table = await this.getSearchDocumentTable()
@@ -604,75 +686,114 @@ export class VisionLibrary {
   ): Promise<VisionIndexProgress> {
     const paths = Array.from(new Set(mediaPaths.filter((filePath) => isVideoFilePath(filePath))))
     const interval = Number.isFinite(intervalSeconds) && intervalSeconds > 0 ? intervalSeconds : VISION_FRAME_INTERVAL_SECONDS
-    await ensureDirectory(this.thumbnailDirectory)
 
     let processedFrames = 0
     let totalFrames = 0
     let skippedVideos = 0
     let captionOnlyVideos = 0
     const fullPlans: Array<{ path: string; snapshot: VideoSourceSnapshot }> = []
-
-    for (const videoPath of paths) {
-      throwIfAborted(signal)
-      const snapshot = await this.getVideoSourceSnapshot(videoPath)
-      const source = await this.getSourceRow(videoPath)
-      if (source && this.isVideoSourceUnchanged(source, snapshot, interval)) {
-        if (this.isSubtitleUnchanged(source, snapshot.subtitle)) {
-          skippedVideos += 1
-          onProgress({ status: 'indexing', totalVideos: paths.length, currentVideoIndex: skippedVideos + captionOnlyVideos, totalFrames, processedFrames, skippedVideos, captionOnlyVideos, currentVideoPath: videoPath, message: `已跳过未变化的视频：${basename(videoPath)}` })
-        } else {
-          await this.refreshCaptions(videoPath, snapshot, interval, source)
-          captionOnlyVideos += 1
-          onProgress({ status: 'indexing', totalVideos: paths.length, currentVideoIndex: skippedVideos + captionOnlyVideos, totalFrames, processedFrames, skippedVideos, captionOnlyVideos, currentVideoPath: videoPath, message: `已更新字幕索引：${basename(videoPath)}` })
-        }
-      } else {
-        fullPlans.push({ path: videoPath, snapshot })
+    const startedAtMs = Date.now()
+    const timings: VisionIndexTimings = { planningMs: 0, modelLoadingMs: 0, framesMs: 0, vectorIndexMs: 0, textIndexMs: 0, totalMs: 0 }
+    let activeStage: VisionIndexStage | null = null
+    let activeStageStartedAtMs = startedAtMs
+    const settleActiveStage = (nowMs: number): void => {
+      if (activeStage) {
+        const phase = VISION_TIMING_PHASE_BY_STAGE[activeStage]
+        if (phase) timings[phase] += nowMs - activeStageStartedAtMs
       }
+      activeStageStartedAtMs = nowMs
+    }
+    const getTimings = (): VisionIndexTimings => {
+      const snapshot = { ...timings, totalMs: Date.now() - startedAtMs }
+      if (activeStage) {
+        const phase = VISION_TIMING_PHASE_BY_STAGE[activeStage]
+        if (phase) snapshot[phase] += Date.now() - activeStageStartedAtMs
+      }
+      return snapshot
+    }
+    const emitProgress = (progress: Omit<VisionIndexProgress, 'phaseElapsedMs' | 'timings'>): VisionIndexProgress => {
+      const nowMs = Date.now()
+      if (activeStage !== progress.stage) {
+        settleActiveStage(nowMs)
+        activeStage = progress.stage
+      }
+      const terminal = progress.stage === 'completed' || progress.stage === 'cancelled' || progress.stage === 'error'
+      const emitted = { ...progress, phaseElapsedMs: nowMs - activeStageStartedAtMs, ...(terminal ? { timings: getTimings() } : {}) }
+      onProgress(emitted)
+      return emitted
     }
 
-    const ffmpegPath = fullPlans.length > 0 ? await resolveFfmpegPath(this.options.resourcePath, this.options.env, undefined) : null
-    const ffprobePath = fullPlans.length > 0 ? await resolveFfprobePath(this.options.resourcePath, this.options.env, undefined) : null
-    if (fullPlans.length > 0 && (!ffmpegPath || !ffprobePath)) throw new Error('未找到 ffmpeg 或 ffprobe，无法进行视频抽帧')
-    if (fullPlans.length > 0 && !this.model.isAvailable()) throw new Error(this.model.getStatusMessage())
-
     try {
+      await ensureDirectory(this.thumbnailDirectory)
+      emitProgress({ status: 'indexing', stage: 'planning', totalVideos: paths.length, currentVideoIndex: 0, totalFrames, processedFrames, skippedVideos, captionOnlyVideos, message: '正在检查影视库变化…' })
+      for (const videoPath of paths) {
+        throwIfAborted(signal)
+        const snapshot = await this.getVideoSourceSnapshot(videoPath)
+        const source = await this.getSourceRow(videoPath)
+        if (source && this.isVideoSourceUnchanged(source, snapshot, interval)) {
+          if (this.isSubtitleUnchanged(source, snapshot.subtitle)) {
+            skippedVideos += 1
+            emitProgress({ status: 'indexing', stage: 'planning', totalVideos: paths.length, currentVideoIndex: skippedVideos + captionOnlyVideos, totalFrames, processedFrames, skippedVideos, captionOnlyVideos, currentVideoPath: videoPath, message: `已跳过未变化的视频：${basename(videoPath)}` })
+          } else {
+            await this.refreshCaptions(videoPath, snapshot, interval, source)
+            captionOnlyVideos += 1
+            emitProgress({ status: 'indexing', stage: 'planning', totalVideos: paths.length, currentVideoIndex: skippedVideos + captionOnlyVideos, totalFrames, processedFrames, skippedVideos, captionOnlyVideos, currentVideoPath: videoPath, message: `已更新字幕索引：${basename(videoPath)}` })
+          }
+        } else {
+          fullPlans.push({ path: videoPath, snapshot })
+        }
+      }
+
+      const ffmpegPath = fullPlans.length > 0 ? await resolveFfmpegPath(this.options.resourcePath, this.options.env, undefined) : null
+      const ffprobePath = fullPlans.length > 0 ? await resolveFfprobePath(this.options.resourcePath, this.options.env, undefined) : null
+      if (fullPlans.length > 0 && (!ffmpegPath || !ffprobePath)) throw new Error('未找到 ffmpeg 或 ffprobe，无法进行视频抽帧')
+      if (fullPlans.length > 0 && !this.model.isAvailable()) throw new Error(this.model.getStatusMessage())
+
       if (fullPlans.length > 0) {
-        onProgress({ status: 'loading', totalVideos: paths.length, currentVideoIndex: skippedVideos + captionOnlyVideos, totalFrames, processedFrames, skippedVideos, captionOnlyVideos, message: '正在加载 SigLIP2 模型…' })
+        emitProgress({ status: 'loading', stage: 'loading-model', totalVideos: paths.length, currentVideoIndex: skippedVideos + captionOnlyVideos, totalFrames, processedFrames, skippedVideos, captionOnlyVideos, message: '正在加载 SigLIP2 模型…' })
+        await this.model.prepareImageModel()
       }
       for (let index = 0; index < fullPlans.length; index += 1) {
         throwIfAborted(signal)
         const plan = fullPlans[index]
         const currentVideoIndex = skippedVideos + captionOnlyVideos + index + 1
-        onProgress({ status: 'indexing', totalVideos: paths.length, currentVideoIndex, totalFrames, processedFrames, skippedVideos, captionOnlyVideos, currentVideoPath: plan.path, message: `正在处理 ${basename(plan.path)}` })
+        emitProgress({ status: 'indexing', stage: 'frames', totalVideos: paths.length, currentVideoIndex, totalFrames, processedFrames, skippedVideos, captionOnlyVideos, currentVideoPath: plan.path, message: `正在处理 ${basename(plan.path)}` })
         const frameCount = await this.indexVideo(plan.path, plan.snapshot, interval, ffmpegPath as string, ffprobePath as string, signal, (videoProcessed, videoTotal) => {
-          onProgress({ status: 'indexing', totalVideos: paths.length, currentVideoIndex, totalFrames: totalFrames + videoTotal, processedFrames: processedFrames + videoProcessed, skippedVideos, captionOnlyVideos, currentVideoPath: plan.path, message: `正在处理 ${basename(plan.path)}` })
+          emitProgress({ status: 'indexing', stage: 'frames', totalVideos: paths.length, currentVideoIndex, totalFrames: totalFrames + videoTotal, processedFrames: processedFrames + videoProcessed, skippedVideos, captionOnlyVideos, currentVideoPath: plan.path, message: `正在处理 ${basename(plan.path)}` })
         })
         processedFrames += frameCount
         totalFrames += frameCount
       }
-      if (fullPlans.length > 0 || captionOnlyVideos > 0) await this.maintainSearchFullTextIndex()
-      const result = { status: 'completed', totalVideos: paths.length, currentVideoIndex: paths.length, totalFrames, processedFrames, skippedVideos, captionOnlyVideos, message: `索引完成，共处理 ${processedFrames} 个视频帧，跳过 ${skippedVideos} 个未变化视频，更新 ${captionOnlyVideos} 个字幕索引` } satisfies VisionIndexProgress
-      onProgress(result)
-      return result
+      if (fullPlans.length > 0) {
+        throwIfAborted(signal)
+        emitProgress({ status: 'indexing', stage: 'vector-index', totalVideos: paths.length, currentVideoIndex: paths.length, totalFrames, processedFrames, skippedVideos, captionOnlyVideos, message: '正在维护向量 ANN 索引…' })
+        await this.ensureVectorIndex(true)
+        throwIfAborted(signal)
+      }
+      if (fullPlans.length > 0 || captionOnlyVideos > 0) {
+        throwIfAborted(signal)
+        emitProgress({ status: 'indexing', stage: 'text-index', totalVideos: paths.length, currentVideoIndex: paths.length, totalFrames, processedFrames, skippedVideos, captionOnlyVideos, message: '正在维护全文索引…' })
+        await this.maintainSearchFullTextIndex()
+        throwIfAborted(signal)
+      }
+      return emitProgress({ status: 'completed', stage: 'completed', totalVideos: paths.length, currentVideoIndex: paths.length, totalFrames, processedFrames, skippedVideos, captionOnlyVideos, message: `索引完成，共处理 ${processedFrames} 个视频帧，跳过 ${skippedVideos} 个未变化视频，更新 ${captionOnlyVideos} 个字幕索引` })
     } catch (error) {
       if (isAbortError(error)) {
-        const result = { status: 'cancelled', totalVideos: paths.length, currentVideoIndex: 0, totalFrames, processedFrames, skippedVideos, captionOnlyVideos, message: '索引已取消' } satisfies VisionIndexProgress
-        onProgress(result)
-        return result
+        return emitProgress({ status: 'cancelled', stage: 'cancelled', totalVideos: paths.length, currentVideoIndex: 0, totalFrames, processedFrames, skippedVideos, captionOnlyVideos, message: '索引已取消' })
       }
       const message = error instanceof Error ? error.message : String(error)
-      const result = { status: 'error', totalVideos: paths.length, currentVideoIndex: 0, totalFrames, processedFrames, skippedVideos, captionOnlyVideos, error: message, message } satisfies VisionIndexProgress
-      onProgress(result)
+      emitProgress({ status: 'error', stage: 'error', totalVideos: paths.length, currentVideoIndex: 0, totalFrames, processedFrames, skippedVideos, captionOnlyVideos, error: message, message })
       throw error
     }
   }
 
   private async search(embedding: number[], limit: number): Promise<VisionSearchResult[]> {
+    await this.ensureVectorIndex(false)
     const table = await this.getTable()
     if (!table) return []
     const vectorQuery = table.search(embedding) as VectorQuery
     const rows = await vectorQuery
-      .distanceType('cosine')
+      .distanceType(VISION_VECTOR_DISTANCE_TYPE)
       .limit(clampLimit(limit))
       .select(['id', 'video_path', 'file_name', 'timestamp_seconds', 'thumbnail_path', 'model_id', 'model_variant', '_distance'])
       .toArray() as unknown as Array<Record<string, unknown>>

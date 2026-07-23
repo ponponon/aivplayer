@@ -1,8 +1,22 @@
 export const VISION_MODEL_ID = 'siglip2-base-patch16-224-ONNX'
 export const VISION_MODEL_VARIANT = 'uint8'
 export const VISION_FRAME_INTERVAL_SECONDS = 3
+export const VISION_VECTOR_INDEX_TYPE = 'IVF_FLAT'
+export const VISION_VECTOR_DISTANCE_TYPE = 'dot'
+export const VISION_VECTOR_INDEX_MIN_ROWS = 10_000
 
 export type VisionIndexStatus = 'idle' | 'loading' | 'indexing' | 'completed' | 'cancelled' | 'error'
+
+export type VisionIndexStage = 'planning' | 'loading-model' | 'frames' | 'vector-index' | 'text-index' | 'completed' | 'cancelled' | 'error'
+
+export type VisionIndexTimings = {
+  planningMs: number
+  modelLoadingMs: number
+  framesMs: number
+  vectorIndexMs: number
+  textIndexMs: number
+  totalMs: number
+}
 
 export type VisionRuntimeStatus = {
   available: boolean
@@ -12,6 +26,10 @@ export type VisionRuntimeStatus = {
   indexDirectory: string
   indexedFrameCount: number
   indexedVideoCount: number
+  vectorIndexType: string | null
+  vectorIndexDistanceType: string | null
+  vectorIndexIndexedRows: number
+  vectorIndexUnindexedRows: number
   message: string
 }
 
@@ -58,6 +76,9 @@ export type VisionDirectoryBatchScanProgress = {
 
 export type VisionIndexProgress = {
   status: VisionIndexStatus
+  stage: VisionIndexStage
+  phaseElapsedMs?: number
+  timings?: VisionIndexTimings
   totalVideos: number
   currentVideoIndex: number
   totalFrames: number

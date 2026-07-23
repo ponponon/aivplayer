@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { VISION_FRAME_INTERVAL_SECONDS, VISION_MODEL_ID, VISION_MODEL_VARIANT } from '../../src/shared/vision-types'
+import { VISION_FRAME_INTERVAL_SECONDS, VISION_MODEL_ID, VISION_MODEL_VARIANT, VISION_VECTOR_DISTANCE_TYPE, VISION_VECTOR_INDEX_MIN_ROWS, VISION_VECTOR_INDEX_TYPE } from '../../src/shared/vision-types'
 import { getVisionModelPaths } from '../../src/main/ai/vision-model'
 import { calculateVisionLexicalMatch, combineVisionHybridScore } from '../../src/main/ai/vision-search'
 
@@ -14,6 +14,9 @@ describe('vision library setup', () => {
     expect(VISION_MODEL_ID).toBe('siglip2-base-patch16-224-ONNX')
     expect(VISION_MODEL_VARIANT).toBe('uint8')
     expect(VISION_FRAME_INTERVAL_SECONDS).toBe(3)
+    expect(VISION_VECTOR_DISTANCE_TYPE).toBe('dot')
+    expect(VISION_VECTOR_INDEX_TYPE).toBe('IVF_FLAT')
+    expect(VISION_VECTOR_INDEX_MIN_ROWS).toBe(10_000)
     expect(paths.combinedModelPath.endsWith('onnx/model_uint8.onnx')).toBe(true)
     expect(paths.textModelPath.endsWith('onnx/text_model_uint8.onnx')).toBe(true)
     expect(paths.visionModelPath.endsWith('onnx/vision_model_uint8.onnx')).toBe(true)
@@ -57,6 +60,17 @@ describe('vision library setup', () => {
     expect(source).toContain('fullTextSearch(query')
     expect(source).toContain('isVideoSourceUnchanged')
     expect(source).toContain('refreshCaptions')
+    expect(source).toContain("distanceType(VISION_VECTOR_DISTANCE_TYPE)")
+    expect(source).toContain('Index.ivfFlat')
+    expect(source).toContain('maintainVectorIndex')
+    expect(source).toContain("stage: 'planning'")
+    expect(source).toContain("stage: 'loading-model'")
+    expect(source).toContain("stage: 'frames'")
+    expect(source).toContain("stage: 'vector-index'")
+    expect(source).toContain("stage: 'text-index'")
+    expect(source).toContain("stage: 'completed'")
+    expect(source).toContain('prepareImageModel')
+    expect(source).toContain('getTimings')
     expect(source).toContain("mode: VisionSearchMode = 'hybrid'")
   })
 })

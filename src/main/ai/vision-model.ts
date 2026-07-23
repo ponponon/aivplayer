@@ -83,6 +83,11 @@ export class VisionEmbeddingRuntime {
     return `SigLIP2 ${VISION_MODEL_ID} 已就绪`
   }
 
+  async prepareImageModel(): Promise<void> {
+    if (!this.isAvailable()) throw new Error(this.getStatusMessage())
+    await Promise.all([this.getProcessor(), this.getVisionModel()])
+  }
+
   private getTokenizer() {
     this.tokenizerPromise ??= AutoTokenizer.from_pretrained(VISION_MODEL_ID)
     return this.tokenizerPromise

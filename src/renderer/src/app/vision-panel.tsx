@@ -6,6 +6,12 @@ import { useVisionLibraryFolder } from './use-vision-library-folder'
 import { VisionLibraryFolder } from './vision-library-folder'
 import { VisionSearchResults } from './vision-search-results'
 
+function formatDuration(milliseconds: number): string {
+  if (milliseconds < 1000) return `${Math.max(1, Math.round(milliseconds))}ms`
+  const seconds = milliseconds / 1000
+  return `${seconds.toFixed(seconds < 10 ? 1 : 0)}s`
+}
+
 export function VisionPanel(): React.ReactElement {
   const app = useAppContext()
   const [status, setStatus] = useState<VisionRuntimeStatus | null>(null)
@@ -20,23 +26,29 @@ export function VisionPanel(): React.ReactElement {
   const isIndexing = progress?.status === 'loading' || progress?.status === 'indexing'
   const folder = useVisionLibraryFolder(app, isIndexing, { onError: setError })
   const isBusy = folder.isBusy
+  const vectorIndexLabel = status?.vectorIndexType
+    ? app.copy.vision.vectorIndex(status.vectorIndexType, status.vectorIndexDistanceType ?? '—', status.vectorIndexIndexedRows, status.vectorIndexUnindexedRows)
+    : app.copy.vision.exactVectorSearch
 
   useEffect(() => {
     let active = true
-    void window.aiv.getVisionStatus().then((next) => {
+    const refreshStatus = (): void => { void window.aiv.getVisionStatus().then((next) => {
       if (active) setStatus(next)
     }).catch((reason: unknown) => {
       if (active) setError(reason instanceof Error ? reason.message : String(reason))
-    })
+    }) }
+    refreshStatus()
+    const statusTimer = window.setInterval(refreshStatus, 5000)
     const removeProgressListener = window.aiv.onVisionIndexProgress((next) => {
       if (!active) return
       setProgress(next)
       if (next.status === 'completed' || next.status === 'cancelled') {
-        void window.aiv.getVisionStatus().then((latest) => { if (active) setStatus(latest) }).catch(() => undefined)
+        refreshStatus()
       }
     })
     return () => {
       active = false
+      window.clearInterval(statusTimer)
       removeProgressListener()
     }
   }, [])
@@ -115,32 +127,50 @@ export function VisionPanel(): React.ReactElement {
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
   }
 
-  const progressLabel = progress?.status === 'loading'
-    ? app.copy.vision.loading
-    : progress?.status === 'indexing'
-      ? app.copy.vision.indexing(progress.processedFrames, progress.totalFrames, progress.currentVideoIndex, progress.totalVideos)
-      : progress?.status === 'completed'
-        ? progress.skippedVideos > 0 || progress.captionOnlyVideos > 0
-          ? app.copy.vision.completedIncremental(progress.processedFrames, progress.skippedVideos, progress.captionOnlyVideos)
-          : app.copy.vision.completed(progress.processedFrames)
-        : progress?.status === 'cancelled'
-          ? app.copy.vision.cancelled
-          : status?.indexedFrameCount
-            ? app.copy.vision.indexReady(status.indexedFrameCount)
-            : null
+  const progressLabel = progress?.stage === 'planning'
+    ? app.copy.vision.planning
+    : progress?.stage === 'loading-model'
+      ? app.copy.vision.loading
+      : progress?.stage === 'frames'
+        ? app.copy.vision.indexing(progress.processedFrames, progress.totalFrames, progress.currentVideoIndex, progress.totalVideos)
+        : progress?.stage === 'vector-index'
+          ? app.copy.vision.vectorIndexing
+          : progress?.stage === 'text-index'
+            ? app.copy.vision.textIndexing
+            : progress?.stage === 'completed'
+              ? progress.skippedVideos > 0 || progress.captionOnlyVideos > 0
+                ? app.copy.vision.completedIncremental(progress.processedFrames, progress.skippedVideos, progress.captionOnlyVideos)
+                : app.copy.vision.completed(progress.processedFrames)
+              : progress?.stage === 'cancelled'
+                ? app.copy.vision.cancelled
+                : progress?.stage === 'error'
+                  ? progress.message ?? app.copy.vision.indexFailed
+                  : status?.indexedFrameCount
+                    ? app.copy.vision.indexReady(status.indexedFrameCount)
+                    : null
+  const timingLabel = progress?.timings && (progress.stage === 'completed' || progress.stage === 'cancelled' || progress.stage === 'error')
+    ? app.copy.vision.timings(
+      formatDuration(progress.timings.planningMs),
+      formatDuration(progress.timings.modelLoadingMs),
+      formatDuration(progress.timings.framesMs),
+      formatDuration(progress.timings.vectorIndexMs),
+      formatDuration(progress.timings.textIndexMs),
+      formatDuration(progress.timings.totalMs)
+    )
+    : null
 
   return <div className="vision-panel">
     <section className="vision-card vision-intro">
       <div className="vision-heading"><div><span className="panel-kicker">{app.copy.panels.visionKicker}</span><h2>{app.copy.panels.visionTitle}</h2></div><ScanSearch size={18} /></div>
       <p>{app.copy.vision.description}</p>
-      <div className="vision-model-status"><Database size={14} /><span>{status?.available ? app.copy.vision.model : app.copy.vision.unavailable}</span><small>{status?.indexedFrameCount ?? 0}</small></div>
+      <div className="vision-model-status"><Database size={14} /><span>{status?.available ? app.copy.vision.model : app.copy.vision.unavailable}</span><small title={vectorIndexLabel}>{status?.indexedFrameCount ?? 0} · {vectorIndexLabel}</small></div>
       {!status?.available ? <small className="vision-error">{status?.message ?? app.copy.vision.unavailable}</small> : null}
       <VisionLibraryFolder copy={app.copy.vision} folderPath={folder.folderPath} savedFolders={folder.savedFolders} videoPaths={folder.videoPaths} includeSubfolders={folder.includeSubfolders} scanProgress={folder.scanProgress} batchScanProgress={folder.batchScanProgress} isBusy={isBusy} onChooseFolder={folder.chooseFolder} onScanFolder={folder.scanCurrentFolder} onScanAllFolders={folder.scanAllFolders} onIncludeSubfoldersChange={folder.setIncludeSubfolders} onStartIndex={startFolderIndex} onUseFolder={folder.useSavedFolder} onRemoveFolder={folder.removeSavedFolder} />
       <div className="vision-index-actions">
         <button className="vision-primary-action" type="button" onClick={startIndex} disabled={isBusy || app.state.playlist.length === 0}><Database size={15} />{app.copy.vision.indexPlaylist}</button>
         {isBusy ? <button className="vision-secondary-action" type="button" onClick={cancelCurrentTask}><Square size={13} />{app.copy.vision.cancelIndex}</button> : null}
       </div>
-      {progressLabel ? <div className="vision-progress" role="status"><span>{progressLabel}</span><span>{progress?.currentVideoPath ? progress.currentVideoPath.split(/[\\/]/).pop() : ''}</span></div> : null}
+      {progressLabel ? <div className="vision-progress" role="status"><span>{progressLabel}</span><span title={timingLabel ?? undefined}>{timingLabel ?? (progress?.currentVideoPath ? progress.currentVideoPath.split(/[\\/]/).pop() : '')}</span></div> : null}
     </section>
 
     <section className="vision-card vision-search-card">

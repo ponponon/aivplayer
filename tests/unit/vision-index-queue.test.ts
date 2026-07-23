@@ -4,6 +4,7 @@ import { VisionIndexQueue } from '../../src/main/ai/vision-index-queue'
 
 const completedProgress: VisionIndexProgress = {
   status: 'completed',
+  stage: 'completed',
   totalVideos: 1,
   currentVideoIndex: 1,
   totalFrames: 0,
