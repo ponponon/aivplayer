@@ -6,8 +6,8 @@ import type {
   DramaProjectData,
   DramaStageResult
 } from '../shared/drama-types'
-import { parseDramaChapters } from '../main/drama/drama-text'
-import { getDramaProviderSettings, getDramaStore, getDramaWorkflow, testDramaProvider } from '../main/main-services'
+import { parseDramaChapters } from '../core/drama/drama-text'
+import { getDramaProviderSettings, getDramaStore, getDramaWorkflow, testDramaProvider } from '../desktop/desktop-services'
 import { getCliOption, hasCliOption, type ParsedCliArgs } from './cli-parser'
 
 type DramaReport = (message: string) => void

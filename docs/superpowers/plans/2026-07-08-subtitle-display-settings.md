@@ -25,7 +25,7 @@ This plan does not implement real subtitle translation, translation provider ada
 ## File Structure
 
 - Modify `src/shared/app-settings.ts`: define subtitle display types, default settings, section patch typing.
-- Modify `src/main/app-settings.ts`: sanitize the new `subtitles` section.
+- Modify `src/core/app-settings.ts`: sanitize the new `subtitles` section.
 - Modify `tests/unit/app-settings.test.ts`: cover defaults, persistence, and sanitizer bounds.
 - Modify `src/shared/i18n.ts`: add labels for quick subtitle controls and settings dialog subtitle display controls in all locales.
 - Modify `src/renderer/src/app/settings-dialog.tsx`: add subtitle display controls using existing settings components.
@@ -46,7 +46,7 @@ This plan does not implement real subtitle translation, translation provider ada
 
 **Files:**
 - Modify: `src/shared/app-settings.ts`
-- Modify: `src/main/app-settings.ts`
+- Modify: `src/core/app-settings.ts`
 - Test: `tests/unit/app-settings.test.ts`
 
 - [ ] **Step 1: Write failing settings tests**
@@ -169,7 +169,7 @@ Add defaults in `createDefaultAppSettings()` between `playback` and `asr`:
 
 - [ ] **Step 4: Add main-process sanitizer**
 
-In `src/main/app-settings.ts`, import the new types:
+In `src/core/app-settings.ts`, import the new types:
 
 ```ts
   type SubtitleDisplayMode,
@@ -235,7 +235,7 @@ Expected: PASS.
 Run:
 
 ```bash
-git add src/shared/app-settings.ts src/main/app-settings.ts tests/unit/app-settings.test.ts
+git add src/shared/app-settings.ts src/core/app-settings.ts tests/unit/app-settings.test.ts
 git commit -m "feat: add subtitle display settings"
 ```
 

@@ -4,8 +4,8 @@ import { mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/
 import { basename, extname, join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { _electron as electron } from 'playwright'
-import { getRecommendedWhisperModelManifest } from '../src/main/ai/asr-models.ts'
-import { getWhisperModelDirectory } from '../src/main/ai/model-manager.ts'
+import { getRecommendedWhisperModelManifest } from '../src/core/ai/asr-models.ts'
+import { getWhisperModelDirectory } from '../src/core/ai/model-manager.ts'
 
 type TranslationRequest = {
   messages?: Array<{ content?: string }>

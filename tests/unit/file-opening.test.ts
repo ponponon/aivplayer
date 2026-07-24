@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { extractVideoFilePaths, isMediaFileAvailable, isVideoFilePath, mergeMediaFiles, VIDEO_EXTENSIONS } from '../../src/main/media/file-opening'
+import { extractVideoFilePaths, isMediaFileAvailable, isVideoFilePath, mergeMediaFiles, VIDEO_EXTENSIONS } from '../../src/core/media/file-opening'
 
 describe('video file opening', () => {
   it('keeps the supported extensions shared by runtime and packaging', () => {

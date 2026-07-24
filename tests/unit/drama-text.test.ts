@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDramaChapterText, parseDramaChapters } from '../../src/main/drama/drama-text'
+import { formatDramaChapterText, parseDramaChapters } from '../../src/core/drama/drama-text'
 
 describe('drama text import', () => {
   it('parses Chinese chapter headings and volume headings', () => {

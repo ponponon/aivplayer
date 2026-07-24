@@ -6,7 +6,7 @@ import {
   parseVtt,
   writeSrt,
   writeVtt
-} from '../../src/main/ai/subtitle-writer'
+} from '../../src/core/ai/subtitle-writer'
 
 describe('subtitle writer', () => {
   it('formats SRT timestamps', () => {

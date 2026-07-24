@@ -2,12 +2,12 @@ import { app, ipcMain } from 'electron'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type { MediaClipExportRequest, MediaClipExportResult } from '../shared/media-types'
 import { getAppCopy } from '../shared/i18n'
-import { buildClipExportDefaultVideoPath, runClipExport } from './media/clip-export'
+import { buildClipExportDefaultVideoPath, runClipExport } from '../core/media/clip-export'
 import { createMediaFile } from './media/media-protocol'
-import { resolveFfmpegPath } from './ai/whisper-cpp-runtime'
+import { resolveFfmpegPath } from '../core/ai/whisper-cpp-runtime'
 import { promptForSavePath } from './media-dialogs'
-import { getCurrentLocale } from './main-settings'
-import { resolveResourcePath } from './main-services'
+import { getCurrentLocale } from './desktop-settings'
+import { resolveResourcePath } from './desktop-services'
 
 export function registerClipExportIpc(): void {
   ipcMain.handle(IPC_CHANNELS.MEDIA_EXPORT_CLIP, async (_event, request: MediaClipExportRequest): Promise<MediaClipExportResult> => {

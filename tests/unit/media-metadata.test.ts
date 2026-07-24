@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseFfprobeOutput, parseMediaProbeOutput } from '../../src/main/media/media-metadata'
+import { parseFfprobeOutput, parseMediaProbeOutput } from '../../src/core/media/media-metadata'
 
 describe('media metadata probe parser', () => {
   it('extracts useful video and audio metadata from ffmpeg probe output', () => {

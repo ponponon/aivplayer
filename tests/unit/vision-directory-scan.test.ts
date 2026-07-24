@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { scanVisionDirectory } from '../../src/main/ai/vision-directory-scan'
+import { scanVisionDirectory } from '../../src/core/ai/vision-directory-scan'
 
 const temporaryDirectories: string[] = []
 

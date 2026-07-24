@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { APP_NAME, createApplicationMenuTemplate } from '../../src/main/app-menu'
+import { APP_NAME, createApplicationMenuTemplate } from '../../src/desktop/app-menu'
 
 describe('application menu', () => {
   it('uses AIVPlayer as the macOS app menu label', () => {

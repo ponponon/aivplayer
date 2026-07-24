@@ -2,8 +2,8 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { DramaStore } from '../../src/main/drama/drama-store'
-import { DramaWorkflow } from '../../src/main/drama/drama-workflow'
+import { DramaStore } from '../../src/core/drama/drama-store'
+import { DramaWorkflow } from '../../src/core/drama/drama-workflow'
 import type { DramaProviderRequest } from '../../src/shared/drama-types'
 
 describe('drama text workflow', () => {

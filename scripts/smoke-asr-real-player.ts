@@ -2,8 +2,8 @@ import { _electron as electron } from 'playwright'
 import { access, mkdtemp, readdir, readFile, rm, stat } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { getWhisperModelDirectory } from '../src/main/ai/model-manager.ts'
-import { getRecommendedWhisperModelManifest } from '../src/main/ai/asr-models.ts'
+import { getWhisperModelDirectory } from '../src/core/ai/model-manager.ts'
+import { getRecommendedWhisperModelManifest } from '../src/core/ai/asr-models.ts'
 
 const mediaPath = process.argv.find((argument) => argument.toLowerCase().endsWith('.mp4')) ?? '/Users/ponponon/Downloads/下载.mp4'
 const modelManifest = getRecommendedWhisperModelManifest()

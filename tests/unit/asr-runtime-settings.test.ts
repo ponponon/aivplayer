@@ -2,8 +2,8 @@ import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { readAsrRuntimeSettings, saveWhisperBinaryPath } from '../../src/main/ai/asr-settings'
-import { createWhisperCppRuntime, resolveFfmpegPath } from '../../src/main/ai/whisper-cpp-runtime'
+import { readAsrRuntimeSettings, saveWhisperBinaryPath } from '../../src/core/ai/asr-settings'
+import { createWhisperCppRuntime, resolveFfmpegPath } from '../../src/core/ai/whisper-cpp-runtime'
 import { getAppCopy } from '../../src/shared/i18n'
 
 describe('ASR runtime settings', () => {

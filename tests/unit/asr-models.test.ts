@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { findWhisperModelManifest, getRecommendedWhisperModelManifest } from '../../src/main/ai/asr-models'
+import { findWhisperModelManifest, getRecommendedWhisperModelManifest } from '../../src/core/ai/asr-models'
 
 describe('ASR model manifests', () => {
   it('uses whisper large-v3-turbo q5_0 as the recommended local subtitle model', () => {

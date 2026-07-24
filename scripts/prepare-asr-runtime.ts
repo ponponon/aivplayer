@@ -6,7 +6,7 @@ import { checkBundledAsrRuntime } from './check-bundled-asr-runtime.ts'
 import {
   getWhisperBinaryDestinationName,
   getWhisperBinaryNames as getSupportedWhisperBinaryNames
-} from '../src/main/ai/whisper-binary.ts'
+} from '../src/core/ai/whisper-binary.ts'
 import { bundleMachODependencies, clearRuntimeSidecars } from './macos-runtime-dependencies.ts'
 
 export type PrepareAsrRuntimeOptions = {

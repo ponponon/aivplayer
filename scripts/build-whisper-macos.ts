@@ -5,7 +5,7 @@ import { constants } from 'node:fs'
 import { basename, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { prepareAsrRuntime, type PrepareAsrRuntimeOptions } from './prepare-asr-runtime.ts'
-import { getWhisperBinaryNames as getSupportedWhisperBinaryNames } from '../src/main/ai/whisper-binary.ts'
+import { getWhisperBinaryNames as getSupportedWhisperBinaryNames } from '../src/core/ai/whisper-binary.ts'
 
 const execFileAsync = promisify(execFile)
 

@@ -9,7 +9,7 @@ vi.mock('electron', () => ({
   }
 }))
 
-import { openPathInDefaultApp } from '../../src/main/system/file-actions'
+import { openPathInDefaultApp } from '../../src/desktop/system/file-actions'
 
 describe('file actions', () => {
   it('opens an existing path in the default app', async () => {

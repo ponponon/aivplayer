@@ -1,4 +1,4 @@
-import { getNativePlayerStatus } from '../src/main/media/native-player.ts'
+import { getNativePlayerStatus } from '../src/core/media/native-player.ts'
 
 async function main(): Promise<void> {
   const status = await getNativePlayerStatus()

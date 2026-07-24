@@ -4,7 +4,7 @@ import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { getWhisperBinaryNames as getSupportedWhisperBinaryNames } from '../src/main/ai/whisper-binary.ts'
+import { getWhisperBinaryNames as getSupportedWhisperBinaryNames } from '../src/core/ai/whisper-binary.ts'
 
 const execFileAsync = promisify(execFile)
 

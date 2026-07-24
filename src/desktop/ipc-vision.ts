@@ -1,9 +1,9 @@
 import { ipcMain } from 'electron'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type { VisionDirectoryScanRequest, VisionIndexRequest, VisionSearchRequest } from '../shared/vision-types'
-import { scanVisionDirectory, isVisionScanAbortError } from './ai/vision-directory-scan'
-import { getVisionIndexQueue, getVisionLibrary } from './main-services'
-import { mainState } from './main-state'
+import { scanVisionDirectory, isVisionScanAbortError } from '../core/ai/vision-directory-scan'
+import { getVisionIndexQueue, getVisionLibrary } from './desktop-services'
+import { desktopState } from './desktop-state'
 
 function normalizeMediaPaths(request: VisionIndexRequest): string[] {
   if (!request || !Array.isArray(request.mediaPaths)) return []
@@ -16,9 +16,9 @@ export function registerVisionIpc(): void {
   ipcMain.handle(IPC_CHANNELS.VISION_INDEX_START, async (event, request: VisionIndexRequest) => {
     const senderId = event.sender.id
     getVisionIndexQueue().cancel()
-    mainState.visionAbortControllers.get(senderId)?.abort()
+    desktopState.visionAbortControllers.get(senderId)?.abort()
     const controller = new AbortController()
-    mainState.visionAbortControllers.set(senderId, controller)
+    desktopState.visionAbortControllers.set(senderId, controller)
     try {
       return await getVisionLibrary().indexVideos(
         normalizeMediaPaths(request),
@@ -29,7 +29,7 @@ export function registerVisionIpc(): void {
         }
       )
     } finally {
-      if (mainState.visionAbortControllers.get(senderId) === controller) mainState.visionAbortControllers.delete(senderId)
+      if (desktopState.visionAbortControllers.get(senderId) === controller) desktopState.visionAbortControllers.delete(senderId)
     }
   })
 
@@ -44,7 +44,7 @@ export function registerVisionIpc(): void {
 
   ipcMain.handle(IPC_CHANNELS.VISION_INDEX_CANCEL, (event) => {
     const queueCancelled = getVisionIndexQueue().cancel()
-    const controller = mainState.visionAbortControllers.get(event.sender.id)
+    const controller = desktopState.visionAbortControllers.get(event.sender.id)
     if (!controller) return queueCancelled
     controller.abort()
     return true
@@ -54,9 +54,9 @@ export function registerVisionIpc(): void {
     const directoryPath = typeof request?.directoryPath === 'string' ? request.directoryPath.trim() : ''
     if (!directoryPath) throw new Error('请选择影视库文件夹')
     const senderId = event.sender.id
-    mainState.visionScanAbortControllers.get(senderId)?.abort()
+    desktopState.visionScanAbortControllers.get(senderId)?.abort()
     const controller = new AbortController()
-    mainState.visionScanAbortControllers.set(senderId, controller)
+    desktopState.visionScanAbortControllers.set(senderId, controller)
     const sendProgress = (progress: Parameters<Parameters<typeof scanVisionDirectory>[3]>[0]): void => {
       if (!event.sender.isDestroyed()) event.sender.send(IPC_CHANNELS.VISION_SCAN_DIRECTORY_PROGRESS, progress)
     }
@@ -74,12 +74,12 @@ export function registerVisionIpc(): void {
       sendProgress({ status: 'error', directoryPath, scannedDirectories: 0, discoveredVideos: 0, error: message, message })
       throw error
     } finally {
-      if (mainState.visionScanAbortControllers.get(senderId) === controller) mainState.visionScanAbortControllers.delete(senderId)
+      if (desktopState.visionScanAbortControllers.get(senderId) === controller) desktopState.visionScanAbortControllers.delete(senderId)
     }
   })
 
   ipcMain.handle(IPC_CHANNELS.VISION_SCAN_DIRECTORY_CANCEL, (event) => {
-    const controller = mainState.visionScanAbortControllers.get(event.sender.id)
+    const controller = desktopState.visionScanAbortControllers.get(event.sender.id)
     if (!controller) return false
     controller.abort()
     return true

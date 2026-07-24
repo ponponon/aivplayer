@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type { ClipboardWriteTextRequest, ClipboardWriteTextResult } from '../shared/media-types'
 import { getAppCopy } from '../shared/i18n'
-import { getCurrentLocale } from './main-settings'
+import { getCurrentLocale } from './desktop-settings'
 import { openPathInDefaultApp } from './system/file-actions'
 
 export function registerUtilityIpc(): void {

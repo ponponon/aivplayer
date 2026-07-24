@@ -1,20 +1,20 @@
 import { app, ipcMain } from 'electron'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type { AsrSubtitleTranslationRequest, AsrTranslationServiceTestRequest } from '../shared/media-types'
-import { appendAsrDiagnosticLog, getAsrLogDirectoryPath, readRecentAsrDiagnosticLogs, redactAsrErrorDetails } from './ai/asr-diagnostics'
-import { getBatchSubtitleLogDirectoryPath } from './ai/batch-subtitle-manager'
+import { appendAsrDiagnosticLog, getAsrLogDirectoryPath, readRecentAsrDiagnosticLogs, redactAsrErrorDetails } from '../core/ai/asr-diagnostics'
+import { getBatchSubtitleLogDirectoryPath } from '../core/ai/batch-subtitle-manager'
 import { createMediaFile } from './media/media-protocol'
 import { openPathInDefaultApp } from './system/file-actions'
-import { getAsrRuntime } from './main-services'
-import { mainState } from './main-state'
+import { getAsrRuntime } from './desktop-services'
+import { desktopState } from './desktop-state'
 
 export function registerAsrTranslationIpc(): void {
   ipcMain.handle(IPC_CHANNELS.ASR_TRANSLATE_SUBTITLE, async (event, request: AsrSubtitleTranslationRequest) => {
     const logDirectoryPath = getAsrLogDirectoryPath(app.getPath('userData'))
     const controller = new AbortController()
     const senderId = event.sender.id
-    mainState.translationAbortControllers.get(senderId)?.abort()
-    mainState.translationAbortControllers.set(senderId, controller)
+    desktopState.translationAbortControllers.get(senderId)?.abort()
+    desktopState.translationAbortControllers.set(senderId, controller)
     await appendAsrDiagnosticLog(logDirectoryPath, 'subtitle-translation-started', { subtitlePath: request.subtitlePath, sourceLanguage: request.sourceLanguage, targetLanguage: request.targetLanguage })
     try {
       const result = await getAsrRuntime().translateSubtitle(request, { signal: controller.signal, onProgress: (progress) => event.sender.send(IPC_CHANNELS.ASR_JOB_PROGRESS, progress) })
@@ -27,11 +27,11 @@ export function registerAsrTranslationIpc(): void {
       await appendAsrDiagnosticLog(logDirectoryPath, 'subtitle-translation-threw', { subtitlePath: request.subtitlePath, targetLanguage: request.targetLanguage, message: error instanceof Error ? error.message : String(error) })
       throw error
     } finally {
-      if (mainState.translationAbortControllers.get(senderId) === controller) mainState.translationAbortControllers.delete(senderId)
+      if (desktopState.translationAbortControllers.get(senderId) === controller) desktopState.translationAbortControllers.delete(senderId)
     }
   })
   ipcMain.handle(IPC_CHANNELS.ASR_CANCEL_TRANSLATION, (event) => {
-    const controller = mainState.translationAbortControllers.get(event.sender.id)
+    const controller = desktopState.translationAbortControllers.get(event.sender.id)
     if (!controller) return false
     controller.abort()
     return true

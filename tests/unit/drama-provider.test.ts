@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createDramaProviderFromEnvironment, createMockDramaProvider, createOpenAiCompatibleDramaProvider, DramaProviderError } from '../../src/main/drama/drama-provider'
+import { createDramaProviderFromEnvironment, createMockDramaProvider, createOpenAiCompatibleDramaProvider, DramaProviderError } from '../../src/core/drama/drama-provider'
 
 describe('drama provider', () => {
   it('calls an OpenAI-compatible endpoint and extracts message content', async () => {

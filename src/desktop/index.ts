@@ -1,6 +1,6 @@
 import { app, BrowserWindow } from 'electron'
 import { registerMediaProtocolHandler, registerMediaProtocolScheme } from './media/media-protocol'
-import { APP_NAME, installApplicationMenu, loadAppSettings } from './main-settings'
+import { APP_NAME, installApplicationMenu, loadAppSettings } from './desktop-settings'
 import { registerBatchSubtitleIpc } from './ipc-batch-subtitle'
 import { registerClipExportIpc } from './ipc-clip-export'
 import { registerAsrRuntimeIpc } from './ipc-asr-runtime'

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resolveMpvBinary } from '../../src/main/media/native-player'
+import { resolveMpvBinary } from '../../src/core/media/native-player'
 
 describe('native player resolver', () => {
   it('uses absolute override path when executable exists', async () => {

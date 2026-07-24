@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getSiblingSrtPath } from '../../src/main/ai/whisper-cpp-runtime'
+import { getSiblingSrtPath } from '../../src/core/ai/whisper-cpp-runtime'
 
 describe('whisper cpp runtime subtitle helpers', () => {
   it('derives a sibling SRT path from a subtitle file path', () => {

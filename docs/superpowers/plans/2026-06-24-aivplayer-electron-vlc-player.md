@@ -48,7 +48,7 @@ aivplayer/
 ├── tsconfig.json
 ├── vite.config.ts
 ├── src/
-│   ├── main/
+│   ├── desktop/
 │   │   ├── index.ts
 │   │   ├── window.ts
 │   │   ├── menu.ts
@@ -135,7 +135,7 @@ aivplayer/
 - [ ] 初始化 npm 项目和 Git：`git init && npm init -y`。
 - [ ] 如果需要联网安装依赖，先运行 `~/.agents/instructions/script/test-proxy.sh`，优先走 `127.0.0.1:10022`。
 - [ ] 安装基础依赖：`electron`, `vite`, `typescript`, `react`, `react-dom`, `lucide-react`, `vitest`, `playwright`, `electron-builder`。
-- [ ] 创建 `src/main/index.ts`、`src/preload/index.ts`、`src/renderer/main.tsx`，确认 `npm run dev` 能打开桌面窗口。
+- [ ] 创建 `src/desktop/index.ts`、`src/preload/index.ts`、`src/renderer/main.tsx`，确认 `npm run dev` 能打开桌面窗口。
 - [ ] 设置 `contextIsolation: true`、`nodeIntegration: false`，所有系统能力只通过 preload 暴露。
 - [ ] 提交点：`feat: bootstrap electron react player shell`。
 

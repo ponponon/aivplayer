@@ -10,7 +10,7 @@ import {
   SubtitleTranslationError,
   type SubtitleTranslationContext,
   type SubtitleTranslationProvider
-} from '../../src/main/ai/subtitle-translation'
+} from '../../src/core/ai/subtitle-translation'
 
 describe('subtitle translation', () => {
   let tempDirectory: string

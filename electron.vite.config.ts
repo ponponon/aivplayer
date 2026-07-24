@@ -4,6 +4,11 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   main: {
+    build: {
+      lib: {
+        entry: resolve('src/desktop/index.ts')
+      }
+    },
     plugins: [externalizeDepsPlugin()]
   },
   preload: {

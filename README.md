@@ -180,17 +180,21 @@ npm run release:prepare-runtime -- \
 ```
 aivplayer/
 ├── src/
-│   ├── main/            # Electron 主进程
+│   ├── desktop/         # Electron 主进程与桌面适配
 │   │   ├── index.ts     # 应用入口
-│   │   ├── ai/          # ASR 语音识别模块
-│   │   └── media/       # 媒体播放模块
+│   │   ├── ipc-*.ts     # IPC 注册
+│   │   └── media/       # Electron 媒体协议
+│   ├── core/            # 桌面端与 CLI 共用的无 Electron 业务能力
+│   │   ├── ai/          # ASR、翻译和视觉影视库
+│   │   ├── drama/       # 短剧工作流
+│   │   └── media/       # 媒体解析与导出
 │   ├── preload/         # 预加载脚本（IPC 桥接）
 │   ├── renderer/        # React 渲染进程
 │   │   └── src/
 │   │       ├── app/     # UI 组件
 │   │       ├── lib/     # 工具函数
 │   │       └── styles/  # 样式
-│   └── shared/          # 主进程与渲染进程共享类型
+│   └── shared/          # 桌面端与渲染进程共享类型
 ├── resources/           # 运行时资源（whisper.cpp、ffmpeg）
 ├── scripts/             # 构建与工具脚本
 ├── tests/               # 测试文件

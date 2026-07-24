@@ -2,8 +2,8 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { VISION_FRAME_INTERVAL_SECONDS, VISION_MODEL_ID, VISION_MODEL_VARIANT, VISION_VECTOR_DISTANCE_TYPE, VISION_VECTOR_INDEX_MIN_ROWS, VISION_VECTOR_INDEX_TYPE } from '../../src/shared/vision-types'
-import { getVisionModelPaths } from '../../src/main/ai/vision-model'
-import { calculateVisionLexicalMatch, combineVisionHybridScore } from '../../src/main/ai/vision-search'
+import { getVisionModelPaths } from '../../src/core/ai/vision-model'
+import { calculateVisionLexicalMatch, combineVisionHybridScore } from '../../src/core/ai/vision-search'
 
 const projectRoot = process.cwd()
 
@@ -30,7 +30,7 @@ describe('vision library setup', () => {
   })
 
   it('exposes the visual search IPC surface', () => {
-    const source = readFileSync(join(projectRoot, 'src/main/ipc-vision.ts'), 'utf8')
+    const source = readFileSync(join(projectRoot, 'src/desktop/ipc-vision.ts'), 'utf8')
     expect(source).toContain('VISION_INDEX_START')
     expect(source).toContain('VISION_INDEX_CANCEL')
     expect(source).toContain('VISION_SEARCH_TEXT')
@@ -52,7 +52,7 @@ describe('vision library setup', () => {
   })
 
   it('keeps the incremental manifest and caption tables in the library source', () => {
-    const source = readFileSync(join(projectRoot, 'src/main/ai/vision-library.ts'), 'utf8')
+    const source = readFileSync(join(projectRoot, 'src/core/ai/vision-library.ts'), 'utf8')
     expect(source).toContain("SOURCE_TABLE_NAME = 'video_sources'")
     expect(source).toContain("CAPTION_TABLE_NAME = 'video_captions'")
     expect(source).toContain("SEARCH_DOCUMENT_TABLE_NAME = 'video_search_documents'")

@@ -6,7 +6,7 @@ import {
   appendAsrDiagnosticLog,
   readRecentAsrDiagnosticLogs,
   redactAsrErrorDetails
-} from '../../src/main/ai/asr-diagnostics'
+} from '../../src/core/ai/asr-diagnostics'
 
 describe('asr diagnostics', () => {
   let tempDirectory: string

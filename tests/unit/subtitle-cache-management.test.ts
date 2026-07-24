@@ -2,7 +2,7 @@ import { mkdtemp, readFile, mkdir, rm, stat, utimes, writeFile } from 'node:fs/p
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { clearStaleSubtitleCache, scanSubtitleCache } from '../../src/main/ai/subtitle-cache-management'
+import { clearStaleSubtitleCache, scanSubtitleCache } from '../../src/core/ai/subtitle-cache-management'
 
 describe('subtitle cache management', () => {
   let tempDirectory: string

@@ -3,7 +3,7 @@ import { readSource } from './test-source-utils'
 
 describe('Linux and Windows window controls', () => {
   it('uses a frameless window for custom controls while preserving macOS native controls', () => {
-    const source = readSource('src/main/window-lifecycle.ts')
+    const source = readSource('src/desktop/window-lifecycle.ts')
 
     expect(source).toContain('useCustomWindowControls')
     expect(source).toContain("{ titleBarStyle: 'hidden', frame: false }")
@@ -11,7 +11,7 @@ describe('Linux and Windows window controls', () => {
   })
 
   it('routes custom controls through dedicated IPC actions', () => {
-    const mainSource = readSource('src/main/ipc-window-controls.ts')
+    const mainSource = readSource('src/desktop/ipc-window-controls.ts')
     const preloadSource = readSource('src/preload/index.ts')
     const headerSource = readSource('src/renderer/src/app/app-header.tsx')
 

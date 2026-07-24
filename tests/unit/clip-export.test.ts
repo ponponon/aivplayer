@@ -3,7 +3,7 @@ import {
   buildClipExportDefaultVideoPath,
   buildClipExportSubtitlePath,
   trimSrtToClip
-} from '../../src/main/media/clip-export'
+} from '../../src/core/media/clip-export'
 
 describe('clip export helpers', () => {
   it('builds a stable default output path from the current position and preset length', () => {

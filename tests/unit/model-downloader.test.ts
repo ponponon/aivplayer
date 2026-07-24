@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { downloadWhisperModel } from '../../src/main/ai/model-downloader'
+import { downloadWhisperModel } from '../../src/core/ai/model-downloader'
 import type { AsrModelDownloadProgress } from '../../src/shared/media-types'
 
 describe('model downloader', () => {

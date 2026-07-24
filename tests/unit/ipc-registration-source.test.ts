@@ -5,11 +5,11 @@ import { describe, expect, it } from 'vitest'
 const projectRoot = process.cwd()
 
 function collectIpcRegistrations(): string[] {
-  const mainDirectory = join(projectRoot, 'src/main')
-  const ipcFiles = readdirSync(mainDirectory).filter((name) => name.startsWith('ipc-') && name.endsWith('.ts'))
+  const desktopDirectory = join(projectRoot, 'src/desktop')
+  const ipcFiles = readdirSync(desktopDirectory).filter((name) => name.startsWith('ipc-') && name.endsWith('.ts'))
 
   return ipcFiles.flatMap((fileName) => {
-    const source = readFileSync(join(mainDirectory, fileName), 'utf8')
+    const source = readFileSync(join(desktopDirectory, fileName), 'utf8')
     return [...source.matchAll(/ipcMain\.handle\(IPC_CHANNELS\.([A-Z0-9_]+)/g)].map((match) => match[1])
   })
 }

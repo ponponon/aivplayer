@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getRecommendedWhisperModelManifest } from '../../src/main/ai/asr-models'
+import { getRecommendedWhisperModelManifest } from '../../src/core/ai/asr-models'
 import { getAppCopy } from '../../src/shared/i18n'
 import { buildAsrModelViewState } from '../../src/renderer/src/app/asr-model-view-state'
 import type { AsrModelDownloadProgress, AsrModelInfo } from '../../src/shared/media-types'

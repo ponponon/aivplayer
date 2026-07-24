@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getContentTypeForFile, parseRangeHeader } from '../../src/main/media/media-protocol'
+import { getContentTypeForFile, parseRangeHeader } from '../../src/desktop/media/media-protocol'
 
 describe('media protocol helpers', () => {
   it('parses bounded byte range requests', () => {

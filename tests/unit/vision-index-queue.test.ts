@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { VisionIndexProgress } from '../../src/shared/vision-types'
-import { VisionIndexQueue } from '../../src/main/ai/vision-index-queue'
+import { VisionIndexQueue } from '../../src/core/ai/vision-index-queue'
 
 const completedProgress: VisionIndexProgress = {
   status: 'completed',

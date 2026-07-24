@@ -1,13 +1,13 @@
 import type { BrowserWindow } from 'electron'
 import { createDefaultAppSettings, type AppSettings } from '../shared/app-settings'
 import type { MediaFile } from '../shared/media-types'
-import { BatchSubtitleManager } from './ai/batch-subtitle-manager'
-import { createWhisperCppRuntime } from './ai/whisper-cpp-runtime'
-import { VisionLibrary } from './ai/vision-library'
-import { VisionIndexQueue } from './ai/vision-index-queue'
-import { DramaStore } from './drama/drama-store'
+import { BatchSubtitleManager } from '../core/ai/batch-subtitle-manager'
+import { createWhisperCppRuntime } from '../core/ai/whisper-cpp-runtime'
+import { VisionLibrary } from '../core/ai/vision-library'
+import { VisionIndexQueue } from '../core/ai/vision-index-queue'
+import { DramaStore } from '../core/drama/drama-store'
 
-export const mainState: {
+export const desktopState: {
   mainWindow: BrowserWindow | null
   asrRuntime: ReturnType<typeof createWhisperCppRuntime> | null
   initialMediaFiles: MediaFile[] | null

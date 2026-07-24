@@ -305,6 +305,7 @@
 - 四种语言（zh-CN、en-US、ja-JP、ko-KR）均已添加 `probeFieldLabels` 翻译。
 
 ## 工程结构治理
+- 源码按执行边界拆分：Electron 主进程和桌面适配代码放在 `src/desktop`，桌面端与 `aivcli` 共用的无 Electron 业务能力放在 `src/core`；electron-vite 的构建产物继续输出到 `out/main`，兼容现有启动器和 smoke 脚本。
 - 播放器主界面拆为状态模型、派生数据、播放/字幕动作、副作用和页面区块，`App.tsx` 只负责 Provider 与 Shell 组装。
 - 设置页、媒体详情、批量字幕和 ASR 面板按职责拆成独立组件与 Hook，避免 API、业务状态和 UI 渲染继续混在同一个文件里。
 - 主进程入口按窗口生命周期、媒体对话框、设置 IPC、ASR IPC、批量字幕 IPC 和剪辑导出 IPC 拆分，主入口只保留应用启动编排。

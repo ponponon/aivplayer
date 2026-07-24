@@ -3,13 +3,13 @@ import { basename, extname, join } from 'node:path'
 import { writeFile } from 'node:fs/promises'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type { AsrSubtitleSummaryExportRequest, AsrSubtitleSummaryExportResult, AsrSubtitleSummaryRequest } from '../shared/media-types'
-import { appendAsrDiagnosticLog, getAsrLogDirectoryPath, redactAsrErrorDetails } from './ai/asr-diagnostics'
-import { getAsrRuntime } from './main-services'
-import { mainState } from './main-state'
+import { appendAsrDiagnosticLog, getAsrLogDirectoryPath, redactAsrErrorDetails } from '../core/ai/asr-diagnostics'
+import { getAsrRuntime } from './desktop-services'
+import { desktopState } from './desktop-state'
 import { promptForSavePath } from './media-dialogs'
 import { getAppCopy } from '../shared/i18n'
-import { getCurrentLocale } from './main-settings'
-import { SingleFlight } from './ai/single-flight'
+import { getCurrentLocale } from './desktop-settings'
+import { SingleFlight } from '../core/ai/single-flight'
 
 const summarySingleFlight = new SingleFlight<Awaited<ReturnType<ReturnType<typeof getAsrRuntime>['summarizeSubtitle']>>, AbortController>()
 
@@ -49,10 +49,10 @@ export function registerAsrSummaryIpc(): void {
     const logDirectoryPath = getAsrLogDirectoryPath(app.getPath('userData'))
     const senderId = event.sender.id
     const key = summaryRequestKey(request)
-    if (!summarySingleFlight.has(key)) mainState.summaryAbortControllers.get(senderId)?.abort()
+    if (!summarySingleFlight.has(key)) desktopState.summaryAbortControllers.get(senderId)?.abort()
     const flight = summarySingleFlight.start(key, () => {
       const controller = new AbortController()
-      mainState.summaryAbortControllers.set(senderId, controller)
+      desktopState.summaryAbortControllers.set(senderId, controller)
       return {
         context: controller,
         task: async (sharedController) => {
@@ -68,20 +68,20 @@ export function registerAsrSummaryIpc(): void {
             await appendAsrDiagnosticLog(logDirectoryPath, 'subtitle-summary-threw', { subtitlePath: request.subtitlePath, targetLanguage: request.targetLanguage, message: error instanceof Error ? error.message : String(error) })
             throw error
           } finally {
-            if (mainState.summaryAbortControllers.get(senderId) === sharedController) mainState.summaryAbortControllers.delete(senderId)
+            if (desktopState.summaryAbortControllers.get(senderId) === sharedController) desktopState.summaryAbortControllers.delete(senderId)
           }
         }
       }
     })
-    if (flight.joined) mainState.summaryAbortControllers.set(senderId, flight.context)
+    if (flight.joined) desktopState.summaryAbortControllers.set(senderId, flight.context)
     try {
       return await flight.promise
     } finally {
-      if (mainState.summaryAbortControllers.get(senderId) === flight.context) mainState.summaryAbortControllers.delete(senderId)
+      if (desktopState.summaryAbortControllers.get(senderId) === flight.context) desktopState.summaryAbortControllers.delete(senderId)
     }
   })
   ipcMain.handle(IPC_CHANNELS.ASR_CANCEL_SUMMARY, (event) => {
-    const controller = mainState.summaryAbortControllers.get(event.sender.id)
+    const controller = desktopState.summaryAbortControllers.get(event.sender.id)
     if (!controller) return false
     controller.abort()
     return true

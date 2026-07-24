@@ -7,7 +7,7 @@ import {
   createDefaultAppSettings,
   updateAppSettingsSection
 } from '../../src/shared/app-settings'
-import { readAppSettings, writeAppSettings } from '../../src/main/app-settings'
+import { readAppSettings, writeAppSettings } from '../../src/core/app-settings'
 
 describe('app settings', () => {
   let tempDirectory: string

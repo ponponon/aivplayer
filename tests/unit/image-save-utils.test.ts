@@ -2,7 +2,7 @@ import { access, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { findAvailableImagePath, sanitizeImageExtension, sanitizeImageFileName } from '../../src/main/image-save-utils'
+import { findAvailableImagePath, sanitizeImageExtension, sanitizeImageFileName } from '../../src/core/image-save-utils'
 
 let temporaryDirectory: string | null = null
 

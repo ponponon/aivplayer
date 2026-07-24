@@ -1,10 +1,10 @@
 import { ipcMain } from 'electron'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type { AsrSubtitleExportRequest, AsrSubtitleExportResult, AsrSubtitleRequest, AsrSubtitleTranslationRequest, AsrSubtitleTranslationResult } from '../shared/media-types'
-import { appendAsrDiagnosticLog, getAsrLogDirectoryPath, redactAsrErrorDetails } from './ai/asr-diagnostics'
+import { appendAsrDiagnosticLog, getAsrLogDirectoryPath, redactAsrErrorDetails } from '../core/ai/asr-diagnostics'
 import { createMediaFile } from './media/media-protocol'
-import { getAsrRuntime } from './main-services'
-import { mainState } from './main-state'
+import { getAsrRuntime } from './desktop-services'
+import { desktopState } from './desktop-state'
 import { app } from 'electron'
 
 function withSubtitleUrls<T extends { subtitlePath?: string; subtitleSrtPath?: string }>(result: T): T & { subtitleUrl?: string; subtitleSrtUrl?: string } {
@@ -18,8 +18,8 @@ export function registerAsrSubtitleIpc(): void {
   ipcMain.handle(IPC_CHANNELS.ASR_GENERATE_SUBTITLE, async (event, request: AsrSubtitleRequest) => {
     const logDirectoryPath = getAsrLogDirectoryPath(app.getPath('userData'))
     const controller = new AbortController()
-    mainState.asrAbortControllers.get(event.sender.id)?.abort()
-    mainState.asrAbortControllers.set(event.sender.id, controller)
+    desktopState.asrAbortControllers.get(event.sender.id)?.abort()
+    desktopState.asrAbortControllers.set(event.sender.id, controller)
     await appendAsrDiagnosticLog(logDirectoryPath, 'subtitle-generation-started', { mediaPath: request.mediaPath, modelId: request.modelId, language: request.language })
     try {
       const result = await getAsrRuntime().generateSubtitle(request, (progress) => event.sender.send(IPC_CHANNELS.ASR_JOB_PROGRESS, progress), { signal: controller.signal })
@@ -29,11 +29,11 @@ export function registerAsrSubtitleIpc(): void {
       await appendAsrDiagnosticLog(logDirectoryPath, 'subtitle-generation-threw', { mediaPath: request.mediaPath, message: error instanceof Error ? error.message : String(error) })
       throw error
     } finally {
-      if (mainState.asrAbortControllers.get(event.sender.id) === controller) mainState.asrAbortControllers.delete(event.sender.id)
+      if (desktopState.asrAbortControllers.get(event.sender.id) === controller) desktopState.asrAbortControllers.delete(event.sender.id)
     }
   })
   ipcMain.handle(IPC_CHANNELS.ASR_CANCEL_SUBTITLE, (event) => {
-    const controller = mainState.asrAbortControllers.get(event.sender.id)
+    const controller = desktopState.asrAbortControllers.get(event.sender.id)
     if (!controller) return false
     controller.abort()
     return true

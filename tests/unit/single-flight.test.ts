@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { SingleFlight } from '../../src/main/ai/single-flight'
+import { SingleFlight } from '../../src/core/ai/single-flight'
 
 describe('SingleFlight', () => {
   it('shares an in-flight task and removes it after completion', async () => {

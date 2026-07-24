@@ -6,8 +6,8 @@ import type {
   DramaProgress,
   DramaProviderSettingsInput
 } from '../shared/drama-types'
-import { parseDramaChapters } from './drama/drama-text'
-import { getDramaProviderSettings, getDramaStore, getDramaWorkflow, saveDramaProviderSettings, testDramaProvider } from './main-services'
+import { parseDramaChapters } from '../core/drama/drama-text'
+import { getDramaProviderSettings, getDramaStore, getDramaWorkflow, saveDramaProviderSettings, testDramaProvider } from './desktop-services'
 
 function requireProjectId(projectId: unknown): string {
   if (typeof projectId !== 'string' || !projectId.trim()) throw new Error('短剧项目 ID 不能为空')

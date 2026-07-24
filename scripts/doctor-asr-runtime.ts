@@ -1,6 +1,6 @@
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { createWhisperCppRuntime } from '../src/main/ai/whisper-cpp-runtime.ts'
+import { createWhisperCppRuntime } from '../src/core/ai/whisper-cpp-runtime.ts'
 
 function getDefaultUserDataPath(): string {
   if (process.platform === 'darwin') {

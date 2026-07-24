@@ -13,7 +13,7 @@ import {
   isWhisperGpuResourceFailure,
   readWhisperSubtitleLanguage,
   runAsrSubtitleJob
-} from '../../src/main/ai/asr-subtitle-job'
+} from '../../src/core/ai/asr-subtitle-job'
 
 describe('ASR subtitle job command planning', () => {
   it('extracts video audio into 16 kHz mono wav for ASR', () => {

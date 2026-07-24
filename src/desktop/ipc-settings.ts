@@ -3,19 +3,19 @@ import { readFile, writeFile } from 'node:fs/promises'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type { ImageSaveRequest, ImageSaveResult, MediaProbeMetadata } from '../shared/media-types'
 import { getAppCopy } from '../shared/i18n'
-import { createMediaProbeMetadata } from './media/media-metadata'
+import { createMediaProbeMetadata } from '../core/media/media-metadata'
 import { createMediaFile, } from './media/media-protocol'
-import { getNativePlayerStatus, stopNativePlayer } from './media/native-player'
+import { getNativePlayerStatus, stopNativePlayer } from '../core/media/native-player'
 import { listMediaFilesInDirectory, promptForDirectory, promptForMediaFiles, promptForSavePath, getInitialMediaFiles } from './media-dialogs'
-import { isMediaFileAvailable } from './media/file-opening'
-import { getCurrentLocale, loadAppSettings, saveAppSettings } from './main-settings'
-import { resolveResourcePath } from './main-services'
-import { mainState } from './main-state'
-import { findAvailableImagePath, sanitizeImageExtension, sanitizeImageFileName } from './image-save-utils'
+import { isMediaFileAvailable } from '../core/media/file-opening'
+import { getCurrentLocale, loadAppSettings, saveAppSettings } from './desktop-settings'
+import { resolveResourcePath } from './desktop-services'
+import { desktopState } from './desktop-state'
+import { findAvailableImagePath, sanitizeImageExtension, sanitizeImageFileName } from '../core/image-save-utils'
 
 export function registerSettingsIpc(): void {
   ipcMain.handle(IPC_CHANNELS.OPEN_MEDIA_FILES, () => promptForMediaFiles())
-  ipcMain.handle(IPC_CHANNELS.OPEN_MEDIA_DIRECTORY, async () => promptForDirectory({ title: getAppCopy(getCurrentLocale()).settingsDialog.general.selectFolderDialogTitle, defaultPath: mainState.currentAppSettings.media.defaultOpenDirectoryPath }))
+  ipcMain.handle(IPC_CHANNELS.OPEN_MEDIA_DIRECTORY, async () => promptForDirectory({ title: getAppCopy(getCurrentLocale()).settingsDialog.general.selectFolderDialogTitle, defaultPath: desktopState.currentAppSettings.media.defaultOpenDirectoryPath }))
   ipcMain.handle(IPC_CHANNELS.OPEN_FOLDER_PICKER, (_event, request: { title: string; defaultPath?: string | null }) => {
     const smokeImageOutputDirectory = process.env.AIVPLAYER_SMOKE_IMAGE_OUTPUT_DIRECTORY
     if (smokeImageOutputDirectory && request.title === getAppCopy(getCurrentLocale()).imageWorkspace.chooseOutputFolder) return smokeImageOutputDirectory
@@ -47,7 +47,7 @@ export function registerSettingsIpc(): void {
   ipcMain.handle(IPC_CHANNELS.GET_MEDIA_METADATA, (_event, filePath: string): Promise<MediaProbeMetadata | null> => createMediaProbeMetadata(filePath, { resourcePath: resolveResourcePath(), env: process.env }))
   ipcMain.handle(IPC_CHANNELS.GET_INITIAL_MEDIA_FILES, () => getInitialMediaFiles())
   ipcMain.handle(IPC_CHANNELS.GET_APP_VERSION, () => app.getVersion())
-  ipcMain.handle(IPC_CHANNELS.APP_GET_SETTINGS, async () => { await loadAppSettings(); return mainState.currentAppSettings })
+  ipcMain.handle(IPC_CHANNELS.APP_GET_SETTINGS, async () => { await loadAppSettings(); return desktopState.currentAppSettings })
   ipcMain.handle(IPC_CHANNELS.APP_SET_SETTINGS, (_event, settings) => saveAppSettings(settings))
   ipcMain.handle(IPC_CHANNELS.NATIVE_PLAYER_STATUS, () => getNativePlayerStatus(getCurrentLocale))
   ipcMain.handle(IPC_CHANNELS.STOP_NATIVE_PLAYER, () => stopNativePlayer(getCurrentLocale))

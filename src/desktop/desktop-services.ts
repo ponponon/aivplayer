@@ -1,17 +1,17 @@
 import { app } from 'electron'
 import { existsSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { getBatchSubtitleHistoryPath, getBatchSubtitleLogDirectoryPath, getBatchSubtitleStatePath, BatchSubtitleManager } from './ai/batch-subtitle-manager'
-import { createWhisperCppRuntime } from './ai/whisper-cpp-runtime'
-import { VisionLibrary } from './ai/vision-library'
-import { VisionIndexQueue } from './ai/vision-index-queue'
-import { createDramaProviderFromConfig, createDramaProviderFromEnvironment, DramaProviderError } from './drama/drama-provider'
-import { DramaStore } from './drama/drama-store'
-import { DramaWorkflow } from './drama/drama-workflow'
+import { getBatchSubtitleHistoryPath, getBatchSubtitleLogDirectoryPath, getBatchSubtitleStatePath, BatchSubtitleManager } from '../core/ai/batch-subtitle-manager'
+import { createWhisperCppRuntime } from '../core/ai/whisper-cpp-runtime'
+import { VisionLibrary } from '../core/ai/vision-library'
+import { VisionIndexQueue } from '../core/ai/vision-index-queue'
+import { createDramaProviderFromConfig, createDramaProviderFromEnvironment, DramaProviderError } from '../core/drama/drama-provider'
+import { DramaStore } from '../core/drama/drama-store'
+import { DramaWorkflow } from '../core/drama/drama-workflow'
 import type { DramaProviderSettings, DramaProviderSettingsInput, DramaProviderTestResult } from '../shared/drama-types'
-import { saveAppSettings } from './main-settings'
-import { getCurrentLocale } from './main-settings'
-import { mainState } from './main-state'
+import { saveAppSettings } from './desktop-settings'
+import { getCurrentLocale } from './desktop-settings'
+import { desktopState } from './desktop-state'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type { BatchSubtitleJob } from '../shared/media-types'
 
@@ -26,61 +26,61 @@ export function resolveResourcePath(): string {
 }
 
 export function getAsrRuntime(): ReturnType<typeof createWhisperCppRuntime> {
-  if (!mainState.asrRuntime) {
-    mainState.asrRuntime = createWhisperCppRuntime({
+  if (!desktopState.asrRuntime) {
+    desktopState.asrRuntime = createWhisperCppRuntime({
       userDataPath: app.getPath('userData'),
       resourcePath: resolveResourcePath(),
       getLocale: getCurrentLocale,
       getTranslationServiceSettings: () => ({
-        translationBaseUrl: mainState.currentAppSettings.asr.translationBaseUrl,
-        translationModel: mainState.currentAppSettings.asr.translationModel,
-        translationApiKey: mainState.currentAppSettings.asr.translationApiKey,
-        translationGlossary: mainState.currentAppSettings.asr.translationGlossary
+        translationBaseUrl: desktopState.currentAppSettings.asr.translationBaseUrl,
+        translationModel: desktopState.currentAppSettings.asr.translationModel,
+        translationApiKey: desktopState.currentAppSettings.asr.translationApiKey,
+        translationGlossary: desktopState.currentAppSettings.asr.translationGlossary
       })
     })
   }
-  return mainState.asrRuntime
+  return desktopState.asrRuntime
 }
 
 export function getVisionLibrary(): VisionLibrary {
-  if (!mainState.visionLibrary) {
-    mainState.visionLibrary = new VisionLibrary({
+  if (!desktopState.visionLibrary) {
+    desktopState.visionLibrary = new VisionLibrary({
       userDataPath: app.getPath('userData'),
       resourcePath: resolveResourcePath(),
       env: process.env
     })
   }
-  return mainState.visionLibrary
+  return desktopState.visionLibrary
 }
 
 export function getVisionIndexQueue(): VisionIndexQueue {
-  if (!mainState.visionIndexQueue) {
-    mainState.visionIndexQueue = new VisionIndexQueue((mediaPaths, intervalSeconds, signal, onProgress) =>
+  if (!desktopState.visionIndexQueue) {
+    desktopState.visionIndexQueue = new VisionIndexQueue((mediaPaths, intervalSeconds, signal, onProgress) =>
       getVisionLibrary().indexVideos(mediaPaths, intervalSeconds, signal, onProgress)
     )
   }
-  return mainState.visionIndexQueue
+  return desktopState.visionIndexQueue
 }
 
 export function getBatchSubtitleManager(sender: Electron.WebContents): BatchSubtitleManager {
   const emit = (job: BatchSubtitleJob): void => {
     if (!sender.isDestroyed()) sender.send(IPC_CHANNELS.BATCH_SUBTITLE_PROGRESS, job)
   }
-  if (!mainState.batchSubtitleManager) {
-    mainState.batchSubtitleManager = new BatchSubtitleManager({
+  if (!desktopState.batchSubtitleManager) {
+    desktopState.batchSubtitleManager = new BatchSubtitleManager({
       runtime: getAsrRuntime(),
       stateFilePath: getBatchSubtitleStatePath(app.getPath('userData')),
       logDirectoryPath: getBatchSubtitleLogDirectoryPath(app.getPath('userData')),
       historyFilePath: getBatchSubtitleHistoryPath(app.getPath('userData')),
       emit
     })
-  } else mainState.batchSubtitleManager.setEmitter(emit)
-  return mainState.batchSubtitleManager
+  } else desktopState.batchSubtitleManager.setEmitter(emit)
+  return desktopState.batchSubtitleManager
 }
 
 export function getDramaStore(): DramaStore {
-  if (!mainState.dramaStore) mainState.dramaStore = new DramaStore(app.getPath('userData'))
-  return mainState.dramaStore
+  if (!desktopState.dramaStore) desktopState.dramaStore = new DramaStore(app.getPath('userData'))
+  return desktopState.dramaStore
 }
 
 export function getDramaWorkflow(): DramaWorkflow {
@@ -88,7 +88,7 @@ export function getDramaWorkflow(): DramaWorkflow {
 }
 
 export function getDramaProviderSettings(): DramaProviderSettings {
-  const drama = mainState.currentAppSettings.drama
+  const drama = desktopState.currentAppSettings.drama
   return {
     apiBaseUrl: drama.apiBaseUrl,
     model: drama.model,
@@ -98,7 +98,7 @@ export function getDramaProviderSettings(): DramaProviderSettings {
 }
 
 export async function saveDramaProviderSettings(input: DramaProviderSettingsInput): Promise<DramaProviderSettings> {
-  const current = mainState.currentAppSettings
+  const current = desktopState.currentAppSettings
   const drama = current.drama
   const next = {
     ...current,
@@ -114,7 +114,7 @@ export async function saveDramaProviderSettings(input: DramaProviderSettingsInpu
 }
 
 export async function testDramaProvider(): Promise<DramaProviderTestResult> {
-  const settings = mainState.currentAppSettings.drama
+  const settings = desktopState.currentAppSettings.drama
   const usedMock = settings.useMock
   try {
     const provider = getDramaProvider()
@@ -130,7 +130,7 @@ export async function testDramaProvider(): Promise<DramaProviderTestResult> {
 }
 
 function getDramaProvider() {
-  const settings = mainState.currentAppSettings.drama
+  const settings = desktopState.currentAppSettings.drama
   if (settings.useMock || settings.apiBaseUrl || settings.model || settings.apiKey) {
     return createDramaProviderFromConfig({ baseUrl: settings.apiBaseUrl, apiKey: settings.apiKey, model: settings.model, useMock: settings.useMock })
   }

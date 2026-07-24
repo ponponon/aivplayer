@@ -2,7 +2,7 @@ import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { findSubtitleSummaryCache, runSubtitleSummaryJob, type SubtitleSummaryProvider } from '../../src/main/ai/subtitle-summary'
+import { findSubtitleSummaryCache, runSubtitleSummaryJob, type SubtitleSummaryProvider } from '../../src/core/ai/subtitle-summary'
 
 describe('subtitle summary', () => {
   let tempDirectory: string

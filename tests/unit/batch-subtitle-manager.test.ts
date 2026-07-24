@@ -2,8 +2,8 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import type { AsrRuntime } from '../../src/main/ai/asr-runtime'
-import { BatchSubtitleManager } from '../../src/main/ai/batch-subtitle-manager'
+import type { AsrRuntime } from '../../src/core/ai/asr-runtime'
+import { BatchSubtitleManager } from '../../src/core/ai/batch-subtitle-manager'
 import type { BatchSubtitleJob, MediaFile } from '../../src/shared/media-types'
 
 function createFile(name: string): MediaFile {
