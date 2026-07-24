@@ -1,0 +1,52 @@
+name: Deploy AIVPlayer Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/**"
+      - ".github/workflows/deploy-pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aivplayer-pages-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate static site
+        run: |
+          node --check docs/script.js
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+
+          with open("docs/index.html", encoding="utf-8") as page:
+              HTMLParser().feed(page.read())
+
+          print("HTML validation passed")
+          PY
+
+      - name: Deploy to Cloudflare Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          npx --yes wrangler@4 pages deploy docs \
+            --project-name aivplayer \
+            --branch main \
+            --commit-message "GitHub Actions deploy ${GITHUB_SHA}"

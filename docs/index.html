@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AIVPlayer - 本地 AI 字幕生成的跨平台视频播放器</title>
-    <meta name="description" content="AIVPlayer 是一款基于 Electron 的现代化桌面视频播放器，集成了 whisper.cpp 本地 ASR 引擎，无需联网即可为视频自动生成高质量字幕。">
+    <title>AIVPlayer - 本地 AI 视频工作台</title>
+    <meta name="description" content="AIVPlayer 是一款本地优先的跨平台 AI 视频工作台，集成字幕生成、翻译、视觉影视库、图片处理和 AI 短剧创作能力。">
 
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="assets/icon.png">
@@ -51,6 +51,7 @@
                 <!-- Desktop Navigation -->
                 <div class="hidden md:flex items-center space-x-8">
                     <a href="#features" class="text-gray-600 hover:text-primary transition-colors">功能特性</a>
+                    <a href="#workspaces" class="text-gray-600 hover:text-primary transition-colors">AI 工作区</a>
                     <a href="#download" class="text-gray-600 hover:text-primary transition-colors">下载</a>
                     <a href="#quickstart" class="text-gray-600 hover:text-primary transition-colors">快速开始</a>
                     <a href="https://github.com/ponponon/aivplayer" target="_blank" class="text-gray-600 hover:text-primary transition-colors">
@@ -70,6 +71,7 @@
             <div id="mobile-menu" class="hidden md:hidden pb-4">
                 <div class="flex flex-col space-y-3">
                     <a href="#features" class="text-gray-600 hover:text-primary transition-colors py-2">功能特性</a>
+                    <a href="#workspaces" class="text-gray-600 hover:text-primary transition-colors py-2">AI 工作区</a>
                     <a href="#download" class="text-gray-600 hover:text-primary transition-colors py-2">下载</a>
                     <a href="#quickstart" class="text-gray-600 hover:text-primary transition-colors py-2">快速开始</a>
                     <a href="https://github.com/ponponon/aivplayer" target="_blank" class="text-gray-600 hover:text-primary transition-colors py-2">
@@ -90,11 +92,11 @@
                 AIVPlayer
             </h1>
             <p class="text-xl sm:text-2xl text-gray-600 mb-8 max-w-3xl mx-auto">
-                本地 AI 字幕生成的跨平台视频播放器
+                本地 AI 字幕、影视库与内容工作台
             </p>
             <p class="text-lg text-gray-500 mb-12 max-w-2xl mx-auto">
-                基于 whisper.cpp 的离线语音识别，无需联网即可为视频自动生成高质量字幕。
-                你的视频和字幕数据始终留在自己手里。
+                从视频播放、离线字幕和翻译，到视觉检索、图片处理和 AI 短剧创作，
+                把高频内容工作流收进一款跨平台桌面应用。你的媒体和项目数据默认留在本机。
             </p>
 
             <!-- Download Buttons -->
@@ -196,6 +198,47 @@
                     <h3 class="text-xl font-semibold text-primary mb-2">多语言界面</h3>
                     <p class="text-gray-600">支持简体中文、English、日本語、한국어 四种语言，系统语言自动匹配。</p>
                 </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Latest Workspaces Section -->
+    <section id="workspaces" class="py-20 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-6xl mx-auto">
+            <div class="max-w-3xl mb-12">
+                <p class="text-sm font-semibold tracking-widest text-accent uppercase mb-3">最近更新 · 2026.07</p>
+                <h2 class="text-3xl sm:text-4xl font-bold text-primary mb-4">从播放到生产，一套本地工作流</h2>
+                <p class="text-lg text-gray-600">AIVPlayer 不只是播放器：新版本把批量字幕、媒体检索、短剧文本和图片处理都接进了同一个本地工作台。</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <article class="bg-gray-50 p-8 rounded-2xl border border-gray-100 hover:shadow-md transition-shadow">
+                    <div class="w-12 h-12 bg-blue-100 text-blue-700 rounded-xl flex items-center justify-center mb-5 font-bold">CLI</div>
+                    <h3 class="text-2xl font-semibold text-primary mb-3">批量字幕与媒体自动化</h3>
+                    <p class="text-gray-600 leading-7 mb-4">安装包同时提供 <code class="px-1.5 py-0.5 rounded bg-white text-primary">aivcli</code>：可执行 ASR、字幕转换 / 翻译、媒体信息、影视库索引和批处理任务。</p>
+                    <p class="text-gray-500 leading-7">批处理支持断点续跑、可恢复重试、递归扫描、失败继续和 JSON 输出，适合把重复工作交给脚本。</p>
+                </article>
+
+                <article class="bg-gray-50 p-8 rounded-2xl border border-gray-100 hover:shadow-md transition-shadow">
+                    <div class="w-12 h-12 bg-purple-100 text-purple-700 rounded-xl flex items-center justify-center mb-5 font-bold">视觉</div>
+                    <h3 class="text-2xl font-semibold text-primary mb-3">视觉影视库</h3>
+                    <p class="text-gray-600 leading-7 mb-4">使用本地 SigLIP2 和 LanceDB 为视频按帧建立视觉与文本索引，支持用文字描述或图片寻找相似画面。</p>
+                    <p class="text-gray-500 leading-7">增量索引会跳过未变化的视频，搜索结果带字幕命中片段，并可直接跳转到视频时间点。</p>
+                </article>
+
+                <article class="bg-gray-50 p-8 rounded-2xl border border-gray-100 hover:shadow-md transition-shadow">
+                    <div class="w-12 h-12 bg-orange-100 text-orange-700 rounded-xl flex items-center justify-center mb-5 font-bold">短剧</div>
+                    <h3 class="text-2xl font-semibold text-primary mb-3">AI 短剧文本工作室</h3>
+                    <p class="text-gray-600 leading-7 mb-4">从 TXT / Markdown 小说导入项目，继续完成章节事件、故事骨架、改编策略和分集剧本。</p>
+                    <p class="text-gray-500 leading-7">还能生成角色、场景、道具资产和结构化分镜文本；支持 OpenAI 兼容服务、本地 Mock 和断点续跑。</p>
+                </article>
+
+                <article class="bg-gray-50 p-8 rounded-2xl border border-gray-100 hover:shadow-md transition-shadow">
+                    <div class="w-12 h-12 bg-pink-100 text-pink-700 rounded-xl flex items-center justify-center mb-5 font-bold">图片</div>
+                    <h3 class="text-2xl font-semibold text-primary mb-3">图片工作区</h3>
+                    <p class="text-gray-600 leading-7 mb-4">一次导入多张图片，在本地完成尺寸调整、旋转、翻转、格式转换和质量控制。</p>
+                    <p class="text-gray-500 leading-7">支持按目标 KB / MB 自动压缩、批量导出、重名递增和安全覆盖原图，适合快速整理网页素材。</p>
+                </article>
             </div>
         </div>
     </section>
@@ -339,6 +382,17 @@
                     </div>
                 </div>
             </div>
+
+            <div class="mt-8 bg-primary text-white rounded-2xl p-6 sm:p-8">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+                    <div>
+                        <p class="text-sm font-semibold tracking-widest text-yellow-200 uppercase mb-2">安装包内置</p>
+                        <h3 class="text-xl font-semibold mb-2">桌面端和命令行一起安装</h3>
+                        <p class="text-gray-300 leading-7">Windows NSIS、macOS .pkg 和 Linux .deb 会安装 <code class="px-1.5 py-0.5 rounded bg-white/10 text-white">aivcli</code> 启动器；便携式格式也可以通过应用的 CLI 模式使用。</p>
+                    </div>
+                    <a href="#workspaces" class="shrink-0 inline-flex items-center justify-center px-5 py-3 bg-white text-primary rounded-xl hover:bg-gray-100 transition-colors font-medium">了解 AI 工作区</a>
+                </div>
+            </div>
         </div>
     </section>
 
@@ -389,7 +443,10 @@ npm run dev
 npm run build
 
 <span class="text-green-400"># 打包安装程序</span>
-npm run dist</code></pre>
+npm run dist
+
+<span class="text-green-400"># 检查已安装的本地能力</span>
+aivcli doctor</code></pre>
                     </div>
                 </div>
             </div>
@@ -444,6 +501,18 @@ npm run dist</code></pre>
                     <h4 class="font-semibold text-primary">whisper.cpp</h4>
                     <p class="text-sm text-gray-500">AI 语音识别</p>
                 </div>
+
+                <div class="bg-white p-6 rounded-2xl text-center hover:shadow-md transition-shadow">
+                    <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mx-auto mb-3 text-purple-600 font-bold">LDB</div>
+                    <h4 class="font-semibold text-primary">LanceDB</h4>
+                    <p class="text-sm text-gray-500">本地视觉检索</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl text-center hover:shadow-md transition-shadow">
+                    <div class="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mx-auto mb-3 text-orange-600 font-bold">SQL</div>
+                    <h4 class="font-semibold text-primary">SQLite</h4>
+                    <p class="text-sm text-gray-500">本地项目数据</p>
+                </div>
             </div>
         </div>
     </section>
@@ -458,7 +527,7 @@ npm run dist</code></pre>
                         <img src="assets/icon.png" alt="AIVPlayer" class="w-8 h-8">
                         <span class="text-xl font-bold text-white">AIVPlayer</span>
                     </div>
-                    <p class="text-gray-400">本地 AI 字幕生成的跨平台视频播放器</p>
+                    <p class="text-gray-400">本地 AI 字幕、影视库与内容工作台</p>
                 </div>
 
                 <!-- Links -->
@@ -475,7 +544,7 @@ npm run dist</code></pre>
                 <div>
                     <h4 class="text-white font-semibold mb-4">开源协议</h4>
                     <p class="text-gray-400">本项目基于 MIT License 开源</p>
-                    <p class="text-gray-400 mt-2">Copyright © 2024 ponponon</p>
+                    <p class="text-gray-400 mt-2">Copyright © 2024–2026 ponponon</p>
                 </div>
             </div>
 
