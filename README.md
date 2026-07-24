@@ -131,7 +131,7 @@ Windows NSIS、macOS `.pkg` 和 Linux `.deb` 会同时安装 `aivcli` 命令。m
 git clone https://github.com/ponponon/aivplayer.git
 cd aivplayer
 
-# 安装依赖（需要 Node.js 18+）
+# 安装依赖（需要 Node.js 22.12.0+）
 npm install
 
 # 启动开发模式
@@ -146,7 +146,7 @@ npm run dev
 
 ### 环境准备
 
-- Node.js 18+
+- Node.js 22.12.0+
 - npm 或 pnpm
 - macOS 需要 Xcode Command Line Tools
 - Windows 需要 Visual Studio Build Tools
