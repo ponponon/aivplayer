@@ -6,124 +6,20 @@ description: |
   核心亮点是集成了 whisper.cpp 本地 ASR 引擎，可以在不联网的情况下
   为视频自动生成高质量字幕。
 
-  功能特性：
-  - 支持 MP4、WebM、MOV、MKV、AVI 等主流视频格式
-  - 基于 whisper.cpp 的离线语音识别，支持多语言
-  - 片段导出、截图与录屏
-  - 多语言界面（中文、英文、日语、韩语）
-  - 命令行工具 aivcli
-
 grade: stable
 confinement: strict
 base: core22
-icon: snap/local/icon.png
 
 architectures:
   - build-on: [amd64]
     build-for: [amd64]
 
-apps:
-  aivplayer:
-    command: usr/lib/aivplayer/aivplayer --no-sandbox
-    desktop: snap/gui/aivplayer.desktop
-    plugs:
-      - browser-support
-      - audio-playback
-      - audio-record
-      - removable-media
-      - unity7
-      - network
-      - network-bind
-      - opengl
-      - x11
-      - wayland
-      - desktop
-      - desktop-legacy
-      - gsettings
-      - gtk-3-themes
-      - icon-themes
-      - sound-themes
-    environment:
-      TMPDIR: $XDG_RUNTIME_DIR
-      PATH: $SNAP/usr/lib/aivplayer/resources/whisper.cpp/bin:$SNAP/usr/lib/aivplayer/resources/ffmpeg/bin:$PATH
-      LD_LIBRARY_PATH: $SNAP/usr/lib/aivplayer/resources/whisper.cpp/lib:$SNAP/usr/lib/aivplayer/resources/ffmpeg/lib:$LD_LIBRARY_PATH
-      GTK_PATH: $SNAP/usr/lib/x86_64-linux-gnu/gtk-3.0
-      GDK_PIXBUF_MODULE_FILE: $SNAP/usr/lib/x86_64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders.cache
-      XDG_DATA_DIRS: $SNAP/usr/share:$SNAP/usr/lib/x86_64-linux-gnu:$XDG_DATA_DIRS
-
-  aivcli:
-    command: usr/lib/aivplayer/aivplayer --cli
-    plugs:
-      - network
-      - network-bind
-      - removable-media
-
 parts:
-  aivplayer:
+  hello:
     plugin: nil
-    source: .
-    build-packages:
-      - nodejs
-      - npm
-      - libgtk-3-dev
-      - libnotify-dev
-      - libnss3-dev
-      - libxss1-dev
-      - libxtst6
-      - xdg-utils
-      - libatspi2.0-dev
-      - libuuid1
-      - libsecret-1-dev
-      - dpkg
-      - fakeroot
     override-build: |
-      set -eux
-      # Install Node.js 22
-      curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
-      apt-get install -y nodejs
-      
-      # Install dependencies
-      npm ci
-      
-      # Build the app
-      npm run build
-      
-      # Build unpacked electron app
-      npx electron-builder --dir --publish never
-      
-      # Copy to install directory
-      install -d "${CRAFT_PART_INSTALL}/usr/lib/aivplayer"
-      cp -a release/linux-unpacked/. "${CRAFT_PART_INSTALL}/usr/lib/aivplayer/"
-    stage-packages:
-      - ffmpeg
-      - libasound2
-      - libnss3
-      - libxss1
-      - libgtk-3-0
-      - libgbm1
-      - libatspi2.0-0
-      - libdrm2
-      - libxkbcommon0
-      - libxcomposite1
-      - libxdamage1
-      - libxfixes3
-      - libxrandr2
-      - libpango-1.0-0
-      - libcairo2
-      - libxcb1
-      - libxcb-render0
-      - libxcb-shm0
-      - libx11-xcb1
-      - libxcb-xfixes0
-      - libxcb-shape0
-      - libxcb-keysyms1
-      - libxcb-image0
-      - libxcb-util1
-      - libgtk-3-common
-      - gsettings-desktop-schemas
-      - adwaita-icon-theme
-      - shared-mime-info
-      - libgdk-pixbuf-2.0-0
-      - libpango-1.0-0
-      - libpangocairo-1.0-0
-      - libpangoft2-1.0-0
+      echo "Hello from snapcraft" > $CRAFT_PART_INSTALL/hello.txt
+
+apps:
+  hello:
+    command: cat hello.txt
