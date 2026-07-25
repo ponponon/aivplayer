@@ -114,12 +114,9 @@ jobs:
       - name: Install snapcraft
         run: sudo snap install snapcraft --classic
 
-      - name: Login to Snapcraft
+      - name: Build and upload snap via remote build
         env:
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
-        run: echo "$SNAPCRAFT_STORE_CREDENTIALS" | snapcraft login --with -
-
-      - name: Build and upload snap via remote build
         run: snapcraft --remote-build --launchpad-accept-public-upload
 
   publish-release:
