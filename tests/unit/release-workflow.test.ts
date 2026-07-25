@@ -25,8 +25,10 @@ describe('release workflow source constraints', () => {
   it('uses an explicit copy for the generated Snap payload', () => {
     const snapcraft = readFileSync(join(projectRoot, 'snap/snapcraft.yaml'), 'utf8')
     expect(snapcraft).toContain('plugin: nil')
+    expect(snapcraft).toContain('desktop: snap/gui/aivplayer.desktop')
     expect(snapcraft).toContain('CRAFT_PART_INSTALL')
     expect(snapcraft).toContain('cp -a ./.')
     expect(snapcraft).not.toContain('plugin: dump')
+    expect(readFileSync(join(projectRoot, 'snap/gui/aivplayer.desktop'), 'utf8')).toContain('Exec=aivplayer %U')
   })
 })

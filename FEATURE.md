@@ -1,7 +1,7 @@
 # AIVPlayer 功能列表
 
 - GitHub Actions 已接入 Cloudflare Pages 自动发布：`main` 分支的 `docs/` 变化会先执行静态站点校验，再使用 GitHub Actions Secret 中的 Cloudflare API Token 通过 Wrangler 发布到现有 Pages 项目；Account ID 使用 GitHub Actions Variable 保存，不进入仓库文件。
-- GitHub Actions 已接入自动发布工作流：推送 `v*` 标签时自动构建 macOS、Windows、Linux 和 Snap 安装包，创建 GitHub Release 并上传全部产物；也可以通过 workflow dispatch 输入 Release tag 手动重跑，tag 会真正传递给 Release action。桌面平台构建显式关闭 electron-builder 的隐式发布，Snapcraft 使用 nil plugin 显式复制 Electron 产物，避免 dump plugin 的硬链接复制失败；core22、snapcraft 安装、打包和 Snap Store 上传带指数退避重试，打包重试前会清理 `parts`、`stage`、`prime` 和旧 Snap 文件，避免 Snapcraft 部分安装状态导致重复文件错误；Release 会等待 Snap artifact 完成后再发布，缺失 artifact 不会再被后置 job 误报成独立失败。
+- GitHub Actions 已接入自动发布工作流：推送 `v*` 标签时自动构建 macOS、Windows、Linux 和 Snap 安装包，创建 GitHub Release 并上传全部产物；也可以通过 workflow dispatch 输入 Release tag 手动重跑，tag 会真正传递给 Release action。桌面平台构建显式关闭 electron-builder 的隐式发布，Snapcraft 使用 nil plugin 显式复制 Electron 产物并从 `snap/gui` 读取桌面文件，避免 dump plugin 的硬链接复制失败和桌面资源路径不一致；core22、snapcraft 安装、打包和 Snap Store 上传带指数退避重试，打包重试前会清理 `parts`、`stage`、`prime` 和旧 Snap 文件，避免 Snapcraft 部分安装状态导致重复文件错误；Release 会等待 Snap artifact 完成后再发布，缺失 artifact 不会再被后置 job 误报成独立失败。
 - 新增无界面 `aivcli` 入口，复用 AIVPlayer 的 ASR、字幕翻译、媒体信息和视觉影视库服务；支持 `doctor`、`asr`、`subtitle convert/translate`、`media info`、`library scan/index/status/search`，默认复用已有字幕缓存，并提供 `--json` 输出，便于终端和自动化脚本使用。
 - `aivcli batch` 支持对目录或多个视频顺序执行 ASR、字幕翻译和影视库索引；任务可用 `--asr`、`--translate`、`--index` 组合，默认单个视频失败后继续，支持 `--fail-fast`、`--recursive`、`--force`、`--output-dir` 和 `--json`；只做翻译时会读取视频旁边同名的 `.vtt` 文件。
 - `aivcli batch` 支持断点续跑：状态默认保存到 AIVPlayer 用户数据目录，也可通过 `--state-file` 指定；`--resume` 会校验任务参数并跳过已完成且产物仍存在的阶段，视频大小或修改时间变化会自动失效对应状态，`--reset-state` 可安全创建新的任务状态。
