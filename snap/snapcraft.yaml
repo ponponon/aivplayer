@@ -59,10 +59,12 @@ apps:
 
 parts:
   aivplayer:
-    plugin: dump
+    plugin: nil
     source: release/linux-unpacked/
-    organize:
-      '**/*': usr/lib/aivplayer/
+    override-build: |
+      set -eux
+      install -d "${CRAFT_PART_INSTALL}/usr/lib/aivplayer"
+      cp -a ./. "${CRAFT_PART_INSTALL}/usr/lib/aivplayer/"
     stage-packages:
       - ffmpeg
       - libasound2

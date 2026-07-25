@@ -21,4 +21,12 @@ describe('release workflow source constraints', () => {
     expect(releaseWorkflow).toContain("find . -maxdepth 1 -type f -name '*.snap' -delete")
     expect(releaseWorkflow).toContain('snapcraft pack --verbose --destructive-mode')
   })
+
+  it('uses an explicit copy for the generated Snap payload', () => {
+    const snapcraft = readFileSync(join(projectRoot, 'snap/snapcraft.yaml'), 'utf8')
+    expect(snapcraft).toContain('plugin: nil')
+    expect(snapcraft).toContain('CRAFT_PART_INSTALL')
+    expect(snapcraft).toContain('cp -a ./.')
+    expect(snapcraft).not.toContain('plugin: dump')
+  })
 })
