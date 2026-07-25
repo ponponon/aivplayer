@@ -27,9 +27,7 @@ jobs:
       - run: npm ci
 
       - name: Build & Package
-        run: npm run build && npx electron-builder
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run build && npx electron-builder --publish never
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -54,9 +52,7 @@ jobs:
       - run: npm ci
 
       - name: Build & Package
-        run: npm run build && npx electron-builder
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run build && npx electron-builder --publish never
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -83,9 +79,7 @@ jobs:
           sudo apt-get install -y libgtk-3-0 libnotify4 libnss3 libxss1 libxtst6 xdg-utils libatspi2.0-0 libuuid1 libsecret-1-0
 
       - name: Build & Package
-        run: npm run build && npx electron-builder
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run build && npx electron-builder --publish never
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -108,8 +102,15 @@ jobs:
 
       - name: Install dependencies (with retry)
         run: |
+          set -euo pipefail
           for i in 1 2 3; do
-            npm ci && break
+            if npm ci --prefer-offline --no-audit --fund=false; then
+              exit 0
+            fi
+            if [ "$i" -eq 3 ]; then
+              echo "npm ci failed after $i attempts" >&2
+              exit 1
+            fi
             echo "Attempt $i failed, retrying in 30s..."
             sleep 30
           done
@@ -120,15 +121,50 @@ jobs:
           sudo apt-get install -y libgtk-3-0 libnotify4 libnss3 libxss1 libxtst6 xdg-utils libatspi2.0-0 libuuid1 libsecret-1-0
 
       - name: Build unpacked
-        run: npm run build && npx electron-builder --dir
+        run: npm run build && npx electron-builder --dir --publish never
 
-      - name: Install snapcraft and core22
+      - name: Install snapcraft and core22 (with retry)
         run: |
-          sudo snap install core22
-          sudo snap install snapcraft --classic
+          set -euo pipefail
+
+          retry_snap_command() {
+            local attempts="$1"
+            local initial_delay="$2"
+            shift 2
+
+            for ((attempt = 1; attempt <= attempts; attempt++)); do
+              if "$@"; then
+                return 0
+              fi
+              if (( attempt == attempts )); then
+                break
+              fi
+              local delay=$((initial_delay * 2 ** (attempt - 1)))
+              echo "Attempt $attempt failed; retrying in ${delay}s..." >&2
+              sleep "$delay"
+            done
+
+            return 1
+          }
+
+          retry_snap_command 5 10 sudo snap install core22 --channel=latest/stable
+          retry_snap_command 5 10 sudo snap install snapcraft --classic
 
       - name: Build snap
-        run: snapcraft pack --verbose --destructive-mode
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            if snapcraft pack --verbose --destructive-mode; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "snapcraft pack failed after $attempt attempts" >&2
+              exit 1
+            fi
+            delay=$((15 * 2 ** (attempt - 1)))
+            echo "Snap build attempt $attempt failed; retrying in ${delay}s..." >&2
+            sleep "$delay"
+          done
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -138,7 +174,7 @@ jobs:
           if-no-files-found: error
 
   publish-release:
-    needs: [build-macos, build-windows, build-linux]
+    needs: [build-macos, build-windows, build-linux, build-snap]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -169,9 +205,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   publish-snap:
-    needs: [publish-release]
+    needs: [build-snap, publish-release]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
+    if: ${{ needs.build-snap.result == 'success' && needs.publish-release.result == 'success' && startsWith(github.ref, 'refs/tags/') }}
     steps:
       - name: Download snap artifact
         uses: actions/download-artifact@v4
@@ -179,12 +215,44 @@ jobs:
           name: snap
 
       - name: Install snapcraft
-        run: sudo snap install snapcraft --classic
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5; do
+            if sudo snap install snapcraft --classic; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 5 ]; then
+              echo "snapcraft installation failed after $attempt attempts" >&2
+              exit 1
+            fi
+            delay=$((10 * 2 ** (attempt - 1)))
+            echo "Snapcraft installation attempt $attempt failed; retrying in ${delay}s..." >&2
+            sleep "$delay"
+          done
 
       - name: Login to Snapcraft
         run: echo "${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}" | snapcraft login --with -
 
       - name: Publish to Snap Store
         run: |
-          snap=$(ls *.snap)
-          snapcraft upload "$snap" --release=stable
+          set -euo pipefail
+          shopt -s nullglob
+          snaps=( *.snap )
+          if [ "${#snaps[@]}" -ne 1 ]; then
+            echo "Expected exactly one snap artifact, found ${#snaps[@]}" >&2
+            exit 1
+          fi
+
+          snap="${snaps[0]}"
+          for attempt in 1 2 3 4 5; do
+            if snapcraft upload "$snap" --release=stable; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 5 ]; then
+              echo "Snap Store upload failed after $attempt attempts" >&2
+              exit 1
+            fi
+            delay=$((10 * 2 ** (attempt - 1)))
+            echo "Snap Store upload attempt $attempt failed; retrying in ${delay}s..." >&2
+            sleep "$delay"
+          done
