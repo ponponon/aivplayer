@@ -1,0 +1,84 @@
+name: aivplayer
+version: '0.2.0'
+summary: 本地 AI 字幕生成的跨平台桌面视频播放器
+description: |
+  AIVPlayer 是一款基于 Electron 的现代化桌面视频播放器，
+  核心亮点是集成了 whisper.cpp 本地 ASR 引擎，可以在不联网的情况下
+  为视频自动生成高质量字幕。
+
+  功能特性：
+  - 支持 MP4、WebM、MOV、MKV、AVI 等主流视频格式
+  - 基于 whisper.cpp 的离线语音识别，支持多语言
+  - 片段导出、截图与录屏
+  - 多语言界面（中文、英文、日语、韩语）
+  - 命令行工具 aivcli
+
+grade: stable
+confinement: strict
+base: core22
+icon: snap/local/icon.png
+
+architectures:
+  - build-on: amd64
+
+apps:
+  aivplayer:
+    command: aivplayer --no-sandbox
+    desktop: snap/gui/aivplayer.desktop
+    extensions: [gnome]
+    plugs:
+      - browser-support
+      - audio-playback
+      - audio-record
+      - removable-media
+      - unity7
+      - network
+      - network-bind
+      - opengl
+      - x11
+      - wayland
+      - desktop
+      - desktop-legacy
+    environment:
+      TMPDIR: $XDG_RUNTIME_DIR
+      PATH: $SNAP/usr/lib/aivplayer/resources/whisper.cpp/bin:$SNAP/usr/lib/aivplayer/resources/ffmpeg/bin:$PATH
+      LD_LIBRARY_PATH: $SNAP/usr/lib/aivplayer/resources/whisper.cpp/lib:$SNAP/usr/lib/aivplayer/resources/ffmpeg/lib:$LD_LIBRARY_PATH
+
+  aivcli:
+    command: aivplayer --cli
+    plugs:
+      - network
+      - network-bind
+      - removable-media
+
+parts:
+  aivplayer:
+    plugin: dump
+    source: release/linux-unpacked/
+    organize:
+      '**/*': usr/lib/aivplayer/
+    stage-packages:
+      - ffmpeg
+      - libasound2
+      - libnss3
+      - libxss1
+      - libgtk-3-0
+      - libgbm1
+      - libatspi2.0-0
+      - libdrm2
+      - libxkbcommon0
+      - libxcomposite1
+      - libxdamage1
+      - libxfixes3
+      - libxrandr2
+      - libpango-1.0-0
+      - libcairo2
+      - libxcb1
+      - libxcb-render0
+      - libxcb-shm0
+      - libx11-xcb1
+      - libxcb-xfixes0
+      - libxcb-shape0
+      - libxcb-keysyms1
+      - libxcb-image0
+      - libxcb-util1

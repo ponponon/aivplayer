@@ -120,6 +120,23 @@ linux:
   target:
     - AppImage
     - deb
+    - snap
 deb:
   afterInstall: build/deb-after-install.sh
   afterRemove: build/deb-after-remove.sh
+snap:
+  confinement: strict
+  grade: stable
+  plugs:
+    - browser-support
+    - audio-playback
+    - audio-record
+    - removable-media
+    - unity7
+    - network
+    - network-bind
+    - opengl
+    - x11
+    - wayland
+    - desktop
+    - desktop-legacy
