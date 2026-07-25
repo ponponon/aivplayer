@@ -100,20 +100,8 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Install dependencies (with retry)
-        run: |
-          set -euo pipefail
-          for i in 1 2 3; do
-            if npm ci --prefer-offline --no-audit --fund=false; then
-              exit 0
-            fi
-            if [ "$i" -eq 3 ]; then
-              echo "npm ci failed after $i attempts" >&2
-              exit 1
-            fi
-            echo "Attempt $i failed, retrying in 30s..."
-            sleep 30
-          done
+      - name: Install dependencies
+        run: npm ci
 
       - name: Install system dependencies
         run: |
@@ -123,62 +111,19 @@ jobs:
       - name: Build unpacked
         run: npm run build && npx electron-builder --dir --publish never
 
-      - name: Install snapcraft and core22 (with retry)
-        run: |
-          set -euo pipefail
+      - name: Install snapcraft
+        run: sudo snap install snapcraft --classic
 
-          retry_snap_command() {
-            local attempts="$1"
-            local initial_delay="$2"
-            shift 2
+      - name: Login to Snapcraft
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+        run: echo "$SNAPCRAFT_STORE_CREDENTIALS" | snapcraft login --with -
 
-            for ((attempt = 1; attempt <= attempts; attempt++)); do
-              if "$@"; then
-                return 0
-              fi
-              if (( attempt == attempts )); then
-                break
-              fi
-              local delay=$((initial_delay * 2 ** (attempt - 1)))
-              echo "Attempt $attempt failed; retrying in ${delay}s..." >&2
-              sleep "$delay"
-            done
-
-            return 1
-          }
-
-          retry_snap_command 5 10 sudo snap install core22 --channel=latest/stable
-          retry_snap_command 5 10 sudo snap install snapcraft --classic
-
-      - name: Build snap
-        run: |
-          set -euo pipefail
-          for attempt in 1 2 3; do
-            # Snapcraft may leave a partially populated install tree after a failed pack.
-            # Remove all generated state before retrying so dump does not hit stale files.
-            rm -rf parts stage prime
-            find . -maxdepth 1 -type f -name '*.snap' -delete
-            if snapcraft pack --verbose --destructive-mode; then
-              exit 0
-            fi
-            if [ "$attempt" -eq 3 ]; then
-              echo "snapcraft pack failed after $attempt attempts" >&2
-              exit 1
-            fi
-            delay=$((15 * 2 ** (attempt - 1)))
-            echo "Snap build attempt $attempt failed; retrying in ${delay}s..." >&2
-            sleep "$delay"
-          done
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: snap
-          path: '*.snap'
-          if-no-files-found: error
+      - name: Build and upload snap via remote build
+        run: snapcraft --remote-build --launchpad-accept-public-upload
 
   publish-release:
-    needs: [build-macos, build-windows, build-linux, build-snap]
+    needs: [build-macos, build-windows, build-linux]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -204,64 +149,6 @@ jobs:
             artifacts/*.exe
             artifacts/*.AppImage
             artifacts/*.deb
-            artifacts/*.snap
           fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  publish-snap:
-    needs: [build-snap, publish-release]
-    runs-on: ubuntu-latest
-    if: >-
-      ${{
-        needs.build-snap.result == 'success' &&
-        needs.publish-release.result == 'success' &&
-        (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch')
-      }}
-    steps:
-      - name: Download snap artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: snap
-
-      - name: Install snapcraft
-        run: |
-          set -euo pipefail
-          for attempt in 1 2 3 4 5; do
-            if sudo snap install snapcraft --classic; then
-              exit 0
-            fi
-            if [ "$attempt" -eq 5 ]; then
-              echo "snapcraft installation failed after $attempt attempts" >&2
-              exit 1
-            fi
-            delay=$((10 * 2 ** (attempt - 1)))
-            echo "Snapcraft installation attempt $attempt failed; retrying in ${delay}s..." >&2
-            sleep "$delay"
-          done
-
-      - name: Publish to Snap Store
-        env:
-          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
-        run: |
-          set -euo pipefail
-          shopt -s nullglob
-          snaps=( *.snap )
-          if [ "${#snaps[@]}" -ne 1 ]; then
-            echo "Expected exactly one snap artifact, found ${#snaps[@]}" >&2
-            exit 1
-          fi
-
-          snap="${snaps[0]}"
-          for attempt in 1 2 3 4 5; do
-            if snapcraft upload "$snap" --release=stable; then
-              exit 0
-            fi
-            if [ "$attempt" -eq 5 ]; then
-              echo "Snap Store upload failed after $attempt attempts" >&2
-              exit 1
-            fi
-            delay=$((10 * 2 ** (attempt - 1)))
-            echo "Snap Store upload attempt $attempt failed; retrying in ${delay}s..." >&2
-            sleep "$delay"
-          done
