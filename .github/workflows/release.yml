@@ -95,6 +95,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-0 libnotify4 libnss3 libxss1 libxtst6 xdg-utils libatspi2.0-0 libuuid1 libsecret-1-0
+
+      - name: Build unpacked
+        run: npm run build && npx electron-builder --dir --publish never
+
       - name: Build snap
         uses: snapcore/action-build@v1
         id: build-snap
