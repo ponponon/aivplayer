@@ -191,6 +191,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
           generate_release_notes: true
           files: |
             artifacts/*.dmg
@@ -207,7 +208,12 @@ jobs:
   publish-snap:
     needs: [build-snap, publish-release]
     runs-on: ubuntu-latest
-    if: ${{ needs.build-snap.result == 'success' && needs.publish-release.result == 'success' && startsWith(github.ref, 'refs/tags/') }}
+    if: >-
+      ${{
+        needs.build-snap.result == 'success' &&
+        needs.publish-release.result == 'success' &&
+        (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch')
+      }}
     steps:
       - name: Download snap artifact
         uses: actions/download-artifact@v4

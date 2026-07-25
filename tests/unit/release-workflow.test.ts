@@ -14,6 +14,8 @@ describe('release workflow source constraints', () => {
   it('waits for the snap artifact before creating or publishing a release', () => {
     expect(releaseWorkflow).toContain('needs: [build-macos, build-windows, build-linux, build-snap]')
     expect(releaseWorkflow).toContain('needs: [build-snap, publish-release]')
+    expect(releaseWorkflow).toContain('tag_name: ${{ inputs.tag || github.ref_name }}')
+    expect(releaseWorkflow).toContain("github.event_name == 'workflow_dispatch'")
     expect(releaseWorkflow).toContain('retry_snap_command 5 10 sudo snap install core22 --channel=latest/stable')
     expect(releaseWorkflow).toContain('snapcraft pack --verbose --destructive-mode')
   })
