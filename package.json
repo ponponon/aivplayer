@@ -37,7 +37,10 @@
     "dist": "npm run build && npm run release:check-runtime && electron-builder"
   },
   "keywords": [],
-  "author": "ponponon",
+  "author": {
+    "name": "ponponon",
+    "email": "1729303158@qq.com"
+  },
   "license": "MIT",
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",
