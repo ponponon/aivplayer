@@ -117,7 +117,7 @@ jobs:
       - name: Build and upload snap via remote build
         env:
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
-        run: snapcraft --remote-build --launchpad-accept-public-upload
+        run: snapcraft remote-build --launchpad-accept-public-upload
 
   publish-release:
     needs: [build-macos, build-windows, build-linux]
