@@ -8,8 +8,19 @@
 !macro customInstall
   ; aivcli.cmd is installed beside AIVPlayer.exe by extraFiles.
   ReadRegStr $0 HKCU "Environment" "Path"
-  ${StrStr} $1 $0 "$INSTDIR"
-  ${If} $1 == ""
+  ; Check if $INSTDIR is already in PATH
+  StrLen $3 "$INSTDIR"
+  StrCpy $4 0
+  StrCpy $6 0
+  ${DoWhile} $4 < $0
+    StrCpy $5 $0 $3 $4
+    ${If} $5 == "$INSTDIR"
+      StrCpy $6 1
+      ${ExitDo}
+    ${EndIf}
+    IntOp $4 $4 + 1
+  ${Loop}
+  ${If} $6 == 0
     ${If} $0 == ""
       StrCpy $2 "$INSTDIR"
     ${Else}
@@ -22,7 +33,7 @@
 
 !macro customUnInstall
   ReadRegStr $0 HKCU "Environment" "Path"
-  ; Simple string removal - find and remove $INSTDIR from PATH
+  ; Remove $INSTDIR from PATH
   StrLen $3 "$INSTDIR"
   StrCpy $4 0
   StrCpy $5 ""

@@ -122,9 +122,11 @@ jobs:
       - name: Build unpacked
         run: npm run build && npx electron-builder --dir
 
-      - name: Install snapcraft
+      - name: Install snapcraft and LXD
         run: |
           sudo snap install snapcraft --classic
+          sudo snap install lxd
+          sudo lxd init --auto
 
       - name: Build snap
         run: snapcraft pack --verbose
