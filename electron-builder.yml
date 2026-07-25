@@ -120,7 +120,6 @@ linux:
   target:
     - AppImage
     - deb
-    - snap
 deb:
   afterInstall: build/deb-after-install.sh
   afterRemove: build/deb-after-remove.sh

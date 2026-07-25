@@ -1,8 +1,5 @@
 !include "WinMessages.nsh"
 !include "LogicLib.nsh"
-!include "StrFunc.nsh"
-${StrStr}
-${StrRep}
 
 !macro aivcliBroadcastEnvironment
   SendMessage ${HWND_BROADCAST} ${WM_SETTINGCHANGE} 0 "STR:Environment" /TIMEOUT=5000
@@ -25,10 +22,30 @@ ${StrRep}
 
 !macro customUnInstall
   ReadRegStr $0 HKCU "Environment" "Path"
-  ${StrRep} $1 $0 ";$INSTDIR" ""
-  ${StrRep} $2 $1 "$INSTDIR;" ""
-  StrCmp $2 "$INSTDIR" 0 +2
-    StrCpy $2 ""
-  WriteRegExpandStr HKCU "Environment" "Path" $2
+  ; Simple string removal - find and remove $INSTDIR from PATH
+  StrLen $3 "$INSTDIR"
+  StrCpy $4 0
+  StrCpy $5 ""
+  ${DoWhile} $4 < $0
+    StrCpy $6 $0 $3 $4
+    ${If} $6 == "$INSTDIR"
+      ; Skip this occurrence
+      IntOp $4 $4 + $3
+      ; Also skip trailing semicolon if present
+      StrCpy $7 $0 1 $4
+      ${If} $7 == ";"
+        IntOp $4 $4 + 1
+      ${EndIf}
+    ${Else}
+      StrCpy $7 $0 1 $4
+      ${If} $5 == ""
+        StrCpy $5 $7
+      ${Else}
+        StrCpy $5 "$5$7"
+      ${EndIf}
+      IntOp $4 $4 + 1
+    ${EndIf}
+  ${Loop}
+  WriteRegExpandStr HKCU "Environment" "Path" $5
   !insertmacro aivcliBroadcastEnvironment
 !macroend
