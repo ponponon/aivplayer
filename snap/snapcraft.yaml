@@ -19,7 +19,8 @@ base: core22
 icon: snap/local/icon.png
 
 architectures:
-  - build-on: amd64
+  - build-on: [amd64]
+    build-for: [amd64]
 
 apps:
   aivplayer:
