@@ -1,6 +1,7 @@
 # AIVPlayer 功能列表
 
 - GitHub Actions 已接入 Cloudflare Pages 自动发布：`main` 分支的 `docs/` 变化会先执行静态站点校验，再使用 GitHub Actions Secret 中的 Cloudflare API Token 通过 Wrangler 发布到现有 Pages 项目；Account ID 使用 GitHub Actions Variable 保存，不进入仓库文件。
+- GitHub Actions 已接入自动发布工作流：推送 `v*` 标签时自动构建 macOS、Windows、Linux 和 Snap 安装包，创建 GitHub Release 并上传全部产物；Snap 包会自动发布到 Snap Store 的 stable 通道。
 - 新增无界面 `aivcli` 入口，复用 AIVPlayer 的 ASR、字幕翻译、媒体信息和视觉影视库服务；支持 `doctor`、`asr`、`subtitle convert/translate`、`media info`、`library scan/index/status/search`，默认复用已有字幕缓存，并提供 `--json` 输出，便于终端和自动化脚本使用。
 - `aivcli batch` 支持对目录或多个视频顺序执行 ASR、字幕翻译和影视库索引；任务可用 `--asr`、`--translate`、`--index` 组合，默认单个视频失败后继续，支持 `--fail-fast`、`--recursive`、`--force`、`--output-dir` 和 `--json`；只做翻译时会读取视频旁边同名的 `.vtt` 文件。
 - `aivcli batch` 支持断点续跑：状态默认保存到 AIVPlayer 用户数据目录，也可通过 `--state-file` 指定；`--resume` 会校验任务参数并跳过已完成且产物仍存在的阶段，视频大小或修改时间变化会自动失效对应状态，`--reset-state` 可安全创建新的任务状态。
@@ -289,7 +290,7 @@
 - macOS 菜单补齐了“打开媒体文件”和“设置…”入口，并沿用播放器现有的文件选择与设置弹窗，不需要用户先回到窗口内寻找按钮。
 - 安装包声明了 MP4、M4V、MOV、WebM、MKV、AVI、FLV、WMV、TS、M2TS、MPG、MPEG 视频关联，macOS、Windows、Linux 的“打开方式”可以识别 AIVPlayer。
 - 从 Finder、Windows 资源管理器、Linux 文件管理器或命令行打开视频时，AIVPlayer 会把文件传给已有窗口；不会因为系统再次启动一个实例而丢失视频。
-- Linux 同时提供 AppImage 和 deb 安装目标；deb 安装会把 desktop MIME 关联正式写入系统，AppImage 则保留便携分发能力。
+- Linux 同时提供 AppImage、deb 和 snap 安装目标；deb 安装会把 desktop MIME 关联正式写入系统，AppImage 保留便携分发能力，snap 支持发布到 Ubuntu Snap Store 实现自动更新分发。
 
 ## 默认界面缩放
 - 应用窗口默认使用略微收紧的渲染缩放基线，让字体、图标、按钮和卡片整体比系统默认更小一档。
