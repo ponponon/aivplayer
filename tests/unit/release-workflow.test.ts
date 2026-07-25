@@ -19,6 +19,8 @@ describe('release workflow source constraints', () => {
     expect(releaseWorkflow).toContain('retry_snap_command 5 10 sudo snap install core22 --channel=latest/stable')
     expect(releaseWorkflow).toContain('rm -rf parts stage prime')
     expect(releaseWorkflow).toContain("find . -maxdepth 1 -type f -name '*.snap' -delete")
+    expect(releaseWorkflow).toContain('SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}')
+    expect(releaseWorkflow).not.toContain('snapcraft login --with -')
     expect(releaseWorkflow).toContain('snapcraft pack --verbose --destructive-mode')
   })
 

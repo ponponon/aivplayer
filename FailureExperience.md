@@ -5,6 +5,7 @@
 - Snapcraft 的 `pack` 失败后不能在同一个 `parts` / `stage` / `prime` 状态上直接重试；dump part 可能已经留下部分安装文件，下一次会把原本的根因放大成大量 `cp ... File exists`。每次重试前必须清理 Snapcraft 生成目录和旧 `.snap`，再从干净状态重新打包。
 - Snapcraft dump plugin 默认用 `cp --link` 把 Electron 的 `linux-unpacked` 目录放进 part install；当前 Electron 产物包含多平台原生模块和大量文件，GitHub runner 上会在复制阶段只返回 `None` 而退出 1，日志没有给出可操作的源文件。对已生成的本地目录不要继续依赖 dump plugin，改用 nil plugin + `CRAFT_PART_INSTALL` + 普通 `cp -a` 显式复制，才能把构建产物稳定送入 Snap。
 - Snapcraft 的 `apps.<name>.desktop` 路径必须和仓库中的 `snap/gui/*.desktop` 真实路径一致；只把文件放在 `snap/local` 并不能满足 metadata 生成阶段，最终会在 `Copying snap assets` 报 `file does not exist`。
+- Snapcraft 9 已移除 `snapcraft login --with -` 参数；GitHub Actions 发布 Snap 时应把 `SNAPCRAFT_STORE_CREDENTIALS` Secret 注入上传步骤，让 Snapcraft 从环境变量读取凭据，否则会以退出码 64 失败。
 
 ## 真实翻译 smoke 不要把 API Key 写进仓库
 - 真实接口回归需要覆盖应用 IPC 和 renderer overlay，但 Key 不能进入产品源码、默认设置或 smoke 脚本常量。
