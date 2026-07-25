@@ -23,9 +23,8 @@ architectures:
 
 apps:
   aivplayer:
-    command: aivplayer --no-sandbox
+    command: usr/lib/aivplayer/aivplayer --no-sandbox
     desktop: snap/gui/aivplayer.desktop
-    extensions: [gnome]
     plugs:
       - browser-support
       - audio-playback
@@ -39,13 +38,20 @@ apps:
       - wayland
       - desktop
       - desktop-legacy
+      - gsettings
+      - gtk-3-themes
+      - icon-themes
+      - sound-themes
     environment:
       TMPDIR: $XDG_RUNTIME_DIR
       PATH: $SNAP/usr/lib/aivplayer/resources/whisper.cpp/bin:$SNAP/usr/lib/aivplayer/resources/ffmpeg/bin:$PATH
       LD_LIBRARY_PATH: $SNAP/usr/lib/aivplayer/resources/whisper.cpp/lib:$SNAP/usr/lib/aivplayer/resources/ffmpeg/lib:$LD_LIBRARY_PATH
+      GTK_PATH: $SNAP/usr/lib/x86_64-linux-gnu/gtk-3.0
+      GDK_PIXBUF_MODULE_FILE: $SNAP/usr/lib/x86_64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders.cache
+      XDG_DATA_DIRS: $SNAP/usr/share:$SNAP/usr/lib/x86_64-linux-gnu:$XDG_DATA_DIRS
 
   aivcli:
-    command: aivplayer --cli
+    command: usr/lib/aivplayer/aivplayer --cli
     plugs:
       - network
       - network-bind
@@ -82,3 +88,11 @@ parts:
       - libxcb-keysyms1
       - libxcb-image0
       - libxcb-util1
+      - libgtk-3-common
+      - gsettings-desktop-schemas
+      - adwaita-icon-theme
+      - shared-mime-info
+      - libgdk-pixbuf-2.0-0
+      - libpango-1.0-0
+      - libpangocairo-1.0-0
+      - libpangoft2-1.0-0
