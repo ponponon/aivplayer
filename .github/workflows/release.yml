@@ -154,6 +154,10 @@ jobs:
         run: |
           set -euo pipefail
           for attempt in 1 2 3; do
+            # Snapcraft may leave a partially populated install tree after a failed pack.
+            # Remove all generated state before retrying so dump does not hit stale files.
+            rm -rf parts stage prime
+            find . -maxdepth 1 -type f -name '*.snap' -delete
             if snapcraft pack --verbose --destructive-mode; then
               exit 0
             fi

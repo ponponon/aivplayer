@@ -17,6 +17,8 @@ describe('release workflow source constraints', () => {
     expect(releaseWorkflow).toContain('tag_name: ${{ inputs.tag || github.ref_name }}')
     expect(releaseWorkflow).toContain("github.event_name == 'workflow_dispatch'")
     expect(releaseWorkflow).toContain('retry_snap_command 5 10 sudo snap install core22 --channel=latest/stable')
+    expect(releaseWorkflow).toContain('rm -rf parts stage prime')
+    expect(releaseWorkflow).toContain("find . -maxdepth 1 -type f -name '*.snap' -delete")
     expect(releaseWorkflow).toContain('snapcraft pack --verbose --destructive-mode')
   })
 })
