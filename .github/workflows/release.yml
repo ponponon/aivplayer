@@ -90,55 +90,6 @@ jobs:
             release/*.deb
           if-no-files-found: error
 
-  build-snap:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - run: npm ci
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-3-0 libnotify4 libnss3 libxss1 libxtst6 xdg-utils libatspi2.0-0 libuuid1 libsecret-1-0
-
-      - name: Build unpacked
-        run: npm run build && npx electron-builder --dir --publish never
-
-      - name: Build snap
-        uses: snapcore/action-build@v1
-        id: build-snap
-
-      - name: Upload snap artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: snap
-          path: ${{ steps.build-snap.outputs.snap }}
-          if-no-files-found: error
-
-  publish-snap:
-    needs: [build-snap, publish-release]
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
-    steps:
-      - name: Download snap artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: snap
-
-      - name: Publish to Snap Store
-        uses: snapcore/action-publish@v1
-        env:
-          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
-        with:
-          snap: ${{ needs.build-snap.outputs.snap }}
-          release: stable
-
   publish-release:
     needs: [build-macos, build-windows, build-linux]
     runs-on: ubuntu-latest
