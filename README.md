@@ -5,7 +5,13 @@
 <h1 align="center">AIVPlayer</h1>
 
 <p align="center">
-  <strong>本地 AI 字幕生成的跨平台桌面视频播放器</strong>
+  <strong>本地优先的 AI 视频工作台：播放、字幕、视觉影视库与短剧创作</strong>
+</p>
+
+<p align="center">
+  <a href="https://aivplayer.pages.dev/">产品主页</a> ·
+  <a href="https://github.com/ponponon/aivplayer/releases">GitHub 下载</a> ·
+  <a href="https://gitee.com/ponponon/aivplayer/releases">Gitee 下载（国内）</a>
 </p>
 
 <p align="center">
@@ -19,157 +25,242 @@
 </p>
 
 <p align="center">
-  <a href="#features">功能特性</a> ·
-  <a href="#installation">安装指南</a> ·
-  <a href="#development">开发指南</a> ·
-  <a href="#contributing">参与贡献</a> ·
-  <a href="#license">开源协议</a>
+  <a href="#快速开始">快速开始</a> ·
+  <a href="#功能概览">功能概览</a> ·
+  <a href="#命令行工具">命令行工具</a> ·
+  <a href="#从源码开发">从源码开发</a> ·
+  <a href="#问题排查">问题排查</a> ·
+  <a href="#参与贡献">参与贡献</a>
 </p>
 
 ---
 
 ## 关于
 
-AIVPlayer 是一款基于 Electron 的现代化桌面视频播放器，核心亮点是集成了 [whisper.cpp](https://github.com/ggerganov/whisper.cpp) 本地 ASR 引擎，可以在不联网的情况下为视频自动生成高质量字幕。
+AIVPlayer 是一款基于 Electron 的跨平台桌面视频工作台。它把本地视频播放、离线 ASR 字幕、字幕翻译、AI 内容总结、视觉影视库、图片处理和 AI 短剧文本创作放在同一个应用里。
 
-### 为什么做这个？
+AIVPlayer 的产品介绍、功能演示和下载入口位于 **[aivplayer.pages.dev](https://aivplayer.pages.dev/)**。需要下载桌面安装包时，可以直接访问 [GitHub Releases](https://github.com/ponponon/aivplayer/releases)；在中国大陆访问 GitHub 较慢时，也可以访问 [Gitee Releases](https://gitee.com/ponponon/aivplayer/releases)。
 
-现有播放器大多依赖在线字幕服务，存在隐私泄露、需要付费、网络依赖等问题。AIVPlayer 选择将 AI 能力完全本地化，让你的视频和字幕数据始终留在自己手里。
+### 本地优先与 AI 请求边界
 
----
+- 播放、媒体解析、字幕缓存、视觉影视库索引和大部分处理流程在本机完成。
+- ASR 使用本地 [whisper.cpp](https://github.com/ggerganov/whisper.cpp) 引擎，不需要把视频上传到在线转写服务。
+- 字幕翻译、内容总结和 AI 短剧文本生成需要配置 OpenAI-compatible 服务；启用这些功能时，应用会把相应的文本内容发送给你配置的服务商。
+- 视觉影视库使用本地 SigLIP2 模型和 LanceDB 保存索引，不上传原始视频或图片。
 
-## 功能特性
+## 快速开始
 
-### 视频播放
+### 1. 下载并安装
 
-- 支持 MP4、WebM、MOV、MKV、AVI 等主流视频格式
-- 拖拽导入或文件选择器打开视频
-- 播放列表支持，快捷键切换上一条/下一条
-- 音量、倍速、进度控制
-- 单击画面暂停/恢复
-- 全屏播放
+从 [产品主页](https://aivplayer.pages.dev/) 了解功能，或从下面的发布页下载对应平台的安装包：
 
-### AI 字幕生成
+- [GitHub Releases](https://github.com/ponponon/aivplayer/releases)
+- [Gitee Releases（国内）](https://gitee.com/ponponon/aivplayer/releases)
 
-- 基于 whisper.cpp 的离线语音识别，无需联网
-- 支持多语言语音识别（中文、英文、日语、韩语等）
-- 同时生成 VTT 和 SRT 两种字幕格式
-- 自动缓存字幕，重复打开同一视频直接加载
-- 支持从 ModelScope（国内源）和 Hugging Face 下载模型
+支持 macOS、Windows 和 Linux。安装包格式与 `aivcli` 命令的安装方式见[安装](#安装)章节。
 
-### 命令行工具
+### 2. 打开视频
 
-安装 AIVPlayer 后会同时提供 `aivcli` 命令；CLI 与桌面端共用本地 ASR 模型、字幕缓存和视觉影视库。
+安装后可以直接把视频拖进窗口，也可以使用文件选择器打开。播放器支持播放列表、播放历史、断点续播、字幕轨道、片段导出、截图和录屏。
+
+### 3. 首次生成本地字幕
+
+打开字幕面板后，按向导准备 whisper.cpp 运行时和 ASR 模型。模型可以从 ModelScope（国内源）或 Hugging Face 下载。准备完成后选择语言并生成字幕，结果会缓存到本机，之后再次打开同一个视频可以直接复用。
+
+### 4. 按需配置云端 AI
+
+如果需要字幕翻译、内容总结或 AI 短剧工作室，在设置或对应面板中配置 OpenAI-compatible API。API Key 由应用本地安全存储，CLI 的 `provider show/test` 只显示脱敏状态，不支持把 Key 直接写在命令行参数里。
+
+## 功能概览
+
+### 播放与媒体处理
+
+- 支持 MP4、WebM、MOV、MKV、AVI 等常见视频格式，支持拖拽打开和播放列表。
+- 播放历史保存在本机，支持断点续播、未看完筛选、失效文件清理和右键操作。
+- 支持字幕轨道、音量、倍速、全屏、键盘快捷键和控制栏自动隐藏。
+- 支持按 15 秒、30 秒、60 秒导出片段，可选择纯视频、外挂字幕或字幕烧录。
+- 支持当前画面截图、定时录屏和 GIF 导出，并可配置保存目录、格式和命名规则。
+- 支持媒体信息查看，包括时长、分辨率、编码、帧率、码率、音频轨道和字幕轨道等。
+
+### 本地 AI 字幕与内容理解
+
+- 基于 whisper.cpp 的本地 ASR，支持中文、英文、日语、韩语等多语言识别。
+- 同时生成 VTT 和 SRT，支持字幕缓存、默认语言、时间轴调整和生成状态查看。
+- 支持通过 OpenAI-compatible 服务翻译字幕，包含缓存、重试、取消、术语表和目标语言切换。
+- 支持 AI 内容总结，可生成无剧透摘要、详细摘要、章节和时间轴跳转，并导出 Markdown、TXT 或 JSON。
+- AI 工作流支持引导处理或一次性处理，并提供缓存、取消、重试和断点续跑。
+
+### 视觉影视库
+
+- 使用本地 SigLIP2 模型对视频按时间间隔抽帧，并将向量保存到本机 LanceDB。
+- 支持文字描述搜索、以图搜图和文字 / 视觉 / 文件名混合检索。
+- 搜索结果可显示命中的字幕片段，并直接跳转到视频对应时间点。
+- 支持目录递归扫描、增量索引、后台索引队列、播放列表自动扫描和索引进度 / 阶段耗时展示。
+- CLI 也可以执行扫描、索引、状态查看和搜索，适合批量维护个人视频库。
+
+### AI 短剧文本工作室
+
+- 创建短剧项目，从 TXT / Markdown 小说识别章节并重复导入。
+- 生成故事事件、故事骨架、改编策略和分集剧本，阶段结果保存到本机 SQLite。
+- 根据剧本抽取角色、场景和道具资产，并生成结构化分镜大纲。
+- 支持 OpenAI-compatible Provider、本地 Mock、连接测试、任务状态、缓存和断点续跑。
+- 当前聚焦文本策划和分镜大纲，尚未绑定具体图片或视频生成厂商。
+
+### 图片工作区
+
+- 支持多图片导入、裁剪、旋转、翻转和批量处理。
+- 支持格式、质量、目标体积压缩、批量导出和覆盖策略配置。
+
+### 多语言与界面
+
+- 支持简体中文、English、日本語和한국어。
+- 深色影院风格，控制栏自动隐藏，适配不同窗口尺寸。
+- macOS 使用原生窗口控件，Windows / Linux 使用与应用主题一致的自绘窗口控件。
+
+## 命令行工具
+
+安装器提供 `aivcli` 命令；CLI 与桌面端共用 ASR、字幕缓存、视觉影视库和 AI 短剧数据。先用下面的命令检查本机运行环境：
 
 ```bash
 aivcli doctor
+aivcli doctor --json
+```
+
+### 媒体与字幕
+
+```bash
 aivcli media info ./movie.mp4
 aivcli asr ./movie.mp4 --format both --output-dir ./subtitles
 aivcli subtitle convert ./movie.vtt
 aivcli subtitle translate ./movie.vtt --to zh --output-dir ./subtitles
+```
+
+### 视觉影视库
+
+```bash
+aivcli library status
+aivcli library scan ./Videos --recursive
 aivcli library index ./Videos --recursive
 aivcli library search "海边场景"
+aivcli library search --image ./reference.jpg
+```
+
+### 批量处理
+
+```bash
 aivcli batch ./Videos --recursive --asr --translate zh --index --output-dir ./subtitles
 aivcli batch ./Videos --recursive --asr --translate zh --index --resume
 ```
 
-`batch` 会按视频顺序执行 ASR、字幕翻译和影视库索引；默认单个视频失败后继续处理，其余任务仍会完成。任务状态默认保存到 AIVPlayer 用户数据目录，也可以通过 `--state-file ./batch-state.json` 指定位置。任务中断后使用相同参数加 `--resume`，已完成且产物仍存在的阶段会跳过；视频文件大小或修改时间变化后，该视频的阶段会自动失效并重跑。需要遇到错误立即停止时使用 `--fail-fast`，需要放弃旧状态重新开始时使用 `--reset-state`。
+`batch` 可以组合 ASR、字幕翻译和影视库索引。默认单个视频失败后继续处理，并把状态保存到 AIVPlayer 用户数据目录；可以通过 `--state-file ./batch-state.json` 指定状态文件，通过 `--retry 0..5` 调整可恢复错误重试次数，通过 `--fail-fast` 遇到错误立即停止。中断后使用相同参数加 `--resume`，已完成且产物仍存在的阶段会跳过。
 
-如果只指定 `--translate` 而不指定 `--asr`，会读取视频旁边同名的 `.vtt` 文件；指定 `--output-dir` 且同时翻译时，译文会追加目标语言后缀（例如 `movie.zh.vtt`），避免覆盖原文字幕。
+如果只指定 `--translate` 而不指定 `--asr`，CLI 会读取视频旁边同名的 `.vtt` 文件。指定 `--output-dir` 时，译文会追加目标语言后缀，例如 `movie.zh.vtt`，不会覆盖原文字幕。主要命令支持 `--json`，方便接入 shell、CI 或其他自动化脚本。
 
-所有主要命令支持 `--json`，方便批处理脚本消费结构化结果。
+### AI 短剧
 
-### 片段导出
+```bash
+aivcli drama list
+aivcli drama create "我的短剧" --genre "悬疑" --episodes 6
+aivcli drama import <project-id> ./novel.txt
+aivcli drama events generate <project-id>
+aivcli drama plan generate <project-id> --stage skeleton
+aivcli drama script generate <project-id> --episode 1
+aivcli drama assets generate <project-id>
+aivcli drama storyboard generate <project-id> --episode 1
+aivcli drama provider show
+aivcli drama provider test
+```
 
-- 基于当前播放位置快速导出短片段
-- 支持 15 秒、30 秒、60 秒三档长度
-- 导出模式：纯视频 / 外挂字幕 / 字幕烧录
-
-### 截图与录屏
-
-- 截取当前画面为图片
-- 录制指定时长的视频片段
-- 支持 GIF 导出
-
-### 多语言界面
-
-- 简体中文、English、日本語、한국어
-- 系统语言自动匹配，也可手动切换
-
-### 现代化 UI
-
-- 深色影院风格，视频优先
-- 控制栏自动隐藏，沉浸式体验
-- 响应式布局，适配不同窗口尺寸
-
----
+完整参数可以运行 `aivcli --help`、`aivcli batch --help` 或 `aivcli drama --help` 查看。
 
 ## 安装
 
 ### 系统要求
 
-- **macOS**: 10.15+
-- **Windows**: 10+
-- **Linux**: Ubuntu 18.04+ / 同等发行版
+- **macOS**：10.15 或更高版本
+- **Windows**：Windows 10 或更高版本
+- **Linux**：Ubuntu 18.04 或同等发行版
 
 ### 下载安装包
 
-从 [Releases](https://github.com/ponponon/aivplayer/releases) 页面下载对应平台的安装包：
+从 [GitHub Releases](https://github.com/ponponon/aivplayer/releases) 或 [Gitee Releases](https://gitee.com/ponponon/aivplayer/releases) 下载对应平台的安装包：
 
-| 平台 | 格式 |
-|------|------|
-| macOS | `.dmg` / `.zip` |
-| Windows | `.exe` (NSIS 安装器) |
+| 平台 | 安装包 |
+| --- | --- |
+| macOS | `.dmg` / `.zip` / `.pkg` |
+| Windows | `.exe`（NSIS 安装器） |
 | Linux | `.AppImage` / `.deb` |
 
-Windows NSIS、macOS `.pkg` 和 Linux `.deb` 会同时安装 `aivcli` 命令。macOS `.dmg` / `.zip` 与 Linux `.AppImage` 是便携式分发格式，不会自动修改系统 PATH；这两种格式可以直接使用应用可执行文件的 `--cli` 模式，或自行建立启动器。
+Windows NSIS、macOS `.pkg` 和 Linux `.deb` 会安装 `aivcli` 启动器并加入系统命令路径。macOS `.dmg` / `.zip` 与 Linux `.AppImage` 是便携式格式，不会自动修改 PATH；使用便携式格式时可直接启动应用的 `--cli` 模式，或自行建立命令行启动器。
 
 ### 从源码构建
 
 ```bash
-# 克隆仓库
 git clone https://github.com/ponponon/aivplayer.git
 cd aivplayer
-
-# 安装依赖（需要 Node.js 22.12.0+）
 npm install
-
-# 启动开发模式
 npm run dev
 ```
 
-> **注意**：部分网络环境访问 npm 可能需要配置代理。
+需要 Node.js 22.12.0 或更高版本。部分网络环境访问 npm、ModelScope 或 Hugging Face 时需要配置代理。
 
----
+## 问题排查
 
-## 开发指南
+### 右键“打开方式”启动时报 `Cannot find module 'apache-arrow'`
 
-### 环境准备
+这是旧版安装包没有把 LanceDB 的运行时依赖一起打包导致的启动问题，不是视频文件名、外置硬盘路径或 MP4 编码的问题。请重新下载包含修复的最新安装包（当前版本为 `v0.2.1`），不要在应用包内手动安装 npm 依赖。
 
-- Node.js 22.12.0+
-- npm 或 pnpm
-- macOS 需要 Xcode Command Line Tools
-- Windows 需要 Visual Studio Build Tools
+### 字幕生成失败
 
-### 可用命令
+先运行：
 
 ```bash
-# 开发
-npm run dev              # 启动开发服务器
+aivcli doctor
+```
 
-# 构建
+如果是源码开发环境，再分别检查后端和 ASR 运行时：
+
+```bash
+npm run doctor:backend
+npm run doctor:asr
+```
+
+重点确认 whisper.cpp、ASR 模型和 ffmpeg 均已准备好；macOS 上如果 GPU 初始化失败，应用会针对明确的 Metal 资源错误自动回退 CPU。
+
+### 翻译、总结或短剧生成失败
+
+确认 OpenAI-compatible 地址、模型和 Key 配置正确，并先在对应面板执行连接测试。不要把 API Key 粘贴到 Issue、截图、终端命令或提交记录中；反馈问题时请先脱敏 URL、Key、路径和完整响应内容。
+
+### 反馈问题时请附带
+
+- 操作系统、AIVPlayer 版本和安装包格式；
+- 复现步骤、视频格式和是否使用外置磁盘；
+- `aivcli doctor --json` 中已脱敏的结果；
+- 错误发生的面板或 CLI 命令，以及去除 Key 后的日志片段。
+
+可以在 [GitHub Issues](https://github.com/ponponon/aivplayer/issues) 提交问题，也可以先在 [产品主页](https://aivplayer.pages.dev/) 查看最新功能和下载入口。
+
+## 从源码开发
+
+### 常用命令
+
+```bash
+npm run dev              # 启动开发模式
 npm run build            # 构建生产版本
 npm run preview          # 预览构建结果
-npm run pack             # 打包（不生成安装程序）
-npm run dist             # 完整打包（生成安装程序）
+npm run pack             # 打包但不生成安装程序
+npm run dist             # 生成安装程序
 
-# 检查
 npm run typecheck        # TypeScript 类型检查
 npm run test             # 运行单元测试
 npm run doctor:backend   # 检查后端依赖
 npm run doctor:asr       # 检查 ASR 运行时
+npm run smoke:all        # 运行主要界面回归
+```
 
-# ASR 相关
+准备本地 ASR 运行时：
+
+```bash
 npm run release:prepare-runtime -- \
   --whisper-dir /path/to/whisper.cpp/build/bin \
   --ffmpeg-bin /path/to/ffmpeg
@@ -177,84 +268,61 @@ npm run release:prepare-runtime -- \
 
 ### 项目结构
 
-```
+```text
 aivplayer/
 ├── src/
 │   ├── desktop/         # Electron 主进程与桌面适配
-│   │   ├── index.ts     # 应用入口
-│   │   ├── ipc-*.ts     # IPC 注册
-│   │   └── media/       # Electron 媒体协议
-│   ├── core/            # 桌面端与 CLI 共用的无 Electron 业务能力
-│   │   ├── ai/          # ASR、翻译和视觉影视库
-│   │   ├── drama/       # 短剧工作流
+│   ├── core/            # 桌面端与 CLI 共用的业务能力
+│   │   ├── ai/          # ASR、翻译、总结和视觉影视库
+│   │   ├── drama/       # AI 短剧文本工作流
 │   │   └── media/       # 媒体解析与导出
-│   ├── preload/         # 预加载脚本（IPC 桥接）
+│   ├── preload/         # IPC 桥接
 │   ├── renderer/        # React 渲染进程
-│   │   └── src/
-│   │       ├── app/     # UI 组件
-│   │       ├── lib/     # 工具函数
-│   │       └── styles/  # 样式
-│   └── shared/          # 桌面端与渲染进程共享类型
-├── resources/           # 运行时资源（whisper.cpp、ffmpeg）
-├── scripts/             # 构建与工具脚本
-├── tests/               # 测试文件
-└── docs/                # 文档
+│   └── shared/          # 共享类型
+├── resources/           # whisper.cpp、ffmpeg 等运行时资源
+├── scripts/             # 构建、诊断和 smoke 工具
+├── tests/               # 单元测试和集成测试
+└── docs/                # Cloudflare Pages 产品主页
 ```
 
 ### 技术栈
 
 | 类别 | 技术 |
-|------|------|
+| --- | --- |
 | 桌面框架 | Electron |
 | 前端框架 | React 19 |
 | 构建工具 | Vite + electron-vite |
 | 类型系统 | TypeScript |
-| 图标库 | lucide-react |
-| ASR 引擎 | whisper.cpp |
-| 测试框架 | Vitest + Playwright |
-| 打包工具 | electron-builder |
-
----
+| 本地 ASR | whisper.cpp |
+| 视觉检索 | SigLIP2 + LanceDB + Apache Arrow |
+| AI 接口 | OpenAI-compatible Provider |
+| 测试 | Vitest + Playwright |
+| 打包 | electron-builder |
 
 ## 参与贡献
 
-欢迎提交 Issue 和 Pull Request！
+欢迎提交 Issue 和 Pull Request。建议先阅读现有的 `FEATURE.md` 和 `FailureExperience.md`，了解功能边界和已经踩过的坑。
 
-1. Fork 本仓库
-2. 创建特性分支 (`git checkout -b feature/amazing-feature`)
-3. 提交更改 (`git commit -m 'feat: add amazing feature'`)
-4. 推送到分支 (`git push origin feature/amazing-feature`)
-5. 创建 Pull Request
+1. Fork 本仓库。
+2. 创建特性分支，例如 `git switch -c feat/amazing-feature`。
+3. 完成本地类型检查和相关测试。
+4. 使用 [Conventional Commits](https://www.conventionalcommits.org/) 提交更改。
+5. 推送分支并创建 Pull Request。
 
-### 提交规范
-
-请遵循 [Conventional Commits](https://www.conventionalcommits.org/) 规范：
-
-- `feat:` 新功能
-- `fix:` 修复 Bug
-- `docs:` 文档更新
-- `style:` 代码格式（不影响功能）
-- `refactor:` 重构
-- `test:` 测试相关
-- `chore:` 构建/工具相关
-
----
+常用提交类型包括 `feat`、`fix`、`docs`、`refactor`、`test` 和 `chore`。新增功能请同步记录到 `FEATURE.md`；修复由反馈暴露的问题时，请把可复用的经验记录到 `FailureExperience.md`。
 
 ## 开源协议
 
 本项目基于 [MIT License](LICENSE) 开源。
-
----
 
 ## 致谢
 
 - [whisper.cpp](https://github.com/ggerganov/whisper.cpp) - 本地语音识别引擎
 - [Electron](https://electronjs.org/) - 跨平台桌面应用框架
 - [React](https://react.dev/) - UI 框架
+- [LanceDB](https://github.com/lancedb/lancedb) - 本地向量数据库
 - [lucide-react](https://lucide.dev/) - 图标库
 
----
-
 <p align="center">
-  如果觉得有用，请给个 ⭐ Star 支持一下！
+  如果觉得有用，欢迎访问<a href="https://aivplayer.pages.dev/">产品主页</a>，或给仓库一个 ⭐ Star。
 </p>
