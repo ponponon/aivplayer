@@ -50,6 +50,7 @@
 
 .top-actions {
   gap: 4px;
+  margin-left: auto;
   -webkit-app-region: no-drag;
 }
 
