@@ -5,7 +5,7 @@
   "description": "A modern cross-platform desktop video player with local ASR subtitle generation.",
   "main": "out/main/index.js",
   "scripts": {
-    "dev": "electron-vite dev",
+    "dev": "electron-vite dev -- --no-sandbox --in-process-gpu",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "cli": "electron-vite dev -- --cli",
