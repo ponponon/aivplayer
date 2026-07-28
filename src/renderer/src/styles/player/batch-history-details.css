@@ -9,7 +9,7 @@
 .batch-history-entry {
   min-width: 0;
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.035);
+  background: rgba(var(--overlay-rgb), 0.035);
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
 }

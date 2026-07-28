@@ -584,6 +584,13 @@
       },
       interface: {
         title: 'インターフェース',
+        theme: 'テーマ',
+        themeDescription: 'ライト、ダーク、または OS の外観に合わせるかを選択します。',
+        themeOptions: {
+          system: 'システムに合わせる',
+          light: 'ライト',
+          dark: 'ダーク'
+        },
         rememberVolume: '音量とミュート状態を記憶',
         rememberVolumeDescription: '次の動画でも最後の音量とミュート状態を使います。',
         rememberPlaybackRate: '再生速度を記憶',

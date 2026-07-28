@@ -8,7 +8,7 @@
   min-height: 32px;
   padding: 0 9px;
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(var(--overlay-rgb), 0.04);
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   font-size: 11px;
@@ -43,7 +43,7 @@
 .batch-target-row {
   padding: 10px;
   color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(var(--overlay-rgb), 0.04);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-md);
   font-size: 11px;
@@ -58,7 +58,7 @@
   min-width: 0;
   padding: 8px 10px;
   color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.035);
+  background: rgba(var(--overlay-rgb), 0.035);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);
   font-size: 11px;
@@ -94,7 +94,7 @@
 
 .batch-task-card.muted {
   color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.035);
+  background: rgba(var(--overlay-rgb), 0.035);
   border-color: var(--border-soft);
   font-size: 12px;
 }
@@ -113,7 +113,7 @@
 .batch-progress-track {
   height: 6px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(var(--overlay-rgb), 0.08);
   border-radius: 999px;
 }
 

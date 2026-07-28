@@ -4,7 +4,7 @@
   min-width: 160px;
   max-width: 320px;
   padding: 4px 10px 4px 8px;
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(var(--overlay-rgb), 0.04);
   border: 1px solid var(--border-soft);
   border-radius: 999px;
 }
@@ -20,7 +20,7 @@
 .control-group.secondary-group {
   gap: 6px;
   padding: 4px 10px 4px 8px;
-  background: rgba(255, 255, 255, 0.035);
+  background: rgba(var(--overlay-rgb), 0.035);
   border: 1px solid var(--border-soft);
   border-radius: 999px;
 }
@@ -34,7 +34,7 @@
   height: var(--control-size);
   padding: 0 8px;
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(var(--overlay-rgb), 0.06);
   border: 1px solid var(--border-soft);
   border-radius: 999px;
   cursor: pointer;
@@ -46,7 +46,7 @@
 
 .speed-control:hover {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.085);
+  background: rgba(var(--overlay-rgb), 0.085);
 }
 
 .speed-control:focus-within {

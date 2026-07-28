@@ -281,6 +281,8 @@ describe('settings UI source constraints', () => {
     expect(smokeScript).toContain("join(smokeHomeDirectory, 'aivplayer-smoke-settings-dialog.png')")
     expect(smokeScript).toContain('window.aiv.getAppSettings()')
     expect(smokeScript).toContain('openSettingsLabelByLocale')
+    expect(smokeScript).toContain("themeSelect.selectOption('light')")
+    expect(smokeScript).toContain("lightThemeState.documentTheme !== 'light'")
     expect(smokeScript).toContain("page.screenshot({ path: screenshotPath, fullPage: false })")
     expect(smokeScript).toContain("textAlign !== 'right'")
     expect(smokeScript).toContain("page.locator('[data-settings-tab=\"interface\"]').click()")

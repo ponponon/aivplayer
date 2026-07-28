@@ -11,7 +11,7 @@
   min-width: 0;
   padding: 12px;
   color: var(--text-secondary);
-  background: rgba(18, 20, 23, 0.86);
+  background: rgba(var(--panel-rgb), 0.86);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-lg);
 }
@@ -103,7 +103,7 @@
 .vision-secondary-action,
 .vision-file-picker {
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(var(--overlay-rgb), 0.06);
   border: 1px solid var(--border-soft);
 }
 
@@ -115,7 +115,7 @@
 .vision-secondary-action:hover:not(:disabled),
 .vision-file-picker:hover {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(var(--overlay-rgb), 0.1);
 }
 
 .vision-primary-action:disabled,

@@ -18,7 +18,7 @@
   max-height: calc(100dvh - 48px);
   padding: 18px;
   color: var(--text-primary);
-  background: rgba(18, 20, 23, 0.96);
+  background: rgba(var(--panel-rgb), 0.96);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.46);
@@ -90,7 +90,7 @@
   gap: 4px;
   min-width: 0;
   padding: 8px 10px;
-  background: rgba(255, 255, 255, 0.045);
+  background: rgba(var(--overlay-rgb), 0.045);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-md);
 }
@@ -123,7 +123,7 @@
   gap: 10px;
   min-width: 0;
   padding: 12px;
-  background: rgba(255, 255, 255, 0.045);
+  background: rgba(var(--overlay-rgb), 0.045);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-lg);
 }

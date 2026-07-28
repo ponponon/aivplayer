@@ -584,6 +584,13 @@
       },
       interface: {
         title: '界面',
+        theme: '主题模式',
+        themeDescription: '选择浅色、深色，或跟随操作系统的外观设置。',
+        themeOptions: {
+          system: '跟随系统',
+          light: '浅色',
+          dark: '深色'
+        },
         rememberVolume: '记住音量和静音状态',
         rememberVolumeDescription: '下次打开视频时沿用最近一次的音量和静音状态。',
         rememberPlaybackRate: '记住倍速',

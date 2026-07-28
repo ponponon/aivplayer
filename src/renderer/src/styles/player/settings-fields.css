@@ -4,7 +4,7 @@
   min-height: 96px;
   padding: 9px var(--settings-control-padding-x);
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(var(--overlay-rgb), 0.06);
   border: 1px solid var(--border-soft);
   border-radius: var(--settings-control-radius);
   font-size: 13px;
@@ -101,7 +101,7 @@
   align-items: start;
   padding: 10px 12px;
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--overlay-rgb), 0.05);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-md);
 }

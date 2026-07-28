@@ -73,7 +73,7 @@
 .tool-button.active,
 .round-button:hover {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(var(--overlay-rgb), 0.08);
   border-color: var(--border-soft);
 }
 

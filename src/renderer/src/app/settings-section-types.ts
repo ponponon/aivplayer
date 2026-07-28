@@ -1,5 +1,6 @@
 import type {
   AppLocale,
+  AppThemePreference,
   AiAutomationMode,
   AppSettings,
   AppSettingsSectionId,
@@ -22,6 +23,7 @@ export type SettingsSectionProps = {
   patchSettingsSection: AppSettingsSectionPatcher
   activeSectionId: AppSettingsSectionId
   languageOptions: ReadonlyArray<SettingsSelectOption<AppLocale>>
+  themeOptions: ReadonlyArray<SettingsSelectOption<AppThemePreference>>
   subtitleLanguageOptions: ReadonlyArray<SettingsSelectOption<SubtitleLanguageId>>
   targetLanguageOptions: ReadonlyArray<SettingsSelectOption<SubtitleTargetLanguageId>>
   aiAutomationModeOptions: ReadonlyArray<SettingsSelectOption<AiAutomationMode>>

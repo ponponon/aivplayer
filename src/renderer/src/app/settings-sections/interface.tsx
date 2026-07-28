@@ -10,7 +10,7 @@ export function InterfaceSettingsSection(props: SettingsSectionProps): ReactElem
     settings,
     patchSettingsSection,
     activeSectionId,
-    languageOptions,
+    themeOptions,
     subtitleLanguageOptions,
     targetLanguageOptions,
     subtitleLineHeightOptions,
@@ -43,6 +43,19 @@ export function InterfaceSettingsSection(props: SettingsSectionProps): ReactElem
       <LayoutGrid size={16} />
       <span>{copy.settingsDialog.interface.title}</span>
     </div>
+
+    <SettingsField
+      title={copy.settingsDialog.interface.theme}
+      description={copy.settingsDialog.interface.themeDescription}
+    >
+      <SettingsSelect
+        value={settings.ui.theme}
+        options={themeOptions}
+        onChange={(theme) => {
+          patchSettingsSection('ui', { theme })
+        }}
+      />
+    </SettingsField>
 
     <SettingsToggle
       title={copy.settingsDialog.interface.rememberVolume}

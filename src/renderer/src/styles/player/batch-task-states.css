@@ -102,7 +102,7 @@
   width: min(300px, calc(100vw - 52px));
   padding: 10px;
   color: var(--text-secondary);
-  background: rgba(18, 20, 23, 0.98);
+  background: rgba(var(--panel-rgb), 0.98);
   border: 1px solid rgba(255, 94, 94, 0.35);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-heavy);

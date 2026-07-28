@@ -58,7 +58,7 @@
 
 .clip-editor-selection-group {
   padding: 12px;
-  background: rgba(255, 255, 255, 0.032);
+  background: rgba(var(--overlay-rgb), 0.032);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-md);
 }
@@ -89,7 +89,7 @@
   left: 0;
   height: 10px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(var(--overlay-rgb), 0.1);
   border-radius: 999px;
 }
 

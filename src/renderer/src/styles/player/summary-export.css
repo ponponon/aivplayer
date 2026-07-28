@@ -20,7 +20,7 @@
 .summary-export-format {
   min-height: 30px;
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.045);
+  background: rgba(var(--overlay-rgb), 0.045);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);
   font-size: 11px;
@@ -45,7 +45,7 @@
 .summary-export-button:not(:disabled):hover,
 .summary-export-button.primary:not(:disabled):hover {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(var(--overlay-rgb), 0.1);
   border-color: rgba(232, 193, 109, 0.48);
 }
 

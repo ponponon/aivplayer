@@ -81,6 +81,16 @@ async function main(): Promise<void> {
     await page.locator('[data-settings-tab="interface"]').click()
     await page.waitForTimeout(500)
 
+    const themeSelect = page.locator('#settings-section-interface .settings-select')
+    await themeSelect.selectOption('light')
+    await page.waitForTimeout(250)
+
+    const lightThemeState = await page.evaluate(() => ({
+      documentTheme: document.documentElement.dataset.theme,
+      appTheme: document.querySelector('.app-shell')?.getAttribute('data-theme'),
+      appBackground: window.getComputedStyle(document.body).backgroundColor
+    }))
+
     await page.locator('[data-settings-tab="video"]').click()
     await page.waitForTimeout(500)
 
@@ -144,6 +154,7 @@ async function main(): Promise<void> {
     await page.screenshot({ path: shortcutScreenshotPath, fullPage: false })
 
     console.log(`Settings number styles: ${JSON.stringify(numberStyles)}`)
+    console.log(`Light theme state: ${JSON.stringify(lightThemeState)}`)
     console.log(`Video settings card height: ${JSON.stringify(videoCardHeight)}`)
     console.log(`Subtitle cache panel: ${JSON.stringify(cachePanelState)}`)
     console.log(`Shortcut panel: ${JSON.stringify({ shortcutCount, ...shortcutPanelState })}`)
@@ -153,6 +164,9 @@ async function main(): Promise<void> {
     if (
       numberStyles.length === 0 ||
       numberStyles.some((style) => style.textAlign !== 'right') ||
+      lightThemeState.documentTheme !== 'light' ||
+      lightThemeState.appTheme !== 'light' ||
+      lightThemeState.appBackground !== 'rgb(243, 245, 247)' ||
       !videoCardHeight ||
       videoCardHeight.alignItems !== 'start' ||
       videoCardHeight.clientHeight > videoCardHeight.scrollHeight + 1 ||

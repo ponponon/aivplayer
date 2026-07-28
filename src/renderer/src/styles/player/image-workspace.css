@@ -20,7 +20,7 @@
 .image-inspector {
   min-width: 0;
   border: 1px solid var(--border-soft);
-  background: rgba(18, 20, 23, 0.86);
+  background: rgba(var(--panel-rgb), 0.86);
   box-shadow: var(--shadow-heavy);
 }
 
@@ -123,7 +123,7 @@
 .image-back-button:hover,
 .image-ghost-button:hover,
 .image-ghost-button.active,
-.image-text-button:hover { color: var(--text-primary); background: rgba(255, 255, 255, 0.08); border-color: var(--border-soft); }
+.image-text-button:hover { color: var(--text-primary); background: rgba(var(--overlay-rgb), 0.08); border-color: var(--border-soft); }
 .image-ghost-button { width: 28px; height: 28px; }
 .image-ghost-button.danger:hover { color: var(--danger); }
 .image-text-button { padding: 5px 7px; font-size: 10px; }
@@ -140,7 +140,7 @@
   font-weight: 700;
 }
 
-.image-secondary-button { color: var(--text-primary); background: rgba(255, 255, 255, 0.07); border-color: var(--border-soft); }
+.image-secondary-button { color: var(--text-primary); background: rgba(var(--overlay-rgb), 0.07); border-color: var(--border-soft); }
 .image-primary-button,
 .image-export-button { color: var(--accent-ink); background: var(--accent); }
 .image-primary-button:hover,

@@ -27,7 +27,7 @@
   height: 28px;
   place-items: center;
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--overlay-rgb), 0.05);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);
   cursor: pointer;
@@ -35,7 +35,7 @@
 
 .mini-tool-button:hover {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(var(--overlay-rgb), 0.08);
 }
 
 .asr-runtime-grid,
@@ -73,7 +73,7 @@
   min-height: 32px;
   padding: 0 10px;
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.045);
+  background: rgba(var(--overlay-rgb), 0.045);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);
   font-size: 12px;

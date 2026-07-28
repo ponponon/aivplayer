@@ -11,7 +11,7 @@
   min-width: 0;
   padding: 8px 10px;
   color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.045);
+  background: rgba(var(--overlay-rgb), 0.045);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);
   font-size: 11px;
@@ -39,7 +39,7 @@
   min-width: 0;
   padding: 8px 10px;
   color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.045);
+  background: rgba(var(--overlay-rgb), 0.045);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);
   font-size: 11px;
@@ -90,7 +90,7 @@
   min-height: 28px;
   padding: 0 10px;
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--overlay-rgb), 0.05);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);
   cursor: pointer;
@@ -102,7 +102,7 @@
 .subtitle-actions-summary:hover,
 .subtitle-actions[open] .subtitle-actions-summary {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(var(--overlay-rgb), 0.08);
 }
 
 .subtitle-actions-menu {
@@ -113,7 +113,7 @@
   right: 0;
   width: min(220px, calc(100vw - 48px));
   padding: 10px;
-  background: rgba(18, 20, 23, 0.96);
+  background: rgba(var(--panel-rgb), 0.96);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-heavy);

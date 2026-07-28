@@ -26,6 +26,7 @@ describe('app settings', () => {
 
   it('persists and reloads app settings', async () => {
     const settings = createDefaultAppSettings()
+    settings.ui.theme = 'light'
     settings.ui.defaultPanelMode = 'info'
     settings.ui.lastSettingsSectionId = 'subtitles'
     settings.asr.preferredModelSourceId = 'huggingface'
@@ -101,7 +102,8 @@ describe('app settings', () => {
       ui: {
         defaultPanelMode: 'info',
         lastSettingsSectionId: 'general',
-        locale: 'zh-CN'
+        locale: 'zh-CN',
+        theme: 'dark'
       },
       capture: {
         saveDirectoryPath: null,
@@ -141,7 +143,7 @@ describe('app settings', () => {
     )
 
     await expect(readAppSettings(tempDirectory)).resolves.toMatchObject({
-      schemaVersion: 15,
+      schemaVersion: 16,
       playback: {
         singleClickPause: true
       }

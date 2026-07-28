@@ -40,7 +40,7 @@
 .diagnostic-log-content {
   margin-top: 6px;
   padding: 6px;
-  background: rgba(255, 255, 255, 0.025);
+  background: rgba(var(--overlay-rgb), 0.025);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);
 }
@@ -67,7 +67,7 @@
 
 .diagnostic-log-filter:hover {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--overlay-rgb), 0.05);
 }
 
 .diagnostic-log-filter.is-selected {
@@ -96,7 +96,7 @@
 
 .diagnostic-log-entry {
   min-width: 0;
-  background: rgba(255, 255, 255, 0.035);
+  background: rgba(var(--overlay-rgb), 0.035);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);
 }
@@ -123,5 +123,5 @@
 }
 
 .diagnostic-log-entry > summary:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(var(--overlay-rgb), 0.04);
 }

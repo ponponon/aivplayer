@@ -10,7 +10,7 @@
   padding: 0 11px;
   box-sizing: border-box;
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.045);
+  background: rgba(var(--overlay-rgb), 0.045);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-md);
   appearance: none;
@@ -25,7 +25,7 @@
 .ai-setup-dialog .settings-secondary-button:hover:not(:disabled),
 .ai-setup-translation-test-button:hover:not(:disabled) {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(var(--overlay-rgb), 0.08);
   border-color: var(--border-strong);
 }
 

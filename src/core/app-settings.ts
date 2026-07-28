@@ -9,6 +9,7 @@ import {
   type CaptureGifResolution,
   type CaptureImageFormat,
   type AppPanelModePreference,
+  type AppThemePreference,
   type AppSettingsSectionId,
   type AppSettings,
   type AiAutomationMode,
@@ -35,6 +36,10 @@ function getAppSettingsPath(userDataPath: string): string {
 
 function isPanelModePreference(value: unknown): value is AppPanelModePreference {
   return value === 'playlist' || value === 'asr' || value === 'info'
+}
+
+function isThemePreference(value: unknown): value is AppThemePreference {
+  return value === 'system' || value === 'light' || value === 'dark'
 }
 
 function isSettingsSectionId(value: unknown): value is AppSettingsSectionId {
@@ -177,6 +182,7 @@ function sanitizeUiSettings(
 
   return {
     locale: isAppLocale(ui.locale) ? ui.locale : defaults.locale,
+    theme: isThemePreference(ui.theme) ? ui.theme : defaults.theme,
     defaultPanelMode: isPanelModePreference(ui.defaultPanelMode) ? ui.defaultPanelMode : defaults.defaultPanelMode,
     lastSettingsSectionId: normalizeSettingsSectionId(ui.lastSettingsSectionId, defaults.lastSettingsSectionId)
   }

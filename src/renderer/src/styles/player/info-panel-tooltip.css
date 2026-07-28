@@ -6,7 +6,7 @@
   max-width: min(320px, calc(100vw - 40px));
   padding: 8px 10px;
   color: var(--text-primary);
-  background: rgba(9, 10, 12, 0.97);
+  background: rgba(var(--app-rgb), 0.97);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-heavy);

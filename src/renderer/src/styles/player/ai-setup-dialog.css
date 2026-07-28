@@ -13,7 +13,7 @@
   color: var(--text-primary);
   background:
     radial-gradient(circle at 92% 0%, rgba(232, 193, 109, 0.12), transparent 34%),
-    rgba(18, 20, 23, 0.98);
+    rgba(var(--panel-rgb), 0.98);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-heavy);
@@ -53,14 +53,14 @@
 .ai-setup-step {
   min-width: 0;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.035);
+  background: rgba(var(--overlay-rgb), 0.035);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-md);
   transition: border-color 160ms ease, background-color 160ms ease;
 }
 
 .ai-setup-step.is-active {
-  background: rgba(255, 255, 255, 0.055);
+  background: rgba(var(--overlay-rgb), 0.055);
   border-color: var(--border-strong);
 }
 
@@ -84,7 +84,7 @@
 }
 
 .ai-setup-step-toggle:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(var(--overlay-rgb), 0.04);
 }
 
 .ai-setup-step-toggle:focus-visible,

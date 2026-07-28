@@ -584,6 +584,13 @@
       },
       interface: {
         title: 'Interface',
+        theme: 'Theme',
+        themeDescription: 'Choose light, dark, or follow your operating system appearance.',
+        themeOptions: {
+          system: 'Follow system',
+          light: 'Light',
+          dark: 'Dark'
+        },
         rememberVolume: 'Remember volume and muted state',
         rememberVolumeDescription: 'Reuse the last volume and mute state when you open another video.',
         rememberPlaybackRate: 'Remember playback speed',

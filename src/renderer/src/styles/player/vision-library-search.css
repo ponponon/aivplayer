@@ -9,7 +9,7 @@
   height: 30px;
   padding: 0 9px;
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(var(--overlay-rgb), 0.06);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);
   outline: none;

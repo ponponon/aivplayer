@@ -55,7 +55,7 @@
 
 .settings-secondary-button:hover {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(var(--overlay-rgb), 0.06);
 }
 
 .settings-secondary-button:disabled {
@@ -98,7 +98,7 @@
   align-items: start;
   min-width: 0;
   padding: 10px;
-  background: rgba(255, 255, 255, 0.045);
+  background: rgba(var(--overlay-rgb), 0.045);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-md);
 }

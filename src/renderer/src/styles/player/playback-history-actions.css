@@ -2,7 +2,7 @@
   display: block;
   height: 2px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.09);
+  background: rgba(var(--overlay-rgb), 0.09);
   border-radius: 999px;
 }
 
@@ -87,7 +87,7 @@
   width: min(216px, calc(100vw - 16px));
   gap: 3px;
   padding: 6px;
-  background: rgba(18, 20, 23, 0.98);
+  background: rgba(var(--panel-rgb), 0.98);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-heavy);
@@ -124,7 +124,7 @@
 .history-context-menu-item:hover:not(:disabled),
 .history-context-menu-item:focus-visible {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(var(--overlay-rgb), 0.08);
   border-color: var(--border-soft);
 }
 

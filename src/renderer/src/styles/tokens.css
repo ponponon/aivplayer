@@ -1,5 +1,10 @@
 :root {
   color-scheme: dark;
+  --overlay-rgb: 255, 255, 255;
+  --panel-rgb: 18, 20, 23;
+  --app-rgb: 9, 10, 12;
+  --stage-rgb: 5, 5, 6;
+  --image-canvas-bg: #0d0f11;
   --bg-app: #090a0c;
   --bg-stage: #050506;
   --bg-panel: #121417;
@@ -21,4 +26,30 @@
   --radius-lg: 12px;
   --control-size: 32px;
   --font-ui: ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+}
+
+html[data-theme="light"],
+.app-shell[data-theme="light"] {
+  color-scheme: light;
+  --overlay-rgb: 15, 23, 42;
+  --panel-rgb: 255, 255, 255;
+  --app-rgb: 243, 245, 247;
+  --stage-rgb: 231, 234, 238;
+  --image-canvas-bg: #f1f3f5;
+  --bg-app: #f3f5f7;
+  --bg-stage: #e7eaee;
+  --bg-panel: #ffffff;
+  --bg-panel-elevated: #ffffff;
+  --bg-control: rgba(255, 255, 255, 0.88);
+  --border-soft: rgba(15, 23, 42, 0.12);
+  --border-strong: rgba(15, 23, 42, 0.2);
+  --text-primary: #182230;
+  --text-secondary: #536171;
+  --text-muted: #758292;
+  --accent: #9a6400;
+  --accent-strong: #b67708;
+  --accent-ink: #ffffff;
+  --danger: #b42318;
+  --ok: #2d7d46;
+  --shadow-heavy: 0 24px 80px rgba(15, 23, 42, 0.18);
 }

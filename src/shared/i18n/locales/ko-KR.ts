@@ -584,6 +584,13 @@
       },
       interface: {
         title: '인터페이스',
+        theme: '테마',
+        themeDescription: '라이트, 다크 또는 운영 체제의 모양새를 따르도록 선택합니다.',
+        themeOptions: {
+          system: '시스템 설정 따르기',
+          light: '라이트',
+          dark: '다크'
+        },
         rememberVolume: '볼륨과 음소거 상태 기억',
         rememberVolumeDescription: '다음 비디오를 열 때 마지막 볼륨과 음소거 상태를 사용합니다.',
         rememberPlaybackRate: '재생 속도 기억',

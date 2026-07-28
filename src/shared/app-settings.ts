@@ -3,7 +3,7 @@ import type { ClipExportLengthSeconds, ClipExportMode } from './clip-export'
 import type { PlaybackHistoryEntry } from './playback-history'
 import { DEFAULT_APP_LOCALE, DEFAULT_SUBTITLE_LANGUAGE, type AppLocale, type SubtitleLanguageId } from './localization'
 
-export const APP_SETTINGS_SCHEMA_VERSION = 15
+export const APP_SETTINGS_SCHEMA_VERSION = 16
 
 export type CaptureImageFormat = 'jpg' | 'png'
 export type CaptureFileNamingMode = 'sequential' | 'timestamp'
@@ -12,6 +12,7 @@ export type SubtitleDisplayMode = 'source' | 'translation' | 'bilingual'
 export type SubtitleLineHeight = 'compact' | 'normal' | 'relaxed'
 export type SubtitleTargetLanguageId = Exclude<SubtitleLanguageId, 'auto'>
 export type AiAutomationMode = 'cache-only' | 'ask' | 'guide' | 'complete'
+export type AppThemePreference = 'system' | 'light' | 'dark'
 
 export type AppPanelModePreference = 'playlist' | 'asr' | 'info'
 export type AppSettingsSectionId = 'general' | 'interface' | 'video' | 'subtitles' | 'capture' | 'shortcuts'
@@ -22,6 +23,7 @@ export type AppSettings = {
   schemaVersion: number
   ui: {
     locale: AppLocale
+    theme: AppThemePreference
     defaultPanelMode: AppPanelModePreference
     lastSettingsSectionId: AppSettingsSectionId
   }
@@ -159,6 +161,7 @@ export function createDefaultAppSettings(): AppSettings {
     schemaVersion: APP_SETTINGS_SCHEMA_VERSION,
     ui: {
       locale: DEFAULT_APP_LOCALE,
+      theme: 'dark',
       defaultPanelMode: 'playlist',
       lastSettingsSectionId: 'general'
     },

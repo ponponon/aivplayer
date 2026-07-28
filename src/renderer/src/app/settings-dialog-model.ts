@@ -5,6 +5,7 @@ import type {
   AppSettings,
   AppSettingsSectionId,
   AppSettingsSectionPatcher,
+  AppThemePreference,
   CaptureFileNamingMode,
   CaptureGifResolution,
   CaptureImageFormat,
@@ -70,6 +71,10 @@ export function createSettingsSectionProps(input: SettingsSectionPropsInput): Se
     languageOptions: Object.entries(copy.languageOptions).map(([locale, option]) => ({
       value: locale as AppLocale,
       label: option.label
+    })),
+    themeOptions: (['system', 'light', 'dark'] as const).map((value) => ({
+      value: value as AppThemePreference,
+      label: copy.settingsDialog.interface.themeOptions[value]
     })),
     subtitleLanguageOptions,
     targetLanguageOptions,

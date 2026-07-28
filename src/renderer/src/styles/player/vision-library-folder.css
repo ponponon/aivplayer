@@ -65,7 +65,7 @@
 
 .vision-saved-folder button:first-child:hover:not(:disabled) {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(var(--overlay-rgb), 0.06);
 }
 
 .vision-saved-folder button:last-child {
@@ -81,7 +81,7 @@
 
 .vision-saved-folder button:last-child:hover:not(:disabled) {
   color: var(--danger, #ef8a8a);
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(var(--overlay-rgb), 0.06);
 }
 
 .vision-folder-summary,

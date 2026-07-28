@@ -48,7 +48,7 @@
 .panel-switcher,
 .playlist,
 .asr-card {
-  background: rgba(18, 20, 23, 0.86);
+  background: rgba(var(--panel-rgb), 0.86);
   border: 1px solid var(--border-soft);
 }
 
@@ -87,7 +87,7 @@
 .panel-tab:hover,
 .panel-tab.active {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(var(--overlay-rgb), 0.08);
   border-color: var(--border-soft);
 }
 
