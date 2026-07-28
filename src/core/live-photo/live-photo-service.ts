@@ -4,7 +4,8 @@ import { tmpdir } from 'node:os'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import type { LivePhotoEditOptions, LivePhotoExportResult, LivePhotoFormat, LivePhotoProbeResult } from '../../shared/live-photo-types'
-import { parseEmbeddedMotionPhoto, replaceGoogleMotionPhotoVideoLength, updateXiaomiLivePhotoTimeline } from './live-photo-parser.ts'
+import { mergeJpegCoverMetadata } from './jpeg-cover.ts'
+import { parseEmbeddedMotionPhoto, replaceGoogleMotionPhotoLengths, updateGoogleMotionPhotoPresentationTimestamp, updateXiaomiLivePhotoTimeline } from './live-photo-parser.ts'
 
 const execFileAsync = promisify(execFile)
 const livePhotoTempPaths = new Set<string>()
@@ -13,6 +14,7 @@ type MotionPhotoSource = {
   format: LivePhotoFormat
   sourcePath: string
   motionPath: string
+  sourceBuffer: Buffer
   embedded?: {
     sourceBuffer: Buffer
     motionOffset: number
@@ -70,17 +72,19 @@ async function resolveMotionPhotoSource(sourcePath: string): Promise<MotionPhoto
       format: parsed.format,
       sourcePath,
       motionPath,
+      sourceBuffer,
       embedded: {
         sourceBuffer,
         motionOffset: parsed.motionOffset,
         metadataVersion: parsed.metadataVersion,
-        metadataSummary: parsed.metadataSummary
+        metadataSummary: parsed.metadataSummary,
+        videoPresentationTimestampUs: parsed.videoPresentationTimestampUs
       }
     }
   }
   const sidecarPath = await findAppleSidecar(sourcePath)
   if (!sidecarPath) return null
-  return { format: 'apple-live-photo', sourcePath, motionPath: sidecarPath }
+  return { format: 'apple-live-photo', sourcePath, motionPath: sidecarPath, sourceBuffer }
 }
 
 async function probeVideo(ffprobePath: string, motionPath: string): Promise<ProbeVideoInfo> {
@@ -175,9 +179,31 @@ async function renderMotionVideo(options: {
   await execFileAsync(options.ffmpegPath, args, { maxBuffer: 2 * 1024 * 1024 })
 }
 
+async function extractVideoFrame(options: { ffmpegPath: string; sourcePath: string; outputPath: string; timestampSeconds: number }): Promise<void> {
+  await execFileAsync(options.ffmpegPath, [
+    '-hide_banner', '-y',
+    '-ss', String(Math.max(0, options.timestampSeconds)),
+    '-i', options.sourcePath,
+    '-frames:v', '1',
+    '-q:v', '2',
+    options.outputPath
+  ], { maxBuffer: 2 * 1024 * 1024 })
+}
+
 function buildAppleMotionPath(outputPath: string): string {
   const extension = extname(outputPath)
   return `${outputPath.slice(0, -extension.length)}.mov`
+}
+
+function decodeDataUrl(dataUrl: string | undefined): Buffer | null {
+  if (!dataUrl) return null
+  const separator = dataUrl.indexOf(',')
+  if (separator < 0) return null
+  try { return Buffer.from(dataUrl.slice(separator + 1), 'base64') } catch { return null }
+}
+
+function canMergeJpegCover(sourcePath: string, sourceBuffer: Buffer, coverBytes: Buffer | null): boolean {
+  return Boolean(coverBytes && sourceBuffer[0] === 0xff && sourceBuffer[1] === 0xd8 && ['.jpg', '.jpeg'].includes(extname(sourcePath).toLowerCase()) && coverBytes[0] === 0xff && coverBytes[1] === 0xd8)
 }
 
 export async function editAndExportLivePhoto(options: {
@@ -185,6 +211,7 @@ export async function editAndExportLivePhoto(options: {
   sourcePath: string
   outputPath: string
   edit: LivePhotoEditOptions
+  coverDataUrl?: string
 }): Promise<LivePhotoExportResult> {
   const source = await resolveMotionPhotoSource(options.sourcePath)
   if (!source) throw new Error('未找到 Live Photo 的视频部分')
@@ -193,14 +220,25 @@ export async function editAndExportLivePhoto(options: {
     const editedMotionPath = join(tempDir, source.format === 'apple-live-photo' ? 'edited-motion.mov' : 'edited-motion.mp4')
     await renderMotionVideo({ ffmpegPath: options.ffmpegPath, sourcePath: source.motionPath, outputPath: editedMotionPath, edit: options.edit })
     const editedMotionBytes = await readFile(editedMotionPath)
+    let renderedCoverBytes = decodeDataUrl(options.coverDataUrl)
+    if (options.edit.coverTimestampSeconds !== null && options.edit.coverTimestampSeconds !== undefined) {
+      const framePath = join(tempDir, 'selected-cover.jpg')
+      await extractVideoFrame({ ffmpegPath: options.ffmpegPath, sourcePath: editedMotionPath, outputPath: framePath, timestampSeconds: options.edit.coverTimestampSeconds })
+      renderedCoverBytes = await readFile(framePath)
+    }
     if (source.embedded) {
       let imageBytes = source.embedded.sourceBuffer.subarray(0, source.embedded.motionOffset)
-      if (source.format === 'google-motion-photo') imageBytes = replaceGoogleMotionPhotoVideoLength(imageBytes, editedMotionBytes.length)
-      if (source.format === 'xiaomi') imageBytes = updateXiaomiLivePhotoTimeline(imageBytes, options.edit.startSeconds, options.edit.durationSeconds)
+      if (canMergeJpegCover(source.sourcePath, imageBytes, renderedCoverBytes)) imageBytes = mergeJpegCoverMetadata(imageBytes, renderedCoverBytes as Buffer)
+      if (source.format === 'google-motion-photo') {
+        imageBytes = replaceGoogleMotionPhotoLengths(imageBytes, renderedCoverBytes ? imageBytes.length : undefined, editedMotionBytes.length)
+        imageBytes = updateGoogleMotionPhotoPresentationTimestamp(imageBytes, options.edit.startSeconds, options.edit.coverTimestampSeconds)
+      }
+      if (source.format === 'xiaomi') imageBytes = updateXiaomiLivePhotoTimeline(imageBytes, options.edit.startSeconds, options.edit.durationSeconds, options.edit.coverTimestampSeconds)
       await writeFile(options.outputPath, Buffer.concat([imageBytes, editedMotionBytes]))
       return { success: true, filePath: options.outputPath, message: 'Live Photo 导出完成', format: source.format }
     }
-    await copyFile(source.sourcePath, options.outputPath)
+    if (canMergeJpegCover(source.sourcePath, source.sourceBuffer, renderedCoverBytes)) await writeFile(options.outputPath, mergeJpegCoverMetadata(source.sourceBuffer, renderedCoverBytes as Buffer))
+    else await copyFile(source.sourcePath, options.outputPath)
     const motionOutputPath = buildAppleMotionPath(options.outputPath)
     await writeFile(motionOutputPath, editedMotionBytes)
     return { success: true, filePath: options.outputPath, motionPath: motionOutputPath, message: 'Apple Live Photo 导出完成', format: source.format }

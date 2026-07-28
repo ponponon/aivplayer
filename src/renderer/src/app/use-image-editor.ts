@@ -87,7 +87,11 @@ export function useImageEditor(copy: LocaleCopy['imageWorkspace']) {
     if (!selected?.livePhoto || !settings?.livePhoto || !selected.path) return
     setStatus(copy.rendering)
     try {
-      const result = await window.aiv.exportLivePhoto({ sourcePath: selected.path, options: settings.livePhoto })
+      const coverChanged = settings.width !== selected.width || settings.height !== selected.height || settings.rotation !== 0 || settings.flipX || settings.flipY || settings.quality !== 0.86 || settings.format !== 'jpeg' || settings.useTargetSize
+      const coverDataUrl = coverChanged
+        ? await blobToDataUrl((await renderForTargetSize(selected, { ...settings, format: 'jpeg' })).blob)
+        : undefined
+      const result = await window.aiv.exportLivePhoto({ sourcePath: selected.path, options: settings.livePhoto, coverDataUrl })
       setStatus(result.success ? copy.exportReady : result.canceled ? null : result.message)
     } catch (reason) { setStatus(reason instanceof Error ? reason.message : 'Live Photo 导出失败') }
   }

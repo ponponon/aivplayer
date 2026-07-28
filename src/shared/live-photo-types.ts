@@ -29,6 +29,7 @@ export type LivePhotoEditOptions = {
   cropScale: number
   mute: boolean
   mosaic: LivePhotoMosaic
+  coverTimestampSeconds?: number | null
 }
 
 export type LivePhotoExportRequest = {

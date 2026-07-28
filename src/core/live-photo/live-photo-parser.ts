@@ -114,7 +114,7 @@ function readMetadata(buffer: Buffer): { format: EmbeddedMotionPhotoFormat; vers
 export function parseEmbeddedMotionPhoto(buffer: Buffer, sourcePath = ''): ParsedEmbeddedMotionPhoto | null {
   const jpegEnd = findJpegEnd(buffer)
   const motionOffset = findAppendedMotionStart(buffer, sourcePath, jpegEnd)
-  if (motionOffset === null || motionOffset <= jpegEnd || motionOffset >= buffer.length) return null
+  if (motionOffset === null || (jpegEnd !== null && motionOffset < jpegEnd) || motionOffset >= buffer.length) return null
   const metadata = readMetadata(buffer.subarray(0, motionOffset))
   const extension = extname(sourcePath).toLowerCase()
   if (metadata.format === 'google-motion-photo' && extension !== '.jpg' && extension !== '.jpeg' && !buffer.includes(Buffer.from('GCamera'))) return null
@@ -129,18 +129,25 @@ export function parseEmbeddedMotionPhoto(buffer: Buffer, sourcePath = ''): Parse
   }
 }
 
-export function replaceGoogleMotionPhotoVideoLength(imageBytes: Buffer, motionLength: number): Buffer {
+export function replaceGoogleMotionPhotoLengths(imageBytes: Buffer, imageLength: number | undefined, motionLength: number): Buffer {
   const source = imageBytes.toString('latin1')
   const pattern = /(Container:Item[^>]*?Length=")\d+(")/g
   const matches = Array.from(source.matchAll(pattern))
   if (matches.length > 0) {
-    const last = matches[matches.length - 1]
-    const start = last.index ?? -1
-    if (start >= 0) {
-      const matchText = last[0]
-      const replacement = matchText.replace(/\d+(?=")/, (digits) => String(motionLength).padStart(digits.length, '0'))
-      return Buffer.from(`${source.slice(0, start)}${replacement}${source.slice(start + matchText.length)}`, 'latin1')
+    const replacements = matches.map((match, index) => ({
+      start: match.index ?? -1,
+      text: match[0],
+      value: index === matches.length - 1 ? motionLength : imageLength
+    })).filter((item): item is { start: number; text: string; value: number } => item.start >= 0 && item.value !== undefined)
+    let nextSource = source
+    for (const replacement of replacements.reverse()) {
+      const nextText = replacement.text.replace(/\d+(?=")/, (digits) => {
+        const value = String(replacement.value)
+        return value.length <= digits.length ? value.padStart(digits.length, '0') : digits
+      })
+      nextSource = `${nextSource.slice(0, replacement.start)}${nextText}${nextSource.slice(replacement.start + replacement.text.length)}`
     }
+    return Buffer.from(nextSource, 'latin1')
   }
   const legacyPattern = /((?:GCamera:)?MicroVideoOffset(?:="|:))\d+/g
   const legacyMatches = Array.from(source.matchAll(legacyPattern))
@@ -149,11 +156,31 @@ export function replaceGoogleMotionPhotoVideoLength(imageBytes: Buffer, motionLe
   const legacyStart = lastLegacy.index ?? -1
   if (legacyStart < 0) return imageBytes
   const legacyText = lastLegacy[0]
-  const legacyReplacement = legacyText.replace(/\d+$/, (digits) => String(motionLength).padStart(digits.length, '0'))
+  const legacyReplacement = legacyText.replace(/\d+$/, (digits) => String(motionLength).length <= digits.length ? String(motionLength).padStart(digits.length, '0') : digits)
   return Buffer.from(`${source.slice(0, legacyStart)}${legacyReplacement}${source.slice(legacyStart + legacyText.length)}`, 'latin1')
 }
 
-export function updateXiaomiLivePhotoTimeline(imageBytes: Buffer, startSeconds: number, durationSeconds: number): Buffer {
+export function replaceGoogleMotionPhotoVideoLength(imageBytes: Buffer, motionLength: number): Buffer {
+  return replaceGoogleMotionPhotoLengths(imageBytes, undefined, motionLength)
+}
+
+export function updateGoogleMotionPhotoPresentationTimestamp(imageBytes: Buffer, startSeconds: number, coverTimestampSeconds?: number | null): Buffer {
+  const source = imageBytes.toString('latin1')
+  const timestampMatch = source.match(/((?:GCamera:)?MotionPhotoPresentationTimestampUs(?:="|:))(\d+)/)
+  if (!timestampMatch || timestampMatch.index === undefined) return imageBytes
+  const originalTimestampUs = Number(timestampMatch[2])
+  const presentationUs = coverTimestampSeconds === null || coverTimestampSeconds === undefined
+    ? Math.max(0, originalTimestampUs - Math.round(Math.max(0, startSeconds) * 1_000_000))
+    : Math.max(0, Math.round(coverTimestampSeconds * 1_000_000))
+  const nextText = timestampMatch[0].replace(/\d+$/, (digits) => {
+    const value = String(presentationUs)
+    return value.length <= digits.length ? value.padStart(digits.length, '0') : digits
+  })
+  const start = timestampMatch.index
+  return Buffer.from(`${source.slice(0, start)}${nextText}${source.slice(start + timestampMatch[0].length)}`, 'latin1')
+}
+
+export function updateXiaomiLivePhotoTimeline(imageBytes: Buffer, startSeconds: number, durationSeconds: number, coverTimestampSeconds?: number | null): Buffer {
   const source = imageBytes.toString('latin1')
   const infoMatch = source.match(/("livephotoInfo":")([^"]+)/)
   if (!infoMatch || infoMatch.index === undefined) return imageBytes
@@ -162,8 +189,11 @@ export function updateXiaomiLivePhotoTimeline(imageBytes: Buffer, startSeconds: 
   const headMatch = info.match(/(?:^|\s)head:(\d+)/)
   const timeMatch = info.match(/(?:^|\s)time:(\d+)/)
   if (!headMatch || !timeMatch) return imageBytes
-  const presentationUs = Math.max(0, Number(timeMatch[1]) - Number(headMatch[1]) - Math.round(Math.max(0, startSeconds) * 1_000_000))
   const durationUs = Math.max(100_000, Math.round(Math.max(0.1, durationSeconds) * 1_000_000))
+  const defaultPresentationUs = Math.max(0, Number(timeMatch[1]) - Number(headMatch[1]) - Math.round(Math.max(0, startSeconds) * 1_000_000))
+  const presentationUs = coverTimestampSeconds === null || coverTimestampSeconds === undefined
+    ? defaultPresentationUs
+    : Math.min(durationUs, Math.max(0, Math.round(coverTimestampSeconds * 1_000_000)))
   const replaceTimelineField = (value: string, field: string, nextValue: number): string => value.replace(new RegExp(`(${field}:)(\\d+)`), (_match, prefix: string, digits: string) => `${prefix}${String(nextValue).padStart(digits.length, '0')}`)
   let nextInfo = replaceTimelineField(info, 'head', 0)
   nextInfo = replaceTimelineField(nextInfo, 'time', presentationUs)

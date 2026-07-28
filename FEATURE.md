@@ -284,6 +284,9 @@
 - 动态照片视频支持设置起始时间、时长、中心裁剪、静音和中心马赛克打码；导出由主进程复用项目内 FFmpeg，避免把视频二进制处理放在 Renderer。
 - 小米封面时间线在视频截取后会按新的起始时间和时长等宽改写，避免破坏 JPEG APP 段；Google Motion Photo 会同步更新 `Container:Item Length`，Apple Live Photo 会复制图片并生成对应的 `.mov` sidecar。
 - 动态照片仍可单独导出当前封面；覆盖原图入口对 Live Photo 自动禁用，防止误把动态照片覆盖成静态图片。
+- 当图片工作区封面发生尺寸、旋转、翻转或格式变换时，导出会同步重编码封面，并保留原 JPEG 的 APP 元数据；小米 JPEG 的厂商信息不会因为封面编辑丢失。
+- 可选取剪辑后视频中的指定时间帧作为新的 Live Photo 封面；小米导出会同步更新 `videoPresentationTimestampUs` 对应的时间线，Google Motion Photo 会同步更新 `MotionPhotoPresentationTimestampUs`，确保封面时间与新视频一致。
+- 对 HEIC/HEIF 封面暂不强行重编码，优先保留原始封面容器；JPEG 是当前可安全同步编辑的封面格式。
 - 新增 `src/core/live-photo/live-photo-parser.ts`、`live-photo-service.ts` 和解析器单元测试，覆盖小米边界识别、Google 长度更新和小米时间线更新。
 
 ## 模型下载

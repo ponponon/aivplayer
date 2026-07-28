@@ -41,7 +41,8 @@ export function createInitialImageSettings(width: number, height: number, source
       durationSeconds: Math.max(0.1, livePhoto.durationSeconds),
       cropScale: 1,
       mute: false,
-      mosaic: { enabled: false, x: 0.325, y: 0.35, width: 0.35, height: 0.3 }
+      mosaic: { enabled: false, x: 0.325, y: 0.35, width: 0.35, height: 0.3 },
+      coverTimestampSeconds: null
     } : null
   }
 }

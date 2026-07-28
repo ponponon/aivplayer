@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseEmbeddedMotionPhoto, replaceGoogleMotionPhotoVideoLength, updateXiaomiLivePhotoTimeline } from '../../src/core/live-photo/live-photo-parser'
+import { parseEmbeddedMotionPhoto, replaceGoogleMotionPhotoVideoLength, updateGoogleMotionPhotoPresentationTimestamp, updateXiaomiLivePhotoTimeline } from '../../src/core/live-photo/live-photo-parser'
 
 function createSyntheticPhoto(metadata: string): Buffer {
   const metadataBytes = Buffer.from(metadata, 'latin1')
@@ -32,6 +32,14 @@ describe('live photo parser', () => {
     expect(parsed?.format).toBe('google-motion-photo')
     const updated = replaceGoogleMotionPhotoVideoLength(buffer.subarray(0, parsed?.motionOffset ?? 0), 456)
     expect(updated.toString('latin1')).toContain('Length="456"')
+  })
+
+  it('根据截取区间更新 Google Motion Photo 的封面时间戳', () => {
+    const buffer = Buffer.from('GCamera:MotionPhotoPresentationTimestampUs="2800000"', 'latin1')
+    const updated = updateGoogleMotionPhotoPresentationTimestamp(buffer, 0.5)
+    expect(updated.toString('latin1')).toContain('TimestampUs="2300000"')
+    const selected = updateGoogleMotionPhotoPresentationTimestamp(buffer, 0.5, 1.25)
+    expect(selected.toString('latin1')).toContain('TimestampUs="1250000"')
   })
 
   it('根据截取区间更新小米动态照片的封面时间线', () => {

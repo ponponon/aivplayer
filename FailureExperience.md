@@ -485,3 +485,4 @@
 - Google Motion Photo 需要检查 `GCamera:MotionPhoto`、`GCamera:MotionPhotoPresentationTimestampUs` 和 `GContainer:Directory` 等 XMP 元数据；文件形态相似不代表元数据协议相同。
 - 小米样本可能采用 JPEG + 追加 MP4 的容器结构，但仍使用小米自定义的 Live Photo 元数据和时序字段。当前样本没有 Google Motion Photo 的 `GCamera/GContainer` 标记，而是包含小米自定义 `livephotoInfo` 等信息。
 - 调研或实现厂商动态照片时，必须先对真实样本做字节边界、EXIF/XMP、MP4 box 和播放兼容性验证，再决定是否复用通用解析器；“可以提取/编辑视频”与“编辑后仍被厂商相册识别为 Live Photo”必须分开验收。
+- 修改 JPEG APP1/APPn 内的 XMP 或厂商 MakerNote 文本时，不能直接缩短数字字符串；JPEG 段长度不会自动修复，必须采用等宽替换或同步调整段长度，否则追加的视频边界可能被错误解析。
