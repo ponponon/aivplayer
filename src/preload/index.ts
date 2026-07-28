@@ -64,6 +64,7 @@ import type {
   VisionSearchRequest,
   VisionSearchResult
 } from '../shared/media-types'
+import type { LivePhotoEditOptions, LivePhotoExportResult, LivePhotoProbeResult } from '../shared/live-photo-types'
 
 const api = {
   openMediaFiles: (): Promise<MediaFile[]> => ipcRenderer.invoke(IPC_CHANNELS.OPEN_MEDIA_FILES),
@@ -136,6 +137,9 @@ const api = {
   exportMediaClip: (request: MediaClipExportRequest): Promise<MediaClipExportResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.MEDIA_EXPORT_CLIP, request),
   saveImage: (request: ImageSaveRequest): Promise<ImageSaveResult> => ipcRenderer.invoke(IPC_CHANNELS.IMAGE_SAVE, request),
+  convertHeicToJpeg: (filePath: string): Promise<{ success: boolean; dataUrl?: string; error?: string }> => ipcRenderer.invoke(IPC_CHANNELS.IMAGE_CONVERT_HEIC, filePath),
+  probeLivePhoto: (filePath: string): Promise<LivePhotoProbeResult | null> => ipcRenderer.invoke(IPC_CHANNELS.LIVE_PHOTO_PROBE, filePath),
+  exportLivePhoto: (request: { sourcePath: string; options: LivePhotoEditOptions }): Promise<LivePhotoExportResult> => ipcRenderer.invoke(IPC_CHANNELS.LIVE_PHOTO_EXPORT, request),
   copyTextToClipboard: (request: ClipboardWriteTextRequest): Promise<ClipboardWriteTextResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.CLIPBOARD_WRITE_TEXT, request),
   openPath: (filePath: string): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.OPEN_PATH, filePath),

@@ -1,3 +1,5 @@
+import type { LivePhotoEditOptions, LivePhotoProbeResult } from '../../../shared/live-photo-types'
+
 export type ImageFormat = 'original' | 'jpeg' | 'webp' | 'png'
 
 export type ImageAsset = {
@@ -11,6 +13,7 @@ export type ImageAsset = {
   height: number
   sizeBytes: number
   mimeType: string
+  livePhoto: LivePhotoProbeResult | null
 }
 
 export type ImageSettings = {
@@ -24,6 +27,7 @@ export type ImageSettings = {
   rotation: 0 | 90 | 180 | 270
   flipX: boolean
   flipY: boolean
+  livePhoto: LivePhotoEditOptions | null
 }
 
 export type RenderedImage = {

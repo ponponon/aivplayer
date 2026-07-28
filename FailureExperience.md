@@ -479,3 +479,9 @@
 - SigLIP2 输出向量已经做 L2 归一化时，LanceDB 文档推荐使用 `dot`，因为归一化后点积与 cosine similarity 的排序等价，而且 `dot` 省去了重复归一化，更适合性能优化。
 - 不能只回答“当前代码配置的是 cosine”就结束；必须同时检查是否创建了 ANN 向量索引，以及索引创建时的 metric。没有向量索引时，`distanceType()` 只影响精确暴力检索；建立向量索引后，查询 metric 必须和建索引时一致。
 - 后续视觉库应明确记录：向量归一化方式、查询 metric、向量索引类型、索引 metric 和是否使用 `bypass_vector_index`，避免把 FTS 索引误认为向量索引。
+
+## 不能仅凭“JPEG 追加 MP4”判断厂商 Live Photo 遵循 Google Motion Photo
+
+- Google Motion Photo 需要检查 `GCamera:MotionPhoto`、`GCamera:MotionPhotoPresentationTimestampUs` 和 `GContainer:Directory` 等 XMP 元数据；文件形态相似不代表元数据协议相同。
+- 小米样本可能采用 JPEG + 追加 MP4 的容器结构，但仍使用小米自定义的 Live Photo 元数据和时序字段。当前样本没有 Google Motion Photo 的 `GCamera/GContainer` 标记，而是包含小米自定义 `livephotoInfo` 等信息。
+- 调研或实现厂商动态照片时，必须先对真实样本做字节边界、EXIF/XMP、MP4 box 和播放兼容性验证，再决定是否复用通用解析器；“可以提取/编辑视频”与“编辑后仍被厂商相册识别为 Live Photo”必须分开验收。

@@ -1,26 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import type { LocaleCopy } from '../../../shared/i18n'
 import { createInitialImageSettings, getOutputExtension } from './image-editor-formatters'
+import { isImageFile, loadImageAsset, normalizedExtension } from './image-file-loading'
 import { blobToDataUrl, renderForTargetSize } from './image-editor-render'
 import type { ImageAsset, ImageSettings, RenderedImage } from './image-editor-types'
-
-function loadImage(sourceUrl: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const image = new window.Image()
-    image.onload = () => resolve(image)
-    image.onerror = () => reject(new Error('无法读取图片，请换一个常见格式的图片文件'))
-    image.src = sourceUrl
-  })
-}
-
-function isImageFile(file: File): boolean {
-  return file.type.startsWith('image/') || /\.(avif|bmp|gif|jpe?g|png|webp)$/i.test(file.name)
-}
-
-function normalizedExtension(fileName: string): string {
-  const extension = fileName.split('.').pop()?.toLowerCase() ?? ''
-  return extension === 'jpeg' ? 'jpg' : extension
-}
 
 export function useImageEditor(copy: LocaleCopy['imageWorkspace']) {
   const [images, setImages] = useState<ImageAsset[]>([])
@@ -39,7 +22,7 @@ export function useImageEditor(copy: LocaleCopy['imageWorkspace']) {
 
   useEffect(() => {
     if (!selected) { setSettings(null); return }
-    setSettings(createInitialImageSettings(selected.width, selected.height, selected.name, selected.mimeType))
+    setSettings(createInitialImageSettings(selected.width, selected.height, selected.name, selected.mimeType, selected.livePhoto))
     setStatus(null)
   }, [selectedId])
 
@@ -66,16 +49,11 @@ export function useImageEditor(copy: LocaleCopy['imageWorkspace']) {
 
   const addFiles = async (files: File[]): Promise<void> => {
     const candidates = files.filter(isImageFile)
-    if (candidates.length === 0) { setError('请选择 JPG、PNG、WebP、GIF 或 BMP 图片'); return }
+    if (candidates.length === 0) { setError('请选择 JPG、PNG、WebP、GIF、BMP 或 HEIC 图片'); return }
     setError(null)
     const loaded: ImageAsset[] = []
     for (const file of candidates) {
-      const sourceUrl = URL.createObjectURL(file)
-      try {
-        const element = await loadImage(sourceUrl)
-        const path = (() => { try { return window.aiv.getPathForFile(file) } catch { return '' } })()
-        loaded.push({ id: `${path || file.name}-${file.lastModified}-${file.size}`, file, name: file.name, path, sourceUrl, element, width: element.naturalWidth, height: element.naturalHeight, sizeBytes: file.size, mimeType: file.type || 'image/png' })
-      } catch (reason) { URL.revokeObjectURL(sourceUrl); setError(reason instanceof Error ? reason.message : '图片加载失败') }
+      try { loaded.push(await loadImageAsset(file)) } catch (reason) { setError(reason instanceof Error ? reason.message : '图片加载失败') }
     }
     if (loaded.length === 0) return
     setImages((current) => { const known = new Set(current.map((image) => image.id)); return [...current, ...loaded.filter((image) => !known.has(image.id))] })
@@ -91,8 +69,8 @@ export function useImageEditor(copy: LocaleCopy['imageWorkspace']) {
   }
 
   const updateSettings = (patch: Partial<ImageSettings>): void => setSettings((current) => current ? { ...current, ...patch } : current)
-  const resetSettings = (): void => { if (selected) setSettings(createInitialImageSettings(selected.width, selected.height, selected.name, selected.mimeType)) }
-  const canOverwriteOriginal = Boolean(settings && images.length > 0 && images.every((image) => Boolean(image.path) && normalizedExtension(image.name) === getOutputExtension(settings.format, image.name)))
+  const resetSettings = (): void => { if (selected) setSettings(createInitialImageSettings(selected.width, selected.height, selected.name, selected.mimeType, selected.livePhoto)) }
+  const canOverwriteOriginal = Boolean(settings && images.length > 0 && images.every((image) => !image.livePhoto && Boolean(image.path) && normalizedExtension(image.name) === getOutputExtension(settings.format, image.name)))
   const exportImage = async (): Promise<void> => {
     if (!selected || !settings || !preview) return
     setStatus(copy.rendering)
@@ -103,6 +81,15 @@ export function useImageEditor(copy: LocaleCopy['imageWorkspace']) {
       const result = await window.aiv.saveImage({ dataUrl, extension, fileName: `${selected.name.replace(/\.[^.]+$/, '')}-edited.${extension}` })
       setStatus(result.success ? copy.exportReady : result.canceled ? null : result.message)
     } catch (reason) { setStatus(reason instanceof Error ? reason.message : '导出失败') }
+  }
+
+  const exportLivePhoto = async (): Promise<void> => {
+    if (!selected?.livePhoto || !settings?.livePhoto || !selected.path) return
+    setStatus(copy.rendering)
+    try {
+      const result = await window.aiv.exportLivePhoto({ sourcePath: selected.path, options: settings.livePhoto })
+      setStatus(result.success ? copy.exportReady : result.canceled ? null : result.message)
+    } catch (reason) { setStatus(reason instanceof Error ? reason.message : 'Live Photo 导出失败') }
   }
 
   const exportAllImages = async (overwriteOriginal: boolean): Promise<void> => {
@@ -124,6 +111,7 @@ export function useImageEditor(copy: LocaleCopy['imageWorkspace']) {
     for (const [index, image] of images.entries()) {
       setBatchProgress({ current: index + 1, total: images.length })
       try {
+        if (image.livePhoto) { failedCount += 1; continue }
         const scale = selected ? settings.width / Math.max(selected.width, 1) : 1
         const imageSettings = settings.lockAspectRatio ? { ...settings, width: Math.max(1, Math.round(image.width * scale)), height: Math.max(1, Math.round(image.height * scale)) } : settings
         const rendered = await renderForTargetSize(image, imageSettings)
@@ -139,5 +127,5 @@ export function useImageEditor(copy: LocaleCopy['imageWorkspace']) {
     setStatus(failedCount > 0 ? copy.batchExportFailed(failedCount) : copy.batchExported(exportedCount))
   }
 
-  return { images, selected, selectedId, settings, previewUrl, preview, isRendering, isBatchExporting, batchProgress, canOverwriteOriginal, status, error, setSelectedId, addFiles, removeImage, updateSettings, resetSettings, exportImage, exportAllImages }
+  return { images, selected, selectedId, settings, previewUrl, preview, isRendering, isBatchExporting, batchProgress, canOverwriteOriginal, status, error, setSelectedId, addFiles, removeImage, updateSettings, resetSettings, exportImage, exportLivePhoto, exportAllImages }
 }

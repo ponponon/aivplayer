@@ -94,6 +94,16 @@ fileAssociations:
     description: Play MPEG videos with AIVPlayer
     mimeType: video/mpeg
     role: Viewer
+  - ext: heic
+    name: HEIC image
+    description: Open HEIC images with AIVPlayer
+    mimeType: image/heic
+    role: Viewer
+  - ext: heif
+    name: HEIF image
+    description: Open HEIF images with AIVPlayer
+    mimeType: image/heif
+    role: Viewer
 mac:
   category: public.app-category.video
   icon: brand/icon.icns

@@ -278,6 +278,14 @@
 - 导出弹窗会记住上次选择的长度和模式，下次打开时直接预选，减少重复操作。
 - 每次导出都会先弹出保存位置选择器，再按当前选项执行输出。
 
+## Live Photo / 动态照片工作区
+- 图片工作区支持识别并查看小米 Live Photo、Google Motion Photo，以及同名图片 + MOV 的 Apple Live Photo 组合；动态照片会在缩略图和预览区显示视频标识并可直接播放。
+- 小米 Live Photo 优先适配 JPEG + MP4 追加容器和当前样本的 `version=3` 自定义时间线，解析时保留封面 JPEG 字节边界和视频旋转信息，不依赖小米 SDK。
+- 动态照片视频支持设置起始时间、时长、中心裁剪、静音和中心马赛克打码；导出由主进程复用项目内 FFmpeg，避免把视频二进制处理放在 Renderer。
+- 小米封面时间线在视频截取后会按新的起始时间和时长等宽改写，避免破坏 JPEG APP 段；Google Motion Photo 会同步更新 `Container:Item Length`，Apple Live Photo 会复制图片并生成对应的 `.mov` sidecar。
+- 动态照片仍可单独导出当前封面；覆盖原图入口对 Live Photo 自动禁用，防止误把动态照片覆盖成静态图片。
+- 新增 `src/core/live-photo/live-photo-parser.ts`、`live-photo-service.ts` 和解析器单元测试，覆盖小米边界识别、Google 长度更新和小米时间线更新。
+
 ## 模型下载
 - 推荐模型支持国内 ModelScope 和国际 Hugging Face 两个来源。
 - 下载进度在侧边栏展示，方便定位卡顿或失败。

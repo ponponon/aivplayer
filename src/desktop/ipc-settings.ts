@@ -2,9 +2,10 @@ import { app, ipcMain } from 'electron'
 import { readFile, writeFile } from 'node:fs/promises'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type { ImageSaveRequest, ImageSaveResult, MediaProbeMetadata } from '../shared/media-types'
+import type { LivePhotoExportRequest, LivePhotoExportResult } from '../shared/live-photo-types'
 import { getAppCopy } from '../shared/i18n'
 import { createMediaProbeMetadata } from '../core/media/media-metadata'
-import { createMediaFile, } from './media/media-protocol'
+import { createMediaFile } from './media/media-protocol'
 import { getNativePlayerStatus, stopNativePlayer } from '../core/media/native-player'
 import { listMediaFilesInDirectory, promptForDirectory, promptForMediaFiles, promptForSavePath, getInitialMediaFiles } from './media-dialogs'
 import { isMediaFileAvailable } from '../core/media/file-opening'
@@ -12,6 +13,15 @@ import { getCurrentLocale, loadAppSettings, saveAppSettings } from './desktop-se
 import { resolveResourcePath } from './desktop-services'
 import { desktopState } from './desktop-state'
 import { findAvailableImagePath, sanitizeImageExtension, sanitizeImageFileName } from '../core/image-save-utils'
+import { resolveFfmpegPath, resolveFfprobePath } from '../core/ai/whisper-cpp-runtime'
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
+import { mkdtemp, rm, readdir } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { editAndExportLivePhoto, getLivePhotoDefaultDirectory, getLivePhotoDefaultName, probeLivePhotoFile } from '../core/live-photo/live-photo-service'
+
+const execFileAsync = promisify(execFile)
 
 export function registerSettingsIpc(): void {
   ipcMain.handle(IPC_CHANNELS.OPEN_MEDIA_FILES, () => promptForMediaFiles())
@@ -47,6 +57,44 @@ export function registerSettingsIpc(): void {
   ipcMain.handle(IPC_CHANNELS.GET_MEDIA_METADATA, (_event, filePath: string): Promise<MediaProbeMetadata | null> => createMediaProbeMetadata(filePath, { resourcePath: resolveResourcePath(), env: process.env }))
   ipcMain.handle(IPC_CHANNELS.GET_INITIAL_MEDIA_FILES, () => getInitialMediaFiles())
   ipcMain.handle(IPC_CHANNELS.GET_APP_VERSION, () => app.getVersion())
+  ipcMain.handle(IPC_CHANNELS.IMAGE_CONVERT_HEIC, async (_event, filePath: string): Promise<{ success: boolean; dataUrl?: string; error?: string }> => {
+    const ffmpegPath = await resolveFfmpegPath(resolveResourcePath(), process.env, undefined)
+    if (!ffmpegPath) return { success: false, error: 'ffmpeg not found' }
+    const tempDir = await mkdtemp(join(tmpdir(), 'aivplayer-heic-'))
+    try {
+      const outputPath = join(tempDir, 'converted.jpg')
+      await execFileAsync(ffmpegPath, ['-i', filePath, '-q:v', '2', '-y', outputPath])
+      const files = await readdir(tempDir)
+      const jpgFile = files.find((f) => f.endsWith('.jpg'))
+      if (!jpgFile) return { success: false, error: 'Conversion failed' }
+      const buffer = await readFile(join(tempDir, jpgFile))
+      return { success: true, dataUrl: `data:image/jpeg;base64,${buffer.toString('base64')}` }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : String(error) }
+    } finally {
+      await rm(tempDir, { recursive: true, force: true }).catch(() => {})
+    }
+  })
+  ipcMain.handle(IPC_CHANNELS.LIVE_PHOTO_PROBE, async (_event, filePath: string) => {
+    const ffprobePath = await resolveFfprobePath(resolveResourcePath(), process.env, undefined)
+    if (!ffprobePath) return null
+    const probed = await probeLivePhotoFile({ ffprobePath, sourcePath: filePath }).catch(() => null)
+    if (!probed) return null
+    return { ...probed.result, motionUrl: createMediaFile(probed.motionPath).url }
+  })
+  ipcMain.handle(IPC_CHANNELS.LIVE_PHOTO_EXPORT, async (_event, request: LivePhotoExportRequest): Promise<LivePhotoExportResult> => {
+    const ffmpegPath = await resolveFfmpegPath(resolveResourcePath(), process.env, undefined)
+    if (!ffmpegPath) return { success: false, message: '找不到 FFmpeg' }
+    const defaultName = getLivePhotoDefaultName(request.sourcePath)
+    const extension = defaultName.split('.').pop()?.toLowerCase() || 'jpg'
+    const selectedPath = await promptForSavePath({ title: '导出 Live Photo', defaultPath: join(getLivePhotoDefaultDirectory(request.sourcePath), defaultName), buttonLabel: '导出', filters: [{ name: 'Live Photo', extensions: [extension] }] })
+    if (!selectedPath) return { success: false, canceled: true, message: '' }
+    try {
+      return await editAndExportLivePhoto({ ffmpegPath, sourcePath: request.sourcePath, outputPath: selectedPath, edit: request.options })
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : String(error) }
+    }
+  })
   ipcMain.handle(IPC_CHANNELS.APP_GET_SETTINGS, async () => { await loadAppSettings(); return desktopState.currentAppSettings })
   ipcMain.handle(IPC_CHANNELS.APP_SET_SETTINGS, (_event, settings) => saveAppSettings(settings))
   ipcMain.handle(IPC_CHANNELS.NATIVE_PLAYER_STATUS, () => getNativePlayerStatus(getCurrentLocale))
