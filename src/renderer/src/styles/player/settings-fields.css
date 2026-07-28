@@ -17,8 +17,8 @@
 .settings-text:focus,
 .settings-textarea:focus {
   outline: none;
-  border-color: rgba(232, 193, 109, 0.38);
-  box-shadow: 0 0 0 2px rgba(232, 193, 109, 0.12);
+  border-color: rgba(var(--accent-rgb), 0.38);
+  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.12);
 }
 
 .settings-number {
@@ -42,8 +42,8 @@
   display: grid;
   gap: 6px;
   padding: 12px;
-  background: rgba(232, 193, 109, 0.08);
-  border: 1px solid rgba(232, 193, 109, 0.18);
+  background: rgba(var(--accent-rgb), 0.08);
+  border: 1px solid rgba(var(--accent-rgb), 0.18);
   border-radius: var(--radius-md);
 }
 

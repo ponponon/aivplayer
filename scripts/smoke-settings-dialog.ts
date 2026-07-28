@@ -46,6 +46,14 @@ async function main(): Promise<void> {
     await page.waitForSelector('#root', { timeout: 10_000 })
     await page.waitForTimeout(1_000)
 
+    await page.locator('[data-theme-control]').click()
+    await page.waitForTimeout(250)
+
+    const quickToggleThemeState = await page.evaluate(() => ({
+      documentTheme: document.documentElement.dataset.theme,
+      appTheme: document.querySelector('.app-shell')?.getAttribute('data-theme')
+    }))
+
     let appSettings = await page.evaluate(() => window.aiv.getAppSettings())
 
     if (resolvedLocale && resolvedLocale !== appSettings.ui.locale) {
@@ -154,6 +162,7 @@ async function main(): Promise<void> {
     await page.screenshot({ path: shortcutScreenshotPath, fullPage: false })
 
     console.log(`Settings number styles: ${JSON.stringify(numberStyles)}`)
+    console.log(`Quick theme toggle state: ${JSON.stringify(quickToggleThemeState)}`)
     console.log(`Light theme state: ${JSON.stringify(lightThemeState)}`)
     console.log(`Video settings card height: ${JSON.stringify(videoCardHeight)}`)
     console.log(`Subtitle cache panel: ${JSON.stringify(cachePanelState)}`)
@@ -164,9 +173,11 @@ async function main(): Promise<void> {
     if (
       numberStyles.length === 0 ||
       numberStyles.some((style) => style.textAlign !== 'right') ||
+      quickToggleThemeState.documentTheme !== 'light' ||
+      quickToggleThemeState.appTheme !== 'light' ||
       lightThemeState.documentTheme !== 'light' ||
       lightThemeState.appTheme !== 'light' ||
-      lightThemeState.appBackground !== 'rgb(243, 245, 247)' ||
+      lightThemeState.appBackground !== 'rgb(248, 250, 253)' ||
       !videoCardHeight ||
       videoCardHeight.alignItems !== 'start' ||
       videoCardHeight.clientHeight > videoCardHeight.scrollHeight + 1 ||

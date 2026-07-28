@@ -56,6 +56,7 @@
       toggleVision: '打开视觉搜索库',
       toggleDrama: '打开 AI 短剧工作室',
       openSettings: '打开设置',
+      toggleTheme: '切换主题',
       closeSettings: '关闭设置',
       minimizeWindow: '最小化窗口',
       maximizeWindow: '最大化窗口',

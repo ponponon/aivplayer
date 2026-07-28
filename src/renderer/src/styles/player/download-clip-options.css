@@ -16,14 +16,14 @@
 }
 
 .download-source-option.is-preferred {
-  border-color: rgba(232, 193, 109, 0.5);
-  background: rgba(232, 193, 109, 0.085);
+  border-color: rgba(var(--accent-rgb), 0.5);
+  background: rgba(var(--accent-rgb), 0.085);
 }
 
 .download-source-option:hover:not(:disabled) {
   color: var(--text-primary);
   background: rgba(var(--overlay-rgb), 0.075);
-  border-color: rgba(232, 193, 109, 0.34);
+  border-color: rgba(var(--accent-rgb), 0.34);
 }
 
 .download-source-option:disabled {
@@ -97,8 +97,8 @@
 
 .clip-export-mode-option.is-selected {
   color: var(--text-primary);
-  border-color: rgba(232, 193, 109, 0.5);
-  background: rgba(232, 193, 109, 0.085);
+  border-color: rgba(var(--accent-rgb), 0.5);
+  background: rgba(var(--accent-rgb), 0.085);
 }
 
 .clip-export-mode-option:hover:not(:disabled) {

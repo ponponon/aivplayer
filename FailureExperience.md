@@ -1,3 +1,6 @@
+## 高频主题切换不能只放在设置里
+- 主题模式虽然需要保留“浅色 / 深色 / 跟随系统”的精确选择，但一键切换属于高频操作，不能只藏在设置弹窗；标题栏工具组应提供可见的主题按钮，手动模式在浅色和深色之间切换，跟随系统模式按当前系统主题切换到另一种，设置页继续负责恢复三态选择。
+
 ## Release 工作流不能让隐式发布和可选 artifact 互相打架
 - electron-builder 在 tag 构建且设置 `GH_TOKEN` 时会触发隐式 GitHub / Snap Store 发布；如果工作流同时还有独立的 artifact 汇总和 Snapcraft 发布 job，就会出现重复上传、Linux job 依赖本机 snapcraft，甚至平台构建阶段先于正式 release 发布的问题。平台构建必须显式使用 `--publish never`，发布动作统一收口到后置 job。
 - Snap 构建依赖 Snap Store、core22、snapcraft 和网络，单次 `snap install` 或 `snapcraft pack` 失败不能直接等同于配置错误；安装和打包要做有上限的指数退避重试，并且重试循环最后一次失败必须显式 `exit 1`，不能让最后一个 `sleep` 把失败步骤伪装成成功。
@@ -486,3 +489,7 @@
 - 小米样本可能采用 JPEG + 追加 MP4 的容器结构，但仍使用小米自定义的 Live Photo 元数据和时序字段。当前样本没有 Google Motion Photo 的 `GCamera/GContainer` 标记，而是包含小米自定义 `livephotoInfo` 等信息。
 - 调研或实现厂商动态照片时，必须先对真实样本做字节边界、EXIF/XMP、MP4 box 和播放兼容性验证，再决定是否复用通用解析器；“可以提取/编辑视频”与“编辑后仍被厂商相册识别为 Live Photo”必须分开验收。
 - 修改 JPEG APP1/APPn 内的 XMP 或厂商 MakerNote 文本时，不能直接缩短数字字符串；JPEG 段长度不会自动修复，必须采用等宽替换或同步调整段长度，否则追加的视频边界可能被错误解析。
+## 浅色主题不能保留深色主题的硬编码强调色
+
+- 这次把浅色主题调整成 Chrome 风格后，发现只改 `tokens.css` 里的 `--accent` 不够：多个播放器、设置、AI 面板 CSS 仍直接写死 `rgba(232, 193, 109, ...)`，最终会出现浅蓝背景、蓝灰文字和金色控件同时存在的混搭。
+- 以后主题切换涉及强调色时，透明边框、选中底、focus ring、提示卡和渐变也必须使用 `--accent-rgb` 等语义 token；深色和浅色只在 token 层提供不同值，不能在组件 CSS 里继续写死某一套主题颜色。

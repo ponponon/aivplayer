@@ -46,8 +46,8 @@
 
 .summary-mode-option.is-selected {
   color: var(--text-primary);
-  background: rgba(232, 193, 109, 0.12);
-  border-color: rgba(232, 193, 109, 0.42);
+  background: rgba(var(--accent-rgb), 0.12);
+  border-color: rgba(var(--accent-rgb), 0.42);
 }
 
 .summary-mode-option.is-selected small {
@@ -100,7 +100,7 @@
 .summary-chapter:hover {
   color: var(--text-primary);
   background: rgba(var(--overlay-rgb), 0.075);
-  border-color: rgba(232, 193, 109, 0.32);
+  border-color: rgba(var(--accent-rgb), 0.32);
 }
 
 .summary-chapter:focus-visible {

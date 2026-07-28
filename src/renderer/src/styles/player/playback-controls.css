@@ -50,7 +50,7 @@
 }
 
 .speed-control:focus-within {
-  outline: 2px solid rgba(232, 193, 109, 0.72);
+  outline: 2px solid rgba(var(--accent-rgb), 0.72);
   outline-offset: 2px;
 }
 
@@ -84,13 +84,13 @@
 
 .round-button.primary:disabled {
   color: var(--text-muted);
-  background: rgba(232, 193, 109, 0.18);
+  background: rgba(var(--accent-rgb), 0.18);
   border-color: transparent;
 }
 
 .round-button.primary:disabled:hover {
   color: var(--text-muted);
-  background: rgba(232, 193, 109, 0.18);
+  background: rgba(var(--accent-rgb), 0.18);
 }
 
 .round-button.stop-button {

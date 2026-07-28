@@ -114,8 +114,8 @@
 
 .subtitle-display-preset.active {
   color: var(--text-primary);
-  background: rgba(232, 193, 109, 0.16);
-  border-color: rgba(232, 193, 109, 0.42);
+  background: rgba(var(--accent-rgb), 0.16);
+  border-color: rgba(var(--accent-rgb), 0.42);
 }
 
 .subtitle-display-preset:not(:disabled):hover {

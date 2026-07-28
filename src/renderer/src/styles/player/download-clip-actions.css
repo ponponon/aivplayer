@@ -19,8 +19,8 @@
   height: 38px;
   place-items: center;
   color: var(--accent);
-  background: rgba(232, 193, 109, 0.11);
-  border: 1px solid rgba(232, 193, 109, 0.2);
+  background: rgba(var(--accent-rgb), 0.11);
+  border: 1px solid rgba(var(--accent-rgb), 0.2);
   border-radius: var(--radius-md);
 }
 
@@ -49,8 +49,8 @@
   min-height: 20px;
   padding: 0 7px;
   color: var(--accent);
-  background: rgba(232, 193, 109, 0.12);
-  border: 1px solid rgba(232, 193, 109, 0.2);
+  background: rgba(var(--accent-rgb), 0.12);
+  border: 1px solid rgba(var(--accent-rgb), 0.2);
   border-radius: 999px;
   font-size: 11px;
   font-weight: 700;

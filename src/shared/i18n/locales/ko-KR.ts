@@ -56,6 +56,7 @@
       toggleVision: '시각 검색 라이브러리 열기',
       toggleDrama: 'AI 숏드라마 스튜디오 열기',
       openSettings: '설정 열기',
+      toggleTheme: '테마 전환',
       closeSettings: '설정 닫기',
       minimizeWindow: '창 최소화',
       maximizeWindow: '창 최대화',

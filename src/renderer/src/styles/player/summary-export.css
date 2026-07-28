@@ -38,15 +38,15 @@
 
 .summary-export-button.primary {
   color: var(--text-primary);
-  background: rgba(232, 193, 109, 0.12);
-  border-color: rgba(232, 193, 109, 0.32);
+  background: rgba(var(--accent-rgb), 0.12);
+  border-color: rgba(var(--accent-rgb), 0.32);
 }
 
 .summary-export-button:not(:disabled):hover,
 .summary-export-button.primary:not(:disabled):hover {
   color: var(--text-primary);
   background: rgba(var(--overlay-rgb), 0.1);
-  border-color: rgba(232, 193, 109, 0.48);
+  border-color: rgba(var(--accent-rgb), 0.48);
 }
 
 .summary-export-button:disabled,

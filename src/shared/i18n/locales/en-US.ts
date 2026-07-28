@@ -56,6 +56,7 @@
       toggleVision: 'Open visual search library',
       toggleDrama: 'Open AI drama studio',
       openSettings: 'Open settings',
+      toggleTheme: 'Toggle theme',
       closeSettings: 'Close settings',
       minimizeWindow: 'Minimize window',
       maximizeWindow: 'Maximize window',

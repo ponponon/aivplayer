@@ -56,6 +56,7 @@
       toggleVision: 'ビジュアル検索ライブラリを開く',
       toggleDrama: 'AI ショートドラマスタジオを開く',
       openSettings: '設定を開く',
+      toggleTheme: 'テーマを切り替え',
       closeSettings: '設定を閉じる',
       minimizeWindow: 'ウィンドウを最小化',
       maximizeWindow: 'ウィンドウを最大化',

@@ -99,5 +99,5 @@
   min-width: 3px;
   background: var(--accent);
   border-radius: inherit;
-  box-shadow: 0 0 18px rgba(232, 193, 109, 0.24);
+  box-shadow: 0 0 18px rgba(var(--accent-rgb), 0.24);
 }

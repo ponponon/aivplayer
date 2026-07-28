@@ -52,8 +52,8 @@
   flex: 0 0 auto;
   place-items: center;
   color: var(--accent);
-  background: rgba(232, 193, 109, 0.1);
-  border: 1px solid rgba(232, 193, 109, 0.2);
+  background: rgba(var(--accent-rgb), 0.1);
+  border: 1px solid rgba(var(--accent-rgb), 0.2);
   border-radius: 8px;
 }
 

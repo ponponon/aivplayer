@@ -110,8 +110,8 @@
   justify-content: center;
   padding: 0 8px;
   color: var(--accent);
-  background: rgba(232, 193, 109, 0.1);
-  border: 1px solid rgba(232, 193, 109, 0.28);
+  background: rgba(var(--accent-rgb), 0.1);
+  border: 1px solid rgba(var(--accent-rgb), 0.28);
   border-radius: var(--radius-sm);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 11px;

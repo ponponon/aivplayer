@@ -84,8 +84,7 @@
   white-space: nowrap;
 }
 
-.panel-tab:hover,
-.panel-tab.active {
+.panel-tab:hover {
   color: var(--text-primary);
   background: rgba(var(--overlay-rgb), 0.08);
   border-color: var(--border-soft);
@@ -93,6 +92,8 @@
 
 .panel-tab.active {
   color: var(--accent);
+  background: var(--accent-soft);
+  border-color: rgba(var(--accent-rgb), 0.22);
 }
 
 .panel-content {

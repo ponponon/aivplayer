@@ -30,7 +30,7 @@
 .drama-stage-row small { color: var(--text-muted); font-size: 14px; }
 .drama-stage-row small.ready { color: var(--ok); }
 .drama-stage-actions { align-items: stretch; }
-.drama-progress { padding: 8px; color: var(--accent); background: rgba(232, 193, 109, 0.08); border-radius: var(--radius-sm); font-size: 10px; line-height: 1.45; overflow-wrap: anywhere; }
+.drama-progress { padding: 8px; color: var(--accent); background: rgba(var(--accent-rgb), 0.08); border-radius: var(--radius-sm); font-size: 10px; line-height: 1.45; overflow-wrap: anywhere; }
 .drama-script-preview { display: grid; gap: 6px; max-height: 180px; padding: 9px; overflow: auto; background: rgba(0, 0, 0, 0.18); border-radius: var(--radius-sm); }
 .drama-script-preview strong { color: var(--text-primary); font-size: 11px; }
 .drama-script-preview p { white-space: pre-wrap; }

@@ -25,8 +25,8 @@
 
 .subtitle-display-choice.is-selected {
   color: var(--text-primary);
-  background: rgba(232, 193, 109, 0.16);
-  border-color: rgba(232, 193, 109, 0.42);
+  background: rgba(var(--accent-rgb), 0.16);
+  border-color: rgba(var(--accent-rgb), 0.42);
 }
 
 .subtitle-display-choice:not(:disabled):hover {
@@ -114,8 +114,8 @@
 
 .asr-status-pill.downloading {
   color: var(--accent);
-  background: rgba(232, 193, 109, 0.1);
-  border-color: rgba(232, 193, 109, 0.22);
+  background: rgba(var(--accent-rgb), 0.1);
+  border-color: rgba(var(--accent-rgb), 0.22);
 }
 
 .asr-status-pill.installed-ready,
