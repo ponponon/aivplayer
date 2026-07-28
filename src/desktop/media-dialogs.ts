@@ -44,6 +44,12 @@ export async function promptForDirectory(options: { title: string; defaultPath?:
   return result.canceled || result.filePaths.length === 0 ? null : result.filePaths[0]
 }
 
+export async function promptForOpenPath(options: { title: string; defaultPath?: string | null; filters?: Electron.FileFilter[] }): Promise<string | null> {
+  const dialogOptions: Electron.OpenDialogOptions = { title: options.title, defaultPath: options.defaultPath ?? undefined, properties: ['openFile'], filters: options.filters }
+  const result = desktopState.mainWindow ? await dialog.showOpenDialog(desktopState.mainWindow, dialogOptions) : await dialog.showOpenDialog(dialogOptions)
+  return result.canceled || result.filePaths.length === 0 ? null : result.filePaths[0]
+}
+
 export async function promptForSavePath(options: { title: string; defaultPath?: string | null; buttonLabel?: string; filters?: Electron.FileFilter[] }): Promise<string | null> {
   const dialogOptions: Electron.SaveDialogOptions = { title: options.title, defaultPath: options.defaultPath ?? undefined, buttonLabel: options.buttonLabel, filters: options.filters }
   const result = desktopState.mainWindow ? await dialog.showSaveDialog(desktopState.mainWindow, dialogOptions) : await dialog.showSaveDialog(dialogOptions)

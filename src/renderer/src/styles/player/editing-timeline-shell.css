@@ -1,0 +1,93 @@
+.stage.is-editing {
+  gap: 0;
+  padding-bottom: 0;
+}
+
+.editing-timeline {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 8px 10px 10px;
+  color: var(--text-secondary);
+  background: var(--bg-control);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  box-shadow: var(--shadow-soft);
+}
+
+.editing-toolbar,
+.editing-action-row,
+.editing-toolbar-actions,
+.editing-transport,
+.editing-edit-actions {
+  display: flex;
+  align-items: center;
+}
+
+.editing-toolbar,
+.editing-action-row {
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.editing-toolbar-heading {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.editing-toolbar-heading strong {
+  max-width: min(48vw, 520px);
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 720;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editing-project-status {
+  max-width: min(42vw, 440px);
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 9px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editing-project-status.is-success {
+  color: var(--success);
+}
+
+.editing-project-status.is-error {
+  color: var(--danger);
+}
+
+.editing-toolbar-kicker {
+  color: var(--accent);
+  font-size: 9px;
+  font-weight: 760;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.editing-toolbar-actions,
+.editing-edit-actions {
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 760px) {
+  .editing-action-row {
+    flex-wrap: wrap;
+  }
+
+  .editing-edit-actions {
+    order: 3;
+    flex-basis: 100%;
+    justify-content: flex-start;
+  }
+}

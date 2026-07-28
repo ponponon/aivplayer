@@ -3,6 +3,8 @@ import { registerMediaProtocolHandler, registerMediaProtocolScheme } from './med
 import { APP_NAME, installApplicationMenu, loadAppSettings } from './desktop-settings'
 import { registerBatchSubtitleIpc } from './ipc-batch-subtitle'
 import { registerClipExportIpc } from './ipc-clip-export'
+import { registerTimelineExportIpc } from './ipc-timeline-export'
+import { registerEditingProjectIpc } from './ipc-editing-project'
 import { registerAsrRuntimeIpc } from './ipc-asr-runtime'
 import { registerAsrCacheIpc } from './ipc-asr-cache'
 import { registerAsrSubtitleIpc } from './ipc-asr-subtitles'
@@ -32,6 +34,8 @@ function registerIpc(): void {
   registerAsrSummaryIpc()
   registerBatchSubtitleIpc()
   registerClipExportIpc()
+  registerTimelineExportIpc()
+  registerEditingProjectIpc()
   registerUtilityIpc()
   registerWindowControlsIpc()
   registerVisionIpc()

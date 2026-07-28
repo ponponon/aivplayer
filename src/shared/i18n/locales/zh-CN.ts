@@ -85,6 +85,9 @@
       volume: '音量',
       playbackSpeed: '播放速度'
     },
+    editing: {
+      kicker: '时间线剪辑', timelineLabel: '视频剪辑时间线', editTools: '剪辑工具', videoTrack: '视频', captionTrack: '字幕', captionEmpty: '生成字幕后会显示在这里', playhead: '编辑播放头', undo: '撤销', redo: '重做', zoomIn: '放大时间线', zoomOut: '缩小时间线', close: '退出剪辑模式', newProject: '新建工程', openProject: '打开工程', saveProject: '保存工程', addMedia: '添加素材', addingMedia: '正在添加素材…', mediaAdded: (count: number) => `已添加 ${count} 个素材`, mediaAddFailed: '素材添加失败', resetProject: '重置工程', resetConfirm: '将放弃当前时间线的剪辑结果并恢复为完整视频，是否继续？', projectCreated: '已创建新工程', projectRestored: '已恢复本地工程', projectReset: '已重置为完整视频', projectOpened: (title: string) => `已打开工程：${title}`, projectSaved: (path: string) => `已保存工程：${path}`, projectOpenFailed: '工程文件无法打开', projectSaveFailed: '工程文件保存失败', projectSourceMissing: '工程引用的视频不存在', trimLeft: '保留播放头右侧内容', trimLeftShort: '左侧', trimRight: '保留播放头左侧内容', trimRightShort: '右侧', split: '在播放头处分割片段', splitShort: '分割', deleteClip: '删除当前片段', deleteShort: '删除', export: '导出', exporting: '正在导出…'
+    },
     quickSubtitle: {
       generate: (languageLabel: string) => `生成${languageLabel}字幕`,
       translate: (languageLabel: string) => `翻译成${languageLabel}`,

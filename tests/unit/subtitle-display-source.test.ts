@@ -15,6 +15,8 @@ describe('subtitle display source constraints', () => {
     expect(controlsSource).toContain('effectiveDisplayMode')
     expect(overlaySource).toContain('--subtitle-font-size')
     expect(overlaySource).toContain('--subtitle-line-height')
+    expect(overlaySource).toContain('findActiveEditingCaption')
+    expect(appSource).toContain('editingCaptions={app.isEditingMode ? app.editingProject?.captions ?? null : null}')
   })
 
   it('wires translated subtitle results into the overlay and ASR panel', () => {
@@ -48,7 +50,7 @@ describe('subtitle display source constraints', () => {
     expect(appSource).toContain('window.aiv.translateAsrSubtitle')
     expect(appSource).toContain('window.aiv.cancelAsrTranslation')
     expect(appSource).toContain('window.aiv.resolveTranslatedAsrSubtitleCache')
-    expect(appSource).toContain('translationPath={app.translatedSubtitleResult?.subtitlePath ?? null}')
+    expect(appSource).toContain('translationPath={app.isEditingMode ? null : app.translatedSubtitleResult?.subtitlePath ?? null}')
     expect(appSource).toContain('setTranslatedSubtitleResult')
     expect(appSource).toContain('formatSubtitleLanguageLabel')
     expect(appSource).toContain('const subtitleSourceLanguage =')

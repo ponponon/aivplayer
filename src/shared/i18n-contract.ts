@@ -1,4 +1,4 @@
-import type { zhCN } from './i18n/locales/zh-CN'
+import type { zhCN } from './i18n/locales/zh-CN.ts'
 
 type Widen<T> = T extends (...args: infer Args) => infer Return
   ? (...args: Args) => Return

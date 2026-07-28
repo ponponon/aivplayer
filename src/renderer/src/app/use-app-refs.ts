@@ -15,6 +15,8 @@ export function useAppRefs(): AppRefs {
     translationStartedAtRef: useRef<number | null>(null),
     summaryStartedAtRef: useRef<number | null>(null),
     playbackEndedRef: useRef(false),
+    editingResumePlaybackRef: useRef(false),
+    editingBaseAudioRef: useRef<{ volume: number; muted: boolean } | null>(null),
     lastSavedProgressRef: useRef({ path: null, time: -1 })
   }
 }

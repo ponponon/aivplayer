@@ -1,0 +1,45 @@
+.editing-audio-control {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 1 142px;
+  gap: 5px;
+  min-width: 92px;
+  padding: 3px 6px 3px 3px;
+  color: var(--text-secondary);
+  background: rgba(var(--overlay-rgb), 0.04);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+}
+
+.editing-audio-toggle {
+  display: inline-grid;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  place-items: center;
+  padding: 0;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.editing-audio-toggle:hover {
+  color: var(--text-primary);
+  background: rgba(var(--overlay-rgb), 0.09);
+}
+
+.editing-audio-range {
+  width: 100%;
+  min-width: 42px;
+  accent-color: var(--accent);
+}
+
+.editing-audio-value {
+  min-width: 27px;
+  color: var(--text-muted);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}

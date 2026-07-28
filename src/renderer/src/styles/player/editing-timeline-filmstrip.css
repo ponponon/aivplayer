@@ -1,0 +1,22 @@
+.editing-clip-filmstrip {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  pointer-events: none;
+  opacity: 0.82;
+}
+
+.editing-clip-filmstrip::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(var(--overlay-rgb), 0.02), rgba(var(--overlay-rgb), 0.32));
+  content: '';
+}
+
+.editing-clip-filmstrip img {
+  min-width: 0;
+  flex: 1 1 0;
+  height: 100%;
+  object-fit: cover;
+  filter: saturate(0.72) contrast(0.92);
+}

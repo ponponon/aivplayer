@@ -12,8 +12,9 @@ import type {
   MediaProbeMetadata
 } from '../../../shared/media-types'
 import { initialPlayerState } from './player-state'
-import type { AppModel, AsrNotice } from './app-types'
+import type { AppModel, AsrNotice, EditingProjectStatus } from './app-types'
 import { useAppRefs } from './use-app-refs'
+import type { EditingProject } from '../../../shared/editing-types'
 
 export function useAppModel(): AppModel {
   const refs = useAppRefs()
@@ -50,6 +51,17 @@ export function useAppModel(): AppModel {
   const [isControlDeckVisible, setIsControlDeckVisible] = useState(true)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [mediaMetadata, setMediaMetadata] = useState<MediaProbeMetadata | null>(null)
+  const [isEditingMode, setIsEditingMode] = useState(false)
+  const [editingProject, setEditingProject] = useState<EditingProject | null>(null)
+  const [editingPast, setEditingPast] = useState<EditingProject[]>([])
+  const [editingFuture, setEditingFuture] = useState<EditingProject[]>([])
+  const [editingCurrentTime, setEditingCurrentTime] = useState(0)
+  const [editingSelectedClipId, setEditingSelectedClipId] = useState<string | null>(null); const [editingSelectedCaptionId, setEditingSelectedCaptionId] = useState<string | null>(null)
+  const [editingSourceFiles, setEditingSourceFiles] = useState<Record<string, import('../../../shared/media-types').MediaFile>>({})
+  const [editingPreviewSourceId, setEditingPreviewSourceId] = useState<string | null>(null)
+  const [isAddingEditingMedia, setIsAddingEditingMedia] = useState(false)
+  const [editingProjectFilePath, setEditingProjectFilePath] = useState<string | null>(null)
+  const [editingProjectStatus, setEditingProjectStatus] = useState<EditingProjectStatus | null>(null)
 
   return {
     ...refs,
@@ -118,6 +130,21 @@ export function useAppModel(): AppModel {
     isFullscreen,
     setIsFullscreen,
     mediaMetadata,
-    setMediaMetadata
+    setMediaMetadata,
+    isEditingMode,
+    setIsEditingMode,
+    editingProject,
+    setEditingProject,
+    editingPast,
+    setEditingPast,
+    editingFuture,
+    setEditingFuture,
+    editingCurrentTime, setEditingCurrentTime,
+    editingSelectedClipId, setEditingSelectedClipId, editingSelectedCaptionId, setEditingSelectedCaptionId,
+    editingSourceFiles, setEditingSourceFiles,
+    editingPreviewSourceId, setEditingPreviewSourceId,
+    isAddingEditingMedia, setIsAddingEditingMedia,
+    editingProjectFilePath, setEditingProjectFilePath,
+    editingProjectStatus, setEditingProjectStatus
   }
 }

@@ -1,4 +1,7 @@
 import type { ClipExportMode } from './clip-export'
+import type { EditingProjectFileOpenResult, EditingProjectFileSaveRequest, EditingProjectFileSaveResult } from './editing-types'
+
+export type { EditingProjectFileOpenResult, EditingProjectFileSaveRequest, EditingProjectFileSaveResult }
 
 export type MediaFile = { id: string; name: string; path: string; url: string; extension: string }
 export type MediaProbeDetailScalar = string | number | boolean | null
@@ -11,6 +14,8 @@ export type MediaProbeMetadata = { fileSizeBytes: number; durationSeconds: numbe
 export type PlaybackState = { isPlaying: boolean; currentTime: number; duration: number; volume: number; muted: boolean; playbackRate: number }
 export type MediaClipExportRequest = { mediaPath: string; startSeconds: number; durationSeconds: number; mode: ClipExportMode; subtitlePath?: string; subtitleSrtPath?: string }
 export type MediaClipExportResult = { success: boolean; message: string; videoPath?: string; videoUrl?: string; subtitleSrtPath?: string; subtitleSrtUrl?: string; canceled?: boolean }
+export type MediaTimelineExportClip = { mediaPath: string; startSeconds: number; endSeconds: number; volume?: number; muted?: boolean }
+export type MediaTimelineExportRequest = { mediaPath: string; clips: MediaTimelineExportClip[]; mode: ClipExportMode; subtitlePath?: string; subtitleSrtPath?: string; subtitleText?: string; targetWidth?: number; targetHeight?: number }
 export type ClipboardWriteTextRequest = { text: string }
 export type ClipboardWriteTextResult = { success: boolean; message: string }
 export type ImageSaveRequest = { dataUrl: string; fileName: string; extension: string; outputDirectoryPath?: string; overwriteOriginal?: boolean; originalPath?: string }

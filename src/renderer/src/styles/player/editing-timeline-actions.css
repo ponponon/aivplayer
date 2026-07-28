@@ -1,0 +1,122 @@
+.editing-icon-button,
+.editing-tool-button,
+.editing-primary-button,
+.editing-export-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.editing-icon-button {
+  width: 26px;
+  height: 26px;
+}
+
+.editing-tool-button {
+  min-height: 28px;
+  padding: 0 7px;
+  font-size: 10px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.editing-primary-button {
+  width: 30px;
+  height: 30px;
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-radius: 50%;
+}
+
+.editing-export-button {
+  min-height: 30px;
+  padding: 0 10px;
+  color: var(--accent-ink);
+  background: var(--accent);
+  font-size: 11px;
+  font-weight: 720;
+  white-space: nowrap;
+}
+
+.editing-icon-button:hover,
+.editing-tool-button:hover,
+.editing-tool-button-accent,
+.editing-tool-button-danger:hover {
+  color: var(--text-primary);
+  background: rgba(var(--overlay-rgb), 0.08);
+  border-color: var(--border-soft);
+}
+
+.editing-tool-button-accent {
+  color: var(--accent);
+}
+
+.editing-tool-button-danger {
+  color: var(--danger);
+}
+
+.editing-primary-button:hover,
+.editing-export-button:hover {
+  color: var(--accent-ink);
+  background: var(--accent-strong);
+}
+
+.editing-icon-button:disabled,
+.editing-tool-button:disabled,
+.editing-primary-button:disabled,
+.editing-export-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.editing-icon-button:focus-visible,
+.editing-tool-button:focus-visible,
+.editing-primary-button:focus-visible,
+.editing-export-button:focus-visible,
+.editing-track:focus-visible {
+  outline: 2px solid rgba(var(--accent-rgb), 0.72);
+  outline-offset: 2px;
+}
+
+.editing-toolbar-divider {
+  width: 1px;
+  height: 18px;
+  margin: 0 3px;
+  background: var(--border-soft);
+}
+
+.editing-zoom-label,
+.editing-time-readout {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.editing-time-readout {
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.editing-time-readout span {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.editing-transport {
+  gap: 9px;
+  flex: 0 0 auto;
+}
+
+.editing-edit-actions {
+  justify-content: center;
+  flex: 1 1 auto;
+  min-width: 0;
+}

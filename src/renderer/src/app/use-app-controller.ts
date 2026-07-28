@@ -13,6 +13,7 @@ import { useSummaryExport } from './use-summary-export'
 import { useAiWorkflow } from './use-ai-workflow'
 import { useAppEffects } from './use-app-effects'
 import { useAiSetup } from './use-ai-setup'
+import { useEditingActions } from './use-editing-actions'
 
 export function useAppController() {
   const model = useAppModel()
@@ -45,7 +46,8 @@ export function useAppController() {
     aiSetup.openAiSetup
   )
   const clip = useClipExportActions(model, derived, settings.syncClipExportPreferences)
+  const editing = useEditingActions(model, derived, playback.selectFile)
   useAppEffects(model, derived, { ...playback, ...runtime, ...quickSubtitle }, settings.patchSubtitleDisplaySettings)
 
-  return { ...model, ...derived, ...settings, ...playback, ...runtime, ...generation, ...translation, ...summary, ...summaryExport, ...aiWorkflow, ...subtitleFiles, ...quickSubtitle, ...clip, ...aiSetup }
+  return { ...model, ...derived, ...settings, ...playback, ...runtime, ...generation, ...translation, ...summary, ...summaryExport, ...aiWorkflow, ...subtitleFiles, ...quickSubtitle, ...clip, ...editing, ...aiSetup }
 }

@@ -31,6 +31,7 @@ import type {
   AsrRuntimeStatus,
   MediaClipExportRequest,
   MediaClipExportResult,
+  MediaTimelineExportRequest,
   AsrSubtitleExportRequest,
   AsrSubtitleExportResult,
   AsrSubtitleTranslationRequest,
@@ -65,12 +66,15 @@ import type {
   VisionSearchResult
 } from '../shared/media-types'
 import type { LivePhotoExportRequest, LivePhotoExportResult, LivePhotoProbeResult } from '../shared/live-photo-types'
+import type { EditingProjectFileOpenResult, EditingProjectFileSaveRequest, EditingProjectFileSaveResult } from '../shared/editing-types'
 
 const api = {
   openMediaFiles: (): Promise<MediaFile[]> => ipcRenderer.invoke(IPC_CHANNELS.OPEN_MEDIA_FILES),
   openMediaDirectory: (): Promise<string | null> => ipcRenderer.invoke(IPC_CHANNELS.OPEN_MEDIA_DIRECTORY),
   openFolderPicker: (request: { title: string; defaultPath?: string | null }): Promise<string | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.OPEN_FOLDER_PICKER, request),
+  openEditingProject: (): Promise<EditingProjectFileOpenResult> => ipcRenderer.invoke(IPC_CHANNELS.OPEN_EDITING_PROJECT),
+  saveEditingProject: (request: EditingProjectFileSaveRequest): Promise<EditingProjectFileSaveResult> => ipcRenderer.invoke(IPC_CHANNELS.SAVE_EDITING_PROJECT, request),
   createMediaFile: (filePath: string): Promise<MediaFile> => ipcRenderer.invoke(IPC_CHANNELS.CREATE_MEDIA_FILE, filePath),
   isMediaFileAvailable: (filePath: string): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.CHECK_MEDIA_FILE, filePath),
   readFileContent: (filePath: string): Promise<string> => ipcRenderer.invoke(IPC_CHANNELS.READ_FILE_CONTENT, filePath),
@@ -136,6 +140,8 @@ const api = {
   getRecentAsrLogs: (): Promise<AsrDiagnosticLogResult> => ipcRenderer.invoke(IPC_CHANNELS.ASR_GET_RECENT_LOGS),
   exportMediaClip: (request: MediaClipExportRequest): Promise<MediaClipExportResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.MEDIA_EXPORT_CLIP, request),
+  exportMediaTimeline: (request: MediaTimelineExportRequest): Promise<MediaClipExportResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MEDIA_EXPORT_TIMELINE, request),
   saveImage: (request: ImageSaveRequest): Promise<ImageSaveResult> => ipcRenderer.invoke(IPC_CHANNELS.IMAGE_SAVE, request),
   convertHeicToJpeg: (filePath: string): Promise<{ success: boolean; dataUrl?: string; error?: string }> => ipcRenderer.invoke(IPC_CHANNELS.IMAGE_CONVERT_HEIC, filePath),
   probeLivePhoto: (filePath: string): Promise<LivePhotoProbeResult | null> => ipcRenderer.invoke(IPC_CHANNELS.LIVE_PHOTO_PROBE, filePath),

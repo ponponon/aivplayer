@@ -5,10 +5,12 @@ import type { LocaleCopy } from '../../shared/i18n'
 import { SubtitleDisplayControls, getDefaultSubtitleDisplaySettings } from './app/subtitle-display-controls'
 import { parseVtt, findActiveCue } from './subtitle-parser'
 import type { SubtitleCue } from './subtitle-parser'
+import type { EditingCaption } from '../../shared/editing-types'
 
 type SubtitleOverlayProps = {
   subtitlePath: string | null
   translationPath?: string | null
+  editingCaptions?: readonly EditingCaption[] | null
   currentTime: number
   settings: AppSettings['subtitles']
   copy: LocaleCopy
@@ -41,9 +43,14 @@ export function buildSubtitleDisplayText(options: {
   return options.sourceText
 }
 
+export function findActiveEditingCaption(captions: readonly EditingCaption[], currentTime: number, kind: EditingCaption['kind']): EditingCaption | null {
+  return captions.find((caption) => caption.kind === kind && currentTime >= caption.startSeconds && currentTime < caption.startSeconds + caption.durationSeconds) ?? null
+}
+
 export function SubtitleOverlay({
   subtitlePath,
   translationPath = null,
+  editingCaptions = null,
   currentTime,
   settings,
   copy,
@@ -57,7 +64,9 @@ export function SubtitleOverlay({
   const [activeTranslationCue, setActiveTranslationCue] = useState<SubtitleCue | null>(null)
   const prevSubtitlePathRef = useRef<string | null>(null)
   const prevTranslationPathRef = useRef<string | null>(null)
-  const hasSubtitles = cues.length > 0 || translationCues.length > 0
+  const hasSubtitles = editingCaptions ? editingCaptions.length > 0 : cues.length > 0 || translationCues.length > 0
+  const activeEditingCue = editingCaptions ? findActiveEditingCaption(editingCaptions, currentTime, 'source') : null
+  const activeEditingTranslationCue = editingCaptions ? findActiveEditingCaption(editingCaptions, currentTime, 'translation') : null
 
   useEffect(() => {
     if (!subtitlePath) {
@@ -142,8 +151,8 @@ export function SubtitleOverlay({
     '--subtitle-font-size': `${displaySettings.fontSizePx}px`,
     '--subtitle-line-height': String(subtitleLineHeightMap[displaySettings.lineHeight])
   } as CSSProperties
-  const sourceText = activeCue?.text ?? '\u00A0'
-  const translationText = activeTranslationCue?.text ?? null
+  const sourceText = activeEditingCue?.text ?? activeCue?.text ?? '\u00A0'
+  const translationText = activeEditingTranslationCue?.text ?? activeTranslationCue?.text ?? null
   const displayText = buildSubtitleDisplayText({
     sourceText,
     translationText,
@@ -156,7 +165,7 @@ export function SubtitleOverlay({
       <SubtitleDisplayControls
         copy={copy}
         settings={displaySettings}
-        hasTranslation={translationCues.length > 0}
+        hasTranslation={editingCaptions ? editingCaptions.some((caption) => caption.kind === 'translation') : translationCues.length > 0}
         controlsRef={controlsRef}
         onChange={onSettingsChange}
         onReset={onResetSettings}

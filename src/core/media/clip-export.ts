@@ -206,7 +206,7 @@ function buildClipExportFfmpegArgs(options: {
   const args = ['-y', '-i', options.mediaPath, '-ss', String(Math.max(0, options.startSeconds)), '-t', String(Math.max(0, options.durationSeconds))]
 
   if (options.subtitleFilterPath) {
-    args.push('-vf', `subtitles='${escapeFfmpegFilterPath(options.subtitleFilterPath)}'`)
+    args.push('-vf', `subtitles=filename='${escapeFfmpegFilterPath(options.subtitleFilterPath)}'`)
   }
 
   args.push(
@@ -265,6 +265,35 @@ export function buildClipExportSubtitlePath(videoPath: string): string {
 
 export function trimSrtToClip(text: string, startSeconds: number, durationSeconds: number): string {
   return writeSrt(trimSegmentsToClip(parseSrt(text), startSeconds, durationSeconds))
+}
+
+export type TimelineSubtitleClip = {
+  startSeconds: number
+  endSeconds: number
+}
+
+/** Remaps source-time subtitle cues onto the compacted timeline after cuts. */
+export function remapSrtToTimeline(text: string, clips: readonly TimelineSubtitleClip[]): string {
+  let editedStartSeconds = 0
+  const timelineClips = clips.map((clip) => {
+    const timelineClip = { ...clip, editedStartSeconds }
+    editedStartSeconds += Math.max(0, clip.endSeconds - clip.startSeconds)
+    return timelineClip
+  })
+  const remapped = parseSrt(text).flatMap((segment) => timelineClips.flatMap((clip) => {
+      const sourceStartSeconds = Math.max(0, clip.startSeconds)
+      const sourceEndSeconds = Math.max(sourceStartSeconds, clip.endSeconds)
+      const overlapStart = Math.max(segment.startSeconds, sourceStartSeconds)
+      const overlapEnd = Math.min(segment.endSeconds, sourceEndSeconds)
+      if (overlapEnd <= overlapStart) return []
+      return [{
+        startSeconds: clip.editedStartSeconds + overlapStart - sourceStartSeconds,
+        endSeconds: clip.editedStartSeconds + overlapEnd - sourceStartSeconds,
+        text: segment.text
+      }]
+    }))
+
+  return writeSrt(remapped.sort((left, right) => left.startSeconds - right.startSeconds))
 }
 
 export async function runClipExport(options: RunClipExportOptions): Promise<RunClipExportResult> {

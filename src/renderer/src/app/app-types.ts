@@ -9,14 +9,21 @@ import type {
   AsrSubtitleSummaryMode,
   AsrSubtitleSummaryResult,
   AsrTranslationServiceTestResult,
+  MediaFile,
   MediaProbeMetadata
 } from '../../../shared/media-types'
 import type { PanelMode, PlayerState } from './player-state'
+import type { EditingProject } from '../../../shared/editing-types'
 
 export type AsrNotice = {
   success: boolean
   message: string
   errorDetails?: AsrErrorDetails
+}
+
+export type EditingProjectStatus = {
+  success: boolean
+  message: string
 }
 
 export type AppRefs = {
@@ -32,6 +39,8 @@ export type AppRefs = {
   translationStartedAtRef: MutableRefObject<number | null>
   summaryStartedAtRef: MutableRefObject<number | null>
   playbackEndedRef: MutableRefObject<boolean>
+  editingResumePlaybackRef: MutableRefObject<boolean>
+  editingBaseAudioRef: MutableRefObject<{ volume: number; muted: boolean } | null>
   lastSavedProgressRef: MutableRefObject<{ path: string | null; time: number }>
 }
 
@@ -69,6 +78,18 @@ export type AppStateSetters = {
   setIsFullscreen: React.Dispatch<React.SetStateAction<boolean>>
   setMediaMetadata: React.Dispatch<React.SetStateAction<MediaProbeMetadata | null>>
   setViewMode: React.Dispatch<React.SetStateAction<'video' | 'image'>>
+  setIsEditingMode: React.Dispatch<React.SetStateAction<boolean>>
+  setEditingProject: React.Dispatch<React.SetStateAction<EditingProject | null>>
+  setEditingPast: React.Dispatch<React.SetStateAction<EditingProject[]>>
+  setEditingFuture: React.Dispatch<React.SetStateAction<EditingProject[]>>
+  setEditingCurrentTime: React.Dispatch<React.SetStateAction<number>>
+  setEditingSelectedClipId: React.Dispatch<React.SetStateAction<string | null>>
+  setEditingSelectedCaptionId: React.Dispatch<React.SetStateAction<string | null>>
+  setEditingSourceFiles: React.Dispatch<React.SetStateAction<Record<string, MediaFile>>>
+  setEditingPreviewSourceId: React.Dispatch<React.SetStateAction<string | null>>
+  setIsAddingEditingMedia: React.Dispatch<React.SetStateAction<boolean>>
+  setEditingProjectFilePath: React.Dispatch<React.SetStateAction<string | null>>
+  setEditingProjectStatus: React.Dispatch<React.SetStateAction<EditingProjectStatus | null>>
 }
 
 export type AppModel = AppRefs &
@@ -106,6 +127,18 @@ export type AppModel = AppRefs &
     isControlDeckVisible: boolean
     isFullscreen: boolean
     mediaMetadata: MediaProbeMetadata | null
+    isEditingMode: boolean
+    editingProject: EditingProject | null
+    editingPast: EditingProject[]
+    editingFuture: EditingProject[]
+    editingCurrentTime: number
+    editingSelectedClipId: string | null
+    editingSelectedCaptionId: string | null
+    editingSourceFiles: Record<string, MediaFile>
+    editingPreviewSourceId: string | null
+    isAddingEditingMedia: boolean
+    editingProjectFilePath: string | null
+    editingProjectStatus: EditingProjectStatus | null
   }
 
 export type PanelActions = {

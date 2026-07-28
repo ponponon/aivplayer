@@ -85,6 +85,9 @@
       volume: '音量',
       playbackSpeed: '再生速度'
     },
+    editing: {
+      kicker: 'タイムライン編集', timelineLabel: '動画編集タイムライン', editTools: '編集ツール', videoTrack: '動画', captionTrack: '字幕', captionEmpty: '字幕を生成するとここに表示されます', playhead: '編集再生ヘッド', undo: '元に戻す', redo: 'やり直す', zoomIn: 'タイムラインを拡大', zoomOut: 'タイムラインを縮小', close: '編集モードを終了', newProject: '新規プロジェクト', openProject: 'プロジェクトを開く', saveProject: 'プロジェクトを保存', addMedia: '素材を追加', addingMedia: '素材を追加中…', mediaAdded: (count: number) => `${count} 個の素材を追加しました`, mediaAddFailed: '素材を追加できません', resetProject: 'プロジェクトをリセット', resetConfirm: '現在のタイムライン編集を破棄して動画全体に戻します。続行しますか？', projectCreated: '新規プロジェクトを作成しました', projectRestored: 'ローカルプロジェクトを復元しました', projectReset: '動画全体に戻しました', projectOpened: (title: string) => `プロジェクトを開きました：${title}`, projectSaved: (path: string) => `プロジェクトを保存しました：${path}`, projectOpenFailed: 'プロジェクトファイルを開けません', projectSaveFailed: 'プロジェクトファイルを保存できません', projectSourceMissing: 'プロジェクトが参照する動画が見つかりません', trimLeft: '再生ヘッドより右を残す', trimLeftShort: '左側', trimRight: '再生ヘッドより左を残す', trimRightShort: '右側', split: '再生ヘッドでクリップを分割', splitShort: '分割', deleteClip: '現在のクリップを削除', deleteShort: '削除', export: '書き出し', exporting: '書き出し中…'
+    },
     quickSubtitle: {
       generate: (languageLabel: string) => `${languageLabel}字幕を生成`,
       translate: (languageLabel: string) => `${languageLabel}に翻訳`,
