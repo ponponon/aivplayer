@@ -13,6 +13,9 @@ on:
 permissions:
   contents: write
 
+env:
+  LIBHEIF_VERSION: 1.23.1
+
 jobs:
   build-macos:
     runs-on: macos-latest
@@ -25,6 +28,21 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      - name: Install HEIF build dependencies
+        run: brew install cmake ninja pkg-config libde265 kvazaar jpeg-turbo
+
+      - name: Build static HEIF runtime
+        shell: bash
+        run: |
+          git clone --depth 1 --branch "v${LIBHEIF_VERSION}" https://github.com/strukturag/libheif.git "$RUNNER_TEMP/libheif"
+          npm run release:build-heif-source -- \
+            --source-dir "$RUNNER_TEMP/libheif" \
+            --build-dir "$RUNNER_TEMP/libheif-build" \
+            --install-dir "$RUNNER_TEMP/libheif-install" \
+            --resource-dir "$GITHUB_WORKSPACE/resources" \
+            --encoder kvazaar
+          npm run release:check-heif-runtime
 
       - name: Build & Package
         run: npm run build && npx electron-builder --publish never
@@ -51,6 +69,21 @@ jobs:
 
       - run: npm ci
 
+      - name: Install HEIF build dependencies
+        shell: pwsh
+        run: vcpkg install libde265:x64-windows-static x265:x64-windows-static libjpeg-turbo:x64-windows-static
+
+      - name: Build static HEIF runtime
+        shell: pwsh
+        run: |
+          $source = Join-Path $env:RUNNER_TEMP "libheif"
+          $build = Join-Path $env:RUNNER_TEMP "libheif-build"
+          $install = Join-Path $env:RUNNER_TEMP "libheif-install"
+          $toolchain = Join-Path $env:VCPKG_INSTALLATION_ROOT "scripts/buildsystems/vcpkg.cmake"
+          git clone --depth 1 --branch "v$env:LIBHEIF_VERSION" https://github.com/strukturag/libheif.git $source
+          npm run release:build-heif-source -- --source-dir $source --build-dir $build --install-dir $install --resource-dir "$env:GITHUB_WORKSPACE/resources" --platform win32 --toolchain-file $toolchain --vcpkg-triplet x64-windows-static --encoder x265
+          npm run release:check-heif-runtime
+
       - name: Build & Package
         run: npm run build && npx electron-builder --publish never
 
@@ -76,7 +109,21 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-0 libnotify4 libnss3 libxss1 libxtst6 xdg-utils libatspi2.0-0 libuuid1 libsecret-1-0
+          sudo apt-get install -y libgtk-3-0 libnotify4 libnss3 libxss1 libxtst6 xdg-utils libatspi2.0-0 libuuid1 libsecret-1-0 cmake ninja-build pkg-config libde265-dev libkvazaar-dev libjpeg-dev zlib1g-dev
+
+      - name: Build static HEIF runtime
+        shell: bash
+        run: |
+          git clone --depth 1 --branch "v${LIBHEIF_VERSION}" https://github.com/strukturag/libheif.git "$RUNNER_TEMP/libheif"
+          npm run release:build-heif-source -- \
+            --source-dir "$RUNNER_TEMP/libheif" \
+            --build-dir "$RUNNER_TEMP/libheif-build" \
+            --install-dir "$RUNNER_TEMP/libheif-install" \
+            --resource-dir "$GITHUB_WORKSPACE/resources" \
+            --platform linux \
+            --encoder kvazaar \
+            --static-link
+          npm run release:check-heif-runtime
 
       - name: Build & Package
         run: npm run build && npx electron-builder --publish never

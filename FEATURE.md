@@ -301,6 +301,7 @@
 - Apple sidecar Live Photo 的 HEIC 封面支持同步重编码：先从原 HEIC 提取 JPEG metadata donor，合并新封面，再通过 macOS `sips` 或 libheif `heif-enc` 编回 HEIC，保留 Apple `ContentIdentifier`、MakerNote、ICC 等配对元数据；MOV 导出会显式回写同一 `com.apple.quicktime.content.identifier`。
 - HEIC 编码器通过运行时探测获得，不依赖开发机 Homebrew 动态库；macOS 优先使用系统 `sips`，其他环境可通过 `AIVPLAYER_HEIF_ENC` / `AIVPLAYER_HEIF_CONVERT` 指定 libheif 工具，缺少工具时明确返回错误而不生成不完整 Live Photo。
 - HEIC 运行时支持随 electron-builder 进入 `resources/heif`；新增 `release:prepare-heif-runtime` / `release:check-heif-runtime`，为 Windows/Linux 发布准备并校验自包含的 `heif-enc`、`heif-convert`，macOS 继续优先使用系统 `sips`。
+- 发布工作流固定使用 libheif `1.23.1` 源码构建无插件 HEIC 运行时：macOS/Linux 使用 Kvazaar、Windows 使用静态 x265 依赖，并在对应 runner 上准备静态链接参数，再在 electron-builder 前校验 `heif-enc` / `heif-convert`，不把开发机二进制提交进仓库。
 - Apple HEIC 仅有 `ContentIdentifier`、主图和 HDR 辅助图时仍按静态 HEIC 处理；必须存在同名 MOV/MP4 sidecar 或可解析的动态视频轨，不能仅凭元数据误判为 Live Photo。
 - 新增 `src/core/live-photo/live-photo-parser.ts`、`live-photo-service.ts`、`heic-cover.ts` 和 JPEG 封面元数据单元测试，覆盖小米边界识别、Google 长度/时间戳更新、小米时间线更新和封面 APP 元数据保留。
 

@@ -14,6 +14,8 @@ Live Photo HEIC 封面编辑还需要平台对应的 libheif 命令行运行时�
 
 `npm run release:prepare-heif-runtime -- --heif-dir /path/to/self-contained/libheif/bin` 会把两个工具及同目录运行库放入 `resources/heif`；Windows/Linux 发布前必须准备自包含或已携带依赖的 libheif 产物。macOS 优先使用系统 `sips`，因此不需要把 Homebrew 的动态库直接复制进安装包。
 
+Release workflow 会固定使用 libheif `1.23.1` 源码构建无插件 HEIC 运行时：macOS/Linux 优先使用 BSD 许可的 Kvazaar HEVC 编码器，Windows 使用 vcpkg 静态 triplet 的 x265，构建产物只在 CI 工作区暂存，不提交二进制到 Git。
+
 `npm run dist` runs both `release:check-runtime` and `release:check-heif-runtime` before packaging, so Windows/Linux public releases cannot be built without the local ASR and HEIF runtimes staged; macOS may use the system `sips` fallback.
 
 Use `npm run release:prepare-runtime` to stage runtime files from local or CI-produced binaries:
