@@ -136,7 +136,7 @@
 - `smoke:settings-dialog:all` 可以一键顺序跑完中文 / 英文 / 日文 / 韩文，方便做完整的设置页多语言回归。
 - settings-dialog smoke 每次都会用独立的临时 HOME，避免不同 locale 运行之间互相污染。
 - settings-dialog smoke 的截图也会写到各自的临时 HOME 里，默认 / 英文跑出来的证据不会互相覆盖。
-- `smoke:clip-export-dialog` 现在覆盖时间线导出确认面板、文件名编辑和指定输出路径的 1 秒真实 FFmpeg 导出；`smoke:media-details-dialog` 覆盖媒体详情弹窗，`smoke:dialogs:all` 可以一条命令把它们顺序跑完。
+- `smoke:clip-export-dialog` 现在覆盖时间线导出确认面板、文件名编辑、指定输出路径的 1 秒真实 FFmpeg 视频导出，以及外置字幕视频与同名 SRT 落盘；`smoke:media-details-dialog` 覆盖媒体详情弹窗，`smoke:dialogs:all` 可以一条命令把它们顺序跑完。
 - `smoke:all` 会把 settings、clip export、media details 和 open-video 四类回归一口气串起来，做完整手工验收时只需要记这一条。
 - 设置面板把输入框、选择框、路径展示和次级按钮的高度、横向间距、圆角收口到设置域内的共享控件变量，后续新增表单项可以直接沿用同一底座。
 - 设置面板的字段结构统一通过 `SettingsField` 渲染，说明区始终在控件前面，避免新增设置项时漏掉说明容器或写乱 DOM 顺序。

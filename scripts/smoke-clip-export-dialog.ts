@@ -9,6 +9,7 @@ async function main(): Promise<void> {
   const smokeHomeDirectory = await mkdtemp(join(tmpdir(), 'aivplayer-smoke-editing-export-home-'))
   const smokeOutputDirectory = await mkdtemp(join(tmpdir(), 'aivplayer-smoke-editing-export-output-'))
   const outputVideoPath = join(smokeOutputDirectory, 'aivplayer-smoke-target.mp4')
+  const outputSubtitleVideoPath = join(smokeOutputDirectory, 'aivplayer-smoke-subtitle-target.mp4')
 
   const app = await electron.launch({
     args: [`--user-data-dir=${smokeHomeDirectory}`, 'out/main/index.js', mediaPath],
@@ -59,17 +60,29 @@ async function main(): Promise<void> {
     }), { sourcePath: mediaPath, targetPath: outputVideoPath })
     const outputStats = exportResult.success ? await stat(outputVideoPath).catch(() => null) : null
     const exportState = { success: exportResult.success, message: exportResult.message, outputBytes: outputStats?.size ?? 0 }
+    const subtitleExportResult = await page.evaluate(async ({ sourcePath, targetPath }) => window.aiv.exportMediaTimeline({
+      mediaPath: sourcePath,
+      clips: [{ mediaPath: sourcePath, startSeconds: 0, endSeconds: 1 }],
+      mode: 'external-subtitle',
+      subtitleText: '1\n00:00:00,000 --> 00:00:00,500\nsmoke subtitle\n',
+      outputVideoPath: targetPath
+    }), { sourcePath: mediaPath, targetPath: outputSubtitleVideoPath })
+    const subtitleVideoStats = subtitleExportResult.success ? await stat(outputSubtitleVideoPath).catch(() => null) : null
+    const subtitleSrtStats = subtitleExportResult.subtitleSrtPath ? await stat(subtitleExportResult.subtitleSrtPath).catch(() => null) : null
+    const subtitleExportState = { success: subtitleExportResult.success, videoBytes: subtitleVideoStats?.size ?? 0, subtitlePath: subtitleExportResult.subtitleSrtPath ?? '', subtitleBytes: subtitleSrtStats?.size ?? 0 }
 
     console.log('AIVPlayer Smoke Editing Export Dialog')
     console.log(`Media: ${mediaPath}`)
     console.log(`Initial target: ${JSON.stringify(initialTarget)}`)
     console.log(`Renamed preview: ${renamedPreview ?? 'missing'}`)
     console.log(`Export result: ${JSON.stringify(exportState)}`)
+    console.log(`External subtitle export: ${JSON.stringify(subtitleExportState)}`)
     console.log(`Screenshot: ${screenshotPath}`)
 
     if (!initialTarget.fileName.endsWith('.mp4') || !initialTarget.directory || !initialTarget.preview.includes(initialTarget.fileName)) process.exitCode = 1
     if (!renamedPreview?.endsWith('aivplayer-smoke-renamed.mp4')) process.exitCode = 1
     if (!exportResult.success || !outputStats || outputStats.size <= 0) process.exitCode = 1
+    if (!subtitleExportResult.success || !subtitleVideoStats || subtitleVideoStats.size <= 0 || !subtitleSrtStats || subtitleSrtStats.size <= 0) process.exitCode = 1
   } finally {
     await app.close()
   }

@@ -39,9 +39,16 @@ describe('dialog smoke source constraints', () => {
   it('uses stable selectors in the clip export smoke script', () => {
     const smokeScript = readSource('scripts/smoke-clip-export-dialog.ts')
 
-    expect(smokeScript).toContain("aivplayer-smoke-clip-export-home-")
+    expect(smokeScript).toContain("aivplayer-smoke-editing-export-home-")
     expect(smokeScript).toContain("page.locator('.clip-editor-tool-button').click()")
-    expect(smokeScript).toContain("page.locator('.clip-export-dialog').waitFor")
+    expect(smokeScript).toContain("page.locator('[data-testid=\"editing-timeline\"]').waitFor")
+    expect(smokeScript).toContain("page.locator('[data-testid=\"editing-export\"]').click()")
+    expect(smokeScript).toContain("page.locator('[data-testid=\"editing-export-target\"]').waitFor")
+    expect(smokeScript).toContain('window.aiv.exportMediaTimeline')
+    expect(smokeScript).toContain('outputVideoPath: targetPath')
+    expect(smokeScript).toContain("mode: 'external-subtitle'")
+    expect(smokeScript).toContain('subtitleText:')
+    expect(smokeScript).toContain('subtitleSrtPath')
     expect(smokeScript).toContain("page.screenshot({ path: screenshotPath, fullPage: false })")
   })
 
