@@ -5,6 +5,8 @@ import { formatTime } from '../lib/time'
 import { useAppContext } from './app-context'
 import { EditingCaptionTrack } from './editing-caption-track'
 import { EditingAudioControl } from './editing-audio-control'
+import { EditingClipBoundaryHandles } from './editing-clip-boundary-handles'
+import { EditingRangeTrack } from './editing-range-track'
 import { useEditingFilmstrip, type EditingFilmstripFrame } from './use-editing-filmstrip'
 
 const MAX_RULER_TICKS = 121
@@ -41,19 +43,6 @@ export function EditingTimeline(): React.ReactElement | null {
   const canExport = spans.length > 0
   const rulerTickCount = Math.min(MAX_RULER_TICKS, Math.max(2, Math.ceil(durationSeconds) + 1))
   const playheadPercent = durationSeconds > 0 ? (currentTime / durationSeconds) * 100 : 0
-
-  const seekFromPointer = (clientX: number, element: HTMLElement): void => {
-    const bounds = element.getBoundingClientRect()
-    const ratio = bounds.width > 0 ? (clientX - bounds.left) / bounds.width : 0
-    app.seekEditingTime(ratio * durationSeconds)
-  }
-
-  const onTrackKeyDown = (event: React.KeyboardEvent<HTMLDivElement>): void => {
-    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-      event.preventDefault()
-      app.seekEditingTime(currentTime + (event.key === 'ArrowLeft' ? -0.1 : 0.1))
-    }
-  }
 
   const startClipDrag = (event: React.PointerEvent<HTMLButtonElement>, index: number): void => {
     if (event.button !== 0 || spans.length <= 1 || durationSeconds <= 0) return
@@ -145,15 +134,8 @@ export function EditingTimeline(): React.ReactElement | null {
           </div>
           <div className="editing-track-row">
             <span className="editing-track-label">{app.copy.editing.videoTrack}</span>
-            <div
-              className="editing-track"
-              role="group"
-              tabIndex={0}
-              aria-label={app.copy.editing.playhead}
-              onClick={(event) => seekFromPointer(event.clientX, event.currentTarget)}
-              onKeyDown={onTrackKeyDown}
-              data-testid="editing-track"
-            >
+            <EditingRangeTrack durationSeconds={durationSeconds} currentTime={currentTime} trackLabel={app.copy.editing.playhead} deleteRangeLabel={app.copy.editing.deleteRange} onSeek={app.seekEditingTime} onDeleteRange={app.deleteEditingRange}>
+              {spans.map((span) => <EditingClipBoundaryHandles key={`boundary-${span.clip.id}`} span={span} durationSeconds={durationSeconds} startLabel={app.copy.editing.trimLeft} endLabel={app.copy.editing.trimRight} onCommit={app.updateEditingClipBoundary} />)}
               <div className="editing-clip-row">
                 {spans.map((span, index) => {
                   const selected = app.editingSelectedClipId === span.clip.id
@@ -182,7 +164,7 @@ export function EditingTimeline(): React.ReactElement | null {
                 {clipDrag?.moved && clipDrag.to !== clipDrag.from ? <span className="editing-clip-drop-marker" style={{ left: `${durationSeconds > 0 ? (((clipDrag.to < clipDrag.from ? spans[clipDrag.to]!.editedStartSeconds : spans[clipDrag.to]!.editedEndSeconds) / durationSeconds) * 100) : 0}%` }} aria-hidden="true" /> : null}
               </div>
               <div className="editing-playhead" style={{ left: `${playheadPercent}%` }} aria-hidden="true"><span /></div>
-            </div>
+            </EditingRangeTrack>
           </div>
           <div className="editing-track-row editing-caption-row">
             <span className="editing-track-label">{app.copy.editing.captionTrack}</span>

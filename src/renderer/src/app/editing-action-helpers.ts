@@ -2,6 +2,7 @@ import type { EditingCaption, EditingProject, EditingSource } from '../../../sha
 import { editedDurationSeconds, editedTimeToSource, sourceRangeToEditedRanges, sourceTimeToEdited } from '../../../core/editing/timeline-math'
 import { createEditingProject } from '../../../core/editing/project'
 import type { AppModel } from './app-types'
+import { saveEditingProject } from './editing-project-storage'
 
 const EDITING_TIME_EPSILON_SECONDS = 0.001
 
@@ -85,6 +86,20 @@ export function withUpdatedTimeline(project: EditingProject, clips: EditingProje
         })
       : project.captions
   }
+}
+
+export function applyEditingTimelineChange(model: AppModel, nextClips: NonNullable<AppModel['editingProject']>['videoClips'], removedRange: { startSeconds: number; endSeconds: number } | null): void {
+  const project = model.editingProject
+  if (!project || nextClips === project.videoClips) return
+  const nextProject = withUpdatedTimeline(project, nextClips, removedRange)
+  const nextDurationSeconds = editedDurationSeconds(nextClips)
+  model.setEditingPast((past) => [...past, project])
+  model.setEditingFuture([])
+  model.setEditingProject(nextProject)
+  if (model.editingSelectedClipId && !nextClips.some((clip) => clip.id === model.editingSelectedClipId)) model.setEditingSelectedClipId(null)
+  if (model.editingSelectedCaptionId && !nextProject.captions.some((caption) => caption.id === model.editingSelectedCaptionId)) model.setEditingSelectedCaptionId(null)
+  saveEditingProject(nextProject)
+  if (model.editingCurrentTime > nextDurationSeconds) seekEditingTime(model, nextDurationSeconds, nextProject)
 }
 
 function remapUnanchoredCaption(caption: EditingCaption, previousClips: EditingProject['videoClips'], nextClips: EditingProject['videoClips']): EditingCaption[] {

@@ -1,7 +1,7 @@
 import { getVideoClipSpans } from '../../../core/editing/timeline-math'
-import { reorderVideoClips } from '../../../core/editing/timeline-operations'
+import { removeEditedVideoRange, reorderVideoClips, trimVideoClipBoundaryAtEdited, type EditingClipBoundary } from '../../../core/editing/timeline-operations'
 import type { AppModel } from './app-types'
-import { reorderEditingCaptions, seekEditingTime } from './editing-action-helpers'
+import { applyEditingTimelineChange, reorderEditingCaptions, seekEditingTime } from './editing-action-helpers'
 import { saveEditingProject } from './editing-project-storage'
 
 export function createEditingClipActions(model: AppModel) {
@@ -41,5 +41,19 @@ export function createEditingClipActions(model: AppModel) {
     reorderEditingClips(index, index + direction)
   }
 
-  return { selectEditingClip, reorderEditingClips, moveSelectedEditingClip }
+  const deleteEditingRange = (startSeconds: number, endSeconds: number): void => {
+    const project = model.editingProject
+    if (!project) return
+    const result = removeEditedVideoRange(project.videoClips, startSeconds, endSeconds)
+    if (result.removedRange) applyEditingTimelineChange(model, result.clips, result.removedRange)
+  }
+
+  const updateEditingClipBoundary = (clipId: string, boundary: EditingClipBoundary, editedSeconds: number): void => {
+    const project = model.editingProject
+    if (!project) return
+    const result = trimVideoClipBoundaryAtEdited(project.videoClips, clipId, boundary, editedSeconds)
+    if (result.removedRange) applyEditingTimelineChange(model, result.clips, result.removedRange)
+  }
+
+  return { selectEditingClip, reorderEditingClips, moveSelectedEditingClip, deleteEditingRange, updateEditingClipBoundary }
 }

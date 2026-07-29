@@ -16,6 +16,7 @@ import {
   removeSourceVideoRanges,
   reorderVideoClips,
   splitVideoClipAtEdited,
+  trimVideoClipBoundaryAtEdited,
   trimVideoClipLeftAtEdited,
   trimVideoClipRightAtEdited
 } from '../../src/core/editing/timeline-operations'
@@ -128,6 +129,21 @@ describe('editing timeline operations', () => {
     const right = trimVideoClipRightAtEdited(initial, 7)
     expect(right.clips[0]).toMatchObject({ sourceStartSeconds: 0, sourceEndSeconds: 7 })
     expect(right.removedRange).toEqual({ startSeconds: 7, endSeconds: 10 })
+  })
+
+  it('trims a selected clip boundary inward without changing other clips', () => {
+    const initial = [clip('a', 0, 10), clip('b', 20, 24)]
+    const start = trimVideoClipBoundaryAtEdited(initial, 'a', 'start', 2.5)
+    expect(start.clips.map((item) => [item.id, item.sourceStartSeconds, item.sourceEndSeconds])).toEqual([
+      ['a', 2.5, 10],
+      ['b', 20, 24]
+    ])
+    expect(start.removedRange).toEqual({ startSeconds: 0, endSeconds: 2.5 })
+
+    const end = trimVideoClipBoundaryAtEdited(initial, 'b', 'end', 12.5)
+    expect(end.clips[1]).toMatchObject({ id: 'b', sourceStartSeconds: 20, sourceEndSeconds: 22.5 })
+    expect(end.removedRange).toEqual({ startSeconds: 12.5, endSeconds: 14 })
+    expect(trimVideoClipBoundaryAtEdited(initial, 'a', 'start', 0)).toEqual({ clips: initial, removedRange: null })
   })
 
   it('removes a range across clip boundaries and preserves source continuity', () => {

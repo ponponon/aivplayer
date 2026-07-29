@@ -13,6 +13,8 @@ export type VideoClipEditResult = {
   removedRange: EditedRange | null
 }
 
+export type EditingClipBoundary = 'start' | 'end'
+
 export type SourceRangeEditResult = {
   clips: EditingVideoClip[]
   removedRanges: EditedRange[]
@@ -116,6 +118,35 @@ export function trimVideoClipRightAtEdited(
   return {
     clips: next,
     removedRange: { startSeconds: editedSeconds, endSeconds: hit.editedEndSeconds }
+  }
+}
+
+/** Moves a clip edge inward from the edited timeline and reports the removed time. */
+export function trimVideoClipBoundaryAtEdited(
+  clips: readonly EditingVideoClip[],
+  clipId: string,
+  boundary: EditingClipBoundary,
+  editedSeconds: number
+): VideoClipEditResult {
+  const span = getVideoClipSpans(clips).find((candidate) => candidate.clip.id === clipId)
+  if (!span) return unchanged(clips)
+
+  const safeEditedSeconds = Number.isFinite(editedSeconds)
+    ? Math.min(span.editedEndSeconds, Math.max(span.editedStartSeconds, editedSeconds))
+    : boundary === 'start' ? span.editedStartSeconds : span.editedEndSeconds
+  const sourceBoundary = span.clip.sourceStartSeconds + safeEditedSeconds - span.editedStartSeconds
+  if (boundary === 'start') {
+    if (sourceBoundary <= span.clip.sourceStartSeconds + EDITING_TIME_EPSILON_SECONDS || sourceBoundary >= span.clip.sourceEndSeconds - EDITING_TIME_EPSILON_SECONDS) return unchanged(clips)
+    return {
+      clips: clips.map((clip) => clip.id === clipId ? { ...clip, sourceStartSeconds: sourceBoundary } : clip),
+      removedRange: { startSeconds: span.editedStartSeconds, endSeconds: safeEditedSeconds }
+    }
+  }
+
+  if (sourceBoundary <= span.clip.sourceStartSeconds + EDITING_TIME_EPSILON_SECONDS || sourceBoundary >= span.clip.sourceEndSeconds - EDITING_TIME_EPSILON_SECONDS) return unchanged(clips)
+  return {
+    clips: clips.map((clip) => clip.id === clipId ? { ...clip, sourceEndSeconds: sourceBoundary } : clip),
+    removedRange: { startSeconds: safeEditedSeconds, endSeconds: span.editedEndSeconds }
   }
 }
 

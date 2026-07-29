@@ -4,7 +4,7 @@ import { editedDurationSeconds, editedTimeToSource } from '../../../core/editing
 import { deleteVideoClipAtEdited, splitVideoClipAtEdited, trimVideoClipLeftAtEdited, trimVideoClipRightAtEdited } from '../../../core/editing/timeline-operations'
 import type { AppDerived } from './use-app-derived'
 import type { AppModel } from './app-types'
-import { captureEditingAudio, clampEditingTime, createEditingSource, restoreEditingAudio, seekEditingTime, withUpdatedTimeline } from './editing-action-helpers'
+import { applyEditingTimelineChange, captureEditingAudio, clampEditingTime, createEditingSource, restoreEditingAudio, seekEditingTime } from './editing-action-helpers'
 import { exportEditingTimeline as runEditingTimelineExport } from './editing-export-action'
 import { loadEditingProject, saveEditingProject } from './editing-project-storage'
 import { useEditingCaptionEffect } from './use-editing-caption-effect'
@@ -40,45 +40,32 @@ export function useEditingActions(model: AppModel, derived: AppDerived, selectFi
     model.setEditingSelectedClipId(null); model.setEditingSelectedCaptionId(null); model.setEditingSourceFiles({}); model.setEditingPreviewSourceId(null)
     model.setEditingProjectFilePath(null)
   }
-  const applyTimelineChange = (nextClips: NonNullable<AppModel['editingProject']>['videoClips'], removedRange: { startSeconds: number; endSeconds: number } | null): void => {
-    const project = model.editingProject
-    if (!project || nextClips === project.videoClips) return
-    const nextProject = withUpdatedTimeline(project, nextClips, removedRange)
-    const nextDurationSeconds = editedDurationSeconds(nextClips)
-    model.setEditingPast((past) => [...past, project])
-    model.setEditingFuture([])
-    model.setEditingProject(nextProject)
-    if (model.editingSelectedClipId && !nextClips.some((clip) => clip.id === model.editingSelectedClipId)) model.setEditingSelectedClipId(null); if (model.editingSelectedCaptionId && !nextProject.captions.some((caption) => caption.id === model.editingSelectedCaptionId)) model.setEditingSelectedCaptionId(null)
-    saveEditingProject(nextProject)
-    if (model.editingCurrentTime > nextDurationSeconds) seekEditingTime(model, nextDurationSeconds, nextProject)
-  }
-
   const splitEditingClip = (): void => {
     const project = model.editingProject
     if (!project) return
     const result = splitVideoClipAtEdited(project.videoClips, model.editingCurrentTime)
-    if (result.clips.some((clip, index) => clip !== project.videoClips[index])) applyTimelineChange(result.clips, null)
+    if (result.clips.some((clip, index) => clip !== project.videoClips[index])) applyEditingTimelineChange(model, result.clips, null)
   }
 
   const trimEditingClipLeft = (): void => {
     const project = model.editingProject
     if (!project) return
     const result = trimVideoClipLeftAtEdited(project.videoClips, model.editingCurrentTime)
-    if (result.removedRange) applyTimelineChange(result.clips, result.removedRange)
+    if (result.removedRange) applyEditingTimelineChange(model, result.clips, result.removedRange)
   }
 
   const trimEditingClipRight = (): void => {
     const project = model.editingProject
     if (!project) return
     const result = trimVideoClipRightAtEdited(project.videoClips, model.editingCurrentTime)
-    if (result.removedRange) applyTimelineChange(result.clips, result.removedRange)
+    if (result.removedRange) applyEditingTimelineChange(model, result.clips, result.removedRange)
   }
 
   const deleteEditingClip = (): void => {
     const project = model.editingProject
     if (!project) return
     const result = deleteVideoClipAtEdited(project.videoClips, model.editingCurrentTime)
-    if (result.removedRange) applyTimelineChange(result.clips, result.removedRange)
+    if (result.removedRange) applyEditingTimelineChange(model, result.clips, result.removedRange)
   }
 
   const undoEditing = (): void => {

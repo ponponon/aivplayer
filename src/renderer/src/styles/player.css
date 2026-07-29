@@ -16,6 +16,8 @@
 @import './player/editing-timeline-filmstrip.css';
 @import './player/editing-timeline-captions.css';
 @import './player/editing-timeline-audio.css';
+@import './player/editing-timeline-range.css';
+@import './player/editing-timeline-boundaries.css';
 @import './player/panels.css';
 @import './player/batch-subtitle-overview.css';
 @import './player/batch-subtitle-tasks.css';

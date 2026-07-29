@@ -11,6 +11,8 @@
 - 多素材时间线导出会由主进程并行探测各 source，以第一条素材为输出基准统一画布、帧率、像素比例和音频采样规格；无音频素材自动补静音轨，竖屏 / 横屏混剪会用黑边保持画面比例。
 - 时间线导出优先使用工程内已经按成片时间调整过的原文字幕块生成 SRT；因此第二个及后续 source 的字幕、手动拖动后的字幕也会进入外置字幕或烧录字幕成片，不会再次按单一主视频源时间轴错位。
 - 时间线支持选中片段后单独调节音量和静音；音频设置保存在片段级工程数据中，预览跨素材切换时同步应用，导出会对每段套用对应增益，同一 source 的不同片段也可以有不同音量。
+- 时间线支持在视频轨空白区域拖拽选择成片时间范围，选区可点击垃圾桶或按 Delete / Backspace 删除；删除会跨片段切开并拼接剩余素材，同时复用字幕压缩、历史记录、工程保存和播放头校正链路。
+- 视频片段边缘提供起点 / 终点拖柄，拖动只向片段内部收缩并在结束时提交单个历史操作；键盘聚焦拖柄时可用左右方向键按 0.1 秒微调。
 - GitHub Actions 已接入 Cloudflare Pages 自动发布：`main` 分支的 `docs/` 变化会先执行静态站点校验，再使用 GitHub Actions Secret 中的 Cloudflare API Token 通过 Wrangler 发布到现有 Pages 项目；Account ID 使用 GitHub Actions Variable 保存，不进入仓库文件。
 - GitHub Actions 已接入自动发布工作流：推送 `v*` 标签时自动构建 macOS、Windows、Linux 安装包，创建 GitHub Release 并上传全部产物；也可以通过 workflow dispatch 输入 Release tag 手动重跑，tag 会真正传递给 Release action。桌面平台构建显式关闭 electron-builder 的隐式发布，避免构建阶段意外触发重复发布。
 - 新增无界面 `aivcli` 入口，复用 AIVPlayer 的 ASR、字幕翻译、媒体信息和视觉影视库服务；支持 `doctor`、`asr`、`subtitle convert/translate`、`media info`、`library scan/index/status/search`，默认复用已有字幕缓存，并提供 `--json` 输出，便于终端和自动化脚本使用。
