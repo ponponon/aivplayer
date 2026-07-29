@@ -19,6 +19,11 @@
   -webkit-app-region: drag;
 }
 
+.platform-linux .titlebar,
+.platform-win32 .titlebar {
+  padding-left: 12px;
+}
+
 .brand,
 .top-actions,
 .control-group,
@@ -50,6 +55,7 @@
 
 .top-actions {
   gap: 4px;
+  margin-left: auto;
   -webkit-app-region: no-drag;
 }
 
