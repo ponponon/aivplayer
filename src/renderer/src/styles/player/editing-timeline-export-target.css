@@ -1,0 +1,99 @@
+.editing-export-target {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  background: rgba(var(--overlay-rgb), 0.045);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+}
+
+.editing-export-target .clip-export-group-heading {
+  align-items: baseline;
+}
+
+.editing-export-target .clip-export-group-heading small {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.editing-export-target-field {
+  display: grid;
+  gap: 5px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.editing-export-target-field input {
+  width: 100%;
+  min-width: 0;
+  height: 34px;
+  padding: 0 10px;
+  color: var(--text-primary);
+  background: rgba(var(--overlay-rgb), 0.06);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 12px;
+}
+
+.editing-export-target-field input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.editing-export-target-directory {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.editing-export-target-directory-copy {
+  display: grid;
+  flex: 1 1 auto;
+  gap: 4px;
+  min-width: 0;
+}
+
+.editing-export-target-directory-copy > span {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.editing-export-target-directory-copy code,
+.editing-export-target-preview {
+  min-width: 0;
+  color: var(--text-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editing-export-target-directory .settings-secondary-button {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.editing-export-target-preview {
+  display: block;
+  padding-top: 2px;
+}
+
+@media (max-width: 560px) {
+  .editing-export-target-directory {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .editing-export-target-directory .settings-secondary-button {
+    justify-content: center;
+  }
+}

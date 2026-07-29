@@ -539,6 +539,12 @@
         }
       },
       subtitleRequired: 'No subtitles are available right now, so only video-only export can be chosen.',
+      outputTitle: 'Output target',
+      outputFileName: 'File name',
+      outputDirectory: 'Save directory',
+      outputPathHint: 'Edit the file name or choose another save location.',
+      chooseOutputPath: 'Choose save location',
+      choosingOutputPath: 'Opening…',
       cancel: 'Cancel',
       export: 'Export'
     },

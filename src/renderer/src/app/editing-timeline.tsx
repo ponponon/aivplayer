@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight, Download, FilePlus2, FolderOpen, Grid3X3, Pause, Play, Plus, Redo2, RotateCcw, Save, Scissors, Trash2, Undo2, X, ZoomIn, ZoomOut } from 'lucide-react'
 import { useRef, useState } from 'react'
+import type { ClipExportMode } from '../../../shared/clip-export'
 import { editedDurationSeconds, editedTimeToSource, getVideoClipSpans } from '../../../core/editing/timeline-math'
 import { formatTime } from '../lib/time'
 import { useAppContext } from './app-context'
@@ -7,6 +8,7 @@ import { EditingCaptionTrack } from './editing-caption-track'
 import { EditingAudioControl } from './editing-audio-control'
 import { EditingClipBoundaryHandles } from './editing-clip-boundary-handles'
 import { EditingExportSummary } from './editing-export-summary'
+import { EditingExportConfirmDialog } from './editing-export-confirm-dialog'
 import { EditingRangeTrack } from './editing-range-track'
 import { useEditingFilmstrip, type EditingFilmstripFrame } from './use-editing-filmstrip'
 
@@ -30,6 +32,7 @@ export function EditingTimeline(): React.ReactElement | null {
   const project = app.editingProject
   const filmstrip = useEditingFilmstrip(project, app.state.currentFile?.url ?? null)
   const [zoom, setZoom] = useState(1)
+  const [isExportConfirmOpen, setIsExportConfirmOpen] = useState(false)
   const [clipDrag, setClipDrag] = useState<ClipDragState | null>(null)
   const clipDragRef = useRef<ClipDragState | null>(null)
   const suppressClipClickRef = useRef(false)
@@ -42,6 +45,7 @@ export function EditingTimeline(): React.ReactElement | null {
   const currentPoint = editedTimeToSource(project.videoClips, currentTime)
   const canSplit = Boolean(currentPoint && currentPoint.sourceSeconds > currentPoint.clip.sourceStartSeconds + 0.01 && currentPoint.sourceSeconds < currentPoint.clip.sourceEndSeconds - 0.01)
   const canExport = spans.length > 0
+  const hasExportSubtitle = project.captions.some((caption) => caption.text.trim().length > 0) || app.hasClipExportSubtitle
   const rulerTickCount = Math.min(MAX_RULER_TICKS, Math.max(2, Math.ceil(durationSeconds) + 1))
   const playheadPercent = durationSeconds > 0 ? (currentTime / durationSeconds) * 100 : 0
 
@@ -85,6 +89,12 @@ export function EditingTimeline(): React.ReactElement | null {
     window.setTimeout(() => { suppressClipClickRef.current = false }, 0)
   }
 
+  const confirmEditingExport = (mode: ClipExportMode, outputVideoPath: string): void => {
+    setIsExportConfirmOpen(false)
+    app.syncClipExportPreferences(app.appSettings.capture.clipExportLengthSeconds, mode)
+    void app.exportEditingTimeline(mode, outputVideoPath)
+  }
+
   return (
     <section className="editing-timeline" data-testid="editing-timeline" aria-label={app.copy.editing.timelineLabel}>
       <div className="editing-toolbar">
@@ -122,8 +132,8 @@ export function EditingTimeline(): React.ReactElement | null {
           <button className="editing-tool-button editing-tool-button-danger" type="button" onClick={app.deleteEditingClip} disabled={spans.length <= 1} title={app.copy.editing.deleteClip} aria-label={app.copy.editing.deleteClip}><Trash2 size={15} /><span>{app.copy.editing.deleteShort}</span></button>
         </div>
         <EditingAudioControl clip={selectedClip} volumeLabel={app.copy.controls.volume} muteLabel={app.copy.controls.mute} onVolumeChange={(volume) => selectedClip && app.setEditingClipVolume(selectedClip.id, volume)} onToggleMute={() => selectedClip && app.toggleEditingClipMute(selectedClip.id)} />
-        <EditingExportSummary clips={project.videoClips} durationSeconds={durationSeconds} canvasWidth={project.sources[0]?.width} canvasHeight={project.sources[0]?.height} durationLabel={app.copy.panels.duration} clipsLabel={app.copy.editing.videoTrack} resolutionLabel={app.copy.panels.resolution} audioLabel={app.copy.panels.audioStream} muteLabel={app.copy.controls.mute} volumeLabel={app.copy.controls.volume} />
-        <button className="editing-export-button" type="button" onClick={() => void app.exportEditingTimeline()} disabled={!canExport || app.isExportingClip} title={app.isExportingClip ? app.copy.editing.exporting : app.copy.editing.export} aria-label={app.copy.editing.export}><Download size={15} />{app.isExportingClip ? app.copy.editing.exporting : app.copy.editing.export}</button>
+        <EditingExportSummary clips={project.videoClips} durationSeconds={durationSeconds} canvasWidth={project.sources[0]?.width} canvasHeight={project.sources[0]?.height} summaryLabel={app.copy.editing.export} durationLabel={app.copy.panels.duration} clipsLabel={app.copy.editing.videoTrack} resolutionLabel={app.copy.panels.resolution} audioLabel={app.copy.panels.audioStream} muteLabel={app.copy.controls.mute} volumeLabel={app.copy.controls.volume} />
+        <button className="editing-export-button" type="button" onClick={() => setIsExportConfirmOpen(true)} disabled={!canExport || app.isExportingClip} title={app.isExportingClip ? app.copy.editing.exporting : app.copy.editing.export} aria-label={app.copy.editing.export} data-testid="editing-export"><Download size={15} />{app.isExportingClip ? app.copy.editing.exporting : app.copy.editing.export}</button>
       </div>
 
       <div className="editing-timeline-scroll">
@@ -174,6 +184,7 @@ export function EditingTimeline(): React.ReactElement | null {
           </div>
         </div>
       </div>
+      {isExportConfirmOpen ? <EditingExportConfirmDialog copy={app.copy} mediaPath={project.sources[0]?.path ?? ''} clips={project.videoClips} durationSeconds={durationSeconds} canvasWidth={project.sources[0]?.width} canvasHeight={project.sources[0]?.height} hasSubtitle={hasExportSubtitle} initialMode={hasExportSubtitle ? app.appSettings.capture.clipExportMode : 'video'} onClose={() => setIsExportConfirmOpen(false)} onConfirm={confirmEditingExport} /> : null}
     </section>
   )
 }

@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { createEditingProject } from '../../../core/editing/project'
 import { editedDurationSeconds, editedTimeToSource } from '../../../core/editing/timeline-math'
 import { deleteVideoClipAtEdited, splitVideoClipAtEdited, trimVideoClipLeftAtEdited, trimVideoClipRightAtEdited } from '../../../core/editing/timeline-operations'
+import type { ClipExportMode } from '../../../shared/clip-export'
 import type { AppDerived } from './use-app-derived'
 import type { AppModel } from './app-types'
 import { applyEditingTimelineChange, captureEditingAudio, clampEditingTime, createEditingSource, restoreEditingAudio, seekEditingTime } from './editing-action-helpers'
@@ -132,6 +133,6 @@ export function useEditingActions(model: AppModel, derived: AppDerived, selectFi
     ...audioActions,
     ...sourceActions,
     ...projectFileActions,
-    exportEditingTimeline: () => runEditingTimelineExport(model, derived)
+    exportEditingTimeline: (mode?: ClipExportMode, outputVideoPath?: string) => runEditingTimelineExport(model, derived, mode, outputVideoPath)
   }
 }

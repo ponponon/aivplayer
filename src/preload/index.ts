@@ -31,6 +31,8 @@ import type {
   AsrRuntimeStatus,
   MediaClipExportRequest,
   MediaClipExportResult,
+  MediaTimelineExportPathRequest,
+  MediaTimelineExportPathResult,
   MediaTimelineExportRequest,
   AsrSubtitleExportRequest,
   AsrSubtitleExportResult,
@@ -140,6 +142,8 @@ const api = {
   getRecentAsrLogs: (): Promise<AsrDiagnosticLogResult> => ipcRenderer.invoke(IPC_CHANNELS.ASR_GET_RECENT_LOGS),
   exportMediaClip: (request: MediaClipExportRequest): Promise<MediaClipExportResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.MEDIA_EXPORT_CLIP, request),
+  chooseTimelineExportPath: (request: MediaTimelineExportPathRequest): Promise<MediaTimelineExportPathResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MEDIA_CHOOSE_TIMELINE_EXPORT_PATH, request),
   exportMediaTimeline: (request: MediaTimelineExportRequest): Promise<MediaClipExportResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.MEDIA_EXPORT_TIMELINE, request),
   saveImage: (request: ImageSaveRequest): Promise<ImageSaveResult> => ipcRenderer.invoke(IPC_CHANNELS.IMAGE_SAVE, request),

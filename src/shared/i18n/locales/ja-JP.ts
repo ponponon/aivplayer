@@ -539,6 +539,12 @@
         }
       },
       subtitleRequired: '今は使える字幕がないため、動画のみの書き出ししか選べません。',
+      outputTitle: '出力先',
+      outputFileName: 'ファイル名',
+      outputDirectory: '保存フォルダー',
+      outputPathHint: 'ファイル名を変更するか、別の保存先を選択できます。',
+      chooseOutputPath: '保存先を選択',
+      choosingOutputPath: '開いています…',
       cancel: 'キャンセル',
       export: '書き出す'
     },

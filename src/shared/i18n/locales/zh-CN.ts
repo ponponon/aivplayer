@@ -539,6 +539,12 @@
         }
       },
       subtitleRequired: '当前没有可用字幕，只能选择纯视频导出。',
+      outputTitle: '输出目标',
+      outputFileName: '文件名',
+      outputDirectory: '保存目录',
+      outputPathHint: '可修改文件名，或选择其他保存位置。',
+      chooseOutputPath: '选择保存位置',
+      choosingOutputPath: '正在打开…',
       cancel: '取消',
       export: '导出'
     },

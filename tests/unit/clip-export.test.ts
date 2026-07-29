@@ -6,6 +6,7 @@ import {
   trimSrtToClip
 } from '../../src/core/media/clip-export'
 import { buildTimelineExportDefaultVideoPath, buildTimelineConcatArgs, buildTimelineSegmentArgs, buildTimelineSubtitleText } from '../../src/core/media/timeline-export'
+import { buildTimelineExportDefaultFileName, getTimelineExportPathBaseName, getTimelineExportPathDirectory, joinTimelineExportPath, normalizeTimelineExportFileName } from '../../src/shared/timeline-export-path'
 
 describe('clip export helpers', () => {
   it('builds a stable default output path from the current position and preset length', () => {
@@ -56,6 +57,11 @@ describe('clip export helpers', () => {
 
   it('builds a timeline output name and concat command', () => {
     expect(buildTimelineExportDefaultVideoPath('/clips/demo.mp4', 2, 10.8, 'video')).toBe('/clips/demo-timeline-2clips-10s-video.mp4')
+    expect(buildTimelineExportDefaultFileName('/clips/demo.mp4', 2, 10.8, 'burn-subtitle')).toBe('demo-timeline-2clips-10s-burn.mp4')
+    expect(getTimelineExportPathDirectory('/clips/demo.mp4')).toBe('/clips')
+    expect(getTimelineExportPathBaseName('/clips/demo.mp4')).toBe('demo.mp4')
+    expect(joinTimelineExportPath('/clips', 'edited.mp4')).toBe('/clips/edited.mp4')
+    expect(normalizeTimelineExportFileName('用户剪辑/我的视频', 'fallback.mp4')).toBe('我的视频.mp4')
     expect(buildTimelineConcatArgs('/tmp/segments.txt', '/clips/demo.mp4')).toEqual(expect.arrayContaining(['-f', 'concat', '-safe', '0', '/tmp/segments.txt', '/clips/demo.mp4']))
   })
 

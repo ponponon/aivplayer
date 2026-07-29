@@ -539,6 +539,12 @@
         }
       },
       subtitleRequired: '현재 사용할 수 있는 자막이 없어서 비디오만 내보낼 수 있습니다.',
+      outputTitle: '출력 대상',
+      outputFileName: '파일 이름',
+      outputDirectory: '저장 폴더',
+      outputPathHint: '파일 이름을 수정하거나 다른 저장 위치를 선택할 수 있습니다.',
+      chooseOutputPath: '저장 위치 선택',
+      choosingOutputPath: '여는 중…',
       cancel: '취소',
       export: '내보내기'
     },

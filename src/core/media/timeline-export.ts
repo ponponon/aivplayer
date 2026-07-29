@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process'
-import { basename, dirname, extname, join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { convertVttToSrt } from '../ai/subtitle-writer.ts'
@@ -9,6 +9,7 @@ import { MIN_CLIP_DURATION_SECONDS, type ClipExportMode } from '../../shared/cli
 import { buildClipExportSubtitlePath, remapSrtToTimeline } from './clip-export'
 import type { MediaTimelineExportClip } from '../../shared/media-types'
 import { getEditingClipVolume, isEditingClipMuted } from '../editing/audio-operations'
+import { buildTimelineExportDefaultFileName, getTimelineExportPathDirectory, joinTimelineExportPath } from '../../shared/timeline-export-path'
 
 export type RunTimelineExportOptions = {
   ffmpegPath: string
@@ -39,15 +40,6 @@ export type TimelineExportFormat = {
   frameRate?: number
   audioSampleRate?: number
   audioChannels?: number
-}
-
-function sanitizeFileStem(filePath: string): string {
-  const stem = basename(filePath, extname(filePath)).replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '')
-  return stem || 'media'
-}
-
-function modeSuffix(mode: ClipExportMode): string {
-  return mode === 'external-subtitle' ? 'subs' : mode === 'burn-subtitle' ? 'burn' : 'video'
 }
 
 function tailOutput(output: string): string {
@@ -84,8 +76,7 @@ function normalizeClips(clips: readonly TimelineExportClip[]): NormalizedClip[] 
 }
 
 export function buildTimelineExportDefaultVideoPath(mediaPath: string, clipCount: number, durationSeconds: number, mode: ClipExportMode): string {
-  const safeDuration = Math.max(0, Math.floor(durationSeconds))
-  return join(dirname(mediaPath), `${sanitizeFileStem(mediaPath)}-timeline-${Math.max(0, clipCount)}clips-${safeDuration}s-${modeSuffix(mode)}.mp4`)
+  return joinTimelineExportPath(getTimelineExportPathDirectory(mediaPath), buildTimelineExportDefaultFileName(mediaPath, clipCount, durationSeconds, mode))
 }
 
 function evenDimension(value: number | undefined): number | null {

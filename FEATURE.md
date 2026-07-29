@@ -14,6 +14,8 @@
 - 时间线支持在视频轨空白区域拖拽选择成片时间范围，选区可点击垃圾桶或按 Delete / Backspace 删除；删除会跨片段切开并拼接剩余素材，同时复用字幕压缩、历史记录、工程保存和播放头校正链路。
 - 视频片段边缘提供起点 / 终点拖柄，拖动只向片段内部收缩并在结束时提交单个历史操作；键盘聚焦拖柄时可用左右方向键按 0.1 秒微调。
 - 时间线导出按钮旁新增导出摘要，实时显示实际成片时长、片段数量、第一素材输出画布分辨率 / 比例，以及片段级音量或静音处理状态，导出前即可发现关键参数。
+- 时间线导出现在会先打开确认面板，允许选择无字幕、外置字幕或烧录字幕模式；确认后才启动 FFmpeg，并沿用现有导出模式偏好和字幕可用性校验。
+- 时间线导出确认面板会预览默认文件名和保存目录，支持直接修改 `.mp4` 文件名，或通过系统保存对话框切换完整输出位置；确认后的目标路径会直接传给 FFmpeg，不会重复弹出保存框。
 - GitHub Actions 已接入 Cloudflare Pages 自动发布：`main` 分支的 `docs/` 变化会先执行静态站点校验，再使用 GitHub Actions Secret 中的 Cloudflare API Token 通过 Wrangler 发布到现有 Pages 项目；Account ID 使用 GitHub Actions Variable 保存，不进入仓库文件。
 - GitHub Actions 已接入自动发布工作流：推送 `v*` 标签时自动构建 macOS、Windows、Linux 安装包，创建 GitHub Release 并上传全部产物；也可以通过 workflow dispatch 输入 Release tag 手动重跑，tag 会真正传递给 Release action。桌面平台构建显式关闭 electron-builder 的隐式发布，避免构建阶段意外触发重复发布。
 - 新增无界面 `aivcli` 入口，复用 AIVPlayer 的 ASR、字幕翻译、媒体信息和视觉影视库服务；支持 `doctor`、`asr`、`subtitle convert/translate`、`media info`、`library scan/index/status/search`，默认复用已有字幕缓存，并提供 `--json` 输出，便于终端和自动化脚本使用。
@@ -134,7 +136,7 @@
 - `smoke:settings-dialog:all` 可以一键顺序跑完中文 / 英文 / 日文 / 韩文，方便做完整的设置页多语言回归。
 - settings-dialog smoke 每次都会用独立的临时 HOME，避免不同 locale 运行之间互相污染。
 - settings-dialog smoke 的截图也会写到各自的临时 HOME 里，默认 / 英文跑出来的证据不会互相覆盖。
-- `smoke:clip-export-dialog` 和 `smoke:media-details-dialog` 分别覆盖剪辑导出和媒体详情两个高频弹窗，`smoke:dialogs:all` 可以一条命令把它们顺序跑完。
+- `smoke:clip-export-dialog` 现在覆盖时间线导出确认面板、文件名编辑和指定输出路径的 1 秒真实 FFmpeg 导出；`smoke:media-details-dialog` 覆盖媒体详情弹窗，`smoke:dialogs:all` 可以一条命令把它们顺序跑完。
 - `smoke:all` 会把 settings、clip export、media details 和 open-video 四类回归一口气串起来，做完整手工验收时只需要记这一条。
 - 设置面板把输入框、选择框、路径展示和次级按钮的高度、横向间距、圆角收口到设置域内的共享控件变量，后续新增表单项可以直接沿用同一底座。
 - 设置面板的字段结构统一通过 `SettingsField` 渲染，说明区始终在控件前面，避免新增设置项时漏掉说明容器或写乱 DOM 顺序。
