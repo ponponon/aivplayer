@@ -1,0 +1,51 @@
+.editing-export-summary {
+  display: inline-flex;
+  align-items: center;
+  flex: 1 1 220px;
+  gap: 7px;
+  min-width: 0;
+  padding: 4px 7px;
+  color: var(--text-muted);
+  background: rgba(var(--overlay-rgb), 0.04);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+}
+
+.editing-export-summary-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.editing-export-summary-item svg {
+  flex: 0 0 auto;
+  color: var(--accent);
+}
+
+.editing-export-summary-item strong {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-weight: 700;
+  text-overflow: ellipsis;
+}
+
+.editing-export-summary-item small {
+  color: var(--text-muted);
+  font-size: 8px;
+}
+
+.editing-export-summary-canvas {
+  min-width: 0;
+}
+
+@media (max-width: 760px) {
+  .editing-export-summary {
+    flex: 1 1 100%;
+    order: 4;
+  }
+}

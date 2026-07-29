@@ -6,6 +6,7 @@ import { useAppContext } from './app-context'
 import { EditingCaptionTrack } from './editing-caption-track'
 import { EditingAudioControl } from './editing-audio-control'
 import { EditingClipBoundaryHandles } from './editing-clip-boundary-handles'
+import { EditingExportSummary } from './editing-export-summary'
 import { EditingRangeTrack } from './editing-range-track'
 import { useEditingFilmstrip, type EditingFilmstripFrame } from './use-editing-filmstrip'
 
@@ -121,6 +122,7 @@ export function EditingTimeline(): React.ReactElement | null {
           <button className="editing-tool-button editing-tool-button-danger" type="button" onClick={app.deleteEditingClip} disabled={spans.length <= 1} title={app.copy.editing.deleteClip} aria-label={app.copy.editing.deleteClip}><Trash2 size={15} /><span>{app.copy.editing.deleteShort}</span></button>
         </div>
         <EditingAudioControl clip={selectedClip} volumeLabel={app.copy.controls.volume} muteLabel={app.copy.controls.mute} onVolumeChange={(volume) => selectedClip && app.setEditingClipVolume(selectedClip.id, volume)} onToggleMute={() => selectedClip && app.toggleEditingClipMute(selectedClip.id)} />
+        <EditingExportSummary clips={project.videoClips} durationSeconds={durationSeconds} canvasWidth={project.sources[0]?.width} canvasHeight={project.sources[0]?.height} durationLabel={app.copy.panels.duration} clipsLabel={app.copy.editing.videoTrack} resolutionLabel={app.copy.panels.resolution} audioLabel={app.copy.panels.audioStream} muteLabel={app.copy.controls.mute} volumeLabel={app.copy.controls.volume} />
         <button className="editing-export-button" type="button" onClick={() => void app.exportEditingTimeline()} disabled={!canExport || app.isExportingClip} title={app.isExportingClip ? app.copy.editing.exporting : app.copy.editing.export} aria-label={app.copy.editing.export}><Download size={15} />{app.isExportingClip ? app.copy.editing.exporting : app.copy.editing.export}</button>
       </div>
 
