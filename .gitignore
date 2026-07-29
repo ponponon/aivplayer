@@ -37,6 +37,9 @@ resources/*
 resources/cli/*
 !resources/cli/aivcli
 !resources/cli/aivcli.cmd
+!resources/heif/
+resources/heif/*
+!resources/heif/.gitkeep
 
 !build/
 build/*

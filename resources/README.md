@@ -7,7 +7,14 @@ Release builds should include platform-specific ASR runtime binaries here:
 - `resources/ffmpeg/ffmpeg` on macOS/Linux
 - `resources/ffmpeg/ffmpeg.exe` on Windows
 
-`npm run dist` runs `npm run release:check-runtime` before packaging, so a public release cannot be built without the local ASR runtime staged.
+Live Photo HEIC 封面编辑还需要平台对应的 libheif 命令行运行时：
+
+- `resources/heif/heif-enc` 和 `resources/heif/heif-convert` on macOS/Linux
+- `resources/heif/heif-enc.exe` 和 `resources/heif/heif-convert.exe` on Windows
+
+`npm run release:prepare-heif-runtime -- --heif-dir /path/to/self-contained/libheif/bin` 会把两个工具及同目录运行库放入 `resources/heif`；Windows/Linux 发布前必须准备自包含或已携带依赖的 libheif 产物。macOS 优先使用系统 `sips`，因此不需要把 Homebrew 的动态库直接复制进安装包。
+
+`npm run dist` runs both `release:check-runtime` and `release:check-heif-runtime` before packaging, so Windows/Linux public releases cannot be built without the local ASR and HEIF runtimes staged; macOS may use the system `sips` fallback.
 
 Use `npm run release:prepare-runtime` to stage runtime files from local or CI-produced binaries:
 

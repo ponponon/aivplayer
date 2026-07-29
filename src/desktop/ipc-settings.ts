@@ -85,13 +85,14 @@ export function registerSettingsIpc(): void {
   })
   ipcMain.handle(IPC_CHANNELS.LIVE_PHOTO_EXPORT, async (_event, request: LivePhotoExportRequest): Promise<LivePhotoExportResult> => {
     const ffmpegPath = await resolveFfmpegPath(resolveResourcePath(), process.env, undefined)
+    const ffprobePath = await resolveFfprobePath(resolveResourcePath(), process.env, undefined)
     if (!ffmpegPath) return { success: false, message: '找不到 FFmpeg' }
     const defaultName = getLivePhotoDefaultName(request.sourcePath)
     const extension = defaultName.split('.').pop()?.toLowerCase() || 'jpg'
     const selectedPath = await promptForSavePath({ title: '导出 Live Photo', defaultPath: join(getLivePhotoDefaultDirectory(request.sourcePath), defaultName), buttonLabel: '导出', filters: [{ name: 'Live Photo', extensions: [extension] }] })
     if (!selectedPath) return { success: false, canceled: true, message: '' }
     try {
-      return await editAndExportLivePhoto({ ffmpegPath, sourcePath: request.sourcePath, outputPath: selectedPath, edit: request.options, coverDataUrl: request.coverDataUrl, heicCoverTools: await resolveHeicCoverToolPaths(process.env) })
+      return await editAndExportLivePhoto({ ffmpegPath, ffprobePath: ffprobePath ?? undefined, sourcePath: request.sourcePath, outputPath: selectedPath, edit: request.options, coverDataUrl: request.coverDataUrl, heicCoverTools: await resolveHeicCoverToolPaths(process.env, resolveResourcePath()) })
     } catch (error) {
       return { success: false, message: error instanceof Error ? error.message : String(error) }
     }

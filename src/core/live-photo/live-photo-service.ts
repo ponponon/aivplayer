@@ -30,6 +30,7 @@ type ProbeVideoInfo = {
   hasAudio: boolean
   width: number
   height: number
+  contentIdentifier?: string
 }
 
 function formatLabel(format: LivePhotoFormat): string {
@@ -98,7 +99,7 @@ async function probeVideo(ffprobePath: string, motionPath: string): Promise<Prob
   ], { maxBuffer: 2 * 1024 * 1024 })
   const parsed = JSON.parse(stdout) as {
     streams?: Array<{ codec_type?: string; width?: number; height?: number; duration?: string }>
-    format?: { duration?: string }
+    format?: { duration?: string; tags?: Record<string, string> }
   }
   const videoStream = parsed.streams?.find((stream) => stream.codec_type === 'video')
   const duration = Number(videoStream?.duration ?? parsed.format?.duration ?? 0)
@@ -106,7 +107,8 @@ async function probeVideo(ffprobePath: string, motionPath: string): Promise<Prob
     durationSeconds: Number.isFinite(duration) ? Math.max(0, duration) : 0,
     hasAudio: Boolean(parsed.streams?.some((stream) => stream.codec_type === 'audio')),
     width: Number(videoStream?.width ?? 0),
-    height: Number(videoStream?.height ?? 0)
+    height: Number(videoStream?.height ?? 0),
+    contentIdentifier: parsed.format?.tags?.['com.apple.quicktime.content.identifier']
   }
 }
 
@@ -129,6 +131,7 @@ export async function probeLivePhotoFile(options: {
       hasAudio: videoInfo.hasAudio,
       videoWidth: videoInfo.width,
       videoHeight: videoInfo.height,
+      contentIdentifier: videoInfo.contentIdentifier,
       metadataVersion: source.embedded?.metadataVersion,
       metadataSummary: source.embedded?.metadataSummary,
       videoPresentationTimestampUs: source.embedded?.videoPresentationTimestampUs
@@ -164,6 +167,7 @@ async function renderMotionVideo(options: {
   sourcePath: string
   outputPath: string
   edit: LivePhotoEditOptions
+  contentIdentifier?: string
 }): Promise<void> {
   const startSeconds = Math.max(0, Number.isFinite(options.edit.startSeconds) ? options.edit.startSeconds : 0)
   const durationSeconds = Math.max(0.1, Number.isFinite(options.edit.durationSeconds) ? options.edit.durationSeconds : 0.1)
@@ -176,7 +180,9 @@ async function renderMotionVideo(options: {
   } else {
     args.push('-map', '0:a:0?', '-c:a', 'aac', '-b:a', '128k')
   }
-  args.push('-map_metadata', '0', '-movflags', '+faststart', options.outputPath)
+  args.push('-map_metadata', '0')
+  if (options.contentIdentifier) args.push('-metadata', `com.apple.quicktime.content.identifier=${options.contentIdentifier}`)
+  args.push('-movflags', '+faststart+use_metadata_tags', options.outputPath)
   await execFileAsync(options.ffmpegPath, args, { maxBuffer: 2 * 1024 * 1024 })
 }
 
@@ -189,6 +195,12 @@ async function extractVideoFrame(options: { ffmpegPath: string; sourcePath: stri
     '-q:v', '2',
     options.outputPath
   ], { maxBuffer: 2 * 1024 * 1024 })
+}
+
+function inferFfprobePath(ffmpegPath: string): string {
+  const fileName = basename(ffmpegPath)
+  const ffprobeName = fileName.toLowerCase() === 'ffmpeg.exe' ? 'ffprobe.exe' : fileName.toLowerCase() === 'ffmpeg' ? 'ffprobe' : fileName.replace(/ffmpeg(?:\.exe)?$/i, (match) => match.toLowerCase().endsWith('.exe') ? 'ffprobe.exe' : 'ffprobe')
+  return join(dirname(ffmpegPath), ffprobeName)
 }
 
 function buildAppleMotionPath(outputPath: string): string {
@@ -209,6 +221,7 @@ function canMergeJpegCover(sourcePath: string, sourceBuffer: Buffer, coverBytes:
 
 export async function editAndExportLivePhoto(options: {
   ffmpegPath: string
+  ffprobePath?: string
   sourcePath: string
   outputPath: string
   edit: LivePhotoEditOptions
@@ -220,7 +233,8 @@ export async function editAndExportLivePhoto(options: {
   const tempDir = await mkdtemp(join(tmpdir(), 'aivplayer-live-photo-export-'))
   try {
     const editedMotionPath = join(tempDir, source.format === 'apple-live-photo' ? 'edited-motion.mov' : 'edited-motion.mp4')
-    await renderMotionVideo({ ffmpegPath: options.ffmpegPath, sourcePath: source.motionPath, outputPath: editedMotionPath, edit: options.edit })
+    const sourceVideoInfo = source.format === 'apple-live-photo' ? await probeVideo(options.ffprobePath ?? inferFfprobePath(options.ffmpegPath), source.motionPath).catch(() => null) : null
+    await renderMotionVideo({ ffmpegPath: options.ffmpegPath, sourcePath: source.motionPath, outputPath: editedMotionPath, edit: options.edit, contentIdentifier: sourceVideoInfo?.contentIdentifier })
     const editedMotionBytes = await readFile(editedMotionPath)
     let renderedCoverBytes = decodeDataUrl(options.coverDataUrl)
     if (options.edit.coverTimestampSeconds !== null && options.edit.coverTimestampSeconds !== undefined) {

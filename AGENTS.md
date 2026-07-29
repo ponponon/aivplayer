@@ -32,13 +32,17 @@ github 发版要注意打上 tag，github releases 页面的东西也不要忘�
 
 ---
 
-测试用的图片可以用：~/Pictures/loopy.jpg
+测试用的普通图片可以用：~/Pictures/loopy.jpg
+
+测试用的小米 live 图可以用：~/Pictures/xiaomi-live-photo.jpg
+
+测试用的iphone live 图可以用：~/Pictures/iphone-live-photo/IMG_1390
 
 测试用的视频可以用: ~/Music/aivplayer_test_video_1min.mp4
 
 ----
 
-因为引入 lancedb ，我把 lancedb 的源码 clone 到 /Users/ponponon/Desktop/code/me/github/lancedb 了，你需要你可以查看
+因为引入 lancedb ，我把 lancedb 的源码 clone 到 ~/Desktop/code/me/github/lancedb 了，你需要你可以查看
 
 ----
 

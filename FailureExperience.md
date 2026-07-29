@@ -496,6 +496,7 @@
 - 判定 Apple Live Photo 必须同时找到可播放的同名 MOV/MP4 sidecar，或确认 HEIF 容器内存在实际的动态视频序列；只有主图、缩略图、gain map 和 tile grid 时应按静态 HEIC 处理。
 - 编辑 HEIC 封面时，不能把原始 HEIC 直接丢给通用 JPEG 渲染链；应先提取 metadata donor，再把新 JPEG 封面编码回 HEIC，并验证 Apple `ContentIdentifier` 仍然存在。
 - 运行时不能依赖开发机 Homebrew 的绝对路径或动态库；HEIC 编码器必须可探测、可注入，缺失时应该阻止这次导出并给出明确原因。
+- 发布包不能把 `/opt/homebrew/bin/heif-enc` 这类开发机路径当成跨平台运行时；必须将自包含的 libheif 工具和依赖按平台暂存到 `resources/heif`，由 `release:check-heif-runtime` 在打包前执行验证。macOS 使用系统 `sips` 时才可以不携带 libheif。
 ## 浅色主题不能保留深色主题的硬编码强调色
 
 - 这次把浅色主题调整成 Chrome 风格后，发现只改 `tokens.css` 里的 `--accent` 不够：多个播放器、设置、AI 面板 CSS 仍直接写死 `rgba(232, 193, 109, ...)`，最终会出现浅蓝背景、蓝灰文字和金色控件同时存在的混搭。

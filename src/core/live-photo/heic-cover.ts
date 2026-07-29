@@ -45,10 +45,23 @@ async function firstExecutable(candidates: string[]): Promise<string | null> {
   return null
 }
 
-export async function resolveHeicCoverToolPaths(env: NodeJS.ProcessEnv = process.env): Promise<HeicCoverToolPaths> {
+export async function resolveHeicCoverToolPaths(env: NodeJS.ProcessEnv = process.env, resourcePath?: string): Promise<HeicCoverToolPaths> {
   const sipsPath = process.platform === 'darwin' ? await firstExecutable(uniquePaths(['/usr/bin/sips', env.AIVPLAYER_SIPS_BIN])) : null
-  const heifEncoderPath = await firstExecutable(uniquePaths([env.AIVPLAYER_HEIF_ENC, ...getKnownCandidates(['heif-enc', 'heif-enc.exe']), ...getPathCandidates(env, ['heif-enc', 'heif-enc.exe'])]))
-  const heifConverterPath = await firstExecutable(uniquePaths([env.AIVPLAYER_HEIF_CONVERT, ...getKnownCandidates(['heif-convert', 'heif-convert.exe']), ...getPathCandidates(env, ['heif-convert', 'heif-convert.exe'])]))
+  const bundledDirectory = resourcePath ? join(resourcePath, 'heif') : null
+  const heifEncoderPath = await firstExecutable(uniquePaths([
+    env.AIVPLAYER_HEIF_ENC,
+    bundledDirectory ? join(bundledDirectory, 'heif-enc') : null,
+    bundledDirectory ? join(bundledDirectory, 'heif-enc.exe') : null,
+    ...getKnownCandidates(['heif-enc', 'heif-enc.exe']),
+    ...getPathCandidates(env, ['heif-enc', 'heif-enc.exe'])
+  ]))
+  const heifConverterPath = await firstExecutable(uniquePaths([
+    env.AIVPLAYER_HEIF_CONVERT,
+    bundledDirectory ? join(bundledDirectory, 'heif-convert') : null,
+    bundledDirectory ? join(bundledDirectory, 'heif-convert.exe') : null,
+    ...getKnownCandidates(['heif-convert', 'heif-convert.exe']),
+    ...getPathCandidates(env, ['heif-convert', 'heif-convert.exe'])
+  ]))
   return {
     encoderPath: sipsPath ?? heifEncoderPath,
     converterPath: sipsPath ?? heifConverterPath,

@@ -21,6 +21,10 @@ extraResources:
     to: ffmpeg
     filter:
       - '**/*'
+  - from: resources/heif
+    to: heif
+    filter:
+      - '**/*'
   - from: resources/vision/siglip2-base-patch16-224-ONNX
     to: vision/siglip2-base-patch16-224-ONNX
     filter:

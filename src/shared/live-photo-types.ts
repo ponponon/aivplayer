@@ -13,6 +13,7 @@ export type LivePhotoProbeResult = {
   metadataVersion?: number
   metadataSummary?: string
   videoPresentationTimestampUs?: number
+  contentIdentifier?: string
 }
 
 export type LivePhotoMosaic = {
