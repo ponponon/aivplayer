@@ -9,6 +9,8 @@ export const IPC_CHANNELS = {
   LIST_MEDIA_FILES_IN_DIRECTORY: 'media:list-files-in-directory',
   GET_MEDIA_METADATA: 'media:get-metadata',
   EXTRACT_MEDIA_FILMSTRIP: 'media:extract-filmstrip',
+  DETECT_MEDIA_SCENES: 'media:detect-scenes',
+  DETECT_MEDIA_SILENCE: 'media:detect-silence',
   READ_FILE_CONTENT: 'media:read-file-content',
   GET_APP_VERSION: 'app:get-version',
   APP_GET_SETTINGS: 'app:get-settings',

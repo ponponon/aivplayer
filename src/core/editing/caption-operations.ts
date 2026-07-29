@@ -8,12 +8,7 @@ export function moveEditingCaption(captions: readonly EditingCaption[], captionI
   if (Math.abs(nextStartSeconds - caption.startSeconds) < 0.001) return [...captions]
   return captions.map((item) => {
     if (item.id !== captionId) return item
-    return {
-      id: item.id,
-      startSeconds: nextStartSeconds,
-      durationSeconds: item.durationSeconds,
-      text: item.text,
-      kind: item.kind
-    }
+    const { sourceId: _sourceId, sourceStartSeconds: _sourceStartSeconds, sourceEndSeconds: _sourceEndSeconds, ...unanchored } = item
+    return { ...unanchored, startSeconds: nextStartSeconds }
   })
 }

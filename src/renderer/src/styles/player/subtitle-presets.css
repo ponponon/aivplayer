@@ -1,0 +1,81 @@
+.subtitle-text {
+  font-family: var(--subtitle-font-family);
+  font-size: var(--subtitle-font-size);
+  font-style: var(--subtitle-font-style);
+  font-weight: var(--subtitle-font-weight);
+  color: var(--subtitle-text-color);
+  background: var(--subtitle-background);
+  border-radius: var(--subtitle-border-radius);
+  text-shadow: var(--subtitle-text-shadow);
+}
+
+.subtitle-text-line {
+  display: inline;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.subtitle-display-preset-row {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+}
+
+.subtitle-display-preset-row > span {
+  white-space: nowrap;
+}
+
+.subtitle-display-preset-row .subtitle-display-choice-group {
+  justify-content: flex-end;
+}
+
+.subtitle-emphasis {
+  padding: 0 0.12em;
+  color: var(--subtitle-emphasis-text-color);
+  background: var(--subtitle-emphasis-background);
+  border-radius: max(2px, calc(var(--subtitle-border-radius) * 0.7));
+  font: inherit;
+  text-decoration: var(--subtitle-emphasis-decoration);
+  text-shadow: none;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.subtitle-word {
+  display: inline;
+  padding: 0 0.02em;
+  border-radius: max(2px, calc(var(--subtitle-border-radius) * 0.7));
+  transition: color 90ms ease, background-color 90ms ease, text-shadow 90ms ease;
+}
+
+.subtitle-word.is-active {
+  color: var(--subtitle-emphasis-text-color);
+  background: var(--subtitle-emphasis-background);
+  text-shadow: none;
+}
+
+.subtitle-display-keywords {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 5px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.subtitle-display-keywords textarea {
+  width: 100%;
+  min-height: 48px;
+  padding: 7px 8px;
+  color: var(--text-primary);
+  background: rgba(var(--overlay-rgb), 0.06);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  resize: vertical;
+  font: inherit;
+  line-height: 1.4;
+}
+
+.subtitle-display-keywords textarea:focus {
+  outline: 2px solid rgba(var(--accent-rgb), 0.55);
+  outline-offset: 1px;
+}

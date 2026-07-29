@@ -7,6 +7,8 @@ import { getAppCopy } from '../../shared/i18n'
 import type { AppLocale } from '../../shared/localization'
 import { MIN_CLIP_DURATION_SECONDS, type ClipExportMode } from '../../shared/clip-export'
 import type { TranscriptSegment } from '../../shared/media-types.ts'
+import type { SubtitleRenderSettings } from '../../shared/subtitle-presets'
+import { buildAssSubtitle } from './subtitle-ass'
 
 const SRT_TIMESTAMP_PATTERN = /^(?:(\d+):)?(\d{2}):(\d{2}),(\d{3})$/
 const SRT_TIMECODE_PATTERN =
@@ -26,6 +28,7 @@ export type RunClipExportOptions = {
   mode: ClipExportMode
   subtitlePath?: string
   subtitleSrtPath?: string
+  subtitleRender?: SubtitleRenderSettings
   getLocale?: () => AppLocale
 }
 
@@ -315,7 +318,7 @@ export async function runClipExport(options: RunClipExportOptions): Promise<RunC
     await mkdir(dirname(options.outputVideoPath), { recursive: true })
 
     if (subtitleFilterPath && trimmedSubtitleText != null) {
-      await writeFile(subtitleFilterPath, trimmedSubtitleText, 'utf8')
+      await writeFile(subtitleFilterPath, buildAssSubtitle(trimmedSubtitleText, options.subtitleRender), 'utf8')
     }
 
     const result = await runProcess(

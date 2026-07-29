@@ -15,6 +15,8 @@ import { getEditingClipTransition } from '../editing/transition-operations'
 import { getEditingClipTreatment, getEditingClipTreatmentAnchor, getEditingClipTreatmentScale } from '../editing/treatment-operations'
 import { getEditingVideoBlockBorderRadius, getEditingVideoBlockBorderWidth, getEditingVideoBlockMotion, getEditingVideoBlockSize } from '../editing/video-block-operations'
 import { buildTimelineExportDefaultFileName, getTimelineExportPathDirectory, joinTimelineExportPath } from '../../shared/timeline-export-path'
+import type { SubtitleRenderSettings } from '../../shared/subtitle-presets'
+import { buildAssSubtitle } from './subtitle-ass'
 
 export type RunTimelineExportOptions = {
   ffmpegPath: string
@@ -26,6 +28,9 @@ export type RunTimelineExportOptions = {
   subtitleSrtPath?: string
   /** Already-remapped SRT text in edited timeline time. */
   subtitleText?: string
+  /** Already-remapped ASS text in edited timeline time, including karaoke tags when available. */
+  subtitleAssText?: string
+  subtitleRender?: SubtitleRenderSettings
   graphics?: readonly EditingGraphic[]
   videoBlocks?: readonly MediaTimelineExportVideoBlock[]
   renderGraphics?: TimelineGraphicRasterizer
@@ -375,7 +380,7 @@ export async function runTimelineExport(options: RunTimelineExportOptions): Prom
   const clips = normalizeClips(options.clips)
   if (clips.length === 0) throw new Error('时间线没有可导出的片段')
   const subtitleText = options.mode === 'video' ? null : await resolveSubtitleText(options)
-  if (options.mode !== 'video' && !subtitleText) throw new Error(copy.runtime.clipExportSubtitleMissing)
+  if (options.mode !== 'video' && !subtitleText && !options.subtitleAssText?.trim()) throw new Error(copy.runtime.clipExportSubtitleMissing)
   const tempDirectory = await mkdtemp(join(tmpdir(), 'aivplayer-timeline-'))
 
   try {
@@ -393,8 +398,15 @@ export async function runTimelineExport(options: RunTimelineExportOptions): Prom
     const listPath = join(tempDirectory, 'segments.txt')
     await writeFile(listPath, `${segmentPaths.map((path) => `file '${escapeConcatPath(path)}'`).join('\n')}\n`, 'utf8')
     const remappedSubtitleText = buildTimelineSubtitleText({ editedSubtitleText: options.subtitleText, sourceSubtitleText: subtitleText, clips })
-    const subtitlePath = remappedSubtitleText != null ? join(tempDirectory, 'timeline.srt') : null
-    if (subtitlePath && remappedSubtitleText != null) await writeFile(subtitlePath, remappedSubtitleText, 'utf8')
+    const subtitlePath = (remappedSubtitleText != null || options.subtitleAssText?.trim()) ? join(tempDirectory, options.mode === 'burn-subtitle' ? 'timeline.ass' : 'timeline.srt') : null
+    if (subtitlePath) {
+      const content = options.mode === 'burn-subtitle' && options.subtitleAssText?.trim()
+        ? options.subtitleAssText
+        : options.mode === 'burn-subtitle'
+          ? buildAssSubtitle(remappedSubtitleText ?? '', { ...options.subtitleRender, playResX: options.outputFormat?.width, playResY: options.outputFormat?.height })
+          : remappedSubtitleText ?? ''
+      await writeFile(subtitlePath, content, 'utf8')
+    }
 
     const timelineDuration = clips.reduce((total, clip) => total + clip.durationSeconds, 0)
     const graphics = (options.graphics ?? []).flatMap((graphic, index) => {

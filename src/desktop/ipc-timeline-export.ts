@@ -51,6 +51,8 @@ export function registerTimelineExportIpc(): void {
         subtitlePath: request.subtitlePath,
         subtitleSrtPath: request.subtitleSrtPath,
         subtitleText: request.subtitleText,
+        subtitleAssText: request.subtitleAssText,
+        subtitleRender: request.subtitleRender,
         outputFormat: { width: request.targetWidth ?? primaryMetadata?.video?.width ?? undefined, height: request.targetHeight ?? primaryMetadata?.video?.height ?? undefined, frameRate: primaryMetadata?.video?.frameRate ?? undefined, audioSampleRate: 48000, audioChannels: 2 },
         getLocale: getCurrentLocale
       })

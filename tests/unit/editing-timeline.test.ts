@@ -12,6 +12,7 @@ import {
 import {
   deleteVideoClipAtEdited,
   insertVideoClipsAtEdited,
+  removeEditedVideoRanges,
   removeEditedVideoRange,
   removeSourceVideoRanges,
   restoreSourceVideoRange,
@@ -169,6 +170,18 @@ describe('editing timeline operations', () => {
       ['b-right', 12, 14]
     ])
     expect(editedDurationSeconds(result.clips)).toBe(4)
+  })
+
+  it('removes multiple detected ranges in one history-safe batch', () => {
+    const result = removeEditedVideoRanges([clip('a', 0, 12), clip('b', 20, 24)], [{ startSeconds: 2, endSeconds: 3 }, { startSeconds: 7, endSeconds: 9 }], (base, start, end) => ({ ...base, id: `${base.id}-${start}`, sourceStartSeconds: start, sourceEndSeconds: end }))
+    expect(result.removedRanges).toEqual([{ startSeconds: 2, endSeconds: 3 }, { startSeconds: 7, endSeconds: 9 }])
+    expect(result.clips.map((item) => [item.id, item.sourceStartSeconds, item.sourceEndSeconds])).toEqual([
+      ['a', 0, 2],
+      ['a-3', 3, 7],
+      ['a-9', 9, 12],
+      ['b', 20, 24]
+    ])
+    expect(editedDurationSeconds(result.clips)).toBe(13)
   })
 
   it('does not delete the only remaining clip', () => {

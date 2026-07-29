@@ -1,5 +1,6 @@
 import { parseVtt } from '../../../core/ai/subtitle-writer'
 import type { EditingCaption } from '../../../shared/editing-types'
+import { attachSubtitleWords, getSubtitleWordSidecarPath, parseWhisperSubtitleWords } from '../../../shared/subtitle-timing'
 
 export type CaptionSource = {
   path: string | null
@@ -25,9 +26,18 @@ async function loadCaptionSource(source: CaptionSource): Promise<EditingCaption[
   }))
   const text = texts.find((candidate): candidate is string => candidate !== null)
   if (text === undefined) return []
-  return parseVtt(text).flatMap((segment, index) => {
+  const wordPaths = [...new Set(paths.map(getSubtitleWordSidecarPath).filter((path): path is string => Boolean(path)))]
+  const wordTexts = await Promise.all(wordPaths.map(async (path) => {
+    try { return await window.aiv.readFileContent(path) } catch { return null }
+  }))
+  const words = parseWhisperSubtitleWords(wordTexts.find((candidate): candidate is string => candidate !== null) ?? '')
+  const segments = attachSubtitleWords(parseVtt(text), words, source.kind === 'source')
+  return segments.flatMap((segment, index) => {
       const durationSeconds = Math.max(0, segment.endSeconds - segment.startSeconds)
-      return durationSeconds > 0 ? [{ id: `${source.kind}-${source.sourceId}-${index}`, sourceId: source.sourceId, sourceStartSeconds: segment.startSeconds, sourceEndSeconds: segment.endSeconds, kind: source.kind, startSeconds: segment.startSeconds, durationSeconds, text: segment.text }] : []
+      const captionWords = source.kind === 'source' && segment.words
+        ? segment.words.map((word) => ({ startSeconds: Math.max(0, word.startSeconds - segment.startSeconds), endSeconds: Math.max(0, word.endSeconds - segment.startSeconds), text: word.text }))
+        : undefined
+      return durationSeconds > 0 ? [{ id: `${source.kind}-${source.sourceId}-${index}`, sourceId: source.sourceId, sourceStartSeconds: segment.startSeconds, sourceEndSeconds: segment.endSeconds, kind: source.kind, startSeconds: segment.startSeconds, durationSeconds, text: segment.text, ...(captionWords && captionWords.length > 0 ? { words: captionWords } : {}) }] : []
     })
 }
 

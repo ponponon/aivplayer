@@ -1,9 +1,10 @@
-.editing-clip-filmstrip {
+.editing-clip > span.editing-clip-filmstrip {
   position: absolute;
   inset: 0;
   display: flex;
   pointer-events: none;
   opacity: 0.82;
+  z-index: 1;
 }
 
 .editing-clip-filmstrip::after {
@@ -11,12 +12,22 @@
   inset: 0;
   background: linear-gradient(180deg, rgba(var(--overlay-rgb), 0.02), rgba(var(--overlay-rgb), 0.32));
   content: '';
+  pointer-events: none;
+  z-index: 1;
 }
 
 .editing-clip-filmstrip img {
   position: absolute;
   top: 0;
+  display: block;
   height: 100%;
   object-fit: cover;
   filter: saturate(0.72) contrast(0.92);
+  z-index: 0;
+}
+
+.editing-clip > span:not(.editing-clip-filmstrip),
+.editing-clip > small {
+  position: relative;
+  z-index: 2;
 }

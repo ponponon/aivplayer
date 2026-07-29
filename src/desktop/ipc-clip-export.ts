@@ -18,7 +18,7 @@ export function registerClipExportIpc(): void {
     const selectedVideoPath = await promptForSavePath({ title: copy.runtimeDialog.clipExportSaveTitle, defaultPath: defaultVideoPath, buttonLabel: copy.runtimeDialog.clipExportSaveConfirm, filters: [{ name: 'MP4 video', extensions: ['mp4'] }] })
     if (!selectedVideoPath) return { success: false, message: '', canceled: true }
     try {
-      const result = await runClipExport({ ffmpegPath, mediaPath: request.mediaPath, outputVideoPath: selectedVideoPath, startSeconds: request.startSeconds, durationSeconds: request.durationSeconds, mode: request.mode, subtitlePath: request.subtitlePath, subtitleSrtPath: request.subtitleSrtPath, getLocale: getCurrentLocale })
+      const result = await runClipExport({ ffmpegPath, mediaPath: request.mediaPath, outputVideoPath: selectedVideoPath, startSeconds: request.startSeconds, durationSeconds: request.durationSeconds, mode: request.mode, subtitlePath: request.subtitlePath, subtitleSrtPath: request.subtitleSrtPath, subtitleRender: request.subtitleRender, getLocale: getCurrentLocale })
       const videoFile = createMediaFile(result.videoPath)
       const subtitleSrtFile = result.subtitleSrtPath ? createMediaFile(result.subtitleSrtPath) : null
       const message = request.mode === 'burn-subtitle' ? copy.runtime.clipExportBurnedSuccess : request.mode === 'external-subtitle' ? copy.runtime.clipExportWithSubtitleSuccess : copy.runtime.clipExportSuccess

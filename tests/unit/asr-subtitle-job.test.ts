@@ -49,7 +49,7 @@ describe('ASR subtitle job command planning', () => {
       '/tmp/subtitle',
       '-ovtt',
       '-osrt',
-      '-oj',
+      '-ojf',
       '-l',
       'auto'
     ])

@@ -1,4 +1,4 @@
-import { EDITING_PUNCH_IN_MAX_SCALE, EDITING_PUNCH_IN_MIN_SCALE, EDITING_PROJECT_SCHEMA_VERSION, EDITING_TRANSITION_MAX_DURATION, EDITING_TRANSITION_MIN_DURATION, type EditingCaption, type EditingClipFilter, type EditingClipTransition, type EditingGraphic, type EditingProject, type EditingScriptSegment, type EditingSource, type EditingVideoBlock, type EditingVideoBlockMotion, type EditingVideoClip } from '../../shared/editing-types'
+import { EDITING_PUNCH_IN_MAX_SCALE, EDITING_PUNCH_IN_MIN_SCALE, EDITING_PROJECT_SCHEMA_VERSION, EDITING_TRANSITION_MAX_DURATION, EDITING_TRANSITION_MIN_DURATION, type EditingCaption, type EditingCaptionWord, type EditingClipFilter, type EditingClipTransition, type EditingGraphic, type EditingProject, type EditingScriptSegment, type EditingSource, type EditingVideoBlock, type EditingVideoBlockMotion, type EditingVideoClip } from '../../shared/editing-types'
 import { EDITING_TRANSITION_TYPES } from './transition-operations'
 import { EDITING_VIDEO_BLOCK_MAX_BORDER_RADIUS, EDITING_VIDEO_BLOCK_MAX_BORDER_WIDTH, EDITING_VIDEO_BLOCK_MAX_SIZE_PERCENT, EDITING_VIDEO_BLOCK_MIN_BORDER_RADIUS, EDITING_VIDEO_BLOCK_MIN_BORDER_WIDTH, EDITING_VIDEO_BLOCK_MIN_SIZE_PERCENT, EDITING_VIDEO_BLOCK_MOTION_MAX_DURATION, EDITING_VIDEO_BLOCK_MOTION_MIN_DURATION, EDITING_VIDEO_BLOCK_MOTIONS } from './video-block-operations'
 
@@ -79,11 +79,22 @@ function parseVideoClip(value: unknown, sourceIds: Set<string>): EditingVideoCli
   return { id: value.id, sourceId: value.sourceId, sourceStartSeconds: value.sourceStartSeconds, sourceEndSeconds: value.sourceEndSeconds, ...(value.volume === undefined ? {} : { volume: value.volume }), ...(value.muted === undefined ? {} : { muted: value.muted }), ...(value.treatment === undefined ? {} : { treatment: value.treatment }), ...(value.treatmentScale === undefined ? {} : { treatmentScale: value.treatmentScale }), ...(value.treatmentAnchor === undefined ? {} : { treatmentAnchor: value.treatmentAnchor }), ...(filter === undefined ? {} : { filter: filter as EditingClipFilter }), ...(transitionIn === undefined ? {} : { transitionIn: transitionIn as EditingClipTransition }) }
 }
 
+function parseCaptionWords(value: unknown): EditingCaptionWord[] | null {
+  if (!Array.isArray(value)) return null
+  const words = value.map((word) => {
+    if (!isRecord(word) || !isFiniteNonNegative(word.startSeconds) || !isFiniteNonNegative(word.endSeconds) || word.endSeconds <= word.startSeconds || !isNonEmptyString(word.text)) return null
+    return { startSeconds: word.startSeconds, endSeconds: word.endSeconds, text: word.text }
+  })
+  return words.some((word): word is null => word === null) ? null : words as EditingCaptionWord[]
+}
+
 function parseCaption(value: unknown, sourceIds: Set<string>): EditingCaption | null {
   if (!isRecord(value) || !isNonEmptyString(value.id) || !isFiniteNonNegative(value.startSeconds) || !isFiniteNonNegative(value.durationSeconds) || value.durationSeconds <= 0 || !isNonEmptyString(value.text) || (value.kind !== 'source' && value.kind !== 'translation')) return null
   if (value.sourceId !== undefined && (!isNonEmptyString(value.sourceId) || !sourceIds.has(value.sourceId))) return null
   if ((value.sourceStartSeconds === undefined) !== (value.sourceEndSeconds === undefined)) return null
   if (value.sourceStartSeconds !== undefined && (!isFiniteNonNegative(value.sourceStartSeconds) || !isFiniteNonNegative(value.sourceEndSeconds) || value.sourceEndSeconds <= value.sourceStartSeconds)) return null
+  const words = value.words === undefined ? undefined : parseCaptionWords(value.words)
+  if (words === null) return null
   const sourceRange = value.sourceStartSeconds === undefined ? {} : { sourceStartSeconds: value.sourceStartSeconds as number, sourceEndSeconds: value.sourceEndSeconds as number }
   return {
     id: value.id,
@@ -92,7 +103,8 @@ function parseCaption(value: unknown, sourceIds: Set<string>): EditingCaption | 
     ...(value.sourceId === undefined ? {} : { sourceId: value.sourceId }),
     ...sourceRange,
     text: value.text,
-    kind: value.kind
+    kind: value.kind,
+    ...(words === undefined ? {} : { words })
   }
 }
 

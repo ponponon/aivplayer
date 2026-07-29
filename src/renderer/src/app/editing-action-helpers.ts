@@ -69,7 +69,7 @@ export function withUpdatedTimelineRanges(project: EditingProject, clips: Editin
   let captions = project.captions
   let graphics = project.graphics
   let videoBlocks = project.videoBlocks
-  for (const removedRange of removedRanges) {
+  for (const removedRange of [...removedRanges].sort((left, right) => right.startSeconds - left.startSeconds)) {
     captions = removeEditedInterval(captions, removedRange.startSeconds, removedRange.endSeconds)
     if (graphics) graphics = removeEditedInterval<EditingGraphic>(graphics, removedRange.startSeconds, removedRange.endSeconds, 0.2)
     if (videoBlocks) videoBlocks = removeEditedInterval<EditingVideoBlock>(videoBlocks, removedRange.startSeconds, removedRange.endSeconds, 0.2)
@@ -85,9 +85,13 @@ export function withUpdatedTimelineRanges(project: EditingProject, clips: Editin
 }
 
 export function applyEditingTimelineChange(model: AppModel, nextClips: NonNullable<AppModel['editingProject']>['videoClips'], removedRange: { startSeconds: number; endSeconds: number } | null): void {
+  applyEditingTimelineChangeRanges(model, nextClips, removedRange ? [removedRange] : [])
+}
+
+export function applyEditingTimelineChangeRanges(model: AppModel, nextClips: NonNullable<AppModel['editingProject']>['videoClips'], removedRanges: readonly { startSeconds: number; endSeconds: number }[]): void {
   const project = model.editingProject
   if (!project || nextClips === project.videoClips) return
-  const nextProject = withUpdatedTimeline(project, nextClips, removedRange)
+  const nextProject = withUpdatedTimelineRanges(project, nextClips, removedRanges)
   const nextDurationSeconds = editedDurationSeconds(nextClips)
   model.setEditingPast((past) => [...past, project])
   model.setEditingFuture([])

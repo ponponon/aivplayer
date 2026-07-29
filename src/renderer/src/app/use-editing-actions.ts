@@ -18,6 +18,8 @@ import { createEditingSourceActions } from './editing-source-actions'
 import { createEditingScriptActions } from './editing-script-actions'
 import { createEditingGraphicActions } from './editing-graphic-actions'
 import { createEditingVideoBlockActions } from './editing-video-block-actions'
+import { createEditingSceneActions } from './editing-scene-actions'
+import { createEditingSilenceActions } from './editing-silence-actions'
 import { useEditingSourceEffect } from '../use-editing-source-effect'
 export function useEditingActions(model: AppModel, derived: AppDerived, selectFile: (file: NonNullable<AppModel['state']['currentFile']>) => void) {
   const openEditingMode = (): void => {
@@ -116,7 +118,7 @@ export function useEditingActions(model: AppModel, derived: AppDerived, selectFi
 
   useEditingPlaybackEffect(model); useEditingCaptionEffect(model, derived); useEditingSourceEffect(model)
 
-  const projectFileActions = createEditingProjectFileActions(model, derived, selectFile); const clipActions = createEditingClipActions(model); const captionActions = createEditingCaptionActions(model); const audioActions = createEditingAudioActions(model); const sourceActions = createEditingSourceActions(model, derived); const scriptActions = createEditingScriptActions(model); const graphicActions = createEditingGraphicActions(model); const videoBlockActions = createEditingVideoBlockActions(model)
+  const projectFileActions = createEditingProjectFileActions(model, derived, selectFile); const clipActions = createEditingClipActions(model); const captionActions = createEditingCaptionActions(model); const audioActions = createEditingAudioActions(model); const sourceActions = createEditingSourceActions(model, derived); const scriptActions = createEditingScriptActions(model); const graphicActions = createEditingGraphicActions(model); const videoBlockActions = createEditingVideoBlockActions(model); const sceneActions = createEditingSceneActions(model); const silenceActions = createEditingSilenceActions(model)
 
   useEffect(() => { if (model.isEditingMode && !model.state.currentFile) closeEditingMode() }, [model.isEditingMode, model.state.currentFile?.path])
 
@@ -136,6 +138,8 @@ export function useEditingActions(model: AppModel, derived: AppDerived, selectFi
     ...scriptActions,
     ...graphicActions,
     ...videoBlockActions,
+    ...sceneActions,
+    ...silenceActions,
     ...audioActions,
     ...sourceActions,
     ...projectFileActions,

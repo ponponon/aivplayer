@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Download, FilePlus2, FolderOpen, Grid3X3, Pause, Play, Plus, Redo2, RotateCcw, Save, Scissors, Trash2, Undo2, X, ZoomIn, ZoomOut } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, FilePlus2, FolderOpen, Grid3X3, Pause, Play, Plus, Redo2, RotateCcw, Save, ScanSearch, Scissors, Trash2, Undo2, Volume2, X, ZoomIn, ZoomOut } from 'lucide-react'
 import { useRef, useState } from 'react'
 import type { ClipExportMode } from '../../../shared/clip-export'
 import { editedDurationSeconds, editedTimeToSource, getVideoClipSpans } from '../../../core/editing/timeline-math'
@@ -20,6 +20,7 @@ import { EditingGraphicEditor } from './editing-graphic-editor'
 import { EditingGraphicTrack } from './editing-graphic-track'
 import { EditingVideoBlockControl } from './editing-video-block-control'; import { EditingVideoBlockTrack } from './editing-video-block-track'; import { EditingVideoBlockEditor } from './editing-video-block-editor'
 import { useEditingFilmstrips } from './use-editing-filmstrip'
+import { getEditingSceneCopy } from '../../../shared/editing-scene-copy'; import { getEditingSilenceCopy } from '../../../shared/editing-silence-copy'
 const MAX_RULER_TICKS = 121
 function formatClipLabel(startSeconds: number, endSeconds: number): string {
   return `${formatTime(startSeconds)} – ${formatTime(endSeconds)}`
@@ -28,6 +29,7 @@ type ClipDragState = { from: number; to: number; dx: number; moved: boolean; sta
 export function EditingTimeline(): React.ReactElement | null {
   const app = useAppContext()
   const project = app.editingProject
+  const sceneCopy = getEditingSceneCopy(app.appSettings.ui.locale); const silenceCopy = getEditingSilenceCopy(app.appSettings.ui.locale)
   const filmstrips = useEditingFilmstrips(project, app.editingSourceFiles)
   const [zoom, setZoom] = useState(1)
   const [isExportConfirmOpen, setIsExportConfirmOpen] = useState(false)
@@ -125,6 +127,8 @@ export function EditingTimeline(): React.ReactElement | null {
           <button className="editing-tool-button" type="button" onClick={app.trimEditingClipLeft} disabled={!canSplit} title={app.copy.editing.trimLeft} aria-label={app.copy.editing.trimLeft}><ChevronLeft size={15} /><span>{app.copy.editing.trimLeftShort}</span></button>
           <button className="editing-tool-button" type="button" onClick={app.trimEditingClipRight} disabled={!canSplit} title={app.copy.editing.trimRight} aria-label={app.copy.editing.trimRight}><ChevronRight size={15} /><span>{app.copy.editing.trimRightShort}</span></button>
           <button className="editing-tool-button editing-tool-button-accent" type="button" onClick={app.splitEditingClip} disabled={!canSplit} title={app.copy.editing.split} aria-label={app.copy.editing.split} data-testid="editing-split"><Scissors size={15} /><span>{app.copy.editing.splitShort}</span></button>
+          <button className="editing-tool-button" type="button" onClick={() => void app.detectEditingScenes()} disabled={app.isDetectingEditingScenes || !currentPoint} title={app.isDetectingEditingScenes ? sceneCopy.detecting : sceneCopy.title} aria-label={sceneCopy.title} data-testid="editing-scene-split"><ScanSearch size={15} /><span>{app.isDetectingEditingScenes ? sceneCopy.detectingShort : sceneCopy.split}</span></button>
+          <button className="editing-tool-button" type="button" onClick={() => void app.removeEditingSilence()} disabled={app.isDetectingEditingSilence || spans.length === 0} title={app.isDetectingEditingSilence ? silenceCopy.detecting : silenceCopy.title} aria-label={silenceCopy.title} data-testid="editing-remove-silence"><Volume2 size={15} /><span>{app.isDetectingEditingSilence ? silenceCopy.detectingShort : silenceCopy.label}</span></button>
           <button className="editing-tool-button editing-tool-button-danger" type="button" onClick={app.deleteEditingClip} disabled={spans.length <= 1} title={app.copy.editing.deleteClip} aria-label={app.copy.editing.deleteClip}><Trash2 size={15} /><span>{app.copy.editing.deleteShort}</span></button>
         </div>
         <EditingAudioControl clip={selectedClip} volumeLabel={app.copy.controls.volume} muteLabel={app.copy.controls.mute} onVolumeChange={(volume) => selectedClip && app.setEditingClipVolume(selectedClip.id, volume)} onToggleMute={() => selectedClip && app.toggleEditingClipMute(selectedClip.id)} />

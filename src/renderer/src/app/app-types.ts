@@ -90,6 +90,8 @@ export type AppStateSetters = {
   setEditingSourceFiles: React.Dispatch<React.SetStateAction<Record<string, MediaFile>>>
   setEditingPreviewSourceId: React.Dispatch<React.SetStateAction<string | null>>
   setIsAddingEditingMedia: React.Dispatch<React.SetStateAction<boolean>>
+  setIsDetectingEditingScenes: React.Dispatch<React.SetStateAction<boolean>>
+  setIsDetectingEditingSilence: React.Dispatch<React.SetStateAction<boolean>>
   setEditingProjectFilePath: React.Dispatch<React.SetStateAction<string | null>>
   setEditingProjectStatus: React.Dispatch<React.SetStateAction<EditingProjectStatus | null>>
 }
@@ -141,6 +143,8 @@ export type AppModel = AppRefs &
     editingSourceFiles: Record<string, MediaFile>
     editingPreviewSourceId: string | null
     isAddingEditingMedia: boolean
+    isDetectingEditingScenes: boolean
+    isDetectingEditingSilence: boolean
     editingProjectFilePath: string | null
     editingProjectStatus: EditingProjectStatus | null
   }

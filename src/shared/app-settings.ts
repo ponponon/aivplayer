@@ -2,8 +2,9 @@ import type { AsrModelSourceId } from './media-types'
 import type { ClipExportLengthSeconds, ClipExportMode } from './clip-export'
 import type { PlaybackHistoryEntry } from './playback-history'
 import { DEFAULT_APP_LOCALE, DEFAULT_SUBTITLE_LANGUAGE, type AppLocale, type SubtitleLanguageId } from './localization'
+import type { SubtitleEmphasisMode, SubtitlePresetId } from './subtitle-presets'
 
-export const APP_SETTINGS_SCHEMA_VERSION = 16
+export const APP_SETTINGS_SCHEMA_VERSION = 18
 
 export type CaptureImageFormat = 'jpg' | 'png'
 export type CaptureFileNamingMode = 'sequential' | 'timestamp'
@@ -63,6 +64,9 @@ export type AppSettings = {
     lineHeight: SubtitleLineHeight
     displayMode: SubtitleDisplayMode
     targetLanguage: SubtitleTargetLanguageId
+    presetId: SubtitlePresetId
+    emphasisMode: SubtitleEmphasisMode
+    keywords: string
   }
   ai: {
     openMode: AiAutomationMode
@@ -200,7 +204,10 @@ export function createDefaultAppSettings(): AppSettings {
       fontSizePx: 14,
       lineHeight: 'normal',
       displayMode: 'source',
-      targetLanguage: 'zh'
+      targetLanguage: 'zh',
+      presetId: 'clean',
+      emphasisMode: 'words',
+      keywords: ''
     },
     ai: {
       openMode: 'cache-only'

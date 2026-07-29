@@ -41,6 +41,7 @@
 @import './player/subtitle-controls.css';
 @import './player/subtitle-display.css';
 @import './player/subtitle-display-settings.css';
+@import './player/subtitle-presets.css';
 @import './player/asr-runtime.css';
 @import './player/asr-actions.css';
 @import './player/asr-errors-dialogs.css';

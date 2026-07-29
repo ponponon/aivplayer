@@ -7,12 +7,15 @@ import {
   type SubtitleLineHeight
 } from '../../../shared/app-settings'
 import type { LocaleCopy } from '../../../shared/i18n'
+import type { AppLocale } from '../../../shared/localization'
 import { clampSubtitleFontSize, maxSubtitleFontSize, minSubtitleFontSize } from './subtitle-display-settings'
+import { SubtitlePresetControls } from './subtitle-preset-controls'
 
 type SubtitleDisplaySettings = AppSettings['subtitles']
 
 type SubtitleDisplayControlsProps = {
   copy: LocaleCopy
+  locale: AppLocale
   settings: SubtitleDisplaySettings
   hasTranslation: boolean
   controlsRef?: RefObject<HTMLDetailsElement | null>
@@ -26,6 +29,7 @@ const subtitleFontSizePresets = [12, 14, 16, 18] as const
 
 export function SubtitleDisplayControls({
   copy,
+  locale,
   settings,
   hasTranslation,
   controlsRef,
@@ -92,6 +96,8 @@ export function SubtitleDisplayControls({
             </div>
           </div>
         </div>
+
+        <SubtitlePresetControls locale={locale} settings={settings} onChange={onChange} />
 
         <div className="subtitle-display-control-row subtitle-display-choice-row">
           <span>{copy.subtitleDisplay.lineHeight}</span>

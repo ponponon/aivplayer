@@ -55,6 +55,10 @@ import type {
   MediaFile,
   MediaFilmstripRequest,
   MediaFilmstripResult,
+  MediaSceneDetectionRequest,
+  MediaSceneDetectionResult,
+  MediaSilenceDetectionRequest,
+  MediaSilenceDetectionResult,
   MediaProbeMetadata,
   ImageSaveRequest,
   ImageSaveResult,
@@ -108,6 +112,10 @@ const api = {
     ipcRenderer.invoke(IPC_CHANNELS.GET_MEDIA_METADATA, filePath),
   extractMediaFilmstrip: (request: MediaFilmstripRequest): Promise<MediaFilmstripResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.EXTRACT_MEDIA_FILMSTRIP, request),
+  detectMediaScenes: (request: MediaSceneDetectionRequest): Promise<MediaSceneDetectionResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.DETECT_MEDIA_SCENES, request),
+  detectMediaSilence: (request: MediaSilenceDetectionRequest): Promise<MediaSilenceDetectionResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.DETECT_MEDIA_SILENCE, request),
   getAppVersion: (): Promise<string> => ipcRenderer.invoke(IPC_CHANNELS.GET_APP_VERSION),
   getAppSettings: (): Promise<AppSettings> => ipcRenderer.invoke(IPC_CHANNELS.APP_GET_SETTINGS),
   setAppSettings: (settings: AppSettings): Promise<AppSettings> => ipcRenderer.invoke(IPC_CHANNELS.APP_SET_SETTINGS, settings),

@@ -17,6 +17,7 @@ import {
   type SubtitleLineHeight,
   type SubtitleTargetLanguageId
 } from '../shared/app-settings'
+import { isSubtitleEmphasisMode, isSubtitlePresetId, normalizeSubtitleKeywords } from '../shared/subtitle-presets'
 import { isClipExportLengthSeconds, isClipExportMode } from '../shared/clip-export'
 import type { AsrModelSourceId } from '../shared/media-types'
 import { isAppLocale, isSubtitleLanguageId } from '../shared/localization'
@@ -349,7 +350,10 @@ function sanitizeSubtitleSettings(
     displayMode: isSubtitleDisplayMode(subtitles.displayMode) ? subtitles.displayMode : defaults.displayMode,
     targetLanguage: isSubtitleTargetLanguageId(subtitles.targetLanguage)
       ? subtitles.targetLanguage
-      : defaults.targetLanguage
+      : defaults.targetLanguage,
+    presetId: isSubtitlePresetId(subtitles.presetId) ? subtitles.presetId : defaults.presetId,
+    emphasisMode: isSubtitleEmphasisMode(subtitles.emphasisMode) ? subtitles.emphasisMode : defaults.emphasisMode,
+    keywords: normalizeSubtitleKeywords(subtitles.keywords)
   }
 }
 

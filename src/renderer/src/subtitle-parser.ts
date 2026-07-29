@@ -1,7 +1,10 @@
+import type { SubtitleWord } from '../../shared/subtitle-timing'
+
 export type SubtitleCue = {
   startSeconds: number
   endSeconds: number
   text: string
+  words?: SubtitleWord[]
 }
 
 const VTT_TIMESTAMP_PATTERN = /^(?:(\d+):)?(\d{2}):(\d{2})[.,](\d{3})$/

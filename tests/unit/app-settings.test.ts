@@ -143,7 +143,7 @@ describe('app settings', () => {
     )
 
     await expect(readAppSettings(tempDirectory)).resolves.toMatchObject({
-      schemaVersion: 16,
+      schemaVersion: 18,
       playback: {
         singleClickPause: true
       }
@@ -188,7 +188,10 @@ describe('app settings', () => {
       fontSizePx: 28,
       lineHeight: 'normal',
       displayMode: 'source',
-      targetLanguage: 'zh'
+      targetLanguage: 'zh',
+      presetId: 'clean',
+      emphasisMode: 'words',
+      keywords: ''
     })
   })
 

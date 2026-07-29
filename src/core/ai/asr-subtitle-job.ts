@@ -154,7 +154,7 @@ export function buildWhisperSubtitleArgs(options: WhisperSubtitleArgs): string[]
     options.outputBase,
     '-ovtt',
     '-osrt',
-    '-oj',
+    '-ojf',
     '-l',
     options.language ?? 'auto'
   ]

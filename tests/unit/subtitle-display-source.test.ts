@@ -6,6 +6,7 @@ describe('subtitle display source constraints', () => {
     const appSource = `${readSource('src/renderer/src/app/player-stage.tsx')}\n${readSource('src/renderer/src/app/use-settings-actions.ts')}`
     const overlaySource = readSource('src/renderer/src/subtitle-overlay.tsx')
     const controlsSource = readSource('src/renderer/src/app/subtitle-display-controls.tsx')
+    const textSource = readSource('src/renderer/src/subtitle-text.tsx')
 
     expect(appSource).toContain('settings={app.appSettings.subtitles}')
     expect(appSource).toContain('const patchSubtitleDisplaySettings')
@@ -13,8 +14,8 @@ describe('subtitle display source constraints', () => {
     expect(appSource).toContain('onResetSettings={app.resetSubtitleDisplaySettings}')
     expect(overlaySource).toContain('SubtitleDisplayControls')
     expect(controlsSource).toContain('effectiveDisplayMode')
-    expect(overlaySource).toContain('--subtitle-font-size')
-    expect(overlaySource).toContain('--subtitle-line-height')
+    expect(textSource).toContain('--subtitle-font-size')
+    expect(textSource).toContain('--subtitle-line-height')
     expect(overlaySource).toContain('findActiveEditingCaption')
     expect(appSource).toContain('editingCaptions={app.isEditingMode ? app.editingProject?.captions ?? null : null}')
   })

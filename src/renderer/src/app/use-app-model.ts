@@ -15,7 +15,6 @@ import { initialPlayerState } from './player-state'
 import type { AppModel, AsrNotice, EditingProjectStatus } from './app-types'
 import { useAppRefs } from './use-app-refs'
 import type { EditingProject } from '../../../shared/editing-types'
-
 export function useAppModel(): AppModel {
   const refs = useAppRefs()
   const [state, setState] = useState(initialPlayerState)
@@ -60,9 +59,8 @@ export function useAppModel(): AppModel {
   const [editingSourceFiles, setEditingSourceFiles] = useState<Record<string, import('../../../shared/media-types').MediaFile>>({})
   const [editingPreviewSourceId, setEditingPreviewSourceId] = useState<string | null>(null)
   const [isAddingEditingMedia, setIsAddingEditingMedia] = useState(false)
-  const [editingProjectFilePath, setEditingProjectFilePath] = useState<string | null>(null)
-  const [editingProjectStatus, setEditingProjectStatus] = useState<EditingProjectStatus | null>(null)
-
+  const [isDetectingEditingScenes, setIsDetectingEditingScenes] = useState(false); const [isDetectingEditingSilence, setIsDetectingEditingSilence] = useState(false)
+  const [editingProjectFilePath, setEditingProjectFilePath] = useState<string | null>(null); const [editingProjectStatus, setEditingProjectStatus] = useState<EditingProjectStatus | null>(null)
   return {
     ...refs,
     state,
@@ -144,6 +142,8 @@ export function useAppModel(): AppModel {
     editingSourceFiles, setEditingSourceFiles,
     editingPreviewSourceId, setEditingPreviewSourceId,
     isAddingEditingMedia, setIsAddingEditingMedia,
+    isDetectingEditingScenes, setIsDetectingEditingScenes,
+    isDetectingEditingSilence, setIsDetectingEditingSilence,
     editingProjectFilePath, setEditingProjectFilePath,
     editingProjectStatus, setEditingProjectStatus
   }

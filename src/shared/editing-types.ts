@@ -6,6 +6,8 @@
  * and can be repaired when a file is moved.
  */
 
+import type { SubtitleWord } from './subtitle-timing'
+
 export const EDITING_PROJECT_SCHEMA_VERSION = 1 as const
 
 export type EditingSource = {
@@ -78,12 +80,16 @@ export type EditingTimedItem = {
   durationSeconds: number
 }
 
+/** Word timings are relative to the caption's own start, so a caption can move on the edit timeline without re-running ASR. */
+export type EditingCaptionWord = SubtitleWord
+
 export type EditingCaption = EditingTimedItem & {
   sourceId?: string
   sourceStartSeconds?: number
   sourceEndSeconds?: number
   text: string
   kind: 'source' | 'translation'
+  words?: EditingCaptionWord[]
 }
 
 /**

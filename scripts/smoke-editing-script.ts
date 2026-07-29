@@ -105,8 +105,8 @@ async function main(): Promise<void> {
     const multiTransitionExportResult = await page.evaluate(async ({ sourcePath, targetPath }) => window.aiv.exportMediaTimeline({ mediaPath: sourcePath, clips: [{ mediaPath: sourcePath, startSeconds: 0, endSeconds: 2 }, { mediaPath: sourcePath, startSeconds: 4, endSeconds: 6, transitionIn: { type: 'wipe-left', durationSeconds: 0.4 } }, { mediaPath: sourcePath, startSeconds: 8, endSeconds: 10, transitionIn: { type: 'zoom', durationSeconds: 0.4 } }], mode: 'video', outputVideoPath: targetPath }), { sourcePath: mediaPath, targetPath: multiTransitionOutputPath })
     const multiTransitionOutputStats = multiTransitionExportResult.success ? await stat(multiTransitionOutputPath).catch(() => null) : null
     const graphicOutputPath = join(smokeHomeDirectory, 'aivplayer-smoke-graphic.mp4')
-    const graphicExportResult = await page.evaluate(async ({ sourcePath, targetPath }) => window.aiv.exportMediaTimeline({ mediaPath: sourcePath, clips: [{ mediaPath: sourcePath, startSeconds: 0, endSeconds: 2 }], graphics: [{ id: 'smoke-graphic', startSeconds: 0, durationSeconds: 1.5, text: '烟测标题', position: 'center', style: 'title' }], mode: 'video', outputVideoPath: targetPath }), { sourcePath: mediaPath, targetPath: graphicOutputPath })
-    const graphicOutputStats = graphicExportResult.success ? await stat(graphicOutputPath).catch(() => null) : null
+    const graphicOutputResult = await page.evaluate(async ({ sourcePath, targetPath }) => window.aiv.exportMediaTimeline({ mediaPath: sourcePath, clips: [{ mediaPath: sourcePath, startSeconds: 0, endSeconds: 2 }], graphics: [{ id: 'smoke-graphic', startSeconds: 0, durationSeconds: 1.5, text: '烟测标题', position: 'center', style: 'title' }], mode: 'video', outputVideoPath: targetPath }), { sourcePath: mediaPath, targetPath: graphicOutputPath })
+    const graphicOutputStats = graphicOutputResult.success ? await stat(graphicOutputPath).catch(() => null) : null
     const videoBlockOutputPath = join(smokeHomeDirectory, 'aivplayer-smoke-video-block.mp4')
     const videoBlockExportResult = await page.evaluate(async ({ sourcePath, targetPath }) => window.aiv.exportMediaTimeline({ mediaPath: sourcePath, clips: [{ mediaPath: sourcePath, startSeconds: 0, endSeconds: 4 }], videoBlocks: [{ mediaPath: sourcePath, sourceStartSeconds: 8, sourceEndSeconds: 10.5, startSeconds: 1, durationSeconds: 2.5, position: 'bottom-right', sizePercent: 40, borderRadius: 18, borderWidth: 4, enterMotion: 'scale', exitMotion: 'fade', motionDurationSeconds: 0.5 }], mode: 'video', outputVideoPath: targetPath }), { sourcePath: mediaPath, targetPath: videoBlockOutputPath })
     const videoBlockOutputStats = videoBlockExportResult.success ? await stat(videoBlockOutputPath).catch(() => null) : null
@@ -129,6 +129,8 @@ async function main(): Promise<void> {
       blockStyle: (() => { const block = document.querySelector('.editing-video-block') as HTMLVideoElement | null; return { width: block?.style.width ?? '', radius: block?.style.borderRadius ?? '', border: block?.style.borderWidth ?? '', transform: block?.style.transform ?? '', opacity: block?.style.opacity ?? '' } })()
     }))
     await page.locator('[data-testid="editing-video-block-editor"] .editing-video-block-summary').click()
+    await page.locator('[data-testid="editing-filter-control"] .editing-filter-summary').click()
+    await page.locator('[data-testid="editing-graphic-editor"] .editing-graphic-summary').click()
 
     await page.locator('[data-testid="editing-script-list"] .editing-script-action.is-danger').first().click()
     await page.waitForFunction(() => document.querySelectorAll('[data-testid="editing-script-list"] .editing-script-row.is-deleted').length === 1)
@@ -149,6 +151,26 @@ async function main(): Promise<void> {
     await page.waitForFunction(() => document.querySelectorAll('[data-testid="editing-script-list"] .editing-script-row.is-deleted').length === 1)
     await page.locator('[data-testid="editing-redo"]').click()
     await page.waitForFunction(() => document.querySelectorAll('[data-testid="editing-script-list"] .editing-script-row.is-deleted').length === 0)
+    await page.locator('.editing-clip').nth(1).click()
+    const sceneClipCountBefore = await page.locator('.editing-clip').count()
+    await page.locator('[data-testid="editing-scene-split"]').click()
+    await page.waitForFunction((before) => document.querySelectorAll('.editing-clip').length > before, sceneClipCountBefore, { timeout: 20_000 })
+    const sceneClipCountAfter = await page.locator('.editing-clip').count()
+    await page.locator('[data-testid="editing-remove-silence"]').click()
+    await page.waitForFunction(() => document.querySelector('.editing-project-status')?.textContent?.includes('已删除') === true, null, { timeout: 20_000 })
+    const silenceStatus = await page.locator('.editing-project-status').textContent()
+    await page.locator('[data-testid="editing-script-list"] .editing-script-row').first().click()
+    await page.waitForFunction(() => document.querySelector('.subtitle-text')?.textContent?.includes('第一句') === true, null, { timeout: 10_000 })
+    await page.waitForFunction(() => document.querySelector('.subtitle-overlay:not(.empty) .subtitle-text') !== null, null, { timeout: 10_000 })
+    await page.locator('.subtitle-display-trigger').click()
+    await page.waitForFunction(() => document.querySelectorAll('.subtitle-word').length > 0, null, { timeout: 10_000 })
+    await page.waitForFunction(() => document.querySelector('.subtitle-word.is-active') !== null, null, { timeout: 10_000 })
+    const wordTimingPreview = await page.evaluate(() => ({ total: document.querySelectorAll('.subtitle-word').length, active: document.querySelector('.subtitle-word.is-active')?.textContent ?? '' }))
+    await page.locator('.subtitle-display-controls[open] button').filter({ hasText: '关键词' }).click()
+    await page.locator('.subtitle-display-controls[open] button').filter({ hasText: '暖黄' }).evaluate((element) => (element as HTMLButtonElement).click())
+    await page.locator('.subtitle-display-controls[open] textarea').evaluate((element) => { const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set; setter?.call(element, '第一句'); element.dispatchEvent(new Event('input', { bubbles: true })) })
+    await page.waitForFunction(() => document.querySelector('.subtitle-emphasis')?.textContent === '第一句', null, { timeout: 10_000 })
+    const subtitlePresetPreview = await page.evaluate(() => ({ text: document.querySelector('.subtitle-emphasis')?.textContent ?? '', color: getComputedStyle(document.querySelector('.subtitle-text') as HTMLElement).color }))
     const screenshotPath = join(smokeHomeDirectory, 'aivplayer-smoke-editing-script.png')
     await page.screenshot({ path: screenshotPath, fullPage: false })
 
@@ -158,17 +180,21 @@ async function main(): Promise<void> {
     console.log(`Video block motion preview: ${JSON.stringify(videoBlockMotionPreview)}`)
     console.log(`After delete: ${JSON.stringify(afterDelete)}`)
     console.log(`After restore: ${JSON.stringify(afterRestore)}`)
+    console.log(`Scene split: ${JSON.stringify({ before: sceneClipCountBefore, after: sceneClipCountAfter })}`)
+    console.log(`Silence removal: ${JSON.stringify({ status: silenceStatus })}`)
+    console.log(`Subtitle word timing preview: ${JSON.stringify(wordTimingPreview)}`)
+    console.log(`Subtitle preset preview: ${JSON.stringify(subtitlePresetPreview)}`)
     console.log(`Punch-in export: ${JSON.stringify({ success: punchInExportResult.success, message: punchInExportResult.message, outputBytes: punchInOutputStats?.size ?? 0 })}`)
     console.log(`Transition export: ${JSON.stringify({ success: transitionExportResult.success, message: transitionExportResult.message, outputBytes: transitionOutputStats?.size ?? 0 })}`)
     console.log(`Multi-transition export: ${JSON.stringify({ success: multiTransitionExportResult.success, message: multiTransitionExportResult.message, outputBytes: multiTransitionOutputStats?.size ?? 0 })}`)
-    console.log(`Graphic export: ${JSON.stringify({ success: graphicExportResult.success, message: graphicExportResult.message, outputBytes: graphicOutputStats?.size ?? 0 })}`)
+    console.log(`Graphic export: ${JSON.stringify({ success: graphicOutputResult.success, message: graphicOutputResult.message, outputBytes: graphicOutputStats?.size ?? 0 })}`)
     console.log(`Video block export: ${JSON.stringify({ success: videoBlockExportResult.success, message: videoBlockExportResult.message, outputBytes: videoBlockOutputStats?.size ?? 0 })}`)
     console.log(`Split export: ${JSON.stringify({ success: splitExportResult.success, message: splitExportResult.message, outputBytes: splitOutputStats?.size ?? 0 })}`)
     console.log(`Treatment screenshot: ${treatmentScreenshotPath}`)
     console.log(`Console errors: ${JSON.stringify(consoleErrors)}`)
     console.log(`Screenshot: ${screenshotPath}`)
 
-    if (before.rows !== 3 || before.deleted !== 0 || treatmentBeforeSplit.treatment !== 'scale(1.6)' || treatmentBeforeSplit.treatmentOrigin !== '0% 50%' || !transitionPreview.includes('inset') || before.filter !== 'brightness(1.2) contrast(1) saturate(1)' || before.graphic !== '烟测标题-修改' || before.graphicLeft === '0%' || !before.splitSurface.includes('is-split-left') || !before.splitBlock.includes('is-split-left') || before.blockStyle.width !== '60%' || before.blockStyle.radius !== '18px' || before.blockStyle.border !== '4px' || !videoBlockMotionPreview.transform.includes('translateX') || afterDelete.deleted !== 1 || afterRestore.deleted !== 0 || !punchInExportResult.success || !punchInOutputStats || punchInOutputStats.size <= 0 || !transitionExportResult.success || !transitionOutputStats || transitionOutputStats.size <= 0 || !multiTransitionExportResult.success || !multiTransitionOutputStats || multiTransitionOutputStats.size <= 0 || !graphicExportResult.success || !graphicOutputStats || graphicOutputStats.size <= 0 || !videoBlockOutputStats || !videoBlockExportResult.success || !splitExportResult.success || !splitOutputStats || splitOutputStats.size <= 0 || consoleErrors.length > 0) process.exitCode = 1
+    if (before.rows !== 3 || before.deleted !== 0 || sceneClipCountAfter !== sceneClipCountBefore + 2 || treatmentBeforeSplit.treatment !== 'scale(1.6)' || treatmentBeforeSplit.treatmentOrigin !== '0% 50%' || !transitionPreview.includes('inset') || before.filter !== 'brightness(1.2) contrast(1) saturate(1)' || before.graphic !== '烟测标题-修改' || before.graphicLeft === '0%' || !before.splitSurface.includes('is-split-left') || !before.splitBlock.includes('is-split-left') || before.blockStyle.width !== '60%' || before.blockStyle.radius !== '18px' || before.blockStyle.border !== '4px' || !videoBlockMotionPreview.transform.includes('translateX') || wordTimingPreview.total === 0 || wordTimingPreview.active.length === 0 || afterDelete.deleted !== 1 || afterRestore.deleted !== 0 || !punchInExportResult.success || !punchInOutputStats || punchInOutputStats.size <= 0 || !transitionExportResult.success || !transitionOutputStats || transitionOutputStats.size <= 0 || !multiTransitionExportResult.success || !multiTransitionOutputStats || multiTransitionOutputStats.size <= 0 || !graphicOutputResult.success || !graphicOutputStats || graphicOutputStats.size <= 0 || !videoBlockOutputStats || !videoBlockExportResult.success || !splitExportResult.success || !splitOutputStats || splitOutputStats.size <= 0 || consoleErrors.length > 0) process.exitCode = 1
   } finally {
     await app.close()
   }

@@ -12,6 +12,8 @@ import { registerAsrTranslationIpc } from './ipc-asr-translation'
 import { registerAsrSummaryIpc } from './ipc-asr-summary'
 import { registerSettingsIpc } from './ipc-settings'
 import { registerFilmstripIpc } from './ipc-filmstrip'
+import { registerSceneDetectionIpc } from './ipc-scene-detection'
+import { registerSilenceDetectionIpc } from './ipc-silence-detection'
 import { registerUtilityIpc } from './ipc-utility'
 import { registerWindowControlsIpc } from './ipc-window-controls'
 import { registerVisionIpc } from './ipc-vision'
@@ -29,6 +31,8 @@ const isCliInvocation = cliArgumentIndex !== -1
 function registerIpc(): void {
   registerSettingsIpc()
   registerFilmstripIpc()
+  registerSceneDetectionIpc()
+  registerSilenceDetectionIpc()
   registerAsrRuntimeIpc()
   registerAsrCacheIpc()
   registerAsrSubtitleIpc()

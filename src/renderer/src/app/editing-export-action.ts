@@ -1,4 +1,5 @@
 import { serializeEditingCaptionsToSrt } from '../../../core/editing/caption-serialization'
+import { buildAssSubtitleFromEditingCaptions } from '../../../core/media/subtitle-ass'
 import type { ClipExportMode } from '../../../shared/clip-export'
 import type { AppDerived } from './use-app-derived'
 import type { AppModel } from './app-types'
@@ -20,9 +21,12 @@ export async function exportEditingTimeline(model: AppModel, derived: AppDerived
   const subtitleText = serializeEditingCaptionsToSrt(project.captions)
   const hasProjectSubtitle = subtitleText.length > 0
   const mode = hasProjectSubtitle || derived.hasClipExportSubtitle ? requestedMode ?? model.appSettings.capture.clipExportMode : 'video'
+  const subtitleAssText = hasProjectSubtitle && mode === 'burn-subtitle'
+    ? buildAssSubtitleFromEditingCaptions(project.captions, { ...model.appSettings.subtitles, playResX: primarySource.width, playResY: primarySource.height })
+    : undefined
   model.setIsExportingClip(true)
   try {
-    const result = await window.aiv.exportMediaTimeline({ mediaPath: primarySource.path, clips, graphics: project.graphics, videoBlocks, mode, subtitleText: hasProjectSubtitle ? subtitleText : undefined, subtitlePath: hasProjectSubtitle ? undefined : derived.subtitlePath ?? undefined, subtitleSrtPath: hasProjectSubtitle ? undefined : derived.subtitleSrtPath ?? undefined, targetWidth: primarySource.width, targetHeight: primarySource.height, outputVideoPath })
+    const result = await window.aiv.exportMediaTimeline({ mediaPath: primarySource.path, clips, graphics: project.graphics, videoBlocks, mode, subtitleText: hasProjectSubtitle ? subtitleText : undefined, subtitleAssText, subtitlePath: hasProjectSubtitle ? undefined : derived.subtitlePath ?? undefined, subtitleSrtPath: hasProjectSubtitle ? undefined : derived.subtitleSrtPath ?? undefined, subtitleRender: model.appSettings.subtitles, targetWidth: primarySource.width, targetHeight: primarySource.height, outputVideoPath })
     if (!result.canceled) model.setAsrNotice(result)
   } catch (error) {
     model.setAsrNotice({ success: false, message: `${derived.copy.runtime.clipExportFailed}：${error instanceof Error ? error.message : String(error)}` })

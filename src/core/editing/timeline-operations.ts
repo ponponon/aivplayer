@@ -14,6 +14,11 @@ export type VideoClipEditResult = {
   removedRange: EditedRange | null
 }
 
+export type VideoClipBatchEditResult = {
+  clips: EditingVideoClip[]
+  removedRanges: EditedRange[]
+}
+
 export type EditingClipBoundary = 'start' | 'end'
 
 export type SourceRangeEditResult = {
@@ -24,6 +29,11 @@ export type SourceRangeEditResult = {
 export type RestoreSourceRangeResult = {
   clips: EditingVideoClip[]
   restored: boolean
+}
+
+export type SceneSplitResult = {
+  clips: EditingVideoClip[]
+  splitCount: number
 }
 
 export type InsertVideoClipsResult = {
@@ -52,6 +62,65 @@ function defaultCreateRightClip(
 
 function unchanged(clips: readonly EditingVideoClip[]): VideoClipEditResult {
   return { clips: [...clips], removedRange: null }
+}
+
+/** Removes several ranges from one edited timeline in descending order so earlier coordinates stay stable. */
+export function removeEditedVideoRanges(
+  clips: readonly EditingVideoClip[],
+  ranges: readonly EditedRange[],
+  createRightClip: CreateRightClip = defaultCreateRightClip
+): VideoClipBatchEditResult {
+  const normalized = ranges
+    .map((range) => ({ startSeconds: Math.min(range.startSeconds, range.endSeconds), endSeconds: Math.max(range.startSeconds, range.endSeconds) }))
+    .filter((range) => Number.isFinite(range.startSeconds) && Number.isFinite(range.endSeconds) && range.endSeconds - range.startSeconds > EDITING_TIME_EPSILON_SECONDS)
+    .sort((left, right) => left.startSeconds - right.startSeconds)
+    .reduce<EditedRange[]>((merged, range) => {
+      const previous = merged.at(-1)
+      if (previous && range.startSeconds <= previous.endSeconds + EDITING_TIME_EPSILON_SECONDS) previous.endSeconds = Math.max(previous.endSeconds, range.endSeconds)
+      else merged.push({ ...range })
+      return merged
+    }, [])
+  let nextClips = [...clips]
+  const removedRanges: EditedRange[] = []
+  for (const range of [...normalized].reverse()) {
+    const result = removeEditedVideoRange(nextClips, range.startSeconds, range.endSeconds, createRightClip)
+    if (!result.removedRange) continue
+    nextClips = result.clips
+    removedRanges.unshift(result.removedRange)
+  }
+  return { clips: nextClips, removedRanges }
+}
+
+/** Splits one clip at source-clock scene cuts without changing edited duration. */
+export function splitVideoClipAtSourceCuts(
+  clips: readonly EditingVideoClip[],
+  clipId: string,
+  sourceCuts: readonly number[],
+  minimumSegmentSeconds = 0.4
+): SceneSplitResult {
+  const index = clips.findIndex((clip) => clip.id === clipId)
+  const target = index >= 0 ? clips[index] : null
+  if (!target) return { clips: [...clips], splitCount: 0 }
+  const minimum = Number.isFinite(minimumSegmentSeconds) ? Math.max(0.1, minimumSegmentSeconds) : 0.4
+  const cuts: number[] = []
+  for (const sourceCut of [...sourceCuts].sort((left, right) => left - right)) {
+    if (!Number.isFinite(sourceCut) || sourceCut <= target.sourceStartSeconds + minimum || sourceCut >= target.sourceEndSeconds - minimum) continue
+    if (cuts.length === 0 || sourceCut - cuts[cuts.length - 1]! >= minimum) cuts.push(sourceCut)
+  }
+  if (cuts.length === 0) return { clips: [...clips], splitCount: 0 }
+
+  const { transitionIn, ...withoutTransition } = target
+  const boundaries = [target.sourceStartSeconds, ...cuts, target.sourceEndSeconds]
+  const parts = boundaries.slice(0, -1).map((sourceStartSeconds, partIndex) => ({
+    ...(partIndex === 0 && transitionIn ? { ...withoutTransition, transitionIn } : withoutTransition),
+    id: partIndex === 0 ? target.id : `${target.id}-scene-${partIndex}`,
+    sourceStartSeconds,
+    sourceEndSeconds: boundaries[partIndex + 1]!
+  }))
+  return {
+    clips: normalizeEditingClipTransitions([...clips.slice(0, index), ...parts, ...clips.slice(index + 1)]),
+    splitCount: cuts.length
+  }
 }
 
 /** Splits a surviving clip without changing the edited duration. */

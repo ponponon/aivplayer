@@ -1,17 +1,21 @@
-import type { CSSProperties, ReactElement, RefObject } from 'react'
+import type { ReactElement, RefObject } from 'react'
 import { useState, useEffect, useRef } from 'react'
 import type { AppSettings } from '../../shared/app-settings'
+import type { AppLocale } from '../../shared/localization'
 import type { LocaleCopy } from '../../shared/i18n'
 import { SubtitleDisplayControls, getDefaultSubtitleDisplaySettings } from './app/subtitle-display-controls'
 import { parseVtt, findActiveCue } from './subtitle-parser'
 import type { SubtitleCue } from './subtitle-parser'
 import type { EditingCaption } from '../../shared/editing-types'
+import { SubtitleText } from './subtitle-text'
+import { attachSubtitleWords, getSubtitleWordSidecarPath, parseWhisperSubtitleWords, type SubtitleWord } from '../../shared/subtitle-timing'
 
 type SubtitleOverlayProps = {
   subtitlePath: string | null
   translationPath?: string | null
   editingCaptions?: readonly EditingCaption[] | null
   currentTime: number
+  locale: AppLocale
   settings: AppSettings['subtitles']
   copy: LocaleCopy
   controlsRef?: RefObject<HTMLDetailsElement | null>
@@ -52,6 +56,7 @@ export function SubtitleOverlay({
   translationPath = null,
   editingCaptions = null,
   currentTime,
+  locale,
   settings,
   copy,
   controlsRef,
@@ -85,7 +90,9 @@ export function SubtitleOverlay({
     const loadAndParse = async (): Promise<void> => {
       try {
         const text = await window.aiv.readFileContent(subtitlePath)
-        const parsedCues = parseVtt(text)
+        const wordSidecarPath = getSubtitleWordSidecarPath(subtitlePath)
+        const wordText = wordSidecarPath ? await window.aiv.readFileContent(wordSidecarPath).catch(() => '') : ''
+        const parsedCues = attachSubtitleWords(parseVtt(text), parseWhisperSubtitleWords(wordText), true)
         setCues(parsedCues)
       } catch (error) {
         console.error('Failed to load subtitle:', error)
@@ -147,12 +154,10 @@ export function SubtitleOverlay({
   }
 
   const displaySettings = settings ?? getDefaultSubtitleDisplaySettings()
-  const subtitleStyle = {
-    '--subtitle-font-size': `${displaySettings.fontSizePx}px`,
-    '--subtitle-line-height': String(subtitleLineHeightMap[displaySettings.lineHeight])
-  } as CSSProperties
   const sourceText = activeEditingCue?.text ?? activeCue?.text ?? '\u00A0'
   const translationText = activeEditingTranslationCue?.text ?? activeTranslationCue?.text ?? null
+  const activeSourceWords = settings.emphasisMode === 'words' ? activeEditingCue?.words ?? activeCue?.words : undefined
+  const wordTime = activeEditingCue ? currentTime - activeEditingCue.startSeconds : currentTime
   const displayText = buildSubtitleDisplayText({
     sourceText,
     translationText,
@@ -160,10 +165,11 @@ export function SubtitleOverlay({
   })
 
   return (
-    <div className="subtitle-overlay" style={subtitleStyle}>
-      <div className="subtitle-text">{displayText}</div>
+    <div className="subtitle-overlay">
+      <SubtitleText text={displayText} presetId={displaySettings.presetId} emphasisMode={displaySettings.emphasisMode} keywords={displaySettings.keywords} wordTimings={activeSourceWords as readonly SubtitleWord[] | undefined} currentTime={wordTime} fontSizePx={displaySettings.fontSizePx} lineHeight={subtitleLineHeightMap[displaySettings.lineHeight]} />
       <SubtitleDisplayControls
         copy={copy}
+        locale={locale}
         settings={displaySettings}
         hasTranslation={editingCaptions ? editingCaptions.some((caption) => caption.kind === 'translation') : translationCues.length > 0}
         controlsRef={controlsRef}

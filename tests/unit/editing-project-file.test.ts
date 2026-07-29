@@ -79,6 +79,28 @@ describe('editing project files', () => {
     expect(parseEditingProjectFile(serializeEditingProject(withScript))).toEqual(withScript)
   })
 
+  it('round-trips relative caption word timing for karaoke preview and burn-in', () => {
+    const project = createEditingProject(source)
+    const withWords = {
+      ...project,
+      captions: [{
+        id: 'caption-1',
+        startSeconds: 0,
+        durationSeconds: 2,
+        sourceId: source.id,
+        sourceStartSeconds: 0,
+        sourceEndSeconds: 2,
+        text: 'Hello world',
+        kind: 'source' as const,
+        words: [
+          { startSeconds: 0, endSeconds: 0.6, text: 'Hello' },
+          { startSeconds: 0.6, endSeconds: 2, text: ' world' }
+        ]
+      }]
+    }
+    expect(parseEditingProjectFile(serializeEditingProject(withWords))).toEqual(withWords)
+  })
+
   it('rejects malformed JSON before it reaches the editor', () => {
     expect(() => parseEditingProjectFile('{"schemaVersion": 1}')).toThrow('Invalid AIVPlayer editing project')
   })

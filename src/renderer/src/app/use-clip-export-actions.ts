@@ -19,7 +19,7 @@ export function useClipExportActions(model: AppModel, derived: AppDerived, syncP
     model.setIsClipExportDialogOpen(false)
     model.setIsExportingClip(true)
     try {
-      const request: MediaClipExportRequest = { mediaPath: currentFile.path, startSeconds: selection.startSeconds, durationSeconds: selection.durationSeconds, mode: selection.mode, subtitlePath: derived.subtitlePath ?? undefined, subtitleSrtPath: derived.subtitleSrtPath ?? undefined }
+      const request: MediaClipExportRequest = { mediaPath: currentFile.path, startSeconds: selection.startSeconds, durationSeconds: selection.durationSeconds, mode: selection.mode, subtitlePath: derived.subtitlePath ?? undefined, subtitleSrtPath: derived.subtitleSrtPath ?? undefined, subtitleRender: model.appSettings.subtitles }
       const result = await window.aiv.exportMediaClip(request)
       if (!result.canceled) model.setAsrNotice(result)
     } catch (error) {
