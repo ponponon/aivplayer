@@ -9,6 +9,7 @@ import { resolveFfmpegPath } from '../core/ai/whisper-cpp-runtime'
 import { promptForSavePath } from './media-dialogs'
 import { getCurrentLocale } from './desktop-settings'
 import { resolveResourcePath } from './desktop-services'
+import { renderTimelineGraphicAssets } from './timeline-graphic-rasterizer'
 
 export function registerTimelineExportIpc(): void {
   const chooseTimelineExportPath = async (request: MediaTimelineExportPathRequest): Promise<MediaTimelineExportPathResult> => {
@@ -30,7 +31,7 @@ export function registerTimelineExportIpc(): void {
     const selectedVideoPath = request.outputVideoPath?.trim() || (await chooseTimelineExportPath({ mediaPath: request.mediaPath, clipCount: request.clips.length, durationSeconds, mode: request.mode })).filePath
     if (!selectedVideoPath) return { success: false, message: '', canceled: true }
     try {
-      const mediaPaths = [...new Set(request.clips.map((clip) => clip.mediaPath))]
+      const mediaPaths = [...new Set([...request.clips.map((clip) => clip.mediaPath), ...(request.videoBlocks ?? []).map((block) => block.mediaPath)])]
       const metadataEntries = await Promise.all(mediaPaths.map(async (mediaPath) => [mediaPath, await createMediaProbeMetadata(mediaPath, { resourcePath, env: process.env }).catch(() => null)] as const))
       const metadataByPath = new Map(metadataEntries)
       const primaryMetadata = metadataByPath.get(request.mediaPath)
@@ -42,6 +43,9 @@ export function registerTimelineExportIpc(): void {
         ffmpegPath,
         mediaPath: request.mediaPath,
         clips,
+        graphics: request.graphics,
+        videoBlocks: request.videoBlocks,
+        renderGraphics: renderTimelineGraphicAssets,
         outputVideoPath: selectedVideoPath,
         mode: request.mode,
         subtitlePath: request.subtitlePath,

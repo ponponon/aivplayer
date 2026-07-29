@@ -31,6 +31,54 @@ describe('editing project files', () => {
     expect(parsed.videoClips[0]).toMatchObject({ volume: 0.35, muted: true })
   })
 
+  it('round-trips optional clip framing settings without changing the schema version', () => {
+    const project = createEditingProject(source)
+    const parsed = parseEditingProject({ ...project, videoClips: [{ ...project.videoClips[0]!, treatment: 'punch-in', treatmentScale: 1.6, treatmentAnchor: 'right' }] })
+    expect(parsed.videoClips[0]).toMatchObject({ treatment: 'punch-in', treatmentScale: 1.6, treatmentAnchor: 'right' })
+    expect(parsed.schemaVersion).toBe(1)
+  })
+
+  it('rejects an unsafe punch-in scale', () => {
+    const project = createEditingProject(source)
+    expect(() => parseEditingProject({ ...project, videoClips: [{ ...project.videoClips[0]!, treatment: 'punch-in', treatmentScale: 3 }] })).toThrow('Invalid editing project clip')
+  })
+
+  it('round-trips optional shot color filters', () => {
+    const project = createEditingProject(source)
+    const parsed = parseEditingProject({ ...project, videoClips: [{ ...project.videoClips[0]!, filter: { brightness: 1.2, contrast: 0.9, saturate: 1.1 } }] })
+    expect(parsed.videoClips[0]).toMatchObject({ filter: { brightness: 1.2, contrast: 0.9, saturate: 1.1 } })
+  })
+
+  it('round-trips optional incoming transitions without changing the schema version', () => {
+    const project = createEditingProject(source)
+    const parsed = parseEditingProject({ ...project, videoClips: [{ ...project.videoClips[0]!, transitionIn: { type: 'fade', durationSeconds: 0.5 } }] })
+    expect(parsed.videoClips[0]).toMatchObject({ transitionIn: { type: 'fade', durationSeconds: 0.5 } })
+    expect(parsed.schemaVersion).toBe(1)
+  })
+
+  it('round-trips optional graphic blocks without changing the schema version', () => {
+    const project = createEditingProject(source)
+    const parsed = parseEditingProject({ ...project, graphics: [{ id: 'graphic-1', startSeconds: 1, durationSeconds: 2, text: 'Title', position: 'top-right', style: 'title' }] })
+    expect(parsed.graphics).toEqual([{ id: 'graphic-1', startSeconds: 1, durationSeconds: 2, text: 'Title', position: 'top-right', style: 'title' }])
+    expect(parsed.schemaVersion).toBe(1)
+  })
+
+  it('round-trips optional video blocks without changing the schema version', () => {
+    const project = createEditingProject(source)
+    const parsed = parseEditingProject({ ...project, videoBlocks: [{ id: 'block-1', sourceId: source.id, sourceStartSeconds: 1, sourceEndSeconds: 3, startSeconds: 2, durationSeconds: 2, position: 'split-left', enterMotion: 'scale', exitMotion: 'fade', motionDurationSeconds: 0.5 }] })
+    expect(parsed.videoBlocks).toEqual([{ id: 'block-1', sourceId: source.id, sourceStartSeconds: 1, sourceEndSeconds: 3, startSeconds: 2, durationSeconds: 2, position: 'split-left', enterMotion: 'scale', exitMotion: 'fade', motionDurationSeconds: 0.5 }])
+    expect(parsed.schemaVersion).toBe(1)
+  })
+
+  it('round-trips optional transcript script state without changing the schema version', () => {
+    const project = createEditingProject(source)
+    const withScript = {
+      ...project,
+      scriptSegments: [{ id: 'source-segment', sourceId: source.id, sourceStartSeconds: 1, sourceEndSeconds: 2, text: 'hello', deleted: true }]
+    }
+    expect(parseEditingProjectFile(serializeEditingProject(withScript))).toEqual(withScript)
+  })
+
   it('rejects malformed JSON before it reaches the editor', () => {
     expect(() => parseEditingProjectFile('{"schemaVersion": 1}')).toThrow('Invalid AIVPlayer editing project')
   })

@@ -1,0 +1,51 @@
+.editing-graphic-control {
+  position: relative;
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+  background: rgba(var(--overlay-rgb), 0.04);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+}
+
+.editing-graphic-editor { position: relative; flex: 0 0 auto; color: var(--text-secondary); background: rgba(var(--accent-rgb), 0.06); border: 1px solid rgba(var(--accent-rgb), 0.35); border-radius: var(--radius-sm); }
+
+.editing-graphic-summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 9px;
+  list-style: none;
+  white-space: nowrap;
+}
+
+.editing-graphic-summary::-webkit-details-marker { display: none; }
+.editing-graphic-summary::before { content: 'T'; display: grid; width: 15px; height: 15px; margin-right: 5px; place-items: center; color: var(--accent-ink); background: var(--accent); border-radius: 3px; font-size: 9px; font-weight: 800; }
+
+.editing-graphic-popover {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  z-index: 12;
+  display: grid;
+  gap: 7px;
+  min-width: 246px;
+  padding: 9px;
+  color: var(--text-secondary);
+  background: var(--bg-control);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-heavy);
+}
+
+.editing-graphic-field,
+.editing-graphic-duration { display: grid; grid-template-columns: 44px minmax(0, 1fr); align-items: center; gap: 7px; font-size: 9px; }
+.editing-graphic-field input,
+.editing-graphic-field select { min-width: 0; height: 25px; padding: 0 6px; color: var(--text-primary); background: var(--bg-surface); border: 1px solid var(--border-soft); border-radius: 4px; font-size: 10px; }
+.editing-graphic-duration { grid-template-columns: 44px minmax(70px, 1fr) 32px; }
+.editing-graphic-duration input { width: 100%; accent-color: var(--accent); }
+.editing-graphic-duration output { color: var(--text-muted); font-variant-numeric: tabular-nums; text-align: right; }
+.editing-graphic-add { min-height: 26px; padding: 0 8px; color: var(--accent-ink); background: var(--accent); border: 0; border-radius: 4px; cursor: pointer; font-size: 9px; font-weight: 700; }
+.editing-graphic-add:disabled { cursor: not-allowed; opacity: .45; }

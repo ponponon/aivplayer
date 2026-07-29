@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import type { EditingVideoClipSpan } from '../../../core/editing/timeline-math'
+import { snapEditedTime } from '../../../core/editing/timeline-snapping'
 import type { EditingClipBoundary } from '../../../core/editing/timeline-operations'
 
 type BoundaryDrag = {
@@ -13,6 +14,7 @@ type EditingClipBoundaryHandlesProps = {
   durationSeconds: number
   startLabel: string
   endLabel: string
+  snapPoints?: readonly number[]
   onCommit: (clipId: string, boundary: EditingClipBoundary, editedSeconds: number) => void
 }
 
@@ -24,7 +26,7 @@ function clampEditedSeconds(clientX: number, track: HTMLElement, durationSeconds
   return Math.min(Math.max(0, ratio * durationSeconds), durationSeconds)
 }
 
-export function EditingClipBoundaryHandles({ span, durationSeconds, startLabel, endLabel, onCommit }: EditingClipBoundaryHandlesProps): React.ReactElement {
+export function EditingClipBoundaryHandles({ span, durationSeconds, startLabel, endLabel, snapPoints = [], onCommit }: EditingClipBoundaryHandlesProps): React.ReactElement {
   const [drag, setDrag] = useState<BoundaryDrag | null>(null)
   const dragRef = useRef<BoundaryDrag | null>(null)
   const getPreviewSeconds = (boundary: EditingClipBoundary): number => {
@@ -35,7 +37,7 @@ export function EditingClipBoundaryHandles({ span, durationSeconds, startLabel, 
   const startDrag = (event: React.PointerEvent<HTMLButtonElement>, boundary: EditingClipBoundary): void => {
     const track = event.currentTarget.closest('[data-testid="editing-track"]')
     if (event.button !== 0 || !(track instanceof HTMLElement) || durationSeconds <= 0) return
-    const currentSeconds = clampEditedSeconds(event.clientX, track, durationSeconds)
+    const currentSeconds = snapEditedTime(clampEditedSeconds(event.clientX, track, durationSeconds), durationSeconds, snapPoints)
     const next = { boundary, currentSeconds, moved: false }
     dragRef.current = next
     setDrag(next)
@@ -47,7 +49,7 @@ export function EditingClipBoundaryHandles({ span, durationSeconds, startLabel, 
     const current = dragRef.current
     const track = event.currentTarget.closest('[data-testid="editing-track"]')
     if (!current || !(track instanceof HTMLElement)) return
-    const currentSeconds = clampEditedSeconds(event.clientX, track, durationSeconds)
+    const currentSeconds = snapEditedTime(clampEditedSeconds(event.clientX, track, durationSeconds), durationSeconds, snapPoints)
     const originalSeconds = current.boundary === 'start' ? span.editedStartSeconds : span.editedEndSeconds
     const next = { ...current, currentSeconds, moved: current.moved || Math.abs(currentSeconds - originalSeconds) >= MIN_DRAG_SECONDS }
     dragRef.current = next
@@ -71,7 +73,7 @@ export function EditingClipBoundaryHandles({ span, durationSeconds, startLabel, 
     event.stopPropagation()
     const delta = event.key === 'ArrowLeft' ? -0.1 : 0.1
     const currentSeconds = boundary === 'start' ? span.editedStartSeconds : span.editedEndSeconds
-    onCommit(span.clip.id, boundary, currentSeconds + delta)
+    onCommit(span.clip.id, boundary, snapEditedTime(currentSeconds + delta, durationSeconds, snapPoints))
   }
 
   const startPercent = durationSeconds > 0 ? (getPreviewSeconds('start') / durationSeconds) * 100 : 0

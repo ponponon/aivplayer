@@ -1,5 +1,5 @@
 import type { ClipExportMode } from './clip-export'
-import type { EditingProjectFileOpenResult, EditingProjectFileSaveRequest, EditingProjectFileSaveResult } from './editing-types'
+import type { EditingClipFilter, EditingClipTransition, EditingClipTreatment, EditingGraphic, EditingProjectFileOpenResult, EditingProjectFileSaveRequest, EditingProjectFileSaveResult, EditingTreatmentAnchor, EditingVideoBlockMotion, EditingVideoBlockPosition } from './editing-types'
 
 export type { EditingProjectFileOpenResult, EditingProjectFileSaveRequest, EditingProjectFileSaveResult }
 
@@ -11,13 +11,17 @@ export type MediaProbeDetails = { format: MediaProbeDetailObject | null; streams
 export type MediaVideoMetadata = { codec: string | null; profile: string | null; width: number | null; height: number | null; frameRate: number | null; displayAspectRatio: string | null; bitRateKbps: number | null }
 export type MediaAudioMetadata = { codec: string | null; profile: string | null; channelLayout: string | null; sampleRateHz: number | null; bitRateKbps: number | null }
 export type MediaProbeMetadata = { fileSizeBytes: number; durationSeconds: number | null; overallBitrateKbps: number | null; video: MediaVideoMetadata | null; audio: MediaAudioMetadata | null; probeSource: 'ffprobe' | 'ffmpeg' | null; details: MediaProbeDetails | null }
+export type MediaFilmstripRequest = { mediaPath: string; timestampsSeconds: number[]; width?: number; quality?: number }
+export type MediaFilmstripFrame = { sourceSeconds: number; dataUrl: string }
+export type MediaFilmstripResult = { frames: MediaFilmstripFrame[] }
 export type PlaybackState = { isPlaying: boolean; currentTime: number; duration: number; volume: number; muted: boolean; playbackRate: number }
 export type MediaClipExportRequest = { mediaPath: string; startSeconds: number; durationSeconds: number; mode: ClipExportMode; subtitlePath?: string; subtitleSrtPath?: string }
 export type MediaClipExportResult = { success: boolean; message: string; videoPath?: string; videoUrl?: string; subtitleSrtPath?: string; subtitleSrtUrl?: string; canceled?: boolean }
-export type MediaTimelineExportClip = { mediaPath: string; startSeconds: number; endSeconds: number; volume?: number; muted?: boolean }
+export type MediaTimelineExportClip = { mediaPath: string; startSeconds: number; endSeconds: number; volume?: number; muted?: boolean; treatment?: EditingClipTreatment; treatmentScale?: number; treatmentAnchor?: EditingTreatmentAnchor; filter?: EditingClipFilter; transitionIn?: EditingClipTransition }
+export type MediaTimelineExportVideoBlock = { mediaPath: string; sourceStartSeconds: number; sourceEndSeconds: number; startSeconds: number; durationSeconds: number; position: EditingVideoBlockPosition; sizePercent?: number; borderRadius?: number; borderWidth?: number; enterMotion?: EditingVideoBlockMotion; exitMotion?: EditingVideoBlockMotion; motionDurationSeconds?: number }
 export type MediaTimelineExportPathRequest = { mediaPath: string; clipCount: number; durationSeconds: number; mode: ClipExportMode; suggestedPath?: string }
 export type MediaTimelineExportPathResult = { success: boolean; message: string; filePath?: string; canceled?: boolean }
-export type MediaTimelineExportRequest = { mediaPath: string; clips: MediaTimelineExportClip[]; mode: ClipExportMode; subtitlePath?: string; subtitleSrtPath?: string; subtitleText?: string; targetWidth?: number; targetHeight?: number; outputVideoPath?: string }
+export type MediaTimelineExportRequest = { mediaPath: string; clips: MediaTimelineExportClip[]; graphics?: EditingGraphic[]; videoBlocks?: MediaTimelineExportVideoBlock[]; mode: ClipExportMode; subtitlePath?: string; subtitleSrtPath?: string; subtitleText?: string; targetWidth?: number; targetHeight?: number; outputVideoPath?: string }
 export type ClipboardWriteTextRequest = { text: string }
 export type ClipboardWriteTextResult = { success: boolean; message: string }
 export type ImageSaveRequest = { dataUrl: string; fileName: string; extension: string; outputDirectoryPath?: string; overwriteOriginal?: boolean; originalPath?: string }

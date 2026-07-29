@@ -14,8 +14,8 @@
 }
 
 .editing-clip-filmstrip img {
-  min-width: 0;
-  flex: 1 1 0;
+  position: absolute;
+  top: 0;
   height: 100%;
   object-fit: cover;
   filter: saturate(0.72) contrast(0.92);

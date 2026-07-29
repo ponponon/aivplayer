@@ -85,6 +85,8 @@ export type AppStateSetters = {
   setEditingCurrentTime: React.Dispatch<React.SetStateAction<number>>
   setEditingSelectedClipId: React.Dispatch<React.SetStateAction<string | null>>
   setEditingSelectedCaptionId: React.Dispatch<React.SetStateAction<string | null>>
+  setEditingSelectedGraphicId: React.Dispatch<React.SetStateAction<string | null>>
+  setEditingSelectedVideoBlockId: React.Dispatch<React.SetStateAction<string | null>>
   setEditingSourceFiles: React.Dispatch<React.SetStateAction<Record<string, MediaFile>>>
   setEditingPreviewSourceId: React.Dispatch<React.SetStateAction<string | null>>
   setIsAddingEditingMedia: React.Dispatch<React.SetStateAction<boolean>>
@@ -134,6 +136,8 @@ export type AppModel = AppRefs &
     editingCurrentTime: number
     editingSelectedClipId: string | null
     editingSelectedCaptionId: string | null
+    editingSelectedGraphicId: string | null
+    editingSelectedVideoBlockId: string | null
     editingSourceFiles: Record<string, MediaFile>
     editingPreviewSourceId: string | null
     isAddingEditingMedia: boolean

@@ -56,7 +56,7 @@ export function useAppModel(): AppModel {
   const [editingPast, setEditingPast] = useState<EditingProject[]>([])
   const [editingFuture, setEditingFuture] = useState<EditingProject[]>([])
   const [editingCurrentTime, setEditingCurrentTime] = useState(0)
-  const [editingSelectedClipId, setEditingSelectedClipId] = useState<string | null>(null); const [editingSelectedCaptionId, setEditingSelectedCaptionId] = useState<string | null>(null)
+  const [editingSelectedClipId, setEditingSelectedClipId] = useState<string | null>(null); const [editingSelectedCaptionId, setEditingSelectedCaptionId] = useState<string | null>(null); const [editingSelectedGraphicId, setEditingSelectedGraphicId] = useState<string | null>(null); const [editingSelectedVideoBlockId, setEditingSelectedVideoBlockId] = useState<string | null>(null)
   const [editingSourceFiles, setEditingSourceFiles] = useState<Record<string, import('../../../shared/media-types').MediaFile>>({})
   const [editingPreviewSourceId, setEditingPreviewSourceId] = useState<string | null>(null)
   const [isAddingEditingMedia, setIsAddingEditingMedia] = useState(false)
@@ -140,7 +140,7 @@ export function useAppModel(): AppModel {
     editingFuture,
     setEditingFuture,
     editingCurrentTime, setEditingCurrentTime,
-    editingSelectedClipId, setEditingSelectedClipId, editingSelectedCaptionId, setEditingSelectedCaptionId,
+    editingSelectedClipId, setEditingSelectedClipId, editingSelectedCaptionId, setEditingSelectedCaptionId, editingSelectedGraphicId, setEditingSelectedGraphicId, editingSelectedVideoBlockId, setEditingSelectedVideoBlockId,
     editingSourceFiles, setEditingSourceFiles,
     editingPreviewSourceId, setEditingPreviewSourceId,
     isAddingEditingMedia, setIsAddingEditingMedia,

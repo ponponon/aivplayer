@@ -29,6 +29,9 @@ export function isEditingProjectCompatible(project: EditingProject | null, sourc
   return project.videoClips.every((clip) => {
     const clipSource = sources.get(clip.sourceId)
     return Boolean(clipSource && isValidClipAudio(clip) && isFiniteNonNegative(clip.sourceStartSeconds) && isFiniteNonNegative(clip.sourceEndSeconds) && clip.sourceEndSeconds > clip.sourceStartSeconds && clip.sourceEndSeconds <= clipSource.durationSeconds + 0.01)
+  }) && (project.videoBlocks ?? []).every((block) => {
+    const blockSource = sources.get(block.sourceId)
+    return Boolean(blockSource && isFiniteNonNegative(block.startSeconds) && isFiniteNonNegative(block.durationSeconds) && block.durationSeconds > 0 && isFiniteNonNegative(block.sourceStartSeconds) && isFiniteNonNegative(block.sourceEndSeconds) && block.sourceEndSeconds > block.sourceStartSeconds && block.sourceEndSeconds <= blockSource.durationSeconds + 0.01)
   })
 }
 

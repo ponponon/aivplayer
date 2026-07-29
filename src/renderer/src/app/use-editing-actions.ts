@@ -15,6 +15,9 @@ import { createEditingClipActions } from './editing-clip-actions'
 import { createEditingCaptionActions } from './editing-caption-actions'
 import { createEditingAudioActions } from './editing-audio-actions'
 import { createEditingSourceActions } from './editing-source-actions'
+import { createEditingScriptActions } from './editing-script-actions'
+import { createEditingGraphicActions } from './editing-graphic-actions'
+import { createEditingVideoBlockActions } from './editing-video-block-actions'
 import { useEditingSourceEffect } from '../use-editing-source-effect'
 export function useEditingActions(model: AppModel, derived: AppDerived, selectFile: (file: NonNullable<AppModel['state']['currentFile']>) => void) {
   const openEditingMode = (): void => {
@@ -26,7 +29,7 @@ export function useEditingActions(model: AppModel, derived: AppDerived, selectFi
     captureEditingAudio(model); model.videoRef.current?.pause()
     const sourceTime = clampEditingTime(model.state.currentTime, durationSeconds)
     model.setEditingProject(project); model.setEditingPast([]); model.setEditingFuture([]); model.setEditingCurrentTime(sourceTime)
-    model.setEditingSelectedClipId(null); model.setEditingSelectedCaptionId(null)
+    model.setEditingSelectedClipId(null); model.setEditingSelectedCaptionId(null); model.setEditingSelectedGraphicId(null); model.setEditingSelectedVideoBlockId(null)
     if (model.state.currentFile) model.setEditingSourceFiles({ [source.id]: model.state.currentFile }); model.setEditingPreviewSourceId(source.id)
     model.setIsEditingMode(true)
     model.setEditingProjectFilePath(null)
@@ -38,7 +41,7 @@ export function useEditingActions(model: AppModel, derived: AppDerived, selectFi
     model.videoRef.current?.pause(); restoreEditingAudio(model)
     model.setIsEditingMode(false)
     model.setEditingProject(null); model.setEditingPast([]); model.setEditingFuture([]); model.setEditingCurrentTime(0)
-    model.setEditingSelectedClipId(null); model.setEditingSelectedCaptionId(null); model.setEditingSourceFiles({}); model.setEditingPreviewSourceId(null)
+    model.setEditingSelectedClipId(null); model.setEditingSelectedCaptionId(null); model.setEditingSelectedGraphicId(null); model.setEditingSelectedVideoBlockId(null); model.setEditingSourceFiles({}); model.setEditingPreviewSourceId(null)
     model.setEditingProjectFilePath(null)
   }
   const splitEditingClip = (): void => {
@@ -76,7 +79,7 @@ export function useEditingActions(model: AppModel, derived: AppDerived, selectFi
     model.setEditingPast((past) => past.slice(0, -1))
     model.setEditingFuture((future) => [project, ...future])
     model.setEditingProject(previous)
-    if (model.editingSelectedClipId && !previous.videoClips.some((clip) => clip.id === model.editingSelectedClipId)) model.setEditingSelectedClipId(null); if (model.editingSelectedCaptionId && !previous.captions.some((caption) => caption.id === model.editingSelectedCaptionId)) model.setEditingSelectedCaptionId(null)
+    if (model.editingSelectedClipId && !previous.videoClips.some((clip) => clip.id === model.editingSelectedClipId)) model.setEditingSelectedClipId(null); if (model.editingSelectedCaptionId && !previous.captions.some((caption) => caption.id === model.editingSelectedCaptionId)) model.setEditingSelectedCaptionId(null); if (model.editingSelectedGraphicId && !previous.graphics?.some((graphic) => graphic.id === model.editingSelectedGraphicId)) model.setEditingSelectedGraphicId(null); if (model.editingSelectedVideoBlockId && !previous.videoBlocks?.some((block) => block.id === model.editingSelectedVideoBlockId)) model.setEditingSelectedVideoBlockId(null)
     saveEditingProject(previous)
     seekEditingTime(model, model.editingCurrentTime, previous)
   }
@@ -88,7 +91,7 @@ export function useEditingActions(model: AppModel, derived: AppDerived, selectFi
     model.setEditingFuture((future) => future.slice(1))
     model.setEditingPast((past) => [...past, project])
     model.setEditingProject(next)
-    if (model.editingSelectedClipId && !next.videoClips.some((clip) => clip.id === model.editingSelectedClipId)) model.setEditingSelectedClipId(null); if (model.editingSelectedCaptionId && !next.captions.some((caption) => caption.id === model.editingSelectedCaptionId)) model.setEditingSelectedCaptionId(null)
+    if (model.editingSelectedClipId && !next.videoClips.some((clip) => clip.id === model.editingSelectedClipId)) model.setEditingSelectedClipId(null); if (model.editingSelectedCaptionId && !next.captions.some((caption) => caption.id === model.editingSelectedCaptionId)) model.setEditingSelectedCaptionId(null); if (model.editingSelectedGraphicId && !next.graphics?.some((graphic) => graphic.id === model.editingSelectedGraphicId)) model.setEditingSelectedGraphicId(null); if (model.editingSelectedVideoBlockId && !next.videoBlocks?.some((block) => block.id === model.editingSelectedVideoBlockId)) model.setEditingSelectedVideoBlockId(null)
     saveEditingProject(next)
     seekEditingTime(model, model.editingCurrentTime, next)
   }
@@ -113,7 +116,7 @@ export function useEditingActions(model: AppModel, derived: AppDerived, selectFi
 
   useEditingPlaybackEffect(model); useEditingCaptionEffect(model, derived); useEditingSourceEffect(model)
 
-  const projectFileActions = createEditingProjectFileActions(model, derived, selectFile); const clipActions = createEditingClipActions(model); const captionActions = createEditingCaptionActions(model); const audioActions = createEditingAudioActions(model); const sourceActions = createEditingSourceActions(model, derived)
+  const projectFileActions = createEditingProjectFileActions(model, derived, selectFile); const clipActions = createEditingClipActions(model); const captionActions = createEditingCaptionActions(model); const audioActions = createEditingAudioActions(model); const sourceActions = createEditingSourceActions(model, derived); const scriptActions = createEditingScriptActions(model); const graphicActions = createEditingGraphicActions(model); const videoBlockActions = createEditingVideoBlockActions(model)
 
   useEffect(() => { if (model.isEditingMode && !model.state.currentFile) closeEditingMode() }, [model.isEditingMode, model.state.currentFile?.path])
 
@@ -130,6 +133,9 @@ export function useEditingActions(model: AppModel, derived: AppDerived, selectFi
     toggleEditingPlay,
     ...clipActions,
     ...captionActions,
+    ...scriptActions,
+    ...graphicActions,
+    ...videoBlockActions,
     ...audioActions,
     ...sourceActions,
     ...projectFileActions,

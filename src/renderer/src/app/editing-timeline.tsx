@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight, Download, FilePlus2, FolderOpen, Grid3X3, Pa
 import { useRef, useState } from 'react'
 import type { ClipExportMode } from '../../../shared/clip-export'
 import { editedDurationSeconds, editedTimeToSource, getVideoClipSpans } from '../../../core/editing/timeline-math'
+import { getEditingFilmstripTiles } from '../../../core/editing/filmstrip-operations'
 import { formatTime } from '../lib/time'
 import { useAppContext } from './app-context'
 import { EditingCaptionTrack } from './editing-caption-track'
@@ -10,37 +11,37 @@ import { EditingClipBoundaryHandles } from './editing-clip-boundary-handles'
 import { EditingExportSummary } from './editing-export-summary'
 import { EditingExportConfirmDialog } from './editing-export-confirm-dialog'
 import { EditingRangeTrack } from './editing-range-track'
-import { useEditingFilmstrip, type EditingFilmstripFrame } from './use-editing-filmstrip'
-
+import { EditingScriptPanel } from './editing-script-panel'
+import { EditingTreatmentControl } from './editing-treatment-control'
+import { EditingFilterControl } from './editing-filter-control'
+import { EditingTransitionControl } from './editing-transition-control'
+import { EditingGraphicControl } from './editing-graphic-control'
+import { EditingGraphicEditor } from './editing-graphic-editor'
+import { EditingGraphicTrack } from './editing-graphic-track'
+import { EditingVideoBlockControl } from './editing-video-block-control'; import { EditingVideoBlockTrack } from './editing-video-block-track'; import { EditingVideoBlockEditor } from './editing-video-block-editor'
+import { useEditingFilmstrips } from './use-editing-filmstrip'
 const MAX_RULER_TICKS = 121
-
 function formatClipLabel(startSeconds: number, endSeconds: number): string {
   return `${formatTime(startSeconds)} – ${formatTime(endSeconds)}`
 }
-
-function framesForClip(frames: readonly EditingFilmstripFrame[], startSeconds: number, endSeconds: number): EditingFilmstripFrame[] {
-  const matched = frames.filter((frame) => frame.sourceSeconds >= startSeconds && frame.sourceSeconds <= endSeconds)
-  if (matched.length > 0) return matched
-  const nearest = frames.reduce<EditingFilmstripFrame | null>((best, frame) => !best || Math.abs(frame.sourceSeconds - startSeconds) < Math.abs(best.sourceSeconds - startSeconds) ? frame : best, null)
-  return nearest ? [nearest] : []
-}
-
 type ClipDragState = { from: number; to: number; dx: number; moved: boolean; startX: number; startCenter: number; mids: number[] }
-
 export function EditingTimeline(): React.ReactElement | null {
   const app = useAppContext()
   const project = app.editingProject
-  const filmstrip = useEditingFilmstrip(project, app.state.currentFile?.url ?? null)
+  const filmstrips = useEditingFilmstrips(project, app.editingSourceFiles)
   const [zoom, setZoom] = useState(1)
   const [isExportConfirmOpen, setIsExportConfirmOpen] = useState(false)
+  const [selectedScriptSegmentId, setSelectedScriptSegmentId] = useState<string | null>(null)
   const [clipDrag, setClipDrag] = useState<ClipDragState | null>(null)
   const clipDragRef = useRef<ClipDragState | null>(null)
   const suppressClipClickRef = useRef(false)
   if (!project) return null
-
   const spans = getVideoClipSpans(project.videoClips)
   const durationSeconds = editedDurationSeconds(project.videoClips)
   const selectedClip = project.videoClips.find((clip) => clip.id === app.editingSelectedClipId) ?? null
+  const selectedGraphic = project.graphics?.find((graphic) => graphic.id === app.editingSelectedGraphicId) ?? null
+  const selectedVideoBlock = project.videoBlocks?.find((block) => block.id === app.editingSelectedVideoBlockId) ?? null; const selectedVideoBlockSource = selectedVideoBlock ? project.sources.find((source) => source.id === selectedVideoBlock.sourceId) ?? null : null
+  const selectedClipIndex = selectedClip ? project.videoClips.findIndex((clip) => clip.id === selectedClip.id) : -1
   const currentTime = Math.min(Math.max(0, app.editingCurrentTime), durationSeconds)
   const currentPoint = editedTimeToSource(project.videoClips, currentTime)
   const canSplit = Boolean(currentPoint && currentPoint.sourceSeconds > currentPoint.clip.sourceStartSeconds + 0.01 && currentPoint.sourceSeconds < currentPoint.clip.sourceEndSeconds - 0.01)
@@ -48,7 +49,7 @@ export function EditingTimeline(): React.ReactElement | null {
   const hasExportSubtitle = project.captions.some((caption) => caption.text.trim().length > 0) || app.hasClipExportSubtitle
   const rulerTickCount = Math.min(MAX_RULER_TICKS, Math.max(2, Math.ceil(durationSeconds) + 1))
   const playheadPercent = durationSeconds > 0 ? (currentTime / durationSeconds) * 100 : 0
-
+  const snapPoints = [...new Set([currentTime, ...spans.flatMap((span) => [span.editedStartSeconds, span.editedEndSeconds])])]
   const startClipDrag = (event: React.PointerEvent<HTMLButtonElement>, index: number): void => {
     if (event.button !== 0 || spans.length <= 1 || durationSeconds <= 0) return
     const track = event.currentTarget.closest('[data-testid="editing-track"]')
@@ -62,7 +63,6 @@ export function EditingTimeline(): React.ReactElement | null {
     event.stopPropagation()
     event.currentTarget.setPointerCapture(event.pointerId)
   }
-
   const moveClipDrag = (event: React.PointerEvent<HTMLButtonElement>, index: number): void => {
     const drag = clipDragRef.current
     if (!drag || drag.from !== index) return
@@ -78,7 +78,6 @@ export function EditingTimeline(): React.ReactElement | null {
     setClipDrag(next)
     event.preventDefault()
   }
-
   const finishClipDrag = (): void => {
     const drag = clipDragRef.current
     clipDragRef.current = null
@@ -88,13 +87,11 @@ export function EditingTimeline(): React.ReactElement | null {
     app.reorderEditingClips(drag.from, drag.to)
     window.setTimeout(() => { suppressClipClickRef.current = false }, 0)
   }
-
   const confirmEditingExport = (mode: ClipExportMode, outputVideoPath: string): void => {
     setIsExportConfirmOpen(false)
     app.syncClipExportPreferences(app.appSettings.capture.clipExportLengthSeconds, mode)
     void app.exportEditingTimeline(mode, outputVideoPath)
   }
-
   return (
     <section className="editing-timeline" data-testid="editing-timeline" aria-label={app.copy.editing.timelineLabel}>
       <div className="editing-toolbar">
@@ -119,7 +116,6 @@ export function EditingTimeline(): React.ReactElement | null {
           <button className="editing-icon-button" type="button" onClick={app.closeEditingMode} title={app.copy.editing.close} aria-label={app.copy.editing.close} data-testid="editing-close"><X size={15} /></button>
         </div>
       </div>
-
       <div className="editing-action-row">
         <div className="editing-transport">
           <button className="editing-primary-button" type="button" onClick={() => void app.toggleEditingPlay()} title={app.state.isPlaying ? app.copy.controls.pause : app.copy.controls.play} aria-label={app.state.isPlaying ? app.copy.controls.pause : app.copy.controls.play} data-testid="editing-play">{app.state.isPlaying ? <Pause size={16} /> : <Play size={16} />}</button>
@@ -132,10 +128,17 @@ export function EditingTimeline(): React.ReactElement | null {
           <button className="editing-tool-button editing-tool-button-danger" type="button" onClick={app.deleteEditingClip} disabled={spans.length <= 1} title={app.copy.editing.deleteClip} aria-label={app.copy.editing.deleteClip}><Trash2 size={15} /><span>{app.copy.editing.deleteShort}</span></button>
         </div>
         <EditingAudioControl clip={selectedClip} volumeLabel={app.copy.controls.volume} muteLabel={app.copy.controls.mute} onVolumeChange={(volume) => selectedClip && app.setEditingClipVolume(selectedClip.id, volume)} onToggleMute={() => selectedClip && app.toggleEditingClipMute(selectedClip.id)} />
+        <EditingTreatmentControl clip={selectedClip} title={app.copy.editing.treatmentLabel} fullLabel={app.copy.editing.fullFrame} punchInLabel={app.copy.editing.punchIn} scaleLabel={app.copy.editing.punchInScale} focusLabel={app.copy.editing.punchInFocus} focusLeft={app.copy.editing.focusLeft} focusCenter={app.copy.editing.focusCenter} focusRight={app.copy.editing.focusRight} onChange={(treatment, scale, anchor) => selectedClip && app.setEditingClipTreatment(selectedClip.id, treatment, scale, anchor)} />
+        <EditingFilterControl clip={selectedClip} title={app.copy.editing.filterTitle} brightnessLabel={app.copy.editing.brightness} contrastLabel={app.copy.editing.contrast} saturationLabel={app.copy.editing.saturation} resetLabel={app.copy.editing.filterReset} onChange={(filter) => selectedClip && app.setEditingClipFilter(selectedClip.id, filter)} />
+        <EditingTransitionControl clip={selectedClip} isFirstClip={selectedClipIndex <= 0} title={app.copy.editing.transitionTitle} noneLabel={app.copy.editing.transitionNone} transitionLabels={app.copy.editing.transitionLabels} durationLabel={app.copy.editing.transitionDuration} onChange={(transition) => selectedClip && app.setEditingClipTransition(selectedClip.id, transition)} />
+        <EditingGraphicControl title={app.copy.editing.graphicTitle} textLabel={app.copy.editing.graphicText} textPlaceholder={app.copy.editing.graphicPlaceholder} addLabel={app.copy.editing.graphicAdd} positionLabel={app.copy.editing.graphicPosition} styleLabel={app.copy.editing.graphicStyle} titleStyleLabel={app.copy.editing.graphicStyleTitle} labelStyleLabel={app.copy.editing.graphicStyleLabel} durationLabel={app.copy.editing.graphicDuration} positionLabels={app.copy.editing.graphicPositionLabels} currentTime={currentTime} timelineDuration={durationSeconds} onAdd={app.addEditingGraphic} />
+        <EditingGraphicEditor graphic={selectedGraphic} title={app.copy.editing.graphicEditTitle} textLabel={app.copy.editing.graphicText} textPlaceholder={app.copy.editing.graphicPlaceholder} saveLabel={app.copy.editing.graphicSave} positionLabel={app.copy.editing.graphicPosition} styleLabel={app.copy.editing.graphicStyle} titleStyleLabel={app.copy.editing.graphicStyleTitle} labelStyleLabel={app.copy.editing.graphicStyleLabel} durationLabel={app.copy.editing.graphicDuration} positionLabels={app.copy.editing.graphicPositionLabels} timelineDuration={durationSeconds} onUpdate={app.updateEditingGraphic} />
+        <EditingVideoBlockControl sources={project.sources} title={app.copy.editing.videoBlockTitle} addLabel={app.copy.editing.videoBlockAdd} sourceLabel={app.copy.editing.videoBlockSource} positionLabel={app.copy.editing.videoBlockPosition} positionLabels={app.copy.editing.videoBlockPositionLabels} onAdd={app.addEditingVideoBlock} />
+        <EditingVideoBlockEditor block={selectedVideoBlock} source={selectedVideoBlockSource} title={app.copy.editing.videoBlockEditTitle} positionLabel={app.copy.editing.videoBlockPosition} positionLabels={app.copy.editing.videoBlockPositionLabels} sourceStartLabel={app.copy.editing.videoBlockSourceStart} durationLabel={app.copy.editing.graphicDuration} sizeLabel={app.copy.editing.videoBlockSize} radiusLabel={app.copy.editing.videoBlockRadius} borderLabel={app.copy.editing.videoBlockBorder} enterLabel={app.copy.editing.videoBlockEnter} exitLabel={app.copy.editing.videoBlockExit} motionDurationLabel={app.copy.editing.videoBlockMotionDuration} motionLabels={app.copy.editing.videoBlockMotionLabels} onUpdate={app.updateEditingVideoBlock} />
         <EditingExportSummary clips={project.videoClips} durationSeconds={durationSeconds} canvasWidth={project.sources[0]?.width} canvasHeight={project.sources[0]?.height} summaryLabel={app.copy.editing.export} durationLabel={app.copy.panels.duration} clipsLabel={app.copy.editing.videoTrack} resolutionLabel={app.copy.panels.resolution} audioLabel={app.copy.panels.audioStream} muteLabel={app.copy.controls.mute} volumeLabel={app.copy.controls.volume} />
         <button className="editing-export-button" type="button" onClick={() => setIsExportConfirmOpen(true)} disabled={!canExport || app.isExportingClip} title={app.isExportingClip ? app.copy.editing.exporting : app.copy.editing.export} aria-label={app.copy.editing.export} data-testid="editing-export"><Download size={15} />{app.isExportingClip ? app.copy.editing.exporting : app.copy.editing.export}</button>
       </div>
-
+      <EditingScriptPanel segments={project.scriptSegments ?? []} selectedSegmentId={selectedScriptSegmentId} title={app.copy.editing.scriptTitle} hint={app.copy.editing.scriptHint} emptyLabel={app.copy.editing.scriptEmpty} deleteLabel={app.copy.editing.scriptDelete} restoreLabel={app.copy.editing.scriptRestore} deletedLabel={app.copy.editing.scriptDeleted} countLabel={app.copy.editing.scriptCount} onSelect={(segmentId) => { setSelectedScriptSegmentId(segmentId); app.selectEditingScriptSegment(segmentId) }} onDelete={(segmentId) => { setSelectedScriptSegmentId(segmentId); app.deleteEditingScriptSegment(segmentId) }} onRestore={(segmentId) => { setSelectedScriptSegmentId(segmentId); app.restoreEditingScriptSegment(segmentId) }} />
       <div className="editing-timeline-scroll">
         <div className="editing-timeline-content" style={{ width: `${Math.max(100, zoom * 100)}%` }}>
           <div className="editing-ruler-row">
@@ -146,13 +149,14 @@ export function EditingTimeline(): React.ReactElement | null {
           </div>
           <div className="editing-track-row">
             <span className="editing-track-label">{app.copy.editing.videoTrack}</span>
-            <EditingRangeTrack durationSeconds={durationSeconds} currentTime={currentTime} trackLabel={app.copy.editing.playhead} deleteRangeLabel={app.copy.editing.deleteRange} onSeek={app.seekEditingTime} onDeleteRange={app.deleteEditingRange}>
-              {spans.map((span) => <EditingClipBoundaryHandles key={`boundary-${span.clip.id}`} span={span} durationSeconds={durationSeconds} startLabel={app.copy.editing.trimLeft} endLabel={app.copy.editing.trimRight} onCommit={app.updateEditingClipBoundary} />)}
+            <EditingRangeTrack durationSeconds={durationSeconds} currentTime={currentTime} snapPoints={snapPoints} trackLabel={app.copy.editing.playhead} deleteRangeLabel={app.copy.editing.deleteRange} onSeek={app.seekEditingTime} onDeleteRange={app.deleteEditingRange}>
+              {spans.map((span) => <EditingClipBoundaryHandles key={`boundary-${span.clip.id}`} span={span} durationSeconds={durationSeconds} snapPoints={snapPoints} startLabel={app.copy.editing.trimLeft} endLabel={app.copy.editing.trimRight} onCommit={app.updateEditingClipBoundary} />)}
               <div className="editing-clip-row">
                 {spans.map((span, index) => {
                   const selected = app.editingSelectedClipId === span.clip.id
                   const dragged = clipDrag?.from === index
-                  const clipFrames = framesForClip(filmstrip, span.clip.sourceStartSeconds, span.clip.sourceEndSeconds)
+                  const sourceDurationSeconds = project.sources.find((source) => source.id === span.clip.sourceId)?.durationSeconds ?? span.clip.sourceEndSeconds
+                  const clipTiles = getEditingFilmstripTiles(filmstrips[span.clip.sourceId] ?? [], span.clip.sourceStartSeconds, span.clip.sourceEndSeconds, sourceDurationSeconds)
                   return <button
                     className={`editing-clip ${currentPoint?.index === span.index ? 'is-active' : ''} ${selected ? 'is-selected' : ''} ${dragged && clipDrag?.moved ? 'is-dragging' : ''}`}
                     key={span.clip.id}
@@ -171,7 +175,7 @@ export function EditingTimeline(): React.ReactElement | null {
                       event.stopPropagation()
                       app.reorderEditingClips(index, index + (event.key === 'ArrowLeft' ? -1 : 1))
                     }}
-                  >{clipFrames.length > 0 ? <span className="editing-clip-filmstrip" aria-hidden="true">{clipFrames.map((frame) => <img key={`${frame.sourceSeconds}-${frame.url.slice(-12)}`} src={frame.url} alt="" />)}</span> : null}<span>{index + 1}</span><small>{formatClipLabel(span.clip.sourceStartSeconds, span.clip.sourceEndSeconds)}</small></button>
+                  >{clipTiles.length > 0 ? <span className="editing-clip-filmstrip" aria-hidden="true">{clipTiles.map((tile) => <img key={`${tile.frame.sourceSeconds}-${tile.frame.url.slice(-12)}`} src={tile.frame.url} alt="" style={{ left: `${tile.leftPercent}%`, width: `${tile.widthPercent}%` }} />)}</span> : null}<span>{index + 1}</span><small>{formatClipLabel(span.clip.sourceStartSeconds, span.clip.sourceEndSeconds)}</small></button>
                 })}
                 {clipDrag?.moved && clipDrag.to !== clipDrag.from ? <span className="editing-clip-drop-marker" style={{ left: `${durationSeconds > 0 ? (((clipDrag.to < clipDrag.from ? spans[clipDrag.to]!.editedStartSeconds : spans[clipDrag.to]!.editedEndSeconds) / durationSeconds) * 100) : 0}%` }} aria-hidden="true" /> : null}
               </div>
@@ -182,6 +186,8 @@ export function EditingTimeline(): React.ReactElement | null {
             <span className="editing-track-label">{app.copy.editing.captionTrack}</span>
             <EditingCaptionTrack captions={project.captions} durationSeconds={durationSeconds} selectedCaptionId={app.editingSelectedCaptionId} emptyLabel={app.copy.editing.captionEmpty} onSelectCaption={app.selectEditingCaption} onMoveCaption={app.moveEditingCaption} />
           </div>
+          <EditingGraphicTrack graphics={project.graphics ?? []} durationSeconds={durationSeconds} selectedGraphicId={app.editingSelectedGraphicId} trackLabel={app.copy.editing.graphicTrack} emptyLabel={app.copy.editing.graphicEmpty} deleteLabel={app.copy.editing.graphicDelete} onSelect={app.selectEditingGraphic} onDelete={app.deleteEditingGraphic} onMove={(graphicId, startSeconds) => app.updateEditingGraphic(graphicId, { startSeconds })} />
+          <EditingVideoBlockTrack blocks={project.videoBlocks ?? []} durationSeconds={durationSeconds} selectedBlockId={selectedVideoBlock?.id ?? null} trackLabel={app.copy.editing.videoBlockTrack} emptyLabel={app.copy.editing.videoBlockEmpty} deleteLabel={app.copy.editing.videoBlockDelete} onSelect={app.selectEditingVideoBlock} onDelete={app.deleteEditingVideoBlock} onMove={(blockId, startSeconds) => app.updateEditingVideoBlock(blockId, { startSeconds })} />
         </div>
       </div>
       {isExportConfirmOpen ? <EditingExportConfirmDialog copy={app.copy} mediaPath={project.sources[0]?.path ?? ''} clips={project.videoClips} durationSeconds={durationSeconds} canvasWidth={project.sources[0]?.width} canvasHeight={project.sources[0]?.height} hasSubtitle={hasExportSubtitle} initialMode={hasExportSubtitle ? app.appSettings.capture.clipExportMode : 'video'} onClose={() => setIsExportConfirmOpen(false)} onConfirm={confirmEditingExport} /> : null}

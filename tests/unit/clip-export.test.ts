@@ -5,7 +5,7 @@ import {
   remapSrtToTimeline,
   trimSrtToClip
 } from '../../src/core/media/clip-export'
-import { buildTimelineExportDefaultVideoPath, buildTimelineConcatArgs, buildTimelineSegmentArgs, buildTimelineSubtitleText } from '../../src/core/media/timeline-export'
+import { buildTimelineExportDefaultVideoPath, buildTimelineConcatArgs, buildTimelineGraphicOverlayFilter, buildTimelineSegmentArgs, buildTimelineSubtitleText, buildTimelineXfadeArgs, getTimelineXfadeTransitionName } from '../../src/core/media/timeline-export'
 import { buildTimelineExportDefaultFileName, getTimelineExportPathBaseName, getTimelineExportPathDirectory, joinTimelineExportPath, normalizeTimelineExportFileName } from '../../src/shared/timeline-export-path'
 
 describe('clip export helpers', () => {
@@ -76,8 +76,53 @@ describe('clip export helpers', () => {
     expect(buildTimelineSegmentArgs({ mediaPath: '/clips/demo.mp4', startSeconds: 0, endSeconds: 1, durationSeconds: 1, volume: 0.35 }, '/tmp/volume.mp4')).toEqual(expect.arrayContaining(['-af', 'volume=0.35']))
   })
 
+  it('adds a centered crop filter for punch-in clips', () => {
+    const args = buildTimelineSegmentArgs({ mediaPath: '/clips/demo.mp4', startSeconds: 0, endSeconds: 2, durationSeconds: 2, treatment: 'punch-in', treatmentScale: 1.5 }, '/tmp/punch-in.mp4', { width: 1280, height: 720 })
+    expect(args).toEqual(expect.arrayContaining(['-vf', 'crop=trunc(iw/1.5/2)*2:trunc(ih/1.5/2)*2:(iw-ow)/2:(ih-oh)/2,scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1']))
+  })
+
+  it('moves the punch-in crop window to the chosen horizontal anchor', () => {
+    const args = buildTimelineSegmentArgs({ mediaPath: '/clips/demo.mp4', startSeconds: 0, endSeconds: 2, durationSeconds: 2, treatment: 'punch-in', treatmentScale: 1.5, treatmentAnchor: 'right' }, '/tmp/punch-right.mp4', { width: 1280, height: 720 })
+    expect(args).toEqual(expect.arrayContaining(['-vf', 'crop=trunc(iw/1.5/2)*2:trunc(ih/1.5/2)*2:iw-ow:(ih-oh)/2,scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1']))
+  })
+
+  it('exports clip-level color grading through the FFmpeg eq filter', () => {
+    const args = buildTimelineSegmentArgs({ mediaPath: '/clips/demo.mp4', startSeconds: 0, endSeconds: 2, durationSeconds: 2, filter: { brightness: 1.2, contrast: 0.9, saturate: 1.1 } }, '/tmp/color-grade.mp4', { width: 1280, height: 720 })
+    expect(args).toEqual(expect.arrayContaining(['-vf', 'eq=brightness=0.2:contrast=0.9:saturation=1.1,scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1']))
+  })
+
+  it('exports a seam fade on the incoming and outgoing segments', () => {
+    const previous = buildTimelineSegmentArgs({ mediaPath: '/clips/previous.mp4', startSeconds: 0, endSeconds: 4, durationSeconds: 4 }, '/tmp/previous.mp4', undefined, 0.4)
+    const next = buildTimelineSegmentArgs({ mediaPath: '/clips/next.mp4', startSeconds: 0, endSeconds: 4, durationSeconds: 4, transitionIn: { type: 'fade', durationSeconds: 0.4 } }, '/tmp/next.mp4')
+    expect(previous).toEqual(expect.arrayContaining(['-vf', 'fade=t=out:st=3.8:d=0.2:color=black,setsar=1', '-af', 'volume=1,afade=t=out:st=3.8:d=0.2']))
+    expect(next).toEqual(expect.arrayContaining(['-vf', 'fade=t=in:st=0:d=0.2:color=black,setsar=1', '-af', 'volume=1,afade=t=in:st=0:d=0.2']))
+  })
+
+  it('builds a duration-preserving xfade chain for Pireel-style seam effects', () => {
+    const args = buildTimelineXfadeArgs(
+      ['/tmp/previous.mp4', '/tmp/next.mp4'],
+      [
+        { mediaPath: '/clips/previous.mp4', startSeconds: 0, endSeconds: 4, durationSeconds: 4 },
+        { mediaPath: '/clips/next.mp4', startSeconds: 0, endSeconds: 4, durationSeconds: 4, transitionIn: { type: 'wipe-left', durationSeconds: 0.4 } }
+      ],
+      '/tmp/xfade.mp4',
+      { frameRate: 30, audioSampleRate: 48000, audioChannels: 2 }
+    )
+    expect(getTimelineXfadeTransitionName('wipe-left')).toBe('wipeleft')
+    expect(args).toEqual(expect.arrayContaining(['-filter_complex']))
+    expect(args.find((value) => value.includes('tpad=stop_mode=clone:stop_duration=0.4'))).toContain('xfade=transition=wipeleft:duration=0.4:offset=4')
+    expect(args).toEqual(expect.arrayContaining(['-t', '8', '-map', '[vout]', '-map', '[aout]']))
+  })
+
   it('keeps already-remapped project subtitle text from being remapped again', () => {
     const projectSubtitleText = '1\n00:00:00,000 --> 00:00:01,000\nproject caption\n'
     expect(buildTimelineSubtitleText({ editedSubtitleText: projectSubtitleText, sourceSubtitleText: '1\n00:00:05,000 --> 00:00:06,000\nsource caption\n', clips: [{ mediaPath: '/clips/demo.mp4', startSeconds: 5, endSeconds: 6 }] })).toBe(projectSubtitleText)
+  })
+
+  it('builds timed overlay stages for rasterized graphic cards', () => {
+    expect(buildTimelineGraphicOverlayFilter(
+      [{ id: 'graphic-a', startSeconds: 0.5, durationSeconds: 1.5, text: 'Title', position: 'center', style: 'title' }],
+      [{ graphicId: 'graphic-a', imagePath: '/tmp/graphic-a.png' }]
+    )).toBe("[0:v][1:v]overlay=x=0:y=0:enable='between(t,0.5,2)':eof_action=pass[vout]")
   })
 })

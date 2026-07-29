@@ -21,6 +21,8 @@ function setEditingProject(model: AppModel, project: EditingProject, sourceTime 
   model.setEditingCurrentTime(clampEditingTime(sourceTime, editedDurationSeconds(project.videoClips)))
   model.setEditingSelectedClipId(null)
   model.setEditingSelectedCaptionId(null)
+  model.setEditingSelectedGraphicId(null)
+  model.setEditingSelectedVideoBlockId(null)
   model.setIsEditingMode(true)
   saveEditingProject(project)
   seekEditingTime(model, sourceTime, project)

@@ -1,5 +1,10 @@
 import type { SyntheticEvent } from 'react'
 import { AudioLines, FolderOpen } from 'lucide-react'
+import { editedTimeToSource, getVideoClipSpans } from '../../../core/editing/timeline-math'
+import { buildEditingClipFilterCss, isEditingClipFilterNeutral } from '../../../core/editing/filter-operations'
+import { getEditingClipTransition } from '../../../core/editing/transition-operations'
+import { getEditingClipTreatment, getEditingClipTreatmentAnchor, getEditingClipTreatmentScale } from '../../../core/editing/treatment-operations'
+import { findActiveEditingVideoBlocks, getEditingVideoBlockSize } from '../../../core/editing/video-block-operations'
 import { resolvePlaybackStartTime } from './playback-progress'
 import { useAppContext } from './app-context'
 
@@ -11,6 +16,24 @@ export function VideoSurface(): React.ReactElement {
   }
   const editingPreviewFile = app.editingPreviewSourceId ? app.editingSourceFiles[app.editingPreviewSourceId] : null
   const mediaUrl = app.isEditingMode && editingPreviewFile ? editingPreviewFile.url : state.currentFile.url
+  const currentEditingClip = app.isEditingMode && app.editingProject ? editedTimeToSource(app.editingProject.videoClips, app.editingCurrentTime)?.clip ?? null : null
+  const activeSplitBlock = app.isEditingMode && app.editingProject ? findActiveEditingVideoBlocks(app.editingProject.videoBlocks ?? [], app.editingCurrentTime).find((block) => block.position === 'split-left' || block.position === 'split-right') ?? null : null
+  const activeSplitPosition = activeSplitBlock?.position ?? null
+  const currentEditingSpan = app.isEditingMode && app.editingProject && currentEditingClip ? getVideoClipSpans(app.editingProject.videoClips).find((span) => span.clip.id === currentEditingClip.id) ?? null : null
+  const isPunchIn = !activeSplitPosition && currentEditingClip ? getEditingClipTreatment(currentEditingClip) === 'punch-in' : false
+  const punchInOrigin = currentEditingClip ? getEditingClipTreatmentAnchor(currentEditingClip) : 'center'
+  const transformOrigin = punchInOrigin === 'left' ? '0% 50%' : punchInOrigin === 'right' ? '100% 50%' : '50% 50%'
+  const hasColorFilter = currentEditingClip ? !isEditingClipFilterNeutral(currentEditingClip) : false
+  const transition = getEditingClipTransition(currentEditingClip ?? {})
+  const transitionHalfDuration = transition && currentEditingSpan ? Math.min(transition.durationSeconds / 2, (currentEditingSpan.editedEndSeconds - currentEditingSpan.editedStartSeconds) / 2) : 0
+  const transitionProgress = transitionHalfDuration > 0 && currentEditingSpan ? Math.min(1, Math.max(0, (app.editingCurrentTime - currentEditingSpan.editedStartSeconds) / transitionHalfDuration)) : 1
+  const transitionTransform = transition?.type === 'slide-left' ? `translateX(${(1 - transitionProgress) * -100}%)` : transition?.type === 'slide-right' ? `translateX(${(1 - transitionProgress) * 100}%)` : transition?.type === 'zoom' ? `scale(${0.82 + transitionProgress * 0.18})` : ''
+  const punchTransform = isPunchIn ? `scale(${getEditingClipTreatmentScale(currentEditingClip!)})` : ''
+  const transitionClipPath = transition?.type === 'wipe-left' ? `inset(0 ${(1 - transitionProgress) * 100}% 0 0)` : transition?.type === 'wipe-right' ? `inset(0 0 0 ${(1 - transitionProgress) * 100}%)` : undefined
+  const transitionOpacity = transition?.type === 'fade' || transition?.type === 'fadeblack' || transition?.type === 'dissolve' ? transitionProgress : undefined
+  const splitMainWidth = activeSplitBlock ? `${100 - getEditingVideoBlockSize(activeSplitBlock)}%` : undefined
+  const videoTransform = [punchTransform, transitionTransform].filter(Boolean).join(' ')
+  const videoStyle = { ...(state.videoWidth > 0 && state.videoHeight > 0 ? { aspectRatio: `${state.videoWidth} / ${state.videoHeight}` } : {}), ...(splitMainWidth ? { width: splitMainWidth } : {}), ...(videoTransform ? { transform: videoTransform, transformOrigin } : {}), ...(transitionClipPath ? { clipPath: transitionClipPath } : {}), ...(hasColorFilter ? { filter: buildEditingClipFilterCss(currentEditingClip!) } : {}), ...(transitionOpacity === undefined ? {} : { opacity: transitionOpacity }) }
   const onLoadedMetadata = (event: SyntheticEvent<HTMLVideoElement>): void => {
     const video = event.currentTarget
     const duration = video.duration || 0
@@ -25,5 +48,5 @@ export function VideoSurface(): React.ReactElement {
     app.updatePlaybackHistoryDuration(duration)
     app.persistPlaybackProgress(resumeTime, true)
   }
-  return <video ref={app.videoRef} className="video-surface" style={state.videoWidth > 0 && state.videoHeight > 0 ? { aspectRatio: `${state.videoWidth} / ${state.videoHeight}` } : undefined} src={mediaUrl} preload="metadata" onClick={app.handleVideoClick} onDoubleClick={app.handleVideoDoubleClick} onPlay={() => app.setState((current) => ({ ...current, isPlaying: true }))} onPlaying={app.clearPlaybackError} onCanPlay={app.clearPlaybackError} onPause={(event) => { const currentTime = event.currentTarget.currentTime; if (!app.isEditingMode || !app.editingResumePlaybackRef.current) app.setState((current) => ({ ...current, isPlaying: false })); if (!app.isEditingMode) app.persistPlaybackProgress(currentTime, true) }} onEnded={() => { app.playbackEndedRef.current = true; app.editingResumePlaybackRef.current = false; app.setState((current) => ({ ...current, isPlaying: false })); if (!app.isEditingMode) app.persistPlaybackProgress(0, true) }} onLoadedMetadata={onLoadedMetadata} onTimeUpdate={(event) => { const currentTime = event.currentTarget.currentTime; app.setState((current) => ({ ...current, currentTime, error: null })); if (!app.isEditingMode) app.persistPlaybackProgress(currentTime) }} onVolumeChange={(event) => { const { volume, muted } = event.currentTarget; app.setState((current) => ({ ...current, volume, muted })) }} onError={app.handleMediaError} controls={false} />
+  return <video ref={app.videoRef} className={`video-surface ${isPunchIn ? 'is-punch-in' : ''} ${activeSplitPosition ? `is-${activeSplitPosition}` : ''}`} style={videoStyle} src={mediaUrl} preload="metadata" onClick={app.handleVideoClick} onDoubleClick={app.handleVideoDoubleClick} onPlay={() => app.setState((current) => ({ ...current, isPlaying: true }))} onPlaying={app.clearPlaybackError} onCanPlay={app.clearPlaybackError} onPause={(event) => { const currentTime = event.currentTarget.currentTime; if (!app.isEditingMode || !app.editingResumePlaybackRef.current) app.setState((current) => ({ ...current, isPlaying: false })); if (!app.isEditingMode) app.persistPlaybackProgress(currentTime, true) }} onEnded={() => { app.playbackEndedRef.current = true; app.editingResumePlaybackRef.current = false; app.setState((current) => ({ ...current, isPlaying: false })); if (!app.isEditingMode) app.persistPlaybackProgress(0, true) }} onLoadedMetadata={onLoadedMetadata} onTimeUpdate={(event) => { const currentTime = event.currentTarget.currentTime; app.setState((current) => ({ ...current, currentTime, error: null })); if (!app.isEditingMode) app.persistPlaybackProgress(currentTime) }} onVolumeChange={(event) => { const { volume, muted } = event.currentTarget; app.setState((current) => ({ ...current, volume, muted })) }} onError={app.handleMediaError} controls={false} />
 }

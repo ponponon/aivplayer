@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { EditingCaption, EditingVideoClip } from '../../src/shared/editing-types'
+import type { EditingCaption, EditingGraphic, EditingVideoClip } from '../../src/shared/editing-types'
 import { createEditingProject } from '../../src/core/editing/project'
 import {
   editedDurationSeconds,
@@ -14,13 +14,15 @@ import {
   insertVideoClipsAtEdited,
   removeEditedVideoRange,
   removeSourceVideoRanges,
+  restoreSourceVideoRange,
   reorderVideoClips,
   splitVideoClipAtEdited,
   trimVideoClipBoundaryAtEdited,
   trimVideoClipLeftAtEdited,
   trimVideoClipRightAtEdited
 } from '../../src/core/editing/timeline-operations'
-import { reorderEditingCaptions } from '../../src/renderer/src/app/editing-action-helpers'
+import { reorderEditingCaptions, withUpdatedTimelineRanges } from '../../src/renderer/src/app/editing-action-helpers'
+import { snapEditedTime } from '../../src/core/editing/timeline-snapping'
 
 const clip = (id: string, start: number, end: number, sourceId = 'main'): EditingVideoClip => ({
   id,
@@ -74,6 +76,13 @@ describe('editing timeline mapping', () => {
       { startSeconds: 4, endSeconds: 7 },
       { startSeconds: 7, endSeconds: 9 }
     ])
+  })
+
+  it('snaps pointer time to nearby cuts, playhead points, and whole seconds', () => {
+    expect(snapEditedTime(3.06, 20, [4])).toBe(3)
+    expect(snapEditedTime(3.93, 20, [4])).toBe(4)
+    expect(snapEditedTime(7.94, 20, [7.9])).toBe(7.9)
+    expect(snapEditedTime(7.7, 20, [7.9])).toBe(7.7)
   })
 })
 
@@ -186,6 +195,25 @@ describe('editing timeline operations', () => {
       { startSeconds: 5, endSeconds: 7 }
     ])
   })
+
+  it('restores a source-time gap and keeps foreign clips attached to their source predecessor', () => {
+    const initial = [clip('left', 0, 3), clip('secondary', 0, 2, 'secondary'), clip('right', 5, 8)]
+    const result = restoreSourceVideoRange(initial, 'main', 3, 5, (start, end) => clip('restored', start, end))
+
+    expect(result.restored).toBe(true)
+    expect(result.clips.map((item) => [item.id, item.sourceId, item.sourceStartSeconds, item.sourceEndSeconds])).toEqual([
+      ['left', 'main', 0, 5],
+      ['secondary', 'secondary', 0, 2],
+      ['right', 'main', 5, 8]
+    ])
+    expect(editedDurationSeconds(result.clips)).toBe(10)
+    expect(restoreSourceVideoRange(result.clips, 'main', 3, 5, (start, end) => clip('duplicate', start, end))).toEqual({ clips: result.clips, restored: false })
+  })
+
+  it('can restore a source range after that source was fully removed', () => {
+    const restored = restoreSourceVideoRange([clip('secondary', 0, 2, 'secondary')], 'main', 2, 4, (start, end) => clip('restored-main', start, end))
+    expect(restored).toEqual({ clips: [clip('restored-main', 2, 4), clip('secondary', 0, 2, 'secondary')], restored: true })
+  })
 })
 
 describe('edited overlay compression', () => {
@@ -201,5 +229,21 @@ describe('edited overlay compression', () => {
       { id: 'crossing', kind: 'source', text: 'crossing', startSeconds: 1, durationSeconds: 3 },
       { id: 'after', kind: 'source', text: 'after', startSeconds: 6, durationSeconds: 2 }
     ])
+  })
+
+  it('compresses graphic blocks with the edited timeline while keeping old projects without graphics unchanged', () => {
+    const project = createEditingProject({ id: 'source-1', path: '/videos/demo.mp4', name: 'demo.mp4', fingerprint: 'demo:10', durationSeconds: 10 })
+    const graphics: EditingGraphic[] = [
+      { id: 'before', startSeconds: 0, durationSeconds: 2, text: 'before', position: 'center', style: 'title' },
+      { id: 'crossing', startSeconds: 1, durationSeconds: 5, text: 'crossing', position: 'center', style: 'label' },
+      { id: 'after', startSeconds: 8, durationSeconds: 1, text: 'after', position: 'bottom-right', style: 'label' }
+    ]
+    const next = withUpdatedTimelineRanges({ ...project, graphics }, project.videoClips, [{ startSeconds: 2, endSeconds: 4 }])
+    expect(next.graphics).toEqual([
+      { id: 'before', startSeconds: 0, durationSeconds: 2, text: 'before', position: 'center', style: 'title' },
+      { id: 'crossing', startSeconds: 1, durationSeconds: 3, text: 'crossing', position: 'center', style: 'label' },
+      { id: 'after', startSeconds: 6, durationSeconds: 1, text: 'after', position: 'bottom-right', style: 'label' }
+    ])
+    expect(withUpdatedTimelineRanges(project, project.videoClips, [{ startSeconds: 2, endSeconds: 4 }])).not.toHaveProperty('graphics')
   })
 })

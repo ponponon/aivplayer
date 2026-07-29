@@ -19,6 +19,20 @@
   object-fit: contain;
 }
 
+.video-surface.is-split-left,
+.video-surface.is-split-right {
+  position: absolute;
+  top: 0;
+  width: 50%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  object-fit: contain;
+}
+
+.video-surface.is-split-left { left: 0; }
+.video-surface.is-split-right { right: 0; }
+
 .subtitle-overlay {
   --subtitle-font-size: 14px;
   --subtitle-line-height: 1.5;

@@ -1,10 +1,9 @@
 import type { EditingCaption, EditingProject, EditingSource } from '../../../shared/editing-types'
-import { editedDurationSeconds, editedTimeToSource, sourceRangeToEditedRanges, sourceTimeToEdited } from '../../../core/editing/timeline-math'
+import { editedDurationSeconds, editedTimeToSource, removeEditedInterval, sourceRangeToEditedRanges, sourceTimeToEdited } from '../../../core/editing/timeline-math'
+import type { EditingGraphic, EditingVideoBlock } from '../../../shared/editing-types'
 import { createEditingProject } from '../../../core/editing/project'
 import type { AppModel } from './app-types'
 import { saveEditingProject } from './editing-project-storage'
-
-const EDITING_TIME_EPSILON_SECONDS = 0.001
 
 export function clampEditingTime(seconds: number, durationSeconds: number): number {
   return Math.min(Math.max(Number.isFinite(seconds) ? seconds : 0, 0), Math.max(0, durationSeconds))
@@ -63,28 +62,25 @@ export function createProjectForCurrentFile(model: AppModel, durationSeconds: nu
 }
 
 export function withUpdatedTimeline(project: EditingProject, clips: EditingProject['videoClips'], removedRange: { startSeconds: number; endSeconds: number } | null): EditingProject {
+  return withUpdatedTimelineRanges(project, clips, removedRange ? [removedRange] : [])
+}
+
+export function withUpdatedTimelineRanges(project: EditingProject, clips: EditingProject['videoClips'], removedRanges: readonly { startSeconds: number; endSeconds: number }[]): EditingProject {
+  let captions = project.captions
+  let graphics = project.graphics
+  let videoBlocks = project.videoBlocks
+  for (const removedRange of removedRanges) {
+    captions = removeEditedInterval(captions, removedRange.startSeconds, removedRange.endSeconds)
+    if (graphics) graphics = removeEditedInterval<EditingGraphic>(graphics, removedRange.startSeconds, removedRange.endSeconds, 0.2)
+    if (videoBlocks) videoBlocks = removeEditedInterval<EditingVideoBlock>(videoBlocks, removedRange.startSeconds, removedRange.endSeconds, 0.2)
+  }
   return {
     ...project,
     updatedAt: Date.now(),
     videoClips: clips,
-    captions: removedRange
-      ? project.captions.flatMap((caption) => {
-          const captionStart = caption.startSeconds
-          const captionEnd = caption.startSeconds + caption.durationSeconds
-          const overlapStart = Math.max(captionStart, removedRange.startSeconds)
-          const overlapEnd = Math.min(captionEnd, removedRange.endSeconds)
-          const overlap = overlapEnd - overlapStart
-          if (overlap <= EDITING_TIME_EPSILON_SECONDS) {
-            return captionStart >= removedRange.endSeconds
-              ? [{ ...caption, startSeconds: captionStart - (removedRange.endSeconds - removedRange.startSeconds) }]
-              : [caption]
-          }
-          const durationSeconds = caption.durationSeconds - overlap
-          return durationSeconds >= 0.1
-            ? [{ ...caption, startSeconds: Math.min(captionStart, removedRange.startSeconds), durationSeconds }]
-            : []
-        })
-      : project.captions
+    captions,
+    ...(graphics === undefined ? {} : { graphics }),
+    ...(videoBlocks === undefined ? {} : { videoBlocks })
   }
 }
 
@@ -98,6 +94,8 @@ export function applyEditingTimelineChange(model: AppModel, nextClips: NonNullab
   model.setEditingProject(nextProject)
   if (model.editingSelectedClipId && !nextClips.some((clip) => clip.id === model.editingSelectedClipId)) model.setEditingSelectedClipId(null)
   if (model.editingSelectedCaptionId && !nextProject.captions.some((caption) => caption.id === model.editingSelectedCaptionId)) model.setEditingSelectedCaptionId(null)
+  if (model.editingSelectedGraphicId && !nextProject.graphics?.some((graphic) => graphic.id === model.editingSelectedGraphicId)) model.setEditingSelectedGraphicId(null)
+  if (model.editingSelectedVideoBlockId && !nextProject.videoBlocks?.some((block) => block.id === model.editingSelectedVideoBlockId)) model.setEditingSelectedVideoBlockId(null)
   saveEditingProject(nextProject)
   if (model.editingCurrentTime > nextDurationSeconds) seekEditingTime(model, nextDurationSeconds, nextProject)
 }

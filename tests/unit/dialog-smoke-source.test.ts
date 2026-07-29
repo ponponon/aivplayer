@@ -16,6 +16,9 @@ describe('dialog smoke source constraints', () => {
     expect(packageJson.scripts?.['smoke:playback-history']).toBe(
       'node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-playback-history.ts'
     )
+    expect(packageJson.scripts?.['smoke:editing-script']).toBe(
+      'node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-editing-script.ts'
+    )
     expect(packageJson.scripts?.['smoke:dialogs:all']).toBe(
       'npm run smoke:clip-export-dialog && npm run smoke:media-details-dialog'
     )
@@ -50,6 +53,31 @@ describe('dialog smoke source constraints', () => {
     expect(smokeScript).toContain('subtitleText:')
     expect(smokeScript).toContain('subtitleSrtPath')
     expect(smokeScript).toContain("page.screenshot({ path: screenshotPath, fullPage: false })")
+  })
+
+  it('covers transcript deletion, restore, undo, and redo in the editing script smoke script', () => {
+    const smokeScript = readSource('scripts/smoke-editing-script.ts')
+
+    expect(smokeScript).toContain('script-smoke.srt')
+    expect(smokeScript).toContain('[data-testid="editing-script-panel"]')
+    expect(smokeScript).toContain('[data-testid="editing-treatment-punch-in"]')
+    expect(smokeScript).toContain("style.transform === 'scale(1.6)'")
+    expect(smokeScript).toContain('[data-testid="editing-treatment-anchor-left"]')
+    expect(smokeScript).toContain('[data-testid="editing-filter-control"]')
+    expect(smokeScript).toContain("style.filter === 'brightness(1.2) contrast(1) saturate(1)'")
+    expect(smokeScript).toContain('[data-testid="editing-graphic-control"]')
+    expect(smokeScript).toContain('[data-testid="editing-graphic-add"]')
+    expect(smokeScript).toContain('[data-testid="editing-graphic-edit-text"]')
+    expect(smokeScript).toContain('[data-testid="editing-graphic-save"]')
+    expect(smokeScript).toContain('graphicTrackBox')
+    expect(smokeScript).toContain('graphicOutputStats.size')
+    expect(smokeScript).toContain("treatment: 'punch-in'")
+    expect(smokeScript).toContain('punchInOutputStats.size')
+    expect(smokeScript).toContain('.editing-script-action.is-danger')
+    expect(smokeScript).toContain('.editing-script-row.is-deleted')
+    expect(smokeScript).toContain("page.locator('[data-testid=\"editing-undo\"]').click()")
+    expect(smokeScript).toContain("page.locator('[data-testid=\"editing-redo\"]').click()")
+    expect(smokeScript).toContain('page.screenshot({ path: screenshotPath, fullPage: false })')
   })
 
   it('uses stable selectors in the media details smoke script', () => {

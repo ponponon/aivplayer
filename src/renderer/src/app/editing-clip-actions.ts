@@ -1,5 +1,9 @@
 import { getVideoClipSpans } from '../../../core/editing/timeline-math'
 import { removeEditedVideoRange, reorderVideoClips, trimVideoClipBoundaryAtEdited, type EditingClipBoundary } from '../../../core/editing/timeline-operations'
+import { updateEditingClipTreatment } from '../../../core/editing/treatment-operations'
+import { updateEditingClipFilter } from '../../../core/editing/filter-operations'
+import { updateEditingClipTransition } from '../../../core/editing/transition-operations'
+import type { EditingClipFilter, EditingClipTransition, EditingClipTreatment, EditingTreatmentAnchor } from '../../../shared/editing-types'
 import type { AppModel } from './app-types'
 import { applyEditingTimelineChange, reorderEditingCaptions, seekEditingTime } from './editing-action-helpers'
 import { saveEditingProject } from './editing-project-storage'
@@ -55,5 +59,41 @@ export function createEditingClipActions(model: AppModel) {
     if (result.removedRange) applyEditingTimelineChange(model, result.clips, result.removedRange)
   }
 
-  return { selectEditingClip, reorderEditingClips, moveSelectedEditingClip, deleteEditingRange, updateEditingClipBoundary }
+  const setEditingClipTreatment = (clipId: string, treatment: EditingClipTreatment, scale?: number, anchor?: EditingTreatmentAnchor): void => {
+    const project = model.editingProject
+    if (!project) return
+    const nextClips = updateEditingClipTreatment(project.videoClips, clipId, treatment, scale, anchor)
+    if (nextClips.every((clip, index) => clip === project.videoClips[index])) return
+    const nextProject = { ...project, updatedAt: Date.now(), videoClips: nextClips }
+    model.setEditingPast((past) => [...past, project])
+    model.setEditingFuture([])
+    model.setEditingProject(nextProject)
+    saveEditingProject(nextProject)
+  }
+
+  const setEditingClipFilter = (clipId: string, filter: EditingClipFilter): void => {
+    const project = model.editingProject
+    if (!project) return
+    const nextClips = updateEditingClipFilter(project.videoClips, clipId, filter)
+    if (nextClips.every((clip, index) => clip === project.videoClips[index])) return
+    const nextProject = { ...project, updatedAt: Date.now(), videoClips: nextClips }
+    model.setEditingPast((past) => [...past, project])
+    model.setEditingFuture([])
+    model.setEditingProject(nextProject)
+    saveEditingProject(nextProject)
+  }
+
+  const setEditingClipTransition = (clipId: string, transition: EditingClipTransition | null): void => {
+    const project = model.editingProject
+    if (!project) return
+    const nextClips = updateEditingClipTransition(project.videoClips, clipId, transition)
+    if (nextClips.every((clip, index) => clip === project.videoClips[index])) return
+    const nextProject = { ...project, updatedAt: Date.now(), videoClips: nextClips }
+    model.setEditingPast((past) => [...past, project])
+    model.setEditingFuture([])
+    model.setEditingProject(nextProject)
+    saveEditingProject(nextProject)
+  }
+
+  return { selectEditingClip, reorderEditingClips, moveSelectedEditingClip, deleteEditingRange, updateEditingClipBoundary, setEditingClipTreatment, setEditingClipFilter, setEditingClipTransition }
 }

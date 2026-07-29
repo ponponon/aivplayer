@@ -1,4 +1,5 @@
 import type { EditingVideoClip } from '../../shared/editing-types'
+import { normalizeEditingClipTransitions } from './transition-operations'
 import {
   EDITING_TIME_EPSILON_SECONDS,
   editedTimeToSource,
@@ -18,6 +19,11 @@ export type EditingClipBoundary = 'start' | 'end'
 export type SourceRangeEditResult = {
   clips: EditingVideoClip[]
   removedRanges: EditedRange[]
+}
+
+export type RestoreSourceRangeResult = {
+  clips: EditingVideoClip[]
+  restored: boolean
 }
 
 export type InsertVideoClipsResult = {
@@ -68,7 +74,7 @@ export function splitVideoClipAtEdited(
   const left = { ...clip, sourceEndSeconds: hit.sourceSeconds }
   const right = createRightClip(clip, hit.sourceSeconds, clip.sourceEndSeconds)
   return {
-    clips: [...clips.slice(0, hit.index), left, right, ...clips.slice(hit.index + 1)],
+    clips: normalizeEditingClipTransitions([...clips.slice(0, hit.index), left, right, ...clips.slice(hit.index + 1)]),
     removedRange: null
   }
 }
@@ -92,7 +98,7 @@ export function trimVideoClipLeftAtEdited(
     : clip)
 
   return {
-    clips: next,
+    clips: normalizeEditingClipTransitions(next),
     removedRange: { startSeconds: hit.editedStartSeconds, endSeconds: editedSeconds }
   }
 }
@@ -116,7 +122,7 @@ export function trimVideoClipRightAtEdited(
     : clip)
 
   return {
-    clips: next,
+    clips: normalizeEditingClipTransitions(next),
     removedRange: { startSeconds: editedSeconds, endSeconds: hit.editedEndSeconds }
   }
 }
@@ -138,14 +144,14 @@ export function trimVideoClipBoundaryAtEdited(
   if (boundary === 'start') {
     if (sourceBoundary <= span.clip.sourceStartSeconds + EDITING_TIME_EPSILON_SECONDS || sourceBoundary >= span.clip.sourceEndSeconds - EDITING_TIME_EPSILON_SECONDS) return unchanged(clips)
     return {
-      clips: clips.map((clip) => clip.id === clipId ? { ...clip, sourceStartSeconds: sourceBoundary } : clip),
+      clips: normalizeEditingClipTransitions(clips.map((clip) => clip.id === clipId ? { ...clip, sourceStartSeconds: sourceBoundary } : clip)),
       removedRange: { startSeconds: span.editedStartSeconds, endSeconds: safeEditedSeconds }
     }
   }
 
   if (sourceBoundary <= span.clip.sourceStartSeconds + EDITING_TIME_EPSILON_SECONDS || sourceBoundary >= span.clip.sourceEndSeconds - EDITING_TIME_EPSILON_SECONDS) return unchanged(clips)
   return {
-    clips: clips.map((clip) => clip.id === clipId ? { ...clip, sourceEndSeconds: sourceBoundary } : clip),
+    clips: normalizeEditingClipTransitions(clips.map((clip) => clip.id === clipId ? { ...clip, sourceEndSeconds: sourceBoundary } : clip)),
     removedRange: { startSeconds: safeEditedSeconds, endSeconds: span.editedEndSeconds }
   }
 }
@@ -191,7 +197,7 @@ export function removeEditedVideoRange(
   if (next.length === 0) return unchanged(clips)
 
   return {
-    clips: next,
+    clips: normalizeEditingClipTransitions(next),
     removedRange: { startSeconds: start, endSeconds: end }
   }
 }
@@ -209,7 +215,7 @@ export function deleteVideoClipAtEdited(
   if (!span) return unchanged(clips)
 
   return {
-    clips: clips.filter((_, index) => index !== hit.index),
+    clips: normalizeEditingClipTransitions(clips.filter((_, index) => index !== hit.index)),
     removedRange: { startSeconds: span.editedStartSeconds, endSeconds: span.editedEndSeconds }
   }
 }
@@ -225,7 +231,7 @@ export function reorderVideoClips(
   const [moved] = next.splice(fromIndex, 1)
   if (!moved) return [...clips]
   next.splice(toIndex, 0, moved)
-  return next
+  return normalizeEditingClipTransitions(next)
 }
 
 /** Inserts one or more source clips at the playhead, splitting the hit clip when needed. */
@@ -251,7 +257,7 @@ export function insertVideoClipsAtEdited(
     insertionIndex = boundary?.index ?? next.length
   }
   next.splice(insertionIndex, 0, ...insertClips)
-  return { clips: next, insertedClipIds: insertClips.map((clip) => clip.id), editedInsertSeconds: safeEditedSeconds }
+  return { clips: normalizeEditingClipTransitions(next), insertedClipIds: insertClips.map((clip) => clip.id), editedInsertSeconds: safeEditedSeconds }
 }
 
 /** Deletes source-time ranges, resolving them against the current edit before each deletion. */
@@ -286,6 +292,89 @@ export function removeSourceVideoRanges(
   }
 
   return { clips: current, removedRanges }
+}
+
+/**
+ * Restores a source-time gap without changing the order of clips from other
+ * sources. The source track is temporarily sorted by source time, matching
+ * the transcript's coordinate system, then foreign clips are reattached after
+ * the same source predecessor they originally followed.
+ */
+export function restoreSourceVideoRange(
+  clips: readonly EditingVideoClip[],
+  sourceId: string,
+  sourceStartSeconds: number,
+  sourceEndSeconds: number,
+  createClip: (sourceStartSeconds: number, sourceEndSeconds: number) => EditingVideoClip
+): RestoreSourceRangeResult {
+  const startSeconds = Math.min(sourceStartSeconds, sourceEndSeconds)
+  const endSeconds = Math.max(sourceStartSeconds, sourceEndSeconds)
+  if (!Number.isFinite(startSeconds) || !Number.isFinite(endSeconds) || endSeconds - startSeconds <= EDITING_TIME_EPSILON_SECONDS) {
+    return { clips: [...clips], restored: false }
+  }
+
+  const sourceClips = clips.filter((clip) => clip.sourceId === sourceId)
+  if (sourceClips.length === 0) {
+    return { clips: [createClip(startSeconds, endSeconds), ...clips], restored: true }
+  }
+
+  const sorted = [...sourceClips].sort((left, right) => left.sourceStartSeconds - right.sourceStartSeconds)
+  const gaps: Array<[number, number]> = []
+  let cursor = startSeconds
+  for (const clip of sorted) {
+    if (clip.sourceEndSeconds <= cursor + EDITING_TIME_EPSILON_SECONDS) continue
+    if (clip.sourceStartSeconds >= endSeconds - EDITING_TIME_EPSILON_SECONDS) break
+    if (clip.sourceStartSeconds > cursor + EDITING_TIME_EPSILON_SECONDS) {
+      gaps.push([cursor, Math.min(clip.sourceStartSeconds, endSeconds)])
+    }
+    cursor = Math.max(cursor, clip.sourceEndSeconds)
+    if (cursor >= endSeconds - EDITING_TIME_EPSILON_SECONDS) break
+  }
+  if (cursor < endSeconds - EDITING_TIME_EPSILON_SECONDS) gaps.push([cursor, endSeconds])
+
+  const realGaps = gaps.filter(([gapStart, gapEnd]) => gapEnd - gapStart > EDITING_TIME_EPSILON_SECONDS)
+  if (realGaps.length === 0) return { clips: [...clips], restored: false }
+
+  let restoredSourceClips = sorted
+  for (const [gapStart, gapEnd] of realGaps) {
+    const previousIndex = restoredSourceClips.findIndex((clip) => Math.abs(clip.sourceEndSeconds - gapStart) <= 0.03)
+    if (previousIndex >= 0) {
+      restoredSourceClips = restoredSourceClips.map((clip, index) => index === previousIndex ? { ...clip, sourceEndSeconds: gapEnd } : clip)
+      continue
+    }
+
+    const nextIndex = restoredSourceClips.findIndex((clip) => Math.abs(clip.sourceStartSeconds - gapEnd) <= 0.03)
+    if (nextIndex >= 0) {
+      restoredSourceClips = restoredSourceClips.map((clip, index) => index === nextIndex ? { ...clip, sourceStartSeconds: gapStart } : clip)
+      continue
+    }
+
+    const inserted = createClip(gapStart, gapEnd)
+    const insertIndex = restoredSourceClips.findIndex((clip) => clip.sourceStartSeconds >= gapEnd - EDITING_TIME_EPSILON_SECONDS)
+    restoredSourceClips = insertIndex < 0
+      ? [...restoredSourceClips, inserted]
+      : [...restoredSourceClips.slice(0, insertIndex), inserted, ...restoredSourceClips.slice(insertIndex)]
+  }
+
+  const sourceIds = new Set(sourceClips.map((clip) => clip.id))
+  const anchors: Array<{ clip: EditingVideoClip; afterId: string | null }> = []
+  let lastSourceId: string | null = null
+  for (const clip of clips) {
+    if (sourceIds.has(clip.id)) {
+      lastSourceId = clip.id
+      continue
+    }
+    anchors.push({ clip, afterId: lastSourceId })
+  }
+
+  const output: EditingVideoClip[] = []
+  for (const clip of restoredSourceClips) {
+    output.push(clip)
+    for (const anchor of anchors) if (anchor.afterId === clip.id) output.push(anchor.clip)
+  }
+  for (const anchor of anchors) if (!output.includes(anchor.clip)) output.unshift(anchor.clip)
+
+  return { clips: output, restored: true }
 }
 
 /** Returns the clip length after an edit, useful to callers building preview state. */

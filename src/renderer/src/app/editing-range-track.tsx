@@ -1,5 +1,6 @@
 import { Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { snapEditedTime } from '../../../core/editing/timeline-snapping'
 
 export type EditingTimeRange = { startSeconds: number; endSeconds: number }
 
@@ -12,6 +13,7 @@ type EditingRangeTrackProps = {
   deleteRangeLabel: string
   onSeek: (seconds: number) => void
   onDeleteRange: (startSeconds: number, endSeconds: number) => void
+  snapPoints?: readonly number[]
   children: ReactNode
 }
 
@@ -27,7 +29,7 @@ function normalizeRange(startSeconds: number, endSeconds: number): EditingTimeRa
   return startSeconds <= endSeconds ? { startSeconds, endSeconds } : { startSeconds: endSeconds, endSeconds: startSeconds }
 }
 
-export function EditingRangeTrack({ durationSeconds, currentTime, trackLabel, deleteRangeLabel, onSeek, onDeleteRange, children }: EditingRangeTrackProps): React.ReactElement {
+export function EditingRangeTrack({ durationSeconds, currentTime, trackLabel, deleteRangeLabel, onSeek, onDeleteRange, snapPoints = [], children }: EditingRangeTrackProps): React.ReactElement {
   const [selectedRange, setSelectedRange] = useState<EditingTimeRange | null>(null)
   const dragRef = useRef<RangeDrag | null>(null)
   const rangeRef = useRef<EditingTimeRange | null>(null)
@@ -49,7 +51,7 @@ export function EditingRangeTrack({ durationSeconds, currentTime, trackLabel, de
   const startRangeDrag = (event: React.PointerEvent<HTMLDivElement>): void => {
     const target = event.target
     if (event.button !== 0 || durationSeconds <= 0 || (target instanceof Element && target.closest('.editing-clip, .editing-range-delete, .editing-clip-boundary-handle'))) return
-    const startSeconds = timeFromPointer(event.clientX, event.currentTarget, durationSeconds)
+    const startSeconds = snapEditedTime(timeFromPointer(event.clientX, event.currentTarget, durationSeconds), durationSeconds, snapPoints)
     dragRef.current = { startSeconds, moved: false }
     updateRange(null)
     event.currentTarget.setPointerCapture(event.pointerId)
@@ -58,7 +60,7 @@ export function EditingRangeTrack({ durationSeconds, currentTime, trackLabel, de
   const moveRangeDrag = (event: React.PointerEvent<HTMLDivElement>): void => {
     const drag = dragRef.current
     if (!drag) return
-    const currentSeconds = timeFromPointer(event.clientX, event.currentTarget, durationSeconds)
+    const currentSeconds = snapEditedTime(timeFromPointer(event.clientX, event.currentTarget, durationSeconds), durationSeconds, snapPoints)
     const moved = drag.moved || Math.abs(currentSeconds - drag.startSeconds) >= MIN_RANGE_SECONDS
     dragRef.current = { ...drag, moved }
     if (moved) updateRange(normalizeRange(drag.startSeconds, currentSeconds))
@@ -93,7 +95,7 @@ export function EditingRangeTrack({ durationSeconds, currentTime, trackLabel, de
     }
     if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
     event.preventDefault()
-    onSeek(Math.max(0, Math.min(durationSeconds, (rangeRef.current?.startSeconds ?? currentTime) + (event.key === 'ArrowLeft' ? -0.1 : 0.1))))
+    onSeek(snapEditedTime((rangeRef.current?.startSeconds ?? currentTime) + (event.key === 'ArrowLeft' ? -0.1 : 0.1), durationSeconds, snapPoints))
   }
 
   const range = selectedRange
@@ -108,7 +110,7 @@ export function EditingRangeTrack({ durationSeconds, currentTime, trackLabel, de
       aria-label={trackLabel}
       onClick={(event) => {
         if (suppressSeekRef.current) { suppressSeekRef.current = false; return }
-        onSeek(timeFromPointer(event.clientX, event.currentTarget, durationSeconds))
+        onSeek(snapEditedTime(timeFromPointer(event.clientX, event.currentTarget, durationSeconds), durationSeconds, snapPoints))
       }}
       onKeyDown={handleKeyDown}
       onPointerDown={startRangeDrag}
