@@ -20,6 +20,7 @@ import { mkdtemp, rm, readdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { editAndExportLivePhoto, getLivePhotoDefaultDirectory, getLivePhotoDefaultName, probeLivePhotoFile } from '../core/live-photo/live-photo-service'
+import { resolveHeicCoverToolPaths } from '../core/live-photo/heic-cover'
 
 const execFileAsync = promisify(execFile)
 
@@ -90,7 +91,7 @@ export function registerSettingsIpc(): void {
     const selectedPath = await promptForSavePath({ title: '导出 Live Photo', defaultPath: join(getLivePhotoDefaultDirectory(request.sourcePath), defaultName), buttonLabel: '导出', filters: [{ name: 'Live Photo', extensions: [extension] }] })
     if (!selectedPath) return { success: false, canceled: true, message: '' }
     try {
-      return await editAndExportLivePhoto({ ffmpegPath, sourcePath: request.sourcePath, outputPath: selectedPath, edit: request.options, coverDataUrl: request.coverDataUrl })
+      return await editAndExportLivePhoto({ ffmpegPath, sourcePath: request.sourcePath, outputPath: selectedPath, edit: request.options, coverDataUrl: request.coverDataUrl, heicCoverTools: await resolveHeicCoverToolPaths(process.env) })
     } catch (error) {
       return { success: false, message: error instanceof Error ? error.message : String(error) }
     }

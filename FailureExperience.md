@@ -489,6 +489,13 @@
 - 小米样本可能采用 JPEG + 追加 MP4 的容器结构，但仍使用小米自定义的 Live Photo 元数据和时序字段。当前样本没有 Google Motion Photo 的 `GCamera/GContainer` 标记，而是包含小米自定义 `livephotoInfo` 等信息。
 - 调研或实现厂商动态照片时，必须先对真实样本做字节边界、EXIF/XMP、MP4 box 和播放兼容性验证，再决定是否复用通用解析器；“可以提取/编辑视频”与“编辑后仍被厂商相册识别为 Live Photo”必须分开验收。
 - 修改 JPEG APP1/APPn 内的 XMP 或厂商 MakerNote 文本时，不能直接缩短数字字符串；JPEG 段长度不会自动修复，必须采用等宽替换或同步调整段长度，否则追加的视频边界可能被错误解析。
+
+## Apple HEIC 的 ContentIdentifier 不能单独判定 Live Photo
+
+- Apple 普通 HEIC 也可能带有 `ContentIdentifier`、`LivePhotoVideoIndex`、HDR 辅助图和大量 HEVC tile；这些字段本身不能证明文件包含动态视频。
+- 判定 Apple Live Photo 必须同时找到可播放的同名 MOV/MP4 sidecar，或确认 HEIF 容器内存在实际的动态视频序列；只有主图、缩略图、gain map 和 tile grid 时应按静态 HEIC 处理。
+- 编辑 HEIC 封面时，不能把原始 HEIC 直接丢给通用 JPEG 渲染链；应先提取 metadata donor，再把新 JPEG 封面编码回 HEIC，并验证 Apple `ContentIdentifier` 仍然存在。
+- 运行时不能依赖开发机 Homebrew 的绝对路径或动态库；HEIC 编码器必须可探测、可注入，缺失时应该阻止这次导出并给出明确原因。
 ## 浅色主题不能保留深色主题的硬编码强调色
 
 - 这次把浅色主题调整成 Chrome 风格后，发现只改 `tokens.css` 里的 `--accent` 不够：多个播放器、设置、AI 面板 CSS 仍直接写死 `rgba(232, 193, 109, ...)`，最终会出现浅蓝背景、蓝灰文字和金色控件同时存在的混搭。

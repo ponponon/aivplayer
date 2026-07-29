@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import type { LivePhotoEditOptions, LivePhotoExportResult, LivePhotoFormat, LivePhotoProbeResult } from '../../shared/live-photo-types'
+import { encodeHeicCover, isHeicPath, resolveHeicCoverToolPaths, type HeicCoverToolPaths } from './heic-cover.ts'
 import { mergeJpegCoverMetadata } from './jpeg-cover.ts'
 import { parseEmbeddedMotionPhoto, replaceGoogleMotionPhotoLengths, updateGoogleMotionPhotoPresentationTimestamp, updateXiaomiLivePhotoTimeline } from './live-photo-parser.ts'
 
@@ -212,6 +213,7 @@ export async function editAndExportLivePhoto(options: {
   outputPath: string
   edit: LivePhotoEditOptions
   coverDataUrl?: string
+  heicCoverTools?: HeicCoverToolPaths
 }): Promise<LivePhotoExportResult> {
   const source = await resolveMotionPhotoSource(options.sourcePath)
   if (!source) throw new Error('未找到 Live Photo 的视频部分')
@@ -237,8 +239,13 @@ export async function editAndExportLivePhoto(options: {
       await writeFile(options.outputPath, Buffer.concat([imageBytes, editedMotionBytes]))
       return { success: true, filePath: options.outputPath, message: 'Live Photo 导出完成', format: source.format }
     }
-    if (canMergeJpegCover(source.sourcePath, source.sourceBuffer, renderedCoverBytes)) await writeFile(options.outputPath, mergeJpegCoverMetadata(source.sourceBuffer, renderedCoverBytes as Buffer))
-    else await copyFile(source.sourcePath, options.outputPath)
+    if (renderedCoverBytes && isHeicPath(source.sourcePath)) {
+      await encodeHeicCover({ sourcePath: source.sourcePath, renderedJpeg: renderedCoverBytes, outputPath: options.outputPath, tools: options.heicCoverTools ?? await resolveHeicCoverToolPaths() })
+    } else if (canMergeJpegCover(source.sourcePath, source.sourceBuffer, renderedCoverBytes)) {
+      await writeFile(options.outputPath, mergeJpegCoverMetadata(source.sourceBuffer, renderedCoverBytes as Buffer))
+    } else {
+      await copyFile(source.sourcePath, options.outputPath)
+    }
     const motionOutputPath = buildAppleMotionPath(options.outputPath)
     await writeFile(motionOutputPath, editedMotionBytes)
     return { success: true, filePath: options.outputPath, motionPath: motionOutputPath, message: 'Apple Live Photo 导出完成', format: source.format }
