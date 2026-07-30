@@ -56,6 +56,7 @@
 .subtitle-text {
   grid-column: 2;
   min-width: 0;
+  max-width: min(82vw, 720px);
   color: var(--text-primary);
   font-size: var(--subtitle-font-size);
   line-height: var(--subtitle-line-height);

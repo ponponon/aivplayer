@@ -9,6 +9,14 @@ export type SubtitleWord = {
   text: string
 }
 
+export type SubtitleWordGroup = readonly SubtitleWord[]
+
+type SegmenterResult = { segment: string }
+type SegmenterLike = { segment: (text: string) => Iterable<SegmenterResult> }
+type IntlWithSegmenter = typeof Intl & {
+  Segmenter?: new (locales?: string | string[], options?: { granularity?: 'word' | 'sentence' | 'grapheme' }) => SegmenterLike
+}
+
 type WhisperJsonToken = {
   text?: unknown
   timestamps?: {
@@ -72,6 +80,20 @@ function isCjkText(text: string): boolean {
   return /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/u.test(text)
 }
 
+function getCjkWordSegments(text: string): string[] {
+  const Segmenter = (Intl as IntlWithSegmenter).Segmenter
+  if (Segmenter) {
+    try {
+      const segmenter = new Segmenter('zh-Hans', { granularity: 'word' })
+      const segments = [...segmenter.segment(text)].map((item) => item.segment).filter((segment) => segment.trim().length > 0)
+      if (segments.length > 0) return segments
+    } catch {
+      // Older runtimes can expose Intl without Segmenter. The code-point fallback below is deterministic.
+    }
+  }
+  return [...text].filter((fragment) => fragment.trim().length > 0)
+}
+
 function isIgnorableWhisperToken(text: string): boolean {
   const normalized = text.trim()
   return !normalized || /^<\|[^>]+\|>$/u.test(normalized) || /^\[[^\]]+\]$/u.test(normalized)
@@ -79,6 +101,116 @@ function isIgnorableWhisperToken(text: string): boolean {
 
 function normalizeWordText(text: string): string {
   return text.replace(/\r/g, '').replace(/\n/g, ' ')
+}
+
+function isLatinOrDigit(character: string | undefined): boolean {
+  return Boolean(character && /[A-Za-z0-9]/u.test(character))
+}
+
+function isCjkOrFullWidth(character: string): boolean {
+  return /[\u1100-\u11ff\u2e80-\u303f\u3040-\u30ff\u3130-\u318f\u31a0-\u31ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff01-\uff60]/u.test(character)
+}
+
+function endsWithSubtitlePunctuation(text: string): boolean {
+  return /[,.;:!?，。！？；：、）》】』」』]$/u.test(text.trim())
+}
+
+/** Joins raw ASR tokens without introducing spaces inside CJK text. */
+export function joinSubtitleWords(words: SubtitleWordGroup): string {
+  let result = ''
+  for (const word of words) {
+    const text = normalizeWordText(word.text)
+    if (!text) continue
+    if (!result) {
+      result = text.trimStart()
+      continue
+    }
+    if (/^\s/u.test(text) || /\s$/u.test(result) || !isLatinOrDigit(result.at(-1)) || !isLatinOrDigit(text.trimStart().at(0))) {
+      result += text
+      continue
+    }
+    result += ` ${text.trimStart()}`
+  }
+  return result.trim()
+}
+
+/** Estimates visual width in em units, matching the editor's CJK/Latin proportions. */
+export function estimateSubtitleWordEm(word: SubtitleWord): number {
+  let width = 0
+  for (const character of normalizeWordText(word.text)) {
+    if (isCjkOrFullWidth(character)) width += 1
+    else if (/[A-Z0-9]/u.test(character)) width += 0.62
+    else if (/[a-z]/u.test(character)) width += 0.52
+    else width += 0.34
+  }
+  return Math.max(0.34, width)
+}
+
+/**
+ * Converts a font size and viewport into a stable subtitle width budget.
+ * The CSS overlay is capped at 720px; the lower bound keeps narrow windows usable.
+ */
+export function getSubtitleMaxWidthEm(fontSizePx: number, viewportWidthPx = 1280): number {
+  const safeFontSize = Math.max(12, Number.isFinite(fontSizePx) ? fontSizePx : 14)
+  const safeViewportWidth = Math.max(1, Number.isFinite(viewportWidthPx) ? viewportWidthPx : 1280)
+  const widthPx = Math.min(720, safeViewportWidth * 0.82)
+  return Math.max(8, Math.min(52, widthPx / safeFontSize))
+}
+
+/**
+ * Splits timed words into balanced, punctuation-aware display chunks.
+ * A chunk is shown as a single timed subtitle page, so preview and ASS burn-in
+ * do not disagree when a long caption exceeds the visual width budget.
+ */
+export function chunkSubtitleWordsByWidth(words: SubtitleWordGroup, maxEm = 32): SubtitleWord[][] {
+  const usableWords = words.filter((word) => word.text.trim().length > 0)
+  if (usableWords.length === 0) return []
+
+  const widthLimit = Math.max(1, Number.isFinite(maxEm) ? maxEm : 32)
+  const widths = usableWords.map(estimateSubtitleWordEm)
+  const totalWidth = widths.reduce((sum, width) => sum + width, 0)
+  if (totalWidth <= widthLimit || usableWords.length === 1) return [usableWords]
+
+  const desiredChunkCount = Math.max(2, Math.ceil(totalWidth / widthLimit))
+  const chunks: SubtitleWord[][] = []
+  let startIndex = 0
+  let remainingWidth = totalWidth
+  let remainingChunks = desiredChunkCount
+
+  while (startIndex < usableWords.length) {
+    if (remainingChunks <= 1) {
+      chunks.push(usableWords.slice(startIndex))
+      break
+    }
+
+    const targetWidth = remainingWidth / remainingChunks
+    const lastAllowedEnd = usableWords.length - remainingChunks
+    let candidateWidth = 0
+    let bestEnd = startIndex
+    let bestScore = Number.POSITIVE_INFINITY
+
+    for (let endIndex = startIndex; endIndex <= lastAllowedEnd; endIndex += 1) {
+      candidateWidth += widths[endIndex] ?? 0
+      if (candidateWidth > widthLimit && endIndex > startIndex) break
+
+      const punctuationPenalty = endsWithSubtitlePunctuation(usableWords[endIndex]?.text ?? '') ? 0 : 0.12
+      const score = Math.abs(candidateWidth - targetWidth) + punctuationPenalty
+      if (score < bestScore) {
+        bestScore = score
+        bestEnd = endIndex
+      }
+    }
+
+    if (bestEnd < startIndex) bestEnd = startIndex
+    const chunk = usableWords.slice(startIndex, bestEnd + 1)
+    chunks.push(chunk)
+    const chunkWidth = widths.slice(startIndex, bestEnd + 1).reduce((sum, width) => sum + width, 0)
+    remainingWidth = Math.max(0, remainingWidth - chunkWidth)
+    remainingChunks -= 1
+    startIndex = bestEnd + 1
+  }
+
+  return chunks
 }
 
 function appendTokenWord(words: SubtitleWord[], current: SubtitleWord | null): void {
@@ -128,7 +260,7 @@ function createFallbackWords(text: string, startSeconds: number, endSeconds: num
   if (!normalized || endSeconds <= startSeconds) return []
 
   const fragments = isCjkText(normalized)
-    ? [...normalized].filter((fragment) => fragment.trim().length > 0)
+    ? getCjkWordSegments(normalized)
     : (normalized.match(/\s*\S+/gu) ?? [])
   if (fragments.length === 0) return []
 

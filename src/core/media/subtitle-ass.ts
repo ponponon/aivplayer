@@ -1,5 +1,6 @@
 import { getSubtitlePreset, splitSubtitleTextByKeywords, type SubtitleRenderSettings } from '../../shared/subtitle-presets'
 import type { EditingCaption } from '../../shared/editing-types'
+import { chunkSubtitleWordsByWidth, createFallbackSubtitleWords, getSubtitleMaxWidthEm, joinSubtitleWords, type SubtitleWord } from '../../shared/subtitle-timing'
 
 export type SubtitleAssOptions = SubtitleRenderSettings & {
   presetId?: string
@@ -63,17 +64,36 @@ function renderAssText(text: string, options: SubtitleAssOptions): string {
   }).join('\\N')
 }
 
-function canRenderKaraokeText(text: string, words: EditingCaption['words']): words is NonNullable<EditingCaption['words']> {
+function canRenderKaraokeText(text: string, words: readonly SubtitleWord[] | undefined): words is readonly SubtitleWord[] {
   if (!words || words.length === 0) return false
-  return words.map((word) => word.text).join('').replace(/\s+/gu, '') === text.replace(/\s+/gu, '')
+  return joinSubtitleWords(words).replace(/\s+/gu, '') === text.replace(/\s+/gu, '')
 }
 
-function renderAssKaraokeText(text: string, words: EditingCaption['words']): string {
+function renderAssKaraokeText(text: string, words: readonly SubtitleWord[]): string {
   if (!canRenderKaraokeText(text, words)) return escapeAssText(text)
-  return words.map((word) => {
+  return words.map((word, index) => {
     const durationCentiseconds = Math.max(1, Math.round(Math.max(0, word.endSeconds - word.startSeconds) * 100))
-    return `{\\k${durationCentiseconds}}${escapeAssText(word.text)}`
+    const displayText = index === 0 ? word.text.trimStart() : word.text
+    return `{\\k${durationCentiseconds}}${escapeAssText(displayText)}`
   }).join('')
+}
+
+function buildKaraokeDialogue(startSeconds: number, endSeconds: number, words: readonly SubtitleWord[]): string {
+  const text = joinSubtitleWords(words)
+  return `Dialogue: 0,${formatAssTimestamp(startSeconds)},${formatAssTimestamp(endSeconds)},Default,,0,0,0,,${renderAssKaraokeText(text, words)}`
+}
+
+function buildWordTimedDialogueEvents(startSeconds: number, endSeconds: number, words: readonly SubtitleWord[], maxEm: number): string[] {
+  const groups = chunkSubtitleWordsByWidth(words, maxEm)
+  if (groups.length === 0) return []
+
+  return groups.map((group, index) => {
+    const firstWord = group[0]
+    const nextGroupFirstWord = groups[index + 1]?.[0]
+    const groupStart = Math.max(startSeconds, startSeconds + (firstWord?.startSeconds ?? 0))
+    const groupEnd = Math.min(endSeconds, nextGroupFirstWord ? startSeconds + nextGroupFirstWord.startSeconds : endSeconds)
+    return buildKaraokeDialogue(groupStart, Math.max(groupStart + 0.01, groupEnd), group)
+  })
 }
 
 function buildAssDocument(events: string[], options: SubtitleAssOptions): string {
@@ -87,20 +107,27 @@ function buildAssDocument(events: string[], options: SubtitleAssOptions): string
 
 export function buildAssSubtitle(text: string, options: SubtitleAssOptions = {}): string {
   const cues = parseSrt(text)
-  const events = cues.map((cue) => `Dialogue: 0,${formatAssTimestamp(cue.startSeconds)},${formatAssTimestamp(cue.endSeconds)},Default,,0,0,0,,${renderAssText(cue.text, options)}`)
+  const maxEm = getSubtitleMaxWidthEm(options.fontSizePx ?? 14, options.playResX ?? 1920)
+  const events = options.emphasisMode === 'words'
+    ? cues.flatMap((cue) => buildWordTimedDialogueEvents(cue.startSeconds, cue.endSeconds, createFallbackSubtitleWords(cue.text, 0, cue.endSeconds - cue.startSeconds), maxEm))
+    : cues.map((cue) => `Dialogue: 0,${formatAssTimestamp(cue.startSeconds)},${formatAssTimestamp(cue.endSeconds)},Default,,0,0,0,,${renderAssText(cue.text, options)}`)
   return buildAssDocument(events, options)
 }
 
 /** Builds an ASS track from edited captions while preserving relative word timing for karaoke highlighting. */
 export function buildAssSubtitleFromEditingCaptions(captions: readonly EditingCaption[], options: SubtitleAssOptions = {}): string {
+  const maxEm = getSubtitleMaxWidthEm(options.fontSizePx ?? 14, options.playResX ?? 1920)
   const events = [...captions]
     .filter((caption) => caption.kind === 'source' && caption.text.trim() && caption.durationSeconds > 0)
     .sort((left, right) => left.startSeconds - right.startSeconds || left.id.localeCompare(right.id))
     .map((caption) => {
       const startSeconds = Math.max(0, Number.isFinite(caption.startSeconds) ? caption.startSeconds : 0)
       const endSeconds = startSeconds + Math.max(0.1, caption.durationSeconds)
-      const text = options.emphasisMode === 'words' ? renderAssKaraokeText(caption.text.trim(), caption.words) : renderAssText(caption.text.trim(), options)
-      return `Dialogue: 0,${formatAssTimestamp(startSeconds)},${formatAssTimestamp(endSeconds)},Default,,0,0,0,,${text}`
+      if (options.emphasisMode === 'words') {
+        const words = canRenderKaraokeText(caption.text.trim(), caption.words) ? caption.words : createFallbackSubtitleWords(caption.text, 0, endSeconds - startSeconds)
+        return buildWordTimedDialogueEvents(startSeconds, endSeconds, words, maxEm).join('\n')
+      }
+      return `Dialogue: 0,${formatAssTimestamp(startSeconds)},${formatAssTimestamp(endSeconds)},Default,,0,0,0,,${renderAssText(caption.text.trim(), options)}`
     })
   return buildAssDocument(events, options)
 }

@@ -46,4 +46,20 @@ describe('subtitle visual presets', () => {
     expect(ass).toContain('Dialogue: 0,0:00:02.00,0:00:03.50')
     expect(ass).toContain('{\\k50}Hello{\\k100} world')
   })
+
+  it('splits long word-timed captions into balanced ASS display pages', () => {
+    const ass = buildAssSubtitleFromEditingCaptions([{
+      id: 'caption-long',
+      startSeconds: 0,
+      durationSeconds: 3,
+      text: '这是一个用于验证字幕自动分行和逐词高亮效果的长句子。',
+      kind: 'source'
+    }], { emphasisMode: 'words', fontSizePx: 14, playResX: 320 })
+    const dialogueLines = ass.split('\n').filter((line) => line.startsWith('Dialogue:'))
+    const visibleText = dialogueLines.join('').replace(/\{\\k\d+\}/gu, '')
+    expect(dialogueLines.length).toBeGreaterThan(1)
+    expect(dialogueLines.every((line) => line.includes('{\\k'))).toBe(true)
+    expect(visibleText).toContain('这是')
+    expect(visibleText).toContain('长句子')
+  })
 })

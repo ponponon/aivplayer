@@ -12,7 +12,7 @@ async function main(): Promise<void> {
   await writeFile(join(smokeDirectory, 'script-smoke.srt'), [
     '1',
     '00:00:00,000 --> 00:00:02,000',
-    '第一句脚本',
+    '第一句脚本这是一个用于验证播放器自动分行、逐词高亮以及长字幕导出一致性的测试句子，应该被拆分成多个连续显示页面。',
     '',
     '2',
     '00:00:04,000 --> 00:00:06,000',
