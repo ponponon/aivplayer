@@ -36,6 +36,8 @@ import type {
   MediaTimelineExportRequest,
   AsrSubtitleExportRequest,
   AsrSubtitleExportResult,
+  AsrSubtitleCheckpointRequest,
+  AsrSubtitleCheckpointResult,
   AsrSubtitleTranslationRequest,
   AsrSubtitleTranslationResult,
   AsrSubtitleSummaryRequest,
@@ -133,6 +135,8 @@ const api = {
   cancelAsrSubtitle: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.ASR_CANCEL_SUBTITLE),
   resolveAsrSubtitleCache: (request: AsrSubtitleRequest): Promise<AsrSubtitleResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.ASR_RESOLVE_SUBTITLE_CACHE, request),
+  resolveAsrSubtitleCheckpoint: (request: AsrSubtitleCheckpointRequest): Promise<AsrSubtitleCheckpointResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.ASR_RESOLVE_SUBTITLE_CHECKPOINT, request),
   resolveTranslatedAsrSubtitleCache: (request: AsrSubtitleTranslationRequest): Promise<AsrSubtitleTranslationResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.ASR_RESOLVE_TRANSLATED_SUBTITLE_CACHE, request),
   exportAsrSubtitleSrt: (request: AsrSubtitleExportRequest): Promise<AsrSubtitleExportResult> =>

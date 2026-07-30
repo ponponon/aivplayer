@@ -302,6 +302,8 @@
       translationServiceRetry: '重试',
       generateSubtitle: '生成字幕',
       generatingSubtitle: '生成中',
+      checkpointResume: (time: string) => `检测到上次中断，将从 ${time} 继续`,
+      resumingSubtitle: (time: string) => `从 ${time} 继续生成`,
       translateSubtitle: (languageLabel: string) => `翻译为${languageLabel}`,
       translatingSubtitle: '翻译中',
       translationProgress: (completedBatches: number, totalBatches: number) => `正在翻译第 ${completedBatches} / ${totalBatches} 批`,

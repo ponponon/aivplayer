@@ -6,7 +6,9 @@ import {
   buildFfmpegAudioExtractArgs,
   buildWhisperSubtitleArgs,
   createSubtitleOutputBase,
+  findWhisperSubtitleCheckpoint,
   findWhisperSubtitleCache,
+  getWhisperSubtitleCheckpointPaths,
   getLegacyWhisperSubtitleOutputPaths,
   getWhisperSubtitlePartialOutputPaths,
   getWhisperSubtitleOutputPath,
@@ -150,6 +152,31 @@ describe('ASR subtitle job command planning', () => {
       subtitlePath: getWhisperSubtitleOutputPath(outputBase),
       subtitleSrtPath: getWhisperSubtitleSrtOutputPath(outputBase)
     })
+  })
+
+  it('reports a resumable checkpoint only when its metadata and subtitles are valid', async () => {
+    const cacheDirectory = await mkdtemp(join(tmpdir(), 'aivplayer-checkpoint-query-'))
+    const mediaPath = join(cacheDirectory, 'video.mp4')
+    const modelId = 'large-v3-turbo-q5_0'
+    await writeFile(mediaPath, 'video')
+
+    const mediaStat = await stat(mediaPath)
+    const outputBase = createSubtitleOutputBase(cacheDirectory, mediaPath, mediaStat.mtimeMs, modelId)
+    const checkpointPaths = getWhisperSubtitleCheckpointPaths(outputBase)
+    await mkdir(join(cacheDirectory, 'subtitles'), { recursive: true })
+    await writeFile(checkpointPaths.subtitlePath, 'WEBVTT\n\n00:00:00.000 --> 00:00:31.000\ncheckpoint\n')
+    await writeFile(checkpointPaths.subtitleSrtPath, '1\n00:00:00,000 --> 00:00:31,000\ncheckpoint\n')
+    await writeFile(checkpointPaths.metadataPath, JSON.stringify({ lastEndSeconds: 31 }))
+
+    await expect(findWhisperSubtitleCheckpoint({ cacheDirectory, mediaPath, modelId })).resolves.toEqual({
+      lastEndSeconds: 31,
+      resumeFromSeconds: 28,
+      subtitleCueCount: 1
+    })
+
+    await writeFile(checkpointPaths.subtitlePath, 'WEBVTT\n\n00:00:00.000 --> 00:00:12.000\nshort checkpoint\n')
+    await writeFile(checkpointPaths.metadataPath, JSON.stringify({ lastEndSeconds: 12 }))
+    await expect(findWhisperSubtitleCheckpoint({ cacheDirectory, mediaPath, modelId })).resolves.toBeNull()
   })
 
   it('promotes legacy raw subtitle caches to the explicitly marked filename', async () => {
@@ -378,5 +405,78 @@ fs.writeFileSync(outputBase + '.json', JSON.stringify({ result: { language: 'en'
     expect(progress.some((item) => item.prioritySubtitleReady)).toBe(true)
     expect(priorityContent).toContain('priority cue')
     await expect(readFile(result.subtitlePath, 'utf8')).resolves.toContain('full cue')
+  })
+
+  it('preserves a checkpoint after cancellation and resumes from its last cue', async () => {
+    const cacheDirectory = await mkdtemp(join(tmpdir(), 'aivplayer-resume-asr-'))
+    const mediaPath = join(cacheDirectory, 'video.mp4')
+    const ffmpegPath = join(cacheDirectory, 'mock-ffmpeg')
+    const whisperPath = join(cacheDirectory, 'mock-whisper')
+    const callLogPath = join(cacheDirectory, 'whisper-calls.log')
+    const modelId = 'large-v3-turbo-q5_0'
+
+    await writeFile(mediaPath, 'video')
+    await writeFile(
+      ffmpegPath,
+      `#!${process.execPath}\nconst fs = require('node:fs')\nfs.writeFileSync(process.argv.at(-1), 'wav')\n`
+    )
+    await writeFile(
+      whisperPath,
+      `#!${process.execPath}\nconst fs = require('node:fs')\nprocess.stdout.write('[00:00:00.000 --> 00:00:31.000] checkpoint cue\\n')\nsetInterval(() => undefined, 1000)\n`
+    )
+    await chmod(ffmpegPath, 0o755)
+    await chmod(whisperPath, 0o755)
+
+    const controller = new AbortController()
+    await expect(
+      runAsrSubtitleJob({
+        ffmpegPath,
+        whisperBinaryPath: whisperPath,
+        modelPath: '/models/model.bin',
+        modelId,
+        mediaPath,
+        cacheDirectory,
+        signal: controller.signal,
+        onProgress: (nextProgress) => {
+          if (nextProgress.partialSubtitleCueCount === 1) controller.abort()
+        }
+      })
+    ).rejects.toThrow('cancelled')
+
+    const mediaStat = await stat(mediaPath)
+    const outputBase = createSubtitleOutputBase(cacheDirectory, mediaPath, mediaStat.mtimeMs, modelId)
+    const checkpointPaths = getWhisperSubtitleCheckpointPaths(outputBase)
+    await expect(readFile(checkpointPaths.subtitlePath, 'utf8')).resolves.toContain('checkpoint cue')
+
+    await writeFile(
+      whisperPath,
+      `#!${process.execPath}
+const fs = require('node:fs')
+const args = process.argv.slice(2)
+const outputBase = args[args.indexOf('-of') + 1]
+fs.appendFileSync(${JSON.stringify(callLogPath)}, args.join(' ') + '\\n')
+const resumed = args.includes('-ot')
+const text = resumed ? 'resumed cue' : 'unexpected full pass'
+fs.writeFileSync(outputBase + '.vtt', 'WEBVTT\\n\\n00:00:28.000 --> 00:00:32.000\\n' + text + '\\n')
+fs.writeFileSync(outputBase + '.srt', '1\\n00:00:28,000 --> 00:00:32,000\\n' + text + '\\n')
+fs.writeFileSync(outputBase + '.json', JSON.stringify({ result: { language: 'en' } }))
+`
+    )
+    await chmod(whisperPath, 0o755)
+
+    const resumed = await runAsrSubtitleJob({
+      ffmpegPath,
+      whisperBinaryPath: whisperPath,
+      modelPath: '/models/model.bin',
+      modelId,
+      mediaPath,
+      cacheDirectory
+    })
+
+    const calls = (await readFile(callLogPath, 'utf8')).trim().split(/\r?\n/)
+    expect(calls).toHaveLength(1)
+    expect(calls[0]).toContain('-ot 28000')
+    await expect(readFile(resumed.subtitlePath, 'utf8')).resolves.toContain('resumed cue')
+    await expect(readFile(checkpointPaths.subtitlePath, 'utf8')).rejects.toThrow()
   })
 })

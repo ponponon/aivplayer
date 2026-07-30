@@ -4,6 +4,7 @@ import type {
   AsrJobProgress,
   AsrModelDownloadProgress,
   AsrRuntimeStatus,
+  AsrSubtitleCheckpointResult,
   AsrSubtitleResult,
   AsrSubtitleTranslationResult,
   AsrSubtitleSummaryMode,
@@ -47,6 +48,7 @@ export type AppRefs = {
 export type AppStateSetters = {
   setState: React.Dispatch<React.SetStateAction<PlayerState>>
   setAsrStatus: React.Dispatch<React.SetStateAction<AsrRuntimeStatus | null>>
+  setAsrCheckpoint: React.Dispatch<React.SetStateAction<AsrSubtitleCheckpointResult | null>>
   setAsrProgress: React.Dispatch<React.SetStateAction<AsrJobProgress | null>>
   setSubtitleResult: React.Dispatch<React.SetStateAction<AsrSubtitleResult | null>>
   setTranslatedSubtitleResult: React.Dispatch<React.SetStateAction<AsrSubtitleTranslationResult | null>>
@@ -101,6 +103,7 @@ export type AppModel = AppRefs &
     state: PlayerState
   viewMode: 'video' | 'image'
     asrStatus: AsrRuntimeStatus | null
+    asrCheckpoint: AsrSubtitleCheckpointResult | null
     asrProgress: AsrJobProgress | null
     subtitleResult: AsrSubtitleResult | null
     translatedSubtitleResult: AsrSubtitleTranslationResult | null

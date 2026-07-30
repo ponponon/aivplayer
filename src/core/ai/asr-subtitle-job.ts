@@ -183,10 +183,30 @@ export type WhisperSubtitlePartialOutputPaths = {
   subtitleSrtPath: string
 }
 
+export type WhisperSubtitleCheckpointPaths = WhisperSubtitlePartialOutputPaths & {
+  metadataPath: string
+}
+
+type WhisperSubtitleCheckpoint = {
+  lastEndSeconds: number
+  savedAt: string
+}
+
+const resumeOverlapSeconds = 3
+const minimumResumeCheckpointSeconds = 30
+
 export function getWhisperSubtitlePartialOutputPaths(outputBase: string): WhisperSubtitlePartialOutputPaths {
   return {
     subtitlePath: `${outputBase}.partial.vtt`,
     subtitleSrtPath: `${outputBase}.partial.srt`
+  }
+}
+
+export function getWhisperSubtitleCheckpointPaths(outputBase: string): WhisperSubtitleCheckpointPaths {
+  return {
+    subtitlePath: `${outputBase}.checkpoint.vtt`,
+    subtitleSrtPath: `${outputBase}.checkpoint.srt`,
+    metadataPath: `${outputBase}.checkpoint.json`
   }
 }
 
@@ -203,6 +223,95 @@ async function removePartialSubtitleFiles(paths: WhisperSubtitlePartialOutputPat
     rm(`${paths.subtitlePath}.tmp`, { force: true }),
     rm(`${paths.subtitleSrtPath}.tmp`, { force: true })
   ])
+}
+
+async function removeCheckpointFiles(paths: WhisperSubtitleCheckpointPaths): Promise<void> {
+  await Promise.all([
+    rm(paths.subtitlePath, { force: true }),
+    rm(paths.subtitleSrtPath, { force: true }),
+    rm(paths.metadataPath, { force: true }),
+    rm(`${paths.subtitlePath}.tmp`, { force: true }),
+    rm(`${paths.subtitleSrtPath}.tmp`, { force: true }),
+    rm(`${paths.metadataPath}.tmp`, { force: true })
+  ])
+}
+
+async function writeSubtitlePair(paths: WhisperSubtitlePartialOutputPaths, segments: TranscriptSegment[]): Promise<void> {
+  await Promise.all([
+    writePartialSubtitleFile(paths.subtitlePath, writeVtt(segments)),
+    writePartialSubtitleFile(paths.subtitleSrtPath, writeSrt(segments))
+  ])
+}
+
+function getLastSegmentEndSeconds(segments: TranscriptSegment[]): number {
+  return segments.reduce((latest, segment) => Math.max(latest, segment.endSeconds), 0)
+}
+
+async function preserveSubtitleCheckpoint(
+  sourcePaths: WhisperSubtitlePartialOutputPaths,
+  checkpointPaths: WhisperSubtitleCheckpointPaths
+): Promise<boolean> {
+  try {
+    const segments = parseVtt(await readFile(sourcePaths.subtitlePath, 'utf8'))
+    const lastEndSeconds = getLastSegmentEndSeconds(segments)
+    if (segments.length === 0 || lastEndSeconds < minimumResumeCheckpointSeconds) return false
+
+    await writeSubtitlePair(checkpointPaths, segments)
+    const metadataPath = `${checkpointPaths.metadataPath}.tmp`
+    await writeFile(metadataPath, JSON.stringify({ lastEndSeconds, savedAt: new Date().toISOString() } satisfies WhisperSubtitleCheckpoint), 'utf8')
+    await rename(metadataPath, checkpointPaths.metadataPath)
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function readSubtitleCheckpoint(paths: WhisperSubtitleCheckpointPaths): Promise<{ segments: TranscriptSegment[]; lastEndSeconds: number } | null> {
+  try {
+    const segments = parseVtt(await readFile(paths.subtitlePath, 'utf8'))
+    if (segments.length === 0) return null
+    const metadata = JSON.parse(await readFile(paths.metadataPath, 'utf8')) as Partial<WhisperSubtitleCheckpoint>
+    const metadataEnd = typeof metadata.lastEndSeconds === 'number' && Number.isFinite(metadata.lastEndSeconds) ? metadata.lastEndSeconds : 0
+    const lastEndSeconds = Math.max(metadataEnd, getLastSegmentEndSeconds(segments))
+    if (lastEndSeconds < minimumResumeCheckpointSeconds) return null
+    return { segments, lastEndSeconds }
+  } catch {
+    return null
+  }
+}
+
+export async function findWhisperSubtitleCheckpoint(
+  query: WhisperSubtitleCacheQuery
+): Promise<{ lastEndSeconds: number; resumeFromSeconds: number; subtitleCueCount: number } | null> {
+  try {
+    const mediaStat = await stat(query.mediaPath)
+    const paths = getWhisperSubtitleOutputPaths(query.cacheDirectory, query.mediaPath, mediaStat.mtimeMs, query.modelId)
+    const checkpoint = await readSubtitleCheckpoint(getWhisperSubtitleCheckpointPaths(paths.outputBase))
+    if (!checkpoint) return null
+
+    return {
+      lastEndSeconds: checkpoint.lastEndSeconds,
+      resumeFromSeconds: Math.max(0, checkpoint.lastEndSeconds - resumeOverlapSeconds),
+      subtitleCueCount: checkpoint.segments.length
+    }
+  } catch {
+    return null
+  }
+}
+
+function mergeResumedSubtitleSegments(prefixSegments: TranscriptSegment[], resumedSegments: TranscriptSegment[], resumeStartSeconds: number): TranscriptSegment[] {
+  const prefix = prefixSegments.filter((segment) => segment.endSeconds <= resumeStartSeconds)
+  const merged: TranscriptSegment[] = []
+  const seen = new Set<string>()
+
+  for (const segment of [...prefix, ...resumedSegments].sort((left, right) => left.startSeconds - right.startSeconds || left.endSeconds - right.endSeconds)) {
+    const key = `${segment.startSeconds}:${segment.endSeconds}:${segment.text}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    merged.push(segment)
+  }
+
+  return merged
 }
 
 function createWhisperPartialSubtitlePublisher(options: {
@@ -555,6 +664,7 @@ export async function runAsrSubtitleJob(options: RunAsrSubtitleJobOptions): Prom
     options.modelId
   )
   const partialPaths = getWhisperSubtitlePartialOutputPaths(outputBase)
+  const checkpointPaths = getWhisperSubtitleCheckpointPaths(outputBase)
 
   const createGenerationStats = async (subtitleFilePath: string, cacheHit: boolean) => {
     let subtitleCueCount = 0
@@ -629,6 +739,8 @@ export async function runAsrSubtitleJob(options: RunAsrSubtitleJobOptions): Prom
   const priorityWindow = options.priorityWindow && options.priorityWindow.startSeconds >= 0 && options.priorityWindow.durationSeconds > 0 && options.priorityWindow.endSeconds > options.priorityWindow.startSeconds
     ? options.priorityWindow
     : null
+  const checkpoint = await readSubtitleCheckpoint(checkpointPaths)
+  let completed = false
 
   try {
     await removePartialSubtitleFiles(partialPaths)
@@ -726,17 +838,92 @@ export async function runAsrSubtitleJob(options: RunAsrSubtitleJobOptions): Prom
       }
     }
 
-    await runWhisperWithGpuFallback({
-      command: options.whisperBinaryPath,
-      whisperArgs,
-      label: 'whisper.cpp',
-      outputBase,
-      mediaPath: options.mediaPath,
-      abortSignal: options.signal,
-      onProgress: emitFullProgress,
-      message: copy.runtime.transcribing,
-      gpuFallbackMessage: copy.runtime.asrGpuFallback
-    })
+    let resumedSuccessfully = false
+    if (checkpoint) {
+      const resumeOutputBase = join(tempDirectory, 'resume-subtitle')
+      const resumePaths = {
+        outputBase: resumeOutputBase,
+        subtitlePath: getWhisperSubtitleOutputPath(resumeOutputBase),
+        subtitleSrtPath: getWhisperSubtitleSrtOutputPath(resumeOutputBase)
+      }
+      const resumeStartSeconds = Math.max(0, checkpoint.lastEndSeconds - resumeOverlapSeconds)
+      let resumeRevision = 0
+
+      await writeSubtitlePair(partialPaths, checkpoint.segments)
+      emitFullProgress({
+        stage: 'transcribing',
+        percent: 0.42,
+        message: copy.runtime.transcribing,
+        resumingFromSeconds: resumeStartSeconds,
+        partialSubtitlePath: partialPaths.subtitlePath,
+        partialSubtitleSrtPath: partialPaths.subtitleSrtPath,
+        partialSubtitleCueCount: checkpoint.segments.length,
+        partialSubtitleRevision: ++resumeRevision
+      })
+
+      const emitResumedProgress = async (progress: AsrJobProgress): Promise<void> => {
+        if (!progress.partialSubtitlePath) return
+        const resumedSegments = parseVtt(await readFile(progress.partialSubtitlePath, 'utf8'))
+        const mergedSegments = mergeResumedSubtitleSegments(checkpoint.segments, resumedSegments, resumeStartSeconds)
+        await writeSubtitlePair(partialPaths, mergedSegments)
+        await emitFullProgress({
+          ...progress,
+          partialSubtitlePath: partialPaths.subtitlePath,
+          partialSubtitleSrtPath: partialPaths.subtitleSrtPath,
+          partialSubtitleCueCount: mergedSegments.length,
+          partialSubtitleRevision: ++resumeRevision
+        })
+      }
+
+      try {
+        await runWhisperWithGpuFallback({
+          command: options.whisperBinaryPath,
+          whisperArgs: { ...whisperArgs, outputBase: resumeOutputBase, offsetSeconds: resumeStartSeconds },
+          label: 'whisper.cpp resumed subtitle pass',
+          outputBase: resumeOutputBase,
+          mediaPath: options.mediaPath,
+          abortSignal: options.signal,
+          onProgress: emitResumedProgress,
+          message: copy.runtime.transcribing,
+          gpuFallbackMessage: copy.runtime.asrGpuFallback
+        })
+
+        if (await hasSubtitlePair(resumePaths)) {
+          const resumedSegments = parseVtt(await readFile(resumePaths.subtitlePath, 'utf8'))
+          const mergedSegments = mergeResumedSubtitleSegments(checkpoint.segments, resumedSegments, resumeStartSeconds)
+          await writeSubtitlePair({ subtitlePath, subtitleSrtPath }, mergedSegments)
+          const resumeJsonPath = getWhisperSubtitleJsonOutputPath(resumeOutputBase)
+          if (await pathExists(resumeJsonPath)) {
+            await copyFile(resumeJsonPath, getWhisperSubtitleJsonOutputPath(outputBase))
+          }
+          resumedSuccessfully = true
+        }
+      } catch (error) {
+        if (options.signal?.aborted) throw error
+      } finally {
+        await Promise.all([
+          rm(`${resumeOutputBase}.vtt`, { force: true }),
+          rm(`${resumeOutputBase}.srt`, { force: true }),
+          rm(`${resumeOutputBase}.json`, { force: true }),
+          removePartialSubtitleFiles(getWhisperSubtitlePartialOutputPaths(resumeOutputBase))
+        ])
+      }
+    }
+
+    if (!resumedSuccessfully) {
+      await removePartialSubtitleFiles(partialPaths)
+      await runWhisperWithGpuFallback({
+        command: options.whisperBinaryPath,
+        whisperArgs,
+        label: 'whisper.cpp',
+        outputBase,
+        mediaPath: options.mediaPath,
+        abortSignal: options.signal,
+        onProgress: emitFullProgress,
+        message: copy.runtime.transcribing,
+        gpuFallbackMessage: copy.runtime.asrGpuFallback
+      })
+    }
 
     if (!(await pathExists(subtitlePath)) || !(await pathExists(subtitleSrtPath))) {
       throw new Error(copy.runtime.noSubtitleFiles)
@@ -750,6 +937,7 @@ export async function runAsrSubtitleJob(options: RunAsrSubtitleJobOptions): Prom
       message: copy.runtime.subtitleGenerated
     })
 
+    completed = true
     return {
       subtitlePath,
       subtitleSrtPath,
@@ -757,6 +945,11 @@ export async function runAsrSubtitleJob(options: RunAsrSubtitleJobOptions): Prom
       generationStats: await createGenerationStats(subtitlePath, false)
     }
   } finally {
+    if (completed) {
+      await removeCheckpointFiles(checkpointPaths)
+    } else {
+      await preserveSubtitleCheckpoint(partialPaths, checkpointPaths)
+    }
     await removePartialSubtitleFiles(partialPaths)
     await rm(tempDirectory, { recursive: true, force: true })
   }

@@ -14,6 +14,8 @@ import type {
   AsrSubtitleSummaryResult,
   AsrTranslationServiceTestRequest,
   AsrTranslationServiceTestResult,
+  AsrSubtitleCheckpointRequest,
+  AsrSubtitleCheckpointResult,
   AsrSubtitleRequest,
   AsrSubtitleResult
 } from '../../shared/media-types.ts'
@@ -38,6 +40,7 @@ export type AsrRuntime = {
     options?: { signal?: AbortSignal }
   ) => Promise<AsrSubtitleResult>
   resolveSubtitleCache: (request: AsrSubtitleRequest) => Promise<AsrSubtitleResult>
+  resolveSubtitleCheckpoint: (request: AsrSubtitleCheckpointRequest) => Promise<AsrSubtitleCheckpointResult>
   resolveTranslatedSubtitleCache: (request: AsrSubtitleTranslationRequest) => Promise<AsrSubtitleTranslationResult>
   exportSubtitleSrt: (request: AsrSubtitleExportRequest) => Promise<AsrSubtitleExportResult>
   translateSubtitle: (

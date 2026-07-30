@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron'
 import { unlink } from 'node:fs/promises'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
-import type { AsrJobProgress, AsrSubtitleExportRequest, AsrSubtitleExportResult, AsrSubtitleIncrementalTranslationResult, AsrSubtitleRequest, AsrSubtitleTranslationRequest, AsrSubtitleTranslationResult } from '../shared/media-types'
+import type { AsrJobProgress, AsrSubtitleCheckpointRequest, AsrSubtitleExportRequest, AsrSubtitleExportResult, AsrSubtitleIncrementalTranslationResult, AsrSubtitleRequest, AsrSubtitleTranslationRequest, AsrSubtitleTranslationResult } from '../shared/media-types'
 import { appendAsrDiagnosticLog, getAsrLogDirectoryPath, redactAsrErrorDetails } from '../core/ai/asr-diagnostics'
 import { createMediaFile } from './media/media-protocol'
 import { getAsrRuntime } from './desktop-services'
@@ -255,6 +255,7 @@ export function registerAsrSubtitleIpc(): void {
     return true
   })
   ipcMain.handle(IPC_CHANNELS.ASR_RESOLVE_SUBTITLE_CACHE, async (_event, request: AsrSubtitleRequest) => withSubtitleUrls(await getAsrRuntime().resolveSubtitleCache(request)))
+  ipcMain.handle(IPC_CHANNELS.ASR_RESOLVE_SUBTITLE_CHECKPOINT, (_event, request: AsrSubtitleCheckpointRequest) => getAsrRuntime().resolveSubtitleCheckpoint(request))
   ipcMain.handle(IPC_CHANNELS.ASR_RESOLVE_TRANSLATED_SUBTITLE_CACHE, async (_event, request: AsrSubtitleTranslationRequest) => withSubtitleUrls(await getAsrRuntime().resolveTranslatedSubtitleCache(request)) satisfies AsrSubtitleTranslationResult)
   ipcMain.handle(IPC_CHANNELS.ASR_EXPORT_SUBTITLE_SRT, async (_event, request: AsrSubtitleExportRequest) => {
     const result = await getAsrRuntime().exportSubtitleSrt(request)

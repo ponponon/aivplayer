@@ -302,6 +302,8 @@
       translationServiceRetry: '재시도',
       generateSubtitle: '자막 생성',
       generatingSubtitle: '생성 중',
+      checkpointResume: (time: string) => `이전 중단 지점을 찾았습니다. ${time}부터 계속합니다`,
+      resumingSubtitle: (time: string) => `${time}부터 계속 생성 중`,
       translateSubtitle: (languageLabel: string) => `${languageLabel}(으)로 번역`,
       translatingSubtitle: '번역 중',
       translationProgress: (completedBatches: number, totalBatches: number) => `${completedBatches} / ${totalBatches} 배치를 번역하는 중`,

@@ -7,6 +7,7 @@ import { getWhisperModelDirectory, listWhisperModels, pathExists, selectWhisperM
 import { getRecommendedWhisperModelManifest } from './asr-models.ts'
 import { downloadWhisperModel } from './model-downloader.ts'
 import {
+  findWhisperSubtitleCheckpoint,
   findWhisperSubtitleCache,
   readWhisperSubtitleLanguage,
   runAsrSubtitleJob
@@ -34,6 +35,8 @@ import type {
   AsrSubtitleSummaryResult,
   AsrTranslationServiceTestRequest,
   AsrTranslationServiceTestResult,
+  AsrSubtitleCheckpointRequest,
+  AsrSubtitleCheckpointResult,
   AsrSubtitleRequest,
   AsrSubtitleResult
 } from '../../shared/media-types.ts'
@@ -708,6 +711,28 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
           model
         }
       }
+    },
+
+    async resolveSubtitleCheckpoint(request: AsrSubtitleCheckpointRequest): Promise<AsrSubtitleCheckpointResult> {
+      const status = await readHealthStatus()
+      const model = selectWhisperModel(status.installedModels, request.modelId)
+      if (!model) {
+        return {
+          success: false,
+          available: false,
+          message: getCopy().runtime.needModel(status.recommendedModel)
+        }
+      }
+
+      const checkpoint = await findWhisperSubtitleCheckpoint({
+        cacheDirectory: getSubtitleCacheDirectory(),
+        mediaPath: request.mediaPath,
+        modelId: model.id
+      })
+
+      return checkpoint
+        ? { success: true, available: true, ...checkpoint }
+        : { success: true, available: false }
     },
 
     async resolveTranslatedSubtitleCache(

@@ -302,6 +302,8 @@
       translationServiceRetry: '再試行',
       generateSubtitle: '字幕を生成',
       generatingSubtitle: '生成中',
+      checkpointResume: (time: string) => `前回の中断を検出。${time} から再開します`,
+      resumingSubtitle: (time: string) => `${time} から再開中`,
       translateSubtitle: (languageLabel: string) => `${languageLabel}に翻訳`,
       translatingSubtitle: '翻訳中',
       translationProgress: (completedBatches: number, totalBatches: number) => `第 ${completedBatches} / ${totalBatches} バッチを翻訳中`,

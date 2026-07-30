@@ -2,6 +2,7 @@ import type { MediaFile } from '../../../shared/media-types'
 import type { AppDerived } from './use-app-derived'
 import type { AppModel } from './app-types'
 import { useAppStartupEffects } from './use-app-startup-effects'
+import { useAsrCheckpointEffect } from './use-asr-checkpoint-effect'
 import { useElapsedTimeEffects } from './use-elapsed-time-effects'
 import { useKeyboardShortcuts } from './use-keyboard-shortcuts'
 import { useMediaMetadataEffect } from './use-media-metadata-effect'
@@ -28,6 +29,7 @@ export function useAppEffects(model: AppModel, derived: AppDerived, actions: {
   useAppStartupEffects(model, actions.loadFiles, actions.refreshAsrStatus)
   useElapsedTimeEffects(model)
   useMediaMetadataEffect(model)
+  useAsrCheckpointEffect(model)
   usePlaybackEffects(model, derived, actions.revealControlDeck, actions.clearControlDeckHideTimer, actions.setPlaybackError)
   useSubtitleCacheEffects(model, derived, patchDisplay)
   useKeyboardShortcuts(model, actions)

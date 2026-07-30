@@ -14,6 +14,7 @@ export function useSubtitleGeneration(model: AppModel, derived: AppDerived, onSe
     model.asrStartedAtRef.current = performance.now()
     model.setAsrElapsedMs(0)
     model.setIsAsrBusy(true)
+    model.setAsrCheckpoint(null)
     model.setSubtitleResult(null)
     model.setActiveSubtitle(null)
     model.setTranslatedSubtitleResult(null)

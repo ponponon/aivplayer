@@ -302,6 +302,8 @@
       translationServiceRetry: 'Retry',
       generateSubtitle: 'Generate subtitles',
       generatingSubtitle: 'Generating',
+      checkpointResume: (time: string) => `Previous run found; continuing from ${time}`,
+      resumingSubtitle: (time: string) => `Continuing from ${time}`,
       translateSubtitle: (languageLabel: string) => `Translate to ${languageLabel}`,
       translatingSubtitle: 'Translating',
       translationProgress: (completedBatches: number, totalBatches: number) => `Translating batch ${completedBatches} / ${totalBatches}`,
