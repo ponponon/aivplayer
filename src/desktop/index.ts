@@ -25,8 +25,14 @@ registerMediaProtocolScheme()
 app.setName(APP_NAME)
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 
-// GPU 问题修复：在 GPU 驱动有问题的环境下禁用硬件加速
-if (process.env.ELECTRON_DISABLE_HARDWARE_ACCELERATION === '1' || process.env.AIVPLAYER_DISABLE_GPU === '1') {
+// GPU 兼容性处理：
+// 1. 用户显式禁用 GPU：AIVPLAYER_DISABLE_GPU=1 或 ELECTRON_DISABLE_HARDWARE_ACCELERATION=1
+// 2. 自动检测：如果 GPU 初始化失败，记录日志供下次启动参考
+const userForcesDisableGPU =
+  process.env.AIVPLAYER_DISABLE_GPU === '1' ||
+  process.env.ELECTRON_DISABLE_HARDWARE_ACCELERATION === '1'
+
+if (userForcesDisableGPU) {
   app.commandLine.appendSwitch('disable-gpu')
   app.commandLine.appendSwitch('disable-gpu-compositing')
 }
