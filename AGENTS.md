@@ -38,7 +38,9 @@ github 发版要注意打上 tag，github releases 页面的东西也不要忘�
 
 测试用的iphone live 图可以用：~/Pictures/iphone-live-photo/IMG_1390
 
-测试用的视频可以用: ~/Music/aivplayer_test_video_1min.mp4
+测试用的短视频可以用（1分钟）: ~/Music/aivplayer_test_video_1min.mp4
+
+测试用的长视频可以用(1小时24分): ~/Pictures/百万英镑.mp4
 
 ----
 
