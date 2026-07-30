@@ -627,9 +627,13 @@
         seekStepSecondsDescription: 'Default jump distance for the left and right arrow keys.',
         holdRightArrowSpeed: 'Hold the right arrow for fast playback',
         holdRightArrowSpeedDescription: 'Hold the right arrow key to temporarily switch to a higher speed.',
-        hardwareAcceleration: 'Hardware acceleration',
-        hardwareAccelerationDescription: 'This build uses browser hardware acceleration by default.'
+        gpuAcceleration: 'GPU Acceleration',
+        gpuAccelerationDescription: 'Enable GPU hardware acceleration for better video playback performance. Requires restart to take effect.'
       },
+      gpuRestartTitle: 'Restart Required',
+      gpuRestartMessage: 'Changing GPU acceleration settings requires a restart to take effect. Restart now?',
+      gpuRestartConfirm: 'Restart Now',
+      gpuRestartCancel: 'Restart Later',
       subtitles: {
         title: 'Subtitles',
         displayHeading: 'Subtitle display',

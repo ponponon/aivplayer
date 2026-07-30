@@ -1,4 +1,4 @@
-import { Sparkles, X } from 'lucide-react'
+import { AlertTriangle, Sparkles, X } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactElement } from 'react'
 import type {
   AppSettings,
@@ -70,6 +70,8 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
   const activeSectionIdRef = useRef<AppSettingsSectionId>(initialSectionId)
   const dialogRef = useRef<HTMLElement | null>(null)
   const cacheManagement = useSettingsCacheManagement(copy)
+  const [showRestartDialog, setShowRestartDialog] = useState(false)
+  const [pendingGpuValue, setPendingGpuValue] = useState<boolean | null>(null)
 
   useEffect(() => {
     activeSectionIdRef.current = activeSectionId
@@ -91,6 +93,26 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
   }
 
   const tabs = getSettingsTabs(copy)
+
+  const handleGpuAccelerationChange = (enabled: boolean): void => {
+    setPendingGpuValue(enabled)
+    setShowRestartDialog(true)
+  }
+
+  const confirmGpuChange = (): void => {
+    if (pendingGpuValue !== null) {
+      patchSettingsSection('playback', { gpuAcceleration: pendingGpuValue })
+    }
+    setShowRestartDialog(false)
+    setPendingGpuValue(null)
+    window.location.reload()
+  }
+
+  const cancelGpuChange = (): void => {
+    setShowRestartDialog(false)
+    setPendingGpuValue(null)
+  }
+
   const sectionProps = createSettingsSectionProps({
     copy,
     settings,
@@ -104,7 +126,8 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
     onPickCaptureFolder,
     onTestTranslationService,
     onRefreshCacheStats: cacheManagement.refreshCacheStats,
-    onClearStaleCache: cacheManagement.clearStaleCache
+    onClearStaleCache: cacheManagement.clearStaleCache,
+    onGpuAccelerationChange: handleGpuAccelerationChange
   })
 
   return (
@@ -152,6 +175,32 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
           </div>
         </div>
       </section>
+
+      {showRestartDialog && (
+        <div className="modal-backdrop" role="presentation" style={{ zIndex: 1000 }}>
+          <section className="settings-dialog" style={{ maxWidth: 400 }} role="alertdialog" aria-modal="true">
+            <div className="settings-dialog-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <AlertTriangle size={20} style={{ color: '#f59e0b' }} />
+                <h2>{copy.settingsDialog.gpuRestartTitle}</h2>
+              </div>
+            </div>
+            <div style={{ padding: '16px 24px' }}>
+              <p>{copy.settingsDialog.gpuRestartMessage}</p>
+            </div>
+            <div className="settings-footer" style={{ justifyContent: 'flex-end' }}>
+              <div className="settings-footer-actions">
+                <button className="settings-secondary-button" type="button" onClick={cancelGpuChange}>
+                  {copy.settingsDialog.gpuRestartCancel}
+                </button>
+                <button className="asr-action-button" type="button" onClick={confirmGpuChange}>
+                  {copy.settingsDialog.gpuRestartConfirm}
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   )
 }

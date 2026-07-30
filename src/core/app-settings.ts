@@ -323,6 +323,7 @@ function sanitizePlaybackSettings(
       playback.holdRightArrowSpeed > 0
         ? Math.min(16, playback.holdRightArrowSpeed)
         : defaults.holdRightArrowSpeed,
+    gpuAcceleration: typeof playback.gpuAcceleration === 'boolean' ? playback.gpuAcceleration : defaults.gpuAcceleration,
     lastVolume: isFiniteNumber(playback.lastVolume) ? Math.min(1, Math.max(0, playback.lastVolume)) : defaults.lastVolume,
     lastMuted: typeof playback.lastMuted === 'boolean' ? playback.lastMuted : defaults.lastMuted,
     lastPlaybackRate:

@@ -20,22 +20,49 @@ import { registerVisionIpc } from './ipc-vision'
 import { registerDramaIpc } from './ipc-drama'
 import { applyMacDockIcon, createWindow, focusMainWindow, queueIncomingMediaPaths } from './window-lifecycle'
 import { runCli } from '../cli/cli-main'
+import { readAppSettings } from '../core/app-settings'
 
 registerMediaProtocolScheme()
 app.setName(APP_NAME)
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 
 // GPU 兼容性处理：
-// 1. 用户显式禁用 GPU：AIVPLAYER_DISABLE_GPU=1 或 ELECTRON_DISABLE_HARDWARE_ACCELERATION=1
-// 2. 自动检测：如果 GPU 初始化失败，记录日志供下次启动参考
+// Linux + NVIDIA 显卡存在 Chromium GPU 进程的已知兼容性问题
+// 参考: https://github.com/electron/electron/issues/50462
+const isLinux = process.platform === 'linux'
 const userForcesDisableGPU =
   process.env.AIVPLAYER_DISABLE_GPU === '1' ||
   process.env.ELECTRON_DISABLE_HARDWARE_ACCELERATION === '1'
 
-if (userForcesDisableGPU) {
-  app.commandLine.appendSwitch('disable-gpu')
-  app.commandLine.appendSwitch('disable-gpu-compositing')
+// 在应用启动时读取 GPU 加速设置
+// 注意：app.commandLine.appendSwitch 必须在 app.whenReady() 之前调用
+async function applyGpuSettings(): Promise<void> {
+  if (userForcesDisableGPU) {
+    app.commandLine.appendSwitch('disable-gpu')
+    app.commandLine.appendSwitch('disable-gpu-compositing')
+    return
+  }
+
+  if (!isLinux) {
+    return
+  }
+
+  try {
+    const userDataPath = app.getPath('userData')
+    const settings = await readAppSettings(userDataPath, app.getPath('videos'))
+    
+    if (settings.playback.gpuAcceleration) {
+      app.commandLine.appendSwitch('no-zygote')
+    } else {
+      app.commandLine.appendSwitch('disable-gpu')
+      app.commandLine.appendSwitch('disable-gpu-compositing')
+    }
+  } catch {
+    app.commandLine.appendSwitch('no-zygote')
+  }
 }
+
+void applyGpuSettings()
 
 const cliArgumentIndex = process.argv.indexOf('--cli')
 const isCliInvocation = cliArgumentIndex !== -1

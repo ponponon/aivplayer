@@ -49,4 +49,5 @@ export type SettingsSectionProps = {
   onTestTranslationService: () => void
   onRefreshCacheStats: () => void
   onClearStaleCache: () => void
+  onGpuAccelerationChange?: (enabled: boolean) => void
 }
