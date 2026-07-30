@@ -1,19 +1,21 @@
 import { createHash } from 'node:crypto'
 import { spawn } from 'node:child_process'
-import { copyFile, mkdtemp, mkdir, readFile, rm, stat } from 'node:fs/promises'
+import { copyFile, mkdtemp, mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { basename, dirname, extname, join } from 'node:path'
 import { tmpdir } from 'node:os'
-import type { AsrJobProgress, AsrSubtitleGenerationStats } from '../../shared/media-types.ts'
+import type { AsrJobProgress, AsrPriorityWindow, AsrSubtitleGenerationStats, TranscriptSegment } from '../../shared/media-types.ts'
 import type { AppLocale } from '../../shared/localization'
 import { getAppCopy } from '../../shared/i18n'
 import { pathExists } from './model-manager.ts'
-import { parseVtt } from './subtitle-writer.ts'
+import { parseVtt, writeSrt, writeVtt } from './subtitle-writer.ts'
 
 export type WhisperSubtitleArgs = {
   modelPath: string
   audioPath: string
   outputBase: string
   language?: string
+  offsetSeconds?: number
+  durationSeconds?: number
   disableGpu?: boolean
 }
 
@@ -26,7 +28,8 @@ export type RunAsrSubtitleJobOptions = {
   cacheDirectory: string
   language?: string
   signal?: AbortSignal
-  onProgress?: (progress: AsrJobProgress) => void
+  priorityWindow?: AsrPriorityWindow
+  onProgress?: (progress: AsrJobProgress) => void | Promise<void>
   getLocale?: () => AppLocale
 }
 
@@ -49,11 +52,10 @@ export type WhisperSubtitleCacheQuery = {
   modelId: string
 }
 
-function emitProgress(
-  onProgress: ((progress: AsrJobProgress) => void) | undefined,
-  progress: AsrJobProgress
-): void {
-  onProgress?.(progress)
+type ProgressCallback = (progress: AsrJobProgress) => void | Promise<void>
+
+function emitProgress(onProgress: ProgressCallback | undefined, progress: AsrJobProgress): void | Promise<void> {
+  return onProgress?.(progress)
 }
 
 function sanitizeFileStem(filePath: string): string {
@@ -73,13 +75,21 @@ function tailOutput(output: string): string {
   return normalized.length > 1800 ? normalized.slice(-1800) : normalized
 }
 
+type ProcessOutputListener = (chunk: string) => void
+
 type ProcessExecutionError = Error & {
   exitCode?: number | null
   signal?: NodeJS.Signals | null
   output?: string
 }
 
-async function runProcess(command: string, args: string[], label: string, abortSignal?: AbortSignal): Promise<void> {
+async function runProcess(
+  command: string,
+  args: string[],
+  label: string,
+  abortSignal?: AbortSignal,
+  onOutput?: ProcessOutputListener
+): Promise<void> {
   await new Promise<void>((resolve, reject) => {
     const child = spawn(command, args, {
       stdio: ['ignore', 'pipe', 'pipe']
@@ -102,13 +112,14 @@ async function runProcess(command: string, args: string[], label: string, abortS
     }
     abortSignal?.addEventListener('abort', handleAbort, { once: true })
 
-    child.stdout.on('data', (chunk: Buffer) => {
-      output += chunk.toString()
-    })
+    const handleOutput = (chunk: Buffer): void => {
+      const text = chunk.toString()
+      output += text
+      onOutput?.(text)
+    }
 
-    child.stderr.on('data', (chunk: Buffer) => {
-      output += chunk.toString()
-    })
+    child.stdout.on('data', handleOutput)
+    child.stderr.on('data', handleOutput)
 
     child.on('error', (error) => {
       if (settled) return
@@ -140,6 +151,161 @@ async function runProcess(command: string, args: string[], label: string, abortS
   })
 }
 
+const WHISPER_SEGMENT_LINE_PATTERN = /^\[(?<start>\d+:\d{2}:\d{2}[.,]\d{3})\s+-->\s+(?<end>\d+:\d{2}:\d{2}[.,]\d{3})\]\s*(?<text>.*)$/
+
+function parseWhisperTimestamp(timestamp: string): number | null {
+  const match = timestamp.trim().match(/^(\d+):(\d{2}):(\d{2})[.,](\d{3})$/)
+  if (!match) return null
+
+  const hours = Number(match[1])
+  const minutes = Number(match[2])
+  const seconds = Number(match[3])
+  const milliseconds = Number(match[4])
+  if (minutes > 59 || seconds > 59 || !Number.isFinite(milliseconds)) return null
+
+  return hours * 3600 + minutes * 60 + seconds + milliseconds / 1000
+}
+
+export function parseWhisperSegmentLine(line: string): TranscriptSegment | null {
+  const match = line.trim().match(WHISPER_SEGMENT_LINE_PATTERN)
+  if (!match?.groups) return null
+
+  const startSeconds = parseWhisperTimestamp(match.groups.start ?? '')
+  const endSeconds = parseWhisperTimestamp(match.groups.end ?? '')
+  const text = (match.groups.text ?? '').trim()
+  if (startSeconds === null || endSeconds === null || endSeconds < startSeconds || !text) return null
+
+  return { startSeconds, endSeconds, text }
+}
+
+export type WhisperSubtitlePartialOutputPaths = {
+  subtitlePath: string
+  subtitleSrtPath: string
+}
+
+export function getWhisperSubtitlePartialOutputPaths(outputBase: string): WhisperSubtitlePartialOutputPaths {
+  return {
+    subtitlePath: `${outputBase}.partial.vtt`,
+    subtitleSrtPath: `${outputBase}.partial.srt`
+  }
+}
+
+async function writePartialSubtitleFile(filePath: string, content: string): Promise<void> {
+  const temporaryPath = `${filePath}.tmp`
+  await writeFile(temporaryPath, content, 'utf8')
+  await rename(temporaryPath, filePath)
+}
+
+async function removePartialSubtitleFiles(paths: WhisperSubtitlePartialOutputPaths): Promise<void> {
+  await Promise.all([
+    rm(paths.subtitlePath, { force: true }),
+    rm(paths.subtitleSrtPath, { force: true }),
+    rm(`${paths.subtitlePath}.tmp`, { force: true }),
+    rm(`${paths.subtitleSrtPath}.tmp`, { force: true })
+  ])
+}
+
+function createWhisperPartialSubtitlePublisher(options: {
+  outputBase: string
+  mediaPath: string
+  onProgress?: ProgressCallback
+  message: string
+}): { pushOutput: ProcessOutputListener; finish: () => Promise<void> } {
+  const partialPaths = getWhisperSubtitlePartialOutputPaths(options.outputBase)
+  const segments: TranscriptSegment[] = []
+  const seenSegments = new Set<string>()
+  let lineBuffer = ''
+  let publishTimer: ReturnType<typeof setTimeout> | null = null
+  let lastPublishedCueCount = 0
+  let revision = 0
+  let writeQueue = Promise.resolve()
+
+  const appendSegment = (line: string): void => {
+    const segment = parseWhisperSegmentLine(line)
+    if (!segment) return
+
+    const key = `${segment.startSeconds}:${segment.endSeconds}:${segment.text}`
+    if (seenSegments.has(key)) return
+    seenSegments.add(key)
+    segments.push(segment)
+    schedulePublish()
+  }
+
+  const publish = (): void => {
+    if (segments.length === 0 || segments.length === lastPublishedCueCount) return
+
+    const snapshot = segments.slice()
+    lastPublishedCueCount = snapshot.length
+    revision += 1
+    writeQueue = writeQueue.then(async () => {
+      await Promise.all([
+        writePartialSubtitleFile(partialPaths.subtitlePath, writeVtt(snapshot)),
+        writePartialSubtitleFile(partialPaths.subtitleSrtPath, writeSrt(snapshot))
+      ])
+      await options.onProgress?.({
+        stage: 'transcribing',
+        percent: 0.42,
+        message: options.message,
+        mediaPath: options.mediaPath,
+        partialSubtitlePath: partialPaths.subtitlePath,
+        partialSubtitleSrtPath: partialPaths.subtitleSrtPath,
+        partialSubtitleCueCount: snapshot.length,
+        partialSubtitleRevision: revision
+      })
+    }).catch(() => {
+      // Partial subtitle updates are best-effort and must not abort ASR.
+    })
+  }
+
+  function schedulePublish(): void {
+    if (publishTimer !== null) return
+    publishTimer = setTimeout(() => {
+      publishTimer = null
+      publish()
+    }, 350)
+  }
+
+  const pushOutput = (chunk: string): void => {
+    lineBuffer += chunk
+    let lineEnd = lineBuffer.indexOf('\n')
+    while (lineEnd >= 0) {
+      appendSegment(lineBuffer.slice(0, lineEnd).replace(/\r$/, ''))
+      lineBuffer = lineBuffer.slice(lineEnd + 1)
+      lineEnd = lineBuffer.indexOf('\n')
+    }
+  }
+
+  const finish = async (): Promise<void> => {
+    if (lineBuffer) appendSegment(lineBuffer)
+    if (publishTimer !== null) {
+      clearTimeout(publishTimer)
+      publishTimer = null
+    }
+    publish()
+    await writeQueue
+  }
+
+  return { pushOutput, finish }
+}
+
+async function runWhisperWithPartialOutput(options: {
+  command: string
+  args: string[]
+  label: string
+  outputBase: string
+  mediaPath: string
+  abortSignal?: AbortSignal
+  onProgress?: ProgressCallback
+  message: string
+}): Promise<void> {
+  const publisher = createWhisperPartialSubtitlePublisher(options)
+  try {
+    await runProcess(options.command, options.args, options.label, options.abortSignal, publisher.pushOutput)
+  } finally {
+    await publisher.finish()
+  }
+}
+
 export function buildFfmpegAudioExtractArgs(mediaPath: string, audioPath: string): string[] {
   return ['-y', '-i', mediaPath, '-vn', '-ac', '1', '-ar', '16000', '-f', 'wav', audioPath]
 }
@@ -163,6 +329,14 @@ export function buildWhisperSubtitleArgs(options: WhisperSubtitleArgs): string[]
     args.push('-ng')
   }
 
+  if (Number.isFinite(options.offsetSeconds) && (options.offsetSeconds ?? 0) > 0) {
+    args.push('-ot', String(Math.round((options.offsetSeconds ?? 0) * 1000)))
+  }
+
+  if (Number.isFinite(options.durationSeconds) && (options.durationSeconds ?? 0) > 0) {
+    args.push('-d', String(Math.round((options.durationSeconds ?? 0) * 1000)))
+  }
+
   return args
 }
 
@@ -183,6 +357,55 @@ export function isWhisperGpuResourceFailure(error: unknown): boolean {
   }
 
   return candidate.signal === 'SIGSEGV' || candidate.exitCode === 139
+}
+
+async function runWhisperWithGpuFallback(options: {
+  command: string
+  whisperArgs: WhisperSubtitleArgs
+  label: string
+  outputBase: string
+  mediaPath: string
+  abortSignal?: AbortSignal
+  onProgress?: ProgressCallback
+  message: string
+  gpuFallbackMessage: string
+}): Promise<void> {
+  try {
+    await runWhisperWithPartialOutput({
+      command: options.command,
+      args: buildWhisperSubtitleArgs(options.whisperArgs),
+      label: options.label,
+      outputBase: options.outputBase,
+      mediaPath: options.mediaPath,
+      abortSignal: options.abortSignal,
+      onProgress: options.onProgress,
+      message: options.message
+    })
+  } catch (error) {
+    if (!isWhisperGpuResourceFailure(error)) throw error
+
+    await Promise.all([
+      rm(`${options.outputBase}.vtt`, { force: true }),
+      rm(`${options.outputBase}.srt`, { force: true }),
+      rm(`${options.outputBase}.json`, { force: true })
+    ])
+    await removePartialSubtitleFiles(getWhisperSubtitlePartialOutputPaths(options.outputBase))
+    await options.onProgress?.({
+      stage: 'transcribing',
+      percent: 0.42,
+      message: options.gpuFallbackMessage
+    })
+    await runWhisperWithPartialOutput({
+      command: options.command,
+      args: buildWhisperSubtitleArgs({ ...options.whisperArgs, disableGpu: true }),
+      label: `${options.label} CPU fallback`,
+      outputBase: options.outputBase,
+      mediaPath: options.mediaPath,
+      abortSignal: options.abortSignal,
+      onProgress: options.onProgress,
+      message: options.message
+    })
+  }
 }
 
 export function getWhisperSubtitleJsonOutputPath(outputBase: string): string {
@@ -316,7 +539,9 @@ export async function findWhisperSubtitleCache(
 export async function runAsrSubtitleJob(options: RunAsrSubtitleJobOptions): Promise<RunAsrSubtitleJobResult> {
   const startedAt = performance.now()
   const copy = getAppCopy(options.getLocale?.())
-  emitProgress(options.onProgress, {
+  const emitJobProgress = (progress: AsrJobProgress): void | Promise<void> => emitProgress(options.onProgress, { ...progress, mediaPath: options.mediaPath })
+
+  emitJobProgress({
     stage: 'checking',
     percent: 0.05,
     message: copy.runtime.preparingSubtitleCache
@@ -329,6 +554,7 @@ export async function runAsrSubtitleJob(options: RunAsrSubtitleJobOptions): Prom
     mediaStat.mtimeMs,
     options.modelId
   )
+  const partialPaths = getWhisperSubtitlePartialOutputPaths(outputBase)
 
   const createGenerationStats = async (subtitleFilePath: string, cacheHit: boolean) => {
     let subtitleCueCount = 0
@@ -350,7 +576,7 @@ export async function runAsrSubtitleJob(options: RunAsrSubtitleJobOptions): Prom
   if (await hasSubtitlePair({ subtitlePath, subtitleSrtPath })) {
     const subtitleLanguage = await readWhisperSubtitleLanguage(outputBase)
 
-    emitProgress(options.onProgress, {
+    emitJobProgress({
       stage: 'completed',
       percent: 1,
       message: copy.runtime.subtitleCacheHit
@@ -384,7 +610,7 @@ export async function runAsrSubtitleJob(options: RunAsrSubtitleJobOptions): Prom
 
     const subtitleLanguage = await readWhisperSubtitleLanguage(cachedPaths.outputBase)
 
-    emitProgress(options.onProgress, {
+    emitJobProgress({
       stage: 'completed',
       percent: 1,
       message: copy.runtime.subtitleCacheHit
@@ -400,16 +626,21 @@ export async function runAsrSubtitleJob(options: RunAsrSubtitleJobOptions): Prom
   await mkdir(dirname(outputBase), { recursive: true })
   const tempDirectory = await mkdtemp(join(tmpdir(), 'aivplayer-asr-'))
   const audioPath = join(tempDirectory, 'audio.wav')
+  const priorityWindow = options.priorityWindow && options.priorityWindow.startSeconds >= 0 && options.priorityWindow.durationSeconds > 0 && options.priorityWindow.endSeconds > options.priorityWindow.startSeconds
+    ? options.priorityWindow
+    : null
 
   try {
-    emitProgress(options.onProgress, {
+    await removePartialSubtitleFiles(partialPaths)
+
+    emitJobProgress({
       stage: 'extracting-audio',
       percent: 0.18,
       message: copy.runtime.extractingAudio
     })
     await runProcess(options.ffmpegPath, buildFfmpegAudioExtractArgs(options.mediaPath, audioPath), 'ffmpeg', options.signal)
 
-    emitProgress(options.onProgress, {
+    emitJobProgress({
       stage: 'transcribing',
       percent: 0.42,
       message: copy.runtime.transcribing
@@ -421,30 +652,91 @@ export async function runAsrSubtitleJob(options: RunAsrSubtitleJobOptions): Prom
       language: options.language
     }
 
-    try {
-      await runProcess(options.whisperBinaryPath, buildWhisperSubtitleArgs(whisperArgs), 'whisper.cpp', options.signal)
-    } catch (error) {
-      if (!isWhisperGpuResourceFailure(error)) {
-        throw error
+    let priorityMetadata: Pick<AsrJobProgress, 'prioritySubtitlePath' | 'prioritySubtitleSrtPath' | 'prioritySubtitleRevision' | 'prioritySubtitleReady' | 'priorityStartSeconds' | 'priorityEndSeconds'> | null = null
+    let priorityRevision = 0
+    const emitFullProgress = (progress: AsrJobProgress): void | Promise<void> => {
+      return emitJobProgress(priorityMetadata ? { ...progress, ...priorityMetadata } : progress)
+    }
+
+    if (priorityWindow) {
+      const priorityOutputBase = join(tempDirectory, 'priority-subtitle')
+      const priorityPaths = {
+        outputBase: priorityOutputBase,
+        subtitlePath: getWhisperSubtitleOutputPath(priorityOutputBase),
+        subtitleSrtPath: getWhisperSubtitleSrtOutputPath(priorityOutputBase)
+      }
+      const priorityWhisperArgs = {
+        ...whisperArgs,
+        outputBase: priorityOutputBase,
+        offsetSeconds: priorityWindow.startSeconds,
+        durationSeconds: priorityWindow.durationSeconds
+      }
+      const emitPriorityProgress = (progress: AsrJobProgress): void | Promise<void> => {
+        if (progress.partialSubtitlePath) priorityRevision = Math.max(priorityRevision, progress.partialSubtitleRevision ?? 0)
+        return emitJobProgress({
+          stage: progress.stage,
+          percent: progress.percent,
+          message: progress.message,
+          prioritySubtitlePath: progress.partialSubtitlePath,
+          prioritySubtitleSrtPath: progress.partialSubtitleSrtPath,
+          prioritySubtitleRevision: priorityRevision,
+          prioritySubtitleReady: false,
+          priorityStartSeconds: priorityWindow.startSeconds,
+          priorityEndSeconds: priorityWindow.endSeconds
+        })
       }
 
-      await Promise.all([
-        rm(`${outputBase}.vtt`, { force: true }),
-        rm(`${outputBase}.srt`, { force: true }),
-        rm(`${outputBase}.json`, { force: true })
-      ])
-      emitProgress(options.onProgress, {
-        stage: 'transcribing',
-        percent: 0.42,
-        message: copy.runtime.asrGpuFallback
-      })
-      await runProcess(
-        options.whisperBinaryPath,
-        buildWhisperSubtitleArgs({ ...whisperArgs, disableGpu: true }),
-        'whisper.cpp CPU fallback',
-        options.signal
-      )
+      try {
+        await runWhisperWithGpuFallback({
+          command: options.whisperBinaryPath,
+          whisperArgs: priorityWhisperArgs,
+          label: 'whisper.cpp priority window',
+          outputBase: priorityOutputBase,
+          mediaPath: options.mediaPath,
+          abortSignal: options.signal,
+          onProgress: emitPriorityProgress,
+          message: copy.runtime.transcribing,
+          gpuFallbackMessage: copy.runtime.asrGpuFallback
+        })
+
+        if (await hasSubtitlePair(priorityPaths)) {
+          priorityRevision += 1
+          priorityMetadata = {
+            prioritySubtitlePath: priorityPaths.subtitlePath,
+            prioritySubtitleSrtPath: priorityPaths.subtitleSrtPath,
+            prioritySubtitleRevision: priorityRevision,
+            prioritySubtitleReady: true,
+            priorityStartSeconds: priorityWindow.startSeconds,
+            priorityEndSeconds: priorityWindow.endSeconds
+          }
+          await emitFullProgress({
+            stage: 'transcribing',
+            percent: 0.42,
+            message: copy.runtime.transcribing
+          })
+        }
+      } catch (error) {
+        if (options.signal?.aborted) throw error
+        await Promise.all([
+          rm(`${priorityOutputBase}.vtt`, { force: true }),
+          rm(`${priorityOutputBase}.srt`, { force: true }),
+          rm(`${priorityOutputBase}.json`, { force: true }),
+          removePartialSubtitleFiles(getWhisperSubtitlePartialOutputPaths(priorityOutputBase))
+        ])
+      }
     }
+
+    await runWhisperWithGpuFallback({
+      command: options.whisperBinaryPath,
+      whisperArgs,
+      label: 'whisper.cpp',
+      outputBase,
+      mediaPath: options.mediaPath,
+      abortSignal: options.signal,
+      onProgress: emitFullProgress,
+      message: copy.runtime.transcribing,
+      gpuFallbackMessage: copy.runtime.asrGpuFallback
+    })
 
     if (!(await pathExists(subtitlePath)) || !(await pathExists(subtitleSrtPath))) {
       throw new Error(copy.runtime.noSubtitleFiles)
@@ -452,7 +744,7 @@ export async function runAsrSubtitleJob(options: RunAsrSubtitleJobOptions): Prom
 
     const subtitleLanguage = await readWhisperSubtitleLanguage(outputBase)
 
-    emitProgress(options.onProgress, {
+    emitFullProgress({
       stage: 'completed',
       percent: 1,
       message: copy.runtime.subtitleGenerated
@@ -465,6 +757,7 @@ export async function runAsrSubtitleJob(options: RunAsrSubtitleJobOptions): Prom
       generationStats: await createGenerationStats(subtitlePath, false)
     }
   } finally {
+    await removePartialSubtitleFiles(partialPaths)
     await rm(tempDirectory, { recursive: true, force: true })
   }
 }

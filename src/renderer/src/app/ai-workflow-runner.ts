@@ -6,6 +6,7 @@ import type { AppModel } from './app-types'
 import type { SubtitleSummaryActions, SubtitleSummarySource } from './use-subtitle-summary'
 import type { SubtitleTranslationActions } from './use-subtitle-translation'
 import { AiWorkflowFailureError, type AiWorkflowMode, hasUsableTranslation } from './ai-workflow-types'
+import type { SubtitleGenerationOptions } from './use-subtitle-generation'
 
 export type AiWorkflowRunnerContext = {
   model: AppModel
@@ -13,7 +14,7 @@ export type AiWorkflowRunnerContext = {
   mode: AiWorkflowMode
   filePath: string
   targetLanguage: SubtitleTargetLanguageId
-  generateSubtitle: () => Promise<AsrSubtitleResult | null>
+  generateSubtitle: (options?: SubtitleGenerationOptions) => Promise<AsrSubtitleResult | null>
   translation: SubtitleTranslationActions
   summary: SubtitleSummaryActions
   updateWorkflow: (patch: { stage?: 'preparing' | 'asr' | 'translation' | 'summary'; progress?: number | null; message?: string }) => void
@@ -32,7 +33,10 @@ export async function runAiWorkflow(context: AiWorkflowRunnerContext): Promise<v
     source = { subtitlePath: derived.summarySourcePath, sourceLanguage: derived.summarySourceLanguage, sourceType: derived.summarySourceType }
   } else {
     updateWorkflow({ stage: 'asr', progress: 0, message: workflowCopy.workflowAsr })
-    generatedSubtitle = derived.subtitlePath ? null : await generateSubtitle()
+    const streamTranslationTarget = mode === 'complete' && !isSubtitleLanguageMatch(derived.subtitleTranslationSourceLanguage, targetLanguage)
+      ? { streamTranslationTargetLanguage: targetLanguage }
+      : undefined
+    generatedSubtitle = derived.subtitlePath ? null : await generateSubtitle(streamTranslationTarget)
     assertWorkflowCanContinue(filePath)
 
     const rawSubtitlePath = generatedSubtitle?.subtitlePath ?? derived.subtitlePath
@@ -46,6 +50,9 @@ export async function runAiWorkflow(context: AiWorkflowRunnerContext): Promise<v
 
   if (mode === 'complete' && source) {
     if (isSubtitleLanguageMatch(source.sourceLanguage, targetLanguage)) {
+      updateWorkflow({ stage: 'translation', progress: 1, message: workflowCopy.workflowTranslationSkipped })
+    } else if (generatedSubtitle?.streamingTranslation?.success && generatedSubtitle.streamingTranslation.subtitlePath) {
+      source = { subtitlePath: generatedSubtitle.streamingTranslation.subtitlePath, sourceLanguage: targetLanguage, sourceType: 'translated' }
       updateWorkflow({ stage: 'translation', progress: 1, message: workflowCopy.workflowTranslationSkipped })
     } else if (hasUsableTranslation(model.translatedSubtitleResult, source.subtitlePath, targetLanguage)) {
       source = { subtitlePath: model.translatedSubtitleResult.subtitlePath, sourceLanguage: targetLanguage, sourceType: 'translated' }

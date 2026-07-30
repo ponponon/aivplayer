@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   createOpenAiCompatibleTranslationProvider,
   findSubtitleTranslationCache,
+  promoteIncrementalSubtitleTranslationCache,
+  runIncrementalSubtitleTranslationJob,
   parseSubtitleTranslationGlossary,
   runSubtitleTranslationJob,
   SubtitleTranslationError,
@@ -116,6 +118,123 @@ describe('subtitle translation', () => {
         ''
       ].join('\n')
     )
+  })
+
+  it('translates only newly completed batches while a source subtitle grows', async () => {
+    const sourceSubtitlePath = join(tempDirectory, 'streaming-source.vtt')
+    const cacheDirectory = join(tempDirectory, 'cache')
+    const calls: string[][] = []
+    const provider: SubtitleTranslationProvider = {
+      id: 'mock',
+      model: 'mock-model',
+      translateBatch: async ({ segments }) => {
+        calls.push(segments.map((segment) => segment.id))
+        return segments.map((segment) => ({ id: segment.id, text: `中文：${segment.text}` }))
+      }
+    }
+    const makeSource = (count: number): string => [
+      'WEBVTT',
+      '',
+      ...Array.from({ length: count }, (_, index) => `${String(index * 2).padStart(2, '0')}:00.000 --> ${String(index * 2).padStart(2, '0')}:01.000\ncue-${index + 1}\n`)
+    ].join('\n')
+
+    await mkdir(cacheDirectory, { recursive: true })
+    await writeFile(sourceSubtitlePath, makeSource(30))
+
+    const first = await runIncrementalSubtitleTranslationJob({
+      sourceSubtitlePath,
+      cacheDirectory,
+      sourceLanguage: 'en',
+      targetLanguage: 'zh',
+      provider,
+      flush: false
+    })
+
+    expect(first.translatedCueCount).toBe(30)
+    expect(first.changed).toBe(true)
+    expect(calls).toHaveLength(1)
+    expect(calls[0]).toHaveLength(30)
+
+    await writeFile(sourceSubtitlePath, makeSource(31))
+    const waitingForFullBatch = await runIncrementalSubtitleTranslationJob({
+      sourceSubtitlePath,
+      cacheDirectory,
+      sourceLanguage: 'en',
+      targetLanguage: 'zh',
+      provider,
+      outputPaths: { subtitlePath: first.subtitlePath, subtitleSrtPath: first.subtitleSrtPath },
+      previousTranslatedSubtitlePath: first.subtitlePath,
+      translatedCueCount: first.translatedCueCount,
+      flush: false
+    })
+
+    expect(waitingForFullBatch.changed).toBe(false)
+    expect(calls).toHaveLength(1)
+
+    const final = await runIncrementalSubtitleTranslationJob({
+      sourceSubtitlePath,
+      cacheDirectory,
+      sourceLanguage: 'en',
+      targetLanguage: 'zh',
+      provider,
+      outputPaths: { subtitlePath: first.subtitlePath, subtitleSrtPath: first.subtitleSrtPath },
+      previousTranslatedSubtitlePath: first.subtitlePath,
+      translatedCueCount: first.translatedCueCount,
+      flush: true
+    })
+
+    expect(final.translatedCueCount).toBe(31)
+    expect(calls).toHaveLength(2)
+    expect(calls[1]).toEqual(['cue-31'])
+    await expect(readFile(final.subtitlePath, 'utf8')).resolves.toContain('中文：cue-31')
+
+    const promoted = await promoteIncrementalSubtitleTranslationCache({
+      sourceSubtitlePath,
+      sourceLanguage: 'en',
+      targetLanguage: 'zh',
+      provider: { id: 'mock', model: 'mock-model' },
+      translatedSubtitlePath: final.subtitlePath,
+      translatedSubtitleSrtPath: final.subtitleSrtPath,
+      cacheDirectory
+    })
+    await expect(readFile(promoted.subtitlePath, 'utf8')).resolves.toContain('中文：cue-31')
+  })
+
+  it('can use a smaller batch size for low-latency streaming translation', async () => {
+    const sourceSubtitlePath = join(tempDirectory, 'streaming-small-batch.vtt')
+    const cacheDirectory = join(tempDirectory, 'cache')
+    const calls: string[][] = []
+    const provider: SubtitleTranslationProvider = {
+      id: 'mock',
+      model: 'mock-model',
+      translateBatch: async ({ segments }) => {
+        calls.push(segments.map((segment) => segment.id))
+        return segments.map((segment) => ({ id: segment.id, text: `中文：${segment.text}` }))
+      }
+    }
+
+    await mkdir(cacheDirectory, { recursive: true })
+    await writeFile(
+      sourceSubtitlePath,
+      [
+        'WEBVTT',
+        '',
+        ...Array.from({ length: 3 }, (_, index) => `00:00:0${index}.000 --> 00:00:0${index + 1}.000\ncue-${index + 1}\n`)
+      ].join('\n')
+    )
+
+    const result = await runIncrementalSubtitleTranslationJob({
+      sourceSubtitlePath,
+      cacheDirectory,
+      sourceLanguage: 'en',
+      targetLanguage: 'zh',
+      provider,
+      batchSize: 2,
+      flush: false
+    })
+
+    expect(result.translatedCueCount).toBe(2)
+    expect(calls).toEqual([['cue-1', 'cue-2']])
   })
 
   it('finds cached translated subtitles with the same source text, language pair, and model', async () => {

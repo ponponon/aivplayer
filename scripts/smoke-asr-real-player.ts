@@ -57,7 +57,7 @@ try {
   await page.waitForSelector('video.video-surface', { timeout: 10_000 })
 
   await page.getByRole('tab', { name: 'ASR 面板' }).click()
-  await page.getByText('模型文件已安装', { exact: true }).waitFor({ state: 'visible', timeout: 10_000 })
+  await page.getByLabel('字幕生成准备').getByText('模型文件已安装', { exact: true }).waitFor({ state: 'visible', timeout: 10_000 })
   await page.getByRole('button', { name: '生成字幕', exact: true }).click()
   await page.locator('.asr-result.success', { hasText: '字幕生成完成，VTT 已挂载，SRT 已导出。' }).waitFor({
     state: 'visible',

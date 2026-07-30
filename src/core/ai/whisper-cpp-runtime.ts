@@ -1,6 +1,6 @@
 import { delimiter, dirname, isAbsolute, join } from 'node:path'
 import { execFile } from 'node:child_process'
-import { readFile, writeFile } from 'node:fs/promises'
+import { readFile, unlink, writeFile } from 'node:fs/promises'
 import { promisify } from 'node:util'
 import type { AsrRuntime, AsrRuntimeOptions, AsrTranslationJobOptions } from './asr-runtime.ts'
 import { getWhisperModelDirectory, listWhisperModels, pathExists, selectWhisperModel } from './model-manager.ts'
@@ -28,6 +28,8 @@ import type {
   AsrSubtitleExportResult,
   AsrSubtitleTranslationRequest,
   AsrSubtitleTranslationResult,
+  AsrSubtitleIncrementalTranslationRequest,
+  AsrSubtitleIncrementalTranslationResult,
   AsrSubtitleSummaryRequest,
   AsrSubtitleSummaryResult,
   AsrTranslationServiceTestRequest,
@@ -39,7 +41,10 @@ import {
   createOpenAiCompatibleTranslationProvider,
   createSubtitleTranslationProviderRef,
   findSubtitleTranslationCache,
+  getStreamingSubtitleTranslationOutputPaths,
+  promoteIncrementalSubtitleTranslationCache,
   runSubtitleTranslationJob,
+  runIncrementalSubtitleTranslationJob,
   SubtitleTranslationError
 } from './subtitle-translation.ts'
 import {
@@ -569,7 +574,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
 
     async generateSubtitle(
       request: AsrSubtitleRequest,
-      onProgress?: (progress: AsrJobProgress) => void,
+      onProgress?: (progress: AsrJobProgress) => void | Promise<void>,
       jobOptions: { signal?: AbortSignal } = {}
     ): Promise<AsrSubtitleResult> {
       const startedAt = performance.now()
@@ -616,6 +621,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
           mediaPath: request.mediaPath,
           cacheDirectory: getSubtitleCacheDirectory(),
           language: request.language,
+          priorityWindow: request.priorityWindow,
           signal: jobOptions.signal,
           onProgress,
           getLocale: options.getLocale
@@ -886,6 +892,117 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
           targetLanguage: request.targetLanguage,
           translationModel: provider.model,
           translationGlossary: provider.glossary ?? undefined
+        }
+      }
+    },
+    async translateSubtitleIncremental(
+      request: AsrSubtitleIncrementalTranslationRequest,
+      jobOptions: AsrTranslationJobOptions = {}
+    ): Promise<AsrSubtitleIncrementalTranslationResult> {
+      const copy = getCopy()
+      const sourceLanguage = request.sourceLanguage ?? 'auto'
+      const provider = createTranslationProvider()
+      const previousCueCount = request.translatedCueCount ?? 0
+
+      if (!provider) {
+        return {
+          success: false,
+          message: copy.runtime.translationServiceMissing,
+          sourceSubtitlePath: request.sourceSubtitlePath,
+          sourceLanguage,
+          targetLanguage: request.targetLanguage,
+          translationGlossary: getTranslationServiceConfig().glossary ?? undefined,
+          translatedCueCount: previousCueCount,
+          changed: false
+        }
+      }
+
+      try {
+        const outputPaths = request.outputSubtitlePath && request.outputSubtitleSrtPath
+          ? { subtitlePath: request.outputSubtitlePath, subtitleSrtPath: request.outputSubtitleSrtPath }
+          : getStreamingSubtitleTranslationOutputPaths({
+              cacheDirectory: getSubtitleCacheDirectory(),
+              sourceSubtitlePath: request.sourceSubtitlePath,
+              sourceLanguage,
+              targetLanguage: request.targetLanguage,
+              provider
+            })
+        const result = await runIncrementalSubtitleTranslationJob({
+          sourceSubtitlePath: request.sourceSubtitlePath,
+          cacheDirectory: getSubtitleCacheDirectory(),
+          sourceLanguage,
+          targetLanguage: request.targetLanguage,
+          provider,
+          outputPaths,
+          previousTranslatedSubtitlePath: request.previousTranslatedSubtitlePath,
+          translatedCueCount: request.translatedCueCount,
+          batchSize: request.batchSize,
+          flush: request.flush,
+          signal: jobOptions.signal,
+          onProgress: (progress) => {
+            jobOptions.onProgress?.({
+              stage: 'translating',
+              percent: progress.percent,
+              message: copy.asrPanel.translationProgress(progress.completedBatches, progress.totalBatches)
+            })
+          }
+        })
+
+        let resultPaths = { subtitlePath: result.subtitlePath, subtitleSrtPath: result.subtitleSrtPath }
+        if (request.promoteToCache) {
+          const providerRef = createSubtitleTranslationProviderRef(provider.model, provider.glossary)
+          if (!providerRef) throw new Error(copy.runtime.translationServiceMissing)
+          resultPaths = await promoteIncrementalSubtitleTranslationCache({
+            sourceSubtitlePath: request.sourceSubtitlePath,
+            sourceLanguage,
+            targetLanguage: request.targetLanguage,
+            provider: providerRef,
+            translatedSubtitlePath: result.subtitlePath,
+            translatedSubtitleSrtPath: result.subtitleSrtPath,
+            cacheDirectory: getSubtitleCacheDirectory()
+          })
+          await recordSubtitleCacheManifest({
+            cacheDirectory: getSubtitleCacheDirectory(),
+            mediaPath: request.mediaPath,
+            artifact: { kind: 'translation', sourceSubtitlePath: request.sourceSubtitlePath, sourceLanguage, targetLanguage: request.targetLanguage, model: provider.model, glossary: provider.glossary, subtitlePath: resultPaths.subtitlePath, subtitleSrtPath: resultPaths.subtitleSrtPath }
+          })
+          if (result.subtitlePath !== resultPaths.subtitlePath) {
+            await Promise.all([
+              unlink(result.subtitlePath).catch(() => undefined),
+              unlink(result.subtitleSrtPath).catch(() => undefined)
+            ])
+          }
+        }
+
+        return {
+          success: true,
+          message: copy.runtime.subtitleTranslated,
+          sourceSubtitlePath: request.sourceSubtitlePath,
+          sourceLanguage,
+          targetLanguage: request.targetLanguage,
+          translationModel: provider.model,
+          translationGlossary: provider.glossary ?? undefined,
+          translationStats: result.translationStats,
+          subtitlePath: resultPaths.subtitlePath,
+          subtitleSrtPath: resultPaths.subtitleSrtPath,
+          translatedCueCount: result.translatedCueCount,
+          changed: result.changed
+        }
+      } catch (error) {
+        const failure = formatTranslationServiceError(copy, error)
+        const canceled = error instanceof SubtitleTranslationError && error.code === 'cancelled'
+        return {
+          success: false,
+          message: failure.message,
+          canceled,
+          sourceSubtitlePath: request.sourceSubtitlePath,
+          sourceLanguage,
+          targetLanguage: request.targetLanguage,
+          translationModel: provider.model,
+          translationGlossary: provider.glossary ?? undefined,
+          errorDetails: failure.errorDetails,
+          translatedCueCount: previousCueCount,
+          changed: false
         }
       }
     },

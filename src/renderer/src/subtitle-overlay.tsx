@@ -12,7 +12,9 @@ import { attachSubtitleWords, getSubtitleWordSidecarPath, parseWhisperSubtitleWo
 
 type SubtitleOverlayProps = {
   subtitlePath: string | null
+  subtitleRevision?: number
   translationPath?: string | null
+  translationRevision?: number
   editingCaptions?: readonly EditingCaption[] | null
   currentTime: number
   locale: AppLocale
@@ -53,7 +55,9 @@ export function findActiveEditingCaption(captions: readonly EditingCaption[], cu
 
 export function SubtitleOverlay({
   subtitlePath,
+  subtitleRevision = 0,
   translationPath = null,
+  translationRevision = 0,
   editingCaptions = null,
   currentTime,
   locale,
@@ -68,7 +72,9 @@ export function SubtitleOverlay({
   const [activeCue, setActiveCue] = useState<SubtitleCue | null>(null)
   const [activeTranslationCue, setActiveTranslationCue] = useState<SubtitleCue | null>(null)
   const prevSubtitlePathRef = useRef<string | null>(null)
+  const prevSubtitleRevisionRef = useRef(0)
   const prevTranslationPathRef = useRef<string | null>(null)
+  const prevTranslationRevisionRef = useRef(0)
   const hasSubtitles = editingCaptions ? editingCaptions.length > 0 : cues.length > 0 || translationCues.length > 0
   const activeEditingCue = editingCaptions ? findActiveEditingCaption(editingCaptions, currentTime, 'source') : null
   const activeEditingTranslationCue = editingCaptions ? findActiveEditingCaption(editingCaptions, currentTime, 'translation') : null
@@ -78,14 +84,17 @@ export function SubtitleOverlay({
       setCues([])
       setActiveCue(null)
       prevSubtitlePathRef.current = null
+      prevSubtitleRevisionRef.current = 0
       return
     }
 
-    if (subtitlePath === prevSubtitlePathRef.current) {
+    if (subtitlePath === prevSubtitlePathRef.current && subtitleRevision === prevSubtitleRevisionRef.current) {
       return
     }
 
     prevSubtitlePathRef.current = subtitlePath
+    prevSubtitleRevisionRef.current = subtitleRevision
+    let cancelled = false
 
     const loadAndParse = async (): Promise<void> => {
       try {
@@ -93,28 +102,32 @@ export function SubtitleOverlay({
         const wordSidecarPath = getSubtitleWordSidecarPath(subtitlePath)
         const wordText = wordSidecarPath ? await window.aiv.readFileContent(wordSidecarPath).catch(() => '') : ''
         const parsedCues = attachSubtitleWords(parseVtt(text), parseWhisperSubtitleWords(wordText), true)
+        if (cancelled) return
         setCues(parsedCues)
       } catch (error) {
-        console.error('Failed to load subtitle:', error)
+        if (!cancelled) console.error('Failed to load subtitle:', error)
       }
     }
 
     void loadAndParse()
-  }, [subtitlePath])
+    return () => { cancelled = true }
+  }, [subtitlePath, subtitleRevision])
 
   useEffect(() => {
     if (!translationPath) {
       setTranslationCues([])
       setActiveTranslationCue(null)
       prevTranslationPathRef.current = null
+      prevTranslationRevisionRef.current = 0
       return
     }
 
-    if (translationPath === prevTranslationPathRef.current) {
+    if (translationPath === prevTranslationPathRef.current && translationRevision === prevTranslationRevisionRef.current) {
       return
     }
 
     prevTranslationPathRef.current = translationPath
+    prevTranslationRevisionRef.current = translationRevision
 
     const loadAndParse = async (): Promise<void> => {
       try {
@@ -127,7 +140,7 @@ export function SubtitleOverlay({
     }
 
     void loadAndParse()
-  }, [translationPath])
+  }, [translationPath, translationRevision])
 
   useEffect(() => {
     if (cues.length === 0) {

@@ -24,5 +24,7 @@ function ProgressBlock(): React.ReactElement | null {
   const app = useAppContext()
   if (!app.asrProgress) return null
   const elapsed = app.isAsrBusy && app.asrElapsedMs != null ? app.copy.asrPanel.subtitleGenerationElapsed(app.formatElapsedTime(app.asrElapsedMs)) : app.isTranslatingSubtitle && app.translationElapsedMs != null ? app.copy.asrPanel.translationElapsed(app.formatElapsedTime(app.translationElapsedMs)) : app.isSummarizingSubtitle && app.summaryElapsedMs != null ? app.copy.asrPanel.summaryElapsed(app.formatElapsedTime(app.summaryElapsedMs)) : null
-  return <div className="progress-block"><div className="progress-label"><span>{app.asrProgress.message}</span><div className="progress-meta">{elapsed ? <span>{elapsed}</span> : null}<strong>{formatPercent(app.asrProgress.percent, app.copy.asrModelStatus.progressLabel)}</strong></div></div><div className="progress-track"><div className="progress-fill" style={{ width: `${Math.round((app.asrProgress.percent ?? 0) * 100)}%` }} /></div></div>
+  const partialCueCount = app.asrProgress.partialTranslatedSubtitleCueCount ?? app.asrProgress.partialSubtitleCueCount
+  const progressMessage = partialCueCount ? `${app.asrProgress.message} · ${app.copy.asrPanel.subtitleGenerationStats(partialCueCount)}` : app.asrProgress.message
+  return <div className="progress-block"><div className="progress-label"><span>{progressMessage}</span><div className="progress-meta">{elapsed ? <span>{elapsed}</span> : null}<strong>{formatPercent(app.asrProgress.percent, app.copy.asrModelStatus.progressLabel)}</strong></div></div><div className="progress-track"><div className="progress-fill" style={{ width: `${Math.round((app.asrProgress.percent ?? 0) * 100)}%` }} /></div></div>
 }

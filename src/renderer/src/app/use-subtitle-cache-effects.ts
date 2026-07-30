@@ -7,6 +7,9 @@ import type { AppModel } from './app-types'
 type DisplayPatcher = (patch: Partial<AppSettings['subtitles']>) => void
 
 export function useSubtitleCacheEffects(model: AppModel, derived: AppDerived, patchDisplay: DisplayPatcher): void {
+  const isPriorityWindowActive = (startSeconds: number | undefined, endSeconds: number | undefined): boolean =>
+    startSeconds !== undefined && endSeconds !== undefined && model.state.currentTime >= startSeconds && model.state.currentTime <= endSeconds
+
   const matchesCurrentContext = (result: AsrSubtitleTranslationResult | null): boolean => {
     if (!result?.subtitleUrl || result.sourceSubtitlePath !== derived.subtitlePath) return false
     if ((result.sourceLanguage ?? 'auto') !== derived.subtitleTranslationSourceLanguage) return false
@@ -14,6 +17,55 @@ export function useSubtitleCacheEffects(model: AppModel, derived: AppDerived, pa
     if (derived.subtitleTranslationModel && (result.translationModel ?? '') !== derived.subtitleTranslationModel) return false
     return (result.translationGlossary ?? '') === derived.subtitleTranslationGlossary
   }
+
+  useEffect(() => {
+    const progress = model.asrProgress
+    if (!model.isAsrBusy || !model.state.currentFile || progress?.mediaPath !== model.state.currentFile.path) return
+
+    const usePrioritySubtitle = isPriorityWindowActive(progress.priorityStartSeconds, progress.priorityEndSeconds) && Boolean(progress.prioritySubtitlePath)
+    const subtitlePath = usePrioritySubtitle ? progress.prioritySubtitlePath : progress.partialSubtitlePath
+    if (!subtitlePath) {
+      model.setActiveSubtitle(null)
+      model.setSubtitleResult(null)
+      return
+    }
+
+    const partialResult = {
+      success: true,
+      message: progress.message,
+      subtitlePath,
+      subtitleSrtPath: usePrioritySubtitle ? progress.prioritySubtitleSrtPath : progress.partialSubtitleSrtPath,
+      subtitleRevision: usePrioritySubtitle ? progress.prioritySubtitleRevision ?? 0 : progress.partialSubtitleRevision ?? 0
+    }
+    model.setActiveSubtitle(partialResult)
+    model.setSubtitleResult(partialResult)
+  }, [model.asrProgress?.mediaPath, model.asrProgress?.partialSubtitlePath, model.asrProgress?.partialSubtitleRevision, model.asrProgress?.prioritySubtitlePath, model.asrProgress?.prioritySubtitleRevision, model.asrProgress?.priorityStartSeconds, model.asrProgress?.priorityEndSeconds, model.state.currentFile?.path, model.state.currentTime, model.isAsrBusy])
+
+  useEffect(() => {
+    const progress = model.asrProgress
+    if (!model.isAsrBusy || !model.state.currentFile || progress?.mediaPath !== model.state.currentFile.path) return
+
+    const usePriorityTranslation = isPriorityWindowActive(progress.priorityStartSeconds, progress.priorityEndSeconds) && Boolean(progress.priorityTranslatedSubtitlePath)
+    const subtitlePath = usePriorityTranslation ? progress.priorityTranslatedSubtitlePath : progress.partialTranslatedSubtitlePath
+    const targetLanguage = usePriorityTranslation ? progress.priorityTranslationTargetLanguage : progress.partialTranslationTargetLanguage
+    if (!subtitlePath || !targetLanguage) {
+      model.setTranslatedSubtitleResult(null)
+      return
+    }
+
+    model.setTranslatedSubtitleResult({
+      success: true,
+      partial: true,
+      message: progress.message,
+      sourceSubtitlePath: usePriorityTranslation ? progress.priorityTranslationSourcePath : progress.partialTranslationSourcePath ?? derived.subtitlePath ?? undefined,
+      sourceLanguage: usePriorityTranslation ? progress.priorityTranslationSourceLanguage : progress.partialTranslationSourceLanguage,
+      targetLanguage,
+      subtitlePath,
+      subtitleSrtPath: usePriorityTranslation ? progress.priorityTranslatedSubtitleSrtPath : progress.partialTranslatedSubtitleSrtPath,
+      subtitleRevision: usePriorityTranslation ? progress.priorityTranslatedSubtitleRevision ?? 0 : progress.partialTranslatedSubtitleRevision ?? 0
+    })
+    if (model.appSettings.subtitles.displayMode === 'source') patchDisplay({ displayMode: 'translation' })
+  }, [model.asrProgress?.mediaPath, model.asrProgress?.partialTranslatedSubtitlePath, model.asrProgress?.partialTranslatedSubtitleRevision, model.asrProgress?.partialTranslationSourceLanguage, model.asrProgress?.partialTranslationTargetLanguage, model.asrProgress?.partialTranslationSourcePath, model.asrProgress?.priorityTranslatedSubtitlePath, model.asrProgress?.priorityTranslatedSubtitleRevision, model.asrProgress?.priorityTranslationSourceLanguage, model.asrProgress?.priorityTranslationTargetLanguage, model.asrProgress?.priorityTranslationSourcePath, model.asrProgress?.priorityStartSeconds, model.asrProgress?.priorityEndSeconds, model.state.currentFile?.path, model.state.currentTime, model.isAsrBusy, derived.subtitlePath])
 
   useEffect(() => {
     const currentFilePath = model.state.currentFile?.path

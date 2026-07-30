@@ -86,4 +86,38 @@ describe('AI workflow runner', () => {
       openPanel: false
     })
   })
+
+  it('uses the translation completed during streaming ASR', async () => {
+    const generateSubtitle = vi.fn().mockResolvedValue({
+      success: true,
+      subtitlePath: '/cache/raw.vtt',
+      subtitleLanguage: 'en',
+      streamingTranslation: {
+        success: true,
+        subtitlePath: '/cache/translated.vtt',
+        sourceSubtitlePath: '/cache/raw.vtt',
+        sourceLanguage: 'en',
+        targetLanguage: 'zh'
+      }
+    })
+    const context = createContext({
+      mode: 'complete',
+      generateSubtitle,
+      derived: {
+        ...createContext().derived,
+        summarySourcePath: null,
+        subtitlePath: null,
+        subtitleTranslationSourceLanguage: 'en'
+      } as unknown as AppDerived
+    })
+
+    await runAiWorkflow(context)
+
+    expect(generateSubtitle).toHaveBeenCalledWith({ streamTranslationTargetLanguage: 'zh' })
+    expect(context.translation.translateSubtitle).not.toHaveBeenCalled()
+    expect(context.summary.summarizeSubtitle).toHaveBeenCalledWith({
+      source: { subtitlePath: '/cache/translated.vtt', sourceLanguage: 'zh', sourceType: 'translated' },
+      openPanel: false
+    })
+  })
 })

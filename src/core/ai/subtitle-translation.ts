@@ -120,6 +120,7 @@ export type OpenAiCompatibleTranslationProviderOptions = {
 }
 
 const translationBatchSize = 30
+const minimumTranslationBatchSize = 1
 const translationContextWindowSize = 2
 const defaultTranslationRetryDelaysMs = [250, 1000] as const
 
@@ -236,6 +237,48 @@ function getTranslatedSubtitleOutputBase(options: {
   )
 }
 
+function createStreamingTranslationCacheKey(options: {
+  sourceSubtitlePath: string
+  sourceLanguage: string
+  targetLanguage: SubtitleTargetLanguageId
+  provider: SubtitleTranslationProviderRef
+}): string {
+  return createHash('sha1')
+    .update(
+      [
+        options.sourceSubtitlePath,
+        options.sourceLanguage,
+        options.targetLanguage,
+        options.provider.id,
+        options.provider.model,
+        normalizeGlossaryForCache(options.provider.glossary)
+      ].join('\n')
+    )
+    .digest('hex')
+    .slice(0, 12)
+}
+
+export function getStreamingSubtitleTranslationOutputPaths(options: {
+  cacheDirectory: string
+  sourceSubtitlePath: string
+  sourceLanguage?: string
+  targetLanguage: SubtitleTargetLanguageId
+  provider: SubtitleTranslationProviderRef
+}): SubtitleTranslationOutputPaths {
+  const sourceLanguage = options.sourceLanguage ?? 'auto'
+  const safeStem = getTranslationFileStem(options.sourceSubtitlePath)
+  const safeProvider = sanitizePathPart(options.provider.id)
+  const safeModel = sanitizePathPart(options.provider.model)
+  const cacheKey = createStreamingTranslationCacheKey({ ...options, sourceLanguage })
+  const outputBase = join(
+    options.cacheDirectory,
+    'subtitles',
+    `${safeStem}-stream-translated-${options.targetLanguage}-${safeProvider}-${safeModel}-${cacheKey}`
+  )
+
+  return getTranslatedSubtitleOutputPaths(outputBase)
+}
+
 function getLegacyTranslatedSubtitleOutputBase(options: {
   cacheDirectory: string
   sourceSubtitlePath: string
@@ -297,11 +340,19 @@ export function createSubtitleTranslationProviderRef(
   }
 }
 
-function chunkTranslationSegments(segments: SubtitleTranslationSegment[]): SubtitleTranslationSegment[][] {
+function normalizeTranslationBatchSize(value: number | undefined): number {
+  if (!Number.isFinite(value)) {
+    return translationBatchSize
+  }
+
+  return Math.max(minimumTranslationBatchSize, Math.floor(value as number))
+}
+
+function chunkTranslationSegments(segments: SubtitleTranslationSegment[], batchSize = translationBatchSize): SubtitleTranslationSegment[][] {
   const chunks: SubtitleTranslationSegment[][] = []
 
-  for (let index = 0; index < segments.length; index += translationBatchSize) {
-    chunks.push(segments.slice(index, index + translationBatchSize))
+  for (let index = 0; index < segments.length; index += batchSize) {
+    chunks.push(segments.slice(index, index + batchSize))
   }
 
   return chunks
@@ -466,6 +517,203 @@ async function translateSegments(options: {
     ...segment,
     text: translatedById.get(`cue-${index + 1}`) ?? segment.text
   }))
+}
+
+async function translateSegmentRange(options: {
+  segments: TranscriptSegment[]
+  startIndex: number
+  endIndex: number
+  previousTranslatedSegments: TranscriptSegment[]
+  sourceLanguage: string
+  targetLanguage: SubtitleTargetLanguageId
+  provider: SubtitleTranslationProvider
+  batchSize?: number
+  signal?: AbortSignal
+  onProgress?: (progress: SubtitleTranslationProgress) => void
+  retryDelaysMs: readonly number[]
+}): Promise<TranscriptSegment[]> {
+  const inputSegments = options.segments.map((segment, index) => ({ id: `cue-${index + 1}`, text: segment.text }))
+  const translatedById = new Map<string, string>()
+
+  for (const [index, segment] of options.previousTranslatedSegments.entries()) {
+    translatedById.set(`cue-${index + 1}`, segment.text)
+  }
+
+  const pendingSegments = inputSegments.slice(options.startIndex, options.endIndex)
+  const batchSize = normalizeTranslationBatchSize(options.batchSize)
+  const chunks = chunkTranslationSegments(pendingSegments, batchSize)
+
+  for (const [chunkIndex, chunk] of chunks.entries()) {
+    const chunkStartIndex = options.startIndex + chunkIndex * batchSize
+    const context = createTranslationContext({
+      segments: inputSegments,
+      translatedById,
+      startIndex: chunkStartIndex,
+      endIndex: chunkStartIndex + chunk.length
+    })
+    const translatedChunk = await translateBatchWithRetry({
+      sourceLanguage: options.sourceLanguage,
+      targetLanguage: options.targetLanguage,
+      segments: chunk,
+      context,
+      glossary: parseSubtitleTranslationGlossary(options.provider.glossary),
+      provider: options.provider,
+      signal: options.signal,
+      retryDelaysMs: options.retryDelaysMs
+    })
+    const chunkTranslations = assertProviderTranslations(chunk, translatedChunk)
+
+    for (const [id, text] of chunkTranslations) {
+      translatedById.set(id, text)
+    }
+
+    options.onProgress?.({
+      completedBatches: chunkIndex + 1,
+      totalBatches: chunks.length,
+      percent: (chunkIndex + 1) / chunks.length
+    })
+  }
+
+  return options.segments.slice(0, options.endIndex).map((segment, index) => ({
+    ...segment,
+    text: translatedById.get(`cue-${index + 1}`) ?? segment.text
+  }))
+}
+
+export type RunIncrementalSubtitleTranslationJobOptions = {
+  sourceSubtitlePath: string
+  cacheDirectory: string
+  sourceLanguage?: string
+  targetLanguage: SubtitleTargetLanguageId
+  provider: SubtitleTranslationProvider
+  batchSize?: number
+  outputPaths?: SubtitleTranslationOutputPaths
+  previousTranslatedSubtitlePath?: string
+  translatedCueCount?: number
+  flush?: boolean
+  signal?: AbortSignal
+  onProgress?: (progress: SubtitleTranslationProgress) => void
+  retryDelaysMs?: readonly number[]
+}
+
+export type RunIncrementalSubtitleTranslationJobResult = SubtitleTranslationOutputPaths & {
+  translationStats: AsrSubtitleTranslationStats
+  translatedCueCount: number
+  changed: boolean
+}
+
+export async function runIncrementalSubtitleTranslationJob(
+  options: RunIncrementalSubtitleTranslationJobOptions
+): Promise<RunIncrementalSubtitleTranslationJobResult> {
+  const startedAt = performance.now()
+  const sourceLanguage = options.sourceLanguage ?? 'auto'
+  const batchSize = normalizeTranslationBatchSize(options.batchSize)
+  const sourceSegments = parseVtt(await readFile(options.sourceSubtitlePath, 'utf8'))
+  const outputPaths = options.outputPaths ?? getStreamingSubtitleTranslationOutputPaths({
+    cacheDirectory: options.cacheDirectory,
+    sourceSubtitlePath: options.sourceSubtitlePath,
+    sourceLanguage,
+    targetLanguage: options.targetLanguage,
+    provider: options.provider
+  })
+  const previousPath = options.previousTranslatedSubtitlePath ?? outputPaths.subtitlePath
+  let previousTranslatedSegments: TranscriptSegment[] = []
+
+  if (await pathExists(previousPath)) {
+    try {
+      previousTranslatedSegments = parseVtt(await readFile(previousPath, 'utf8'))
+    } catch {
+      previousTranslatedSegments = []
+    }
+  }
+
+  const translatedCueCount = Math.min(
+    Math.max(0, options.translatedCueCount ?? previousTranslatedSegments.length),
+    previousTranslatedSegments.length,
+    sourceSegments.length
+  )
+  const endIndex = options.flush
+    ? sourceSegments.length
+    : Math.floor(sourceSegments.length / batchSize) * batchSize
+  const translationBatchCount = Math.ceil(Math.max(0, endIndex - translatedCueCount) / batchSize)
+  const createStats = (cacheHit: boolean): AsrSubtitleTranslationStats => ({
+    elapsedMs: Math.max(0, Math.round(performance.now() - startedAt)),
+    subtitleCueCount: endIndex,
+    translationBatchCount,
+    cacheHit
+  })
+
+  if (endIndex <= translatedCueCount) {
+    return {
+      ...outputPaths,
+      translationStats: createStats(true),
+      translatedCueCount,
+      changed: false
+    }
+  }
+
+  throwIfTranslationAborted(options.signal)
+  const translatedSegments = await translateSegmentRange({
+    segments: sourceSegments,
+    startIndex: translatedCueCount,
+    endIndex,
+    previousTranslatedSegments: previousTranslatedSegments.slice(0, translatedCueCount),
+    batchSize,
+    sourceLanguage,
+    targetLanguage: options.targetLanguage,
+    provider: options.provider,
+    signal: options.signal,
+    onProgress: options.onProgress,
+    retryDelaysMs: options.retryDelaysMs ?? defaultTranslationRetryDelaysMs
+  })
+
+  await mkdir(dirname(outputPaths.subtitlePath), { recursive: true })
+  const temporaryVttPath = `${outputPaths.subtitlePath}.tmp`
+  const temporarySrtPath = `${outputPaths.subtitleSrtPath}.tmp`
+
+  try {
+    await writeFile(temporaryVttPath, writeVtt(translatedSegments), 'utf8')
+    await writeFile(temporarySrtPath, writeSrt(translatedSegments), 'utf8')
+    throwIfTranslationAborted(options.signal)
+    await rename(temporaryVttPath, outputPaths.subtitlePath)
+    await rename(temporarySrtPath, outputPaths.subtitleSrtPath)
+  } finally {
+    await unlink(temporaryVttPath).catch(() => undefined)
+    await unlink(temporarySrtPath).catch(() => undefined)
+  }
+
+  return {
+    ...outputPaths,
+    translationStats: createStats(false),
+    translatedCueCount: endIndex,
+    changed: true
+  }
+}
+
+export async function promoteIncrementalSubtitleTranslationCache(options: {
+  sourceSubtitlePath: string
+  sourceLanguage?: string
+  targetLanguage: SubtitleTargetLanguageId
+  provider: SubtitleTranslationProviderRef
+  translatedSubtitlePath: string
+  translatedSubtitleSrtPath: string
+  cacheDirectory: string
+}): Promise<SubtitleTranslationOutputPaths> {
+  const sourceLanguage = options.sourceLanguage ?? 'auto'
+  const sourceSubtitleText = await readFile(options.sourceSubtitlePath, 'utf8')
+  const outputBase = getTranslatedSubtitleOutputBase({
+    cacheDirectory: options.cacheDirectory,
+    sourceSubtitlePath: options.sourceSubtitlePath,
+    sourceSubtitleText,
+    sourceLanguage,
+    targetLanguage: options.targetLanguage,
+    provider: options.provider
+  })
+  const outputPaths = getTranslatedSubtitleOutputPaths(outputBase)
+  await mkdir(dirname(outputPaths.subtitlePath), { recursive: true })
+  await copyFile(options.translatedSubtitlePath, outputPaths.subtitlePath)
+  await copyFile(options.translatedSubtitleSrtPath, outputPaths.subtitleSrtPath)
+  return outputPaths
 }
 
 function extractJsonArrayText(content: string): string {

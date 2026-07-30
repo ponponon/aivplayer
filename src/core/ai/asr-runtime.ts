@@ -7,6 +7,8 @@ import type {
   AsrSubtitleExportRequest,
   AsrSubtitleExportResult,
   AsrSubtitleTranslationRequest,
+  AsrSubtitleIncrementalTranslationRequest,
+  AsrSubtitleIncrementalTranslationResult,
   AsrSubtitleTranslationResult,
   AsrSubtitleSummaryRequest,
   AsrSubtitleSummaryResult,
@@ -32,7 +34,7 @@ export type AsrRuntime = {
   ) => Promise<AsrModelDownloadResult>
   generateSubtitle: (
     request: AsrSubtitleRequest,
-    onProgress?: (progress: AsrJobProgress) => void,
+    onProgress?: (progress: AsrJobProgress) => void | Promise<void>,
     options?: { signal?: AbortSignal }
   ) => Promise<AsrSubtitleResult>
   resolveSubtitleCache: (request: AsrSubtitleRequest) => Promise<AsrSubtitleResult>
@@ -42,6 +44,10 @@ export type AsrRuntime = {
     request: AsrSubtitleTranslationRequest,
     options?: AsrTranslationJobOptions
   ) => Promise<AsrSubtitleTranslationResult>
+  translateSubtitleIncremental: (
+    request: AsrSubtitleIncrementalTranslationRequest,
+    options?: AsrTranslationJobOptions
+  ) => Promise<AsrSubtitleIncrementalTranslationResult>
   resolveSubtitleSummaryCache: (request: AsrSubtitleSummaryRequest) => Promise<AsrSubtitleSummaryResult>
   summarizeSubtitle: (
     request: AsrSubtitleSummaryRequest,

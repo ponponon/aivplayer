@@ -1,4 +1,4 @@
-import { chmod, mkdir, mkdtemp, stat, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, mkdtemp, readFile, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { describe, expect, it } from 'vitest'
@@ -8,14 +8,26 @@ import {
   createSubtitleOutputBase,
   findWhisperSubtitleCache,
   getLegacyWhisperSubtitleOutputPaths,
+  getWhisperSubtitlePartialOutputPaths,
   getWhisperSubtitleOutputPath,
   getWhisperSubtitleSrtOutputPath,
   isWhisperGpuResourceFailure,
+  parseWhisperSegmentLine,
   readWhisperSubtitleLanguage,
   runAsrSubtitleJob
 } from '../../src/core/ai/asr-subtitle-job'
+import { getAsrPriorityWindow } from '../../src/shared/asr-types'
 
 describe('ASR subtitle job command planning', () => {
+  it('parses live whisper segment output into a timed transcript segment', () => {
+    expect(parseWhisperSegmentLine('[01:02:03.400 --> 01:02:05.800]  Hello <world>')).toEqual({
+      startSeconds: 3723.4,
+      endSeconds: 3725.8,
+      text: 'Hello <world>'
+    })
+    expect(parseWhisperSegmentLine('read_audio_data: reading audio data')).toBeNull()
+  })
+
   it('extracts video audio into 16 kHz mono wav for ASR', () => {
     expect(buildFfmpegAudioExtractArgs('/video/input.mp4', '/tmp/audio.wav')).toEqual([
       '-y',
@@ -64,6 +76,24 @@ describe('ASR subtitle job command planning', () => {
         disableGpu: true
       }).at(-1)
     ).toBe('-ng')
+  })
+
+  it('adds an offset and duration when planning a priority recognition window', () => {
+    expect(
+      buildWhisperSubtitleArgs({
+        modelPath: '/models/model.bin',
+        audioPath: '/tmp/audio.wav',
+        outputBase: '/tmp/subtitle',
+        offsetSeconds: 123.456,
+        durationSeconds: 60
+      }).slice(-4)
+    ).toEqual(['-ot', '123456', '-d', '60000'])
+  })
+
+  it('selects a bounded priority window around the current playback position', () => {
+    expect(getAsrPriorityWindow(12, 5096)).toBeNull()
+    expect(getAsrPriorityWindow(600, 5096)).toEqual({ startSeconds: 585, durationSeconds: 60, endSeconds: 645 })
+    expect(getAsrPriorityWindow(5090, 5096)).toEqual({ startSeconds: 5036, durationSeconds: 60, endSeconds: 5096 })
   })
 
   it('only classifies Metal buffer allocation crashes as GPU resource failures', () => {
@@ -252,5 +282,101 @@ describe('ASR subtitle job command planning', () => {
         cacheHit: false
       }
     })
+  })
+
+  it('publishes partial VTT and SRT files while whisper is still running', async () => {
+    const cacheDirectory = await mkdtemp(join(tmpdir(), 'aivplayer-partial-asr-'))
+    const mediaPath = join(cacheDirectory, 'video.mp4')
+    const ffmpegPath = join(cacheDirectory, 'mock-ffmpeg')
+    const whisperPath = join(cacheDirectory, 'mock-whisper')
+    const progress: Array<{ partialSubtitlePath?: string; partialSubtitleCueCount?: number }> = []
+
+    await writeFile(mediaPath, 'video')
+    await writeFile(
+      ffmpegPath,
+      `#!${process.execPath}\nconst fs = require('node:fs')\nfs.writeFileSync(process.argv.at(-1), 'wav')\n`
+    )
+    await writeFile(
+      whisperPath,
+      `#!${process.execPath}\nconst fs = require('node:fs')\nconst args = process.argv.slice(2)\nconst outputBase = args[args.indexOf('-of') + 1]\nprocess.stdout.write('[00:00:00.000 --> 00:00:01.000] first\\n')\nsetTimeout(() => {\n  process.stdout.write('[00:00:01.000 --> 00:00:02.000] second\\n')\n  setTimeout(() => {\n    fs.writeFileSync(outputBase + '.vtt', 'WEBVTT\\n\\n00:00.000 --> 00:02.000\\nfirst second\\n')\n    fs.writeFileSync(outputBase + '.srt', '1\\n00:00:00,000 --> 00:00:02,000\\nfirst second\\n')\n    fs.writeFileSync(outputBase + '.json', JSON.stringify({ result: { language: 'en' } }))\n  }, 80)\n}, 450)\n`
+    )
+    await chmod(ffmpegPath, 0o755)
+    await chmod(whisperPath, 0o755)
+
+    const result = await runAsrSubtitleJob({
+      ffmpegPath,
+      whisperBinaryPath: whisperPath,
+      modelPath: '/models/model.bin',
+      modelId: 'large-v3-turbo-q5_0',
+      mediaPath,
+      cacheDirectory,
+      onProgress: (nextProgress) => {
+        if (nextProgress.partialSubtitlePath) {
+          progress.push(nextProgress)
+        }
+      }
+    })
+
+    expect(progress.length).toBeGreaterThan(0)
+    expect(progress.some((item) => item.partialSubtitleCueCount === 1)).toBe(true)
+    expect(await readFile(result.subtitlePath, 'utf8')).toContain('first second')
+    const partialPaths = getWhisperSubtitlePartialOutputPaths(result.subtitlePath.slice(0, -4))
+    await expect(readFile(partialPaths.subtitlePath, 'utf8')).rejects.toThrow()
+  })
+
+  it('recognizes a priority window before starting the full subtitle pass', async () => {
+    const cacheDirectory = await mkdtemp(join(tmpdir(), 'aivplayer-priority-asr-'))
+    const mediaPath = join(cacheDirectory, 'video.mp4')
+    const ffmpegPath = join(cacheDirectory, 'mock-ffmpeg')
+    const whisperPath = join(cacheDirectory, 'mock-whisper')
+    const callLogPath = join(cacheDirectory, 'whisper-calls.log')
+    const progress: Array<{ prioritySubtitleReady?: boolean; prioritySubtitlePath?: string }> = []
+    let priorityContent = ''
+
+    await writeFile(mediaPath, 'video')
+    await writeFile(
+      ffmpegPath,
+      `#!${process.execPath}\nconst fs = require('node:fs')\nfs.writeFileSync(process.argv.at(-1), 'wav')\n`
+    )
+    await writeFile(
+      whisperPath,
+      `#!${process.execPath}
+const fs = require('node:fs')
+const args = process.argv.slice(2)
+const outputBase = args[args.indexOf('-of') + 1]
+const priority = args.includes('-ot')
+fs.appendFileSync(${JSON.stringify(callLogPath)}, args.join(' ') + '\\n')
+const text = priority ? 'priority cue' : 'full cue'
+fs.writeFileSync(outputBase + '.vtt', 'WEBVTT\\n\\n00:02:00.000 --> 00:02:01.000\\n' + text + '\\n')
+fs.writeFileSync(outputBase + '.srt', '1\\n00:02:00,000 --> 00:02:01,000\\n' + text + '\\n')
+fs.writeFileSync(outputBase + '.json', JSON.stringify({ result: { language: 'en' } }))
+`
+    )
+    await chmod(ffmpegPath, 0o755)
+    await chmod(whisperPath, 0o755)
+
+    const result = await runAsrSubtitleJob({
+      ffmpegPath,
+      whisperBinaryPath: whisperPath,
+      modelPath: '/models/model.bin',
+      modelId: 'large-v3-turbo-q5_0',
+      mediaPath,
+      cacheDirectory,
+      priorityWindow: { startSeconds: 120, durationSeconds: 60, endSeconds: 180 },
+      onProgress: async (nextProgress) => {
+        progress.push(nextProgress)
+        if (nextProgress.prioritySubtitleReady && nextProgress.prioritySubtitlePath) {
+          priorityContent = await readFile(nextProgress.prioritySubtitlePath, 'utf8')
+        }
+      }
+    })
+
+    const calls = (await readFile(callLogPath, 'utf8')).trim().split(/\r?\n/)
+    expect(calls).toHaveLength(2)
+    expect(calls[0]).toContain('-ot 120000 -d 60000')
+    expect(calls[1]).not.toContain('-ot')
+    expect(progress.some((item) => item.prioritySubtitleReady)).toBe(true)
+    expect(priorityContent).toContain('priority cue')
+    await expect(readFile(result.subtitlePath, 'utf8')).resolves.toContain('full cue')
   })
 })

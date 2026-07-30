@@ -1,17 +1,21 @@
+import { getAsrPriorityWindow } from '../../../shared/asr-types'
 import type { AsrSubtitleResult } from '../../../shared/media-types'
+import type { SubtitleTargetLanguageId } from '../../../shared/app-settings'
 import type { AppDerived } from './use-app-derived'
 import type { AppModel } from './app-types'
 
 export type SubtitleSetupGuard = (resumeAction: () => Promise<void>) => boolean
+export type SubtitleGenerationOptions = { streamTranslationTargetLanguage?: SubtitleTargetLanguageId }
 
 export function useSubtitleGeneration(model: AppModel, derived: AppDerived, onSetupRequired?: SubtitleSetupGuard) {
-  const generateSubtitle = async (): Promise<AsrSubtitleResult | null> => {
+  const generateSubtitle = async (options: SubtitleGenerationOptions = {}): Promise<AsrSubtitleResult | null> => {
     if (!model.state.currentFile) return null
-    if (onSetupRequired?.(async () => { await generateSubtitle() })) return null
+    if (onSetupRequired?.(async () => { await generateSubtitle(options) })) return null
     model.asrStartedAtRef.current = performance.now()
     model.setAsrElapsedMs(0)
     model.setIsAsrBusy(true)
     model.setSubtitleResult(null)
+    model.setActiveSubtitle(null)
     model.setTranslatedSubtitleResult(null)
     model.setSubtitleSummaryResult(null)
     model.setSummaryNotice(null)
@@ -21,12 +25,15 @@ export function useSubtitleGeneration(model: AppModel, derived: AppDerived, onSe
       const result = await window.aiv.generateAsrSubtitle({
         mediaPath: model.state.currentFile.path,
         modelId: model.asrStatus?.recommendedModelManifest.id,
-        language: model.appSettings.asr.defaultSubtitleLanguage
+        language: model.appSettings.asr.defaultSubtitleLanguage,
+        streamTranslationTargetLanguage: options.streamTranslationTargetLanguage,
+        priorityWindow: getAsrPriorityWindow(model.state.currentTime, model.state.duration) ?? undefined
       })
       model.setSubtitleResult(result.success ? result : null)
       model.setAsrNotice(result)
       model.setAsrElapsedMs(result.generationStats?.elapsedMs ?? model.asrElapsedMs)
       if (result.success && result.subtitleUrl) model.setActiveSubtitle(result)
+      if (result.success && result.streamingTranslation?.success) model.setTranslatedSubtitleResult(result.streamingTranslation)
       return result.success && result.subtitlePath ? result : null
     } finally {
       model.setIsAsrBusy(false)
