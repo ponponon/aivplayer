@@ -30,6 +30,7 @@
 @import './player/editing-timeline-treatment.css';
 @import './player/editing-timeline-filter.css';
 @import './player/editing-timeline-transition.css';
+@import './player/editing-timeline-clip-motion.css';
 @import './player/editing-timeline-caption-effect.css';
 @import './player/editing-timeline-caption-layout.css';
 @import './player/editing-caption-canvas-overlay.css';
