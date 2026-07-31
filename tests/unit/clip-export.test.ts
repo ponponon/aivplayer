@@ -97,12 +97,15 @@ describe('clip export helpers', () => {
   })
 
   it('applies a cached person matte track through an alpha merge', () => {
-    const args = buildTimelineSegmentArgs({ mediaPath: '/clips/person.mp4', startSeconds: 2, endSeconds: 4, durationSeconds: 2, personMatte: { enabled: true, featherPercent: 4 }, personMatteTrack: { sampleFps: 15, framePattern: '/cache/mask-%06d.png', frameCount: 30 } }, '/tmp/person-matte.mp4', { width: 1280, height: 720 })
+    const args = buildTimelineSegmentArgs({ mediaPath: '/clips/person.mp4', startSeconds: 2, endSeconds: 4, durationSeconds: 2, personMatte: { enabled: true, featherPercent: 4, outlineWidthPercent: 2, outlineColor: '#ffcc00' }, personMatteTrack: { sampleFps: 15, framePattern: '/cache/mask-%06d.png', frameCount: 30 } }, '/tmp/person-matte.mp4', { width: 1280, height: 720 })
     const filterComplex = args[args.indexOf('-filter_complex') + 1]
     expect(args).toEqual(expect.arrayContaining(['-framerate', '15', '-start_number', '0', '/cache/mask-%06d.png', '-map', '[person-matte-v]']))
     expect(filterComplex).toContain('alphaextract')
     expect(filterComplex).toContain('boxblur=2:1')
-    expect(filterComplex).toContain('alphamerge[person-matte-v]')
+    expect(filterComplex).toContain('alphamerge[person-matte-foreground]')
+    expect(filterComplex).toContain('dilation=coordinates=255')
+    expect(filterComplex).toContain('color=c=0xffcc00:s=1280x720')
+    expect(filterComplex).toContain('overlay=format=auto[person-matte-v]')
   })
 
   it('exports a seam fade on the incoming and outgoing segments', () => {

@@ -251,7 +251,15 @@ export function buildTimelineSegmentArgs(clip: NormalizedClip, outputPath: strin
     args.push('-t', String(clip.durationSeconds), '-map', '[clip-motion-v]', '-map', clip.hasAudio === false ? '1:a:0' : '0:a?', '-filter_complex', buildTimelineClipMotionFilterComplex(clip, format!, frameRate, colorInputIndex, fadeInDuration, fadeOutDuration), '-af', audioFilters.join(','), '-r', String(frameRate), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-ar', String(audioSampleRate), '-ac', String(audioChannels), '-b:a', '192k', '-avoid_negative_ts', 'make_zero', outputPath)
   } else {
     if (personMatteTrack) {
-      const matteFilter = `[0:v]${buildVideoFilter(format, clip, fadeInDuration, fadeOutDuration)}[person-matte-video];[${personMatteInputIndex}:v]${buildPersonMatteMaskFilter(format, clip, personMatteTrack.sampleFps)}[person-matte-mask];[person-matte-video][person-matte-mask]alphamerge[person-matte-v]`
+      const personMatteSettings = getEditingPersonMatteSettings(clip.personMatte)
+      const outputWidth = evenDimension(format?.width)
+      const outputHeight = evenDimension(format?.height)
+      const canDrawOutline = personMatteSettings.outlineWidthPercent > 0 && outputWidth !== null && outputHeight !== null
+      const outlinePasses = canDrawOutline ? Math.max(1, Math.min(16, Math.round(personMatteSettings.outlineWidthPercent * Math.min(outputWidth!, outputHeight!) / 200))) : 0
+      const outlineMaskFilter = outlinePasses > 0 ? Array.from({ length: outlinePasses }, () => 'dilation=coordinates=255').join(',') : ''
+      const matteFilter = canDrawOutline
+        ? `[0:v]${buildVideoFilter(format, clip, fadeInDuration, fadeOutDuration)},format=rgba[person-matte-video];[${personMatteInputIndex}:v]${buildPersonMatteMaskFilter(format, clip, personMatteTrack.sampleFps)}[person-matte-mask-source];[person-matte-mask-source]split=2[person-matte-mask][person-matte-outline-mask];[person-matte-video][person-matte-mask]alphamerge[person-matte-foreground];color=c=0x${personMatteSettings.outlineColor.slice(1)}:s=${outputWidth}x${outputHeight}:r=${frameRate}:d=${clip.durationSeconds},format=rgba[person-matte-outline-color];[person-matte-outline-mask]${outlineMaskFilter}[person-matte-outline-dilated];[person-matte-outline-color][person-matte-outline-dilated]alphamerge[person-matte-outline];[person-matte-outline][person-matte-foreground]overlay=format=auto[person-matte-v]`
+        : `[0:v]${buildVideoFilter(format, clip, fadeInDuration, fadeOutDuration)},format=rgba[person-matte-video];[${personMatteInputIndex}:v]${buildPersonMatteMaskFilter(format, clip, personMatteTrack.sampleFps)}[person-matte-mask];[person-matte-video][person-matte-mask]alphamerge[person-matte-v]`
       args.push('-t', String(clip.durationSeconds), '-filter_complex', matteFilter, '-map', '[person-matte-v]')
     } else args.push('-t', String(clip.durationSeconds), '-map', '0:v:0', '-vf', buildVideoFilter(format, clip, fadeInDuration, fadeOutDuration))
     args.push('-map', clip.hasAudio === false ? '1:a:0' : '0:a?', '-af', audioFilters.join(','), '-r', String(frameRate), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-ar', String(audioSampleRate), '-ac', String(audioChannels), '-b:a', '192k', '-avoid_negative_ts', 'make_zero', outputPath)
