@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { getEditingGraphicTransform, hasEditingGraphicTransform, updateEditingGraphicTransform, type EditingGraphicTransformDragMode } from '../../../core/editing/graphic-layout'
+import { getEditingGraphicTransform, hasEditingGraphicTransform, isEditingGraphicSnapPoint, snapEditingGraphicRotation, updateEditingGraphicTransform, type EditingGraphicTransformDragMode } from '../../../core/editing/graphic-layout'
 import type { EditingGraphic } from '../../../shared/editing-types'
 
 type Props = {
@@ -31,7 +31,7 @@ export function EditingGraphicCanvasOverlay({ graphic, hint, onChange }: Props):
   const dragRef = useRef<DragState | null>(null)
   const liveTransformRef = useRef<ReturnType<typeof getEditingGraphicTransform> | null>(null)
   const onChangeRef = useRef(onChange)
-  const updateDragAtRef = useRef<(clientX: number, clientY: number) => void>(() => {})
+  const updateDragAtRef = useRef<(clientX: number, clientY: number, shiftKey: boolean) => void>(() => {})
   const finishDragRef = useRef<() => void>(() => {})
   const [cardRect, setCardRect] = useState<CardRect | null>(null)
   const [liveTransform, setLiveTransform] = useState<ReturnType<typeof getEditingGraphicTransform> | null>(null)
@@ -89,11 +89,11 @@ export function EditingGraphicCanvasOverlay({ graphic, hint, onChange }: Props):
     try { event.currentTarget.setPointerCapture(event.pointerId) } catch { /* window listeners remain the fallback */ }
   }
 
-  const updateDragAt = (clientX: number, clientY: number): void => {
+  const updateDragAt = (clientX: number, clientY: number, shiftKey = false): void => {
     const drag = dragRef.current
     if (!drag) return
     const next = drag.mode === 'rotate'
-      ? updateEditingGraphicTransform({ ...graphic, ...drag.base }, 'rotate', (normalizeAngle(Math.atan2(clientY - drag.centerY, clientX - drag.centerX) - drag.startAngle) * 180) / Math.PI)
+      ? (() => { const raw = updateEditingGraphicTransform({ ...graphic, ...drag.base }, 'rotate', (normalizeAngle(Math.atan2(clientY - drag.centerY, clientX - drag.centerX) - drag.startAngle) * 180) / Math.PI); return shiftKey ? { ...raw, rotationDegrees: snapEditingGraphicRotation(raw.rotationDegrees) } : raw })()
       : updateEditingGraphicTransform({ ...graphic, ...drag.base }, drag.mode, ((clientX - drag.startX) / drag.width) * 100, ((clientY - drag.startY) / drag.height) * 100)
     liveTransformRef.current = next
     setLiveTransform(next)
@@ -102,7 +102,7 @@ export function EditingGraphicCanvasOverlay({ graphic, hint, onChange }: Props):
   finishDragRef.current = finishDrag
 
   useEffect(() => {
-    const move = (event: PointerEvent): void => { if (dragRef.current?.pointerId === event.pointerId) { event.preventDefault(); updateDragAtRef.current(event.clientX, event.clientY) } }
+    const move = (event: PointerEvent): void => { if (dragRef.current?.pointerId === event.pointerId) { event.preventDefault(); updateDragAtRef.current(event.clientX, event.clientY, event.shiftKey) } }
     const end = (event: PointerEvent): void => { if (dragRef.current?.pointerId === event.pointerId) finishDragRef.current() }
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', end)
@@ -110,11 +110,13 @@ export function EditingGraphicCanvasOverlay({ graphic, hint, onChange }: Props):
     return () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', end); window.removeEventListener('pointercancel', end) }
   }, [])
 
-  const updateDrag = (event: React.PointerEvent<HTMLElement>): void => updateDragAt(event.clientX, event.clientY)
-  const isCentered = isDragging && effectiveTransform !== null && Math.abs(effectiveTransform.xPercent - 50) < 0.01
+  const updateDrag = (event: React.PointerEvent<HTMLElement>): void => updateDragAt(event.clientX, event.clientY, event.shiftKey)
+  const isSnapX = isDragging && effectiveTransform !== null && isEditingGraphicSnapPoint(effectiveTransform.xPercent)
+  const isSnapY = isDragging && effectiveTransform !== null && isEditingGraphicSnapPoint(effectiveTransform.yPercent)
   return <div ref={stageRef} className={`editing-graphic-canvas-overlay ${isDragging ? 'is-dragging' : ''}`} data-testid="editing-graphic-canvas-overlay" aria-label={hint}>
     {effectiveTransform ? <>
-      {isCentered ? <span className="editing-graphic-canvas-guide" aria-hidden="true" /> : null}
+      {isSnapX ? <span className="editing-graphic-canvas-guide is-vertical" aria-hidden="true" /> : null}
+      {isSnapY ? <span className="editing-graphic-canvas-guide is-horizontal" aria-hidden="true" /> : null}
       <div className="editing-graphic-canvas-box" style={{ left: `${effectiveTransform.xPercent}%`, top: `${effectiveTransform.yPercent}%`, width: `${effectiveTransform.widthPercent}%`, '--editing-graphic-box-height': `${boxHeight}px`, transform: `translate(-50%, -50%) rotate(${effectiveTransform.rotationDegrees}deg)` } as CSSProperties}>
         <button className="editing-graphic-canvas-body" type="button" aria-label={hint} onPointerDown={(event) => beginDrag(event, 'move')} onPointerMove={updateDrag} onPointerUp={finishDrag} onPointerCancel={finishDrag} />
         <button className="editing-graphic-canvas-handle is-left" type="button" aria-label={hint} onPointerDown={(event) => beginDrag(event, 'resize-left')} onPointerMove={updateDrag} onPointerUp={finishDrag} onPointerCancel={finishDrag} />

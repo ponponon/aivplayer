@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createEditingGraphic, findActiveEditingGraphics, removeEditingGraphic, updateEditingGraphic } from '../../src/core/editing/graphic-operations'
-import { getEditingGraphicTransform, updateEditingGraphicTransform } from '../../src/core/editing/graphic-layout'
+import { getEditingGraphicTransform, isEditingGraphicSnapPoint, snapEditingGraphicRotation, updateEditingGraphicTransform } from '../../src/core/editing/graphic-layout'
 
 describe('editing graphic operations', () => {
   it('creates a clamped text card on the current edited timeline', () => {
@@ -25,6 +25,9 @@ describe('editing graphic operations', () => {
     expect(updateEditingGraphicTransform({ ...graphic, xPercent: 48, widthPercent: 30 }, 'resize-left', 8)).toMatchObject({ xPercent: 52, widthPercent: 22 })
     expect(updateEditingGraphicTransform({ ...graphic, xPercent: 48, widthPercent: 30 }, 'resize-right', 8)).toMatchObject({ xPercent: 52, widthPercent: 38 })
     expect(updateEditingGraphicTransform(graphic, 'rotate', 15)).toMatchObject({ rotationDegrees: 15 })
+    expect(updateEditingGraphicTransform(graphic, 'move', -24.2, 24.2)).toMatchObject({ xPercent: 25, yPercent: 75 })
+    expect(isEditingGraphicSnapPoint(74.2)).toBe(true)
+    expect(snapEditingGraphicRotation(22)).toBe(15)
     const moved = updateEditingGraphic([graphic], graphic.id, { xPercent: 62, yPercent: 42, widthPercent: 58, rotationDegrees: 12 }, 8)[0]
     expect(moved).toMatchObject({ xPercent: 62, yPercent: 42, widthPercent: 58, rotationDegrees: 12 })
     const resetByPosition = updateEditingGraphic([moved], graphic.id, { position: 'top-left' }, 8)[0]

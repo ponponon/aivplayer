@@ -8,6 +8,8 @@ export const EDITING_GRAPHIC_MIN_WIDTH_PERCENT = 16
 export const EDITING_GRAPHIC_MAX_WIDTH_PERCENT = 86
 export const EDITING_GRAPHIC_MIN_ROTATION_DEGREES = -180
 export const EDITING_GRAPHIC_MAX_ROTATION_DEGREES = 180
+export const EDITING_GRAPHIC_SNAP_THRESHOLD_PERCENT = 1.5
+export const EDITING_GRAPHIC_SNAP_ANCHORS_PERCENT = [25, 50, 75] as const
 
 export type EditingGraphicTransform = {
   xPercent: number
@@ -30,6 +32,21 @@ function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, Number.isFinite(value) ? value : minimum))
 }
 
+export function snapEditingGraphicPercent(value: number): number {
+  const safeValue = Number.isFinite(value) ? value : 0
+  const anchor = EDITING_GRAPHIC_SNAP_ANCHORS_PERCENT.find((candidate) => Math.abs(candidate - safeValue) <= EDITING_GRAPHIC_SNAP_THRESHOLD_PERCENT)
+  return anchor ?? safeValue
+}
+
+export function isEditingGraphicSnapPoint(value: number): boolean {
+  return EDITING_GRAPHIC_SNAP_ANCHORS_PERCENT.some((candidate) => Math.abs(candidate - value) <= EDITING_GRAPHIC_SNAP_THRESHOLD_PERCENT)
+}
+
+export function snapEditingGraphicRotation(degrees: number, increment = 15): number {
+  const safeIncrement = Number.isFinite(increment) && increment > 0 ? increment : 15
+  return Math.round((Number.isFinite(degrees) ? degrees : 0) / safeIncrement) * safeIncrement
+}
+
 export function hasEditingGraphicTransform(graphic: Pick<EditingGraphic, 'xPercent' | 'yPercent' | 'widthPercent' | 'rotationDegrees'>): boolean {
   return graphic.xPercent !== undefined || graphic.yPercent !== undefined || graphic.widthPercent !== undefined || graphic.rotationDegrees !== undefined
 }
@@ -48,7 +65,7 @@ export function updateEditingGraphicTransform(value: Pick<EditingGraphic, 'posit
   const base = getEditingGraphicTransform(value)
   const dx = Number.isFinite(deltaXPercent) ? deltaXPercent : 0
   const dy = Number.isFinite(deltaYPercent) ? deltaYPercent : 0
-  if (mode === 'move') return { ...base, xPercent: clamp(base.xPercent + dx, EDITING_GRAPHIC_MIN_X_PERCENT, EDITING_GRAPHIC_MAX_X_PERCENT), yPercent: clamp(base.yPercent + dy, EDITING_GRAPHIC_MIN_Y_PERCENT, EDITING_GRAPHIC_MAX_Y_PERCENT) }
+  if (mode === 'move') return { ...base, xPercent: clamp(snapEditingGraphicPercent(base.xPercent + dx), EDITING_GRAPHIC_MIN_X_PERCENT, EDITING_GRAPHIC_MAX_X_PERCENT), yPercent: clamp(snapEditingGraphicPercent(base.yPercent + dy), EDITING_GRAPHIC_MIN_Y_PERCENT, EDITING_GRAPHIC_MAX_Y_PERCENT) }
   if (mode === 'rotate') return { ...base, rotationDegrees: clamp(base.rotationDegrees + dx, EDITING_GRAPHIC_MIN_ROTATION_DEGREES, EDITING_GRAPHIC_MAX_ROTATION_DEGREES) }
   const left = base.xPercent - base.widthPercent / 2
   const right = base.xPercent + base.widthPercent / 2

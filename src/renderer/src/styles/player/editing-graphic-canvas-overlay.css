@@ -32,4 +32,6 @@
 .editing-graphic-canvas-handle.is-right { right: -5px; }
 .editing-graphic-canvas-rotate { left: 50%; bottom: -28px; width: 24px; height: 24px; transform: translateX(-50%); border: 1px solid var(--accent); border-radius: 50%; color: var(--accent); background: var(--panel); cursor: grab; }
 .editing-graphic-canvas-overlay.is-dragging .editing-graphic-canvas-box { border-style: dashed; background: rgba(var(--accent-rgb), .08); }
-.editing-graphic-canvas-guide { position: absolute; top: 0; bottom: 0; left: 50%; width: 1px; background: rgba(var(--accent-rgb), .82); box-shadow: 0 0 8px rgba(var(--accent-rgb), .66); }
+.editing-graphic-canvas-guide { position: absolute; background: rgba(var(--accent-rgb), .82); box-shadow: 0 0 8px rgba(var(--accent-rgb), .66); pointer-events: none; }
+.editing-graphic-canvas-guide.is-vertical { top: 0; bottom: 0; left: 50%; width: 1px; }
+.editing-graphic-canvas-guide.is-horizontal { top: 50%; right: 0; left: 0; height: 1px; }
