@@ -14,5 +14,7 @@ describe('video layout source constraints', () => {
     expect(appSource).toContain('aspectRatio: `${state.videoWidth} / ${state.videoHeight}`')
     expect(appSource).toContain('getEditingPersonMatteOutlinePixels')
     expect(appSource).toContain('drop-shadow(0 0 ${personMatteOutlinePixels}px ${personMatteSettings.outlineColor})')
+    expect(appSource).toContain('onPersonMatteTrackProgress')
+    expect(appSource).toContain('data-testid="editing-person-matte-track-progress"')
   })
 })

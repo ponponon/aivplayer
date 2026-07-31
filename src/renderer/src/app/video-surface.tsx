@@ -11,7 +11,7 @@ import { getEditingCanvasDimensions } from '../../../core/editing/canvases'
 import { findActiveEditingVideoBlocks, getEditingVideoBlockSize } from '../../../core/editing/video-block-operations'
 import { resolvePlaybackStartTime } from './playback-progress'
 import { useAppContext } from './app-context'
-import type { PersonMatteTrackFrame } from '../../../shared/person-matte-types'
+import type { PersonMatteTrackFrame, PersonMatteTrackProgress } from '../../../shared/person-matte-types'
 
 export function VideoSurface(): React.ReactElement {
   const app = useAppContext()
@@ -28,17 +28,27 @@ export function VideoSurface(): React.ReactElement {
   const personMatteTrackKey = personMatteEnabled && currentEditingClip && currentEditingSource ? `${currentEditingSource.path}|${currentEditingSource.fingerprint}|${currentEditingClip.sourceStartSeconds}|${currentEditingClip.sourceEndSeconds}` : null
   const [personMatteTrack, setPersonMatteTrack] = useState<{ key: string; frames: PersonMatteTrackFrame[] } | null>(null)
   const [personMatteFrameUrl, setPersonMatteFrameUrl] = useState<string | null>(null)
+  const [personMatteTrackProgress, setPersonMatteTrackProgress] = useState<PersonMatteTrackProgress | null>(null)
   useEffect(() => {
     let active = true
     setPersonMatteTrack(null)
     setPersonMatteFrameUrl(null)
+    setPersonMatteTrackProgress(null)
     if (!personMatteTrackKey || !currentEditingClip || !currentEditingSource) return () => { active = false }
     void window.aiv.buildPersonMatteTrack({ sourcePath: currentEditingSource.path, sourceFingerprint: currentEditingSource.fingerprint, sourceStartSeconds: currentEditingClip.sourceStartSeconds, sourceEndSeconds: currentEditingClip.sourceEndSeconds }).then((result) => {
-      if (!active || !result.success || result.frames.length === 0) return
+      if (!active) return
+      setPersonMatteTrackProgress(null)
+      if (!result.success || result.frames.length === 0) return
       setPersonMatteTrack({ key: personMatteTrackKey, frames: result.frames })
     }).catch(() => undefined)
     return () => { active = false }
   }, [currentEditingClip?.id, currentEditingClip?.sourceStartSeconds, currentEditingClip?.sourceEndSeconds, currentEditingSource?.fingerprint, currentEditingSource?.path, personMatteTrackKey])
+  useEffect(() => {
+    if (!personMatteTrackKey) return
+    return window.aiv.onPersonMatteTrackProgress((progress) => {
+      setPersonMatteTrackProgress(progress.status === 'processing' ? progress : null)
+    })
+  }, [personMatteTrackKey])
   useEffect(() => {
     if (!personMatteEnabled || !personMatteTrack || personMatteTrack.key !== personMatteTrackKey) {
       setPersonMatteFrameUrl(null)
@@ -103,5 +113,6 @@ export function VideoSurface(): React.ReactElement {
     app.updatePlaybackHistoryDuration(duration)
     app.persistPlaybackProgress(resumeTime, true)
   }
-  return <video ref={app.videoRef} className={`video-surface ${isPunchIn ? 'is-punch-in' : ''} ${activeSplitPosition ? `is-${activeSplitPosition}` : ''} ${personMatteFrameUrl ? 'is-person-matte' : ''}`} data-testid={personMatteFrameUrl ? 'editing-person-matte-preview' : undefined} style={videoStyle} src={mediaUrl} preload="metadata" onClick={app.handleVideoClick} onDoubleClick={app.handleVideoDoubleClick} onPlay={() => app.setState((current) => ({ ...current, isPlaying: true }))} onPlaying={app.clearPlaybackError} onCanPlay={app.clearPlaybackError} onPause={(event) => { const currentTime = event.currentTarget.currentTime; if (!app.isEditingMode || !app.editingResumePlaybackRef.current) app.setState((current) => ({ ...current, isPlaying: false })); if (!app.isEditingMode) app.persistPlaybackProgress(currentTime, true) }} onEnded={() => { app.playbackEndedRef.current = true; app.editingResumePlaybackRef.current = false; app.setState((current) => ({ ...current, isPlaying: false })); if (!app.isEditingMode) app.persistPlaybackProgress(0, true) }} onLoadedMetadata={onLoadedMetadata} onTimeUpdate={(event) => { const currentTime = event.currentTarget.currentTime; app.setState((current) => ({ ...current, currentTime, error: null })); if (!app.isEditingMode) app.persistPlaybackProgress(currentTime) }} onVolumeChange={(event) => { const { volume, muted } = event.currentTarget; app.setState((current) => ({ ...current, volume, muted })) }} onError={app.handleMediaError} controls={false} />
+  const progressPercent = personMatteTrackProgress && personMatteTrackProgress.totalFrames > 0 ? Math.min(100, Math.round(personMatteTrackProgress.processedFrames / personMatteTrackProgress.totalFrames * 100)) : 0
+  return <><video ref={app.videoRef} className={`video-surface ${isPunchIn ? 'is-punch-in' : ''} ${activeSplitPosition ? `is-${activeSplitPosition}` : ''} ${personMatteFrameUrl ? 'is-person-matte' : ''}`} data-testid={personMatteFrameUrl ? 'editing-person-matte-preview' : undefined} style={videoStyle} src={mediaUrl} preload="metadata" onClick={app.handleVideoClick} onDoubleClick={app.handleVideoDoubleClick} onPlay={() => app.setState((current) => ({ ...current, isPlaying: true }))} onPlaying={app.clearPlaybackError} onCanPlay={app.clearPlaybackError} onPause={(event) => { const currentTime = event.currentTarget.currentTime; if (!app.isEditingMode || !app.editingResumePlaybackRef.current) app.setState((current) => ({ ...current, isPlaying: false })); if (!app.isEditingMode) app.persistPlaybackProgress(currentTime, true) }} onEnded={() => { app.playbackEndedRef.current = true; app.editingResumePlaybackRef.current = false; app.setState((current) => ({ ...current, isPlaying: false })); if (!app.isEditingMode) app.persistPlaybackProgress(0, true) }} onLoadedMetadata={onLoadedMetadata} onTimeUpdate={(event) => { const currentTime = event.currentTarget.currentTime; app.setState((current) => ({ ...current, currentTime, error: null })); if (!app.isEditingMode) app.persistPlaybackProgress(currentTime) }} onVolumeChange={(event) => { const { volume, muted } = event.currentTarget; app.setState((current) => ({ ...current, volume, muted })) }} onError={app.handleMediaError} controls={false} />{personMatteTrackProgress?.status === 'processing' ? <div className="editing-person-matte-track-progress" data-testid="editing-person-matte-track-progress" role="status" aria-live="polite"><span>{copy.editing.personMatteProcessing(personMatteTrackProgress.processedFrames, personMatteTrackProgress.totalFrames)}</span><strong>{progressPercent}%</strong><i><b style={{ width: `${progressPercent}%` }} /></i></div> : null}</>
 }
