@@ -1,8 +1,12 @@
-import { ipcMain } from 'electron'
+import { app, ipcMain } from 'electron'
+import { dirname, join } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type { MediaClipExportResult, MediaTimelineExportPathRequest, MediaTimelineExportPathResult, MediaTimelineExportRequest } from '../shared/media-types'
 import { getAppCopy } from '../shared/i18n'
-import { buildTimelineExportDefaultVideoPath, runTimelineExport } from '../core/media/timeline-export'
+import { buildTimelineExportDefaultVideoPath, runTimelineExport, type TimelineExportPersonMatteTrack } from '../core/media/timeline-export'
+import { buildPersonMatteTrack } from '../core/ai/person-matte-track'
+import { PersonMatteRuntime } from '../core/ai/person-matte-runtime'
+import { getPersonMatteModelStatus } from '../core/ai/person-matte-model'
 import { createMediaProbeMetadata } from '../core/media/media-metadata'
 import { createMediaFile } from './media/media-protocol'
 import { resolveFfmpegPath } from '../core/ai/whisper-cpp-runtime'
@@ -46,10 +50,31 @@ export function registerTimelineExportIpc(): void {
         const metadata = metadataByPath.get(clip.mediaPath)
         return { ...clip, hasAudio: metadata == null ? undefined : metadata.audio !== null }
       })
+      const personMatteTrackPromises = new Map<string, Promise<TimelineExportPersonMatteTrack>>()
+      const exportClips = await Promise.all(clips.map(async (clip) => {
+        if (!clip.personMatte?.enabled) return clip
+        const fingerprint = clip.personMatteSourceFingerprint?.trim()
+        if (!fingerprint) throw new Error('人物抠像片段缺少素材指纹，无法导出')
+        const userDataPath = app.getPath('userData')
+        const status = getPersonMatteModelStatus(resourcePath, userDataPath)
+        if (!status.available) throw new Error(status.message)
+        const key = [fingerprint, clip.startSeconds, clip.endSeconds].join('|')
+        let trackPromise = personMatteTrackPromises.get(key)
+        if (!trackPromise) {
+          const runtime = new PersonMatteRuntime({ resourcePath, userDataPath })
+          trackPromise = buildPersonMatteTrack({ ffmpegPath, sourcePath: clip.mediaPath, sourceFingerprint: fingerprint, sourceStartSeconds: clip.startSeconds, sourceEndSeconds: clip.endSeconds, cacheRoot: userDataPath, runtime }).then((track) => {
+            const firstFrame = track.frames[0]
+            if (!firstFrame) throw new Error('人物抠像轨道为空')
+            return { sampleFps: track.sampleFps, framePattern: join(dirname(firstFrame.path), 'mask-%06d.png'), frameCount: track.frames.length }
+          })
+          personMatteTrackPromises.set(key, trackPromise)
+        }
+        return { ...clip, personMatteTrack: await trackPromise }
+      }))
       const result = await runTimelineExport({
         ffmpegPath,
         mediaPath: request.mediaPath,
-        clips,
+        clips: exportClips,
         graphics: request.graphics,
         videoBlocks: request.videoBlocks,
         renderGraphics: renderTimelineGraphicAssets,
