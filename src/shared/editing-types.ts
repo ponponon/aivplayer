@@ -56,6 +56,9 @@ export type EditingCaptionLayout = EditingCaptionLineLayout & {
   /** Optional independent translation-line layout; absent keeps old project files valid. */
   translation?: EditingCaptionLineLayout
 }
+export type EditingCaptionLayoutPatch = Partial<EditingCaptionLineLayout> & {
+  translation?: Partial<EditingCaptionLineLayout> | null
+}
 export type EditingGraphic = {
   id: string
   startSeconds: number

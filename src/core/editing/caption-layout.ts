@@ -1,4 +1,4 @@
-import type { EditingCaptionLayout, EditingCaptionLineLayout } from '../../shared/editing-types'
+import type { EditingCaptionLayout, EditingCaptionLayoutPatch, EditingCaptionLineLayout } from '../../shared/editing-types'
 
 export const DEFAULT_EDITING_CAPTION_LAYOUT: EditingCaptionLayout = {
   xPercent: 50,
@@ -45,10 +45,6 @@ function isEditingCaptionLineLayout(value: unknown): value is EditingCaptionLine
   return inRange(layout.xPercent, EDITING_CAPTION_LAYOUT_LIMITS.xPercent) && inRange(layout.yPercent, EDITING_CAPTION_LAYOUT_LIMITS.yPercent) && inRange(layout.widthPercent, EDITING_CAPTION_LAYOUT_LIMITS.widthPercent) && inRange(layout.fontSizePx, EDITING_CAPTION_LAYOUT_LIMITS.fontSizePx)
 }
 
-type EditingCaptionLayoutInput = Partial<EditingCaptionLineLayout> & {
-  translation?: Partial<EditingCaptionLineLayout> | null
-}
-
 function normalizeLine(value: Partial<EditingCaptionLineLayout> | null | undefined, fallback: EditingCaptionLineLayout): EditingCaptionLineLayout {
   const next = { ...fallback, ...(value ?? {}) }
   return {
@@ -59,7 +55,7 @@ function normalizeLine(value: Partial<EditingCaptionLineLayout> | null | undefin
   }
 }
 
-export function getEditingCaptionLayout(value: EditingCaptionLayoutInput | null | undefined): EditingCaptionLayout {
+export function getEditingCaptionLayout(value: EditingCaptionLayoutPatch | null | undefined): EditingCaptionLayout {
   const next = { ...DEFAULT_EDITING_CAPTION_LAYOUT, ...(value ?? {}) }
   const source = normalizeLine(next, DEFAULT_EDITING_CAPTION_LAYOUT)
   return next.translation === null || next.translation === undefined

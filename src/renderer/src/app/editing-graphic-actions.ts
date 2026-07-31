@@ -1,7 +1,7 @@
 import { editedDurationSeconds } from '../../../core/editing/timeline-math'
 import { applyEditingGraphicTheme, createEditingGraphic, removeEditingGraphic, updateEditingGraphic as applyEditingGraphicUpdate } from '../../../core/editing/graphic-operations'
 import { getEditingCaptionLayout } from '../../../core/editing/caption-layout'
-import type { EditingCanvasPresetId, EditingCaptionEffect, EditingCaptionLayout, EditingFrameId, EditingGraphic, EditingGraphicPosition, EditingGraphicStyle } from '../../../shared/editing-types'
+import type { EditingCanvasPresetId, EditingCaptionEffect, EditingCaptionLayout, EditingCaptionLayoutPatch, EditingFrameId, EditingGraphic, EditingGraphicPosition, EditingGraphicStyle } from '../../../shared/editing-types'
 import type { AppModel } from './app-types'
 import { saveEditingProject } from './editing-project-storage'
 import { seekEditingTime } from './editing-action-helpers'
@@ -62,7 +62,7 @@ export function createEditingGraphicActions(model: AppModel) {
     if (project && project.canvasPreset !== canvasPreset) updateProject(project.graphics ?? [], undefined, undefined, canvasPreset)
   }
 
-  const setEditingCaptionLayout = (patch: Partial<EditingCaptionLayout>): void => {
+  const setEditingCaptionLayout = (patch: EditingCaptionLayoutPatch): void => {
     const project = model.editingProject
     if (!project) return
     const next = getEditingCaptionLayout({ ...getEditingCaptionLayout(project.captionLayout), ...patch })

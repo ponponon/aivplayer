@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { getEditingCaptionLayout, updateEditingCaptionLayout, type EditingCaptionLayoutDragMode } from '../../../core/editing/caption-layout'
-import type { EditingCaptionLayout } from '../../../shared/editing-types'
+import { getEditingCaptionLayout, updateEditingCaptionLayout, type EditingCaptionLayoutDragMode, type EditingCaptionLine } from '../../../core/editing/caption-layout'
+import type { EditingCaptionLineLayout } from '../../../shared/editing-types'
 
 type Props = {
-  layout: EditingCaptionLayout
+  line: EditingCaptionLine
+  layout: EditingCaptionLineLayout
   hint: string
-  onChange: (patch: Partial<EditingCaptionLayout>) => void
+  onChange: (patch: Partial<EditingCaptionLineLayout>) => void
 }
 
 type DragState = {
@@ -13,24 +14,24 @@ type DragState = {
   pointerId: number
   startX: number
   startY: number
-  base: EditingCaptionLayout
+  base: EditingCaptionLineLayout
   width: number
   height: number
 }
 
-function hasLayoutChanged(before: EditingCaptionLayout, after: EditingCaptionLayout): boolean {
+function hasLayoutChanged(before: EditingCaptionLineLayout, after: EditingCaptionLineLayout): boolean {
   return before.xPercent !== after.xPercent || before.yPercent !== after.yPercent || before.widthPercent !== after.widthPercent
 }
 
-export function EditingCaptionCanvasOverlay({ layout, hint, onChange }: Props): React.ReactElement {
+export function EditingCaptionCanvasOverlay({ line, layout, hint, onChange }: Props): React.ReactElement {
   const stageRef = useRef<HTMLDivElement | null>(null)
   const dragRef = useRef<DragState | null>(null)
-  const liveLayoutRef = useRef<EditingCaptionLayout | null>(null)
+  const liveLayoutRef = useRef<EditingCaptionLineLayout | null>(null)
   const onChangeRef = useRef(onChange)
   const updateDragAtRef = useRef<(clientX: number, clientY: number) => void>(() => {})
   const finishDragRef = useRef<() => void>(() => {})
   onChangeRef.current = onChange
-  const [liveLayout, setLiveLayout] = useState<EditingCaptionLayout | null>(null)
+  const [liveLayout, setLiveLayout] = useState<EditingCaptionLineLayout | null>(null)
   const effectiveLayout = liveLayout ?? layout
   const isDragging = liveLayout !== null
   const isCentered = isDragging && Math.abs(effectiveLayout.xPercent - 50) < 0.01
@@ -103,7 +104,7 @@ export function EditingCaptionCanvasOverlay({ layout, hint, onChange }: Props): 
     updateDragAt(event.clientX, event.clientY)
   }
 
-  return <div ref={stageRef} className={`editing-caption-canvas-overlay ${isDragging ? 'is-dragging' : ''}`} data-testid="editing-caption-canvas-overlay" aria-label={hint}>
+  return <div ref={stageRef} className={`editing-caption-canvas-overlay editing-caption-canvas-overlay-${line} ${isDragging ? 'is-dragging' : ''}`} data-testid={`editing-caption-canvas-overlay-${line}`} data-line={line} aria-label={hint}>
     {isCentered ? <span className="editing-caption-canvas-guide" aria-hidden="true" /> : null}
     <div className="editing-caption-canvas-box" style={{ left: `${effectiveLayout.xPercent}%`, top: `${effectiveLayout.yPercent}%`, width: `${effectiveLayout.widthPercent}%`, '--editing-caption-box-height': `${Math.max(40, effectiveLayout.fontSizePx * 1.8)}px` } as CSSProperties}>
       <button className="editing-caption-canvas-body" type="button" aria-label={hint} onPointerDown={(event) => beginDrag(event, 'move')} onPointerMove={updateDrag} onPointerUp={finishDrag} onPointerCancel={finishDrag} />

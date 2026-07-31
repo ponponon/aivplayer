@@ -1,7 +1,7 @@
 import type { ReactElement, RefObject } from 'react'; import { useState, useEffect, useRef } from 'react'
 import type { AppSettings } from '../../shared/app-settings'; import type { AppLocale } from '../../shared/localization'; import type { LocaleCopy } from '../../shared/i18n'
 import { SubtitleDisplayControls, getDefaultSubtitleDisplaySettings } from './app/subtitle-display-controls'; import { parseVtt, findActiveCue } from './subtitle-parser'; import type { SubtitleCue } from './subtitle-parser'
-import type { EditingCaption, EditingCaptionEffect, EditingCaptionLayout } from '../../shared/editing-types'; import type { EditingCanvasDimensions } from '../../core/editing/canvases'; import { SubtitleText } from './subtitle-text'
+import type { EditingCaption, EditingCaptionEffect, EditingCaptionLayout } from '../../shared/editing-types'; import type { EditingCanvasDimensions } from '../../core/editing/canvases'; import { getEditingCaptionLineLayout } from '../../core/editing/caption-layout'; import { SubtitleText } from './subtitle-text'
 import { attachSubtitleWords, createFallbackSubtitleWords, getSubtitleWordSidecarPath, parseWhisperSubtitleWords, type SubtitleWord } from '../../shared/subtitle-timing'; import { getEditingCaptionEffect } from '../../core/editing/caption-effects'
 
 type SubtitleOverlayProps = {
@@ -176,6 +176,16 @@ export function SubtitleOverlay({
     translationText,
     displayMode: displaySettings.displayMode
   })
+  const sourceLayout = editingCaptionLayout ? getEditingCaptionLineLayout(editingCaptionLayout, 'source') : null
+  const translationLayout = editingCaptionLayout ? getEditingCaptionLineLayout(editingCaptionLayout, 'translation') : null
+  const hasTranslationText = translationText != null && translationText.trim().length > 0
+  const useIndependentEditingLines = Boolean(editingCaptionLayout && editingCanvas && editingCaptions && hasTranslationText && (displaySettings.displayMode === 'bilingual' || displaySettings.displayMode === 'translation'))
+  const lineStyle = (layout: typeof sourceLayout): React.CSSProperties | undefined => layout ? {
+    '--editing-caption-line-x': `${layout.xPercent}%`,
+    '--editing-caption-line-y': `${layout.yPercent}%`,
+    '--editing-caption-line-width': `${layout.widthPercent}%`
+  } as React.CSSProperties : undefined
+  const renderLine = (text: string, layout: typeof sourceLayout, words?: readonly SubtitleWord[], effect = activeEffect): ReactElement => <div className="subtitle-line" style={lineStyle(layout)}><SubtitleText text={text} presetId={displaySettings.presetId} emphasisMode={displaySettings.emphasisMode} keywords={displaySettings.keywords} wordTimings={words} currentTime={wordTime} effect={effect} fontSizePx={layout?.fontSizePx ?? displaySettings.fontSizePx} lineHeight={subtitleLineHeightMap[displaySettings.lineHeight]} maxWidthPx={layout && editingCanvas ? editingCanvas.width * layout.widthPercent / 100 : undefined} /></div>
   const editingLayoutStyle = editingCaptionLayout ? {
     '--editing-caption-x': `${editingCaptionLayout.xPercent}%`,
     '--editing-caption-y': `${editingCaptionLayout.yPercent}%`,
@@ -185,7 +195,12 @@ export function SubtitleOverlay({
   const subtitleMaxWidth = editingCaptionLayout && editingCanvas ? editingCanvas.width * editingCaptionLayout.widthPercent / 100 : undefined
 
   return <div className={`subtitle-overlay ${editingCaptionLayout ? 'is-editing-caption' : ''}`} style={{ ...editingLayoutStyle, ...(editingLayerZIndex === undefined ? {} : { zIndex: editingLayerZIndex }) }}>
-      <SubtitleText text={displayText} presetId={displaySettings.presetId} emphasisMode={displaySettings.emphasisMode} keywords={displaySettings.keywords} wordTimings={activeSourceWords as readonly SubtitleWord[] | undefined} currentTime={wordTime} effect={activeEffect} fontSizePx={subtitleFontSize} lineHeight={subtitleLineHeightMap[displaySettings.lineHeight]} maxWidthPx={subtitleMaxWidth} />
+      {useIndependentEditingLines
+        ? <>
+            {displaySettings.displayMode === 'bilingual' ? renderLine(sourceText, sourceLayout, activeSourceWords as readonly SubtitleWord[] | undefined) : null}
+            {renderLine(translationText ?? sourceText, translationLayout, undefined, 'none')}
+          </>
+        : <SubtitleText text={displayText} presetId={displaySettings.presetId} emphasisMode={displaySettings.emphasisMode} keywords={displaySettings.keywords} wordTimings={activeSourceWords as readonly SubtitleWord[] | undefined} currentTime={wordTime} effect={activeEffect} fontSizePx={subtitleFontSize} lineHeight={subtitleLineHeightMap[displaySettings.lineHeight]} maxWidthPx={subtitleMaxWidth} />}
       {showControls ? <SubtitleDisplayControls
         copy={copy}
         locale={locale}
