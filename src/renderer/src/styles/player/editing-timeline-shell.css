@@ -4,6 +4,8 @@
 }
 
 .editing-timeline {
+  position: relative;
+  z-index: 30;
   display: grid;
   gap: 7px;
   min-width: 0;
