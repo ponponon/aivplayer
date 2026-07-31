@@ -1,0 +1,35 @@
+.editing-graphic-canvas-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 25;
+  pointer-events: none;
+}
+
+.editing-graphic-canvas-box {
+  position: absolute;
+  min-width: 16%;
+  height: var(--editing-graphic-box-height);
+  border: 1px solid rgba(var(--accent-rgb), .82);
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .28), 0 5px 18px rgba(0, 0, 0, .18);
+  pointer-events: auto;
+}
+
+.editing-graphic-canvas-body,
+.editing-graphic-canvas-handle,
+.editing-graphic-canvas-rotate {
+  appearance: none;
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.editing-graphic-canvas-body { inset: 0; cursor: move; }
+.editing-graphic-canvas-handle { top: 50%; width: 8px; height: 28px; transform: translateY(-50%); border: 2px solid var(--accent); border-radius: 999px; background: var(--panel); box-shadow: 0 2px 8px rgba(0, 0, 0, .28); cursor: ew-resize; }
+.editing-graphic-canvas-handle.is-left { left: -5px; }
+.editing-graphic-canvas-handle.is-right { right: -5px; }
+.editing-graphic-canvas-rotate { left: 50%; bottom: -28px; width: 24px; height: 24px; transform: translateX(-50%); border: 1px solid var(--accent); border-radius: 50%; color: var(--accent); background: var(--panel); cursor: grab; }
+.editing-graphic-canvas-overlay.is-dragging .editing-graphic-canvas-box { border-style: dashed; background: rgba(var(--accent-rgb), .08); }
+.editing-graphic-canvas-guide { position: absolute; top: 0; bottom: 0; left: 50%; width: 1px; background: rgba(var(--accent-rgb), .82); box-shadow: 0 0 8px rgba(var(--accent-rgb), .66); }

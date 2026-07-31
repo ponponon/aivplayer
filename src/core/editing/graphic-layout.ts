@@ -16,7 +16,7 @@ export type EditingGraphicTransform = {
   rotationDegrees: number
 }
 
-export type EditingGraphicTransformDragMode = 'move' | 'resize-left' | 'resize-right'
+export type EditingGraphicTransformDragMode = 'move' | 'resize-left' | 'resize-right' | 'rotate'
 
 const PRESET_TRANSFORMS: Record<EditingGraphicPosition, Pick<EditingGraphicTransform, 'xPercent' | 'yPercent'>> = {
   center: { xPercent: 50, yPercent: 50 },
@@ -49,6 +49,7 @@ export function updateEditingGraphicTransform(value: Pick<EditingGraphic, 'posit
   const dx = Number.isFinite(deltaXPercent) ? deltaXPercent : 0
   const dy = Number.isFinite(deltaYPercent) ? deltaYPercent : 0
   if (mode === 'move') return { ...base, xPercent: clamp(base.xPercent + dx, EDITING_GRAPHIC_MIN_X_PERCENT, EDITING_GRAPHIC_MAX_X_PERCENT), yPercent: clamp(base.yPercent + dy, EDITING_GRAPHIC_MIN_Y_PERCENT, EDITING_GRAPHIC_MAX_Y_PERCENT) }
+  if (mode === 'rotate') return { ...base, rotationDegrees: clamp(base.rotationDegrees + dx, EDITING_GRAPHIC_MIN_ROTATION_DEGREES, EDITING_GRAPHIC_MAX_ROTATION_DEGREES) }
   const left = base.xPercent - base.widthPercent / 2
   const right = base.xPercent + base.widthPercent / 2
   if (mode === 'resize-left') {
