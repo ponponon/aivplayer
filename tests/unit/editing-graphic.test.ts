@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { createEditingGraphic, findActiveEditingGraphics, removeEditingGraphic, updateEditingGraphic } from '../../src/core/editing/graphic-operations'
+import { createEditingGraphic, findActiveEditingGraphics, findVisibleEditingGraphics, removeEditingGraphic, updateEditingGraphic } from '../../src/core/editing/graphic-operations'
+import { getEditingGraphicMotionPhase, getEditingGraphicMotionStyle } from '../../src/core/editing/graphic-motion'
 import { getEditingGraphicTransform, isEditingGraphicSnapPoint, snapEditingGraphicRotation, updateEditingGraphicTransform } from '../../src/core/editing/graphic-layout'
 
 describe('editing graphic operations', () => {
   it('creates a clamped text card on the current edited timeline', () => {
     const graphic = createEditingGraphic('  title  ', 9, 10, { durationSeconds: 4, position: 'top-left', style: 'label', id: 'graphic-1' })
-    expect(graphic).toEqual({ id: 'graphic-1', startSeconds: 9, durationSeconds: 1, text: 'title', position: 'top-left', style: 'label' })
+    expect(graphic).toEqual({ id: 'graphic-1', startSeconds: 9, durationSeconds: 1, text: 'title', position: 'top-left', style: 'label', enterMotion: 'none', exitMotion: 'none', motionDurationSeconds: 0.35 })
   })
 
   it('finds active cards and updates or removes only the requested card', () => {
@@ -16,6 +17,15 @@ describe('editing graphic operations', () => {
     expect(updated[1]).toMatchObject({ text: 'changed', position: 'bottom-right' })
     expect(updateEditingGraphic(updated, 'graphic-2', { startSeconds: 5, durationSeconds: 2 }, 8)[1]).toMatchObject({ startSeconds: 5, durationSeconds: 2 })
     expect(removeEditingGraphic(updated, 'graphic-1')).toEqual([updated[1]])
+  })
+
+  it('keeps motion timing compatible with legacy cards and persists updates', () => {
+    const graphic = createEditingGraphic('title', 1, 8, { id: 'graphic-motion', durationSeconds: 2, enterMotion: 'slide-left', exitMotion: 'fade', motionDurationSeconds: 0.5 })!
+    expect(getEditingGraphicMotionPhase(graphic, 1.25)).toEqual({ motion: 'slide-left', phase: 'enter', progress: 0.5 })
+    expect(getEditingGraphicMotionStyle(graphic, 1.25)).toMatchObject({ opacity: 1, translateXPercent: -50, translateYPercent: 0, scale: 1 })
+    expect(findVisibleEditingGraphics([graphic], 3.25).map((item) => item.id)).toEqual(['graphic-motion'])
+    expect(findVisibleEditingGraphics([graphic], 3.5)).toEqual([])
+    expect(updateEditingGraphic([graphic], graphic.id, { enterMotion: 'scale', exitMotion: 'rise', motionDurationSeconds: 2 }, 8)[0]).toMatchObject({ enterMotion: 'scale', exitMotion: 'rise', motionDurationSeconds: 1 })
   })
 
   it('supports a persisted free transform while keeping preset projects compatible', () => {

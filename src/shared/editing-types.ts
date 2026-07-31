@@ -41,6 +41,7 @@ export type EditingClipTransitionType = 'fade' | 'fadeblack' | 'dissolve' | 'wip
 export type EditingClipTransition = { type: EditingClipTransitionType; durationSeconds: number }
 export type EditingGraphicPosition = 'center' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
 export type EditingGraphicStyle = 'title' | 'label'
+export type EditingGraphicMotion = 'none' | 'fade' | 'slide-left' | 'slide-right' | 'rise' | 'scale'
 export type EditingOverlayTrackKind = 'videoBlocks' | 'graphics' | 'captions'
 export type EditingFrameId = 'clean' | 'warm' | 'mint' | 'cinema' | 'gold'
 export type EditingCaptionEffect = 'none' | 'highlight' | 'pill-karaoke' | 'word-pop' | 'kinetic-slam' | 'editorial-emphasis'
@@ -63,9 +64,13 @@ export type EditingGraphic = {
   yPercent?: number
   widthPercent?: number
   rotationDegrees?: number
+  /** Optional Pireel-style enter/exit motion; absent values keep legacy static cards. */
+  enterMotion?: EditingGraphicMotion
+  exitMotion?: EditingGraphicMotion
+  motionDurationSeconds?: number
 }
 export type EditingVideoBlockPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'split-left' | 'split-right'
-export type EditingVideoBlockMotion = 'none' | 'fade' | 'slide-left' | 'slide-right' | 'rise' | 'scale'
+export type EditingVideoBlockMotion = EditingGraphicMotion
 export type EditingVideoBlock = {
   id: string
   sourceId: string

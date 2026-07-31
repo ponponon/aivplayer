@@ -1,4 +1,4 @@
-import { EDITING_PUNCH_IN_MAX_SCALE, EDITING_PUNCH_IN_MIN_SCALE, EDITING_PROJECT_SCHEMA_VERSION, EDITING_TRANSITION_MAX_DURATION, EDITING_TRANSITION_MIN_DURATION, type EditingCanvasPresetId, type EditingCaption, type EditingCaptionEffect, type EditingCaptionWord, type EditingClipFilter, type EditingClipTransition, type EditingFrameId, type EditingGraphic, type EditingOverlayTrackKind, type EditingProject, type EditingScriptSegment, type EditingSource, type EditingVideoBlock, type EditingVideoBlockMotion, type EditingVideoClip } from '../../shared/editing-types'
+import { EDITING_PUNCH_IN_MAX_SCALE, EDITING_PUNCH_IN_MIN_SCALE, EDITING_PROJECT_SCHEMA_VERSION, EDITING_TRANSITION_MAX_DURATION, EDITING_TRANSITION_MIN_DURATION, type EditingCanvasPresetId, type EditingCaption, type EditingCaptionEffect, type EditingCaptionWord, type EditingClipFilter, type EditingClipTransition, type EditingFrameId, type EditingGraphic, type EditingGraphicMotion, type EditingOverlayTrackKind, type EditingProject, type EditingScriptSegment, type EditingSource, type EditingVideoBlock, type EditingVideoBlockMotion, type EditingVideoClip } from '../../shared/editing-types'
 import { isEditingCanvasPresetId } from './canvases'
 import { isEditingCaptionLayout } from './caption-layout'
 import { isEditingCaptionEffect } from './caption-effects'
@@ -6,6 +6,7 @@ import { isEditingFrameId } from './frames'
 import { EDITING_GRAPHIC_MAX_ROTATION_DEGREES, EDITING_GRAPHIC_MAX_WIDTH_PERCENT, EDITING_GRAPHIC_MAX_X_PERCENT, EDITING_GRAPHIC_MAX_Y_PERCENT, EDITING_GRAPHIC_MIN_ROTATION_DEGREES, EDITING_GRAPHIC_MIN_WIDTH_PERCENT, EDITING_GRAPHIC_MIN_X_PERCENT, EDITING_GRAPHIC_MIN_Y_PERCENT } from './graphic-layout'
 import { EDITING_TRANSITION_TYPES } from './transition-operations'
 import { getEditingOverlayTrackOrder } from './overlay-track-operations'
+import { EDITING_GRAPHIC_MOTION_MAX_DURATION, EDITING_GRAPHIC_MOTION_MIN_DURATION, EDITING_GRAPHIC_MOTIONS } from './graphic-motion'
 import { EDITING_VIDEO_BLOCK_MAX_BORDER_RADIUS, EDITING_VIDEO_BLOCK_MAX_BORDER_WIDTH, EDITING_VIDEO_BLOCK_MAX_SIZE_PERCENT, EDITING_VIDEO_BLOCK_MIN_BORDER_RADIUS, EDITING_VIDEO_BLOCK_MIN_BORDER_WIDTH, EDITING_VIDEO_BLOCK_MIN_SIZE_PERCENT, EDITING_VIDEO_BLOCK_MOTION_MAX_DURATION, EDITING_VIDEO_BLOCK_MOTION_MIN_DURATION, EDITING_VIDEO_BLOCK_MOTIONS } from './video-block-operations'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -45,10 +46,16 @@ function parseGraphic(value: unknown): EditingGraphic | null {
     ['rotationDegrees', EDITING_GRAPHIC_MIN_ROTATION_DEGREES, EDITING_GRAPHIC_MAX_ROTATION_DEGREES]
   ] as const
   for (const [key, minimum, maximum] of transformKeys) if (value[key] !== undefined && (typeof value[key] !== 'number' || !Number.isFinite(value[key]) || value[key] < minimum || value[key] > maximum)) return null
+  if (value.enterMotion !== undefined && (typeof value.enterMotion !== 'string' || !EDITING_GRAPHIC_MOTIONS.includes(value.enterMotion as EditingGraphicMotion))) return null
+  if (value.exitMotion !== undefined && (typeof value.exitMotion !== 'string' || !EDITING_GRAPHIC_MOTIONS.includes(value.exitMotion as EditingGraphicMotion))) return null
+  if (value.motionDurationSeconds !== undefined && (typeof value.motionDurationSeconds !== 'number' || !Number.isFinite(value.motionDurationSeconds) || value.motionDurationSeconds < EDITING_GRAPHIC_MOTION_MIN_DURATION || value.motionDurationSeconds > EDITING_GRAPHIC_MOTION_MAX_DURATION)) return null
   const xPercent = value.xPercent as number | undefined
   const yPercent = value.yPercent as number | undefined
   const widthPercent = value.widthPercent as number | undefined
   const rotationDegrees = value.rotationDegrees as number | undefined
+  const enterMotion = value.enterMotion as EditingGraphicMotion | undefined
+  const exitMotion = value.exitMotion as EditingGraphicMotion | undefined
+  const motionDurationSeconds = value.motionDurationSeconds as number | undefined
   return {
     id: value.id,
     startSeconds: value.startSeconds,
@@ -59,7 +66,10 @@ function parseGraphic(value: unknown): EditingGraphic | null {
     ...(xPercent === undefined ? {} : { xPercent }),
     ...(yPercent === undefined ? {} : { yPercent }),
     ...(widthPercent === undefined ? {} : { widthPercent }),
-    ...(rotationDegrees === undefined ? {} : { rotationDegrees })
+    ...(rotationDegrees === undefined ? {} : { rotationDegrees }),
+    ...(enterMotion === undefined ? {} : { enterMotion }),
+    ...(exitMotion === undefined ? {} : { exitMotion }),
+    ...(motionDurationSeconds === undefined ? {} : { motionDurationSeconds })
   }
 }
 

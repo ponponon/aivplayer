@@ -90,6 +90,14 @@ describe('editing project files', () => {
     expect(() => parseEditingProject({ ...project, graphics: [{ ...transformed.graphics[0]!, rotationDegrees: 181 }] })).toThrow('Invalid editing project graphic')
   })
 
+  it('round-trips optional graphic motions and rejects unsafe values', () => {
+    const project = createEditingProject(source)
+    const animated = { ...project, graphics: [{ id: 'graphic-motion', startSeconds: 1, durationSeconds: 2, text: 'Title', position: 'center' as const, style: 'title' as const, enterMotion: 'slide-left' as const, exitMotion: 'fade' as const, motionDurationSeconds: 0.5 }] }
+    expect(parseEditingProjectFile(serializeEditingProject(animated)).graphics).toEqual(animated.graphics)
+    expect(() => parseEditingProject({ ...project, graphics: [{ ...animated.graphics[0]!, enterMotion: 'bounce' }] })).toThrow('Invalid editing project graphic')
+    expect(() => parseEditingProject({ ...project, graphics: [{ ...animated.graphics[0]!, motionDurationSeconds: 1.1 }] })).toThrow('Invalid editing project graphic')
+  })
+
   it('round-trips the optional overlay track order and normalizes omitted tracks', () => {
     const project = createEditingProject(source)
     const reordered = { ...project, overlayTrackOrder: ['captions', 'videoBlocks', 'graphics'] as Array<'captions' | 'videoBlocks' | 'graphics'> }
