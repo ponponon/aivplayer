@@ -82,6 +82,14 @@ describe('editing project files', () => {
     expect(parsed.schemaVersion).toBe(1)
   })
 
+  it('round-trips optional graphic free transforms and rejects unsafe values', () => {
+    const project = createEditingProject(source)
+    const transformed = { ...project, graphics: [{ id: 'graphic-1', startSeconds: 1, durationSeconds: 2, text: 'Title', position: 'center' as const, style: 'title' as const, xPercent: 62, yPercent: 42, widthPercent: 48, rotationDegrees: -12 }] }
+    expect(parseEditingProjectFile(serializeEditingProject(transformed)).graphics).toEqual(transformed.graphics)
+    expect(() => parseEditingProject({ ...project, graphics: [{ ...transformed.graphics[0]!, xPercent: 101 }] })).toThrow('Invalid editing project graphic')
+    expect(() => parseEditingProject({ ...project, graphics: [{ ...transformed.graphics[0]!, rotationDegrees: 181 }] })).toThrow('Invalid editing project graphic')
+  })
+
   it('round-trips the optional overlay track order and normalizes omitted tracks', () => {
     const project = createEditingProject(source)
     const reordered = { ...project, overlayTrackOrder: ['captions', 'videoBlocks', 'graphics'] as Array<'captions' | 'videoBlocks' | 'graphics'> }

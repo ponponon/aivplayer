@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createEditingGraphic, findActiveEditingGraphics, removeEditingGraphic, updateEditingGraphic } from '../../src/core/editing/graphic-operations'
+import { getEditingGraphicTransform, updateEditingGraphicTransform } from '../../src/core/editing/graphic-layout'
 
 describe('editing graphic operations', () => {
   it('creates a clamped text card on the current edited timeline', () => {
@@ -15,5 +16,17 @@ describe('editing graphic operations', () => {
     expect(updated[1]).toMatchObject({ text: 'changed', position: 'bottom-right' })
     expect(updateEditingGraphic(updated, 'graphic-2', { startSeconds: 5, durationSeconds: 2 }, 8)[1]).toMatchObject({ startSeconds: 5, durationSeconds: 2 })
     expect(removeEditingGraphic(updated, 'graphic-1')).toEqual([updated[1]])
+  })
+
+  it('supports a persisted free transform while keeping preset projects compatible', () => {
+    const graphic = createEditingGraphic('title', 0, 8, { id: 'graphic-1' })!
+    expect(getEditingGraphicTransform(graphic)).toMatchObject({ xPercent: 50, yPercent: 50, widthPercent: 58, rotationDegrees: 0 })
+    expect(updateEditingGraphicTransform(graphic, 'move', 12, -8)).toMatchObject({ xPercent: 62, yPercent: 42 })
+    expect(updateEditingGraphicTransform({ ...graphic, xPercent: 48, widthPercent: 30 }, 'resize-left', 8)).toMatchObject({ xPercent: 52, widthPercent: 22 })
+    const moved = updateEditingGraphic([graphic], graphic.id, { xPercent: 62, yPercent: 42, widthPercent: 58, rotationDegrees: 12 }, 8)[0]
+    expect(moved).toMatchObject({ xPercent: 62, yPercent: 42, widthPercent: 58, rotationDegrees: 12 })
+    const resetByPosition = updateEditingGraphic([moved], graphic.id, { position: 'top-left' }, 8)[0]
+    expect(resetByPosition).not.toHaveProperty('xPercent')
+    expect(resetByPosition).not.toHaveProperty('rotationDegrees')
   })
 })

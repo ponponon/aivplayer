@@ -3,6 +3,7 @@ import { isEditingCanvasPresetId } from './canvases'
 import { isEditingCaptionLayout } from './caption-layout'
 import { isEditingCaptionEffect } from './caption-effects'
 import { isEditingFrameId } from './frames'
+import { EDITING_GRAPHIC_MAX_ROTATION_DEGREES, EDITING_GRAPHIC_MAX_WIDTH_PERCENT, EDITING_GRAPHIC_MAX_X_PERCENT, EDITING_GRAPHIC_MAX_Y_PERCENT, EDITING_GRAPHIC_MIN_ROTATION_DEGREES, EDITING_GRAPHIC_MIN_WIDTH_PERCENT, EDITING_GRAPHIC_MIN_X_PERCENT, EDITING_GRAPHIC_MIN_Y_PERCENT } from './graphic-layout'
 import { EDITING_TRANSITION_TYPES } from './transition-operations'
 import { getEditingOverlayTrackOrder } from './overlay-track-operations'
 import { EDITING_VIDEO_BLOCK_MAX_BORDER_RADIUS, EDITING_VIDEO_BLOCK_MAX_BORDER_WIDTH, EDITING_VIDEO_BLOCK_MAX_SIZE_PERCENT, EDITING_VIDEO_BLOCK_MIN_BORDER_RADIUS, EDITING_VIDEO_BLOCK_MIN_BORDER_WIDTH, EDITING_VIDEO_BLOCK_MIN_SIZE_PERCENT, EDITING_VIDEO_BLOCK_MOTION_MAX_DURATION, EDITING_VIDEO_BLOCK_MOTION_MIN_DURATION, EDITING_VIDEO_BLOCK_MOTIONS } from './video-block-operations'
@@ -37,7 +38,29 @@ function parseGraphic(value: unknown): EditingGraphic | null {
   if (!isRecord(value) || !isNonEmptyString(value.id) || !isFiniteNonNegative(value.startSeconds) || !isFiniteNonNegative(value.durationSeconds) || value.durationSeconds <= 0 || !isNonEmptyString(value.text)) return null
   if (value.position !== 'center' && value.position !== 'top-left' && value.position !== 'top-right' && value.position !== 'bottom-left' && value.position !== 'bottom-right') return null
   if (value.style !== 'title' && value.style !== 'label') return null
-  return { id: value.id, startSeconds: value.startSeconds, durationSeconds: value.durationSeconds, text: value.text, position: value.position, style: value.style }
+  const transformKeys = [
+    ['xPercent', EDITING_GRAPHIC_MIN_X_PERCENT, EDITING_GRAPHIC_MAX_X_PERCENT],
+    ['yPercent', EDITING_GRAPHIC_MIN_Y_PERCENT, EDITING_GRAPHIC_MAX_Y_PERCENT],
+    ['widthPercent', EDITING_GRAPHIC_MIN_WIDTH_PERCENT, EDITING_GRAPHIC_MAX_WIDTH_PERCENT],
+    ['rotationDegrees', EDITING_GRAPHIC_MIN_ROTATION_DEGREES, EDITING_GRAPHIC_MAX_ROTATION_DEGREES]
+  ] as const
+  for (const [key, minimum, maximum] of transformKeys) if (value[key] !== undefined && (typeof value[key] !== 'number' || !Number.isFinite(value[key]) || value[key] < minimum || value[key] > maximum)) return null
+  const xPercent = value.xPercent as number | undefined
+  const yPercent = value.yPercent as number | undefined
+  const widthPercent = value.widthPercent as number | undefined
+  const rotationDegrees = value.rotationDegrees as number | undefined
+  return {
+    id: value.id,
+    startSeconds: value.startSeconds,
+    durationSeconds: value.durationSeconds,
+    text: value.text,
+    position: value.position,
+    style: value.style,
+    ...(xPercent === undefined ? {} : { xPercent }),
+    ...(yPercent === undefined ? {} : { yPercent }),
+    ...(widthPercent === undefined ? {} : { widthPercent }),
+    ...(rotationDegrees === undefined ? {} : { rotationDegrees })
+  }
 }
 
 function parseVideoBlock(value: unknown, sourceIds: Set<string>): EditingVideoBlock | null {

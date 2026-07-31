@@ -58,6 +58,11 @@ export type EditingGraphic = {
   text: string
   position: EditingGraphicPosition
   style: EditingGraphicStyle
+  /** Optional Pireel-style free transform; absent values keep the legacy preset layout. */
+  xPercent?: number
+  yPercent?: number
+  widthPercent?: number
+  rotationDegrees?: number
 }
 export type EditingVideoBlockPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'split-left' | 'split-right'
 export type EditingVideoBlockMotion = 'none' | 'fade' | 'slide-left' | 'slide-right' | 'rise' | 'scale'

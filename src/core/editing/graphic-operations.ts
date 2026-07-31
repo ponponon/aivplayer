@@ -1,4 +1,5 @@
 import type { EditingGraphic, EditingGraphicPosition, EditingGraphicStyle } from '../../shared/editing-types'
+import { getEditingGraphicTransform } from './graphic-layout'
 
 export const EDITING_GRAPHIC_DEFAULT_DURATION = 3
 export const EDITING_GRAPHIC_MIN_DURATION = 0.2
@@ -26,23 +27,32 @@ export function createEditingGraphic(text: string, startSeconds: number, timelin
   }
 }
 
-export function updateEditingGraphic(graphics: readonly EditingGraphic[], graphicId: string, patch: Partial<Pick<EditingGraphic, 'text' | 'position' | 'style' | 'startSeconds' | 'durationSeconds'>>, timelineDuration: number): EditingGraphic[] {
+export function updateEditingGraphic(graphics: readonly EditingGraphic[], graphicId: string, patch: Partial<Pick<EditingGraphic, 'text' | 'position' | 'style' | 'startSeconds' | 'durationSeconds' | 'xPercent' | 'yPercent' | 'widthPercent' | 'rotationDegrees'>>, timelineDuration: number): EditingGraphic[] {
   return graphics.map((graphic) => {
     if (graphic.id !== graphicId) return graphic
     const startSeconds = Math.min(Math.max(0, Number.isFinite(patch.startSeconds ?? graphic.startSeconds) ? patch.startSeconds ?? graphic.startSeconds : graphic.startSeconds), Math.max(0, timelineDuration - EDITING_GRAPHIC_MIN_DURATION))
-    return {
-      ...graphic,
+    const positionChanged = patch.position !== undefined && patch.position !== graphic.position
+    const baseGraphic = positionChanged ? (({ xPercent: _x, yPercent: _y, widthPercent: _width, rotationDegrees: _rotation, ...rest }) => rest)(graphic) : graphic
+    const hasTransformPatch = patch.xPercent !== undefined || patch.yPercent !== undefined || patch.widthPercent !== undefined || patch.rotationDegrees !== undefined
+    const next = {
+      ...baseGraphic,
       ...(patch.text === undefined ? {} : { text: patch.text.trim() }),
       ...(patch.position === undefined ? {} : { position: patch.position }),
       ...(patch.style === undefined ? {} : { style: patch.style }),
       startSeconds,
       durationSeconds: clampDuration(patch.durationSeconds ?? graphic.durationSeconds, startSeconds, timelineDuration)
     }
+    if (hasTransformPatch) Object.assign(next, getEditingGraphicTransform({ ...graphic, ...patch }))
+    return next
   })
 }
 
 export function applyEditingGraphicTheme(graphics: readonly EditingGraphic[], style: EditingGraphicStyle, position: EditingGraphicPosition): EditingGraphic[] {
-  return graphics.map((graphic) => graphic.style === style && graphic.position === position ? graphic : { ...graphic, style, position })
+  return graphics.map((graphic) => {
+    if (graphic.style === style && graphic.position === position) return graphic
+    const { xPercent: _x, yPercent: _y, widthPercent: _width, rotationDegrees: _rotation, ...presetGraphic } = graphic
+    return { ...presetGraphic, style, position }
+  })
 }
 
 export function removeEditingGraphic(graphics: readonly EditingGraphic[], graphicId: string): EditingGraphic[] {

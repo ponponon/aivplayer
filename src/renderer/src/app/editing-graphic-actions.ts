@@ -37,7 +37,7 @@ export function createEditingGraphicActions(model: AppModel) {
     if (project) { updateProject(removeEditingGraphic(project.graphics ?? [], graphicId)); if (model.editingSelectedGraphicId === graphicId) model.setEditingSelectedGraphicId(null) }
   }
 
-  const updateEditingGraphic = (graphicId: string, patch: Partial<Pick<EditingGraphic, 'text' | 'position' | 'style' | 'startSeconds' | 'durationSeconds'>>): void => {
+  const updateEditingGraphic = (graphicId: string, patch: Partial<Pick<EditingGraphic, 'text' | 'position' | 'style' | 'startSeconds' | 'durationSeconds' | 'xPercent' | 'yPercent' | 'widthPercent' | 'rotationDegrees'>>): void => {
     const project = model.editingProject
     if (project) { updateProject(applyEditingGraphicUpdate(project.graphics ?? [], graphicId, patch, editedDurationSeconds(project.videoClips))); model.setEditingSelectedGraphicId(graphicId) }
   }
