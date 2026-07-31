@@ -4,7 +4,7 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { convertVttToSrt } from '../ai/subtitle-writer.ts'
 import { getAppCopy } from '../../shared/i18n'
-import type { EditingClipTransitionType, EditingFrameId, EditingGraphic, EditingOverlayTrackKind, EditingVideoBlockPosition, EditingVideoBlockMotion } from '../../shared/editing-types'
+import type { EditingClipTransitionType, EditingFrameId, EditingGraphic, EditingGraphicMotion, EditingOverlayTrackKind, EditingVideoBlockPosition, EditingVideoBlockMotion } from '../../shared/editing-types'
 import type { AppLocale } from '../../shared/localization'
 import { MIN_CLIP_DURATION_SECONDS, type ClipExportMode } from '../../shared/clip-export'
 import { buildClipExportSubtitlePath, remapSrtToTimeline } from './clip-export'
@@ -19,6 +19,7 @@ import type { SubtitleRenderSettings } from '../../shared/subtitle-presets'
 import { buildAssSubtitle } from './subtitle-ass'
 import { probeFfmpegCapabilities } from './ffmpeg-capabilities'
 import { getEditingOverlayTrackOrder } from '../editing/overlay-track-operations'
+import { getEditingGraphicMotion } from '../editing/graphic-motion'
 
 export type RunTimelineExportOptions = {
   ffmpegPath: string
@@ -72,6 +73,11 @@ export type TimelineGraphicRasterizeRequest = {
 export type TimelineGraphicRasterAsset = {
   graphicId: string
   imagePath: string
+  /** Cropped card bounds in the output canvas. Older rasterizers may omit them and keep full-frame overlay behavior. */
+  x?: number
+  y?: number
+  width?: number
+  height?: number
 }
 
 export type TimelineGraphicRasterizer = (request: TimelineGraphicRasterizeRequest) => Promise<readonly TimelineGraphicRasterAsset[]>
@@ -287,14 +293,14 @@ function exitMotionProgressExpression(endSeconds: number, durationSeconds: numbe
   return `if(lt(t,${endSeconds}),0,if(lt(t,${endSeconds + durationSeconds}),(t-${endSeconds})/${durationSeconds},1))`
 }
 
-function motionFadeFilter(block: NormalizedVideoBlock, enterMotion: EditingVideoBlockMotion, exitMotion: EditingVideoBlockMotion, durationSeconds: number): string {
+function motionFadeFilter(block: Pick<NormalizedVideoBlock, 'durationSeconds'>, enterMotion: EditingGraphicMotion, exitMotion: EditingGraphicMotion, durationSeconds: number): string {
   const fades: string[] = []
   if (enterMotion === 'fade') fades.push(`fade=t=in:st=0:d=${durationSeconds}:alpha=1`)
   if (exitMotion === 'fade') fades.push(`fade=t=out:st=${block.durationSeconds}:d=${durationSeconds}:alpha=1`)
   return fades.length > 0 ? `,format=rgba,${fades.join(',')}` : ''
 }
 
-function motionOffsetExpression(block: NormalizedVideoBlock, axis: 'x' | 'y', boxSize: number, basePosition: number, enterMotion: EditingVideoBlockMotion, exitMotion: EditingVideoBlockMotion, durationSeconds: number): string {
+function motionOffsetExpression(block: Pick<NormalizedVideoBlock, 'startSeconds' | 'durationSeconds'>, axis: 'x' | 'y', boxSize: number, basePosition: number, enterMotion: EditingGraphicMotion, exitMotion: EditingGraphicMotion, durationSeconds: number): string {
   const enterOffset = axis === 'y' && enterMotion === 'rise' ? boxSize : axis === 'x' && enterMotion === 'slide-left' ? -boxSize : axis === 'x' && enterMotion === 'slide-right' ? boxSize : 0
   const exitOffset = axis === 'y' && exitMotion === 'rise' ? -boxSize : axis === 'x' && exitMotion === 'slide-left' ? -boxSize : axis === 'x' && exitMotion === 'slide-right' ? boxSize : 0
   const endSeconds = block.startSeconds + block.durationSeconds
@@ -303,7 +309,7 @@ function motionOffsetExpression(block: NormalizedVideoBlock, axis: 'x' | 'y', bo
   return expression
 }
 
-function motionScaleExpression(block: NormalizedVideoBlock, enterMotion: EditingVideoBlockMotion, exitMotion: EditingVideoBlockMotion, durationSeconds: number): string | null {
+function motionScaleExpression(block: Pick<NormalizedVideoBlock, 'startSeconds' | 'durationSeconds'>, enterMotion: EditingGraphicMotion, exitMotion: EditingGraphicMotion, durationSeconds: number): string | null {
   if (enterMotion !== 'scale' && exitMotion !== 'scale') return null
   const endSeconds = block.startSeconds + block.durationSeconds
   const enterScale = enterMotion === 'scale' ? `0.82+0.18*${motionProgressExpression(block.startSeconds, durationSeconds)}` : '1'
@@ -325,7 +331,30 @@ export function buildTimelineOverlayFilter(graphics: readonly EditingGraphic[], 
     const output = stageOutput()
     for (const [index, graphic] of available.entries()) {
       const next = index === available.length - 1 ? output : `[graphic-${index}]`
-      filters.push(`${previous}[${index + 1}:v]overlay=x=0:y=0:enable='between(t,${graphic.startSeconds},${graphic.startSeconds + graphic.durationSeconds})':eof_action=pass${next}`)
+      const asset = assetById.get(graphic.id)!
+      const motion = getEditingGraphicMotion(graphic)
+      const hasGeometry = asset.x !== undefined && asset.y !== undefined && asset.width !== undefined && asset.height !== undefined
+      const isStaticFullFrame = !hasGeometry && motion.enterMotion === 'none' && motion.exitMotion === 'none'
+      if (isStaticFullFrame) {
+        filters.push(`${previous}[${index + 1}:v]overlay=x=0:y=0:enable='between(t,${graphic.startSeconds},${graphic.startSeconds + graphic.durationSeconds})':eof_action=pass${next}`)
+        previous = next
+        continue
+      }
+      const boxWidth = Math.max(2, Math.round(asset.width ?? outputWidth))
+      const boxHeight = Math.max(2, Math.round(asset.height ?? outputHeight))
+      const baseX = Math.round(asset.x ?? 0)
+      const baseY = Math.round(asset.y ?? 0)
+      const scaleExpression = motionScaleExpression(graphic, motion.enterMotion, motion.exitMotion, motion.durationSeconds)
+      const scaleFilter = scaleExpression ? `,scale=w='trunc(iw*(${escapeFilterExpression(scaleExpression)})/2)*2':h='trunc(ih*(${escapeFilterExpression(scaleExpression)})/2)*2':eval=frame` : ''
+      const alphaFilter = motionFadeFilter(graphic, motion.enterMotion, motion.exitMotion, motion.durationSeconds)
+      const xExpression = motionOffsetExpression(graphic, 'x', boxWidth, baseX, motion.enterMotion, motion.exitMotion, motion.durationSeconds)
+      const yExpression = motionOffsetExpression(graphic, 'y', boxHeight, baseY, motion.enterMotion, motion.exitMotion, motion.durationSeconds)
+      const centeredXExpression = scaleExpression ? `${xExpression}+(${boxWidth}-overlay_w)/2` : xExpression
+      const centeredYExpression = scaleExpression ? `${yExpression}+(${boxHeight}-overlay_h)/2` : yExpression
+      const xPosition = scaleExpression || !/^-?\d+(\.\d+)?$/.test(centeredXExpression) ? `'${escapeFilterExpression(centeredXExpression)}'` : centeredXExpression
+      const yPosition = scaleExpression || !/^-?\d+(\.\d+)?$/.test(centeredYExpression) ? `'${escapeFilterExpression(centeredYExpression)}'` : centeredYExpression
+      const sourceLabel = `[graphic-source-${index}]`
+      filters.push(`[${index + 1}:v]setpts=PTS+${graphic.startSeconds}/TB${scaleFilter}${alphaFilter}${sourceLabel};${previous}${sourceLabel}overlay=x=${xPosition}:y=${yPosition}:enable='between(t,${graphic.startSeconds},${graphic.startSeconds + graphic.durationSeconds + (motion.exitMotion === 'none' ? 0 : motion.durationSeconds)})':eof_action=pass:repeatlast=0${next}`)
       previous = next
     }
     stageIndex += 1

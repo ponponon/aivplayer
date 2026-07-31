@@ -130,4 +130,15 @@ describe('clip export helpers', () => {
       [{ graphicId: 'graphic-a', imagePath: '/tmp/graphic-a.png' }]
     )).toBe("[0:v][1:v]overlay=x=0:y=0:enable='between(t,0.5,2)':eof_action=pass[vout]")
   })
+
+  it('exports cropped graphic cards with the same enter and exit motion timing as preview', () => {
+    const filter = buildTimelineGraphicOverlayFilter(
+      [{ id: 'graphic-motion', startSeconds: 0.5, durationSeconds: 1.5, text: 'Title', position: 'center', style: 'title', enterMotion: 'slide-left', exitMotion: 'fade', motionDurationSeconds: 0.5 }],
+      [{ graphicId: 'graphic-motion', imagePath: '/tmp/graphic-motion.png', x: 720, y: 200, width: 480, height: 120 }]
+    )
+    expect(filter).toContain('[1:v]setpts=PTS+0.5/TB')
+    expect(filter).toContain('fade=t=out:st=1.5:d=0.5:alpha=1')
+    expect(filter).toContain("overlay=x='720+(-480)*(1-if(lt(t\\,0.5)")
+    expect(filter).toContain("enable='between(t,0.5,2.5)'")
+  })
 })

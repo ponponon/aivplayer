@@ -46,6 +46,16 @@ async function loadGraphicDocument(window: BrowserWindow, graphic: EditingGraphi
   await window.webContents.executeJavaScript('document.fonts && document.fonts.ready ? document.fonts.ready.then(() => true) : true')
 }
 
+async function getGraphicBounds(window: BrowserWindow, width: number, height: number): Promise<{ x: number; y: number; width: number; height: number }> {
+  const bounds = await window.webContents.executeJavaScript('(() => { const rect = document.querySelector(".card")?.getBoundingClientRect(); return rect ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height } : null })()') as { x: number; y: number; width: number; height: number } | null
+  if (!bounds || !Number.isFinite(bounds.x) || !Number.isFinite(bounds.y) || !Number.isFinite(bounds.width) || !Number.isFinite(bounds.height) || bounds.width < 1 || bounds.height < 1) return { x: 0, y: 0, width, height }
+  const left = Math.max(0, Math.floor(bounds.x))
+  const top = Math.max(0, Math.floor(bounds.y))
+  const right = Math.min(width, Math.ceil(bounds.x + bounds.width))
+  const bottom = Math.min(height, Math.ceil(bounds.y + bounds.height))
+  return right > left && bottom > top ? { x: left, y: top, width: right - left, height: bottom - top } : { x: 0, y: 0, width, height }
+}
+
 export async function renderTimelineGraphicAssets(request: TimelineGraphicRasterizeRequest): Promise<readonly TimelineGraphicRasterAsset[]> {
   const window = new BrowserWindow({
     show: false,
@@ -61,12 +71,14 @@ export async function renderTimelineGraphicAssets(request: TimelineGraphicRaster
     const assets: TimelineGraphicRasterAsset[] = []
     for (const [index, graphic] of request.graphics.entries()) {
       await loadGraphicDocument(window, graphic, request.frameId, request.width, request.height)
+      const bounds = await getGraphicBounds(window, request.width, request.height)
       let image = await window.webContents.capturePage({ x: 0, y: 0, width: request.width, height: request.height })
       const size = image.getSize()
       if (size.width !== request.width || size.height !== request.height) image = image.resize({ width: request.width, height: request.height })
+      image = image.crop(bounds)
       const imagePath = join(request.outputDirectory, `graphic-${String(index).padStart(4, '0')}.png`)
       await writeFile(imagePath, image.toPNG())
-      assets.push({ graphicId: graphic.id, imagePath })
+      assets.push({ graphicId: graphic.id, imagePath, x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height })
     }
     return assets
   } finally {
