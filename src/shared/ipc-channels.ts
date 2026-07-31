@@ -15,6 +15,7 @@ export const IPC_CHANNELS = {
   GET_APP_VERSION: 'app:get-version',
   APP_GET_SETTINGS: 'app:get-settings',
   APP_SET_SETTINGS: 'app:set-settings',
+  APP_RELAUNCH: 'app:relaunch',
   APP_MENU_OPEN_SETTINGS: 'app-menu:open-settings',
   ASR_HEALTH_CHECK: 'asr:health-check',
   ASR_CACHE_STATS: 'asr:cache-stats',

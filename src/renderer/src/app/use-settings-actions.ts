@@ -4,6 +4,7 @@ import type { SubtitleTargetLanguageId } from '../../../shared/app-settings'
 import {
   createAppSettingsSectionPatcher,
   createDefaultAppSettings,
+  updateAppSettingsSection,
   type AppSettingsSectionPatcher
 } from '../../../shared/app-settings'
 import type { AsrTranslationServiceTestResult } from '../../../shared/media-types'
@@ -44,6 +45,12 @@ export function useSettingsActions(model: AppModel, derived: AppDerived) {
       playbackRate: defaults.playback.lastPlaybackRate
     }))
     void window.aiv.setAppSettings(defaults).then((nextSettings) => setAppSettings(nextSettings)).catch(() => undefined)
+  }
+  const restartWithGpuAcceleration = async (gpuAcceleration: boolean): Promise<void> => {
+    const nextSettings = updateAppSettingsSection(appSettings, 'playback', { gpuAcceleration })
+    setAppSettings(nextSettings)
+    await window.aiv.setAppSettings(nextSettings)
+    await window.aiv.restartApp()
   }
   const pickDefaultFolder = async (): Promise<string | null> => window.aiv.openMediaDirectory()
   const pickCaptureFolder = async (): Promise<string | null> => window.aiv.openFolderPicker({
@@ -108,6 +115,7 @@ export function useSettingsActions(model: AppModel, derived: AppDerived) {
     changeBatchTargetLanguage,
     resetSubtitleDisplaySettings,
     resetAppSettings,
+    restartWithGpuAcceleration,
     pickDefaultFolder,
     pickCaptureFolder,
     autoDetectWhisperBinary,

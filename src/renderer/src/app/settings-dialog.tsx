@@ -1,4 +1,4 @@
-import { AlertTriangle, Sparkles, X } from 'lucide-react'
+import { Sparkles, X } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactElement } from 'react'
 import type {
   AppSettings,
@@ -9,7 +9,9 @@ import type { AsrRuntimeSetupResult, AsrRuntimeStatus, AsrTranslationServiceTest
 import type { LocaleCopy } from '../../../shared/i18n'
 import { useModalFocusTrap } from './use-modal-focus-trap'
 import { useSettingsCacheManagement } from './use-settings-cache-management'
-import { getSettingsTabs, createSettingsSectionProps, type SettingsTab } from './settings-dialog-model'
+import { getSettingsTabs, createSettingsSectionProps } from './settings-dialog-model'
+import { GpuRestartDialog } from './gpu-restart-dialog'
+import { SettingsTabs } from './settings-tabs'
 import {
   CaptureSettingsSection,
   GeneralSettingsSection,
@@ -39,6 +41,7 @@ export type SettingsDialogProps = {
   onSelectWhisperBinary: () => void
   onTestTranslationService: () => void
   onResetDefaults: () => void
+  onRestartWithGpuAcceleration: (enabled: boolean) => Promise<void>
 }
 
 const sectionComponents: Record<AppSettingsSectionId, (props: SettingsSectionProps) => ReactElement> = {
@@ -64,7 +67,8 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
     onPickDefaultFolder,
     onPickCaptureFolder,
     onTestTranslationService,
-    onResetDefaults
+    onResetDefaults,
+    onRestartWithGpuAcceleration
   } = props
   const [activeSectionId, setActiveSectionId] = useState<AppSettingsSectionId>(initialSectionId)
   const activeSectionIdRef = useRef<AppSettingsSectionId>(initialSectionId)
@@ -72,6 +76,7 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
   const cacheManagement = useSettingsCacheManagement(copy)
   const [showRestartDialog, setShowRestartDialog] = useState(false)
   const [pendingGpuValue, setPendingGpuValue] = useState<boolean | null>(null)
+  const [isRestartingGpu, setIsRestartingGpu] = useState(false)
 
   useEffect(() => {
     activeSectionIdRef.current = activeSectionId
@@ -99,13 +104,14 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
     setShowRestartDialog(true)
   }
 
-  const confirmGpuChange = (): void => {
-    if (pendingGpuValue !== null) {
-      patchSettingsSection('playback', { gpuAcceleration: pendingGpuValue })
+  const confirmGpuChange = async (): Promise<void> => {
+    if (pendingGpuValue === null || isRestartingGpu) return
+    setIsRestartingGpu(true)
+    try {
+      await onRestartWithGpuAcceleration(pendingGpuValue)
+    } catch {
+      setIsRestartingGpu(false)
     }
-    setShowRestartDialog(false)
-    setPendingGpuValue(null)
-    window.location.reload()
   }
 
   const cancelGpuChange = (): void => {
@@ -176,65 +182,7 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
         </div>
       </section>
 
-      {showRestartDialog && (
-        <div className="modal-backdrop" role="presentation" style={{ zIndex: 1000 }}>
-          <section className="settings-dialog" style={{ maxWidth: 400 }} role="alertdialog" aria-modal="true">
-            <div className="settings-dialog-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <AlertTriangle size={20} style={{ color: '#f59e0b' }} />
-                <h2>{copy.settingsDialog.gpuRestartTitle}</h2>
-              </div>
-            </div>
-            <div style={{ padding: '16px 24px' }}>
-              <p>{copy.settingsDialog.gpuRestartMessage}</p>
-            </div>
-            <div className="settings-footer" style={{ justifyContent: 'flex-end' }}>
-              <div className="settings-footer-actions">
-                <button className="settings-secondary-button" type="button" onClick={cancelGpuChange}>
-                  {copy.settingsDialog.gpuRestartCancel}
-                </button>
-                <button className="asr-action-button" type="button" onClick={confirmGpuChange}>
-                  {copy.settingsDialog.gpuRestartConfirm}
-                </button>
-              </div>
-            </div>
-          </section>
-        </div>
-      )}
+      {showRestartDialog ? <GpuRestartDialog copy={copy} isRestarting={isRestartingGpu} onCancel={cancelGpuChange} onConfirm={() => void confirmGpuChange()} /> : null}
     </div>
-  )
-}
-
-type SettingsTabsProps = {
-  copy: LocaleCopy
-  tabs: SettingsTab[]
-  activeSectionId: AppSettingsSectionId
-  onSelect: (sectionId: AppSettingsSectionId) => void
-}
-
-function SettingsTabs({ copy, tabs, activeSectionId, onSelect }: SettingsTabsProps): ReactElement {
-  return (
-    <nav className="settings-switcher" role="tablist" aria-label={copy.settingsDialog.title}>
-      {tabs.map(({ id, label, ariaLabel, icon: Icon }) => {
-        const isActive = activeSectionId === id
-        return (
-          <button
-            className={`settings-tab ${isActive ? 'active' : ''}`}
-            id={`settings-tab-${id}`}
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={isActive}
-            aria-controls={`settings-section-${id}`}
-            aria-label={ariaLabel}
-            data-settings-tab={id}
-            onClick={() => onSelect(id)}
-          >
-            <Icon size={14} />
-            <span>{label}</span>
-          </button>
-        )
-      })}
-    </nav>
   )
 }

@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, isAbsolute, join } from 'node:path'
 import {
@@ -521,6 +521,23 @@ export async function readAppSettings(
     return sanitizeAppSettings(parsed as unknown, captureDefaultDirectoryPath)
   } catch {
     return sanitizeAppSettings(null, captureDefaultDirectoryPath)
+  }
+}
+
+/**
+ * Reads the GPU preference without waiting for Electron's async settings path.
+ * The main process uses this before `app.ready` because Chromium command-line
+ * switches must be applied before that lifecycle event.
+ */
+export function readGpuAccelerationPreferenceSync(userDataPath: string): boolean {
+  try {
+    const content = readFileSync(getAppSettingsPath(userDataPath), 'utf-8')
+    const parsed = JSON.parse(content) as { playback?: { gpuAcceleration?: unknown } }
+    return typeof parsed.playback?.gpuAcceleration === 'boolean'
+      ? parsed.playback.gpuAcceleration
+      : createDefaultAppSettings().playback.gpuAcceleration
+  } catch {
+    return createDefaultAppSettings().playback.gpuAcceleration
   }
 }
 

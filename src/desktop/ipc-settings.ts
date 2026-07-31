@@ -99,6 +99,10 @@ export function registerSettingsIpc(): void {
   })
   ipcMain.handle(IPC_CHANNELS.APP_GET_SETTINGS, async () => { await loadAppSettings(); return desktopState.currentAppSettings })
   ipcMain.handle(IPC_CHANNELS.APP_SET_SETTINGS, (_event, settings) => saveAppSettings(settings))
+  ipcMain.handle(IPC_CHANNELS.APP_RELAUNCH, () => {
+    app.relaunch()
+    app.exit(0)
+  })
   ipcMain.handle(IPC_CHANNELS.NATIVE_PLAYER_STATUS, () => getNativePlayerStatus(getCurrentLocale))
   ipcMain.handle(IPC_CHANNELS.STOP_NATIVE_PLAYER, () => stopNativePlayer(getCurrentLocale))
 }

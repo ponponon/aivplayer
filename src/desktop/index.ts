@@ -20,49 +20,33 @@ import { registerVisionIpc } from './ipc-vision'
 import { registerDramaIpc } from './ipc-drama'
 import { applyMacDockIcon, createWindow, focusMainWindow, queueIncomingMediaPaths } from './window-lifecycle'
 import { runCli } from '../cli/cli-main'
-import { readAppSettings } from '../core/app-settings'
+import { readGpuAccelerationPreferenceSync } from '../core/app-settings'
+import { GPU_DISABLE_SWITCHES, shouldDisableGpu } from '../core/gpu-settings'
 
 registerMediaProtocolScheme()
 app.setName(APP_NAME)
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 
 // GPU 兼容性处理：
-// Linux + NVIDIA 显卡存在 Chromium GPU 进程的已知兼容性问题
-// 参考: https://github.com/electron/electron/issues/50462
-const isLinux = process.platform === 'linux'
+// GPU command-line switches must be applied before app.ready. Do not wait for
+// the async app-settings loader here, otherwise Chromium may initialize first.
 const userForcesDisableGPU =
   process.env.AIVPLAYER_DISABLE_GPU === '1' ||
   process.env.ELECTRON_DISABLE_HARDWARE_ACCELERATION === '1'
 
-// 在应用启动时读取 GPU 加速设置
-// 注意：app.commandLine.appendSwitch 必须在 app.whenReady() 之前调用
-async function applyGpuSettings(): Promise<void> {
-  if (userForcesDisableGPU) {
-    app.commandLine.appendSwitch('disable-gpu')
-    app.commandLine.appendSwitch('disable-gpu-compositing')
-    return
-  }
-
-  if (!isLinux) {
-    return
-  }
-
+function applyGpuSettingsBeforeReady(): void {
+  let gpuAcceleration = true
   try {
-    const userDataPath = app.getPath('userData')
-    const settings = await readAppSettings(userDataPath, app.getPath('videos'))
-    
-    if (settings.playback.gpuAcceleration) {
-      app.commandLine.appendSwitch('no-zygote')
-    } else {
-      app.commandLine.appendSwitch('disable-gpu')
-      app.commandLine.appendSwitch('disable-gpu-compositing')
-    }
+    gpuAcceleration = readGpuAccelerationPreferenceSync(app.getPath('userData'))
   } catch {
-    app.commandLine.appendSwitch('no-zygote')
+    // Keep the safe default if Electron cannot resolve the user-data path yet.
   }
+
+  if (!shouldDisableGpu({ forceDisable: userForcesDisableGPU, gpuAcceleration })) return
+  for (const switchName of GPU_DISABLE_SWITCHES) app.commandLine.appendSwitch(switchName)
 }
 
-void applyGpuSettings()
+applyGpuSettingsBeforeReady()
 
 const cliArgumentIndex = process.argv.indexOf('--cli')
 const isCliInvocation = cliArgumentIndex !== -1

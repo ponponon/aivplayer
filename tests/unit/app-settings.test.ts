@@ -7,7 +7,7 @@ import {
   createDefaultAppSettings,
   updateAppSettingsSection
 } from '../../src/shared/app-settings'
-import { readAppSettings, writeAppSettings } from '../../src/core/app-settings'
+import { readAppSettings, readGpuAccelerationPreferenceSync, writeAppSettings } from '../../src/core/app-settings'
 
 describe('app settings', () => {
   let tempDirectory: string
@@ -22,6 +22,18 @@ describe('app settings', () => {
 
   it('returns defaults when the settings file does not exist', async () => {
     await expect(readAppSettings(tempDirectory)).resolves.toEqual(createDefaultAppSettings())
+  })
+
+  it('reads the GPU preference synchronously for pre-ready startup', async () => {
+    expect(readGpuAccelerationPreferenceSync(tempDirectory)).toBe(true)
+
+    const settings = createDefaultAppSettings()
+    settings.playback.gpuAcceleration = false
+    await writeAppSettings(tempDirectory, settings)
+    expect(readGpuAccelerationPreferenceSync(tempDirectory)).toBe(false)
+
+    await writeFile(join(tempDirectory, 'app-settings.json'), '{broken json')
+    expect(readGpuAccelerationPreferenceSync(tempDirectory)).toBe(true)
   })
 
   it('persists and reloads app settings', async () => {
