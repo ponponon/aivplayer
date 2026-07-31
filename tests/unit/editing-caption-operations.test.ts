@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { moveEditingCaption, remapEditingCaptionsForReplacement, resizeEditingCaption } from '../../src/core/editing/caption-operations'
+import { moveEditingCaption, removeEditingCaptionInterval, remapEditingCaptionsForReplacement, resizeEditingCaption } from '../../src/core/editing/caption-operations'
 import { createEditingCaptionPathCandidates } from '../../src/renderer/src/app/editing-caption-loader'
 import type { EditingCaption } from '../../src/shared/editing-types'
 
@@ -52,5 +52,19 @@ describe('editing caption operations', () => {
       { id: 'crossing', startSeconds: 5, durationSeconds: 3, sourceId: 'new-source', sourceStartSeconds: 0, sourceEndSeconds: 3, kind: 'source', text: 'crossing', words: [{ startSeconds: 0, endSeconds: 0.5, text: 'early' }, { startSeconds: 1, endSeconds: 3, text: 'late' }] },
       captions[1]
     ])
+  })
+
+  it('compresses word timings when an edited interval is removed', () => {
+    expect(removeEditingCaptionInterval([{
+      ...caption,
+      durationSeconds: 4,
+      text: 'one two three',
+      words: [{ startSeconds: 0, endSeconds: 1, text: 'one' }, { startSeconds: 1, endSeconds: 2, text: ' two' }, { startSeconds: 2, endSeconds: 4, text: ' three' }]
+    }], 3, 4)).toEqual([{
+      ...caption,
+      durationSeconds: 3,
+      text: 'one two three',
+      words: [{ startSeconds: 0, endSeconds: 1, text: 'one' }, { startSeconds: 1, endSeconds: 3, text: ' three' }]
+    }])
   })
 })

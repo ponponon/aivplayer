@@ -1,5 +1,6 @@
 import type { EditingCaption, EditingProject, EditingSource } from '../../../shared/editing-types'
 import { editedDurationSeconds, editedTimeToSource, removeEditedInterval, sourceRangeToEditedRanges, sourceTimeToEdited } from '../../../core/editing/timeline-math'
+import { removeEditingCaptionInterval } from '../../../core/editing/caption-operations'
 import type { EditingGraphic, EditingVideoBlock } from '../../../shared/editing-types'
 import { createEditingProject } from '../../../core/editing/project'
 import type { AppModel } from './app-types'
@@ -70,7 +71,7 @@ export function withUpdatedTimelineRanges(project: EditingProject, clips: Editin
   let graphics = project.graphics
   let videoBlocks = project.videoBlocks
   for (const removedRange of [...removedRanges].sort((left, right) => right.startSeconds - left.startSeconds)) {
-    captions = removeEditedInterval(captions, removedRange.startSeconds, removedRange.endSeconds)
+    captions = removeEditingCaptionInterval(captions, removedRange.startSeconds, removedRange.endSeconds)
     if (graphics) graphics = removeEditedInterval<EditingGraphic>(graphics, removedRange.startSeconds, removedRange.endSeconds, 0.2)
     if (videoBlocks) videoBlocks = removeEditedInterval<EditingVideoBlock>(videoBlocks, removedRange.startSeconds, removedRange.endSeconds, 0.2)
   }

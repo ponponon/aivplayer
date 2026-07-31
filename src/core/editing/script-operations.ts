@@ -85,8 +85,8 @@ export function mergeEditingScriptSegments(
       sourceId: caption.sourceId!,
       sourceStartSeconds: caption.sourceStartSeconds!,
       sourceEndSeconds: caption.sourceEndSeconds!,
-      text: caption.text,
-      ...(caption.words && caption.words.length > 0 ? { words: caption.words } : old?.words && old.words.length > 0 ? { words: old.words } : {}),
+      text: old?.text ?? caption.text,
+      ...(old?.words && old.words.length > 0 ? { words: old.words } : caption.words && caption.words.length > 0 ? { words: caption.words } : {}),
       ...(translation?.text || old?.translationText ? { translationText: translation?.text ?? old?.translationText } : {}),
       ...(old?.deleted ? { deleted: true } : {})
     })

@@ -1,5 +1,38 @@
 import type { EditingCaption, EditingVideoClip } from '../../shared/editing-types'
 
+/** Removes an edited interval and keeps source caption word timings aligned with the compressed timeline. */
+export function removeEditingCaptionInterval(captions: readonly EditingCaption[], startSeconds: number, endSeconds: number, minimumDurationSeconds = 0.1): EditingCaption[] {
+  const start = Math.min(Number.isFinite(startSeconds) ? startSeconds : 0, Number.isFinite(endSeconds) ? endSeconds : 0)
+  const end = Math.max(Number.isFinite(startSeconds) ? startSeconds : 0, Number.isFinite(endSeconds) ? endSeconds : 0)
+  const gapSeconds = end - start
+  if (gapSeconds <= 0.001) return [...captions]
+
+  return captions.flatMap((caption) => {
+    const itemStart = caption.startSeconds
+    const itemEnd = itemStart + caption.durationSeconds
+    if (itemEnd <= start) return [caption]
+    if (itemStart >= end) return [{ ...caption, startSeconds: itemStart - gapSeconds }]
+
+    const keptBefore = Math.max(0, start - itemStart)
+    const keptAfter = Math.max(0, itemEnd - end)
+    const durationSeconds = keptBefore + keptAfter
+    if (durationSeconds < minimumDurationSeconds) return []
+    const nextStartSeconds = Math.min(itemStart, start)
+    if (!caption.words || caption.words.length === 0) return [{ ...caption, startSeconds: nextStartSeconds, durationSeconds }]
+
+    const words = caption.words.flatMap((word) => {
+      const wordStart = itemStart + word.startSeconds
+      const wordEnd = itemStart + word.endSeconds
+      const pieces: Array<{ startSeconds: number; endSeconds: number }> = []
+      if (wordStart < start && Math.min(wordEnd, start) - wordStart > 0.001) pieces.push({ startSeconds: wordStart, endSeconds: Math.min(wordEnd, start) })
+      if (wordEnd > end && wordEnd - Math.max(wordStart, end) > 0.001) pieces.push({ startSeconds: Math.max(wordStart, end) - gapSeconds, endSeconds: wordEnd - gapSeconds })
+      const piece = pieces.sort((left, right) => right.endSeconds - right.startSeconds - (left.endSeconds - left.startSeconds))[0]
+      return piece && piece.endSeconds - piece.startSeconds > 0.001 ? [{ ...word, startSeconds: piece.startSeconds - nextStartSeconds, endSeconds: piece.endSeconds - nextStartSeconds }] : []
+    })
+    return [{ ...caption, startSeconds: nextStartSeconds, durationSeconds, ...(words.length > 0 ? { words } : { words: undefined }) }]
+  })
+}
+
 type EditingCaptionReplacementTarget = {
   clip: Pick<EditingVideoClip, 'sourceId'>
   editedStartSeconds: number

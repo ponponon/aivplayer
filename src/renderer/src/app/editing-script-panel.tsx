@@ -1,6 +1,6 @@
 import { Check, FileText, Pencil, RotateCcw, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
-import type { EditingScriptSegment } from '../../../shared/editing-types'
+import type { EditingCaptionWord, EditingScriptSegment } from '../../../shared/editing-types'
 import { formatTime } from '../lib/time'
 
 type EditingScriptPanelProps = {
@@ -21,6 +21,7 @@ type EditingScriptPanelProps = {
   onUpdate: (segmentId: string, text: string) => void
   onDelete: (segmentId: string) => void
   onRestore: (segmentId: string) => void
+  onDeleteWord: (segmentId: string, word: EditingCaptionWord) => void
 }
 
 export function EditingScriptPanel({
@@ -40,7 +41,8 @@ export function EditingScriptPanel({
   onSelect,
   onUpdate,
   onDelete,
-  onRestore
+  onRestore,
+  onDeleteWord
 }: EditingScriptPanelProps): React.ReactElement {
   const [editingSegmentId, setEditingSegmentId] = useState<string | null>(null)
   const [draftText, setDraftText] = useState('')
@@ -74,11 +76,11 @@ export function EditingScriptPanel({
             <button className="editing-script-action" type="button" onClick={cancelEdit} title={cancelLabel} aria-label={cancelLabel} data-testid={`editing-script-cancel-${segment.id}`}><X size={12} /></button>
           </div>
         </div> : <>
-          <button className="editing-script-row-main" type="button" onClick={() => onSelect(segment.id)} onDoubleClick={() => beginEdit(segment)} disabled={segment.deleted} aria-label={`${formatTime(segment.sourceStartSeconds)} ${segment.text}`}>
+          <div className="editing-script-row-main" role="button" tabIndex={segment.deleted ? -1 : 0} onClick={() => onSelect(segment.id)} onDoubleClick={() => beginEdit(segment)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelect(segment.id) } }} aria-disabled={segment.deleted} aria-label={`${formatTime(segment.sourceStartSeconds)} ${segment.text}`}>
             <span className="editing-script-time">{formatTime(segment.sourceStartSeconds)}–{formatTime(segment.sourceEndSeconds)}</span>
-            <span className="editing-script-text">{segment.text}</span>
+            <span className="editing-script-text">{segment.words && segment.words.length > 0 ? segment.words.map((word, index) => <button className="editing-script-word" key={`${word.startSeconds}-${word.endSeconds}-${index}`} type="button" title={deleteLabel} aria-label={`${deleteLabel}: ${word.text.trim()}`} onClick={(event) => { event.stopPropagation(); onSelect(segment.id); onDeleteWord(segment.id, word) }} data-testid={`editing-script-word-${segment.id}-${index}`}>{word.text}</button>) : segment.text}</span>
             {segment.deleted ? <span className="editing-script-deleted">{deletedLabel}</span> : null}
-          </button>
+          </div>
           {!segment.deleted ? <button className="editing-script-action" type="button" onClick={() => beginEdit(segment)} title={editLabel} aria-label={editLabel} data-testid={`editing-script-edit-${segment.id}`}><Pencil size={12} /></button> : null}
           {segment.deleted ? <button className="editing-script-action" type="button" onClick={() => onRestore(segment.id)} title={restoreLabel} aria-label={restoreLabel}><RotateCcw size={12} /></button> : <button className="editing-script-action is-danger" type="button" onClick={() => onDelete(segment.id)} title={deleteLabel} aria-label={deleteLabel}><Trash2 size={12} /></button>}
         </>}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getEditingScriptWordSourceRange, isEditingScriptFillerWord, removeEditingScriptWord, updateEditingScriptSegmentText, updateEditingSourceCaptionText } from '../../src/core/editing/script-operations'
+import { getEditingScriptWordSourceRange, isEditingScriptFillerWord, mergeEditingScriptSegments, removeEditingScriptWord, updateEditingScriptSegmentText, updateEditingSourceCaptionText } from '../../src/core/editing/script-operations'
 
 const segment = { id: 'segment-1', sourceId: 'source-1', sourceStartSeconds: 1, sourceEndSeconds: 2, text: 'old text', translationText: '旧文本' }
 
@@ -46,5 +46,25 @@ describe('editing script text operations', () => {
     expect(isEditingScriptFillerWord({ text: '嗯' })).toBe(true)
     expect(isEditingScriptFillerWord({ text: 'um,' })).toBe(true)
     expect(isEditingScriptFillerWord({ text: '那个' })).toBe(false)
+  })
+
+  it('does not let a later sidecar refresh overwrite edited text or deleted words', () => {
+    const existing = [{
+      ...segment,
+      text: '保留后的文本',
+      words: [{ startSeconds: 0, endSeconds: 0.5, text: '保留后的文本' }]
+    }]
+    const captions = [{
+      id: segment.id,
+      sourceId: segment.sourceId,
+      sourceStartSeconds: segment.sourceStartSeconds,
+      sourceEndSeconds: segment.sourceEndSeconds,
+      startSeconds: 0,
+      durationSeconds: 1,
+      kind: 'source' as const,
+      text: 'sidecar 原文',
+      words: [{ startSeconds: 0, endSeconds: 0.25, text: 'sidecar' }, { startSeconds: 0.25, endSeconds: 0.5, text: ' 原文' }]
+    }]
+    expect(mergeEditingScriptSegments(existing, captions)).toEqual(existing)
   })
 })

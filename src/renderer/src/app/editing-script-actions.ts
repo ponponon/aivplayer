@@ -1,7 +1,7 @@
 import { sourceRangeToEditedRanges } from '../../../core/editing/timeline-math'
 import { removeSourceVideoRanges, restoreSourceVideoRange } from '../../../core/editing/timeline-operations'
-import { scriptSegmentCaption, setEditingScriptSegmentDeleted, updateEditingScriptSegmentText, updateEditingSourceCaptionText } from '../../../core/editing/script-operations'
-import type { EditingProject, EditingScriptSegment, EditingVideoClip } from '../../../shared/editing-types'
+import { getEditingScriptWordSourceRange, removeEditingScriptWord, scriptSegmentCaption, setEditingScriptSegmentDeleted, updateEditingScriptSegmentText, updateEditingSourceCaptionText } from '../../../core/editing/script-operations'
+import type { EditingCaptionWord, EditingProject, EditingScriptSegment, EditingVideoClip } from '../../../shared/editing-types'
 import type { AppModel } from './app-types'
 import { saveEditingProject } from './editing-project-storage'
 import { seekEditingTime, withUpdatedTimelineRanges } from './editing-action-helpers'
@@ -134,5 +134,35 @@ export function createEditingScriptActions(model: AppModel) {
     saveEditingProject(nextProject)
   }
 
-  return { selectEditingScriptSegment, deleteEditingScriptSegment, restoreEditingScriptSegment, updateEditingScriptText }
+  const deleteEditingScriptWord = (segmentId: string, word: EditingCaptionWord): void => {
+    const project = model.editingProject
+    const segment = project?.scriptSegments?.find((item) => item.id === segmentId)
+    if (!project || !segment || segment.deleted || !segment.words || segment.words.length <= 1) {
+      if (segment?.words?.length === 1) deleteEditingScriptSegment(segmentId)
+      return
+    }
+    const wordRange = getEditingScriptWordSourceRange(segment, word)
+    if (!wordRange) return
+    const result = removeSourceVideoRanges(
+      project.videoClips,
+      segment.sourceId,
+      [{ startSeconds: Math.max(segment.sourceStartSeconds, wordRange.startSeconds - 0.02), endSeconds: Math.min(segment.sourceEndSeconds, wordRange.endSeconds + 0.02) }],
+      createRightClip
+    )
+    if (result.removedRanges.length === 0) return
+    const nextSegment = removeEditingScriptWord(segment, word)
+    const timelineProject = withUpdatedTimelineRanges(project, result.clips, result.removedRanges)
+    const nextProject = {
+      ...timelineProject,
+      scriptSegments: scriptSegmentsOf(project).map((item) => item.id === segmentId ? nextSegment : item)
+    }
+    model.setEditingPast((past) => [...past, project])
+    model.setEditingFuture([])
+    model.setEditingProject(nextProject)
+    model.setEditingSelectedCaptionId(segmentId)
+    saveEditingProject(nextProject)
+    seekEditingTime(model, result.removedRanges[0]?.startSeconds ?? model.editingCurrentTime, nextProject)
+  }
+
+  return { selectEditingScriptSegment, deleteEditingScriptSegment, restoreEditingScriptSegment, updateEditingScriptText, deleteEditingScriptWord }
 }

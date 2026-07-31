@@ -99,6 +99,20 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.editing-script-word {
+  display: inline;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+}
+.editing-script-word:hover {
+  color: var(--accent-ink);
+  background: rgba(var(--accent-rgb), 0.2);
+  border-radius: 2px;
+}
 .editing-script-row.is-deleted .editing-script-text {
   color: var(--text-muted);
   text-decoration: line-through;
