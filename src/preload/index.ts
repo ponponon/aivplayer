@@ -74,7 +74,10 @@ import type {
   VisionDirectoryScanResult,
   VisionRuntimeStatus,
   VisionSearchRequest,
-  VisionSearchResult
+  VisionSearchResult,
+  PersonMatteModelDownloadProgress,
+  PersonMatteModelDownloadResult,
+  PersonMatteModelStatus
 } from '../shared/media-types'
 import type { LivePhotoExportRequest, LivePhotoExportResult, LivePhotoProbeResult } from '../shared/live-photo-types'
 import type { EditingProjectFileOpenResult, EditingProjectFileSaveRequest, EditingProjectFileSaveResult } from '../shared/editing-types'
@@ -176,6 +179,8 @@ const api = {
   getNativePlayerStatus: (): Promise<NativePlayerStatus> => ipcRenderer.invoke(IPC_CHANNELS.NATIVE_PLAYER_STATUS),
   getInitialMediaFiles: (): Promise<MediaFile[]> => ipcRenderer.invoke(IPC_CHANNELS.GET_INITIAL_MEDIA_FILES),
   getVisionStatus: (): Promise<VisionRuntimeStatus> => ipcRenderer.invoke(IPC_CHANNELS.VISION_STATUS),
+  getPersonMatteModelStatus: (): Promise<PersonMatteModelStatus> => ipcRenderer.invoke(IPC_CHANNELS.PERSON_MATTE_STATUS),
+  downloadPersonMatteModel: (): Promise<PersonMatteModelDownloadResult> => ipcRenderer.invoke(IPC_CHANNELS.PERSON_MATTE_DOWNLOAD),
   startVisionIndex: (request: VisionIndexRequest): Promise<VisionIndexProgress> => ipcRenderer.invoke(IPC_CHANNELS.VISION_INDEX_START, request),
   enqueueVisionIndex: (request: VisionIndexRequest): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.VISION_INDEX_AUTO_START, request),
   scanVisionDirectory: (request: VisionDirectoryScanRequest): Promise<VisionDirectoryScanResult> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SCAN_DIRECTORY_START, request),
@@ -228,6 +233,11 @@ const api = {
     const listener = (_event: Electron.IpcRendererEvent, progress: VisionDirectoryScanProgress): void => callback(progress)
     ipcRenderer.on(IPC_CHANNELS.VISION_SCAN_DIRECTORY_PROGRESS, listener)
     return () => ipcRenderer.removeListener(IPC_CHANNELS.VISION_SCAN_DIRECTORY_PROGRESS, listener)
+  },
+  onPersonMatteModelDownloadProgress: (callback: (progress: PersonMatteModelDownloadProgress) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, progress: PersonMatteModelDownloadProgress): void => callback(progress)
+    ipcRenderer.on(IPC_CHANNELS.PERSON_MATTE_DOWNLOAD_PROGRESS, listener)
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.PERSON_MATTE_DOWNLOAD_PROGRESS, listener)
   },
   listDramaProjects: (): Promise<DramaProject[]> => ipcRenderer.invoke(IPC_CHANNELS.DRAMA_LIST_PROJECTS),
   createDramaProject: (input: DramaCreateProjectInput): Promise<DramaProject> => ipcRenderer.invoke(IPC_CHANNELS.DRAMA_CREATE_PROJECT, input),

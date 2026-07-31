@@ -17,6 +17,7 @@ import { registerSilenceDetectionIpc } from './ipc-silence-detection'
 import { registerUtilityIpc } from './ipc-utility'
 import { registerWindowControlsIpc } from './ipc-window-controls'
 import { registerVisionIpc } from './ipc-vision'
+import { registerPersonMatteIpc } from './ipc-person-matte'
 import { registerDramaIpc } from './ipc-drama'
 import { applyMacDockIcon, createWindow, focusMainWindow, queueIncomingMediaPaths } from './window-lifecycle'
 import { runCli } from '../cli/cli-main'
@@ -68,6 +69,7 @@ function registerIpc(): void {
   registerUtilityIpc()
   registerWindowControlsIpc()
   registerVisionIpc()
+  registerPersonMatteIpc()
   registerDramaIpc()
 }
 
