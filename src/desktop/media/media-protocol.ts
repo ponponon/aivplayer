@@ -33,6 +33,9 @@ const CONTENT_TYPE_BY_EXTENSION = new Map<string, string>([
   ['.wav', 'audio/wav'],
   ['.vtt', 'text/vtt; charset=utf-8'],
   ['.srt', 'application/x-subrip; charset=utf-8']
+  , ['.png', 'image/png']
+  , ['.jpg', 'image/jpeg']
+  , ['.jpeg', 'image/jpeg']
 ])
 
 export function registerMediaProtocolScheme(): void {

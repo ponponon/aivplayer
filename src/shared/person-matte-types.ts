@@ -22,3 +22,32 @@ export type PersonMatteModelDownloadResult = {
   message: string
   status: PersonMatteModelStatus
 }
+
+export type PersonMatteTrackRequest = {
+  sourcePath: string
+  sourceFingerprint: string
+  sourceStartSeconds: number
+  sourceEndSeconds: number
+  sampleFps?: number
+}
+
+export type PersonMatteTrackFrame = {
+  sourceSeconds: number
+  url: string
+}
+
+export type PersonMatteTrackProgress = {
+  status: 'cached' | 'processing'
+  processedFrames: number
+  totalFrames: number
+}
+
+export type PersonMatteTrackResult = {
+  success: boolean
+  message: string
+  sourceFingerprint: string
+  sourceStartSeconds: number
+  sourceEndSeconds: number
+  sampleFps: number
+  frames: PersonMatteTrackFrame[]
+}
