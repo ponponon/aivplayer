@@ -31,6 +31,7 @@ export type EditingVideoClip = {
   treatmentScale?: number
   treatmentAnchor?: EditingTreatmentAnchor
   filter?: EditingClipFilter
+  personMatte?: EditingPersonMatte
   transitionIn?: EditingClipTransition
   /** Optional Pireel-style main-track enter/exit motion; absent keeps legacy static clips. */
   enterMotion?: EditingGraphicMotion
@@ -41,6 +42,13 @@ export type EditingVideoClip = {
 export type EditingClipTreatment = 'full' | 'punch-in'
 export type EditingTreatmentAnchor = 'left' | 'center' | 'right'
 export type EditingClipFilter = { brightness?: number; contrast?: number; saturate?: number }
+/** Optional Pireel-style person matte settings; generated masks stay in a derived cache, not project files. */
+export type EditingPersonMatte = {
+  enabled: boolean
+  featherPercent?: number
+  outlineWidthPercent?: number
+  outlineColor?: string
+}
 export type EditingClipTransitionType = 'fade' | 'fadeblack' | 'dissolve' | 'wipe-left' | 'wipe-right' | 'slide-left' | 'slide-right' | 'zoom' | 'circleopen' | 'crosszoom'
 export type EditingClipTransition = { type: EditingClipTransitionType; durationSeconds: number }
 export type EditingGraphicPosition = 'center' | 'top' | 'top-left' | 'top-right' | 'left' | 'right' | 'bottom-left' | 'bottom' | 'bottom-right'
