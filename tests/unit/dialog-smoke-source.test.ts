@@ -19,6 +19,9 @@ describe('dialog smoke source constraints', () => {
     expect(packageJson.scripts?.['smoke:editing-script']).toBe(
       'node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-editing-script.ts'
     )
+    expect(packageJson.scripts?.['smoke:graphic-motion-export']).toBe(
+      'node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-graphic-motion-export.ts'
+    )
     expect(packageJson.scripts?.['smoke:dialogs:all']).toBe(
       'npm run smoke:clip-export-dialog && npm run smoke:media-details-dialog'
     )
@@ -78,6 +81,16 @@ describe('dialog smoke source constraints', () => {
     expect(smokeScript).toContain("page.locator('[data-testid=\"editing-undo\"]').click()")
     expect(smokeScript).toContain("page.locator('[data-testid=\"editing-redo\"]').click()")
     expect(smokeScript).toContain('page.screenshot({ path: screenshotPath, fullPage: false })')
+  })
+
+  it('keeps graphic motion export smoke isolated from the long editing smoke flow', () => {
+    const smokeScript = readSource('scripts/smoke-graphic-motion-export.ts')
+
+    expect(smokeScript).toContain("enterMotion: 'slide-left'")
+    expect(smokeScript).toContain("exitMotion: 'fade'")
+    expect(smokeScript).toContain("targetWidth: 320")
+    expect(smokeScript).toContain("ffprobe")
+    expect(smokeScript).toContain("rm(smokeHomeDirectory")
   })
 
   it('uses stable selectors in the media details smoke script', () => {
