@@ -1,5 +1,5 @@
 import type { ClipExportMode } from './clip-export'
-import type { EditingClipFilter, EditingClipTransition, EditingClipTreatment, EditingFrameId, EditingGraphic, EditingOverlayTrackKind, EditingProjectFileOpenResult, EditingProjectFileSaveRequest, EditingProjectFileSaveResult, EditingTreatmentAnchor, EditingVideoBlockMotion, EditingVideoBlockPosition } from './editing-types'
+import type { EditingClipFilter, EditingClipTransition, EditingClipTreatment, EditingFrameId, EditingGraphic, EditingGraphicMotion, EditingOverlayTrackKind, EditingProjectFileOpenResult, EditingProjectFileSaveRequest, EditingProjectFileSaveResult, EditingTreatmentAnchor, EditingVideoBlockMotion, EditingVideoBlockPosition } from './editing-types'
 import type { SubtitleRenderSettings } from './subtitle-presets'
 import type { SubtitleWord } from './subtitle-timing'
 
@@ -26,7 +26,7 @@ export type MediaSilenceDetectionResult = { success: boolean; message: string; i
 export type PlaybackState = { isPlaying: boolean; currentTime: number; duration: number; volume: number; muted: boolean; playbackRate: number }
 export type MediaClipExportRequest = { mediaPath: string; startSeconds: number; durationSeconds: number; mode: ClipExportMode; subtitlePath?: string; subtitleSrtPath?: string; subtitleRender?: SubtitleRenderSettings }
 export type MediaClipExportResult = { success: boolean; message: string; videoPath?: string; videoUrl?: string; subtitleSrtPath?: string; subtitleSrtUrl?: string; canceled?: boolean }
-export type MediaTimelineExportClip = { mediaPath: string; startSeconds: number; endSeconds: number; volume?: number; muted?: boolean; treatment?: EditingClipTreatment; treatmentScale?: number; treatmentAnchor?: EditingTreatmentAnchor; filter?: EditingClipFilter; transitionIn?: EditingClipTransition }
+export type MediaTimelineExportClip = { mediaPath: string; startSeconds: number; endSeconds: number; volume?: number; muted?: boolean; treatment?: EditingClipTreatment; treatmentScale?: number; treatmentAnchor?: EditingTreatmentAnchor; filter?: EditingClipFilter; transitionIn?: EditingClipTransition; enterMotion?: EditingGraphicMotion; exitMotion?: EditingGraphicMotion; motionDurationSeconds?: number }
 export type MediaTimelineExportVideoBlock = { mediaPath: string; sourceStartSeconds: number; sourceEndSeconds: number; startSeconds: number; durationSeconds: number; position: EditingVideoBlockPosition; sizePercent?: number; borderRadius?: number; borderWidth?: number; enterMotion?: EditingVideoBlockMotion; exitMotion?: EditingVideoBlockMotion; motionDurationSeconds?: number }
 export type MediaTimelineExportPathRequest = { mediaPath: string; clipCount: number; durationSeconds: number; mode: ClipExportMode; suggestedPath?: string }
 export type MediaTimelineExportPathResult = { success: boolean; message: string; filePath?: string; canceled?: boolean }

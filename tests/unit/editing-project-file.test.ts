@@ -83,6 +83,15 @@ describe('editing project files', () => {
     expect(parsed.schemaVersion).toBe(1)
   })
 
+  it('round-trips optional main-track motions while keeping legacy clips valid', () => {
+    const project = createEditingProject(source)
+    const animated = { ...project, videoClips: [{ ...project.videoClips[0]!, enterMotion: 'slide-left' as const, exitMotion: 'fade' as const, motionDurationSeconds: 0.5 }] }
+    expect(parseEditingProjectFile(serializeEditingProject(animated)).videoClips).toEqual(animated.videoClips)
+    expect(() => parseEditingProject({ ...project, videoClips: [{ ...project.videoClips[0]!, enterMotion: 'bounce' }] })).toThrow('Invalid editing project clip')
+    expect(() => parseEditingProject({ ...project, videoClips: [{ ...project.videoClips[0]!, motionDurationSeconds: 1.1 }] })).toThrow('Invalid editing project clip')
+    expect(parseEditingProject({ ...project, videoClips: [{ ...project.videoClips[0]!, enterMotion: undefined, exitMotion: undefined, motionDurationSeconds: undefined }] }).videoClips[0]).not.toHaveProperty('enterMotion')
+  })
+
   it('round-trips optional graphic blocks without changing the schema version', () => {
     const project = createEditingProject(source)
     const parsed = parseEditingProject({ ...project, graphics: [{ id: 'graphic-1', startSeconds: 1, durationSeconds: 2, text: 'Title', position: 'top', style: 'title' }] })

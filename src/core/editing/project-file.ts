@@ -8,6 +8,7 @@ import { EDITING_TRANSITION_TYPES } from './transition-operations'
 import { getEditingOverlayTrackOrder } from './overlay-track-operations'
 import { EDITING_GRAPHIC_MOTION_MAX_DURATION, EDITING_GRAPHIC_MOTION_MIN_DURATION, EDITING_GRAPHIC_MOTIONS } from './graphic-motion'
 import { EDITING_VIDEO_BLOCK_MAX_BORDER_RADIUS, EDITING_VIDEO_BLOCK_MAX_BORDER_WIDTH, EDITING_VIDEO_BLOCK_MAX_SIZE_PERCENT, EDITING_VIDEO_BLOCK_MIN_BORDER_RADIUS, EDITING_VIDEO_BLOCK_MIN_BORDER_WIDTH, EDITING_VIDEO_BLOCK_MIN_SIZE_PERCENT, EDITING_VIDEO_BLOCK_MOTION_MAX_DURATION, EDITING_VIDEO_BLOCK_MOTION_MIN_DURATION, EDITING_VIDEO_BLOCK_MOTIONS } from './video-block-operations'
+import { EDITING_CLIP_MOTION_MAX_DURATION, EDITING_CLIP_MOTION_MIN_DURATION, EDITING_CLIP_MOTIONS } from './clip-motion'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
@@ -114,7 +115,12 @@ function parseVideoClip(value: unknown, sourceIds: Set<string>): EditingVideoCli
   if (value.filter !== undefined && filter === null) return null
   const transitionIn = value.transitionIn === undefined ? undefined : parseClipTransition(value.transitionIn)
   if (value.transitionIn !== undefined && transitionIn === null) return null
-  return { id: value.id, sourceId: value.sourceId, sourceStartSeconds: value.sourceStartSeconds, sourceEndSeconds: value.sourceEndSeconds, ...(value.volume === undefined ? {} : { volume: value.volume }), ...(value.muted === undefined ? {} : { muted: value.muted }), ...(value.treatment === undefined ? {} : { treatment: value.treatment }), ...(value.treatmentScale === undefined ? {} : { treatmentScale: value.treatmentScale }), ...(value.treatmentAnchor === undefined ? {} : { treatmentAnchor: value.treatmentAnchor }), ...(filter === undefined ? {} : { filter: filter as EditingClipFilter }), ...(transitionIn === undefined ? {} : { transitionIn: transitionIn as EditingClipTransition }) }
+  if (value.enterMotion !== undefined && (typeof value.enterMotion !== 'string' || !EDITING_CLIP_MOTIONS.includes(value.enterMotion as EditingGraphicMotion))) return null
+  if (value.exitMotion !== undefined && (typeof value.exitMotion !== 'string' || !EDITING_CLIP_MOTIONS.includes(value.exitMotion as EditingGraphicMotion))) return null
+  if (value.motionDurationSeconds !== undefined && (typeof value.motionDurationSeconds !== 'number' || !Number.isFinite(value.motionDurationSeconds) || value.motionDurationSeconds < EDITING_CLIP_MOTION_MIN_DURATION || value.motionDurationSeconds > EDITING_CLIP_MOTION_MAX_DURATION)) return null
+  const enterMotion = value.enterMotion as EditingGraphicMotion | undefined
+  const exitMotion = value.exitMotion as EditingGraphicMotion | undefined
+  return { id: value.id, sourceId: value.sourceId, sourceStartSeconds: value.sourceStartSeconds, sourceEndSeconds: value.sourceEndSeconds, ...(value.volume === undefined ? {} : { volume: value.volume }), ...(value.muted === undefined ? {} : { muted: value.muted }), ...(value.treatment === undefined ? {} : { treatment: value.treatment }), ...(value.treatmentScale === undefined ? {} : { treatmentScale: value.treatmentScale }), ...(value.treatmentAnchor === undefined ? {} : { treatmentAnchor: value.treatmentAnchor }), ...(filter === undefined ? {} : { filter: filter as EditingClipFilter }), ...(transitionIn === undefined ? {} : { transitionIn: transitionIn as EditingClipTransition }), ...(enterMotion === undefined ? {} : { enterMotion }), ...(exitMotion === undefined ? {} : { exitMotion }), ...(value.motionDurationSeconds === undefined ? {} : { motionDurationSeconds: value.motionDurationSeconds }) }
 }
 
 function parseCaptionWords(value: unknown): EditingCaptionWord[] | null {

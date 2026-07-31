@@ -31,7 +31,10 @@ function createRestoredClip(project: EditingProject, sourceId: string, sourceSta
     ...(base?.treatmentScale === undefined ? {} : { treatmentScale: base.treatmentScale }),
     ...(base?.treatmentAnchor === undefined ? {} : { treatmentAnchor: base.treatmentAnchor }),
     ...(base?.filter === undefined ? {} : { filter: base.filter }),
-    ...(base?.transitionIn === undefined ? {} : { transitionIn: base.transitionIn })
+    ...(base?.transitionIn === undefined ? {} : { transitionIn: base.transitionIn }),
+    ...(base?.enterMotion === undefined ? {} : { enterMotion: base.enterMotion }),
+    ...(base?.exitMotion === undefined ? {} : { exitMotion: base.exitMotion }),
+    ...(base?.motionDurationSeconds === undefined ? {} : { motionDurationSeconds: base.motionDurationSeconds })
   }
 }
 

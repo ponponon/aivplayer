@@ -32,6 +32,10 @@ export type EditingVideoClip = {
   treatmentAnchor?: EditingTreatmentAnchor
   filter?: EditingClipFilter
   transitionIn?: EditingClipTransition
+  /** Optional Pireel-style main-track enter/exit motion; absent keeps legacy static clips. */
+  enterMotion?: EditingGraphicMotion
+  exitMotion?: EditingGraphicMotion
+  motionDurationSeconds?: number
 }
 
 export type EditingClipTreatment = 'full' | 'punch-in'
