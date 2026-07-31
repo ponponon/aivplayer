@@ -15,7 +15,7 @@ import { getEditingClipTransition } from '../editing/transition-operations'
 import { getEditingClipTreatment, getEditingClipTreatmentAnchor, getEditingClipTreatmentScale } from '../editing/treatment-operations'
 import { getEditingVideoBlockBorderRadius, getEditingVideoBlockBorderWidth, getEditingVideoBlockMotion, getEditingVideoBlockSize } from '../editing/video-block-operations'
 import { getEditingClipMotion } from '../editing/clip-motion'
-import { getEditingPersonMatteOutlinePixels, getEditingPersonMatteSettings } from '../editing/person-matte'
+import { getEditingPersonMatteFeatherPixels, getEditingPersonMatteOutlinePixels, getEditingPersonMatteSettings } from '../editing/person-matte'
 import { buildTimelineExportDefaultFileName, getTimelineExportPathDirectory, joinTimelineExportPath } from '../../shared/timeline-export-path'
 import type { SubtitleRenderSettings } from '../../shared/subtitle-presets'
 import { buildAssSubtitle } from './subtitle-ass'
@@ -171,7 +171,8 @@ function buildPersonMatteMaskFilter(format: TimelineExportFormat | undefined, cl
     filters.push(`crop=trunc(iw/${scale}/2)*2:trunc(ih/${scale}/2)*2:${cropX}:(ih-oh)/2`)
   }
   const settings = getEditingPersonMatteSettings(clip.personMatte)
-  if (settings.featherPercent > 0) filters.push(`boxblur=${Math.max(1, Math.round(settings.featherPercent / 2))}:1`)
+  const featherPixels = getEditingPersonMatteFeatherPixels(settings)
+  if (featherPixels > 0) filters.push(`boxblur=${featherPixels}:1`)
   if (width && height) {
     if (format?.fitMode === 'cover') filters.push(`scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height}:(ow-iw)/2:(oh-ih)/2`)
     else filters.push(`scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=black`)

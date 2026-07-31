@@ -34,6 +34,11 @@ export function getEditingPersonMatteOutlinePixels(value: EditingPersonMatte | n
   return Math.max(1, Math.round(outlineWidthPercent * minimumDimension / 200))
 }
 
+/** Keeps preview Canvas blur and FFmpeg boxblur on the same compact control scale. */
+export function getEditingPersonMatteFeatherPixels(value: EditingPersonMatte | null | undefined): number {
+  return Math.max(0, Math.round(getEditingPersonMatteSettings(value).featherPercent / 2))
+}
+
 export function getEditingPersonMatteCacheKey(input: EditingPersonMatteCacheKeyInput): string {
   const providerId = input.providerId?.trim() || EDITING_PERSON_MATTE_PROVIDER_ID
   const sampleFps = Number.isFinite(input.sampleFps) && input.sampleFps! > 0 ? input.sampleFps! : EDITING_PERSON_MATTE_SAMPLE_FPS
