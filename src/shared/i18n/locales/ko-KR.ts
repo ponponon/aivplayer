@@ -937,3 +937,5 @@
       'sample_rate': '샘플레이트'
     }
   }
+
+Object.assign(koKR.editing.transitionLabels, { circleopen: '원형 열기', crosszoom: '크로스 줌' })

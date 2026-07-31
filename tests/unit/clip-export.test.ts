@@ -124,6 +124,8 @@ describe('clip export helpers', () => {
       { frameRate: 30, audioSampleRate: 48000, audioChannels: 2 }
     )
     expect(getTimelineXfadeTransitionName('wipe-left')).toBe('wipeleft')
+    expect(getTimelineXfadeTransitionName('circleopen')).toBe('circleopen')
+    expect(getTimelineXfadeTransitionName('crosszoom')).toBe('zoomin')
     expect(args).toEqual(expect.arrayContaining(['-filter_complex']))
     expect(args.find((value) => value.includes('tpad=stop_mode=clone:stop_duration=0.4'))).toContain('xfade=transition=wipeleft:duration=0.4:offset=4')
     expect(args).toEqual(expect.arrayContaining(['-t', '8', '-map', '[vout]', '-map', '[aout]']))

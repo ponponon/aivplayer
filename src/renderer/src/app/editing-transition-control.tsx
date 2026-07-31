@@ -7,7 +7,7 @@ type EditingTransitionControlProps = {
   isFirstClip: boolean
   title: string
   noneLabel: string
-  transitionLabels: Record<EditingClipTransitionType, string>
+  transitionLabels: Partial<Record<EditingClipTransitionType, string>>
   durationLabel: string
   onChange: (transition: EditingClipTransition | null) => void
 }

@@ -10,11 +10,12 @@ describe('editing transition operations', () => {
     expect(getEditingClipTransition(clip('clip-1'))).toBeNull()
     expect(getEditingClipTransition({ transitionIn: { type: 'fade', durationSeconds: 9 } })).toEqual({ type: 'fade', durationSeconds: 1 })
     expect(getEditingClipTransition({ transitionIn: { type: 'wipe-left', durationSeconds: 0.4 } })).toEqual({ type: 'wipe-left', durationSeconds: 0.4 })
+    expect(getEditingClipTransition({ transitionIn: { type: 'circleopen', durationSeconds: 0.4 } })).toEqual({ type: 'circleopen', durationSeconds: 0.4 })
   })
 
   it('updates only the selected clip and clears it without leaving an empty field', () => {
-    const clips = updateEditingClipTransition([clip('clip-1'), clip('clip-2')], 'clip-2', { type: 'slide-right', durationSeconds: EDITING_TRANSITION_DEFAULT_DURATION })
-    expect(clips[1]).toMatchObject({ transitionIn: { type: 'slide-right', durationSeconds: EDITING_TRANSITION_DEFAULT_DURATION } })
+    const clips = updateEditingClipTransition([clip('clip-1'), clip('clip-2')], 'clip-2', { type: 'crosszoom', durationSeconds: EDITING_TRANSITION_DEFAULT_DURATION })
+    expect(clips[1]).toMatchObject({ transitionIn: { type: 'crosszoom', durationSeconds: EDITING_TRANSITION_DEFAULT_DURATION } })
     expect(updateEditingClipTransition(clips, 'clip-2', null)[1]).toEqual(clip('clip-2'))
   })
 

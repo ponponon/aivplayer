@@ -937,3 +937,5 @@
       'sample_rate': 'Sample rate'
     }
   }
+
+Object.assign(enUS.editing.transitionLabels, { circleopen: 'Circle open', crosszoom: 'Cross zoom' })

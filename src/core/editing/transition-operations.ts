@@ -1,6 +1,6 @@
 import { EDITING_TRANSITION_DEFAULT_DURATION, EDITING_TRANSITION_MAX_DURATION, EDITING_TRANSITION_MIN_DURATION, type EditingClipTransition, type EditingClipTransitionType, type EditingVideoClip } from '../../shared/editing-types'
 
-export const EDITING_TRANSITION_TYPES: readonly EditingClipTransitionType[] = ['fade', 'fadeblack', 'dissolve', 'wipe-left', 'wipe-right', 'slide-left', 'slide-right', 'zoom']
+export const EDITING_TRANSITION_TYPES: readonly EditingClipTransitionType[] = ['fade', 'fadeblack', 'dissolve', 'wipe-left', 'wipe-right', 'slide-left', 'slide-right', 'zoom', 'circleopen', 'crosszoom']
 
 const editingTransitionTypeSet = new Set<EditingClipTransitionType>(EDITING_TRANSITION_TYPES)
 

@@ -935,3 +935,5 @@
       'sample_rate': '采样率'
     }
   }
+
+Object.assign(zhCN.editing.transitionLabels, { circleopen: '圆形展开', crosszoom: '交叉缩放' })

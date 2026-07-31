@@ -937,3 +937,5 @@
       'sample_rate': 'サンプリングレート'
     }
   }
+
+Object.assign(jaJP.editing.transitionLabels, { circleopen: '円形展開', crosszoom: 'クロスズーム' })

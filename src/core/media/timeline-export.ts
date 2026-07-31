@@ -244,6 +244,8 @@ export function getTimelineXfadeTransitionName(type: EditingClipTransitionType):
     case 'slide-left': return 'slideleft'
     case 'slide-right': return 'slideright'
     case 'zoom': return 'zoomin'
+    case 'circleopen': return 'circleopen'
+    case 'crosszoom': return 'zoomin'
   }
 }
 
