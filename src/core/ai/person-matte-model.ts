@@ -40,12 +40,21 @@ export function getPersonMatteModelPaths(resourcePath: string): PersonMatteModel
 
 export function isPersonMatteModelAvailable(resourcePath: string): boolean {
   const paths = getPersonMatteModelPaths(resourcePath)
+  return isPersonMatteModelPathsAvailable(paths)
+}
+
+export function isPersonMatteModelPathsAvailable(paths: PersonMatteModelPaths): boolean {
   return existsSync(paths.configPath) && existsSync(paths.preprocessorConfigPath) && existsSync(paths.modelPath)
 }
 
-export function getPersonMatteModelStatus(resourcePath: string): PersonMatteModelStatus {
-  const paths = getPersonMatteModelPaths(resourcePath)
-  const available = isPersonMatteModelAvailable(resourcePath)
+export function resolvePersonMatteModelPaths(resourcePath: string, userDataPath?: string): PersonMatteModelPaths {
+  const candidates = userDataPath ? [getPersonMatteModelPaths(userDataPath), getPersonMatteModelPaths(resourcePath)] : [getPersonMatteModelPaths(resourcePath)]
+  return candidates.find(isPersonMatteModelPathsAvailable) ?? candidates[0]!
+}
+
+export function getPersonMatteModelStatus(resourcePath: string, userDataPath?: string): PersonMatteModelStatus {
+  const paths = resolvePersonMatteModelPaths(resourcePath, userDataPath)
+  const available = isPersonMatteModelPathsAvailable(paths)
   return {
     available,
     modelId: PERSON_MATTE_MODEL_ID,
