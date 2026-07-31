@@ -57,6 +57,8 @@ async function main(): Promise<void> {
     await personMatteControl.locator('.editing-person-matte-summary').click()
     await personMatteControl.locator('.editing-person-matte-popover').waitFor({ state: 'visible', timeout: 10_000 })
     const personMatteDownloadAvailable = await personMatteControl.locator('[data-testid="editing-person-matte-download"]').count() > 0
+    await personMatteControl.locator('.editing-person-matte-summary').click()
+    await page.waitForFunction(() => !document.querySelector('[data-testid="editing-person-matte-control"]')?.hasAttribute('open'))
     await page.waitForFunction(() => document.querySelectorAll('[data-testid="editing-script-list"] .editing-script-row').length === 3, null, { timeout: 10_000 })
     await page.waitForFunction(() => { const images = Array.from(document.querySelectorAll('.editing-clip-filmstrip img')) as HTMLImageElement[]; return images.length >= 4 && images.every((image) => image.complete && image.naturalWidth > 0) }, null, { timeout: 10_000 })
     const scriptEditButton = page.locator('[data-testid^="editing-script-edit-"]').first()
