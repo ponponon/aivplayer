@@ -74,6 +74,7 @@ export function VideoSettingsSection(props: SettingsSectionProps): ReactElement 
     </SettingsField>
 
     <SettingsField
+      wide
       title={copy.settingsDialog.video.gpuAcceleration}
       description={copy.settingsDialog.video.gpuAccelerationDescription}
     >

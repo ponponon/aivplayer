@@ -52,6 +52,10 @@
   border-radius: var(--radius-md);
 }
 
+.settings-field-wide {
+  grid-column: 1 / -1;
+}
+
 .settings-field-copy {
   display: grid;
   gap: 4px;

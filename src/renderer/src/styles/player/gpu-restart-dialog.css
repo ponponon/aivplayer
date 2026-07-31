@@ -1,0 +1,24 @@
+.gpu-restart-dialog {
+  width: min(420px, calc(100vw - 32px));
+}
+
+.gpu-restart-dialog-message {
+  padding: 0 6px;
+}
+
+.gpu-restart-dialog-message p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.gpu-restart-dialog-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.gpu-restart-dialog-actions button {
+  width: 100%;
+}

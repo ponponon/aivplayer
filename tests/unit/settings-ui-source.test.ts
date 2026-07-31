@@ -24,15 +24,30 @@ describe('settings UI source constraints', () => {
 
   it('routes every settings field through the shared SettingsField structure', () => {
     const settingsDialogSource = readSource('src/renderer/src/app/settings-controls.tsx')
-    const settingsFieldComponentBody = getNamedBody(
-      settingsDialogSource,
-      /function SettingsField[\s\S]*?<div className="settings-field">(?<body>[\s\S]*?)<\/div>\s*\)\s*\}/
-    )
 
     expect(settingsDialogSource).toContain('function SettingsField')
-    expect(countMatches(settingsDialogSource, /className="settings-field"/g)).toBe(1)
-    expect(settingsFieldComponentBody).toContain('className="settings-field-copy"')
-    expectInOrder(settingsFieldComponentBody, 'className="settings-field-copy"', '{children}')
+    expect(countMatches(settingsDialogSource, /className=\{`settings-field\$\{/g)).toBe(1)
+    expect(settingsDialogSource).toContain('className="settings-field-copy"')
+    expectInOrder(settingsDialogSource, 'className="settings-field-copy"', '{children}')
+  })
+
+  it('lets wide settings fields span the full card', () => {
+    const controlsSource = readSource('src/renderer/src/app/settings-controls.tsx')
+    const videoSource = readSource('src/renderer/src/app/settings-sections/video.tsx')
+    const playerCss = readSource('src/renderer/src/styles/player.css')
+
+    expect(controlsSource).toContain('wide?: boolean')
+    expect(controlsSource).toContain('settings-field-wide')
+    expect(videoSource).toContain('<SettingsField\n      wide')
+    expect(playerCss).toMatch(/\.settings-field-wide\s*\{[^}]*grid-column:\s*1\s*\/\s*-1;/s)
+  })
+
+  it('keeps the GPU restart actions in one column', () => {
+    const dialogSource = readSource('src/renderer/src/app/gpu-restart-dialog.tsx')
+    const playerCss = readSource('src/renderer/src/styles/player.css')
+
+    expect(dialogSource).toContain('gpu-restart-dialog-actions')
+    expect(playerCss).toMatch(/\.gpu-restart-dialog-actions\s*\{[^}]*grid-template-columns:\s*1fr;/s)
   })
 
   it('routes settings select and number controls through shared renderers', () => {

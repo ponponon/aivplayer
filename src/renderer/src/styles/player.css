@@ -50,6 +50,7 @@
 @import './player/settings-layout.css';
 @import './player/settings-fields.css';
 @import './player/settings-footer-shortcuts.css';
+@import './player/gpu-restart-dialog.css';
 @import './player/download-clip-options.css';
 @import './player/download-clip-actions.css';
 @import './player/responsive-layout.css';
