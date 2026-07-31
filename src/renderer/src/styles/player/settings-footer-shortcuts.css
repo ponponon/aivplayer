@@ -19,6 +19,9 @@
 .settings-footer-actions {
   display: flex;
   align-items: center;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
   min-width: 0;
 }
@@ -51,6 +54,7 @@
   cursor: pointer;
   font-size: 13px;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .settings-secondary-button:hover {
