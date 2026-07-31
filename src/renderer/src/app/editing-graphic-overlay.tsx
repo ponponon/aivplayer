@@ -30,8 +30,12 @@ function positionStyle(graphic: EditingGraphic, frameGraphicVariant: string, mot
   const { position } = graphic
   const transform = animated ? `${motionTransform(motion)}${frameRotation === 0 ? '' : ` rotate(${frameRotation}deg)`}` : undefined
   if (position === 'top-left') return { left: '6%', top: '8%', opacity: motion.opacity, ...(transform === undefined ? {} : { transform }) }
+  if (position === 'top') return { left: '50%', top: '8%', opacity: motion.opacity, transform: `translateX(-50%)${transform === undefined ? '' : ` ${transform}`}` }
   if (position === 'top-right') return { right: '6%', top: '8%', opacity: motion.opacity, ...(transform === undefined ? {} : { transform }) }
+  if (position === 'left') return { left: '6%', top: '50%', opacity: motion.opacity, transform: `translateY(-50%)${transform === undefined ? '' : ` ${transform}`}` }
+  if (position === 'right') return { right: '6%', top: '50%', opacity: motion.opacity, transform: `translateY(-50%)${transform === undefined ? '' : ` ${transform}`}` }
   if (position === 'bottom-left') return { left: '6%', bottom: '8%', opacity: motion.opacity, ...(transform === undefined ? {} : { transform }) }
+  if (position === 'bottom') return { left: '50%', bottom: '8%', opacity: motion.opacity, transform: `translateX(-50%)${transform === undefined ? '' : ` ${transform}`}` }
   if (position === 'bottom-right') return { right: '6%', bottom: '8%', opacity: motion.opacity, ...(transform === undefined ? {} : { transform }) }
   return { left: '50%', top: '50%', opacity: motion.opacity, transform: `translate(-50%, -50%)${animated ? ` ${transform}` : ''}` }
 }

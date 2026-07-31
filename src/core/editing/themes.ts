@@ -39,7 +39,7 @@ export function normalizeEditingThemes(value: unknown): EditingTheme[] {
   return value.flatMap((item): EditingTheme[] => {
     if (!item || typeof item !== 'object') return []
     const theme = item as Partial<EditingTheme>
-    if (typeof theme.id !== 'string' || typeof theme.name !== 'string' || !['clean', 'yellow', 'mint', 'navy', 'serif-gold'].includes(theme.subtitlePresetId ?? '') || !['none', 'keywords', 'words'].includes(theme.emphasisMode ?? '') || !['title', 'label'].includes(theme.graphicStyle ?? '') || !['center', 'top-left', 'top-right', 'bottom-left', 'bottom-right'].includes(theme.graphicPosition ?? '') || typeof theme.createdAt !== 'number' || typeof theme.updatedAt !== 'number') return []
+    if (typeof theme.id !== 'string' || typeof theme.name !== 'string' || !['clean', 'yellow', 'mint', 'navy', 'serif-gold'].includes(theme.subtitlePresetId ?? '') || !['none', 'keywords', 'words'].includes(theme.emphasisMode ?? '') || !['title', 'label'].includes(theme.graphicStyle ?? '') || !['center', 'top', 'top-left', 'top-right', 'left', 'right', 'bottom-left', 'bottom', 'bottom-right'].includes(theme.graphicPosition ?? '') || typeof theme.createdAt !== 'number' || typeof theme.updatedAt !== 'number') return []
     const frameId = isEditingFrameId(theme.frameId) ? theme.frameId : DEFAULT_EDITING_FRAME_ID
     const captionEffect = isEditingCaptionEffect(theme.captionEffect) ? theme.captionEffect : getEditingCaptionEffect(undefined)
     return [{ ...theme, frameId, captionEffect } as EditingTheme]

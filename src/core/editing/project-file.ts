@@ -37,7 +37,7 @@ function parseClipTransition(value: unknown): EditingClipTransition | null {
 
 function parseGraphic(value: unknown): EditingGraphic | null {
   if (!isRecord(value) || !isNonEmptyString(value.id) || !isFiniteNonNegative(value.startSeconds) || !isFiniteNonNegative(value.durationSeconds) || value.durationSeconds <= 0 || !isNonEmptyString(value.text)) return null
-  if (value.position !== 'center' && value.position !== 'top-left' && value.position !== 'top-right' && value.position !== 'bottom-left' && value.position !== 'bottom-right') return null
+  if (value.position !== 'center' && value.position !== 'top' && value.position !== 'top-left' && value.position !== 'top-right' && value.position !== 'left' && value.position !== 'right' && value.position !== 'bottom-left' && value.position !== 'bottom' && value.position !== 'bottom-right') return null
   if (value.style !== 'title' && value.style !== 'label') return null
   const transformKeys = [
     ['xPercent', EDITING_GRAPHIC_MIN_X_PERCENT, EDITING_GRAPHIC_MAX_X_PERCENT],

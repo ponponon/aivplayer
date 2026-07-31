@@ -22,9 +22,13 @@ export type EditingGraphicTransformDragMode = 'move' | 'resize-left' | 'resize-r
 
 const PRESET_TRANSFORMS: Record<EditingGraphicPosition, Pick<EditingGraphicTransform, 'xPercent' | 'yPercent'>> = {
   center: { xPercent: 50, yPercent: 50 },
+  top: { xPercent: 50, yPercent: 22 },
   'top-left': { xPercent: 25, yPercent: 22 },
   'top-right': { xPercent: 75, yPercent: 22 },
+  left: { xPercent: 25, yPercent: 50 },
+  right: { xPercent: 75, yPercent: 50 },
   'bottom-left': { xPercent: 25, yPercent: 78 },
+  bottom: { xPercent: 50, yPercent: 78 },
   'bottom-right': { xPercent: 75, yPercent: 78 }
 }
 

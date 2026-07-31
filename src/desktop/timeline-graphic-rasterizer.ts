@@ -13,8 +13,12 @@ function escapeHtml(value: string): string {
 function cardPosition(graphic: EditingGraphic): string {
   const position = graphic.position
   if (position === 'top-left') return 'top: 8%; left: 6%;'
+  if (position === 'top') return 'top: 8%; left: 50%; transform: translateX(-50%);'
   if (position === 'top-right') return 'top: 8%; right: 6%;'
+  if (position === 'left') return 'top: 50%; left: 6%; transform: translateY(-50%);'
+  if (position === 'right') return 'top: 50%; right: 6%; transform: translateY(-50%);'
   if (position === 'bottom-left') return 'bottom: 8%; left: 6%;'
+  if (position === 'bottom') return 'bottom: 8%; left: 50%; transform: translateX(-50%);'
   if (position === 'bottom-right') return 'bottom: 8%; right: 6%;'
   return 'top: 50%; left: 50%; transform: translate(-50%, -50%);'
 }
@@ -25,12 +29,14 @@ function graphicDocument(graphic: EditingGraphic, frameId: TimelineGraphicRaster
   const labelSize = Math.max(18, Math.round(height * 0.04))
   const cardClass = graphic.style === 'title' ? 'title' : 'label'
   const transformStyle = hasEditingGraphicTransform(graphic) ? (() => { const transform = getEditingGraphicTransform(graphic); const frameRotation = frame.graphicVariant === 'sticker' ? -1 : 0; return `left:${transform.xPercent}%;top:${transform.yPercent}%;width:${transform.widthPercent}%;max-width:none;transform:translate(-50%, -50%) rotate(${transform.rotationDegrees + frameRotation}deg);` })() : ''
+  const rightAligned = graphic.position === 'top-right' || graphic.position === 'right' || graphic.position === 'bottom-right'
   return `<!doctype html><html><head><meta charset="utf-8"><style>
     :root { color-scheme: dark; }
     * { box-sizing: border-box; }
     html, body { width: ${width}px; height: ${height}px; margin: 0; overflow: hidden; background: transparent; }
     body { position: relative; font-family: ${frame.fontFamily}; }
-    .card { position: absolute; max-width: 82%; padding: ${Math.round(height * 0.018)}px ${Math.round(width * 0.026)}px; color: ${frame.cardText}; text-align: center; white-space: pre-wrap; overflow-wrap: anywhere; background: ${frame.cardBackground}; border: 1px solid ${frame.cardBorder}; border-radius: ${frame.radius}; box-shadow: ${frame.cardShadow}; ${cardPosition(graphic)} }
+    .card { position: absolute; max-width: 82%; padding: ${Math.round(height * 0.018)}px ${Math.round(width * 0.026)}px; color: ${frame.cardText}; text-align: ${rightAligned ? 'right' : 'left'}; white-space: pre-wrap; overflow-wrap: anywhere; background: ${frame.cardBackground}; border: 1px solid ${frame.cardBorder}; border-radius: ${frame.radius}; box-shadow: ${frame.cardShadow}; ${cardPosition(graphic)} }
+    .card.title { display: grid; justify-items: ${rightAligned ? 'end' : 'start'}; }
     .title { border-radius: ${Math.max(10, Math.round(height * 0.018))}px; font-size: ${titleSize}px; font-weight: 800; line-height: 1.1; letter-spacing: .02em; }
     .title i { display: block; width: 52px; height: 3px; margin-top: ${Math.max(5, Math.round(height * 0.01))}px; background: ${frame.accent}; border-radius: 2px; }
     .label { border-left: ${Math.max(3, Math.round(height * 0.004))}px solid ${frame.accent}; font-size: ${labelSize}px; font-weight: 700; line-height: 1.25; }

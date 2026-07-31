@@ -85,8 +85,8 @@ describe('editing project files', () => {
 
   it('round-trips optional graphic blocks without changing the schema version', () => {
     const project = createEditingProject(source)
-    const parsed = parseEditingProject({ ...project, graphics: [{ id: 'graphic-1', startSeconds: 1, durationSeconds: 2, text: 'Title', position: 'top-right', style: 'title' }] })
-    expect(parsed.graphics).toEqual([{ id: 'graphic-1', startSeconds: 1, durationSeconds: 2, text: 'Title', position: 'top-right', style: 'title' }])
+    const parsed = parseEditingProject({ ...project, graphics: [{ id: 'graphic-1', startSeconds: 1, durationSeconds: 2, text: 'Title', position: 'top', style: 'title' }] })
+    expect(parsed.graphics).toEqual([{ id: 'graphic-1', startSeconds: 1, durationSeconds: 2, text: 'Title', position: 'top', style: 'title' }])
     expect(parsed.schemaVersion).toBe(1)
   })
 

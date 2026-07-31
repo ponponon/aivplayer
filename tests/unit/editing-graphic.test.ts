@@ -28,6 +28,23 @@ describe('editing graphic operations', () => {
     expect(updateEditingGraphic([graphic], graphic.id, { enterMotion: 'scale', exitMotion: 'rise', motionDurationSeconds: 2 }, 8)[0]).toMatchObject({ enterMotion: 'scale', exitMotion: 'rise', motionDurationSeconds: 1 })
   })
 
+  it('maps semantic graphic positions to the nine canvas anchors', () => {
+    const positions = {
+      'top-left': [25, 22],
+      top: [50, 22],
+      'top-right': [75, 22],
+      left: [25, 50],
+      center: [50, 50],
+      right: [75, 50],
+      'bottom-left': [25, 78],
+      bottom: [50, 78],
+      'bottom-right': [75, 78]
+    } as const
+    for (const [position, [xPercent, yPercent]] of Object.entries(positions)) {
+      expect(getEditingGraphicTransform({ position: position as keyof typeof positions })).toMatchObject({ xPercent, yPercent })
+    }
+  })
+
   it('supports a persisted free transform while keeping preset projects compatible', () => {
     const graphic = createEditingGraphic('title', 0, 8, { id: 'graphic-1' })!
     expect(getEditingGraphicTransform(graphic)).toMatchObject({ xPercent: 50, yPercent: 50, widthPercent: 58, rotationDegrees: 0 })
