@@ -15,6 +15,7 @@ export function createEditingClipActions(model: AppModel) {
     const project = model.editingProject
     const span = project ? getVideoClipSpans(project.videoClips).find((candidate) => candidate.clip.id === clipId) : null
     if (!project || !span) return
+    model.setEditingClipPreview(null)
     model.setEditingSelectedClipId(clipId)
     seekEditingTime(model, span.editedStartSeconds, project)
   }

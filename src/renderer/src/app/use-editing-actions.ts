@@ -76,6 +76,7 @@ export function useEditingActions(model: AppModel, derived: AppDerived, selectFi
     const project = model.editingProject
     const previous = model.editingPast.at(-1)
     if (!project || !previous) return
+    model.setEditingClipPreview(null)
     model.setEditingPast((past) => past.slice(0, -1))
     model.setEditingFuture((future) => [project, ...future])
     model.setEditingProject(previous)
@@ -88,6 +89,7 @@ export function useEditingActions(model: AppModel, derived: AppDerived, selectFi
     const project = model.editingProject
     const next = model.editingFuture[0]
     if (!project || !next) return
+    model.setEditingClipPreview(null)
     model.setEditingFuture((future) => future.slice(1))
     model.setEditingPast((past) => [...past, project])
     model.setEditingProject(next)

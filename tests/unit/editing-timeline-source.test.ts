@@ -214,6 +214,8 @@ describe('editing timeline source contracts', () => {
     expect(videoBlockTrack).toContain('editing-timeline-trim-handle')
     expect(trackTrim).toContain('updateEditingTrackTrim')
     expect(smokeScript).toContain('graphicTrimBefore')
+    expect(smokeScript).toContain('filterAfterSliderDrag')
+    expect(smokeScript).toContain('filterAfterOneUndo')
     expect(exportAction).toContain('overlayTrackOrder: project.overlayTrackOrder')
     expect(timelineExportIpc).toContain('overlayTrackOrder: request.overlayTrackOrder')
     expect(timelineExport).toContain('options.overlayTrackOrder')
