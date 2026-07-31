@@ -15,7 +15,7 @@ import { getEditingClipTransition } from '../editing/transition-operations'
 import { getEditingClipTreatment, getEditingClipTreatmentAnchor, getEditingClipTreatmentScale } from '../editing/treatment-operations'
 import { getEditingVideoBlockBorderRadius, getEditingVideoBlockBorderWidth, getEditingVideoBlockMotion, getEditingVideoBlockSize } from '../editing/video-block-operations'
 import { getEditingClipMotion } from '../editing/clip-motion'
-import { getEditingPersonMatteSettings } from '../editing/person-matte'
+import { getEditingPersonMatteOutlinePixels, getEditingPersonMatteSettings } from '../editing/person-matte'
 import { buildTimelineExportDefaultFileName, getTimelineExportPathDirectory, joinTimelineExportPath } from '../../shared/timeline-export-path'
 import type { SubtitleRenderSettings } from '../../shared/subtitle-presets'
 import { buildAssSubtitle } from './subtitle-ass'
@@ -230,7 +230,7 @@ function buildPersonMatteFilterComplex(format: TimelineExportFormat | undefined,
   const outputWidth = evenDimension(format?.width)
   const outputHeight = evenDimension(format?.height)
   const canDrawOutline = personMatteSettings.outlineWidthPercent > 0 && outputWidth !== null && outputHeight !== null
-  const outlinePasses = canDrawOutline ? Math.max(1, Math.min(16, Math.round(personMatteSettings.outlineWidthPercent * Math.min(outputWidth!, outputHeight!) / 200))) : 0
+  const outlinePasses = canDrawOutline ? Math.max(1, Math.min(16, getEditingPersonMatteOutlinePixels(personMatteSettings, outputWidth!, outputHeight!))) : 0
   const outlineMaskFilter = outlinePasses > 0 ? Array.from({ length: outlinePasses }, () => 'dilation=coordinates=255').join(',') : ''
   if (!canDrawOutline) return `[0:v]${buildVideoFilter(format, clip, fadeInDuration, fadeOutDuration)},format=rgba[person-matte-video];[${personMatteInputIndex}:v]${buildPersonMatteMaskFilter(format, clip, sampleFps)}[person-matte-mask];[person-matte-video][person-matte-mask]alphamerge${outputLabel}`
   return `[0:v]${buildVideoFilter(format, clip, fadeInDuration, fadeOutDuration)},format=rgba[person-matte-video];[${personMatteInputIndex}:v]${buildPersonMatteMaskFilter(format, clip, sampleFps)}[person-matte-mask-source];[person-matte-mask-source]split=2[person-matte-mask][person-matte-outline-mask];[person-matte-video][person-matte-mask]alphamerge[person-matte-foreground];color=c=0x${personMatteSettings.outlineColor.slice(1)}:s=${outputWidth}x${outputHeight}:r=${frameRate}:d=${clip.durationSeconds},format=rgba[person-matte-outline-color];[person-matte-outline-mask]${outlineMaskFilter}[person-matte-outline-dilated];[person-matte-outline-color][person-matte-outline-dilated]alphamerge[person-matte-outline];[person-matte-outline][person-matte-foreground]overlay=format=auto${outputLabel}`

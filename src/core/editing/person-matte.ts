@@ -25,6 +25,15 @@ export function getEditingPersonMatteSettings(value: EditingPersonMatte | null |
   }
 }
 
+/** Uses the same minimum-canvas-dimension mapping as the FFmpeg outline pass. */
+export function getEditingPersonMatteOutlinePixels(value: EditingPersonMatte | null | undefined, width?: number, height?: number): number {
+  const outlineWidthPercent = getEditingPersonMatteSettings(value).outlineWidthPercent
+  if (outlineWidthPercent <= 0) return 0
+  const dimensions = [width, height].filter((dimension): dimension is number => typeof dimension === 'number' && Number.isFinite(dimension) && dimension >= 2)
+  const minimumDimension = dimensions.length > 0 ? Math.min(...dimensions) : 720
+  return Math.max(1, Math.round(outlineWidthPercent * minimumDimension / 200))
+}
+
 export function getEditingPersonMatteCacheKey(input: EditingPersonMatteCacheKeyInput): string {
   const providerId = input.providerId?.trim() || EDITING_PERSON_MATTE_PROVIDER_ID
   const sampleFps = Number.isFinite(input.sampleFps) && input.sampleFps! > 0 ? input.sampleFps! : EDITING_PERSON_MATTE_SAMPLE_FPS

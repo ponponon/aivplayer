@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createEditingProject } from '../../src/core/editing/project'
-import { getEditingPersonMatteCacheKey, getEditingPersonMatteSettings } from '../../src/core/editing/person-matte'
+import { getEditingPersonMatteCacheKey, getEditingPersonMatteOutlinePixels, getEditingPersonMatteSettings } from '../../src/core/editing/person-matte'
 import { parseEditingProject, parseEditingProjectFile, serializeEditingProject } from '../../src/core/editing/project-file'
 import type { EditingSource } from '../../src/shared/editing-types'
 
@@ -90,6 +90,8 @@ describe('editing project files', () => {
 
   it('normalizes person matte preview settings and keys caches by source range', () => {
     expect(getEditingPersonMatteSettings({ enabled: true, featherPercent: 99, outlineColor: '#AABBCC' })).toEqual({ enabled: true, featherPercent: 12, outlineWidthPercent: 0, outlineColor: '#aabbcc' })
+    expect(getEditingPersonMatteOutlinePixels({ enabled: true, outlineWidthPercent: 2 }, 1280, 720)).toBe(7)
+    expect(getEditingPersonMatteOutlinePixels({ enabled: true, outlineWidthPercent: 0 }, 1280, 720)).toBe(0)
     expect(getEditingPersonMatteCacheKey({ sourceFingerprint: 'demo:12', sourceStartSeconds: 1, sourceEndSeconds: 3 })).toBe('person-matte|modnet-webgpu-v1|demo:12|1|3|15')
     expect(getEditingPersonMatteCacheKey({ sourceFingerprint: 'demo:12', sourceStartSeconds: 1, sourceEndSeconds: 3.0004 })).toBe('person-matte|modnet-webgpu-v1|demo:12|1|3|15')
   })

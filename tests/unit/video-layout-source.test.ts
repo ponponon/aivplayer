@@ -12,5 +12,7 @@ describe('video layout source constraints', () => {
     )
     expect(playerCss).toMatch(/\.video-surface\s*\{[^}]*object-fit:\s*contain;/s)
     expect(appSource).toContain('aspectRatio: `${state.videoWidth} / ${state.videoHeight}`')
+    expect(appSource).toContain('getEditingPersonMatteOutlinePixels')
+    expect(appSource).toContain('drop-shadow(0 0 ${personMatteOutlinePixels}px ${personMatteSettings.outlineColor})')
   })
 })
