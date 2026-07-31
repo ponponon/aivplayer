@@ -1,27 +1,75 @@
-import type { SyntheticEvent } from 'react'
+import type { CSSProperties, SyntheticEvent } from 'react'
 import { AudioLines, FolderOpen } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { editedTimeToSource, getVideoClipSpans } from '../../../core/editing/timeline-math'
 import { buildEditingClipFilterCss, isEditingClipFilterNeutral } from '../../../core/editing/filter-operations'
 import { getEditingClipMotionStyle } from '../../../core/editing/clip-motion'
+import { getEditingPersonMatteSettings } from '../../../core/editing/person-matte'
 import { getEditingClipTransition } from '../../../core/editing/transition-operations'
 import { getEditingClipTreatment, getEditingClipTreatmentAnchor, getEditingClipTreatmentScale } from '../../../core/editing/treatment-operations'
 import { getEditingCanvasDimensions } from '../../../core/editing/canvases'
 import { findActiveEditingVideoBlocks, getEditingVideoBlockSize } from '../../../core/editing/video-block-operations'
 import { resolvePlaybackStartTime } from './playback-progress'
 import { useAppContext } from './app-context'
+import type { PersonMatteTrackFrame } from '../../../shared/person-matte-types'
 
 export function VideoSurface(): React.ReactElement {
   const app = useAppContext()
   const { state, copy } = app
-  if (!state.currentFile) {
-    return <div className="empty-state"><div className="empty-icon"><AudioLines size={46} /></div><h1>{copy.emptyState.title}</h1><p>{copy.emptyState.description}</p><button className="primary-action" type="button" onClick={app.openFiles}><FolderOpen size={18} />{copy.emptyState.openVideo}</button></div>
-  }
   const editingPreviewFile = app.editingPreviewSourceId ? app.editingSourceFiles[app.editingPreviewSourceId] : null
-  const mediaUrl = app.isEditingMode && editingPreviewFile ? editingPreviewFile.url : state.currentFile.url
+  const mediaUrl = app.isEditingMode && editingPreviewFile ? editingPreviewFile.url : state.currentFile?.url ?? ''
   const currentEditingClip = app.isEditingMode && app.editingProject ? editedTimeToSource(app.editingProject.videoClips, app.editingCurrentTime)?.clip ?? null : null
   const activeSplitBlock = app.isEditingMode && app.editingProject ? findActiveEditingVideoBlocks(app.editingProject.videoBlocks ?? [], app.editingCurrentTime).find((block) => block.position === 'split-left' || block.position === 'split-right') ?? null : null
   const activeSplitPosition = activeSplitBlock?.position ?? null
   const currentEditingSpan = app.isEditingMode && app.editingProject && currentEditingClip ? getVideoClipSpans(app.editingProject.videoClips).find((span) => span.clip.id === currentEditingClip.id) ?? null : null
+  const currentEditingSource = app.isEditingMode && app.editingProject && currentEditingClip ? app.editingProject.sources.find((source) => source.id === currentEditingClip.sourceId) ?? null : null
+  const personMatteSettings = getEditingPersonMatteSettings(currentEditingClip?.personMatte)
+  const personMatteEnabled = Boolean(app.isEditingMode && currentEditingClip && personMatteSettings.enabled)
+  const personMatteTrackKey = personMatteEnabled && currentEditingClip && currentEditingSource ? `${currentEditingSource.path}|${currentEditingSource.fingerprint}|${currentEditingClip.sourceStartSeconds}|${currentEditingClip.sourceEndSeconds}` : null
+  const [personMatteTrack, setPersonMatteTrack] = useState<{ key: string; frames: PersonMatteTrackFrame[] } | null>(null)
+  const [personMatteFrameUrl, setPersonMatteFrameUrl] = useState<string | null>(null)
+  useEffect(() => {
+    let active = true
+    setPersonMatteTrack(null)
+    setPersonMatteFrameUrl(null)
+    if (!personMatteTrackKey || !currentEditingClip || !currentEditingSource) return () => { active = false }
+    void window.aiv.buildPersonMatteTrack({ sourcePath: currentEditingSource.path, sourceFingerprint: currentEditingSource.fingerprint, sourceStartSeconds: currentEditingClip.sourceStartSeconds, sourceEndSeconds: currentEditingClip.sourceEndSeconds }).then((result) => {
+      if (!active || !result.success || result.frames.length === 0) return
+      setPersonMatteTrack({ key: personMatteTrackKey, frames: result.frames })
+    }).catch(() => undefined)
+    return () => { active = false }
+  }, [currentEditingClip?.id, currentEditingClip?.sourceStartSeconds, currentEditingClip?.sourceEndSeconds, currentEditingSource?.fingerprint, currentEditingSource?.path, personMatteTrackKey])
+  useEffect(() => {
+    if (!personMatteEnabled || !personMatteTrack || personMatteTrack.key !== personMatteTrackKey) {
+      setPersonMatteFrameUrl(null)
+      return
+    }
+    let active = true
+    let animationFrame = 0
+    let lastUrl: string | null = null
+    const updateFrame = (): void => {
+      if (!active) return
+      const sourceSeconds = app.videoRef.current?.currentTime ?? personMatteTrack.frames[0]?.sourceSeconds ?? 0
+      let selected = personMatteTrack.frames[0] ?? null
+      for (const frame of personMatteTrack.frames) {
+        if (frame.sourceSeconds > sourceSeconds + 0.001) break
+        selected = frame
+      }
+      if (selected?.url !== lastUrl) {
+        lastUrl = selected?.url ?? null
+        setPersonMatteFrameUrl(lastUrl)
+      }
+      animationFrame = window.requestAnimationFrame(updateFrame)
+    }
+    updateFrame()
+    return () => {
+      active = false
+      window.cancelAnimationFrame(animationFrame)
+    }
+  }, [app.videoRef, personMatteEnabled, personMatteTrack, personMatteTrackKey])
+  if (!state.currentFile) {
+    return <div className="empty-state"><div className="empty-icon"><AudioLines size={46} /></div><h1>{copy.emptyState.title}</h1><p>{copy.emptyState.description}</p><button className="primary-action" type="button" onClick={app.openFiles}><FolderOpen size={18} />{copy.emptyState.openVideo}</button></div>
+  }
   const isPunchIn = !activeSplitPosition && currentEditingClip ? getEditingClipTreatment(currentEditingClip) === 'punch-in' : false
   const punchInOrigin = currentEditingClip ? getEditingClipTreatmentAnchor(currentEditingClip) : 'center'
   const transformOrigin = punchInOrigin === 'left' ? '0% 50%' : punchInOrigin === 'right' ? '100% 50%' : '50% 50%'
@@ -38,7 +86,7 @@ export function VideoSurface(): React.ReactElement {
   const splitMainWidth = activeSplitBlock ? `${100 - getEditingVideoBlockSize(activeSplitBlock)}%` : undefined
   const editingCanvas = app.isEditingMode && app.editingProject ? getEditingCanvasDimensions(app.editingProject.canvasPreset ?? 'source', app.editingProject.sources[0]?.width, app.editingProject.sources[0]?.height) : null
   const videoTransform = [punchTransform, transitionTransform, clipMotionTransform].filter(Boolean).join(' ')
-  const videoStyle = { ...(editingCanvas ? { width: splitMainWidth ?? '100%', height: '100%', aspectRatio: `${editingCanvas.width} / ${editingCanvas.height}`, objectFit: editingCanvas.fitMode } : state.videoWidth > 0 && state.videoHeight > 0 ? { aspectRatio: `${state.videoWidth} / ${state.videoHeight}` } : {}), ...(splitMainWidth && !editingCanvas ? { width: splitMainWidth } : {}), ...(videoTransform ? { transform: videoTransform, transformOrigin } : {}), ...(transitionClipPath ? { clipPath: transitionClipPath } : {}), ...(hasColorFilter ? { filter: buildEditingClipFilterCss(currentEditingClip!) } : {}), opacity: transitionOpacity === undefined ? clipMotionStyle.opacity : transitionOpacity * clipMotionStyle.opacity }
+  const videoStyle: CSSProperties = { ...(editingCanvas ? { width: splitMainWidth ?? '100%', height: '100%', aspectRatio: `${editingCanvas.width} / ${editingCanvas.height}`, objectFit: editingCanvas.fitMode } : state.videoWidth > 0 && state.videoHeight > 0 ? { aspectRatio: `${state.videoWidth} / ${state.videoHeight}` } : {}), ...(splitMainWidth && !editingCanvas ? { width: splitMainWidth } : {}), ...(videoTransform ? { transform: videoTransform, transformOrigin } : {}), ...(transitionClipPath ? { clipPath: transitionClipPath } : {}), ...(hasColorFilter ? { filter: buildEditingClipFilterCss(currentEditingClip!) } : {}), ...(personMatteFrameUrl ? { maskImage: `url("${personMatteFrameUrl}")`, WebkitMaskImage: `url("${personMatteFrameUrl}")`, maskPosition: 'center', WebkitMaskPosition: 'center', maskRepeat: 'no-repeat', WebkitMaskRepeat: 'no-repeat', maskSize: editingCanvas?.fitMode === 'cover' ? 'cover' : 'contain', WebkitMaskSize: editingCanvas?.fitMode === 'cover' ? 'cover' : 'contain' } : {}), opacity: transitionOpacity === undefined ? clipMotionStyle.opacity : transitionOpacity * clipMotionStyle.opacity }
   const onLoadedMetadata = (event: SyntheticEvent<HTMLVideoElement>): void => {
     const video = event.currentTarget
     const duration = video.duration || 0
@@ -53,5 +101,5 @@ export function VideoSurface(): React.ReactElement {
     app.updatePlaybackHistoryDuration(duration)
     app.persistPlaybackProgress(resumeTime, true)
   }
-  return <video ref={app.videoRef} className={`video-surface ${isPunchIn ? 'is-punch-in' : ''} ${activeSplitPosition ? `is-${activeSplitPosition}` : ''}`} style={videoStyle} src={mediaUrl} preload="metadata" onClick={app.handleVideoClick} onDoubleClick={app.handleVideoDoubleClick} onPlay={() => app.setState((current) => ({ ...current, isPlaying: true }))} onPlaying={app.clearPlaybackError} onCanPlay={app.clearPlaybackError} onPause={(event) => { const currentTime = event.currentTarget.currentTime; if (!app.isEditingMode || !app.editingResumePlaybackRef.current) app.setState((current) => ({ ...current, isPlaying: false })); if (!app.isEditingMode) app.persistPlaybackProgress(currentTime, true) }} onEnded={() => { app.playbackEndedRef.current = true; app.editingResumePlaybackRef.current = false; app.setState((current) => ({ ...current, isPlaying: false })); if (!app.isEditingMode) app.persistPlaybackProgress(0, true) }} onLoadedMetadata={onLoadedMetadata} onTimeUpdate={(event) => { const currentTime = event.currentTarget.currentTime; app.setState((current) => ({ ...current, currentTime, error: null })); if (!app.isEditingMode) app.persistPlaybackProgress(currentTime) }} onVolumeChange={(event) => { const { volume, muted } = event.currentTarget; app.setState((current) => ({ ...current, volume, muted })) }} onError={app.handleMediaError} controls={false} />
+  return <video ref={app.videoRef} className={`video-surface ${isPunchIn ? 'is-punch-in' : ''} ${activeSplitPosition ? `is-${activeSplitPosition}` : ''} ${personMatteFrameUrl ? 'is-person-matte' : ''}`} data-testid={personMatteFrameUrl ? 'editing-person-matte-preview' : undefined} style={videoStyle} src={mediaUrl} preload="metadata" onClick={app.handleVideoClick} onDoubleClick={app.handleVideoDoubleClick} onPlay={() => app.setState((current) => ({ ...current, isPlaying: true }))} onPlaying={app.clearPlaybackError} onCanPlay={app.clearPlaybackError} onPause={(event) => { const currentTime = event.currentTarget.currentTime; if (!app.isEditingMode || !app.editingResumePlaybackRef.current) app.setState((current) => ({ ...current, isPlaying: false })); if (!app.isEditingMode) app.persistPlaybackProgress(currentTime, true) }} onEnded={() => { app.playbackEndedRef.current = true; app.editingResumePlaybackRef.current = false; app.setState((current) => ({ ...current, isPlaying: false })); if (!app.isEditingMode) app.persistPlaybackProgress(0, true) }} onLoadedMetadata={onLoadedMetadata} onTimeUpdate={(event) => { const currentTime = event.currentTarget.currentTime; app.setState((current) => ({ ...current, currentTime, error: null })); if (!app.isEditingMode) app.persistPlaybackProgress(currentTime) }} onVolumeChange={(event) => { const { volume, muted } = event.currentTarget; app.setState((current) => ({ ...current, volume, muted })) }} onError={app.handleMediaError} controls={false} />
 }

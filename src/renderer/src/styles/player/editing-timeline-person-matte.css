@@ -66,3 +66,35 @@
 }
 
 .editing-person-matte-download:disabled { cursor: wait; opacity: 0.6; }
+
+.editing-person-matte-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 26px;
+  padding: 0 8px;
+  color: var(--text-secondary);
+  background: rgba(var(--overlay-rgb), 0.06);
+  border: 1px solid var(--border-soft);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 9px;
+}
+
+.editing-person-matte-toggle:hover,
+.editing-person-matte-toggle.is-active { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
+
+.editing-person-matte-field {
+  display: grid;
+  grid-template-columns: 62px minmax(80px, 1fr) 32px;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.editing-person-matte-field input { width: 100%; accent-color: var(--accent); }
+.editing-person-matte-field output { color: var(--text-secondary); font-variant-numeric: tabular-nums; text-align: right; }
+.editing-person-matte-color { display: flex; align-items: center; justify-content: space-between; color: var(--text-muted); font-size: 9px; }
+.editing-person-matte-color input { width: 28px; height: 20px; padding: 1px; border: 1px solid var(--border-soft); border-radius: 4px; background: transparent; cursor: pointer; }
