@@ -59,7 +59,6 @@ export function EditingGraphicCanvasOverlay({ graphic, hint, onChange }: Props):
   const baseTransform = hasEditingGraphicTransform(graphic) ? getEditingGraphicTransform(graphic) : cardRect ? getEditingGraphicTransform({ ...graphic, ...cardRect }) : null
   const effectiveTransform = liveTransform ?? baseTransform
   const isDragging = liveTransform !== null
-  if (!effectiveTransform) return null
   const boxHeight = Math.max(42, cardRect?.heightPx ?? 64)
 
   const finishDrag = (): void => {
@@ -112,15 +111,16 @@ export function EditingGraphicCanvasOverlay({ graphic, hint, onChange }: Props):
   }, [])
 
   const updateDrag = (event: React.PointerEvent<HTMLElement>): void => updateDragAt(event.clientX, event.clientY)
-  const isCentered = isDragging && Math.abs(effectiveTransform.xPercent - 50) < 0.01
-  const boxStyle = { left: `${effectiveTransform.xPercent}%`, top: `${effectiveTransform.yPercent}%`, width: `${effectiveTransform.widthPercent}%`, '--editing-graphic-box-height': `${boxHeight}px`, transform: `translate(-50%, -50%) rotate(${effectiveTransform.rotationDegrees}deg)` } as CSSProperties
+  const isCentered = isDragging && effectiveTransform !== null && Math.abs(effectiveTransform.xPercent - 50) < 0.01
   return <div ref={stageRef} className={`editing-graphic-canvas-overlay ${isDragging ? 'is-dragging' : ''}`} data-testid="editing-graphic-canvas-overlay" aria-label={hint}>
-    {isCentered ? <span className="editing-graphic-canvas-guide" aria-hidden="true" /> : null}
-    <div className="editing-graphic-canvas-box" style={boxStyle}>
-      <button className="editing-graphic-canvas-body" type="button" aria-label={hint} onPointerDown={(event) => beginDrag(event, 'move')} onPointerMove={updateDrag} onPointerUp={finishDrag} onPointerCancel={finishDrag} />
-      <button className="editing-graphic-canvas-handle is-left" type="button" aria-label={hint} onPointerDown={(event) => beginDrag(event, 'resize-left')} onPointerMove={updateDrag} onPointerUp={finishDrag} onPointerCancel={finishDrag} />
-      <button className="editing-graphic-canvas-handle is-right" type="button" aria-label={hint} onPointerDown={(event) => beginDrag(event, 'resize-right')} onPointerMove={updateDrag} onPointerUp={finishDrag} onPointerCancel={finishDrag} />
-      <button className="editing-graphic-canvas-rotate" type="button" aria-label={hint} onPointerDown={(event) => beginDrag(event, 'rotate')} onPointerMove={updateDrag} onPointerUp={finishDrag} onPointerCancel={finishDrag}>↻</button>
-    </div>
+    {effectiveTransform ? <>
+      {isCentered ? <span className="editing-graphic-canvas-guide" aria-hidden="true" /> : null}
+      <div className="editing-graphic-canvas-box" style={{ left: `${effectiveTransform.xPercent}%`, top: `${effectiveTransform.yPercent}%`, width: `${effectiveTransform.widthPercent}%`, '--editing-graphic-box-height': `${boxHeight}px`, transform: `translate(-50%, -50%) rotate(${effectiveTransform.rotationDegrees}deg)` } as CSSProperties}>
+        <button className="editing-graphic-canvas-body" type="button" aria-label={hint} onPointerDown={(event) => beginDrag(event, 'move')} onPointerMove={updateDrag} onPointerUp={finishDrag} onPointerCancel={finishDrag} />
+        <button className="editing-graphic-canvas-handle is-left" type="button" aria-label={hint} onPointerDown={(event) => beginDrag(event, 'resize-left')} onPointerMove={updateDrag} onPointerUp={finishDrag} onPointerCancel={finishDrag} />
+        <button className="editing-graphic-canvas-handle is-right" type="button" aria-label={hint} onPointerDown={(event) => beginDrag(event, 'resize-right')} onPointerMove={updateDrag} onPointerUp={finishDrag} onPointerCancel={finishDrag} />
+        <button className="editing-graphic-canvas-rotate" type="button" aria-label={hint} onPointerDown={(event) => beginDrag(event, 'rotate')} onPointerMove={updateDrag} onPointerUp={finishDrag} onPointerCancel={finishDrag}>↻</button>
+      </div>
+    </> : null}
   </div>
 }

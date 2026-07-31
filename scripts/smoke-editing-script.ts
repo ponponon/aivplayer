@@ -203,7 +203,7 @@ async function main(): Promise<void> {
     if (!graphicCanvasRightHandleBox) throw new Error('Graphic canvas right handle was not measurable')
     await page.mouse.move(graphicCanvasRightHandleBox.x + graphicCanvasRightHandleBox.width / 2, graphicCanvasRightHandleBox.y + graphicCanvasRightHandleBox.height / 2)
     await page.mouse.down()
-    await page.mouse.move(graphicCanvasRightHandleBox.x + graphicCanvasRightHandleBox.width / 2 - 24, graphicCanvasRightHandleBox.y + graphicCanvasRightHandleBox.height / 2, { steps: 5 })
+    await page.mouse.move(graphicCanvasRightHandleBox.x + graphicCanvasRightHandleBox.width / 2 + 24, graphicCanvasRightHandleBox.y + graphicCanvasRightHandleBox.height / 2, { steps: 5 })
     await page.mouse.up()
     await page.waitForFunction((before) => document.querySelector('.editing-graphic-canvas-box')?.getAttribute('style') !== before, graphicCanvasInitialStyle, { timeout: 10_000 })
     const graphicCanvasResizedStyle = await graphicCanvasBox.getAttribute('style')

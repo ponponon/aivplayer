@@ -23,6 +23,8 @@ describe('editing graphic operations', () => {
     expect(getEditingGraphicTransform(graphic)).toMatchObject({ xPercent: 50, yPercent: 50, widthPercent: 58, rotationDegrees: 0 })
     expect(updateEditingGraphicTransform(graphic, 'move', 12, -8)).toMatchObject({ xPercent: 62, yPercent: 42 })
     expect(updateEditingGraphicTransform({ ...graphic, xPercent: 48, widthPercent: 30 }, 'resize-left', 8)).toMatchObject({ xPercent: 52, widthPercent: 22 })
+    expect(updateEditingGraphicTransform({ ...graphic, xPercent: 48, widthPercent: 30 }, 'resize-right', 8)).toMatchObject({ xPercent: 52, widthPercent: 38 })
+    expect(updateEditingGraphicTransform(graphic, 'rotate', 15)).toMatchObject({ rotationDegrees: 15 })
     const moved = updateEditingGraphic([graphic], graphic.id, { xPercent: 62, yPercent: 42, widthPercent: 58, rotationDegrees: 12 }, 8)[0]
     expect(moved).toMatchObject({ xPercent: 62, yPercent: 42, widthPercent: 58, rotationDegrees: 12 })
     const resetByPosition = updateEditingGraphic([moved], graphic.id, { position: 'top-left' }, 8)[0]
