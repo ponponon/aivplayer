@@ -86,8 +86,13 @@ async function main(): Promise<void> {
     await page.getByRole('button', { name: openSettingsLabel }).click()
     await page.waitForSelector('.settings-dialog', { timeout: 10_000 })
 
+    const dialogHeightByTab: Record<string, number> = {}
+    const readDialogHeight = async (): Promise<number> => page.locator('.settings-dialog').evaluate((element) => Math.round(element.getBoundingClientRect().height))
+    dialogHeightByTab.general = await readDialogHeight()
+
     await page.locator('[data-settings-tab="interface"]').click()
     await page.waitForTimeout(500)
+    dialogHeightByTab.interface = await readDialogHeight()
 
     const themeSelect = page.locator('#settings-section-interface .settings-select')
     await themeSelect.selectOption('light')
@@ -101,6 +106,7 @@ async function main(): Promise<void> {
 
     await page.locator('[data-settings-tab="video"]').click()
     await page.waitForTimeout(500)
+    dialogHeightByTab.video = await readDialogHeight()
 
     const videoCardHeight = await page.evaluate(() => {
       const card = document.querySelector('#settings-section-video') as HTMLElement | null
@@ -132,6 +138,7 @@ async function main(): Promise<void> {
 
     await page.locator('[data-settings-tab="subtitles"]').click()
     await page.waitForTimeout(500)
+    dialogHeightByTab.subtitles = await readDialogHeight()
 
     const cachePanelState = await page.evaluate(() => {
       const panel = document.querySelector('#settings-section-subtitles') as HTMLElement | null
@@ -145,6 +152,17 @@ async function main(): Promise<void> {
 
     await page.locator('[data-settings-tab="shortcuts"]').click()
     await page.waitForTimeout(250)
+    dialogHeightByTab.shortcuts = await readDialogHeight()
+
+    const settingsLayoutState = await page.evaluate(() => {
+      const body = document.querySelector('.settings-body') as HTMLElement | null
+      const grid = document.querySelector('.settings-grid') as HTMLElement | null
+      return {
+        bodyOverflow: body ? window.getComputedStyle(body).overflow : 'missing',
+        gridOverflowY: grid ? window.getComputedStyle(grid).overflowY : 'missing',
+        gridScrollbarGutter: grid ? window.getComputedStyle(grid).scrollbarGutter : 'missing'
+      }
+    })
 
     const shortcutCount = await page.locator('.settings-shortcut').count()
     const shortcutPanelState = await page.evaluate(() => {
@@ -164,6 +182,8 @@ async function main(): Promise<void> {
     console.log(`Settings number styles: ${JSON.stringify(numberStyles)}`)
     console.log(`Quick theme toggle state: ${JSON.stringify(quickToggleThemeState)}`)
     console.log(`Light theme state: ${JSON.stringify(lightThemeState)}`)
+    console.log(`Settings dialog heights: ${JSON.stringify(dialogHeightByTab)}`)
+    console.log(`Settings layout state: ${JSON.stringify(settingsLayoutState)}`)
     console.log(`Video settings card height: ${JSON.stringify(videoCardHeight)}`)
     console.log(`Subtitle cache panel: ${JSON.stringify(cachePanelState)}`)
     console.log(`Shortcut panel: ${JSON.stringify({ shortcutCount, ...shortcutPanelState })}`)
@@ -178,6 +198,10 @@ async function main(): Promise<void> {
       lightThemeState.documentTheme !== 'light' ||
       lightThemeState.appTheme !== 'light' ||
       lightThemeState.appBackground !== 'rgb(248, 250, 253)' ||
+      Object.values(dialogHeightByTab).some((height) => height !== dialogHeightByTab.general) ||
+      settingsLayoutState.bodyOverflow !== 'hidden' ||
+      settingsLayoutState.gridOverflowY !== 'auto' ||
+      settingsLayoutState.gridScrollbarGutter !== 'stable' ||
       !videoCardHeight ||
       videoCardHeight.alignItems !== 'start' ||
       videoCardHeight.clientHeight > videoCardHeight.scrollHeight + 1 ||

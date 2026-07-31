@@ -140,7 +140,7 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
     <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <section
         ref={dialogRef}
-        className="settings-dialog"
+        className="settings-dialog settings-preferences-dialog"
         tabIndex={-1}
         role="dialog"
         aria-modal="true"

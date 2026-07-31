@@ -25,6 +25,14 @@
   overflow: auto;
 }
 
+.settings-preferences-dialog {
+  --settings-dialog-height: min(760px, calc(100dvh - 48px));
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: var(--settings-dialog-height);
+  max-height: var(--settings-dialog-height);
+  overflow: hidden;
+}
+
 .download-dialog-header {
   display: flex;
   align-items: center;

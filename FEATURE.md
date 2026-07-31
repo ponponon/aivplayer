@@ -181,6 +181,7 @@
 - 设置面板的目录选择行统一通过 `SettingsFolderPicker` 渲染，路径展示、文件夹按钮、空值占位和可选清空按钮保持一致。
 - 设置面板的紧凑开关 + 数值行统一通过 `SettingsToggleValueRow` 渲染，避免类似“自动隐藏控制条延迟”这类组合控件再次手写布局。
 - 设置弹窗的两栏卡片按各自内容高度对齐，右侧字幕翻译配置变长时不会再把左侧视频 / 播放设置卡片拉伸出大块空白。
+- 设置弹窗桌面端采用稳定的视口自适应高度，切换不同分组时标题栏和底部操作区不再跟着内容伸缩；当前分组内容在中间区域独立滚动，字幕等长分组不会把整个窗口撑高。
 - 设置面板的分组写回统一通过 `createAppSettingsSectionPatcher` 绑定，实际合并由 shared 的 `updateAppSettingsSection` 承担，ui / media / playback / asr / capture 共用同一种 partial / updater 模板，避免以后再长出多套同构 helper。
 - 设置面板本身直接接收 `AppSettingsSectionPatcher`，不再额外暴露整份 settings updater，确保 dialog 只保留自己真正需要的 section 级写回能力。
 - 设置面板的分组 patch 类型统一通过 `AppSettingsSectionUpdate` 这一种共享别名描述，避免 App 和 settings dialog 各自重复写一遍 partial / updater 联合类型。
