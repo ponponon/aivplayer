@@ -30,6 +30,7 @@
     "smoke:clip-export-dialog": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-clip-export-dialog.ts",
     "smoke:editing-script": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-editing-script.ts",
     "smoke:graphic-motion-export": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-graphic-motion-export.ts",
+    "smoke:bilingual-caption-export": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-bilingual-caption-export.ts",
     "smoke:media-details-dialog": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-media-details-dialog.ts",
     "smoke:playback-history": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-playback-history.ts",
     "smoke:dialogs:all": "npm run smoke:clip-export-dialog && npm run smoke:media-details-dialog",

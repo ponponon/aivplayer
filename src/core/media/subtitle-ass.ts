@@ -2,12 +2,14 @@ import { getSubtitlePreset, splitSubtitleTextByKeywords, type SubtitleRenderSett
 import type { EditingCaption, EditingCaptionEffect, EditingCaptionLayout } from '../../shared/editing-types'
 import { chunkSubtitleWordsByWidth, createFallbackSubtitleWords, getSubtitleMaxWidthEm, joinSubtitleWords, type SubtitleWord } from '../../shared/subtitle-timing'
 import { getEditingCaptionEffectAssPrefix } from '../editing/caption-effects'
+import { getEditingCaptionLineLayout } from '../editing/caption-layout'
 
 export type SubtitleAssOptions = SubtitleRenderSettings & {
   presetId?: string
   playResX?: number
   playResY?: number
   captionLayout?: EditingCaptionLayout
+  includeTranslation?: boolean
 }
 
 type AssCue = { startSeconds: number; endSeconds: number; text: string }
@@ -52,18 +54,16 @@ function escapeAssText(text: string): string {
   return text.replace(/\\/g, '\\\\').replace(/[{}]/g, '').replace(/\r/g, '')
 }
 
-function getAssCaptionLayoutTag(options: SubtitleAssOptions): string {
-  const layout = options.captionLayout
+function getAssCaptionLayoutTag(options: SubtitleAssOptions, layout = options.captionLayout): string {
   if (!layout) return ''
   const playResX = Math.max(320, Math.round(options.playResX ?? 1920))
   const playResY = Math.max(240, Math.round(options.playResY ?? 1080))
   return `{\\pos(${Math.round(playResX * layout.xPercent / 100)},${Math.round(playResY * layout.yPercent / 100)})}`
 }
 
-function getAssMaxEm(options: SubtitleAssOptions): number {
+function getAssMaxEm(options: SubtitleAssOptions, layout = options.captionLayout): number {
   const playResX = Math.max(320, Math.round(options.playResX ?? 1920))
-  const layout = options.captionLayout
-  return getSubtitleMaxWidthEm(options.fontSizePx ?? 14, playResX, layout?.widthPercent ?? 82, layout ? playResX : 720)
+  return getSubtitleMaxWidthEm(layout?.fontSizePx ?? options.fontSizePx ?? 14, playResX, layout?.widthPercent ?? 82, layout ? playResX : 720)
 }
 
 function renderAssText(text: string, options: SubtitleAssOptions): string {
@@ -95,12 +95,12 @@ function renderAssKaraokeText(text: string, words: readonly SubtitleWord[], effe
   }).join('')
 }
 
-function buildKaraokeDialogue(startSeconds: number, endSeconds: number, words: readonly SubtitleWord[], effect: EditingCaptionEffect, options: SubtitleAssOptions): string {
+function buildKaraokeDialogue(startSeconds: number, endSeconds: number, words: readonly SubtitleWord[], effect: EditingCaptionEffect, options: SubtitleAssOptions, layout = options.captionLayout, styleName = 'Default'): string {
   const text = joinSubtitleWords(words)
-  return `Dialogue: 0,${formatAssTimestamp(startSeconds)},${formatAssTimestamp(endSeconds)},Default,,0,0,0,,${getAssCaptionLayoutTag(options)}${renderAssKaraokeText(text, words, effect, options)}`
+  return `Dialogue: 0,${formatAssTimestamp(startSeconds)},${formatAssTimestamp(endSeconds)},${styleName},,0,0,0,,${getAssCaptionLayoutTag(options, layout)}${renderAssKaraokeText(text, words, effect, options)}`
 }
 
-function buildWordTimedDialogueEvents(startSeconds: number, endSeconds: number, words: readonly SubtitleWord[], maxEm: number, effect: EditingCaptionEffect, options: SubtitleAssOptions): string[] {
+function buildWordTimedDialogueEvents(startSeconds: number, endSeconds: number, words: readonly SubtitleWord[], maxEm: number, effect: EditingCaptionEffect, options: SubtitleAssOptions, layout = options.captionLayout, styleName = 'Default'): string[] {
   const groups = effect === 'kinetic-slam' ? words.map((word) => [word]) : chunkSubtitleWordsByWidth(words, maxEm)
   if (groups.length === 0) return []
 
@@ -109,17 +109,19 @@ function buildWordTimedDialogueEvents(startSeconds: number, endSeconds: number, 
     const nextGroupFirstWord = groups[index + 1]?.[0]
     const groupStart = Math.max(startSeconds, startSeconds + (firstWord?.startSeconds ?? 0))
     const groupEnd = Math.min(endSeconds, nextGroupFirstWord ? startSeconds + nextGroupFirstWord.startSeconds : endSeconds)
-    return buildKaraokeDialogue(groupStart, Math.max(groupStart + 0.01, groupEnd), group, effect, options)
+    return buildKaraokeDialogue(groupStart, Math.max(groupStart + 0.01, groupEnd), group, effect, options, layout, styleName)
   })
 }
 
-function buildAssDocument(events: string[], options: SubtitleAssOptions): string {
+function buildAssDocument(events: string[], options: SubtitleAssOptions, includeTranslationStyle = false): string {
   const preset = getSubtitlePreset(options.presetId)
   const fontSize = Math.max(12, Math.min(96, Math.round(options.captionLayout?.fontSizePx ?? options.fontSizePx ?? 14)))
   const playResX = Math.max(320, Math.round(options.playResX ?? 1920))
   const playResY = Math.max(240, Math.round(options.playResY ?? 1080))
   const fontFamily = preset.fontFamily === 'serif' ? 'Georgia' : preset.fontFamily === 'mono' ? 'Courier New' : 'Arial'
-  return `[Script Info]\nScriptType: v4.00+\nPlayResX: ${playResX}\nPlayResY: ${playResY}\nScaledBorderAndShadow: yes\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Default,${fontFamily},${fontSize},${preset.assPrimaryColor},${preset.assEmphasisColor},${preset.assOutlineColor},${preset.assBackColor},${preset.fontWeight >= 700 ? -1 : 0},${preset.italic ? -1 : 0},${options.captionLayout ? 5 : 2},60,60,54,1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n${events.join('\n')}\n`
+  const translationFontSize = Math.max(12, Math.min(96, Math.round(options.captionLayout ? getEditingCaptionLineLayout(options.captionLayout, 'translation').fontSizePx : fontSize * 0.75)))
+  const translationStyle = includeTranslationStyle ? `\nStyle: Translation,${fontFamily},${translationFontSize},${preset.assPrimaryColor},${preset.assEmphasisColor},${preset.assOutlineColor},${preset.assBackColor},${preset.fontWeight >= 700 ? -1 : 0},${preset.italic ? -1 : 0},${options.captionLayout ? 5 : 2},60,60,54,1` : ''
+  return `[Script Info]\nScriptType: v4.00+\nPlayResX: ${playResX}\nPlayResY: ${playResY}\nScaledBorderAndShadow: yes\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Default,${fontFamily},${fontSize},${preset.assPrimaryColor},${preset.assEmphasisColor},${preset.assOutlineColor},${preset.assBackColor},${preset.fontWeight >= 700 ? -1 : 0},${preset.italic ? -1 : 0},${options.captionLayout ? 5 : 2},60,60,54,1${translationStyle}\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n${events.join('\n')}\n`
 }
 
 export function buildAssSubtitle(text: string, options: SubtitleAssOptions = {}): string {
@@ -136,7 +138,7 @@ export function buildAssSubtitle(text: string, options: SubtitleAssOptions = {})
 export function buildAssSubtitleFromEditingCaptions(captions: readonly EditingCaption[], options: SubtitleAssOptions = {}): string {
   const maxEm = getAssMaxEm(options)
   const effect = options.effect ?? 'highlight'
-  const events = [...captions]
+  const sourceEvents = [...captions]
     .filter((caption) => caption.kind === 'source' && caption.text.trim() && caption.durationSeconds > 0)
     .sort((left, right) => left.startSeconds - right.startSeconds || left.id.localeCompare(right.id))
     .map((caption) => {
@@ -148,5 +150,17 @@ export function buildAssSubtitleFromEditingCaptions(captions: readonly EditingCa
       }
       return `Dialogue: 0,${formatAssTimestamp(startSeconds)},${formatAssTimestamp(endSeconds)},Default,,0,0,0,,${getAssCaptionLayoutTag(options)}${renderAssText(caption.text.trim(), options)}`
     })
-  return buildAssDocument(events, options)
+  const includeTranslation = options.includeTranslation ?? true
+  const translationLayout = getEditingCaptionLineLayout(options.captionLayout, 'translation')
+  const translationEvents = includeTranslation
+    ? [...captions]
+      .filter((caption) => caption.kind === 'translation' && caption.text.trim() && caption.durationSeconds > 0)
+      .sort((left, right) => left.startSeconds - right.startSeconds || left.id.localeCompare(right.id))
+      .map((caption) => {
+        const startSeconds = Math.max(0, Number.isFinite(caption.startSeconds) ? caption.startSeconds : 0)
+        const endSeconds = startSeconds + Math.max(0.1, caption.durationSeconds)
+        return `Dialogue: 0,${formatAssTimestamp(startSeconds)},${formatAssTimestamp(endSeconds)},Translation,,0,0,0,,${getAssCaptionLayoutTag(options, translationLayout)}${renderAssText(caption.text.trim(), options)}`
+      })
+    : []
+  return buildAssDocument([...sourceEvents, ...translationEvents], options, translationEvents.length > 0)
 }

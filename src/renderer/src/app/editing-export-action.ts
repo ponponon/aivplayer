@@ -26,7 +26,7 @@ export async function exportEditingTimeline(model: AppModel, derived: AppDerived
   const hasProjectSubtitle = subtitleText.length > 0
   const mode = hasProjectSubtitle || derived.hasClipExportSubtitle ? requestedMode ?? model.appSettings.capture.clipExportMode : 'video'
   const subtitleAssText = hasProjectSubtitle && mode === 'burn-subtitle'
-    ? buildAssSubtitleFromEditingCaptions(project.captions, { ...model.appSettings.subtitles, fontSizePx: captionLayout.fontSizePx, effect: project.captionEffect ?? 'none', captionLayout, playResX: canvas.width, playResY: canvas.height })
+    ? buildAssSubtitleFromEditingCaptions(project.captions, { ...model.appSettings.subtitles, fontSizePx: captionLayout.fontSizePx, effect: project.captionEffect ?? 'none', includeTranslation: model.appSettings.subtitles.displayMode !== 'source', captionLayout, playResX: canvas.width, playResY: canvas.height })
     : undefined
   model.setIsExportingClip(true)
   try {

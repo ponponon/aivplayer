@@ -69,6 +69,7 @@ describe('editing timeline source contracts', () => {
     const timelineExport = readSource('src/core/media/timeline-export.ts')
     const timelineExportIpc = readSource('src/desktop/ipc-timeline-export.ts')
     const smokeScript = readSource('scripts/smoke-editing-script.ts')
+    const bilingualCaptionSmoke = readSource('scripts/smoke-bilingual-caption-export.ts')
 
     expect(stage).toContain("app.isEditingMode ? <EditingTimeline /> : <PlaybackControls />")
     expect(timeline).toContain('data-testid="editing-timeline"')
@@ -151,6 +152,8 @@ describe('editing timeline source contracts', () => {
     expect(subtitleOverlay).toContain('is-editing-caption')
     expect(subtitleText).toContain('maxWidthPx')
     expect(subtitleAss).toContain('getAssCaptionLayoutTag')
+    expect(bilingualCaptionSmoke).toContain("mode: 'burn-subtitle'")
+    expect(bilingualCaptionSmoke).toContain('Style: Translation')
     expect(exportConfirm).toContain('outputFileName')
     expect(exportConfirm).toContain('chooseTimelineExportPath')
     expect(exportConfirm).toContain('outputVideoPath')

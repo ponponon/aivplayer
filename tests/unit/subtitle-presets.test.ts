@@ -38,6 +38,20 @@ describe('subtitle visual presets', () => {
     expect(ass).toContain('{\\pos(454,1459)}布局测试')
   })
 
+  it('serializes the translation caption on its independent ASS style and position', () => {
+    const ass = buildAssSubtitleFromEditingCaptions([
+      { id: 'source', startSeconds: 0, durationSeconds: 1, text: 'Hello', kind: 'source' },
+      { id: 'translation-source', startSeconds: 0, durationSeconds: 1, text: '你好', kind: 'translation' }
+    ], {
+      effect: 'none',
+      captionLayout: { xPercent: 50, yPercent: 78, widthPercent: 80, fontSizePx: 48, translation: { xPercent: 58, yPercent: 88, widthPercent: 64, fontSizePx: 34 } },
+      playResX: 1000,
+      playResY: 1000
+    })
+    expect(ass).toContain('Style: Translation,Arial,34')
+    expect(ass).toContain('Dialogue: 0,0:00:00.00,0:00:01.00,Translation,,0,0,0,,{\\pos(580,880)}你好')
+  })
+
   it('serializes relative caption word timing as ASS karaoke tags', () => {
     const ass = buildAssSubtitleFromEditingCaptions([{
       id: 'caption-1',
