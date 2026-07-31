@@ -629,9 +629,13 @@
         seekStepSecondsDescription: '左右キーの既定ジャンプ量です。',
         holdRightArrowSpeed: '右キー長押しで早送り再生',
         holdRightArrowSpeedDescription: '右方向キーを長押しすると、一時的に高速再生へ切り替えます。',
-        hardwareAcceleration: 'ハードウェアアクセラレーション',
-        hardwareAccelerationDescription: 'このビルドでは既定でブラウザのハードウェアアクセラレーションを使います。'
+        gpuAcceleration: 'GPU アクセラレーション',
+        gpuAccelerationDescription: 'ビデオ再生のパフォーマンスを向上させるために GPU ハードウェアアクセラレーションを有効にします。変更後はアプリの再起動が必要です。'
       },
+      gpuRestartTitle: '再起動が必要です',
+      gpuRestartMessage: 'GPU アクセラレーション設定の変更はアプリの再起動後に有効になります。今すぐ再起動しますか？',
+      gpuRestartConfirm: '今すぐ再起動',
+      gpuRestartCancel: '後で再起動',
       subtitles: {
         title: '字幕',
         displayHeading: '字幕表示',

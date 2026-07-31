@@ -53,6 +53,7 @@ export type AppSettings = {
     singleClickPause: boolean
     pauseWhenMinimized: boolean
     holdRightArrowSpeed: number
+    gpuAcceleration: boolean
     lastVolume: number
     lastMuted: boolean
     lastPlaybackRate: number
@@ -194,6 +195,7 @@ export function createDefaultAppSettings(): AppSettings {
       singleClickPause: true,
       pauseWhenMinimized: false,
       holdRightArrowSpeed: 4,
+      gpuAcceleration: true,
       lastVolume: 0.8,
       lastMuted: false,
       lastPlaybackRate: 1,

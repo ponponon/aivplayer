@@ -9,7 +9,9 @@ import type { AsrRuntimeSetupResult, AsrRuntimeStatus, AsrTranslationServiceTest
 import type { LocaleCopy } from '../../../shared/i18n'
 import { useModalFocusTrap } from './use-modal-focus-trap'
 import { useSettingsCacheManagement } from './use-settings-cache-management'
-import { getSettingsTabs, createSettingsSectionProps, type SettingsTab } from './settings-dialog-model'
+import { getSettingsTabs, createSettingsSectionProps } from './settings-dialog-model'
+import { GpuRestartDialog } from './gpu-restart-dialog'
+import { SettingsTabs } from './settings-tabs'
 import {
   CaptureSettingsSection,
   GeneralSettingsSection,
@@ -39,6 +41,7 @@ export type SettingsDialogProps = {
   onSelectWhisperBinary: () => void
   onTestTranslationService: () => void
   onResetDefaults: () => void
+  onRestartWithGpuAcceleration: (enabled: boolean) => Promise<void>
 }
 
 const sectionComponents: Record<AppSettingsSectionId, (props: SettingsSectionProps) => ReactElement> = {
@@ -64,12 +67,16 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
     onPickDefaultFolder,
     onPickCaptureFolder,
     onTestTranslationService,
-    onResetDefaults
+    onResetDefaults,
+    onRestartWithGpuAcceleration
   } = props
   const [activeSectionId, setActiveSectionId] = useState<AppSettingsSectionId>(initialSectionId)
   const activeSectionIdRef = useRef<AppSettingsSectionId>(initialSectionId)
   const dialogRef = useRef<HTMLElement | null>(null)
   const cacheManagement = useSettingsCacheManagement(copy)
+  const [showRestartDialog, setShowRestartDialog] = useState(false)
+  const [pendingGpuValue, setPendingGpuValue] = useState<boolean | null>(null)
+  const [isRestartingGpu, setIsRestartingGpu] = useState(false)
 
   useEffect(() => {
     activeSectionIdRef.current = activeSectionId
@@ -91,6 +98,27 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
   }
 
   const tabs = getSettingsTabs(copy)
+
+  const handleGpuAccelerationChange = (enabled: boolean): void => {
+    setPendingGpuValue(enabled)
+    setShowRestartDialog(true)
+  }
+
+  const confirmGpuChange = async (): Promise<void> => {
+    if (pendingGpuValue === null || isRestartingGpu) return
+    setIsRestartingGpu(true)
+    try {
+      await onRestartWithGpuAcceleration(pendingGpuValue)
+    } catch {
+      setIsRestartingGpu(false)
+    }
+  }
+
+  const cancelGpuChange = (): void => {
+    setShowRestartDialog(false)
+    setPendingGpuValue(null)
+  }
+
   const sectionProps = createSettingsSectionProps({
     copy,
     settings,
@@ -104,7 +132,8 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
     onPickCaptureFolder,
     onTestTranslationService,
     onRefreshCacheStats: cacheManagement.refreshCacheStats,
-    onClearStaleCache: cacheManagement.clearStaleCache
+    onClearStaleCache: cacheManagement.clearStaleCache,
+    onGpuAccelerationChange: handleGpuAccelerationChange
   })
 
   return (
@@ -152,40 +181,8 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
           </div>
         </div>
       </section>
+
+      {showRestartDialog ? <GpuRestartDialog copy={copy} isRestarting={isRestartingGpu} onCancel={cancelGpuChange} onConfirm={() => void confirmGpuChange()} /> : null}
     </div>
-  )
-}
-
-type SettingsTabsProps = {
-  copy: LocaleCopy
-  tabs: SettingsTab[]
-  activeSectionId: AppSettingsSectionId
-  onSelect: (sectionId: AppSettingsSectionId) => void
-}
-
-function SettingsTabs({ copy, tabs, activeSectionId, onSelect }: SettingsTabsProps): ReactElement {
-  return (
-    <nav className="settings-switcher" role="tablist" aria-label={copy.settingsDialog.title}>
-      {tabs.map(({ id, label, ariaLabel, icon: Icon }) => {
-        const isActive = activeSectionId === id
-        return (
-          <button
-            className={`settings-tab ${isActive ? 'active' : ''}`}
-            id={`settings-tab-${id}`}
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={isActive}
-            aria-controls={`settings-section-${id}`}
-            aria-label={ariaLabel}
-            data-settings-tab={id}
-            onClick={() => onSelect(id)}
-          >
-            <Icon size={14} />
-            <span>{label}</span>
-          </button>
-        )
-      })}
-    </nav>
   )
 }

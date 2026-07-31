@@ -629,9 +629,13 @@
         seekStepSecondsDescription: '键盘左右方向键的默认跳转步长。',
         holdRightArrowSpeed: '长按右方向键时倍速播放',
         holdRightArrowSpeedDescription: '按住右方向键一段时间后，临时切到更高倍速。',
-        hardwareAcceleration: '硬件加速',
-        hardwareAccelerationDescription: '当前构建会默认使用浏览器硬件加速。'
+        gpuAcceleration: 'GPU 加速',
+        gpuAccelerationDescription: '启用 GPU 硬件加速以获得更好的视频播放性能。更改后需要重启应用。'
       },
+      gpuRestartTitle: '需要重启',
+      gpuRestartMessage: '更改 GPU 加速设置需要重启应用才能生效。是否现在重启？',
+      gpuRestartConfirm: '立即重启',
+      gpuRestartCancel: '稍后重启',
       subtitles: {
         title: '字幕',
         displayHeading: '字幕显示',

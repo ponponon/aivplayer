@@ -28,7 +28,8 @@ export function VideoSettingsSection(props: SettingsSectionProps): ReactElement 
     translationServiceEndpointSummary,
     onPickDefaultFolder,
     onPickCaptureFolder,
-    onTestTranslationService
+    onTestTranslationService,
+    onGpuAccelerationChange
   } = props
 
   return (
@@ -72,10 +73,19 @@ export function VideoSettingsSection(props: SettingsSectionProps): ReactElement 
       />
     </SettingsField>
 
-    <div className="settings-note-box">
-      <span className="settings-note-title">{copy.settingsDialog.video.hardwareAcceleration}</span>
-      <p>{copy.settingsDialog.video.hardwareAccelerationDescription}</p>
-    </div>
+    <SettingsField
+      wide
+      title={copy.settingsDialog.video.gpuAcceleration}
+      description={copy.settingsDialog.video.gpuAccelerationDescription}
+    >
+      <SettingsToggle
+        title=""
+        checked={settings.playback.gpuAcceleration}
+        onChange={(gpuAcceleration) => {
+          onGpuAccelerationChange?.(gpuAcceleration)
+        }}
+      />
+    </SettingsField>
   </section>
   )
 }

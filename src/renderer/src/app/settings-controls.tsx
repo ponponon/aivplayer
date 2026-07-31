@@ -10,11 +10,12 @@ export type SettingsFieldProps = {
   title: ReactNode
   description?: ReactNode
   children: ReactNode
+  wide?: boolean
 }
 
-export function SettingsField({ title, description, children }: SettingsFieldProps): ReactElement {
+export function SettingsField({ title, description, children, wide = false }: SettingsFieldProps): ReactElement {
   return (
-    <div className="settings-field">
+    <div className={`settings-field${wide ? ' settings-field-wide' : ''}`}>
       <div className="settings-field-copy">
         <strong>{title}</strong>
         {description ? <small>{description}</small> : null}

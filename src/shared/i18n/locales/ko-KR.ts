@@ -629,9 +629,13 @@
         seekStepSecondsDescription: '좌우 방향키의 기본 점프 거리입니다.',
         holdRightArrowSpeed: '오른쪽 화살표 길게 눌러 고속 재생',
         holdRightArrowSpeedDescription: '오른쪽 방향키를 길게 누르면 잠시 더 높은 속도로 전환합니다.',
-        hardwareAcceleration: '하드웨어 가속',
-        hardwareAccelerationDescription: '이 빌드는 기본적으로 브라우저 하드웨어 가속을 사용합니다.'
+        gpuAcceleration: 'GPU 가속',
+        gpuAccelerationDescription: '비디오 재생 성능을 향상시키기 위해 GPU 하드웨어 가속을 활성화합니다. 변경 후 앱을 다시 시작해야 합니다.'
       },
+      gpuRestartTitle: '재시작 필요',
+      gpuRestartMessage: 'GPU 가속 설정 변경은 적용을 위해 앱을 다시 시작해야 합니다. 지금 다시 시작하시겠습니까?',
+      gpuRestartConfirm: '지금 다시 시작',
+      gpuRestartCancel: '나중에 다시 시작',
       subtitles: {
         title: '자막',
         displayHeading: '자막 표시',

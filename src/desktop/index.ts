@@ -20,22 +20,33 @@ import { registerVisionIpc } from './ipc-vision'
 import { registerDramaIpc } from './ipc-drama'
 import { applyMacDockIcon, createWindow, focusMainWindow, queueIncomingMediaPaths } from './window-lifecycle'
 import { runCli } from '../cli/cli-main'
+import { readGpuAccelerationPreferenceSync } from '../core/app-settings'
+import { GPU_DISABLE_SWITCHES, shouldDisableGpu } from '../core/gpu-settings'
 
 registerMediaProtocolScheme()
 app.setName(APP_NAME)
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 
 // GPU 兼容性处理：
-// 1. 用户显式禁用 GPU：AIVPLAYER_DISABLE_GPU=1 或 ELECTRON_DISABLE_HARDWARE_ACCELERATION=1
-// 2. 自动检测：如果 GPU 初始化失败，记录日志供下次启动参考
+// GPU command-line switches must be applied before app.ready. Do not wait for
+// the async app-settings loader here, otherwise Chromium may initialize first.
 const userForcesDisableGPU =
   process.env.AIVPLAYER_DISABLE_GPU === '1' ||
   process.env.ELECTRON_DISABLE_HARDWARE_ACCELERATION === '1'
 
-if (userForcesDisableGPU) {
-  app.commandLine.appendSwitch('disable-gpu')
-  app.commandLine.appendSwitch('disable-gpu-compositing')
+function applyGpuSettingsBeforeReady(): void {
+  let gpuAcceleration = true
+  try {
+    gpuAcceleration = readGpuAccelerationPreferenceSync(app.getPath('userData'))
+  } catch {
+    // Keep the safe default if Electron cannot resolve the user-data path yet.
+  }
+
+  if (!shouldDisableGpu({ forceDisable: userForcesDisableGPU, gpuAcceleration })) return
+  for (const switchName of GPU_DISABLE_SWITCHES) app.commandLine.appendSwitch(switchName)
 }
+
+applyGpuSettingsBeforeReady()
 
 const cliArgumentIndex = process.argv.indexOf('--cli')
 const isCliInvocation = cliArgumentIndex !== -1

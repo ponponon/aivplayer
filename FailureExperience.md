@@ -1,3 +1,9 @@
+## Electron GPU 参数必须在 ready 前同步决定
+- `app.commandLine.appendSwitch()` 不能等待异步设置文件读取后再调用；主进程应为启动早期需要的偏好提供同步、最小化读取入口，否则 Chromium 可能已经初始化，开关只会部分传播到子进程。
+- “开启 GPU”不能用 `--no-zygote` 代替，进程启动方式和硬件加速是两个独立语义；遇到 Linux GPU 合成失败时，应该只在明确关闭或环境强制时追加 `disable-gpu` / `disable-gpu-compositing`。
+- Renderer 的 `window.location.reload()` 不会重新初始化 Electron 主进程，也不会重新应用 command-line switch；涉及启动参数的设置必须先等待落盘，再通过主进程 `app.relaunch()` 重启。
+- `electron-vite dev` 会在 Electron 子进程退出时让 dev server 一起退出；开发环境不能直接用 `app.relaunch()`，否则新 Electron 进程会失去 Renderer dev server 而黑屏。需要由外层 supervisor 根据专用退出码重启整个 dev server。
+
 ## 高频主题切换不能只放在设置里
 - 主题模式虽然需要保留“浅色 / 深色 / 跟随系统”的精确选择，但一键切换属于高频操作，不能只藏在设置弹窗；标题栏工具组应提供可见的主题按钮，手动模式在浅色和深色之间切换，跟随系统模式按当前系统主题切换到另一种，设置页继续负责恢复三态选择。
 
