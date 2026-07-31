@@ -1,0 +1,25 @@
+.editing-script-editor {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 5px 6px;
+}
+.editing-script-input {
+  min-width: 0;
+  min-height: 25px;
+  padding: 3px 5px;
+  color: var(--text-primary);
+  background: rgba(var(--overlay-rgb), 0.08);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  font: inherit;
+  font-size: 9px;
+  outline: none;
+}
+.editing-script-editor-actions {
+  display: inline-flex;
+  gap: 2px;
+}

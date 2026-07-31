@@ -318,6 +318,7 @@ describe('editing timeline source contracts', () => {
     const exportSummaryStyles = readSource('src/renderer/src/styles/player/editing-timeline-export-summary.css')
     const exportTargetStyles = readSource('src/renderer/src/styles/player/editing-timeline-export-target.css')
     const scriptStyles = readSource('src/renderer/src/styles/player/editing-timeline-script.css')
+    const scriptEditorStyles = readSource('src/renderer/src/styles/player/editing-timeline-script-editor.css')
     const treatmentStyles = readSource('src/renderer/src/styles/player/editing-timeline-treatment.css')
     const filterStyles = readSource('src/renderer/src/styles/player/editing-timeline-filter.css')
     const transitionStyles = readSource('src/renderer/src/styles/player/editing-timeline-transition.css')
@@ -344,6 +345,7 @@ describe('editing timeline source contracts', () => {
     expect(playerStyles).toContain("@import './player/editing-timeline-export-summary.css';")
     expect(playerStyles).toContain("@import './player/editing-timeline-export-target.css';")
     expect(playerStyles).toContain("@import './player/editing-timeline-script.css';")
+    expect(playerStyles).toContain("@import './player/editing-timeline-script-editor.css';")
     expect(playerStyles).toContain("@import './player/editing-timeline-treatment.css';")
     expect(playerStyles).toContain("@import './player/editing-timeline-transition.css';")
     expect(playerStyles).toContain("@import './player/editing-timeline-clip-motion.css';")
@@ -352,7 +354,7 @@ describe('editing timeline source contracts', () => {
     expect(playerStyles).toContain("@import './player/editing-graphic-overlay.css';")
     expect(playerStyles).toContain("@import './player/editing-graphic-canvas-overlay.css';")
     expect(playerStyles).toContain("@import './player/editing-timeline-caption-effect.css';")
-    const baseTimelineStyles = shellStyles + actionStyles + trackStyles + clipStyles + filmstripStyles + captionStyles + audioStyles + rangeStyles + boundaryStyles + exportSummaryStyles + exportTargetStyles + scriptStyles + treatmentStyles + filterStyles + transitionStyles + clipMotionStyles + graphicStyles + graphicTrackStyles + graphicOverlayStyles + graphicCanvasStyles + selectionStyles
+    const baseTimelineStyles = shellStyles + actionStyles + trackStyles + clipStyles + filmstripStyles + captionStyles + audioStyles + rangeStyles + boundaryStyles + exportSummaryStyles + exportTargetStyles + scriptStyles + scriptEditorStyles + treatmentStyles + filterStyles + transitionStyles + clipMotionStyles + graphicStyles + graphicTrackStyles + graphicOverlayStyles + graphicCanvasStyles + selectionStyles
     expect(baseTimelineStyles).toContain('var(--bg-control)')
     expect(baseTimelineStyles).toContain('var(--accent)')
     expect(baseTimelineStyles).not.toMatch(/#[0-9a-fA-F]{3,8}/)
