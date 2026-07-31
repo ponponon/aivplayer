@@ -1,6 +1,6 @@
 import { sourceRangeToEditedRanges } from '../../../core/editing/timeline-math'
 import { removeSourceVideoRanges, restoreSourceVideoRange } from '../../../core/editing/timeline-operations'
-import { scriptSegmentCaption, setEditingScriptSegmentDeleted } from '../../../core/editing/script-operations'
+import { scriptSegmentCaption, setEditingScriptSegmentDeleted, updateEditingScriptSegmentText, updateEditingSourceCaptionText } from '../../../core/editing/script-operations'
 import type { EditingProject, EditingScriptSegment, EditingVideoClip } from '../../../shared/editing-types'
 import type { AppModel } from './app-types'
 import { saveEditingProject } from './editing-project-storage'
@@ -113,5 +113,26 @@ export function createEditingScriptActions(model: AppModel) {
     if (range) seekEditingTime(model, range.startSeconds, nextProject)
   }
 
-  return { selectEditingScriptSegment, deleteEditingScriptSegment, restoreEditingScriptSegment }
+  const updateEditingScriptText = (segmentId: string, text: string): void => {
+    const project = model.editingProject
+    const segment = project?.scriptSegments?.find((item) => item.id === segmentId)
+    if (!project || !segment || segment.deleted) return
+    const nextSegments = updateEditingScriptSegmentText(project.scriptSegments ?? [], segmentId, text)
+    if (nextSegments.every((item, index) => item === project.scriptSegments?.[index])) return
+    const nextText = nextSegments.find((item) => item.id === segmentId)?.text
+    if (!nextText) return
+    const nextProject = {
+      ...project,
+      updatedAt: Date.now(),
+      scriptSegments: nextSegments,
+      captions: updateEditingSourceCaptionText(project.captions, segmentId, nextText)
+    }
+    model.setEditingPast((past) => [...past, project])
+    model.setEditingFuture([])
+    model.setEditingProject(nextProject)
+    model.setEditingSelectedCaptionId(segmentId)
+    saveEditingProject(nextProject)
+  }
+
+  return { selectEditingScriptSegment, deleteEditingScriptSegment, restoreEditingScriptSegment, updateEditingScriptText }
 }
