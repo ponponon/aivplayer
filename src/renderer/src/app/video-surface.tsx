@@ -19,7 +19,8 @@ export function VideoSurface(): React.ReactElement {
   const { state, copy } = app
   const editingPreviewFile = app.editingPreviewSourceId ? app.editingSourceFiles[app.editingPreviewSourceId] : null
   const mediaUrl = app.isEditingMode && editingPreviewFile ? editingPreviewFile.url : state.currentFile?.url ?? ''
-  const currentEditingClip = app.isEditingMode && app.editingProject ? editedTimeToSource(app.editingProject.videoClips, app.editingCurrentTime)?.clip ?? null : null
+  const projectEditingClip = app.isEditingMode && app.editingProject ? editedTimeToSource(app.editingProject.videoClips, app.editingCurrentTime)?.clip ?? null : null
+  const currentEditingClip = projectEditingClip && app.editingClipPreview?.clipId === projectEditingClip.id ? { ...projectEditingClip, ...(app.editingClipPreview.filter === undefined ? {} : { filter: app.editingClipPreview.filter }), ...(app.editingClipPreview.treatment === undefined ? {} : { treatment: app.editingClipPreview.treatment }), ...(app.editingClipPreview.treatmentScale === undefined ? {} : { treatmentScale: app.editingClipPreview.treatmentScale }), ...(app.editingClipPreview.treatmentAnchor === undefined ? {} : { treatmentAnchor: app.editingClipPreview.treatmentAnchor }) } : projectEditingClip
   const activeSplitBlock = app.isEditingMode && app.editingProject ? findActiveEditingVideoBlocks(app.editingProject.videoBlocks ?? [], app.editingCurrentTime).find((block) => block.position === 'split-left' || block.position === 'split-right') ?? null : null
   const activeSplitPosition = activeSplitBlock?.position ?? null
   const currentEditingSpan = app.isEditingMode && app.editingProject && currentEditingClip ? getVideoClipSpans(app.editingProject.videoClips).find((span) => span.clip.id === currentEditingClip.id) ?? null : null

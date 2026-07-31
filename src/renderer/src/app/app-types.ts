@@ -14,7 +14,7 @@ import type {
   MediaProbeMetadata
 } from '../../../shared/media-types'
 import type { PanelMode, PlayerState } from './player-state'
-import type { EditingProject } from '../../../shared/editing-types'
+import type { EditingClipFilter, EditingClipTreatment, EditingProject, EditingTreatmentAnchor } from '../../../shared/editing-types'
 
 export type AsrNotice = {
   success: boolean
@@ -25,6 +25,18 @@ export type AsrNotice = {
 export type EditingProjectStatus = {
   success: boolean
   message: string
+}
+
+/**
+ * Renderer-only clip styling draft. It is intentionally not part of
+ * EditingProject so slider drags do not create history entries or write files.
+ */
+export type EditingClipPreview = {
+  clipId: string
+  filter?: EditingClipFilter
+  treatment?: EditingClipTreatment
+  treatmentScale?: number
+  treatmentAnchor?: EditingTreatmentAnchor
 }
 
 export type AppRefs = {
@@ -91,6 +103,7 @@ export type AppStateSetters = {
   setEditingSelectedVideoBlockId: React.Dispatch<React.SetStateAction<string | null>>
   setEditingSourceFiles: React.Dispatch<React.SetStateAction<Record<string, MediaFile>>>
   setEditingPreviewSourceId: React.Dispatch<React.SetStateAction<string | null>>
+  setEditingClipPreview: React.Dispatch<React.SetStateAction<EditingClipPreview | null>>
   setIsAddingEditingMedia: React.Dispatch<React.SetStateAction<boolean>>
   setIsDetectingEditingScenes: React.Dispatch<React.SetStateAction<boolean>>
   setIsDetectingEditingSilence: React.Dispatch<React.SetStateAction<boolean>>
@@ -145,6 +158,7 @@ export type AppModel = AppRefs &
     editingSelectedVideoBlockId: string | null
     editingSourceFiles: Record<string, MediaFile>
     editingPreviewSourceId: string | null
+    editingClipPreview: EditingClipPreview | null
     isAddingEditingMedia: boolean
     isDetectingEditingScenes: boolean
     isDetectingEditingSilence: boolean

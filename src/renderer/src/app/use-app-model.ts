@@ -13,7 +13,7 @@ import type {
   MediaProbeMetadata
 } from '../../../shared/media-types'
 import { initialPlayerState } from './player-state'
-import type { AppModel, AsrNotice, EditingProjectStatus } from './app-types'
+import type { AppModel, AsrNotice, EditingClipPreview, EditingProjectStatus } from './app-types'
 import { useAppRefs } from './use-app-refs'
 import type { EditingProject } from '../../../shared/editing-types'
 export function useAppModel(): AppModel {
@@ -60,6 +60,7 @@ export function useAppModel(): AppModel {
   const [editingSelectedClipId, setEditingSelectedClipId] = useState<string | null>(null); const [editingSelectedCaptionId, setEditingSelectedCaptionId] = useState<string | null>(null); const [editingSelectedGraphicId, setEditingSelectedGraphicId] = useState<string | null>(null); const [editingSelectedVideoBlockId, setEditingSelectedVideoBlockId] = useState<string | null>(null)
   const [editingSourceFiles, setEditingSourceFiles] = useState<Record<string, import('../../../shared/media-types').MediaFile>>({})
   const [editingPreviewSourceId, setEditingPreviewSourceId] = useState<string | null>(null)
+  const [editingClipPreview, setEditingClipPreview] = useState<EditingClipPreview | null>(null)
   const [isAddingEditingMedia, setIsAddingEditingMedia] = useState(false)
   const [isDetectingEditingScenes, setIsDetectingEditingScenes] = useState(false); const [isDetectingEditingSilence, setIsDetectingEditingSilence] = useState(false)
   const [editingProjectFilePath, setEditingProjectFilePath] = useState<string | null>(null); const [editingProjectStatus, setEditingProjectStatus] = useState<EditingProjectStatus | null>(null)
@@ -141,6 +142,7 @@ export function useAppModel(): AppModel {
     editingSelectedClipId, setEditingSelectedClipId, editingSelectedCaptionId, setEditingSelectedCaptionId, editingSelectedGraphicId, setEditingSelectedGraphicId, editingSelectedVideoBlockId, setEditingSelectedVideoBlockId,
     editingSourceFiles, setEditingSourceFiles,
     editingPreviewSourceId, setEditingPreviewSourceId,
+    editingClipPreview, setEditingClipPreview,
     isAddingEditingMedia, setIsAddingEditingMedia,
     isDetectingEditingScenes, setIsDetectingEditingScenes, isDetectingEditingSilence, setIsDetectingEditingSilence,
     editingProjectFilePath, setEditingProjectFilePath,

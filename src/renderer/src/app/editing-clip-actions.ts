@@ -62,6 +62,7 @@ export function createEditingClipActions(model: AppModel) {
   }
 
   const setEditingClipTreatment = (clipId: string, treatment: EditingClipTreatment, scale?: number, anchor?: EditingTreatmentAnchor): void => {
+    model.setEditingClipPreview(null)
     const project = model.editingProject
     if (!project) return
     const nextClips = updateEditingClipTreatment(project.videoClips, clipId, treatment, scale, anchor)
@@ -74,6 +75,7 @@ export function createEditingClipActions(model: AppModel) {
   }
 
   const setEditingClipFilter = (clipId: string, filter: EditingClipFilter): void => {
+    model.setEditingClipPreview(null)
     const project = model.editingProject
     if (!project) return
     const nextClips = updateEditingClipFilter(project.videoClips, clipId, filter)
@@ -83,6 +85,16 @@ export function createEditingClipActions(model: AppModel) {
     model.setEditingFuture([])
     model.setEditingProject(nextProject)
     saveEditingProject(nextProject)
+  }
+
+  const previewEditingClipTreatment = (clipId: string, treatment: EditingClipTreatment, scale?: number, anchor?: EditingTreatmentAnchor): void => {
+    if (!model.editingProject?.videoClips.some((clip) => clip.id === clipId)) return
+    model.setEditingClipPreview({ clipId, treatment, treatmentScale: scale, treatmentAnchor: anchor })
+  }
+
+  const previewEditingClipFilter = (clipId: string, filter: EditingClipFilter): void => {
+    if (!model.editingProject?.videoClips.some((clip) => clip.id === clipId)) return
+    model.setEditingClipPreview({ clipId, filter })
   }
 
   const setEditingClipTransition = (clipId: string, transition: EditingClipTransition | null): void => {
@@ -121,5 +133,5 @@ export function createEditingClipActions(model: AppModel) {
     saveEditingProject(nextProject)
   }
 
-  return { selectEditingClip, reorderEditingClips, moveSelectedEditingClip, deleteEditingRange, updateEditingClipBoundary, setEditingClipTreatment, setEditingClipFilter, setEditingClipTransition, setEditingClipMotion, setEditingClipPersonMatte }
+  return { selectEditingClip, reorderEditingClips, moveSelectedEditingClip, deleteEditingRange, updateEditingClipBoundary, setEditingClipTreatment, setEditingClipFilter, previewEditingClipTreatment, previewEditingClipFilter, setEditingClipTransition, setEditingClipMotion, setEditingClipPersonMatte }
 }
