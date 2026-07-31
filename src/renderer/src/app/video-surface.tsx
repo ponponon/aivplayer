@@ -2,6 +2,7 @@ import type { SyntheticEvent } from 'react'
 import { AudioLines, FolderOpen } from 'lucide-react'
 import { editedTimeToSource, getVideoClipSpans } from '../../../core/editing/timeline-math'
 import { buildEditingClipFilterCss, isEditingClipFilterNeutral } from '../../../core/editing/filter-operations'
+import { getEditingClipMotionStyle } from '../../../core/editing/clip-motion'
 import { getEditingClipTransition } from '../../../core/editing/transition-operations'
 import { getEditingClipTreatment, getEditingClipTreatmentAnchor, getEditingClipTreatmentScale } from '../../../core/editing/treatment-operations'
 import { getEditingCanvasDimensions } from '../../../core/editing/canvases'
@@ -32,10 +33,12 @@ export function VideoSurface(): React.ReactElement {
   const punchTransform = isPunchIn ? `scale(${getEditingClipTreatmentScale(currentEditingClip!)})` : ''
   const transitionClipPath = transition?.type === 'wipe-left' ? `inset(0 ${(1 - transitionProgress) * 100}% 0 0)` : transition?.type === 'wipe-right' ? `inset(0 0 0 ${(1 - transitionProgress) * 100}%)` : undefined
   const transitionOpacity = transition?.type === 'fade' || transition?.type === 'fadeblack' || transition?.type === 'dissolve' ? transitionProgress : undefined
+  const clipMotionStyle = currentEditingClip && currentEditingSpan ? getEditingClipMotionStyle(currentEditingClip, app.editingCurrentTime - currentEditingSpan.editedStartSeconds) : { opacity: 1, translateXPercent: 0, translateYPercent: 0, scale: 1 }
+  const clipMotionTransform = clipMotionStyle.translateXPercent !== 0 || clipMotionStyle.translateYPercent !== 0 || clipMotionStyle.scale !== 1 ? `translate(${clipMotionStyle.translateXPercent}%, ${clipMotionStyle.translateYPercent}%) scale(${clipMotionStyle.scale})` : ''
   const splitMainWidth = activeSplitBlock ? `${100 - getEditingVideoBlockSize(activeSplitBlock)}%` : undefined
   const editingCanvas = app.isEditingMode && app.editingProject ? getEditingCanvasDimensions(app.editingProject.canvasPreset ?? 'source', app.editingProject.sources[0]?.width, app.editingProject.sources[0]?.height) : null
-  const videoTransform = [punchTransform, transitionTransform].filter(Boolean).join(' ')
-  const videoStyle = { ...(editingCanvas ? { width: splitMainWidth ?? '100%', height: '100%', aspectRatio: `${editingCanvas.width} / ${editingCanvas.height}`, objectFit: editingCanvas.fitMode } : state.videoWidth > 0 && state.videoHeight > 0 ? { aspectRatio: `${state.videoWidth} / ${state.videoHeight}` } : {}), ...(splitMainWidth && !editingCanvas ? { width: splitMainWidth } : {}), ...(videoTransform ? { transform: videoTransform, transformOrigin } : {}), ...(transitionClipPath ? { clipPath: transitionClipPath } : {}), ...(hasColorFilter ? { filter: buildEditingClipFilterCss(currentEditingClip!) } : {}), ...(transitionOpacity === undefined ? {} : { opacity: transitionOpacity }) }
+  const videoTransform = [punchTransform, transitionTransform, clipMotionTransform].filter(Boolean).join(' ')
+  const videoStyle = { ...(editingCanvas ? { width: splitMainWidth ?? '100%', height: '100%', aspectRatio: `${editingCanvas.width} / ${editingCanvas.height}`, objectFit: editingCanvas.fitMode } : state.videoWidth > 0 && state.videoHeight > 0 ? { aspectRatio: `${state.videoWidth} / ${state.videoHeight}` } : {}), ...(splitMainWidth && !editingCanvas ? { width: splitMainWidth } : {}), ...(videoTransform ? { transform: videoTransform, transformOrigin } : {}), ...(transitionClipPath ? { clipPath: transitionClipPath } : {}), ...(hasColorFilter ? { filter: buildEditingClipFilterCss(currentEditingClip!) } : {}), opacity: transitionOpacity === undefined ? clipMotionStyle.opacity : transitionOpacity * clipMotionStyle.opacity }
   const onLoadedMetadata = (event: SyntheticEvent<HTMLVideoElement>): void => {
     const video = event.currentTarget
     const duration = video.duration || 0

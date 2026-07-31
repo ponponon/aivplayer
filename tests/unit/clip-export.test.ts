@@ -103,6 +103,16 @@ describe('clip export helpers', () => {
     expect(next).toEqual(expect.arrayContaining(['-vf', 'fade=t=in:st=0:d=0.2:color=black,setsar=1', '-af', 'volume=1,afade=t=in:st=0:d=0.2']))
   })
 
+  it('exports main-track enter and exit motion through a canvas composition graph', () => {
+    const args = buildTimelineSegmentArgs({ mediaPath: '/clips/motion.mp4', startSeconds: 0, endSeconds: 4, durationSeconds: 4, enterMotion: 'slide-left', exitMotion: 'fade', motionDurationSeconds: 0.5 }, '/tmp/motion.mp4', { width: 1280, height: 720, frameRate: 30 })
+    const filterComplex = args[args.indexOf('-filter_complex') + 1]
+    expect(args).toEqual(expect.arrayContaining(['-f', 'lavfi', 'color=c=black:s=1280x720:r=30:d=4', '-map', '[clip-motion-v]', '-map', '0:a?']))
+    expect(filterComplex).toContain('[0:v]scale=1280:720:force_original_aspect_ratio=decrease')
+    expect(filterComplex).toContain("overlay=x='(-1280)*(1-if(lt(t\\,0)\\,0\\,if(lt(t\\,0.5)\\,(t-0)/0.5\\,1)))'")
+    expect(filterComplex).toContain('fade=t=out:st=3.5:d=0.5:color=black')
+    expect(args).not.toContain('-vf')
+  })
+
   it('builds a duration-preserving xfade chain for Pireel-style seam effects', () => {
     const args = buildTimelineXfadeArgs(
       ['/tmp/previous.mp4', '/tmp/next.mp4'],

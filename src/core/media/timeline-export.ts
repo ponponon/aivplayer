@@ -14,6 +14,7 @@ import { getEditingClipFilter } from '../editing/filter-operations'
 import { getEditingClipTransition } from '../editing/transition-operations'
 import { getEditingClipTreatment, getEditingClipTreatmentAnchor, getEditingClipTreatmentScale } from '../editing/treatment-operations'
 import { getEditingVideoBlockBorderRadius, getEditingVideoBlockBorderWidth, getEditingVideoBlockMotion, getEditingVideoBlockSize } from '../editing/video-block-operations'
+import { getEditingClipMotion } from '../editing/clip-motion'
 import { buildTimelineExportDefaultFileName, getTimelineExportPathDirectory, joinTimelineExportPath } from '../../shared/timeline-export-path'
 import type { SubtitleRenderSettings } from '../../shared/subtitle-presets'
 import { buildAssSubtitle } from './subtitle-ass'
@@ -157,6 +158,47 @@ function buildVideoFilter(format: TimelineExportFormat | undefined, clip: Timeli
   return [...filters, fitFilter].join(',')
 }
 
+function clipMotionProgressExpression(startSeconds: number, durationSeconds: number): string {
+  return `if(lt(t,${startSeconds}),0,if(lt(t,${startSeconds + durationSeconds}),(t-${startSeconds})/${durationSeconds},1))`
+}
+
+function clipMotionOffsetExpression(axis: 'x' | 'y', boxSize: number, enterMotion: EditingGraphicMotion, exitMotion: EditingGraphicMotion, durationSeconds: number, exitStartSeconds: number): string {
+  const enterOffset = axis === 'y' && enterMotion === 'rise' ? boxSize : axis === 'x' && enterMotion === 'slide-left' ? -boxSize : axis === 'x' && enterMotion === 'slide-right' ? boxSize : 0
+  const exitOffset = axis === 'y' && exitMotion === 'rise' ? -boxSize : axis === 'x' && exitMotion === 'slide-left' ? -boxSize : axis === 'x' && exitMotion === 'slide-right' ? boxSize : 0
+  const enterPosition = enterOffset === 0 ? '0' : `(${enterOffset})*(1-${clipMotionProgressExpression(0, durationSeconds)})`
+  if (exitOffset === 0) return enterPosition
+  return `if(lt(t,${exitStartSeconds}),${enterPosition},(${exitOffset})*${clipMotionProgressExpression(exitStartSeconds, durationSeconds)})`
+}
+
+function clipMotionScaleExpression(enterMotion: EditingGraphicMotion, exitMotion: EditingGraphicMotion, durationSeconds: number, exitStartSeconds: number): string | null {
+  if (enterMotion !== 'scale' && exitMotion !== 'scale') return null
+  const enterScale = enterMotion === 'scale' ? `0.82+0.18*${clipMotionProgressExpression(0, durationSeconds)}` : '1'
+  return exitMotion === 'scale' ? `if(lt(t,${exitStartSeconds}),${enterScale},1-0.18*${clipMotionProgressExpression(exitStartSeconds, durationSeconds)})` : enterScale
+}
+
+function hasClipMotion(clip: TimelineExportClip): boolean {
+  const motion = getEditingClipMotion(clip)
+  return motion.enterMotion !== 'none' || motion.exitMotion !== 'none'
+}
+
+function buildTimelineClipMotionFilterComplex(clip: NormalizedClip, format: TimelineExportFormat, frameRate: number, colorInputIndex: number, fadeInDuration: number, fadeOutDuration: number): string {
+  const width = evenDimension(format.width)!
+  const height = evenDimension(format.height)!
+  const motion = getEditingClipMotion(clip)
+  const durationSeconds = Math.min(motion.durationSeconds, clip.durationSeconds / 2)
+  const exitStartSeconds = Math.max(0, clip.durationSeconds - durationSeconds)
+  const foregroundFilters = [buildVideoFilter(format, clip, fadeInDuration, fadeOutDuration)]
+  if (motion.enterMotion === 'fade') foregroundFilters.push(`fade=t=in:st=0:d=${durationSeconds}:color=black`)
+  if (motion.exitMotion === 'fade') foregroundFilters.push(`fade=t=out:st=${exitStartSeconds}:d=${durationSeconds}:color=black`)
+  const scaleExpression = clipMotionScaleExpression(motion.enterMotion, motion.exitMotion, durationSeconds, exitStartSeconds)
+  if (scaleExpression) foregroundFilters.push(`scale=w='trunc(iw*(${escapeFilterExpression(scaleExpression)})/2)*2':h='trunc(ih*(${escapeFilterExpression(scaleExpression)})/2)*2':eval=frame`)
+  const xExpression = clipMotionOffsetExpression('x', width, motion.enterMotion, motion.exitMotion, durationSeconds, exitStartSeconds)
+  const yExpression = clipMotionOffsetExpression('y', height, motion.enterMotion, motion.exitMotion, durationSeconds, exitStartSeconds)
+  const xPosition = scaleExpression ? `${xExpression}+(${width}-overlay_w)/2` : xExpression
+  const yPosition = scaleExpression ? `${yExpression}+(${height}-overlay_h)/2` : yExpression
+  return `[0:v]${foregroundFilters.join(',')}[clip-motion-fg];[${colorInputIndex}:v]format=yuv420p[clip-motion-bg];[clip-motion-bg][clip-motion-fg]overlay=x='${escapeFilterExpression(xPosition)}':y='${escapeFilterExpression(yPosition)}':shortest=1:format=auto[clip-motion-v]`
+}
+
 function buildSilenceInput(sampleRate: number, channels: number): string {
   return channels === 1 ? `anullsrc=channel_layout=mono:sample_rate=${sampleRate}` : `anullsrc=channel_layout=stereo:sample_rate=${sampleRate}`
 }
@@ -177,7 +219,14 @@ export function buildTimelineSegmentArgs(clip: NormalizedClip, outputPath: strin
   if (fadeOutDuration > 0) audioFilters.push(`afade=t=out:st=${Math.max(0, clip.durationSeconds - fadeOutDuration)}:d=${fadeOutDuration}`)
   const args = ['-y', '-ss', String(clip.startSeconds), '-i', clip.mediaPath]
   if (clip.hasAudio === false) args.push('-f', 'lavfi', '-i', buildSilenceInput(audioSampleRate, audioChannels))
-  args.push('-t', String(clip.durationSeconds), '-map', '0:v:0', '-map', clip.hasAudio === false ? '1:a:0' : '0:a?', '-vf', buildVideoFilter(format, clip, fadeInDuration, fadeOutDuration), '-af', audioFilters.join(','), '-r', String(frameRate), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-ar', String(audioSampleRate), '-ac', String(audioChannels), '-b:a', '192k', '-avoid_negative_ts', 'make_zero', outputPath)
+  const useMotionFilter = Boolean(format?.width && format?.height && hasClipMotion(clip))
+  if (useMotionFilter) {
+    const colorInputIndex = clip.hasAudio === false ? 2 : 1
+    args.push('-f', 'lavfi', '-i', `color=c=black:s=${evenDimension(format?.width)}x${evenDimension(format?.height)}:r=${frameRate}:d=${clip.durationSeconds}`)
+    args.push('-t', String(clip.durationSeconds), '-map', '[clip-motion-v]', '-map', clip.hasAudio === false ? '1:a:0' : '0:a?', '-filter_complex', buildTimelineClipMotionFilterComplex(clip, format!, frameRate, colorInputIndex, fadeInDuration, fadeOutDuration), '-af', audioFilters.join(','), '-r', String(frameRate), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-ar', String(audioSampleRate), '-ac', String(audioChannels), '-b:a', '192k', '-avoid_negative_ts', 'make_zero', outputPath)
+  } else {
+    args.push('-t', String(clip.durationSeconds), '-map', '0:v:0', '-map', clip.hasAudio === false ? '1:a:0' : '0:a?', '-vf', buildVideoFilter(format, clip, fadeInDuration, fadeOutDuration), '-af', audioFilters.join(','), '-r', String(frameRate), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-ar', String(audioSampleRate), '-ac', String(audioChannels), '-b:a', '192k', '-avoid_negative_ts', 'make_zero', outputPath)
+  }
   return args
 }
 
