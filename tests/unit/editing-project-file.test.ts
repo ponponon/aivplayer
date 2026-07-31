@@ -30,6 +30,14 @@ describe('editing project files', () => {
     expect(() => parseEditingProject({ ...project, captionLayout: { xPercent: 2, yPercent: 76, widthPercent: 68, fontSizePx: 64 } })).toThrow('Invalid editing project caption layout')
   })
 
+  it('round-trips an independent translation caption layout while accepting legacy layouts', () => {
+    const project = createEditingProject(source)
+    const captionLayout = { ...project.captionLayout!, translation: { xPercent: 54, yPercent: 89, widthPercent: 70, fontSizePx: 36 } }
+
+    expect(parseEditingProjectFile(serializeEditingProject({ ...project, captionLayout })).captionLayout).toEqual(captionLayout)
+    expect(() => parseEditingProject({ ...project, captionLayout: { ...captionLayout, translation: { ...captionLayout.translation, fontSizePx: 12 } } })).toThrow('Invalid editing project caption layout')
+  })
+
   it('round-trips canvas presets and keeps legacy projects without the field valid', () => {
     const project = createEditingProject(source)
     const portrait = { ...project, canvasPreset: 'portrait' as const }

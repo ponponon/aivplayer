@@ -46,11 +46,15 @@ export type EditingOverlayTrackKind = 'videoBlocks' | 'graphics' | 'captions'
 export type EditingFrameId = 'clean' | 'warm' | 'mint' | 'cinema' | 'gold'
 export type EditingCaptionEffect = 'none' | 'highlight' | 'pill-karaoke' | 'word-pop' | 'kinetic-slam' | 'editorial-emphasis'
 export type EditingCanvasPresetId = 'source' | 'landscape' | 'portrait' | 'square'
-export type EditingCaptionLayout = {
+export type EditingCaptionLineLayout = {
   xPercent: number
   yPercent: number
   widthPercent: number
   fontSizePx: number
+}
+export type EditingCaptionLayout = EditingCaptionLineLayout & {
+  /** Optional independent translation-line layout; absent keeps old project files valid. */
+  translation?: EditingCaptionLineLayout
 }
 export type EditingGraphic = {
   id: string

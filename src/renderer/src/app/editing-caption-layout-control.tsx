@@ -1,5 +1,5 @@
 import { Captions, RotateCcw } from 'lucide-react'
-import type { EditingCaptionLayout } from '../../../shared/editing-types'
+import type { EditingCaptionLayout, EditingCaptionLineLayout } from '../../../shared/editing-types'
 import { DEFAULT_EDITING_CAPTION_LAYOUT, EDITING_CAPTION_LAYOUT_LIMITS } from '../../../core/editing/caption-layout'
 
 type Props = {
@@ -13,7 +13,7 @@ type Props = {
   onChange: (patch: Partial<EditingCaptionLayout>) => void
 }
 
-type Slider = { key: keyof EditingCaptionLayout; label: string; min: number; max: number; step: number; suffix: string }
+type Slider = { key: keyof EditingCaptionLineLayout; label: string; min: number; max: number; step: number; suffix: string }
 
 export function EditingCaptionLayoutControl({ title, xLabel, yLabel, widthLabel, sizeLabel, resetLabel, value, onChange }: Props): React.ReactElement {
   const sliders: Slider[] = [
