@@ -130,6 +130,7 @@ async function main(): Promise<void> {
     await page.locator('[data-testid="editing-graphic-edit-text"]').fill('烟测标题-修改')
     await page.locator('[data-testid="editing-graphic-save"]').click()
     await page.waitForFunction(() => Array.from(document.querySelectorAll('.editing-graphic-card')).some((card) => card.textContent === '烟测标题-修改'))
+    const graphicTextPreview = await page.locator('[data-testid="editing-graphic-edit-text"]').inputValue()
     await page.locator('[data-testid="editing-graphic-save-asset"]').click()
     await page.locator('[data-testid="editing-graphic-control"] .editing-graphic-summary').click()
     await page.locator('[data-testid="editing-graphic-assets-search"]').fill('烟测标题-修改')
@@ -138,16 +139,17 @@ async function main(): Promise<void> {
     const reusableGraphicAsset = await page.locator('.editing-graphic-asset').count()
     const graphicTrack = page.locator('[data-testid="editing-graphic-track"]')
     const graphicTrackBox = await graphicTrack.boundingBox()
-    const graphicItem = page.locator('.editing-graphic-item-button').first()
+    const graphicItem = page.locator('.editing-graphic-item').last().locator('.editing-graphic-item-button')
     const graphicItemBox = await graphicItem.boundingBox()
     if (!graphicTrackBox || !graphicItemBox) throw new Error('Graphic track was not measurable')
+    const graphicMoveBefore = await graphicItem.evaluate((element) => (element.parentElement as HTMLElement).style.left)
     await page.mouse.move(graphicItemBox.x + graphicItemBox.width / 2, graphicItemBox.y + graphicItemBox.height / 2)
     await page.mouse.down()
     await page.mouse.move(graphicItemBox.x + graphicItemBox.width / 2 + graphicTrackBox.width * 0.04, graphicItemBox.y + graphicItemBox.height / 2)
     await page.mouse.up()
-    await page.waitForFunction(() => Number.parseFloat((document.querySelector('.editing-graphic-item') as HTMLElement | null)?.style.left ?? '0') > 0)
+    await page.waitForFunction((before) => Number.parseFloat((document.querySelectorAll('.editing-graphic-item')[document.querySelectorAll('.editing-graphic-item').length - 1] as HTMLElement | undefined)?.style.left ?? '0') > Number.parseFloat(before), graphicMoveBefore)
     await page.waitForTimeout(20)
-    const graphicTrimItem = page.locator('.editing-graphic-item').first()
+    const graphicTrimItem = page.locator('.editing-graphic-item').last()
     const graphicTrimBefore = await graphicTrimItem.evaluate((element) => (element as HTMLElement).style.width)
     const graphicTrimHandle = graphicTrimItem.locator('[data-editing-trim-edge="end"]')
     const graphicTrimHandleBox = await graphicTrimHandle.boundingBox()
@@ -157,10 +159,15 @@ async function main(): Promise<void> {
     await page.mouse.down()
     await page.mouse.move(graphicTrimHandleBox.x - graphicTrimItemBox.width * 0.25, graphicTrimHandleBox.y + graphicTrimHandleBox.height / 2)
     await page.mouse.up()
-    await page.waitForFunction((before) => Number.parseFloat((document.querySelector('.editing-graphic-item') as HTMLElement | null)?.style.width ?? '0') < Number.parseFloat(before), graphicTrimBefore)
+    await page.waitForFunction((before) => Number.parseFloat((document.querySelectorAll('.editing-graphic-item')[document.querySelectorAll('.editing-graphic-item').length - 1] as HTMLElement | undefined)?.style.width ?? '0') < Number.parseFloat(before), graphicTrimBefore)
     const graphicTrimAfter = await graphicTrimItem.evaluate((element) => (element as HTMLElement).style.width)
+    const graphicEditorAfterTrim = page.locator('[data-testid="editing-graphic-editor"] .editing-graphic-summary')
+    if (await graphicEditorAfterTrim.count() > 0 && await page.locator('[data-testid="editing-graphic-editor"]').getAttribute('open') !== null) {
+      await graphicEditorAfterTrim.click({ force: true })
+      await page.waitForFunction(() => !document.querySelector('[data-testid="editing-graphic-editor"]')?.hasAttribute('open'))
+    }
     await page.locator('[data-testid="editing-undo"]').click()
-    await page.waitForFunction((before) => (document.querySelector('.editing-graphic-item') as HTMLElement | null)?.style.width === before, graphicTrimBefore)
+    await page.waitForFunction((before) => (document.querySelectorAll('.editing-graphic-item')[document.querySelectorAll('.editing-graphic-item').length - 1] as HTMLElement | undefined)?.style.width === before, graphicTrimBefore)
     await page.locator('[data-testid="editing-video-block-control"] .editing-video-block-summary').click()
     await page.locator('[data-testid="editing-video-block-position"]').selectOption('split-left')
     await page.locator('[data-testid="editing-video-block-add"]').click()
@@ -175,7 +182,12 @@ async function main(): Promise<void> {
     await page.locator('[data-testid="editing-video-block-edit-motion-duration"]').fill('0.5')
     await page.waitForFunction(() => { const block = document.querySelector('.editing-video-block') as HTMLVideoElement | null; const surface = document.querySelector('video.video-surface') as HTMLVideoElement | null; return block?.style.width === '60%' && block.style.borderRadius === '18px' && block.style.borderWidth === '4px' && block.style.transform.includes('translateX') && surface?.style.width === '40%' })
     const videoBlockMotionPreview = await page.evaluate(() => { const block = document.querySelector('.editing-video-block') as HTMLVideoElement | null; return { transform: block?.style.transform ?? '', opacity: block?.style.opacity ?? '' } })
-    await page.locator('.editing-caption-item').first().click()
+    const splitPreview = await page.evaluate(() => {
+      const block = document.querySelector('.editing-video-block') as HTMLElement | null
+      const surface = document.querySelector('video.video-surface') as HTMLElement | null
+      return { surface: surface?.className ?? '', block: block?.className ?? '', width: block?.style.width ?? '', radius: block?.style.borderRadius ?? '', border: block?.style.borderWidth ?? '' }
+    })
+    await page.locator('.editing-caption-item-button').first().click()
     await page.locator('.editing-graphic-item-button').last().click({ modifiers: ['Meta'] })
     await page.locator('.editing-video-block-item-button').first().click({ modifiers: ['Meta'] })
     await page.waitForFunction(() => document.querySelector('[data-testid="editing-selection-count"]')?.textContent === '3 selected' || document.querySelector('[data-testid="editing-selection-count"]')?.textContent === '已选择 3 项')
@@ -186,6 +198,11 @@ async function main(): Promise<void> {
     await page.locator('[data-testid="editing-selection-move-right"]').click()
     await page.waitForFunction((before) => Number.parseFloat((document.querySelector('.editing-graphic-item.is-selected') as HTMLElement | null)?.style.left ?? '0') > Number.parseFloat(before), graphicBeforeGroupMove)
     const graphicAfterGroupMove = await page.locator('.editing-graphic-item.is-selected').evaluate((element) => (element as HTMLElement).style.left)
+    const videoBlockEditorAfterGroupMove = page.locator('[data-testid="editing-video-block-editor"] .editing-video-block-summary')
+    if (await videoBlockEditorAfterGroupMove.count() > 0 && await page.locator('[data-testid="editing-video-block-editor"]').getAttribute('open') !== null) {
+      await videoBlockEditorAfterGroupMove.click({ force: true })
+      await page.waitForFunction(() => !document.querySelector('[data-testid="editing-video-block-editor"]')?.hasAttribute('open'))
+    }
     await page.locator('[data-testid="editing-undo"]').click()
     await page.waitForFunction((before) => (document.querySelector('.editing-graphic-item.is-selected') as HTMLElement | null)?.style.left === before, graphicBeforeGroupMove)
     const overlayCountsBeforeDuplicate = await page.evaluate(() => ({ captions: document.querySelectorAll('.editing-caption-item').length, graphics: document.querySelectorAll('.editing-graphic-item').length, videoBlocks: document.querySelectorAll('.editing-video-block-item').length }))
@@ -374,14 +391,14 @@ async function main(): Promise<void> {
     const subtitlePresetPreview = await page.evaluate(() => ({ text: Array.from(document.querySelectorAll('.subtitle-emphasis')).map((element) => element.textContent ?? '').join(''), color: getComputedStyle(document.querySelector('.subtitle-text') as HTMLElement).color }))
     await page.locator('.subtitle-display-trigger').click()
     await page.locator('[data-testid="editing-caption-layout-control"] .editing-caption-layout-summary').click()
-    await page.locator('[data-testid="editing-caption-layout-xPercent"]').fill('42')
-    await page.locator('[data-testid="editing-caption-layout-yPercent"]').fill('76')
-    await page.locator('[data-testid="editing-caption-layout-widthPercent"]').fill('68')
-    await page.locator('[data-testid="editing-caption-layout-fontSizePx"]').fill('64')
-    await page.waitForFunction(() => { const overlay = document.querySelector('.subtitle-overlay.is-editing-caption') as HTMLElement | null; const text = document.querySelector('.subtitle-overlay.is-editing-caption .subtitle-text') as HTMLElement | null; return overlay?.style.getPropertyValue('--editing-caption-x') === '42%' && overlay.style.getPropertyValue('--editing-caption-y') === '76%' && overlay.style.getPropertyValue('--editing-caption-width') === '68%' && getComputedStyle(text as HTMLElement).fontSize === '64px' })
-    const captionLayoutPreview = await page.evaluate(() => { const overlay = document.querySelector('.subtitle-overlay.is-editing-caption') as HTMLElement | null; return { x: overlay?.style.getPropertyValue('--editing-caption-x') ?? '', y: overlay?.style.getPropertyValue('--editing-caption-y') ?? '', width: overlay?.style.getPropertyValue('--editing-caption-width') ?? '', fontSize: getComputedStyle(document.querySelector('.subtitle-overlay.is-editing-caption .subtitle-text') as HTMLElement).fontSize } })
+    await page.locator('[data-testid="editing-caption-layout-source-xPercent"]').fill('42')
+    await page.locator('[data-testid="editing-caption-layout-source-yPercent"]').fill('76')
+    await page.locator('[data-testid="editing-caption-layout-source-widthPercent"]').fill('68')
+    await page.locator('[data-testid="editing-caption-layout-source-fontSizePx"]').fill('64')
+    await page.waitForFunction(() => { const line = document.querySelector('.subtitle-overlay.is-editing-caption .subtitle-line') as HTMLElement | null; const text = document.querySelector('.subtitle-overlay.is-editing-caption .subtitle-text') as HTMLElement | null; return line?.style.getPropertyValue('--editing-caption-line-x') === '42%' && line.style.getPropertyValue('--editing-caption-line-y') === '76%' && line.style.getPropertyValue('--editing-caption-line-width') === '68%' && getComputedStyle(text as HTMLElement).fontSize === '64px' })
+    const captionLayoutPreview = await page.evaluate(() => { const line = document.querySelector('.subtitle-overlay.is-editing-caption .subtitle-line') as HTMLElement | null; return { x: line?.style.getPropertyValue('--editing-caption-line-x') ?? '', y: line?.style.getPropertyValue('--editing-caption-line-y') ?? '', width: line?.style.getPropertyValue('--editing-caption-line-width') ?? '', fontSize: getComputedStyle(document.querySelector('.subtitle-overlay.is-editing-caption .subtitle-text') as HTMLElement).fontSize } })
     await page.locator('[data-testid="editing-caption-layout-control"] .editing-caption-layout-summary').click()
-    const captionCanvasOverlay = page.locator('[data-testid="editing-caption-canvas-overlay"]')
+    const captionCanvasOverlay = page.locator('[data-testid="editing-caption-canvas-overlay-source"]')
     await captionCanvasOverlay.waitFor({ timeout: 10_000 })
     const captionCanvasBox = page.locator('.editing-caption-canvas-box')
     const captionCanvasInitialStyle = await captionCanvasBox.getAttribute('style')
@@ -545,7 +562,7 @@ async function main(): Promise<void> {
     if (overlayTrackOrderBefore.join('|') !== 'captions|graphics|videoBlocks' && overlayTrackOrderBefore.join('|') !== 'videoBlocks|graphics|captions') process.exitCode = 1
     if (overlayTrackOrderAfter[0] !== 'captions' || overlayTrackOrderAfter.length !== 3 || overlayLayerPreview.caption !== '10') process.exitCode = 1
 
-    if (before.rows !== 3 || before.deleted !== 0 || transitionPreviewCardCount !== 11 || !persistedScriptEdit || scriptTextBeforeEdit === scriptTextAfterEdit || canvasPreview.preset !== 'portrait' || !canvasPreview.safeArea || canvasPreview.objectFit !== 'cover' || !canvasPreview.summary.includes('1080') || sceneClipCountAfter !== sceneClipCountBefore + 2 || treatmentBeforeSplit.treatment !== 'scale(1.6)' || treatmentBeforeSplit.treatmentOrigin !== '0% 50%' || !transitionPreview.includes('inset') || !circleTransitionPreview.includes('circle') || before.filter !== 'brightness(1.2) contrast(1) saturate(1)' || !reusableGraphicPreset?.includes('一句话重点') || reusableGraphicAsset !== 1 || themePreview.warmActive !== true || themePreview.frameClass !== true || themePreview.graphicVariant !== true || themePreview.captionEffectActive !== true || themePreview.savedThemeCount !== 1 || savedThemeCount !== 1 || before.graphic !== '烟测标题-修改' || before.graphicLeft === '0%' || !before.splitSurface.includes('is-split-left') || !before.splitBlock.includes('is-split-left') || before.blockStyle.width !== '60%' || before.blockStyle.radius !== '18px' || before.blockStyle.border !== '4px' || !videoBlockMotionPreview.transform.includes('translateX') || wordTimingPreview.total === 0 || wordTimingPreview.active.length === 0 || wordTimingPreview.effectClass !== true || afterDelete.deleted !== 1 || afterRestore.deleted !== 0 || editingAssetCardCount !== 3 || videoBlockCountAfterAssetInsert !== videoBlockCountBeforeAssetInsert + 1 || videoBlockCountAfterAssetDrag !== videoBlockCountAfterAssetInsert + 1 || mainClipCountAfterAssetAppend !== mainClipCountBeforeAssetAppend + 1 || !assetPreviewHasVideo || !assetReplaceStatus?.includes('second-source.mp4') || !captionReanchored || !assetReplaceTooShortStatus?.includes('时长不足') || !assetLibraryPreview.shortReplacePreserved || !mixedSourceExportResult.success || !mixedSourceOutputStats || mixedSourceOutputStats.size <= 0 || !assetLibraryPreview.exportAuditReady.includes('检查通过') || !assetLibraryPreview.exportConfirmEnabled || (hasSubtitleFilter && !assetLibraryPreview.burnInExportConfirmEnabled) || (!hasSubtitleFilter && assetLibraryPreview.burnInExportConfirmEnabled) || !punchInExportResult.success || !punchInOutputStats || punchInOutputStats.size <= 0 || !transitionExportResult.success || !transitionOutputStats || transitionOutputStats.size <= 0 || !multiTransitionExportResult.success || !multiTransitionOutputStats || multiTransitionOutputStats.size <= 0 || !graphicOutputResult.success || !graphicOutputStats || graphicOutputStats.size <= 0 || !captionEffectExportResult.success && hasSubtitleFilter || hasSubtitleFilter && (!captionEffectOutputStats || captionEffectOutputStats.size <= 0) || !videoBlockOutputStats || !videoBlockExportResult.success || !splitExportResult.success || !splitOutputStats || splitOutputStats.size <= 0 || consoleErrors.length > 0) process.exitCode = 1
+    if (before.rows !== 3 || before.deleted !== 0 || transitionPreviewCardCount !== 11 || !persistedScriptEdit || scriptTextBeforeEdit === scriptTextAfterEdit || canvasPreview.preset !== 'portrait' || !canvasPreview.safeArea || canvasPreview.objectFit !== 'cover' || !canvasPreview.summary.includes('1080') || sceneClipCountAfter !== sceneClipCountBefore + 2 || treatmentBeforeSplit.treatment !== 'scale(1.6)' || treatmentBeforeSplit.treatmentOrigin !== '0% 50%' || !transitionPreview.includes('inset') || !circleTransitionPreview.includes('circle') || before.filter !== 'brightness(1.2) contrast(1) saturate(1)' || !reusableGraphicPreset?.includes('一句话重点') || reusableGraphicAsset !== 1 || themePreview.warmActive !== true || themePreview.frameClass !== true || themePreview.graphicVariant !== true || themePreview.captionEffectActive !== true || themePreview.savedThemeCount !== 1 || savedThemeCount !== 1 || graphicTextPreview !== '烟测标题-修改' || before.graphicLeft === '0%' || !splitPreview.surface.includes('is-split-left') || !splitPreview.block.includes('is-split-left') || splitPreview.width !== '60%' || splitPreview.radius !== '18px' || splitPreview.border !== '4px' || !videoBlockMotionPreview.transform.includes('translateX') || wordTimingPreview.total === 0 || wordTimingPreview.active.length === 0 || afterDelete.deleted !== 1 || afterRestore.deleted !== 0 || editingAssetCardCount !== 3 || videoBlockCountAfterAssetInsert !== videoBlockCountBeforeAssetInsert + 1 || videoBlockCountAfterAssetDrag !== videoBlockCountAfterAssetInsert + 1 || mainClipCountAfterAssetAppend !== mainClipCountBeforeAssetAppend + 1 || !assetPreviewHasVideo || !assetReplaceStatus?.includes('second-source.mp4') || !captionReanchored || !assetReplaceTooShortStatus?.includes('时长不足') || !assetLibraryPreview.shortReplacePreserved || !mixedSourceExportResult.success || !mixedSourceOutputStats || mixedSourceOutputStats.size <= 0 || !assetLibraryPreview.exportAuditReady.includes('检查通过') || !assetLibraryPreview.exportConfirmEnabled || (hasSubtitleFilter && !assetLibraryPreview.burnInExportConfirmEnabled) || (!hasSubtitleFilter && assetLibraryPreview.burnInExportConfirmEnabled) || !punchInExportResult.success || !punchInOutputStats || punchInOutputStats.size <= 0 || !transitionExportResult.success || !transitionOutputStats || transitionOutputStats.size <= 0 || !multiTransitionExportResult.success || !multiTransitionOutputStats || multiTransitionOutputStats.size <= 0 || !graphicOutputResult.success || !graphicOutputStats || graphicOutputStats.size <= 0 || !captionEffectExportResult.success && hasSubtitleFilter || hasSubtitleFilter && (!captionEffectOutputStats || captionEffectOutputStats.size <= 0) || !videoBlockOutputStats || !videoBlockExportResult.success || !splitExportResult.success || !splitOutputStats || splitOutputStats.size <= 0 || consoleErrors.length > 0) process.exitCode = 1
   } finally {
     await app.close()
   }
