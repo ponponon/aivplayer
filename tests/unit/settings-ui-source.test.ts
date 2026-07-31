@@ -50,6 +50,14 @@ describe('settings UI source constraints', () => {
     expect(playerCss).toMatch(/\.gpu-restart-dialog-actions\s*\{[^}]*grid-template-columns:\s*1fr;/s)
   })
 
+  it('prevents shared action buttons from breaking their labels', () => {
+    const playerCss = readSource('src/renderer/src/styles/player.css')
+
+    expect(playerCss).toMatch(/\.settings-secondary-button\s*\{[^}]*white-space:\s*nowrap;/s)
+    expect(playerCss).toMatch(/\.asr-action-button\s*\{[^}]*white-space:\s*nowrap;/s)
+    expect(playerCss).toMatch(/\.settings-footer-actions\s*>\s*\.asr-action-button\s*\{[^}]*width:\s*auto;/s)
+  })
+
   it('routes settings select and number controls through shared renderers', () => {
     const settingsDialogSource = `${readSource('src/renderer/src/app/settings-controls.tsx')}\n${readSource('src/renderer/src/app/settings-inputs.tsx')}`
 

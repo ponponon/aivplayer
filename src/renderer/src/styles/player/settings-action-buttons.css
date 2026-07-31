@@ -1,0 +1,8 @@
+.settings-footer-actions > button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.settings-footer-actions > .asr-action-button {
+  width: auto;
+}

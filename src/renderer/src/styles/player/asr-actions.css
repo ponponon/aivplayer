@@ -49,6 +49,7 @@
   cursor: pointer;
   font-size: 13px;
   font-weight: 720;
+  white-space: nowrap;
 }
 
 .asr-action-button.primary {
