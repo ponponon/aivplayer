@@ -16,6 +16,15 @@ function transitionValue(clip: EditingVideoClip | null): EditingClipTransition {
   return getEditingClipTransition(clip ?? {}) ?? { type: 'fade', durationSeconds: EDITING_TRANSITION_DEFAULT_DURATION }
 }
 
+function TransitionPreview({ type }: { type: EditingClipTransitionType | null }): React.ReactElement {
+  const previewType = type ?? 'none'
+  return <span className={`editing-transition-preview editing-transition-preview-${previewType}`} aria-hidden="true">
+    <span className="editing-transition-preview-from" />
+    <span className="editing-transition-preview-to" />
+    <span className="editing-transition-preview-spark" />
+  </span>
+}
+
 export function EditingTransitionControl({ clip, isFirstClip, title, noneLabel, transitionLabels, durationLabel, onChange }: EditingTransitionControlProps): React.ReactElement {
   const [isOpen, setIsOpen] = useState(false)
   const transition = getEditingClipTransition(clip ?? {})
@@ -28,8 +37,8 @@ export function EditingTransitionControl({ clip, isFirstClip, title, noneLabel, 
     </summary>
     <div className="editing-transition-popover" onClick={(event) => event.stopPropagation()}>
       <div className="editing-transition-options" role="group" aria-label={title}>
-        <button className={`editing-transition-option ${!active ? 'is-active' : ''}`} type="button" disabled={isFirstClip} onClick={() => onChange(null)} data-testid="editing-transition-none">{noneLabel}</button>
-        {EDITING_TRANSITION_TYPES.map((type) => <button key={type} className={`editing-transition-option ${active && value.type === type ? 'is-active' : ''}`} type="button" disabled={isFirstClip} onClick={() => onChange({ type, durationSeconds: value.durationSeconds })} data-testid={`editing-transition-${type}`}>{transitionLabels[type]}</button>)}
+        <button className={`editing-transition-option ${!active ? 'is-active' : ''}`} type="button" disabled={isFirstClip} onClick={() => onChange(null)} data-testid="editing-transition-none"><TransitionPreview type={null} /><span>{noneLabel}</span></button>
+        {EDITING_TRANSITION_TYPES.map((type) => <button key={type} className={`editing-transition-option ${active && value.type === type ? 'is-active' : ''}`} type="button" disabled={isFirstClip} onClick={() => onChange({ type, durationSeconds: value.durationSeconds })} data-testid={`editing-transition-${type}`}><TransitionPreview type={type} /><span>{transitionLabels[type] ?? type}</span></button>)}
       </div>
       <label className="editing-transition-duration">
         <span>{durationLabel}</span>
