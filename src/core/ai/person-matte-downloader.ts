@@ -1,18 +1,9 @@
 import { mkdir, open, rename, rm, stat } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { PERSON_MATTE_MODEL_FILES, getPersonMatteModelPaths, type PersonMatteModelPaths } from './person-matte-model'
+import type { PersonMatteModelDownloadProgress } from '../../shared/person-matte-types'
 
-export type PersonMatteModelDownloadStatus = 'cached' | 'downloading' | 'completed'
-
-export type PersonMatteModelDownloadProgress = {
-  status: PersonMatteModelDownloadStatus
-  relativePath: string
-  fileIndex: number
-  fileCount: number
-  receivedBytes: number
-  totalBytes: number | null
-  percent: number | null
-}
+export type { PersonMatteModelDownloadProgress } from '../../shared/person-matte-types'
 
 export type DownloadPersonMatteModelOptions = {
   modelRoot: string

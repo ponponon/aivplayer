@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs'
 import { join, resolve } from 'node:path'
+import type { PersonMatteModelStatus } from '../../shared/person-matte-types'
 
 /** Pinned Transformers.js model layout; model files are installed separately from the app source. */
 export const PERSON_MATTE_MODEL_ID = 'Xenova/modnet' as const
@@ -21,12 +22,7 @@ export type PersonMatteModelPaths = {
   modelPath: string
 }
 
-export type PersonMatteModelStatus = {
-  available: boolean
-  modelId: typeof PERSON_MATTE_MODEL_ID
-  modelDirectory: string
-  message: string
-}
+export type { PersonMatteModelStatus } from '../../shared/person-matte-types'
 
 export function getPersonMatteModelPaths(resourcePath: string): PersonMatteModelPaths {
   const modelDirectory = join(resolve(resourcePath), PERSON_MATTE_MODEL_DIRECTORY, 'Xenova', 'modnet')
