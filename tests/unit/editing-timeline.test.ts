@@ -11,10 +11,12 @@ import {
 } from '../../src/core/editing/timeline-math'
 import {
   deleteVideoClipAtEdited,
+  deleteVideoClipsById,
   insertVideoClipsAtEdited,
   removeEditedVideoRanges,
   removeEditedVideoRange,
   removeSourceVideoRanges,
+  replaceVideoClipSource,
   restoreSourceVideoRange,
   reorderVideoClips,
   splitVideoClipAtEdited,
@@ -85,6 +87,13 @@ describe('editing timeline mapping', () => {
     expect(snapEditedTime(7.94, 20, [7.9])).toBe(7.9)
     expect(snapEditedTime(7.7, 20, [7.9])).toBe(7.7)
   })
+
+  it('keeps overlay starts inside their own available range while snapping', () => {
+    // The track passes duration - item duration as the effective upper bound,
+    // so a nearby end-of-timeline snap cannot push the item past the canvas.
+    expect(snapEditedTime(9.94, 9.5, [10])).toBe(9.5)
+    expect(snapEditedTime(4.03, 9.5, [4])).toBe(4)
+  })
 })
 
 describe('editing timeline operations', () => {
@@ -121,6 +130,24 @@ describe('editing timeline operations', () => {
       editedInsertSeconds: 4
     })
     expect(insertVideoClipsAtEdited(initial, [inserted], 10).clips.map((item) => item.id)).toEqual(['a', 'new'])
+  })
+
+  it('appends multiple source clips as one ordered insertion batch', () => {
+    const initial = [clip('main', 0, 4)]
+    const inserted = [clip('broll-a', 0, 2, 'a'), clip('broll-b', 3, 6, 'b')]
+    const result = insertVideoClipsAtEdited(initial, inserted, editedDurationSeconds(initial))
+    expect(result.clips.map((item) => item.id)).toEqual(['main', 'broll-a', 'broll-b'])
+    expect(result.insertedClipIds).toEqual(['broll-a', 'broll-b'])
+    expect(editedDurationSeconds(result.clips)).toBe(9)
+  })
+
+  it('replaces a clip source without changing its edited duration or treatments', () => {
+    const initial = [{ ...clip('a', 2, 6), treatment: 'punch-in' as const, treatmentScale: 1.5 }]
+    const result = replaceVideoClipSource(initial, 'a', 'replacement', 12)
+    expect(result.replaced).toBe(true)
+    expect(result.clips[0]).toMatchObject({ id: 'a', sourceId: 'replacement', sourceStartSeconds: 0, sourceEndSeconds: 4, treatment: 'punch-in', treatmentScale: 1.5 })
+    expect(editedDurationSeconds(result.clips)).toBe(4)
+    expect(replaceVideoClipSource(initial, 'a', 'short', 3)).toMatchObject({ replaced: false, reason: 'source-too-short' })
   })
 
   it('re-maps source-anchored captions after clip order changes', () => {
@@ -188,6 +215,24 @@ describe('editing timeline operations', () => {
     const clips = [clip('a', 0, 10)]
     expect(deleteVideoClipAtEdited(clips, 3)).toEqual({ clips, removedRange: null })
     expect(removeEditedVideoRange(clips, 0, 10, createRight)).toEqual({ clips, removedRange: null })
+  })
+
+  it('deletes selected clips as one edited-time batch and preserves the remaining order', () => {
+    const result = deleteVideoClipsById(
+      [clip('a', 0, 4), clip('b', 10, 13), clip('c', 20, 25)],
+      ['b', 'c'],
+      (base, start, end) => ({ ...base, id: `${base.id}-right`, sourceStartSeconds: start, sourceEndSeconds: end })
+    )
+    expect(result.removedRanges).toEqual([{ startSeconds: 4, endSeconds: 12 }])
+    expect(result.clips.map((item) => [item.id, item.sourceStartSeconds, item.sourceEndSeconds])).toEqual([
+      ['a', 0, 4]
+    ])
+    expect(editedDurationSeconds(result.clips)).toBe(4)
+  })
+
+  it('keeps the primary track renderable when selection includes its only clip', () => {
+    const clips = [clip('only', 0, 10)]
+    expect(deleteVideoClipsById(clips, ['only'])).toEqual({ clips, removedRanges: [] })
   })
 
   it('applies source-time cuts after resolving current edited positions', () => {

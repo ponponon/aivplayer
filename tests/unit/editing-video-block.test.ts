@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createEditingVideoBlock, findActiveEditingVideoBlocks, findVisibleEditingVideoBlocks, getEditingVideoBlockMotionPhase, removeEditingVideoBlock, updateEditingVideoBlock } from '../../src/core/editing/video-block-operations'
-import { buildTimelineGraphicOverlayFilter, buildTimelineVideoBlockOverlayFilter } from '../../src/core/media/timeline-export'
+import { buildTimelineGraphicOverlayFilter, buildTimelineOverlayFilter, buildTimelineVideoBlockOverlayFilter } from '../../src/core/media/timeline-export'
 
 describe('editing video block operations', () => {
   it('creates a source-anchored PiP block with bounded timeline duration', () => {
@@ -15,6 +15,12 @@ describe('editing video block operations', () => {
     const moved = updateEditingVideoBlock([first, second], 'block-2', { startSeconds: 7, position: 'top-right' }, 12)
     expect(moved[1]).toMatchObject({ startSeconds: 7, position: 'top-right' })
     expect(removeEditingVideoBlock(moved, 'block-1')).toEqual([moved[1]])
+  })
+
+  it('keeps the source end anchored when the left edge is trimmed', () => {
+    const block = createEditingVideoBlock('source-1', 10, 2, 12, { durationSeconds: 3, id: 'block-1' })!
+    const trimmed = updateEditingVideoBlock([block], 'block-1', { startSeconds: 3, durationSeconds: 2, sourceStartSeconds: 1 }, 12, new Map([['source-1', 10]]))
+    expect(trimmed[0]).toMatchObject({ startSeconds: 3, durationSeconds: 2, sourceStartSeconds: 1, sourceEndSeconds: 3 })
   })
 
   it('keeps an animated block visible during its exit hold', () => {
@@ -52,5 +58,18 @@ describe('editing video block operations', () => {
     expect(filter).toContain('[0:v]split=2[split-base-full][split-source-0]')
     expect(filter).toContain('pad=1920:1080:0:0:color=black')
     expect(filter).toContain('overlay=x=960:y=0')
+  })
+
+  it('composes graphics and PiP according to the persisted overlay track order', () => {
+    const graphics = [{ id: 'graphic-a', startSeconds: 0, durationSeconds: 4, text: 'Title', position: 'center' as const, style: 'title' as const }]
+    const videoBlocks = [{ mediaPath: '/videos/pip.mp4', sourceStartSeconds: 0, sourceEndSeconds: 2, startSeconds: 0, durationSeconds: 2, position: 'bottom-right' as const }]
+    const assets = [{ graphicId: 'graphic-a', imagePath: '/tmp/graphic-a.png' }]
+    const videoBelowGraphics = buildTimelineOverlayFilter(graphics, assets, videoBlocks, 1920, 1080, ['videoBlocks', 'graphics', 'captions'], '/tmp/captions.ass')
+    const graphicsBelowVideo = buildTimelineOverlayFilter(graphics, assets, videoBlocks, 1920, 1080, ['graphics', 'videoBlocks', 'captions'], '/tmp/captions.ass')
+    const captionsBelowVideo = buildTimelineOverlayFilter(graphics, assets, videoBlocks, 1920, 1080, ['captions', 'videoBlocks', 'graphics'], '/tmp/captions.ass')
+    expect(videoBelowGraphics.indexOf('[2:v]')).toBeLessThan(videoBelowGraphics.indexOf('[1:v]overlay='))
+    expect(graphicsBelowVideo.indexOf('[1:v]overlay=')).toBeLessThan(graphicsBelowVideo.indexOf('[2:v]'))
+    expect(videoBelowGraphics.indexOf('[1:v]overlay=')).toBeLessThan(videoBelowGraphics.indexOf('subtitles=filename='))
+    expect(captionsBelowVideo.indexOf('subtitles=filename=')).toBeLessThan(captionsBelowVideo.indexOf('[2:v]'))
   })
 })

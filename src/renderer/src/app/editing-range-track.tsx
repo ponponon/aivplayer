@@ -1,6 +1,7 @@
 import { Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { snapEditedTime } from '../../../core/editing/timeline-snapping'
+import { EDITING_SOURCE_DRAG_TYPE, readEditingSourceDrag } from './editing-asset-dnd'
 
 export type EditingTimeRange = { startSeconds: number; endSeconds: number }
 
@@ -13,6 +14,7 @@ type EditingRangeTrackProps = {
   deleteRangeLabel: string
   onSeek: (seconds: number) => void
   onDeleteRange: (startSeconds: number, endSeconds: number) => void
+  onDropSource?: (sourceId: string, seconds: number) => void
   snapPoints?: readonly number[]
   children: ReactNode
 }
@@ -29,7 +31,7 @@ function normalizeRange(startSeconds: number, endSeconds: number): EditingTimeRa
   return startSeconds <= endSeconds ? { startSeconds, endSeconds } : { startSeconds: endSeconds, endSeconds: startSeconds }
 }
 
-export function EditingRangeTrack({ durationSeconds, currentTime, trackLabel, deleteRangeLabel, onSeek, onDeleteRange, snapPoints = [], children }: EditingRangeTrackProps): React.ReactElement {
+export function EditingRangeTrack({ durationSeconds, currentTime, trackLabel, deleteRangeLabel, onSeek, onDeleteRange, onDropSource, snapPoints = [], children }: EditingRangeTrackProps): React.ReactElement {
   const [selectedRange, setSelectedRange] = useState<EditingTimeRange | null>(null)
   const dragRef = useRef<RangeDrag | null>(null)
   const rangeRef = useRef<EditingTimeRange | null>(null)
@@ -86,6 +88,13 @@ export function EditingRangeTrack({ durationSeconds, currentTime, trackLabel, de
     onDeleteRange(range.startSeconds, range.endSeconds)
   }
 
+  const handleSourceDrop = (event: React.DragEvent<HTMLDivElement>): void => {
+    const sourceId = readEditingSourceDrag(event)
+    if (!sourceId || !onDropSource) return
+    event.preventDefault()
+    onDropSource(sourceId, timeFromPointer(event.clientX, event.currentTarget, durationSeconds))
+  }
+
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>): void => {
     if (event.key === 'Delete' || event.key === 'Backspace') {
       if (!rangeRef.current) return
@@ -117,6 +126,8 @@ export function EditingRangeTrack({ durationSeconds, currentTime, trackLabel, de
       onPointerMove={moveRangeDrag}
       onPointerUp={finishRangeDrag}
       onPointerCancel={finishRangeDrag}
+      onDragOver={(event) => { if (event.dataTransfer.types.includes(EDITING_SOURCE_DRAG_TYPE)) { event.preventDefault(); event.dataTransfer.dropEffect = 'copy' } }}
+      onDrop={handleSourceDrop}
       data-testid="editing-track"
     >
       {range ? <div className="editing-range-selection" style={{ left: `${rangeLeft}%`, width: `${rangeWidth}%` }}><button className="editing-range-delete" type="button" onPointerDown={(event) => event.stopPropagation()} onClick={deleteSelectedRange} title={deleteRangeLabel} aria-label={deleteRangeLabel}><Trash2 size={13} /></button></div> : null}

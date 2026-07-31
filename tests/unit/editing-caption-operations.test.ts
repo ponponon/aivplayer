@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { moveEditingCaption } from '../../src/core/editing/caption-operations'
+import { moveEditingCaption, remapEditingCaptionsForReplacement, resizeEditingCaption } from '../../src/core/editing/caption-operations'
 import { createEditingCaptionPathCandidates } from '../../src/renderer/src/app/editing-caption-loader'
 import type { EditingCaption } from '../../src/shared/editing-types'
 
@@ -36,5 +36,21 @@ describe('editing caption operations', () => {
     const next = moveEditingCaption(captions, 'missing', 4, 10)
     expect(next).toEqual(captions)
     expect(next).not.toBe(captions)
+  })
+
+  it('trims a caption, clips word timings, and removes source anchoring', () => {
+    const next = resizeEditingCaption([{ ...caption, words: [{ startSeconds: 0.5, endSeconds: 1.5, text: 'early' }, { startSeconds: 2, endSeconds: 3, text: 'late' }] }], 'caption-1', 3, 4.5, 10)
+    expect(next).toEqual([{ id: 'caption-1', startSeconds: 3, durationSeconds: 1.5, kind: 'source', text: 'hello', words: [{ startSeconds: 0, endSeconds: 0.5, text: 'early' }, { startSeconds: 1, endSeconds: 1.5, text: 'late' }] }])
+  })
+
+  it('re-anchors the overlapping part of a caption to a replacement source', () => {
+    const captions: EditingCaption[] = [
+      { id: 'crossing', startSeconds: 4, durationSeconds: 4, sourceId: 'old-source', sourceStartSeconds: 4, sourceEndSeconds: 8, kind: 'source', text: 'crossing', words: [{ startSeconds: 0.5, endSeconds: 1.5, text: 'early' }, { startSeconds: 2, endSeconds: 4, text: 'late' }] },
+      { id: 'other-source', startSeconds: 5, durationSeconds: 1, sourceId: 'other-source', sourceStartSeconds: 0, sourceEndSeconds: 1, kind: 'source', text: 'untouched' }
+    ]
+    expect(remapEditingCaptionsForReplacement(captions, { clip: { sourceId: 'old-source' }, editedStartSeconds: 5, editedEndSeconds: 8 }, 'new-source')).toEqual([
+      { id: 'crossing', startSeconds: 5, durationSeconds: 3, sourceId: 'new-source', sourceStartSeconds: 0, sourceEndSeconds: 3, kind: 'source', text: 'crossing', words: [{ startSeconds: 0, endSeconds: 0.5, text: 'early' }, { startSeconds: 1, endSeconds: 3, text: 'late' }] },
+      captions[1]
+    ])
   })
 })

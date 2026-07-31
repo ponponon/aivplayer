@@ -76,6 +76,17 @@
   max-height: calc(100vh - 24px);
 }
 
+.editing-subtitle-controls {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  z-index: 18;
+}
+
+.editing-subtitle-controls .subtitle-display-controls {
+  grid-column: auto;
+}
+
 .subtitle-display-control-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

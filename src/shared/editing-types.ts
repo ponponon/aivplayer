@@ -41,6 +41,16 @@ export type EditingClipTransitionType = 'fade' | 'fadeblack' | 'dissolve' | 'wip
 export type EditingClipTransition = { type: EditingClipTransitionType; durationSeconds: number }
 export type EditingGraphicPosition = 'center' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
 export type EditingGraphicStyle = 'title' | 'label'
+export type EditingOverlayTrackKind = 'videoBlocks' | 'graphics' | 'captions'
+export type EditingFrameId = 'clean' | 'warm' | 'mint' | 'cinema' | 'gold'
+export type EditingCaptionEffect = 'none' | 'highlight' | 'pill-karaoke' | 'word-pop' | 'kinetic-slam' | 'editorial-emphasis'
+export type EditingCanvasPresetId = 'source' | 'landscape' | 'portrait' | 'square'
+export type EditingCaptionLayout = {
+  xPercent: number
+  yPercent: number
+  widthPercent: number
+  fontSizePx: number
+}
 export type EditingGraphic = {
   id: string
   startSeconds: number
@@ -121,6 +131,16 @@ export type EditingProject = {
   graphics?: EditingGraphic[]
   /** Optional picture-in-picture video blocks kept separate from the primary video track. */
   videoBlocks?: EditingVideoBlock[]
+  /** Optional Pireel-style visual frame persisted with the editing project. */
+  frameId?: EditingFrameId
+  /** Optional Pireel-style word-level caption effect persisted with the editing project. */
+  captionEffect?: EditingCaptionEffect
+  /** Optional output canvas preset persisted with the editing project. */
+  canvasPreset?: EditingCanvasPresetId
+  /** Optional Pireel-style caption position and scale persisted with the editing project. */
+  captionLayout?: EditingCaptionLayout
+  /** Optional persisted back-to-front order for the three overlay tracks. */
+  overlayTrackOrder?: EditingOverlayTrackKind[]
   /** Optional for backward compatibility with schema version 1 project files. */
   scriptSegments?: EditingScriptSegment[]
 }

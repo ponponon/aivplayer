@@ -20,6 +20,7 @@ import { createEditingGraphicActions } from './editing-graphic-actions'
 import { createEditingVideoBlockActions } from './editing-video-block-actions'
 import { createEditingSceneActions } from './editing-scene-actions'
 import { createEditingSilenceActions } from './editing-silence-actions'
+import { deleteEditingSelection, duplicateEditingSelection, moveEditingSelection, reorderEditingOverlayTracks } from './editing-selection-actions'
 import { useEditingSourceEffect } from '../use-editing-source-effect'
 export function useEditingActions(model: AppModel, derived: AppDerived, selectFile: (file: NonNullable<AppModel['state']['currentFile']>) => void) {
   const openEditingMode = (): void => {
@@ -52,14 +53,12 @@ export function useEditingActions(model: AppModel, derived: AppDerived, selectFi
     const result = splitVideoClipAtEdited(project.videoClips, model.editingCurrentTime)
     if (result.clips.some((clip, index) => clip !== project.videoClips[index])) applyEditingTimelineChange(model, result.clips, null)
   }
-
   const trimEditingClipLeft = (): void => {
     const project = model.editingProject
     if (!project) return
     const result = trimVideoClipLeftAtEdited(project.videoClips, model.editingCurrentTime)
     if (result.removedRange) applyEditingTimelineChange(model, result.clips, result.removedRange)
   }
-
   const trimEditingClipRight = (): void => {
     const project = model.editingProject
     if (!project) return
@@ -73,7 +72,6 @@ export function useEditingActions(model: AppModel, derived: AppDerived, selectFi
     const result = deleteVideoClipAtEdited(project.videoClips, model.editingCurrentTime)
     if (result.removedRange) applyEditingTimelineChange(model, result.clips, result.removedRange)
   }
-
   const undoEditing = (): void => {
     const project = model.editingProject
     const previous = model.editingPast.at(-1)
@@ -143,6 +141,10 @@ export function useEditingActions(model: AppModel, derived: AppDerived, selectFi
     ...audioActions,
     ...sourceActions,
     ...projectFileActions,
+    deleteEditingSelection: (selection: import('../../../core/editing/selection').EditingSelection) => deleteEditingSelection(model, selection),
+    duplicateEditingSelection: (selection: import('../../../core/editing/selection').EditingSelection) => duplicateEditingSelection(model, selection),
+    moveEditingSelection: (selection: import('../../../core/editing/selection').EditingSelection, deltaSeconds: number) => moveEditingSelection(model, selection, deltaSeconds),
+    reorderEditingOverlayTracks: (source: import('../../../shared/editing-types').EditingOverlayTrackKind, target: import('../../../shared/editing-types').EditingOverlayTrackKind) => reorderEditingOverlayTracks(model, source, target),
     exportEditingTimeline: (mode?: ClipExportMode, outputVideoPath?: string) => runEditingTimelineExport(model, derived, mode, outputVideoPath)
   }
 }

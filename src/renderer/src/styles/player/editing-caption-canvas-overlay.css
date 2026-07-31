@@ -1,0 +1,62 @@
+.editing-caption-canvas-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.editing-caption-canvas-box {
+  position: absolute;
+  min-width: 30%;
+  height: var(--editing-caption-box-height);
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(var(--accent-rgb), .78);
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .28), 0 5px 18px rgba(0, 0, 0, .18);
+  pointer-events: auto;
+}
+
+.editing-caption-canvas-body,
+.editing-caption-canvas-handle {
+  appearance: none;
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: move;
+}
+
+.editing-caption-canvas-body {
+  inset: 0;
+}
+
+.editing-caption-canvas-handle {
+  top: 50%;
+  width: 8px;
+  height: 28px;
+  transform: translateY(-50%);
+  border: 2px solid var(--accent);
+  border-radius: 999px;
+  background: var(--panel);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .28);
+  cursor: ew-resize;
+}
+
+.editing-caption-canvas-handle.is-left { left: -5px; }
+.editing-caption-canvas-handle.is-right { right: -5px; }
+
+.editing-caption-canvas-overlay.is-dragging .editing-caption-canvas-box {
+  border-style: dashed;
+  background: rgba(var(--accent-rgb), .08);
+}
+
+.editing-caption-canvas-guide {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: rgba(var(--accent-rgb), .82);
+  box-shadow: 0 0 8px rgba(var(--accent-rgb), .66);
+}

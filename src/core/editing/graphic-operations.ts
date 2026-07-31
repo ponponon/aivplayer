@@ -41,6 +41,10 @@ export function updateEditingGraphic(graphics: readonly EditingGraphic[], graphi
   })
 }
 
+export function applyEditingGraphicTheme(graphics: readonly EditingGraphic[], style: EditingGraphicStyle, position: EditingGraphicPosition): EditingGraphic[] {
+  return graphics.map((graphic) => graphic.style === style && graphic.position === position ? graphic : { ...graphic, style, position })
+}
+
 export function removeEditingGraphic(graphics: readonly EditingGraphic[], graphicId: string): EditingGraphic[] {
   return graphics.filter((graphic) => graphic.id !== graphicId)
 }

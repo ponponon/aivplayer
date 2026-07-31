@@ -39,6 +39,7 @@ export const IPC_CHANNELS = {
   ASR_OPEN_LOG_DIRECTORY: 'asr:open-log-directory',
   ASR_GET_RECENT_LOGS: 'asr:get-recent-logs',
   MEDIA_EXPORT_CLIP: 'media:export-clip',
+  MEDIA_GET_FFMPEG_CAPABILITIES: 'media:get-ffmpeg-capabilities',
   MEDIA_CHOOSE_TIMELINE_EXPORT_PATH: 'media:choose-timeline-export-path',
   MEDIA_EXPORT_TIMELINE: 'media:export-timeline',
   IMAGE_SAVE: 'image:save',

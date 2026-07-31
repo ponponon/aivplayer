@@ -1,5 +1,8 @@
-import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import type { EditingCaption } from '../../../shared/editing-types'
+import { useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { snapEditedTime } from '../../../core/editing/timeline-snapping'
+import type { EditingCaption, EditingOverlayTrackKind } from '../../../shared/editing-types'
+import { EDITING_OVERLAY_TRACK_DRAG_TYPE, readEditingOverlayTrackDrag, writeEditingOverlayTrackDrag } from './editing-overlay-track-dnd'
+import { editingTimeFromTimelinePointer, type EditingTrackTrimEdge, type EditingTrackTrimState, updateEditingTrackTrim } from './editing-track-trim'
 
 type CaptionDragState = {
   id: string
@@ -12,23 +15,27 @@ type EditingCaptionTrackProps = {
   captions: readonly EditingCaption[]
   durationSeconds: number
   selectedCaptionId: string | null
+  selectedCaptionIds?: ReadonlySet<string>
+  trackLabel: string
+  trackKind: EditingOverlayTrackKind
+  onReorderTrack: (source: EditingOverlayTrackKind, target: EditingOverlayTrackKind) => void
   emptyLabel: string
-  onSelectCaption: (captionId: string) => void
+  snapPoints?: readonly number[]
+  onSelectCaption: (captionId: string, additive?: boolean) => void
   onMoveCaption: (captionId: string, startSeconds: number) => void
+  onResizeCaption: (captionId: string, startSeconds: number, endSeconds: number) => void
 }
 
-function clampStart(startSeconds: number, durationSeconds: number, captionDuration: number): number {
-  return Math.min(Math.max(startSeconds, 0), Math.max(0, durationSeconds - captionDuration))
-}
-
-export function EditingCaptionTrack({ captions, durationSeconds, selectedCaptionId, emptyLabel, onSelectCaption, onMoveCaption }: EditingCaptionTrackProps): React.ReactElement {
+export function EditingCaptionTrack({ captions, durationSeconds, selectedCaptionId, selectedCaptionIds, trackLabel, trackKind, onReorderTrack, emptyLabel, snapPoints = [], onSelectCaption, onMoveCaption, onResizeCaption }: EditingCaptionTrackProps): React.ReactElement {
   const [drag, setDrag] = useState<CaptionDragState | null>(null)
   const dragRef = useRef<CaptionDragState | null>(null)
+  const [trim, setTrim] = useState<EditingTrackTrimState | null>(null)
+  const trimRef = useRef<EditingTrackTrimState | null>(null)
   const suppressClickRef = useRef(false)
 
   const beginDrag = (event: ReactPointerEvent<HTMLButtonElement>, caption: EditingCaption): void => {
     if (event.button !== 0 || durationSeconds <= 0) return
-    const track = event.currentTarget.parentElement
+    const track = event.currentTarget.closest('[data-testid="editing-caption-track"]')
     if (!(track instanceof HTMLElement)) return
     const bounds = track.getBoundingClientRect()
     const captionStartPixels = (caption.startSeconds / durationSeconds) * bounds.width
@@ -44,11 +51,13 @@ export function EditingCaptionTrack({ captions, durationSeconds, selectedCaption
   const moveDrag = (event: ReactPointerEvent<HTMLButtonElement>): void => {
     const active = dragRef.current
     if (!active) return
-    const track = event.currentTarget.parentElement
+    const track = event.currentTarget.closest('[data-testid="editing-caption-track"]')
     if (!(track instanceof HTMLElement)) return
     const bounds = track.getBoundingClientRect()
     const pointerSeconds = ((event.clientX - bounds.left) / Math.max(1, bounds.width)) * durationSeconds
-    const nextStartSeconds = clampStart(pointerSeconds - active.pointerOffsetSeconds, durationSeconds, captions.find((caption) => caption.id === active.id)?.durationSeconds ?? 0)
+    const captionDuration = captions.find((caption) => caption.id === active.id)?.durationSeconds ?? 0
+    const maxStartSeconds = Math.max(0, durationSeconds - captionDuration)
+    const nextStartSeconds = snapEditedTime(pointerSeconds - active.pointerOffsetSeconds, maxStartSeconds, snapPoints)
     const next = { ...active, startSeconds: nextStartSeconds, moved: active.moved || Math.abs(nextStartSeconds - active.startSeconds) > 0.01 }
     dragRef.current = next
     setDrag(next)
@@ -65,29 +74,88 @@ export function EditingCaptionTrack({ captions, durationSeconds, selectedCaption
     window.setTimeout(() => { suppressClickRef.current = false }, 0)
   }
 
-  return <div className="editing-caption-track" data-testid="editing-caption-track">
+  const beginTrim = (event: ReactPointerEvent<HTMLSpanElement>, caption: EditingCaption, edge: EditingTrackTrimEdge): void => {
+    if (event.button !== 0 || durationSeconds <= 0) return
+    const track = event.currentTarget.parentElement
+    if (!(track instanceof HTMLElement)) return
+    const next = { id: caption.id, edge, startSeconds: caption.startSeconds, endSeconds: caption.startSeconds + caption.durationSeconds, moved: false }
+    trimRef.current = next
+    setTrim(next)
+    event.preventDefault()
+    event.stopPropagation()
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  const moveTrim = (event: ReactPointerEvent<HTMLSpanElement>): void => {
+    const active = trimRef.current
+    if (!active) return
+    const track = event.currentTarget.parentElement
+    if (!(track instanceof HTMLElement)) return
+    const next = updateEditingTrackTrim(active, editingTimeFromTimelinePointer(event.clientX, track, durationSeconds), durationSeconds, 0.1, snapPoints)
+    trimRef.current = next
+    setTrim(next)
+    event.preventDefault()
+  }
+
+  const finishTrim = (): void => {
+    const active = trimRef.current
+    trimRef.current = null
+    setTrim(null)
+    if (!active?.moved) return
+    suppressClickRef.current = true
+    onResizeCaption(active.id, active.startSeconds, active.endSeconds)
+    window.setTimeout(() => { suppressClickRef.current = false }, 0)
+  }
+
+  const handleTrackDragOver = (event: DragEvent<HTMLDivElement>): void => {
+    if (!event.dataTransfer.types.includes(EDITING_OVERLAY_TRACK_DRAG_TYPE)) return
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'move'
+  }
+  const handleTrackDrop = (event: DragEvent<HTMLDivElement>): void => {
+    const source = readEditingOverlayTrackDrag(event)
+    if (!source || source === trackKind) return
+    event.preventDefault()
+    onReorderTrack(source, trackKind)
+  }
+
+  return <div className="editing-track-row editing-caption-row" data-editing-overlay-track={trackKind} onDragOver={handleTrackDragOver} onDrop={handleTrackDrop}>
+    <button type="button" className="editing-track-label editing-track-reorder-handle" draggable title={trackLabel} aria-label={trackLabel} onDragStart={(event) => writeEditingOverlayTrackDrag(event, trackKind)}>{trackLabel}</button>
+    <div className="editing-caption-track" data-testid="editing-caption-track">
     {captions.length > 0 ? captions.map((caption) => {
-      const startSeconds = drag?.id === caption.id ? drag.startSeconds : caption.startSeconds
-      return <button
+      const startSeconds = trim?.id === caption.id ? trim.startSeconds : drag?.id === caption.id ? drag.startSeconds : caption.startSeconds
+      const endSeconds = trim?.id === caption.id ? trim.endSeconds : caption.startSeconds + caption.durationSeconds
+      const selected = selectedCaptionIds?.has(caption.id) ?? selectedCaptionId === caption.id
+      return <div
         key={caption.id}
-        className={`editing-caption-item ${caption.kind === 'translation' ? 'is-translation' : ''} ${selectedCaptionId === caption.id ? 'is-selected' : ''} ${drag?.id === caption.id && drag.moved ? 'is-dragging' : ''}`}
-        type="button"
-        style={{ left: `${durationSeconds > 0 ? (startSeconds / durationSeconds) * 100 : 0}%`, width: `${durationSeconds > 0 ? (caption.durationSeconds / durationSeconds) * 100 : 0}%` }}
-        title={caption.text}
-        aria-label={caption.text}
-        onPointerDown={(event) => beginDrag(event, caption)}
-        onPointerMove={moveDrag}
-        onPointerUp={finishDrag}
-        onPointerCancel={finishDrag}
-        onClick={(event) => { event.stopPropagation(); if (!suppressClickRef.current) onSelectCaption(caption.id) }}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelectCaption(caption.id); return }
-          if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
-          event.preventDefault()
-          event.stopPropagation()
-          onMoveCaption(caption.id, caption.startSeconds + (event.key === 'ArrowLeft' ? -0.1 : 0.1))
-        }}
-      >{caption.text}</button>
+        className={`editing-caption-item ${caption.kind === 'translation' ? 'is-translation' : ''} ${selected ? 'is-selected' : ''} ${drag?.id === caption.id && drag.moved ? 'is-dragging' : ''}`}
+        style={{ left: `${durationSeconds > 0 ? (startSeconds / durationSeconds) * 100 : 0}%`, width: `${durationSeconds > 0 ? ((endSeconds - startSeconds) / durationSeconds) * 100 : 0}%` }}
+        data-editing-selection-kind="caption"
+        data-editing-selection-id={caption.id}
+      >
+        <button
+          className="editing-caption-item-button"
+          type="button"
+          title={caption.text}
+          aria-label={caption.text}
+          onPointerDown={(event) => beginDrag(event, caption)}
+          onPointerMove={moveDrag}
+          onPointerUp={finishDrag}
+          onPointerCancel={finishDrag}
+          onClick={(event) => { event.stopPropagation(); if (!suppressClickRef.current) onSelectCaption(caption.id, event.metaKey || event.ctrlKey) }}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelectCaption(caption.id); return }
+            if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+            event.preventDefault()
+            event.stopPropagation()
+            const stepSeconds = event.shiftKey ? 1 : 0.1
+            onMoveCaption(caption.id, snapEditedTime(caption.startSeconds + (event.key === 'ArrowLeft' ? -stepSeconds : stepSeconds), Math.max(0, durationSeconds - caption.durationSeconds), snapPoints))
+          }}
+        >{caption.text}</button>
+        <span className="editing-timeline-trim-handle editing-timeline-trim-handle-start" data-editing-trim-edge="start" role="presentation" onPointerDown={(event) => beginTrim(event, caption, 'start')} onPointerMove={moveTrim} onPointerUp={finishTrim} onPointerCancel={finishTrim} />
+        <span className="editing-timeline-trim-handle editing-timeline-trim-handle-end" data-editing-trim-edge="end" role="presentation" onPointerDown={(event) => beginTrim(event, caption, 'end')} onPointerMove={moveTrim} onPointerUp={finishTrim} onPointerCancel={finishTrim} />
+      </div>
     }) : <span className="editing-caption-empty">{emptyLabel}</span>}
+    </div>
   </div>
 }

@@ -4,7 +4,7 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { convertVttToSrt } from '../ai/subtitle-writer.ts'
 import { getAppCopy } from '../../shared/i18n'
-import type { EditingClipTransitionType, EditingGraphic, EditingVideoBlockPosition, EditingVideoBlockMotion } from '../../shared/editing-types'
+import type { EditingClipTransitionType, EditingFrameId, EditingGraphic, EditingOverlayTrackKind, EditingVideoBlockPosition, EditingVideoBlockMotion } from '../../shared/editing-types'
 import type { AppLocale } from '../../shared/localization'
 import { MIN_CLIP_DURATION_SECONDS, type ClipExportMode } from '../../shared/clip-export'
 import { buildClipExportSubtitlePath, remapSrtToTimeline } from './clip-export'
@@ -17,6 +17,8 @@ import { getEditingVideoBlockBorderRadius, getEditingVideoBlockBorderWidth, getE
 import { buildTimelineExportDefaultFileName, getTimelineExportPathDirectory, joinTimelineExportPath } from '../../shared/timeline-export-path'
 import type { SubtitleRenderSettings } from '../../shared/subtitle-presets'
 import { buildAssSubtitle } from './subtitle-ass'
+import { probeFfmpegCapabilities } from './ffmpeg-capabilities'
+import { getEditingOverlayTrackOrder } from '../editing/overlay-track-operations'
 
 export type RunTimelineExportOptions = {
   ffmpegPath: string
@@ -32,7 +34,10 @@ export type RunTimelineExportOptions = {
   subtitleAssText?: string
   subtitleRender?: SubtitleRenderSettings
   graphics?: readonly EditingGraphic[]
+  frameId?: EditingFrameId
   videoBlocks?: readonly MediaTimelineExportVideoBlock[]
+  /** Back-to-front order for the graphics, PiP and caption composition layers. */
+  overlayTrackOrder?: readonly EditingOverlayTrackKind[]
   renderGraphics?: TimelineGraphicRasterizer
   outputFormat?: TimelineExportFormat
   getLocale?: () => AppLocale
@@ -53,10 +58,12 @@ export type TimelineExportFormat = {
   frameRate?: number
   audioSampleRate?: number
   audioChannels?: number
+  fitMode?: 'contain' | 'cover'
 }
 
 export type TimelineGraphicRasterizeRequest = {
   graphics: readonly EditingGraphic[]
+  frameId?: EditingFrameId
   width: number
   height: number
   outputDirectory: string
@@ -125,7 +132,11 @@ function transitionHalfDuration(clip: TimelineExportClip, durationSeconds: numbe
 function buildVideoFilter(format: TimelineExportFormat | undefined, clip: TimelineExportClip, fadeInDuration = 0, fadeOutDuration = 0): string {
   const width = evenDimension(format?.width)
   const height = evenDimension(format?.height)
-  const fitFilter = width && height ? `scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1` : 'setsar=1'
+  const fitFilter = width && height
+    ? format?.fitMode === 'cover'
+      ? `scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height}:(ow-iw)/2:(oh-ih)/2,setsar=1`
+      : `scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1`
+    : 'setsar=1'
   const filters: string[] = []
   const color = getEditingClipFilter(clip)
   if (color.brightness !== 1 || color.contrast !== 1 || color.saturate !== 1) filters.push(`eq=brightness=${Math.round((color.brightness - 1) * 1000) / 1000}:contrast=${color.contrast}:saturation=${color.saturate}`)
@@ -300,60 +311,82 @@ function motionScaleExpression(block: NormalizedVideoBlock, enterMotion: Editing
   return `if(lt(t,${endSeconds}),${enterScale},1-0.18*${exitMotionProgressExpression(endSeconds, durationSeconds)})`
 }
 
-function buildTimelineOverlayFilter(graphics: readonly EditingGraphic[], assets: readonly TimelineGraphicRasterAsset[], videoBlocks: readonly NormalizedVideoBlock[], outputWidth: number, outputHeight: number): string {
+export function buildTimelineOverlayFilter(graphics: readonly EditingGraphic[], assets: readonly TimelineGraphicRasterAsset[], videoBlocks: readonly NormalizedVideoBlock[], outputWidth: number, outputHeight: number, overlayTrackOrder?: readonly EditingOverlayTrackKind[], subtitlePath?: string): string {
   const assetById = new Map(assets.map((asset) => [asset.graphicId, asset]))
   const available = graphics.filter((graphic) => assetById.has(graphic.id))
-  if (available.length === 0 && videoBlocks.length === 0) return ''
+  if (available.length === 0 && videoBlocks.length === 0 && !subtitlePath) return ''
   const filters: string[] = []
-  const splitBlocks = videoBlocks.filter((block) => block.position === 'split-left' || block.position === 'split-right')
   let previous = '[0:v]'
-  if (splitBlocks.length > 0) {
-    const splitOutputs = ['[split-base-full]', ...splitBlocks.map((_block, index) => `[split-source-${index}]`)]
-    filters.push(`[0:v]split=${splitOutputs.length}${splitOutputs.join('')}`)
-    previous = '[split-base-full]'
-    for (const [index, block] of splitBlocks.entries()) {
-      const partnerWidth = Math.max(2, Math.floor(outputWidth * getEditingVideoBlockSize(block) / 100 / 2) * 2)
-      const mainWidth = outputWidth - partnerWidth
-      const splitX = block.position === 'split-left' ? 0 : partnerWidth
-      const next = `[split-stage-${index}]`
-      filters.push(`[split-source-${index}]scale=${mainWidth}:${outputHeight}:force_original_aspect_ratio=decrease,pad=${mainWidth}:${outputHeight}:(ow-iw)/2:(oh-ih)/2:color=black,pad=${outputWidth}:${outputHeight}:${splitX}:0:color=black[split-main-${index}];${previous}[split-main-${index}]overlay=x=0:y=0:enable='between(t,${block.startSeconds},${motionVisibleEnd(block)})':eof_action=pass:repeatlast=0${next}`)
+  const videoInputOffset = 1 + available.length
+  const overlayStages = getEditingOverlayTrackOrder(overlayTrackOrder).filter((kind) => kind === 'graphics' ? available.length > 0 : kind === 'videoBlocks' ? videoBlocks.length > 0 : Boolean(subtitlePath))
+  let stageIndex = 0
+  const stageOutput = (): string => stageIndex === overlayStages.length - 1 ? '[vout]' : `[overlay-stage-${stageIndex}]`
+  const appendGraphics = (): void => {
+    const output = stageOutput()
+    for (const [index, graphic] of available.entries()) {
+      const next = index === available.length - 1 ? output : `[graphic-${index}]`
+      filters.push(`${previous}[${index + 1}:v]overlay=x=0:y=0:enable='between(t,${graphic.startSeconds},${graphic.startSeconds + graphic.durationSeconds})':eof_action=pass${next}`)
       previous = next
     }
+    stageIndex += 1
   }
-  for (const [index, graphic] of available.entries()) {
-    const next = index === available.length - 1 && videoBlocks.length === 0 ? '[vout]' : `[graphic-${index}]`
-    filters.push(`${previous}[${index + 1}:v]overlay=x=0:y=0:enable='between(t,${graphic.startSeconds},${graphic.startSeconds + graphic.durationSeconds})':eof_action=pass${next}`)
-    previous = next
+  const appendVideoBlocks = (): void => {
+    const output = stageOutput()
+    const splitBlocks = videoBlocks.filter((block) => block.position === 'split-left' || block.position === 'split-right')
+    if (splitBlocks.length > 0) {
+      const splitOutputs = ['[split-base-full]', ...splitBlocks.map((_block, index) => `[split-source-${index}]`)]
+      filters.push(`${previous}split=${splitOutputs.length}${splitOutputs.join('')}`)
+      previous = '[split-base-full]'
+      for (const [index, block] of splitBlocks.entries()) {
+        const partnerWidth = Math.max(2, Math.floor(outputWidth * getEditingVideoBlockSize(block) / 100 / 2) * 2)
+        const mainWidth = outputWidth - partnerWidth
+        const splitX = block.position === 'split-left' ? 0 : partnerWidth
+        const next = `[split-stage-${index}]`
+        filters.push(`[split-source-${index}]scale=${mainWidth}:${outputHeight}:force_original_aspect_ratio=decrease,pad=${mainWidth}:${outputHeight}:(ow-iw)/2:(oh-ih)/2:color=black,pad=${outputWidth}:${outputHeight}:${splitX}:0:color=black[split-main-${index}];${previous}[split-main-${index}]overlay=x=0:y=0:enable='between(t,${block.startSeconds},${motionVisibleEnd(block)})':eof_action=pass:repeatlast=0${next}`)
+        previous = next
+      }
+    }
+    for (const [index, block] of videoBlocks.entries()) {
+      const isSplit = block.position === 'split-left' || block.position === 'split-right'
+      const sizePercent = getEditingVideoBlockSize(block)
+      const boxWidth = Math.max(2, Math.floor(outputWidth * sizePercent / 100 / 2) * 2)
+      const boxHeight = isSplit ? outputHeight : Math.max(2, Math.floor(outputHeight * sizePercent / 100 / 2) * 2)
+      const marginX = isSplit ? 0 : Math.max(0, Math.floor(outputWidth * 0.04 / 2) * 2)
+      const marginY = isSplit ? 0 : Math.max(0, Math.floor(outputHeight * 0.04 / 2) * 2)
+      const x = block.position === 'split-left' ? outputWidth - boxWidth : block.position === 'split-right' ? 0 : block.position === 'top-right' || block.position === 'bottom-right' ? outputWidth - boxWidth - marginX : marginX
+      const y = isSplit ? 0 : block.position === 'bottom-left' || block.position === 'bottom-right' ? outputHeight - boxHeight - marginY : marginY
+      const inputIndex = videoInputOffset + index
+      const next = index === videoBlocks.length - 1 ? output : `[video-block-${index}]`
+      const borderWidth = getEditingVideoBlockBorderWidth(block)
+      const borderRadius = Math.min(getEditingVideoBlockBorderRadius(block), Math.floor(Math.min(boxWidth, boxHeight) / 2))
+      const borderFilter = borderWidth > 0 ? `,drawbox=x=0:y=0:w=iw:h=ih:color=white@0.85:t=${borderWidth}` : ''
+      const maskFilter = borderRadius > 0 ? `,format=rgba,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='${roundedRectangleAlphaExpression(boxWidth, boxHeight, borderRadius)}'` : ''
+      const motion = getEditingVideoBlockMotion(block)
+      const scaleExpression = motionScaleExpression(block, motion.enterMotion, motion.exitMotion, motion.durationSeconds)
+      const scaleFilter = scaleExpression ? `,scale=w='trunc(iw*(${escapeFilterExpression(scaleExpression)})/2)*2':h='trunc(ih*(${escapeFilterExpression(scaleExpression)})/2)*2':eval=frame` : ''
+      const alphaFilter = motionFadeFilter(block, motion.enterMotion, motion.exitMotion, motion.durationSeconds)
+      const xExpression = motionOffsetExpression(block, 'x', boxWidth, x, motion.enterMotion, motion.exitMotion, motion.durationSeconds)
+      const yExpression = motionOffsetExpression(block, 'y', boxHeight, y, motion.enterMotion, motion.exitMotion, motion.durationSeconds)
+      const centeredXExpression = scaleExpression ? `${xExpression}+(${boxWidth}-overlay_w)/2` : xExpression
+      const centeredYExpression = scaleExpression ? `${yExpression}+(${boxHeight}-overlay_h)/2` : yExpression
+      const tpadFilter = motion.exitMotion === 'none' ? '' : `tpad=stop_mode=clone:stop_duration=${motion.durationSeconds},`
+      const xPosition = scaleExpression || !/^-?\d+(\.\d+)?$/.test(centeredXExpression) ? `'${escapeFilterExpression(centeredXExpression)}'` : centeredXExpression
+      const yPosition = scaleExpression || !/^-?\d+(\.\d+)?$/.test(centeredYExpression) ? `'${escapeFilterExpression(centeredYExpression)}'` : centeredYExpression
+      filters.push(`[${inputIndex}:v]${tpadFilter}setpts=PTS+${block.startSeconds}/TB,scale=${boxWidth}:${boxHeight}:force_original_aspect_ratio=decrease,pad=${boxWidth}:${boxHeight}:(ow-iw)/2:(oh-ih)/2:color=black${borderFilter}${maskFilter}${scaleFilter}${alphaFilter}[video-block-source-${index}];${previous}[video-block-source-${index}]overlay=x=${xPosition}:y=${yPosition}:enable='between(t,${block.startSeconds},${motionVisibleEnd(block)})':eof_action=pass:repeatlast=0${next}`)
+      previous = next
+    }
+    stageIndex += 1
   }
-  const videoInputOffset = 1 + available.length
-  for (const [index, block] of videoBlocks.entries()) {
-    const isSplit = block.position === 'split-left' || block.position === 'split-right'
-    const sizePercent = getEditingVideoBlockSize(block)
-    const boxWidth = isSplit ? Math.max(2, Math.floor(outputWidth * sizePercent / 100 / 2) * 2) : Math.max(2, Math.floor(outputWidth * sizePercent / 100 / 2) * 2)
-    const boxHeight = isSplit ? outputHeight : Math.max(2, Math.floor(outputHeight * sizePercent / 100 / 2) * 2)
-    const marginX = isSplit ? 0 : Math.max(0, Math.floor(outputWidth * 0.04 / 2) * 2)
-    const marginY = isSplit ? 0 : Math.max(0, Math.floor(outputHeight * 0.04 / 2) * 2)
-    const x = block.position === 'split-left' ? outputWidth - boxWidth : block.position === 'split-right' ? 0 : block.position === 'top-right' || block.position === 'bottom-right' ? outputWidth - boxWidth - marginX : marginX
-    const y = isSplit ? 0 : block.position === 'bottom-left' || block.position === 'bottom-right' ? outputHeight - boxHeight - marginY : marginY
-    const inputIndex = videoInputOffset + index
-    const next = index === videoBlocks.length - 1 ? '[vout]' : `[video-block-${index}]`
-    const borderWidth = getEditingVideoBlockBorderWidth(block)
-    const borderRadius = Math.min(getEditingVideoBlockBorderRadius(block), Math.floor(Math.min(boxWidth, boxHeight) / 2))
-    const borderFilter = borderWidth > 0 ? `,drawbox=x=0:y=0:w=iw:h=ih:color=white@0.85:t=${borderWidth}` : ''
-    const maskFilter = borderRadius > 0 ? `,format=rgba,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='${roundedRectangleAlphaExpression(boxWidth, boxHeight, borderRadius)}'` : ''
-    const motion = getEditingVideoBlockMotion(block)
-    const scaleExpression = motionScaleExpression(block, motion.enterMotion, motion.exitMotion, motion.durationSeconds)
-    const scaleFilter = scaleExpression ? `,scale=w='trunc(iw*(${escapeFilterExpression(scaleExpression)})/2)*2':h='trunc(ih*(${escapeFilterExpression(scaleExpression)})/2)*2':eval=frame` : ''
-    const alphaFilter = motionFadeFilter(block, motion.enterMotion, motion.exitMotion, motion.durationSeconds)
-    const xExpression = motionOffsetExpression(block, 'x', boxWidth, x, motion.enterMotion, motion.exitMotion, motion.durationSeconds)
-    const yExpression = motionOffsetExpression(block, 'y', boxHeight, y, motion.enterMotion, motion.exitMotion, motion.durationSeconds)
-    const centeredXExpression = scaleExpression ? `${xExpression}+(${boxWidth}-overlay_w)/2` : xExpression
-    const centeredYExpression = scaleExpression ? `${yExpression}+(${boxHeight}-overlay_h)/2` : yExpression
-    const tpadFilter = motion.exitMotion === 'none' ? '' : `tpad=stop_mode=clone:stop_duration=${motion.durationSeconds},`
-    const xPosition = scaleExpression || !/^-?\d+(\.\d+)?$/.test(centeredXExpression) ? `'${escapeFilterExpression(centeredXExpression)}'` : centeredXExpression
-    const yPosition = scaleExpression || !/^-?\d+(\.\d+)?$/.test(centeredYExpression) ? `'${escapeFilterExpression(centeredYExpression)}'` : centeredYExpression
-    filters.push(`[${inputIndex}:v]${tpadFilter}setpts=PTS+${block.startSeconds}/TB,scale=${boxWidth}:${boxHeight}:force_original_aspect_ratio=decrease,pad=${boxWidth}:${boxHeight}:(ow-iw)/2:(oh-ih)/2:color=black${borderFilter}${maskFilter}${scaleFilter}${alphaFilter}[video-block-source-${index}];${previous}[video-block-source-${index}]overlay=x=${xPosition}:y=${yPosition}:enable='between(t,${block.startSeconds},${motionVisibleEnd(block)})':eof_action=pass:repeatlast=0${next}`)
-    previous = next
+  const appendCaptions = (): void => {
+    const output = stageOutput()
+    filters.push(`${previous}subtitles=filename='${escapeFilterPath(subtitlePath!)}'${output}`)
+    previous = output
+    stageIndex += 1
+  }
+  for (const kind of overlayStages) {
+    if (kind === 'graphics') appendGraphics()
+    else if (kind === 'videoBlocks') appendVideoBlocks()
+    else appendCaptions()
   }
   return filters.join(';')
 }
@@ -366,12 +399,11 @@ export function buildTimelineVideoBlockOverlayFilter(blocks: readonly Normalized
   return buildTimelineOverlayFilter([], [], blocks, outputWidth, outputHeight)
 }
 
-function renderTimelineVideo(ffmpegPath: string, inputPath: string, outputPath: string, filterGraph: string, graphicAssets: readonly TimelineGraphicRasterAsset[], videoBlocks: readonly NormalizedVideoBlock[], timelineDuration: number, subtitlePath?: string): Promise<ProcessResult> {
+function renderTimelineVideo(ffmpegPath: string, inputPath: string, outputPath: string, filterGraph: string, graphicAssets: readonly TimelineGraphicRasterAsset[], videoBlocks: readonly NormalizedVideoBlock[], timelineDuration: number): Promise<ProcessResult> {
   const args = ['-y', '-i', inputPath]
   for (const asset of graphicAssets) args.push('-loop', '1', '-framerate', '30', '-t', String(timelineDuration), '-i', asset.imagePath)
   for (const block of videoBlocks) args.push('-ss', String(block.sourceStartSeconds), '-t', String(block.durationSeconds), '-i', block.mediaPath)
-  const subtitleFilterGraph = subtitlePath ? `${filterGraph};[vout]subtitles=filename='${escapeFilterPath(subtitlePath)}'[vout-subtitle]` : filterGraph
-  args.push('-filter_complex', subtitleFilterGraph, '-map', subtitlePath ? '[vout-subtitle]' : '[vout]', '-map', '0:a?', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', outputPath)
+  args.push('-filter_complex', filterGraph, '-map', '[vout]', '-map', '0:a?', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', outputPath)
   return runProcess(ffmpegPath, args)
 }
 
@@ -379,6 +411,7 @@ export async function runTimelineExport(options: RunTimelineExportOptions): Prom
   const copy = getAppCopy(options.getLocale?.())
   const clips = normalizeClips(options.clips)
   if (clips.length === 0) throw new Error('时间线没有可导出的片段')
+  if (options.mode === 'burn-subtitle' && !(await probeFfmpegCapabilities(options.ffmpegPath)).subtitleBurnIn) throw new Error(copy.runtime.clipExportSubtitleBurnInUnavailable)
   const subtitleText = options.mode === 'video' ? null : await resolveSubtitleText(options)
   if (options.mode !== 'video' && !subtitleText && !options.subtitleAssText?.trim()) throw new Error(copy.runtime.clipExportSubtitleMissing)
   const tempDirectory = await mkdtemp(join(tmpdir(), 'aivplayer-timeline-'))
@@ -416,7 +449,7 @@ export async function runTimelineExport(options: RunTimelineExportOptions): Prom
     })
     const graphicAssets = graphics.length > 0
       ? options.renderGraphics
-        ? await options.renderGraphics({ graphics, width: evenDimension(options.outputFormat?.width) ?? 1920, height: evenDimension(options.outputFormat?.height) ?? 1080, outputDirectory: tempDirectory })
+        ? await options.renderGraphics({ graphics, frameId: options.frameId, width: evenDimension(options.outputFormat?.width) ?? 1920, height: evenDimension(options.outputFormat?.height) ?? 1080, outputDirectory: tempDirectory })
         : []
       : []
     if (graphics.length > 0 && graphicAssets.length !== graphics.length) throw new Error(copy.runtime.graphicExportUnavailable)
@@ -427,7 +460,7 @@ export async function runTimelineExport(options: RunTimelineExportOptions): Prom
       const sourceEndSeconds = Math.max(sourceStartSeconds, Number.isFinite(block.sourceEndSeconds) ? block.sourceEndSeconds : sourceStartSeconds + durationSeconds)
       return durationSeconds > 0.05 && sourceEndSeconds > sourceStartSeconds && block.mediaPath.trim() ? [{ ...block, startSeconds, durationSeconds: Math.min(durationSeconds, sourceEndSeconds - sourceStartSeconds), sourceStartSeconds, sourceEndSeconds }] : []
     })
-    const compositionFilter = buildTimelineOverlayFilter(graphics, graphicAssets, videoBlocks, evenDimension(options.outputFormat?.width) ?? 1920, evenDimension(options.outputFormat?.height) ?? 1080)
+    const compositionFilter = buildTimelineOverlayFilter(graphics, graphicAssets, videoBlocks, evenDimension(options.outputFormat?.width) ?? 1920, evenDimension(options.outputFormat?.height) ?? 1080, options.overlayTrackOrder, options.mode === 'burn-subtitle' ? subtitlePath ?? undefined : undefined)
     const needsPostProcess = options.mode === 'burn-subtitle' || compositionFilter.length > 0
     const combinedPath = needsPostProcess ? join(tempDirectory, 'combined.mp4') : options.outputVideoPath
     const transitionArgs = useXfadeTransitions ? buildTimelineXfadeArgs(segmentPaths, clips, combinedPath, options.outputFormat) : []
@@ -436,8 +469,8 @@ export async function runTimelineExport(options: RunTimelineExportOptions): Prom
 
     if (needsPostProcess) {
       const burnResult = compositionFilter.length > 0
-        ? await renderTimelineVideo(options.ffmpegPath, combinedPath, options.outputVideoPath, compositionFilter, graphicAssets, videoBlocks, timelineDuration, options.mode === 'burn-subtitle' ? subtitlePath ?? undefined : undefined)
-        : await renderTimelineVideo(options.ffmpegPath, combinedPath, options.outputVideoPath, '[0:v]null[vout]', [], [], timelineDuration, options.mode === 'burn-subtitle' ? subtitlePath ?? undefined : undefined)
+        ? await renderTimelineVideo(options.ffmpegPath, combinedPath, options.outputVideoPath, compositionFilter, graphicAssets, videoBlocks, timelineDuration)
+        : await renderTimelineVideo(options.ffmpegPath, combinedPath, options.outputVideoPath, '[0:v]null[vout]', [], [], timelineDuration)
       if (burnResult.code !== 0) throw new Error(`${copy.runtime.clipExportFailed}：${tailOutput(burnResult.output)}`)
     }
 

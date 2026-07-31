@@ -31,6 +31,43 @@
   text-transform: uppercase;
 }
 
+.editing-track-reorder-handle {
+  padding: 0;
+  color: var(--text-muted);
+  background: transparent;
+  border: 0;
+  cursor: grab;
+  font: inherit;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.editing-track-reorder-handle:hover {
+  color: var(--text-primary);
+}
+
+.editing-track-reorder-handle:active {
+  cursor: grabbing;
+}
+
+.editing-timeline-trim-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 4;
+  width: 7px;
+  cursor: ew-resize;
+  background: transparent;
+}
+
+.editing-timeline-trim-handle:hover,
+.editing-timeline-trim-handle:active {
+  background: rgba(var(--accent-rgb), 0.7);
+}
+
+.editing-timeline-trim-handle-start { left: 0; }
+.editing-timeline-trim-handle-end { right: 0; }
+
 .editing-ruler {
   position: relative;
   height: 18px;

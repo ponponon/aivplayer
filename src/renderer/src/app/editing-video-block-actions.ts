@@ -17,11 +17,11 @@ export function createEditingVideoBlockActions(model: AppModel) {
     saveEditingProject(nextProject)
   }
 
-  const addEditingVideoBlock = (sourceId: string, options: { position: EditingVideoBlockPosition }): void => {
+  const addEditingVideoBlock = (sourceId: string, options: { position: EditingVideoBlockPosition; startSeconds?: number }): void => {
     const project = model.editingProject
     const source = project?.sources.find((item) => item.id === sourceId)
     if (!project || !source) return
-    const block = createEditingVideoBlock(source.id, source.durationSeconds, model.editingCurrentTime, editedDurationSeconds(project.videoClips), { position: options.position })
+    const block = createEditingVideoBlock(source.id, source.durationSeconds, options.startSeconds ?? model.editingCurrentTime, editedDurationSeconds(project.videoClips), { position: options.position })
     if (!block) return
     updateProject([...(project.videoBlocks ?? []), block].sort((left, right) => left.startSeconds - right.startSeconds || left.id.localeCompare(right.id)))
     model.setEditingSelectedVideoBlockId(block.id)

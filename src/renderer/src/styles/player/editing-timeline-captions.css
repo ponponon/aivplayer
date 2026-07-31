@@ -20,3 +20,20 @@
   filter: brightness(1.1);
   opacity: 0.9;
 }
+
+.editing-caption-item-button {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  padding: 2px 5px;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: grab;
+}
+
+.editing-caption-item-button:hover { background: rgba(var(--accent-rgb), 0.24); }

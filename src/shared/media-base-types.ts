@@ -1,5 +1,5 @@
 import type { ClipExportMode } from './clip-export'
-import type { EditingClipFilter, EditingClipTransition, EditingClipTreatment, EditingGraphic, EditingProjectFileOpenResult, EditingProjectFileSaveRequest, EditingProjectFileSaveResult, EditingTreatmentAnchor, EditingVideoBlockMotion, EditingVideoBlockPosition } from './editing-types'
+import type { EditingClipFilter, EditingClipTransition, EditingClipTreatment, EditingFrameId, EditingGraphic, EditingOverlayTrackKind, EditingProjectFileOpenResult, EditingProjectFileSaveRequest, EditingProjectFileSaveResult, EditingTreatmentAnchor, EditingVideoBlockMotion, EditingVideoBlockPosition } from './editing-types'
 import type { SubtitleRenderSettings } from './subtitle-presets'
 import type { SubtitleWord } from './subtitle-timing'
 
@@ -13,6 +13,7 @@ export type MediaProbeDetails = { format: MediaProbeDetailObject | null; streams
 export type MediaVideoMetadata = { codec: string | null; profile: string | null; width: number | null; height: number | null; frameRate: number | null; displayAspectRatio: string | null; bitRateKbps: number | null }
 export type MediaAudioMetadata = { codec: string | null; profile: string | null; channelLayout: string | null; sampleRateHz: number | null; bitRateKbps: number | null }
 export type MediaProbeMetadata = { fileSizeBytes: number; durationSeconds: number | null; overallBitrateKbps: number | null; video: MediaVideoMetadata | null; audio: MediaAudioMetadata | null; probeSource: 'ffprobe' | 'ffmpeg' | null; details: MediaProbeDetails | null }
+export type MediaFfmpegCapabilities = { available: boolean; subtitleBurnIn: boolean; subtitleFilter: 'subtitles' | 'ass' | null }
 export type MediaFilmstripRequest = { mediaPath: string; timestampsSeconds: number[]; width?: number; quality?: number }
 export type MediaFilmstripFrame = { sourceSeconds: number; dataUrl: string }
 export type MediaFilmstripResult = { frames: MediaFilmstripFrame[] }
@@ -29,7 +30,7 @@ export type MediaTimelineExportClip = { mediaPath: string; startSeconds: number;
 export type MediaTimelineExportVideoBlock = { mediaPath: string; sourceStartSeconds: number; sourceEndSeconds: number; startSeconds: number; durationSeconds: number; position: EditingVideoBlockPosition; sizePercent?: number; borderRadius?: number; borderWidth?: number; enterMotion?: EditingVideoBlockMotion; exitMotion?: EditingVideoBlockMotion; motionDurationSeconds?: number }
 export type MediaTimelineExportPathRequest = { mediaPath: string; clipCount: number; durationSeconds: number; mode: ClipExportMode; suggestedPath?: string }
 export type MediaTimelineExportPathResult = { success: boolean; message: string; filePath?: string; canceled?: boolean }
-export type MediaTimelineExportRequest = { mediaPath: string; clips: MediaTimelineExportClip[]; graphics?: EditingGraphic[]; videoBlocks?: MediaTimelineExportVideoBlock[]; mode: ClipExportMode; subtitlePath?: string; subtitleSrtPath?: string; subtitleText?: string; subtitleAssText?: string; subtitleRender?: SubtitleRenderSettings; targetWidth?: number; targetHeight?: number; outputVideoPath?: string }
+export type MediaTimelineExportRequest = { mediaPath: string; clips: MediaTimelineExportClip[]; graphics?: EditingGraphic[]; videoBlocks?: MediaTimelineExportVideoBlock[]; frameId?: EditingFrameId; overlayTrackOrder?: EditingOverlayTrackKind[]; mode: ClipExportMode; subtitlePath?: string; subtitleSrtPath?: string; subtitleText?: string; subtitleAssText?: string; subtitleRender?: SubtitleRenderSettings; targetWidth?: number; targetHeight?: number; fitMode?: 'contain' | 'cover'; outputVideoPath?: string }
 export type ClipboardWriteTextRequest = { text: string }
 export type ClipboardWriteTextResult = { success: boolean; message: string }
 export type ImageSaveRequest = { dataUrl: string; fileName: string; extension: string; outputDirectoryPath?: string; overwriteOriginal?: boolean; originalPath?: string }

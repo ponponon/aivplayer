@@ -17,7 +17,26 @@ describe('editing project files', () => {
     const serialized = serializeEditingProject(project)
 
     expect(serialized).toContain('"schemaVersion": 1')
+    expect(serialized).toContain('"canvasPreset": "source"')
     expect(parseEditingProjectFile(serialized)).toEqual(project)
+  })
+
+  it('round-trips caption canvas layout and rejects unsafe values', () => {
+    const project = createEditingProject(source)
+    const laidOut = { ...project, captionLayout: { xPercent: 42, yPercent: 76, widthPercent: 68, fontSizePx: 64 } }
+
+    expect(parseEditingProjectFile(serializeEditingProject(laidOut)).captionLayout).toEqual(laidOut.captionLayout)
+    expect(parseEditingProject({ ...project, captionLayout: undefined }).captionLayout).toBeUndefined()
+    expect(() => parseEditingProject({ ...project, captionLayout: { xPercent: 2, yPercent: 76, widthPercent: 68, fontSizePx: 64 } })).toThrow('Invalid editing project caption layout')
+  })
+
+  it('round-trips canvas presets and keeps legacy projects without the field valid', () => {
+    const project = createEditingProject(source)
+    const portrait = { ...project, canvasPreset: 'portrait' as const }
+
+    expect(parseEditingProjectFile(serializeEditingProject(portrait)).canvasPreset).toBe('portrait')
+    expect(parseEditingProject({ ...project, canvasPreset: undefined }).canvasPreset).toBeUndefined()
+    expect(() => parseEditingProject({ ...project, canvasPreset: 'panorama' })).toThrow('Invalid editing project canvas preset')
   })
 
   it('rejects projects whose clips reference an unknown source', () => {
@@ -61,6 +80,30 @@ describe('editing project files', () => {
     const parsed = parseEditingProject({ ...project, graphics: [{ id: 'graphic-1', startSeconds: 1, durationSeconds: 2, text: 'Title', position: 'top-right', style: 'title' }] })
     expect(parsed.graphics).toEqual([{ id: 'graphic-1', startSeconds: 1, durationSeconds: 2, text: 'Title', position: 'top-right', style: 'title' }])
     expect(parsed.schemaVersion).toBe(1)
+  })
+
+  it('round-trips the optional overlay track order and normalizes omitted tracks', () => {
+    const project = createEditingProject(source)
+    const reordered = { ...project, overlayTrackOrder: ['captions', 'videoBlocks', 'graphics'] as Array<'captions' | 'videoBlocks' | 'graphics'> }
+    expect(parseEditingProjectFile(serializeEditingProject(reordered)).overlayTrackOrder).toEqual(['captions', 'videoBlocks', 'graphics'])
+    expect(parseEditingProject({ ...project, overlayTrackOrder: ['graphics'] }).overlayTrackOrder).toEqual(['graphics', 'videoBlocks', 'captions'])
+    expect(() => parseEditingProject({ ...project, overlayTrackOrder: ['unknown'] })).toThrow('Invalid editing project overlay track order')
+  })
+
+  it('round-trips an optional visual frame and keeps legacy projects compatible', () => {
+    const project = createEditingProject(source)
+    const framed = { ...project, frameId: 'cinema' as const }
+
+    expect(parseEditingProjectFile(serializeEditingProject(framed)).frameId).toBe('cinema')
+    expect(parseEditingProject({ ...project, frameId: undefined }).frameId).toBeUndefined()
+    expect(() => parseEditingProject({ ...project, frameId: 'unknown' })).toThrow('Invalid editing project frame')
+  })
+
+  it('round-trips a caption effect and rejects unknown effects', () => {
+    const project = createEditingProject(source)
+    expect(parseEditingProjectFile(serializeEditingProject({ ...project, captionEffect: 'kinetic-slam' })).captionEffect).toBe('kinetic-slam')
+    expect(() => parseEditingProject({ ...project, captionEffect: 'unknown' })).toThrow('Invalid editing project caption effect')
+    expect(parseEditingProject({ ...project, captionEffect: undefined }).captionEffect).toBeUndefined()
   })
 
   it('round-trips optional video blocks without changing the schema version', () => {

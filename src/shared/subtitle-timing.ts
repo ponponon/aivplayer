@@ -150,10 +150,12 @@ export function estimateSubtitleWordEm(word: SubtitleWord): number {
  * Converts a font size and viewport into a stable subtitle width budget.
  * The CSS overlay is capped at 720px; the lower bound keeps narrow windows usable.
  */
-export function getSubtitleMaxWidthEm(fontSizePx: number, viewportWidthPx = 1280): number {
+export function getSubtitleMaxWidthEm(fontSizePx: number, viewportWidthPx = 1280, widthPercent = 82, maxWidthPx = 720): number {
   const safeFontSize = Math.max(12, Number.isFinite(fontSizePx) ? fontSizePx : 14)
   const safeViewportWidth = Math.max(1, Number.isFinite(viewportWidthPx) ? viewportWidthPx : 1280)
-  const widthPx = Math.min(720, safeViewportWidth * 0.82)
+  const safeWidthPercent = Math.min(100, Math.max(1, Number.isFinite(widthPercent) ? widthPercent : 82))
+  const safeMaxWidth = Math.max(1, Number.isFinite(maxWidthPx) ? maxWidthPx : 720)
+  const widthPx = Math.min(safeMaxWidth, safeViewportWidth * safeWidthPercent / 100)
   return Math.max(8, Math.min(52, widthPx / safeFontSize))
 }
 

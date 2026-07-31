@@ -3,6 +3,7 @@ import {
   type EditingProject,
   type EditingSource
 } from '../../shared/editing-types'
+import { DEFAULT_EDITING_CAPTION_LAYOUT } from './caption-layout'
 
 export type EditingProjectOptions = {
   projectId?: string
@@ -27,6 +28,11 @@ export function createEditingProject(source: EditingSource, options: EditingProj
     createdAt: now,
     updatedAt: now,
     sources: [{ ...source, durationSeconds }],
+    frameId: 'clean',
+    captionEffect: 'none',
+    canvasPreset: 'source',
+    captionLayout: { ...DEFAULT_EDITING_CAPTION_LAYOUT },
+    overlayTrackOrder: ['videoBlocks', 'graphics', 'captions'],
     videoClips: durationSeconds > 0
       ? [{
           id: options.clipId ?? createId('clip'),

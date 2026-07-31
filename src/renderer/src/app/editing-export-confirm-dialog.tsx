@@ -3,8 +3,10 @@ import { useEffect, useRef, useState, type ReactElement } from 'react'
 import type { ClipExportMode } from '../../../shared/clip-export'
 import type { EditingVideoClip } from '../../../shared/editing-types'
 import type { LocaleCopy } from '../../../shared/i18n'
+import type { EditingExportAudit, EditingExportAuditIssue } from '../../../core/editing/export-audit'
 import { buildTimelineExportDefaultFileName, getTimelineExportPathDirectory, getTimelineExportPathBaseName, joinTimelineExportPath, normalizeTimelineExportFileName } from '../../../shared/timeline-export-path'
 import { EditingExportSummary } from './editing-export-summary'
+import { FfmpegCapabilityStatus, useFfmpegCapabilities } from './ffmpeg-capability-status'
 import { useModalFocusTrap } from './use-modal-focus-trap'
 
 const EXPORT_MODES: ClipExportMode[] = ['video', 'external-subtitle', 'burn-subtitle']
@@ -17,12 +19,26 @@ type EditingExportConfirmDialogProps = {
   canvasWidth?: number
   canvasHeight?: number
   hasSubtitle: boolean
+  audit: EditingExportAudit
   initialMode: ClipExportMode
   onClose: () => void
   onConfirm: (mode: ClipExportMode, outputVideoPath: string) => void
 }
 
-export function EditingExportConfirmDialog({ copy, mediaPath, clips, durationSeconds, canvasWidth, canvasHeight, hasSubtitle, initialMode, onClose, onConfirm }: EditingExportConfirmDialogProps): ReactElement {
+function describeAuditIssue(issue: EditingExportAuditIssue, copy: LocaleCopy['editing']): string {
+  const name = issue.sourceName ?? issue.entityId
+  switch (issue.code) {
+    case 'empty-timeline': return copy.exportAuditEmptyTimeline
+    case 'missing-source': return copy.exportAuditMissingSource(name)
+    case 'missing-source-file': return copy.exportAuditMissingFile(name)
+    case 'invalid-clip-range': return copy.exportAuditInvalidClip(name)
+    case 'clip-too-short': return copy.exportAuditShortClip(name)
+    case 'invalid-video-block': return copy.exportAuditInvalidVideoBlock(name)
+    case 'invalid-graphic': return copy.exportAuditInvalidGraphic
+  }
+}
+
+export function EditingExportConfirmDialog({ copy, mediaPath, clips, durationSeconds, canvasWidth, canvasHeight, hasSubtitle, audit, initialMode, onClose, onConfirm }: EditingExportConfirmDialogProps): ReactElement {
   const dialogRef = useRef<HTMLElement | null>(null)
   const [selectedMode, setSelectedMode] = useState<ClipExportMode>(initialMode)
   const defaultFileName = buildTimelineExportDefaultFileName(mediaPath, clips.length, durationSeconds, selectedMode)
@@ -32,6 +48,9 @@ export function EditingExportConfirmDialog({ copy, mediaPath, clips, durationSec
   const [isChoosingOutputPath, setIsChoosingOutputPath] = useState(false)
   const normalizedOutputFileName = normalizeTimelineExportFileName(outputFileName, defaultFileName)
   const outputVideoPath = joinTimelineExportPath(outputDirectory, normalizedOutputFileName)
+  const burnInSelected = selectedMode === 'burn-subtitle'
+  const { capabilities, isChecking } = useFfmpegCapabilities(burnInSelected)
+  const burnInBlocked = burnInSelected && (isChecking || capabilities?.subtitleBurnIn !== true)
   useModalFocusTrap(true, dialogRef, '.editing-export-confirm-cancel')
 
   useEffect(() => {
@@ -72,6 +91,10 @@ export function EditingExportConfirmDialog({ copy, mediaPath, clips, durationSec
       </div>
       <p id="editing-export-confirm-description" className="clip-export-description">{copy.clipExportDialog.modeTitle}</p>
       <EditingExportSummary clips={clips} durationSeconds={durationSeconds} canvasWidth={canvasWidth} canvasHeight={canvasHeight} summaryLabel={copy.editing.export} durationLabel={copy.panels.duration} clipsLabel={copy.editing.videoTrack} resolutionLabel={copy.panels.resolution} audioLabel={copy.panels.audioStream} muteLabel={copy.controls.mute} volumeLabel={copy.controls.volume} />
+      <section className={`editing-export-audit ${audit.errors.length > 0 ? 'is-error' : 'is-ready'}`} data-testid="editing-export-audit" role={audit.errors.length > 0 ? 'alert' : 'status'}>
+        <div className="editing-export-audit-heading"><strong>{copy.editing.exportAuditTitle}</strong><span>{audit.errors.length > 0 ? copy.editing.exportAuditErrorCount(audit.errors.length) : copy.editing.exportAuditReady}</span></div>
+        {audit.errors.length > 0 ? <ul>{audit.errors.map((issue) => <li key={`${issue.code}-${issue.entityId}`}>{describeAuditIssue(issue, copy.editing)}</li>)}</ul> : null}
+      </section>
       <section className="clip-export-group">
         <div className="clip-export-group-heading"><strong>{copy.clipExportDialog.modeTitle}</strong></div>
         <div className="clip-export-mode-grid" role="group" aria-label={copy.clipExportDialog.modeTitle}>
@@ -82,6 +105,7 @@ export function EditingExportConfirmDialog({ copy, mediaPath, clips, durationSec
           })}
         </div>
         {!hasSubtitle ? <p className="clip-export-warning">{copy.clipExportDialog.subtitleRequired}</p> : null}
+        <FfmpegCapabilityStatus copy={copy.editing} enabled={burnInSelected} capabilities={capabilities} isChecking={isChecking} />
       </section>
       <section className="editing-export-target" data-testid="editing-export-target">
         <div className="clip-export-group-heading"><strong>{copy.clipExportDialog.outputTitle}</strong><small>{copy.clipExportDialog.outputPathHint}</small></div>
@@ -97,7 +121,7 @@ export function EditingExportConfirmDialog({ copy, mediaPath, clips, durationSec
       </section>
       <div className="clip-export-actions">
         <button className="settings-secondary-button clip-export-action editing-export-confirm-cancel" type="button" onClick={onClose}>{copy.clipExportDialog.cancel}</button>
-        <button className="asr-action-button primary clip-export-action" type="button" onClick={() => onConfirm(selectedMode, outputVideoPath)} data-testid="editing-export-confirm"><Download size={14} />{copy.clipExportDialog.export}</button>
+        <button className="asr-action-button primary clip-export-action" type="button" onClick={() => onConfirm(selectedMode, outputVideoPath)} disabled={audit.errors.length > 0 || burnInBlocked} data-testid="editing-export-confirm"><Download size={14} />{copy.clipExportDialog.export}</button>
       </div>
     </section>
   </div>

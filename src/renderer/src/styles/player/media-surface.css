@@ -53,6 +53,10 @@
   border-top: none;
 }
 
+.subtitle-overlay.is-editing-caption { position: absolute; top: var(--editing-caption-y); left: var(--editing-caption-x); z-index: 6; display: block; width: var(--editing-caption-width); min-height: 0; padding: 0; transform: translate(-50%, -50%); background: transparent; border: 0; pointer-events: none; }
+.subtitle-overlay.is-editing-caption .subtitle-text { width: 100%; max-width: none; grid-column: auto; }
+.subtitle-overlay.is-editing-caption .subtitle-display-controls { pointer-events: auto; }
+
 .subtitle-text {
   grid-column: 2;
   min-width: 0;

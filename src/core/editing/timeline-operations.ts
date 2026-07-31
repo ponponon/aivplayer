@@ -19,6 +19,20 @@ export type VideoClipBatchEditResult = {
   removedRanges: EditedRange[]
 }
 
+/** Removes the selected primary-track clips while keeping the timeline renderable. */
+export function deleteVideoClipsById(
+  clips: readonly EditingVideoClip[],
+  clipIds: readonly string[],
+  createRightClip: CreateRightClip = defaultCreateRightClip
+): VideoClipBatchEditResult {
+  const selected = new Set(clipIds)
+  if (selected.size === 0 || clips.length <= 1) return { clips: [...clips], removedRanges: [] }
+  const ranges = getVideoClipSpans(clips)
+    .filter((span) => selected.has(span.clip.id))
+    .map((span) => ({ startSeconds: span.editedStartSeconds, endSeconds: span.editedEndSeconds }))
+  return removeEditedVideoRanges(clips, ranges, createRightClip)
+}
+
 export type EditingClipBoundary = 'start' | 'end'
 
 export type SourceRangeEditResult = {
@@ -40,6 +54,12 @@ export type InsertVideoClipsResult = {
   clips: EditingVideoClip[]
   insertedClipIds: string[]
   editedInsertSeconds: number
+}
+
+export type ReplaceVideoClipSourceResult = {
+  clips: EditingVideoClip[]
+  replaced: boolean
+  reason: 'missing-clip' | 'source-too-short' | null
 }
 
 export type CreateRightClip = (
@@ -327,6 +347,24 @@ export function insertVideoClipsAtEdited(
   }
   next.splice(insertionIndex, 0, ...insertClips)
   return { clips: normalizeEditingClipTransitions(next), insertedClipIds: insertClips.map((clip) => clip.id), editedInsertSeconds: safeEditedSeconds }
+}
+
+/** Replaces a clip's source while preserving its edited duration and clip-level treatments. */
+export function replaceVideoClipSource(
+  clips: readonly EditingVideoClip[],
+  clipId: string,
+  sourceId: string,
+  sourceDurationSeconds: number
+): ReplaceVideoClipSourceResult {
+  const target = getVideoClipSpans(clips).find((span) => span.clip.id === clipId)
+  if (!target || !sourceId) return { clips: [...clips], replaced: false, reason: 'missing-clip' }
+  const targetDuration = videoClipDurationSeconds(target.clip)
+  const sourceDuration = Number.isFinite(sourceDurationSeconds) ? Math.max(0, sourceDurationSeconds) : 0
+  if (sourceDuration + EDITING_TIME_EPSILON_SECONDS < targetDuration) return { clips: [...clips], replaced: false, reason: 'source-too-short' }
+  const next = clips.map((clip) => clip.id === clipId
+    ? { ...clip, sourceId, sourceStartSeconds: 0, sourceEndSeconds: targetDuration }
+    : clip)
+  return { clips: normalizeEditingClipTransitions(next), replaced: true, reason: null }
 }
 
 /** Deletes source-time ranges, resolving them against the current edit before each deletion. */

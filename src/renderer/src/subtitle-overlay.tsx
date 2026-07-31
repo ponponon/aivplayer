@@ -1,14 +1,8 @@
-import type { ReactElement, RefObject } from 'react'
-import { useState, useEffect, useRef } from 'react'
-import type { AppSettings } from '../../shared/app-settings'
-import type { AppLocale } from '../../shared/localization'
-import type { LocaleCopy } from '../../shared/i18n'
-import { SubtitleDisplayControls, getDefaultSubtitleDisplaySettings } from './app/subtitle-display-controls'
-import { parseVtt, findActiveCue } from './subtitle-parser'
-import type { SubtitleCue } from './subtitle-parser'
-import type { EditingCaption } from '../../shared/editing-types'
-import { SubtitleText } from './subtitle-text'
-import { attachSubtitleWords, getSubtitleWordSidecarPath, parseWhisperSubtitleWords, type SubtitleWord } from '../../shared/subtitle-timing'
+import type { ReactElement, RefObject } from 'react'; import { useState, useEffect, useRef } from 'react'
+import type { AppSettings } from '../../shared/app-settings'; import type { AppLocale } from '../../shared/localization'; import type { LocaleCopy } from '../../shared/i18n'
+import { SubtitleDisplayControls, getDefaultSubtitleDisplaySettings } from './app/subtitle-display-controls'; import { parseVtt, findActiveCue } from './subtitle-parser'; import type { SubtitleCue } from './subtitle-parser'
+import type { EditingCaption, EditingCaptionEffect, EditingCaptionLayout } from '../../shared/editing-types'; import type { EditingCanvasDimensions } from '../../core/editing/canvases'; import { SubtitleText } from './subtitle-text'
+import { attachSubtitleWords, createFallbackSubtitleWords, getSubtitleWordSidecarPath, parseWhisperSubtitleWords, type SubtitleWord } from '../../shared/subtitle-timing'; import { getEditingCaptionEffect } from '../../core/editing/caption-effects'
 
 type SubtitleOverlayProps = {
   subtitlePath: string | null
@@ -16,6 +10,7 @@ type SubtitleOverlayProps = {
   translationPath?: string | null
   translationRevision?: number
   editingCaptions?: readonly EditingCaption[] | null
+  editingCaptionEffect?: EditingCaptionEffect
   currentTime: number
   locale: AppLocale
   settings: AppSettings['subtitles']
@@ -23,13 +18,13 @@ type SubtitleOverlayProps = {
   controlsRef?: RefObject<HTMLDetailsElement | null>
   onSettingsChange: (patch: Partial<AppSettings['subtitles']>) => void
   onResetSettings: () => void
+  editingCaptionLayout?: EditingCaptionLayout | null
+  editingCanvas?: EditingCanvasDimensions | null
+  editingLayerZIndex?: number
+  showControls?: boolean
 }
 
-const subtitleLineHeightMap: Record<AppSettings['subtitles']['lineHeight'], number> = {
-  compact: 1.25,
-  normal: 1.5,
-  relaxed: 1.75
-}
+const subtitleLineHeightMap: Record<AppSettings['subtitles']['lineHeight'], number> = { compact: 1.25, normal: 1.5, relaxed: 1.75 }
 
 export function buildSubtitleDisplayText(options: {
   sourceText: string
@@ -59,18 +54,20 @@ export function SubtitleOverlay({
   translationPath = null,
   translationRevision = 0,
   editingCaptions = null,
+  editingCaptionEffect = 'none',
   currentTime,
   locale,
   settings,
   copy,
   controlsRef,
   onSettingsChange,
-  onResetSettings
+  onResetSettings,
+  editingCaptionLayout = null,
+  editingCanvas = null,
+  editingLayerZIndex,
+  showControls = true
 }: SubtitleOverlayProps): ReactElement {
-  const [cues, setCues] = useState<SubtitleCue[]>([])
-  const [translationCues, setTranslationCues] = useState<SubtitleCue[]>([])
-  const [activeCue, setActiveCue] = useState<SubtitleCue | null>(null)
-  const [activeTranslationCue, setActiveTranslationCue] = useState<SubtitleCue | null>(null)
+  const [cues, setCues] = useState<SubtitleCue[]>([]); const [translationCues, setTranslationCues] = useState<SubtitleCue[]>([]); const [activeCue, setActiveCue] = useState<SubtitleCue | null>(null); const [activeTranslationCue, setActiveTranslationCue] = useState<SubtitleCue | null>(null)
   const prevSubtitlePathRef = useRef<string | null>(null)
   const prevSubtitleRevisionRef = useRef(0)
   const prevTranslationPathRef = useRef<string | null>(null)
@@ -169,18 +166,27 @@ export function SubtitleOverlay({
   const displaySettings = settings ?? getDefaultSubtitleDisplaySettings()
   const sourceText = activeEditingCue?.text ?? activeCue?.text ?? '\u00A0'
   const translationText = activeEditingTranslationCue?.text ?? activeTranslationCue?.text ?? null
-  const activeSourceWords = settings.emphasisMode === 'words' ? activeEditingCue?.words ?? activeCue?.words : undefined
+  const activeEffect = editingCaptions ? getEditingCaptionEffect(editingCaptionEffect) : 'none'
+  const activeSourceWords = settings.emphasisMode === 'words' || activeEffect !== 'none'
+    ? activeEditingCue?.words ?? (activeEditingCue ? createFallbackSubtitleWords(activeEditingCue.text, 0, activeEditingCue.durationSeconds) : activeCue?.words)
+    : undefined
   const wordTime = activeEditingCue ? currentTime - activeEditingCue.startSeconds : currentTime
   const displayText = buildSubtitleDisplayText({
     sourceText,
     translationText,
     displayMode: displaySettings.displayMode
   })
+  const editingLayoutStyle = editingCaptionLayout ? {
+    '--editing-caption-x': `${editingCaptionLayout.xPercent}%`,
+    '--editing-caption-y': `${editingCaptionLayout.yPercent}%`,
+    '--editing-caption-width': `${editingCaptionLayout.widthPercent}%`
+  } as React.CSSProperties : undefined
+  const subtitleFontSize = editingCaptionLayout?.fontSizePx ?? displaySettings.fontSizePx
+  const subtitleMaxWidth = editingCaptionLayout && editingCanvas ? editingCanvas.width * editingCaptionLayout.widthPercent / 100 : undefined
 
-  return (
-    <div className="subtitle-overlay">
-      <SubtitleText text={displayText} presetId={displaySettings.presetId} emphasisMode={displaySettings.emphasisMode} keywords={displaySettings.keywords} wordTimings={activeSourceWords as readonly SubtitleWord[] | undefined} currentTime={wordTime} fontSizePx={displaySettings.fontSizePx} lineHeight={subtitleLineHeightMap[displaySettings.lineHeight]} />
-      <SubtitleDisplayControls
+  return <div className={`subtitle-overlay ${editingCaptionLayout ? 'is-editing-caption' : ''}`} style={{ ...editingLayoutStyle, ...(editingLayerZIndex === undefined ? {} : { zIndex: editingLayerZIndex }) }}>
+      <SubtitleText text={displayText} presetId={displaySettings.presetId} emphasisMode={displaySettings.emphasisMode} keywords={displaySettings.keywords} wordTimings={activeSourceWords as readonly SubtitleWord[] | undefined} currentTime={wordTime} effect={activeEffect} fontSizePx={subtitleFontSize} lineHeight={subtitleLineHeightMap[displaySettings.lineHeight]} maxWidthPx={subtitleMaxWidth} />
+      {showControls ? <SubtitleDisplayControls
         copy={copy}
         locale={locale}
         settings={displaySettings}
@@ -188,7 +194,6 @@ export function SubtitleOverlay({
         controlsRef={controlsRef}
         onChange={onSettingsChange}
         onReset={onResetSettings}
-      />
+      /> : null}
     </div>
-  )
 }

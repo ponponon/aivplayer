@@ -1,3 +1,5 @@
+import type { EditingCaptionEffect } from './editing-types'
+
 export type SubtitlePresetId = 'clean' | 'yellow' | 'mint' | 'navy' | 'serif-gold'
 export type SubtitleEmphasisMode = 'none' | 'keywords' | 'words'
 export type SubtitleRenderSettings = {
@@ -5,6 +7,7 @@ export type SubtitleRenderSettings = {
   emphasisMode?: SubtitleEmphasisMode
   keywords?: string
   fontSizePx?: number
+  effect?: EditingCaptionEffect
 }
 
 export type SubtitlePreset = {

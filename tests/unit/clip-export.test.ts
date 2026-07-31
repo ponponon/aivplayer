@@ -76,6 +76,11 @@ describe('clip export helpers', () => {
     expect(buildTimelineSegmentArgs({ mediaPath: '/clips/demo.mp4', startSeconds: 0, endSeconds: 1, durationSeconds: 1, volume: 0.35 }, '/tmp/volume.mp4')).toEqual(expect.arrayContaining(['-af', 'volume=0.35']))
   })
 
+  it('uses a centered cover crop for a portrait canvas', () => {
+    const args = buildTimelineSegmentArgs({ mediaPath: '/clips/demo.mp4', startSeconds: 0, endSeconds: 2, durationSeconds: 2 }, '/tmp/portrait.mp4', { width: 1080, height: 1920, fitMode: 'cover' })
+    expect(args).toEqual(expect.arrayContaining(['-vf', 'scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1']))
+  })
+
   it('adds a centered crop filter for punch-in clips', () => {
     const args = buildTimelineSegmentArgs({ mediaPath: '/clips/demo.mp4', startSeconds: 0, endSeconds: 2, durationSeconds: 2, treatment: 'punch-in', treatmentScale: 1.5 }, '/tmp/punch-in.mp4', { width: 1280, height: 720 })
     expect(args).toEqual(expect.arrayContaining(['-vf', 'crop=trunc(iw/1.5/2)*2:trunc(ih/1.5/2)*2:(iw-ow)/2:(ih-oh)/2,scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1']))

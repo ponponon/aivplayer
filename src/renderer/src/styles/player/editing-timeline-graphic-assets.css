@@ -1,0 +1,13 @@
+.editing-graphic-assets { display: grid; gap: 5px; padding: 5px 0 2px; border-top: 1px solid var(--border-soft); }
+.editing-graphic-assets-heading { display: flex; align-items: center; justify-content: space-between; color: var(--text-muted); font-size: 9px; font-weight: 700; }
+.editing-graphic-assets-heading small { color: var(--accent); font-size: 8px; }
+.editing-graphic-assets-search { min-width: 0; height: 24px; padding: 0 6px; color: var(--text-primary); background: var(--bg-surface); border: 1px solid var(--border-soft); border-radius: 4px; font-size: 9px; }
+.editing-graphic-asset-list { display: grid; gap: 3px; max-height: 92px; overflow-y: auto; }
+.editing-graphic-asset-item { display: flex; min-width: 0; }
+.editing-graphic-asset,
+.editing-graphic-asset-delete { min-height: 24px; color: var(--text-secondary); background: rgba(var(--overlay-rgb), 0.06); border: 1px solid var(--border-soft); cursor: pointer; font-size: 9px; }
+.editing-graphic-asset { flex: 1 1 auto; min-width: 0; overflow: hidden; padding: 0 7px; border-radius: 4px 0 0 4px; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+.editing-graphic-asset-delete { flex: 0 0 24px; padding: 0; color: var(--text-muted); border-left: 0; border-radius: 0 4px 4px 0; }
+.editing-graphic-asset:hover,
+.editing-graphic-asset-delete:hover { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
+.editing-graphic-assets-empty { color: var(--text-muted); font-size: 9px; }

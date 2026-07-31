@@ -31,6 +31,26 @@
   min-width: 0;
 }
 
+.editing-action-row {
+  align-content: flex-start;
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+
+.editing-action-row .editing-filter-popover,
+.editing-action-row .editing-transition-popover,
+.editing-action-row .editing-graphic-control .editing-graphic-popover,
+.editing-action-row .editing-video-block-control .editing-video-block-popover {
+  right: auto;
+  left: 0;
+}
+
+.editing-action-row .editing-graphic-editor .editing-graphic-popover,
+.editing-action-row .editing-video-block-editor .editing-video-block-editor-popover {
+  right: 0;
+  left: auto;
+}
+
 .editing-toolbar-heading {
   display: grid;
   gap: 2px;

@@ -9,6 +9,7 @@ type EditingVideoBlockOverlayProps = {
   sourceFiles: Record<string, MediaFile>
   currentTime: number
   isPlaying: boolean
+  zIndex?: number
 }
 
 function positionClass(position: EditingVideoBlockPosition): string {
@@ -36,9 +37,9 @@ function blockStyle(block: EditingVideoBlock, currentTime: number): CSSPropertie
   return { width: `${sizePercent}%`, height: isSplit ? '100%' : `${sizePercent}%`, borderRadius: `${getEditingVideoBlockBorderRadius(block)}px`, borderWidth: `${getEditingVideoBlockBorderWidth(block)}px`, ...motionStyle(block, currentTime) }
 }
 
-export function EditingVideoBlockOverlay({ blocks, sourceFiles, currentTime, isPlaying }: EditingVideoBlockOverlayProps): React.ReactElement {
+export function EditingVideoBlockOverlay({ blocks, sourceFiles, currentTime, isPlaying, zIndex }: EditingVideoBlockOverlayProps): React.ReactElement {
   const visibleBlocks = findVisibleEditingVideoBlocks(blocks, currentTime)
-  return <div className="editing-video-block-layer" aria-hidden="true">{visibleBlocks.map((block) => <EditingVideoBlockItem key={block.id} block={block} sourceUrl={sourceFiles[block.sourceId]?.url ?? ''} currentTime={currentTime} isPlaying={isPlaying} positionClass={positionClass(block.position)} />)}</div>
+  return <div className="editing-video-block-layer" style={zIndex === undefined ? undefined : { zIndex }} aria-hidden="true">{visibleBlocks.map((block) => <EditingVideoBlockItem key={block.id} block={block} sourceUrl={sourceFiles[block.sourceId]?.url ?? ''} currentTime={currentTime} isPlaying={isPlaying} positionClass={positionClass(block.position)} />)}</div>
 }
 
 function EditingVideoBlockItem({ block, sourceUrl, currentTime, isPlaying, positionClass: position }: { block: EditingVideoBlock; sourceUrl: string; currentTime: number; isPlaying: boolean; positionClass: string }): React.ReactElement | null {

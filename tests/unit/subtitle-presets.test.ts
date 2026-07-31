@@ -30,6 +30,14 @@ describe('subtitle visual presets', () => {
     expect(ass).toContain('关键')
   })
 
+  it('serializes editing caption position, width and scale into ASS', () => {
+    const ass = buildAssSubtitleFromEditingCaptions([{ id: 'caption-layout', startSeconds: 0, durationSeconds: 1, text: '布局测试', kind: 'source' }], { effect: 'none', captionLayout: { xPercent: 42, yPercent: 76, widthPercent: 68, fontSizePx: 64 }, playResX: 1080, playResY: 1920 })
+    expect(ass).toContain('Style: Default,Arial,64')
+    expect(ass).toContain('Style: Default,Arial,64,')
+    expect(ass).toContain('Dialogue: 0,0:00:00.00,0:00:01.00')
+    expect(ass).toContain('{\\pos(454,1459)}布局测试')
+  })
+
   it('serializes relative caption word timing as ASS karaoke tags', () => {
     const ass = buildAssSubtitleFromEditingCaptions([{
       id: 'caption-1',
@@ -45,6 +53,29 @@ describe('subtitle visual presets', () => {
     expect(ass).toContain('Style: Default,Arial,14,&H00F1FDFF,&H001F1A05')
     expect(ass).toContain('Dialogue: 0,0:00:02.00,0:00:03.50')
     expect(ass).toContain('{\\k50}Hello{\\k100} world')
+  })
+
+  it('serializes Pireel-style word-pop and kinetic-slam effects into ASS timing', () => {
+    const pop = buildAssSubtitleFromEditingCaptions([{
+      id: 'caption-pop',
+      startSeconds: 0,
+      durationSeconds: 1,
+      text: 'Hello world',
+      kind: 'source',
+      words: [{ startSeconds: 0, endSeconds: 0.5, text: 'Hello' }, { startSeconds: 0.5, endSeconds: 1, text: ' world' }]
+    }], { effect: 'word-pop' })
+    const slam = buildAssSubtitleFromEditingCaptions([{
+      id: 'caption-slam',
+      startSeconds: 0,
+      durationSeconds: 1,
+      text: 'Hello world',
+      kind: 'source',
+      words: [{ startSeconds: 0, endSeconds: 0.5, text: 'Hello' }, { startSeconds: 0.5, endSeconds: 1, text: ' world' }]
+    }], { effect: 'kinetic-slam' })
+
+    expect(pop).toContain('{\\fscx86\\fscy86\\t(0,220,\\fscx100\\fscy100)}{\\k50}Hello')
+    expect(slam.match(/^Dialogue:/gmu)).toHaveLength(2)
+    expect(slam).toContain('{\\fscx72\\fscy72\\t(0,220,\\fscx100\\fscy100)}{\\k50}')
   })
 
   it('splits long word-timed captions into balanced ASS display pages', () => {

@@ -6,6 +6,7 @@ import { normalizeClipSelection, type ClipSelection } from './clip-editor'
 import { ClipEditorPreview } from './clip-editor-preview'
 import { ClipEditorTimeline } from './clip-editor-timeline'
 import { useModalFocusTrap } from './use-modal-focus-trap'
+import { FfmpegCapabilityStatus, useFfmpegCapabilities } from './ffmpeg-capability-status'
 
 type ClipExportDialogProps = {
   copy: LocaleCopy
@@ -29,6 +30,9 @@ export function ClipExportDialog(props: ClipExportDialogProps): ReactElement {
   const [selection, setSelection] = useState<ClipSelection>(initialSelection)
   const [selectedMode, setSelectedMode] = useState<ClipExportMode>(initialMode)
   const dialogRef = useRef<HTMLElement | null>(null)
+  const burnInSelected = selectedMode === 'burn-subtitle'
+  const { capabilities, isChecking } = useFfmpegCapabilities(burnInSelected)
+  const burnInBlocked = burnInSelected && (isChecking || capabilities?.subtitleBurnIn !== true)
 
   useEffect(() => {
     const nextDuration = Math.max(0, mediaDurationSeconds)
@@ -71,10 +75,11 @@ export function ClipExportDialog(props: ClipExportDialogProps): ReactElement {
             })}
           </div>
           {!hasSubtitle ? <p className="clip-export-warning">{copy.clipExportDialog.subtitleRequired}</p> : null}
+          <FfmpegCapabilityStatus copy={copy.editing} enabled={burnInSelected} capabilities={capabilities} isChecking={isChecking} />
         </section>
         <div className="clip-export-actions">
           <button className="settings-secondary-button clip-export-action" type="button" onClick={onClose}>{copy.clipExportDialog.cancel}</button>
-          <button className="asr-action-button primary clip-export-action" type="button" onClick={() => onConfirm({ startSeconds: selection.startSeconds, durationSeconds: selection.endSeconds - selection.startSeconds, mode: selectedMode })} disabled={!canExport}><Download size={14} />{copy.clipExportDialog.export}</button>
+          <button className="asr-action-button primary clip-export-action" type="button" onClick={() => onConfirm({ startSeconds: selection.startSeconds, durationSeconds: selection.endSeconds - selection.startSeconds, mode: selectedMode })} disabled={!canExport || burnInBlocked}><Download size={14} />{copy.clipExportDialog.export}</button>
         </div>
       </section>
     </div>

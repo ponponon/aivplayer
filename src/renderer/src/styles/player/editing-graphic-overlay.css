@@ -1,11 +1,16 @@
 .editing-graphic-layer { position: absolute; inset: 0; z-index: 2; overflow: hidden; pointer-events: none; }
 
-.editing-graphic-card { position: absolute; max-width: 58%; color: var(--text-primary); text-shadow: 0 2px 20px rgba(0, 0, 0, .58); }
-.editing-graphic-card.is-title { display: grid; gap: 10px; padding: 16px 20px; background: rgba(10, 10, 10, .58); border: 1px solid rgba(var(--accent-rgb), .6); border-radius: 6px; backdrop-filter: blur(7px); }
+.editing-graphic-card { position: absolute; max-width: 58%; color: var(--editing-frame-card-text, var(--text-primary)); font-family: var(--editing-frame-font-family, system-ui, sans-serif); text-shadow: 0 2px 20px rgba(0, 0, 0, .58); box-shadow: var(--editing-frame-card-shadow, none); }
+.editing-graphic-card.is-title { display: grid; gap: 10px; padding: 16px 20px; background: var(--editing-frame-card-background, rgba(10, 10, 10, .58)); border: 1px solid var(--editing-frame-card-border, rgba(var(--accent-rgb), .6)); border-radius: var(--editing-frame-radius, 6px); backdrop-filter: blur(7px); }
 .editing-graphic-card.is-title strong { font-size: clamp(20px, 3.5vw, 58px); font-weight: 800; line-height: 1.12; white-space: pre-wrap; }
-.editing-graphic-card.is-title i { display: block; width: 52px; height: 3px; background: var(--accent); border-radius: 2px; }
-.editing-graphic-card.is-label { padding: 7px 11px; color: var(--text-primary); background: rgba(10, 10, 10, .68); border-left: 3px solid var(--accent); border-radius: 3px; font-size: clamp(12px, 1.6vw, 25px); font-weight: 700; line-height: 1.25; }
+.editing-graphic-card.is-title i { display: block; width: 52px; height: 3px; background: var(--editing-frame-accent, var(--accent)); border-radius: 2px; }
+.editing-graphic-card.is-label { padding: 7px 11px; color: var(--editing-frame-card-text, var(--text-primary)); background: var(--editing-frame-card-background, rgba(10, 10, 10, .68)); border-left: 3px solid var(--editing-frame-accent, var(--accent)); border-radius: var(--editing-frame-radius, 3px); font-size: clamp(12px, 1.6vw, 25px); font-weight: 700; line-height: 1.25; }
 .editing-graphic-card.is-top-right,
 .editing-graphic-card.is-bottom-right { text-align: right; }
 .editing-graphic-card.is-top-right.is-title,
 .editing-graphic-card.is-bottom-right.is-title { justify-items: end; }
+.editing-graphic-layer.is-frame-sticker .editing-graphic-card.is-title { border: 0; color: var(--editing-frame-card-text); text-shadow: none; transform: rotate(-1deg); }
+.editing-graphic-layer.is-frame-sticker .editing-graphic-card.is-label { border-left-width: 0; transform: rotate(-1deg); }
+.editing-graphic-layer.is-frame-outline .editing-graphic-card.is-title { background: rgba(0, 0, 0, .18); border-width: 2px; }
+.editing-graphic-layer.is-frame-cinema .editing-graphic-card.is-title { letter-spacing: .08em; text-transform: uppercase; }
+.editing-graphic-layer.is-frame-serif .editing-graphic-card { font-style: italic; }

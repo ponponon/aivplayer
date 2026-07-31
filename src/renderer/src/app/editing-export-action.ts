@@ -1,4 +1,6 @@
 import { serializeEditingCaptionsToSrt } from '../../../core/editing/caption-serialization'
+import { getEditingCanvasDimensions } from '../../../core/editing/canvases'
+import { getEditingCaptionLayout } from '../../../core/editing/caption-layout'
 import { buildAssSubtitleFromEditingCaptions } from '../../../core/media/subtitle-ass'
 import type { ClipExportMode } from '../../../shared/clip-export'
 import type { AppDerived } from './use-app-derived'
@@ -8,6 +10,8 @@ export async function exportEditingTimeline(model: AppModel, derived: AppDerived
   const project = model.editingProject
   const primarySource = project?.sources[0]
   if (!project || !primarySource || project.videoClips.length === 0 || model.isExportingClip) return
+  const canvas = getEditingCanvasDimensions(project.canvasPreset ?? 'source', primarySource.width, primarySource.height)
+  const captionLayout = getEditingCaptionLayout(project.captionLayout)
   const sourceById = new Map(project.sources.map((source) => [source.id, source.path]))
   const clips = project.videoClips.flatMap((clip) => {
     const mediaPath = sourceById.get(clip.sourceId)
@@ -22,11 +26,11 @@ export async function exportEditingTimeline(model: AppModel, derived: AppDerived
   const hasProjectSubtitle = subtitleText.length > 0
   const mode = hasProjectSubtitle || derived.hasClipExportSubtitle ? requestedMode ?? model.appSettings.capture.clipExportMode : 'video'
   const subtitleAssText = hasProjectSubtitle && mode === 'burn-subtitle'
-    ? buildAssSubtitleFromEditingCaptions(project.captions, { ...model.appSettings.subtitles, playResX: primarySource.width, playResY: primarySource.height })
+    ? buildAssSubtitleFromEditingCaptions(project.captions, { ...model.appSettings.subtitles, fontSizePx: captionLayout.fontSizePx, effect: project.captionEffect ?? 'none', captionLayout, playResX: canvas.width, playResY: canvas.height })
     : undefined
   model.setIsExportingClip(true)
   try {
-    const result = await window.aiv.exportMediaTimeline({ mediaPath: primarySource.path, clips, graphics: project.graphics, videoBlocks, mode, subtitleText: hasProjectSubtitle ? subtitleText : undefined, subtitleAssText, subtitlePath: hasProjectSubtitle ? undefined : derived.subtitlePath ?? undefined, subtitleSrtPath: hasProjectSubtitle ? undefined : derived.subtitleSrtPath ?? undefined, subtitleRender: model.appSettings.subtitles, targetWidth: primarySource.width, targetHeight: primarySource.height, outputVideoPath })
+    const result = await window.aiv.exportMediaTimeline({ mediaPath: primarySource.path, clips, graphics: project.graphics, videoBlocks, frameId: project.frameId, overlayTrackOrder: project.overlayTrackOrder, mode, subtitleText: hasProjectSubtitle ? subtitleText : undefined, subtitleAssText, subtitlePath: hasProjectSubtitle ? undefined : derived.subtitlePath ?? undefined, subtitleSrtPath: hasProjectSubtitle ? undefined : derived.subtitleSrtPath ?? undefined, subtitleRender: model.appSettings.subtitles, targetWidth: canvas.width, targetHeight: canvas.height, fitMode: canvas.fitMode, outputVideoPath })
     if (!result.canceled) model.setAsrNotice(result)
   } catch (error) {
     model.setAsrNotice({ success: false, message: `${derived.copy.runtime.clipExportFailed}：${error instanceof Error ? error.message : String(error)}` })

@@ -1,10 +1,13 @@
 import type { CSSProperties } from 'react'
 import { findActiveEditingGraphics } from '../../../core/editing/graphic-operations'
-import type { EditingGraphic, EditingGraphicPosition } from '../../../shared/editing-types'
+import { getEditingFrame } from '../../../core/editing/frames'
+import type { EditingFrameId, EditingGraphic, EditingGraphicPosition } from '../../../shared/editing-types'
 
 type EditingGraphicOverlayProps = {
   graphics: readonly EditingGraphic[]
   currentTime: number
+  frameId?: EditingFrameId
+  zIndex?: number
 }
 
 function positionStyle(position: EditingGraphicPosition): CSSProperties {
@@ -15,7 +18,8 @@ function positionStyle(position: EditingGraphicPosition): CSSProperties {
   return { left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }
 }
 
-export function EditingGraphicOverlay({ graphics, currentTime }: EditingGraphicOverlayProps): React.ReactElement {
+export function EditingGraphicOverlay({ graphics, currentTime, frameId, zIndex }: EditingGraphicOverlayProps): React.ReactElement {
   const activeGraphics = findActiveEditingGraphics(graphics, currentTime)
-  return <div className="editing-graphic-layer" aria-hidden="true">{activeGraphics.map((graphic) => <div className={`editing-graphic-card is-${graphic.style} is-${graphic.position}`} key={graphic.id} style={positionStyle(graphic.position)}>{graphic.style === 'title' ? <><strong>{graphic.text}</strong><i /></> : <span>{graphic.text}</span>}</div>)}</div>
+  const frame = getEditingFrame(frameId)
+  return <div className={`editing-graphic-layer is-frame-${frame.graphicVariant}`} style={zIndex === undefined ? undefined : { zIndex }} aria-hidden="true">{activeGraphics.map((graphic) => <div className={`editing-graphic-card is-${graphic.style} is-${graphic.position}`} key={graphic.id} style={positionStyle(graphic.position)}>{graphic.style === 'title' ? <><strong>{graphic.text}</strong><i /></> : <span>{graphic.text}</span>}</div>)}</div>
 }

@@ -1,0 +1,47 @@
+.editing-canvas-control {
+  position: relative;
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+  background: rgba(var(--overlay-rgb), .04);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+}
+
+.editing-canvas-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 0 8px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  list-style: none;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.editing-canvas-summary::-webkit-details-marker { display: none; }
+.editing-canvas-summary svg { color: var(--accent); }
+.editing-canvas-summary small { color: var(--text-muted); font-size: 9px; font-variant-numeric: tabular-nums; }
+.editing-canvas-popover { position: absolute; left: 0; bottom: calc(100% + 6px); z-index: 12; display: grid; gap: 9px; min-width: 230px; padding: 10px; color: var(--text-secondary); background: var(--bg-control); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); box-shadow: var(--shadow-heavy); }
+.editing-canvas-popover > strong { color: var(--text-primary); font-size: 11px; }
+.editing-canvas-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.editing-canvas-option { display: grid; grid-template-columns: 26px minmax(0, 1fr); align-items: center; gap: 6px; min-width: 0; padding: 6px; color: var(--text-secondary); background: rgba(var(--overlay-rgb), .04); border: 1px solid var(--border-soft); border-radius: 5px; cursor: pointer; font-size: 10px; font-weight: 700; text-align: left; }
+.editing-canvas-option:hover,
+.editing-canvas-option.is-active { color: var(--text-primary); border-color: rgba(var(--accent-rgb), .72); background: rgba(var(--accent-rgb), .1); }
+.editing-canvas-option small { grid-column: 2; color: var(--text-muted); font-size: 9px; font-weight: 600; }
+.editing-canvas-preview { grid-row: span 2; width: 22px; height: 16px; border: 1px solid currentColor; border-radius: 2px; opacity: .78; }
+.editing-canvas-option.is-portrait .editing-canvas-preview { width: 11px; height: 19px; justify-self: center; }
+.editing-canvas-option.is-square .editing-canvas-preview { width: 16px; height: 16px; justify-self: center; }
+.editing-canvas-option.is-source .editing-canvas-preview { border-style: dashed; }
+
+.editing-safe-area-overlay { position: absolute; inset: 0; z-index: 4; overflow: hidden; pointer-events: none; }
+.editing-safe-area-outer,
+.editing-safe-area-inner { position: absolute; display: block; border: 1px dashed rgba(255, 255, 255, .48); box-shadow: 0 0 0 9999px rgba(0, 0, 0, .07); }
+.editing-safe-area-outer { inset: 6%; }
+.editing-safe-area-inner { inset: 12%; border-color: rgba(var(--accent-rgb), .78); box-shadow: none; }
+.editing-safe-area-overlay.is-portrait .editing-safe-area-outer { inset: 5% 28%; }
+.editing-safe-area-overlay.is-portrait .editing-safe-area-inner { inset: 11% 34%; }
+.editing-safe-area-overlay.is-square .editing-safe-area-outer { inset: 6% 18%; }
+.editing-safe-area-overlay.is-square .editing-safe-area-inner { inset: 13% 25%; }

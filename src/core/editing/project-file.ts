@@ -1,5 +1,10 @@
-import { EDITING_PUNCH_IN_MAX_SCALE, EDITING_PUNCH_IN_MIN_SCALE, EDITING_PROJECT_SCHEMA_VERSION, EDITING_TRANSITION_MAX_DURATION, EDITING_TRANSITION_MIN_DURATION, type EditingCaption, type EditingCaptionWord, type EditingClipFilter, type EditingClipTransition, type EditingGraphic, type EditingProject, type EditingScriptSegment, type EditingSource, type EditingVideoBlock, type EditingVideoBlockMotion, type EditingVideoClip } from '../../shared/editing-types'
+import { EDITING_PUNCH_IN_MAX_SCALE, EDITING_PUNCH_IN_MIN_SCALE, EDITING_PROJECT_SCHEMA_VERSION, EDITING_TRANSITION_MAX_DURATION, EDITING_TRANSITION_MIN_DURATION, type EditingCanvasPresetId, type EditingCaption, type EditingCaptionEffect, type EditingCaptionWord, type EditingClipFilter, type EditingClipTransition, type EditingFrameId, type EditingGraphic, type EditingOverlayTrackKind, type EditingProject, type EditingScriptSegment, type EditingSource, type EditingVideoBlock, type EditingVideoBlockMotion, type EditingVideoClip } from '../../shared/editing-types'
+import { isEditingCanvasPresetId } from './canvases'
+import { isEditingCaptionLayout } from './caption-layout'
+import { isEditingCaptionEffect } from './caption-effects'
+import { isEditingFrameId } from './frames'
 import { EDITING_TRANSITION_TYPES } from './transition-operations'
+import { getEditingOverlayTrackOrder } from './overlay-track-operations'
 import { EDITING_VIDEO_BLOCK_MAX_BORDER_RADIUS, EDITING_VIDEO_BLOCK_MAX_BORDER_WIDTH, EDITING_VIDEO_BLOCK_MAX_SIZE_PERCENT, EDITING_VIDEO_BLOCK_MIN_BORDER_RADIUS, EDITING_VIDEO_BLOCK_MIN_BORDER_WIDTH, EDITING_VIDEO_BLOCK_MIN_SIZE_PERCENT, EDITING_VIDEO_BLOCK_MOTION_MAX_DURATION, EDITING_VIDEO_BLOCK_MOTION_MIN_DURATION, EDITING_VIDEO_BLOCK_MOTIONS } from './video-block-operations'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -123,6 +128,11 @@ function parseScriptSegment(value: unknown, sourceIds: Set<string>): EditingScri
   }
 }
 
+function parseOverlayTrackOrder(value: unknown): EditingOverlayTrackKind[] | null {
+  if (!Array.isArray(value) || value.some((kind) => kind !== 'videoBlocks' && kind !== 'graphics' && kind !== 'captions')) return null
+  return getEditingOverlayTrackOrder(value as EditingOverlayTrackKind[])
+}
+
 export function parseEditingProject(value: unknown): EditingProject {
   if (!isRecord(value) || value.schemaVersion !== EDITING_PROJECT_SCHEMA_VERSION || !isNonEmptyString(value.id) || !isNonEmptyString(value.title) || !isFiniteNonNegative(value.createdAt) || !isFiniteNonNegative(value.updatedAt) || !Array.isArray(value.sources) || value.sources.length === 0 || !Array.isArray(value.videoClips) || !Array.isArray(value.captions)) throw new Error('Invalid AIVPlayer editing project')
   const sources = value.sources.map(parseSource)
@@ -142,6 +152,16 @@ export function parseEditingProject(value: unknown): EditingProject {
   if (value.videoBlocks !== undefined && !Array.isArray(value.videoBlocks)) throw new Error('Invalid editing project video blocks')
   const videoBlocks = value.videoBlocks === undefined ? undefined : value.videoBlocks.map((block) => parseVideoBlock(block, sourceIds))
   if (videoBlocks?.some((block): block is null => block === null)) throw new Error('Invalid editing project video block')
+  const frameId = value.frameId === undefined ? undefined : isEditingFrameId(value.frameId) ? value.frameId as EditingFrameId : null
+  if (frameId === null) throw new Error('Invalid editing project frame')
+  const captionEffect = value.captionEffect === undefined ? undefined : isEditingCaptionEffect(value.captionEffect) ? value.captionEffect as EditingCaptionEffect : null
+  if (captionEffect === null) throw new Error('Invalid editing project caption effect')
+  const canvasPreset = value.canvasPreset === undefined ? undefined : isEditingCanvasPresetId(value.canvasPreset) ? value.canvasPreset as EditingCanvasPresetId : null
+  if (canvasPreset === null) throw new Error('Invalid editing project canvas preset')
+  const captionLayout = value.captionLayout === undefined ? undefined : isEditingCaptionLayout(value.captionLayout) ? value.captionLayout : null
+  if (captionLayout === null) throw new Error('Invalid editing project caption layout')
+  const overlayTrackOrder = value.overlayTrackOrder === undefined ? undefined : parseOverlayTrackOrder(value.overlayTrackOrder)
+  if (overlayTrackOrder === null) throw new Error('Invalid editing project overlay track order')
   return {
     schemaVersion: EDITING_PROJECT_SCHEMA_VERSION,
     id: value.id,
@@ -151,6 +171,11 @@ export function parseEditingProject(value: unknown): EditingProject {
     sources: parsedSources,
     videoClips: videoClips as EditingVideoClip[],
     captions: captions as EditingCaption[],
+    ...(frameId === undefined ? {} : { frameId }),
+    ...(captionEffect === undefined ? {} : { captionEffect }),
+    ...(canvasPreset === undefined ? {} : { canvasPreset }),
+    ...(captionLayout === undefined ? {} : { captionLayout }),
+    ...(overlayTrackOrder === undefined ? {} : { overlayTrackOrder }),
     ...(scriptSegments === undefined ? {} : { scriptSegments: scriptSegments as EditingScriptSegment[] }),
     ...(graphics === undefined ? {} : { graphics: graphics as EditingGraphic[] }),
     ...(videoBlocks === undefined ? {} : { videoBlocks: videoBlocks as EditingVideoBlock[] })

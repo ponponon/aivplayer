@@ -9,6 +9,7 @@ import { MIN_CLIP_DURATION_SECONDS, type ClipExportMode } from '../../shared/cli
 import type { TranscriptSegment } from '../../shared/media-types.ts'
 import type { SubtitleRenderSettings } from '../../shared/subtitle-presets'
 import { buildAssSubtitle } from './subtitle-ass'
+import { probeFfmpegCapabilities } from './ffmpeg-capabilities'
 
 const SRT_TIMESTAMP_PATTERN = /^(?:(\d+):)?(\d{2}):(\d{2}),(\d{3})$/
 const SRT_TIMECODE_PATTERN =
@@ -301,6 +302,7 @@ export function remapSrtToTimeline(text: string, clips: readonly TimelineSubtitl
 
 export async function runClipExport(options: RunClipExportOptions): Promise<RunClipExportResult> {
   const copy = getAppCopy(options.getLocale?.())
+  if (options.mode === 'burn-subtitle' && !(await probeFfmpegCapabilities(options.ffmpegPath)).subtitleBurnIn) throw new Error(copy.runtime.clipExportSubtitleBurnInUnavailable)
   const safeStartSeconds = Math.max(0, options.startSeconds)
   const safeDurationSeconds = Math.max(MIN_CLIP_DURATION_SECONDS, options.durationSeconds)
   const shouldExportSubtitle = options.mode === 'external-subtitle' || options.mode === 'burn-subtitle'

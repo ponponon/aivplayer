@@ -1,5 +1,5 @@
 import { editedDurationSeconds } from '../../../core/editing/timeline-math'
-import { moveEditingCaption as moveCaption } from '../../../core/editing/caption-operations'
+import { moveEditingCaption as moveCaption, resizeEditingCaption as resizeCaption } from '../../../core/editing/caption-operations'
 import type { AppModel } from './app-types'
 import { seekEditingTime } from './editing-action-helpers'
 import { saveEditingProject } from './editing-project-storage'
@@ -26,5 +26,18 @@ export function createEditingCaptionActions(model: AppModel) {
     saveEditingProject(nextProject)
   }
 
-  return { selectEditingCaption, moveEditingCaption }
+  const resizeEditingCaption = (captionId: string, startSeconds: number, endSeconds: number): void => {
+    const project = model.editingProject
+    if (!project) return
+    const nextCaptions = resizeCaption(project.captions, captionId, startSeconds, endSeconds, editedDurationSeconds(project.videoClips))
+    if (nextCaptions.every((caption, index) => caption === project.captions[index])) return
+    const nextProject = { ...project, captions: nextCaptions, updatedAt: Date.now() }
+    model.setEditingPast((past) => [...past, project])
+    model.setEditingFuture([])
+    model.setEditingProject(nextProject)
+    model.setEditingSelectedCaptionId(captionId)
+    saveEditingProject(nextProject)
+  }
+
+  return { selectEditingCaption, moveEditingCaption, resizeEditingCaption }
 }

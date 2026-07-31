@@ -1,0 +1,32 @@
+.editing-theme-control { position: relative; flex: 0 0 auto; color: var(--text-secondary); background: rgba(var(--overlay-rgb), .04); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); }
+.editing-theme-summary { display: inline-flex; align-items: center; gap: 5px; min-height: 30px; padding: 0 8px; color: var(--text-muted); cursor: pointer; font-size: 9px; list-style: none; white-space: nowrap; }
+.editing-theme-summary::-webkit-details-marker { display: none; }
+.editing-theme-summary svg { color: var(--accent); }
+.editing-theme-popover { position: absolute; right: 0; bottom: calc(100% + 6px); z-index: 12; display: grid; gap: 9px; min-width: 246px; padding: 10px; background: var(--bg-control); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); box-shadow: var(--shadow-heavy); }
+.editing-theme-section { display: grid; gap: 5px; }
+.editing-theme-section strong, .editing-theme-heading { color: var(--text-muted); font-size: 9px; font-weight: 700; }
+.editing-theme-heading { display: flex; align-items: center; justify-content: space-between; }
+.editing-theme-heading small { color: var(--accent); font-size: 8px; }
+.editing-theme-preset-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+.editing-theme-preset, .editing-theme-saved, .editing-theme-delete, .editing-theme-save button { min-height: 25px; color: var(--text-secondary); background: rgba(var(--overlay-rgb), .06); border: 1px solid var(--border-soft); border-radius: 4px; cursor: pointer; font-size: 9px; }
+.editing-theme-preset { display: flex; align-items: center; gap: 5px; padding: 0 6px; text-align: left; }
+.editing-theme-preset.is-active, .editing-theme-saved.is-active, .editing-theme-preset:hover, .editing-theme-saved:hover { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
+.editing-theme-preview { position: relative; width: 30px; height: 18px; flex: 0 0 auto; overflow: hidden; border: 1px solid rgba(255, 255, 255, .25); border-radius: 3px; background: var(--editing-frame-card-background); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12); }
+.editing-theme-preview i, .editing-theme-preview b { position: absolute; display: block; }
+.editing-theme-preview i { right: 4px; bottom: 4px; left: 4px; height: 3px; border-radius: 2px; background: var(--editing-frame-accent); }
+.editing-theme-preview b { top: 4px; left: 4px; width: 12px; height: 3px; border-radius: 2px; background: var(--editing-frame-card-text); box-shadow: 0 5px 0 var(--editing-frame-card-text); }
+.editing-theme-preview.is-clean { --editing-frame-accent: #e3bd57; --editing-frame-card-background: #252525; --editing-frame-card-text: #fff; }
+.editing-theme-preview.is-warm { --editing-frame-accent: #f06f4a; --editing-frame-card-background: #f7dba9; --editing-frame-card-text: #2d180f; }
+.editing-theme-preview.is-mint { --editing-frame-accent: #62d8b0; --editing-frame-card-background: #06382f; --editing-frame-card-text: #effff8; }
+.editing-theme-preview.is-cinema { --editing-frame-accent: #8ec5ff; --editing-frame-card-background: #071a35; --editing-frame-card-text: #f8fbff; }
+.editing-theme-preview.is-gold { --editing-frame-accent: #ffe7a3; --editing-frame-card-background: #241508; --editing-frame-card-text: #ffe7a3; }
+.editing-theme-search, .editing-theme-name { min-width: 0; height: 25px; padding: 0 6px; color: var(--text-primary); background: var(--bg-surface); border: 1px solid var(--border-soft); border-radius: 4px; font-size: 9px; }
+.editing-theme-saved-list { display: grid; gap: 3px; max-height: 84px; overflow-y: auto; }
+.editing-theme-saved-item { display: flex; min-width: 0; }
+.editing-theme-saved { flex: 1 1 auto; min-width: 0; overflow: hidden; padding: 0 7px; border-radius: 4px 0 0 4px; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+.editing-theme-delete { flex: 0 0 25px; padding: 0; color: var(--text-muted); border-left: 0; border-radius: 0 4px 4px 0; }
+.editing-theme-delete:hover { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
+.editing-theme-empty { color: var(--text-muted); font-size: 9px; }
+.editing-theme-save { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 5px; padding-top: 2px; border-top: 1px solid var(--border-soft); }
+.editing-theme-save button { padding: 0 8px; color: var(--accent-ink); background: var(--accent); border-color: var(--accent); font-weight: 700; }
+.editing-theme-save button:disabled { cursor: not-allowed; opacity: .45; }

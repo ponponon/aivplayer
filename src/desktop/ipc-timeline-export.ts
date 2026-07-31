@@ -10,6 +10,7 @@ import { promptForSavePath } from './media-dialogs'
 import { getCurrentLocale } from './desktop-settings'
 import { resolveResourcePath } from './desktop-services'
 import { renderTimelineGraphicAssets } from './timeline-graphic-rasterizer'
+import { probeFfmpegCapabilities } from '../core/media/ffmpeg-capabilities'
 
 export function registerTimelineExportIpc(): void {
   const chooseTimelineExportPath = async (request: MediaTimelineExportPathRequest): Promise<MediaTimelineExportPathResult> => {
@@ -22,11 +23,17 @@ export function registerTimelineExportIpc(): void {
 
   ipcMain.handle(IPC_CHANNELS.MEDIA_CHOOSE_TIMELINE_EXPORT_PATH, async (_event, request: MediaTimelineExportPathRequest): Promise<MediaTimelineExportPathResult> => chooseTimelineExportPath(request))
 
+  ipcMain.handle(IPC_CHANNELS.MEDIA_GET_FFMPEG_CAPABILITIES, async (): Promise<import('../shared/media-types').MediaFfmpegCapabilities> => {
+    const ffmpegPath = await resolveFfmpegPath(resolveResourcePath(), process.env, undefined)
+    return ffmpegPath ? probeFfmpegCapabilities(ffmpegPath) : { available: false, subtitleBurnIn: false, subtitleFilter: null }
+  })
+
   ipcMain.handle(IPC_CHANNELS.MEDIA_EXPORT_TIMELINE, async (_event, request: MediaTimelineExportRequest): Promise<MediaClipExportResult> => {
     const copy = getAppCopy(getCurrentLocale())
     const resourcePath = resolveResourcePath()
     const ffmpegPath = await resolveFfmpegPath(resourcePath, process.env, undefined)
     if (!ffmpegPath) return { success: false, message: copy.runtime.ffmpegMissing, canceled: false }
+    if (request.mode === 'burn-subtitle' && !(await probeFfmpegCapabilities(ffmpegPath)).subtitleBurnIn) return { success: false, message: copy.runtime.clipExportSubtitleBurnInUnavailable, canceled: false }
     const durationSeconds = request.clips.reduce((total, clip) => total + Math.max(0, clip.endSeconds - clip.startSeconds), 0)
     const selectedVideoPath = request.outputVideoPath?.trim() || (await chooseTimelineExportPath({ mediaPath: request.mediaPath, clipCount: request.clips.length, durationSeconds, mode: request.mode })).filePath
     if (!selectedVideoPath) return { success: false, message: '', canceled: true }
@@ -46,6 +53,7 @@ export function registerTimelineExportIpc(): void {
         graphics: request.graphics,
         videoBlocks: request.videoBlocks,
         renderGraphics: renderTimelineGraphicAssets,
+        overlayTrackOrder: request.overlayTrackOrder,
         outputVideoPath: selectedVideoPath,
         mode: request.mode,
         subtitlePath: request.subtitlePath,
@@ -53,7 +61,8 @@ export function registerTimelineExportIpc(): void {
         subtitleText: request.subtitleText,
         subtitleAssText: request.subtitleAssText,
         subtitleRender: request.subtitleRender,
-        outputFormat: { width: request.targetWidth ?? primaryMetadata?.video?.width ?? undefined, height: request.targetHeight ?? primaryMetadata?.video?.height ?? undefined, frameRate: primaryMetadata?.video?.frameRate ?? undefined, audioSampleRate: 48000, audioChannels: 2 },
+        frameId: request.frameId,
+        outputFormat: { width: request.targetWidth ?? primaryMetadata?.video?.width ?? undefined, height: request.targetHeight ?? primaryMetadata?.video?.height ?? undefined, fitMode: request.fitMode ?? 'contain', frameRate: primaryMetadata?.video?.frameRate ?? undefined, audioSampleRate: 48000, audioChannels: 2 },
         getLocale: getCurrentLocale
       })
       const videoFile = createMediaFile(result.videoPath)
