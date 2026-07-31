@@ -513,3 +513,9 @@
 
 - 这次把浅色主题调整成 Chrome 风格后，发现只改 `tokens.css` 里的 `--accent` 不够：多个播放器、设置、AI 面板 CSS 仍直接写死 `rgba(232, 193, 109, ...)`，最终会出现浅蓝背景、蓝灰文字和金色控件同时存在的混搭。
 - 以后主题切换涉及强调色时，透明边框、选中底、focus ring、提示卡和渐变也必须使用 `--accent-rgb` 等语义 token；深色和浅色只在 token 层提供不同值，不能在组件 CSS 里继续写死某一套主题颜色。
+
+## electron-builder 打包 sharp 时必须解包原生依赖
+
+- `sharp` 的 Linux 版 `.node` 文件和 `libvips-cpp.so` 即使已经被放进 `app.asar`，Linux 动态链接器仍不能从 ASAR 内加载共享库；启动时会报 `ERR_DLOPEN_FAILED` 和 `libvips-cpp.so.*` 缺失。
+- 使用 electron-builder 时，必须通过 `asarUnpack` 同时解包 `**/node_modules/sharp/**/*` 和 `**/node_modules/@img/**/*`，不能只确认依赖存在于 `node_modules` 或 `app.asar` 就认为发布包可运行。
+- 修改后要检查 `release/linux-unpacked/resources/app.asar.unpacked` 中确实存在 sharp / libvips 文件，并实际启动 Linux 解包应用验证；MESA/DRI 权限提示属于 GPU 环境问题，应与 sharp 主进程加载失败分开排查。
