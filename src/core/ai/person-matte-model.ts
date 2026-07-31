@@ -4,6 +4,15 @@ import { join, resolve } from 'node:path'
 /** Pinned Transformers.js model layout; model files are installed separately from the app source. */
 export const PERSON_MATTE_MODEL_ID = 'Xenova/modnet' as const
 export const PERSON_MATTE_MODEL_DIRECTORY = 'person-matte' as const
+export const PERSON_MATTE_MODEL_REVISION = 'main' as const
+
+const PERSON_MATTE_MODEL_BASE_URL = `https://huggingface.co/${PERSON_MATTE_MODEL_ID}/resolve/${PERSON_MATTE_MODEL_REVISION}`
+
+export const PERSON_MATTE_MODEL_FILES = [
+  { relativePath: 'config.json', url: `${PERSON_MATTE_MODEL_BASE_URL}/config.json` },
+  { relativePath: 'preprocessor_config.json', url: `${PERSON_MATTE_MODEL_BASE_URL}/preprocessor_config.json` },
+  { relativePath: 'onnx/model.onnx', url: `${PERSON_MATTE_MODEL_BASE_URL}/onnx/model.onnx` }
+] as const
 
 export type PersonMatteModelPaths = {
   modelDirectory: string
