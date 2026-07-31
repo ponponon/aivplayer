@@ -125,6 +125,17 @@ describe('clip export helpers', () => {
     expect(args).not.toContain('-vf')
   })
 
+  it('keeps person matte foreground inside the main-track motion composition', () => {
+    const args = buildTimelineSegmentArgs({ mediaPath: '/clips/motion-person.mp4', startSeconds: 0, endSeconds: 4, durationSeconds: 4, enterMotion: 'slide-left', exitMotion: 'scale', motionDurationSeconds: 0.5, personMatte: { enabled: true, outlineWidthPercent: 1.5 }, personMatteTrack: { sampleFps: 15, framePattern: '/cache/mask-%06d.png', frameCount: 60 } }, '/tmp/motion-person.mp4', { width: 1280, height: 720, frameRate: 30 })
+    const filterComplex = args[args.indexOf('-filter_complex') + 1]
+    expect(args).toEqual(expect.arrayContaining(['-framerate', '15', '/cache/mask-%06d.png', 'color=c=black:s=1280x720:r=30:d=4', '-map', '[person-matte-v]']))
+    expect(filterComplex).toContain('[person-matte-outline][person-matte-foreground]overlay=format=auto[person-matte-composite]')
+    expect(filterComplex).toContain('[person-matte-composite]format=rgba,scale=w=')
+    expect(filterComplex).toContain("overlay=x='(-1280)*(1-if(lt(t\\,0)\\,0\\,if(lt(t\\,0.5)\\,(t-0)/0.5\\,1)))+(1280-overlay_w)/2'")
+    expect(filterComplex).toContain('scale=w=')
+    expect(args).not.toContain('-vf')
+  })
+
   it('builds a duration-preserving xfade chain for Pireel-style seam effects', () => {
     const args = buildTimelineXfadeArgs(
       ['/tmp/previous.mp4', '/tmp/next.mp4'],

@@ -203,13 +203,13 @@ function hasClipMotion(clip: TimelineExportClip): boolean {
   return motion.enterMotion !== 'none' || motion.exitMotion !== 'none'
 }
 
-function buildTimelineClipMotionFilterComplex(clip: NormalizedClip, format: TimelineExportFormat, frameRate: number, colorInputIndex: number, fadeInDuration: number, fadeOutDuration: number): string {
+function buildTimelineMotionCompositionFilterComplex(clip: NormalizedClip, format: TimelineExportFormat, frameRate: number, colorInputIndex: number, fadeInDuration: number, fadeOutDuration: number, foregroundSource: string, baseForegroundFilters: readonly string[], outputLabel: string): string {
   const width = evenDimension(format.width)!
   const height = evenDimension(format.height)!
   const motion = getEditingClipMotion(clip)
   const durationSeconds = Math.min(motion.durationSeconds, clip.durationSeconds / 2)
   const exitStartSeconds = Math.max(0, clip.durationSeconds - durationSeconds)
-  const foregroundFilters = [buildVideoFilter(format, clip, fadeInDuration, fadeOutDuration)]
+  const foregroundFilters = [...baseForegroundFilters]
   if (motion.enterMotion === 'fade') foregroundFilters.push(`fade=t=in:st=0:d=${durationSeconds}:color=black`)
   if (motion.exitMotion === 'fade') foregroundFilters.push(`fade=t=out:st=${exitStartSeconds}:d=${durationSeconds}:color=black`)
   const scaleExpression = clipMotionScaleExpression(motion.enterMotion, motion.exitMotion, durationSeconds, exitStartSeconds)
@@ -218,7 +218,22 @@ function buildTimelineClipMotionFilterComplex(clip: NormalizedClip, format: Time
   const yExpression = clipMotionOffsetExpression('y', height, motion.enterMotion, motion.exitMotion, durationSeconds, exitStartSeconds)
   const xPosition = scaleExpression ? `${xExpression}+(${width}-overlay_w)/2` : xExpression
   const yPosition = scaleExpression ? `${yExpression}+(${height}-overlay_h)/2` : yExpression
-  return `[0:v]${foregroundFilters.join(',')}[clip-motion-fg];[${colorInputIndex}:v]format=yuv420p[clip-motion-bg];[clip-motion-bg][clip-motion-fg]overlay=x='${escapeFilterExpression(xPosition)}':y='${escapeFilterExpression(yPosition)}':shortest=1:format=auto[clip-motion-v]`
+  return `${foregroundSource}${foregroundFilters.join(',')}[clip-motion-fg];[${colorInputIndex}:v]format=yuv420p[clip-motion-bg];[clip-motion-bg][clip-motion-fg]overlay=x='${escapeFilterExpression(xPosition)}':y='${escapeFilterExpression(yPosition)}':shortest=1:format=auto${outputLabel}`
+}
+
+function buildTimelineClipMotionFilterComplex(clip: NormalizedClip, format: TimelineExportFormat, frameRate: number, colorInputIndex: number, fadeInDuration: number, fadeOutDuration: number): string {
+  return buildTimelineMotionCompositionFilterComplex(clip, format, frameRate, colorInputIndex, fadeInDuration, fadeOutDuration, '[0:v]', [buildVideoFilter(format, clip, fadeInDuration, fadeOutDuration)], '[clip-motion-v]')
+}
+
+function buildPersonMatteFilterComplex(format: TimelineExportFormat | undefined, clip: NormalizedClip, sampleFps: number, personMatteInputIndex: number, frameRate: number, fadeInDuration: number, fadeOutDuration: number, outputLabel: string): string {
+  const personMatteSettings = getEditingPersonMatteSettings(clip.personMatte)
+  const outputWidth = evenDimension(format?.width)
+  const outputHeight = evenDimension(format?.height)
+  const canDrawOutline = personMatteSettings.outlineWidthPercent > 0 && outputWidth !== null && outputHeight !== null
+  const outlinePasses = canDrawOutline ? Math.max(1, Math.min(16, Math.round(personMatteSettings.outlineWidthPercent * Math.min(outputWidth!, outputHeight!) / 200))) : 0
+  const outlineMaskFilter = outlinePasses > 0 ? Array.from({ length: outlinePasses }, () => 'dilation=coordinates=255').join(',') : ''
+  if (!canDrawOutline) return `[0:v]${buildVideoFilter(format, clip, fadeInDuration, fadeOutDuration)},format=rgba[person-matte-video];[${personMatteInputIndex}:v]${buildPersonMatteMaskFilter(format, clip, sampleFps)}[person-matte-mask];[person-matte-video][person-matte-mask]alphamerge${outputLabel}`
+  return `[0:v]${buildVideoFilter(format, clip, fadeInDuration, fadeOutDuration)},format=rgba[person-matte-video];[${personMatteInputIndex}:v]${buildPersonMatteMaskFilter(format, clip, sampleFps)}[person-matte-mask-source];[person-matte-mask-source]split=2[person-matte-mask][person-matte-outline-mask];[person-matte-video][person-matte-mask]alphamerge[person-matte-foreground];color=c=0x${personMatteSettings.outlineColor.slice(1)}:s=${outputWidth}x${outputHeight}:r=${frameRate}:d=${clip.durationSeconds},format=rgba[person-matte-outline-color];[person-matte-outline-mask]${outlineMaskFilter}[person-matte-outline-dilated];[person-matte-outline-color][person-matte-outline-dilated]alphamerge[person-matte-outline];[person-matte-outline][person-matte-foreground]overlay=format=auto${outputLabel}`
 }
 
 function buildSilenceInput(sampleRate: number, channels: number): string {
@@ -251,16 +266,15 @@ export function buildTimelineSegmentArgs(clip: NormalizedClip, outputPath: strin
     args.push('-t', String(clip.durationSeconds), '-map', '[clip-motion-v]', '-map', clip.hasAudio === false ? '1:a:0' : '0:a?', '-filter_complex', buildTimelineClipMotionFilterComplex(clip, format!, frameRate, colorInputIndex, fadeInDuration, fadeOutDuration), '-af', audioFilters.join(','), '-r', String(frameRate), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-ar', String(audioSampleRate), '-ac', String(audioChannels), '-b:a', '192k', '-avoid_negative_ts', 'make_zero', outputPath)
   } else {
     if (personMatteTrack) {
-      const personMatteSettings = getEditingPersonMatteSettings(clip.personMatte)
-      const outputWidth = evenDimension(format?.width)
-      const outputHeight = evenDimension(format?.height)
-      const canDrawOutline = personMatteSettings.outlineWidthPercent > 0 && outputWidth !== null && outputHeight !== null
-      const outlinePasses = canDrawOutline ? Math.max(1, Math.min(16, Math.round(personMatteSettings.outlineWidthPercent * Math.min(outputWidth!, outputHeight!) / 200))) : 0
-      const outlineMaskFilter = outlinePasses > 0 ? Array.from({ length: outlinePasses }, () => 'dilation=coordinates=255').join(',') : ''
-      const matteFilter = canDrawOutline
-        ? `[0:v]${buildVideoFilter(format, clip, fadeInDuration, fadeOutDuration)},format=rgba[person-matte-video];[${personMatteInputIndex}:v]${buildPersonMatteMaskFilter(format, clip, personMatteTrack.sampleFps)}[person-matte-mask-source];[person-matte-mask-source]split=2[person-matte-mask][person-matte-outline-mask];[person-matte-video][person-matte-mask]alphamerge[person-matte-foreground];color=c=0x${personMatteSettings.outlineColor.slice(1)}:s=${outputWidth}x${outputHeight}:r=${frameRate}:d=${clip.durationSeconds},format=rgba[person-matte-outline-color];[person-matte-outline-mask]${outlineMaskFilter}[person-matte-outline-dilated];[person-matte-outline-color][person-matte-outline-dilated]alphamerge[person-matte-outline];[person-matte-outline][person-matte-foreground]overlay=format=auto[person-matte-v]`
-        : `[0:v]${buildVideoFilter(format, clip, fadeInDuration, fadeOutDuration)},format=rgba[person-matte-video];[${personMatteInputIndex}:v]${buildPersonMatteMaskFilter(format, clip, personMatteTrack.sampleFps)}[person-matte-mask];[person-matte-video][person-matte-mask]alphamerge[person-matte-v]`
-      args.push('-t', String(clip.durationSeconds), '-filter_complex', matteFilter, '-map', '[person-matte-v]')
+      const usePersonMatteMotion = useMotionFilter && format !== undefined
+      const personMatteOutputLabel = usePersonMatteMotion ? '[person-matte-composite]' : '[person-matte-v]'
+      const personMatteFilter = buildPersonMatteFilterComplex(format, clip, personMatteTrack.sampleFps, personMatteInputIndex, frameRate, fadeInDuration, fadeOutDuration, personMatteOutputLabel)
+      if (usePersonMatteMotion) {
+        const colorInputIndex = personMatteInputIndex + 1
+        args.push('-f', 'lavfi', '-i', `color=c=black:s=${evenDimension(format.width)}x${evenDimension(format.height)}:r=${frameRate}:d=${clip.durationSeconds}`)
+        const motionFilter = buildTimelineMotionCompositionFilterComplex(clip, format, frameRate, colorInputIndex, 0, 0, '[person-matte-composite]', ['format=rgba'], '[person-matte-v]')
+        args.push('-t', String(clip.durationSeconds), '-map', '[person-matte-v]', '-filter_complex', `${personMatteFilter};${motionFilter}`)
+      } else args.push('-t', String(clip.durationSeconds), '-filter_complex', personMatteFilter, '-map', '[person-matte-v]')
     } else args.push('-t', String(clip.durationSeconds), '-map', '0:v:0', '-vf', buildVideoFilter(format, clip, fadeInDuration, fadeOutDuration))
     args.push('-map', clip.hasAudio === false ? '1:a:0' : '0:a?', '-af', audioFilters.join(','), '-r', String(frameRate), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-ar', String(audioSampleRate), '-ac', String(audioChannels), '-b:a', '192k', '-avoid_negative_ts', 'make_zero', outputPath)
   }
