@@ -172,7 +172,7 @@ describe('editing project files', () => {
     const project = createEditingProject(source)
     const withScript = {
       ...project,
-      scriptSegments: [{ id: 'source-segment', sourceId: source.id, sourceStartSeconds: 1, sourceEndSeconds: 2, text: 'hello', deleted: true }]
+      scriptSegments: [{ id: 'source-segment', sourceId: source.id, sourceStartSeconds: 1, sourceEndSeconds: 2, text: 'hello', words: [{ startSeconds: 0, endSeconds: 0.5, text: 'hello' }], deleted: true }]
     }
     expect(parseEditingProjectFile(serializeEditingProject(withScript))).toEqual(withScript)
   })

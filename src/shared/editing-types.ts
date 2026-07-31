@@ -142,6 +142,8 @@ export type EditingScriptSegment = {
   sourceStartSeconds: number
   sourceEndSeconds: number
   text: string
+  /** Optional true ASR word timings, relative to this script row's source start. */
+  words?: EditingCaptionWord[]
   translationText?: string
   deleted?: boolean
 }

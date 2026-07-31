@@ -159,12 +159,15 @@ function parseScriptSegment(value: unknown, sourceIds: Set<string>): EditingScri
   if (!isRecord(value) || !isNonEmptyString(value.id) || !isNonEmptyString(value.sourceId) || !sourceIds.has(value.sourceId) || !isFiniteNonNegative(value.sourceStartSeconds) || !isFiniteNonNegative(value.sourceEndSeconds) || value.sourceEndSeconds <= value.sourceStartSeconds || !isNonEmptyString(value.text)) return null
   if (value.translationText !== undefined && typeof value.translationText !== 'string') return null
   if (value.deleted !== undefined && typeof value.deleted !== 'boolean') return null
+  const words = value.words === undefined ? undefined : parseCaptionWords(value.words)
+  if (words === null) return null
   return {
     id: value.id,
     sourceId: value.sourceId,
     sourceStartSeconds: value.sourceStartSeconds,
     sourceEndSeconds: value.sourceEndSeconds,
     text: value.text,
+    ...(words === undefined ? {} : { words }),
     ...(value.translationText === undefined ? {} : { translationText: value.translationText }),
     ...(value.deleted === undefined ? {} : { deleted: value.deleted })
   }

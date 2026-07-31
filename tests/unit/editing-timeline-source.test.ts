@@ -177,6 +177,8 @@ describe('editing timeline source contracts', () => {
     expect(scriptActions).toContain('removeSourceVideoRanges')
     expect(scriptActions).toContain('updateEditingScriptText')
     expect(scriptOperations).toContain('mergeEditingScriptSegments')
+    expect(scriptOperations).toContain('getEditingScriptWordSourceRange')
+    expect(scriptOperations).toContain('removeEditingScriptWord')
     expect(scriptOperations).toContain('updateEditingSourceCaptionText')
     expect(snapping).toContain('snapEditedTime')
     expect(timeline).toContain('snapPoints={snapPoints}')
