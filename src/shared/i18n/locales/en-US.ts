@@ -55,6 +55,7 @@
       toggleInfo: 'Show or hide media info',
       toggleVision: 'Open visual search library',
       toggleDrama: 'Open AI drama studio',
+      toggleWebShare: 'Open LAN Web playback',
       openSettings: 'Open settings',
       toggleTheme: 'Toggle theme',
       closeSettings: 'Close settings',
@@ -62,6 +63,9 @@
       maximizeWindow: 'Maximize window',
       restoreWindow: 'Restore window',
       closeWindow: 'Close window'
+    },
+    webShare: {
+      title: 'LAN Web playback', description: 'Play the current playlist from a phone, tablet, or another computer on the same LAN.', start: 'Start sharing', stop: 'Stop sharing', running: 'Sharing', stopped: 'Not sharing', openUrl: 'Open in browser', copyUrl: 'Copy access URL', copied: 'Access URL copied', noFiles: 'Open a video first', sharedCount: (count: number) => `Sharing ${count} video${count === 1 ? '' : 's'}`, accessUrl: 'Access URL', securityNote: 'Only the current playlist is shared. Files stay local, and the URL expires when sharing stops.', emptyUrl: 'Start sharing to see a LAN access URL here.', close: 'Close'
     },
     emptyState: {
       title: 'AIVPlayer',

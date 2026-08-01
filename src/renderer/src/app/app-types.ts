@@ -15,6 +15,7 @@ import type {
 } from '../../../shared/media-types'
 import type { PanelMode, PlayerState } from './player-state'
 import type { EditingClipFilter, EditingClipTreatment, EditingProject, EditingTreatmentAnchor } from '../../../shared/editing-types'
+import type { WebShareStatus } from '../../../shared/web-types'
 
 export type AsrNotice = {
   success: boolean
@@ -109,6 +110,10 @@ export type AppStateSetters = {
   setIsDetectingEditingSilence: React.Dispatch<React.SetStateAction<boolean>>
   setEditingProjectFilePath: React.Dispatch<React.SetStateAction<string | null>>
   setEditingProjectStatus: React.Dispatch<React.SetStateAction<EditingProjectStatus | null>>
+  setWebShareStatus: React.Dispatch<React.SetStateAction<WebShareStatus>>
+  setIsWebShareDialogOpen: React.Dispatch<React.SetStateAction<boolean>>
+  setWebShareError: React.Dispatch<React.SetStateAction<string | null>>
+  setWebShareNotice: React.Dispatch<React.SetStateAction<string | null>>
 }
 
 export type AppModel = AppRefs &
@@ -164,6 +169,10 @@ export type AppModel = AppRefs &
     isDetectingEditingSilence: boolean
     editingProjectFilePath: string | null
     editingProjectStatus: EditingProjectStatus | null
+    webShareStatus: WebShareStatus
+    isWebShareDialogOpen: boolean
+    webShareError: string | null
+    webShareNotice: string | null
   }
 
 export type PanelActions = {

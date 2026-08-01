@@ -1,0 +1,49 @@
+.web-share-tool-button.active { color: var(--accent); }
+
+.web-share-dialog {
+  display: grid;
+  gap: 16px;
+  width: min(620px, calc(100vw - 32px));
+  min-width: 0;
+  padding: 18px;
+  color: var(--text-primary);
+  background: rgba(var(--panel-rgb), 0.97);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.46);
+}
+
+.web-share-dialog:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.web-share-header, .web-share-title, .web-share-footer, .web-share-url-actions { display: flex; align-items: center; }
+.web-share-header { justify-content: space-between; gap: 14px; }
+.web-share-title { align-items: flex-start; gap: 10px; min-width: 0; }
+.web-share-icon { display: inline-grid; flex: 0 0 auto; width: 32px; height: 32px; place-items: center; color: var(--accent); background: rgba(var(--accent-rgb), 0.1); border: 1px solid rgba(var(--accent-rgb), 0.25); border-radius: var(--radius-md); }
+.web-share-title h2 { margin: 2px 0 4px; font-size: 18px; }
+.web-share-title p { margin: 0; color: var(--text-secondary); font-size: 12px; line-height: 1.5; }
+.web-share-status { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 11px 12px; background: rgba(var(--overlay-rgb), 0.045); border: 1px solid var(--border-soft); border-radius: var(--radius-md); font-size: 12px; }
+.web-share-status span:last-child { min-width: 0; overflow-wrap: anywhere; color: var(--text-muted); }
+.web-share-status-dot { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 50%; background: var(--text-muted); }
+.web-share-status.is-running { color: var(--ok); border-color: rgba(var(--ok-rgb), 0.28); }
+.web-share-status.is-running .web-share-status-dot { background: var(--ok); box-shadow: 0 0 0 4px rgba(var(--ok-rgb), 0.12); }
+.web-share-status.is-stopped { color: var(--text-secondary); }
+.web-share-url-box { display: grid; gap: 8px; min-width: 0; padding: 12px; background: rgba(var(--accent-rgb), 0.06); border: 1px solid rgba(var(--accent-rgb), 0.24); border-radius: var(--radius-md); }
+.web-share-url-box > span { color: var(--text-muted); font-size: 11px; font-weight: 700; }
+.web-share-url-box code { min-width: 0; padding: 8px; overflow-wrap: anywhere; color: var(--accent); background: rgba(var(--stage-rgb), 0.35); border-radius: var(--radius-sm); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; line-height: 1.45; }
+.web-share-url-actions { flex-wrap: wrap; gap: 8px; }
+.web-share-url-actions button, .web-share-footer button { gap: 6px; }
+.web-share-note, .web-share-warning, .web-share-error, .web-share-notice { padding: 10px 12px; border-radius: var(--radius-md); font-size: 12px; line-height: 1.5; }
+.web-share-note { color: var(--text-muted); background: rgba(var(--overlay-rgb), 0.035); border: 1px solid var(--border-soft); }
+.web-share-warning { color: var(--accent); background: rgba(var(--accent-rgb), 0.08); border: 1px solid rgba(var(--accent-rgb), 0.24); }
+.web-share-error { color: var(--danger); background: rgba(var(--danger-rgb), 0.08); border: 1px solid rgba(var(--danger-rgb), 0.25); overflow-wrap: anywhere; }
+.web-share-notice { color: var(--ok); background: rgba(var(--ok-rgb), 0.08); border: 1px solid rgba(var(--ok-rgb), 0.25); }
+.web-share-footer { justify-content: flex-end; gap: 8px; }
+.settings-primary-button, .settings-danger-button { display: inline-flex; min-height: var(--settings-control-height, 36px); align-items: center; justify-content: center; gap: 6px; padding: 0 14px; border: 1px solid transparent; border-radius: var(--radius-md); cursor: pointer; font-size: 13px; font-weight: 750; white-space: nowrap; }
+.settings-primary-button { color: var(--stage); background: var(--accent); }
+.settings-danger-button { color: var(--danger); background: rgba(var(--danger-rgb), 0.08); border-color: rgba(var(--danger-rgb), 0.3); }
+.settings-primary-button:disabled { cursor: default; opacity: 0.5; }
+
+@media (max-width: 560px) {
+  .web-share-dialog { width: min(100%, calc(100vw - 24px)); }
+  .web-share-url-actions, .web-share-footer { align-items: stretch; flex-direction: column; }
+  .web-share-url-actions button, .web-share-footer button { width: 100%; }
+}

@@ -5,16 +5,14 @@ import { randomUUID } from 'node:crypto'
 import { basename, extname } from 'node:path'
 import { Readable } from 'node:stream'
 import type { MediaFile } from '../../shared/media-types'
+import { parseRangeHeader, type ByteRange } from '../../core/media/byte-range'
 
 export const MEDIA_PROTOCOL_SCHEME = 'aiv-media'
 
 const mediaFilePathById = new Map<string, string>()
 
-export type ByteRange = {
-  start: number
-  end: number
-  contentLength: number
-}
+export { parseRangeHeader } from '../../core/media/byte-range'
+export type { ByteRange } from '../../core/media/byte-range'
 
 const CONTENT_TYPE_BY_EXTENSION = new Map<string, string>([
   ['.mp4', 'video/mp4'],
@@ -68,57 +66,6 @@ export function registerMediaProtocolHandler(): void {
 
 export function getContentTypeForFile(filePath: string): string {
   return CONTENT_TYPE_BY_EXTENSION.get(extname(filePath).toLowerCase()) ?? 'application/octet-stream'
-}
-
-export function parseRangeHeader(rangeHeader: string | null, fileSize: number): ByteRange | null {
-  if (!rangeHeader || fileSize <= 0) {
-    return null
-  }
-
-  const match = /^bytes=(\d*)-(\d*)$/.exec(rangeHeader.trim())
-
-  if (!match) {
-    return null
-  }
-
-  const [, rawStart, rawEnd] = match
-
-  if (!rawStart && !rawEnd) {
-    return null
-  }
-
-  let start: number
-  let end: number
-
-  if (!rawStart) {
-    const suffixLength = Number(rawEnd)
-
-    if (!Number.isSafeInteger(suffixLength) || suffixLength <= 0) {
-      return null
-    }
-
-    start = Math.max(fileSize - suffixLength, 0)
-    end = fileSize - 1
-  } else {
-    start = Number(rawStart)
-    end = rawEnd ? Number(rawEnd) : fileSize - 1
-
-    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end)) {
-      return null
-    }
-  }
-
-  if (start < 0 || start >= fileSize || end < start) {
-    return null
-  }
-
-  end = Math.min(end, fileSize - 1)
-
-  return {
-    start,
-    end,
-    contentLength: end - start + 1
-  }
 }
 
 async function createFileResponse(filePath: string, request: Request): Promise<Response> {

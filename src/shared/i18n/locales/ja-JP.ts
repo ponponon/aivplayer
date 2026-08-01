@@ -55,6 +55,7 @@
       toggleInfo: 'メディア情報を表示 / 非表示',
       toggleVision: 'ビジュアル検索ライブラリを開く',
       toggleDrama: 'AI ショートドラマスタジオを開く',
+      toggleWebShare: 'LAN Web 再生を開く',
       openSettings: '設定を開く',
       toggleTheme: 'テーマを切り替え',
       closeSettings: '設定を閉じる',
@@ -62,6 +63,9 @@
       maximizeWindow: 'ウィンドウを最大化',
       restoreWindow: 'ウィンドウを元に戻す',
       closeWindow: 'ウィンドウを閉じる'
+    },
+    webShare: {
+      title: 'LAN Web 再生', description: '同じ LAN 上のスマートフォン、タブレット、別の PC で現在のプレイリストを再生します。', start: '共有を開始', stop: '共有を停止', running: '共有中', stopped: '共有していません', openUrl: 'ブラウザで開く', copyUrl: 'アクセス URL をコピー', copied: 'アクセス URL をコピーしました', noFiles: '先に動画を開いてください', sharedCount: (count: number) => `${count} 本の動画を共有中`, accessUrl: 'アクセス URL', securityNote: '現在のプレイリストだけを共有します。ファイルはローカルに残り、停止すると URL は無効になります。', emptyUrl: '共有を開始すると LAN アクセス URL が表示されます。', close: '閉じる'
     },
     emptyState: {
       title: 'AIVPlayer',

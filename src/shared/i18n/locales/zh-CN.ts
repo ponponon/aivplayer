@@ -55,6 +55,7 @@
       toggleInfo: '显示或隐藏媒体信息',
       toggleVision: '打开视觉搜索库',
       toggleDrama: '打开 AI 短剧工作室',
+      toggleWebShare: '打开局域网 Web 播放',
       openSettings: '打开设置',
       toggleTheme: '切换主题',
       closeSettings: '关闭设置',
@@ -62,6 +63,9 @@
       maximizeWindow: '最大化窗口',
       restoreWindow: '还原窗口',
       closeWindow: '关闭窗口'
+    },
+    webShare: {
+      title: '局域网 Web 播放', description: '让同一局域网内的手机、平板和其他电脑通过浏览器播放当前播放列表。', start: '开始共享', stop: '停止共享', running: '共享中', stopped: '未共享', openUrl: '在浏览器中打开', copyUrl: '复制访问地址', copied: '已复制访问地址', noFiles: '请先打开视频文件', sharedCount: (count: number) => `当前共享 ${count} 个视频`, accessUrl: '访问地址', securityNote: '只共享当前播放列表，不上传文件；停止共享后访问地址立即失效。', emptyUrl: '启动共享后，这里会显示局域网访问地址。', close: '关闭'
     },
     emptyState: {
       title: 'AIVPlayer',

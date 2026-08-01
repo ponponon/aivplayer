@@ -84,6 +84,7 @@ import type {
 } from '../shared/media-types'
 import type { LivePhotoExportRequest, LivePhotoExportResult, LivePhotoProbeResult } from '../shared/live-photo-types'
 import type { EditingProjectFileOpenResult, EditingProjectFileSaveRequest, EditingProjectFileSaveResult } from '../shared/editing-types'
+import type { WebShareStartRequest, WebShareStatus } from '../shared/web-types'
 
 const api = {
   openMediaFiles: (): Promise<MediaFile[]> => ipcRenderer.invoke(IPC_CHANNELS.OPEN_MEDIA_FILES),
@@ -130,6 +131,9 @@ const api = {
   getAppSettings: (): Promise<AppSettings> => ipcRenderer.invoke(IPC_CHANNELS.APP_GET_SETTINGS),
   setAppSettings: (settings: AppSettings): Promise<AppSettings> => ipcRenderer.invoke(IPC_CHANNELS.APP_SET_SETTINGS, settings),
   restartApp: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.APP_RELAUNCH),
+  startWebShare: (request: WebShareStartRequest): Promise<WebShareStatus> => ipcRenderer.invoke(IPC_CHANNELS.WEB_SHARE_START, request),
+  stopWebShare: (): Promise<WebShareStatus> => ipcRenderer.invoke(IPC_CHANNELS.WEB_SHARE_STOP),
+  getWebShareStatus: (): Promise<WebShareStatus> => ipcRenderer.invoke(IPC_CHANNELS.WEB_SHARE_STATUS),
   checkAsrRuntime: (): Promise<AsrRuntimeStatus> => ipcRenderer.invoke(IPC_CHANNELS.ASR_HEALTH_CHECK),
   getAsrCacheStats: (): Promise<AsrCacheStatsResult> => ipcRenderer.invoke(IPC_CHANNELS.ASR_CACHE_STATS),
   clearStaleAsrCache: (): Promise<AsrCacheClearResult> => ipcRenderer.invoke(IPC_CHANNELS.ASR_CACHE_CLEAR_STALE),

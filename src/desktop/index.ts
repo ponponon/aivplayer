@@ -19,6 +19,7 @@ import { registerWindowControlsIpc } from './ipc-window-controls'
 import { registerVisionIpc } from './ipc-vision'
 import { registerPersonMatteIpc } from './ipc-person-matte'
 import { registerDramaIpc } from './ipc-drama'
+import { registerWebIpc, stopWebServer } from './ipc-web'
 import { applyMacDockIcon, createWindow, focusMainWindow, queueIncomingMediaPaths } from './window-lifecycle'
 import { runCli } from '../cli/cli-main'
 import { readGpuAccelerationPreferenceSync } from '../core/app-settings'
@@ -71,6 +72,7 @@ function registerIpc(): void {
   registerVisionIpc()
   registerPersonMatteIpc()
   registerDramaIpc()
+  registerWebIpc()
 }
 
 if (isCliInvocation) {
@@ -106,3 +108,5 @@ if (isCliInvocation) {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
+
+app.on('before-quit', () => { void stopWebServer() })

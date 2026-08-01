@@ -1,4 +1,4 @@
-import { Clapperboard, FileText, FolderOpen, Image as ImageIcon, Info, ListChecks, Minus, Moon, PanelRight, ScanSearch, Scissors, Settings, Square, Sparkles, Sun, SunMoon, X } from 'lucide-react'
+import { Clapperboard, FileText, FolderOpen, Globe2, Image as ImageIcon, Info, ListChecks, Minus, Moon, PanelRight, ScanSearch, Scissors, Settings, Share2, Square, Sparkles, Sun, SunMoon, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { AppThemePreference } from '../../../shared/app-settings'
 import { useAppContext } from './app-context'
@@ -66,6 +66,7 @@ export function AppHeader(): React.ReactElement {
         <button className={`tool-button ${state.panelMode === 'vision' ? 'active' : ''}`} type="button" onClick={() => app.togglePanelMode('vision')} title={copy.topbar.toggleVision} aria-pressed={state.panelMode === 'vision'}><ScanSearch size={17} /></button>
         <button className={`tool-button ${state.panelMode === 'drama' ? 'active' : ''}`} type="button" onClick={() => app.togglePanelMode('drama')} title={copy.topbar.toggleDrama} aria-pressed={state.panelMode === 'drama'}><Clapperboard size={17} /></button>
         <button className={`tool-button ${state.panelMode === 'info' ? 'active' : ''}`} type="button" onClick={() => app.togglePanelMode('info')} title={copy.topbar.toggleInfo} aria-pressed={state.panelMode === 'info'}><Info size={17} /></button>
+        <button className={`tool-button web-share-tool-button ${app.webShareStatus.running ? 'active' : ''}`} type="button" onClick={app.webShareStatus.running ? app.openWebShareDialog : () => void app.startWebShare()} title={copy.topbar.toggleWebShare} aria-label={copy.topbar.toggleWebShare} aria-pressed={app.webShareStatus.running}><Share2 size={17} /></button>
         <button className="tool-button theme-tool-button" type="button" onClick={toggleTheme} title={`${copy.topbar.toggleTheme} · ${copy.settingsDialog.interface.themeOptions[themePreference]}`} aria-label={`${copy.topbar.toggleTheme} · ${copy.settingsDialog.interface.themeOptions[themePreference]}`} data-theme-control><ThemeIcon size={17} /></button>
         <button className={`tool-button ${app.isSettingsDialogOpen ? 'active' : ''}`} type="button" onClick={toggleSettings} title={app.isSettingsDialogOpen ? copy.topbar.closeSettings : copy.topbar.openSettings} aria-label={app.isSettingsDialogOpen ? copy.topbar.closeSettings : copy.topbar.openSettings} aria-pressed={app.isSettingsDialogOpen}><Settings size={17} /></button>
       </nav>

@@ -55,6 +55,7 @@
       toggleInfo: '미디어 정보 표시 / 숨기기',
       toggleVision: '시각 검색 라이브러리 열기',
       toggleDrama: 'AI 숏드라마 스튜디오 열기',
+      toggleWebShare: 'LAN Web 재생 열기',
       openSettings: '설정 열기',
       toggleTheme: '테마 전환',
       closeSettings: '설정 닫기',
@@ -62,6 +63,9 @@
       maximizeWindow: '창 최대화',
       restoreWindow: '창 복원',
       closeWindow: '창 닫기'
+    },
+    webShare: {
+      title: 'LAN Web 재생', description: '같은 LAN의 휴대폰, 태블릿 또는 다른 컴퓨터에서 현재 재생 목록을 재생합니다.', start: '공유 시작', stop: '공유 중지', running: '공유 중', stopped: '공유하지 않음', openUrl: '브라우저에서 열기', copyUrl: '접속 URL 복사', copied: '접속 URL을 복사했습니다', noFiles: '먼저 동영상을 열어 주세요', sharedCount: (count: number) => `${count}개 동영상 공유 중`, accessUrl: '접속 URL', securityNote: '현재 재생 목록만 공유합니다. 파일은 로컬에 남으며 공유를 중지하면 URL이 즉시 만료됩니다.', emptyUrl: '공유를 시작하면 LAN 접속 URL이 표시됩니다.', close: '닫기'
     },
     emptyState: {
       title: 'AIVPlayer',
