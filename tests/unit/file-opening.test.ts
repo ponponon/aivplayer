@@ -4,7 +4,10 @@ import { extractVideoFilePaths, isMediaFileAvailable, isVideoFilePath, mergeMedi
 describe('video file opening', () => {
   it('keeps the supported extensions shared by runtime and packaging', () => {
     expect(VIDEO_EXTENSIONS).toContain('mp4')
+    expect(VIDEO_EXTENSIONS).toContain('ogv')
+    expect(VIDEO_EXTENSIONS).toContain('rmvb')
     expect(isVideoFilePath('/tmp/movie.MP4')).toBe(true)
+    expect(isVideoFilePath('/tmp/camera.MTS')).toBe(true)
     expect(isVideoFilePath('/tmp/subtitles.srt')).toBe(false)
   })
 

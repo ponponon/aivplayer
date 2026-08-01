@@ -61,9 +61,9 @@ const STATIC_MIME_TYPES: Record<string, string> = {
   '.webmanifest': 'application/manifest+json; charset=utf-8'
 }
 
-const LIKELY_BROWSER_EXTENSIONS = new Set(['.mp4', '.m4v', '.webm', '.ogv', '.ogg'])
-const POSSIBLE_BROWSER_EXTENSIONS = new Set(['.mov', '.mkv', '.ts', '.m2ts', '.mpg', '.mpeg'])
-const NEEDS_TRANSCODE_EXTENSIONS = new Set(['.avi', '.flv', '.wmv'])
+const LIKELY_BROWSER_EXTENSIONS = new Set(['.mp4', '.m4v', '.webm', '.ogv'])
+const POSSIBLE_BROWSER_EXTENSIONS = new Set(['.mov', '.mkv', '.ts', '.m2ts', '.mts', '.mpg', '.mpeg'])
+const NEEDS_TRANSCODE_EXTENSIONS = new Set(['.avi', '.flv', '.wmv', '.3gp', '.3g2', '.vob', '.asf', '.mxf', '.divx', '.rm', '.rmvb'])
 
 function createMediaId(): string {
   return randomBytes(12).toString('hex')

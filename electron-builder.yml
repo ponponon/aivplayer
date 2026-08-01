@@ -65,6 +65,11 @@ fileAssociations:
     description: Play WebM videos with AIVPlayer
     mimeType: video/webm
     role: Viewer
+  - ext: ogv
+    name: Ogg video
+    description: Play Ogg videos with AIVPlayer
+    mimeType: video/ogg
+    role: Viewer
   - ext: mkv
     name: Matroska video
     description: Play Matroska videos with AIVPlayer
@@ -85,6 +90,21 @@ fileAssociations:
     description: Play Windows Media videos with AIVPlayer
     mimeType: video/x-ms-wmv
     role: Viewer
+  - ext: 3gp
+    name: 3GPP video
+    description: Play 3GPP videos with AIVPlayer
+    mimeType: video/3gpp
+    role: Viewer
+  - ext: 3g2
+    name: 3GPP2 video
+    description: Play 3GPP2 videos with AIVPlayer
+    mimeType: video/3gpp2
+    role: Viewer
+  - ext: mts
+    name: AVCHD video
+    description: Play AVCHD videos with AIVPlayer
+    mimeType: video/mp2t
+    role: Viewer
   - ext: ts
     name: MPEG transport stream
     description: Play MPEG transport streams with AIVPlayer
@@ -104,6 +124,26 @@ fileAssociations:
     name: MPEG video
     description: Play MPEG videos with AIVPlayer
     mimeType: video/mpeg
+    role: Viewer
+  - ext: vob
+    name: DVD video
+    description: Play DVD videos with AIVPlayer
+    mimeType: video/dvd
+    role: Viewer
+  - ext: asf
+    name: ASF video
+    description: Play ASF videos with AIVPlayer
+    mimeType: video/x-ms-asf
+    role: Viewer
+  - ext: mxf
+    name: MXF video
+    description: Play MXF videos with AIVPlayer
+    mimeType: application/mxf
+    role: Viewer
+  - ext: rmvb
+    name: RealMedia video
+    description: Play RealMedia videos with AIVPlayer
+    mimeType: application/vnd.rn-realmedia-vbr
     role: Viewer
   - ext: heic
     name: HEIC image

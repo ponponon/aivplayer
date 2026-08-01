@@ -7,14 +7,24 @@ export const VIDEO_EXTENSIONS = [
   'm4v',
   'mov',
   'webm',
+  'ogv',
   'mkv',
   'avi',
   'flv',
   'wmv',
   'ts',
   'm2ts',
+  'mts',
   'mpg',
-  'mpeg'
+  'mpeg',
+  '3gp',
+  '3g2',
+  'vob',
+  'asf',
+  'mxf',
+  'divx',
+  'rm',
+  'rmvb'
 ] as const
 
 const VIDEO_EXTENSION_SET = new Set<string>(VIDEO_EXTENSIONS)
