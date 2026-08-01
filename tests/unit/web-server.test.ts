@@ -89,4 +89,39 @@ describe('WebServer', () => {
     await server.stop()
     expect(await readFile(fixture.mediaPath, 'utf8')).toBe('0123456789')
   })
+
+  it('shares nested video files from selected directories and refreshes incrementally', async () => {
+    const fixture = await createFixture()
+    const sharedDirectory = join(fixture.directory, 'library')
+    const nestedDirectory = join(sharedDirectory, 'nested')
+    await mkdir(nestedDirectory, { recursive: true })
+    const firstPath = join(sharedDirectory, 'first.mp4')
+    const secondPath = join(nestedDirectory, 'second.mkv')
+    await writeFile(firstPath, 'first')
+    await writeFile(join(sharedDirectory, 'notes.txt'), 'ignore me')
+
+    const server = new WebServer({ resourcePath: fixture.directory, webRoot: fixture.webRoot, bindHost: '127.0.0.1' })
+    const status = await server.start({ filePaths: [], directoryPaths: [sharedDirectory] })
+    expect(status.sharedDirectoryCount).toBe(1)
+    expect(status.sharedFileCount).toBe(1)
+    const accessUrl = new URL(status.urls[0]!)
+    const pageResponse = await fetch(accessUrl, { redirect: 'manual' })
+    const cookie = pageResponse.headers.get('set-cookie')?.split(';')[0]
+    const firstLibraryResponse = await fetch(new URL('/api/v1/library', accessUrl), { headers: { Cookie: cookie! } })
+    const firstLibrary = await firstLibraryResponse.json() as { items: Array<{ id: string; name: string }> }
+    expect(firstLibrary.items.map((item) => item.name)).toEqual(['first.mp4'])
+    const firstId = firstLibrary.items[0]!.id
+
+    const unauthorizedRefresh = await fetch(new URL('/api/v1/library/refresh', accessUrl), { method: 'POST' })
+    expect(unauthorizedRefresh.status).toBe(401)
+
+    await writeFile(secondPath, 'second')
+    const refreshResponse = await fetch(new URL('/api/v1/library/refresh', accessUrl), { method: 'POST', headers: { Cookie: cookie! } })
+    expect(refreshResponse.status).toBe(200)
+    const refreshedLibrary = await refreshResponse.json() as { items: Array<{ id: string; name: string }> }
+    expect(refreshedLibrary.items.map((item) => item.name)).toEqual(['first.mp4', 'second.mkv'])
+    expect(refreshedLibrary.items.find((item) => item.name === 'first.mp4')?.id).toBe(firstId)
+
+    await server.stop()
+  })
 })

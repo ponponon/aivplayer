@@ -123,11 +123,11 @@ function WebApp(): ReactElement {
   const selected = items.find((item) => item.id === selectedId) ?? items[0] ?? null
   const filteredItems = items.filter((item) => item.name.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()))
 
-  const loadLibrary = useCallback(async (): Promise<void> => {
+  const loadLibrary = useCallback(async (refresh = false): Promise<void> => {
     setIsLoading(true)
     setError(null)
     try {
-      const result = await readJson<WebShareLibraryResponse>('/api/v1/library')
+      const result = await readJson<WebShareLibraryResponse>(refresh ? '/api/v1/library/refresh' : '/api/v1/library', refresh ? { method: 'POST' } : undefined)
       setItems(result.items)
       setSelectedId((current) => current && result.items.some((item) => item.id === current) ? current : result.items[0]?.id ?? null)
     } catch (reason) {
@@ -200,7 +200,7 @@ function WebApp(): ReactElement {
     <header className="web-topbar">
       <div className="brand-lockup"><span className="brand-mark">A</span><strong>AIVPlayer</strong><span>LAN Web</span></div>
       <div className="connection-status"><span className="status-dot" />局域网连接<span className="status-divider">·</span>{items.length} 个文件</div>
-      <button className="text-button" type="button" onClick={() => void loadLibrary()} disabled={isLoading}>{isLoading ? '刷新中…' : '刷新媒体库'}</button>
+      <button className="text-button" type="button" onClick={() => void loadLibrary(true)} disabled={isLoading}>{isLoading ? '刷新中…' : '刷新媒体库'}</button>
     </header>
     <main className="web-layout">
       <aside className="library-panel">

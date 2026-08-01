@@ -22,14 +22,20 @@ function getWebServer(): WebServer {
 export function registerWebIpc(): void {
   ipcMain.handle(IPC_CHANNELS.WEB_SHARE_START, async (_event, request: WebShareStartRequest): Promise<WebShareStatus> => {
     if (!request || !Array.isArray(request.filePaths)) throw new Error('共享文件列表无效')
-    return getWebServer().start({ filePaths: request.filePaths })
+    if (request.directoryPaths !== undefined && !Array.isArray(request.directoryPaths)) throw new Error('共享目录列表无效')
+    return getWebServer().start({ filePaths: request.filePaths, directoryPaths: request.directoryPaths })
   })
   ipcMain.handle(IPC_CHANNELS.WEB_SHARE_STOP, async (): Promise<WebShareStatus> => {
-    if (!webServer) return { running: false, port: null, urls: [], sharedFileCount: 0 }
+    if (!webServer) return { running: false, port: null, urls: [], sharedFileCount: 0, sharedDirectoryCount: 0, sharedDirectoryPaths: [] }
     await webServer.stop()
     return webServer.getStatus()
   })
-  ipcMain.handle(IPC_CHANNELS.WEB_SHARE_STATUS, (): WebShareStatus => webServer?.getStatus() ?? { running: false, port: null, urls: [], sharedFileCount: 0 })
+  ipcMain.handle(IPC_CHANNELS.WEB_SHARE_STATUS, (): WebShareStatus => webServer?.getStatus() ?? { running: false, port: null, urls: [], sharedFileCount: 0, sharedDirectoryCount: 0, sharedDirectoryPaths: [] })
+  ipcMain.handle(IPC_CHANNELS.WEB_SHARE_REFRESH, async (_event, request: WebShareStartRequest): Promise<WebShareStatus> => {
+    if (!request || !Array.isArray(request.filePaths)) throw new Error('共享文件列表无效')
+    if (request.directoryPaths !== undefined && !Array.isArray(request.directoryPaths)) throw new Error('共享目录列表无效')
+    return getWebServer().refresh({ filePaths: request.filePaths, directoryPaths: request.directoryPaths })
+  })
 }
 
 export async function stopWebServer(): Promise<void> {

@@ -20,6 +20,14 @@
 .web-share-icon { display: inline-grid; flex: 0 0 auto; width: 32px; height: 32px; place-items: center; color: var(--accent); background: rgba(var(--accent-rgb), 0.1); border: 1px solid rgba(var(--accent-rgb), 0.25); border-radius: var(--radius-md); }
 .web-share-title h2 { margin: 2px 0 4px; font-size: 18px; }
 .web-share-title p { margin: 0; color: var(--text-secondary); font-size: 12px; line-height: 1.5; }
+.web-share-directories { display: grid; gap: 8px; padding: 11px 12px; background: rgba(var(--overlay-rgb), 0.035); border: 1px solid var(--border-soft); border-radius: var(--radius-md); }
+.web-share-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--text-secondary); font-size: 12px; }
+.web-share-section-heading button { gap: 6px; }
+.web-share-directory-list { display: grid; gap: 5px; }
+.web-share-directory { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 6px 8px; color: var(--text-primary); background: rgba(var(--stage-rgb), 0.28); border-radius: var(--radius-sm); font-size: 11px; }
+.web-share-directory > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.web-share-directory .mini-tool-button { margin-left: auto; flex: 0 0 auto; }
+.web-share-empty-directory { color: var(--text-muted); font-size: 11px; }
 .web-share-status { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 11px 12px; background: rgba(var(--overlay-rgb), 0.045); border: 1px solid var(--border-soft); border-radius: var(--radius-md); font-size: 12px; }
 .web-share-status span:last-child { min-width: 0; overflow-wrap: anywhere; color: var(--text-muted); }
 .web-share-status-dot { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 50%; background: var(--text-muted); }

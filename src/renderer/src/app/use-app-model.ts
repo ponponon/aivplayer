@@ -65,7 +65,7 @@ export function useAppModel(): AppModel {
   const [isAddingEditingMedia, setIsAddingEditingMedia] = useState(false)
   const [isDetectingEditingScenes, setIsDetectingEditingScenes] = useState(false); const [isDetectingEditingSilence, setIsDetectingEditingSilence] = useState(false)
   const [editingProjectFilePath, setEditingProjectFilePath] = useState<string | null>(null); const [editingProjectStatus, setEditingProjectStatus] = useState<EditingProjectStatus | null>(null)
-  const [webShareStatus, setWebShareStatus] = useState<WebShareStatus>({ running: false, port: null, urls: [], sharedFileCount: 0 })
+  const [webShareStatus, setWebShareStatus] = useState<WebShareStatus>({ running: false, port: null, urls: [], sharedFileCount: 0, sharedDirectoryCount: 0, sharedDirectoryPaths: [] })
   const [isWebShareDialogOpen, setIsWebShareDialogOpen] = useState(false)
   const [webShareError, setWebShareError] = useState<string | null>(null)
   const [webShareNotice, setWebShareNotice] = useState<string | null>(null)

@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { createReadStream, existsSync } from 'node:fs'
-import { access, readFile, stat, realpath } from 'node:fs/promises'
+import { access, readFile, readdir, stat, realpath } from 'node:fs/promises'
 import { constants } from 'node:fs'
 import { networkInterfaces } from 'node:os'
 import { tmpdir } from 'node:os'
@@ -8,6 +8,7 @@ import { basename, extname, join, relative, resolve, sep } from 'node:path'
 import { randomBytes } from 'node:crypto'
 import { getContentTypeForFile } from '../media/media-protocol'
 import { parseRangeHeader } from '../../core/media/byte-range'
+import { isVideoFilePath } from '../../core/media/file-opening'
 import { createMediaProbeMetadata } from '../../core/media/media-metadata'
 import { WebTranscodeManager, type WebTranscodeInput, type WebTranscodeJobStatus } from '../../core/media/web-transcode'
 import type {
@@ -40,9 +41,15 @@ type SharedMediaRecord = {
   subtitlePath: string | null
 }
 
+type SharedRecordCollection = {
+  records: SharedMediaRecord[]
+  directoryPaths: string[]
+}
+
 const SESSION_COOKIE = 'aiv_web_session'
 const SESSION_MAX_AGE_SECONDS = 24 * 60 * 60
 const MAX_BODY_BYTES = 16 * 1024
+const MAX_SHARED_FILES = 10_000
 const MEDIA_ID_PATTERN = /^[a-z0-9-]+$/u
 
 const STATIC_MIME_TYPES: Record<string, string> = {
@@ -172,6 +179,8 @@ export class WebServer {
   private port: number | null = null
   private sessionToken: string | null = null
   private records = new Map<string, SharedMediaRecord>()
+  private directFilePaths: string[] = []
+  private sharedDirectoryPaths: string[] = []
   private readonly transcodeManager: WebTranscodeManager
 
   constructor(options: WebServerOptions) {
@@ -193,16 +202,20 @@ export class WebServer {
       running: Boolean(this.server && this.port && this.sessionToken),
       port: this.port,
       urls,
-      sharedFileCount: this.records.size
+      sharedFileCount: this.records.size,
+      sharedDirectoryCount: this.sharedDirectoryPaths.length,
+      sharedDirectoryPaths: [...this.sharedDirectoryPaths]
     }
   }
 
   async start(request: WebShareStartRequest): Promise<WebShareStatus> {
     await this.stop()
-    const records = await this.createRecords(request.filePaths)
-    if (records.length === 0) throw new Error('没有可共享的媒体文件')
+    const collection = await this.createRecords(request.filePaths, request.directoryPaths ?? [])
+    if (collection.records.length === 0) throw new Error('没有可共享的媒体文件')
 
-    this.records = new Map(records.map((record) => [record.id, record]))
+    this.records = new Map(collection.records.map((record) => [record.id, record]))
+    this.directFilePaths = [...request.filePaths]
+    this.sharedDirectoryPaths = collection.directoryPaths
     this.sessionToken = createSessionToken()
     this.server = createServer((incoming, response) => {
       void this.handleRequest(incoming, response).catch((error: unknown) => {
@@ -241,6 +254,8 @@ export class WebServer {
     this.port = null
     this.sessionToken = null
     this.records.clear()
+    this.directFilePaths = []
+    this.sharedDirectoryPaths = []
     await this.transcodeManager.stop()
     if (!server) return
     server.closeAllConnections?.()
@@ -249,8 +264,38 @@ export class WebServer {
     }).catch(() => undefined)
   }
 
-  private async createRecords(filePaths: string[]): Promise<SharedMediaRecord[]> {
-    const uniquePaths = [...new Set(filePaths.filter((filePath) => typeof filePath === 'string' && filePath.trim()).map((filePath) => resolve(filePath)))]
+  async refresh(request: WebShareStartRequest = { filePaths: this.directFilePaths, directoryPaths: this.sharedDirectoryPaths }): Promise<WebShareStatus> {
+    if (!this.server) throw new Error('Web 服务尚未启动')
+    const collection = await this.createRecords(request.filePaths, request.directoryPaths ?? [])
+    const previousRecordsByPath = new Map([...this.records.values()].map((record) => [record.path, record]))
+    const records = collection.records.map((record) => {
+      const previous = previousRecordsByPath.get(record.path)
+      return previous ? { ...record, id: previous.id } : record
+    })
+    this.records = new Map(records.map((record) => [record.id, record]))
+    this.directFilePaths = [...request.filePaths]
+    this.sharedDirectoryPaths = collection.directoryPaths
+    return this.getStatus()
+  }
+
+  private async createRecords(filePaths: string[], directoryPaths: string[]): Promise<SharedRecordCollection> {
+    const directPaths = filePaths
+      .filter((filePath) => typeof filePath === 'string' && filePath.trim())
+      .map((filePath) => resolve(filePath))
+    const uniqueDirectPaths = [...new Set(directPaths)]
+    const sharedPaths = [...uniqueDirectPaths]
+    const validDirectoryPaths: string[] = []
+    const seenDirectoryPaths = new Set<string>()
+    for (const inputDirectoryPath of [...new Set(directoryPaths.filter((directoryPath) => typeof directoryPath === 'string' && directoryPath.trim()))]) {
+      const scan = await this.scanDirectory(inputDirectoryPath)
+      if (!scan || seenDirectoryPaths.has(scan.rootPath)) continue
+      seenDirectoryPaths.add(scan.rootPath)
+      validDirectoryPaths.push(scan.rootPath)
+      sharedPaths.push(...scan.filePaths)
+      if (sharedPaths.length >= MAX_SHARED_FILES) break
+    }
+
+    const uniquePaths = [...new Set(sharedPaths)].slice(0, MAX_SHARED_FILES)
     const records: SharedMediaRecord[] = []
     for (const inputPath of uniquePaths) {
       try {
@@ -271,7 +316,41 @@ export class WebServer {
         continue
       }
     }
-    return records
+    return { records, directoryPaths: validDirectoryPaths }
+  }
+
+  private async scanDirectory(inputPath: string): Promise<{ rootPath: string; filePaths: string[] } | null> {
+    let rootPath: string
+    try {
+      rootPath = await realpath(resolve(inputPath))
+      if (!(await stat(rootPath)).isDirectory()) return null
+    } catch {
+      return null
+    }
+
+    const filePaths: string[] = []
+    const visit = async (directoryPath: string): Promise<void> => {
+      if (filePaths.length >= MAX_SHARED_FILES) return
+      let entries
+      try {
+        entries = await readdir(directoryPath, { withFileTypes: true })
+      } catch {
+        return
+      }
+      entries.sort((left, right) => left.name.localeCompare(right.name, undefined, { numeric: true, sensitivity: 'base' }))
+      for (const entry of entries) {
+        if (filePaths.length >= MAX_SHARED_FILES) return
+        const entryPath = join(directoryPath, entry.name)
+        if (entry.isDirectory()) {
+          await visit(entryPath)
+        } else if (entry.isFile() && isVideoFilePath(entryPath)) {
+          filePaths.push(entryPath)
+        }
+      }
+    }
+
+    await visit(rootPath)
+    return { rootPath, filePaths }
   }
 
   private isAuthorized(request: IncomingMessage, url: URL): boolean {
@@ -342,6 +421,12 @@ export class WebServer {
     }
 
     if (url.pathname === '/api/v1/library' && request.method === 'GET') {
+      sendJson(response, 200, await this.createLibraryResponse())
+      return
+    }
+
+    if (url.pathname === '/api/v1/library/refresh' && request.method === 'POST') {
+      await this.refresh()
       sendJson(response, 200, await this.createLibraryResponse())
       return
     }

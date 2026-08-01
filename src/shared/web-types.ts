@@ -16,10 +16,13 @@ export type WebShareStatus = {
   port: number | null
   urls: string[]
   sharedFileCount: number
+  sharedDirectoryCount: number
+  sharedDirectoryPaths: string[]
 }
 
 export type WebShareStartRequest = {
   filePaths: string[]
+  directoryPaths?: string[]
 }
 
 export type WebShareMediaItem = {

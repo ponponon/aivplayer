@@ -134,6 +134,7 @@ const api = {
   startWebShare: (request: WebShareStartRequest): Promise<WebShareStatus> => ipcRenderer.invoke(IPC_CHANNELS.WEB_SHARE_START, request),
   stopWebShare: (): Promise<WebShareStatus> => ipcRenderer.invoke(IPC_CHANNELS.WEB_SHARE_STOP),
   getWebShareStatus: (): Promise<WebShareStatus> => ipcRenderer.invoke(IPC_CHANNELS.WEB_SHARE_STATUS),
+  refreshWebShare: (request: WebShareStartRequest): Promise<WebShareStatus> => ipcRenderer.invoke(IPC_CHANNELS.WEB_SHARE_REFRESH, request),
   checkAsrRuntime: (): Promise<AsrRuntimeStatus> => ipcRenderer.invoke(IPC_CHANNELS.ASR_HEALTH_CHECK),
   getAsrCacheStats: (): Promise<AsrCacheStatsResult> => ipcRenderer.invoke(IPC_CHANNELS.ASR_CACHE_STATS),
   clearStaleAsrCache: (): Promise<AsrCacheClearResult> => ipcRenderer.invoke(IPC_CHANNELS.ASR_CACHE_CLEAR_STALE),
