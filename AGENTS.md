@@ -53,3 +53,9 @@ github 发版要注意打上 tag，github releases 页面的东西也不要忘�
 注意维护 Cloudflare pages ，如果更新的某些功能，你觉得需要让用户知道，记得更新 Cloudflare pages
 
 现在已经配置 GitHub Actions 发布到 Cloudflare pages 了
+
+-----
+
+对于新功能，你依据情况，可以加到 README.md 和 cloudflare pages （https://aivplayer.pages.dev/） 里面
+
+但不要什么细枝末节都加，要克制，有必要展示的才加
