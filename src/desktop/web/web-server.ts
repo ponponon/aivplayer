@@ -3,18 +3,21 @@ import { createReadStream, existsSync } from 'node:fs'
 import { access, readFile, stat, realpath } from 'node:fs/promises'
 import { constants } from 'node:fs'
 import { networkInterfaces } from 'node:os'
+import { tmpdir } from 'node:os'
 import { basename, extname, join, relative, resolve, sep } from 'node:path'
 import { randomBytes } from 'node:crypto'
 import { getContentTypeForFile } from '../media/media-protocol'
 import { parseRangeHeader } from '../../core/media/byte-range'
 import { createMediaProbeMetadata } from '../../core/media/media-metadata'
+import { WebTranscodeManager, type WebTranscodeInput, type WebTranscodeJobStatus } from '../../core/media/web-transcode'
 import type {
   WebBrowserSupport,
   WebShareLibraryResponse,
   WebShareMediaDetails,
   WebShareMediaItem,
   WebShareStartRequest,
-  WebShareStatus
+  WebShareStatus,
+  WebTranscodeStatus
 } from '../../shared/web-types'
 
 type WebServerOptions = {
@@ -22,6 +25,8 @@ type WebServerOptions = {
   webRoot?: string
   bindHost?: string
   env?: NodeJS.ProcessEnv
+  cacheRoot?: string
+  getFfmpegPath?: () => Promise<string | null>
 }
 
 type SharedMediaRecord = {
@@ -167,10 +172,15 @@ export class WebServer {
   private port: number | null = null
   private sessionToken: string | null = null
   private records = new Map<string, SharedMediaRecord>()
+  private readonly transcodeManager: WebTranscodeManager
 
   constructor(options: WebServerOptions) {
     this.options = options
     this.bindHost = options.bindHost ?? '0.0.0.0'
+    this.transcodeManager = new WebTranscodeManager({
+      cacheRoot: options.cacheRoot ?? join(tmpdir(), 'aivplayer-web-transcode'),
+      getFfmpegPath: options.getFfmpegPath ?? (async () => null)
+    })
   }
 
   getStatus(): WebShareStatus {
@@ -231,6 +241,7 @@ export class WebServer {
     this.port = null
     this.sessionToken = null
     this.records.clear()
+    await this.transcodeManager.stop()
     if (!server) return
     server.closeAllConnections?.()
     await new Promise<void>((resolvePromise) => {
@@ -346,9 +357,37 @@ export class WebServer {
       return
     }
 
+    const transcodeStartMatch = /^\/api\/v1\/media\/([^/]+)\/transcode$/u.exec(url.pathname)
+    if (transcodeStartMatch && request.method === 'POST') {
+      const status = await this.startTranscode(transcodeStartMatch[1]!)
+      if (!status) {
+        sendJson(response, 404, { message: '媒体文件不存在' })
+        return
+      }
+      sendJson(response, 200, status)
+      return
+    }
+
+    const transcodeStatusMatch = /^\/api\/v1\/transcode\/([^/]+)$/u.exec(url.pathname)
+    if (transcodeStatusMatch && request.method === 'GET') {
+      const status = await this.getTranscodeStatus(transcodeStatusMatch[1]!)
+      if (!status) {
+        sendJson(response, 404, { message: '媒体文件不存在' })
+        return
+      }
+      sendJson(response, 200, status)
+      return
+    }
+
     const streamMatch = /^\/media\/([^/]+)$/u.exec(url.pathname)
     if (streamMatch && (request.method === 'GET' || request.method === 'HEAD')) {
       await this.streamMedia(streamMatch[1]!, request, response)
+      return
+    }
+
+    const transcodedStreamMatch = /^\/transcoded\/([^/]+)$/u.exec(url.pathname)
+    if (transcodedStreamMatch && (request.method === 'GET' || request.method === 'HEAD')) {
+      await this.streamTranscodedMedia(transcodedStreamMatch[1]!, request, response)
       return
     }
 
@@ -411,6 +450,7 @@ export class WebServer {
       streamUrl: `/media/${record.id}`,
       subtitleUrl: record.subtitlePath ? `/subtitle/${record.id}` : null,
       browserSupport: this.resolveBrowserSupport(record.extension, metadata),
+      transcodeUrl: `/api/v1/media/${record.id}/transcode`,
       durationSeconds: metadata?.durationSeconds ?? null,
       videoCodec: metadata?.video?.codec ?? null,
       audioCodec: metadata?.audio?.codec ?? null
@@ -441,6 +481,44 @@ export class WebServer {
     }
   }
 
+  private async getTranscodeInput(id: string, durationSeconds: number | null = null): Promise<WebTranscodeInput | null> {
+    if (!MEDIA_ID_PATTERN.test(id)) return null
+    const record = this.records.get(id)
+    if (!record) return null
+    try {
+      const fileStat = await stat(record.path)
+      if (!fileStat.isFile()) return null
+    } catch {
+      return null
+    }
+    return { id, sourcePath: record.path, durationSeconds }
+  }
+
+  private async startTranscode(id: string): Promise<WebTranscodeStatus | null> {
+    const record = this.records.get(id)
+    if (!record) return null
+    const details = await this.createMediaDetails(id)
+    const input = await this.getTranscodeInput(id, details?.metadata?.durationSeconds ?? null)
+    if (!input) return null
+    return this.toWebTranscodeStatus(await this.transcodeManager.start(input), id)
+  }
+
+  private async getTranscodeStatus(id: string): Promise<WebTranscodeStatus | null> {
+    const input = await this.getTranscodeInput(id)
+    if (!input) return null
+    return this.toWebTranscodeStatus(await this.transcodeManager.getStatus(input), id)
+  }
+
+  private toWebTranscodeStatus(status: WebTranscodeJobStatus, id: string): WebTranscodeStatus {
+    return {
+      state: status.state,
+      progress: status.progress,
+      outputBytes: status.outputBytes,
+      message: status.message,
+      streamUrl: status.state === 'ready' ? `/transcoded/${id}` : null
+    }
+  }
+
   private async streamMedia(id: string, request: IncomingMessage, response: ServerResponse): Promise<void> {
     if (!MEDIA_ID_PATTERN.test(id)) {
       sendText(response, 400, 'Invalid media id')
@@ -452,9 +530,32 @@ export class WebServer {
       return
     }
 
+    await this.streamFile(record.path, record.name, record.mimeType, request, response)
+  }
+
+  private async streamTranscodedMedia(id: string, request: IncomingMessage, response: ServerResponse): Promise<void> {
+    if (!MEDIA_ID_PATTERN.test(id)) {
+      sendText(response, 400, 'Invalid media id')
+      return
+    }
+    const record = this.records.get(id)
+    const input = await this.getTranscodeInput(id)
+    if (!record || !input) {
+      sendText(response, 404, 'Media file not found')
+      return
+    }
+    const outputPath = await this.transcodeManager.getReadyOutputPath(input)
+    if (!outputPath) {
+      sendText(response, 409, '转码尚未完成')
+      return
+    }
+    await this.streamFile(outputPath, `${record.name}.mp4`, 'video/mp4', request, response)
+  }
+
+  private async streamFile(filePath: string, fileName: string, mimeType: string, request: IncomingMessage, response: ServerResponse): Promise<void> {
     let fileStat
     try {
-      fileStat = await stat(record.path)
+      fileStat = await stat(filePath)
     } catch {
       sendText(response, 404, 'Media file not found')
       return
@@ -465,8 +566,8 @@ export class WebServer {
     const commonHeaders = {
       'Accept-Ranges': 'bytes',
       'Cache-Control': 'private, no-store',
-      'Content-Disposition': getContentDisposition(record.name),
-      'Content-Type': record.mimeType,
+      'Content-Disposition': getContentDisposition(fileName),
+      'Content-Type': mimeType,
       'Last-Modified': fileStat.mtime.toUTCString(),
       'X-Content-Type-Options': 'nosniff'
     }
@@ -490,7 +591,7 @@ export class WebServer {
       return
     }
 
-    const stream = createReadStream(record.path, { start, end })
+    const stream = createReadStream(filePath, { start, end })
     const closeStream = (): void => { stream.destroy() }
     response.once('close', closeStream)
     stream.once('error', (error) => {

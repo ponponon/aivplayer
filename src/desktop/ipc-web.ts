@@ -1,13 +1,21 @@
-import { ipcMain } from 'electron'
+import { app, ipcMain } from 'electron'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type { WebShareStartRequest, WebShareStatus } from '../shared/web-types'
+import { resolveFfmpegPath } from '../core/ai/whisper-cpp-runtime'
 import { resolveResourcePath } from './desktop-services'
+import { join } from 'node:path'
 import { WebServer } from './web/web-server'
 
 let webServer: WebServer | null = null
 
 function getWebServer(): WebServer {
-  if (!webServer) webServer = new WebServer({ resourcePath: resolveResourcePath() })
+  if (!webServer) {
+    webServer = new WebServer({
+      resourcePath: resolveResourcePath(),
+      cacheRoot: join(app.getPath('userData'), 'web-transcode'),
+      getFfmpegPath: () => resolveFfmpegPath(resolveResourcePath(), process.env, undefined)
+    })
+  }
   return webServer
 }
 

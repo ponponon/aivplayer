@@ -1,6 +1,6 @@
 import { StrictMode, useCallback, useEffect, useState, type FormEvent, type ReactElement } from 'react'
 import { createRoot } from 'react-dom/client'
-import type { WebShareMediaDetails, WebShareMediaItem, WebShareLibraryResponse } from '../shared/web-types'
+import type { WebShareMediaDetails, WebShareMediaItem, WebShareLibraryResponse, WebTranscodeStatus } from '../shared/web-types'
 import './styles.css'
 
 type SessionResponse = { authenticated: boolean }
@@ -40,6 +40,11 @@ function getSupportLabel(item: WebShareMediaItem): string {
 
 function getSupportClass(item: WebShareMediaItem): string {
   return `support-${item.browserSupport}`
+}
+
+function formatProgress(progress: number | null): string {
+  if (progress == null || !Number.isFinite(progress)) return '处理中'
+  return `${Math.round(progress * 100)}%`
 }
 
 async function readJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
@@ -112,6 +117,9 @@ function WebApp(): ReactElement {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [transcodeStatus, setTranscodeStatus] = useState<WebTranscodeStatus | null>(null)
+  const [transcodePlaybackUrl, setTranscodePlaybackUrl] = useState<string | null>(null)
+  const [isTranscoding, setIsTranscoding] = useState(false)
   const selected = items.find((item) => item.id === selectedId) ?? items[0] ?? null
   const filteredItems = items.filter((item) => item.name.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()))
 
@@ -139,6 +147,33 @@ function WebApp(): ReactElement {
     }
   }
 
+  const requestTranscode = async (itemId: string): Promise<void> => {
+    if (isTranscoding) return
+    setIsTranscoding(true)
+    setError(null)
+    try {
+      let status = await readJson<WebTranscodeStatus>(`/api/v1/media/${itemId}/transcode`, { method: 'POST' })
+      for (let attempt = 0; attempt < 720 && status.state !== 'ready' && status.state !== 'error'; attempt += 1) {
+        if (selectedId === itemId) setTranscodeStatus(status)
+        await new Promise((resolve) => window.setTimeout(resolve, 1000))
+        status = await readJson<WebTranscodeStatus>(`/api/v1/transcode/${itemId}`)
+      }
+      if (selectedId === itemId) {
+        setTranscodeStatus(status)
+        if (status.state === 'ready' && status.streamUrl) {
+          setTranscodePlaybackUrl(status.streamUrl)
+          setError(null)
+        } else if (status.state === 'error') {
+          setError(status.message ?? '浏览器转码失败')
+        }
+      }
+    } catch (reason) {
+      if (selectedId === itemId) setError(reason instanceof Error ? reason.message : '无法启动浏览器转码')
+    } finally {
+      setIsTranscoding(false)
+    }
+  }
+
   useEffect(() => {
     void readJson<SessionResponse>('/api/v1/session').then((result) => {
       setAuthenticated(result.authenticated)
@@ -148,8 +183,14 @@ function WebApp(): ReactElement {
 
   useEffect(() => {
     setDetails(null)
+    setTranscodeStatus(null)
+    setTranscodePlaybackUrl(null)
     if (!selected) return
     void readJson<WebShareMediaDetails>(`/api/v1/media/${selected.id}`).then(setDetails).catch(() => undefined)
+    void readJson<WebTranscodeStatus>(`/api/v1/transcode/${selected.id}`).then((status) => {
+      setTranscodeStatus(status)
+      if (status.state === 'ready' && status.streamUrl) setTranscodePlaybackUrl(status.streamUrl)
+    }).catch(() => undefined)
   }, [selected])
 
   if (authenticated === null) return <main className="loading-page">正在连接 AIVPlayer…</main>
@@ -173,8 +214,9 @@ function WebApp(): ReactElement {
       <section className="player-panel">
         <div className="player-heading"><div><span className="panel-kicker">NOW PLAYING</span><h2 title={selected?.name}>{selected?.name ?? 'AIVPlayer LAN Web'}</h2></div><span className="player-format">{selected?.extension.replace(/^\./u, '').toUpperCase() ?? '—'}</span></div>
         <div className="video-frame">
-          {selected ? <video key={selected.id} src={selected.streamUrl} controls playsInline preload="metadata" onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} onError={() => setError('浏览器无法直接解码这个文件。可以先尝试其他视频，后续可加入转码缓存。')}><>{selected.subtitleUrl ? <track kind="subtitles" src={selected.subtitleUrl} label="外挂字幕" default /> : null}</></video> : <div className="video-empty"><span className="play-symbol">▶</span><strong>从左侧选择视频</strong><span>视频会在当前浏览器中直接播放</span></div>}
+          {selected ? <video key={`${selected.id}:${transcodePlaybackUrl ?? 'direct'}`} src={transcodePlaybackUrl ?? selected.streamUrl} controls playsInline preload="metadata" onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} onError={() => { if (!transcodePlaybackUrl) void requestTranscode(selected.id); else setError('浏览器无法播放转码结果') }}><>{selected.subtitleUrl ? <track kind="subtitles" src={selected.subtitleUrl} label="外挂字幕" default /> : null}</></video> : <div className="video-empty"><span className="play-symbol">▶</span><strong>从左侧选择视频</strong><span>视频会在当前浏览器中直接播放</span></div>}
         </div>
+        {selected && (selected.browserSupport === 'needs-transcode' || transcodeStatus?.state === 'queued' || transcodeStatus?.state === 'running' || transcodeStatus?.state === 'ready' || transcodeStatus?.state === 'error') ? <div className="transcode-panel"><div><strong>{transcodeStatus?.state === 'ready' ? '已准备浏览器版本' : '这个文件可能需要转码'}</strong><span>{transcodeStatus?.state === 'running' || transcodeStatus?.state === 'queued' ? `正在生成兼容版本 · ${formatProgress(transcodeStatus.progress)}` : '原文件保留不变，转码结果只缓存在本机。'}</span></div>{transcodeStatus?.state !== 'ready' ? <button type="button" onClick={() => void requestTranscode(selected.id)} disabled={isTranscoding}>{isTranscoding ? '转码中…' : '开始转码播放'}</button> : null}</div> : null}
         {error ? <div className="player-error" role="alert">{error}<button className="inline-button" type="button" onClick={() => setError(null)}>关闭</button></div> : null}
         <div className="player-footer"><span>{isPlaying ? '正在播放' : selected ? '已暂停' : '等待选择'}</span><span>原始文件直流 · 不上传</span></div>
       </section>

@@ -44,13 +44,18 @@ describe('WebServer', () => {
 
     const libraryResponse = await fetch(new URL('/api/v1/library', accessUrl), { headers: { Cookie: cookie! } })
     expect(libraryResponse.status).toBe(200)
-    const library = await libraryResponse.json() as { items: Array<{ id: string; subtitleUrl: string | null }> }
+    const library = await libraryResponse.json() as { items: Array<{ id: string; subtitleUrl: string | null; transcodeUrl: string }> }
     expect(library.items).toHaveLength(1)
     expect(library.items[0]?.subtitleUrl).toMatch(/^\/subtitle\//u)
+    expect(library.items[0]?.transcodeUrl).toMatch(/^\/api\/v1\/media\//u)
 
     const subtitleResponse = await fetch(new URL(library.items[0]!.subtitleUrl!, accessUrl), { headers: { Cookie: cookie! } })
     expect(subtitleResponse.status).toBe(200)
     expect(await subtitleResponse.text()).toContain('WEBVTT')
+
+    const transcodeResponse = await fetch(new URL(library.items[0]!.transcodeUrl, accessUrl), { method: 'POST', headers: { Cookie: cookie! } })
+    expect(transcodeResponse.status).toBe(200)
+    expect((await transcodeResponse.json() as { state: string }).state).toBe('queued')
 
     await server.stop()
   })
