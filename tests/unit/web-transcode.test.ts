@@ -1,4 +1,4 @@
-import { chmod, mkdtemp, readFile, stat, writeFile, rm } from 'node:fs/promises'
+import { access, chmod, mkdir, mkdtemp, readFile, stat, writeFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -33,13 +33,23 @@ describe('WebTranscodeManager', () => {
     temporaryDirectories.push(directory)
     const sourcePath = join(directory, 'source.mkv')
     const fakeFfmpegPath = join(directory, 'fake-ffmpeg')
+    const staleOutputPath = join(directory, 'cache', 'stale.mp4')
+    const staleMetadataPath = join(directory, 'cache', 'stale.json')
+    const stalePartialPath = join(directory, 'cache', 'stale.part.mp4')
     await writeFile(sourcePath, 'source')
+    await mkdir(join(directory, 'cache'), { recursive: true })
+    await writeFile(staleOutputPath, 'stale')
+    await writeFile(staleMetadataPath, '{}')
+    await writeFile(stalePartialPath, 'partial')
     await writeFile(fakeFfmpegPath, '#!/bin/sh\nout=""\nfor arg in "$@"; do out="$arg"; done\nprintf "out_time_ms=1000000\\nprogress=end\\n" >&2\nprintf "fake-mp4" > "$out"\n')
     await chmod(fakeFfmpegPath, 0o755)
-    const manager = new WebTranscodeManager({ cacheRoot: join(directory, 'cache'), getFfmpegPath: async () => fakeFfmpegPath })
+    const manager = new WebTranscodeManager({ cacheRoot: join(directory, 'cache'), getFfmpegPath: async () => fakeFfmpegPath, maxCacheAgeMs: -1 })
     const input: WebTranscodeInput = { id: 'cache-hit', sourcePath, durationSeconds: 2 }
 
     await manager.start(input)
+    await expect(access(staleOutputPath)).rejects.toThrow()
+    await expect(access(staleMetadataPath)).rejects.toThrow()
+    await expect(access(stalePartialPath)).rejects.toThrow()
     let status = await manager.getStatus(input)
     for (let attempt = 0; attempt < 200 && status.state !== 'ready'; attempt += 1) {
       await new Promise((resolve) => setTimeout(resolve, 20))
@@ -54,6 +64,33 @@ describe('WebTranscodeManager', () => {
     const cachedStatus = await manager.getStatus(input)
     expect(cachedStatus.state).toBe('ready')
     expect(cachedStatus.outputPath).toBe(status.outputPath)
+
+    await writeFile(sourcePath, 'changed-source')
+    const changedStart = await manager.start(input)
+    expect(changedStart.state).toBe('queued')
+    let changedStatus = await manager.getStatus(input)
+    for (let attempt = 0; attempt < 200 && changedStatus.state !== 'ready'; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 20))
+      changedStatus = await manager.getStatus(input)
+    }
+    expect(changedStatus.state).toBe('ready')
+    expect(changedStatus.outputPath).not.toBe(status.outputPath)
+    await manager.stop()
+  })
+
+  it('rejects a transcode when the cache volume has insufficient free space', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'aivplayer-web-transcode-disk-'))
+    temporaryDirectories.push(directory)
+    const sourcePath = join(directory, 'source.mkv')
+    await writeFile(sourcePath, 'source')
+    const manager = new WebTranscodeManager({
+      cacheRoot: join(directory, 'cache'),
+      getFfmpegPath: async () => '/not-used/ffmpeg',
+      getAvailableBytes: async () => 1,
+      minFreeBytes: 1024
+    })
+
+    await expect(manager.start({ id: 'disk-space', sourcePath, durationSeconds: null })).rejects.toThrow('磁盘空间不足')
     await manager.stop()
   })
 })

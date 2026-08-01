@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { mkdir, rename, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, rename, rm, stat, statfs, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 export type WebTranscodeInput = {
@@ -22,6 +22,10 @@ export type WebTranscodeJobStatus = {
 type WebTranscodeManagerOptions = {
   cacheRoot: string
   getFfmpegPath: () => Promise<string | null>
+  minFreeBytes?: number
+  maxCacheBytes?: number
+  maxCacheAgeMs?: number
+  getAvailableBytes?: (directoryPath: string) => Promise<number>
 }
 
 type CacheEntry = {
@@ -43,6 +47,9 @@ type WebTranscodeJob = {
 }
 
 const TRANSCODE_PROFILE_VERSION = 'web-mp4-h264-aac-v1'
+const DEFAULT_MIN_FREE_BYTES = 256 * 1024 * 1024
+const DEFAULT_MAX_CACHE_BYTES = 20 * 1024 * 1024 * 1024
+const DEFAULT_MAX_CACHE_AGE_MS = 30 * 24 * 60 * 60 * 1000
 
 function isCompleteProgress(progress: number | null): number | null {
   if (progress == null || !Number.isFinite(progress)) return null
@@ -66,10 +73,10 @@ export class WebTranscodeManager {
   }
 
   async getStatus(input: WebTranscodeInput): Promise<WebTranscodeJobStatus> {
-    const existingJob = this.jobs.get(input.id)
+    const entry = await this.getCacheEntry(input)
+    const existingJob = this.jobs.get(entry.outputPath)
     if (existingJob) return this.toStatus(existingJob)
 
-    const entry = await this.getCacheEntry(input)
     if (await isFile(entry.outputPath)) {
       return { state: 'ready', progress: 1, outputBytes: await this.getFileSize(entry.outputPath), message: null, outputPath: entry.outputPath }
     }
@@ -77,11 +84,11 @@ export class WebTranscodeManager {
   }
 
   async start(input: WebTranscodeInput): Promise<WebTranscodeJobStatus> {
-    const existingJob = this.jobs.get(input.id)
+    const entry = await this.getCacheEntry(input)
+    const existingJob = this.jobs.get(entry.outputPath)
     if (existingJob && (existingJob.state === 'queued' || existingJob.state === 'running')) return this.toStatus(existingJob)
     if (existingJob?.state === 'ready') return this.toStatus(existingJob)
 
-    const entry = await this.getCacheEntry(input)
     if (await isFile(entry.outputPath)) {
       const readyJob: WebTranscodeJob = {
         input,
@@ -94,11 +101,13 @@ export class WebTranscodeManager {
         stderrBuffer: '',
         done: null
       }
-      this.jobs.set(input.id, readyJob)
+      this.jobs.set(entry.outputPath, readyJob)
       return this.toStatus(readyJob)
     }
 
     await mkdir(this.options.cacheRoot, { recursive: true })
+    await this.pruneCache()
+    await this.assertSufficientDiskSpace(input)
     await rm(entry.partialPath, { force: true })
     const job: WebTranscodeJob = {
       input,
@@ -111,7 +120,7 @@ export class WebTranscodeManager {
       stderrBuffer: '',
       done: null
     }
-    this.jobs.set(input.id, job)
+    this.jobs.set(entry.outputPath, job)
     job.done = this.run(job)
     return this.toStatus(job)
   }
@@ -159,6 +168,105 @@ export class WebTranscodeManager {
     } catch {
       return 0
     }
+  }
+
+  private async assertSufficientDiskSpace(input: WebTranscodeInput): Promise<void> {
+    const sourceSize = (await stat(input.sourcePath)).size
+    const getAvailableBytes = this.options.getAvailableBytes ?? (async (directoryPath: string): Promise<number> => {
+      const filesystem = await statfs(directoryPath)
+      return Number(filesystem.bavail) * Number(filesystem.bsize)
+    })
+    let availableBytes: number
+    try {
+      availableBytes = await getAvailableBytes(this.options.cacheRoot)
+    } catch {
+      // Some mounted or older filesystems may not expose statfs details. The
+      // transcode itself still reports a normal FFmpeg error if writing fails.
+      return
+    }
+    const minimumFreeBytes = this.options.minFreeBytes ?? DEFAULT_MIN_FREE_BYTES
+    const requiredBytes = sourceSize + minimumFreeBytes
+    if (availableBytes < requiredBytes) {
+      throw new Error(`磁盘空间不足：转码至少需要约 ${this.formatBytes(requiredBytes)} 可用空间，当前约 ${this.formatBytes(availableBytes)}`)
+    }
+  }
+
+  private async pruneCache(): Promise<void> {
+    const maxCacheBytes = this.options.maxCacheBytes ?? DEFAULT_MAX_CACHE_BYTES
+    const maxCacheAgeMs = this.options.maxCacheAgeMs ?? DEFAULT_MAX_CACHE_AGE_MS
+    const activePaths = new Set([...this.jobs.values()].flatMap((job) => [job.entry.outputPath, job.entry.partialPath, job.entry.metadataPath]))
+    let entries
+    try {
+      entries = await readdir(this.options.cacheRoot, { withFileTypes: true })
+    } catch {
+      return
+    }
+
+    const cacheFiles: Array<{ path: string; metadataPath: string; size: number; modifiedAt: number }> = []
+    const partialFiles: Array<{ path: string; modifiedAt: number }> = []
+    for (const directoryEntry of entries) {
+      if (!directoryEntry.isFile()) continue
+      if (directoryEntry.name.endsWith('.part.mp4')) {
+        const partialPath = join(this.options.cacheRoot, directoryEntry.name)
+        if (activePaths.has(partialPath)) continue
+        try {
+          partialFiles.push({ path: partialPath, modifiedAt: (await stat(partialPath)).mtimeMs })
+        } catch {
+          // The file may disappear between readdir and stat.
+        }
+        continue
+      }
+      if (!directoryEntry.name.endsWith('.mp4')) continue
+      const outputPath = join(this.options.cacheRoot, directoryEntry.name)
+      if (activePaths.has(outputPath)) continue
+      try {
+        const fileStat = await stat(outputPath)
+        cacheFiles.push({
+          path: outputPath,
+          metadataPath: outputPath.slice(0, -'.mp4'.length) + '.json',
+          size: fileStat.size,
+          modifiedAt: fileStat.mtimeMs
+        })
+      } catch {
+        continue
+      }
+    }
+
+    const removeCacheFile = async (cacheFile: { path: string; metadataPath: string }): Promise<void> => {
+      await Promise.all([
+        rm(cacheFile.path, { force: true }),
+        rm(cacheFile.metadataPath, { force: true }),
+        rm(`${cacheFile.path.slice(0, -'.mp4'.length)}.part.mp4`, { force: true })
+      ])
+    }
+
+    const staleBefore = Date.now() - maxCacheAgeMs
+    await Promise.all(partialFiles.filter((candidate) => candidate.modifiedAt < staleBefore).map((candidate) => rm(candidate.path, { force: true })))
+    for (const cacheFile of cacheFiles.filter((candidate) => candidate.modifiedAt < staleBefore)) {
+      await removeCacheFile(cacheFile)
+    }
+
+    const retainedFiles = cacheFiles
+      .filter((candidate) => candidate.modifiedAt >= staleBefore)
+      .sort((left, right) => left.modifiedAt - right.modifiedAt)
+    let totalBytes = retainedFiles.reduce((total, cacheFile) => total + cacheFile.size, 0)
+    for (const cacheFile of retainedFiles) {
+      if (totalBytes <= maxCacheBytes) break
+      await removeCacheFile(cacheFile)
+      totalBytes -= cacheFile.size
+    }
+  }
+
+  private formatBytes(bytes: number): string {
+    if (!Number.isFinite(bytes) || bytes < 1024) return `${Math.max(0, Math.round(bytes))} B`
+    const units = ['KB', 'MB', 'GB', 'TB']
+    let value = bytes
+    let unitIndex = -1
+    do {
+      value /= 1024
+      unitIndex += 1
+    } while (value >= 1024 && unitIndex < units.length - 1)
+    return `${value.toFixed(value >= 10 ? 0 : 1)} ${units[unitIndex]}`
   }
 
   private async run(job: WebTranscodeJob): Promise<void> {
