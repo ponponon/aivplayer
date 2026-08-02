@@ -47,6 +47,13 @@ jobs:
       - name: Build & Package
         run: npm run build && npx electron-builder --publish never
 
+      - name: Verify packaged Web and FFmpeg resources
+        shell: bash
+        run: |
+          resource_dir="$(find release -type d -path '*/AIVPlayer.app/Contents/Resources' -print -quit)"
+          test -n "$resource_dir"
+          npm run release:check-packaged-resources -- --resource-dir "$resource_dir"
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -86,6 +93,13 @@ jobs:
 
       - name: Build & Package
         run: npm run build && npx electron-builder --publish never
+
+      - name: Verify packaged Web and FFmpeg resources
+        shell: pwsh
+        run: |
+          $resourceDir = Get-ChildItem -Path release -Directory -Recurse -Filter resources | Select-Object -First 1
+          if ($null -eq $resourceDir) { throw 'Packaged resources directory was not found.' }
+          npm run release:check-packaged-resources -- --resource-dir $resourceDir.FullName
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
@@ -127,6 +141,13 @@ jobs:
 
       - name: Build & Package
         run: npm run build && npx electron-builder --publish never
+
+      - name: Verify packaged Web and FFmpeg resources
+        shell: bash
+        run: |
+          resource_dir="release/linux-unpacked/resources"
+          test -d "$resource_dir"
+          npm run release:check-packaged-resources -- --resource-dir "$resource_dir"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
