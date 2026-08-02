@@ -42,4 +42,17 @@ describe('checkPackagedResources', () => {
     expect(result.missing).toContain(join(resourcePath, 'web', 'assets'))
     expect(result.missing).not.toContain(join(resourcePath, 'ffmpeg', 'ffmpeg.exe'))
   })
+
+  it('accepts explicit platform names for cross-platform artifact checks', async () => {
+    const resourcePath = await createResourceFixture()
+    await rm(join(resourcePath, 'ffmpeg', 'ffmpeg'), { force: true })
+    await rm(join(resourcePath, 'ffmpeg', 'ffprobe'), { force: true })
+    await writeFile(join(resourcePath, 'ffmpeg', 'ffmpeg.exe'), 'ffmpeg')
+    await writeFile(join(resourcePath, 'ffmpeg', 'ffprobe.exe'), 'ffprobe')
+
+    const result = await checkPackagedResources({ resourcePath, platform: 'win32' })
+
+    expect(result.ok).toBe(true)
+    expect(result.checked).toContain(join(resourcePath, 'ffmpeg', 'ffmpeg.exe'))
+  })
 })

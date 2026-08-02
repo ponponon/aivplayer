@@ -79,8 +79,17 @@ function getResourcePathFromArgs(args: string[]): string {
   return value || process.env.AIVPLAYER_PACKAGED_RESOURCE_DIR || resolve('release')
 }
 
+function getPlatformFromArgs(args: string[]): NodeJS.Platform {
+  const argumentIndex = args.indexOf('--platform')
+  const value = argumentIndex >= 0 ? args[argumentIndex + 1] : undefined
+  if (!value) return process.platform
+  if (value === 'darwin' || value === 'win32' || value === 'linux') return value
+  throw new Error(`Unsupported packaged resource platform: ${value}`)
+}
+
 async function main(): Promise<void> {
-  const result = await checkPackagedResources({ resourcePath: getResourcePathFromArgs(process.argv.slice(2)) })
+  const args = process.argv.slice(2)
+  const result = await checkPackagedResources({ resourcePath: getResourcePathFromArgs(args), platform: getPlatformFromArgs(args) })
   console.log(result.message)
   if (!result.ok) process.exitCode = 1
 }
