@@ -10,6 +10,13 @@ extraFiles:
 files:
   - out/**
   - package.json
+  # LanceDB publishes optional embedding runtimes inside its own package. The
+  # application uses the root HuggingFace runtime, so excluding these duplicate
+  # copies keeps installers from carrying two incompatible ONNX stacks.
+  - '!node_modules/@lancedb/lancedb/node_modules/@huggingface/**'
+  - '!node_modules/@lancedb/lancedb/node_modules/@img/**'
+  - '!node_modules/@lancedb/lancedb/node_modules/onnxruntime-*/**'
+  - '!node_modules/@lancedb/lancedb/node_modules/sharp/**'
 asarUnpack:
   - "**/node_modules/sharp/**/*"
   - "**/node_modules/@img/**/*"

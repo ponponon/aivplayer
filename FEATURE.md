@@ -67,6 +67,7 @@
 - GitHub Actions 已接入自动发布工作流：推送 `v*` 标签时自动构建 macOS、Windows、Linux 安装包，创建 GitHub Release 并上传全部产物；也可以通过 workflow dispatch 输入 Release tag 手动重跑，tag 会真正传递给 Release action。桌面平台构建显式关闭 electron-builder 的隐式发布，避免构建阶段意外触发重复发布。
 - 三个平台的发布工作流在 electron-builder 完成后会检查安装包资源目录，确认 Web `index.html`、Web 静态资源、平台对应的 FFmpeg 和 FFprobe 都已进入最终产物，避免出现“安装包生成成功但局域网 Web 或转码不可用”的漏包。
 - 发布资源检查脚本支持显式传入 `--platform darwin|win32|linux`，可以在任意一台开发机上复核其他平台的安装包目录结构。
+- electron-builder 会排除 LanceDB 包内重复嵌套的 HuggingFace、ONNX Runtime、sharp 和平台无关图片依赖，复用应用根目录已经验证过的运行时，减少安装包体积并避免携带两套不兼容的推理依赖；LanceDB 当前平台原生模块仍会保留。
 - 新增无界面 `aivcli` 入口，复用 AIVPlayer 的 ASR、字幕翻译、媒体信息和视觉影视库服务；支持 `doctor`、`asr`、`subtitle convert/translate`、`media info`、`library scan/index/status/search`，默认复用已有字幕缓存，并提供 `--json` 输出，便于终端和自动化脚本使用。
 - `aivcli batch` 支持对目录或多个视频顺序执行 ASR、字幕翻译和影视库索引；任务可用 `--asr`、`--translate`、`--index` 组合，默认单个视频失败后继续，支持 `--fail-fast`、`--recursive`、`--force`、`--output-dir` 和 `--json`；只做翻译时会读取视频旁边同名的 `.vtt` 文件。
 - `aivcli batch` 支持断点续跑：状态默认保存到 AIVPlayer 用户数据目录，也可通过 `--state-file` 指定；`--resume` 会校验任务参数并跳过已完成且产物仍存在的阶段，视频大小或修改时间变化会自动失效对应状态，`--reset-state` 可安全创建新的任务状态。
