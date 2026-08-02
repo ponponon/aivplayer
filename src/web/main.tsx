@@ -1,4 +1,4 @@
-import { StrictMode, useCallback, useEffect, useState, type FormEvent, type ReactElement } from 'react'
+import { StrictMode, useCallback, useEffect, useRef, useState, type FormEvent, type ReactElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { WebShareMediaDetails, WebShareMediaItem, WebShareLibraryResponse, WebTranscodeStatus } from '../shared/web-types'
 import './styles.css'
@@ -119,8 +119,16 @@ function WebApp(): ReactElement {
   const [isPlaying, setIsPlaying] = useState(false)
   const [transcodeStatus, setTranscodeStatus] = useState<WebTranscodeStatus | null>(null)
   const [transcodePlaybackUrl, setTranscodePlaybackUrl] = useState<string | null>(null)
-  const [isTranscoding, setIsTranscoding] = useState(false)
+  const [transcodingIds, setTranscodingIds] = useState<Set<string>>(() => new Set())
+  const transcodingIdsRef = useRef<Set<string>>(new Set())
+  const selectedIdRef = useRef<string | null>(null)
+  const detailsRequestIdRef = useRef(0)
   const selected = items.find((item) => item.id === selectedId) ?? items[0] ?? null
+  selectedIdRef.current = selected?.id ?? null
+  const selectedWithDetails = selected && details?.id === selected.id
+    ? { ...selected, browserSupport: details.browserSupport }
+    : selected
+  const isTranscoding = selected ? transcodingIds.has(selected.id) : false
   const filteredItems = items.filter((item) => item.name.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()))
 
   const loadLibrary = useCallback(async (refresh = false): Promise<void> => {
@@ -148,17 +156,19 @@ function WebApp(): ReactElement {
   }
 
   const requestTranscode = async (itemId: string): Promise<void> => {
-    if (isTranscoding) return
-    setIsTranscoding(true)
+    if (transcodingIdsRef.current.has(itemId)) return
+    transcodingIdsRef.current.add(itemId)
+    setTranscodingIds((current) => new Set(current).add(itemId))
     setError(null)
     try {
       let status = await readJson<WebTranscodeStatus>(`/api/v1/media/${itemId}/transcode`, { method: 'POST' })
+      if (selectedIdRef.current === itemId) setTranscodeStatus(status)
       for (let attempt = 0; attempt < 720 && status.state !== 'ready' && status.state !== 'error'; attempt += 1) {
-        if (selectedId === itemId) setTranscodeStatus(status)
         await new Promise((resolve) => window.setTimeout(resolve, 1000))
         status = await readJson<WebTranscodeStatus>(`/api/v1/transcode/${itemId}`)
+        if (selectedIdRef.current === itemId) setTranscodeStatus(status)
       }
-      if (selectedId === itemId) {
+      if (selectedIdRef.current === itemId) {
         setTranscodeStatus(status)
         if (status.state === 'ready' && status.streamUrl) {
           setTranscodePlaybackUrl(status.streamUrl)
@@ -168,9 +178,14 @@ function WebApp(): ReactElement {
         }
       }
     } catch (reason) {
-      if (selectedId === itemId) setError(reason instanceof Error ? reason.message : '无法启动浏览器转码')
+      if (selectedIdRef.current === itemId) setError(reason instanceof Error ? reason.message : '无法启动浏览器转码')
     } finally {
-      setIsTranscoding(false)
+      transcodingIdsRef.current.delete(itemId)
+      setTranscodingIds((current) => {
+        const next = new Set(current)
+        next.delete(itemId)
+        return next
+      })
     }
   }
 
@@ -182,12 +197,17 @@ function WebApp(): ReactElement {
   }, [loadLibrary])
 
   useEffect(() => {
+    const requestId = detailsRequestIdRef.current + 1
+    detailsRequestIdRef.current = requestId
     setDetails(null)
     setTranscodeStatus(null)
     setTranscodePlaybackUrl(null)
     if (!selected) return
-    void readJson<WebShareMediaDetails>(`/api/v1/media/${selected.id}`).then(setDetails).catch(() => undefined)
+    void readJson<WebShareMediaDetails>(`/api/v1/media/${selected.id}`).then((nextDetails) => {
+      if (detailsRequestIdRef.current === requestId) setDetails(nextDetails)
+    }).catch(() => undefined)
     void readJson<WebTranscodeStatus>(`/api/v1/transcode/${selected.id}`).then((status) => {
+      if (detailsRequestIdRef.current !== requestId) return
       setTranscodeStatus(status)
       if (status.state === 'ready' && status.streamUrl) setTranscodePlaybackUrl(status.streamUrl)
     }).catch(() => undefined)
@@ -216,11 +236,11 @@ function WebApp(): ReactElement {
         <div className="video-frame">
           {selected ? <video key={`${selected.id}:${transcodePlaybackUrl ?? 'direct'}`} src={transcodePlaybackUrl ?? selected.streamUrl} controls playsInline preload="metadata" onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} onError={() => { if (!transcodePlaybackUrl) void requestTranscode(selected.id); else setError('浏览器无法播放转码结果') }}><>{selected.subtitleUrl ? <track kind="subtitles" src={selected.subtitleUrl} label="外挂字幕" default /> : null}</></video> : <div className="video-empty"><span className="play-symbol">▶</span><strong>从左侧选择视频</strong><span>视频会在当前浏览器中直接播放</span></div>}
         </div>
-        {selected && (selected.browserSupport === 'needs-transcode' || transcodeStatus?.state === 'queued' || transcodeStatus?.state === 'running' || transcodeStatus?.state === 'ready' || transcodeStatus?.state === 'error') ? <div className="transcode-panel"><div><strong>{transcodeStatus?.state === 'ready' ? '已准备浏览器版本' : '这个文件可能需要转码'}</strong><span>{transcodeStatus?.state === 'running' || transcodeStatus?.state === 'queued' ? `正在生成兼容版本 · ${formatProgress(transcodeStatus.progress)}` : '原文件保留不变，转码结果只缓存在本机。'}</span></div>{transcodeStatus?.state !== 'ready' ? <button type="button" onClick={() => void requestTranscode(selected.id)} disabled={isTranscoding}>{isTranscoding ? '转码中…' : '开始转码播放'}</button> : null}</div> : null}
+        {selectedWithDetails && (selectedWithDetails.browserSupport === 'needs-transcode' || transcodeStatus?.state === 'queued' || transcodeStatus?.state === 'running' || transcodeStatus?.state === 'ready' || transcodeStatus?.state === 'error') ? <div className="transcode-panel"><div><strong>{transcodeStatus?.state === 'ready' ? '已准备浏览器版本' : '这个文件可能需要转码'}</strong><span>{transcodeStatus?.state === 'running' || transcodeStatus?.state === 'queued' ? `正在生成兼容版本 · ${formatProgress(transcodeStatus.progress)}` : '原文件保留不变，转码结果只缓存在本机。'}</span></div>{transcodeStatus?.state !== 'ready' ? <button type="button" onClick={() => void requestTranscode(selectedWithDetails.id)} disabled={isTranscoding}>{isTranscoding ? '转码中…' : '开始转码播放'}</button> : null}</div> : null}
         {error ? <div className="player-error" role="alert">{error}<button className="inline-button" type="button" onClick={() => setError(null)}>关闭</button></div> : null}
         <div className="player-footer"><span>{isPlaying ? '正在播放' : selected ? '已暂停' : '等待选择'}</span><span>原始文件直流 · 不上传</span></div>
       </section>
-      <DetailsPanel item={selected} details={details} />
+      <DetailsPanel item={selectedWithDetails} details={details} />
     </main>
   </div>
 }
