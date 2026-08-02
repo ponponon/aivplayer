@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, truncate, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -88,6 +88,29 @@ describe('WebServer', () => {
 
     await server.stop()
     expect(await readFile(fixture.mediaPath, 'utf8')).toBe('0123456789')
+  })
+
+  it('streams a sparse 5 GiB source by range without reading the whole file', async () => {
+    const fixture = await createFixture()
+    const fiveGiB = 5 * 1024 ** 3
+    await truncate(fixture.mediaPath, fiveGiB)
+    const server = new WebServer({ resourcePath: fixture.directory, webRoot: fixture.webRoot, bindHost: '127.0.0.1' })
+    const status = await server.start({ filePaths: [fixture.mediaPath] })
+    const accessUrl = new URL(status.urls[0]!)
+    const pageResponse = await fetch(accessUrl, { redirect: 'manual' })
+    const cookie = pageResponse.headers.get('set-cookie')?.split(';')[0]
+    const libraryResponse = await fetch(new URL('/api/v1/library', accessUrl), { headers: { Cookie: cookie! } })
+    const library = await libraryResponse.json() as { items: Array<{ streamUrl: string; sizeBytes: number }> }
+    const streamUrl = new URL(library.items[0]!.streamUrl, accessUrl)
+    const rangeStart = fiveGiB - 16
+    const rangeResponse = await fetch(streamUrl, { headers: { Cookie: cookie!, Range: `bytes=${rangeStart}-${fiveGiB - 1}` } })
+
+    expect(library.items[0]?.sizeBytes).toBe(fiveGiB)
+    expect(rangeResponse.status).toBe(206)
+    expect(rangeResponse.headers.get('content-range')).toBe(`bytes ${rangeStart}-${fiveGiB - 1}/${fiveGiB}`)
+    expect((await rangeResponse.arrayBuffer()).byteLength).toBe(16)
+
+    await server.stop()
   })
 
   it('shares nested video files from selected directories and refreshes incrementally', async () => {
