@@ -6,6 +6,7 @@ import { basename, extname } from 'node:path'
 import { Readable } from 'node:stream'
 import type { MediaFile } from '../../shared/media-types'
 import { parseRangeHeader, type ByteRange } from '../../core/media/byte-range'
+import { getContentTypeForFile } from '../../core/media/media-mime'
 
 export const MEDIA_PROTOCOL_SCHEME = 'aiv-media'
 
@@ -13,71 +14,6 @@ const mediaFilePathById = new Map<string, string>()
 
 export { parseRangeHeader } from '../../core/media/byte-range'
 export type { ByteRange } from '../../core/media/byte-range'
-
-const CONTENT_TYPE_BY_EXTENSION = new Map<string, string>([
-  ['.mp4', 'video/mp4'],
-  ['.m4v', 'video/mp4'],
-  ['.mov', 'video/quicktime'],
-  ['.webm', 'video/webm'],
-  ['.ogv', 'video/ogg'],
-  ['.mkv', 'video/x-matroska'],
-  ['.avi', 'video/x-msvideo'],
-  ['.flv', 'video/x-flv'],
-  ['.wmv', 'video/x-ms-wmv'],
-  ['.ts', 'video/mp2t'],
-  ['.m2ts', 'video/mp2t'],
-  ['.mts', 'video/mp2t'],
-  ['.mpg', 'video/mpeg'],
-  ['.mpeg', 'video/mpeg'],
-  ['.mpe', 'video/mpeg'],
-  ['.m1v', 'video/mpeg'],
-  ['.m2v', 'video/mpeg'],
-  ['.m2p', 'video/mp2t'],
-  ['.m2t', 'video/mp2t'],
-  ['.mpegts', 'video/mp2t'],
-  ['.mpv', 'video/mpeg'],
-  ['.3gp', 'video/3gpp'],
-  ['.3g2', 'video/3gpp2'],
-  ['.3gpp', 'video/3gpp'],
-  ['.3gpp2', 'video/3gpp2'],
-  ['.vob', 'video/dvd'],
-  ['.asf', 'video/x-ms-asf'],
-  ['.mxf', 'application/mxf'],
-  ['.divx', 'video/divx'],
-  ['.rm', 'application/vnd.rn-realmedia'],
-  ['.rmvb', 'application/vnd.rn-realmedia-vbr'],
-  ['.f4v', 'video/x-f4v'],
-  ['.ogm', 'video/ogg'],
-  ['.ismv', 'video/iso.segment'],
-  ['.nut', 'video/x-nut'],
-  ['.dv', 'video/x-dv'],
-  ['.dif', 'video/x-dv'],
-  ['.mjpeg', 'video/x-motion-jpeg'],
-  ['.mjpg', 'video/x-motion-jpeg'],
-  ['.bik', 'video/vnd.radgametools.bink'],
-  ['.svi', 'video/x-svi'],
-  ['.tod', 'video/mpeg'],
-  ['.mod', 'video/mpeg'],
-  ['.y4m', 'video/x-yuv4mpeg'],
-  ['.h264', 'video/h264'],
-  ['.264', 'video/h264'],
-  ['.h265', 'video/h265'],
-  ['.265', 'video/h265'],
-  ['.hevc', 'video/h265'],
-  ['.avc', 'video/h264'],
-  ['.vc1', 'video/vc1'],
-  ['.ivf', 'video/x-ivf'],
-  ['.amv', 'video/x-amv'],
-  ['.mp3', 'audio/mpeg'],
-  ['.m4a', 'audio/mp4'],
-  ['.aac', 'audio/aac'],
-  ['.wav', 'audio/wav'],
-  ['.vtt', 'text/vtt; charset=utf-8'],
-  ['.srt', 'application/x-subrip; charset=utf-8']
-  , ['.png', 'image/png']
-  , ['.jpg', 'image/jpeg']
-  , ['.jpeg', 'image/jpeg']
-])
 
 export function registerMediaProtocolScheme(): void {
   protocol.registerSchemesAsPrivileged([
@@ -107,9 +43,7 @@ export function registerMediaProtocolHandler(): void {
   })
 }
 
-export function getContentTypeForFile(filePath: string): string {
-  return CONTENT_TYPE_BY_EXTENSION.get(extname(filePath).toLowerCase()) ?? 'application/octet-stream'
-}
+export { getContentTypeForFile } from '../../core/media/media-mime'
 
 async function createFileResponse(filePath: string, request: Request): Promise<Response> {
   const fileStat = await stat(filePath)

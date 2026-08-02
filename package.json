@@ -23,6 +23,7 @@
     "release:check-heif-runtime": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/check-heif-runtime.ts",
     "release:build-heif-source": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/build-heif-source.ts",
     "smoke:open-video": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-open-video.ts",
+    "smoke:web-format-matrix": "node scripts/run-web-format-matrix.mjs",
     "smoke:image-editor": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-image-editor.ts",
     "smoke:settings-dialog": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-settings-dialog.ts",
     "smoke:settings-dialog:en": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-settings-dialog.ts --locale en-US",

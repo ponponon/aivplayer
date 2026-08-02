@@ -63,3 +63,4 @@ build/pkg-scripts/*
 
 .wrangler
 .workbuddy
+.aivplayer-web-format-matrix.generated.mjs
