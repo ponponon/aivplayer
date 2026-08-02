@@ -96,7 +96,7 @@
 ## 核心播放
 - Desktop 支持一键启动仅绑定局域网的 Web 播放服务：当前播放列表会以随机访问令牌保护，通过 Chrome / Firefox / Safari 等浏览器打开媒体库，服务停止后令牌和媒体映射立即失效，不暴露任意本地文件路径。
 - LAN Web 播放支持 HTTP Range / HEAD 响应，5GB 级别视频按浏览器请求的字节区间流式读取，不把整部电影加载进内存；前端播放器支持时间轴拖动、原生全屏和旁挂 SRT / VTT 字幕。
-- Web 媒体库会显示 MP4 / WebM / OGV 等浏览器大概率直播放格式、MOV / MKV / MPEG-TS 等需要实测的格式，以及 AVI / FLV / WMV / 3GP / VOB / MXF / RMVB、F4V、OGM、NUT、DV、Motion JPEG、Bink、Y4M 和 H.264/H.265 raw stream 等通常需要转码的格式；详情页按需读取 ffprobe 元数据并对 HEVC、DTS、TrueHD 等高风险编码提示转码。
+- Web 媒体库会显示 MP4 / WebM / OGV 等浏览器大概率直播放格式、MOV / MKV / MPEG-TS 等需要实测的格式，以及 AVI / FLV / WMV / 3GP / VOB / MXF / RMVB、F4V、OGM、NUT、DV、GXF、CAVS、R3D、WTV、FLI/FLC、Smacker、Motion JPEG、Bink、Y4M 和 H.264/H.265 raw stream 等通常需要转码的格式；详情页按需读取 ffprobe 元数据并对 HEVC、DTS、TrueHD 等高风险编码提示转码。
 - 浏览器无法直接解码的媒体可以按需调用本机 FFmpeg 转成 H.264 + AAC 的兼容 MP4；转码以临时文件原子落盘、按源文件指纹缓存，Web 端显示转码进度并继续通过 Range 播放，原始 5GB 文件不会被覆盖或复制进内存。
 - 多个局域网设备同时请求不兼容视频时，Web 转码按本机并发上限排队执行，网页端区分“等待队列”和“正在转码”，避免多部大视频同时转码打满 CPU、磁盘和内存。
 - Web 播放器会按媒体 ID 隔离转码回退和轮询状态，切换文件时不会让旧文件的详情、缓存版本或转码锁串到当前播放项；ffprobe 识别出高风险编码后，当前详情面板会立即显示对应的转码提示。
@@ -386,7 +386,7 @@
 - macOS 菜单栏应用名称会显示为 AIVPlayer，开发态也不会再保留 Electron 默认名称。
 - macOS 原生应用菜单已接入简体中文、English、日本語、한국어四套文案，应用菜单、文件、编辑、显示和窗口菜单会跟随设置中的界面语言即时刷新。
 - macOS 菜单补齐了“打开媒体文件”和“设置…”入口，并沿用播放器现有的文件选择与设置弹窗，不需要用户先回到窗口内寻找按钮。
-- 安装包声明了 MP4、M4V、MOV、WebM、MKV、AVI、FLV、WMV、TS、M2TS、MPG、MPEG 视频关联，macOS、Windows、Linux 的“打开方式”可以识别 AIVPlayer。
+- 安装包声明了已支持的视频容器、专业格式和原始视频流关联，macOS、Windows、Linux 的“打开方式”可以识别 AIVPlayer；新增扩展名会同步维护运行时发现、MIME 和安装包关联。
 - 从 Finder、Windows 资源管理器、Linux 文件管理器或命令行打开视频时，AIVPlayer 会把文件传给已有窗口；不会因为系统再次启动一个实例而丢失视频。
 - Linux 同时提供 AppImage、deb 和 snap 安装目标；deb 安装会把 desktop MIME 关联正式写入系统，AppImage 保留便携分发能力，snap 支持发布到 Ubuntu Snap Store 实现自动更新分发。
 

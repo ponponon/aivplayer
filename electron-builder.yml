@@ -192,6 +192,81 @@ fileAssociations:
     description: Play Flash videos with AIVPlayer
     mimeType: video/x-f4v
     role: Viewer
+  - ext: cavs
+    name: CAVS video
+    description: Play CAVS videos with AIVPlayer
+    mimeType: video/x-cavs
+    role: Viewer
+  - ext: drc
+    name: Dirac video
+    description: Play Dirac videos with AIVPlayer
+    mimeType: video/x-dirac
+    role: Viewer
+  - ext: fli
+    name: FLI video
+    description: Play FLI videos with AIVPlayer
+    mimeType: video/x-fli
+    role: Viewer
+  - ext: flc
+    name: FLC video
+    description: Play FLC videos with AIVPlayer
+    mimeType: video/x-fli
+    role: Viewer
+  - ext: gxf
+    name: GXF video
+    description: Play GXF videos with AIVPlayer
+    mimeType: application/gxf
+    role: Viewer
+  - ext: h261
+    name: H.261 elementary stream
+    description: Play H.261 streams with AIVPlayer
+    mimeType: video/h261
+    role: Viewer
+  - ext: h263
+    name: H.263 elementary stream
+    description: Play H.263 streams with AIVPlayer
+    mimeType: video/h263
+    role: Viewer
+  - ext: m4s
+    name: MPEG-DASH video segment
+    description: Play MPEG-DASH video segments with AIVPlayer
+    mimeType: video/iso.segment
+    role: Viewer
+  - ext: mlv
+    name: Magic Lantern video
+    description: Play Magic Lantern videos with AIVPlayer
+    mimeType: video/x-magiclantern
+    role: Viewer
+  - ext: r3d
+    name: RED video
+    description: Play RED videos with AIVPlayer
+    mimeType: video/x-red
+    role: Viewer
+  - ext: roq
+    name: RoQ video
+    description: Play RoQ videos with AIVPlayer
+    mimeType: video/x-idroq
+    role: Viewer
+  - ext: rpl
+    name: RPL video
+    description: Play RPL videos with AIVPlayer
+    mimeType: video/x-rpl
+    role: Viewer
+  - ext: smk
+    name: Smacker video
+    description: Play Smacker videos with AIVPlayer
+    mimeType: video/x-smk
+    role: Viewer
+  - ext: swf
+    name: Flash animation video
+    description: Play Flash videos with AIVPlayer
+    mimeType: application/x-shockwave-flash
+    role: Viewer
+  - ext: wtv
+    name: Windows TV video
+    description: Play Windows TV recordings with AIVPlayer
+    mimeType: video/x-ms-wtv
+    role: Viewer
   - ext: ogm
     name: Ogg video
     description: Play Ogg videos with AIVPlayer
