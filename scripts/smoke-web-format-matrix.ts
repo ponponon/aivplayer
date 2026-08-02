@@ -88,6 +88,42 @@ const formatCases: FormatCase[] = [
     expectedSupport: 'needs-transcode',
     transcode: true,
     create: (ffmpegPath, basePath, outputPath) => execFfmpeg(ffmpegPath, ['-i', basePath, '-an', '-c:v', 'rawvideo', '-pix_fmt', 'yuv420p', '-f', 'yuv4mpegpipe', outputPath])
+  },
+  {
+    name: 'GXF MPEG-2/PCM',
+    extension: '.gxf',
+    expectedSupport: 'needs-transcode',
+    transcode: true,
+    create: (ffmpegPath, _basePath, outputPath) => execFfmpeg(ffmpegPath, [
+      '-f', 'lavfi', '-i', 'testsrc2=size=720x576:rate=25',
+      '-f', 'lavfi', '-i', 'sine=frequency=880:sample_rate=48000',
+      '-t', '1', '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'mpeg2video', '-c:a', 'pcm_s16le', '-ar', '48000', '-ac', '1', '-f', 'gxf', outputPath
+    ])
+  },
+  {
+    name: 'WTV MPEG-2/MP2',
+    extension: '.wtv',
+    expectedSupport: 'needs-transcode',
+    transcode: true,
+    create: (ffmpegPath, basePath, outputPath) => execFfmpeg(ffmpegPath, ['-i', basePath, '-c:v', 'mpeg2video', '-c:a', 'mp2', '-f', 'wtv', outputPath])
+  },
+  {
+    name: 'raw Dirac',
+    extension: '.drc',
+    expectedSupport: 'needs-transcode',
+    transcode: true,
+    create: (ffmpegPath, _basePath, outputPath) => execFfmpeg(ffmpegPath, ['-f', 'lavfi', '-i', 'testsrc2=size=320x176:rate=24', '-t', '1', '-c:v', 'vc2', '-f', 'dirac', outputPath])
+  },
+  {
+    name: 'RoQ video',
+    extension: '.roq',
+    expectedSupport: 'needs-transcode',
+    transcode: true,
+    create: (ffmpegPath, _basePath, outputPath) => execFfmpeg(ffmpegPath, [
+      '-f', 'lavfi', '-i', 'testsrc2=size=320x176:rate=24',
+      '-f', 'lavfi', '-i', 'sine=frequency=880:sample_rate=22050',
+      '-t', '1', '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'roqvideo', '-c:a', 'roq_dpcm', '-ar', '22050', '-ac', '1', '-f', 'roq', outputPath
+    ])
   }
 ]
 

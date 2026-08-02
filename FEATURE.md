@@ -96,7 +96,7 @@
 ## 核心播放
 - Desktop 支持一键启动仅绑定局域网的 Web 播放服务：当前播放列表会以随机访问令牌保护，通过 Chrome / Firefox / Safari 等浏览器打开媒体库，服务停止后令牌和媒体映射立即失效，不暴露任意本地文件路径。
 - LAN Web 播放支持 HTTP Range / HEAD 响应，5GB 级别视频按浏览器请求的字节区间流式读取，不把整部电影加载进内存；前端播放器支持时间轴拖动、原生全屏和旁挂 SRT / VTT 字幕。
-- Web 媒体库会显示 MP4 / WebM / OGV 等浏览器大概率直播放格式、MOV / MKV / MPEG-TS 等需要实测的格式，以及 AVI / FLV / WMV / 3GP / VOB / MXF / RMVB、F4V、OGM、NUT、DV、GXF、CAVS、R3D、WTV、FLI/FLC、Smacker、Motion JPEG、Bink、Y4M 和 H.264/H.265 raw stream 等通常需要转码的格式；详情页按需读取 ffprobe 元数据并对 HEVC、DTS、TrueHD 等高风险编码提示转码。
+- Web 媒体库会显示 MP4 / WebM / OGV 等浏览器大概率直播放格式、MOV / MKV / MPEG-TS 等需要实测的格式，以及 AVI / FLV / WMV / 3GP / VOB / MXF / RMVB、F4V、OGM、NUT、DV、GXF、CAVS、Dirac、R3D、WTV、FLI/FLC、RoQ、Smacker、Motion JPEG、Bink、Y4M 和 H.264/H.265 raw stream 等通常需要转码的格式；详情页按需读取 ffprobe 元数据并对 HEVC、DTS、TrueHD 等高风险编码提示转码。
 - 浏览器无法直接解码的媒体可以按需调用本机 FFmpeg 转成 H.264 + AAC 的兼容 MP4；转码以临时文件原子落盘、按源文件指纹缓存，Web 端显示转码进度并继续通过 Range 播放，原始 5GB 文件不会被覆盖或复制进内存。
 - 多个局域网设备同时请求不兼容视频时，Web 转码按本机并发上限排队执行，网页端区分“等待队列”和“正在转码”，避免多部大视频同时转码打满 CPU、磁盘和内存。
 - Web 播放器会按媒体 ID 隔离转码回退和轮询状态，切换文件时不会让旧文件的详情、缓存版本或转码锁串到当前播放项；ffprobe 识别出高风险编码后，当前详情面板会立即显示对应的转码提示。
