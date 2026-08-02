@@ -2,7 +2,7 @@ import { access, chmod, mkdir, mkdtemp, readFile, stat, writeFile, rm } from 'no
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { WebTranscodeManager, type WebTranscodeInput } from '../../src/core/media/web-transcode'
+import { WebTranscodeManager, type WebTranscodeInput, type WebTranscodeJobState, type WebTranscodeJobStatus } from '../../src/core/media/web-transcode'
 
 const temporaryDirectories: string[] = []
 
@@ -11,6 +11,16 @@ afterEach(async () => {
 })
 
 describe('WebTranscodeManager', () => {
+  async function waitForState(manager: WebTranscodeManager, input: WebTranscodeInput, expected: WebTranscodeJobState): Promise<WebTranscodeJobStatus> {
+    let status = await manager.getStatus(input)
+    for (let attempt = 0; attempt < 200 && status.state !== expected; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 20))
+      status = await manager.getStatus(input)
+    }
+    expect(status.state).toBe(expected)
+    return status
+  }
+
   it('reports a clear error when ffmpeg is unavailable', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'aivplayer-web-transcode-missing-'))
     temporaryDirectories.push(directory)
@@ -75,6 +85,30 @@ describe('WebTranscodeManager', () => {
     }
     expect(changedStatus.state).toBe('ready')
     expect(changedStatus.outputPath).not.toBe(status.outputPath)
+    await manager.stop()
+  })
+
+  it.skipIf(process.platform === 'win32')('queues concurrent requests to protect local resources', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'aivplayer-web-transcode-queue-'))
+    temporaryDirectories.push(directory)
+    const firstSourcePath = join(directory, 'first.mkv')
+    const secondSourcePath = join(directory, 'second.mkv')
+    const fakeFfmpegPath = join(directory, 'fake-ffmpeg')
+    await writeFile(firstSourcePath, 'first-source')
+    await writeFile(secondSourcePath, 'second-source')
+    await writeFile(fakeFfmpegPath, '#!/bin/sh\nout=""\nfor arg in "$@"; do out="$arg"; done\nprintf "running" > "$out.running"\nsleep 1\nprintf "fake-mp4" > "$out"\nrm -f "$out.running"\nprintf "out_time_ms=1000000\\nprogress=end\\n" >&2\n')
+    await chmod(fakeFfmpegPath, 0o755)
+    const manager = new WebTranscodeManager({ cacheRoot: join(directory, 'cache'), getFfmpegPath: async () => fakeFfmpegPath, maxConcurrentJobs: 1 })
+    const firstInput: WebTranscodeInput = { id: 'queue-first', sourcePath: firstSourcePath, durationSeconds: 2 }
+    const secondInput: WebTranscodeInput = { id: 'queue-second', sourcePath: secondSourcePath, durationSeconds: 2 }
+
+    expect((await manager.start(firstInput)).state).toBe('queued')
+    expect((await manager.start(secondInput)).state).toBe('queued')
+    await waitForState(manager, firstInput, 'running')
+    expect((await manager.getStatus(secondInput)).state).toBe('queued')
+    await waitForState(manager, firstInput, 'ready')
+    await waitForState(manager, secondInput, 'running')
+    await waitForState(manager, secondInput, 'ready')
     await manager.stop()
   })
 

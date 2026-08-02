@@ -22,6 +22,7 @@ export type WebTranscodeJobStatus = {
 type WebTranscodeManagerOptions = {
   cacheRoot: string
   getFfmpegPath: () => Promise<string | null>
+  maxConcurrentJobs?: number
   minFreeBytes?: number
   maxCacheBytes?: number
   maxCacheAgeMs?: number
@@ -50,6 +51,7 @@ const TRANSCODE_PROFILE_VERSION = 'web-mp4-h264-aac-v1'
 const DEFAULT_MIN_FREE_BYTES = 256 * 1024 * 1024
 const DEFAULT_MAX_CACHE_BYTES = 20 * 1024 * 1024 * 1024
 const DEFAULT_MAX_CACHE_AGE_MS = 30 * 24 * 60 * 60 * 1000
+const DEFAULT_MAX_CONCURRENT_JOBS = 1
 
 function isCompleteProgress(progress: number | null): number | null {
   if (progress == null || !Number.isFinite(progress)) return null
@@ -67,6 +69,8 @@ async function isFile(filePath: string): Promise<boolean> {
 export class WebTranscodeManager {
   private readonly options: WebTranscodeManagerOptions
   private readonly jobs = new Map<string, WebTranscodeJob>()
+  private runningJobCount = 0
+  private stopping = false
 
   constructor(options: WebTranscodeManagerOptions) {
     this.options = options
@@ -84,6 +88,7 @@ export class WebTranscodeManager {
   }
 
   async start(input: WebTranscodeInput): Promise<WebTranscodeJobStatus> {
+    this.stopping = false
     const entry = await this.getCacheEntry(input)
     const existingJob = this.jobs.get(entry.outputPath)
     if (existingJob && (existingJob.state === 'queued' || existingJob.state === 'running')) return this.toStatus(existingJob)
@@ -121,11 +126,12 @@ export class WebTranscodeManager {
       done: null
     }
     this.jobs.set(entry.outputPath, job)
-    job.done = this.run(job)
+    this.schedule()
     return this.toStatus(job)
   }
 
   async stop(): Promise<void> {
+    this.stopping = true
     const jobs = [...this.jobs.values()]
     for (const job of jobs) {
       if (job.child && !job.child.killed) job.child.kill()
@@ -133,6 +139,7 @@ export class WebTranscodeManager {
     await Promise.allSettled(jobs.map((job) => job.done).filter((done): done is Promise<void> => Boolean(done)))
     await Promise.all(jobs.map((job) => rm(job.entry.partialPath, { force: true }).catch(() => undefined)))
     this.jobs.clear()
+    this.runningJobCount = 0
   }
 
   async getReadyOutputPath(input: WebTranscodeInput): Promise<string | null> {
@@ -149,6 +156,25 @@ export class WebTranscodeManager {
       outputPath: join(this.options.cacheRoot, `${cacheKey}.mp4`),
       partialPath: join(this.options.cacheRoot, `${cacheKey}.part.mp4`),
       metadataPath: join(this.options.cacheRoot, `${cacheKey}.json`)
+    }
+  }
+
+  private getMaxConcurrentJobs(): number {
+    const configured = this.options.maxConcurrentJobs
+    return typeof configured === 'number' && Number.isSafeInteger(configured) && configured > 0 ? configured : DEFAULT_MAX_CONCURRENT_JOBS
+  }
+
+  private schedule(): void {
+    if (this.stopping) return
+    while (this.runningJobCount < this.getMaxConcurrentJobs()) {
+      const nextJob = [...this.jobs.values()].find((job) => job.state === 'queued' && job.done === null)
+      if (!nextJob) return
+      this.runningJobCount += 1
+      nextJob.done = this.run(nextJob).finally(() => {
+        this.runningJobCount = Math.max(0, this.runningJobCount - 1)
+        nextJob.done = null
+        this.schedule()
+      })
     }
   }
 
