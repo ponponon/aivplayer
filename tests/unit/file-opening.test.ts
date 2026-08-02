@@ -6,8 +6,13 @@ describe('video file opening', () => {
     expect(VIDEO_EXTENSIONS).toContain('mp4')
     expect(VIDEO_EXTENSIONS).toContain('ogv')
     expect(VIDEO_EXTENSIONS).toContain('rmvb')
+    expect(VIDEO_EXTENSIONS).toContain('m2v')
+    expect(VIDEO_EXTENSIONS).toContain('h265')
+    expect(VIDEO_EXTENSIONS).toContain('bik')
     expect(isVideoFilePath('/tmp/movie.MP4')).toBe(true)
     expect(isVideoFilePath('/tmp/camera.MTS')).toBe(true)
+    expect(isVideoFilePath('/tmp/elementary.HEVC')).toBe(true)
+    expect(isVideoFilePath('/tmp/gameplay.BIK')).toBe(true)
     expect(isVideoFilePath('/tmp/subtitles.srt')).toBe(false)
   })
 

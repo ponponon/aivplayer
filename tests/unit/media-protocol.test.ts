@@ -34,6 +34,8 @@ describe('media protocol helpers', () => {
 
   it('returns useful content types for video and subtitles', () => {
     expect(getContentTypeForFile('/tmp/movie.mp4')).toBe('video/mp4')
+    expect(getContentTypeForFile('/tmp/camera.f4v')).toBe('video/x-f4v')
+    expect(getContentTypeForFile('/tmp/stream.h265')).toBe('video/h265')
     expect(getContentTypeForFile('/tmp/subtitle.vtt')).toBe('text/vtt; charset=utf-8')
   })
 })

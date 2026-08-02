@@ -132,6 +132,41 @@ fileAssociations:
     description: Play MPEG videos with AIVPlayer
     mimeType: video/mpeg
     role: Viewer
+  - ext: mpe
+    name: MPEG video
+    description: Play MPEG videos with AIVPlayer
+    mimeType: video/mpeg
+    role: Viewer
+  - ext: m1v
+    name: MPEG video
+    description: Play MPEG videos with AIVPlayer
+    mimeType: video/mpeg
+    role: Viewer
+  - ext: m2v
+    name: MPEG video
+    description: Play MPEG videos with AIVPlayer
+    mimeType: video/mpeg
+    role: Viewer
+  - ext: m2p
+    name: MPEG transport stream
+    description: Play MPEG transport streams with AIVPlayer
+    mimeType: video/mp2t
+    role: Viewer
+  - ext: m2t
+    name: MPEG transport stream
+    description: Play MPEG transport streams with AIVPlayer
+    mimeType: video/mp2t
+    role: Viewer
+  - ext: mpegts
+    name: MPEG transport stream
+    description: Play MPEG transport streams with AIVPlayer
+    mimeType: video/mp2t
+    role: Viewer
+  - ext: mpv
+    name: MPEG video
+    description: Play MPEG videos with AIVPlayer
+    mimeType: video/mpeg
+    role: Viewer
   - ext: vob
     name: DVD video
     description: Play DVD videos with AIVPlayer
@@ -151,6 +186,116 @@ fileAssociations:
     name: RealMedia video
     description: Play RealMedia videos with AIVPlayer
     mimeType: application/vnd.rn-realmedia-vbr
+    role: Viewer
+  - ext: f4v
+    name: Flash video
+    description: Play Flash videos with AIVPlayer
+    mimeType: video/x-f4v
+    role: Viewer
+  - ext: ogm
+    name: Ogg video
+    description: Play Ogg videos with AIVPlayer
+    mimeType: video/ogg
+    role: Viewer
+  - ext: ismv
+    name: Smooth Streaming video
+    description: Play Smooth Streaming videos with AIVPlayer
+    mimeType: video/iso.segment
+    role: Viewer
+  - ext: nut
+    name: NUT video
+    description: Play NUT videos with AIVPlayer
+    mimeType: video/x-nut
+    role: Viewer
+  - ext: dv
+    name: Digital Video
+    description: Play Digital Video files with AIVPlayer
+    mimeType: video/x-dv
+    role: Viewer
+  - ext: dif
+    name: Digital Video
+    description: Play Digital Video files with AIVPlayer
+    mimeType: video/x-dv
+    role: Viewer
+  - ext: mjpeg
+    name: Motion JPEG video
+    description: Play Motion JPEG videos with AIVPlayer
+    mimeType: video/x-motion-jpeg
+    role: Viewer
+  - ext: mjpg
+    name: Motion JPEG video
+    description: Play Motion JPEG videos with AIVPlayer
+    mimeType: video/x-motion-jpeg
+    role: Viewer
+  - ext: bik
+    name: Bink video
+    description: Play Bink videos with AIVPlayer
+    mimeType: video/vnd.radgametools.bink
+    role: Viewer
+  - ext: svi
+    name: SVI video
+    description: Play SVI videos with AIVPlayer
+    mimeType: video/x-svi
+    role: Viewer
+  - ext: tod
+    name: MPEG video
+    description: Play MPEG videos with AIVPlayer
+    mimeType: video/mpeg
+    role: Viewer
+  - ext: mod
+    name: MPEG video
+    description: Play MPEG videos with AIVPlayer
+    mimeType: video/mpeg
+    role: Viewer
+  - ext: y4m
+    name: YUV4MPEG video
+    description: Play YUV4MPEG videos with AIVPlayer
+    mimeType: video/x-yuv4mpeg
+    role: Viewer
+  - ext: h264
+    name: H.264 elementary stream
+    description: Play H.264 streams with AIVPlayer
+    mimeType: video/h264
+    role: Viewer
+  - ext: 264
+    name: H.264 elementary stream
+    description: Play H.264 streams with AIVPlayer
+    mimeType: video/h264
+    role: Viewer
+  - ext: h265
+    name: H.265 elementary stream
+    description: Play H.265 streams with AIVPlayer
+    mimeType: video/h265
+    role: Viewer
+  - ext: 265
+    name: H.265 elementary stream
+    description: Play H.265 streams with AIVPlayer
+    mimeType: video/h265
+    role: Viewer
+  - ext: hevc
+    name: H.265 elementary stream
+    description: Play H.265 streams with AIVPlayer
+    mimeType: video/h265
+    role: Viewer
+  - ext: avc
+    name: H.264 elementary stream
+    description: Play H.264 streams with AIVPlayer
+    mimeType: video/h264
+    role: Viewer
+  - ext: vc1
+    name: VC-1 elementary stream
+    description: Play VC-1 streams with AIVPlayer
+    mimeType: video/vc1
+    role: Viewer
+  - ext: ivf
+    name: IVF video
+    description: Play IVF videos with AIVPlayer
+    mimeType: video/x-ivf
+    role: Viewer
+  - ext: amv
+    name: AMV video
+    description: Play AMV videos with AIVPlayer
+    mimeType: video/x-amv
     role: Viewer
   - ext: heic
     name: HEIC image

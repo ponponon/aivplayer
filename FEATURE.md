@@ -96,7 +96,7 @@
 ## 核心播放
 - Desktop 支持一键启动仅绑定局域网的 Web 播放服务：当前播放列表会以随机访问令牌保护，通过 Chrome / Firefox / Safari 等浏览器打开媒体库，服务停止后令牌和媒体映射立即失效，不暴露任意本地文件路径。
 - LAN Web 播放支持 HTTP Range / HEAD 响应，5GB 级别视频按浏览器请求的字节区间流式读取，不把整部电影加载进内存；前端播放器支持时间轴拖动、原生全屏和旁挂 SRT / VTT 字幕。
-- Web 媒体库会显示 MP4 / WebM / OGV 等浏览器大概率直播放格式、MOV / MKV / MPEG-TS 等需要实测的格式，以及 AVI / FLV / WMV / 3GP / VOB / MXF / RMVB 等通常需要转码的格式；详情页按需读取 ffprobe 元数据并对 HEVC、DTS、TrueHD 等高风险编码提示转码。
+- Web 媒体库会显示 MP4 / WebM / OGV 等浏览器大概率直播放格式、MOV / MKV / MPEG-TS 等需要实测的格式，以及 AVI / FLV / WMV / 3GP / VOB / MXF / RMVB、F4V、OGM、NUT、DV、Motion JPEG、Bink、Y4M 和 H.264/H.265 raw stream 等通常需要转码的格式；详情页按需读取 ffprobe 元数据并对 HEVC、DTS、TrueHD 等高风险编码提示转码。
 - 浏览器无法直接解码的媒体可以按需调用本机 FFmpeg 转成 H.264 + AAC 的兼容 MP4；转码以临时文件原子落盘、按源文件指纹缓存，Web 端显示转码进度并继续通过 Range 播放，原始 5GB 文件不会被覆盖或复制进内存。
 - Web 共享可以从桌面端选择一个或多个目录，递归发现视频并忽略其他文件；网页端“刷新媒体库”会增量重新扫描，新增文件可见、已删除文件自动移除，已有媒体 ID 保持稳定。
 - 大文件转码前会检查缓存所在磁盘的可用空间；缓存会清理过期产物和残留临时文件，并在源文件大小或修改时间变化后自动失效旧结果。

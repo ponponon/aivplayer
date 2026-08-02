@@ -63,7 +63,12 @@ const STATIC_MIME_TYPES: Record<string, string> = {
 
 const LIKELY_BROWSER_EXTENSIONS = new Set(['.mp4', '.m4v', '.webm', '.ogv'])
 const POSSIBLE_BROWSER_EXTENSIONS = new Set(['.mov', '.mkv', '.ts', '.m2ts', '.mts', '.mpg', '.mpeg'])
-const NEEDS_TRANSCODE_EXTENSIONS = new Set(['.avi', '.flv', '.wmv', '.3gp', '.3g2', '.vob', '.asf', '.mxf', '.divx', '.rm', '.rmvb'])
+const NEEDS_TRANSCODE_EXTENSIONS = new Set([
+  '.avi', '.flv', '.wmv', '.3gp', '.3g2', '.3gpp', '.3gpp2', '.vob', '.asf', '.mxf', '.divx', '.rm', '.rmvb',
+  '.mpe', '.m1v', '.m2v', '.m2p', '.m2t', '.mpegts', '.mpv', '.f4v', '.ogm', '.ismv', '.nut', '.dv', '.dif',
+  '.mjpeg', '.mjpg', '.bik', '.svi', '.tod', '.mod', '.y4m', '.h264', '.264', '.h265', '.265', '.hevc', '.avc',
+  '.vc1', '.ivf', '.amv'
+])
 
 function createMediaId(): string {
   return randomBytes(12).toString('hex')
