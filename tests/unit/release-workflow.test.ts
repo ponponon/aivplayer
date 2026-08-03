@@ -18,4 +18,11 @@ describe('release workflow source constraints', () => {
     expect(releaseWorkflow).toContain('needs: [build-macos, build-windows, build-linux]')
     expect(releaseWorkflow).toContain('tag_name: ${{ inputs.tag || github.ref_name }}')
   })
+
+  it('stages platform runtimes before packaging', () => {
+    expect(releaseWorkflow.match(/release:check-runtime/g)).toHaveLength(3)
+    expect(releaseWorkflow).toContain('release:build-whisper-macos')
+    expect(releaseWorkflow).toContain('release:prepare-runtime -- --platform win32')
+    expect(releaseWorkflow).toContain('release:prepare-runtime -- --platform linux')
+  })
 })

@@ -217,7 +217,7 @@ async function main(): Promise<void> {
   const prepareOptions: PrepareAsrRuntimeOptions = {
     whisperDirectory: binDir,
     ffmpegDirectory: undefined,
-    ffmpegBinaryPath: '/opt/homebrew/bin/ffmpeg'
+    ffmpegBinaryPath: process.env.AIVPLAYER_STAGE_FFMPEG_BIN ?? '/opt/homebrew/bin/ffmpeg'
   }
 
   const result = await prepareAsrRuntime(prepareOptions)

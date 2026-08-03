@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag (e.g. v0.2.1)'
+        description: 'Release tag (e.g. v0.3.0)'
         required: true
 
 permissions:
@@ -15,6 +15,7 @@ permissions:
 
 env:
   LIBHEIF_VERSION: 1.23.1
+  WHISPER_CPP_VERSION: 1.9.1
 
 jobs:
   build-macos:
@@ -29,8 +30,8 @@ jobs:
 
       - run: npm ci
 
-      - name: Install HEIF build dependencies
-        run: brew install cmake ninja pkg-config libde265 kvazaar jpeg-turbo
+      - name: Install HEIF and media runtime dependencies
+        run: brew install cmake ninja pkg-config libde265 kvazaar jpeg-turbo ffmpeg
 
       - name: Build static HEIF runtime
         shell: bash
@@ -43,6 +44,13 @@ jobs:
             --resource-dir "$GITHUB_WORKSPACE/resources" \
             --encoder kvazaar
           npm run release:check-heif-runtime
+
+      - name: Build and stage ASR/media runtime
+        shell: bash
+        run: |
+          export AIVPLAYER_STAGE_FFMPEG_BIN="$(brew --prefix)/bin/ffmpeg"
+          npm run release:build-whisper-macos -- --tag "v${WHISPER_CPP_VERSION}"
+          npm run release:check-runtime
 
       - name: Build & Package
         run: npm run build && npx electron-builder --publish never
@@ -78,7 +86,9 @@ jobs:
 
       - name: Install HEIF build dependencies
         shell: pwsh
-        run: vcpkg install libde265:x64-windows-static x265:x64-windows-static libjpeg-turbo:x64-windows-static
+        run: |
+          choco install ffmpeg -y --no-progress
+          vcpkg install libde265:x64-windows-static x265:x64-windows-static libjpeg-turbo:x64-windows-static
 
       - name: Build static HEIF runtime
         shell: pwsh
@@ -90,6 +100,21 @@ jobs:
           git clone --depth 1 --branch "v$env:LIBHEIF_VERSION" https://github.com/strukturag/libheif.git $source
           npm run release:build-heif-source -- --source-dir $source --build-dir $build --install-dir $install --resource-dir "$env:GITHUB_WORKSPACE/resources" --platform win32 --toolchain-file $toolchain --vcpkg-triplet x64-windows-static --encoder x265
           npm run release:check-heif-runtime
+
+      - name: Build and stage ASR/media runtime
+        shell: pwsh
+        run: |
+          $source = Join-Path $env:RUNNER_TEMP "whisper.cpp"
+          $build = Join-Path $env:RUNNER_TEMP "whisper-build"
+          git clone --depth 1 --branch "v$env:WHISPER_CPP_VERSION" https://github.com/ggml-org/whisper.cpp.git $source
+          cmake -S $source -B $build -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_EXAMPLES=ON -DCMAKE_BUILD_TYPE=Release
+          cmake --build $build --config Release --parallel
+          $whisperBinary = Get-ChildItem -Path $build -Filter "whisper-cli.exe" -Recurse | Select-Object -First 1
+          if ($null -eq $whisperBinary) { throw "whisper-cli.exe was not built." }
+          $ffmpegCommand = Get-Command ffmpeg -ErrorAction Stop
+          $ffmpegDir = Split-Path $ffmpegCommand.Source
+          npm run release:prepare-runtime -- --platform win32 --whisper-bin $whisperBinary.FullName --ffmpeg-dir $ffmpegDir
+          npm run release:check-runtime
 
       - name: Build & Package
         run: npm run build && npx electron-builder --publish never
@@ -123,7 +148,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-0 libnotify4 libnss3 libxss1 libxtst6 xdg-utils libatspi2.0-0 libuuid1 libsecret-1-0 cmake ninja-build pkg-config libde265-dev libkvazaar-dev libjpeg-dev zlib1g-dev
+          sudo apt-get install -y libgtk-3-0 libnotify4 libnss3 libxss1 libxtst6 xdg-utils libatspi2.0-0 libuuid1 libsecret-1-0 ffmpeg cmake ninja-build pkg-config libde265-dev libkvazaar-dev libjpeg-dev zlib1g-dev
 
       - name: Build static HEIF runtime
         shell: bash
@@ -138,6 +163,17 @@ jobs:
             --encoder kvazaar \
             --static-link
           npm run release:check-heif-runtime
+
+      - name: Build and stage ASR/media runtime
+        shell: bash
+        run: |
+          source_dir="$RUNNER_TEMP/whisper.cpp"
+          build_dir="$RUNNER_TEMP/whisper-build"
+          git clone --depth 1 --branch "v${WHISPER_CPP_VERSION}" https://github.com/ggml-org/whisper.cpp.git "$source_dir"
+          cmake -S "$source_dir" -B "$build_dir" -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_EXAMPLES=ON -DCMAKE_BUILD_TYPE=Release
+          cmake --build "$build_dir" --parallel
+          npm run release:prepare-runtime -- --platform linux --whisper-dir "$build_dir/bin" --ffmpeg-dir /usr/bin
+          npm run release:check-runtime
 
       - name: Build & Package
         run: npm run build && npx electron-builder --publish never

@@ -409,5 +409,7 @@ linux:
     - AppImage
     - deb
 deb:
+  depends:
+    - ffmpeg
   afterInstall: build/deb-after-install.sh
   afterRemove: build/deb-after-remove.sh

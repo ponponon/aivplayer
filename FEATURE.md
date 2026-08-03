@@ -398,6 +398,7 @@
 - 安装包声明了已支持的视频容器、专业格式和原始视频流关联，macOS、Windows、Linux 的“打开方式”可以识别 AIVPlayer；新增扩展名会同步维护运行时发现、MIME 和安装包关联。
 - 从 Finder、Windows 资源管理器、Linux 文件管理器或命令行打开视频时，AIVPlayer 会把文件传给已有窗口；不会因为系统再次启动一个实例而丢失视频。
 - Linux 同时提供 AppImage、deb 和 snap 安装目标；deb 安装会把 desktop MIME 关联正式写入系统，AppImage 保留便携分发能力，snap 支持发布到 Ubuntu Snap Store 实现自动更新分发。
+- 0.3.0 发布工作流会在 macOS、Windows、Linux Runner 上分别构建并暂存对应平台的 whisper.cpp 与 FFmpeg 运行时；Linux `.deb` 声明 FFmpeg 系统依赖并随 GitHub Release 上传，避免新 Runner 因仓库忽略本机二进制而生成不可用安装包。
 
 ## 默认界面缩放
 - 应用窗口默认使用略微收紧的渲染缩放基线，让字体、图标、按钮和卡片整体比系统默认更小一档。
