@@ -154,7 +154,7 @@ jobs:
         shell: bash
         run: |
           git clone --depth 1 --branch "v${LIBHEIF_VERSION}" https://github.com/strukturag/libheif.git "$RUNNER_TEMP/libheif"
-          npm run release:build-heif-source -- \
+          CXXFLAGS=-fpermissive npm run release:build-heif-source -- \
             --source-dir "$RUNNER_TEMP/libheif" \
             --build-dir "$RUNNER_TEMP/libheif-build" \
             --install-dir "$RUNNER_TEMP/libheif-install" \
