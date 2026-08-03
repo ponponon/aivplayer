@@ -130,7 +130,18 @@ export async function buildHeifSource(options: BuildHeifSourceOptions): Promise<
   const installDirectory = options.installDirectory ?? join(buildDirectory, 'install')
   await mkdir(buildDirectory, { recursive: true })
   await run('cmake', ['-S', options.sourceDirectory, '-B', buildDirectory, ...getCmakeOptions({ ...options, platform }, installDirectory)])
-  await run('cmake', ['--build', buildDirectory, '--config', 'Release', '--target', 'heif-enc', 'heif-dec', '--parallel'])
+  await run('cmake', [
+    '--build',
+    buildDirectory,
+    '--config',
+    'Release',
+    '--target',
+    'heif-enc',
+    'heif-dec',
+    'heif-convert',
+    'heif-info',
+    '--parallel'
+  ])
   await run('cmake', ['--install', buildDirectory, '--config', 'Release'])
   const result = await prepareHeifRuntime({
     platform,

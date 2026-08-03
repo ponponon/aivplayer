@@ -522,3 +522,8 @@
 - `sharp` 的 Linux 版 `.node` 文件和 `libvips-cpp.so` 即使已经被放进 `app.asar`，Linux 动态链接器仍不能从 ASAR 内加载共享库；启动时会报 `ERR_DLOPEN_FAILED` 和 `libvips-cpp.so.*` 缺失。
 - 使用 electron-builder 时，必须通过 `asarUnpack` 同时解包 `**/node_modules/sharp/**/*` 和 `**/node_modules/@img/**/*`，不能只确认依赖存在于 `node_modules` 或 `app.asar` 就认为发布包可运行。
 - 修改后要检查 `release/linux-unpacked/resources/app.asar.unpacked` 中确实存在 sharp / libvips 文件，并实际启动 Linux 解包应用验证；MESA/DRI 权限提示属于 GPU 环境问题，应与 sharp 主进程加载失败分开排查。
+
+## CMake install 会要求构建所有被安装的示例工具
+
+- libheif 配置打开 `WITH_EXAMPLES=ON` 后，`cmake --install` 会安装 `heif-enc`、`heif-dec`、`heif-convert` 和 `heif-info`；如果只显式构建前两个目标，构建阶段可能成功，但安装阶段会因找不到 `examples/heif-info` 失败。
+- 发布脚本必须让 `cmake --build --target` 覆盖安装脚本需要的全部目标，并在安装后再执行运行时工具探测；不能只根据最终真正复制的两个文件反推构建目标。
