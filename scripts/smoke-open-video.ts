@@ -200,6 +200,18 @@ async function main(): Promise<void> {
     await page.getByRole('tab', { name: copy.panels.playlistTitle }).click()
     await page.waitForTimeout(250)
     const expanded = await readLayoutMetrics(page)
+    const panelResizer = page.locator('.side-panel-resizer')
+    const initialSidePanelWidth = await panelResizer.getAttribute('aria-valuenow')
+    const resizerBox = await panelResizer.boundingBox()
+    if (!resizerBox) throw new Error('Missing side panel resizer bounds')
+    const resizerY = resizerBox.y + resizerBox.height / 2
+    await page.mouse.move(resizerBox.x + resizerBox.width / 2, resizerY)
+    await page.mouse.down()
+    await page.mouse.move(resizerBox.x - 56, resizerY)
+    await page.mouse.up()
+    await page.waitForTimeout(150)
+    const resized = await readLayoutMetrics(page)
+    const resizedSidePanelWidth = await panelResizer.getAttribute('aria-valuenow')
     await page.getByTitle(copy.topbar.togglePlaylist).click()
     await page.waitForTimeout(250)
     const collapsed = await readLayoutMetrics(page)
@@ -238,6 +250,7 @@ async function main(): Promise<void> {
     await page.screenshot({ path: screenshotPath, fullPage: false })
 
     console.log(`Expanded layout: ${JSON.stringify(expanded)}`)
+    console.log(`Resizable side panel: ${JSON.stringify({ initialSidePanelWidth, resizedSidePanelWidth, resized: resized.sidePanelWidth })}`)
     console.log(`Collapsed layout: ${JSON.stringify(collapsed)}`)
     console.log(`ASR hidden layout: ${JSON.stringify(asrHidden)}`)
     console.log(`ASR visible layout: ${JSON.stringify(asrVisible)}`)
@@ -265,6 +278,10 @@ async function main(): Promise<void> {
     console.log(`Download dialog screenshot: ${screenshotPath}`)
 
     if (expanded.sidePanelDisplay === 'none' || expanded.sidePanelWidth < 280) {
+      process.exitCode = 1
+    }
+
+    if (resized.sidePanelWidth < expanded.sidePanelWidth + 40 || resizedSidePanelWidth === initialSidePanelWidth) {
       process.exitCode = 1
     }
 

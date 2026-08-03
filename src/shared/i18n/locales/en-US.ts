@@ -131,6 +131,7 @@
     panels: {
       playlistKicker: 'Queue',
       playlistTitle: 'Playlist',
+      resizeSidePanel: 'Resize side panel',
       noMedia: 'No media files yet.',
       historyKicker: 'Recent',
       historyTitle: 'Playback history',

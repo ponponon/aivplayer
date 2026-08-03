@@ -1,6 +1,6 @@
 
 .workspace.with-side-panel {
-  grid-template-columns: minmax(0, 1fr) 280px;
+  grid-template-columns: minmax(0, 1fr) var(--side-panel-width, 280px);
 }
 
 .stage {

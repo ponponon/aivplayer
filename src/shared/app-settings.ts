@@ -4,7 +4,11 @@ import type { PlaybackHistoryEntry } from './playback-history'
 import { DEFAULT_APP_LOCALE, DEFAULT_SUBTITLE_LANGUAGE, type AppLocale, type SubtitleLanguageId } from './localization'
 import type { SubtitleEmphasisMode, SubtitlePresetId } from './subtitle-presets'
 
-export const APP_SETTINGS_SCHEMA_VERSION = 18
+export const APP_SETTINGS_SCHEMA_VERSION = 19
+
+export const SIDE_PANEL_WIDTH_MIN = 240
+export const SIDE_PANEL_WIDTH_MAX = 480
+export const SIDE_PANEL_WIDTH_DEFAULT = 280
 
 export type CaptureImageFormat = 'jpg' | 'png'
 export type CaptureFileNamingMode = 'sequential' | 'timestamp'
@@ -27,6 +31,7 @@ export type AppSettings = {
     theme: AppThemePreference
     defaultPanelMode: AppPanelModePreference
     lastSettingsSectionId: AppSettingsSectionId
+    sidePanelWidth: number
   }
   media: {
     defaultOpenDirectoryPath: string | null
@@ -161,6 +166,11 @@ export function normalizeTranslationGlossary(value: unknown): string | null {
   return lines.length > 0 ? lines.join('\n') : null
 }
 
+export function normalizeSidePanelWidth(value: unknown, fallback = SIDE_PANEL_WIDTH_DEFAULT): number {
+  const width = typeof value === 'number' && Number.isFinite(value) ? value : fallback
+  return Math.min(SIDE_PANEL_WIDTH_MAX, Math.max(SIDE_PANEL_WIDTH_MIN, Math.round(width)))
+}
+
 export function createDefaultAppSettings(): AppSettings {
   return {
     schemaVersion: APP_SETTINGS_SCHEMA_VERSION,
@@ -168,7 +178,8 @@ export function createDefaultAppSettings(): AppSettings {
       locale: DEFAULT_APP_LOCALE,
       theme: 'dark',
       defaultPanelMode: 'playlist',
-      lastSettingsSectionId: 'general'
+      lastSettingsSectionId: 'general',
+      sidePanelWidth: SIDE_PANEL_WIDTH_DEFAULT
     },
     media: {
       defaultOpenDirectoryPath: null,

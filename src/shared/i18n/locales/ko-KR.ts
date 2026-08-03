@@ -131,6 +131,7 @@
     panels: {
       playlistKicker: '대기열',
       playlistTitle: '재생 목록',
+      resizeSidePanel: '사이드 패널 너비 조절',
       noMedia: '아직 미디어 파일이 없습니다.',
       historyKicker: '최근 재생',
       historyTitle: '재생 기록',

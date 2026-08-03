@@ -131,6 +131,7 @@
     panels: {
       playlistKicker: '队列',
       playlistTitle: '播放列表',
+      resizeSidePanel: '调整侧栏宽度',
       noMedia: '还没有媒体文件。',
       historyKicker: '最近播放',
       historyTitle: '播放历史',

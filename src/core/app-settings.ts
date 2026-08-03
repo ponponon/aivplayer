@@ -4,6 +4,7 @@ import { dirname, isAbsolute, join } from 'node:path'
 import {
   APP_SETTINGS_SCHEMA_VERSION,
   createDefaultAppSettings,
+  normalizeSidePanelWidth,
   normalizeTranslationGlossary,
   type CaptureFileNamingMode,
   type CaptureGifResolution,
@@ -185,7 +186,8 @@ function sanitizeUiSettings(
     locale: isAppLocale(ui.locale) ? ui.locale : defaults.locale,
     theme: isThemePreference(ui.theme) ? ui.theme : defaults.theme,
     defaultPanelMode: isPanelModePreference(ui.defaultPanelMode) ? ui.defaultPanelMode : defaults.defaultPanelMode,
-    lastSettingsSectionId: normalizeSettingsSectionId(ui.lastSettingsSectionId, defaults.lastSettingsSectionId)
+    lastSettingsSectionId: normalizeSettingsSectionId(ui.lastSettingsSectionId, defaults.lastSettingsSectionId),
+    sidePanelWidth: normalizeSidePanelWidth(ui.sidePanelWidth, defaults.sidePanelWidth)
   }
 }
 

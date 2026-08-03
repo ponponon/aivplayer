@@ -46,6 +46,7 @@
 @import './player/editing-graphic-overlay.css';
 @import './player/editing-video-block.css';
 @import './player/panels.css';
+@import './player/side-panel-resize.css';
 @import './player/batch-subtitle-overview.css';
 @import './player/batch-subtitle-tasks.css';
 @import './player/batch-subtitle-history.css';

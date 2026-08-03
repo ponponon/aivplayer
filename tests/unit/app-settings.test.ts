@@ -41,6 +41,7 @@ describe('app settings', () => {
     settings.ui.theme = 'light'
     settings.ui.defaultPanelMode = 'info'
     settings.ui.lastSettingsSectionId = 'subtitles'
+    settings.ui.sidePanelWidth = 360
     settings.asr.preferredModelSourceId = 'huggingface'
     settings.asr.translationBaseUrl = 'https://example.test/v1/chat/completions'
     settings.asr.translationModel = 'translation-model'
@@ -115,7 +116,8 @@ describe('app settings', () => {
         defaultPanelMode: 'info',
         lastSettingsSectionId: 'general',
         locale: 'zh-CN',
-        theme: 'dark'
+        theme: 'dark',
+        sidePanelWidth: 280
       },
       capture: {
         saveDirectoryPath: null,
@@ -155,7 +157,7 @@ describe('app settings', () => {
     )
 
     await expect(readAppSettings(tempDirectory)).resolves.toMatchObject({
-      schemaVersion: 18,
+      schemaVersion: 19,
       playback: {
         singleClickPause: true
       }

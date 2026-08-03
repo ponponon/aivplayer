@@ -131,6 +131,7 @@
     panels: {
       playlistKicker: 'キュー',
       playlistTitle: 'プレイリスト',
+      resizeSidePanel: 'サイドパネルの幅を変更',
       noMedia: 'まだメディアファイルがありません。',
       historyKicker: '最近の再生',
       historyTitle: '再生履歴',
