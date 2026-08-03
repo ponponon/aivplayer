@@ -59,6 +59,7 @@ h1, h2 { margin: 0; color: #f1f0eb; font-size: 20px; font-weight: 700; letter-sp
 .transcode-panel { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 11px 12px; color: #d8d7d1; background: rgba(211, 154, 75, 0.08); border: 1px solid rgba(211, 154, 75, 0.28); border-radius: 7px; font-size: 12px; }
 .transcode-panel div { display: grid; gap: 4px; min-width: 0; }
 .transcode-panel span { color: #92969c; font-size: 11px; }
+.transcode-panel .transcode-size-note { color: #d39a4b; }
 .transcode-panel button { flex: 0 0 auto; min-height: 32px; padding: 0 11px; color: #1b140c; background: #d39845; border: 0; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 800; }
 .transcode-panel button:disabled { cursor: default; opacity: 0.55; }
 .player-footer { display: flex; justify-content: space-between; gap: 12px; color: #777c83; font-size: 11px; }
