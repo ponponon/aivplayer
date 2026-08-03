@@ -24,6 +24,7 @@
     "release:build-heif-source": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/build-heif-source.ts",
     "smoke:open-video": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-open-video.ts",
     "smoke:web-format-matrix": "node scripts/run-web-format-matrix.mjs",
+    "smoke:web-concurrency": "node scripts/run-web-concurrency.mjs",
     "smoke:web-real-file": "node scripts/smoke-web-real-file.mjs",
     "smoke:image-editor": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-image-editor.ts",
     "smoke:settings-dialog": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-settings-dialog.ts",

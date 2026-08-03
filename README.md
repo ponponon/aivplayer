@@ -261,6 +261,7 @@ npm run doctor:backend   # 检查后端依赖
 npm run doctor:asr       # 检查 ASR 运行时
 npm run smoke:all        # 运行主要界面回归
 npm run smoke:web-format-matrix -- --ffmpeg /path/to/ffmpeg  # 真实视频格式与 Web 转码矩阵
+npm run smoke:web-concurrency -- --ffmpeg /path/to/ffmpeg     # 多客户端并发、同源去重与转码队列 smoke
 npm run smoke:web-real-file -- ./movie.mp4                     # 真实大文件的时长、末尾 Range 和打包 Web smoke
 ```
 

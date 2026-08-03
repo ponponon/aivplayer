@@ -112,6 +112,37 @@ describe('WebTranscodeManager', () => {
     await manager.stop()
   })
 
+  it.skipIf(process.platform === 'win32')('deduplicates simultaneous starts for the same source', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'aivplayer-web-transcode-single-flight-'))
+    temporaryDirectories.push(directory)
+    const sourcePath = join(directory, 'source.mkv')
+    const fakeFfmpegPath = join(directory, 'fake-ffmpeg')
+    const invocationLogPath = join(directory, 'invocations.log')
+    await writeFile(sourcePath, 'source')
+    const fakeScript = [
+      '#!/bin/sh',
+      'out=""',
+      'for arg in "$@"; do out="$arg"; done',
+      `printf '%s\\n' "$out" >> ${JSON.stringify(invocationLogPath)}`,
+      'sleep 1',
+      'printf "fake-mp4" > "$out"',
+      'printf "out_time_ms=1000000\\nprogress=end\\n" >&2'
+    ].join('\n')
+    await writeFile(fakeFfmpegPath, `${fakeScript}\n`)
+    await chmod(fakeFfmpegPath, 0o755)
+    const manager = new WebTranscodeManager({ cacheRoot: join(directory, 'cache'), getFfmpegPath: async () => fakeFfmpegPath })
+    const input: WebTranscodeInput = { id: 'single-flight', sourcePath, durationSeconds: 2 }
+
+    const starts = await Promise.all([manager.start(input), manager.start(input)])
+    expect(['queued', 'running']).toContain(starts[0]?.state)
+    expect(['queued', 'running']).toContain(starts[1]?.state)
+    await waitForState(manager, input, 'ready')
+
+    const invocations = (await readFile(invocationLogPath, 'utf8')).trim().split('\n').filter(Boolean)
+    expect(invocations).toHaveLength(1)
+    await manager.stop()
+  })
+
   it('rejects a transcode when the cache volume has insufficient free space', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'aivplayer-web-transcode-disk-'))
     temporaryDirectories.push(directory)

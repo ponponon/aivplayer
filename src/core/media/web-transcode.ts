@@ -69,6 +69,7 @@ async function isFile(filePath: string): Promise<boolean> {
 export class WebTranscodeManager {
   private readonly options: WebTranscodeManagerOptions
   private readonly jobs = new Map<string, WebTranscodeJob>()
+  private readonly startLocks = new Map<string, Promise<WebTranscodeJobStatus>>()
   private runningJobCount = 0
   private stopping = false
 
@@ -90,6 +91,22 @@ export class WebTranscodeManager {
   async start(input: WebTranscodeInput): Promise<WebTranscodeJobStatus> {
     this.stopping = false
     const entry = await this.getCacheEntry(input)
+    const existingStart = this.startLocks.get(entry.outputPath)
+    if (existingStart) {
+      await existingStart
+      return this.getStatus(input)
+    }
+
+    const startPromise = this.startJob(input, entry)
+    this.startLocks.set(entry.outputPath, startPromise)
+    try {
+      return await startPromise
+    } finally {
+      if (this.startLocks.get(entry.outputPath) === startPromise) this.startLocks.delete(entry.outputPath)
+    }
+  }
+
+  private async startJob(input: WebTranscodeInput, entry: CacheEntry): Promise<WebTranscodeJobStatus> {
     const existingJob = this.jobs.get(entry.outputPath)
     if (existingJob && (existingJob.state === 'queued' || existingJob.state === 'running')) return this.toStatus(existingJob)
     if (existingJob?.state === 'ready') return this.toStatus(existingJob)
