@@ -528,3 +528,4 @@
 - libheif 配置打开 `WITH_EXAMPLES=ON` 后，`cmake --install` 可能安装多个示例工具；如果只显式构建其中两个目标，构建阶段可能成功，但安装阶段会因找不到另一个示例文件失败。
 - 在固定的 libheif `1.23.1` 中，实际可构建的目标是 `heif-info`、`heif-dec`、`heif-enc`；`heif-convert` 是安装阶段从 `heif-dec` 创建的兼容软链接，不是独立 target。发布脚本应以固定上游版本的 CMake 定义为依据，构建这三个目标，再在安装后探测 `heif-enc` / `heif-convert`。
 - Windows vcpkg 的 `x265:x64-windows-static` 库文件名是 `x265-static.lib`，而 libheif 的 `FindX265.cmake` 只查找 `libx265` / `x265`；不能只安装 vcpkg 包就认为 CMake 会自动发现它，必须显式传入 `-DX265_LIBRARY`。另外，封装 CMake 子进程时必须在异常路径输出 stdout/stderr，否则真正的 MSBuild 错误会被吞掉，只剩一个无上下文的 `Command failed`。
+- libheif `1.23.1` 的 `heif-enc` 在 Windows 上即使没有找到 TIFF 也会引用 `TiledTiffReader::TiffCloser`，最终在链接阶段报未解析符号；Windows 发布依赖不能只安装 JPEG、x265 和 libde265，还要安装 `tiff:x64-windows-static`，让 `heifio` 把 TIFF 实现一起链接进来。
