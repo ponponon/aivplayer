@@ -160,8 +160,7 @@ jobs:
             --install-dir "$RUNNER_TEMP/libheif-install" \
             --resource-dir "$GITHUB_WORKSPACE/resources" \
             --platform linux \
-            --encoder x265 \
-            --static-link
+            --encoder x265
           npm run release:check-heif-runtime
 
       - name: Build and stage ASR/media runtime
