@@ -426,6 +426,11 @@ export class WebServer {
       return
     }
 
+    if (url.pathname === '/manifest.webmanifest' || url.pathname === '/icon.svg') {
+      await this.serveStaticFile(response, url.pathname)
+      return
+    }
+
     if (url.pathname === '/api/v1/library' && request.method === 'GET') {
       sendJson(response, 200, await this.createLibraryResponse())
       return

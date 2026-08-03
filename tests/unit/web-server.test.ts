@@ -16,6 +16,8 @@ async function createFixture(): Promise<{ directory: string; mediaPath: string; 
   const webRoot = join(directory, 'web')
   await mkdir(webRoot)
   await writeFile(join(webRoot, 'index.html'), '<!doctype html><title>AIVPlayer LAN Web</title>')
+  await writeFile(join(webRoot, 'manifest.webmanifest'), '{"display":"standalone"}')
+  await writeFile(join(webRoot, 'icon.svg'), '<svg xmlns="http://www.w3.org/2000/svg" />')
   const mediaPath = join(directory, 'sample.mp4')
   await writeFile(mediaPath, Buffer.from('0123456789', 'utf8'))
   await writeFile(join(directory, 'sample.srt'), '1\n00:00:00,000 --> 00:00:01,000\nHello\n')
@@ -31,6 +33,8 @@ describe('WebServer', () => {
 
     const unauthorizedResponse = await fetch(new URL('/api/v1/library', accessUrl))
     expect(unauthorizedResponse.status).toBe(401)
+    const unauthorizedManifest = await fetch(new URL('/manifest.webmanifest', accessUrl))
+    expect(unauthorizedManifest.status).toBe(401)
 
     const pageResponse = await fetch(accessUrl, { redirect: 'manual' })
     expect(pageResponse.status).toBe(302)
@@ -41,6 +45,15 @@ describe('WebServer', () => {
     const page = await fetch(new URL('/', accessUrl), { headers: { Cookie: cookie! } })
     expect(page.status).toBe(200)
     expect(await page.text()).toContain('AIVPlayer LAN Web')
+
+    const manifest = await fetch(new URL('/manifest.webmanifest', accessUrl), { headers: { Cookie: cookie! } })
+    expect(manifest.status).toBe(200)
+    expect(manifest.headers.get('content-type')).toContain('application/manifest+json')
+    expect(await manifest.text()).toContain('standalone')
+
+    const icon = await fetch(new URL('/icon.svg', accessUrl), { headers: { Cookie: cookie! } })
+    expect(icon.status).toBe(200)
+    expect(icon.headers.get('content-type')).toContain('image/svg+xml')
 
     const libraryResponse = await fetch(new URL('/api/v1/library', accessUrl), { headers: { Cookie: cookie! } })
     expect(libraryResponse.status).toBe(200)

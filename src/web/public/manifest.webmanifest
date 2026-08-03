@@ -1,0 +1,18 @@
+{
+  "name": "AIVPlayer LAN Web",
+  "short_name": "AIVPlayer",
+  "description": "在同一局域网内播放 AIVPlayer 桌面端共享的本地媒体。",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0b0c0e",
+  "theme_color": "#0c0d0f",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
