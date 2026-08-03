@@ -36,6 +36,8 @@
 .web-share-status.is-stopped { color: var(--text-secondary); }
 .web-share-url-box { display: grid; gap: 8px; min-width: 0; padding: 12px; background: rgba(var(--accent-rgb), 0.06); border: 1px solid rgba(var(--accent-rgb), 0.24); border-radius: var(--radius-md); }
 .web-share-url-box > span { color: var(--text-muted); font-size: 11px; font-weight: 700; }
+.web-share-url-list { display: grid; gap: 8px; }
+.web-share-url-item { display: grid; gap: 8px; min-width: 0; padding: 8px; background: rgba(var(--stage-rgb), 0.2); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); }
 .web-share-url-box code { min-width: 0; padding: 8px; overflow-wrap: anywhere; color: var(--accent); background: rgba(var(--stage-rgb), 0.35); border-radius: var(--radius-sm); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; line-height: 1.45; }
 .web-share-url-actions { flex-wrap: wrap; gap: 8px; }
 .web-share-url-actions button, .web-share-footer button { gap: 6px; }

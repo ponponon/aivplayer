@@ -19,7 +19,6 @@ type Props = {
 }
 
 export function WebShareDialog({ copy, status, error, notice, playlistCount, directoryPaths, onStart, onStop, onRefresh, onAddDirectory, onRemoveDirectory, onCopy, onClose }: Props): React.ReactElement {
-  const url = status.urls[0] ?? null
   const hasShareSource = playlistCount > 0 || directoryPaths.length > 0
   return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
     <section className="web-share-dialog" role="dialog" aria-modal="true" aria-labelledby="web-share-title" tabIndex={-1}>
@@ -32,7 +31,7 @@ export function WebShareDialog({ copy, status, error, notice, playlistCount, dir
         {directoryPaths.length > 0 ? <div className="web-share-directory-list">{directoryPaths.map((directoryPath) => <div className="web-share-directory" key={directoryPath}><span title={directoryPath}>{directoryPath}</span><button className="mini-tool-button" type="button" onClick={() => onRemoveDirectory(directoryPath)} title={copy.webShare.removeFolder} aria-label={copy.webShare.removeFolder}><X size={13} /></button></div>)}</div> : <span className="web-share-empty-directory">{copy.webShare.noDirectory}</span>}
       </div>
       <div className={`web-share-status ${status.running ? 'is-running' : 'is-stopped'}`}><span className="web-share-status-dot" /><strong>{status.running ? copy.webShare.running : copy.webShare.stopped}</strong><span>{status.running ? <>{copy.webShare.sharedCount(status.sharedFileCount)} · {copy.webShare.sharedDirectoryCount(status.sharedDirectoryCount)}</> : copy.webShare.emptyUrl}</span></div>
-      {url ? <div className="web-share-url-box"><span>{copy.webShare.accessUrl}</span><code>{url}</code><div className="web-share-url-actions"><button className="settings-secondary-button" type="button" onClick={() => onCopy(url)}><Copy size={14} />{copy.webShare.copyUrl}</button><button className="settings-secondary-button" type="button" onClick={() => window.open(url, '_blank')}><ExternalLink size={14} />{copy.webShare.openUrl}</button></div></div> : null}
+      {status.urls.length > 0 ? <div className="web-share-url-box"><span>{copy.webShare.accessUrl}</span><div className="web-share-url-list">{status.urls.map((url) => <div className="web-share-url-item" key={url}><code>{url}</code><div className="web-share-url-actions"><button className="settings-secondary-button" type="button" onClick={() => onCopy(url)} aria-label={`${copy.webShare.copyUrl}: ${url}`}><Copy size={14} />{copy.webShare.copyUrl}</button><button className="settings-secondary-button" type="button" onClick={() => window.open(url, '_blank')} aria-label={`${copy.webShare.openUrl}: ${url}`}><ExternalLink size={14} />{copy.webShare.openUrl}</button></div></div>)}</div></div> : null}
       {!status.running && !hasShareSource ? <div className="web-share-warning" role="status">{copy.webShare.noFiles}</div> : null}
       {error ? <div className="web-share-error" role="alert">{error}</div> : null}
       {notice ? <div className="web-share-notice" role="status">{notice}</div> : null}
