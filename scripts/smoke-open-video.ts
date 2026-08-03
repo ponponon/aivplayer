@@ -13,6 +13,7 @@ async function readLayoutMetrics(page: any): Promise<{
   videoFrameWidth: number
   sidePanelDisplay: string
   sidePanelWidth: number
+  sidePanelResizerWidth: number
   asrCardDisplay: string
   asrCardHeight: number
 }> {
@@ -21,6 +22,7 @@ async function readLayoutMetrics(page: any): Promise<{
     const stage = document.querySelector('.stage') as HTMLElement | null
     const videoFrame = document.querySelector('.video-frame') as HTMLElement | null
     const sidePanel = document.querySelector('.side-panel') as HTMLElement | null
+    const sidePanelResizer = document.querySelector('.side-panel-resizer') as HTMLElement | null
     const asrCard = document.querySelector('.asr-card') as HTMLElement | null
 
     if (!workspace || !stage || !videoFrame || !sidePanel) {
@@ -36,6 +38,7 @@ async function readLayoutMetrics(page: any): Promise<{
       videoFrameWidth: videoFrame.getBoundingClientRect().width,
       sidePanelDisplay: sideStyle.display,
       sidePanelWidth: sidePanel.getBoundingClientRect().width,
+      sidePanelResizerWidth: sidePanelResizer?.getBoundingClientRect().width ?? 0,
       asrCardDisplay: asrStyle?.display ?? 'none',
       asrCardHeight: asrCard?.getBoundingClientRect().height ?? 0
     }
@@ -212,6 +215,16 @@ async function main(): Promise<void> {
     await page.waitForTimeout(150)
     const resized = await readLayoutMetrics(page)
     const resizedSidePanelWidth = await panelResizer.getAttribute('aria-valuenow')
+    const originalViewport = await page.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight }))
+    await page.setViewportSize({ width: 921, height: originalViewport.height })
+    await page.waitForTimeout(250)
+    const boundaryViewport = await readLayoutMetrics(page)
+    await page.setViewportSize({ width: 920, height: originalViewport.height })
+    await page.waitForTimeout(250)
+    const mobileViewport = await readLayoutMetrics(page)
+    await page.setViewportSize(originalViewport)
+    await page.waitForTimeout(250)
+    const restoredViewport = await readLayoutMetrics(page)
     await page.getByTitle(copy.topbar.togglePlaylist).click()
     await page.waitForTimeout(250)
     const collapsed = await readLayoutMetrics(page)
@@ -251,6 +264,7 @@ async function main(): Promise<void> {
 
     console.log(`Expanded layout: ${JSON.stringify(expanded)}`)
     console.log(`Resizable side panel: ${JSON.stringify({ initialSidePanelWidth, resizedSidePanelWidth, resized: resized.sidePanelWidth })}`)
+    console.log(`Responsive side panel: ${JSON.stringify({ boundaryViewport, mobileViewport, restoredViewport })}`)
     console.log(`Collapsed layout: ${JSON.stringify(collapsed)}`)
     console.log(`ASR hidden layout: ${JSON.stringify(asrHidden)}`)
     console.log(`ASR visible layout: ${JSON.stringify(asrVisible)}`)
@@ -282,6 +296,18 @@ async function main(): Promise<void> {
     }
 
     if (resized.sidePanelWidth < expanded.sidePanelWidth + 40 || resizedSidePanelWidth === initialSidePanelWidth) {
+      process.exitCode = 1
+    }
+
+    if (boundaryViewport.sidePanelDisplay === 'none' || boundaryViewport.sidePanelResizerWidth <= 0) {
+      process.exitCode = 1
+    }
+
+    if (mobileViewport.sidePanelDisplay !== 'none' || mobileViewport.sidePanelResizerWidth !== 0) {
+      process.exitCode = 1
+    }
+
+    if (restoredViewport.sidePanelDisplay === 'none' || Math.abs(restoredViewport.sidePanelWidth - resized.sidePanelWidth) > 1) {
       process.exitCode = 1
     }
 
