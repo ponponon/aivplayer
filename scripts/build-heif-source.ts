@@ -18,6 +18,7 @@ export type BuildHeifSourceOptions = {
   encoder?: HeifEncoder
   toolchainFile?: string
   vcpkgTriplet?: string
+  x265Library?: string
   staticLink?: boolean
 }
 
@@ -31,6 +32,7 @@ function readOptionsFromEnvironment(): Partial<BuildHeifSourceOptions> {
     encoder: (process.env.AIVPLAYER_HEIF_ENCODER as HeifEncoder | undefined) ?? 'x265',
     toolchainFile: process.env.AIVPLAYER_CMAKE_TOOLCHAIN_FILE,
     vcpkgTriplet: process.env.AIVPLAYER_VCPKG_TRIPLET,
+    x265Library: process.env.AIVPLAYER_X265_LIBRARY,
     staticLink: process.env.AIVPLAYER_HEIF_STATIC_LINK === '1'
   }
 }
@@ -53,6 +55,7 @@ function readOptionsFromArgs(argv: string[]): Partial<BuildHeifSourceOptions> {
     else if (item === '--encoder') options.encoder = value as HeifEncoder
     else if (item === '--toolchain-file') options.toolchainFile = value
     else if (item === '--vcpkg-triplet') options.vcpkgTriplet = value
+    else if (item === '--x265-library') options.x265Library = value
     else continue
     index += 1
   }
@@ -72,14 +75,21 @@ function mergeOptions(...optionsList: Partial<BuildHeifSourceOptions>[]): BuildH
     encoder: options.encoder === 'kvazaar' ? 'kvazaar' : 'x265',
     toolchainFile: options.toolchainFile,
     vcpkgTriplet: options.vcpkgTriplet,
+    x265Library: options.x265Library,
     staticLink: options.staticLink ?? false
   }
 }
 
 async function run(command: string, args: string[], cwd?: string): Promise<void> {
-  const result = await execFileAsync(command, args, { cwd, maxBuffer: 8 * 1024 * 1024 })
-  if (result.stdout.trim()) process.stdout.write(result.stdout)
-  if (result.stderr.trim()) process.stderr.write(result.stderr)
+  try {
+    const result = await execFileAsync(command, args, { cwd, maxBuffer: 8 * 1024 * 1024 })
+    if (result.stdout.trim()) process.stdout.write(result.stdout)
+    if (result.stderr.trim()) process.stderr.write(result.stderr)
+  } catch (error) {
+    if (error && typeof error === 'object' && 'stdout' in error && String(error.stdout).trim()) process.stdout.write(String(error.stdout))
+    if (error && typeof error === 'object' && 'stderr' in error && String(error.stderr).trim()) process.stderr.write(String(error.stderr))
+    throw error
+  }
 }
 
 function getCmakeOptions(options: BuildHeifSourceOptions, installDirectory: string): string[] {
@@ -119,6 +129,7 @@ function getCmakeOptions(options: BuildHeifSourceOptions, installDirectory: stri
   ]
   if (options.toolchainFile) cmakeOptions.push(`-DCMAKE_TOOLCHAIN_FILE=${options.toolchainFile}`)
   if (options.vcpkgTriplet) cmakeOptions.push(`-DVCPKG_TARGET_TRIPLET=${options.vcpkgTriplet}`)
+  if (options.x265Library) cmakeOptions.push(`-DX265_LIBRARY=${options.x265Library}`)
   if (options.platform === 'win32') cmakeOptions.push('-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded')
   if (options.staticLink) cmakeOptions.push('-DCMAKE_EXE_LINKER_FLAGS=-static -static-libgcc -static-libstdc++')
   return cmakeOptions

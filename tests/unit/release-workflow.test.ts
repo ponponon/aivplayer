@@ -24,5 +24,6 @@ describe('release workflow source constraints', () => {
     expect(releaseWorkflow).toContain('release:build-whisper-macos')
     expect(releaseWorkflow).toContain('release:prepare-runtime -- --platform win32')
     expect(releaseWorkflow).toContain('release:prepare-runtime -- --platform linux')
+    expect(releaseWorkflow).toContain('--x265-library $x265Library')
   })
 })

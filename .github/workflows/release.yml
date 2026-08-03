@@ -97,8 +97,10 @@ jobs:
           $build = Join-Path $env:RUNNER_TEMP "libheif-build"
           $install = Join-Path $env:RUNNER_TEMP "libheif-install"
           $toolchain = Join-Path $env:VCPKG_INSTALLATION_ROOT "scripts/buildsystems/vcpkg.cmake"
+          $x265Library = Join-Path $env:VCPKG_INSTALLATION_ROOT "installed\x64-windows-static\lib\x265-static.lib"
+          if (!(Test-Path $x265Library)) { throw "vcpkg x265 static library was not found: $x265Library" }
           git clone --depth 1 --branch "v$env:LIBHEIF_VERSION" https://github.com/strukturag/libheif.git $source
-          npm run release:build-heif-source -- --source-dir $source --build-dir $build --install-dir $install --resource-dir "$env:GITHUB_WORKSPACE/resources" --platform win32 --toolchain-file $toolchain --vcpkg-triplet x64-windows-static --encoder x265
+          npm run release:build-heif-source -- --source-dir $source --build-dir $build --install-dir $install --resource-dir "$env:GITHUB_WORKSPACE/resources" --platform win32 --toolchain-file $toolchain --vcpkg-triplet x64-windows-static --encoder x265 --x265-library $x265Library
           npm run release:check-heif-runtime
 
       - name: Build and stage ASR/media runtime
