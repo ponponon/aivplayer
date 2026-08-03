@@ -148,7 +148,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-0 libnotify4 libnss3 libxss1 libxtst6 xdg-utils libatspi2.0-0 libuuid1 libsecret-1-0 ffmpeg cmake ninja-build pkg-config libde265-dev libkvazaar-dev libjpeg-dev zlib1g-dev
+          sudo apt-get install -y libgtk-3-0 libnotify4 libnss3 libxss1 libxtst6 xdg-utils libatspi2.0-0 libuuid1 libsecret-1-0 ffmpeg cmake ninja-build pkg-config libde265-dev libx265-dev libjpeg-dev zlib1g-dev
 
       - name: Build static HEIF runtime
         shell: bash
@@ -160,7 +160,7 @@ jobs:
             --install-dir "$RUNNER_TEMP/libheif-install" \
             --resource-dir "$GITHUB_WORKSPACE/resources" \
             --platform linux \
-            --encoder kvazaar \
+            --encoder x265 \
             --static-link
           npm run release:check-heif-runtime
 

@@ -12,6 +12,7 @@
 - 主题模式虽然需要保留“浅色 / 深色 / 跟随系统”的精确选择，但一键切换属于高频操作，不能只藏在设置弹窗；标题栏工具组应提供可见的主题按钮，手动模式在浅色和深色之间切换，跟随系统模式按当前系统主题切换到另一种，设置页继续负责恢复三态选择。
 
 ## Release 工作流不能让隐式发布和可选 artifact 互相打架
+- Ubuntu 24.04 GitHub Runner 的仓库不提供 `libkvazaar-dev`，不能把它作为 Linux 发布前置依赖；libheif 的 Linux CI 编译应使用 Runner 可用的 x265 开发包，并同步修改 encoder 参数，先在真实 Runner 上验证 apt 安装步骤。
 - electron-builder 在 tag 构建且设置 `GH_TOKEN` 时会触发隐式 GitHub / Snap Store 发布；如果工作流同时还有独立的 artifact 汇总和 Snapcraft 发布 job，就会出现重复上传、Linux job 依赖本机 snapcraft，甚至平台构建阶段先于正式 release 发布的问题。平台构建必须显式使用 `--publish never`，发布动作统一收口到后置 job。
 - Snap 构建依赖 Snap Store、core22、snapcraft 和网络，单次 `snap install` 或 `snapcraft pack` 失败不能直接等同于配置错误；安装和打包要做有上限的指数退避重试，并且重试循环最后一次失败必须显式 `exit 1`，不能让最后一个 `sleep` 把失败步骤伪装成成功。
 - `publish-snap` 不能只依赖 `publish-release`，否则 `build-snap` 失败后 release 仍会成功、后置 job 再因找不到 artifact 产生第二个红色失败。汇总 release 必须等待真正会上传的 artifact，后置发布 job 也要直接依赖产物 job，确保失败原因只保留在最初失败点。
