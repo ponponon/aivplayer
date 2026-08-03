@@ -526,4 +526,4 @@
 ## CMake install 会要求构建所有被安装的示例工具
 
 - libheif 配置打开 `WITH_EXAMPLES=ON` 后，`cmake --install` 可能安装多个示例工具；如果只显式构建其中两个目标，构建阶段可能成功，但安装阶段会因找不到另一个示例文件失败。
-- 不同 libheif 版本和生成器的示例 target 名称并不完全稳定，不能猜测并硬编码 `--target` 列表；发布脚本应构建 CMake 默认目标集合，再执行安装，并在安装后探测真正需要的 `heif-enc` / `heif-convert`。
+- 在固定的 libheif `1.23.1` 中，实际可构建的目标是 `heif-info`、`heif-dec`、`heif-enc`；`heif-convert` 是安装阶段从 `heif-dec` 创建的兼容软链接，不是独立 target。发布脚本应以固定上游版本的 CMake 定义为依据，构建这三个目标，再在安装后探测 `heif-enc` / `heif-convert`。
