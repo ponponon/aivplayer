@@ -26,6 +26,7 @@
     "smoke:web-format-matrix": "node scripts/run-web-format-matrix.mjs",
     "smoke:web-concurrency": "node scripts/run-web-concurrency.mjs",
     "smoke:web-real-file": "node scripts/smoke-web-real-file.mjs",
+    "smoke:web-share-dialog": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-web-share-dialog.ts",
     "smoke:image-editor": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-image-editor.ts",
     "smoke:settings-dialog": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-settings-dialog.ts",
     "smoke:settings-dialog:en": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-settings-dialog.ts --locale en-US",
@@ -58,11 +59,13 @@
     "@lancedb/lancedb": "^0.31.0",
     "apache-arrow": "18.1.0",
     "lucide-react": "^1.21.0",
+    "qrcode": "^1.5.4",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },
   "devDependencies": {
     "@types/node": "^26.0.0",
+    "@types/qrcode": "^1.5.5",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.2.0",

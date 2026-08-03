@@ -65,7 +65,7 @@
       closeWindow: '창 닫기'
     },
     webShare: {
-      title: 'LAN Web 재생', description: '같은 LAN의 휴대폰, 태블릿 또는 다른 컴퓨터에서 현재 재생 목록을 재생합니다.', start: '공유 시작', stop: '공유 중지', running: '공유 중', stopped: '공유하지 않음', openUrl: '브라우저에서 열기', copyUrl: '접속 URL 복사', copied: '접속 URL을 복사했습니다', noFiles: '동영상을 열거나 공유 폴더를 추가해 주세요', sharedCount: (count: number) => `${count}개 동영상 공유 중`, sharedDirectoryCount: (count: number) => `${count}개 폴더 공유 중`, sharedDirectories: '공유 폴더', chooseFolder: '폴더 추가', removeFolder: '폴더 제거', noDirectory: '추가된 폴더가 없습니다. 현재 재생 목록만 공유할 수도 있습니다.', refresh: '공유 라이브러리 새로 고침', accessUrl: '접속 URL', securityNote: '현재 재생 목록과 선택한 폴더만 공유합니다. 파일은 로컬에 남으며 공유를 중지하면 URL이 즉시 만료됩니다.', emptyUrl: '공유를 시작하면 LAN 접속 URL이 표시됩니다.', close: '닫기'
+      title: 'LAN Web 재생', description: '같은 LAN의 휴대폰, 태블릿 또는 다른 컴퓨터에서 현재 재생 목록을 재생합니다.', start: '공유 시작', stop: '공유 중지', running: '공유 중', stopped: '공유하지 않음', openUrl: '브라우저에서 열기', copyUrl: '접속 URL 복사', copied: '접속 URL을 복사했습니다', noFiles: '동영상을 열거나 공유 폴더를 추가해 주세요', sharedCount: (count: number) => `${count}개 동영상 공유 중`, sharedDirectoryCount: (count: number) => `${count}개 폴더 공유 중`, sharedDirectories: '공유 폴더', chooseFolder: '폴더 추가', removeFolder: '폴더 제거', noDirectory: '추가된 폴더가 없습니다. 현재 재생 목록만 공유할 수도 있습니다.', refresh: '공유 라이브러리 새로 고침', accessUrl: '접속 URL', scanQrCode: '휴대폰 카메라로 스캔', qrCodeAlt: 'LAN 접속 URL QR 코드', securityNote: '현재 재생 목록과 선택한 폴더만 공유합니다. 파일은 로컬에 남으며 공유를 중지하면 URL이 즉시 만료됩니다.', emptyUrl: '공유를 시작하면 LAN 접속 URL이 표시됩니다.', close: '닫기'
     },
     emptyState: {
       title: 'AIVPlayer',
