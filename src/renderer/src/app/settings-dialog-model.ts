@@ -43,7 +43,7 @@ export function getSettingsTabs(copy: LocaleCopy): SettingsTab[] {
 type SettingsSectionPropsInput = {
   copy: LocaleCopy
   settings: AppSettings
-  activeSectionId: AppSettingsSectionId
+  activeSectionId: AppSettingsSectionId | 'about'
   patchSettingsSection: AppSettingsSectionPatcher
   asrStatus: AsrRuntimeStatus | null
   translationServiceTestMessage: AsrTranslationServiceTestResult | null

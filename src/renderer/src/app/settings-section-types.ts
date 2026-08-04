@@ -17,11 +17,13 @@ import type { AsrCacheStats, AsrModelSourceId, AsrRuntimeStatus, AsrTranslationS
 import type { LocaleCopy } from '../../../shared/i18n'
 import type { SettingsSelectOption } from './settings-controls'
 
+export type SettingsSectionActiveId = AppSettingsSectionId | 'about'
+
 export type SettingsSectionProps = {
   copy: LocaleCopy
   settings: AppSettings
   patchSettingsSection: AppSettingsSectionPatcher
-  activeSectionId: AppSettingsSectionId
+  activeSectionId: SettingsSectionActiveId
   languageOptions: ReadonlyArray<SettingsSelectOption<AppLocale>>
   themeOptions: ReadonlyArray<SettingsSelectOption<AppThemePreference>>
   subtitleLanguageOptions: ReadonlyArray<SettingsSelectOption<SubtitleLanguageId>>

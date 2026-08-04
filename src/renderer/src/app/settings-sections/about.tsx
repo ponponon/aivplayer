@@ -3,9 +3,11 @@ import type { ReactElement } from 'react'
 import type { AppUpdateState } from '../../../../shared/app-update-types'
 import type { LocaleCopy } from '../../../../shared/i18n'
 import { SettingsField } from '../settings-controls'
+import type { SettingsTabId } from '../settings-dialog-model'
 
 export type AboutSettingsSectionProps = {
   copy: LocaleCopy
+  activeSectionId: SettingsTabId
   updateState: AppUpdateState
   onCheckForUpdate: () => void
   onInstallUpdate: () => void
@@ -33,7 +35,7 @@ function getUpdateStatusLabel(copy: LocaleCopy, state: AppUpdateState): string {
   }
 }
 
-export function AboutSettingsSection({ copy, updateState, onCheckForUpdate, onInstallUpdate }: AboutSettingsSectionProps): ReactElement {
+export function AboutSettingsSection({ copy, activeSectionId, updateState, onCheckForUpdate, onInstallUpdate }: AboutSettingsSectionProps): ReactElement {
   const isChecking = updateState.status === 'checking'
   const isBusy = isChecking || updateState.status === 'downloading' || updateState.status === 'installing'
   const canInstall = updateState.status === 'downloaded' || updateState.status === 'installing'
@@ -41,11 +43,11 @@ export function AboutSettingsSection({ copy, updateState, onCheckForUpdate, onIn
 
   return (
     <section
-      className="settings-card settings-card-anchor settings-about-card"
+      className={`settings-card settings-card-anchor settings-about-card ${activeSectionId === 'about' ? '' : 'is-hidden'}`}
       id="settings-section-about"
       role="tabpanel"
       aria-labelledby="settings-tab-about"
-      aria-hidden={false}
+      aria-hidden={activeSectionId !== 'about'}
     >
       <div className="settings-card-heading">
         <Info size={16} />

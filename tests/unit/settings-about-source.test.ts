@@ -26,6 +26,8 @@ describe('settings about and update controls', () => {
     expect(sectionSource).toContain('copy.update.restartAction')
     expect(sectionSource).toContain('onCheckForUpdate')
     expect(sectionSource).toContain('onInstallUpdate')
+    expect(sectionSource).toContain("activeSectionId === 'about' ? '' : 'is-hidden'")
+    expect(sectionSource).toContain("aria-hidden={activeSectionId !== 'about'}")
     expect(overlaySource).toContain('appUpdateState={app.appUpdateState}')
     expect(controllerSource).toContain('useAppUpdater()')
     expect(controllerSource).toContain('checkForAppUpdate: updater.check')
@@ -40,6 +42,7 @@ describe('settings about and update controls', () => {
     expect(smokeSource).toContain('[data-settings-tab="about"]')
     expect(smokeSource).toContain('#settings-section-about')
     expect(smokeSource).toContain('aboutPanelState.checkButton')
+    expect(smokeSource).toContain('aboutVisibilityByTab')
   })
 
   it('provides the About tab copy in every supported locale', () => {

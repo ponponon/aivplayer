@@ -15,6 +15,7 @@ export type SettingsSectionPanelsProps = {
   copy: LocaleCopy
   tabs: SettingsTab[]
   sectionProps: SettingsSectionProps
+  activeSectionId: SettingsTabId
   updateState: AppUpdateState
   onCheckForUpdate: () => void
   onInstallUpdate: () => void
@@ -29,12 +30,12 @@ const sectionComponents: Record<Exclude<SettingsTabId, 'about'>, (props: Setting
   shortcuts: ShortcutsSettingsSection
 }
 
-export function SettingsSectionPanels({ tabs, sectionProps, updateState, copy, onCheckForUpdate, onInstallUpdate }: SettingsSectionPanelsProps): ReactElement {
+export function SettingsSectionPanels({ tabs, sectionProps, activeSectionId, updateState, copy, onCheckForUpdate, onInstallUpdate }: SettingsSectionPanelsProps): ReactElement {
   return (
     <div className="settings-grid">
       {tabs.map(({ id }) => {
         if (id === 'about') {
-          return <AboutSettingsSection key={id} copy={copy} updateState={updateState} onCheckForUpdate={onCheckForUpdate} onInstallUpdate={onInstallUpdate} />
+          return <AboutSettingsSection key={id} copy={copy} activeSectionId={activeSectionId} updateState={updateState} onCheckForUpdate={onCheckForUpdate} onInstallUpdate={onInstallUpdate} />
         }
         const Section = sectionComponents[id]
         return <Section key={id} {...sectionProps} />

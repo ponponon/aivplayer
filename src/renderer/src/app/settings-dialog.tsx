@@ -114,7 +114,7 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
   const sectionProps = createSettingsSectionProps({
     copy,
     settings,
-    activeSectionId: activeSectionId === 'about' ? 'general' : activeSectionId,
+    activeSectionId,
     patchSettingsSection,
     asrStatus,
     translationServiceTestMessage,
@@ -154,6 +154,7 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
             copy={copy}
             tabs={tabs}
             sectionProps={sectionProps}
+            activeSectionId={activeSectionId}
             updateState={appUpdateState}
             onCheckForUpdate={() => { void onCheckForAppUpdate() }}
             onInstallUpdate={() => { void onInstallAppUpdate() }}

@@ -238,6 +238,10 @@
 - 应该先收口成一个 `createAppSettingsSectionPatcher` 绑定器，再让各个调用点只传 section key 和 patch 内容；实际的对象合并逻辑放到 shared 的 `updateAppSettingsSection`，它既能吃 partial patch，也能吃 updater callback，适合浅层和深层更新一起收口。
 - `SettingsDialog` 既然已经只做 section 级写回，就应该直接接收 `AppSettingsSectionPatcher`，不要把整份 settings updater 继续往下传再在组件内部转一层。
 - 这类共享 section patch 的参数类型也应该用 `AppSettingsSectionUpdate` 统一命名，避免每个调用点再重复声明一遍同样的联合类型。
+
+## 设置分组必须统一使用 active 状态隐藏
+- 设置页原有分组全部渲染后依靠 `is-hidden` 和 `aria-hidden` 切换；新增分组不能只实现内容而遗漏这层状态，否则会在所有设置分组下面串出重复面板。
+- 新增设置分组必须同时验证默认分组、其他普通分组和自身激活时的 `display` / `aria-hidden`，并在 smoke 测试中覆盖切换路径。
 - `SettingsDialog` 的 props 边界也应该直接叫 `patchSettingsSection`，不要再保留一个语义更虚的 `onChange` 再去兜转 section patcher，边界越短越不容易回退。
 - section patcher 本身也值得有 `AppSettingsSectionPatcher` 这种共享命名，调用方一看就知道这是正式工具而不是临时闭包。
 - 需要改 section 字段时，优先检查通用 helper 的类型约束和源码测试，不要再为单个分组新开一套 `patchXxxSettings`。
