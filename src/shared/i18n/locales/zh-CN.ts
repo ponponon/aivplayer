@@ -600,7 +600,8 @@
         video: '视频',
         subtitles: '字幕',
         capture: '截图和录屏',
-        shortcuts: '快捷键'
+        shortcuts: '快捷键',
+        about: '关于'
       },
       tabAria: {
         general: '跳到通用设置',
@@ -608,7 +609,22 @@
         video: '跳到视频设置',
         subtitles: '跳到字幕设置',
         capture: '跳到截图和录屏设置',
-        shortcuts: '跳到快捷键设置'
+        shortcuts: '跳到快捷键设置',
+        about: '跳到关于设置'
+      },
+      about: {
+        title: '关于 AIVPlayer',
+        description: '查看应用版本、项目许可和更新状态。',
+        versionLabel: '版本',
+        licenseLabel: '许可证',
+        projectLabel: '项目地址',
+        updateTitle: '应用更新',
+        updateDescription: '手动检查新版本；下载完成后可以重启应用更新。',
+        checkForUpdates: '检查更新',
+        checking: '检查中…',
+        notChecked: '尚未检查更新',
+        upToDate: '当前已是最新版本',
+        updateDisabled: '当前运行模式不支持应用内更新'
       },
       restoreDefaults: '恢复默认设置',
       openAsrPanel: '打开 ASR 面板',

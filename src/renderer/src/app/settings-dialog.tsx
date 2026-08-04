@@ -5,22 +5,15 @@ import type {
   AppSettingsSectionId,
   AppSettingsSectionPatcher
 } from '../../../shared/app-settings'
+import type { AppUpdateState } from '../../../shared/app-update-types'
 import type { AsrRuntimeSetupResult, AsrRuntimeStatus, AsrTranslationServiceTestResult } from '../../../shared/media-types'
 import type { LocaleCopy } from '../../../shared/i18n'
 import { useModalFocusTrap } from './use-modal-focus-trap'
 import { useSettingsCacheManagement } from './use-settings-cache-management'
-import { getSettingsTabs, createSettingsSectionProps } from './settings-dialog-model'
+import { getSettingsTabs, createSettingsSectionProps, type SettingsTabId } from './settings-dialog-model'
 import { GpuRestartDialog } from './gpu-restart-dialog'
 import { SettingsTabs } from './settings-tabs'
-import {
-  CaptureSettingsSection,
-  GeneralSettingsSection,
-  InterfaceSettingsSection,
-  ShortcutsSettingsSection,
-  SubtitlesSettingsSection,
-  VideoSettingsSection
-} from './settings-sections'
-import type { SettingsSectionProps } from './settings-section-types'
+import { SettingsSectionPanels } from './settings-section-panels'
 
 export type SettingsDialogProps = {
   copy: LocaleCopy
@@ -42,15 +35,9 @@ export type SettingsDialogProps = {
   onTestTranslationService: () => void
   onResetDefaults: () => void
   onRestartWithGpuAcceleration: (enabled: boolean) => Promise<void>
-}
-
-const sectionComponents: Record<AppSettingsSectionId, (props: SettingsSectionProps) => ReactElement> = {
-  general: GeneralSettingsSection,
-  interface: InterfaceSettingsSection,
-  video: VideoSettingsSection,
-  subtitles: SubtitlesSettingsSection,
-  capture: CaptureSettingsSection,
-  shortcuts: ShortcutsSettingsSection
+  appUpdateState: AppUpdateState
+  onCheckForAppUpdate: () => Promise<AppUpdateState>
+  onInstallAppUpdate: () => Promise<void>
 }
 
 export function SettingsDialog(props: SettingsDialogProps): ReactElement {
@@ -68,10 +55,13 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
     onPickCaptureFolder,
     onTestTranslationService,
     onResetDefaults,
-    onRestartWithGpuAcceleration
+    onRestartWithGpuAcceleration,
+    appUpdateState,
+    onCheckForAppUpdate,
+    onInstallAppUpdate
   } = props
-  const [activeSectionId, setActiveSectionId] = useState<AppSettingsSectionId>(initialSectionId)
-  const activeSectionIdRef = useRef<AppSettingsSectionId>(initialSectionId)
+  const [activeSectionId, setActiveSectionId] = useState<SettingsTabId>(initialSectionId)
+  const activeSectionIdRef = useRef<SettingsTabId>(initialSectionId)
   const dialogRef = useRef<HTMLElement | null>(null)
   const cacheManagement = useSettingsCacheManagement(copy)
   const [showRestartDialog, setShowRestartDialog] = useState(false)
@@ -88,13 +78,15 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
     setActiveSectionId(settings.ui.lastSettingsSectionId)
   }, [settings.ui.lastSettingsSectionId])
 
-  const selectSection = (sectionId: AppSettingsSectionId): void => {
+  const selectSection = (sectionId: SettingsTabId): void => {
     if (activeSectionIdRef.current === sectionId) {
       return
     }
     activeSectionIdRef.current = sectionId
     setActiveSectionId(sectionId)
-    patchSettingsSection('ui', { lastSettingsSectionId: sectionId })
+    if (sectionId !== 'about') {
+      patchSettingsSection('ui', { lastSettingsSectionId: sectionId })
+    }
   }
 
   const tabs = getSettingsTabs(copy)
@@ -122,7 +114,7 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
   const sectionProps = createSettingsSectionProps({
     copy,
     settings,
-    activeSectionId,
+    activeSectionId: activeSectionId === 'about' ? 'general' : activeSectionId,
     patchSettingsSection,
     asrStatus,
     translationServiceTestMessage,
@@ -158,12 +150,14 @@ export function SettingsDialog(props: SettingsDialogProps): ReactElement {
         </div>
         <div className="settings-body">
           <SettingsTabs copy={copy} tabs={tabs} activeSectionId={activeSectionId} onSelect={selectSection} />
-          <div className="settings-grid">
-            {tabs.map(({ id }) => {
-              const Section = sectionComponents[id]
-              return <Section key={id} {...sectionProps} />
-            })}
-          </div>
+          <SettingsSectionPanels
+            copy={copy}
+            tabs={tabs}
+            sectionProps={sectionProps}
+            updateState={appUpdateState}
+            onCheckForUpdate={() => { void onCheckForAppUpdate() }}
+            onInstallUpdate={() => { void onInstallAppUpdate() }}
+          />
         </div>
         <div className="settings-footer">
           <div className="settings-note">

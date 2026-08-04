@@ -1,0 +1,75 @@
+.settings-about-card {
+  align-content: start;
+}
+
+.settings-about-value {
+  min-height: var(--settings-control-height);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--settings-control-padding-x);
+  color: var(--text-primary);
+  background: rgba(var(--overlay-rgb), 0.035);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--settings-control-radius);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.settings-about-project {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.settings-about-update {
+  display: grid;
+  gap: 10px;
+}
+
+.settings-about-update-status {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 7px;
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.settings-about-update-status span {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.settings-about-update-status.is-up-to-date {
+  color: var(--ok);
+}
+
+.settings-about-update-status.is-error {
+  color: var(--danger);
+}
+
+.settings-about-progress {
+  height: 6px;
+  overflow: hidden;
+  background: rgba(var(--overlay-rgb), 0.08);
+  border-radius: 999px;
+}
+
+.settings-about-progress i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: inherit;
+  transition: width 160ms ease;
+}
+
+.settings-about-update-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.settings-about-update-actions .asr-action-button {
+  width: auto;
+}

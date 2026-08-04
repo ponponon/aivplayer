@@ -1,13 +1,12 @@
 import type { ReactElement } from 'react'
-import type { AppSettingsSectionId } from '../../../shared/app-settings'
 import type { LocaleCopy } from '../../../shared/i18n'
-import type { SettingsTab } from './settings-dialog-model'
+import type { SettingsTab, SettingsTabId } from './settings-dialog-model'
 
 export type SettingsTabsProps = {
   copy: LocaleCopy
   tabs: SettingsTab[]
-  activeSectionId: AppSettingsSectionId
-  onSelect: (sectionId: AppSettingsSectionId) => void
+  activeSectionId: SettingsTabId
+  onSelect: (sectionId: SettingsTabId) => void
 }
 
 export function SettingsTabs({ copy, tabs, activeSectionId, onSelect }: SettingsTabsProps): ReactElement {

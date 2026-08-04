@@ -1,4 +1,5 @@
 export { CaptureSettingsSection } from './settings-sections/capture'
+export { AboutSettingsSection } from './settings-sections/about'
 export { GeneralSettingsSection } from './settings-sections/general'
 export { InterfaceSettingsSection } from './settings-sections/interface'
 export { ShortcutsSettingsSection } from './settings-sections/shortcuts'

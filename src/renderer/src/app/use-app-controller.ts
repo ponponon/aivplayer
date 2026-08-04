@@ -15,6 +15,7 @@ import { useAppEffects } from './use-app-effects'
 import { useAiSetup } from './use-ai-setup'
 import { useEditingActions } from './use-editing-actions'
 import { useWebShareActions } from './use-web-share-actions'
+import { useAppUpdater } from './use-app-updater'
 
 export function useAppController() {
   const model = useAppModel()
@@ -49,7 +50,8 @@ export function useAppController() {
   const clip = useClipExportActions(model, derived, settings.syncClipExportPreferences)
   const editing = useEditingActions(model, derived, playback.selectFile)
   const webShare = useWebShareActions(model, derived.copy)
+  const updater = useAppUpdater()
   useAppEffects(model, derived, { ...playback, ...runtime, ...quickSubtitle }, settings.patchSubtitleDisplaySettings)
 
-  return { ...model, ...derived, ...settings, ...playback, ...runtime, ...generation, ...translation, ...summary, ...summaryExport, ...aiWorkflow, ...subtitleFiles, ...quickSubtitle, ...clip, ...editing, ...aiSetup, ...webShare }
+  return { ...model, ...derived, ...settings, ...playback, ...runtime, ...generation, ...translation, ...summary, ...summaryExport, ...aiWorkflow, ...subtitleFiles, ...quickSubtitle, ...clip, ...editing, ...aiSetup, ...webShare, appUpdateState: updater.state, checkForAppUpdate: updater.check, installAppUpdate: updater.install }
 }

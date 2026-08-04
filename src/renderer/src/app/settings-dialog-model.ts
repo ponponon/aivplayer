@@ -1,4 +1,4 @@
-import { Camera, Captions, Clapperboard, Keyboard, LayoutGrid, Settings2 } from 'lucide-react'
+import { Camera, Captions, Clapperboard, Info, Keyboard, LayoutGrid, Settings2 } from 'lucide-react'
 import type {
   AppLocale,
   AppPanelModePreference,
@@ -20,11 +20,13 @@ import type { SettingsSelectOption } from './settings-controls'
 import type { SettingsSectionProps } from './settings-section-types'
 
 export type SettingsTab = {
-  id: AppSettings['ui']['lastSettingsSectionId']
+  id: SettingsTabId
   label: string
   ariaLabel: string
   icon: typeof Settings2
 }
+
+export type SettingsTabId = AppSettingsSectionId | 'about'
 
 export function getSettingsTabs(copy: LocaleCopy): SettingsTab[] {
   return [
@@ -33,7 +35,8 @@ export function getSettingsTabs(copy: LocaleCopy): SettingsTab[] {
     { id: 'video', label: copy.settingsDialog.tabs.video, ariaLabel: copy.settingsDialog.tabAria.video, icon: Clapperboard },
     { id: 'subtitles', label: copy.settingsDialog.tabs.subtitles, ariaLabel: copy.settingsDialog.tabAria.subtitles, icon: Captions },
     { id: 'capture', label: copy.settingsDialog.tabs.capture, ariaLabel: copy.settingsDialog.tabAria.capture, icon: Camera },
-    { id: 'shortcuts', label: copy.settingsDialog.tabs.shortcuts, ariaLabel: copy.settingsDialog.tabAria.shortcuts, icon: Keyboard }
+    { id: 'shortcuts', label: copy.settingsDialog.tabs.shortcuts, ariaLabel: copy.settingsDialog.tabAria.shortcuts, icon: Keyboard },
+    { id: 'about', label: copy.settingsDialog.tabs.about, ariaLabel: copy.settingsDialog.tabAria.about, icon: Info }
   ]
 }
 

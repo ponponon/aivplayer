@@ -600,7 +600,8 @@
         video: '비디오',
         subtitles: '자막',
         capture: '캡처 및 녹화',
-        shortcuts: '단축키'
+        shortcuts: '단축키',
+        about: '정보'
       },
       tabAria: {
         general: '일반 설정으로 이동',
@@ -608,7 +609,22 @@
         video: '비디오 설정으로 이동',
         subtitles: '자막 설정으로 이동',
         capture: '캡처 및 녹화 설정으로 이동',
-        shortcuts: '단축키 설정으로 이동'
+        shortcuts: '단축키 설정으로 이동',
+        about: '정보 설정으로 이동'
+      },
+      about: {
+        title: 'AIVPlayer 정보',
+        description: '앱 버전, 프로젝트 라이선스 및 업데이트 상태를 확인합니다.',
+        versionLabel: '버전',
+        licenseLabel: '라이선스',
+        projectLabel: '프로젝트 웹사이트',
+        updateTitle: '앱 업데이트',
+        updateDescription: '새 버전을 수동으로 확인하고 다운로드가 완료되면 앱을 다시 시작하여 업데이트합니다.',
+        checkForUpdates: '업데이트 확인',
+        checking: '확인 중…',
+        notChecked: '아직 업데이트를 확인하지 않았습니다',
+        upToDate: '최신 버전입니다',
+        updateDisabled: '현재 실행 모드에서는 앱 내 업데이트를 사용할 수 없습니다'
       },
       restoreDefaults: '기본값 복원',
       openAsrPanel: 'ASR 패널 열기',

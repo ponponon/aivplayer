@@ -600,7 +600,8 @@
         video: 'ビデオ',
         subtitles: '字幕',
         capture: 'キャプチャと録画',
-        shortcuts: 'ショートカット'
+        shortcuts: 'ショートカット',
+        about: '概要'
       },
       tabAria: {
         general: '一般設定へ移動',
@@ -608,7 +609,22 @@
         video: 'ビデオ設定へ移動',
         subtitles: '字幕設定へ移動',
         capture: 'キャプチャと録画設定へ移動',
-        shortcuts: 'ショートカット設定へ移動'
+        shortcuts: 'ショートカット設定へ移動',
+        about: '概要設定へ移動'
+      },
+      about: {
+        title: 'AIVPlayer について',
+        description: 'アプリのバージョン、ライセンス、更新状態を確認できます。',
+        versionLabel: 'バージョン',
+        licenseLabel: 'ライセンス',
+        projectLabel: 'プロジェクトサイト',
+        updateTitle: 'アプリの更新',
+        updateDescription: '新しいバージョンを手動で確認し、ダウンロード後に再起動して更新できます。',
+        checkForUpdates: '更新を確認',
+        checking: '確認中…',
+        notChecked: 'まだ更新を確認していません',
+        upToDate: '最新バージョンです',
+        updateDisabled: '現在の実行モードではアプリ内更新を利用できません'
       },
       restoreDefaults: '既定値に戻す',
       openAsrPanel: 'ASR パネルを開く',

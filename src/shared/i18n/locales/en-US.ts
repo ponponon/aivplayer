@@ -600,7 +600,8 @@
         video: 'Video',
         subtitles: 'Subtitles',
         capture: 'Capture & record',
-        shortcuts: 'Shortcuts'
+        shortcuts: 'Shortcuts',
+        about: 'About'
       },
       tabAria: {
         general: 'Jump to General settings',
@@ -608,7 +609,22 @@
         video: 'Jump to Video settings',
         subtitles: 'Jump to Subtitle settings',
         capture: 'Jump to Capture and record settings',
-        shortcuts: 'Jump to Shortcut settings'
+        shortcuts: 'Jump to Shortcut settings',
+        about: 'Jump to About settings'
+      },
+      about: {
+        title: 'About AIVPlayer',
+        description: 'View the app version, project license, and update status.',
+        versionLabel: 'Version',
+        licenseLabel: 'License',
+        projectLabel: 'Project website',
+        updateTitle: 'App updates',
+        updateDescription: 'Check for a new version manually and restart the app after the download completes.',
+        checkForUpdates: 'Check for updates',
+        checking: 'Checking…',
+        notChecked: 'No update check yet',
+        upToDate: 'You are up to date',
+        updateDisabled: 'In-app updates are unavailable in the current mode'
       },
       restoreDefaults: 'Restore defaults',
       openAsrPanel: 'Open ASR panel',

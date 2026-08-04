@@ -174,6 +174,20 @@ async function main(): Promise<void> {
       }
     })
 
+    await page.locator('[data-settings-tab="about"]').click()
+    await page.waitForTimeout(250)
+    dialogHeightByTab.about = await readDialogHeight()
+    const aboutPanelState = await page.evaluate(() => {
+      const panel = document.querySelector('#settings-section-about') as HTMLElement | null
+      const checkButton = panel?.querySelector('.settings-about-update-actions .settings-secondary-button') as HTMLButtonElement | null
+      return {
+        display: panel ? window.getComputedStyle(panel).display : 'missing',
+        version: panel?.querySelector('.settings-about-value')?.textContent?.trim() ?? 'missing',
+        checkButton: checkButton ? 'present' : 'missing',
+        checkDisabled: checkButton?.disabled ?? true
+      }
+    })
+
     const screenshotPath = join(smokeHomeDirectory, 'aivplayer-smoke-settings-dialog.png')
     await page.screenshot({ path: screenshotPath, fullPage: false })
     const shortcutScreenshotPath = join(smokeHomeDirectory, 'aivplayer-smoke-settings-shortcuts.png')
@@ -187,6 +201,7 @@ async function main(): Promise<void> {
     console.log(`Video settings card height: ${JSON.stringify(videoCardHeight)}`)
     console.log(`Subtitle cache panel: ${JSON.stringify(cachePanelState)}`)
     console.log(`Shortcut panel: ${JSON.stringify({ shortcutCount, ...shortcutPanelState })}`)
+    console.log(`About settings panel: ${JSON.stringify(aboutPanelState)}`)
     console.log(`Settings dialog screenshot: ${screenshotPath}`)
     console.log(`Shortcut settings screenshot: ${shortcutScreenshotPath}`)
 
@@ -210,7 +225,10 @@ async function main(): Promise<void> {
       cachePanelState.cacheButtons !== 2 ||
       shortcutCount !== 9 ||
       shortcutPanelState.display !== 'grid' ||
-      shortcutPanelState.ariaHidden !== 'false'
+      shortcutPanelState.ariaHidden !== 'false' ||
+      aboutPanelState.display !== 'grid' ||
+      aboutPanelState.version === 'missing' ||
+      aboutPanelState.checkButton !== 'present'
     ) {
       process.exitCode = 1
     }
