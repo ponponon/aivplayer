@@ -16,6 +16,7 @@
 - Ubuntu 24 的新版 `jpeglib.h` 会让固定版本 libheif 的 `jpeg_write_icc_profile` 兼容声明在 C++ 编译阶段冲突；Linux CI 构建该固定源码时需要显式使用 `CXXFLAGS=-fpermissive`，不能只看 CMake configure 成功。
 - Ubuntu 的 `libx265-dev` 提供动态库时，不能继续给 libheif 传 `--static-link`；否则会在链接阶段报 attempted static link of dynamic object。Linux 包应依赖系统 FFmpeg/编解码运行库，macOS/Windows 再分别使用各自的静态或自包含方案。
 - electron-builder 在 tag 构建且设置 `GH_TOKEN` 时会触发隐式 GitHub / Snap Store 发布；如果工作流同时还有独立的 artifact 汇总和 Snapcraft 发布 job，就会出现重复上传、Linux job 依赖本机 snapcraft，甚至平台构建阶段先于正式 release 发布的问题。平台构建必须显式使用 `--publish never`，发布动作统一收口到后置 job。
+- Chocolatey 安装 FFmpeg 后，Windows Runner 上的 `Get-Command ffmpeg` 可能只返回 `C:\ProgramData\Chocolatey\bin` 下的 shim；不能把这个 shim 当作可携带运行库。发布脚本必须从 Chocolatey 的实际 `lib\ffmpeg` 安装目录解析 `ffmpeg.exe` 和同目录的 `ffprobe.exe`，再暂存到应用资源中并执行验证。
 - Snap 构建依赖 Snap Store、core22、snapcraft 和网络，单次 `snap install` 或 `snapcraft pack` 失败不能直接等同于配置错误；安装和打包要做有上限的指数退避重试，并且重试循环最后一次失败必须显式 `exit 1`，不能让最后一个 `sleep` 把失败步骤伪装成成功。
 - `publish-snap` 不能只依赖 `publish-release`，否则 `build-snap` 失败后 release 仍会成功、后置 job 再因找不到 artifact 产生第二个红色失败。汇总 release 必须等待真正会上传的 artifact，后置发布 job 也要直接依赖产物 job，确保失败原因只保留在最初失败点。
 - Snapcraft 的 `pack` 失败后不能在同一个 `parts` / `stage` / `prime` 状态上直接重试；dump part 可能已经留下部分安装文件，下一次会把原本的根因放大成大量 `cp ... File exists`。每次重试前必须清理 Snapcraft 生成目录和旧 `.snap`，再从干净状态重新打包。

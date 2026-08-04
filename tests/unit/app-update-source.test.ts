@@ -30,6 +30,8 @@ describe('app update source constraints', () => {
     expect(workflowSource).toContain('release/*.blockmap')
     expect(workflowSource).toContain('artifacts/*.yml')
     expect(workflowSource).toContain('artifacts/*.blockmap')
+    expect(workflowSource).toContain("Join-Path $env:ChocolateyInstall 'lib\\ffmpeg'")
+    expect(workflowSource).toContain("Get-ChildItem -Path $ffmpegRoot -Filter 'ffmpeg.exe'")
   })
 
   it('keeps Gitee mirroring optional and replaces only same-named assets', () => {
