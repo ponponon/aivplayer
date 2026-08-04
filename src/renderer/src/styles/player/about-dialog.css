@@ -1,0 +1,109 @@
+.about-dialog {
+  display: grid;
+  gap: 16px;
+  width: min(520px, calc(100vw - 32px));
+  min-width: 0;
+  padding: 22px;
+  color: var(--text-primary);
+  background: rgba(var(--panel-rgb), 0.96);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.46);
+}
+
+.about-dialog-header,
+.about-dialog-footer,
+.about-dialog-brand {
+  display: flex;
+  align-items: center;
+}
+
+.about-dialog-header,
+.about-dialog-footer {
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.about-dialog-header {
+  align-items: flex-start;
+}
+
+.about-dialog-header h2 {
+  margin: 4px 0 0;
+  font-size: 20px;
+}
+
+.about-dialog-brand {
+  gap: 10px;
+  color: var(--accent);
+}
+
+.about-dialog-mark {
+  display: inline-grid;
+  width: 54px;
+  height: 54px;
+  place-items: center;
+  border: 1px solid rgba(var(--accent-rgb), 0.52);
+  border-radius: 16px;
+  background: rgba(var(--accent-rgb), 0.1);
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.about-dialog-description {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.about-dialog-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.about-dialog-meta > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 9px 10px;
+  background: rgba(var(--overlay-rgb), 0.045);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+}
+
+.about-dialog-meta-wide {
+  grid-column: 1 / -1;
+}
+
+.about-dialog-meta span {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.about-dialog-meta strong {
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.about-dialog-footer {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+@media (max-width: 520px) {
+  .about-dialog-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .about-dialog-meta-wide {
+    grid-column: auto;
+  }
+}

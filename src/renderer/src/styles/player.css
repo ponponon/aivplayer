@@ -65,6 +65,7 @@
 @import './player/asr-actions.css';
 @import './player/asr-errors-dialogs.css';
 @import './player/dialogs.css';
+@import './player/about-dialog.css';
 @import './player/media-details-settings-nav.css';
 @import './player/settings-layout.css';
 @import './player/settings-fields.css';

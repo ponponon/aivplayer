@@ -44,6 +44,7 @@ export function useAppModel(): AppModel {
   const [isSummarizingSubtitle, setIsSummarizingSubtitle] = useState(false)
   const [summaryElapsedMs, setSummaryElapsedMs] = useState<number | null>(null)
   const [isMediaDetailsDialogOpen, setIsMediaDetailsDialogOpen] = useState(false)
+  const [isAboutDialogOpen, setIsAboutDialogOpen] = useState(false)
   const [runtimeSetupMessage, setRuntimeSetupMessage] = useState<{ success: boolean; message: string } | null>(null)
   const [translationServiceTestMessage, setTranslationServiceTestMessage] = useState<AsrTranslationServiceTestResult | null>(null)
   const [isTestingTranslationService, setIsTestingTranslationService] = useState(false)
@@ -117,6 +118,8 @@ export function useAppModel(): AppModel {
     setSummaryElapsedMs,
     isMediaDetailsDialogOpen,
     setIsMediaDetailsDialogOpen,
+    isAboutDialogOpen,
+    setIsAboutDialogOpen,
     runtimeSetupMessage,
     setRuntimeSetupMessage,
     translationServiceTestMessage,

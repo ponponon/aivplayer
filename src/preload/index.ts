@@ -88,6 +88,7 @@ import type { EditingProjectFileOpenResult, EditingProjectFileSaveRequest, Editi
 import type { WebShareStartRequest, WebShareStatus } from '../shared/web-types'
 
 const api = {
+  platform: process.platform,
   openMediaFiles: (): Promise<MediaFile[]> => ipcRenderer.invoke(IPC_CHANNELS.OPEN_MEDIA_FILES),
   openMediaDirectory: (): Promise<string | null> => ipcRenderer.invoke(IPC_CHANNELS.OPEN_MEDIA_DIRECTORY),
   openFolderPicker: (request: { title: string; defaultPath?: string | null }): Promise<string | null> =>

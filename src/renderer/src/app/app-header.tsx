@@ -1,4 +1,4 @@
-import { Clapperboard, FileText, FolderOpen, Globe2, Image as ImageIcon, Info, ListChecks, Minus, Moon, PanelRight, ScanSearch, Scissors, Settings, Share2, Square, Sparkles, Sun, SunMoon, X } from 'lucide-react'
+import { CircleQuestionMark, Clapperboard, FileText, FolderOpen, Globe2, Image as ImageIcon, Info, ListChecks, Minus, Moon, PanelRight, ScanSearch, Scissors, Settings, Share2, Square, Sparkles, Sun, SunMoon, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { AppThemePreference } from '../../../shared/app-settings'
 import { useAppContext } from './app-context'
@@ -39,6 +39,7 @@ function WindowControls(): React.ReactElement {
 export function AppHeader(): React.ReactElement {
   const app = useAppContext()
   const { copy, state } = app
+  const isMac = window.aiv.platform === 'darwin'
   const themePreference = app.appSettings.ui.theme
   const currentTheme = themePreference === 'system'
     ? window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
@@ -69,6 +70,7 @@ export function AppHeader(): React.ReactElement {
         <button className={`tool-button web-share-tool-button ${app.webShareStatus.running ? 'active' : ''}`} type="button" onClick={app.webShareStatus.running ? app.openWebShareDialog : () => void app.startWebShare()} title={copy.topbar.toggleWebShare} aria-label={copy.topbar.toggleWebShare} aria-pressed={app.webShareStatus.running}><Share2 size={17} /></button>
         <button className="tool-button theme-tool-button" type="button" onClick={toggleTheme} title={`${copy.topbar.toggleTheme} · ${copy.settingsDialog.interface.themeOptions[themePreference]}`} aria-label={`${copy.topbar.toggleTheme} · ${copy.settingsDialog.interface.themeOptions[themePreference]}`} data-theme-control><ThemeIcon size={17} /></button>
         <button className={`tool-button ${app.isSettingsDialogOpen ? 'active' : ''}`} type="button" onClick={toggleSettings} title={app.isSettingsDialogOpen ? copy.topbar.closeSettings : copy.topbar.openSettings} aria-label={app.isSettingsDialogOpen ? copy.topbar.closeSettings : copy.topbar.openSettings} aria-pressed={app.isSettingsDialogOpen}><Settings size={17} /></button>
+        {!isMac ? <button className="tool-button" type="button" onClick={() => app.setIsAboutDialogOpen(true)} title={copy.topbar.openAbout} aria-label={copy.topbar.openAbout}><CircleQuestionMark size={17} /></button> : null}
       </nav>
       <WindowControls />
     </header>

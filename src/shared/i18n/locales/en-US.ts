@@ -57,12 +57,25 @@
       toggleDrama: 'Open AI drama studio',
       toggleWebShare: 'Open LAN Web playback',
       openSettings: 'Open settings',
+      openAbout: 'About AIVPlayer',
       toggleTheme: 'Toggle theme',
       closeSettings: 'Close settings',
       minimizeWindow: 'Minimize window',
       maximizeWindow: 'Maximize window',
       restoreWindow: 'Restore window',
       closeWindow: 'Close window'
+    },
+    aboutDialog: {
+      kicker: 'Application info',
+      title: 'About AIVPlayer',
+      description: 'A cross-platform player for local media and AI-assisted subtitles.',
+      versionLabel: 'Version',
+      licenseLabel: 'License',
+      license: 'MIT License',
+      websiteLabel: 'Project',
+      website: 'github.com/ponponon/aivplayer',
+      footer: 'Thanks for using AIVPlayer.',
+      close: 'Close'
     },
     webShare: {
       title: 'LAN Web playback', description: 'Play the current playlist from a phone, tablet, or another computer on the same LAN.', start: 'Start sharing', stop: 'Stop sharing', running: 'Sharing', stopped: 'Not sharing', openUrl: 'Open in browser', copyUrl: 'Copy access URL', copied: 'Access URL copied', noFiles: 'Open a video first or add a shared folder', sharedCount: (count: number) => `Sharing ${count} video${count === 1 ? '' : 's'}`, sharedDirectoryCount: (count: number) => `Sharing ${count} folder${count === 1 ? '' : 's'}`, sharedDirectories: 'Shared folders', chooseFolder: 'Add folder', removeFolder: 'Remove folder', noDirectory: 'No folders added; you can share the current playlist only.', refresh: 'Refresh shared library', accessUrl: 'Access URL', scanQrCode: 'Scan with your phone camera', qrCodeAlt: 'LAN access URL QR code', securityNote: 'Only the current playlist and selected folders are shared. Files stay local, and the URL expires when sharing stops.', emptyUrl: 'Start sharing to see a LAN access URL here.', close: 'Close'

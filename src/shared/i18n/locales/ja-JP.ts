@@ -57,12 +57,25 @@
       toggleDrama: 'AI ショートドラマスタジオを開く',
       toggleWebShare: 'LAN Web 再生を開く',
       openSettings: '設定を開く',
+      openAbout: 'AIVPlayer について',
       toggleTheme: 'テーマを切り替え',
       closeSettings: '設定を閉じる',
       minimizeWindow: 'ウィンドウを最小化',
       maximizeWindow: 'ウィンドウを最大化',
       restoreWindow: 'ウィンドウを元に戻す',
       closeWindow: 'ウィンドウを閉じる'
+    },
+    aboutDialog: {
+      kicker: 'アプリ情報',
+      title: 'AIVPlayer について',
+      description: 'ローカルメディアと AI 字幕に対応したクロスプラットフォームプレーヤーです。',
+      versionLabel: 'バージョン',
+      licenseLabel: 'ライセンス',
+      license: 'MIT License',
+      websiteLabel: 'プロジェクト',
+      website: 'github.com/ponponon/aivplayer',
+      footer: 'AIVPlayer をご利用いただきありがとうございます。',
+      close: '閉じる'
     },
     webShare: {
       title: 'LAN Web 再生', description: '同じ LAN 上のスマートフォン、タブレット、別の PC で現在のプレイリストを再生します。', start: '共有を開始', stop: '共有を停止', running: '共有中', stopped: '共有していません', openUrl: 'ブラウザで開く', copyUrl: 'アクセス URL をコピー', copied: 'アクセス URL をコピーしました', noFiles: '動画を開くか、共有フォルダーを追加してください', sharedCount: (count: number) => `${count} 本の動画を共有中`, sharedDirectoryCount: (count: number) => `${count} 個のフォルダーを共有中`, sharedDirectories: '共有フォルダー', chooseFolder: 'フォルダーを追加', removeFolder: 'フォルダーを削除', noDirectory: 'フォルダー未追加。現在のプレイリストだけでも共有できます。', refresh: '共有ライブラリを更新', accessUrl: 'アクセス URL', scanQrCode: 'スマートフォンのカメラでスキャン', qrCodeAlt: 'LAN アクセス URL の QR コード', securityNote: '現在のプレイリストと選択したフォルダーだけを共有します。ファイルはローカルに残り、停止すると URL は無効になります。', emptyUrl: '共有を開始すると LAN アクセス URL が表示されます。', close: '閉じる'

@@ -29,7 +29,7 @@ export function useKeyboardShortcuts(model: AppModel, actions: KeyboardActions):
     }
     const isEditing = (target: EventTarget | null): boolean => target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement || target instanceof HTMLElement && target.isContentEditable
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (model.isDownloadDialogOpen || model.isSettingsDialogOpen || model.isClipExportDialogOpen || model.isExportingClip) return
+      if (model.isDownloadDialogOpen || model.isSettingsDialogOpen || model.isAboutDialogOpen || model.isClipExportDialogOpen || model.isExportingClip) return
       if (event.key === 'Escape') {
         if (document.fullscreenElement) { event.preventDefault(); void document.exitFullscreen(); return }
         if (model.subtitleDisplayControlsRef.current?.open) { model.subtitleDisplayControlsRef.current.open = false; return }
@@ -71,5 +71,5 @@ export function useKeyboardShortcuts(model: AppModel, actions: KeyboardActions):
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup', onKeyUp)
     return () => { clearHoldTimer(); restoreSpeed(); window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp) }
-  }, [model.state.currentFile?.path, model.state.playbackRate, model.appSettings.playback.seekStepSeconds, model.appSettings.playback.holdRightArrowSpeed, model.isDownloadDialogOpen, model.isSettingsDialogOpen, model.isClipExportDialogOpen, model.isExportingClip])
+  }, [model.state.currentFile?.path, model.state.playbackRate, model.appSettings.playback.seekStepSeconds, model.appSettings.playback.holdRightArrowSpeed, model.isDownloadDialogOpen, model.isSettingsDialogOpen, model.isAboutDialogOpen, model.isClipExportDialogOpen, model.isExportingClip])
 }

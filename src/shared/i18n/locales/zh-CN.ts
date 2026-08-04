@@ -57,12 +57,25 @@
       toggleDrama: '打开 AI 短剧工作室',
       toggleWebShare: '打开局域网 Web 播放',
       openSettings: '打开设置',
+      openAbout: '关于 AIVPlayer',
       toggleTheme: '切换主题',
       closeSettings: '关闭设置',
       minimizeWindow: '最小化窗口',
       maximizeWindow: '最大化窗口',
       restoreWindow: '还原窗口',
       closeWindow: '关闭窗口'
+    },
+    aboutDialog: {
+      kicker: '应用信息',
+      title: '关于 AIVPlayer',
+      description: '一款面向本地媒体和 AI 字幕工作的跨平台播放器。',
+      versionLabel: '版本',
+      licenseLabel: '许可证',
+      license: 'MIT License',
+      websiteLabel: '项目地址',
+      website: 'github.com/ponponon/aivplayer',
+      footer: '感谢使用 AIVPlayer。',
+      close: '关闭'
     },
     webShare: {
       title: '局域网 Web 播放', description: '让同一局域网内的手机、平板和其他电脑通过浏览器播放当前播放列表。', start: '开始共享', stop: '停止共享', running: '共享中', stopped: '未共享', openUrl: '在浏览器中打开', copyUrl: '复制访问地址', copied: '已复制访问地址', noFiles: '请先打开视频文件，或添加共享目录', sharedCount: (count: number) => `当前共享 ${count} 个视频`, sharedDirectoryCount: (count: number) => `共享 ${count} 个目录`, sharedDirectories: '共享目录', chooseFolder: '添加目录', removeFolder: '移除目录', noDirectory: '未添加目录；也可以只共享当前播放列表。', refresh: '刷新共享列表', accessUrl: '访问地址', scanQrCode: '用手机相机扫描二维码', qrCodeAlt: '局域网访问地址二维码', securityNote: '只共享当前播放列表和选定目录，不上传文件；停止共享后访问地址立即失效。', emptyUrl: '启动共享后，这里会显示局域网访问地址。', close: '关闭'
