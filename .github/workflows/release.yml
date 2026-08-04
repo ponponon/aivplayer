@@ -234,3 +234,34 @@ jobs:
           fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  sync-gitee-release:
+    needs: [publish-release]
+    runs-on: ubuntu-latest
+    env:
+      GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+      GITEE_OWNER: ponponon
+      GITEE_REPO: aivplayer
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+      GITEE_TARGET_COMMITISH: main
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Skip Gitee sync when no token is configured
+        if: ${{ env.GITEE_TOKEN == '' }}
+        run: echo "GITEE_TOKEN is not configured; skipping Gitee release sync."
+
+      - name: Download release artifacts
+        if: ${{ env.GITEE_TOKEN != '' }}
+        uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Sync release to Gitee
+        if: ${{ env.GITEE_TOKEN != '' }}
+        run: node scripts/sync-gitee-release.mjs

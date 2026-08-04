@@ -13,6 +13,7 @@ describe('app update source constraints', () => {
   it('downloads in the background and installs only after explicit restart', () => {
     const updaterSource = readSource('src/desktop/app-updater.ts')
 
+    expect(updaterSource).toContain("process.platform !== 'darwin'")
     expect(updaterSource).toContain('autoUpdater.autoDownload = false')
     expect(updaterSource).toContain('autoUpdater.autoInstallOnAppQuit = false')
     expect(updaterSource).toContain('void autoUpdater.downloadUpdate()')
@@ -29,5 +30,25 @@ describe('app update source constraints', () => {
     expect(workflowSource).toContain('release/*.blockmap')
     expect(workflowSource).toContain('artifacts/*.yml')
     expect(workflowSource).toContain('artifacts/*.blockmap')
+  })
+
+  it('keeps Gitee mirroring optional and replaces only same-named assets', () => {
+    const workflowSource = readSource('.github/workflows/release.yml')
+    const syncSource = readSource('scripts/sync-gitee-release.mjs')
+
+    expect(workflowSource).toContain('GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}')
+    expect(workflowSource).toContain('node scripts/sync-gitee-release.mjs')
+    expect(syncSource).toContain("if (!token) {")
+    expect(syncSource).toContain('if (!names.has(attachment.name)) continue')
+    expect(syncSource).toContain("form.append('file'")
+  })
+
+  it('repairs the Windows libheif compatibility executable after CMake install', () => {
+    const heifBuildSource = readSource('scripts/build-heif-source.ts')
+
+    expect(heifBuildSource).toContain("platform !== 'win32'")
+    expect(heifBuildSource).toContain("'heif-convert.exe'")
+    expect(heifBuildSource).toContain("'heif-dec.exe'")
+    expect(heifBuildSource).toContain('copyFile(decoderPath, converterPath)')
   })
 })

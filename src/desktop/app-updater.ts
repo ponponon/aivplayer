@@ -26,7 +26,7 @@ export function registerAppUpdaterIpc(): void {
 }
 
 export function startAppUpdater(isCliInvocation: boolean): void {
-  enabled = app.isPackaged && !isCliInvocation && process.env.AIVPLAYER_DISABLE_AUTO_UPDATE !== '1'
+  enabled = app.isPackaged && process.platform !== 'darwin' && !isCliInvocation && process.env.AIVPLAYER_DISABLE_AUTO_UPDATE !== '1'
   state = enabled
     ? createInitialAppUpdateState(app.getVersion())
     : { ...createInitialAppUpdateState(app.getVersion()), status: 'disabled' }

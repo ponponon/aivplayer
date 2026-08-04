@@ -1,4 +1,4 @@
-import { mkdir } from 'node:fs/promises'
+import { access, copyFile, mkdir } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { execFile } from 'node:child_process'
@@ -135,6 +135,23 @@ function getCmakeOptions(options: BuildHeifSourceOptions, installDirectory: stri
   return cmakeOptions
 }
 
+async function ensureWindowsHeifConverter(installDirectory: string, platform: NodeJS.Platform): Promise<void> {
+  if (platform !== 'win32') return
+
+  const binDirectory = join(installDirectory, 'bin')
+  const converterPath = join(binDirectory, 'heif-convert.exe')
+  try {
+    await access(converterPath)
+    return
+  } catch {
+    // libheif creates this compatibility executable from heif-dec during install.
+    // Keep the release build deterministic when that CMake install step does not.
+  }
+
+  const decoderPath = join(binDirectory, 'heif-dec.exe')
+  await copyFile(decoderPath, converterPath)
+}
+
 export async function buildHeifSource(options: BuildHeifSourceOptions): Promise<string> {
   const platform = options.platform ?? process.platform
   const buildDirectory = options.buildDirectory ?? join(options.sourceDirectory, 'build-aivplayer')
@@ -153,6 +170,7 @@ export async function buildHeifSource(options: BuildHeifSourceOptions): Promise<
     '--parallel'
   ])
   await run('cmake', ['--install', buildDirectory, '--config', 'Release'])
+  await ensureWindowsHeifConverter(installDirectory, platform)
   const result = await prepareHeifRuntime({
     platform,
     resourcePath: options.resourcePath ?? resolve('resources'),
