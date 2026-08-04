@@ -26,4 +26,9 @@ describe('release workflow source constraints', () => {
     expect(releaseWorkflow).toContain('release:prepare-runtime -- --platform linux')
     expect(releaseWorkflow).toContain('--x265-library $x265Library')
   })
+
+  it('installs the generated Debian package by absolute path in CI', () => {
+    expect(releaseWorkflow).toContain('deb_file="$(realpath "$deb_file")"')
+    expect(releaseWorkflow).toContain('dpkg-deb -f "$deb_file" Package')
+  })
 })

@@ -536,3 +536,7 @@
 
 - `productName: AIVPlayer` 会让 electron-builder 将 Linux 应用安装到 `/opt/AIVPlayer`；Debian 的 `postinst` / `postrm` 如果硬编码成 `/opt/aivplayer`，脚本可能仍然以成功状态结束，但实际不会设置 `chrome-sandbox` 的 SUID 权限，也不会创建 CLI 符号链接。
 - Linux 安装脚本应从同一个应用目录常量派生所有路径，不能依赖肉眼记忆目录大小写；打包验收必须同时检查 `dpkg -L`、`chrome-sandbox` 是否为 `root:root` 且权限为 `4755`、`gtk-launch` 是否能启动，以及 `/var/log` 中是否出现 Electron sandbox FATAL。
+
+## apt-get 安装本地 deb 必须传绝对路径或显式相对路径
+
+- `apt-get install -y release/aivplayer_*.deb` 可能把 `release` 当成软件包名，导致 `E: Unable to locate package release`；CI 中应先用 `realpath` 转成绝对路径，并用 `dpkg-deb -f` 校验包名后再安装。
