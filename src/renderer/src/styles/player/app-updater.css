@@ -1,0 +1,66 @@
+.app-update-banner-slot {
+  min-height: 0;
+}
+
+.app-update-banner {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 34px;
+  padding: 5px 14px;
+  color: var(--text-primary);
+  background: rgba(var(--accent-rgb), 0.08);
+  border-bottom: 1px solid rgba(var(--accent-rgb), 0.24);
+  font-size: 11px;
+}
+
+.app-update-banner-downloading {
+  color: var(--text-secondary);
+}
+
+.app-update-banner-error {
+  justify-content: space-between;
+  color: var(--text-secondary);
+}
+
+.app-update-banner-ready {
+  justify-content: space-between;
+}
+
+.app-update-banner-copy {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.app-update-progress {
+  width: min(220px, 24vw);
+  height: 4px;
+  overflow: hidden;
+  background: rgba(var(--overlay-rgb), 0.12);
+  border-radius: 99px;
+}
+
+.app-update-progress i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: inherit;
+  transition: width 160ms ease;
+}
+
+.app-update-install-button {
+  padding: 5px 10px;
+  color: var(--bg-app);
+  background: var(--accent);
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.app-update-install-button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}

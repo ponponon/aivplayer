@@ -569,6 +569,15 @@
       defaultBadge: '既定',
       sourceAria: (sourceName: string) => `${sourceName} から推奨 ASR モデルをダウンロード`
     },
+    update: {
+      downloading: (version: string, percent: number | null) => `AIVPlayer ${version} をバックグラウンドでダウンロード中${percent === null ? '…' : ` · ${percent}%`}`,
+      ready: (version: string) => `AIVPlayer ${version} のインストール準備ができました。`,
+      installing: (version: string) => `AIVPlayer ${version} をインストール中…`,
+      error: (message: string) => `自動更新に失敗しました${message ? `：${message}` : ''}`,
+      restartAction: '再起動して更新',
+      retryAction: '再確認',
+      installingAction: 'インストール中…'
+    },
     settingsDialog: {
       title: '設定',
       description: '設定はすべてローカルに保存され、次回起動時に反映されます。',

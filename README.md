@@ -197,6 +197,12 @@ aivcli drama provider test
 
 Windows NSIS、macOS `.pkg` 和 Linux `.deb` 会安装 `aivcli` 启动器并加入系统命令路径。macOS `.dmg` / `.zip` 与 Linux `.AppImage` 是便携式格式，不会自动修改 PATH；使用便携式格式时可直接启动应用的 `--cli` 模式，或自行建立命令行启动器。
 
+### 自动更新
+
+正式安装包启动后会在后台检查 GitHub Releases，并自动下载适配当前平台的新版本；下载完成后，窗口顶部会出现“重启并更新”按钮，点击后才会退出并安装，不会强制中断当前播放或编辑。开发模式和 `aivcli` 不参与自动更新。
+
+自动更新依赖发布页中的 `latest*.yml` 元数据和对应的安装包 / 更新包，因此发布流程必须完整上传这些文件。Gitee Releases 目前作为国内手动下载镜像；如果 GitHub 在当前网络不可达，可以从 Gitee 下载最新安装包后手动安装。
+
 ### 从源码构建
 
 ```bash

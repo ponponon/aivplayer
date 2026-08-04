@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type { AppSettings } from '../shared/app-settings'
+import type { AppUpdateState } from '../shared/app-update-types'
 import type {
   DramaCreateProjectInput,
   DramaImportChapterInput,
@@ -128,6 +129,9 @@ const api = {
   detectMediaSilence: (request: MediaSilenceDetectionRequest): Promise<MediaSilenceDetectionResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.DETECT_MEDIA_SILENCE, request),
   getAppVersion: (): Promise<string> => ipcRenderer.invoke(IPC_CHANNELS.GET_APP_VERSION),
+  getAppUpdateState: (): Promise<AppUpdateState> => ipcRenderer.invoke(IPC_CHANNELS.APP_UPDATE_GET_STATE),
+  checkForAppUpdate: (): Promise<AppUpdateState> => ipcRenderer.invoke(IPC_CHANNELS.APP_UPDATE_CHECK),
+  installAppUpdate: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.APP_UPDATE_INSTALL),
   getAppSettings: (): Promise<AppSettings> => ipcRenderer.invoke(IPC_CHANNELS.APP_GET_SETTINGS),
   setAppSettings: (settings: AppSettings): Promise<AppSettings> => ipcRenderer.invoke(IPC_CHANNELS.APP_SET_SETTINGS, settings),
   restartApp: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.APP_RELAUNCH),
@@ -217,6 +221,11 @@ const api = {
     const listener = (): void => callback()
     ipcRenderer.on(IPC_CHANNELS.APP_MENU_OPEN_SETTINGS, listener)
     return () => ipcRenderer.removeListener(IPC_CHANNELS.APP_MENU_OPEN_SETTINGS, listener)
+  },
+  onAppUpdateStateChanged: (callback: (state: AppUpdateState) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, nextState: AppUpdateState): void => callback(nextState)
+    ipcRenderer.on(IPC_CHANNELS.APP_UPDATE_STATE_CHANGED, listener)
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.APP_UPDATE_STATE_CHANGED, listener)
   },
   onAsrModelDownloadProgress: (callback: (progress: AsrModelDownloadProgress) => void): (() => void) => {
     const listener = (_event: Electron.IpcRendererEvent, progress: AsrModelDownloadProgress): void => callback(progress)

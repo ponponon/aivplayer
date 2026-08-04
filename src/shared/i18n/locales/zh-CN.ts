@@ -569,6 +569,15 @@
       defaultBadge: '默认',
       sourceAria: (sourceName: string) => `从 ${sourceName} 下载推荐 ASR 模型`
     },
+    update: {
+      downloading: (version: string, percent: number | null) => `正在后台下载 AIVPlayer ${version}${percent === null ? '…' : ` · ${percent}%`}`,
+      ready: (version: string) => `AIVPlayer ${version} 已下载完成，可以重启更新。`,
+      installing: (version: string) => `正在安装 AIVPlayer ${version}…`,
+      error: (message: string) => `自动更新失败${message ? `：${message}` : ''}`,
+      restartAction: '重启并更新',
+      retryAction: '重试检查',
+      installingAction: '安装中…'
+    },
     settingsDialog: {
       title: '偏好设置',
       description: '所有偏好都会自动保存到本地，下次启动继续生效。',

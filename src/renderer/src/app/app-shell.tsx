@@ -8,6 +8,8 @@ import { PlayerStage } from './player-stage'
 import { ImageWorkspace } from './image-workspace'
 import { useAppContext } from './app-context'
 import { useSidePanelResize } from './use-side-panel-resize'
+import { AppUpdateBanner } from './app-update-banner'
+import { useAppUpdater } from './use-app-updater'
 
 type EffectiveTheme = Exclude<AppThemePreference, 'system'>
 
@@ -38,6 +40,7 @@ function useEffectiveTheme(preference: AppThemePreference): EffectiveTheme {
 
 export function AppShell(): React.ReactElement {
   const app = useAppContext()
+  const updater = useAppUpdater()
   const theme = useEffectiveTheme(app.appSettings.ui.theme)
   const commitSidePanelWidth = useCallback((width: number): void => {
     app.patchAppSettingsSection('ui', { sidePanelWidth: width })
@@ -49,5 +52,5 @@ export function AppShell(): React.ReactElement {
     const paths = Array.from(event.dataTransfer.files).map((file) => window.aiv.getPathForFile(file)).filter(Boolean)
     void app.createMediaFilesFromPaths(paths).then(app.loadFiles)
   }
-  return <div className="app-shell" data-theme={theme} onDragOver={(event) => event.preventDefault()} onDrop={onDrop}><AppHeader /><div className="app-surface"><div className={`app-surface-pane ${app.viewMode === 'image' ? 'active' : ''}`} aria-hidden={app.viewMode !== 'image'}><ImageWorkspace /></div><div className={`app-surface-pane ${app.viewMode === 'video' ? 'active' : ''}`} aria-hidden={app.viewMode !== 'video'}><main className={`workspace ${app.isSidePanelVisible ? 'with-side-panel' : 'side-panel-collapsed'} ${sidePanelResize.isDragging ? 'is-resizing-side-panel' : ''}`} style={workspaceStyle}><PlayerStage /><AppSidePanel sidePanelResize={sidePanelResize} /></main></div></div><AiWorkflowStatus /><AppOverlays /></div>
+  return <div className="app-shell" data-theme={theme} onDragOver={(event) => event.preventDefault()} onDrop={onDrop}><AppHeader /><AppUpdateBanner copy={app.copy} state={updater.state} onCheck={() => { void updater.check() }} onInstall={() => { void updater.install() }} /><div className="app-surface"><div className={`app-surface-pane ${app.viewMode === 'image' ? 'active' : ''}`} aria-hidden={app.viewMode !== 'image'}><ImageWorkspace /></div><div className={`app-surface-pane ${app.viewMode === 'video' ? 'active' : ''}`} aria-hidden={app.viewMode !== 'video'}><main className={`workspace ${app.isSidePanelVisible ? 'with-side-panel' : 'side-panel-collapsed'} ${sidePanelResize.isDragging ? 'is-resizing-side-panel' : ''}`} style={workspaceStyle}><PlayerStage /><AppSidePanel sidePanelResize={sidePanelResize} /></main></div></div><AiWorkflowStatus /><AppOverlays /></div>
 }

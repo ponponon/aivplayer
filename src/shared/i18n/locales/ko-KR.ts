@@ -569,6 +569,15 @@
       defaultBadge: '기본',
       sourceAria: (sourceName: string) => `${sourceName}에서 추천 ASR 모델 다운로드`
     },
+    update: {
+      downloading: (version: string, percent: number | null) => `백그라운드에서 AIVPlayer ${version} 다운로드 중${percent === null ? '…' : ` · ${percent}%`}`,
+      ready: (version: string) => `AIVPlayer ${version}을(를) 설치할 준비가 되었습니다.`,
+      installing: (version: string) => `AIVPlayer ${version} 설치 중…`,
+      error: (message: string) => `자동 업데이트 실패${message ? `: ${message}` : ''}`,
+      restartAction: '재시작하여 업데이트',
+      retryAction: '다시 확인',
+      installingAction: '설치 중…'
+    },
     settingsDialog: {
       title: '설정',
       description: '설정은 모두 로컬에 저장되며 다음 실행 시 적용됩니다.',

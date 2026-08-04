@@ -4,6 +4,7 @@
  * descriptive stylesheet instead of competing for a numeric slot.
  */
 @import './player/app-shell.css';
+@import './player/app-updater.css';
 @import './player/player-stage.css';
 @import './player/media-surface.css';
 @import './player/media-preview-constraints.css';

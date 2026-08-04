@@ -389,6 +389,12 @@
 - 下载进度在侧边栏展示，方便定位卡顿或失败。
 - 下载弹窗会默认优先显示设置里选中的下载源，并标记为默认选项。
 
+## 应用自动更新
+- 正式安装包通过 `electron-updater` 在主进程后台检查 GitHub Releases，并按当前平台下载新版本；开发模式和 `aivcli` 不触发更新检查。
+- 更新过程通过 IPC 同步 `checking`、`downloading`、`downloaded`、`installing` 和错误状态，顶栏展示后台下载进度。
+- 更新下载完成后只提供“重启并更新”操作，调用安装器完成替换，不在播放或编辑过程中强制退出应用。
+- electron-builder 配置 GitHub 发布源，Release 工作流会上传 `latest*.yml` 和 `.blockmap` 元数据；Gitee 当前作为国内手动下载镜像，不作为自动更新源。
+
 ## 应用图标
 - 已配置 AIVPlayer 自定义应用图标，macOS 开发态 Dock 和正式安装包都不再使用 Electron 默认图标。
 - 图标采用深色圆徽 + 金色波形的极简风格，和当前播放器主题保持一致。

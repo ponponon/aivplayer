@@ -2,6 +2,11 @@ appId: cn.quniv.aivplayer
 productName: AIVPlayer
 directories:
   output: release
+publish:
+  - provider: github
+    owner: ponponon
+    repo: aivplayer
+    releaseType: release
 extraFiles:
   - from: resources/cli/aivcli.cmd
     to: aivcli.cmd

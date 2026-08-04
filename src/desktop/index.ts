@@ -20,6 +20,7 @@ import { registerVisionIpc } from './ipc-vision'
 import { registerPersonMatteIpc } from './ipc-person-matte'
 import { registerDramaIpc } from './ipc-drama'
 import { registerWebIpc, stopWebServer } from './ipc-web'
+import { registerAppUpdaterIpc, startAppUpdater, stopAppUpdater } from './app-updater'
 import { applyMacDockIcon, createWindow, focusMainWindow, queueIncomingMediaPaths } from './window-lifecycle'
 import { runCli } from '../cli/cli-main'
 import { readGpuAccelerationPreferenceSync } from '../core/app-settings'
@@ -55,6 +56,7 @@ const isCliInvocation = cliArgumentIndex !== -1
 
 function registerIpc(): void {
   registerSettingsIpc()
+  registerAppUpdaterIpc()
   registerFilmstripIpc()
   registerSceneDetectionIpc()
   registerSilenceDetectionIpc()
@@ -100,6 +102,7 @@ if (isCliInvocation) {
       installApplicationMenu()
       applyMacDockIcon()
       createWindow()
+      startAppUpdater(false)
       app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() })
     })
   }
@@ -109,4 +112,4 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
 
-app.on('before-quit', () => { void stopWebServer() })
+app.on('before-quit', () => { stopAppUpdater(); void stopWebServer() })

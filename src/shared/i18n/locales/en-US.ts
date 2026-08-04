@@ -569,6 +569,15 @@
       defaultBadge: 'Default',
       sourceAria: (sourceName: string) => `Download the recommended ASR model from ${sourceName}`
     },
+    update: {
+      downloading: (version: string, percent: number | null) => `Downloading AIVPlayer ${version} in the background${percent === null ? '…' : ` · ${percent}%`}`,
+      ready: (version: string) => `AIVPlayer ${version} is ready to install.`,
+      installing: (version: string) => `Installing AIVPlayer ${version}…`,
+      error: (message: string) => `Automatic update failed${message ? `: ${message}` : ''}`,
+      restartAction: 'Restart & update',
+      retryAction: 'Retry check',
+      installingAction: 'Installing…'
+    },
     settingsDialog: {
       title: 'Preferences',
       description: 'All preferences are saved locally and applied next time you launch the app.',
