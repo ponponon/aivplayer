@@ -195,6 +195,24 @@ jobs:
           test -d "$resource_dir"
           npm run release:check-packaged-resources -- --resource-dir "$resource_dir"
 
+      - name: Smoke test Debian install hooks
+        shell: bash
+        run: |
+          set -euo pipefail
+          deb_file="$(find release -maxdepth 1 -type f -name '*.deb' -print -quit)"
+          test -n "$deb_file"
+          cleanup() {
+            sudo apt-get remove -y aivplayer >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          sudo apt-get install -y "$deb_file"
+          sandbox="/opt/AIVPlayer/chrome-sandbox"
+          test -f "$sandbox"
+          test "$(stat -c '%U:%G %a' "$sandbox")" = 'root:root 4755'
+          test "$(readlink -f /usr/bin/aivcli)" = '/opt/AIVPlayer/aivcli'
+          sudo apt-get remove -y aivplayer
+          test ! -e /usr/bin/aivcli
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:

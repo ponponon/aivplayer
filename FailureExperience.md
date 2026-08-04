@@ -531,3 +531,8 @@
 - libheif 的 Windows 安装脚本虽然声明会从 `heif-dec.exe` 复制出 `heif-convert.exe`，但 GitHub Windows Runner 上不能完全依赖这个 `cmake --install` 行为；安装后必须显式检查并补复制兼容文件，否则 `release:check-heif-runtime` 会在打包前失败。
 - Windows vcpkg 的 `x265:x64-windows-static` 库文件名是 `x265-static.lib`，而 libheif 的 `FindX265.cmake` 只查找 `libx265` / `x265`；不能只安装 vcpkg 包就认为 CMake 会自动发现它，必须显式传入 `-DX265_LIBRARY`。另外，封装 CMake 子进程时必须在异常路径输出 stdout/stderr，否则真正的 MSBuild 错误会被吞掉，只剩一个无上下文的 `Command failed`。
 - libheif `1.23.1` 的 `heif-enc` 在 Windows 上即使没有找到 TIFF 也会引用 `TiledTiffReader::TiffCloser`，最终在链接阶段报未解析符号；Windows 发布依赖不能只安装 JPEG、x265 和 libde265，还要安装 `tiff:x64-windows-static`，让 `heifio` 把 TIFF 实现一起链接进来。
+
+## electron-builder Linux 安装目录大小写必须和安装脚本一致
+
+- `productName: AIVPlayer` 会让 electron-builder 将 Linux 应用安装到 `/opt/AIVPlayer`；Debian 的 `postinst` / `postrm` 如果硬编码成 `/opt/aivplayer`，脚本可能仍然以成功状态结束，但实际不会设置 `chrome-sandbox` 的 SUID 权限，也不会创建 CLI 符号链接。
+- Linux 安装脚本应从同一个应用目录常量派生所有路径，不能依赖肉眼记忆目录大小写；打包验收必须同时检查 `dpkg -L`、`chrome-sandbox` 是否为 `root:root` 且权限为 `4755`、`gtk-launch` 是否能启动，以及 `/var/log` 中是否出现 Electron sandbox FATAL。
