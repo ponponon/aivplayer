@@ -4,9 +4,9 @@ import { readSource } from './test-source-utils'
 
 describe('app update source constraints', () => {
   it('starts with an idle state and the current version', () => {
-    expect(createInitialAppUpdateState('0.3.0')).toEqual({
+    expect(createInitialAppUpdateState('0.3.1')).toEqual({
       status: 'idle',
-      currentVersion: '0.3.0'
+      currentVersion: '0.3.1'
     })
   })
 

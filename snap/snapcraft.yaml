@@ -1,5 +1,5 @@
 name: aivplayer
-version: '0.3.0'
+version: '0.3.1'
 summary: 本地 AI 字幕生成的跨平台桌面视频播放器
 description: |
   AIVPlayer 是一款基于 Electron 的现代化桌面视频播放器，
