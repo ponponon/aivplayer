@@ -65,7 +65,9 @@ html[data-theme="light"],
 }
 
 /* 浅色模式下视频舞台保持深色（影院感，同 IINA / Infuse），
-   舞台内部恢复深色主题的阅读色，保证空状态标题/字幕/按钮可读 */
+   舞台内部恢复深色主题的阅读色，保证空状态标题/字幕/按钮可读。
+   注意：必须同时显式设置 color —— body 的 color 在 light 下已计算为深色，
+   仅改自定义属性无法影响靠继承取色的元素（如 .empty-state h1） */
 html[data-theme="light"] .video-frame,
 .app-shell[data-theme="light"] .video-frame {
   --text-primary: #f4f0e8;
@@ -78,4 +80,5 @@ html[data-theme="light"] .video-frame,
   --accent-soft: rgba(232, 193, 109, 0.16);
   --border-soft: rgba(255, 255, 255, 0.09);
   --bg-surface: #1a1a1a;
+  color: #f4f0e8;
 }
