@@ -30,12 +30,15 @@ describe('WebShareDialog', () => {
       allowRemoteControl={false}
       onToggleRemoteControl={() => undefined}
       onCopy={() => undefined}
+      onOpen={async () => true}
       onClose={() => undefined}
     />)
 
     expect(markup.match(/class="web-share-url-item"/g)).toHaveLength(status.urls.length)
     expect(markup.match(/class="web-share-url-actions"/g)).toHaveLength(status.urls.length)
     expect(markup.match(/class="settings-secondary-button" type="button" aria-label=/g)).toHaveLength(status.urls.length * 2)
+    expect(markup).toContain(zhCN.webShare.openUrl)
+    expect(markup).toContain(zhCN.webShare.defaultBrowserHint)
     for (const url of status.urls) expect(markup).toContain(url)
   })
 })

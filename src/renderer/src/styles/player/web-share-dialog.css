@@ -38,7 +38,9 @@
 .web-share-status.is-running .web-share-status-dot { background: var(--ok); box-shadow: 0 0 0 4px rgba(var(--ok-rgb), 0.12); }
 .web-share-status.is-stopped { color: var(--text-secondary); }
 .web-share-url-box { display: grid; gap: 8px; min-width: 0; padding: 12px; background: rgba(var(--accent-rgb), 0.06); border: 1px solid rgba(var(--accent-rgb), 0.24); border-radius: var(--radius-md); }
-.web-share-url-box > span { color: var(--text-muted); font-size: 11px; font-weight: 700; }
+.web-share-url-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.web-share-url-heading > span { color: var(--text-muted); font-size: 11px; font-weight: 700; }
+.web-share-url-heading small { color: var(--text-muted); font-size: 10px; line-height: 1.4; text-align: right; }
 .web-share-url-list { display: grid; gap: 8px; }
 .web-share-url-item { display: grid; gap: 8px; min-width: 0; padding: 8px; background: rgba(var(--stage-rgb), 0.2); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); }
 .web-share-url-preview { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 10px; align-items: center; min-width: 0; }
@@ -50,6 +52,7 @@
 .web-share-url-box code { min-width: 0; padding: 8px; overflow-wrap: anywhere; color: var(--accent); background: rgba(var(--stage-rgb), 0.35); border-radius: var(--radius-sm); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; line-height: 1.45; }
 .web-share-url-actions { flex-wrap: wrap; gap: 8px; }
 .web-share-url-actions button, .web-share-footer button { gap: 6px; }
+.web-share-button-spinner { animation: web-share-qr-spin 0.8s linear infinite; }
 .web-share-note, .web-share-warning, .web-share-error, .web-share-notice { padding: 10px 12px; border-radius: var(--radius-md); font-size: 12px; line-height: 1.5; }
 .web-share-remote-toggle { display: flex; align-items: flex-start; gap: 9px; padding: 11px 12px; color: var(--text-secondary); background: rgba(var(--accent-rgb), 0.055); border: 1px solid rgba(var(--accent-rgb), 0.18); border-radius: var(--radius-md); cursor: pointer; font-size: 12px; }
 .web-share-remote-toggle input { margin: 2px 0 0; accent-color: var(--accent); }
@@ -79,4 +82,6 @@
   .web-share-qr img { width: 88px; height: 88px; }
   .web-share-url-actions, .web-share-footer { align-items: stretch; flex-direction: column; }
   .web-share-url-actions button, .web-share-footer button { width: 100%; }
+  .web-share-url-heading { align-items: flex-start; flex-direction: column; gap: 3px; }
+  .web-share-url-heading small { text-align: left; }
 }

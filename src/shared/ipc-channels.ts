@@ -70,6 +70,7 @@ export const IPC_CHANNELS = {
   BATCH_SUBTITLE_PROGRESS: 'batch-subtitle:progress',
   BATCH_SUBTITLE_OPEN_LOG_DIRECTORY: 'batch-subtitle:open-log-directory',
   CLIPBOARD_WRITE_TEXT: 'clipboard:write-text',
+  OPEN_EXTERNAL_URL: 'shell:open-external-url',
   OPEN_PATH: 'shell:open-path',
   SHOW_ITEM_IN_FOLDER: 'shell:show-item-in-folder',
   NATIVE_PLAYER_STATUS: 'native-player:status',

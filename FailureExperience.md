@@ -557,3 +557,9 @@
 ## React 事件值要在异步状态更新前先取快照
 
 - Web 媒体库排序 / 筛选的 `onChange` 如果把 `event.currentTarget.value` 直接放进 React 状态更新函数，更新函数稍后执行时 `currentTarget` 可能已经是 `null`，导致筛选后页面崩溃。事件处理器应先把 value 保存为局部常量，再交给状态更新；新增表单交互必须用浏览器级回归覆盖一次真实改变。
+## 2026-08-05：Electron 内直接 `window.open` 不等于系统默认浏览器
+
+- 现象：局域网 Web 分享弹窗中的“在浏览器中打开”会在 AIVPlayer 内创建由 Electron 管理的子窗口，用户容易误以为已经调用了系统浏览器。
+- 原因：渲染进程直接使用 `window.open(url, '_blank')`，没有经过 Electron 主进程的 `shell.openExternal`。
+- 经验：桌面端凡是“交给系统默认应用处理”的 URL，都应通过受控 IPC 交给主进程，并在主进程限制协议为 HTTP/HTTPS；不要把 `window.open` 当作系统浏览器 API。
+- 处理：新增 `shell:open-external-url` IPC、URL 协议校验和打开中 / 成功 / 失败反馈；复制访问地址继续作为打开失败时的兜底路径。

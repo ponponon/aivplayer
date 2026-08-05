@@ -193,6 +193,7 @@ const api = {
   exportLivePhoto: (request: LivePhotoExportRequest): Promise<LivePhotoExportResult> => ipcRenderer.invoke(IPC_CHANNELS.LIVE_PHOTO_EXPORT, request),
   copyTextToClipboard: (request: ClipboardWriteTextRequest): Promise<ClipboardWriteTextResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.CLIPBOARD_WRITE_TEXT, request),
+  openExternalUrl: (url: string): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.OPEN_EXTERNAL_URL, url),
   openPath: (filePath: string): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.OPEN_PATH, filePath),
   showItemInFolder: (filePath: string): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.SHOW_ITEM_IN_FOLDER, filePath),
   getNativePlayerStatus: (): Promise<NativePlayerStatus> => ipcRenderer.invoke(IPC_CHANNELS.NATIVE_PLAYER_STATUS),

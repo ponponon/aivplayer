@@ -78,7 +78,7 @@
       close: '閉じる'
     },
     webShare: {
-      title: 'LAN Web 再生', description: '同じ LAN 上のスマートフォン、タブレット、別の PC で現在のプレイリストを再生します。', start: '共有を開始', stop: '共有を停止', running: '共有中', stopped: '共有していません', openUrl: 'ブラウザで開く', copyUrl: 'アクセス URL をコピー', copied: 'アクセス URL をコピーしました', noFiles: '動画を開くか、共有フォルダーを追加してください', sharedCount: (count: number) => `${count} 本の動画を共有中`, sharedDirectoryCount: (count: number) => `${count} 個のフォルダーを共有中`, sharedDirectories: '共有フォルダー', chooseFolder: 'フォルダーを追加', removeFolder: 'フォルダーを削除', noDirectory: 'フォルダー未追加。現在のプレイリストだけでも共有できます。', refresh: '共有ライブラリを更新', accessUrl: 'アクセス URL', scanQrCode: 'スマートフォンのカメラでスキャン', qrCodeAlt: 'LAN アクセス URL の QR コード', securityNote: '現在のプレイリストと選択したフォルダーだけを共有します。ファイルはローカルに残り、停止すると URL は無効になります。', emptyUrl: '共有を開始すると LAN アクセス URL が表示されます。', close: '閉じる'
+      title: 'LAN Web 再生', description: '同じ LAN 上のスマートフォン、タブレット、別の PC で現在のプレイリストを再生します。', start: '共有を開始', stop: '共有を停止', running: '共有中', stopped: '共有していません', openUrl: '既定のブラウザで開く', openingUrl: '開いています…', opened: '既定のブラウザで開きました', openFailed: '既定のブラウザを開けません。URL をコピーして手動で開いてください。', defaultBrowserHint: 'このボタンはシステムの既定ブラウザを使用します', copyUrl: 'アクセス URL をコピー', copied: 'アクセス URL をコピーしました', noFiles: '動画を開くか、共有フォルダーを追加してください', sharedCount: (count: number) => `${count} 本の動画を共有中`, sharedDirectoryCount: (count: number) => `${count} 個のフォルダーを共有中`, sharedDirectories: '共有フォルダー', chooseFolder: 'フォルダーを追加', removeFolder: 'フォルダーを削除', noDirectory: 'フォルダー未追加。現在のプレイリストだけでも共有できます。', refresh: '共有ライブラリを更新', accessUrl: 'アクセス URL', scanQrCode: 'スマートフォンのカメラでスキャン', qrCodeAlt: 'LAN アクセス URL の QR コード', securityNote: '現在のプレイリストと選択したフォルダーだけを共有します。ファイルはローカルに残り、停止すると URL は無効になります。', emptyUrl: '共有を開始すると LAN アクセス URL が表示されます。', close: '閉じる'
     },
     emptyState: {
       title: 'AIVPlayer',

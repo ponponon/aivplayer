@@ -96,11 +96,25 @@ export function useWebShareActions(model: AppModel, copy: LocaleCopy) {
     model.setWebShareNotice(result.success ? copy.webShare.copied : null)
   }
 
+  const openWebShareUrl = async (url: string): Promise<boolean> => {
+    try {
+      const opened = await window.aiv.openExternalUrl(url)
+      model.setWebShareError(opened ? null : copy.webShare.openFailed)
+      model.setWebShareNotice(opened ? copy.webShare.opened : null)
+      return opened
+    } catch {
+      model.setWebShareError(copy.webShare.openFailed)
+      model.setWebShareNotice(null)
+      return false
+    }
+  }
+
   return {
     openWebShareDialog,
     startWebShare,
     stopWebShare,
     copyWebShareUrl,
+    openWebShareUrl,
     refreshWebShare,
     webShareDirectoryPaths,
     addWebShareDirectory,
