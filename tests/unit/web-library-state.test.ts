@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { WebShareMediaItem } from '../../src/shared/web-types'
-import { createDefaultWebLibraryPreferences, filterWebLibraryItems, getHistoryEntry, isInProgress, sortWebLibraryItems } from '../../src/web/library-state'
+import { buildWebLibraryTree, createDefaultWebLibraryPreferences, filterWebLibraryItems, getHistoryEntry, isInProgress, sortWebLibraryItems } from '../../src/web/library-state'
 
 function createItem(overrides: Partial<WebShareMediaItem>): WebShareMediaItem {
   return {
@@ -32,5 +32,21 @@ describe('Web library state', () => {
     const preferences = createDefaultWebLibraryPreferences()
     preferences.history.finished = { position: 95, duration: 100, updatedAt: 1 }
     expect(isInProgress(item, preferences)).toBe(false)
+  })
+
+  it('builds nested directory nodes and filters by a nested node', () => {
+    const first = createItem({ id: 'first', relativePath: '电影/科幻/first.mp4' })
+    const second = createItem({ id: 'second', relativePath: '电影/喜剧/second.mp4' })
+    const tree = buildWebLibraryTree([first, second])
+    const root = tree[0]!
+    const movieFolder = root.children[0]!
+    const sciFiFolder = movieFolder.children.find((node) => node.label === '科幻')!
+    const preferences = createDefaultWebLibraryPreferences()
+    preferences.selectedGroupId = sciFiFolder.id
+
+    expect(root.itemCount).toBe(2)
+    expect(movieFolder.kind).toBe('directory')
+    expect(sciFiFolder.itemCount).toBe(1)
+    expect(filterWebLibraryItems([first, second], '', preferences).map((item) => item.id)).toEqual(['first'])
   })
 })

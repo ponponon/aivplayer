@@ -3,6 +3,19 @@
 .library-toolbar label, .media-select { display: grid; gap: 5px; color: #777c83; font-size: 10px; }
 .library-toolbar select, .media-select select { width: 100%; min-height: 30px; padding: 0 7px; color: #d8d7d1; background: #121417; border: 1px solid #303238; border-radius: 6px; outline: none; font-size: 11px; }
 .library-toolbar select:focus, .media-select select:focus { border-color: #c98737; }
+.library-tree { display: grid; gap: 1px; max-height: 240px; margin-bottom: 10px; overflow: auto; padding-bottom: 9px; border-bottom: 1px solid #25272b; }
+.library-tree-all, .library-tree-select { display: flex; align-items: center; gap: 7px; width: 100%; min-width: 0; padding: 6px 7px; color: #858a91; background: transparent; border: 1px solid transparent; border-radius: 5px; cursor: pointer; font-size: 11px; text-align: left; }
+.library-tree-all:hover, .library-tree-select:hover { color: #c9c8c3; background: #15171a; }
+.library-tree-all.is-selected, .library-tree-row.is-selected .library-tree-select { color: #dda052; background: rgba(211, 154, 75, 0.1); border-color: rgba(211, 154, 75, 0.28); }
+.library-tree-all span:nth-child(2), .library-tree-label { overflow: hidden; flex: 1; text-overflow: ellipsis; white-space: nowrap; }
+.library-tree-count { flex: 0 0 auto; color: #62666d; font-size: 10px; }
+.library-tree-row { display: flex; align-items: center; min-width: 0; }
+.library-tree-toggle, .library-tree-toggle-spacer { display: grid; flex: 0 0 18px; place-items: center; width: 18px; height: 25px; color: #777c83; background: transparent; border: 0; font-size: 11px; }
+.library-tree-toggle { cursor: pointer; }
+.library-tree-select { flex: 1; min-width: 0; padding-left: 4px; }
+.library-tree-select.is-file { color: #777c83; }
+.library-tree-icon { flex: 0 0 13px; color: #b4752f; font-size: 10px; }
+.library-tree-children { display: grid; }
 .library-groups { display: grid; gap: 2px; margin-bottom: 10px; padding-bottom: 9px; border-bottom: 1px solid #25272b; }
 .group-button { display: flex; justify-content: space-between; gap: 8px; padding: 7px 8px; color: #858a91; background: transparent; border: 1px solid transparent; border-radius: 5px; cursor: pointer; font-size: 11px; text-align: left; }
 .group-button:hover { background: #15171a; color: #c9c8c3; }
@@ -25,6 +38,19 @@
 .player-controls button { min-height: 30px; padding: 0 10px; color: #b8babd; background: #15171a; border: 1px solid #303238; border-radius: 6px; cursor: pointer; font-size: 11px; }
 .player-controls button:hover:not(:disabled) { color: #e5b466; border-color: #9d6d32; }
 .player-controls button:disabled { cursor: default; opacity: 0.4; }
+.queue-panel { display: grid; gap: 7px; padding: 10px 11px; background: rgba(255, 255, 255, 0.025); border: 1px solid #27282c; border-radius: 7px; }
+.queue-heading { display: flex; justify-content: space-between; gap: 10px; color: #c9c8c3; font-size: 11px; font-weight: 700; }
+.queue-heading span:last-child { color: #777c83; font-size: 10px; font-weight: 500; }
+.queue-list { display: grid; max-height: 180px; gap: 2px; overflow: auto; }
+.queue-item { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 6px 7px; color: #92969c; background: transparent; border: 1px solid transparent; border-radius: 5px; cursor: pointer; text-align: left; }
+.queue-item:hover { background: #15171a; color: #d8d7d1; }
+.queue-item.is-selected { color: #dda052; background: rgba(211, 154, 75, 0.1); border-color: rgba(211, 154, 75, 0.28); }
+.queue-index { flex: 0 0 18px; color: #62666d; font-size: 10px; text-align: center; }
+.queue-copy { display: grid; flex: 1; gap: 2px; min-width: 0; }
+.queue-copy strong, .queue-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.queue-copy strong { color: inherit; font-size: 11px; font-weight: 600; }
+.queue-copy small { color: #666b72; font-size: 9px; }
+.queue-format { flex: 0 0 auto; color: #666b72; font-size: 9px; }
 .resume-banner { padding: 9px 11px; color: #d9a45d; background: rgba(211, 154, 75, 0.08); border: 1px solid rgba(211, 154, 75, 0.22); border-radius: 6px; font-size: 11px; }
 .media-select { margin-top: 18px; }
 .media-select span { color: #777c83; }

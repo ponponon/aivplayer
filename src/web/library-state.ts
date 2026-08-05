@@ -2,6 +2,18 @@ import type { WebShareMediaItem } from '../shared/web-types'
 
 export type WebLibrarySortMode = 'name-asc' | 'name-desc' | 'size-desc' | 'duration-desc' | 'recent'
 export type WebLibraryFilterMode = 'all' | 'favorites' | 'in-progress' | 'unwatched'
+export type WebLibraryTreeNodeKind = 'group' | 'directory' | 'file'
+
+export type WebLibraryTreeNode = {
+  id: string
+  label: string
+  kind: WebLibraryTreeNodeKind
+  sourceGroupId: string
+  relativePath: string
+  item: WebShareMediaItem | null
+  itemCount: number
+  children: WebLibraryTreeNode[]
+}
 
 export type WebPlaybackHistoryEntry = {
   position: number
@@ -71,6 +83,57 @@ export function isInProgress(item: WebShareMediaItem, preferences: WebLibraryPre
   return true
 }
 
+export function getWebLibraryTreeNodeId(sourceGroupId: string, relativePath = ''): string {
+  return relativePath ? `${sourceGroupId}::${relativePath}` : sourceGroupId
+}
+
+function isItemInsideTreeNode(item: WebShareMediaItem, nodeId: string): boolean {
+  const separatorIndex = nodeId.indexOf('::')
+  if (separatorIndex < 0) return item.sourceGroupId === nodeId
+  const sourceGroupId = nodeId.slice(0, separatorIndex)
+  const relativePath = nodeId.slice(separatorIndex + 2)
+  return item.sourceGroupId === sourceGroupId && (item.relativePath === relativePath || item.relativePath.startsWith(`${relativePath}/`))
+}
+
+export function buildWebLibraryTree(items: WebShareMediaItem[]): WebLibraryTreeNode[] {
+  const roots = new Map<string, WebLibraryTreeNode>()
+  const childMaps = new Map<string, Map<string, WebLibraryTreeNode>>()
+  for (const item of items) {
+    let parentNode: WebLibraryTreeNode | undefined = roots.get(item.sourceGroupId)
+    if (!parentNode) {
+      parentNode = { id: item.sourceGroupId, label: item.sourceGroupLabel, kind: 'group', sourceGroupId: item.sourceGroupId, relativePath: '', item: null, itemCount: 0, children: [] }
+      roots.set(item.sourceGroupId, parentNode)
+      childMaps.set(parentNode.id, new Map())
+    }
+    parentNode.itemCount += 1
+    const parts = (item.relativePath || item.name).split('/').filter(Boolean)
+    let relativePath = ''
+    for (const [index, part] of parts.entries()) {
+      relativePath = relativePath ? `${relativePath}/${part}` : part
+      const isFile = index === parts.length - 1
+      const nodeId = isFile ? `${item.sourceGroupId}::file:${item.id}` : getWebLibraryTreeNodeId(item.sourceGroupId, relativePath)
+      const children: Map<string, WebLibraryTreeNode> = childMaps.get(parentNode.id) ?? new Map<string, WebLibraryTreeNode>()
+      let node: WebLibraryTreeNode | undefined = children.get(nodeId)
+      if (!node) {
+        node = { id: nodeId, label: part, kind: isFile ? 'file' : 'directory', sourceGroupId: item.sourceGroupId, relativePath, item: isFile ? item : null, itemCount: 0, children: [] }
+        children.set(nodeId, node)
+        childMaps.set(parentNode.id, children)
+        parentNode.children.push(node)
+        childMaps.set(node.id, new Map())
+      }
+      node.itemCount += 1
+      parentNode = node
+    }
+  }
+  const sortNodes = (nodes: WebLibraryTreeNode[]): void => {
+    nodes.sort((left, right) => (left.kind === 'file' ? 1 : 0) - (right.kind === 'file' ? 1 : 0) || left.label.localeCompare(right.label, undefined, { numeric: true, sensitivity: 'base' }))
+    for (const node of nodes) sortNodes(node.children)
+  }
+  const result = [...roots.values()]
+  sortNodes(result)
+  return result
+}
+
 export function sortWebLibraryItems(items: WebShareMediaItem[], preferences: WebLibraryPreferences): WebShareMediaItem[] {
   return [...items].sort((left, right) => {
     if (preferences.sort === 'size-desc') return right.sizeBytes - left.sizeBytes || left.name.localeCompare(right.name, undefined, { numeric: true, sensitivity: 'base' })
@@ -84,7 +147,7 @@ export function sortWebLibraryItems(items: WebShareMediaItem[], preferences: Web
 export function filterWebLibraryItems(items: WebShareMediaItem[], query: string, preferences: WebLibraryPreferences): WebShareMediaItem[] {
   const normalizedQuery = query.trim().toLocaleLowerCase()
   return items.filter((item) => {
-    if (preferences.selectedGroupId !== 'all' && item.sourceGroupId !== preferences.selectedGroupId) return false
+    if (preferences.selectedGroupId !== 'all' && !isItemInsideTreeNode(item, preferences.selectedGroupId)) return false
     if (normalizedQuery && !`${item.name} ${item.relativePath}`.toLocaleLowerCase().includes(normalizedQuery)) return false
     if (preferences.filter === 'favorites' && !preferences.favorites.includes(item.id)) return false
     if (preferences.filter === 'in-progress' && !isInProgress(item, preferences)) return false

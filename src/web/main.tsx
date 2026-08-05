@@ -1,15 +1,16 @@
 import { StrictMode, useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { WebRemoteCommand, WebShareMediaDetails, WebShareMediaItem, WebShareLibraryResponse, WebSubtitleTrack, WebTranscodeStatus } from '../shared/web-types'
-import { filterWebLibraryItems, getHistoryEntry, isInProgress, readWebLibraryPreferences, sortWebLibraryItems, writeWebLibraryPreferences, type WebLibraryPreferences } from './library-state'
+import { buildWebLibraryTree, filterWebLibraryItems, getHistoryEntry, isInProgress, readWebLibraryPreferences, sortWebLibraryItems, writeWebLibraryPreferences, type WebLibraryPreferences } from './library-state'
 import { DetailsPanel, LibrarySidebar, LoginScreen, PlayerPanel } from './web-panels'
 import { useDesktopState } from './use-desktop-state'
+import { useDesktopFollow } from './use-desktop-follow'
+import { useVisibleSelection } from './use-visible-selection'
 import { readJson } from './web-ui'
 import './styles.css'
 import './library-styles.css'
 
 type SessionResponse = { authenticated: boolean }
-
 function WebApp(): ReactElement {
   const [authenticated, setAuthenticated] = useState<boolean | null>(null)
   const [items, setItems] = useState<WebShareMediaItem[]>([])
@@ -22,6 +23,7 @@ function WebApp(): ReactElement {
   const [subtitleTrack, setSubtitleTrack] = useState('off')
   const [audioTrack, setAudioTrack] = useState('direct')
   const [remoteError, setRemoteError] = useState<string | null>(null)
+  const [followDesktop, setFollowDesktop] = useState(true)
   const [preferences, setPreferences] = useState<WebLibraryPreferences>(() => readWebLibraryPreferences())
   const [transcodeStatus, setTranscodeStatus] = useState<WebTranscodeStatus | null>(null)
   const [transcodePlaybackUrl, setTranscodePlaybackUrl] = useState<string | null>(null)
@@ -38,19 +40,19 @@ function WebApp(): ReactElement {
   const selectedWithDetails = selected && details?.id === selected.id ? { ...selected, browserSupport: details.browserSupport } : selected
   const isTranscoding = selected ? transcodingIds.has(selected.id) : false
   const visibleItems = useMemo(() => sortWebLibraryItems(filterWebLibraryItems(items, query, preferences), preferences), [items, preferences, query])
-  const allSortedItems = useMemo(() => sortWebLibraryItems(items, preferences), [items, preferences])
-  const groups = useMemo(() => {
-    const result = new Map<string, string>()
-    for (const item of items) result.set(item.sourceGroupId, item.sourceGroupLabel)
-    return [...result.entries()].map(([id, label]) => ({ id, label }))
-  }, [items])
-
+  const tree = useMemo(() => buildWebLibraryTree(items), [items])
   const updatePreferences = useCallback((updater: (current: WebLibraryPreferences) => WebLibraryPreferences): void => {
     setPreferences((current) => updater(current))
   }, [])
-
   useEffect(() => { writeWebLibraryPreferences(preferences) }, [preferences])
-
+  const sendRemoteCommand = useCallback(async (command: WebRemoteCommand): Promise<void> => {
+    setRemoteError(null)
+    try {
+      await readJson<{ accepted: boolean }>('/api/v1/desktop/command', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(command) })
+    } catch (reason) {
+      setRemoteError(reason instanceof Error ? reason.message : '远程控制失败')
+    }
+  }, [])
   const loadLibrary = useCallback(async (refresh = false): Promise<void> => {
     setIsLoading(true)
     setError(null)
@@ -58,11 +60,14 @@ function WebApp(): ReactElement {
       const result = await readJson<WebShareLibraryResponse>(refresh ? '/api/v1/library/refresh' : '/api/v1/library', refresh ? { method: 'POST' } : undefined)
       setItems(result.items)
       setSelectedId((current) => current && result.items.some((item) => item.id === current) ? current : result.items[0]?.id ?? null)
-      updatePreferences((current) => ({
-        ...current,
-        favorites: current.favorites.filter((id) => result.items.some((item) => item.id === id)),
-        selectedGroupId: current.selectedGroupId === 'all' || result.items.some((item) => item.sourceGroupId === current.selectedGroupId) ? current.selectedGroupId : 'all'
-      }))
+      updatePreferences((current) => {
+        const selectedNodeStillExists = current.selectedGroupId === 'all' || filterWebLibraryItems(result.items, '', { ...current, filter: 'all' }).length > 0
+        return {
+          ...current,
+          favorites: current.favorites.filter((id) => result.items.some((item) => item.id === id)),
+          selectedGroupId: selectedNodeStillExists ? current.selectedGroupId : 'all'
+        }
+      })
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '无法读取媒体库')
     } finally {
@@ -79,7 +84,6 @@ function WebApp(): ReactElement {
       setError(reason instanceof Error ? reason.message : '访问令牌无效')
     }
   }
-
   const saveProgress = useCallback((item: WebShareMediaItem, position: number, duration: number | null): void => {
     if (!Number.isFinite(position) || position <= 0) return
     const now = Date.now()
@@ -93,14 +97,19 @@ function WebApp(): ReactElement {
     setSelectedId(item.id)
     setIsPlaying(false)
     setError(null)
-  }, [])
+    if (allowRemoteControl) void sendRemoteCommand({ type: 'select', mediaId: item.id })
+  }, [allowRemoteControl, sendRemoteCommand])
+
+  useDesktopFollow({ followDesktop, desktopState, items, selected, videoRef, selectItem })
+
+  useVisibleSelection(visibleItems, selected, setSelectedId, setIsPlaying)
 
   const playAdjacent = useCallback((direction: -1 | 1, autoPlay = true): void => {
     if (!selected) return
-    const index = allSortedItems.findIndex((item) => item.id === selected.id)
-    const next = allSortedItems[index + direction]
+    const index = visibleItems.findIndex((item) => item.id === selected.id)
+    const next = visibleItems[index + direction]
     if (next) selectItem(next, autoPlay)
-  }, [allSortedItems, selectItem, selected])
+  }, [selectItem, selected, visibleItems])
 
   const requestTranscode = async (itemId: string): Promise<void> => {
     if (transcodingIdsRef.current.has(itemId)) return
@@ -170,26 +179,19 @@ function WebApp(): ReactElement {
   const selectedAudioTrack = details?.audioTracks.find((track) => track.id === audioTrack) ?? null
   const mediaPlaybackUrl = transcodePlaybackUrl ?? selectedAudioTrack?.streamUrl ?? selected?.streamUrl ?? null
   const isSelectedFavorite = selected ? preferences.favorites.includes(selected.id) : false
-  const selectedIndex = selected ? allSortedItems.findIndex((item) => item.id === selected.id) : -1
-  const sendRemoteCommand = async (command: WebRemoteCommand): Promise<void> => {
-    setRemoteError(null)
-    try {
-      await readJson<{ accepted: boolean }>('/api/v1/desktop/command', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(command) })
-    } catch (reason) {
-      setRemoteError(reason instanceof Error ? reason.message : '远程控制失败')
-    }
-  }
+  const selectedIndex = selected ? visibleItems.findIndex((item) => item.id === selected.id) : -1
   const desktopItem = desktopState?.currentMediaId ? items.find((item) => item.id === desktopState.currentMediaId) ?? null : null
 
   return <div className="web-shell">
     <header className="web-topbar">
       <div className="brand-lockup"><span className="brand-mark">A</span><strong>AIVPlayer</strong><span>LAN Web</span></div>
       <div className="connection-status"><span className="status-dot" />局域网连接<span className="status-divider">·</span>{items.length} 个文件</div>
+      <button className="text-button" type="button" onClick={() => setFollowDesktop((current) => !current)}>{followDesktop ? '取消跟随 Desktop' : '跟随 Desktop'}</button>
       <button className="text-button" type="button" onClick={() => void loadLibrary(true)} disabled={isLoading}>{isLoading ? '刷新中…' : '刷新媒体库'}</button>
     </header>
     <main className="web-layout">
-      <LibrarySidebar items={items} visibleItems={visibleItems} groups={groups} selectedId={selected?.id ?? null} query={query} preferences={preferences} onQueryChange={setQuery} onSelect={selectItem} updatePreferences={updatePreferences} />
-      <PlayerPanel selected={selected} selectedWithDetails={selectedWithDetails} selectedSubtitleTrack={selectedSubtitleTrack} currentHistory={currentHistory} showResume={Boolean(selected && currentHistory && isInProgress(selected, preferences))} selectedIndex={selectedIndex} queueLength={allSortedItems.length} mediaPlaybackUrl={mediaPlaybackUrl} isPlaying={isPlaying} isSelectedFavorite={isSelectedFavorite} desktopState={desktopState} allowRemoteControl={allowRemoteControl} desktopItem={desktopItem} remoteError={remoteError} error={error} isTranscoding={isTranscoding} transcodeStatus={transcodeStatus} canRequestTranscode={audioTrack === 'direct' && !transcodePlaybackUrl} videoRef={videoRef} autoPlayNextRef={autoPlayNextRef} onSelect={selectItem} onPlayAdjacent={playAdjacent} onToggleFavorite={() => selected && updatePreferences((current) => ({ ...current, favorites: current.favorites.includes(selected.id) ? current.favorites.filter((id) => id !== selected.id) : [...current.favorites, selected.id] }))} onSendRemoteCommand={(command) => void sendRemoteCommand(command)} onSaveProgress={saveProgress} onSetPlaying={setIsPlaying} onRequestTranscode={(itemId) => void requestTranscode(itemId)} onClearError={() => setError(null)} onSetError={setError} />
+      <LibrarySidebar items={items} visibleItems={visibleItems} tree={tree} selectedId={selected?.id ?? null} query={query} preferences={preferences} onQueryChange={(value) => { setFollowDesktop(false); setQuery(value) }} onSelect={selectItem} onSelectNode={(nodeId) => { setFollowDesktop(false); updatePreferences((current) => ({ ...current, selectedGroupId: nodeId })) }} updatePreferences={updatePreferences} />
+      <PlayerPanel selected={selected} selectedWithDetails={selectedWithDetails} selectedSubtitleTrack={selectedSubtitleTrack} currentHistory={currentHistory} showResume={Boolean(selected && currentHistory && isInProgress(selected, preferences))} selectedIndex={selectedIndex} queueItems={visibleItems} mediaPlaybackUrl={mediaPlaybackUrl} isPlaying={isPlaying} isSelectedFavorite={isSelectedFavorite} desktopState={desktopState} allowRemoteControl={allowRemoteControl} desktopItem={desktopItem} remoteError={remoteError} error={error} isTranscoding={isTranscoding} transcodeStatus={transcodeStatus} canRequestTranscode={audioTrack === 'direct' && !transcodePlaybackUrl} videoRef={videoRef} autoPlayNextRef={autoPlayNextRef} onSelect={selectItem} onPlayAdjacent={playAdjacent} onToggleFavorite={() => selected && updatePreferences((current) => ({ ...current, favorites: current.favorites.includes(selected.id) ? current.favorites.filter((id) => id !== selected.id) : [...current.favorites, selected.id] }))} onSendRemoteCommand={(command) => void sendRemoteCommand(command)} onSaveProgress={saveProgress} onSetPlaying={setIsPlaying} onRequestTranscode={(itemId) => void requestTranscode(itemId)} onClearError={() => setError(null)} onSetError={setError} />
       <DetailsPanel item={selectedWithDetails} details={details} subtitleTrack={subtitleTrack} audioTrack={audioTrack} onSubtitleTrackChange={setSubtitleTrack} onAudioTrackChange={(trackId) => { setAudioTrack(trackId); setTranscodePlaybackUrl(null) }} />
     </main>
   </div>
