@@ -90,11 +90,11 @@
 .settings-tab {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 6px;
   min-width: 0;
   height: 34px;
-  padding: 0 8px;
+  padding: 0 12px;
   color: var(--text-muted);
   background: transparent;
   border: 1px solid transparent;
