@@ -36,30 +36,46 @@
 html[data-theme="light"],
 .app-shell[data-theme="light"] {
   color-scheme: light;
-  --overlay-rgb: 32, 33, 36;
+  --overlay-rgb: 30, 27, 22;
   --panel-rgb: 255, 255, 255;
-  --app-rgb: 248, 250, 253;
-  --stage-rgb: 241, 245, 251;
-  --accent-rgb: 26, 115, 232;
-  --ambient-rgb: 214, 227, 251;
-  --image-canvas-bg: #f3f6fb;
-  --bg-app: #f8fafd;
-  --bg-stage: #f1f5fb;
+  --app-rgb: 246, 244, 241;
+  --stage-rgb: 20, 19, 17;
+  --accent-rgb: 168, 118, 26;
+  --ambient-rgb: 168, 118, 26;
+  --image-canvas-bg: #efece7;
+  --bg-app: #f6f4f1;
+  --bg-stage: #141311;
   --bg-panel: #ffffff;
   --bg-panel-elevated: #ffffff;
-  --bg-control: rgba(241, 243, 244, 0.94);
-  --border-soft: rgba(60, 64, 67, 0.14);
-  --border-strong: rgba(60, 64, 67, 0.22);
-  --text-primary: #202124;
-  --text-secondary: #5f6368;
-  --text-muted: #80868b;
-  --accent: #1a73e8;
-  --accent-strong: #1967d2;
+  --bg-control: rgba(246, 244, 241, 0.94);
+  --border-soft: rgba(30, 27, 22, 0.1);
+  --border-strong: rgba(30, 27, 22, 0.18);
+  --text-primary: #221f1a;
+  --text-secondary: #6e675c;
+  --text-muted: #98928a;
+  --accent: #a8761a;
+  --accent-strong: #8f6413;
   --accent-ink: #ffffff;
-  --accent-soft: #d6e3fb;
+  --accent-soft: rgba(168, 118, 26, 0.12);
   --danger: #b42318;
   --danger-rgb: 180, 35, 24;
   --ok: #188038;
   --ok-rgb: 24, 128, 56;
-  --shadow-heavy: 0 24px 80px rgba(60, 64, 67, 0.16);
+  --shadow-heavy: 0 24px 80px rgba(60, 50, 30, 0.18);
+}
+
+/* 浅色模式下视频舞台保持深色（影院感，同 IINA / Infuse），
+   舞台内部恢复深色主题的阅读色，保证空状态标题/字幕/按钮可读 */
+html[data-theme="light"] .video-frame,
+.app-shell[data-theme="light"] .video-frame {
+  --text-primary: #f4f0e8;
+  --text-secondary: #b7b3aa;
+  --text-muted: #79766f;
+  --accent: #e8c16d;
+  --accent-strong: #ffd57f;
+  --accent-ink: #17110a;
+  --accent-rgb: 232, 193, 109;
+  --accent-soft: rgba(232, 193, 109, 0.16);
+  --border-soft: rgba(255, 255, 255, 0.09);
+  --bg-surface: #1a1a1a;
 }
