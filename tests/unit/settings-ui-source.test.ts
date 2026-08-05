@@ -270,8 +270,9 @@ describe('settings UI source constraints', () => {
     expect(playerCss).toMatch(/\.settings-select,\s*\.settings-number,\s*\.settings-text\s*\{[^}]*padding:\s*0 var\(--settings-control-padding-x\);/s)
     expect(playerCss).toMatch(/\.settings-path-value\s*\{[^}]*min-height:\s*var\(--settings-control-height\);/s)
     expect(playerCss).toMatch(/\.settings-path-value\s*\{[^}]*padding:\s*8px var\(--settings-control-padding-x\);/s)
-    expect(playerCss).toMatch(/\.settings-secondary-button\s*\{[^}]*min-height:\s*var\(--settings-control-height\);/s)
-    expect(playerCss).toMatch(/\.settings-secondary-button\s*\{[^}]*padding:\s*0 calc\(var\(--settings-control-padding-x\) \+ 2px\);/s)
+    expect(playerCss).toMatch(/\.settings-secondary-button\s*\{[^}]*min-height:\s*var\(--settings-control-height,\s*36px\);/s)
+    expect(playerCss).toMatch(/\.settings-secondary-button\s*\{[^}]*padding:\s*0 calc\(var\(--settings-control-padding-x,\s*12px\) \+ 2px\);/s)
+    expect(playerCss).toMatch(/\.settings-secondary-button\s*\{[^}]*border-radius:\s*var\(--settings-control-radius,\s*var\(--radius-md\)\);/s)
   })
 
   it('keeps settings number values right-aligned across compact and full-width controls', () => {

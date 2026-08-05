@@ -242,6 +242,10 @@
 ## 设置分组必须统一使用 active 状态隐藏
 - 设置页原有分组全部渲染后依靠 `is-hidden` 和 `aria-hidden` 切换；新增分组不能只实现内容而遗漏这层状态，否则会在所有设置分组下面串出重复面板。
 - 新增设置分组必须同时验证默认分组、其他普通分组和自身激活时的 `display` / `aria-hidden`，并在 smoke 测试中覆盖切换路径。
+
+## 共享组件不能依赖宿主容器的局部 CSS 变量
+- `.settings-secondary-button` 会被设置页、AI 弹窗和局域网 Web 弹窗共同使用；如果它依赖只定义在 `.settings-dialog` 内的变量，脱离设置页后高度、内边距和圆角会整体失效，按钮看起来像浏览器默认样式。
+- 跨容器复用的基础组件应提供安全 fallback，或者在每个宿主容器显式定义变量；至少要覆盖一个非原宿主弹窗的真实 DOM / smoke 样式回归。
 - `SettingsDialog` 的 props 边界也应该直接叫 `patchSettingsSection`，不要再保留一个语义更虚的 `onChange` 再去兜转 section patcher，边界越短越不容易回退。
 - section patcher 本身也值得有 `AppSettingsSectionPatcher` 这种共享命名，调用方一看就知道这是正式工具而不是临时闭包。
 - 需要改 section 字段时，优先检查通用 helper 的类型约束和源码测试，不要再为单个分组新开一套 `patchXxxSettings`。

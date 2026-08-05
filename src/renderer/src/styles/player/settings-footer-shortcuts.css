@@ -45,12 +45,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: var(--settings-control-height);
-  padding: 0 calc(var(--settings-control-padding-x) + 2px);
+  min-height: var(--settings-control-height, 36px);
+  padding: 0 calc(var(--settings-control-padding-x, 12px) + 2px);
   color: var(--text-secondary);
   background: transparent;
   border: 1px solid var(--border-soft);
-  border-radius: var(--settings-control-radius);
+  border-radius: var(--settings-control-radius, var(--radius-md));
   cursor: pointer;
   font-size: 13px;
   font-weight: 700;
