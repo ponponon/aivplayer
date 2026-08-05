@@ -1,0 +1,81 @@
+import { useState, type FormEvent, type MutableRefObject, type ReactElement, type RefObject } from 'react'
+import type { WebDesktopState, WebRemoteCommand, WebShareMediaDetails, WebShareMediaItem, WebSubtitleTrack, WebTranscodeStatus } from '../shared/web-types'
+import { getHistoryEntry, type WebLibraryFilterMode, type WebLibraryPreferences, type WebLibrarySortMode } from './library-state'
+import { formatBytes, formatDuration, formatProgress, getSupportClass, getSupportLabel } from './web-ui'
+
+export function LoginScreen({ onLogin, error }: { onLogin: (token: string) => Promise<void>; error: string | null }): ReactElement {
+  const [token, setToken] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const submit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+    event.preventDefault()
+    if (!token.trim() || isSubmitting) return
+    setIsSubmitting(true)
+    try { await onLogin(token.trim()) } finally { setIsSubmitting(false) }
+  }
+  return <main className="login-page"><section className="login-panel"><div className="brand-lockup"><span className="brand-mark">A</span><strong>AIVPlayer</strong><span>LAN Web</span></div><h1>连接本机媒体库</h1><p>请输入 AIVPlayer 桌面端显示的局域网访问令牌。视频不会上传到云端。</p><form onSubmit={submit}><label htmlFor="access-token">访问令牌</label><input id="access-token" value={token} onChange={(event) => setToken(event.currentTarget.value)} autoComplete="off" spellCheck={false} placeholder="粘贴访问令牌" /><button type="submit" disabled={!token.trim() || isSubmitting}>{isSubmitting ? '连接中…' : '连接媒体库'}</button></form>{error ? <p className="error-message" role="alert">{error}</p> : null}</section></main>
+}
+
+export function LibraryItem({ item, selected, favorite, history, onSelect, onToggleFavorite }: { item: WebShareMediaItem; selected: boolean; favorite: boolean; history: ReturnType<typeof getHistoryEntry>; onSelect: () => void; onToggleFavorite: () => void }): ReactElement {
+  const progress = history?.duration && history.duration > 0 ? Math.min(100, history.position / history.duration * 100) : 0
+  return <div className={`library-item ${selected ? 'is-selected' : ''}`}><button className="library-item-select" type="button" onClick={onSelect} title={item.name}><span className="library-thumbnail"><img src={item.thumbnailUrl} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} /><span className="thumbnail-fallback">▶</span></span><span className="library-item-copy"><span className="library-item-title">{item.name}</span><span className="library-item-path">{item.relativePath}</span><span className="library-item-meta"><span>{item.extension.replace(/^\./u, '').toUpperCase()}</span><span>{formatBytes(item.sizeBytes)}</span><span className={getSupportClass(item)}>{getSupportLabel(item)}</span></span>{progress > 0 ? <span className="library-progress"><span style={{ width: `${progress}%` }} /></span> : null}</span></button><button className={`favorite-button ${favorite ? 'is-favorite' : ''}`} type="button" onClick={onToggleFavorite} aria-label={favorite ? `取消收藏 ${item.name}` : `收藏 ${item.name}`} title={favorite ? '取消收藏' : '收藏'}>{favorite ? '★' : '☆'}</button></div>
+}
+
+export function DetailsPanel({ item, details, subtitleTrack, audioTrack, onSubtitleTrackChange, onAudioTrackChange }: { item: WebShareMediaItem | null; details: WebShareMediaDetails | null; subtitleTrack: string; audioTrack: string; onSubtitleTrackChange: (trackId: string) => void; onAudioTrackChange: (trackId: string) => void }): ReactElement {
+  if (!item) return <aside className="details-panel"><div className="empty-panel"><strong>选择一个视频</strong><span>媒体信息会显示在这里</span></div></aside>
+  const metadata = details?.metadata
+  const subtitleTracks: WebSubtitleTrack[] = details?.subtitleTracks ?? (item.subtitleUrl ? [{ id: 'sidecar', label: '外挂字幕', url: item.subtitleUrl, language: null, codec: 'webvtt', streamIndex: null, default: true }] : [])
+  const audioTracks = details?.audioTracks ?? []
+  return <aside className="details-panel"><div className="panel-heading"><div><span className="panel-kicker">DETAILS</span><h2>媒体信息</h2></div><span className={`support-mark ${getSupportClass(item)}`}>{getSupportLabel(item)}</span></div><dl className="details-list"><div><dt>文件名</dt><dd title={item.name}>{item.name}</dd></div><div><dt>文件大小</dt><dd>{formatBytes(item.sizeBytes)}</dd></div><div><dt>所在目录</dt><dd title={item.relativePath}>{item.sourceGroupLabel}</dd></div><div><dt>容器</dt><dd>{item.extension.replace(/^\./u, '').toUpperCase()}</dd></div><div><dt>时长</dt><dd>{formatDuration(details?.durationSeconds ?? item.durationSeconds)}</dd></div><div><dt>视频编码</dt><dd>{metadata?.video?.codec ?? item.videoCodec ?? '等待探测'}</dd></div><div><dt>音频编码</dt><dd>{metadata?.audio?.codec ?? item.audioCodec ?? '等待探测'}</dd></div>{metadata?.video ? <div><dt>分辨率</dt><dd>{metadata.video.width && metadata.video.height ? `${metadata.video.width} × ${metadata.video.height}` : '未知'}</dd></div> : null}{metadata?.video?.bitRateKbps ? <div><dt>视频码率</dt><dd>{Math.round(metadata.video.bitRateKbps)} kbps</dd></div> : null}</dl>{subtitleTracks.length > 0 ? <label className="media-select"><span>字幕</span><select value={subtitleTrack} onChange={(event) => onSubtitleTrackChange(event.currentTarget.value)}><option value="off">关闭字幕</option>{subtitleTracks.map((track) => <option key={track.id} value={track.id}>{track.label}{track.language ? ` · ${track.language}` : ''}</option>)}</select></label> : null}{audioTracks.length > 1 ? <label className="media-select"><span>音轨</span><select value={audioTrack} onChange={(event) => onAudioTrackChange(event.currentTarget.value)}><option value="direct">默认音轨</option>{audioTracks.map((track) => <option key={track.id} value={track.id}>{track.label}{track.language ? ` · ${track.language}` : ''} · {track.codec ?? '未知编码'}</option>)}</select><small>切换音轨会在本机生成一个只包含所选音轨的 MP4，不修改原文件。</small></label> : null}<div className="details-note">播放采用 HTTP Range，拖动时只请求目标位置附近的数据，不会一次下载完整文件。</div></aside>
+}
+
+type LibrarySidebarProps = {
+  items: WebShareMediaItem[]
+  visibleItems: WebShareMediaItem[]
+  groups: Array<{ id: string; label: string }>
+  selectedId: string | null
+  query: string
+  preferences: WebLibraryPreferences
+  onQueryChange: (query: string) => void
+  onSelect: (item: WebShareMediaItem) => void
+  updatePreferences: (updater: (current: WebLibraryPreferences) => WebLibraryPreferences) => void
+}
+
+export function LibrarySidebar({ items, visibleItems, groups, selectedId, query, preferences, onQueryChange, onSelect, updatePreferences }: LibrarySidebarProps): ReactElement {
+  return <aside className="library-panel"><div className="panel-heading"><div><span className="panel-kicker">LIBRARY</span><h1>媒体库</h1></div><span className="item-count">{visibleItems.length}/{items.length}</span></div><label className="search-field"><span>搜索</span><input value={query} onChange={(event) => onQueryChange(event.currentTarget.value)} placeholder="搜索文件名或目录" /></label><div className="library-toolbar"><label><span>排序</span><select value={preferences.sort} onChange={(event) => { const value = event.currentTarget.value as WebLibrarySortMode; updatePreferences((current) => ({ ...current, sort: value })) }}><option value="name-asc">名称 A → Z</option><option value="name-desc">名称 Z → A</option><option value="recent">最近播放</option><option value="size-desc">文件最大</option><option value="duration-desc">时长最长</option></select></label><label><span>筛选</span><select value={preferences.filter} onChange={(event) => { const value = event.currentTarget.value as WebLibraryFilterMode; updatePreferences((current) => ({ ...current, filter: value })) }}><option value="all">全部媒体</option><option value="favorites">我的收藏</option><option value="in-progress">继续观看</option><option value="unwatched">未观看</option></select></label></div><div className="library-groups"><button className={`group-button ${preferences.selectedGroupId === 'all' ? 'is-selected' : ''}`} type="button" onClick={() => updatePreferences((current) => ({ ...current, selectedGroupId: 'all' }))}><span>全部媒体</span><span>{items.length}</span></button>{groups.map((group) => <button className={`group-button ${preferences.selectedGroupId === group.id ? 'is-selected' : ''}`} type="button" key={group.id} onClick={() => updatePreferences((current) => ({ ...current, selectedGroupId: group.id }))}><span>▸ {group.label}</span><span>{items.filter((item) => item.sourceGroupId === group.id).length}</span></button>)}</div><div className="library-list">{visibleItems.map((item) => <LibraryItem key={item.id} item={item} selected={item.id === selectedId} favorite={preferences.favorites.includes(item.id)} history={getHistoryEntry(preferences, item.id)} onSelect={() => onSelect(item)} onToggleFavorite={() => updatePreferences((current) => ({ ...current, favorites: current.favorites.includes(item.id) ? current.favorites.filter((id) => id !== item.id) : [...current.favorites, item.id] }))} />)}{visibleItems.length === 0 ? <div className="empty-panel"><strong>{items.length === 0 ? '还没有共享媒体' : '没有匹配文件'}</strong><span>{items.length === 0 ? '请在桌面端打开视频后重新刷新' : '换一个搜索词、筛选条件或目录试试'}</span></div> : null}</div></aside>
+}
+
+type PlayerPanelProps = {
+  selected: WebShareMediaItem | null
+  selectedWithDetails: WebShareMediaItem | null
+  selectedSubtitleTrack: WebSubtitleTrack | null
+  currentHistory: ReturnType<typeof getHistoryEntry>
+  showResume: boolean
+  selectedIndex: number
+  queueLength: number
+  mediaPlaybackUrl: string | null
+  isPlaying: boolean
+  isSelectedFavorite: boolean
+  desktopState: WebDesktopState | null
+  allowRemoteControl: boolean
+  desktopItem: WebShareMediaItem | null
+  remoteError: string | null
+  error: string | null
+  isTranscoding: boolean
+  transcodeStatus: WebTranscodeStatus | null
+  canRequestTranscode: boolean
+  videoRef: RefObject<HTMLVideoElement | null>
+  autoPlayNextRef: MutableRefObject<boolean>
+  onSelect: (item: WebShareMediaItem) => void
+  onPlayAdjacent: (direction: -1 | 1) => void
+  onToggleFavorite: () => void
+  onSendRemoteCommand: (command: WebRemoteCommand) => void
+  onSaveProgress: (item: WebShareMediaItem, position: number, duration: number | null) => void
+  onSetPlaying: (playing: boolean) => void
+  onRequestTranscode: (itemId: string) => void
+  onClearError: () => void
+  onSetError: (message: string) => void
+}
+
+export function PlayerPanel({ selected, selectedWithDetails, selectedSubtitleTrack, currentHistory, showResume, selectedIndex, queueLength, mediaPlaybackUrl, isPlaying, isSelectedFavorite, desktopState, allowRemoteControl, desktopItem, remoteError, error, isTranscoding, transcodeStatus, canRequestTranscode, videoRef, autoPlayNextRef, onSelect, onPlayAdjacent, onToggleFavorite, onSendRemoteCommand, onSaveProgress, onSetPlaying, onRequestTranscode, onClearError, onSetError }: PlayerPanelProps): ReactElement {
+  return <section className="player-panel"><div className="player-heading"><div><span className="panel-kicker">NOW PLAYING · {selectedIndex >= 0 ? `${selectedIndex + 1}/${queueLength}` : '—'}</span><h2 title={selected?.name}>{selected?.name ?? 'AIVPlayer LAN Web'}</h2></div><span className="player-format">{selected?.extension.replace(/^\./u, '').toUpperCase() ?? '—'}</span></div><div className="desktop-sync-panel"><div className="desktop-sync-heading"><span className={`status-dot ${desktopState ? 'is-live' : 'is-idle'}`} /><div><strong>Desktop 联动</strong><span>{desktopState?.currentMediaName ? `${desktopState.isPlaying ? '正在播放' : '已暂停'} · ${desktopState.currentMediaName}` : '等待桌面端播放状态'}</span></div>{desktopItem ? <button type="button" onClick={() => onSelect(desktopItem)}>跟随当前</button> : null}</div>{desktopState ? <div className="desktop-sync-progress"><span>{formatDuration(desktopState.currentTime)} / {formatDuration(desktopState.duration)}</span><span>{desktopState.playbackRate.toFixed(2)}×</span><span>{allowRemoteControl ? '允许远程控制' : '仅状态同步'}</span></div> : null}{allowRemoteControl ? <div className="remote-controls"><button type="button" onClick={() => onSendRemoteCommand({ type: 'previous' })}>上一部</button><button type="button" onClick={() => onSendRemoteCommand({ type: desktopState?.isPlaying ? 'pause' : 'play' })}>{desktopState?.isPlaying ? '暂停 Desktop' : '播放 Desktop'}</button><button type="button" onClick={() => onSendRemoteCommand({ type: 'next' })}>下一部</button>{desktopState ? <button type="button" onClick={() => onSendRemoteCommand({ type: 'seek', position: desktopState.currentTime })}>同步到此处</button> : null}</div> : null}{remoteError ? <span className="remote-error">{remoteError}</span> : null}</div><div className="video-frame">{selected ? <video ref={videoRef} key={`${selected.id}:${mediaPlaybackUrl ?? 'direct'}`} src={mediaPlaybackUrl ?? selected.streamUrl} controls playsInline preload="metadata" onLoadedMetadata={(event) => { const video = event.currentTarget; if (currentHistory && currentHistory.position < video.duration - 10) video.currentTime = currentHistory.position; if (autoPlayNextRef.current) { autoPlayNextRef.current = false; void video.play().catch(() => undefined) } }} onTimeUpdate={(event) => onSaveProgress(selected, event.currentTarget.currentTime, event.currentTarget.duration)} onPlay={() => onSetPlaying(true)} onPause={(event) => { onSetPlaying(false); onSaveProgress(selected, event.currentTarget.currentTime, event.currentTarget.duration) }} onEnded={() => { onSaveProgress(selected, videoRef.current?.duration ?? selected.durationSeconds ?? 0, videoRef.current?.duration ?? selected.durationSeconds); onPlayAdjacent(1) }} onError={() => { if (canRequestTranscode) onRequestTranscode(selected.id); else onSetError('浏览器无法播放当前媒体版本') }}>{selectedSubtitleTrack ? <track kind="subtitles" src={selectedSubtitleTrack.url} label={selectedSubtitleTrack.label} default /> : null}</video> : <div className="video-empty"><span className="play-symbol">▶</span><strong>从左侧选择视频</strong><span>视频会在当前浏览器中直接播放</span></div>}</div>{selected && showResume ? <div className="resume-banner">已记录到 {formatDuration(currentHistory?.position ?? 0)}，当前文件会自动从上次位置继续</div> : null}{selectedWithDetails && (selectedWithDetails.browserSupport === 'needs-transcode' || transcodeStatus?.state === 'queued' || transcodeStatus?.state === 'running' || transcodeStatus?.state === 'ready' || transcodeStatus?.state === 'error') ? <div className="transcode-panel"><div><strong>{transcodeStatus?.state === 'ready' ? '已准备浏览器版本' : '这个文件可能需要转码'}</strong><span>{transcodeStatus?.state === 'queued' ? '正在等待本机转码队列…' : transcodeStatus?.state === 'running' ? `正在生成兼容版本 · ${formatProgress(transcodeStatus.progress)}` : '原文件保留不变，转码结果只缓存在本机。'}</span>{selectedWithDetails.sizeBytes >= 1024 ** 3 && transcodeStatus?.state !== 'ready' ? <span className="transcode-size-note">这是大文件，首次转码可能需要较长时间，并额外占用约 {formatBytes(selectedWithDetails.sizeBytes)} 磁盘空间。</span> : null}</div>{transcodeStatus?.state !== 'ready' ? <button type="button" onClick={() => onRequestTranscode(selectedWithDetails.id)} disabled={isTranscoding}>{isTranscoding ? '转码中…' : '开始转码播放'}</button> : null}</div> : null}{error ? <div className="player-error" role="alert">{error}<button className="inline-button" type="button" onClick={onClearError}>关闭</button></div> : null}<div className="player-controls"><button type="button" onClick={() => onPlayAdjacent(-1)} disabled={!selected || selectedIndex <= 0}>上一部</button><button type="button" onClick={() => onPlayAdjacent(1)} disabled={!selected || selectedIndex < 0 || selectedIndex >= queueLength - 1}>下一部</button><button type="button" className={isSelectedFavorite ? 'is-favorite' : ''} onClick={onToggleFavorite} disabled={!selected}>{isSelectedFavorite ? '★ 已收藏' : '☆ 收藏'}</button></div><div className="player-footer"><span>{isPlaying ? '正在播放' : selected ? '已暂停' : '等待选择'}</span><span>当前 Web 播放队列 · 原始文件直流 · 不上传</span></div></section>
+}

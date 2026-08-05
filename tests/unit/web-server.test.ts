@@ -27,8 +27,9 @@ async function createFixture(): Promise<{ directory: string; mediaPath: string; 
 describe('WebServer', () => {
   it('serves the web app, authenticated library and subtitle sidecar', async () => {
     const fixture = await createFixture()
-    const server = new WebServer({ resourcePath: fixture.directory, webRoot: fixture.webRoot, bindHost: '127.0.0.1' })
-    const status = await server.start({ filePaths: [fixture.mediaPath] })
+    const remoteCommands: unknown[] = []
+    const server = new WebServer({ resourcePath: fixture.directory, webRoot: fixture.webRoot, bindHost: '127.0.0.1', onRemoteCommand: (command) => remoteCommands.push(command) })
+    const status = await server.start({ filePaths: [fixture.mediaPath], allowRemoteControl: true })
     const accessUrl = new URL(status.urls[0]!)
 
     const unauthorizedResponse = await fetch(new URL('/api/v1/library', accessUrl))
@@ -57,10 +58,23 @@ describe('WebServer', () => {
 
     const libraryResponse = await fetch(new URL('/api/v1/library', accessUrl), { headers: { Cookie: cookie! } })
     expect(libraryResponse.status).toBe(200)
-    const library = await libraryResponse.json() as { items: Array<{ id: string; subtitleUrl: string | null; transcodeUrl: string }> }
+    const library = await libraryResponse.json() as { items: Array<{ id: string; subtitleUrl: string | null; transcodeUrl: string; thumbnailUrl: string; sourceGroupLabel: string }> }
     expect(library.items).toHaveLength(1)
     expect(library.items[0]?.subtitleUrl).toMatch(/^\/subtitle\//u)
     expect(library.items[0]?.transcodeUrl).toMatch(/^\/api\/v1\/media\//u)
+    expect(library.items[0]?.thumbnailUrl).toMatch(/^\/thumbnail\//u)
+    expect(library.items[0]?.sourceGroupLabel).toBe('当前播放列表')
+
+    server.updateDesktopState({ currentFilePath: fixture.mediaPath, playlistFilePaths: [fixture.mediaPath], currentTime: 12, duration: 90, isPlaying: true, volume: 0.8, muted: false, playbackRate: 1 })
+    const desktopStateResponse = await fetch(new URL('/api/v1/desktop/state', accessUrl), { headers: { Cookie: cookie! } })
+    expect(desktopStateResponse.status).toBe(200)
+    const desktopState = await desktopStateResponse.json() as { state: { currentMediaId: string; currentMediaName: string; currentTime: number }; allowRemoteControl: boolean }
+    expect(desktopState.state).toMatchObject({ currentMediaName: 'sample.mp4', currentTime: 12 })
+    expect(desktopState.allowRemoteControl).toBe(true)
+
+    const remoteResponse = await fetch(new URL('/api/v1/desktop/command', accessUrl), { method: 'POST', headers: { Cookie: cookie!, 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'play' }) })
+    expect(remoteResponse.status).toBe(202)
+    expect(remoteCommands).toEqual([{ type: 'play' }])
 
     const subtitleResponse = await fetch(new URL(library.items[0]!.subtitleUrl!, accessUrl), { headers: { Cookie: cookie! } })
     expect(subtitleResponse.status).toBe(200)
@@ -101,6 +115,18 @@ describe('WebServer', () => {
 
     await server.stop()
     expect(await readFile(fixture.mediaPath, 'utf8')).toBe('0123456789')
+  })
+
+  it('rejects remote commands until the desktop owner explicitly enables them', async () => {
+    const fixture = await createFixture()
+    const server = new WebServer({ resourcePath: fixture.directory, webRoot: fixture.webRoot, bindHost: '127.0.0.1' })
+    const status = await server.start({ filePaths: [fixture.mediaPath] })
+    const accessUrl = new URL(status.urls[0]!)
+    const pageResponse = await fetch(accessUrl, { redirect: 'manual' })
+    const cookie = pageResponse.headers.get('set-cookie')?.split(';')[0]
+    const response = await fetch(new URL('/api/v1/desktop/command', accessUrl), { method: 'POST', headers: { Cookie: cookie!, 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'pause' }) })
+    expect(response.status).toBe(403)
+    await server.stop()
   })
 
   it('streams a sparse 5 GiB source by range without reading the whole file', async () => {

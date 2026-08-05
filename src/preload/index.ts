@@ -85,7 +85,7 @@ import type {
 } from '../shared/media-types'
 import type { LivePhotoExportRequest, LivePhotoExportResult, LivePhotoProbeResult } from '../shared/live-photo-types'
 import type { EditingProjectFileOpenResult, EditingProjectFileSaveRequest, EditingProjectFileSaveResult } from '../shared/editing-types'
-import type { WebShareStartRequest, WebShareStatus } from '../shared/web-types'
+import type { WebDesktopStateUpdate, WebRemoteCommandForDesktop, WebShareStartRequest, WebShareStatus } from '../shared/web-types'
 
 const api = {
   platform: process.platform,
@@ -140,6 +140,12 @@ const api = {
   stopWebShare: (): Promise<WebShareStatus> => ipcRenderer.invoke(IPC_CHANNELS.WEB_SHARE_STOP),
   getWebShareStatus: (): Promise<WebShareStatus> => ipcRenderer.invoke(IPC_CHANNELS.WEB_SHARE_STATUS),
   refreshWebShare: (request: WebShareStartRequest): Promise<WebShareStatus> => ipcRenderer.invoke(IPC_CHANNELS.WEB_SHARE_REFRESH, request),
+  updateWebDesktopState: (state: WebDesktopStateUpdate): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.WEB_DESKTOP_STATE_UPDATE, state),
+  onWebRemoteCommand: (callback: (command: WebRemoteCommandForDesktop) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, command: WebRemoteCommandForDesktop): void => callback(command)
+    ipcRenderer.on(IPC_CHANNELS.WEB_REMOTE_COMMAND, listener)
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.WEB_REMOTE_COMMAND, listener)
+  },
   checkAsrRuntime: (): Promise<AsrRuntimeStatus> => ipcRenderer.invoke(IPC_CHANNELS.ASR_HEALTH_CHECK),
   getAsrCacheStats: (): Promise<AsrCacheStatsResult> => ipcRenderer.invoke(IPC_CHANNELS.ASR_CACHE_STATS),
   clearStaleAsrCache: (): Promise<AsrCacheClearResult> => ipcRenderer.invoke(IPC_CHANNELS.ASR_CACHE_CLEAR_STALE),

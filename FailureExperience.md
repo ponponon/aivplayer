@@ -553,3 +553,7 @@
 ## apt-get 安装本地 deb 必须传绝对路径或显式相对路径
 
 - `apt-get install -y release/aivplayer_*.deb` 可能把 `release` 当成软件包名，导致 `E: Unable to locate package release`；CI 中应先用 `realpath` 转成绝对路径，并用 `dpkg-deb -f` 校验包名后再安装。
+
+## React 事件值要在异步状态更新前先取快照
+
+- Web 媒体库排序 / 筛选的 `onChange` 如果把 `event.currentTarget.value` 直接放进 React 状态更新函数，更新函数稍后执行时 `currentTarget` 可能已经是 `null`，导致筛选后页面崩溃。事件处理器应先把 value 保存为局部常量，再交给状态更新；新增表单交互必须用浏览器级回归覆盖一次真实改变。

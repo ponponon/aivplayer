@@ -4,6 +4,7 @@ import type { AppModel } from './app-types'
 
 export function useWebShareActions(model: AppModel, copy: LocaleCopy) {
   const [webShareDirectoryPaths, setWebShareDirectoryPaths] = useState<string[]>([])
+  const [allowRemoteControl, setAllowRemoteControl] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -11,6 +12,7 @@ export function useWebShareActions(model: AppModel, copy: LocaleCopy) {
       if (active) {
         model.setWebShareStatus(status)
         setWebShareDirectoryPaths(status.sharedDirectoryPaths)
+        setAllowRemoteControl(status.allowRemoteControl ?? false)
       }
     }).catch(() => undefined)
     return () => { active = false }
@@ -22,19 +24,25 @@ export function useWebShareActions(model: AppModel, copy: LocaleCopy) {
     model.setIsWebShareDialogOpen(true)
   }
 
-  const getWebShareRequest = (directoryPaths = webShareDirectoryPaths) => ({
+  const getWebShareRequest = (directoryPaths = webShareDirectoryPaths, remoteControl = allowRemoteControl) => ({
     filePaths: model.state.playlist.map((file) => file.path),
-    directoryPaths
+    directoryPaths,
+    allowRemoteControl: remoteControl
   })
 
-  const refreshWebShare = async (directoryPaths = webShareDirectoryPaths): Promise<void> => {
+  const refreshWebShare = async (directoryPaths = webShareDirectoryPaths, remoteControl = allowRemoteControl): Promise<void> => {
     model.setWebShareError(null)
     model.setWebShareNotice(null)
     try {
-      model.setWebShareStatus(await window.aiv.refreshWebShare(getWebShareRequest(directoryPaths)))
+      model.setWebShareStatus(await window.aiv.refreshWebShare(getWebShareRequest(directoryPaths, remoteControl)))
     } catch (error) {
       model.setWebShareError(error instanceof Error ? error.message : String(error))
     }
+  }
+
+  const toggleRemoteControl = async (enabled: boolean): Promise<void> => {
+    setAllowRemoteControl(enabled)
+    if (model.webShareStatus.running) await refreshWebShare(webShareDirectoryPaths, enabled)
   }
 
   const addWebShareDirectory = async (): Promise<void> => {
@@ -64,6 +72,7 @@ export function useWebShareActions(model: AppModel, copy: LocaleCopy) {
       const status = await window.aiv.startWebShare(getWebShareRequest())
       model.setWebShareStatus(status)
       setWebShareDirectoryPaths(status.sharedDirectoryPaths)
+      setAllowRemoteControl(status.allowRemoteControl ?? false)
       model.setIsWebShareDialogOpen(true)
     } catch (error) {
       model.setWebShareError(error instanceof Error ? error.message : String(error))
@@ -95,6 +104,8 @@ export function useWebShareActions(model: AppModel, copy: LocaleCopy) {
     refreshWebShare,
     webShareDirectoryPaths,
     addWebShareDirectory,
-    removeWebShareDirectory
+    removeWebShareDirectory,
+    allowRemoteControl,
+    toggleRemoteControl
   }
 }

@@ -24,6 +24,8 @@ export const IPC_CHANNELS = {
   WEB_SHARE_STOP: 'web-share:stop',
   WEB_SHARE_STATUS: 'web-share:status',
   WEB_SHARE_REFRESH: 'web-share:refresh',
+  WEB_DESKTOP_STATE_UPDATE: 'web-share:desktop-state-update',
+  WEB_REMOTE_COMMAND: 'web-share:remote-command',
   APP_MENU_OPEN_SETTINGS: 'app-menu:open-settings',
   ASR_HEALTH_CHECK: 'asr:health-check',
   ASR_CACHE_STATS: 'asr:cache-stats',

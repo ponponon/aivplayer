@@ -1,0 +1,36 @@
+import { describe, expect, it } from 'vitest'
+import type { WebShareMediaItem } from '../../src/shared/web-types'
+import { createDefaultWebLibraryPreferences, filterWebLibraryItems, getHistoryEntry, isInProgress, sortWebLibraryItems } from '../../src/web/library-state'
+
+function createItem(overrides: Partial<WebShareMediaItem>): WebShareMediaItem {
+  return {
+    id: 'one', name: 'one.mp4', extension: '.mp4', mimeType: 'video/mp4', sizeBytes: 100, modifiedAt: 1,
+    streamUrl: '/media/one', subtitleUrl: null, browserSupport: 'likely', transcodeUrl: '/api/v1/media/one/transcode', durationSeconds: 100, videoCodec: 'h264', audioCodec: 'aac',
+    sourceKind: 'directory', sourceGroupId: 'movies', sourceGroupLabel: 'Movies', relativePath: 'one.mp4', thumbnailUrl: '/thumbnail/one', ...overrides
+  }
+}
+
+describe('Web library state', () => {
+  it('filters by group, favorites and resume state, then sorts by recent history', () => {
+    const first = createItem({ id: 'first', name: 'first.mp4', relativePath: 'Movies/first.mp4', sizeBytes: 100 })
+    const second = createItem({ id: 'second', name: 'second.mkv', relativePath: 'Movies/second.mkv', sizeBytes: 200, sourceGroupId: 'series', sourceGroupLabel: 'Series' })
+    const preferences = createDefaultWebLibraryPreferences()
+    preferences.favorites = ['second']
+    preferences.history = { first: { position: 20, duration: 100, updatedAt: 200 }, second: { position: 30, duration: 100, updatedAt: 100 } }
+    preferences.filter = 'in-progress'
+    preferences.selectedGroupId = 'movies'
+    preferences.sort = 'recent'
+
+    expect(filterWebLibraryItems([second, first], '', preferences)).toEqual([first])
+    expect(sortWebLibraryItems([second, first], preferences).map((item) => item.id)).toEqual(['first', 'second'])
+    expect(isInProgress(first, preferences)).toBe(true)
+    expect(getHistoryEntry(preferences, 'first')?.position).toBe(20)
+  })
+
+  it('treats a near-end position as watched instead of resumable', () => {
+    const item = createItem({ id: 'finished' })
+    const preferences = createDefaultWebLibraryPreferences()
+    preferences.history.finished = { position: 95, duration: 100, updatedAt: 1 }
+    expect(isInProgress(item, preferences)).toBe(false)
+  })
+})

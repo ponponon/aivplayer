@@ -12,7 +12,8 @@ describe('WebShareDialog', () => {
       urls: ['http://192.168.1.20:43821/?access=alpha', 'http://10.0.0.8:43821/?access=beta'],
       sharedFileCount: 1,
       sharedDirectoryCount: 0,
-      sharedDirectoryPaths: []
+      sharedDirectoryPaths: [],
+      allowRemoteControl: false
     }
     const markup = renderToStaticMarkup(<WebShareDialog
       copy={zhCN}
@@ -26,6 +27,8 @@ describe('WebShareDialog', () => {
       onRefresh={() => undefined}
       onAddDirectory={() => undefined}
       onRemoveDirectory={() => undefined}
+      allowRemoteControl={false}
+      onToggleRemoteControl={() => undefined}
       onCopy={() => undefined}
       onClose={() => undefined}
     />)

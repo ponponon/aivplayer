@@ -16,11 +16,13 @@ type Props = {
   onRefresh: () => void
   onAddDirectory: () => void
   onRemoveDirectory: (directoryPath: string) => void
+  allowRemoteControl: boolean
+  onToggleRemoteControl: (enabled: boolean) => void
   onCopy: (url: string) => void
   onClose: () => void
 }
 
-export function WebShareDialog({ copy, status, error, notice, playlistCount, directoryPaths, onStart, onStop, onRefresh, onAddDirectory, onRemoveDirectory, onCopy, onClose }: Props): React.ReactElement {
+export function WebShareDialog({ copy, status, error, notice, playlistCount, directoryPaths, onStart, onStop, onRefresh, onAddDirectory, onRemoveDirectory, allowRemoteControl, onToggleRemoteControl, onCopy, onClose }: Props): React.ReactElement {
   const [qrCodeUrls, setQrCodeUrls] = useState<Record<string, string>>({})
   const hasShareSource = playlistCount > 0 || directoryPaths.length > 0
 
@@ -62,6 +64,7 @@ export function WebShareDialog({ copy, status, error, notice, playlistCount, dir
       {!status.running && !hasShareSource ? <div className="web-share-warning" role="status">{copy.webShare.noFiles}</div> : null}
       {error ? <div className="web-share-error" role="alert">{error}</div> : null}
       {notice ? <div className="web-share-notice" role="status">{notice}</div> : null}
+      <label className="web-share-remote-toggle"><input type="checkbox" checked={allowRemoteControl} onChange={(event) => onToggleRemoteControl(event.currentTarget.checked)} /><span><strong>允许远程控制 Desktop 播放</strong><small>开启后，已获得访问地址的手机或电脑可以播放、暂停、切换视频和拖动进度。</small></span></label>
       <div className="web-share-note">{copy.webShare.securityNote}</div>
       <div className="web-share-footer"><button className="settings-secondary-button" type="button" onClick={onClose}>{copy.webShare.close}</button>{status.running ? <><button className="settings-secondary-button" type="button" onClick={onRefresh}><RefreshCw size={14} />{copy.webShare.refresh}</button><button className="settings-danger-button" type="button" onClick={onStop}><Square size={14} />{copy.webShare.stop}</button></> : <button className="settings-primary-button" type="button" onClick={onStart} disabled={!hasShareSource}><Globe2 size={14} />{copy.webShare.start}</button>}</div>
     </section>

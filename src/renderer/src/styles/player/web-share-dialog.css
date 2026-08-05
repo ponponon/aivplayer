@@ -51,6 +51,11 @@
 .web-share-url-actions { flex-wrap: wrap; gap: 8px; }
 .web-share-url-actions button, .web-share-footer button { gap: 6px; }
 .web-share-note, .web-share-warning, .web-share-error, .web-share-notice { padding: 10px 12px; border-radius: var(--radius-md); font-size: 12px; line-height: 1.5; }
+.web-share-remote-toggle { display: flex; align-items: flex-start; gap: 9px; padding: 11px 12px; color: var(--text-secondary); background: rgba(var(--accent-rgb), 0.055); border: 1px solid rgba(var(--accent-rgb), 0.18); border-radius: var(--radius-md); cursor: pointer; font-size: 12px; }
+.web-share-remote-toggle input { margin: 2px 0 0; accent-color: var(--accent); }
+.web-share-remote-toggle span { display: grid; gap: 4px; }
+.web-share-remote-toggle strong { color: var(--text-primary); font-size: 12px; }
+.web-share-remote-toggle small { color: var(--text-muted); line-height: 1.45; }
 .web-share-note { color: var(--text-muted); background: rgba(var(--overlay-rgb), 0.035); border: 1px solid var(--border-soft); }
 .web-share-warning { color: var(--accent); background: rgba(var(--accent-rgb), 0.08); border: 1px solid rgba(var(--accent-rgb), 0.24); }
 .web-share-error { color: var(--danger); background: rgba(var(--danger-rgb), 0.08); border: 1px solid rgba(var(--danger-rgb), 0.25); overflow-wrap: anywhere; }

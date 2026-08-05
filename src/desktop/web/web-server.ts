@@ -1,11 +1,13 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
-import { createReadStream, existsSync } from 'node:fs'
-import { access, readFile, readdir, stat, realpath } from 'node:fs/promises'
+import { createReadStream, existsSync, realpathSync } from 'node:fs'
+import { access, mkdir, readFile, readdir, rename, stat, realpath, writeFile } from 'node:fs/promises'
+import { execFile } from 'node:child_process'
 import { constants } from 'node:fs'
 import { networkInterfaces } from 'node:os'
 import { tmpdir } from 'node:os'
 import { basename, extname, join, relative, resolve, sep } from 'node:path'
-import { randomBytes } from 'node:crypto'
+import { createHash, randomBytes } from 'node:crypto'
+import { promisify } from 'node:util'
 import { getContentTypeForFile } from '../../core/media/media-mime'
 import { parseRangeHeader } from '../../core/media/byte-range'
 import { isVideoFilePath } from '../../core/media/file-opening'
@@ -13,13 +15,22 @@ import { createMediaProbeMetadata } from '../../core/media/media-metadata'
 import { WebTranscodeManager, type WebTranscodeInput, type WebTranscodeJobStatus } from '../../core/media/web-transcode'
 import type {
   WebBrowserSupport,
+  WebMediaSourceKind,
   WebShareLibraryResponse,
   WebShareMediaDetails,
   WebShareMediaItem,
   WebShareStartRequest,
   WebShareStatus,
+  WebSubtitleTrack,
+  WebAudioTrack,
+  WebDesktopState,
+  WebDesktopStateUpdate,
+  WebRemoteCommand,
+  WebRemoteCommandForDesktop,
   WebTranscodeStatus
 } from '../../shared/web-types'
+
+const execFileAsync = promisify(execFile)
 
 type WebServerOptions = {
   resourcePath: string
@@ -28,6 +39,7 @@ type WebServerOptions = {
   env?: NodeJS.ProcessEnv
   cacheRoot?: string
   getFfmpegPath?: () => Promise<string | null>
+  onRemoteCommand?: (command: WebRemoteCommandForDesktop) => void
 }
 
 type SharedMediaRecord = {
@@ -39,6 +51,18 @@ type SharedMediaRecord = {
   sizeBytes: number
   modifiedAt: number
   subtitlePath: string | null
+  sourceKind: WebMediaSourceKind
+  sourceGroupId: string
+  sourceGroupLabel: string
+  relativePath: string
+}
+
+type SharedMediaCandidate = {
+  path: string
+  sourceKind: WebMediaSourceKind
+  sourceGroupId: string
+  sourceGroupLabel: string
+  relativePath: string
 }
 
 type SharedRecordCollection = {
@@ -51,6 +75,9 @@ const SESSION_MAX_AGE_SECONDS = 24 * 60 * 60
 const MAX_BODY_BYTES = 16 * 1024
 const MAX_SHARED_FILES = 10_000
 const MEDIA_ID_PATTERN = /^[a-z0-9-]+$/u
+const THUMBNAIL_MAX_BUFFER_BYTES = 4 * 1024 * 1024
+const EMBEDDED_SUBTITLE_MAX_BUFFER_BYTES = 8 * 1024 * 1024
+const AUDIO_REMAP_MAX_BUFFER_BYTES = 2 * 1024 * 1024
 
 const STATIC_MIME_TYPES: Record<string, string> = {
   '.css': 'text/css; charset=utf-8',
@@ -71,8 +98,12 @@ const NEEDS_TRANSCODE_EXTENSIONS = new Set([
   '.vc1', '.ivf', '.amv'
 ])
 
-function createMediaId(): string {
-  return randomBytes(12).toString('hex')
+function createMediaId(filePath: string): string {
+  return createHash('sha256').update(filePath).digest('hex').slice(0, 24)
+}
+
+function createGroupId(prefix: string, value: string): string {
+  return `${prefix}-${createHash('sha256').update(value).digest('hex').slice(0, 16)}`
 }
 
 function createSessionToken(): string {
@@ -178,6 +209,31 @@ function getContentDisposition(fileName: string): string {
   return `inline; filename*=UTF-8''${encodeURIComponent(safeName)}`
 }
 
+function getStreamText(stream: Record<string, unknown>, key: string): string | null {
+  const value = stream[key]
+  return typeof value === 'string' && value.trim() ? value.trim() : null
+}
+
+function getStreamNumber(stream: Record<string, unknown>, key: string): number | null {
+  const value = stream[key]
+  return typeof value === 'number' && Number.isInteger(value) ? value : null
+}
+
+function getStreamDefault(stream: Record<string, unknown>): boolean {
+  return getStreamNumber(stream.disposition as Record<string, unknown> | undefined ?? {}, 'default') === 1
+}
+
+function parseRemoteCommand(value: unknown): WebRemoteCommand | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const input = value as Record<string, unknown>
+  const type = input.type
+  if (type === 'play' || type === 'pause' || type === 'toggle' || type === 'next' || type === 'previous') return { type }
+  if (type === 'seek' && typeof input.position === 'number' && Number.isFinite(input.position)) return { type, position: input.position }
+  if (type === 'select' && typeof input.mediaId === 'string' && MEDIA_ID_PATTERN.test(input.mediaId)) return { type, mediaId: input.mediaId }
+  if (type === 'volume' && typeof input.volume === 'number' && Number.isFinite(input.volume)) return { type, volume: input.volume, muted: input.muted === true }
+  return null
+}
+
 export class WebServer {
   private readonly options: WebServerOptions
   private readonly bindHost: string
@@ -188,6 +244,12 @@ export class WebServer {
   private directFilePaths: string[] = []
   private sharedDirectoryPaths: string[] = []
   private readonly transcodeManager: WebTranscodeManager
+  private readonly thumbnailRoot: string
+  private readonly thumbnailPromises = new Map<string, Promise<Buffer | null>>()
+  private readonly subtitlePromises = new Map<string, Promise<string | null>>()
+  private readonly audioPromises = new Map<string, Promise<string | null>>()
+  private desktopState: WebDesktopState | null = null
+  private allowRemoteControl = false
 
   constructor(options: WebServerOptions) {
     this.options = options
@@ -196,6 +258,7 @@ export class WebServer {
       cacheRoot: options.cacheRoot ?? join(tmpdir(), 'aivplayer-web-transcode'),
       getFfmpegPath: options.getFfmpegPath ?? (async () => null)
     })
+    this.thumbnailRoot = join(options.cacheRoot ?? join(tmpdir(), 'aivplayer-web-transcode'), 'thumbnails')
   }
 
   getStatus(): WebShareStatus {
@@ -210,7 +273,8 @@ export class WebServer {
       urls,
       sharedFileCount: this.records.size,
       sharedDirectoryCount: this.sharedDirectoryPaths.length,
-      sharedDirectoryPaths: [...this.sharedDirectoryPaths]
+      sharedDirectoryPaths: [...this.sharedDirectoryPaths],
+      allowRemoteControl: this.allowRemoteControl
     }
   }
 
@@ -222,6 +286,7 @@ export class WebServer {
     this.records = new Map(collection.records.map((record) => [record.id, record]))
     this.directFilePaths = [...request.filePaths]
     this.sharedDirectoryPaths = collection.directoryPaths
+    this.allowRemoteControl = request.allowRemoteControl ?? this.allowRemoteControl
     this.sessionToken = createSessionToken()
     this.server = createServer((incoming, response) => {
       void this.handleRequest(incoming, response).catch((error: unknown) => {
@@ -262,6 +327,11 @@ export class WebServer {
     this.records.clear()
     this.directFilePaths = []
     this.sharedDirectoryPaths = []
+    this.desktopState = null
+    this.allowRemoteControl = false
+    this.thumbnailPromises.clear()
+    this.subtitlePromises.clear()
+    this.audioPromises.clear()
     await this.transcodeManager.stop()
     if (!server) return
     server.closeAllConnections?.()
@@ -281,7 +351,35 @@ export class WebServer {
     this.records = new Map(records.map((record) => [record.id, record]))
     this.directFilePaths = [...request.filePaths]
     this.sharedDirectoryPaths = collection.directoryPaths
+    this.allowRemoteControl = request.allowRemoteControl ?? this.allowRemoteControl
     return this.getStatus()
+  }
+
+  updateDesktopState(update: WebDesktopStateUpdate): void {
+    const currentRecord = update.currentFilePath ? this.findRecordByPath(update.currentFilePath) : null
+    const playlistMediaIds = update.playlistFilePaths.map((filePath) => this.findRecordByPath(filePath)?.id).filter((id): id is string => Boolean(id))
+    this.desktopState = {
+      updatedAt: Date.now(),
+      currentMediaId: currentRecord?.id ?? null,
+      currentMediaName: currentRecord?.name ?? null,
+      currentTime: Number.isFinite(update.currentTime) ? Math.max(0, update.currentTime) : 0,
+      duration: Number.isFinite(update.duration) ? Math.max(0, update.duration) : 0,
+      isPlaying: update.isPlaying === true,
+      volume: Number.isFinite(update.volume) ? Math.min(1, Math.max(0, update.volume)) : 1,
+      muted: update.muted === true,
+      playbackRate: Number.isFinite(update.playbackRate) ? Math.max(0.1, update.playbackRate) : 1,
+      playlistMediaIds
+    }
+  }
+
+  getDesktopState(): WebDesktopState | null {
+    return this.desktopState
+  }
+
+  private findRecordByPath(filePath: string): SharedMediaRecord | null {
+    let resolvedPath = resolve(filePath)
+    try { resolvedPath = realpathSync(filePath) } catch { /* The record lookup below will fail closed. */ }
+    return [...this.records.values()].find((record) => record.path === filePath || record.path === resolvedPath) ?? null
   }
 
   private async createRecords(filePaths: string[], directoryPaths: string[]): Promise<SharedRecordCollection> {
@@ -289,7 +387,13 @@ export class WebServer {
       .filter((filePath) => typeof filePath === 'string' && filePath.trim())
       .map((filePath) => resolve(filePath))
     const uniqueDirectPaths = [...new Set(directPaths)]
-    const sharedPaths = [...uniqueDirectPaths]
+    const candidates: SharedMediaCandidate[] = uniqueDirectPaths.map((path) => ({
+      path,
+      sourceKind: 'playlist',
+      sourceGroupId: 'playlist',
+      sourceGroupLabel: '当前播放列表',
+      relativePath: basename(path)
+    }))
     const validDirectoryPaths: string[] = []
     const seenDirectoryPaths = new Set<string>()
     for (const inputDirectoryPath of [...new Set(directoryPaths.filter((directoryPath) => typeof directoryPath === 'string' && directoryPath.trim()))]) {
@@ -297,26 +401,43 @@ export class WebServer {
       if (!scan || seenDirectoryPaths.has(scan.rootPath)) continue
       seenDirectoryPaths.add(scan.rootPath)
       validDirectoryPaths.push(scan.rootPath)
-      sharedPaths.push(...scan.filePaths)
-      if (sharedPaths.length >= MAX_SHARED_FILES) break
+      candidates.push(...scan.filePaths.map((file) => ({
+        path: file.path,
+        sourceKind: 'directory' as const,
+        sourceGroupId: createGroupId('directory', scan.rootPath),
+        sourceGroupLabel: basename(scan.rootPath) || scan.rootPath,
+        relativePath: file.relativePath
+      })))
+      if (candidates.length >= MAX_SHARED_FILES) break
     }
 
-    const uniquePaths = [...new Set(sharedPaths)].slice(0, MAX_SHARED_FILES)
+    const uniqueCandidates: SharedMediaCandidate[] = []
+    const seenPaths = new Set<string>()
+    for (const candidate of candidates) {
+      if (seenPaths.has(candidate.path)) continue
+      seenPaths.add(candidate.path)
+      uniqueCandidates.push(candidate)
+      if (uniqueCandidates.length >= MAX_SHARED_FILES) break
+    }
     const records: SharedMediaRecord[] = []
-    for (const inputPath of uniquePaths) {
+    for (const candidate of uniqueCandidates) {
       try {
-        const path = await realpath(inputPath)
+        const path = await realpath(candidate.path)
         const fileStat = await stat(path)
         if (!fileStat.isFile()) continue
         records.push({
-          id: createMediaId(),
+          id: createMediaId(path),
           path,
           name: basename(path),
           extension: extname(path).toLowerCase(),
           mimeType: getContentTypeForFile(path),
           sizeBytes: fileStat.size,
           modifiedAt: fileStat.mtimeMs,
-          subtitlePath: getSidecarSubtitlePath(path)
+          subtitlePath: getSidecarSubtitlePath(path),
+          sourceKind: candidate.sourceKind,
+          sourceGroupId: candidate.sourceGroupId,
+          sourceGroupLabel: candidate.sourceGroupLabel,
+          relativePath: candidate.relativePath
         })
       } catch {
         continue
@@ -325,7 +446,7 @@ export class WebServer {
     return { records, directoryPaths: validDirectoryPaths }
   }
 
-  private async scanDirectory(inputPath: string): Promise<{ rootPath: string; filePaths: string[] } | null> {
+  private async scanDirectory(inputPath: string): Promise<{ rootPath: string; filePaths: Array<{ path: string; relativePath: string }> } | null> {
     let rootPath: string
     try {
       rootPath = await realpath(resolve(inputPath))
@@ -334,7 +455,7 @@ export class WebServer {
       return null
     }
 
-    const filePaths: string[] = []
+    const filePaths: Array<{ path: string; relativePath: string }> = []
     const visit = async (directoryPath: string): Promise<void> => {
       if (filePaths.length >= MAX_SHARED_FILES) return
       let entries
@@ -350,7 +471,7 @@ export class WebServer {
         if (entry.isDirectory()) {
           await visit(entryPath)
         } else if (entry.isFile() && isVideoFilePath(entryPath)) {
-          filePaths.push(entryPath)
+          filePaths.push({ path: entryPath, relativePath: relative(rootPath, entryPath).split(sep).join('/') })
         }
       }
     }
@@ -442,6 +563,32 @@ export class WebServer {
       return
     }
 
+    if (url.pathname === '/api/v1/desktop/state' && request.method === 'GET') {
+      sendJson(response, 200, { state: this.desktopState, allowRemoteControl: this.allowRemoteControl })
+      return
+    }
+
+    if (url.pathname === '/api/v1/desktop/command' && request.method === 'POST') {
+      if (!this.allowRemoteControl) {
+        sendJson(response, 403, { message: '桌面端未允许远程控制' })
+        return
+      }
+      let command: WebRemoteCommand | null = null
+      try { command = parseRemoteCommand(JSON.parse(await this.readRequestBody(request))) } catch { command = null }
+      if (!command) {
+        sendJson(response, 400, { message: '远程控制命令无效' })
+        return
+      }
+      const mediaPath = command.type === 'select' ? this.records.get(command.mediaId)?.path : undefined
+      if (command.type === 'select' && !mediaPath) {
+        sendJson(response, 404, { message: '媒体文件不在当前共享列表中' })
+        return
+      }
+      this.options.onRemoteCommand?.({ ...command, ...(mediaPath ? { mediaPath } : {}) })
+      sendJson(response, 202, { accepted: true })
+      return
+    }
+
     const mediaMatch = /^\/api\/v1\/media\/([^/]+)$/u.exec(url.pathname)
     if (mediaMatch && request.method === 'GET') {
       const details = await this.createMediaDetails(mediaMatch[1]!)
@@ -487,9 +634,21 @@ export class WebServer {
       return
     }
 
-    const subtitleMatch = /^\/subtitle\/([^/]+)$/u.exec(url.pathname)
+    const subtitleMatch = /^\/subtitle\/([^/]+)(?:\/(\d+))?$/u.exec(url.pathname)
     if (subtitleMatch && request.method === 'GET') {
-      await this.serveSubtitle(subtitleMatch[1]!, response)
+      await this.serveSubtitle(subtitleMatch[1]!, subtitleMatch[2] ? Number(subtitleMatch[2]) : null, response)
+      return
+    }
+
+    const audioMatch = /^\/audio\/([^/]+)\/(\d+)$/u.exec(url.pathname)
+    if (audioMatch && (request.method === 'GET' || request.method === 'HEAD')) {
+      await this.streamSelectedAudio(audioMatch[1]!, Number(audioMatch[2]), request, response)
+      return
+    }
+
+    const thumbnailMatch = /^\/thumbnail\/([^/]+)$/u.exec(url.pathname)
+    if (thumbnailMatch && (request.method === 'GET' || request.method === 'HEAD')) {
+      await this.serveThumbnail(thumbnailMatch[1]!, request, response)
       return
     }
 
@@ -549,7 +708,12 @@ export class WebServer {
       transcodeUrl: `/api/v1/media/${record.id}/transcode`,
       durationSeconds: metadata?.durationSeconds ?? null,
       videoCodec: metadata?.video?.codec ?? null,
-      audioCodec: metadata?.audio?.codec ?? null
+      audioCodec: metadata?.audio?.codec ?? null,
+      sourceKind: record.sourceKind,
+      sourceGroupId: record.sourceGroupId,
+      sourceGroupLabel: record.sourceGroupLabel,
+      relativePath: record.relativePath,
+      thumbnailUrl: `/thumbnail/${record.id}`
     }
   }
 
@@ -570,11 +734,65 @@ export class WebServer {
       const metadata = await createMediaProbeMetadata(record.path, { resourcePath: this.options.resourcePath, env: this.options.env })
       return {
         ...this.toMediaItem({ ...record, sizeBytes: currentStat.size, modifiedAt: currentStat.mtimeMs }, metadata),
-        metadata
+        metadata,
+        subtitleTracks: this.createSubtitleTracks(record, metadata),
+        audioTracks: this.createAudioTracks(record, metadata)
       }
     } catch {
       return null
     }
+  }
+
+  private createSubtitleTracks(record: SharedMediaRecord, metadata: WebShareMediaDetails['metadata']): WebSubtitleTrack[] {
+    const tracks: WebSubtitleTrack[] = record.subtitlePath ? [{
+      id: 'sidecar',
+      label: '外挂字幕',
+      language: null,
+      codec: 'webvtt',
+      streamIndex: null,
+      default: true,
+      url: `/subtitle/${record.id}`
+    }] : []
+    for (const stream of metadata?.details?.streams ?? []) {
+      if (stream.codec_type !== 'subtitle') continue
+      const streamIndex = getStreamNumber(stream, 'index')
+      if (streamIndex == null) continue
+      const tags = stream.tags && typeof stream.tags === 'object' && !Array.isArray(stream.tags) ? stream.tags as Record<string, unknown> : null
+      const tagLanguage = tags && typeof tags.language === 'string' ? tags.language : null
+      const title = tags && typeof tags.title === 'string' ? tags.title : null
+      tracks.push({
+        id: `subtitle-${streamIndex}`,
+        label: title ?? tagLanguage ?? `内嵌字幕 ${tracks.length + 1}`,
+        language: tagLanguage,
+        codec: getStreamText(stream, 'codec_name'),
+        streamIndex,
+        default: tracks.length === 0 && getStreamDefault(stream),
+        url: `/subtitle/${record.id}/${streamIndex}`
+      })
+    }
+    return tracks
+  }
+
+  private createAudioTracks(record: SharedMediaRecord, metadata: WebShareMediaDetails['metadata']): WebAudioTrack[] {
+    const tracks: WebAudioTrack[] = []
+    for (const stream of metadata?.details?.streams ?? []) {
+      if (stream.codec_type !== 'audio') continue
+      const streamIndex = getStreamNumber(stream, 'index')
+      if (streamIndex == null) continue
+      const tags = stream.tags && typeof stream.tags === 'object' && !Array.isArray(stream.tags) ? stream.tags as Record<string, unknown> : null
+      const language = tags && typeof tags.language === 'string' ? tags.language : null
+      const title = tags && typeof tags.title === 'string' ? tags.title : null
+      tracks.push({
+        id: `audio-${streamIndex}`,
+        label: title ?? language ?? `音轨 ${tracks.length + 1}`,
+        language,
+        codec: getStreamText(stream, 'codec_name'),
+        streamIndex,
+        default: tracks.length === 0 || getStreamDefault(stream),
+        streamUrl: `/audio/${record.id}/${streamIndex}`
+      })
+    }
+    return tracks
   }
 
   private async getTranscodeInput(id: string, durationSeconds: number | null = null): Promise<WebTranscodeInput | null> {
@@ -699,19 +917,24 @@ export class WebServer {
     stream.pipe(response)
   }
 
-  private async serveSubtitle(id: string, response: ServerResponse): Promise<void> {
+  private async serveSubtitle(id: string, streamIndex: number | null, response: ServerResponse): Promise<void> {
     if (!MEDIA_ID_PATTERN.test(id)) {
       sendText(response, 400, 'Invalid media id')
       return
     }
     const record = this.records.get(id)
-    if (!record?.subtitlePath) {
+    if (!record) {
       sendText(response, 404, 'Subtitle not found')
       return
     }
     try {
-      const content = await readFile(record.subtitlePath, 'utf8')
-      const body = formatSubtitleTextAsVtt(content)
+      const body = streamIndex == null
+        ? record.subtitlePath ? formatSubtitleTextAsVtt(await readFile(record.subtitlePath, 'utf8')) : null
+        : await this.getEmbeddedSubtitle(record, streamIndex)
+      if (!body) {
+        sendText(response, 404, 'Subtitle not found')
+        return
+      }
       response.writeHead(200, {
         'Cache-Control': 'private, max-age=60',
         'Content-Type': 'text/vtt; charset=utf-8',
@@ -721,6 +944,155 @@ export class WebServer {
       response.end(body)
     } catch {
       sendText(response, 404, 'Subtitle not found')
+    }
+  }
+
+  private async getEmbeddedSubtitle(record: SharedMediaRecord, streamIndex: number): Promise<string | null> {
+    if (!Number.isInteger(streamIndex) || streamIndex < 0) return null
+    const key = `${record.id}:${streamIndex}`
+    const existing = this.subtitlePromises.get(key)
+    if (existing) return existing
+    const promise = (async (): Promise<string | null> => {
+      const ffmpegPath = await (this.options.getFfmpegPath ?? (async () => null))()
+      if (!ffmpegPath) return null
+      try {
+        const result = await execFileAsync(ffmpegPath, ['-hide_banner', '-loglevel', 'error', '-i', record.path, '-map', `0:${streamIndex}`, '-f', 'webvtt', 'pipe:1'], {
+          encoding: 'utf8', maxBuffer: EMBEDDED_SUBTITLE_MAX_BUFFER_BYTES, timeout: 30_000
+        }) as unknown as { stdout: string }
+        const body = result.stdout.trim()
+        return body.startsWith('WEBVTT') ? `${body}\n` : null
+      } catch {
+        return null
+      }
+    })()
+    this.subtitlePromises.set(key, promise)
+    try { return await promise } finally { this.subtitlePromises.delete(key) }
+  }
+
+  private async streamSelectedAudio(id: string, streamIndex: number, request: IncomingMessage, response: ServerResponse): Promise<void> {
+    if (!MEDIA_ID_PATTERN.test(id) || !Number.isInteger(streamIndex) || streamIndex < 0) {
+      sendText(response, 400, 'Invalid audio track')
+      return
+    }
+    const record = this.records.get(id)
+    if (!record) {
+      sendText(response, 404, 'Media file not found')
+      return
+    }
+    const outputPath = await this.getSelectedAudioOutput(record, streamIndex)
+    if (!outputPath) {
+      sendText(response, 409, '音轨准备失败')
+      return
+    }
+    await this.streamFile(outputPath, `${record.name}.audio-${streamIndex}.mp4`, 'video/mp4', request, response)
+  }
+
+  private async getSelectedAudioOutput(record: SharedMediaRecord, streamIndex: number): Promise<string | null> {
+    const key = `${record.id}:${streamIndex}`
+    const cachePath = join(this.thumbnailRoot, '..', 'audio', `${record.id}-${streamIndex}.mp4`)
+    try {
+      const cachedStat = await stat(cachePath)
+      if (cachedStat.size > 0) return cachePath
+    } catch {
+      // Cache miss; remux below.
+    }
+    const existing = this.audioPromises.get(key)
+    if (existing) return existing
+    const promise = this.remuxSelectedAudio(record.path, streamIndex, cachePath)
+    this.audioPromises.set(key, promise)
+    try { return await promise } finally { this.audioPromises.delete(key) }
+  }
+
+  private async remuxSelectedAudio(sourcePath: string, streamIndex: number, outputPath: string): Promise<string | null> {
+    const ffmpegPath = await (this.options.getFfmpegPath ?? (async () => null))()
+    if (!ffmpegPath) return null
+    await mkdir(join(outputPath, '..'), { recursive: true })
+    const partialPath = `${outputPath}.partial`
+    const run = async (audioCodec: readonly string[]): Promise<boolean> => {
+      try {
+        await execFileAsync(ffmpegPath, [
+          '-hide_banner', '-loglevel', 'error', '-i', sourcePath, '-map', '0:v:0?', '-map', `0:${streamIndex}?`,
+          '-dn', '-sn', '-c:v', 'copy', ...audioCodec, '-movflags', '+faststart', '-y', partialPath
+        ], { encoding: 'utf8', maxBuffer: AUDIO_REMAP_MAX_BUFFER_BYTES, timeout: 20 * 60_000 })
+        const outputStat = await stat(partialPath)
+        if (outputStat.size <= 0) return false
+        await rename(partialPath, outputPath)
+        return true
+      } catch {
+        return false
+      }
+    }
+    if (await run(['-c:a', 'copy'])) return outputPath
+    if (await run(['-c:a', 'aac', '-b:a', '192k'])) return outputPath
+    return null
+  }
+
+  private async serveThumbnail(id: string, request: IncomingMessage, response: ServerResponse): Promise<void> {
+    if (!MEDIA_ID_PATTERN.test(id)) {
+      sendText(response, 400, 'Invalid media id')
+      return
+    }
+    const record = this.records.get(id)
+    if (!record) {
+      sendText(response, 404, 'Thumbnail not found')
+      return
+    }
+    const thumbnail = await this.getThumbnail(record)
+    if (!thumbnail) {
+      sendText(response, 404, 'Thumbnail unavailable')
+      return
+    }
+    response.writeHead(200, {
+      'Cache-Control': 'private, max-age=86400',
+      'Content-Length': thumbnail.byteLength,
+      'Content-Type': 'image/jpeg',
+      'X-Content-Type-Options': 'nosniff'
+    })
+    if (request.method !== 'HEAD') response.end(thumbnail)
+    else response.end()
+  }
+
+  private async getThumbnail(record: SharedMediaRecord): Promise<Buffer | null> {
+    let fileStat
+    try {
+      fileStat = await stat(record.path)
+    } catch {
+      return null
+    }
+    const cachePath = join(this.thumbnailRoot, `${record.id}-${Math.round(fileStat.mtimeMs)}.jpg`)
+    try {
+      return await readFile(cachePath)
+    } catch {
+      // Cache miss; generate it below.
+    }
+    const existing = this.thumbnailPromises.get(record.id)
+    if (existing) return existing
+    const promise = this.generateThumbnail(record.path, cachePath)
+    this.thumbnailPromises.set(record.id, promise)
+    try {
+      return await promise
+    } finally {
+      this.thumbnailPromises.delete(record.id)
+    }
+  }
+
+  private async generateThumbnail(sourcePath: string, cachePath: string): Promise<Buffer | null> {
+    const ffmpegPath = await (this.options.getFfmpegPath ?? (async () => null))()
+    if (!ffmpegPath) return null
+    try {
+      const result = await execFileAsync(ffmpegPath, [
+        '-hide_banner', '-loglevel', 'error', '-ss', '1', '-i', sourcePath,
+        '-frames:v', '1', '-vf', 'scale=320:-2', '-q:v', '6', '-f', 'image2pipe', '-vcodec', 'mjpeg', 'pipe:1'
+      ], { encoding: 'buffer', maxBuffer: THUMBNAIL_MAX_BUFFER_BYTES, timeout: 15_000 }) as unknown as { stdout: Buffer | string }
+      const thumbnail = Buffer.isBuffer(result.stdout) ? result.stdout : Buffer.from(result.stdout)
+      if (thumbnail.byteLength === 0) return null
+      await mkdir(this.thumbnailRoot, { recursive: true })
+      const partialPath = `${cachePath}.partial`
+      await writeFile(partialPath, thumbnail)
+      await rename(partialPath, cachePath)
+      return thumbnail
+    } catch {
+      return null
     }
   }
 

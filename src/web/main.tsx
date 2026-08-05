@@ -1,112 +1,14 @@
-import { StrictMode, useCallback, useEffect, useRef, useState, type FormEvent, type ReactElement } from 'react'
+import { StrictMode, useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { createRoot } from 'react-dom/client'
-import type { WebShareMediaDetails, WebShareMediaItem, WebShareLibraryResponse, WebTranscodeStatus } from '../shared/web-types'
+import type { WebRemoteCommand, WebShareMediaDetails, WebShareMediaItem, WebShareLibraryResponse, WebSubtitleTrack, WebTranscodeStatus } from '../shared/web-types'
+import { filterWebLibraryItems, getHistoryEntry, isInProgress, readWebLibraryPreferences, sortWebLibraryItems, writeWebLibraryPreferences, type WebLibraryPreferences } from './library-state'
+import { DetailsPanel, LibrarySidebar, LoginScreen, PlayerPanel } from './web-panels'
+import { useDesktopState } from './use-desktop-state'
+import { readJson } from './web-ui'
 import './styles.css'
+import './library-styles.css'
 
 type SessionResponse = { authenticated: boolean }
-type ApiError = { message?: string }
-
-function isApiError(value: unknown): value is ApiError {
-  return value !== null && typeof value === 'object' && 'message' in value
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  const units = ['KB', 'MB', 'GB', 'TB']
-  let value = bytes
-  let unitIndex = -1
-  do {
-    value /= 1024
-    unitIndex += 1
-  } while (value >= 1024 && unitIndex < units.length - 1)
-  return `${value.toFixed(value >= 10 ? 1 : 2)} ${units[unitIndex]}`
-}
-
-function formatDuration(seconds: number | null): string {
-  if (seconds == null || !Number.isFinite(seconds) || seconds < 0) return '--:--'
-  const totalSeconds = Math.round(seconds)
-  const hours = Math.floor(totalSeconds / 3600)
-  const minutes = Math.floor((totalSeconds % 3600) / 60)
-  const remainder = totalSeconds % 60
-  return hours > 0 ? `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}` : `${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`
-}
-
-function getSupportLabel(item: WebShareMediaItem): string {
-  if (item.browserSupport === 'likely') return '浏览器优先支持'
-  if (item.browserSupport === 'possible') return '浏览器兼容性待确认'
-  if (item.browserSupport === 'needs-transcode') return '可能需要转码'
-  return '格式待确认'
-}
-
-function getSupportClass(item: WebShareMediaItem): string {
-  return `support-${item.browserSupport}`
-}
-
-function formatProgress(progress: number | null): string {
-  if (progress == null || !Number.isFinite(progress)) return '处理中'
-  return `${Math.round(progress * 100)}%`
-}
-
-async function readJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
-  const response = await fetch(input, init)
-  const body = await response.json() as T | ApiError
-  if (!response.ok) throw new Error(isApiError(body) && typeof body.message === 'string' ? body.message : `请求失败（${response.status}）`)
-  return body as T
-}
-
-function LoginScreen({ onLogin, error }: { onLogin: (token: string) => Promise<void>; error: string | null }): ReactElement {
-  const [token, setToken] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const submit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
-    event.preventDefault()
-    if (!token.trim() || isSubmitting) return
-    setIsSubmitting(true)
-    try {
-      await onLogin(token.trim())
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-  return <main className="login-page">
-    <section className="login-panel">
-      <div className="brand-lockup"><span className="brand-mark">A</span><strong>AIVPlayer</strong><span>LAN Web</span></div>
-      <h1>连接本机媒体库</h1>
-      <p>请输入 AIVPlayer 桌面端显示的局域网访问令牌。视频不会上传到云端。</p>
-      <form onSubmit={submit}>
-        <label htmlFor="access-token">访问令牌</label>
-        <input id="access-token" value={token} onChange={(event) => setToken(event.currentTarget.value)} autoComplete="off" spellCheck={false} placeholder="粘贴访问令牌" />
-        <button type="submit" disabled={!token.trim() || isSubmitting}>{isSubmitting ? '连接中…' : '连接媒体库'}</button>
-      </form>
-      {error ? <p className="error-message" role="alert">{error}</p> : null}
-    </section>
-  </main>
-}
-
-function LibraryItem({ item, selected, onSelect }: { item: WebShareMediaItem; selected: boolean; onSelect: () => void }): ReactElement {
-  return <button className={`library-item ${selected ? 'is-selected' : ''}`} type="button" onClick={onSelect} title={item.name}>
-    <span className="library-item-title">{item.name}</span>
-    <span className="library-item-meta"><span>{item.extension.replace(/^\./u, '').toUpperCase()}</span><span>{formatBytes(item.sizeBytes)}</span><span className={getSupportClass(item)}>{getSupportLabel(item)}</span></span>
-  </button>
-}
-
-function DetailsPanel({ item, details }: { item: WebShareMediaItem | null; details: WebShareMediaDetails | null }): ReactElement {
-  if (!item) return <aside className="details-panel"><div className="empty-panel"><strong>选择一个视频</strong><span>媒体信息会显示在这里</span></div></aside>
-  const metadata = details?.metadata
-  return <aside className="details-panel">
-    <div className="panel-heading"><div><span className="panel-kicker">DETAILS</span><h2>媒体信息</h2></div><span className={`support-mark ${getSupportClass(item)}`}>{getSupportLabel(item)}</span></div>
-    <dl className="details-list">
-      <div><dt>文件名</dt><dd title={item.name}>{item.name}</dd></div>
-      <div><dt>文件大小</dt><dd>{formatBytes(item.sizeBytes)}</dd></div>
-      <div><dt>容器</dt><dd>{item.extension.replace(/^\./u, '').toUpperCase()}</dd></div>
-      <div><dt>时长</dt><dd>{formatDuration(details?.durationSeconds ?? item.durationSeconds)}</dd></div>
-      <div><dt>视频编码</dt><dd>{metadata?.video?.codec ?? item.videoCodec ?? '等待探测'}</dd></div>
-      <div><dt>音频编码</dt><dd>{metadata?.audio?.codec ?? item.audioCodec ?? '等待探测'}</dd></div>
-      {metadata?.video ? <div><dt>分辨率</dt><dd>{metadata.video.width && metadata.video.height ? `${metadata.video.width} × ${metadata.video.height}` : '未知'}</dd></div> : null}
-      {metadata?.video?.bitRateKbps ? <div><dt>视频码率</dt><dd>{Math.round(metadata.video.bitRateKbps)} kbps</dd></div> : null}
-    </dl>
-    <div className="details-note">播放采用 HTTP Range，拖动时只请求目标位置附近的数据，不会一次下载完整文件。</div>
-  </aside>
-}
 
 function WebApp(): ReactElement {
   const [authenticated, setAuthenticated] = useState<boolean | null>(null)
@@ -117,19 +19,37 @@ function WebApp(): ReactElement {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [subtitleTrack, setSubtitleTrack] = useState('off')
+  const [audioTrack, setAudioTrack] = useState('direct')
+  const [remoteError, setRemoteError] = useState<string | null>(null)
+  const [preferences, setPreferences] = useState<WebLibraryPreferences>(() => readWebLibraryPreferences())
   const [transcodeStatus, setTranscodeStatus] = useState<WebTranscodeStatus | null>(null)
   const [transcodePlaybackUrl, setTranscodePlaybackUrl] = useState<string | null>(null)
   const [transcodingIds, setTranscodingIds] = useState<Set<string>>(() => new Set())
   const transcodingIdsRef = useRef<Set<string>>(new Set())
   const selectedIdRef = useRef<string | null>(null)
   const detailsRequestIdRef = useRef(0)
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const lastSavedAtRef = useRef(0)
+  const autoPlayNextRef = useRef(false)
+  const { desktopState, allowRemoteControl } = useDesktopState(authenticated === true)
   const selected = items.find((item) => item.id === selectedId) ?? items[0] ?? null
   selectedIdRef.current = selected?.id ?? null
-  const selectedWithDetails = selected && details?.id === selected.id
-    ? { ...selected, browserSupport: details.browserSupport }
-    : selected
+  const selectedWithDetails = selected && details?.id === selected.id ? { ...selected, browserSupport: details.browserSupport } : selected
   const isTranscoding = selected ? transcodingIds.has(selected.id) : false
-  const filteredItems = items.filter((item) => item.name.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()))
+  const visibleItems = useMemo(() => sortWebLibraryItems(filterWebLibraryItems(items, query, preferences), preferences), [items, preferences, query])
+  const allSortedItems = useMemo(() => sortWebLibraryItems(items, preferences), [items, preferences])
+  const groups = useMemo(() => {
+    const result = new Map<string, string>()
+    for (const item of items) result.set(item.sourceGroupId, item.sourceGroupLabel)
+    return [...result.entries()].map(([id, label]) => ({ id, label }))
+  }, [items])
+
+  const updatePreferences = useCallback((updater: (current: WebLibraryPreferences) => WebLibraryPreferences): void => {
+    setPreferences((current) => updater(current))
+  }, [])
+
+  useEffect(() => { writeWebLibraryPreferences(preferences) }, [preferences])
 
   const loadLibrary = useCallback(async (refresh = false): Promise<void> => {
     setIsLoading(true)
@@ -138,12 +58,17 @@ function WebApp(): ReactElement {
       const result = await readJson<WebShareLibraryResponse>(refresh ? '/api/v1/library/refresh' : '/api/v1/library', refresh ? { method: 'POST' } : undefined)
       setItems(result.items)
       setSelectedId((current) => current && result.items.some((item) => item.id === current) ? current : result.items[0]?.id ?? null)
+      updatePreferences((current) => ({
+        ...current,
+        favorites: current.favorites.filter((id) => result.items.some((item) => item.id === id)),
+        selectedGroupId: current.selectedGroupId === 'all' || result.items.some((item) => item.sourceGroupId === current.selectedGroupId) ? current.selectedGroupId : 'all'
+      }))
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : '无法读取媒体库')
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [updatePreferences])
 
   const login = async (token: string): Promise<void> => {
     setError(null)
@@ -154,6 +79,28 @@ function WebApp(): ReactElement {
       setError(reason instanceof Error ? reason.message : '访问令牌无效')
     }
   }
+
+  const saveProgress = useCallback((item: WebShareMediaItem, position: number, duration: number | null): void => {
+    if (!Number.isFinite(position) || position <= 0) return
+    const now = Date.now()
+    if (now - lastSavedAtRef.current < 2_000 && position < (preferences.history[item.id]?.position ?? 0) + 5) return
+    lastSavedAtRef.current = now
+    updatePreferences((current) => ({ ...current, history: { ...current.history, [item.id]: { position, duration: duration && duration > 0 ? duration : null, updatedAt: now } } }))
+  }, [preferences.history, updatePreferences])
+
+  const selectItem = useCallback((item: WebShareMediaItem, autoPlay = false): void => {
+    autoPlayNextRef.current = autoPlay
+    setSelectedId(item.id)
+    setIsPlaying(false)
+    setError(null)
+  }, [])
+
+  const playAdjacent = useCallback((direction: -1 | 1, autoPlay = true): void => {
+    if (!selected) return
+    const index = allSortedItems.findIndex((item) => item.id === selected.id)
+    const next = allSortedItems[index + direction]
+    if (next) selectItem(next, autoPlay)
+  }, [allSortedItems, selectItem, selected])
 
   const requestTranscode = async (itemId: string): Promise<void> => {
     if (transcodingIdsRef.current.has(itemId)) return
@@ -170,22 +117,14 @@ function WebApp(): ReactElement {
       }
       if (selectedIdRef.current === itemId) {
         setTranscodeStatus(status)
-        if (status.state === 'ready' && status.streamUrl) {
-          setTranscodePlaybackUrl(status.streamUrl)
-          setError(null)
-        } else if (status.state === 'error') {
-          setError(status.message ?? '浏览器转码失败')
-        }
+        if (status.state === 'ready' && status.streamUrl) { setTranscodePlaybackUrl(status.streamUrl); setError(null) }
+        else if (status.state === 'error') setError(status.message ?? '浏览器转码失败')
       }
     } catch (reason) {
       if (selectedIdRef.current === itemId) setError(reason instanceof Error ? reason.message : '无法启动浏览器转码')
     } finally {
       transcodingIdsRef.current.delete(itemId)
-      setTranscodingIds((current) => {
-        const next = new Set(current)
-        next.delete(itemId)
-        return next
-      })
+      setTranscodingIds((current) => { const next = new Set(current); next.delete(itemId); return next })
     }
   }
 
@@ -202,9 +141,13 @@ function WebApp(): ReactElement {
     setDetails(null)
     setTranscodeStatus(null)
     setTranscodePlaybackUrl(null)
+    setSubtitleTrack('off')
+    setAudioTrack('direct')
     if (!selected) return
     void readJson<WebShareMediaDetails>(`/api/v1/media/${selected.id}`).then((nextDetails) => {
-      if (detailsRequestIdRef.current === requestId) setDetails(nextDetails)
+      if (detailsRequestIdRef.current !== requestId) return
+      setDetails(nextDetails)
+      setSubtitleTrack(nextDetails.subtitleTracks.find((track) => track.default)?.id ?? nextDetails.subtitleTracks[0]?.id ?? 'off')
     }).catch(() => undefined)
     void readJson<WebTranscodeStatus>(`/api/v1/transcode/${selected.id}`).then((status) => {
       if (detailsRequestIdRef.current !== requestId) return
@@ -213,8 +156,30 @@ function WebApp(): ReactElement {
     }).catch(() => undefined)
   }, [selected])
 
+  useEffect(() => {
+    const save = (): void => { if (selected && videoRef.current) saveProgress(selected, videoRef.current.currentTime, videoRef.current.duration) }
+    window.addEventListener('pagehide', save)
+    return () => { window.removeEventListener('pagehide', save); save() }
+  }, [saveProgress, selected])
+
   if (authenticated === null) return <main className="loading-page">正在连接 AIVPlayer…</main>
   if (!authenticated) return <LoginScreen onLogin={login} error={error} />
+
+  const currentHistory = selected ? getHistoryEntry(preferences, selected.id) : null
+  const selectedSubtitleTrack: WebSubtitleTrack | null = details?.subtitleTracks.find((track) => track.id === subtitleTrack) ?? (selected?.subtitleUrl ? { id: 'sidecar', label: '外挂字幕', url: selected.subtitleUrl, language: null, codec: 'webvtt', streamIndex: null, default: true } : null)
+  const selectedAudioTrack = details?.audioTracks.find((track) => track.id === audioTrack) ?? null
+  const mediaPlaybackUrl = transcodePlaybackUrl ?? selectedAudioTrack?.streamUrl ?? selected?.streamUrl ?? null
+  const isSelectedFavorite = selected ? preferences.favorites.includes(selected.id) : false
+  const selectedIndex = selected ? allSortedItems.findIndex((item) => item.id === selected.id) : -1
+  const sendRemoteCommand = async (command: WebRemoteCommand): Promise<void> => {
+    setRemoteError(null)
+    try {
+      await readJson<{ accepted: boolean }>('/api/v1/desktop/command', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(command) })
+    } catch (reason) {
+      setRemoteError(reason instanceof Error ? reason.message : '远程控制失败')
+    }
+  }
+  const desktopItem = desktopState?.currentMediaId ? items.find((item) => item.id === desktopState.currentMediaId) ?? null : null
 
   return <div className="web-shell">
     <header className="web-topbar">
@@ -223,24 +188,9 @@ function WebApp(): ReactElement {
       <button className="text-button" type="button" onClick={() => void loadLibrary(true)} disabled={isLoading}>{isLoading ? '刷新中…' : '刷新媒体库'}</button>
     </header>
     <main className="web-layout">
-      <aside className="library-panel">
-        <div className="panel-heading"><div><span className="panel-kicker">LIBRARY</span><h1>媒体库</h1></div><span className="item-count">{filteredItems.length}</span></div>
-        <label className="search-field"><span>搜索</span><input value={query} onChange={(event) => setQuery(event.currentTarget.value)} placeholder="搜索文件名" /></label>
-        <div className="library-list">
-          {filteredItems.map((item) => <LibraryItem key={item.id} item={item} selected={selected?.id === item.id} onSelect={() => setSelectedId(item.id)} />)}
-          {filteredItems.length === 0 ? <div className="empty-panel"><strong>{items.length === 0 ? '还没有共享媒体' : '没有匹配文件'}</strong><span>{items.length === 0 ? '请在桌面端打开视频后重新刷新' : '换一个搜索词试试'}</span></div> : null}
-        </div>
-      </aside>
-      <section className="player-panel">
-        <div className="player-heading"><div><span className="panel-kicker">NOW PLAYING</span><h2 title={selected?.name}>{selected?.name ?? 'AIVPlayer LAN Web'}</h2></div><span className="player-format">{selected?.extension.replace(/^\./u, '').toUpperCase() ?? '—'}</span></div>
-        <div className="video-frame">
-          {selected ? <video key={`${selected.id}:${transcodePlaybackUrl ?? 'direct'}`} src={transcodePlaybackUrl ?? selected.streamUrl} controls playsInline preload="metadata" onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} onError={() => { if (!transcodePlaybackUrl) void requestTranscode(selected.id); else setError('浏览器无法播放转码结果') }}><>{selected.subtitleUrl ? <track kind="subtitles" src={selected.subtitleUrl} label="外挂字幕" default /> : null}</></video> : <div className="video-empty"><span className="play-symbol">▶</span><strong>从左侧选择视频</strong><span>视频会在当前浏览器中直接播放</span></div>}
-        </div>
-        {selectedWithDetails && (selectedWithDetails.browserSupport === 'needs-transcode' || transcodeStatus?.state === 'queued' || transcodeStatus?.state === 'running' || transcodeStatus?.state === 'ready' || transcodeStatus?.state === 'error') ? <div className="transcode-panel"><div><strong>{transcodeStatus?.state === 'ready' ? '已准备浏览器版本' : '这个文件可能需要转码'}</strong><span>{transcodeStatus?.state === 'queued' ? '正在等待本机转码队列…' : transcodeStatus?.state === 'running' ? `正在生成兼容版本 · ${formatProgress(transcodeStatus.progress)}` : '原文件保留不变，转码结果只缓存在本机。'}</span>{selectedWithDetails.sizeBytes >= 1024 ** 3 && transcodeStatus?.state !== 'ready' ? <span className="transcode-size-note">这是大文件，首次转码可能需要较长时间，并额外占用约 {formatBytes(selectedWithDetails.sizeBytes)} 磁盘空间。</span> : null}</div>{transcodeStatus?.state !== 'ready' ? <button type="button" onClick={() => void requestTranscode(selectedWithDetails.id)} disabled={isTranscoding}>{isTranscoding ? '转码中…' : '开始转码播放'}</button> : null}</div> : null}
-        {error ? <div className="player-error" role="alert">{error}<button className="inline-button" type="button" onClick={() => setError(null)}>关闭</button></div> : null}
-        <div className="player-footer"><span>{isPlaying ? '正在播放' : selected ? '已暂停' : '等待选择'}</span><span>原始文件直流 · 不上传</span></div>
-      </section>
-      <DetailsPanel item={selectedWithDetails} details={details} />
+      <LibrarySidebar items={items} visibleItems={visibleItems} groups={groups} selectedId={selected?.id ?? null} query={query} preferences={preferences} onQueryChange={setQuery} onSelect={selectItem} updatePreferences={updatePreferences} />
+      <PlayerPanel selected={selected} selectedWithDetails={selectedWithDetails} selectedSubtitleTrack={selectedSubtitleTrack} currentHistory={currentHistory} showResume={Boolean(selected && currentHistory && isInProgress(selected, preferences))} selectedIndex={selectedIndex} queueLength={allSortedItems.length} mediaPlaybackUrl={mediaPlaybackUrl} isPlaying={isPlaying} isSelectedFavorite={isSelectedFavorite} desktopState={desktopState} allowRemoteControl={allowRemoteControl} desktopItem={desktopItem} remoteError={remoteError} error={error} isTranscoding={isTranscoding} transcodeStatus={transcodeStatus} canRequestTranscode={audioTrack === 'direct' && !transcodePlaybackUrl} videoRef={videoRef} autoPlayNextRef={autoPlayNextRef} onSelect={selectItem} onPlayAdjacent={playAdjacent} onToggleFavorite={() => selected && updatePreferences((current) => ({ ...current, favorites: current.favorites.includes(selected.id) ? current.favorites.filter((id) => id !== selected.id) : [...current.favorites, selected.id] }))} onSendRemoteCommand={(command) => void sendRemoteCommand(command)} onSaveProgress={saveProgress} onSetPlaying={setIsPlaying} onRequestTranscode={(itemId) => void requestTranscode(itemId)} onClearError={() => setError(null)} onSetError={setError} />
+      <DetailsPanel item={selectedWithDetails} details={details} subtitleTrack={subtitleTrack} audioTrack={audioTrack} onSubtitleTrackChange={setSubtitleTrack} onAudioTrackChange={(trackId) => { setAudioTrack(trackId); setTranscodePlaybackUrl(null) }} />
     </main>
   </div>
 }

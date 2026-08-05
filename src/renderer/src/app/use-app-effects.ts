@@ -10,6 +10,7 @@ import { usePlaybackEffects } from './use-playback-effects'
 import { useSubtitleCacheEffects } from './use-subtitle-cache-effects'
 import { useWindowEffects } from './use-window-effects'
 import { useVisionIndexEffect } from './use-vision-index-effect'
+import { useWebDesktopSync } from './use-web-desktop-sync'
 
 export function useAppEffects(model: AppModel, derived: AppDerived, actions: {
   loadFiles: (files: MediaFile[]) => void
@@ -25,6 +26,9 @@ export function useAppEffects(model: AppModel, derived: AppDerived, actions: {
   toggleFullscreen: () => Promise<void>
   openFiles: () => Promise<void>
   runQuickComplete: () => Promise<void>
+  selectFile: (file: MediaFile) => void
+  playAdjacent: (direction: -1 | 1) => void
+  seekTo: (seconds: number) => void
 }, patchDisplay: (patch: { displayMode?: 'source' | 'translation' | 'bilingual' }) => void): void {
   useAppStartupEffects(model, actions.loadFiles, actions.refreshAsrStatus)
   useElapsedTimeEffects(model)
@@ -35,4 +39,5 @@ export function useAppEffects(model: AppModel, derived: AppDerived, actions: {
   useKeyboardShortcuts(model, actions)
   useWindowEffects(model)
   useVisionIndexEffect(model)
+  useWebDesktopSync(model, actions)
 }
