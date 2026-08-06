@@ -316,16 +316,16 @@ describe('settings UI source constraints', () => {
     expect(smokeScript).toContain('videoCardHeight.alignItems !== \'start\'')
   })
 
-  it('keeps the light theme on a Chrome-style blue surface system', () => {
+  it('keeps the light theme on a warm neutral surface system', () => {
     const tokens = readSource('src/renderer/src/styles/tokens.css')
     const panels = readSource('src/renderer/src/styles/player/panels.css')
 
-    expect(tokens).toContain('--bg-app: #f8fafd;')
-    expect(tokens).toContain('--stage-rgb: 241, 245, 251;')
-    expect(tokens).toContain('--accent-rgb: 26, 115, 232;')
-    expect(tokens).toContain('--accent: #1a73e8;')
-    expect(tokens).toContain('--accent-soft: #d6e3fb;')
-    expect(tokens).toContain('--text-primary: #202124;')
+    expect(tokens).toContain('--bg-app: #f6f4f1;')
+    expect(tokens).toContain('--stage-rgb: 20, 19, 17;')
+    expect(tokens).toContain('--accent-rgb: 168, 118, 26;')
+    expect(tokens).toContain('--accent: #a8761a;')
+    expect(tokens).toContain('--accent-soft: rgba(168, 118, 26, 0.12);')
+    expect(tokens).toContain('--text-primary: #221f1a;')
     expect(panels).toContain('background: var(--accent-soft);')
     expect(panels).toContain('border-color: rgba(var(--accent-rgb), 0.22);')
   })
