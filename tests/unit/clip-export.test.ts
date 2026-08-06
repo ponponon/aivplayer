@@ -106,6 +106,16 @@ describe('clip export helpers', () => {
     expect(args).not.toContain('-vf')
   })
 
+  it('composes compact corner framing onto the output canvas', () => {
+    const args = buildTimelineSegmentArgs({ mediaPath: '/clips/demo.mp4', startSeconds: 0, endSeconds: 2, durationSeconds: 2, treatment: 'corner-br', treatmentSize: 35 }, '/tmp/corner.mp4', { width: 1080, height: 1920, fitMode: 'cover' })
+    const filterComplex = args[args.indexOf('-filter_complex') + 1]
+    expect(args).toEqual(expect.arrayContaining(['-f', 'lavfi', '-map', '[clip-motion-v]']))
+    expect(filterComplex).toContain('scale=w=')
+    expect(filterComplex).toContain("overlay=x='0+(1080-overlay_w)/2+(33/100)*1080'")
+    expect(filterComplex).toContain("y='0+(1920-overlay_h)/2+(33/100)*1920'")
+    expect(args).not.toContain('-vf')
+  })
+
   it('exports clip-level color grading through the FFmpeg eq filter', () => {
     const args = buildTimelineSegmentArgs({ mediaPath: '/clips/demo.mp4', startSeconds: 0, endSeconds: 2, durationSeconds: 2, filter: { brightness: 1.2, contrast: 0.9, saturate: 1.1 } }, '/tmp/color-grade.mp4', { width: 1280, height: 720 })
     expect(args).toEqual(expect.arrayContaining(['-vf', 'eq=brightness=0.2:contrast=0.9:saturation=1.1,scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1']))

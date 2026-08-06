@@ -16,7 +16,7 @@ export async function exportEditingTimeline(model: AppModel, derived: AppDerived
   const clips = project.videoClips.flatMap((clip) => {
     const mediaPath = sourceById.get(clip.sourceId)
     const source = project.sources.find((item) => item.id === clip.sourceId)
-    return mediaPath && source ? [{ mediaPath, startSeconds: clip.sourceStartSeconds, endSeconds: clip.sourceEndSeconds, volume: clip.volume, muted: clip.muted, treatment: clip.treatment, treatmentScale: clip.treatmentScale, treatmentAnchor: clip.treatmentAnchor, filter: clip.filter, personMatte: clip.personMatte, personMatteSourceFingerprint: source.fingerprint, transitionIn: clip.transitionIn, enterMotion: clip.enterMotion, exitMotion: clip.exitMotion, motionDurationSeconds: clip.motionDurationSeconds }] : []
+    return mediaPath && source ? [{ mediaPath, startSeconds: clip.sourceStartSeconds, endSeconds: clip.sourceEndSeconds, volume: clip.volume, muted: clip.muted, treatment: clip.treatment, treatmentScale: clip.treatmentScale, treatmentAnchor: clip.treatmentAnchor, treatmentSize: clip.treatmentSize, filter: clip.filter, personMatte: clip.personMatte, personMatteSourceFingerprint: source.fingerprint, transitionIn: clip.transitionIn, enterMotion: clip.enterMotion, exitMotion: clip.exitMotion, motionDurationSeconds: clip.motionDurationSeconds }] : []
   })
   const videoBlocks = (project.videoBlocks ?? []).flatMap((block) => {
     const mediaPath = sourceById.get(block.sourceId)

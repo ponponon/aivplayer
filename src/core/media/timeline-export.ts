@@ -147,6 +147,11 @@ function buildFramingCropFilter(clip: TimelineExportClip): string | null {
   return `crop=trunc(iw/${scale}/2)*2:trunc(ih/${scale}/2)*2:${cropX}:(ih-oh)/2`
 }
 
+function hasCompactFraming(clip: TimelineExportClip): boolean {
+  const treatment = getEditingClipTreatment(clip)
+  return treatment === 'corner-br' || treatment === 'corner-tl' || treatment === 'split-left' || treatment === 'split-right'
+}
+
 function buildVideoFilter(format: TimelineExportFormat | undefined, clip: TimelineExportClip, fadeInDuration = 0, fadeOutDuration = 0): string {
   const width = evenDimension(format?.width)
   const height = evenDimension(format?.height)
@@ -209,18 +214,19 @@ function framingProgressExpression(durationSeconds: number): string {
   return `if(lt(t,${durationSeconds}),t/${durationSeconds},1)`
 }
 
-function getFramingTransitionExpressions(transition: EditingFramingTransition): { scale: string; translateX: string } {
+function getFramingTransitionExpressions(transition: EditingFramingTransition): { scale: string; translateX: string; translateY: string } {
   const progress = framingProgressExpression(transition.durationSeconds)
   const from = getEditingFramingTransform(transition.from)
   const to = getEditingFramingTransform(transition.to)
   return {
     scale: `${from.scale}+(${to.scale}-${from.scale})*(${progress})`,
-    translateX: `${from.translateXPercent}+(${to.translateXPercent}-${from.translateXPercent})*(${progress})`
+    translateX: `${from.translateXPercent}+(${to.translateXPercent}-${from.translateXPercent})*(${progress})`,
+    translateY: `${from.translateYPercent}+(${to.translateYPercent}-${from.translateYPercent})*(${progress})`
   }
 }
 
 function removeClipFraming(clip: NormalizedClip): NormalizedClip {
-  return { ...clip, treatment: 'full', treatmentScale: undefined, treatmentAnchor: undefined }
+  return { ...clip, treatment: 'full', treatmentScale: undefined, treatmentAnchor: undefined, treatmentSize: undefined }
 }
 
 function buildTimelineMotionCompositionFilterComplex(clip: NormalizedClip, format: TimelineExportFormat, frameRate: number, colorInputIndex: number, fadeInDuration: number, fadeOutDuration: number, foregroundSource: string, baseForegroundFilters: readonly string[], outputLabel: string, framingTransition?: EditingFramingTransition): string {
@@ -230,11 +236,15 @@ function buildTimelineMotionCompositionFilterComplex(clip: NormalizedClip, forma
   const durationSeconds = Math.min(motion.durationSeconds, clip.durationSeconds / 2)
   const exitStartSeconds = Math.max(0, clip.durationSeconds - durationSeconds)
   const framingExpressions = framingTransition ? getFramingTransitionExpressions(framingTransition) : null
-  const framingBaseFilters = foregroundSource === '[0:v]'
+  const staticFraming = getEditingFramingTransform(getEditingFramingState(clip))
+  const useStaticFraming = hasCompactFraming(clip)
+  const useFramingComposition = Boolean(framingTransition) || useStaticFraming
+  const framingBaseFilters = foregroundSource === '[0:v]' && useFramingComposition
     ? [buildVideoFilter(format, removeClipFraming(clip), fadeInDuration, fadeOutDuration)]
     : [...baseForegroundFilters]
-  const foregroundFilters = framingTransition
-    ? [...framingBaseFilters, `scale=w='trunc(iw*(${escapeFilterExpression(framingExpressions!.scale)})/2)*2':h='trunc(ih*(${escapeFilterExpression(framingExpressions!.scale)})/2)*2':eval=frame`]
+  const framingScaleExpression = framingExpressions?.scale ?? (useStaticFraming ? String(staticFraming.scale) : null)
+  const foregroundFilters = useFramingComposition && framingScaleExpression
+    ? [...framingBaseFilters, `scale=w='trunc(iw*(${escapeFilterExpression(framingScaleExpression)})/2)*2':h='trunc(ih*(${escapeFilterExpression(framingScaleExpression)})/2)*2':eval=frame`]
     : [...baseForegroundFilters]
   if (motion.enterMotion === 'fade') foregroundFilters.push(`fade=t=in:st=0:d=${durationSeconds}:color=black`)
   if (motion.exitMotion === 'fade') foregroundFilters.push(`fade=t=out:st=${exitStartSeconds}:d=${durationSeconds}:color=black`)
@@ -242,14 +252,15 @@ function buildTimelineMotionCompositionFilterComplex(clip: NormalizedClip, forma
   if (scaleExpression) foregroundFilters.push(`scale=w='trunc(iw*(${escapeFilterExpression(scaleExpression)})/2)*2':h='trunc(ih*(${escapeFilterExpression(scaleExpression)})/2)*2':eval=frame`)
   const xExpression = clipMotionOffsetExpression('x', width, motion.enterMotion, motion.exitMotion, durationSeconds, exitStartSeconds)
   const yExpression = clipMotionOffsetExpression('y', height, motion.enterMotion, motion.exitMotion, durationSeconds, exitStartSeconds)
-  const framingOffsetExpression = framingExpressions ? `(${framingExpressions.translateX}/100)*${width}` : '0'
-  const xPosition = framingExpressions
-    ? `${scaleExpression ? `${xExpression}+(${width}-overlay_w)/2` : xExpression}+${framingOffsetExpression}`
+  const framingOffsetExpression = framingExpressions ? `(${framingExpressions.translateX}/100)*${width}` : useStaticFraming ? `(${staticFraming.translateXPercent}/100)*${width}` : '0'
+  const framingYOffsetExpression = framingExpressions ? `(${framingExpressions.translateY}/100)*${height}` : useStaticFraming ? `(${staticFraming.translateYPercent}/100)*${height}` : '0'
+  const xPosition = useFramingComposition
+    ? `${xExpression}+(${width}-overlay_w)/2+${framingOffsetExpression}`
     : scaleExpression
       ? `${xExpression}+(${width}-overlay_w)/2`
       : xExpression
-  const yPosition = framingExpressions
-    ? `${yExpression}+(${height}-overlay_h)/2`
+  const yPosition = useFramingComposition
+    ? `${yExpression}+(${height}-overlay_h)/2+${framingYOffsetExpression}`
     : scaleExpression
       ? `${yExpression}+(${height}-overlay_h)/2`
       : yExpression
@@ -295,7 +306,7 @@ export function buildTimelineSegmentArgs(clip: NormalizedClip, outputPath: strin
   const personMatteTrack = clip.personMatteTrack && clip.personMatte?.enabled ? clip.personMatteTrack : null
   if (personMatteTrack) args.push('-framerate', String(personMatteTrack.sampleFps), '-start_number', '0', '-i', personMatteTrack.framePattern)
   const personMatteInputIndex = clip.hasAudio === false ? 2 : 1
-  const useMotionFilter = Boolean(format?.width && format?.height && (hasClipMotion(clip) || framingTransition))
+  const useMotionFilter = Boolean(format?.width && format?.height && (hasClipMotion(clip) || framingTransition || hasCompactFraming(clip)))
   if (useMotionFilter && !personMatteTrack) {
     const colorInputIndex = clip.hasAudio === false ? 2 : 1
     args.push('-f', 'lavfi', '-i', `color=c=black:s=${evenDimension(format?.width)}x${evenDimension(format?.height)}:r=${frameRate}:d=${clip.durationSeconds}`)

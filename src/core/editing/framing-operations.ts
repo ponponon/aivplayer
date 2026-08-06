@@ -1,16 +1,17 @@
 import { EDITING_TRANSITION_DEFAULT_DURATION, type EditingClipTreatment, type EditingTreatmentAnchor, type EditingVideoClip } from '../../shared/editing-types'
-import { getEditingClipTreatment, getEditingClipTreatmentAnchor, getEditingClipTreatmentScale } from './treatment-operations'
+import { getEditingClipTreatment, getEditingClipTreatmentAnchor, getEditingClipTreatmentRenderScale, getEditingClipTreatmentSize } from './treatment-operations'
 
 export type EditingFramingState = {
   treatment: EditingClipTreatment
   scale: number
+  size: number
   anchor: EditingTreatmentAnchor
 }
 
 export type EditingFramingSpan = {
   editedStartSeconds: number
   editedEndSeconds: number
-  clip: Pick<EditingVideoClip, 'treatment' | 'treatmentScale' | 'treatmentAnchor'>
+  clip: Pick<EditingVideoClip, 'treatment' | 'treatmentScale' | 'treatmentAnchor' | 'treatmentSize'>
 }
 
 export type EditingFramingKeyframe = {
@@ -22,6 +23,7 @@ export type EditingFramingKeyframe = {
 export type EditingFramingTransform = {
   scale: number
   translateXPercent: number
+  translateYPercent: number
 }
 
 export type EditingFramingTransition = {
@@ -35,6 +37,13 @@ export type EditingFramingResolution = EditingFramingTransform & {
   isTransitioning: boolean
 }
 
+function isCompactFramingTreatment(treatment: EditingClipTreatment): boolean {
+  return treatment === 'corner-br'
+    || treatment === 'corner-tl'
+    || treatment === 'split-left'
+    || treatment === 'split-right'
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value))
 }
@@ -44,7 +53,10 @@ function safeTime(value: number): number {
 }
 
 function sameFramingState(left: EditingFramingState, right: EditingFramingState): boolean {
-  return left.treatment === right.treatment && left.scale === right.scale && left.anchor === right.anchor
+  return left.treatment === right.treatment
+    && left.scale === right.scale
+    && (!isCompactFramingTreatment(left.treatment) && !isCompactFramingTreatment(right.treatment) || left.size === right.size)
+    && left.anchor === right.anchor
 }
 
 function anchorPosition(anchor: EditingTreatmentAnchor): number {
@@ -57,19 +69,29 @@ function rounded(value: number): number {
 
 /** Converts a crop anchor into the center-origin transform used by the preview. */
 export function getEditingFramingTransform(state: EditingFramingState): EditingFramingTransform {
-  const scale = state.treatment === 'punch-in' ? state.scale : 1
-  return {
-    scale,
-    translateXPercent: rounded((anchorPosition(state.anchor) - 0.5) * (1 - scale) * 100)
+  const scale = state.treatment === 'full' ? 1 : state.scale
+  if (state.treatment === 'corner-br') {
+    const edge = rounded((1 - scale) / 2 * 100)
+    return { scale, translateXPercent: edge, translateYPercent: edge }
   }
+  if (state.treatment === 'corner-tl') {
+    const edge = rounded((1 - scale) / 2 * 100)
+    return { scale, translateXPercent: -edge, translateYPercent: -edge }
+  }
+  if (state.treatment === 'split-left' || state.treatment === 'split-right') {
+    const edge = rounded((1 - scale) / 2 * 100)
+    return { scale, translateXPercent: state.treatment === 'split-left' ? -edge : edge, translateYPercent: 0 }
+  }
+  return { scale, translateXPercent: rounded((anchorPosition(state.anchor) - 0.5) * (1 - scale) * 100), translateYPercent: 0 }
 }
 
 /** Old project files have no framing fields; they resolve to a centered full frame. */
-export function getEditingFramingState(clip: Pick<EditingVideoClip, 'treatment' | 'treatmentScale' | 'treatmentAnchor'>): EditingFramingState {
+export function getEditingFramingState(clip: Pick<EditingVideoClip, 'treatment' | 'treatmentScale' | 'treatmentAnchor' | 'treatmentSize'>): EditingFramingState {
   const treatment = getEditingClipTreatment(clip)
   return {
     treatment,
-    scale: treatment === 'punch-in' ? getEditingClipTreatmentScale(clip) : 1,
+    scale: getEditingClipTreatmentRenderScale(clip),
+    size: getEditingClipTreatmentSize(clip),
     anchor: treatment === 'punch-in' ? getEditingClipTreatmentAnchor(clip) : 'center'
   }
 }
@@ -115,9 +137,11 @@ export function resolveEditingFramingAtTime(keyframes: readonly EditingFramingKe
 
   const progress = transition.durationSeconds <= 0 ? 1 : clamp((time - current.at) / transition.durationSeconds, 0, 1)
   const fromTransform = getEditingFramingTransform(transition.from)
+  const toTransform = getEditingFramingTransform(transition.to)
   return {
-    scale: rounded(fromTransform.scale + (currentTransform.scale - fromTransform.scale) * progress),
-    translateXPercent: rounded(fromTransform.translateXPercent + (currentTransform.translateXPercent - fromTransform.translateXPercent) * progress),
+    scale: rounded(fromTransform.scale + (toTransform.scale - fromTransform.scale) * progress),
+    translateXPercent: rounded(fromTransform.translateXPercent + (toTransform.translateXPercent - fromTransform.translateXPercent) * progress),
+    translateYPercent: rounded(fromTransform.translateYPercent + (toTransform.translateYPercent - fromTransform.translateYPercent) * progress),
     state: current.state,
     isTransitioning: true
   }

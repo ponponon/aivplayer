@@ -30,6 +30,8 @@ export type EditingVideoClip = {
   treatment?: EditingClipTreatment
   treatmentScale?: number
   treatmentAnchor?: EditingTreatmentAnchor
+  /** Pireel-style framing size (0–100) for corner and split layouts. */
+  treatmentSize?: number
   filter?: EditingClipFilter
   personMatte?: EditingPersonMatte
   transitionIn?: EditingClipTransition
@@ -39,7 +41,7 @@ export type EditingVideoClip = {
   motionDurationSeconds?: number
 }
 
-export type EditingClipTreatment = 'full' | 'punch-in'
+export type EditingClipTreatment = 'full' | 'punch-in' | 'corner-br' | 'corner-tl' | 'split-left' | 'split-right'
 export type EditingTreatmentAnchor = 'left' | 'center' | 'right'
 export type EditingClipFilter = { brightness?: number; contrast?: number; saturate?: number }
 /** Optional Pireel-style person matte settings; generated masks stay in a derived cache, not project files. */
@@ -109,6 +111,16 @@ export type EditingVideoBlock = {
 export const EDITING_PUNCH_IN_MIN_SCALE = 1
 export const EDITING_PUNCH_IN_MAX_SCALE = 2.5
 export const EDITING_PUNCH_IN_DEFAULT_SCALE = 1.35
+export const EDITING_TREATMENT_SIZE_MIN = 0
+export const EDITING_TREATMENT_SIZE_MAX = 100
+export const EDITING_TREATMENT_SIZE_DEFAULT: Record<EditingClipTreatment, number> = {
+  full: 0,
+  'punch-in': 18,
+  'corner-br': 35,
+  'corner-tl': 35,
+  'split-left': 50,
+  'split-right': 50
+}
 export const EDITING_TRANSITION_MIN_DURATION = 0.1
 export const EDITING_TRANSITION_MAX_DURATION = 1
 export const EDITING_TRANSITION_DEFAULT_DURATION = 0.35

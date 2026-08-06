@@ -38,6 +38,7 @@ export type EditingClipPreview = {
   treatment?: EditingClipTreatment
   treatmentScale?: number
   treatmentAnchor?: EditingTreatmentAnchor
+  treatmentSize?: number
 }
 
 export type AppRefs = {

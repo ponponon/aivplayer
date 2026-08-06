@@ -66,6 +66,13 @@ describe('editing project files', () => {
     expect(parsed.schemaVersion).toBe(1)
   })
 
+  it('round-trips compact framing settings without changing the schema version', () => {
+    const project = createEditingProject(source)
+    const parsed = parseEditingProject({ ...project, videoClips: [{ ...project.videoClips[0]!, treatment: 'corner-br', treatmentSize: 42 }] })
+    expect(parsed.videoClips[0]).toMatchObject({ treatment: 'corner-br', treatmentSize: 42 })
+    expect(parsed.schemaVersion).toBe(1)
+  })
+
   it('rejects an unsafe punch-in scale', () => {
     const project = createEditingProject(source)
     expect(() => parseEditingProject({ ...project, videoClips: [{ ...project.videoClips[0]!, treatment: 'punch-in', treatmentScale: 3 }] })).toThrow('Invalid editing project clip')

@@ -62,11 +62,11 @@ export function createEditingClipActions(model: AppModel) {
     if (result.removedRange) applyEditingTimelineChange(model, result.clips, result.removedRange)
   }
 
-  const setEditingClipTreatment = (clipId: string, treatment: EditingClipTreatment, scale?: number, anchor?: EditingTreatmentAnchor): void => {
+  const setEditingClipTreatment = (clipId: string, treatment: EditingClipTreatment, scale?: number, anchor?: EditingTreatmentAnchor, size?: number): void => {
     model.setEditingClipPreview(null)
     const project = model.editingProject
     if (!project) return
-    const nextClips = updateEditingClipTreatment(project.videoClips, clipId, treatment, scale, anchor)
+    const nextClips = updateEditingClipTreatment(project.videoClips, clipId, treatment, scale, anchor, size)
     if (nextClips.every((clip, index) => clip === project.videoClips[index])) return
     const nextProject = { ...project, updatedAt: Date.now(), videoClips: nextClips }
     model.setEditingPast((past) => [...past, project])
@@ -88,9 +88,9 @@ export function createEditingClipActions(model: AppModel) {
     saveEditingProject(nextProject)
   }
 
-  const previewEditingClipTreatment = (clipId: string, treatment: EditingClipTreatment, scale?: number, anchor?: EditingTreatmentAnchor): void => {
+  const previewEditingClipTreatment = (clipId: string, treatment: EditingClipTreatment, scale?: number, anchor?: EditingTreatmentAnchor, size?: number): void => {
     if (!model.editingProject?.videoClips.some((clip) => clip.id === clipId)) return
-    model.setEditingClipPreview({ clipId, treatment, treatmentScale: scale, treatmentAnchor: anchor })
+    model.setEditingClipPreview({ clipId, treatment, treatmentScale: scale, treatmentAnchor: anchor, treatmentSize: size })
   }
 
   const previewEditingClipFilter = (clipId: string, filter: EditingClipFilter): void => {
