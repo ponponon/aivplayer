@@ -66,6 +66,11 @@ describe('app settings', () => {
     settings.playback.lastVolume = 0.42
     settings.playback.lastMuted = true
     settings.playback.lastPlaybackRate = 1.5
+    settings.playback.endAction = 'stop'
+    settings.playback.repeatMode = 'all'
+    settings.playback.order = 'shuffle'
+    settings.playback.profilesByFingerprint['media-fingerprint'] = { positionSeconds: 42, durationSeconds: 600, volume: 0.42, muted: true, playbackRate: 1.5, updatedAt: 123 }
+    settings.playback.bookmarksByFingerprint['media-fingerprint'] = [{ id: 'bookmark-1', timeSeconds: 42, name: '重点', createdAt: 123 }]
     settings.playback.history = [{
       path: `${tempDirectory}/history.mp4`,
       name: 'history.mp4',
@@ -157,7 +162,7 @@ describe('app settings', () => {
     )
 
     await expect(readAppSettings(tempDirectory)).resolves.toMatchObject({
-      schemaVersion: 19,
+      schemaVersion: 20,
       playback: {
         singleClickPause: true
       }

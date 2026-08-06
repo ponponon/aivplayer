@@ -1,27 +1,77 @@
 import type { AppSettingsSectionPatcher } from '../../../shared/app-settings'
 import type { MediaFile } from '../../../shared/media-types'
 import type { PlaybackHistoryEntry } from '../../../shared/playback-history'
+import { getPlaybackMediaKey, type PlaybackMediaProfile } from '../../../shared/playback-memory'
 import { removePlaybackHistoryEntries, removePlaybackHistoryEntry, setPlaybackHistoryDuration, upsertPlaybackHistory } from '../../../shared/playback-history'
 import type { AppModel } from './app-types'
 import { getPlaylistFileByPath, mergePlaylist } from './app-helpers'
+import { usePlaybackBookmarkActions } from './use-playback-bookmark-actions'
 
 export function usePlaybackMemoryActions(model: AppModel, patchSection: AppSettingsSectionPatcher) {
-  const getInitialPlaybackTime = (filePath: string): number => {
-    if (!model.appSettings.playback.rememberProgress) return 0
-    const saved = model.appSettings.playback.lastProgressByPath[filePath]
-    return Number.isFinite(saved) && saved > 0 ? saved : 0
+  const bookmarks = usePlaybackBookmarkActions(model, patchSection)
+  const getInitialPlaybackState = (file: MediaFile): Pick<PlaybackMediaProfile, 'positionSeconds' | 'volume' | 'muted' | 'playbackRate'> => {
+    const profile = model.appSettings.playback.profilesByFingerprint[getPlaybackMediaKey(file)]
+    const savedByPath = model.appSettings.playback.lastProgressByPath[file.path]
+    return {
+      positionSeconds: model.appSettings.playback.rememberProgress
+        ? profile?.positionSeconds ?? (Number.isFinite(savedByPath) && savedByPath > 0 ? savedByPath : 0)
+        : 0,
+      volume: model.appSettings.playback.rememberVolume && profile ? profile.volume : model.state.volume,
+      muted: model.appSettings.playback.rememberVolume && profile ? profile.muted : model.state.muted,
+      playbackRate: model.appSettings.playback.rememberPlaybackRate && profile ? profile.playbackRate : model.state.playbackRate
+    }
   }
   const persistPlaybackProgress = (currentTime: number, force = false): void => {
-    const path = model.state.currentFile?.path
-    if (!path || !model.appSettings.playback.rememberProgress) return
+    const file = model.state.currentFile
+    const path = file?.path
+    if (!file || !path || !model.appSettings.playback.rememberProgress) return
     const time = Math.max(0, currentTime)
     const previous = model.lastSavedProgressRef.current
     if (!force && previous.path === path && time - previous.time < 5) return
     model.lastSavedProgressRef.current = { path, time }
-    patchSection('playback', (current) => ({ ...current, lastProgressByPath: { ...current.lastProgressByPath, [path]: time } }))
+    const key = getPlaybackMediaKey(file)
+    patchSection('playback', (current) => {
+      const previousProfile = current.profilesByFingerprint[key]
+      const profile: PlaybackMediaProfile = {
+        positionSeconds: time,
+        durationSeconds: model.state.duration > 0 ? model.state.duration : previousProfile?.durationSeconds ?? null,
+        volume: model.state.volume,
+        muted: model.state.muted,
+        playbackRate: model.state.playbackRate,
+        updatedAt: Date.now()
+      }
+      return {
+        ...current,
+        lastProgressByPath: { ...current.lastProgressByPath, [path]: time },
+        profilesByFingerprint: { ...current.profilesByFingerprint, [key]: profile }
+      }
+    })
   }
   const syncPlaybackMemory = (volume: number, muted: boolean, playbackRate: number): void => {
-    patchSection('playback', { lastVolume: muted ? 0 : volume, lastMuted: muted, lastPlaybackRate: playbackRate })
+    const file = model.state.currentFile
+    const key = file ? getPlaybackMediaKey(file) : null
+    patchSection('playback', (current) => ({
+      ...current,
+      lastVolume: muted ? 0 : volume,
+      lastMuted: muted,
+      lastPlaybackRate: playbackRate,
+      ...(key ? {
+        profilesByFingerprint: {
+          ...current.profilesByFingerprint,
+          [key]: {
+            ...(current.profilesByFingerprint[key] ?? {
+              positionSeconds: model.state.currentTime,
+              durationSeconds: model.state.duration > 0 ? model.state.duration : null,
+              updatedAt: Date.now()
+            }),
+            volume,
+            muted,
+            playbackRate,
+            updatedAt: Date.now()
+          }
+        }
+      } : {})
+    }))
   }
   const recordPlaybackHistory = (file: MediaFile): void => {
     patchSection('playback', (current) => ({
@@ -63,9 +113,10 @@ export function usePlaybackMemoryActions(model: AppModel, patchSection: AppSetti
     const currentFile = getPlaylistFileByPath(playlist, files[0])
     recordPlaybackHistory(currentFile)
     model.setState((current) => {
-      const currentTime = getInitialPlaybackTime(currentFile.path)
+      const initial = getInitialPlaybackState(currentFile)
+      const currentTime = initial.positionSeconds
       model.lastSavedProgressRef.current = { path: currentFile.path, time: currentTime }
-      return { ...current, playlist, currentFile, currentTime, duration: 0, videoWidth: 0, videoHeight: 0, isPlaying: false, autoPlayRequestId: current.autoPlayRequestId + 1, error: null }
+      return { ...current, playlist, currentFile, currentTime, volume: initial.volume, muted: initial.muted, playbackRate: initial.playbackRate, duration: 0, videoWidth: 0, videoHeight: 0, isPlaying: false, autoPlayRequestId: current.autoPlayRequestId + 1, error: null }
     })
   }
   const openFiles = async (): Promise<void> => loadFiles(await window.aiv.openMediaFiles())
@@ -73,9 +124,10 @@ export function usePlaybackMemoryActions(model: AppModel, patchSection: AppSetti
   const selectFile = (file: MediaFile): void => {
     resetSubtitleState(); model.playbackEndedRef.current = false
     recordPlaybackHistory(file)
-    const currentTime = getInitialPlaybackTime(file.path)
+    const initial = getInitialPlaybackState(file)
+    const currentTime = initial.positionSeconds
     model.lastSavedProgressRef.current = { path: file.path, time: currentTime }
-    model.setState((current) => ({ ...current, currentFile: file, currentTime, duration: 0, videoWidth: 0, videoHeight: 0, isPlaying: false, autoPlayRequestId: current.autoPlayRequestId + 1, error: null }))
+    model.setState((current) => ({ ...current, currentFile: file, currentTime, volume: initial.volume, muted: initial.muted, playbackRate: initial.playbackRate, duration: 0, videoWidth: 0, videoHeight: 0, isPlaying: false, autoPlayRequestId: current.autoPlayRequestId + 1, error: null }))
   }
   const openHistoryItem = async (entry: PlaybackHistoryEntry): Promise<boolean> => {
     try {
@@ -93,5 +145,5 @@ export function usePlaybackMemoryActions(model: AppModel, patchSection: AppSetti
       return false
     }
   }
-  return { getInitialPlaybackTime, persistPlaybackProgress, syncPlaybackMemory, recordPlaybackHistory, updatePlaybackHistoryDuration, removePlaybackHistory, removeUnavailablePlaybackHistory, clearPlaybackHistory, openHistoryItem, loadFiles, openFiles, createMediaFilesFromPaths, selectFile }
+  return { ...bookmarks, persistPlaybackProgress, syncPlaybackMemory, recordPlaybackHistory, updatePlaybackHistoryDuration, removePlaybackHistory, removeUnavailablePlaybackHistory, clearPlaybackHistory, openHistoryItem, loadFiles, openFiles, createMediaFilesFromPaths, selectFile }
 }

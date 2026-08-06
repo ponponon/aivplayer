@@ -8,6 +8,7 @@ import type {
   MediaProbeDetailObject,
   MediaProbeDetails,
   MediaProbeMetadata,
+  MediaChapter,
   MediaVideoMetadata
 } from '../../shared/media-types'
 
@@ -29,6 +30,7 @@ type ProbeSummary = {
 
 type FfprobeProbe = ProbeSummary & {
   details: MediaProbeDetails
+  chapters: MediaChapter[]
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -239,6 +241,26 @@ function normalizeDetailsObject(value: unknown): MediaProbeDetailObject | null {
   return isRecord(value) ? (value as MediaProbeDetailObject) : null
 }
 
+function parseChapterList(value: unknown): MediaChapter[] {
+  if (!Array.isArray(value)) return []
+
+  return value.flatMap((chapter, index) => {
+    const entry = normalizeDetailsObject(chapter)
+    if (!entry) return []
+    const startSeconds = parseNumberField(entry.start_time ?? entry.start)
+    const endSeconds = parseNumberField(entry.end_time ?? entry.end)
+    if (startSeconds == null || endSeconds == null || startSeconds < 0 || endSeconds <= startSeconds) return []
+    const tags = isRecord(entry.tags) ? entry.tags : null
+    const title = toText(entry.title) ?? (tags ? toText(tags.title) : null) ?? `Chapter ${index + 1}`
+    return [{
+      id: toText(entry.id) ?? String(index),
+      startSeconds,
+      endSeconds,
+      title
+    }]
+  })
+}
+
 function summarizeVideoStream(stream: MediaProbeDetailObject | null): MediaVideoMetadata | null {
   if (!stream) {
     return null
@@ -313,7 +335,10 @@ export function parseFfprobeOutput(output: string): FfprobeProbe | null {
 
   const details: MediaProbeDetails = {
     format,
-    streams
+    streams,
+    chapters: Array.isArray(parsed.chapters)
+      ? parsed.chapters.map((chapter) => normalizeDetailsObject(chapter)).filter((chapter): chapter is MediaProbeDetailObject => Boolean(chapter))
+      : []
   }
 
   const videoStream = streams.find((stream) => toText(stream.codec_type) === 'video') ?? null
@@ -324,7 +349,8 @@ export function parseFfprobeOutput(output: string): FfprobeProbe | null {
     overallBitrateKbps: parseBitRateKbps(format?.bit_rate),
     video: summarizeVideoStream(videoStream),
     audio: summarizeAudioStream(audioStream),
-    details
+    details,
+    chapters: parseChapterList(parsed.chapters)
   }
 }
 
@@ -387,7 +413,7 @@ async function readProbeOutput(
 async function readFfprobeOutput(ffprobePath: string, filePath: string): Promise<string> {
   return readProbeOutput(
     ffprobePath,
-    ['-v', 'quiet', '-print_format', 'json', '-show_format', '-show_streams', filePath],
+    ['-v', 'quiet', '-print_format', 'json', '-show_format', '-show_streams', '-show_chapters', filePath],
     'stdout',
     FFPROBE_TIMEOUT_MS,
     FFPROBE_MAX_BUFFER_BYTES
@@ -435,6 +461,7 @@ export async function createMediaProbeMetadata(
       fileSizeBytes: fileStat.size,
       probeSource: 'ffmpeg',
       details: null,
+      chapters: [],
       ...probe
     }
   }
@@ -445,6 +472,7 @@ export async function createMediaProbeMetadata(
     overallBitrateKbps: null,
     video: null,
     audio: null,
+    chapters: [],
     probeSource: null,
     details: null
   }

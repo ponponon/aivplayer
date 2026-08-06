@@ -1,5 +1,8 @@
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
 import { describe, expect, it } from 'vitest'
-import { getContentTypeForFile, parseRangeHeader } from '../../src/desktop/media/media-protocol'
+import { createMediaFile, getContentTypeForFile, parseRangeHeader } from '../../src/desktop/media/media-protocol'
 
 describe('media protocol helpers', () => {
   it('parses bounded byte range requests', () => {
@@ -39,5 +42,21 @@ describe('media protocol helpers', () => {
     expect(getContentTypeForFile('/tmp/camera.r3d')).toBe('video/x-red')
     expect(getContentTypeForFile('/tmp/archive.wtv')).toBe('video/x-ms-wtv')
     expect(getContentTypeForFile('/tmp/subtitle.vtt')).toBe('text/vtt; charset=utf-8')
+  })
+
+  it('creates a stable media fingerprint that changes when the file changes', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'aivplayer-media-protocol-'))
+    const filePath = join(directory, 'movie.mp4')
+    try {
+      await writeFile(filePath, 'first-content')
+      const first = createMediaFile(filePath)
+      const second = createMediaFile(filePath)
+      expect(first.fingerprint).toBe(second.fingerprint)
+
+      await writeFile(filePath, 'second-content-with-a-different-size')
+      expect(createMediaFile(filePath).fingerprint).not.toBe(first.fingerprint)
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
   })
 })

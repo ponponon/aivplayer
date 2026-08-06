@@ -100,7 +100,20 @@
       exitFullscreen: 'Exit fullscreen',
       playbackPosition: 'Playback position',
       volume: 'Volume',
-      playbackSpeed: 'Playback speed'
+      playbackSpeed: 'Playback speed',
+      repeat: 'Repeat playback',
+      repeatNone: 'No repeat',
+      repeatCurrent: 'Repeat current media',
+      repeatAll: 'Repeat playlist',
+      shuffle: 'Shuffle playback',
+      shuffleOn: 'Shuffle playback enabled',
+      shuffleOff: 'Turn off shuffle playback',
+      endActionNext: 'Play the next item when this ends',
+      endActionStop: 'Stop when this ends',
+      addBookmark: 'Add time bookmark',
+      bookmarkAt: (time: string) => `Add bookmark: ${time}`,
+      removeBookmark: 'Remove time bookmark',
+      chapterAt: (title: string, time: string) => `${title} · ${time}`
     },
     editing: {
       framingOrientationHint: 'Portrait → corner · landscape/square → split', recommended: 'Recommended', framingPresetTitle: 'Shot presets', framingPresetTarget: (count: number) => count > 1 ? `Apply to ${count} shots` : 'Current shot', framingPresetNames: { full: 'Full baseline', 'punch-in': 'Focus punch-in', 'corner-br': 'Bottom-right room', 'corner-tl': 'Top-left room', 'split-left': 'Left split', 'split-right': 'Right split' },

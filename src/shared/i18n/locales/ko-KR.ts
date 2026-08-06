@@ -100,7 +100,20 @@
       exitFullscreen: '전체 화면 종료',
       playbackPosition: '재생 위치',
       volume: '볼륨',
-      playbackSpeed: '재생 속도'
+      playbackSpeed: '재생 속도',
+      repeat: '반복 재생',
+      repeatNone: '반복 안 함',
+      repeatCurrent: '현재 미디어 반복',
+      repeatAll: '재생 목록 반복',
+      shuffle: '셔플 재생',
+      shuffleOn: '셔플 재생 켜짐',
+      shuffleOff: '셔플 재생 끄기',
+      endActionNext: '종료 후 다음 항목 재생',
+      endActionStop: '종료 후 정지',
+      addBookmark: '시간 북마크 추가',
+      bookmarkAt: (time: string) => `북마크 추가: ${time}`,
+      removeBookmark: '시간 북마크 삭제',
+      chapterAt: (title: string, time: string) => `${title} · ${time}`
     },
     editing: {
       cornerBottomRight: '오른쪽 아래', cornerTopLeft: '왼쪽 위', splitLeft: '왼쪽 분할', splitRight: '오른쪽 분할', treatmentSize: '구도 크기', framingOrientationHint: '세로→코너 · 가로/정사각형→분할', recommended: '추천', framingPresetTitle: '구도 프리셋', framingPresetTarget: (count: number) => count > 1 ? `${count}개 클립에 적용` : '현재 클립', framingPresetNames: { full: '전체 기준', 'punch-in': '강조 클로즈업', 'corner-br': '오른쪽 아래 여백', 'corner-tl': '왼쪽 위 여백', 'split-left': '왼쪽 분할', 'split-right': '오른쪽 분할' },

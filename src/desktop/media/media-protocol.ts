@@ -1,7 +1,7 @@
 import { protocol } from 'electron'
-import { createReadStream, existsSync } from 'node:fs'
+import { createReadStream, existsSync, statSync } from 'node:fs'
 import { stat } from 'node:fs/promises'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { basename, extname } from 'node:path'
 import { Readable } from 'node:stream'
 import type { MediaFile } from '../../shared/media-types'
@@ -94,6 +94,13 @@ async function createFileResponse(filePath: string, request: Request): Promise<R
 export function createMediaFile(filePath: string): MediaFile {
   const id = randomUUID()
   const extension = extname(filePath).replace('.', '').toLowerCase()
+  let fingerprint = createHash('sha256').update(filePath).digest('hex').slice(0, 24)
+  try {
+    const fileStat = statSync(filePath)
+    fingerprint = createHash('sha256').update(`${filePath}|${fileStat.size}|${fileStat.mtimeMs}`).digest('hex').slice(0, 24)
+  } catch {
+    // The path-only fallback still lets the player open virtual or newly-created files.
+  }
   mediaFilePathById.set(id, filePath)
 
   return {
@@ -101,6 +108,7 @@ export function createMediaFile(filePath: string): MediaFile {
     name: basename(filePath),
     path: filePath,
     url: `${MEDIA_PROTOCOL_SCHEME}://file/${id}`,
-    extension
+    extension,
+    fingerprint
   }
 }

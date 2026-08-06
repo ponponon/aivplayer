@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import type { MediaFile } from '../../../shared/media-types'
 import type { AppModel } from './app-types'
+import { getPlaybackMediaKey } from '../../../shared/playback-memory'
 
 export function useAppStartupEffects(model: AppModel, loadFiles: (files: MediaFile[]) => void, refreshAsrStatus: () => Promise<unknown>): void {
   useEffect(() => { void refreshAsrStatus() }, [])
@@ -13,10 +14,10 @@ export function useAppStartupEffects(model: AppModel, loadFiles: (files: MediaFi
       model.setState((current) => ({
         ...current,
         panelMode: settings.ui.defaultPanelMode,
-        volume: settings.playback.rememberVolume ? settings.playback.lastVolume : current.volume,
-        muted: settings.playback.rememberVolume ? settings.playback.lastMuted : current.muted,
-        playbackRate: settings.playback.rememberPlaybackRate ? settings.playback.lastPlaybackRate : current.playbackRate,
-        currentTime: settings.playback.rememberProgress && current.currentFile ? settings.playback.lastProgressByPath[current.currentFile.path] ?? current.currentTime : current.currentTime
+        volume: settings.playback.rememberVolume ? current.currentFile ? settings.playback.profilesByFingerprint[getPlaybackMediaKey(current.currentFile)]?.volume ?? settings.playback.lastVolume : settings.playback.lastVolume : current.volume,
+        muted: settings.playback.rememberVolume ? current.currentFile ? settings.playback.profilesByFingerprint[getPlaybackMediaKey(current.currentFile)]?.muted ?? settings.playback.lastMuted : settings.playback.lastMuted : current.muted,
+        playbackRate: settings.playback.rememberPlaybackRate ? current.currentFile ? settings.playback.profilesByFingerprint[getPlaybackMediaKey(current.currentFile)]?.playbackRate ?? settings.playback.lastPlaybackRate : settings.playback.lastPlaybackRate : current.playbackRate,
+        currentTime: settings.playback.rememberProgress && current.currentFile ? settings.playback.profilesByFingerprint[getPlaybackMediaKey(current.currentFile)]?.positionSeconds ?? settings.playback.lastProgressByPath[current.currentFile.path] ?? current.currentTime : current.currentTime
       }))
     })
     return () => { cancelled = true }

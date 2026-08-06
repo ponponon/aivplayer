@@ -18,6 +18,7 @@ import {
   type SubtitleLineHeight,
   type SubtitleTargetLanguageId
 } from '../shared/app-settings'
+import type { PlaybackBookmark, PlaybackEndAction, PlaybackMediaProfile, PlaybackOrder, PlaybackRepeatMode } from '../shared/playback-memory'
 import { isSubtitleEmphasisMode, isSubtitlePresetId, normalizeSubtitleKeywords } from '../shared/subtitle-presets'
 import { isClipExportLengthSeconds, isClipExportMode } from '../shared/clip-export'
 import type { AsrModelSourceId } from '../shared/media-types'
@@ -78,6 +79,18 @@ function isSubtitleTargetLanguageId(value: unknown): value is SubtitleTargetLang
 
 function isAiAutomationMode(value: unknown): value is AiAutomationMode {
   return value === 'cache-only' || value === 'ask' || value === 'guide' || value === 'complete'
+}
+
+function isPlaybackEndAction(value: unknown): value is PlaybackEndAction {
+  return value === 'stop' || value === 'next'
+}
+
+function isPlaybackRepeatMode(value: unknown): value is PlaybackRepeatMode {
+  return value === 'none' || value === 'current' || value === 'all'
+}
+
+function isPlaybackOrder(value: unknown): value is PlaybackOrder {
+  return value === 'normal' || value === 'shuffle'
 }
 
 async function resolveAppSettingsSecretCodec(): Promise<AppSettingsSecretCodec | null> {
@@ -287,6 +300,61 @@ function sanitizePlaybackHistory(value: unknown, fallback: PlaybackHistoryEntry[
     .slice(0, MAX_PLAYBACK_HISTORY_ITEMS)
 }
 
+function sanitizePlaybackProfiles(value: unknown, fallback: Record<string, PlaybackMediaProfile>): Record<string, PlaybackMediaProfile> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return fallback
+
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .filter(([key, profile]) => {
+        if (!key || key.length > 512 || !profile || typeof profile !== 'object' || Array.isArray(profile)) return false
+        const item = profile as Partial<PlaybackMediaProfile>
+        return (
+          isFiniteNumber(item.positionSeconds) && item.positionSeconds >= 0 &&
+          (item.durationSeconds === null || (isFiniteNumber(item.durationSeconds) && item.durationSeconds > 0)) &&
+          isFiniteNumber(item.volume) && item.volume >= 0 && item.volume <= 1 &&
+          typeof item.muted === 'boolean' &&
+          isFiniteNumber(item.playbackRate) && item.playbackRate > 0 && item.playbackRate <= 16 &&
+          isFiniteNumber(item.updatedAt) && item.updatedAt > 0
+        )
+      })
+      .slice(0, 500)
+      .map(([key, profile]) => {
+        const item = profile as PlaybackMediaProfile
+        return [key, {
+          positionSeconds: item.positionSeconds,
+          durationSeconds: item.durationSeconds,
+          volume: item.volume,
+          muted: item.muted,
+          playbackRate: item.playbackRate,
+          updatedAt: item.updatedAt
+        }] as const
+      })
+  )
+}
+
+function sanitizePlaybackBookmarks(value: unknown, fallback: Record<string, PlaybackBookmark[]>): Record<string, PlaybackBookmark[]> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return fallback
+
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .filter(([key, bookmarks]) => key.length > 0 && key.length <= 512 && Array.isArray(bookmarks))
+      .slice(0, 500)
+      .map(([key, bookmarks]) => {
+        const sanitized = (bookmarks as unknown[])
+          .filter((bookmark): bookmark is Partial<PlaybackBookmark> => Boolean(bookmark) && typeof bookmark === 'object')
+          .map((bookmark) => ({
+            id: typeof bookmark.id === 'string' ? bookmark.id.trim().slice(0, 128) : '',
+            timeSeconds: bookmark.timeSeconds,
+            name: typeof bookmark.name === 'string' ? bookmark.name.trim().slice(0, 160) : '',
+            createdAt: bookmark.createdAt
+          }))
+          .filter((bookmark) => bookmark.id && isFiniteNumber(bookmark.timeSeconds) && bookmark.timeSeconds >= 0 && bookmark.name && isFiniteNumber(bookmark.createdAt) && bookmark.createdAt > 0)
+          .slice(0, 100) as PlaybackBookmark[]
+        return [key, sanitized] as const
+      })
+  )
+}
+
 function sanitizePlaybackSettings(
   value: Partial<AppSettings['playback']> | undefined,
   defaults: AppSettings['playback']
@@ -326,6 +394,9 @@ function sanitizePlaybackSettings(
         ? Math.min(16, playback.holdRightArrowSpeed)
         : defaults.holdRightArrowSpeed,
     gpuAcceleration: typeof playback.gpuAcceleration === 'boolean' ? playback.gpuAcceleration : defaults.gpuAcceleration,
+    endAction: isPlaybackEndAction(playback.endAction) ? playback.endAction : defaults.endAction,
+    repeatMode: isPlaybackRepeatMode(playback.repeatMode) ? playback.repeatMode : defaults.repeatMode,
+    order: isPlaybackOrder(playback.order) ? playback.order : defaults.order,
     lastVolume: isFiniteNumber(playback.lastVolume) ? Math.min(1, Math.max(0, playback.lastVolume)) : defaults.lastVolume,
     lastMuted: typeof playback.lastMuted === 'boolean' ? playback.lastMuted : defaults.lastMuted,
     lastPlaybackRate:
@@ -333,6 +404,8 @@ function sanitizePlaybackSettings(
         ? Math.min(16, playback.lastPlaybackRate)
         : defaults.lastPlaybackRate,
     lastProgressByPath: sanitizePlaybackProgressByPath(playback.lastProgressByPath, defaults.lastProgressByPath),
+    profilesByFingerprint: sanitizePlaybackProfiles(playback.profilesByFingerprint, defaults.profilesByFingerprint),
+    bookmarksByFingerprint: sanitizePlaybackBookmarks(playback.bookmarksByFingerprint, defaults.bookmarksByFingerprint),
     history: sanitizePlaybackHistory(playback.history, defaults.history)
   }
 }

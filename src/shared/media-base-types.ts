@@ -5,14 +5,15 @@ import type { SubtitleWord } from './subtitle-timing'
 
 export type { EditingProjectFileOpenResult, EditingProjectFileSaveRequest, EditingProjectFileSaveResult }
 
-export type MediaFile = { id: string; name: string; path: string; url: string; extension: string }
+export type MediaFile = { id: string; name: string; path: string; url: string; extension: string; fingerprint?: string }
 export type MediaProbeDetailScalar = string | number | boolean | null
 export interface MediaProbeDetailObject { [key: string]: MediaProbeDetailValue }
 export type MediaProbeDetailValue = MediaProbeDetailScalar | MediaProbeDetailObject | MediaProbeDetailValue[]
-export type MediaProbeDetails = { format: MediaProbeDetailObject | null; streams: MediaProbeDetailObject[] }
+export type MediaChapter = { id: string; startSeconds: number; endSeconds: number; title: string }
+export type MediaProbeDetails = { format: MediaProbeDetailObject | null; streams: MediaProbeDetailObject[]; chapters: MediaProbeDetailObject[] }
 export type MediaVideoMetadata = { codec: string | null; profile: string | null; width: number | null; height: number | null; frameRate: number | null; displayAspectRatio: string | null; bitRateKbps: number | null }
 export type MediaAudioMetadata = { codec: string | null; profile: string | null; channelLayout: string | null; sampleRateHz: number | null; bitRateKbps: number | null }
-export type MediaProbeMetadata = { fileSizeBytes: number; durationSeconds: number | null; overallBitrateKbps: number | null; video: MediaVideoMetadata | null; audio: MediaAudioMetadata | null; probeSource: 'ffprobe' | 'ffmpeg' | null; details: MediaProbeDetails | null }
+export type MediaProbeMetadata = { fileSizeBytes: number; durationSeconds: number | null; overallBitrateKbps: number | null; video: MediaVideoMetadata | null; audio: MediaAudioMetadata | null; chapters: MediaChapter[]; probeSource: 'ffprobe' | 'ffmpeg' | null; details: MediaProbeDetails | null }
 export type MediaFfmpegCapabilities = { available: boolean; subtitleBurnIn: boolean; subtitleFilter: 'subtitles' | 'ass' | null }
 export type MediaFilmstripRequest = { mediaPath: string; timestampsSeconds: number[]; width?: number; quality?: number }
 export type MediaFilmstripFrame = { sourceSeconds: number; dataUrl: string }

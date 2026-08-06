@@ -100,7 +100,20 @@
       exitFullscreen: '退出全屏',
       playbackPosition: '播放进度',
       volume: '音量',
-      playbackSpeed: '播放速度'
+      playbackSpeed: '播放速度',
+      repeat: '重复播放',
+      repeatNone: '不循环',
+      repeatCurrent: '循环当前媒体',
+      repeatAll: '循环播放列表',
+      shuffle: '随机播放',
+      shuffleOn: '已开启随机播放',
+      shuffleOff: '关闭随机播放',
+      endActionNext: '播放结束后播放下一条',
+      endActionStop: '播放结束后停止',
+      addBookmark: '添加时间书签',
+      bookmarkAt: (time: string) => `添加书签：${time}`,
+      removeBookmark: '移除时间书签',
+      chapterAt: (title: string, time: string) => `${title} · ${time}`
     },
     editing: {
       framingOrientationHint: '竖屏优先角落 · 横屏/方形优先分屏', recommended: '推荐', framingPresetTitle: '构图预设', framingPresetTarget: (count: number) => count > 1 ? `应用到 ${count} 个片段` : '当前片段', framingPresetNames: { full: '全景基线', 'punch-in': '重点特写', 'corner-br': '右下留白', 'corner-tl': '左上留白', 'split-left': '左侧分屏', 'split-right': '右侧分屏' },

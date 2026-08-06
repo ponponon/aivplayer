@@ -1,4 +1,10 @@
 
+.mode-button.active {
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.12);
+  border-color: rgba(var(--accent-rgb), 0.3);
+}
+
 .control-group.volume-group {
   flex: 0 1 320px;
   min-width: 160px;

@@ -8,6 +8,6 @@ export type PlaybackMemoryActions = ReturnType<typeof usePlaybackMemoryActions>
 
 export function usePlaybackActions(model: AppModel, derived: AppDerived, patchSection: AppSettingsSectionPatcher) {
   const memory = usePlaybackMemoryActions(model, patchSection)
-  const controls = usePlaybackControls(model, derived, memory)
+  const controls = usePlaybackControls(model, derived, memory, patchSection)
   return { ...memory, ...controls }
 }

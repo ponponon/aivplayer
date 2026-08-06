@@ -1,0 +1,53 @@
+.timeline-shell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 80px;
+}
+
+.timeline-shell .timeline {
+  width: 100%;
+}
+
+.timeline-markers {
+  position: absolute;
+  inset: 0 7px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.timeline-marker {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--accent);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  pointer-events: auto;
+  transform: translateX(-50%);
+}
+
+.chapter-marker {
+  top: 50%;
+  width: 3px;
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(var(--accent-rgb), 0.78);
+  opacity: 0.76;
+}
+
+.bookmark-marker {
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  color: var(--accent-strong);
+  transform: translate(-50%, -50%);
+}
+
+.timeline-marker:hover {
+  color: var(--text-primary);
+  opacity: 1;
+}

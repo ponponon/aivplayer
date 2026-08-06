@@ -100,7 +100,20 @@
       exitFullscreen: '全画面を終了',
       playbackPosition: '再生位置',
       volume: '音量',
-      playbackSpeed: '再生速度'
+      playbackSpeed: '再生速度',
+      repeat: 'リピート再生',
+      repeatNone: 'リピートなし',
+      repeatCurrent: '現在のメディアをリピート',
+      repeatAll: 'プレイリストをリピート',
+      shuffle: 'シャッフル再生',
+      shuffleOn: 'シャッフル再生中',
+      shuffleOff: 'シャッフルをオフ',
+      endActionNext: '終了後に次の項目を再生',
+      endActionStop: '終了後に停止',
+      addBookmark: '時間ブックマークを追加',
+      bookmarkAt: (time: string) => `ブックマークを追加：${time}`,
+      removeBookmark: '時間ブックマークを削除',
+      chapterAt: (title: string, time: string) => `${title} · ${time}`
     },
     editing: {
       cornerBottomRight: '右下コーナー', cornerTopLeft: '左上コーナー', splitLeft: '左分割', splitRight: '右分割', treatmentSize: '構図サイズ', framingOrientationHint: '縦長→コーナー · 横長/正方形→分割', recommended: '推奨', framingPresetTitle: '構図プリセット', framingPresetTarget: (count: number) => count > 1 ? `${count}個のクリップに適用` : '現在のクリップ', framingPresetNames: { full: '全景ベース', 'punch-in': '注目ズーム', 'corner-br': '右下の余白', 'corner-tl': '左上の余白', 'split-left': '左分割', 'split-right': '右分割' },

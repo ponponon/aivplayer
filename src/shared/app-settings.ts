@@ -3,8 +3,9 @@ import type { ClipExportLengthSeconds, ClipExportMode } from './clip-export'
 import type { PlaybackHistoryEntry } from './playback-history'
 import { DEFAULT_APP_LOCALE, DEFAULT_SUBTITLE_LANGUAGE, type AppLocale, type SubtitleLanguageId } from './localization'
 import type { SubtitleEmphasisMode, SubtitlePresetId } from './subtitle-presets'
+import type { PlaybackBookmark, PlaybackEndAction, PlaybackMediaProfile, PlaybackOrder, PlaybackRepeatMode } from './playback-memory'
 
-export const APP_SETTINGS_SCHEMA_VERSION = 19
+export const APP_SETTINGS_SCHEMA_VERSION = 20
 
 export const SIDE_PANEL_WIDTH_MIN = 240
 export const SIDE_PANEL_WIDTH_MAX = 480
@@ -59,10 +60,15 @@ export type AppSettings = {
     pauseWhenMinimized: boolean
     holdRightArrowSpeed: number
     gpuAcceleration: boolean
+    endAction: PlaybackEndAction
+    repeatMode: PlaybackRepeatMode
+    order: PlaybackOrder
     lastVolume: number
     lastMuted: boolean
     lastPlaybackRate: number
     lastProgressByPath: Record<string, number>
+    profilesByFingerprint: Record<string, PlaybackMediaProfile>
+    bookmarksByFingerprint: Record<string, PlaybackBookmark[]>
     history: PlaybackHistoryEntry[]
   }
   subtitles: {
@@ -207,10 +213,15 @@ export function createDefaultAppSettings(): AppSettings {
       pauseWhenMinimized: false,
       holdRightArrowSpeed: 4,
       gpuAcceleration: true,
+      endAction: 'next',
+      repeatMode: 'none',
+      order: 'normal',
       lastVolume: 0.8,
       lastMuted: false,
       lastPlaybackRate: 1,
       lastProgressByPath: {},
+      profilesByFingerprint: {},
+      bookmarksByFingerprint: {},
       history: []
     },
     subtitles: {

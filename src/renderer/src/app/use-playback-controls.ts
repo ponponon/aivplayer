@@ -1,12 +1,14 @@
 import type { MouseEvent as ReactMouseEvent, SyntheticEvent } from 'react'
+import type { AppSettingsSectionPatcher } from '../../../shared/app-settings'
 import type { PanelMode } from './player-state'
 import type { AppDerived } from './use-app-derived'
 import type { AppModel } from './app-types'
 import type { PlaybackMemoryActions } from './use-playback-actions'
 import { clamp } from '../lib/time'
 import { VIDEO_SINGLE_CLICK_DELAY_MS, getMediaErrorMessage, getPlayFailureMessage } from './app-helpers'
+import { getNextRepeatMode, getPlaybackEndedIndex } from '../../../shared/playback-policy'
 
-export function usePlaybackControls(model: AppModel, derived: AppDerived, memory: PlaybackMemoryActions) {
+export function usePlaybackControls(model: AppModel, derived: AppDerived, memory: PlaybackMemoryActions, patchSection: AppSettingsSectionPatcher) {
   const clearControlDeckHideTimer = (): void => { if (model.controlDeckHideTimerRef.current != null) window.clearTimeout(model.controlDeckHideTimerRef.current); model.controlDeckHideTimerRef.current = null }
   const revealControlDeck = (): void => {
     clearControlDeckHideTimer(); model.setIsControlDeckVisible(true)
@@ -30,7 +32,56 @@ export function usePlaybackControls(model: AppModel, derived: AppDerived, memory
     if (video) { model.playbackEndedRef.current = false; video.currentTime = 0; video.pause(); model.setState((current) => ({ ...current, isPlaying: false, currentTime: 0 })); model.lastSavedProgressRef.current = { path: file.path, time: 0 }; memory.persistPlaybackProgress(0, true) }
     void window.aiv.stopNativePlayer().catch(() => undefined)
   }
-  const playAdjacent = (direction: -1 | 1): void => { revealControlDeck(); if (!model.state.currentFile || model.state.playlist.length === 0) return; const index = model.state.playlist.findIndex((item) => item.path === model.state.currentFile?.path); memory.selectFile(model.state.playlist[clamp(index + direction, 0, model.state.playlist.length - 1)]) }
+  const playAdjacent = (direction: -1 | 1): void => {
+    revealControlDeck()
+    if (!model.state.currentFile || model.state.playlist.length === 0) return
+    const index = model.state.playlist.findIndex((item) => item.path === model.state.currentFile?.path)
+    if (index < 0) return
+    const nextIndex = index + direction
+    if (nextIndex >= 0 && nextIndex < model.state.playlist.length) memory.selectFile(model.state.playlist[nextIndex])
+    else if (direction === 1 && model.appSettings.playback.repeatMode === 'all') memory.selectFile(model.state.playlist[0])
+  }
+  const cycleRepeatMode = (): void => {
+    revealControlDeck()
+    patchSection('playback', (current) => ({ ...current, repeatMode: getNextRepeatMode(current.repeatMode) }))
+  }
+  const togglePlaybackOrder = (): void => {
+    revealControlDeck()
+    patchSection('playback', (current) => ({ ...current, order: current.order === 'normal' ? 'shuffle' : 'normal' }))
+  }
+  const togglePlaybackEndAction = (): void => {
+    revealControlDeck()
+    patchSection('playback', (current) => ({ ...current, endAction: current.endAction === 'next' ? 'stop' : 'next' }))
+  }
+  const handlePlaybackEnded = (): void => {
+    const file = model.state.currentFile
+    if (!file) return
+    model.playbackEndedRef.current = true
+    memory.persistPlaybackProgress(0, true)
+    const currentIndex = model.state.playlist.findIndex((item) => item.path === file.path)
+    const nextIndex = getPlaybackEndedIndex({
+      currentIndex,
+      itemCount: model.state.playlist.length,
+      endAction: model.appSettings.playback.endAction,
+      repeatMode: model.appSettings.playback.repeatMode,
+      order: model.appSettings.playback.order
+    })
+    model.setState((current) => ({ ...current, isPlaying: false, currentTime: 0 }))
+    if (nextIndex == null) return
+    if (nextIndex === currentIndex) {
+      const video = model.videoRef.current
+      model.playbackEndedRef.current = false
+      if (video) {
+        video.currentTime = 0
+        void video.play().catch((error) => {
+          const message = getPlayFailureMessage(derived.copy, error)
+          if (message) setPlaybackError(message)
+        })
+      }
+      return
+    }
+    memory.selectFile(model.state.playlist[nextIndex])
+  }
   const toggleMute = (): void => { revealControlDeck(); const video = model.videoRef.current; if (!video) return; const muted = !video.muted; video.muted = muted; model.setState((current) => ({ ...current, muted })); memory.syncPlaybackMemory(model.state.volume, muted, model.state.playbackRate) }
   const toggleFullscreen = async (): Promise<void> => { revealControlDeck(); const video = model.videoRef.current; if (!video) return; if (document.fullscreenElement) await document.exitFullscreen(); else await video.requestFullscreen() }
   const clearVideoClickTimer = (): void => { if (model.videoClickTimerRef.current != null) window.clearTimeout(model.videoClickTimerRef.current); model.videoClickTimerRef.current = null }
@@ -49,5 +100,5 @@ export function usePlaybackControls(model: AppModel, derived: AppDerived, memory
       memory.persistPlaybackProgress(nextTime, true)
     }
   }
-  return { clearControlDeckHideTimer, revealControlDeck, togglePanelMode, openPanelMode, setPlaybackError, clearPlaybackError, togglePlay, seekBy, seekTo, stopPlayback, playAdjacent, toggleMute, toggleFullscreen, handleVideoClick, handleVideoDoubleClick, handleMediaError }
+  return { clearControlDeckHideTimer, revealControlDeck, togglePanelMode, openPanelMode, setPlaybackError, clearPlaybackError, togglePlay, seekBy, seekTo, stopPlayback, playAdjacent, cycleRepeatMode, togglePlaybackOrder, togglePlaybackEndAction, handlePlaybackEnded, toggleMute, toggleFullscreen, handleVideoClick, handleVideoDoubleClick, handleMediaError }
 }

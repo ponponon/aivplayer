@@ -1,5 +1,6 @@
+import { existsSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { parseFfprobeOutput, parseMediaProbeOutput } from '../../src/core/media/media-metadata'
+import { createMediaProbeMetadata, parseFfprobeOutput, parseMediaProbeOutput } from '../../src/core/media/media-metadata'
 
 describe('media metadata probe parser', () => {
   it('extracts useful video and audio metadata from ffmpeg probe output', () => {
@@ -190,5 +191,40 @@ Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '/Users/ponponon/Music/aivplayer_test_vi
         handler_name: 'SoundHandler'
       }
     })
+  })
+
+  it('normalizes container chapters for the playback timeline', () => {
+    const metadata = parseFfprobeOutput(JSON.stringify({
+      format: { duration: '120' },
+      streams: [],
+      chapters: [
+        { id: 0, start_time: '0', end_time: '30', tags: { title: 'Opening' } },
+        { id: 1, start_time: '30', end_time: '120', tags: { title: 'Main section' } }
+      ]
+    }))
+
+    expect(metadata?.chapters).toEqual([
+      { id: '0', startSeconds: 0, endSeconds: 30, title: 'Opening' },
+      { id: '1', startSeconds: 30, endSeconds: 120, title: 'Main section' }
+    ])
+    expect(metadata?.details?.chapters).toHaveLength(2)
+  })
+
+  it('probes the local one-minute regression video when the shared test asset is available', async () => {
+    const filePath = '/Users/ponponon/Music/aivplayer_test_video_1min.mp4'
+    if (!existsSync(filePath)) return
+
+    const metadata = await createMediaProbeMetadata(filePath, {
+      resourcePath: process.cwd(),
+      env: {
+        ...process.env,
+        AIVPLAYER_FFPROBE_BIN: '/opt/homebrew/bin/ffprobe'
+      }
+    })
+
+    expect(metadata?.probeSource).toBe('ffprobe')
+    expect(metadata?.durationSeconds).toBeCloseTo(60.066667, 3)
+    expect(metadata?.details?.streams.length).toBe(2)
+    expect(metadata?.chapters).toEqual([])
   })
 })
