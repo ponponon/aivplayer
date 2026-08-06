@@ -110,7 +110,8 @@
 }
 
 .editing-framing-marker:hover > span,
-.editing-framing-marker:focus-visible > span {
+.editing-framing-marker:focus-visible > span,
+.editing-framing-marker.is-selected > span {
   background: var(--accent-strong);
   transform: rotate(45deg) scale(1.25);
 }

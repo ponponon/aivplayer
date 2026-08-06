@@ -77,6 +77,7 @@ describe('editing timeline source contracts', () => {
     expect(timeline).toContain('data-testid="editing-timeline"')
     expect(timeline).toContain('getEditingFramingKeyframes')
     expect(timeline).toContain('data-testid={`editing-framing-marker-${Math.round(keyframe.at * 1000)}`}')
+    expect(timeline).toContain('app.selectEditingClip(clip.id)')
     expect(rangeTrack).toContain('data-testid="editing-track"')
     expect(timeline).toContain('app.splitEditingClip')
     expect(timeline).toContain('app.trimEditingClipLeft')

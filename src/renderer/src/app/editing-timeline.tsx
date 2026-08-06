@@ -53,7 +53,7 @@ export function EditingTimeline(): React.ReactElement | null {
   const exportAudit = auditEditingExport(project, Object.keys(app.editingSourceFiles))
   const rulerTickCount = Math.min(MAX_RULER_TICKS, Math.max(2, Math.ceil(durationSeconds) + 1))
   const playheadPercent = durationSeconds > 0 ? (currentTime / durationSeconds) * 100 : 0
-  const framingMarkers = framingKeyframes.slice(1).filter((keyframe) => keyframe.at > 0 && keyframe.at < durationSeconds)
+  const framingMarkers = framingKeyframes.slice(1).filter((keyframe) => keyframe.at > 0 && keyframe.at < durationSeconds).map((keyframe) => ({ keyframe, clip: spans.find((span) => Math.abs(span.editedStartSeconds - keyframe.at) < 0.001)?.clip ?? null }))
   const snapPoints = [...new Set([currentTime, ...spans.flatMap((span) => [span.editedStartSeconds, span.editedEndSeconds])])]
   const overlaySnapPoints = [...new Set([
     ...snapPoints,
@@ -171,10 +171,11 @@ export function EditingTimeline(): React.ReactElement | null {
                 {clipDrag?.moved && clipDrag.to !== clipDrag.from ? <span className="editing-clip-drop-marker" style={{ left: `${durationSeconds > 0 ? (((clipDrag.to < clipDrag.from ? spans[clipDrag.to]!.editedStartSeconds : spans[clipDrag.to]!.editedEndSeconds) / durationSeconds) * 100) : 0}%` }} aria-hidden="true" /> : null}
               </div>
               <div className="editing-playhead" style={{ left: `${playheadPercent}%` }} aria-hidden="true"><span /></div>
-              {framingMarkers.map((keyframe) => {
+              {framingMarkers.map(({ keyframe, clip }) => {
                 const label = keyframe.state.treatment === 'punch-in' ? `${app.copy.editing.punchIn} ${Math.round(keyframe.state.scale * 100)}%` : app.copy.editing.fullFrame
                 const markerLabel = `${formatTime(keyframe.at)} · ${app.copy.editing.treatmentLabel}: ${label}`
-                return <button className="editing-framing-marker" key={`framing-marker-${keyframe.at}`} type="button" style={{ left: `${(keyframe.at / durationSeconds) * 100}%` }} title={markerLabel} aria-label={markerLabel} data-label={label} data-testid={`editing-framing-marker-${Math.round(keyframe.at * 1000)}`} onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); app.seekEditingTime(keyframe.at) }}><span aria-hidden="true" /></button>
+                const isSelected = clip?.id === app.editingSelectedClipId
+                return <button className={`editing-framing-marker ${isSelected ? 'is-selected' : ''}`} key={`framing-marker-${keyframe.at}`} type="button" style={{ left: `${(keyframe.at / durationSeconds) * 100}%` }} title={markerLabel} aria-label={markerLabel} data-label={label} data-clip-id={clip?.id} data-selected={isSelected ? 'true' : undefined} data-testid={`editing-framing-marker-${Math.round(keyframe.at * 1000)}`} onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); if (clip) app.selectEditingClip(clip.id); else app.seekEditingTime(keyframe.at) }}><span aria-hidden="true" /></button>
               })}
             </EditingRangeTrack>
           </div>
