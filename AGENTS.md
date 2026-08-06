@@ -10,6 +10,8 @@
 
 如果一次任务修改的文件等太多，你可以自己分阶段多次 commit，避免出现一个 commit 修改了几十个、几百个文件导致都无法 review 的问题
 
+对了，git 的 commit message 要用中文写
+
 ---
 
 对于 electron 的细节有不清楚的地方，可以直接去查看其源代码：~/Desktop/code/me/github/electron
