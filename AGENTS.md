@@ -61,3 +61,12 @@ github 发版要注意打上 tag，github releases 页面的东西也不要忘�
 对于新功能，你依据情况，可以加到 README.md 和 cloudflare pages （https://aivplayer.pages.dev/） 里面
 
 但不要什么细枝末节都加，要克制，有必要展示的才加
+
+----
+
+涉及以下操作时，禁止仅在默认沙盒中执行，必须使用宿主权限：
+- test-proxy.sh、代理端口检测
+- gh auth/status/api/run/release
+- git push、git tag、GitHub/Gitee Release
+- 访问 macOS Keychain、npm/GitHub/Gitee/Cloudflare
+- npm install 或其他需要下载外部资源的命令
