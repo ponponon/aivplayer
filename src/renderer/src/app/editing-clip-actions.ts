@@ -5,6 +5,7 @@ import { updateEditingClipFilter } from '../../../core/editing/filter-operations
 import { updateEditingClipTransition } from '../../../core/editing/transition-operations'
 import { updateEditingClipMotion } from '../../../core/editing/clip-motion'
 import { updateEditingClipPersonMatte } from '../../../core/editing/person-matte-operations'
+import { applyEditingFramingPreset as applyEditingFramingPresetToClips, type EditingFramingPresetId } from '../../../core/editing/framing-presets'
 import type { EditingClipFilter, EditingClipTransition, EditingClipTreatment, EditingPersonMatte, EditingTreatmentAnchor, EditingVideoClip } from '../../../shared/editing-types'
 import type { AppModel } from './app-types'
 import { applyEditingTimelineChange, reorderEditingCaptions, seekEditingTime } from './editing-action-helpers'
@@ -75,6 +76,20 @@ export function createEditingClipActions(model: AppModel) {
     saveEditingProject(nextProject)
   }
 
+  const applyEditingFramingPreset = (clipIds: readonly string[], presetId: EditingFramingPresetId): void => {
+    const project = model.editingProject
+    if (!project) return
+    const targetIds = clipIds.filter((clipId) => project.videoClips.some((clip) => clip.id === clipId))
+    if (targetIds.length === 0) return
+    const nextClips = applyEditingFramingPresetToClips(project.videoClips, targetIds, presetId)
+    if (nextClips.every((clip, index) => clip === project.videoClips[index])) return
+    const nextProject = { ...project, updatedAt: Date.now(), videoClips: nextClips }
+    model.setEditingPast((past) => [...past, project])
+    model.setEditingFuture([])
+    model.setEditingProject(nextProject)
+    saveEditingProject(nextProject)
+  }
+
   const setEditingClipFilter = (clipId: string, filter: EditingClipFilter): void => {
     model.setEditingClipPreview(null)
     const project = model.editingProject
@@ -134,5 +149,5 @@ export function createEditingClipActions(model: AppModel) {
     saveEditingProject(nextProject)
   }
 
-  return { selectEditingClip, reorderEditingClips, moveSelectedEditingClip, deleteEditingRange, updateEditingClipBoundary, setEditingClipTreatment, setEditingClipFilter, previewEditingClipTreatment, previewEditingClipFilter, setEditingClipTransition, setEditingClipMotion, setEditingClipPersonMatte }
+  return { selectEditingClip, reorderEditingClips, moveSelectedEditingClip, deleteEditingRange, updateEditingClipBoundary, setEditingClipTreatment, applyEditingFramingPreset, setEditingClipFilter, previewEditingClipTreatment, previewEditingClipFilter, setEditingClipTransition, setEditingClipMotion, setEditingClipPersonMatte }
 }

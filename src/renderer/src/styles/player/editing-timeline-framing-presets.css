@@ -1,0 +1,79 @@
+.editing-framing-preset-control {
+  position: relative;
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+  background: rgba(var(--overlay-rgb), .04);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+}
+
+.editing-framing-preset-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 0 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 9px;
+  list-style: none;
+  white-space: nowrap;
+}
+
+.editing-framing-preset-summary::-webkit-details-marker { display: none; }
+.editing-framing-preset-summary svg { color: var(--accent); }
+.editing-framing-preset-summary small { color: var(--accent); font-size: 8px; }
+
+.editing-framing-preset-popover {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  z-index: 12;
+  display: grid;
+  gap: 8px;
+  min-width: 272px;
+  padding: 10px;
+  background: var(--bg-control);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-heavy);
+}
+
+.editing-framing-preset-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.editing-framing-preset-heading small { color: var(--accent); font-size: 8px; }
+
+.editing-framing-preset-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.editing-framing-preset-option {
+  display: grid;
+  min-height: 54px;
+  align-content: center;
+  justify-items: center;
+  gap: 2px;
+  padding: 4px 3px;
+  color: var(--text-muted);
+  background: rgba(var(--overlay-rgb), .06);
+  border: 1px solid var(--border-soft);
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 8px;
+  white-space: nowrap;
+}
+
+.editing-framing-preset-option .editing-treatment-glyph { width: 43px; height: 28px; }
+.editing-framing-preset-option span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.editing-framing-preset-option:hover, .editing-framing-preset-option.is-active { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
+.editing-framing-preset-option:disabled { cursor: not-allowed; opacity: .3; }
+.editing-framing-preset-option:disabled.is-active { color: var(--text-secondary); background: rgba(var(--overlay-rgb), .08); border-color: var(--border-soft); opacity: .7; }
+.editing-framing-preset-option:disabled:hover { color: var(--text-muted); background: rgba(var(--overlay-rgb), .06); border-color: var(--border-soft); }

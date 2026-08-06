@@ -25,7 +25,7 @@ type EditingTreatmentControlProps = {
   onChange: (treatment: EditingClipTreatment, scale?: number, anchor?: EditingTreatmentAnchor, size?: number) => void
 }
 
-function TreatmentGlyph({ treatment }: { treatment: EditingClipTreatment }): React.ReactElement {
+export function TreatmentGlyph({ treatment }: { treatment: EditingClipTreatment }): React.ReactElement {
   const compact = treatment === 'corner-br' || treatment === 'corner-tl' || treatment === 'split-left' || treatment === 'split-right'
   return <svg className={`editing-treatment-glyph is-${treatment}`} viewBox="0 0 48 32" aria-hidden="true">
     <rect className="editing-treatment-glyph-canvas" x="1" y="1" width="46" height="30" rx="4" />
