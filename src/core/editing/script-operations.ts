@@ -15,6 +15,10 @@ function sameEditingScriptWord(left: EditingCaptionWord, right: EditingCaptionWo
   return Math.abs(left.startSeconds - right.startSeconds) < 0.001 && Math.abs(left.endSeconds - right.endSeconds) < 0.001 && left.text === right.text
 }
 
+function normalizeReplacementText(text: string): string {
+  return text.replace(/\s+/g, ' ').trim()
+}
+
 /** Maps a script word's row-relative timing back to the source file timeline. */
 export function getEditingScriptWordSourceRange(segment: Pick<EditingScriptSegment, 'sourceStartSeconds' | 'sourceEndSeconds'>, word: EditingCaptionWord): { startSeconds: number; endSeconds: number } | null {
   const startSeconds = Math.max(segment.sourceStartSeconds, segment.sourceStartSeconds + word.startSeconds)
@@ -33,6 +37,28 @@ export function removeEditingScriptWord(segment: EditingScriptSegment, word: Edi
   const words = segment.words.filter((candidate) => !sameEditingScriptWord(candidate, word))
   if (words.length === segment.words.length) return segment
   return { ...segment, text: joinSubtitleWords(words), words }
+}
+
+/** Removes several timed words from a script row in one pure operation. */
+export function removeEditingScriptWords(segment: EditingScriptSegment, wordsToRemove: readonly EditingCaptionWord[]): EditingScriptSegment {
+  if (!segment.words || wordsToRemove.length === 0) return segment
+  const words = segment.words.filter((candidate) => !wordsToRemove.some((word) => sameEditingScriptWord(candidate, word)))
+  if (words.length === segment.words.length) return segment
+  return { ...segment, text: joinSubtitleWords(words), words }
+}
+
+/** Replaces one word while deliberately preserving its original timing. */
+export function replaceEditingScriptWord(segment: EditingScriptSegment, word: EditingCaptionWord, replacementText: string): EditingScriptSegment {
+  if (!segment.words) return segment
+  const normalizedText = normalizeReplacementText(replacementText)
+  if (!normalizedText) return segment
+  let replaced = false
+  const words = segment.words.map((candidate) => {
+    if (!sameEditingScriptWord(candidate, word)) return candidate
+    replaced = true
+    return { ...candidate, text: normalizedText }
+  })
+  return replaced ? { ...segment, text: joinSubtitleWords(words), words } : segment
 }
 
 /** Updates one persisted script row without changing its source timing or deletion state. */
@@ -57,6 +83,15 @@ export function updateEditingSourceCaptionText(captions: readonly EditingCaption
     if (caption.words) delete next.words
     return next
   })
+}
+
+/** Updates a source caption's visible text without discarding its surviving word timings. */
+export function syncEditingSourceCaptionText(captions: readonly EditingCaption[], captionId: string, text: string): EditingCaption[] {
+  const normalizedText = normalizeScriptText(text)
+  if (!normalizedText) return [...captions]
+  return captions.map((caption) => caption.id === captionId && caption.kind === 'source' && caption.text !== normalizedText
+    ? { ...caption, text: normalizedText }
+    : caption)
 }
 
 function translationFor(source: EditingCaption, translations: readonly EditingCaption[]): EditingCaption | null {
