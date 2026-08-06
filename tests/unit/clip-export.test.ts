@@ -6,6 +6,7 @@ import {
   trimSrtToClip
 } from '../../src/core/media/clip-export'
 import { buildTimelineExportDefaultVideoPath, buildTimelineConcatArgs, buildTimelineGraphicOverlayFilter, buildTimelineSegmentArgs, buildTimelineSubtitleText, buildTimelineXfadeArgs, getTimelineXfadeTransitionName } from '../../src/core/media/timeline-export'
+import { getEditingFramingState, getEditingFramingTransition } from '../../src/core/editing/framing-operations'
 import { buildTimelineExportDefaultFileName, getTimelineExportPathBaseName, getTimelineExportPathDirectory, joinTimelineExportPath, normalizeTimelineExportFileName } from '../../src/shared/timeline-export-path'
 
 describe('clip export helpers', () => {
@@ -91,6 +92,20 @@ describe('clip export helpers', () => {
     expect(args).toEqual(expect.arrayContaining(['-vf', 'crop=trunc(iw/1.5/2)*2:trunc(ih/1.5/2)*2:iw-ow:(ih-oh)/2,scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1']))
   })
 
+  it('animates framing at a changed clip boundary with a frame-evaluated scale composition', () => {
+    const framingTransition = getEditingFramingTransition(
+      getEditingFramingState({}),
+      getEditingFramingState({ treatment: 'punch-in', treatmentScale: 1.6, treatmentAnchor: 'left' }),
+      2
+    )
+    const args = buildTimelineSegmentArgs({ mediaPath: '/clips/demo.mp4', startSeconds: 2, endSeconds: 4, durationSeconds: 2, treatment: 'punch-in', treatmentScale: 1.6, treatmentAnchor: 'left' }, '/tmp/punch-transition.mp4', { width: 1280, height: 720 }, 0, true, framingTransition ?? undefined)
+    const filterComplex = args[args.indexOf('-filter_complex') + 1]
+    expect(filterComplex).toContain('eval=frame')
+    expect(filterComplex).toContain('if(lt(t\\,0.35)')
+    expect(filterComplex).toContain('scale=1280:720')
+    expect(args).not.toContain('-vf')
+  })
+
   it('exports clip-level color grading through the FFmpeg eq filter', () => {
     const args = buildTimelineSegmentArgs({ mediaPath: '/clips/demo.mp4', startSeconds: 0, endSeconds: 2, durationSeconds: 2, filter: { brightness: 1.2, contrast: 0.9, saturate: 1.1 } }, '/tmp/color-grade.mp4', { width: 1280, height: 720 })
     expect(args).toEqual(expect.arrayContaining(['-vf', 'eq=brightness=0.2:contrast=0.9:saturation=1.1,scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1']))
@@ -134,6 +149,18 @@ describe('clip export helpers', () => {
     expect(filterComplex).toContain("overlay=x='(-1280)*(1-if(lt(t\\,0)\\,0\\,if(lt(t\\,0.5)\\,(t-0)/0.5\\,1)))+(1280-overlay_w)/2'")
     expect(filterComplex).toContain('scale=w=')
     expect(args).not.toContain('-vf')
+  })
+
+  it('keeps framing interpolation on the alpha-composited person matte foreground', () => {
+    const framingTransition = getEditingFramingTransition(
+      getEditingFramingState({ treatment: 'punch-in', treatmentScale: 1.6, treatmentAnchor: 'left' }),
+      getEditingFramingState({ treatment: 'punch-in', treatmentScale: 1.2, treatmentAnchor: 'right' })
+    )
+    const args = buildTimelineSegmentArgs({ mediaPath: '/clips/motion-person.mp4', startSeconds: 0, endSeconds: 4, durationSeconds: 4, treatment: 'punch-in', treatmentScale: 1.2, treatmentAnchor: 'right', personMatte: { enabled: true }, personMatteTrack: { sampleFps: 15, framePattern: '/cache/mask-%06d.png', frameCount: 60 } }, '/tmp/motion-person-framing.mp4', { width: 1280, height: 720, frameRate: 30 }, 0, true, framingTransition ?? undefined)
+    const filterComplex = args[args.indexOf('-filter_complex') + 1]
+    expect(filterComplex).toContain('[person-matte-composite]format=rgba,scale=w=')
+    expect(filterComplex).toContain('eval=frame')
+    expect(filterComplex).not.toContain('crop=trunc(iw/1.2')
   })
 
   it('builds a duration-preserving xfade chain for Pireel-style seam effects', () => {

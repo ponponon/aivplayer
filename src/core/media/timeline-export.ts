@@ -15,6 +15,7 @@ import { getEditingClipTransition } from '../editing/transition-operations'
 import { getEditingClipTreatment, getEditingClipTreatmentAnchor, getEditingClipTreatmentScale } from '../editing/treatment-operations'
 import { getEditingVideoBlockBorderRadius, getEditingVideoBlockBorderWidth, getEditingVideoBlockMotion, getEditingVideoBlockSize } from '../editing/video-block-operations'
 import { getEditingClipMotion } from '../editing/clip-motion'
+import { getEditingFramingState, getEditingFramingTransform, getEditingFramingTransition, type EditingFramingTransition } from '../editing/framing-operations'
 import { getEditingPersonMatteFeatherPixels, getEditingPersonMatteOutlinePixels, getEditingPersonMatteSettings } from '../editing/person-matte'
 import { buildTimelineExportDefaultFileName, getTimelineExportPathDirectory, joinTimelineExportPath } from '../../shared/timeline-export-path'
 import type { SubtitleRenderSettings } from '../../shared/subtitle-presets'
@@ -138,6 +139,14 @@ function transitionHalfDuration(clip: TimelineExportClip, durationSeconds: numbe
   return transition?.type === 'fade' ? Math.min(Math.max(0, durationSeconds / 2), transition.durationSeconds / 2) : 0
 }
 
+function buildFramingCropFilter(clip: TimelineExportClip): string | null {
+  if (getEditingClipTreatment(clip) !== 'punch-in') return null
+  const scale = getEditingClipTreatmentScale(clip)
+  const anchor = getEditingClipTreatmentAnchor(clip)
+  const cropX = anchor === 'left' ? '0' : anchor === 'right' ? 'iw-ow' : '(iw-ow)/2'
+  return `crop=trunc(iw/${scale}/2)*2:trunc(ih/${scale}/2)*2:${cropX}:(ih-oh)/2`
+}
+
 function buildVideoFilter(format: TimelineExportFormat | undefined, clip: TimelineExportClip, fadeInDuration = 0, fadeOutDuration = 0): string {
   const width = evenDimension(format?.width)
   const height = evenDimension(format?.height)
@@ -149,12 +158,8 @@ function buildVideoFilter(format: TimelineExportFormat | undefined, clip: Timeli
   const filters: string[] = []
   const color = getEditingClipFilter(clip)
   if (color.brightness !== 1 || color.contrast !== 1 || color.saturate !== 1) filters.push(`eq=brightness=${Math.round((color.brightness - 1) * 1000) / 1000}:contrast=${color.contrast}:saturation=${color.saturate}`)
-  if (getEditingClipTreatment(clip) === 'punch-in') {
-    const scale = getEditingClipTreatmentScale(clip)
-    const anchor = getEditingClipTreatmentAnchor(clip)
-    const cropX = anchor === 'left' ? '0' : anchor === 'right' ? 'iw-ow' : '(iw-ow)/2'
-    filters.push(`crop=trunc(iw/${scale}/2)*2:trunc(ih/${scale}/2)*2:${cropX}:(ih-oh)/2`)
-  }
+  const framingCropFilter = buildFramingCropFilter(clip)
+  if (framingCropFilter) filters.push(framingCropFilter)
   if (fadeInDuration > 0) filters.push(`fade=t=in:st=0:d=${fadeInDuration}:color=black`)
   if (fadeOutDuration > 0) filters.push(`fade=t=out:st=${Math.max(0, clip.endSeconds - clip.startSeconds - fadeOutDuration)}:d=${fadeOutDuration}:color=black`)
   return [...filters, fitFilter].join(',')
@@ -164,12 +169,8 @@ function buildPersonMatteMaskFilter(format: TimelineExportFormat | undefined, cl
   const width = evenDimension(format?.width)
   const height = evenDimension(format?.height)
   const filters = [`fps=${sampleFps}`, 'format=rgba', 'alphaextract']
-  if (getEditingClipTreatment(clip) === 'punch-in') {
-    const scale = getEditingClipTreatmentScale(clip)
-    const anchor = getEditingClipTreatmentAnchor(clip)
-    const cropX = anchor === 'left' ? '0' : anchor === 'right' ? 'iw-ow' : '(iw-ow)/2'
-    filters.push(`crop=trunc(iw/${scale}/2)*2:trunc(ih/${scale}/2)*2:${cropX}:(ih-oh)/2`)
-  }
+  const framingCropFilter = buildFramingCropFilter(clip)
+  if (framingCropFilter) filters.push(framingCropFilter)
   const settings = getEditingPersonMatteSettings(clip.personMatte)
   const featherPixels = getEditingPersonMatteFeatherPixels(settings)
   if (featherPixels > 0) filters.push(`boxblur=${featherPixels}:1`)
@@ -204,37 +205,71 @@ function hasClipMotion(clip: TimelineExportClip): boolean {
   return motion.enterMotion !== 'none' || motion.exitMotion !== 'none'
 }
 
-function buildTimelineMotionCompositionFilterComplex(clip: NormalizedClip, format: TimelineExportFormat, frameRate: number, colorInputIndex: number, fadeInDuration: number, fadeOutDuration: number, foregroundSource: string, baseForegroundFilters: readonly string[], outputLabel: string): string {
+function framingProgressExpression(durationSeconds: number): string {
+  return `if(lt(t,${durationSeconds}),t/${durationSeconds},1)`
+}
+
+function getFramingTransitionExpressions(transition: EditingFramingTransition): { scale: string; translateX: string } {
+  const progress = framingProgressExpression(transition.durationSeconds)
+  const from = getEditingFramingTransform(transition.from)
+  const to = getEditingFramingTransform(transition.to)
+  return {
+    scale: `${from.scale}+(${to.scale}-${from.scale})*(${progress})`,
+    translateX: `${from.translateXPercent}+(${to.translateXPercent}-${from.translateXPercent})*(${progress})`
+  }
+}
+
+function removeClipFraming(clip: NormalizedClip): NormalizedClip {
+  return { ...clip, treatment: 'full', treatmentScale: undefined, treatmentAnchor: undefined }
+}
+
+function buildTimelineMotionCompositionFilterComplex(clip: NormalizedClip, format: TimelineExportFormat, frameRate: number, colorInputIndex: number, fadeInDuration: number, fadeOutDuration: number, foregroundSource: string, baseForegroundFilters: readonly string[], outputLabel: string, framingTransition?: EditingFramingTransition): string {
   const width = evenDimension(format.width)!
   const height = evenDimension(format.height)!
   const motion = getEditingClipMotion(clip)
   const durationSeconds = Math.min(motion.durationSeconds, clip.durationSeconds / 2)
   const exitStartSeconds = Math.max(0, clip.durationSeconds - durationSeconds)
-  const foregroundFilters = [...baseForegroundFilters]
+  const framingExpressions = framingTransition ? getFramingTransitionExpressions(framingTransition) : null
+  const framingBaseFilters = foregroundSource === '[0:v]'
+    ? [buildVideoFilter(format, removeClipFraming(clip), fadeInDuration, fadeOutDuration)]
+    : [...baseForegroundFilters]
+  const foregroundFilters = framingTransition
+    ? [...framingBaseFilters, `scale=w='trunc(iw*(${escapeFilterExpression(framingExpressions!.scale)})/2)*2':h='trunc(ih*(${escapeFilterExpression(framingExpressions!.scale)})/2)*2':eval=frame`]
+    : [...baseForegroundFilters]
   if (motion.enterMotion === 'fade') foregroundFilters.push(`fade=t=in:st=0:d=${durationSeconds}:color=black`)
   if (motion.exitMotion === 'fade') foregroundFilters.push(`fade=t=out:st=${exitStartSeconds}:d=${durationSeconds}:color=black`)
   const scaleExpression = clipMotionScaleExpression(motion.enterMotion, motion.exitMotion, durationSeconds, exitStartSeconds)
   if (scaleExpression) foregroundFilters.push(`scale=w='trunc(iw*(${escapeFilterExpression(scaleExpression)})/2)*2':h='trunc(ih*(${escapeFilterExpression(scaleExpression)})/2)*2':eval=frame`)
   const xExpression = clipMotionOffsetExpression('x', width, motion.enterMotion, motion.exitMotion, durationSeconds, exitStartSeconds)
   const yExpression = clipMotionOffsetExpression('y', height, motion.enterMotion, motion.exitMotion, durationSeconds, exitStartSeconds)
-  const xPosition = scaleExpression ? `${xExpression}+(${width}-overlay_w)/2` : xExpression
-  const yPosition = scaleExpression ? `${yExpression}+(${height}-overlay_h)/2` : yExpression
+  const framingOffsetExpression = framingExpressions ? `(${framingExpressions.translateX}/100)*${width}` : '0'
+  const xPosition = framingExpressions
+    ? `${scaleExpression ? `${xExpression}+(${width}-overlay_w)/2` : xExpression}+${framingOffsetExpression}`
+    : scaleExpression
+      ? `${xExpression}+(${width}-overlay_w)/2`
+      : xExpression
+  const yPosition = framingExpressions
+    ? `${yExpression}+(${height}-overlay_h)/2`
+    : scaleExpression
+      ? `${yExpression}+(${height}-overlay_h)/2`
+      : yExpression
   return `${foregroundSource}${foregroundFilters.join(',')}[clip-motion-fg];[${colorInputIndex}:v]format=yuv420p[clip-motion-bg];[clip-motion-bg][clip-motion-fg]overlay=x='${escapeFilterExpression(xPosition)}':y='${escapeFilterExpression(yPosition)}':shortest=1:format=auto${outputLabel}`
 }
 
-function buildTimelineClipMotionFilterComplex(clip: NormalizedClip, format: TimelineExportFormat, frameRate: number, colorInputIndex: number, fadeInDuration: number, fadeOutDuration: number): string {
-  return buildTimelineMotionCompositionFilterComplex(clip, format, frameRate, colorInputIndex, fadeInDuration, fadeOutDuration, '[0:v]', [buildVideoFilter(format, clip, fadeInDuration, fadeOutDuration)], '[clip-motion-v]')
+function buildTimelineClipMotionFilterComplex(clip: NormalizedClip, format: TimelineExportFormat, frameRate: number, colorInputIndex: number, fadeInDuration: number, fadeOutDuration: number, framingTransition?: EditingFramingTransition): string {
+  return buildTimelineMotionCompositionFilterComplex(clip, format, frameRate, colorInputIndex, fadeInDuration, fadeOutDuration, '[0:v]', [buildVideoFilter(format, clip, fadeInDuration, fadeOutDuration)], '[clip-motion-v]', framingTransition)
 }
 
-function buildPersonMatteFilterComplex(format: TimelineExportFormat | undefined, clip: NormalizedClip, sampleFps: number, personMatteInputIndex: number, frameRate: number, fadeInDuration: number, fadeOutDuration: number, outputLabel: string): string {
+function buildPersonMatteFilterComplex(format: TimelineExportFormat | undefined, clip: NormalizedClip, sampleFps: number, personMatteInputIndex: number, frameRate: number, fadeInDuration: number, fadeOutDuration: number, outputLabel: string, framingTransition?: EditingFramingTransition): string {
   const personMatteSettings = getEditingPersonMatteSettings(clip.personMatte)
   const outputWidth = evenDimension(format?.width)
   const outputHeight = evenDimension(format?.height)
   const canDrawOutline = personMatteSettings.outlineWidthPercent > 0 && outputWidth !== null && outputHeight !== null
   const outlinePasses = canDrawOutline ? Math.max(1, Math.min(16, getEditingPersonMatteOutlinePixels(personMatteSettings, outputWidth!, outputHeight!))) : 0
   const outlineMaskFilter = outlinePasses > 0 ? Array.from({ length: outlinePasses }, () => 'dilation=coordinates=255').join(',') : ''
-  if (!canDrawOutline) return `[0:v]${buildVideoFilter(format, clip, fadeInDuration, fadeOutDuration)},format=rgba[person-matte-video];[${personMatteInputIndex}:v]${buildPersonMatteMaskFilter(format, clip, sampleFps)}[person-matte-mask];[person-matte-video][person-matte-mask]alphamerge${outputLabel}`
-  return `[0:v]${buildVideoFilter(format, clip, fadeInDuration, fadeOutDuration)},format=rgba[person-matte-video];[${personMatteInputIndex}:v]${buildPersonMatteMaskFilter(format, clip, sampleFps)}[person-matte-mask-source];[person-matte-mask-source]split=2[person-matte-mask][person-matte-outline-mask];[person-matte-video][person-matte-mask]alphamerge[person-matte-foreground];color=c=0x${personMatteSettings.outlineColor.slice(1)}:s=${outputWidth}x${outputHeight}:r=${frameRate}:d=${clip.durationSeconds},format=rgba[person-matte-outline-color];[person-matte-outline-mask]${outlineMaskFilter}[person-matte-outline-dilated];[person-matte-outline-color][person-matte-outline-dilated]alphamerge[person-matte-outline];[person-matte-outline][person-matte-foreground]overlay=format=auto${outputLabel}`
+  const baseClip = framingTransition ? removeClipFraming(clip) : clip
+  if (!canDrawOutline) return `[0:v]${buildVideoFilter(format, baseClip, fadeInDuration, fadeOutDuration)},format=rgba[person-matte-video];[${personMatteInputIndex}:v]${buildPersonMatteMaskFilter(format, baseClip, sampleFps)}[person-matte-mask];[person-matte-video][person-matte-mask]alphamerge${outputLabel}`
+  return `[0:v]${buildVideoFilter(format, baseClip, fadeInDuration, fadeOutDuration)},format=rgba[person-matte-video];[${personMatteInputIndex}:v]${buildPersonMatteMaskFilter(format, baseClip, sampleFps)}[person-matte-mask-source];[person-matte-mask-source]split=2[person-matte-mask][person-matte-outline-mask];[person-matte-video][person-matte-mask]alphamerge[person-matte-foreground];color=c=0x${personMatteSettings.outlineColor.slice(1)}:s=${outputWidth}x${outputHeight}:r=${frameRate}:d=${clip.durationSeconds},format=rgba[person-matte-outline-color];[person-matte-outline-mask]${outlineMaskFilter}[person-matte-outline-dilated];[person-matte-outline-color][person-matte-outline-dilated]alphamerge[person-matte-outline];[person-matte-outline][person-matte-foreground]overlay=format=auto${outputLabel}`
 }
 
 function buildSilenceInput(sampleRate: number, channels: number): string {
@@ -245,7 +280,7 @@ function clipVolume(clip: TimelineExportClip): number {
   return isEditingClipMuted(clip) ? 0 : getEditingClipVolume(clip)
 }
 
-export function buildTimelineSegmentArgs(clip: NormalizedClip, outputPath: string, format?: TimelineExportFormat, transitionOutDuration = 0, applyLegacySeamFade = true): string[] {
+export function buildTimelineSegmentArgs(clip: NormalizedClip, outputPath: string, format?: TimelineExportFormat, transitionOutDuration = 0, applyLegacySeamFade = true, framingTransition?: EditingFramingTransition): string[] {
   const frameRate = positiveNumber(format?.frameRate, 30)
   const audioSampleRate = Math.round(positiveNumber(format?.audioSampleRate, 48000))
   const audioChannels = Math.max(1, Math.round(positiveNumber(format?.audioChannels, 2)))
@@ -260,20 +295,20 @@ export function buildTimelineSegmentArgs(clip: NormalizedClip, outputPath: strin
   const personMatteTrack = clip.personMatteTrack && clip.personMatte?.enabled ? clip.personMatteTrack : null
   if (personMatteTrack) args.push('-framerate', String(personMatteTrack.sampleFps), '-start_number', '0', '-i', personMatteTrack.framePattern)
   const personMatteInputIndex = clip.hasAudio === false ? 2 : 1
-  const useMotionFilter = Boolean(format?.width && format?.height && hasClipMotion(clip))
+  const useMotionFilter = Boolean(format?.width && format?.height && (hasClipMotion(clip) || framingTransition))
   if (useMotionFilter && !personMatteTrack) {
     const colorInputIndex = clip.hasAudio === false ? 2 : 1
     args.push('-f', 'lavfi', '-i', `color=c=black:s=${evenDimension(format?.width)}x${evenDimension(format?.height)}:r=${frameRate}:d=${clip.durationSeconds}`)
-    args.push('-t', String(clip.durationSeconds), '-map', '[clip-motion-v]', '-map', clip.hasAudio === false ? '1:a:0' : '0:a?', '-filter_complex', buildTimelineClipMotionFilterComplex(clip, format!, frameRate, colorInputIndex, fadeInDuration, fadeOutDuration), '-af', audioFilters.join(','), '-r', String(frameRate), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-ar', String(audioSampleRate), '-ac', String(audioChannels), '-b:a', '192k', '-avoid_negative_ts', 'make_zero', outputPath)
+    args.push('-t', String(clip.durationSeconds), '-map', '[clip-motion-v]', '-map', clip.hasAudio === false ? '1:a:0' : '0:a?', '-filter_complex', buildTimelineClipMotionFilterComplex(clip, format!, frameRate, colorInputIndex, fadeInDuration, fadeOutDuration, framingTransition), '-af', audioFilters.join(','), '-r', String(frameRate), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-ar', String(audioSampleRate), '-ac', String(audioChannels), '-b:a', '192k', '-avoid_negative_ts', 'make_zero', outputPath)
   } else {
     if (personMatteTrack) {
       const usePersonMatteMotion = useMotionFilter && format !== undefined
       const personMatteOutputLabel = usePersonMatteMotion ? '[person-matte-composite]' : '[person-matte-v]'
-      const personMatteFilter = buildPersonMatteFilterComplex(format, clip, personMatteTrack.sampleFps, personMatteInputIndex, frameRate, fadeInDuration, fadeOutDuration, personMatteOutputLabel)
+      const personMatteFilter = buildPersonMatteFilterComplex(format, clip, personMatteTrack.sampleFps, personMatteInputIndex, frameRate, fadeInDuration, fadeOutDuration, personMatteOutputLabel, framingTransition)
       if (usePersonMatteMotion) {
         const colorInputIndex = personMatteInputIndex + 1
         args.push('-f', 'lavfi', '-i', `color=c=black:s=${evenDimension(format.width)}x${evenDimension(format.height)}:r=${frameRate}:d=${clip.durationSeconds}`)
-        const motionFilter = buildTimelineMotionCompositionFilterComplex(clip, format, frameRate, colorInputIndex, 0, 0, '[person-matte-composite]', ['format=rgba'], '[person-matte-v]')
+        const motionFilter = buildTimelineMotionCompositionFilterComplex(clip, format, frameRate, colorInputIndex, 0, 0, '[person-matte-composite]', ['format=rgba'], '[person-matte-v]', framingTransition)
         args.push('-t', String(clip.durationSeconds), '-map', '[person-matte-v]', '-filter_complex', `${personMatteFilter};${motionFilter}`)
       } else args.push('-t', String(clip.durationSeconds), '-filter_complex', personMatteFilter, '-map', '[person-matte-v]')
     } else args.push('-t', String(clip.durationSeconds), '-map', '0:v:0', '-vf', buildVideoFilter(format, clip, fadeInDuration, fadeOutDuration))
@@ -555,7 +590,10 @@ export async function runTimelineExport(options: RunTimelineExportOptions): Prom
     for (const [index, clip] of clips.entries()) {
       const segmentPath = join(tempDirectory, `segment-${String(index).padStart(4, '0')}.mp4`)
       const nextTransition = useXfadeTransitions ? null : clips[index + 1] ? getEditingClipTransition(clips[index + 1]!) : null
-      const result = await runProcess(options.ffmpegPath, buildTimelineSegmentArgs(clip, segmentPath, options.outputFormat, nextTransition?.durationSeconds ?? 0, !useXfadeTransitions))
+      const previousFramingState = index > 0 ? getEditingFramingState(clips[index - 1]!) : null
+      const currentFramingState = getEditingFramingState(clip)
+      const framingTransition = previousFramingState ? getEditingFramingTransition(previousFramingState, currentFramingState, clip.durationSeconds) : null
+      const result = await runProcess(options.ffmpegPath, buildTimelineSegmentArgs(clip, segmentPath, options.outputFormat, nextTransition?.durationSeconds ?? 0, !useXfadeTransitions, framingTransition ?? undefined))
       if (result.code !== 0) throw new Error(`${copy.runtime.clipExportFailed}：${tailOutput(result.output)}`)
       segmentPaths.push(segmentPath)
     }
