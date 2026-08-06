@@ -75,6 +75,8 @@ describe('editing timeline source contracts', () => {
 
     expect(stage).toContain("app.isEditingMode ? <EditingTimeline /> : <PlaybackControls />")
     expect(timeline).toContain('data-testid="editing-timeline"')
+    expect(timeline).toContain('getEditingFramingKeyframes')
+    expect(timeline).toContain('data-testid={`editing-framing-marker-${Math.round(keyframe.at * 1000)}`}')
     expect(rangeTrack).toContain('data-testid="editing-track"')
     expect(timeline).toContain('app.splitEditingClip')
     expect(timeline).toContain('app.trimEditingClipLeft')
@@ -393,6 +395,7 @@ describe('editing timeline source contracts', () => {
     const baseTimelineStyles = shellStyles + actionStyles + trackStyles + clipStyles + filmstripStyles + captionStyles + audioStyles + rangeStyles + boundaryStyles + exportSummaryStyles + exportTargetStyles + scriptStyles + scriptEditorStyles + treatmentStyles + filterStyles + transitionStyles + transitionPreviewStyles + clipMotionStyles + graphicStyles + graphicTrackStyles + graphicOverlayStyles + graphicCanvasStyles + selectionStyles
     expect(baseTimelineStyles).toContain('var(--bg-control)')
     expect(baseTimelineStyles).toContain('var(--accent)')
+    expect(clipStyles).toContain('.editing-framing-marker')
     expect(baseTimelineStyles).not.toMatch(/#[0-9a-fA-F]{3,8}/)
     expect(themeStyles).toContain('.editing-theme-preview.is-warm')
     expect(captionEffectStyles).toContain('.editing-caption-effect-option.is-active')

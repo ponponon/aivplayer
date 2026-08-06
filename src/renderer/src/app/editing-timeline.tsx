@@ -3,7 +3,7 @@ import { useRef, useState } from 'react'
 import type { ClipExportMode } from '../../../shared/clip-export'; import type { EditingThemeSettings } from '../../../core/editing/themes'
 import { getEditingCanvasDimensions } from '../../../core/editing/canvases'
 import { getEditingOverlayTrackOrder } from '../../../core/editing/overlay-track-operations'; import type { EditingOverlayTrackKind } from '../../../shared/editing-types'
-import { auditEditingExport } from '../../../core/editing/export-audit'; import { editedDurationSeconds, editedTimeToSource, getVideoClipSpans } from '../../../core/editing/timeline-math'; import { getEditingFilmstripTiles } from '../../../core/editing/filmstrip-operations'; import { formatTime } from '../lib/time'
+import { auditEditingExport } from '../../../core/editing/export-audit'; import { editedDurationSeconds, editedTimeToSource, getVideoClipSpans } from '../../../core/editing/timeline-math'; import { getEditingFilmstripTiles } from '../../../core/editing/filmstrip-operations'; import { getEditingFramingKeyframes } from '../../../core/editing/framing-operations'; import { formatTime } from '../lib/time'
 import { useAppContext } from './app-context'; import { EditingCaptionTrack } from './editing-caption-track'; import { EditingAudioControl } from './editing-audio-control'; import { EditingClipBoundaryHandles } from './editing-clip-boundary-handles'
 import { EditingExportSummary } from './editing-export-summary'; import { EditingExportConfirmDialog } from './editing-export-confirm-dialog'; import { EditingRangeTrack } from './editing-range-track'; import { EditingScriptPanel } from './editing-script-panel'
 import { EditingTreatmentControl } from './editing-treatment-control'; import { EditingFilterControl } from './editing-filter-control'; import { EditingPersonMatteControl } from './editing-person-matte-control'; import { EditingTransitionControl } from './editing-transition-control'; import { EditingClipMotionControl } from './editing-clip-motion-control'; import { EditingGraphicControl } from './editing-graphic-control'
@@ -28,6 +28,7 @@ export function EditingTimeline(): React.ReactElement | null {
   const timelineContentRef = useRef<HTMLDivElement | null>(null)
   const spans = getVideoClipSpans(project?.videoClips ?? [])
   const durationSeconds = editedDurationSeconds(project?.videoClips ?? [])
+  const framingKeyframes = getEditingFramingKeyframes(spans.map((span) => ({ editedStartSeconds: span.editedStartSeconds, editedEndSeconds: span.editedEndSeconds, clip: span.clip })))
   const { clipDrag, suppressClipClickRef, startClipDrag, moveClipDrag, finishClipDrag } = useEditingClipReorder(app, spans, durationSeconds)
   const { selection, selectionCount, selectionPayload, marquee, selectTimelineItem, removeTimelineItemFromSelection, clearTimelineSelection, deleteTimelineSelection, duplicateTimelineSelection, beginTimelineMarquee, moveTimelineMarquee, finishTimelineMarquee, handleTimelineKeyDown } = useEditingTimelineSelection(app, project, timelineContentRef)
   if (!project) return null
@@ -52,6 +53,7 @@ export function EditingTimeline(): React.ReactElement | null {
   const exportAudit = auditEditingExport(project, Object.keys(app.editingSourceFiles))
   const rulerTickCount = Math.min(MAX_RULER_TICKS, Math.max(2, Math.ceil(durationSeconds) + 1))
   const playheadPercent = durationSeconds > 0 ? (currentTime / durationSeconds) * 100 : 0
+  const framingMarkers = framingKeyframes.slice(1).filter((keyframe) => keyframe.at > 0 && keyframe.at < durationSeconds)
   const snapPoints = [...new Set([currentTime, ...spans.flatMap((span) => [span.editedStartSeconds, span.editedEndSeconds])])]
   const overlaySnapPoints = [...new Set([
     ...snapPoints,
@@ -169,6 +171,11 @@ export function EditingTimeline(): React.ReactElement | null {
                 {clipDrag?.moved && clipDrag.to !== clipDrag.from ? <span className="editing-clip-drop-marker" style={{ left: `${durationSeconds > 0 ? (((clipDrag.to < clipDrag.from ? spans[clipDrag.to]!.editedStartSeconds : spans[clipDrag.to]!.editedEndSeconds) / durationSeconds) * 100) : 0}%` }} aria-hidden="true" /> : null}
               </div>
               <div className="editing-playhead" style={{ left: `${playheadPercent}%` }} aria-hidden="true"><span /></div>
+              {framingMarkers.map((keyframe) => {
+                const label = keyframe.state.treatment === 'punch-in' ? `${app.copy.editing.punchIn} ${Math.round(keyframe.state.scale * 100)}%` : app.copy.editing.fullFrame
+                const markerLabel = `${formatTime(keyframe.at)} · ${app.copy.editing.treatmentLabel}: ${label}`
+                return <button className="editing-framing-marker" key={`framing-marker-${keyframe.at}`} type="button" style={{ left: `${(keyframe.at / durationSeconds) * 100}%` }} title={markerLabel} aria-label={markerLabel} data-label={label} data-testid={`editing-framing-marker-${Math.round(keyframe.at * 1000)}`} onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); app.seekEditingTime(keyframe.at) }}><span aria-hidden="true" /></button>
+              })}
             </EditingRangeTrack>
           </div>
           {overlayTrackOrder.map(renderOverlayTrack)}

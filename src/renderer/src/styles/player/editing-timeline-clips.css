@@ -73,6 +73,53 @@
   pointer-events: none;
 }
 
+.editing-framing-marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 6;
+  width: 10px;
+  margin: 0;
+  margin-left: 8px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  cursor: help;
+}
+
+.editing-framing-marker::before {
+  position: absolute;
+  inset-block: 0;
+  left: -8px;
+  border-left: 1px dashed rgba(var(--accent-rgb), 0.7);
+  content: '';
+}
+
+.editing-framing-marker > span {
+  position: absolute;
+  top: 4px;
+  left: -11px;
+  width: 6px;
+  height: 6px;
+  background: var(--accent);
+  border: 1px solid rgba(var(--overlay-rgb), 0.7);
+  border-radius: 1px;
+  box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.22);
+  transform: rotate(45deg);
+  transition: transform 120ms ease, background 120ms ease;
+}
+
+.editing-framing-marker:hover > span,
+.editing-framing-marker:focus-visible > span {
+  background: var(--accent-strong);
+  transform: rotate(45deg) scale(1.25);
+}
+
+.editing-framing-marker:focus-visible {
+  outline: 2px solid rgba(var(--accent-rgb), 0.72);
+  outline-offset: -1px;
+}
+
 .editing-clip span {
   color: var(--accent);
   font-size: 10px;
