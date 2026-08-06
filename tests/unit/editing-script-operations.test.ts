@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getEditingScriptWordSourceRange, isEditingScriptFillerWord, mergeEditingScriptSegments, removeEditingScriptWord, updateEditingScriptSegmentText, updateEditingSourceCaptionText } from '../../src/core/editing/script-operations'
+import { getEditingScriptWordSourceRange, isEditingScriptFillerWord, mergeEditingScriptSegments, removeEditingScriptWord, removeEditingScriptWords, replaceEditingScriptWord, syncEditingSourceCaptionText, updateEditingScriptSegmentText, updateEditingSourceCaptionText } from '../../src/core/editing/script-operations'
 
 const segment = { id: 'segment-1', sourceId: 'source-1', sourceStartSeconds: 1, sourceEndSeconds: 2, text: 'old text', translationText: '旧文本' }
 
@@ -46,6 +46,42 @@ describe('editing script text operations', () => {
     expect(isEditingScriptFillerWord({ text: '嗯' })).toBe(true)
     expect(isEditingScriptFillerWord({ text: 'um,' })).toBe(true)
     expect(isEditingScriptFillerWord({ text: '那个' })).toBe(false)
+  })
+
+  it('removes a selected word batch and preserves the remaining timings', () => {
+    const wordSegment = {
+      ...segment,
+      text: 'hello 嗯 world',
+      words: [
+        { startSeconds: 0, endSeconds: 0.3, text: 'hello' },
+        { startSeconds: 0.3, endSeconds: 0.5, text: ' 嗯' },
+        { startSeconds: 0.5, endSeconds: 1, text: ' world' }
+      ]
+    }
+    expect(removeEditingScriptWords(wordSegment, [wordSegment.words[1]!, wordSegment.words[2]!])).toEqual({
+      ...wordSegment,
+      text: 'hello',
+      words: [wordSegment.words[0]]
+    })
+  })
+
+  it('replaces one word without changing its timing and keeps caption word data', () => {
+    const wordSegment = {
+      ...segment,
+      text: 'hello world',
+      words: [
+        { startSeconds: 0, endSeconds: 0.4, text: 'hello' },
+        { startSeconds: 0.4, endSeconds: 0.8, text: ' world' }
+      ]
+    }
+    const next = replaceEditingScriptWord(wordSegment, wordSegment.words[1]!, ' planet ')
+    expect(next).toEqual({
+      ...wordSegment,
+      text: 'hello planet',
+      words: [wordSegment.words[0], { ...wordSegment.words[1], text: 'planet' }]
+    })
+    const sourceCaption = { id: segment.id, sourceId: segment.sourceId, sourceStartSeconds: 1, sourceEndSeconds: 2, startSeconds: 0, durationSeconds: 1, text: 'hello world', kind: 'source' as const, words: next.words }
+    expect(syncEditingSourceCaptionText([sourceCaption], segment.id, next.text)).toEqual([{ ...sourceCaption, text: next.text }])
   })
 
   it('does not let a later sidecar refresh overwrite edited text or deleted words', () => {

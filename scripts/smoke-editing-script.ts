@@ -19,7 +19,7 @@ async function main(): Promise<void> {
   await copyFile(sourceMediaPath, mediaPath)
   await copyFile(sourceMediaPath, secondMediaPath)
   await execFileAsync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-i', mediaPath, '-t', '1.5', '-c:v', 'libx264', '-preset', 'ultrafast', '-c:a', 'aac', shortMediaPath])
-  const scriptSentence = '第一句脚本这是一个用于验证播放器自动分行、逐词高亮以及长字幕导出一致性的测试句子，应该被拆分成多个连续显示页面。'
+  const scriptSentence = '第一句脚本嗯这是一个用于验证播放器自动分行、逐词高亮以及长字幕导出一致性的测试句子，应该被拆分成多个连续显示页面。'
   await writeFile(join(smokeDirectory, 'script-smoke.srt'), [
     '1',
     '00:00:00,000 --> 00:00:02,000',
@@ -34,8 +34,9 @@ async function main(): Promise<void> {
     '第三句脚本',
     ''
   ].join('\n'))
-  const scriptSentenceSplit = Math.ceil(scriptSentence.length / 2)
-  await writeFile(join(smokeDirectory, 'script-smoke.json'), JSON.stringify({ transcription: [{ timestamps: { from: '00:00:00,000', to: '00:00:02,000' }, text: scriptSentence, tokens: [{ text: scriptSentence.slice(0, scriptSentenceSplit), timestamps: { from: '00:00:00,000', to: '00:00:01,000' } }, { text: scriptSentence.slice(scriptSentenceSplit), timestamps: { from: '00:00:01,000', to: '00:00:02,000' } }] }] }))
+  const fillerIndex = scriptSentence.indexOf('嗯')
+  const bodySplit = fillerIndex + 1 + Math.ceil((scriptSentence.length - fillerIndex - 1) / 2)
+  await writeFile(join(smokeDirectory, 'script-smoke.json'), JSON.stringify({ transcription: [{ timestamps: { from: '00:00:00,000', to: '00:00:02,000' }, text: scriptSentence, tokens: [{ text: scriptSentence.slice(0, fillerIndex), timestamps: { from: '00:00:00,000', to: '00:00:00,500' } }, { text: '嗯', timestamps: { from: '00:00:00,500', to: '00:00:00,700' } }, { text: scriptSentence.slice(fillerIndex + 1, bodySplit), timestamps: { from: '00:00:00,700', to: '00:00:01,350' } }, { text: scriptSentence.slice(bodySplit), timestamps: { from: '00:00:01,350', to: '00:00:02,000' } }] }] }))
   const smokeHomeDirectory = await mkdtemp(join(tmpdir(), 'aivplayer-smoke-editing-script-home-'))
 
   const app = await electron.launch({
@@ -67,7 +68,39 @@ async function main(): Promise<void> {
     const scriptWordCount = await page.locator('[data-testid^="editing-script-word-"]').count()
     const scriptTextBeforeWordDelete = await page.locator('.editing-script-text').first().textContent()
     if (scriptWordCount < 2 || !scriptTextBeforeWordDelete) throw new Error('Script word timing was not rendered')
-    await page.locator('[data-testid^="editing-script-word-"]').first().click()
+    const firstScriptWord = page.locator('.editing-script-row').first().locator('.editing-script-word').first()
+    await firstScriptWord.click()
+    await page.locator('[data-testid^="editing-script-word-replace-input-"]').waitFor({ timeout: 10_000 })
+    const wordPopoverScreenshotPath = join(smokeHomeDirectory, 'aivplayer-smoke-editing-word-popover.png')
+    await page.screenshot({ path: wordPopoverScreenshotPath, fullPage: false })
+    const replacementInput = page.locator('[data-testid^="editing-script-word-replace-input-"]').first()
+    await replacementInput.fill('替换词')
+    await page.locator('.editing-script-action[data-testid^="editing-script-word-replace-"]').first().click()
+    await page.waitForFunction((expected) => document.querySelector('.editing-script-text')?.textContent !== expected, scriptTextBeforeWordDelete)
+    const scriptTextAfterWordReplace = await page.locator('.editing-script-text').first().textContent()
+    await page.locator('[data-testid="editing-undo"]').click()
+    await page.waitForFunction((expected) => document.querySelector('.editing-script-text')?.textContent === expected, scriptTextBeforeWordDelete)
+    const fillerDeleteAvailable = await page.locator('[data-testid="editing-script-filler-delete"]').count() > 0
+    if (fillerDeleteAvailable) {
+      await page.locator('[data-testid="editing-script-filler-delete"]').click()
+      await page.waitForFunction((expected) => document.querySelector('.editing-script-text')?.textContent !== expected, scriptTextBeforeWordDelete)
+      await page.locator('[data-testid="editing-undo"]').click()
+      await page.waitForFunction((expected) => document.querySelector('.editing-script-text')?.textContent === expected, scriptTextBeforeWordDelete)
+    }
+    const firstRowWords = page.locator('.editing-script-row').first().locator('.editing-script-word')
+    await firstRowWords.nth(0).click({ modifiers: ['Shift'] })
+    await firstRowWords.nth(1).click({ modifiers: ['Shift'] })
+    await page.locator('[data-testid="editing-script-delete-selected"]').waitFor({ timeout: 10_000 })
+    const scriptTextBeforeBatchDelete = await page.locator('.editing-script-text').first().textContent()
+    await page.locator('[data-testid="editing-script-delete-selected"]').click()
+    await page.waitForFunction((expected) => document.querySelector('.editing-script-text')?.textContent !== expected, scriptTextBeforeBatchDelete)
+    const scriptTextAfterBatchDelete = await page.locator('.editing-script-text').first().textContent()
+    await page.locator('[data-testid="editing-undo"]').click()
+    await page.waitForFunction((expected) => document.querySelector('.editing-script-text')?.textContent === expected, scriptTextBeforeWordDelete)
+    await firstScriptWord.click()
+    const firstWordDeleteAction = page.locator('[data-testid^="editing-script-word-delete-"]').first()
+    await firstWordDeleteAction.waitFor({ timeout: 10_000 })
+    await firstWordDeleteAction.click()
     await page.waitForFunction((expected) => document.querySelector('.editing-script-text')?.textContent !== expected, scriptTextBeforeWordDelete)
     const scriptTextAfterWordDelete = await page.locator('.editing-script-text').first().textContent()
     await page.locator('[data-testid="editing-undo"]').click()
@@ -559,7 +592,8 @@ async function main(): Promise<void> {
     console.log(`Media: ${mediaPath}`)
     console.log(`Before: ${JSON.stringify(before)}`)
     console.log(`Script inline edit: ${JSON.stringify({ segmentId: scriptEditSegmentId, before: scriptTextBeforeEdit, after: scriptTextAfterEdit, persisted: persistedScriptEdit })}`)
-    console.log(`Script word delete: ${JSON.stringify({ wordCount: scriptWordCount, before: scriptTextBeforeWordDelete, after: scriptTextAfterWordDelete, restored: wordDeleteRestored })}`)
+    console.log(`Script word actions: ${JSON.stringify({ wordCount: scriptWordCount, before: scriptTextBeforeWordDelete, replaced: scriptTextAfterWordReplace, batch: scriptTextAfterBatchDelete, after: scriptTextAfterWordDelete, fillerDeleteAvailable, restored: wordDeleteRestored })}`)
+    console.log(`Script word popover screenshot: ${wordPopoverScreenshotPath}`)
     console.log(`Video block motion preview: ${JSON.stringify(videoBlockMotionPreview)}`)
     console.log(`Reusable graphic preset: ${reusableGraphicPreset ?? ''}`)
     console.log(`Reusable graphic asset count: ${reusableGraphicAsset}`)
@@ -604,7 +638,7 @@ async function main(): Promise<void> {
     if (graphicTrimBefore === graphicTrimAfter) process.exitCode = 1
     if (overlayTrackOrderBefore.join('|') !== 'captions|graphics|videoBlocks' && overlayTrackOrderBefore.join('|') !== 'videoBlocks|graphics|captions') process.exitCode = 1
     if (overlayTrackOrderAfter[0] !== 'captions' || overlayTrackOrderAfter.length !== 3 || overlayLayerPreview.caption !== '10') process.exitCode = 1
-    if (scriptWordCount < 2 || !scriptTextAfterWordDelete || scriptTextAfterWordDelete === scriptTextBeforeWordDelete || !wordDeleteRestored) process.exitCode = 1
+    if (scriptWordCount < 2 || !scriptTextAfterWordReplace || scriptTextAfterWordReplace === scriptTextBeforeWordDelete || !scriptTextAfterBatchDelete || scriptTextAfterBatchDelete === scriptTextBeforeWordDelete || !scriptTextAfterWordDelete || scriptTextAfterWordDelete === scriptTextBeforeWordDelete || !wordDeleteRestored || !fillerDeleteAvailable) process.exitCode = 1
     if (!graphicOutputStats || graphicOutputStats.size <= 0) process.exitCode = 1
 
     if (before.rows !== 3 || before.deleted !== 0 || transitionPreviewCardCount !== 11 || !personMatteStatus || personMatteStatus === '…' || !persistedScriptEdit || scriptTextBeforeEdit === scriptTextAfterEdit || canvasPreview.preset !== 'portrait' || !canvasPreview.safeArea || canvasPreview.objectFit !== 'cover' || !canvasPreview.summary.includes('1080') || sceneClipCountAfter !== sceneClipCountBefore + 2 || treatmentBeforeSplit.treatment !== 'scale(1.6)' || treatmentBeforeSplit.treatmentOrigin !== '0% 50%' || !transitionPreview.includes('inset') || !circleTransitionPreview.includes('circle') || before.filter !== 'brightness(1.2) contrast(1) saturate(1)' || filterAfterSliderDrag === before.filter || filterAfterOneUndo !== 'brightness(1.2) contrast(1) saturate(1)' || !reusableGraphicPreset?.includes('一句话重点') || reusableGraphicAsset !== 1 || themePreview.warmActive !== true || themePreview.frameClass !== true || themePreview.graphicVariant !== true || themePreview.captionEffectActive !== true || themePreview.savedThemeCount !== 1 || savedThemeCount !== 1 || graphicTextPreview !== '烟测标题-修改' || before.graphicLeft === '0%' || !splitPreview.surface.includes('is-split-left') || !splitPreview.block.includes('is-split-left') || splitPreview.width !== '60%' || splitPreview.radius !== '18px' || splitPreview.border !== '4px' || !videoBlockMotionPreview.transform.includes('translateX') || wordTimingPreview.total === 0 || wordTimingPreview.active.length === 0 || afterDelete.deleted !== 1 || afterRestore.deleted !== 0 || editingAssetCardCount !== 3 || videoBlockCountAfterAssetInsert !== videoBlockCountBeforeAssetInsert + 1 || videoBlockCountAfterAssetDrag !== videoBlockCountAfterAssetInsert + 1 || mainClipCountAfterAssetAppend !== mainClipCountBeforeAssetAppend + 1 || !assetPreviewHasVideo || !assetReplaceStatus?.includes('second-source.mp4') || !captionReanchored || !assetReplaceTooShortStatus?.includes('时长不足') || !assetLibraryPreview.shortReplacePreserved || !mixedSourceExportResult.success || !mixedSourceOutputStats || mixedSourceOutputStats.size <= 0 || !assetLibraryPreview.exportAuditReady.includes('检查通过') || !assetLibraryPreview.exportConfirmEnabled || (hasSubtitleFilter && !assetLibraryPreview.burnInExportConfirmEnabled) || (!hasSubtitleFilter && assetLibraryPreview.burnInExportConfirmEnabled) || !punchInExportResult.success || !punchInOutputStats || punchInOutputStats.size <= 0 || !transitionExportResult.success || !transitionOutputStats || transitionOutputStats.size <= 0 || !multiTransitionExportResult.success || !multiTransitionOutputStats || multiTransitionOutputStats.size <= 0 || !graphicOutputResult.success || !graphicOutputStats || !captionEffectExportResult.success && hasSubtitleFilter || hasSubtitleFilter && (!captionEffectOutputStats || captionEffectOutputStats.size <= 0) || !videoBlockOutputStats || !videoBlockExportResult.success || !splitExportResult.success || !splitOutputStats || splitOutputStats.size <= 0 || consoleErrors.length > 0) process.exitCode = 1
