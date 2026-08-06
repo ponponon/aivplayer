@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { EditingClipTreatment, EditingTreatmentAnchor, EditingVideoClip } from '../../../shared/editing-types'
 import { getEditingClipTreatment, getEditingClipTreatmentAnchor, getEditingClipTreatmentScale, getEditingClipTreatmentSize } from '../../../core/editing/treatment-operations'
+import { isEditingFramingTreatmentAllowed, isEditingFramingTreatmentRecommended, type EditingFramingOrientation } from '../../../core/editing/framing-orientation'
 
 type EditingTreatmentControlProps = {
   clip: EditingVideoClip | null
@@ -17,6 +18,9 @@ type EditingTreatmentControlProps = {
   focusLeft: string
   focusCenter: string
   focusRight: string
+  orientation: EditingFramingOrientation
+  orientationHint: string
+  recommendedLabel: string
   onPreview: (treatment: EditingClipTreatment, scale?: number, anchor?: EditingTreatmentAnchor, size?: number) => void
   onChange: (treatment: EditingClipTreatment, scale?: number, anchor?: EditingTreatmentAnchor, size?: number) => void
 }
@@ -40,7 +44,7 @@ function TreatmentGlyph({ treatment }: { treatment: EditingClipTreatment }): Rea
   </svg>
 }
 
-export function EditingTreatmentControl({ clip, title, fullLabel, punchInLabel, cornerBottomRightLabel, cornerTopLeftLabel, splitLeftLabel, splitRightLabel, sizeLabel, scaleLabel, focusLabel, focusLeft, focusCenter, focusRight, onPreview, onChange }: EditingTreatmentControlProps): React.ReactElement | null {
+export function EditingTreatmentControl({ clip, title, fullLabel, punchInLabel, cornerBottomRightLabel, cornerTopLeftLabel, splitLeftLabel, splitRightLabel, sizeLabel, scaleLabel, focusLabel, focusLeft, focusCenter, focusRight, orientation, orientationHint, recommendedLabel, onPreview, onChange }: EditingTreatmentControlProps): React.ReactElement | null {
   const projectScale = clip ? getEditingClipTreatmentScale(clip) : getEditingClipTreatmentScale({})
   const projectSize = clip ? getEditingClipTreatmentSize(clip) : 0
   const [draftScale, setDraftScale] = useState(projectScale)
@@ -60,6 +64,7 @@ export function EditingTreatmentControl({ clip, title, fullLabel, punchInLabel, 
   const scale = projectScale
   const anchor = getEditingClipTreatmentAnchor(clip)
   const selectTreatment = (nextTreatment: EditingClipTreatment): void => {
+    if (!isEditingFramingTreatmentAllowed(nextTreatment, orientation)) return
     if (nextTreatment === 'full') onChange('full')
     else if (nextTreatment === 'punch-in') onChange('punch-in', scale, anchor)
     else onChange(nextTreatment, undefined, undefined, getEditingClipTreatmentSize({ treatment: nextTreatment }))
@@ -91,10 +96,15 @@ export function EditingTreatmentControl({ clip, title, fullLabel, punchInLabel, 
     { treatment: 'split-right', label: splitRightLabel }
   ]
   const isCompact = treatment === 'corner-br' || treatment === 'corner-tl' || treatment === 'split-left' || treatment === 'split-right'
-  return <div className="editing-treatment-control" onClick={(event) => event.stopPropagation()} data-testid="editing-treatment-control">
-    <span className="editing-treatment-title">{title}</span>
+  return <div className="editing-treatment-control" onClick={(event) => event.stopPropagation()} data-testid="editing-treatment-control" data-framing-orientation={orientation}>
+    <div className="editing-treatment-heading"><span className="editing-treatment-title">{title}</span><span className="editing-treatment-orientation-hint" data-testid="editing-treatment-orientation-hint">{orientationHint}</span></div>
     <div className="editing-treatment-options" role="group" aria-label={title}>
-      {options.map(({ treatment: optionTreatment, label }) => <button className={`editing-treatment-option ${treatment === optionTreatment ? 'is-active' : ''}`} key={optionTreatment} type="button" aria-label={label} aria-pressed={treatment === optionTreatment} onClick={() => selectTreatment(optionTreatment)} data-testid={`editing-treatment-${optionTreatment}`}><TreatmentGlyph treatment={optionTreatment} /><span>{label}</span></button>)}
+      {options.map(({ treatment: optionTreatment, label }) => {
+        const allowed = isEditingFramingTreatmentAllowed(optionTreatment, orientation)
+        const recommended = isEditingFramingTreatmentRecommended(optionTreatment, orientation)
+        const accessibleLabel = recommended ? `${label} · ${recommendedLabel}` : label
+        return <button className={`editing-treatment-option ${treatment === optionTreatment ? 'is-active' : ''} ${recommended ? 'is-recommended' : ''}`} key={optionTreatment} type="button" disabled={!allowed} aria-label={accessibleLabel} title={accessibleLabel} aria-pressed={treatment === optionTreatment} onClick={() => selectTreatment(optionTreatment)} data-orientation-allowed={allowed ? 'true' : 'false'} data-recommended={recommended ? 'true' : undefined} data-testid={`editing-treatment-${optionTreatment}`}><TreatmentGlyph treatment={optionTreatment} /><span>{label}</span></button>
+      })}
     </div>
     {treatment === 'punch-in' ? <><div className="editing-treatment-focus" role="group" aria-label={focusLabel}><button className={`editing-treatment-focus-button ${anchor === 'left' ? 'is-active' : ''}`} type="button" aria-label={focusLeft} aria-pressed={anchor === 'left'} onClick={() => onChange('punch-in', scale, 'left')} data-testid="editing-treatment-anchor-left">←</button><button className={`editing-treatment-focus-button ${anchor === 'center' ? 'is-active' : ''}`} type="button" aria-label={focusCenter} aria-pressed={anchor === 'center'} onClick={() => onChange('punch-in', scale, 'center')} data-testid="editing-treatment-anchor-center">●</button><button className={`editing-treatment-focus-button ${anchor === 'right' ? 'is-active' : ''}`} type="button" aria-label={focusRight} aria-pressed={anchor === 'right'} onClick={() => onChange('punch-in', scale, 'right')} data-testid="editing-treatment-anchor-right">→</button></div><label className="editing-treatment-scale"><span>{scaleLabel}</span><input type="range" min="1" max="2.5" step="0.05" value={draftScale} onChange={(event) => updateScalePreview(Number(event.currentTarget.value))} onPointerDown={(event) => { interactionRef.current = true; event.currentTarget.setPointerCapture(event.pointerId) }} onPointerUp={commitScale} onPointerCancel={commitScale} onLostPointerCapture={commitScale} onKeyDown={() => { interactionRef.current = true }} onKeyUp={commitScale} onBlur={commitScale} aria-label={scaleLabel} /><output>{Math.round(draftScale * 100)}%</output></label></> : null}
     {isCompact ? <label className="editing-treatment-scale"><span>{sizeLabel}</span><input type="range" min="0" max="100" step="1" value={draftSize} onChange={(event) => updateSizePreview(Number(event.currentTarget.value))} onPointerDown={(event) => { interactionRef.current = true; event.currentTarget.setPointerCapture(event.pointerId) }} onPointerUp={commitScale} onPointerCancel={commitScale} onLostPointerCapture={commitScale} onKeyDown={() => { interactionRef.current = true }} onKeyUp={commitScale} onBlur={commitScale} aria-label={sizeLabel} /><output>{Math.round(draftSize)}%</output></label> : null}
