@@ -74,6 +74,17 @@ async function startOcr(page: Page, mediaPath: string): Promise<unknown> {
   }), mediaPath)
 }
 
+async function startOcrFromUi(page: Page): Promise<void> {
+  await page.locator('.panel-tab').nth(4).click()
+  const task = page.locator('[data-testid="vision-ocr-task"]')
+  await task.waitFor({ timeout: 10_000 })
+  const startButton = page.locator('[data-testid="vision-ocr-start-button"]')
+  await startButton.waitFor({ timeout: 10_000 })
+  await page.waitForFunction(() => !(document.querySelector('[data-testid="vision-ocr-start-button"]') as HTMLButtonElement | null)?.disabled, undefined, { timeout: 15_000 })
+  await startButton.click()
+  await page.locator('[data-testid="vision-ocr-task"][data-persistence-status="persisted"]').waitFor({ timeout: 20_000 })
+}
+
 async function seedVisualEvidence(userDataDirectory: string, mediaPath: string): Promise<void> {
   const database = await connect(join(userDataDirectory, 'library', 'vision', 'lancedb'))
   const table = await database.openTable('video_evidence')
@@ -120,10 +131,11 @@ async function main(): Promise<void> {
     const capabilities = await first.page.evaluate(() => window.aiv.getMediaEvidenceCapabilities())
     if (!capabilities.ocr.available) throw new Error(`OCR capability is unavailable: ${JSON.stringify(capabilities)}`)
 
-    const stableResult = await startOcr(first.page, stableMediaPath) as { status?: string; persistenceStatus?: string; persistedArtifactCount?: number }
-    if (stableResult.status !== 'completed' || stableResult.persistenceStatus !== 'persisted' || stableResult.persistedArtifactCount !== 1) {
-      throw new Error(`Stable OCR persistence mismatch: ${JSON.stringify(stableResult)}`)
-    }
+    await startOcrFromUi(first.page)
+    const stablePersistenceStatus = await first.page.locator('[data-testid="vision-ocr-task"]').getAttribute('data-persistence-status')
+    if (stablePersistenceStatus !== 'persisted') throw new Error(`Stable OCR persistence mismatch: ${stablePersistenceStatus}`)
+    const screenshotPath = join(userDataDirectory, 'aivplayer-smoke-evidence-ocr.png')
+    await first.page.screenshot({ path: screenshotPath, fullPage: false })
     await first.app.close()
     firstApp = null
     await seedVisualEvidence(userDataDirectory, stableMediaPath)
@@ -148,7 +160,7 @@ async function main(): Promise<void> {
       throw new Error(`Evidence table contents mismatch: ${JSON.stringify(rows)}`)
     }
     if (first.errors.length > 0 || second.errors.length > 0) throw new Error(`Renderer errors during evidence smoke: ${[...first.errors, ...second.errors].join('\n')}`)
-    console.log(`Evidence task smoke passed: ${JSON.stringify({ capabilities, stablePersistence: stableResult.persistenceStatus, stalePersistence: staleResult.persistenceStatus, evidenceRows: rows.length, ocrRows: ocrRows.length, visualRows: visualRows.length })}`)
+    console.log(`Evidence task smoke passed: ${JSON.stringify({ capabilities, stablePersistence: stablePersistenceStatus, stalePersistence: staleResult.persistenceStatus, evidenceRows: rows.length, ocrRows: ocrRows.length, visualRows: visualRows.length, screenshotPath })}`)
   } finally {
     await firstApp?.close().catch(() => undefined)
     await secondApp?.close().catch(() => undefined)

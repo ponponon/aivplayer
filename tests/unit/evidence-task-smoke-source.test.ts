@@ -10,6 +10,8 @@ describe('evidence task Electron smoke contract', () => {
     const smoke = readFileSync(join(projectRoot, 'scripts/smoke-evidence-task.ts'), 'utf8')
     expect(packageJson.scripts?.['smoke:evidence-task']).toContain('smoke-evidence-task.ts')
     expect(smoke).toContain('startMediaEvidenceTask')
+    expect(smoke).toContain('startOcrFromUi')
+    expect(smoke).toContain('vision-ocr-start-button')
     expect(smoke).toContain('persistenceStatus')
     expect(smoke).toContain("'skipped-stale'")
     expect(smoke).toContain('video_evidence')
