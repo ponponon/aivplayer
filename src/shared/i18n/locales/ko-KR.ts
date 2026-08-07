@@ -259,6 +259,7 @@
       ocrStale: '영상이 변경되어 저장하지 않음',
       ocrPersistenceFailed: '증거 저장 실패',
       ocrInvalidRange: '유효한 시간 범위를 입력하세요. 끝은 시작보다 커야 합니다.',
+      ocrResultLabel: 'OCR',
       indexPlaylist: '현재 재생 목록 색인',
       chooseFolder: '라이브러리 폴더 선택',
       scanFolder: '영상 스캔',

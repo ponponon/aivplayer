@@ -259,6 +259,7 @@
       ocrStale: '動画が変更されたため保存しません',
       ocrPersistenceFailed: '証拠の保存に失敗しました',
       ocrInvalidRange: '有効な時間範囲を入力してください。終了は開始より後にします。',
+      ocrResultLabel: 'OCR',
       indexPlaylist: '現在のプレイリストを索引化',
       chooseFolder: 'ライブラリフォルダを選択',
       scanFolder: '動画をスキャン',

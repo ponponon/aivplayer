@@ -259,6 +259,7 @@
       ocrStale: 'Media changed; not persisted',
       ocrPersistenceFailed: 'Evidence persistence failed',
       ocrInvalidRange: 'Enter a valid range. End must be greater than start.',
+      ocrResultLabel: 'OCR',
       indexPlaylist: 'Index current playlist',
       chooseFolder: 'Choose library folder',
       scanFolder: 'Scan videos',

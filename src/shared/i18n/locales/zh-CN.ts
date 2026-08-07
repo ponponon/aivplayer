@@ -259,6 +259,7 @@
       ocrStale: '媒体已变化，未落库',
       ocrPersistenceFailed: '证据落库失败',
       ocrInvalidRange: '请输入有效的时间范围。终点必须大于起点。',
+      ocrResultLabel: 'OCR',
       indexPlaylist: '索引当前播放列表',
       chooseFolder: '选择影视库文件夹',
       scanFolder: '扫描视频',

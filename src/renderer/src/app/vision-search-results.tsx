@@ -19,9 +19,9 @@ export function VisionSearchResults({ copy, results, thumbnailUrls, onOpenResult
         <label className="vision-result-select" title={copy.selectResult}>
           <input type="checkbox" checked={selected} onChange={() => onToggleSelection(result)} aria-label={copy.selectResult} />
         </label>
-        <button className="vision-result" type="button" onClick={() => onOpenResult(result)} title={copy.clickResult}>
+        <button className="vision-result" type="button" data-evidence-id={result.evidenceId ?? result.id} data-evidence-type={result.evidenceType ?? 'visual'} onClick={() => onOpenResult(result)} title={copy.clickResult}>
           {thumbnailUrls[result.id] ? <img src={thumbnailUrls[result.id]} alt="" /> : <span className="vision-result-placeholder"><ScanSearch size={18} /></span>}
-          <span className="vision-result-copy"><strong>{result.fileName}</strong><span>{formatTimestamp(result.startSeconds ?? result.timestampSeconds)} · {copy.score(result.score)}</span>{result.matchedText ? <span className="vision-result-match">{result.matchedText}</span> : null}</span>
+          <span className="vision-result-copy"><strong>{result.fileName}</strong><span>{result.evidenceType === 'ocr' ? `${copy.ocrResultLabel} · ` : ''}{formatEvidenceRange(result)} · {copy.score(result.score)}</span>{result.matchedText ? <span className="vision-result-match">{result.matchedText}</span> : null}</span>
         </button>
       </div>
     })}
@@ -33,4 +33,13 @@ function formatTimestamp(seconds: number): string {
   const minutes = Math.floor(totalSeconds / 60)
   const remainder = String(totalSeconds % 60).padStart(2, '0')
   return `${minutes}:${remainder}`
+}
+
+function formatEvidenceRange(result: VisionSearchResult): string {
+  const start = result.startSeconds
+  const end = result.endSeconds
+  if (start !== undefined && end !== undefined && Number.isFinite(start) && Number.isFinite(end) && end > start) {
+    return `${formatTimestamp(start)}–${formatTimestamp(end)}`
+  }
+  return formatTimestamp(result.timestampSeconds)
 }
