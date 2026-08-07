@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import type { WebRemoteCommand, WebShareMediaDetails, WebShareMediaItem, WebShareLibraryResponse, WebSubtitleTrack, WebTranscodeStatus } from '../shared/web-types'
 import { buildWebLibraryTree, filterWebLibraryItems, getHistoryEntry, isInProgress, readWebLibraryPreferences, sortWebLibraryItems, syncWebLibraryPreferencesToUrl, writeWebLibraryPreferences, type WebLibraryPreferences } from './library-state'
 import { DetailsPanel, LibrarySidebar, LoginScreen, PlayerPanel } from './web-panels'
+import type { WebTranscodeTaskEntry } from './web-panels'
 import { useDesktopState } from './use-desktop-state'
 import { useDesktopFollow } from './use-desktop-follow'
 import { useVisibleSelection } from './use-visible-selection'
@@ -13,6 +14,7 @@ import './styles.css'
 import './library-styles.css'
 
 type SessionResponse = { authenticated: boolean }
+type WebTranscodeTaskState = { status: WebTranscodeStatus; updatedAt: number }
 function WebApp(): ReactElement {
   const [authenticated, setAuthenticated] = useState<boolean | null>(null)
   const [items, setItems] = useState<WebShareMediaItem[]>([])
@@ -30,6 +32,7 @@ function WebApp(): ReactElement {
   const [transcodeStatus, setTranscodeStatus] = useState<WebTranscodeStatus | null>(null)
   const [transcodePlaybackUrl, setTranscodePlaybackUrl] = useState<string | null>(null)
   const [transcodingIds, setTranscodingIds] = useState<Set<string>>(() => new Set())
+  const [transcodeTaskStates, setTranscodeTaskStates] = useState<Record<string, WebTranscodeTaskState>>({})
   const transcodingIdsRef = useRef<Set<string>>(new Set())
   const selectedIdRef = useRef<string | null>(null)
   const detailsRequestIdRef = useRef(0)
@@ -44,6 +47,13 @@ function WebApp(): ReactElement {
   const isTranscoding = selected ? transcodingIds.has(selected.id) : false
   const visibleItems = useMemo(() => sortWebLibraryItems(filterWebLibraryItems(items, query, preferences), preferences), [items, preferences, query])
   const tree = useMemo(() => buildWebLibraryTree(items), [items])
+  const transcodeTasks = useMemo<WebTranscodeTaskEntry[]>(() => Object.entries(transcodeTaskStates).flatMap(([itemId, task]) => {
+    const item = items.find((candidate) => candidate.id === itemId)
+    return item ? [{ item, status: task.status, updatedAt: task.updatedAt }] : []
+  }).sort((left, right) => right.updatedAt - left.updatedAt), [items, transcodeTaskStates])
+  const rememberTranscodeStatus = useCallback((itemId: string, status: WebTranscodeStatus): void => {
+    setTranscodeTaskStates((current) => ({ ...current, [itemId]: { status, updatedAt: Date.now() } }))
+  }, [])
   const updatePreferences = useCallback((updater: (current: WebLibraryPreferences) => WebLibraryPreferences): void => {
     setPreferences((current) => updater(current))
   }, [])
@@ -119,10 +129,12 @@ function WebApp(): ReactElement {
     setError(null)
     try {
       let status = await readJson<WebTranscodeStatus>(`/api/v1/media/${itemId}/transcode`, { method: 'POST' })
+      rememberTranscodeStatus(itemId, status)
       if (selectedIdRef.current === itemId) setTranscodeStatus(status)
       for (let attempt = 0; attempt < 720 && status.state !== 'ready' && status.state !== 'error'; attempt += 1) {
         await new Promise((resolve) => window.setTimeout(resolve, 1000))
         status = await readJson<WebTranscodeStatus>(`/api/v1/transcode/${itemId}`)
+        rememberTranscodeStatus(itemId, status)
         if (selectedIdRef.current === itemId) setTranscodeStatus(status)
       }
       if (selectedIdRef.current === itemId) {
@@ -131,6 +143,8 @@ function WebApp(): ReactElement {
         else if (status.state === 'error') setError(status.message ?? '浏览器转码失败')
       }
     } catch (reason) {
+      const status: WebTranscodeStatus = { state: 'error', progress: null, outputBytes: 0, message: reason instanceof Error ? reason.message : '无法启动浏览器转码', streamUrl: null }
+      rememberTranscodeStatus(itemId, status)
       if (selectedIdRef.current === itemId) setError(reason instanceof Error ? reason.message : '无法启动浏览器转码')
     } finally {
       transcodingIdsRef.current.delete(itemId)
@@ -193,7 +207,7 @@ function WebApp(): ReactElement {
       <button className="text-button" type="button" onClick={() => void loadLibrary(true)} disabled={isLoading} title={preferences.selectedGroupId === 'all' ? '重新扫描全部共享媒体' : '重新扫描当前目录'}>{isLoading ? '刷新中…' : preferences.selectedGroupId === 'all' ? '刷新媒体库' : '刷新目录'}</button>
     </header>
     <main className="web-layout">
-      <LibrarySidebar items={items} visibleItems={visibleItems} tree={tree} selectedId={selected?.id ?? null} query={query} preferences={preferences} selectionMode={batch.selectionMode} selectedBatchIds={batch.selectedIds} allVisibleSelected={batch.allVisibleSelected} allSelectedFavorited={batch.allSelectedFavorited} onQueryChange={(value) => { setFollowDesktop(false); setQuery(value) }} onSelect={selectItem} onSelectNode={(nodeId) => { setFollowDesktop(false); updatePreferences((current) => ({ ...current, selectedGroupId: nodeId })) }} updatePreferences={updatePreferences} onEnterSelectionMode={batch.enterSelectionMode} onExitSelectionMode={batch.exitSelectionMode} onToggleBatchSelection={batch.toggleSelection} onSelectAllVisible={batch.selectAllVisible} onClearBatchSelection={batch.clearSelection} onBatchFavorite={batch.toggleFavorites} />
+      <LibrarySidebar items={items} visibleItems={visibleItems} tree={tree} selectedId={selected?.id ?? null} query={query} preferences={preferences} selectionMode={batch.selectionMode} selectedBatchIds={batch.selectedIds} allVisibleSelected={batch.allVisibleSelected} allSelectedFavorited={batch.allSelectedFavorited} onQueryChange={(value) => { setFollowDesktop(false); setQuery(value) }} onSelect={selectItem} onSelectNode={(nodeId) => { setFollowDesktop(false); updatePreferences((current) => ({ ...current, selectedGroupId: nodeId })) }} updatePreferences={updatePreferences} onEnterSelectionMode={batch.enterSelectionMode} onExitSelectionMode={batch.exitSelectionMode} onToggleBatchSelection={batch.toggleSelection} onSelectAllVisible={batch.selectAllVisible} onClearBatchSelection={batch.clearSelection} onBatchFavorite={batch.toggleFavorites} transcodeTasks={transcodeTasks} onSelectTask={(item) => { setFollowDesktop(false); selectItem(item) }} onRetryTranscode={(itemId) => void requestTranscode(itemId)} />
       <PlayerPanel selected={selected} selectedWithDetails={selectedWithDetails} selectedSubtitleTrack={selectedSubtitleTrack} currentHistory={currentHistory} showResume={Boolean(selected && !isImageMediaItem(selected) && currentHistory && isInProgress(selected, preferences))} selectedIndex={selectedIndex} queueItems={visibleItems} mediaPlaybackUrl={mediaPlaybackUrl} isPlaying={isPlaying} isSelectedFavorite={isSelectedFavorite} desktopState={desktopState} allowRemoteControl={allowRemoteControl} desktopItem={desktopItem} remoteError={remoteError} error={error} isTranscoding={isTranscoding} transcodeStatus={transcodeStatus} canRequestTranscode={!isImageMediaItem(selected) && audioTrack === 'direct' && !transcodePlaybackUrl} videoRef={videoRef} autoPlayNextRef={autoPlayNextRef} onSelect={selectItem} onPlayAdjacent={playAdjacent} onToggleFavorite={() => selected && updatePreferences((current) => ({ ...current, favorites: current.favorites.includes(selected.id) ? current.favorites.filter((id) => id !== selected.id) : [...current.favorites, selected.id] }))} onSendRemoteCommand={(command) => void sendRemoteCommand(command)} onSaveProgress={saveProgress} onSetPlaying={setIsPlaying} onRequestTranscode={(itemId) => void requestTranscode(itemId)} onClearError={() => setError(null)} onSetError={setError} />
       <DetailsPanel item={selectedWithDetails} details={details} subtitleTrack={subtitleTrack} audioTrack={audioTrack} copyLinkStatus={copyLinkStatus} copyLinkMessage={copyLinkMessage} onCopyLink={() => void copySelectedLink()} onSubtitleTrackChange={setSubtitleTrack} onAudioTrackChange={(trackId) => { setAudioTrack(trackId); setTranscodePlaybackUrl(null) }} />
     </main>
