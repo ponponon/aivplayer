@@ -1,0 +1,89 @@
+.vision-ocr-card {
+  display: grid;
+  gap: 9px;
+}
+
+.vision-ocr-card h3 {
+  margin: 3px 0 0;
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.vision-ocr-description {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.vision-ocr-capability,
+.vision-ocr-status,
+.vision-ocr-fields {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 7px;
+}
+
+.vision-ocr-capability,
+.vision-ocr-status {
+  justify-content: space-between;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.vision-ocr-capability.is-ready {
+  color: var(--accent);
+}
+
+.vision-ocr-capability span,
+.vision-ocr-capability small,
+.vision-ocr-status span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vision-ocr-capability small {
+  max-width: 48%;
+  color: var(--text-muted);
+}
+
+.vision-ocr-fields {
+  align-items: stretch;
+}
+
+.vision-ocr-fields label {
+  display: grid;
+  flex: 1 1 0;
+  gap: 4px;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.vision-ocr-fields input {
+  width: 100%;
+  min-height: 28px;
+  padding: 0 7px;
+  color: var(--text-primary);
+  background: rgba(var(--overlay-rgb), 0.06);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  outline: none;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.vision-ocr-fields input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.16);
+}
+
+.vision-ocr-status strong {
+  flex: 0 0 auto;
+  color: var(--accent);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
