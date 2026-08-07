@@ -654,3 +654,9 @@
 - 现象：视觉索引已有字幕和视觉证据；如果 OCR 完成后复用全量 `replaceEvidenceRows`，一次 OCR 任务就可能删除旧字幕 / 视觉行，导致检索结果回退或丢失。
 - 经验：派生证据必须按稳定 evidence id 做单条 upsert，只删除同一个 id 的旧版本；落库前再次读取媒体 `path + size + mtime` 指纹，任务期间媒体发生变化就跳过写入。
 - 处理：新增 `VisionLibrary.upsertEvidence` 和 `persistOcrResult`，并用真实 Electron Smoke 验证 1 条 OCR + 1 条已有 visual 同时存在，stale 媒体不会新增 OCR 行。
+
+## 2026-08-08：长时间证据任务的 UI 必须绑定可验证状态
+
+- 现象：OCR 任务跨越多个 IPC 进度事件；如果面板只在点击时等待一次 Promise，用户看不到排队、进度、取消或 stale / 落库失败结果，Smoke 也无法证明真实 UI 已接上任务链路。
+- 经验：任务卡片要订阅并在卸载时移除 sender 进度监听，用稳定的 `data-testid` 和 `data-persistence-status` 暴露可观测状态；按钮禁用条件必须同时考虑媒体、能力探测和任务运行态。
+- 处理：新增 OCR 时间范围卡片和四种语言文案，Smoke 从影视库面板启动 OCR、等待 `persisted` 并保存截图；底层 IPC / 落库验证仍保持独立，避免 UI 选择器掩盖数据链路问题。
