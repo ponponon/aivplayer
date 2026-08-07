@@ -5,13 +5,14 @@ import { getEditingCanvasDimensions } from '../../../core/editing/canvases'
 import { getEditingFramingOrientation } from '../../../core/editing/framing-orientation'
 import { getEditingOverlayTrackOrder } from '../../../core/editing/overlay-track-operations'; import type { EditingOverlayTrackKind } from '../../../shared/editing-types'
 import { auditEditingExport } from '../../../core/editing/export-audit'; import { editedDurationSeconds, editedTimeToSource, getVideoClipSpans, sourceRangeToEditedRanges } from '../../../core/editing/timeline-math'; import { getEditingFilmstripTiles } from '../../../core/editing/filmstrip-operations'; import { getEditingFramingKeyframes } from '../../../core/editing/framing-operations'; import { formatTime } from '../lib/time'
-import { useAppContext } from './app-context'; import { EditingCaptionTrack } from './editing-caption-track'; import { EditingAudioControl } from './editing-audio-control'; import { EditingClipBoundaryHandles } from './editing-clip-boundary-handles'
+import { getEditingWaveformSegments } from '../../../core/editing/waveform-operations'
+import { useAppContext } from './app-context'; import { EditingCaptionTrack } from './editing-caption-track'; import { EditingWaveformTrack } from './editing-waveform-track'; import { EditingAudioControl } from './editing-audio-control'; import { EditingClipBoundaryHandles } from './editing-clip-boundary-handles'
 import { EditingExportSummary } from './editing-export-summary'; import { EditingExportConfirmDialog } from './editing-export-confirm-dialog'; import { EditingRangeTrack } from './editing-range-track'; import { EditingScriptPanel } from './editing-script-panel'
 import { EditingTreatmentControl } from './editing-treatment-control'; import { EditingFramingPresetControl } from './editing-framing-preset-control'; import { EditingFilterControl } from './editing-filter-control'; import { EditingPersonMatteControl } from './editing-person-matte-control'; import { EditingTransitionControl } from './editing-transition-control'; import { EditingClipMotionControl } from './editing-clip-motion-control'; import { EditingGraphicControl } from './editing-graphic-control'
 import { EditingGraphicEditor } from './editing-graphic-editor'; import { EditingGraphicTrack } from './editing-graphic-track'; import { EditingThemeControl } from './editing-theme-control'; import { EditingCaptionEffectControl } from './editing-caption-effect-control'
 import { EditingCanvasControl } from './editing-canvas-control'; import { EditingCaptionLayoutControl } from './editing-caption-layout-control'; import { getEditingCaptionLayout } from '../../../core/editing/caption-layout'
 import { EditingVideoBlockControl } from './editing-video-block-control'; import { EditingVideoBlockTrack } from './editing-video-block-track'; import { EditingVideoBlockEditor } from './editing-video-block-editor'; import { EditingAssetsPanel } from './editing-assets-panel'; import { EDITING_SOURCE_DRAG_TYPE, readEditingSourceDrag } from './editing-asset-dnd'
-import { useEditingFilmstrips } from './use-editing-filmstrip'; import { useEditingElementAssets } from './use-editing-element-assets'; import { useEditingThemes } from './use-editing-themes'
+import { useEditingFilmstrips } from './use-editing-filmstrip'; import { useEditingWaveforms } from './use-editing-waveform'; import { useEditingElementAssets } from './use-editing-element-assets'; import { useEditingThemes } from './use-editing-themes'
 import { getEditingSceneCopy } from '../../../shared/editing-scene-copy'; import { getEditingSilenceCopy } from '../../../shared/editing-silence-copy'; import { getEditingScriptCopy } from '../../../shared/editing-script-copy'
 import { getEditingStructureCopy } from '../../../shared/editing-structure-copy'; import type { MediaStructureAnalysisResult, MediaStructureSegment } from '../../../shared/media-types'
 import { analyzeSubtitleQa } from '../../../shared/subtitle-qa'
@@ -23,6 +24,7 @@ export function EditingTimeline(): React.ReactElement | null {
   const project = app.editingProject
   const sceneCopy = getEditingSceneCopy(app.appSettings.ui.locale); const silenceCopy = getEditingSilenceCopy(app.appSettings.ui.locale); const scriptCopy = getEditingScriptCopy(app.appSettings.ui.locale)
   const filmstrips = useEditingFilmstrips(project, app.editingSourceFiles)
+  const waveforms = useEditingWaveforms(project, app.editingSourceFiles)
   const { assets: elementAssets, saveAsset: saveElementAsset, deleteAsset: deleteElementAsset } = useEditingElementAssets()
   const { themes, saveTheme, deleteTheme } = useEditingThemes()
   const [graphicDefaults, setGraphicDefaults] = useState<Pick<EditingThemeSettings, 'graphicStyle' | 'graphicPosition'>>({ graphicStyle: 'title', graphicPosition: 'center' })
@@ -35,6 +37,7 @@ export function EditingTimeline(): React.ReactElement | null {
   const timelineContentRef = useRef<HTMLDivElement | null>(null)
   const spans = getVideoClipSpans(project?.videoClips ?? [])
   const durationSeconds = editedDurationSeconds(project?.videoClips ?? [])
+  const waveformSegments = getEditingWaveformSegments(spans, waveforms)
   const framingKeyframes = getEditingFramingKeyframes(spans.map((span) => ({ editedStartSeconds: span.editedStartSeconds, editedEndSeconds: span.editedEndSeconds, clip: span.clip })))
   const { clipDrag, suppressClipClickRef, startClipDrag, moveClipDrag, finishClipDrag } = useEditingClipReorder(app, spans, durationSeconds)
   const { selection, selectionCount, selectionPayload, marquee, selectTimelineItem, removeTimelineItemFromSelection, clearTimelineSelection, deleteTimelineSelection, duplicateTimelineSelection, beginTimelineMarquee, moveTimelineMarquee, finishTimelineMarquee, handleTimelineKeyDown } = useEditingTimelineSelection(app, project, timelineContentRef)
@@ -226,6 +229,7 @@ export function EditingTimeline(): React.ReactElement | null {
               })}
             </EditingRangeTrack>
           </div>
+          <EditingWaveformTrack segments={waveformSegments} durationSeconds={durationSeconds} currentTime={currentTime} trackLabel={app.copy.editing.waveformTrack} emptyLabel={app.copy.editing.waveformUnavailable} onSeek={app.seekEditingTime} />
           {overlayTrackOrder.map(renderOverlayTrack)}
           {marquee ? <div className="editing-selection-marquee" aria-hidden="true" style={{ left: `${Math.min(marquee.startX, marquee.currentX) - (timelineContentRef.current?.getBoundingClientRect().left ?? 0)}px`, top: `${Math.min(marquee.startY, marquee.currentY) - (timelineContentRef.current?.getBoundingClientRect().top ?? 0)}px`, width: `${Math.abs(marquee.currentX - marquee.startX)}px`, height: `${Math.abs(marquee.currentY - marquee.startY)}px` }} /> : null}
         </div>
