@@ -24,6 +24,7 @@ describe('waveform integration', () => {
     expect(cache).toContain('getWaveformCacheKey')
     expect(cache).toContain('rename(temporaryPath, filePath)')
     expect(packageJson.scripts?.['smoke:waveform']).toContain('smoke-waveform.ts')
+    expect(packageJson.scripts?.['smoke:visual-sync']).toContain('smoke-visual-sync.ts')
   })
 
   it('keeps the waveform track rendered and linked to editor seeking', () => {
@@ -38,5 +39,6 @@ describe('waveform integration', () => {
     expect(track).toContain('onSeek(ratio * durationSeconds)')
     expect(styles).toContain("./player/editing-timeline-waveform.css")
     expect(readSource('scripts/smoke-waveform.ts')).toContain('editing-waveform-track')
+    expect(readSource('scripts/smoke-visual-sync.ts')).toContain('editing-caption-sync')
   })
 })

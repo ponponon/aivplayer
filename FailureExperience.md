@@ -624,3 +624,9 @@
 - 现象：波形初版使用 `showwavespic` 的 `filter=point`，当前 FFmpeg 直接报 `Unable to parse "filter" option value "point"`，导致音频波形没有生成。
 - 经验：FFmpeg filter 的参数枚举不能凭其他版本或记忆猜测；接入前要用目标环境的 `ffmpeg -filters` / `ffmpeg -h filter=showwavespic` 或真实命令验证，并保留无音频 / 不支持场景的失败返回。
 - 处理：改用当前版本支持的 `filter=peak`，波形 PNG 仍按媒体 stat、尺寸和高度隔离缓存；真实 Smoke 验证冷缓存生成、热缓存命中、时间线渲染和点击定位。
+
+## 2026-08-08：字幕微调必须复用已有可撤销动作
+
+- 现象：视觉同步如果直接改 DOM 的时间块位置，只能暂时改变画面，刷新、重载或下一次工程操作就会丢失，且播放头与字幕工程状态可能分叉。
+- 经验：字幕 cue 的微调、当前播放头设为起点 / 终点都必须调用现有 `moveEditingCaption` / `resizeEditingCaption`；这些动作已经负责历史栈、项目保存和选中状态。
+- 处理：视觉同步面板只负责把当前 cue 和用户意图转成已有动作，Smoke 同时验证 `+0.1s` 后位置变化与点击撤销后的原位恢复。
