@@ -17,7 +17,10 @@ function commandFromEnvironment(name: string, fallback: string): string {
 }
 
 function resolveTtsCommand(): string {
-  return commandFromEnvironment('AIVPLAYER_TTS_PATH', process.platform === 'darwin' ? 'say' : '')
+  return commandFromEnvironment(
+    'AIVPLAYER_TTS_PATH',
+    desktopState.currentAppSettings.tts.executablePath?.trim() || (process.platform === 'darwin' ? 'say' : '')
+  )
 }
 
 function resolveTesseractCommand(): string {
@@ -121,7 +124,13 @@ export function registerEvidenceTaskIpc(): void {
       const result = await runMediaEvidenceTask(task, {
         signal: controller.signal,
         ocr: ffmpegPath && tesseractPath ? createLocalOcrOperation({ ffmpegPath, tesseractPath, temporaryDirectory: app.getPath('temp') }) : undefined,
-        tts: ttsPath ? createLocalTtsOperation({ executablePath: ttsPath, outputDirectory: join(app.getPath('userData'), 'evidence-audio') }) : undefined,
+        tts: ttsPath
+          ? createLocalTtsOperation({
+              executablePath: ttsPath,
+              outputDirectory: join(app.getPath('userData'), 'evidence-audio'),
+              voice: desktopState.currentAppSettings.tts.voice ?? undefined
+            })
+          : undefined,
         onTaskChange: (next) => sendTask(event.sender, next)
       })
       const persisted = result.status === 'completed' ? await persistOcrResult(result) : result

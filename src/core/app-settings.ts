@@ -558,6 +558,17 @@ function sanitizeAsrSettings(
   }
 }
 
+function sanitizeTtsSettings(
+  value: Partial<AppSettings['tts']> | undefined,
+  defaults: AppSettings['tts']
+): AppSettings['tts'] {
+  const tts = value ?? {}
+  return {
+    executablePath: normalizeTextField(tts.executablePath, defaults.executablePath),
+    voice: normalizeTextField(tts.voice, defaults.voice)
+  }
+}
+
 function encodeAppSettingsForDisk(settings: AppSettings, secretCodec: AppSettingsSecretCodec | null): AppSettings {
   return {
     ...settings,
@@ -592,6 +603,7 @@ function sanitizeAppSettings(parsed: unknown, captureDefaultDirectoryPath: strin
     vision?: Partial<AppSettings['vision']>
     drama?: Partial<AppSettings['drama']>
     asr?: Partial<AppSettings['asr']>
+    tts?: Partial<AppSettings['tts']>
   }
 
   const legacyPlayback = typeof value.schemaVersion !== 'number' || value.schemaVersion < 12
@@ -612,7 +624,8 @@ function sanitizeAppSettings(parsed: unknown, captureDefaultDirectoryPath: strin
     ai: sanitizeAiSettings(value.ai, defaults.ai),
     vision: sanitizeVisionSettings(value.vision, defaults.vision),
     drama: sanitizeDramaSettings(value.drama, defaults.drama),
-    asr: sanitizeAsrSettings(value.asr, defaults.asr)
+    asr: sanitizeAsrSettings(value.asr, defaults.asr),
+    tts: sanitizeTtsSettings(value.tts, defaults.tts)
   }
 }
 

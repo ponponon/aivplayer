@@ -46,6 +46,8 @@ describe('app settings', () => {
     settings.asr.translationBaseUrl = 'https://example.test/v1/chat/completions'
     settings.asr.translationModel = 'translation-model'
     settings.asr.translationApiKey = 'secret-key'
+    settings.tts.executablePath = '/usr/local/bin/custom-say'
+    settings.tts.voice = 'Tingting'
     settings.capture.saveDirectoryPath = tempDirectory
     settings.capture.copyToClipboard = false
     settings.capture.imageFormat = 'png'
@@ -164,7 +166,7 @@ describe('app settings', () => {
     )
 
     await expect(readAppSettings(tempDirectory)).resolves.toMatchObject({
-      schemaVersion: 22,
+      schemaVersion: 23,
       playback: {
         singleClickPause: true
       }

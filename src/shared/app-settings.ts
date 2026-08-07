@@ -6,7 +6,7 @@ import type { SubtitleEmphasisMode, SubtitlePresetId } from './subtitle-presets'
 import type { PlaybackBookmark, PlaybackEndAction, PlaybackMediaProfile, PlaybackOrder, PlaybackRepeatMode, PlaybackSegment } from './playback-memory'
 import type { MediaStructureCorrection } from './media-base-types'
 
-export const APP_SETTINGS_SCHEMA_VERSION = 22
+export const APP_SETTINGS_SCHEMA_VERSION = 23
 
 export const SIDE_PANEL_WIDTH_MIN = 240
 export const SIDE_PANEL_WIDTH_MAX = 480
@@ -103,6 +103,10 @@ export type AppSettings = {
     translationModel: string | null
     translationApiKey: string | null
     translationGlossary: string | null
+  }
+  tts: {
+    executablePath: string | null
+    voice: string | null
   }
 }
 
@@ -258,6 +262,10 @@ export function createDefaultAppSettings(): AppSettings {
       translationModel: null,
       translationApiKey: null,
       translationGlossary: null
+    },
+    tts: {
+      executablePath: null,
+      voice: null
     }
   }
 }
