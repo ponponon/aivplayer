@@ -26,6 +26,7 @@
 .vision-index-actions,
 .vision-text-search,
 .vision-image-search,
+.vision-selection-actions,
 .vision-progress {
   display: flex;
   align-items: center;
@@ -75,6 +76,25 @@
 
 .vision-index-actions {
   flex-wrap: wrap;
+}
+
+.vision-selection-actions {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.vision-collection-title-input {
+  min-width: 120px;
+  flex: 1 1 120px;
+  min-height: 30px;
+  padding: 0 8px;
+  color: var(--text-primary);
+  background: rgba(var(--overlay-rgb), 0.06);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
 }
 
 .vision-primary-action,

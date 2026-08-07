@@ -6,6 +6,7 @@ import { createWhisperCppRuntime } from '../core/ai/whisper-cpp-runtime'
 import { VisionLibrary } from '../core/ai/vision-library'
 import { VisionIndexQueue } from '../core/ai/vision-index-queue'
 import { DramaStore } from '../core/drama/drama-store'
+import { ClipInboxStore } from '../core/ai/clip-inbox-store'
 
 export const desktopState: {
   mainWindow: BrowserWindow | null
@@ -22,6 +23,7 @@ export const desktopState: {
   visionAbortControllers: Map<number, AbortController>
   batchSubtitleManager: BatchSubtitleManager | null
   dramaStore: DramaStore | null
+  clipInboxStore: ClipInboxStore | null
 } = {
   mainWindow: null,
   asrRuntime: null,
@@ -36,5 +38,6 @@ export const desktopState: {
   visionScanAbortControllers: new Map(),
   visionAbortControllers: new Map(),
   batchSubtitleManager: null,
-  dramaStore: null
+  dramaStore: null,
+  clipInboxStore: null
 }

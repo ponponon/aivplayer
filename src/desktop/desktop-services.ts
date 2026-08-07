@@ -7,6 +7,7 @@ import { VisionLibrary } from '../core/ai/vision-library'
 import { VisionIndexQueue } from '../core/ai/vision-index-queue'
 import { createDramaProviderFromConfig, createDramaProviderFromEnvironment, DramaProviderError } from '../core/drama/drama-provider'
 import { DramaStore } from '../core/drama/drama-store'
+import { ClipInboxStore } from '../core/ai/clip-inbox-store'
 import { DramaWorkflow } from '../core/drama/drama-workflow'
 import type { DramaProviderSettings, DramaProviderSettingsInput, DramaProviderTestResult } from '../shared/drama-types'
 import { saveAppSettings } from './desktop-settings'
@@ -81,6 +82,11 @@ export function getBatchSubtitleManager(sender: Electron.WebContents): BatchSubt
 export function getDramaStore(): DramaStore {
   if (!desktopState.dramaStore) desktopState.dramaStore = new DramaStore(app.getPath('userData'))
   return desktopState.dramaStore
+}
+
+export function getClipInboxStore(): ClipInboxStore {
+  if (!desktopState.clipInboxStore) desktopState.clipInboxStore = new ClipInboxStore(app.getPath('userData'))
+  return desktopState.clipInboxStore
 }
 
 export function getDramaWorkflow(): DramaWorkflow {

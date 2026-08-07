@@ -1,6 +1,9 @@
-import { Database, ImageUp, ScanSearch, Search, Square } from 'lucide-react'
+import { Archive, Database, FilePlus, ImageUp, ScanSearch, Search, Square, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { VisionIndexProgress, VisionRuntimeStatus, VisionSearchResult } from '../../../shared/media-types'
+import type { VisionClipCollection, VisionClipCollectionExportFormat, VisionClipCollectionSortMode } from '../../../shared/vision-types'
+import { invertVisionClipSelections, mergeVisionCollectionSelections, normalizeVisionCollectionTags } from '../../../core/ai/clip-inbox-operations'
+import { createVisionClipSelections, normalizeVisionTimeRange } from '../../../core/ai/vision-evidence'
 import { useAppContext } from './app-context'
 import { useVisionLibraryFolder } from './use-vision-library-folder'
 import { VisionLibraryFolder } from './vision-library-folder'
@@ -12,6 +15,8 @@ function formatDuration(milliseconds: number): string {
   return `${seconds.toFixed(seconds < 10 ? 1 : 0)}s`
 }
 
+type CollectionAvailability = { missingPaths: number; availablePaths: number }
+
 export function VisionPanel(): React.ReactElement {
   const app = useAppContext()
   const [status, setStatus] = useState<VisionRuntimeStatus | null>(null)
@@ -20,8 +25,15 @@ export function VisionPanel(): React.ReactElement {
   const [sampleImagePath, setSampleImagePath] = useState<string | null>(null)
   const [sampleImageName, setSampleImageName] = useState<string | null>(null)
   const [results, setResults] = useState<VisionSearchResult[]>([])
+  const [selectedResultIds, setSelectedResultIds] = useState<Set<string>>(new Set())
+  const [collectionTitle, setCollectionTitle] = useState('')
+  const [collectionTags, setCollectionTags] = useState('')
+  const [collections, setCollections] = useState<VisionClipCollection[]>([])
+  const [collectionAvailability, setCollectionAvailability] = useState<Record<string, CollectionAvailability>>({})
   const [thumbnailUrls, setThumbnailUrls] = useState<Record<string, string>>({})
   const [isSearching, setIsSearching] = useState(false)
+  const [isCreatingProject, setIsCreatingProject] = useState(false)
+  const [repairingCollectionId, setRepairingCollectionId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const isIndexing = progress?.status === 'loading' || progress?.status === 'indexing'
   const folder = useVisionLibraryFolder(app, isIndexing, { onError: setError })
@@ -51,6 +63,38 @@ export function VisionPanel(): React.ReactElement {
       window.clearInterval(statusTimer)
       removeProgressListener()
     }
+  }, [])
+
+  useEffect(() => {
+    let active = true
+    if (collections.length === 0) {
+      setCollectionAvailability({})
+      return () => { active = false }
+    }
+    void Promise.all(collections.map(async (collection) => {
+      const paths = [...new Set(collection.selections.map((selection) => selection.videoPath))]
+      const availability = await Promise.all(paths.map(async (path) => {
+        try {
+          return await window.aiv.isMediaFileAvailable(path)
+        } catch {
+          return false
+        }
+      }))
+      return [collection.id, { availablePaths: availability.filter(Boolean).length, missingPaths: availability.filter((available) => !available).length }] as const
+    })).then((entries) => {
+      if (active) setCollectionAvailability(Object.fromEntries(entries))
+    })
+    return () => { active = false }
+  }, [collections])
+
+  useEffect(() => {
+    let active = true
+    void window.aiv.listVisionClipCollections().then((nextCollections) => {
+      if (active) setCollections(nextCollections)
+    }).catch((reason: unknown) => {
+      if (active) setError(reason instanceof Error ? reason.message : String(reason))
+    })
+    return () => { active = false }
   }, [])
 
   useEffect(() => {
@@ -94,8 +138,12 @@ export function VisionPanel(): React.ReactElement {
     if (!query.trim() || isSearching) return
     setIsSearching(true)
     setError(null)
-    void window.aiv.searchVisionText({ query, limit: 24, mode: 'hybrid' }).then(setResults).catch((reason: unknown) => {
+    void window.aiv.searchVisionText({ query, limit: 24, mode: 'hybrid' }).then((nextResults) => {
+      setResults(nextResults)
+      setSelectedResultIds(new Set())
+    }).catch((reason: unknown) => {
       setResults([])
+      setSelectedResultIds(new Set())
       setError(reason instanceof Error ? reason.message : String(reason))
     }).finally(() => setIsSearching(false))
   }
@@ -104,8 +152,12 @@ export function VisionPanel(): React.ReactElement {
     if (!sampleImagePath || isSearching) return
     setIsSearching(true)
     setError(null)
-    void window.aiv.searchVisionImage({ imagePath: sampleImagePath, limit: 24 }).then(setResults).catch((reason: unknown) => {
+    void window.aiv.searchVisionImage({ imagePath: sampleImagePath, limit: 24 }).then((nextResults) => {
+      setResults(nextResults)
+      setSelectedResultIds(new Set())
+    }).catch((reason: unknown) => {
       setResults([])
+      setSelectedResultIds(new Set())
       setError(reason instanceof Error ? reason.message : String(reason))
     }).finally(() => setIsSearching(false))
   }
@@ -124,6 +176,139 @@ export function VisionPanel(): React.ReactElement {
       if (files.length === 0) return
       app.loadFiles(files)
       window.setTimeout(() => app.seekTo(result.timestampSeconds), 120)
+    }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
+  }
+
+  const toggleResultSelection = (result: VisionSearchResult): void => {
+    setSelectedResultIds((current) => {
+      const next = new Set(current)
+      if (next.has(result.id)) next.delete(result.id)
+      else next.add(result.id)
+      return next
+    })
+  }
+
+  const createProjectFromSelection = (): void => {
+    const selectedResults = results.filter((result) => selectedResultIds.has(result.id))
+    if (selectedResults.length === 0 || isCreatingProject) return
+    setIsCreatingProject(true)
+    setError(null)
+    void app.createEditingProjectFromVisionResults(selectedResults).finally(() => {
+      setIsCreatingProject(false)
+    })
+  }
+
+  const saveSelectedCollection = (): void => {
+    const selectedResults = results.filter((result) => selectedResultIds.has(result.id))
+    const selections = createVisionClipSelections(selectedResults)
+    const title = collectionTitle.trim()
+    if (!title || selections.length === 0) return
+    void window.aiv.saveVisionClipCollection({ title, tags: normalizeVisionCollectionTags(collectionTags), sortMode: 'source-time', selections }).then((collection) => {
+      setCollections((current) => [collection, ...current.filter((item) => item.id !== collection.id)])
+      setCollectionTitle('')
+      setCollectionTags('')
+    }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
+  }
+
+  const updateCollection = async (collection: VisionClipCollection, patch: Partial<Pick<VisionClipCollection, 'tags' | 'sortMode' | 'selections'>>): Promise<VisionClipCollection | null> => {
+    setError(null)
+    try {
+      const updated = await window.aiv.saveVisionClipCollection({
+        id: collection.id,
+        title: collection.title,
+        tags: patch.tags ?? collection.tags,
+        sortMode: patch.sortMode ?? collection.sortMode,
+        selections: patch.selections ?? collection.selections
+      })
+      setCollections((current) => [updated, ...current.filter((item) => item.id !== updated.id)])
+      return updated
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+      return null
+    }
+  }
+
+  const mergeCollection = (collection: VisionClipCollection): void => {
+    updateCollection(collection, { selections: mergeVisionCollectionSelections(collection.selections) })
+  }
+
+  const invertCollection = (collection: VisionClipCollection): void => {
+    const selections = invertVisionClipSelections(collection.selections)
+    if (selections.length === 0) {
+      setError('集合没有可反选的时间范围')
+      return
+    }
+    updateCollection(collection, { selections })
+  }
+
+  const sortCollection = (collection: VisionClipCollection, sortMode: VisionClipCollectionSortMode): void => {
+    updateCollection(collection, { sortMode })
+  }
+
+  const exportCollection = (collection: VisionClipCollection, format: VisionClipCollectionExportFormat): void => {
+    setError(null)
+    void window.aiv.exportVisionClipCollection({ collectionId: collection.id, format }).then((result) => {
+      if (!result.success && !result.canceled) setError(result.message)
+    }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
+  }
+
+  const repairCollection = async (collection: VisionClipCollection): Promise<void> => {
+    if (repairingCollectionId) return
+    setRepairingCollectionId(collection.id)
+    setError(null)
+    try {
+      const paths = [...new Set(collection.selections.map((selection) => selection.videoPath))]
+      const availability = await Promise.all(paths.map(async (path) => [path, await window.aiv.isMediaFileAvailable(path).catch(() => false)] as const))
+      const missingPaths = new Set(availability.filter(([, available]) => !available).map(([path]) => path))
+      if (missingPaths.size === 0) return
+      const replacements = await window.aiv.openMediaFiles()
+      if (replacements.length === 0) return
+      const usedReplacementPaths = new Set<string>()
+      const replacementByMissingPath = new Map<string, typeof replacements[number]>()
+      for (const selection of collection.selections.filter((item) => missingPaths.has(item.videoPath))) {
+        if (replacementByMissingPath.has(selection.videoPath)) continue
+        const candidate = replacements.find((file) => !usedReplacementPaths.has(file.path) && file.name.toLocaleLowerCase() === selection.fileName.toLocaleLowerCase())
+          ?? (missingPaths.size === 1 && replacements.length === 1 ? replacements[0] : undefined)
+        if (!candidate) throw new Error(app.copy.vision.collectionRepairNoMatch(selection.fileName))
+        usedReplacementPaths.add(candidate.path)
+        replacementByMissingPath.set(selection.videoPath, candidate)
+      }
+      const repairedSelections = await Promise.all(collection.selections.map(async (selection) => {
+        const replacement = replacementByMissingPath.get(selection.videoPath)
+        if (!replacement) return selection
+        const [mediaFile, metadata] = await Promise.all([window.aiv.createMediaFile(replacement.path), window.aiv.getMediaMetadata(replacement.path)])
+        const durationSeconds = metadata?.durationSeconds && metadata.durationSeconds > 0 ? metadata.durationSeconds : selection.durationSeconds
+        const range = normalizeVisionTimeRange(selection, durationSeconds)
+        if (!range) throw new Error(app.copy.vision.collectionRepairTooShort(replacement.name))
+        return {
+          ...selection,
+          sourceId: `source-${mediaFile.id}`,
+          videoPath: mediaFile.path,
+          fileName: mediaFile.name,
+          fingerprint: mediaFile.fingerprint ?? `${mediaFile.path}:${durationSeconds}`,
+          durationSeconds,
+          width: metadata?.video?.width ?? selection.width,
+          height: metadata?.video?.height ?? selection.height,
+          startSeconds: range.startSeconds,
+          endSeconds: range.endSeconds
+        }
+      }))
+      await updateCollection(collection, { selections: repairedSelections })
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    } finally {
+      setRepairingCollectionId(null)
+    }
+  }
+
+  const createProjectFromCollection = (collection: VisionClipCollection): void => {
+    setError(null)
+    void app.createEditingProjectFromVisionCollection(collection)
+  }
+
+  const deleteCollection = (collection: VisionClipCollection): void => {
+    void window.aiv.deleteVisionClipCollection(collection.id).then((deleted) => {
+      if (deleted) setCollections((current) => current.filter((item) => item.id !== collection.id))
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
   }
 
@@ -182,9 +367,15 @@ export function VisionPanel(): React.ReactElement {
         <label className="vision-file-picker"><ImageUp size={15} /><span>{sampleImageName ?? app.copy.vision.chooseImage}</span><input type="file" accept="image/*" onChange={handleImageChange} /></label>
         <button className="vision-search-button" type="button" onClick={runImageSearch} disabled={!sampleImagePath || isSearching}><Search size={15} />{app.copy.vision.searchImage}</button>
       </div>
+      {selectedResultIds.size > 0 ? <div className="vision-selection-actions"><span>{app.copy.vision.selectedResults(selectedResultIds.size)}</span><input className="vision-collection-title-input" value={collectionTitle} onChange={(event) => setCollectionTitle(event.target.value)} placeholder={app.copy.vision.collectionTitlePlaceholder} aria-label={app.copy.vision.collectionTitlePlaceholder} /><input className="vision-collection-title-input" value={collectionTags} onChange={(event) => setCollectionTags(event.target.value)} placeholder={app.copy.vision.collectionTagsPlaceholder} aria-label={app.copy.vision.collectionTagsPlaceholder} /><button className="vision-secondary-action" type="button" onClick={saveSelectedCollection} disabled={!collectionTitle.trim()}><Archive size={14} />{app.copy.vision.saveCollection}</button><button className="vision-primary-action" type="button" onClick={createProjectFromSelection} disabled={isCreatingProject}><FilePlus size={14} />{isCreatingProject ? app.copy.vision.creatingProject : app.copy.vision.createProject}</button></div> : null}
     </section>
 
     {error ? <div className="vision-error vision-error-card" role="alert">{error}</div> : null}
-    <VisionSearchResults copy={app.copy.vision} results={results} thumbnailUrls={thumbnailUrls} onOpenResult={openResult} />
+    <VisionSearchResults copy={app.copy.vision} results={results} thumbnailUrls={thumbnailUrls} onOpenResult={openResult} selectedIds={selectedResultIds} onToggleSelection={toggleResultSelection} />
+    {collections.length > 0 ? <section className="vision-card vision-collections"><div className="vision-collections-heading"><strong>{app.copy.vision.savedCollections}</strong><Archive size={15} /></div>{collections.map((collection) => {
+      const availability = collectionAvailability[collection.id]
+      const isRepairing = repairingCollectionId === collection.id
+      return <article className="vision-collection" key={collection.id}><div className="vision-collection-copy"><strong>{collection.title}</strong><span>{app.copy.vision.selectedResults(collection.selections.length)} · {collection.sortMode === 'duration-desc' ? app.copy.vision.collectionSortDuration : collection.sortMode === 'file-name' ? app.copy.vision.collectionSortFileName : app.copy.vision.collectionSortSourceTime}</span>{collection.tags.length > 0 ? <small>{collection.tags.join(' · ')}</small> : null}{availability?.missingPaths ? <small className="vision-collection-missing">{app.copy.vision.collectionMissingSources(availability.missingPaths)}</small> : null}</div><div className="vision-collection-actions"><select className="vision-collection-sort" value={collection.sortMode} aria-label={app.copy.vision.collectionSortLabel} onChange={(event) => sortCollection(collection, event.target.value as VisionClipCollectionSortMode)}><option value="source-time">{app.copy.vision.collectionSortSourceTime}</option><option value="duration-desc">{app.copy.vision.collectionSortDuration}</option><option value="file-name">{app.copy.vision.collectionSortFileName}</option></select>{availability?.missingPaths ? <button className="vision-secondary-action" type="button" onClick={() => void repairCollection(collection)} disabled={isRepairing}>{isRepairing ? app.copy.vision.repairingCollectionSources : app.copy.vision.repairCollectionSources}</button> : null}<button className="vision-secondary-action" type="button" onClick={() => mergeCollection(collection)}>{app.copy.vision.collectionMerge}</button><button className="vision-secondary-action" type="button" onClick={() => invertCollection(collection)}>{app.copy.vision.collectionInvert}</button><button className="vision-secondary-action" type="button" onClick={() => exportCollection(collection, 'json')}>{app.copy.vision.exportJson}</button><button className="vision-secondary-action" type="button" onClick={() => exportCollection(collection, 'csv')}>{app.copy.vision.exportCsv}</button><button className="vision-secondary-action" type="button" onClick={() => exportCollection(collection, 'edl')}>{app.copy.vision.exportEdl}</button><button className="vision-primary-action" type="button" onClick={() => createProjectFromCollection(collection)} title={app.copy.vision.openCollection}><FilePlus size={13} />{app.copy.vision.openCollection}</button><button className="vision-collection-delete" type="button" onClick={() => deleteCollection(collection)} title={app.copy.vision.deleteCollection} aria-label={app.copy.vision.deleteCollection}><Trash2 size={14} /></button></div></article>
+    })}</section> : null}
   </div>
 }

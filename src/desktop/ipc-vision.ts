@@ -1,13 +1,25 @@
-import { ipcMain } from 'electron'
+import { app, ipcMain } from 'electron'
+import { writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
-import type { VisionDirectoryScanRequest, VisionIndexRequest, VisionSearchRequest } from '../shared/vision-types'
+import type { VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionIndexRequest, VisionSearchRequest } from '../shared/vision-types'
 import { scanVisionDirectory, isVisionScanAbortError } from '../core/ai/vision-directory-scan'
-import { getVisionIndexQueue, getVisionLibrary } from './desktop-services'
+import { renderVisionClipCollectionExport } from '../core/ai/clip-inbox-export'
+import { getClipInboxStore, getVisionIndexQueue, getVisionLibrary } from './desktop-services'
 import { desktopState } from './desktop-state'
+import { promptForSavePath } from './media-dialogs'
 
 function normalizeMediaPaths(request: VisionIndexRequest): string[] {
   if (!request || !Array.isArray(request.mediaPaths)) return []
   return Array.from(new Set(request.mediaPaths.filter((path): path is string => typeof path === 'string' && path.trim().length > 0)))
+}
+
+function isVisionClipCollectionExportFormat(value: unknown): value is VisionClipCollectionExportFormat {
+  return value === 'json' || value === 'csv' || value === 'edl'
+}
+
+function safeExportTitle(title: string): string {
+  return title.trim().replace(/[\\/:*?"<>|]/g, '_').slice(0, 120) || 'clip-collection'
 }
 
 export function registerVisionIpc(): void {
@@ -96,4 +108,32 @@ export function registerVisionIpc(): void {
   })
 
   ipcMain.handle(IPC_CHANNELS.VISION_READ_THUMBNAIL, (_event, thumbnailPath: string) => getVisionLibrary().readThumbnail(thumbnailPath))
+  ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_LIST, () => getClipInboxStore().listCollections())
+  ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_SAVE, (_event, input: VisionClipCollectionInput) => getClipInboxStore().saveCollection(input))
+  ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_DELETE, (_event, collectionId: string) => {
+    if (typeof collectionId !== 'string' || !collectionId.trim()) return false
+    return getClipInboxStore().deleteCollection(collectionId.trim())
+  })
+  ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_EXPORT, async (_event, request: VisionClipCollectionExportRequest) => {
+    if (!request || typeof request.collectionId !== 'string' || !request.collectionId.trim() || !isVisionClipCollectionExportFormat(request.format)) {
+      return { success: false, message: '导出参数无效' }
+    }
+    const collection = getClipInboxStore().getCollection(request.collectionId.trim())
+    if (!collection) return { success: false, message: '选段集合不存在' }
+    const extension = request.format
+    const defaultPath = join(app.getPath('documents'), `${safeExportTitle(collection.title)}.${extension}`)
+    const filePath = await promptForSavePath({
+      title: `导出选段集合 · ${collection.title}`,
+      defaultPath,
+      filters: [{ name: `${extension.toUpperCase()} files`, extensions: [extension] }]
+    })
+    if (!filePath) return { success: false, canceled: true, message: '已取消导出' }
+    const outputPath = filePath.toLowerCase().endsWith(`.${extension}`) ? filePath : `${filePath}.${extension}`
+    try {
+      await writeFile(outputPath, renderVisionClipCollectionExport(collection, request.format), 'utf8')
+      return { success: true, filePath: outputPath, message: `已导出 ${outputPath}` }
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : String(error) }
+    }
+  })
 }

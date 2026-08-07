@@ -1,8 +1,10 @@
 import { useEffect } from 'react'
 import { createEditingProject } from '../../../core/editing/project'
+import { createEditingProjectFromVisionSearchResults, createEditingProjectFromVisionSelections, type VisionSourceMetadata } from '../../../core/ai/vision-evidence'
 import { editedDurationSeconds, editedTimeToSource } from '../../../core/editing/timeline-math'
 import { deleteVideoClipAtEdited, splitVideoClipAtEdited, trimVideoClipLeftAtEdited, trimVideoClipRightAtEdited } from '../../../core/editing/timeline-operations'
 import type { ClipExportMode } from '../../../shared/clip-export'
+import type { VisionClipCollection, VisionSearchResult } from '../../../shared/vision-types'
 import type { AppDerived } from './use-app-derived'
 import type { AppModel } from './app-types'
 import { applyEditingTimelineChange, captureEditingAudio, clampEditingTime, createEditingSource, restoreEditingAudio, seekEditingTime } from './editing-action-helpers'
@@ -10,7 +12,7 @@ import { exportEditingTimeline as runEditingTimelineExport } from './editing-exp
 import { loadEditingProject, saveEditingProject } from './editing-project-storage'
 import { useEditingCaptionEffect } from './use-editing-caption-effect'
 import { useEditingPlaybackEffect } from './use-editing-playback-effect'
-import { createEditingProjectFileActions } from './editing-project-file-actions'
+import { createEditingProjectFileActions, setEditingProject } from './editing-project-file-actions'
 import { createEditingClipActions } from './editing-clip-actions'
 import { createEditingCaptionActions } from './editing-caption-actions'
 import { createEditingAudioActions } from './editing-audio-actions'
@@ -71,6 +73,62 @@ export function useEditingActions(model: AppModel, derived: AppDerived, selectFi
     if (!project) return
     const result = deleteVideoClipAtEdited(project.videoClips, model.editingCurrentTime)
     if (result.removedRange) applyEditingTimelineChange(model, result.clips, result.removedRange)
+  }
+
+  const installVisionProject = async (uniquePaths: readonly string[], createProject: (sourceMetadata: ReadonlyMap<string, VisionSourceMetadata>, usablePaths: ReadonlySet<string>) => import('../../../shared/editing-types').EditingProject): Promise<void> => {
+    if (uniquePaths.length === 0) return
+    model.setEditingProjectStatus({ success: true, message: derived.copy.vision.creatingProject })
+    try {
+      const entries = await Promise.all(uniquePaths.map(async (path) => {
+        const [file, metadata] = await Promise.all([window.aiv.createMediaFile(path), window.aiv.getMediaMetadata(path)])
+        const durationSeconds = metadata?.durationSeconds && metadata.durationSeconds > 0 ? metadata.durationSeconds : 0
+        return {
+          path,
+          file,
+          durationSeconds,
+          metadata
+        }
+      }))
+      const usableEntries = entries.filter((entry) => entry.file && entry.durationSeconds > 0)
+      if (usableEntries.length === 0) throw new Error(derived.copy.editing.projectSourceMissing)
+      const usablePaths = new Set(usableEntries.map((entry) => entry.path))
+      const sourceMetadata = new Map(usableEntries.map((entry) => [entry.path, {
+        id: `source-${entry.file.id}`,
+        fingerprint: `${entry.file.path}:${entry.durationSeconds}`,
+        durationSeconds: entry.durationSeconds,
+        width: entry.metadata?.video?.width ?? undefined,
+        height: entry.metadata?.video?.height ?? undefined
+      }]))
+      const project = createProject(sourceMetadata, usablePaths)
+      const sourceFiles = Object.fromEntries(usableEntries.map((entry) => [`source-${entry.file.id}`, entry.file])) as Record<string, NonNullable<AppModel['state']['currentFile']>>
+      const firstSource = project.sources[0]
+      const firstFile = firstSource ? sourceFiles[firstSource.id] : undefined
+      if (!firstSource || !firstFile) throw new Error(derived.copy.editing.projectSourceMissing)
+      if (model.state.currentFile?.path !== firstFile.path) selectFile(firstFile)
+      model.setEditingSourceFiles(sourceFiles)
+      model.setEditingPreviewSourceId(firstSource.id)
+      model.setEditingProjectFilePath(null)
+      setEditingProject(model, project, 0)
+      model.setEditingProjectStatus({ success: true, message: derived.copy.vision.projectCreated(project.title) })
+    } catch (error) {
+      model.setEditingProjectStatus({ success: false, message: `${derived.copy.editing.projectOpenFailed}：${error instanceof Error ? error.message : String(error)}` })
+    }
+  }
+
+  const createEditingProjectFromVisionResults = async (results: readonly VisionSearchResult[]): Promise<void> => {
+    const uniquePaths = [...new Set(results.map((result) => result.videoPath).filter((path) => path.trim().length > 0))]
+    await installVisionProject(uniquePaths, (sourceMetadata, usablePaths) => createEditingProjectFromVisionSearchResults(
+      results.filter((result) => usablePaths.has(result.videoPath)),
+      { sourceMetadata }
+    ))
+  }
+
+  const createEditingProjectFromVisionCollection = async (collection: VisionClipCollection): Promise<void> => {
+    const uniquePaths = [...new Set(collection.selections.map((selection) => selection.videoPath).filter((path) => path.trim().length > 0))]
+    await installVisionProject(uniquePaths, (sourceMetadata, usablePaths) => createEditingProjectFromVisionSelections(
+      collection.selections.filter((selection) => usablePaths.has(selection.videoPath)),
+      { sourceMetadata, title: collection.title }
+    ))
   }
   const undoEditing = (): void => {
     const project = model.editingProject
@@ -148,5 +206,6 @@ export function useEditingActions(model: AppModel, derived: AppDerived, selectFi
     moveEditingSelection: (selection: import('../../../core/editing/selection').EditingSelection, deltaSeconds: number) => moveEditingSelection(model, selection, deltaSeconds),
     reorderEditingOverlayTracks: (source: import('../../../shared/editing-types').EditingOverlayTrackKind, target: import('../../../shared/editing-types').EditingOverlayTrackKind) => reorderEditingOverlayTracks(model, source, target),
     exportEditingTimeline: (mode?: ClipExportMode, outputVideoPath?: string) => runEditingTimelineExport(model, derived, mode, outputVideoPath)
+    , createEditingProjectFromVisionResults, createEditingProjectFromVisionCollection
   }
 }

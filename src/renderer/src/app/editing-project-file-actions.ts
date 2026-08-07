@@ -13,7 +13,7 @@ function getCurrentSource(model: AppModel, derived: AppDerived) {
   return { source: createEditingSource(model, durationSeconds), durationSeconds }
 }
 
-function setEditingProject(model: AppModel, project: EditingProject, sourceTime = 0): void {
+export function setEditingProject(model: AppModel, project: EditingProject, sourceTime = 0): void {
   model.videoRef.current?.pause()
   model.setEditingProject(project)
   model.setEditingPast([])
