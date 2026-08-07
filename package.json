@@ -23,6 +23,8 @@
     "release:check-heif-runtime": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/check-heif-runtime.ts",
     "release:build-heif-source": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/build-heif-source.ts",
     "smoke:open-video": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-open-video.ts",
+    "smoke:playback-segments": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-playback-segments.ts",
+    "smoke:vision-clip-inbox": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-inbox.ts",
     "smoke:web-format-matrix": "node scripts/run-web-format-matrix.mjs",
     "smoke:web-concurrency": "node scripts/run-web-concurrency.mjs",
     "smoke:web-real-file": "node scripts/smoke-web-real-file.mjs",
@@ -46,7 +48,7 @@
     "smoke:asr:player": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-asr-real-player.ts",
     "smoke:translation": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-translation.ts",
     "smoke:translation:player": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-translation-player.ts",
-    "smoke:all": "npm run smoke:settings-dialog:all && npm run smoke:dialogs:all && npm run smoke:subtitle-settings && npm run smoke:translation && npm run smoke:translation:player && npm run smoke:playback-history && npm run smoke:open-video",
+    "smoke:all": "npm run smoke:settings-dialog:all && npm run smoke:dialogs:all && npm run smoke:subtitle-settings && npm run smoke:translation && npm run smoke:translation:player && npm run smoke:playback-history && npm run smoke:playback-segments && npm run smoke:vision-clip-inbox && npm run smoke:open-video",
     "pack": "npm run build && electron-builder --dir",
     "dist": "npm run build && npm run release:check-runtime && npm run release:check-heif-runtime && electron-builder"
   },

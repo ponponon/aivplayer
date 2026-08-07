@@ -18,7 +18,7 @@ import {
   type SubtitleLineHeight,
   type SubtitleTargetLanguageId
 } from '../shared/app-settings'
-import type { PlaybackBookmark, PlaybackEndAction, PlaybackMediaProfile, PlaybackOrder, PlaybackRepeatMode } from '../shared/playback-memory'
+import type { PlaybackBookmark, PlaybackEndAction, PlaybackMediaProfile, PlaybackOrder, PlaybackRepeatMode, PlaybackSegment, PlaybackSegmentColor } from '../shared/playback-memory'
 import { isSubtitleEmphasisMode, isSubtitlePresetId, normalizeSubtitleKeywords } from '../shared/subtitle-presets'
 import { isClipExportLengthSeconds, isClipExportMode } from '../shared/clip-export'
 import type { AsrModelSourceId } from '../shared/media-types'
@@ -355,6 +355,35 @@ function sanitizePlaybackBookmarks(value: unknown, fallback: Record<string, Play
   )
 }
 
+function isPlaybackSegmentColor(value: unknown): value is PlaybackSegmentColor {
+  return value === 'accent' || value === 'cyan' || value === 'violet' || value === 'amber'
+}
+
+function sanitizePlaybackSegments(value: unknown, fallback: Record<string, PlaybackSegment[]>): Record<string, PlaybackSegment[]> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return fallback
+
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .filter(([key, segments]) => key.length > 0 && key.length <= 512 && Array.isArray(segments))
+      .slice(0, 500)
+      .map(([key, segments]) => {
+        const sanitized = (segments as unknown[])
+          .filter((segment): segment is Partial<PlaybackSegment> => Boolean(segment) && typeof segment === 'object')
+          .map((segment) => ({
+            id: typeof segment.id === 'string' ? segment.id.trim().slice(0, 128) : '',
+            startSeconds: segment.startSeconds,
+            endSeconds: segment.endSeconds,
+            name: typeof segment.name === 'string' ? segment.name.trim().slice(0, 160) : '',
+            color: segment.color,
+            createdAt: segment.createdAt
+          }))
+          .filter((segment) => segment.id && isFiniteNumber(segment.startSeconds) && segment.startSeconds >= 0 && isFiniteNumber(segment.endSeconds) && segment.endSeconds > segment.startSeconds && segment.name && isPlaybackSegmentColor(segment.color) && isFiniteNumber(segment.createdAt) && segment.createdAt > 0)
+          .slice(0, 100) as PlaybackSegment[]
+        return [key, sanitized] as const
+      })
+  )
+}
+
 function sanitizePlaybackSettings(
   value: Partial<AppSettings['playback']> | undefined,
   defaults: AppSettings['playback']
@@ -406,6 +435,7 @@ function sanitizePlaybackSettings(
     lastProgressByPath: sanitizePlaybackProgressByPath(playback.lastProgressByPath, defaults.lastProgressByPath),
     profilesByFingerprint: sanitizePlaybackProfiles(playback.profilesByFingerprint, defaults.profilesByFingerprint),
     bookmarksByFingerprint: sanitizePlaybackBookmarks(playback.bookmarksByFingerprint, defaults.bookmarksByFingerprint),
+    segmentsByFingerprint: sanitizePlaybackSegments(playback.segmentsByFingerprint, defaults.segmentsByFingerprint),
     history: sanitizePlaybackHistory(playback.history, defaults.history)
   }
 }

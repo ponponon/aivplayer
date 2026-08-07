@@ -38,7 +38,7 @@ describe('dialog smoke source constraints', () => {
       'node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-translation-player.ts'
     )
     expect(packageJson.scripts?.['smoke:all']).toBe(
-      'npm run smoke:settings-dialog:all && npm run smoke:dialogs:all && npm run smoke:subtitle-settings && npm run smoke:translation && npm run smoke:translation:player && npm run smoke:playback-history && npm run smoke:open-video'
+      'npm run smoke:settings-dialog:all && npm run smoke:dialogs:all && npm run smoke:subtitle-settings && npm run smoke:translation && npm run smoke:translation:player && npm run smoke:playback-history && npm run smoke:playback-segments && npm run smoke:vision-clip-inbox && npm run smoke:open-video'
     )
   })
 

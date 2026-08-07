@@ -24,11 +24,181 @@
 }
 
 .control-group.secondary-group {
+  position: relative;
   gap: 6px;
   padding: 4px 10px 4px 8px;
   background: rgba(var(--overlay-rgb), 0.035);
   border: 1px solid var(--border-soft);
   border-radius: 999px;
+}
+
+.segment-control {
+  position: relative;
+  display: inline-flex;
+}
+
+.segment-control > summary {
+  display: grid;
+  place-items: center;
+  list-style: none;
+  cursor: pointer;
+}
+
+.segment-control > summary::-webkit-details-marker { display: none; }
+
+.segment-control[open] > summary {
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.12);
+  border-color: rgba(var(--accent-rgb), 0.3);
+}
+
+.segment-popover {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 10px);
+  z-index: 40;
+  display: grid;
+  gap: 8px;
+  width: min(280px, calc(100vw - 24px));
+  padding: 10px;
+  color: var(--text-secondary);
+  background: var(--panel-solid, #202329);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md, 10px);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
+}
+
+.segment-popover-heading,
+.segment-popover-actions,
+.segment-color-field,
+.segment-list-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.segment-popover-heading {
+  justify-content: space-between;
+  font-size: 11px;
+}
+
+.segment-popover-heading span,
+.segment-list-item small {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.segment-popover-actions {
+  flex-wrap: wrap;
+}
+
+.segment-popover-button,
+.segment-name-input,
+.segment-color-field select {
+  min-height: 28px;
+  color: var(--text-secondary);
+  background: rgba(var(--overlay-rgb), 0.07);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+}
+
+.segment-popover-button {
+  padding: 0 7px;
+  cursor: pointer;
+}
+
+.segment-popover-button:hover:not(:disabled),
+.segment-popover-button.is-primary {
+  color: var(--accent-ink);
+  background: var(--accent);
+}
+
+.segment-popover-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.segment-name-input {
+  width: 100%;
+  padding: 0 7px;
+}
+
+.segment-color-field {
+  justify-content: space-between;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.segment-color-field select {
+  min-width: 110px;
+  padding: 0 5px;
+}
+
+.segment-list {
+  display: grid;
+  gap: 4px;
+  max-height: 150px;
+  overflow: auto;
+}
+
+.segment-list-item {
+  min-width: 0;
+  padding: 3px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.segment-list-item > button:first-child {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  gap: 6px;
+  padding: 2px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.segment-list-item > button:first-child:hover { color: var(--text-primary); }
+
+.segment-list-swatch {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 18px;
+  border-radius: 999px;
+}
+
+.segment-list-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.segment-list-copy strong,
+.segment-list-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.segment-list-remove {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--text-muted);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.segment-list-remove:hover {
+  color: var(--danger, #ef8a8a);
 }
 
 .speed-control {

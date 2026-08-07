@@ -71,6 +71,7 @@ describe('app settings', () => {
     settings.playback.order = 'shuffle'
     settings.playback.profilesByFingerprint['media-fingerprint'] = { positionSeconds: 42, durationSeconds: 600, volume: 0.42, muted: true, playbackRate: 1.5, updatedAt: 123 }
     settings.playback.bookmarksByFingerprint['media-fingerprint'] = [{ id: 'bookmark-1', timeSeconds: 42, name: '重点', createdAt: 123 }]
+    settings.playback.segmentsByFingerprint['media-fingerprint'] = [{ id: 'segment-1', startSeconds: 10, endSeconds: 30, name: '开场', color: 'cyan', createdAt: 123 }]
     settings.playback.history = [{
       path: `${tempDirectory}/history.mp4`,
       name: 'history.mp4',
@@ -162,7 +163,7 @@ describe('app settings', () => {
     )
 
     await expect(readAppSettings(tempDirectory)).resolves.toMatchObject({
-      schemaVersion: 20,
+      schemaVersion: 21,
       playback: {
         singleClickPause: true
       }
