@@ -33,6 +33,7 @@ export function getSupportLabel(item: WebShareMediaItem): string {
 
 export function getSupportClass(item: WebShareMediaItem): string { return `support-${item.browserSupport}` }
 export function formatProgress(progress: number | null): string { return progress == null || !Number.isFinite(progress) ? '处理中' : `${Math.round(progress * 100)}%` }
+export function isImageMediaItem(item: WebShareMediaItem | null): boolean { return item?.mediaKind === 'image' || item?.mimeType.startsWith('image/') === true }
 
 export function buildWebBatchDownloadUrl(ids: string[]): string {
   const params = new URLSearchParams()

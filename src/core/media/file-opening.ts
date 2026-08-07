@@ -75,8 +75,16 @@ export const VIDEO_EXTENSIONS = [
 
 const VIDEO_EXTENSION_SET = new Set<string>(VIDEO_EXTENSIONS)
 
+export const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'bmp'] as const
+
+const IMAGE_EXTENSION_SET = new Set<string>(IMAGE_EXTENSIONS)
+
 export function isVideoFilePath(filePath: string): boolean {
   return VIDEO_EXTENSION_SET.has(extname(filePath).replace('.', '').toLowerCase())
+}
+
+export function isImageFilePath(filePath: string): boolean {
+  return IMAGE_EXTENSION_SET.has(extname(filePath).replace('.', '').toLowerCase())
 }
 
 export function isMediaFileAvailable(filePath: string): boolean {

@@ -11,11 +11,12 @@ import { createHash, randomBytes } from 'node:crypto'
 import { promisify } from 'node:util'
 import { getContentTypeForFile } from '../../core/media/media-mime'
 import { parseRangeHeader } from '../../core/media/byte-range'
-import { isVideoFilePath } from '../../core/media/file-opening'
+import { isImageFilePath, isVideoFilePath } from '../../core/media/file-opening'
 import { createMediaProbeMetadata } from '../../core/media/media-metadata'
 import { WebTranscodeManager, type WebTranscodeInput, type WebTranscodeJobStatus } from '../../core/media/web-transcode'
 import type {
   WebBrowserSupport,
+  WebMediaKind,
   WebMediaSourceKind,
   WebShareLibraryResponse,
   WebShareMediaDetails,
@@ -47,6 +48,7 @@ type WebServerOptions = {
 type SharedMediaRecord = {
   id: string
   path: string
+  mediaKind: WebMediaKind
   name: string
   extension: string
   mimeType: string
@@ -61,6 +63,7 @@ type SharedMediaRecord = {
 
 type SharedMediaCandidate = {
   path: string
+  mediaKind: WebMediaKind
   sourceKind: WebMediaSourceKind
   sourceGroupId: string
   sourceGroupLabel: string
@@ -129,6 +132,12 @@ function getBrowserSupport(extension: string): WebBrowserSupport {
   if (POSSIBLE_BROWSER_EXTENSIONS.has(extension)) return 'possible'
   if (NEEDS_TRANSCODE_EXTENSIONS.has(extension)) return 'needs-transcode'
   return 'unknown'
+}
+
+function getMediaKind(filePath: string): WebMediaKind | null {
+  if (isVideoFilePath(filePath)) return 'video'
+  if (isImageFilePath(filePath)) return 'image'
+  return null
 }
 
 function getNetworkAddresses(): string[] {
@@ -493,13 +502,10 @@ export class WebServer {
       .filter((filePath) => typeof filePath === 'string' && filePath.trim())
       .map((filePath) => resolve(filePath))
     const uniqueDirectPaths = [...new Set(directPaths)]
-    const candidates: SharedMediaCandidate[] = uniqueDirectPaths.map((path) => ({
-      path,
-      sourceKind: 'playlist',
-      sourceGroupId: 'playlist',
-      sourceGroupLabel: '当前播放列表',
-      relativePath: basename(path)
-    }))
+    const candidates: SharedMediaCandidate[] = uniqueDirectPaths.flatMap((path) => {
+      const mediaKind = getMediaKind(path)
+      return mediaKind ? [{ path, mediaKind, sourceKind: 'playlist' as const, sourceGroupId: 'playlist', sourceGroupLabel: '当前播放列表', relativePath: basename(path) }] : []
+    })
     const validDirectoryPaths: string[] = []
     const seenDirectoryPaths = new Set<string>()
     for (const inputDirectoryPath of [...new Set(directoryPaths.filter((directoryPath) => typeof directoryPath === 'string' && directoryPath.trim()))]) {
@@ -509,6 +515,7 @@ export class WebServer {
       validDirectoryPaths.push(scan.rootPath)
       candidates.push(...scan.filePaths.map((file) => ({
         path: file.path,
+        mediaKind: file.mediaKind,
         sourceKind: 'directory' as const,
         sourceGroupId: createGroupId('directory', scan.rootPath),
         sourceGroupLabel: basename(scan.rootPath) || scan.rootPath,
@@ -534,12 +541,13 @@ export class WebServer {
         records.push({
           id: createMediaId(path),
           path,
+          mediaKind: candidate.mediaKind,
           name: basename(path),
           extension: extname(path).toLowerCase(),
           mimeType: getContentTypeForFile(path),
           sizeBytes: fileStat.size,
           modifiedAt: fileStat.mtimeMs,
-          subtitlePath: getSidecarSubtitlePath(path),
+          subtitlePath: candidate.mediaKind === 'video' ? getSidecarSubtitlePath(path) : null,
           sourceKind: candidate.sourceKind,
           sourceGroupId: candidate.sourceGroupId,
           sourceGroupLabel: candidate.sourceGroupLabel,
@@ -552,7 +560,7 @@ export class WebServer {
     return { records, directoryPaths: validDirectoryPaths }
   }
 
-  private async scanDirectory(inputPath: string): Promise<{ rootPath: string; filePaths: Array<{ path: string; relativePath: string }> } | null> {
+  private async scanDirectory(inputPath: string): Promise<{ rootPath: string; filePaths: Array<{ path: string; mediaKind: WebMediaKind; relativePath: string }> } | null> {
     let rootPath: string
     try {
       rootPath = await realpath(resolve(inputPath))
@@ -561,7 +569,7 @@ export class WebServer {
       return null
     }
 
-    const filePaths: Array<{ path: string; relativePath: string }> = []
+    const filePaths: Array<{ path: string; mediaKind: WebMediaKind; relativePath: string }> = []
     const visit = async (directoryPath: string): Promise<void> => {
       if (filePaths.length >= MAX_SHARED_FILES) return
       let entries
@@ -576,8 +584,9 @@ export class WebServer {
         const entryPath = join(directoryPath, entry.name)
         if (entry.isDirectory()) {
           await visit(entryPath)
-        } else if (entry.isFile() && isVideoFilePath(entryPath)) {
-          filePaths.push({ path: entryPath, relativePath: relative(rootPath, entryPath).split(sep).join('/') })
+        } else if (entry.isFile()) {
+          const mediaKind = getMediaKind(entryPath)
+          if (mediaKind) filePaths.push({ path: entryPath, mediaKind, relativePath: relative(rootPath, entryPath).split(sep).join('/') })
         }
       }
     }
@@ -831,6 +840,7 @@ export class WebServer {
   private toMediaItem(record: SharedMediaRecord, metadata: WebShareMediaDetails['metadata'] = null): WebShareMediaItem {
     return {
       id: record.id,
+      mediaKind: record.mediaKind,
       name: record.name,
       extension: record.extension,
       mimeType: record.mimeType,
@@ -838,8 +848,8 @@ export class WebServer {
       modifiedAt: record.modifiedAt,
       streamUrl: `/media/${record.id}`,
       subtitleUrl: record.subtitlePath ? `/subtitle/${record.id}` : null,
-      browserSupport: this.resolveBrowserSupport(record.extension, metadata),
-      transcodeUrl: `/api/v1/media/${record.id}/transcode`,
+      browserSupport: this.resolveBrowserSupport(record.mediaKind, record.extension, metadata),
+      transcodeUrl: record.mediaKind === 'video' ? `/api/v1/media/${record.id}/transcode` : null,
       durationSeconds: metadata?.durationSeconds ?? null,
       videoCodec: metadata?.video?.codec ?? null,
       audioCodec: metadata?.audio?.codec ?? null,
@@ -851,7 +861,8 @@ export class WebServer {
     }
   }
 
-  private resolveBrowserSupport(extension: string, metadata: WebShareMediaDetails['metadata']): WebBrowserSupport {
+  private resolveBrowserSupport(mediaKind: WebMediaKind, extension: string, metadata: WebShareMediaDetails['metadata']): WebBrowserSupport {
+    if (mediaKind === 'image') return 'likely'
     const videoCodec = metadata?.video?.codec?.toLowerCase() ?? null
     const audioCodec = metadata?.audio?.codec?.toLowerCase() ?? null
     if (videoCodec && ['hevc', 'h265', 'vp6', 'mpeg4', 'wmv3', 'vc1'].includes(videoCodec)) return 'needs-transcode'
@@ -865,7 +876,7 @@ export class WebServer {
     if (!record) return null
     try {
       const currentStat = await stat(record.path)
-      const metadata = await createMediaProbeMetadata(record.path, { resourcePath: this.options.resourcePath, env: this.options.env })
+      const metadata = record.mediaKind === 'video' ? await createMediaProbeMetadata(record.path, { resourcePath: this.options.resourcePath, env: this.options.env }) : null
       return {
         ...this.toMediaItem({ ...record, sizeBytes: currentStat.size, modifiedAt: currentStat.mtimeMs }, metadata),
         metadata,
@@ -932,7 +943,7 @@ export class WebServer {
   private async getTranscodeInput(id: string, durationSeconds: number | null = null): Promise<WebTranscodeInput | null> {
     if (!MEDIA_ID_PATTERN.test(id)) return null
     const record = this.records.get(id)
-    if (!record) return null
+    if (!record || record.mediaKind !== 'video') return null
     try {
       const fileStat = await stat(record.path)
       if (!fileStat.isFile()) return null
@@ -1133,7 +1144,7 @@ export class WebServer {
       return
     }
     const record = this.records.get(id)
-    if (!record) {
+    if (!record || record.mediaKind !== 'video') {
       sendText(response, 404, 'Subtitle not found')
       return
     }
@@ -1185,7 +1196,7 @@ export class WebServer {
       return
     }
     const record = this.records.get(id)
-    if (!record) {
+    if (!record || record.mediaKind !== 'video') {
       sendText(response, 404, 'Media file not found')
       return
     }
@@ -1245,6 +1256,10 @@ export class WebServer {
     const record = this.records.get(id)
     if (!record) {
       sendText(response, 404, 'Thumbnail not found')
+      return
+    }
+    if (record.mediaKind === 'image') {
+      await this.streamFile(record.path, record.name, record.mimeType, request, response)
       return
     }
     const thumbnail = await this.getThumbnail(record)

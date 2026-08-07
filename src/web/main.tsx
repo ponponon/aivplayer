@@ -6,7 +6,7 @@ import { DetailsPanel, LibrarySidebar, LoginScreen, PlayerPanel } from './web-pa
 import { useDesktopState } from './use-desktop-state'
 import { useDesktopFollow } from './use-desktop-follow'
 import { useVisibleSelection } from './use-visible-selection'
-import { readJson } from './web-ui'
+import { isImageMediaItem, readJson } from './web-ui'
 import { useWebCopyLink } from './use-web-copy-link'
 import { useWebLibraryBatch } from './use-web-library-batch'
 import './styles.css'
@@ -112,6 +112,7 @@ function WebApp(): ReactElement {
   }, [selectItem, selected, visibleItems])
 
   const requestTranscode = async (itemId: string): Promise<void> => {
+    if (isImageMediaItem(items.find((item) => item.id === itemId) ?? null)) return
     if (transcodingIdsRef.current.has(itemId)) return
     transcodingIdsRef.current.add(itemId)
     setTranscodingIds((current) => new Set(current).add(itemId))
@@ -158,11 +159,13 @@ function WebApp(): ReactElement {
       setDetails(nextDetails)
       setSubtitleTrack(nextDetails.subtitleTracks.find((track) => track.default)?.id ?? nextDetails.subtitleTracks[0]?.id ?? 'off')
     }).catch(() => undefined)
-    void readJson<WebTranscodeStatus>(`/api/v1/transcode/${selected.id}`).then((status) => {
-      if (detailsRequestIdRef.current !== requestId) return
-      setTranscodeStatus(status)
-      if (status.state === 'ready' && status.streamUrl) setTranscodePlaybackUrl(status.streamUrl)
-    }).catch(() => undefined)
+    if (!isImageMediaItem(selected)) {
+      void readJson<WebTranscodeStatus>(`/api/v1/transcode/${selected.id}`).then((status) => {
+        if (detailsRequestIdRef.current !== requestId) return
+        setTranscodeStatus(status)
+        if (status.state === 'ready' && status.streamUrl) setTranscodePlaybackUrl(status.streamUrl)
+      }).catch(() => undefined)
+    }
   }, [selected])
 
   useEffect(() => {
@@ -191,7 +194,7 @@ function WebApp(): ReactElement {
     </header>
     <main className="web-layout">
       <LibrarySidebar items={items} visibleItems={visibleItems} tree={tree} selectedId={selected?.id ?? null} query={query} preferences={preferences} selectionMode={batch.selectionMode} selectedBatchIds={batch.selectedIds} allVisibleSelected={batch.allVisibleSelected} allSelectedFavorited={batch.allSelectedFavorited} onQueryChange={(value) => { setFollowDesktop(false); setQuery(value) }} onSelect={selectItem} onSelectNode={(nodeId) => { setFollowDesktop(false); updatePreferences((current) => ({ ...current, selectedGroupId: nodeId })) }} updatePreferences={updatePreferences} onEnterSelectionMode={batch.enterSelectionMode} onExitSelectionMode={batch.exitSelectionMode} onToggleBatchSelection={batch.toggleSelection} onSelectAllVisible={batch.selectAllVisible} onClearBatchSelection={batch.clearSelection} onBatchFavorite={batch.toggleFavorites} />
-      <PlayerPanel selected={selected} selectedWithDetails={selectedWithDetails} selectedSubtitleTrack={selectedSubtitleTrack} currentHistory={currentHistory} showResume={Boolean(selected && currentHistory && isInProgress(selected, preferences))} selectedIndex={selectedIndex} queueItems={visibleItems} mediaPlaybackUrl={mediaPlaybackUrl} isPlaying={isPlaying} isSelectedFavorite={isSelectedFavorite} desktopState={desktopState} allowRemoteControl={allowRemoteControl} desktopItem={desktopItem} remoteError={remoteError} error={error} isTranscoding={isTranscoding} transcodeStatus={transcodeStatus} canRequestTranscode={audioTrack === 'direct' && !transcodePlaybackUrl} videoRef={videoRef} autoPlayNextRef={autoPlayNextRef} onSelect={selectItem} onPlayAdjacent={playAdjacent} onToggleFavorite={() => selected && updatePreferences((current) => ({ ...current, favorites: current.favorites.includes(selected.id) ? current.favorites.filter((id) => id !== selected.id) : [...current.favorites, selected.id] }))} onSendRemoteCommand={(command) => void sendRemoteCommand(command)} onSaveProgress={saveProgress} onSetPlaying={setIsPlaying} onRequestTranscode={(itemId) => void requestTranscode(itemId)} onClearError={() => setError(null)} onSetError={setError} />
+      <PlayerPanel selected={selected} selectedWithDetails={selectedWithDetails} selectedSubtitleTrack={selectedSubtitleTrack} currentHistory={currentHistory} showResume={Boolean(selected && !isImageMediaItem(selected) && currentHistory && isInProgress(selected, preferences))} selectedIndex={selectedIndex} queueItems={visibleItems} mediaPlaybackUrl={mediaPlaybackUrl} isPlaying={isPlaying} isSelectedFavorite={isSelectedFavorite} desktopState={desktopState} allowRemoteControl={allowRemoteControl} desktopItem={desktopItem} remoteError={remoteError} error={error} isTranscoding={isTranscoding} transcodeStatus={transcodeStatus} canRequestTranscode={!isImageMediaItem(selected) && audioTrack === 'direct' && !transcodePlaybackUrl} videoRef={videoRef} autoPlayNextRef={autoPlayNextRef} onSelect={selectItem} onPlayAdjacent={playAdjacent} onToggleFavorite={() => selected && updatePreferences((current) => ({ ...current, favorites: current.favorites.includes(selected.id) ? current.favorites.filter((id) => id !== selected.id) : [...current.favorites, selected.id] }))} onSendRemoteCommand={(command) => void sendRemoteCommand(command)} onSaveProgress={saveProgress} onSetPlaying={setIsPlaying} onRequestTranscode={(itemId) => void requestTranscode(itemId)} onClearError={() => setError(null)} onSetError={setError} />
       <DetailsPanel item={selectedWithDetails} details={details} subtitleTrack={subtitleTrack} audioTrack={audioTrack} copyLinkStatus={copyLinkStatus} copyLinkMessage={copyLinkMessage} onCopyLink={() => void copySelectedLink()} onSubtitleTrackChange={setSubtitleTrack} onAudioTrackChange={(trackId) => { setAudioTrack(trackId); setTranscodePlaybackUrl(null) }} />
     </main>
   </div>

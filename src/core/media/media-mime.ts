@@ -77,7 +77,11 @@ const CONTENT_TYPE_BY_EXTENSION = new Map<string, string>([
   ['.srt', 'application/x-subrip; charset=utf-8'],
   ['.png', 'image/png'],
   ['.jpg', 'image/jpeg'],
-  ['.jpeg', 'image/jpeg']
+  ['.jpeg', 'image/jpeg'],
+  ['.gif', 'image/gif'],
+  ['.webp', 'image/webp'],
+  ['.avif', 'image/avif'],
+  ['.bmp', 'image/bmp']
 ])
 
 export function getContentTypeForFile(filePath: string): string {

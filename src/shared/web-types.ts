@@ -3,6 +3,7 @@ import type { MediaProbeMetadata } from './media-types'
 export type WebBrowserSupport = 'likely' | 'possible' | 'needs-transcode' | 'unknown'
 export type WebTranscodeState = 'idle' | 'queued' | 'running' | 'ready' | 'error'
 export type WebMediaSourceKind = 'playlist' | 'directory'
+export type WebMediaKind = 'video' | 'image'
 
 export type WebMediaTrack = {
   id: string
@@ -79,6 +80,7 @@ export type WebRemoteCommandForDesktop = WebRemoteCommand & { mediaPath?: string
 
 export type WebShareMediaItem = {
   id: string
+  mediaKind?: WebMediaKind
   name: string
   extension: string
   mimeType: string

@@ -221,4 +221,42 @@ describe('WebServer', () => {
 
     await server.stop()
   })
+
+  it('serves selected directory images for gallery preview without video-only operations', async () => {
+    const fixture = await createFixture()
+    const sharedDirectory = join(fixture.directory, 'images')
+    await mkdir(sharedDirectory, { recursive: true })
+    const imagePath = join(sharedDirectory, 'cover.jpg')
+    await writeFile(imagePath, 'image-data')
+    await writeFile(join(sharedDirectory, 'notes.txt'), 'ignore me')
+
+    const server = new WebServer({ resourcePath: fixture.directory, webRoot: fixture.webRoot, bindHost: '127.0.0.1' })
+    const status = await server.start({ filePaths: [], directoryPaths: [sharedDirectory] })
+    expect(status.sharedFileCount).toBe(1)
+    const accessUrl = new URL(status.urls[0]!)
+    const pageResponse = await fetch(accessUrl, { redirect: 'manual' })
+    const cookie = pageResponse.headers.get('set-cookie')?.split(';')[0]
+    const libraryResponse = await fetch(new URL('/api/v1/library', accessUrl), { headers: { Cookie: cookie! } })
+    const library = await libraryResponse.json() as { items: Array<{ id: string; mediaKind?: string; mimeType: string; transcodeUrl: string | null; streamUrl: string; thumbnailUrl: string }> }
+    expect(library.items).toHaveLength(1)
+    expect(library.items[0]).toMatchObject({ mediaKind: 'image', mimeType: 'image/jpeg', transcodeUrl: null })
+
+    const mediaResponse = await fetch(new URL(library.items[0]!.streamUrl, accessUrl), { headers: { Cookie: cookie! } })
+    expect(mediaResponse.status).toBe(200)
+    expect(mediaResponse.headers.get('content-type')).toContain('image/jpeg')
+    expect(await mediaResponse.text()).toBe('image-data')
+
+    const thumbnailResponse = await fetch(new URL(library.items[0]!.thumbnailUrl, accessUrl), { headers: { Cookie: cookie! } })
+    expect(thumbnailResponse.status).toBe(200)
+    expect(thumbnailResponse.headers.get('content-type')).toContain('image/jpeg')
+    expect(await thumbnailResponse.text()).toBe('image-data')
+
+    const detailsResponse = await fetch(new URL(`/api/v1/media/${library.items[0]!.id}`, accessUrl), { headers: { Cookie: cookie! } })
+    const details = await detailsResponse.json() as { mediaKind?: string; metadata: unknown; subtitleTracks: unknown[]; audioTracks: unknown[] }
+    expect(details).toMatchObject({ mediaKind: 'image', metadata: null, subtitleTracks: [], audioTracks: [] })
+
+    const transcodeResponse = await fetch(new URL(`/api/v1/media/${library.items[0]!.id}/transcode`, accessUrl), { method: 'POST', headers: { Cookie: cookie! } })
+    expect(transcodeResponse.status).toBe(404)
+    await server.stop()
+  })
 })
