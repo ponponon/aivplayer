@@ -167,9 +167,9 @@ export function createLocalTtsOperation(options: LocalTtsAdapterOptions): MediaE
   }
 }
 
-async function probeCommand(command: string, runCommand: EvidenceCommandRunner): Promise<LocalEvidenceEngineProbe> {
+async function probeCommand(command: string, args: readonly string[], runCommand: EvidenceCommandRunner): Promise<LocalEvidenceEngineProbe> {
   try {
-    await runCommand(command, ['--version'])
+    await runCommand(command, args)
     return { available: true, command, message: '可用' }
   } catch (error) {
     return { available: false, command, message: error instanceof Error ? error.message : String(error) }
@@ -178,6 +178,7 @@ async function probeCommand(command: string, runCommand: EvidenceCommandRunner):
 
 export async function probeLocalEvidenceCapabilities(options: { tesseractPath: string; ttsPath: string; runCommand?: EvidenceCommandRunner }): Promise<LocalEvidenceCapabilities> {
   const runCommand = options.runCommand ?? defaultRunCommand
-  const [ocr, tts] = await Promise.all([probeCommand(options.tesseractPath, runCommand), probeCommand(options.ttsPath, runCommand)])
+  const ttsProbeArgs = process.platform === 'darwin' ? ['-v', '?'] : ['--version']
+  const [ocr, tts] = await Promise.all([probeCommand(options.tesseractPath, ['--version'], runCommand), probeCommand(options.ttsPath, ttsProbeArgs, runCommand)])
   return { ocr, tts }
 }
