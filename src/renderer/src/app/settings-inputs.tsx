@@ -50,6 +50,7 @@ export type SettingsTextInputProps = {
   autoComplete?: string
   spellCheck?: boolean
   ariaLabel?: string
+  dataTestId?: string
   onChange: (value: string) => void
 }
 
@@ -60,6 +61,7 @@ export function SettingsTextInput({
   autoComplete,
   spellCheck = false,
   ariaLabel,
+  dataTestId,
   onChange
 }: SettingsTextInputProps): ReactElement {
   return (
@@ -71,6 +73,7 @@ export function SettingsTextInput({
       autoComplete={autoComplete}
       spellCheck={spellCheck}
       aria-label={ariaLabel}
+      data-testid={dataTestId}
       onChange={(event) => onChange(event.currentTarget.value)}
     />
   )

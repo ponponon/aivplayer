@@ -6,6 +6,7 @@ import { formatBytes } from '../app-helpers'
 import { clampSubtitleFontSize } from '../subtitle-display-settings'
 import { TranslationServiceSettings } from '../translation-service-settings'
 import type { SettingsSectionProps } from '../settings-section-types'
+import { TtsProviderSettings } from './tts-provider-settings'
 
 export function SubtitlesSettingsSection(props: SettingsSectionProps): ReactElement {
   const { copy, settings, patchSettingsSection, activeSectionId, subtitleLanguageOptions, targetLanguageOptions,
@@ -93,6 +94,7 @@ export function SubtitlesSettingsSection(props: SettingsSectionProps): ReactElem
         </div>
         {cacheStatus ? <p className={`settings-card-note settings-cache-status ${cacheStatus.success ? 'is-success' : 'is-error'}`}>{cacheStatus.message}</p> : null}
       </div>
+      <TtsProviderSettings {...props} />
       <TranslationServiceSettings {...props} />
     </section>
   )

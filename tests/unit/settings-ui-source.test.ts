@@ -92,7 +92,7 @@ describe('settings UI source constraints', () => {
   })
 
   it('routes subtitle display settings through shared settings controls', () => {
-    const settingsDialogSource = `${readSource('src/renderer/src/app/settings-dialog-model.ts')}\n${readSource('src/renderer/src/app/settings-sections/subtitles.tsx')}\n${readSource('src/renderer/src/app/translation-service-settings.tsx')}`
+    const settingsDialogSource = `${readSource('src/renderer/src/app/settings-dialog-model.ts')}\n${readSource('src/renderer/src/app/settings-sections/subtitles.tsx')}\n${readSource('src/renderer/src/app/settings-sections/tts-provider-settings.tsx')}\n${readSource('src/renderer/src/app/translation-service-settings.tsx')}`
     const subtitlesSectionSource = settingsDialogSource
 
     expect(settingsDialogSource).toContain('subtitleLineHeightOptions')
@@ -122,6 +122,10 @@ describe('settings UI source constraints', () => {
     expect(settingsDialogSource).toContain('translationServiceChecking')
     expect(settingsDialogSource).toContain('translationServiceResultTitle')
     expect(settingsDialogSource).toContain('translationServicePreviewTitle')
+    expect(settingsDialogSource).toContain('ttsProviderTitle')
+    expect(settingsDialogSource).toContain('getMediaEvidenceCapabilities')
+    expect(settingsDialogSource).toContain('settings-tts-check-button')
+    expect(settingsDialogSource).toContain("patchSettingsSection('tts', patch)")
     expect(settingsDialogSource).toContain("patchSettingsSection('subtitles', { fontSizePx: clampSubtitleFontSize(fontSizePx) })")
     expect(settingsDialogSource).toContain("patchSettingsSection('subtitles', { lineHeight })")
     expect(settingsDialogSource).toContain("patchSettingsSection('subtitles', { displayMode })")
