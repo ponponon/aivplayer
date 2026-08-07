@@ -618,3 +618,9 @@
 - 现象：源字幕和译文通常拥有相同的时间区间；如果按所有字幕全局排序检查重叠，会把正常的双语字幕误报成时间冲突。
 - 经验：字幕 QA 的重叠判断必须按 `source` / `translation` 轨道分组，只报告同一轨道内的真实重叠；QA 结果应保持纯函数、可重复和不修改原始字幕。
 - 处理：分析器按字幕轨道独立检测，并用媒体 Smoke 验证面板问题数量、点击定位和 renderer error；所有自动判断都先作为可复核证据展示，不直接改写字幕或剪辑工程。
+
+## 2026-08-07：FFmpeg showwavespic 参数必须以本机滤镜能力为准
+
+- 现象：波形初版使用 `showwavespic` 的 `filter=point`，当前 FFmpeg 直接报 `Unable to parse "filter" option value "point"`，导致音频波形没有生成。
+- 经验：FFmpeg filter 的参数枚举不能凭其他版本或记忆猜测；接入前要用目标环境的 `ffmpeg -filters` / `ffmpeg -h filter=showwavespic` 或真实命令验证，并保留无音频 / 不支持场景的失败返回。
+- 处理：改用当前版本支持的 `filter=peak`，波形 PNG 仍按媒体 stat、尺寸和高度隔离缓存；真实 Smoke 验证冷缓存生成、热缓存命中、时间线渲染和点击定位。
