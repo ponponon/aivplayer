@@ -6,7 +6,9 @@
 
 ---
 
-执行 git commit 之前，一定要检查一下是否有敏感内容泄露，比如 api key、账号密码密钥等等，如果有，就停止提交，没有你自己自己写 commit 的 message 然后 commit 就行
+执行 git commit 之前，一定要检查一下是否有敏感内容泄露，比如 api key、账号密码密钥等等，如果有，就停止提交;如果没有，你自己写 commit 的 message 然后 commit 就行
+
+注意，每完成一个需求就可以自动 commit
 
 如果一次任务修改的文件等太多，你可以自己分阶段多次 commit，避免出现一个 commit 修改了几十个、几百个文件导致都无法 review 的问题
 
