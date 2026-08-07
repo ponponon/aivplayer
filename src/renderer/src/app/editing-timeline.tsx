@@ -1,10 +1,10 @@
 import { ChevronLeft, ChevronRight, Copy, Download, FilePlus2, FolderOpen, Grid3X3, Pause, Play, Plus, Redo2, RotateCcw, Save, ScanSearch, Scissors, Trash2, Undo2, Volume2, X, ZoomIn, ZoomOut } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ClipExportMode } from '../../../shared/clip-export'; import type { EditingThemeSettings } from '../../../core/editing/themes'
 import { getEditingCanvasDimensions } from '../../../core/editing/canvases'
 import { getEditingFramingOrientation } from '../../../core/editing/framing-orientation'
 import { getEditingOverlayTrackOrder } from '../../../core/editing/overlay-track-operations'; import type { EditingOverlayTrackKind } from '../../../shared/editing-types'
-import { auditEditingExport } from '../../../core/editing/export-audit'; import { editedDurationSeconds, editedTimeToSource, getVideoClipSpans } from '../../../core/editing/timeline-math'; import { getEditingFilmstripTiles } from '../../../core/editing/filmstrip-operations'; import { getEditingFramingKeyframes } from '../../../core/editing/framing-operations'; import { formatTime } from '../lib/time'
+import { auditEditingExport } from '../../../core/editing/export-audit'; import { editedDurationSeconds, editedTimeToSource, getVideoClipSpans, sourceRangeToEditedRanges } from '../../../core/editing/timeline-math'; import { getEditingFilmstripTiles } from '../../../core/editing/filmstrip-operations'; import { getEditingFramingKeyframes } from '../../../core/editing/framing-operations'; import { formatTime } from '../lib/time'
 import { useAppContext } from './app-context'; import { EditingCaptionTrack } from './editing-caption-track'; import { EditingAudioControl } from './editing-audio-control'; import { EditingClipBoundaryHandles } from './editing-clip-boundary-handles'
 import { EditingExportSummary } from './editing-export-summary'; import { EditingExportConfirmDialog } from './editing-export-confirm-dialog'; import { EditingRangeTrack } from './editing-range-track'; import { EditingScriptPanel } from './editing-script-panel'
 import { EditingTreatmentControl } from './editing-treatment-control'; import { EditingFramingPresetControl } from './editing-framing-preset-control'; import { EditingFilterControl } from './editing-filter-control'; import { EditingPersonMatteControl } from './editing-person-matte-control'; import { EditingTransitionControl } from './editing-transition-control'; import { EditingClipMotionControl } from './editing-clip-motion-control'; import { EditingGraphicControl } from './editing-graphic-control'
@@ -13,7 +13,8 @@ import { EditingCanvasControl } from './editing-canvas-control'; import { Editin
 import { EditingVideoBlockControl } from './editing-video-block-control'; import { EditingVideoBlockTrack } from './editing-video-block-track'; import { EditingVideoBlockEditor } from './editing-video-block-editor'; import { EditingAssetsPanel } from './editing-assets-panel'; import { EDITING_SOURCE_DRAG_TYPE, readEditingSourceDrag } from './editing-asset-dnd'
 import { useEditingFilmstrips } from './use-editing-filmstrip'; import { useEditingElementAssets } from './use-editing-element-assets'; import { useEditingThemes } from './use-editing-themes'
 import { getEditingSceneCopy } from '../../../shared/editing-scene-copy'; import { getEditingSilenceCopy } from '../../../shared/editing-silence-copy'; import { getEditingScriptCopy } from '../../../shared/editing-script-copy'
-import { useEditingClipReorder } from './use-editing-clip-reorder'; import { useEditingTimelineSelection } from './use-editing-timeline-selection'
+import { getEditingStructureCopy } from '../../../shared/editing-structure-copy'; import type { MediaStructureAnalysisResult, MediaStructureSegment } from '../../../shared/media-types'
+import { useEditingClipReorder } from './use-editing-clip-reorder'; import { useEditingTimelineSelection } from './use-editing-timeline-selection'; import { EditingStructureAnalysis } from './editing-structure-analysis'
 const MAX_RULER_TICKS = 121; function formatClipLabel(startSeconds: number, endSeconds: number): string { return `${formatTime(startSeconds)} – ${formatTime(endSeconds)}` }
 export function EditingTimeline(): React.ReactElement | null {
   const app = useAppContext()
@@ -23,6 +24,9 @@ export function EditingTimeline(): React.ReactElement | null {
   const { assets: elementAssets, saveAsset: saveElementAsset, deleteAsset: deleteElementAsset } = useEditingElementAssets()
   const { themes, saveTheme, deleteTheme } = useEditingThemes()
   const [graphicDefaults, setGraphicDefaults] = useState<Pick<EditingThemeSettings, 'graphicStyle' | 'graphicPosition'>>({ graphicStyle: 'title', graphicPosition: 'center' })
+  const [structureAnalysis, setStructureAnalysis] = useState<MediaStructureAnalysisResult | null>(null)
+  const [structureAnalysisSourceId, setStructureAnalysisSourceId] = useState<string | null>(null)
+  const [isAnalyzingStructure, setIsAnalyzingStructure] = useState(false)
   const [zoom, setZoom] = useState(1)
   const [isExportConfirmOpen, setIsExportConfirmOpen] = useState(false)
   const [selectedScriptSegmentId, setSelectedScriptSegmentId] = useState<string | null>(null)
@@ -32,6 +36,34 @@ export function EditingTimeline(): React.ReactElement | null {
   const framingKeyframes = getEditingFramingKeyframes(spans.map((span) => ({ editedStartSeconds: span.editedStartSeconds, editedEndSeconds: span.editedEndSeconds, clip: span.clip })))
   const { clipDrag, suppressClipClickRef, startClipDrag, moveClipDrag, finishClipDrag } = useEditingClipReorder(app, spans, durationSeconds)
   const { selection, selectionCount, selectionPayload, marquee, selectTimelineItem, removeTimelineItemFromSelection, clearTimelineSelection, deleteTimelineSelection, duplicateTimelineSelection, beginTimelineMarquee, moveTimelineMarquee, finishTimelineMarquee, handleTimelineKeyDown } = useEditingTimelineSelection(app, project, timelineContentRef)
+  const structureCopy = getEditingStructureCopy(app.appSettings.ui.locale)
+  useEffect(() => {
+    setStructureAnalysis(null)
+    setStructureAnalysisSourceId(null)
+  }, [project?.id])
+  const analyzeStructure = async (): Promise<void> => {
+    if (!project || isAnalyzingStructure) return
+    const targetClip = project.videoClips.find((clip) => clip.id === app.editingSelectedClipId) ?? editedTimeToSource(project.videoClips, app.editingCurrentTime)?.clip ?? project.videoClips[0]
+    const source = targetClip ? project.sources.find((candidate) => candidate.id === targetClip.sourceId) : project.sources[0]
+    if (!source) return
+    setIsAnalyzingStructure(true)
+    try {
+      const result = await window.aiv.analyzeMediaStructure({ mediaPath: source.path, durationSeconds: source.durationSeconds })
+      if (app.editingProject?.id !== project.id) return
+      setStructureAnalysisSourceId(source.id)
+      setStructureAnalysis(result)
+      if (!result.success) app.setEditingProjectStatus({ success: false, message: `${structureCopy.failed}：${result.message}` })
+    } catch (error) {
+      if (app.editingProject?.id === project.id) app.setEditingProjectStatus({ success: false, message: `${structureCopy.failed}：${error instanceof Error ? error.message : String(error)}` })
+    } finally {
+      setIsAnalyzingStructure(false)
+    }
+  }
+  const seekStructureSegment = (segment: MediaStructureSegment): void => {
+    if (!project || !structureAnalysisSourceId) return
+    const editedRange = sourceRangeToEditedRanges(project.videoClips, structureAnalysisSourceId, segment.startSeconds, segment.endSeconds)[0]
+    if (editedRange) app.seekEditingTime(editedRange.startSeconds)
+  }
   if (!project) return null
   const selectedClip = project.videoClips.find((clip) => clip.id === app.editingSelectedClipId) ?? null
   const selectedFramingClipIds = selection.clipIds.size > 0 ? [...selection.clipIds] : selectedClip ? [selectedClip.id] : []
@@ -113,6 +145,7 @@ export function EditingTimeline(): React.ReactElement | null {
           <button className="editing-tool-button editing-tool-button-accent" type="button" onClick={app.splitEditingClip} disabled={!canSplit} title={app.copy.editing.split} aria-label={app.copy.editing.split} data-testid="editing-split"><Scissors size={15} /><span>{app.copy.editing.splitShort}</span></button>
           <button className="editing-tool-button" type="button" onClick={() => void app.detectEditingScenes()} disabled={app.isDetectingEditingScenes || !currentPoint} title={app.isDetectingEditingScenes ? sceneCopy.detecting : sceneCopy.title} aria-label={sceneCopy.title} data-testid="editing-scene-split"><ScanSearch size={15} /><span>{app.isDetectingEditingScenes ? sceneCopy.detectingShort : sceneCopy.split}</span></button>
           <button className="editing-tool-button" type="button" onClick={() => void app.removeEditingSilence()} disabled={app.isDetectingEditingSilence || spans.length === 0} title={app.isDetectingEditingSilence ? silenceCopy.detecting : silenceCopy.title} aria-label={silenceCopy.title} data-testid="editing-remove-silence"><Volume2 size={15} /><span>{app.isDetectingEditingSilence ? silenceCopy.detectingShort : silenceCopy.label}</span></button>
+          <EditingStructureAnalysis analysis={structureAnalysis} isAnalyzing={isAnalyzingStructure} copy={structureCopy} onAnalyze={() => void analyzeStructure()} onSeek={seekStructureSegment} />
           <button className="editing-tool-button editing-tool-button-danger" type="button" onClick={app.deleteEditingClip} disabled={spans.length <= 1} title={app.copy.editing.deleteClip} aria-label={app.copy.editing.deleteClip}><Trash2 size={15} /><span>{app.copy.editing.deleteShort}</span></button>
         </div>
         {selectionCount > 1 || movableSelectionCount > 0 ? <div className="editing-selection-toolbar" data-testid="editing-selection-toolbar" role="status" aria-live="polite">{selectionCount > 1 ? <span data-testid="editing-selection-count">{app.copy.editing.selectionCount(selectionCount)}</span> : null}{movableSelectionCount > 0 ? <><button className="editing-tool-button" type="button" onClick={duplicateTimelineSelection} title={app.copy.editing.duplicateSelection} aria-label={app.copy.editing.duplicateSelection} data-testid="editing-duplicate-selection"><Copy size={15} /><span>{app.copy.editing.duplicateSelection}</span></button>{selectionCount > 1 ? <><button className="editing-tool-button" type="button" onClick={() => app.moveEditingSelection(selectionPayload(), -0.1)} title={app.copy.editing.moveSelectionLeft} aria-label={app.copy.editing.moveSelectionLeft} data-testid="editing-selection-move-left"><ChevronLeft size={15} /><span>{app.copy.editing.moveSelectionLeft}</span></button><button className="editing-tool-button" type="button" onClick={() => app.moveEditingSelection(selectionPayload(), 0.1)} title={app.copy.editing.moveSelectionRight} aria-label={app.copy.editing.moveSelectionRight} data-testid="editing-selection-move-right"><ChevronRight size={15} /><span>{app.copy.editing.moveSelectionRight}</span></button></> : null}</> : null}{selectionCount > 1 ? <button className="editing-tool-button editing-tool-button-danger" type="button" onClick={deleteTimelineSelection} title={app.copy.editing.deleteSelection} aria-label={app.copy.editing.deleteSelection} data-testid="editing-delete-selection"><Trash2 size={15} /><span>{app.copy.editing.deleteSelection}</span></button> : null}</div> : null}

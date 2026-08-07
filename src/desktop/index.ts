@@ -14,6 +14,7 @@ import { registerSettingsIpc } from './ipc-settings'
 import { registerFilmstripIpc } from './ipc-filmstrip'
 import { registerSceneDetectionIpc } from './ipc-scene-detection'
 import { registerSilenceDetectionIpc } from './ipc-silence-detection'
+import { registerStructureAnalysisIpc } from './ipc-structure-analysis'
 import { registerUtilityIpc } from './ipc-utility'
 import { registerWindowControlsIpc } from './ipc-window-controls'
 import { registerVisionIpc } from './ipc-vision'
@@ -60,6 +61,7 @@ function registerIpc(): void {
   registerFilmstripIpc()
   registerSceneDetectionIpc()
   registerSilenceDetectionIpc()
+  registerStructureAnalysisIpc()
   registerAsrRuntimeIpc()
   registerAsrCacheIpc()
   registerAsrSubtitleIpc()
