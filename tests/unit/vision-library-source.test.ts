@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { VISION_FRAME_INTERVAL_SECONDS, VISION_MODEL_ID, VISION_MODEL_VARIANT, VISION_VECTOR_DISTANCE_TYPE, VISION_VECTOR_INDEX_MIN_ROWS, VISION_VECTOR_INDEX_TYPE } from '../../src/shared/vision-types'
 import { getVisionModelPaths } from '../../src/core/ai/vision-model'
-import { calculateVisionLexicalMatch, combineVisionHybridScore } from '../../src/core/ai/vision-search'
+import { calculateVisionLexicalMatch, combineVisionHybridScore, getVisionSearchResultKey } from '../../src/core/ai/vision-search'
 
 const projectRoot = process.cwd()
 
@@ -85,6 +85,11 @@ describe('vision library setup', () => {
     expect(combineVisionHybridScore(0, 1)).toBeCloseTo(0.45)
   })
 
+  it('keeps OCR evidence rows distinct when they have no frame id', () => {
+    expect(getVisionSearchResultKey({ id: 'ocr-a', evidenceId: 'ocr-a', frameId: '', evidenceType: 'ocr' })).toBe('ocr-a')
+    expect(getVisionSearchResultKey({ id: 'frame-a', evidenceId: 'subtitle-a', frameId: 'frame-a', evidenceType: 'subtitle' })).toBe('frame-a')
+  })
+
   it('keeps the incremental manifest and caption tables in the library source', () => {
     const source = readFileSync(join(projectRoot, 'src/core/ai/vision-library.ts'), 'utf8')
     expect(source).toContain("SOURCE_TABLE_NAME = 'video_sources'")
@@ -98,6 +103,8 @@ describe('vision library setup', () => {
     expect(source).toContain('async upsertEvidence(evidence: VisionEvidence)')
     expect(source).toContain("await existing.delete(`id = '")
     expect(source).toContain('searchLexicalByEvidence')
+    expect(source).toContain('getVisionSearchResultKey')
+    expect(source).toContain('lexicalCandidates.length === 0')
     expect(source).toContain('getVisualEvidenceByFrameIds')
     expect(source).toContain("baseTokenizer: 'ngram'")
     expect(source).toContain('fullTextSearch(query')

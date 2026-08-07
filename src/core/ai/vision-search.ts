@@ -1,3 +1,5 @@
+import type { VisionSearchResult } from '../../shared/vision-types'
+
 export type VisionLexicalMatch = {
   score: number
   matchedText: string
@@ -56,4 +58,12 @@ export function combineVisionHybridScore(visualRankScore: number, lexicalScore: 
   const visual = Math.min(1, Math.max(0, visualRankScore))
   const lexical = Math.min(1, Math.max(0, lexicalScore))
   return visual * 0.55 + lexical * 0.45
+}
+
+/** Returns a stable merge key without collapsing derived evidence that has no frame id. */
+export function getVisionSearchResultKey(result: Pick<VisionSearchResult, 'evidenceType' | 'evidenceId' | 'frameId' | 'id'>): string {
+  if (result.evidenceType !== undefined && result.evidenceType !== 'subtitle' && result.evidenceType !== 'visual') {
+    return result.evidenceId || result.id
+  }
+  return result.frameId || result.evidenceId || result.id
 }
