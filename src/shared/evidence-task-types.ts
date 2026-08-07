@@ -36,6 +36,7 @@ export type MediaEvidenceTask = {
   mediaPath: string
   sourceFingerprint: string
   inputHash: string
+  inputText?: string
   ranges: MediaEvidenceRange[]
   status: MediaEvidenceTaskStatus
   progress: number

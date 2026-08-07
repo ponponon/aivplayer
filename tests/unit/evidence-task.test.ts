@@ -9,6 +9,7 @@ import {
   toVisionOcrEvidence,
   updateMediaEvidenceTaskProgress
 } from '../../src/core/ai/evidence-task'
+import { runMediaEvidenceTask } from '../../src/core/ai/evidence-task-runner'
 
 describe('media evidence task state', () => {
   it('creates a deterministic queued task with normalized ranges and retry policy', () => {
@@ -63,5 +64,45 @@ describe('media evidence task state', () => {
     const evidence = toVisionOcrEvidence({ id: 'ocr-1', artifactType: 'ocr-evidence', sourceFingerprint: 'video:1', startSeconds: 1, endSeconds: 2, text: '画面文字', frameId: 'frame-1', confidence: 0.8 }, { sourceId: 'source-1', videoPath: '/tmp/video.mp4', fileName: 'video.mp4', modelId: 'ocr-test', modelVariant: 'v1', generatedAt: 123 })
 
     expect(evidence).toMatchObject({ id: 'ocr-1', evidenceType: 'ocr', sourceId: 'source-1', text: '画面文字', frameId: 'frame-1', confidence: 0.8 })
+  })
+
+  it('runs each range, reports progress, retries a failed adapter, and completes with validated artifacts', async () => {
+    const task = createMediaEvidenceTask({ kind: 'tts', mediaPath: '/tmp/video.mp4', sourceFingerprint: 'video:1', inputHash: 'tts:1', inputText: '朗读内容', ranges: [{ startSeconds: 0, endSeconds: 1 }, { startSeconds: 2, endSeconds: 3 }], maxRetries: 2 }, 100)
+    const states: string[] = []
+    let calls = 0
+    const result = await runMediaEvidenceTask(task, {
+      now: (() => { let value = 100; return () => value += 10 })(),
+      onTaskChange: (next) => { states.push(`${next.status}:${next.progress}`) },
+      tts: async ({ task: currentTask, range, inputText }) => {
+        calls += 1
+        if (calls === 2) throw new Error('provider busy')
+        return { id: `tts-${calls}`, artifactType: 'tts-audio', sourceFingerprint: currentTask.sourceFingerprint, ...range, text: inputText ?? '', audioPath: `/tmp/tts-${calls}.wav`, mimeType: 'audio/wav' }
+      }
+    })
+
+    expect(result).toMatchObject({ status: 'completed', attempts: 2, progress: 1 })
+    expect(result.artifacts).toHaveLength(2)
+    expect(states).toEqual(['running:0', 'running:0.5', 'retrying:0.5', 'queued:0', 'running:0', 'running:0.5', 'running:1', 'completed:1'])
+  })
+
+  it('cancels between ranges and does not turn cancellation into a retry', async () => {
+    const controller = new AbortController()
+    const task = createMediaEvidenceTask({ kind: 'ocr', mediaPath: '/tmp/video.mp4', sourceFingerprint: 'video:1', inputHash: 'frames:1', ranges: [{ startSeconds: 0, endSeconds: 1 }, { startSeconds: 1, endSeconds: 2 }] }, 100)
+    const result = await runMediaEvidenceTask(task, {
+      signal: controller.signal,
+      ocr: async ({ range, task: currentTask }) => {
+        controller.abort()
+        return { id: 'ocr-1', artifactType: 'ocr-evidence', sourceFingerprint: currentTask.sourceFingerprint, ...range, text: '第一帧' }
+      }
+    })
+
+    expect(result).toMatchObject({ status: 'cancelled', attempts: 1, artifacts: [] })
+  })
+
+  it('returns a failed task when the selected engine is not configured', async () => {
+    const task = createMediaEvidenceTask({ kind: 'ocr', mediaPath: '/tmp/video.mp4', sourceFingerprint: 'video:1', inputHash: 'frames:1', maxRetries: 1 }, 100)
+    const result = await runMediaEvidenceTask(task)
+
+    expect(result).toMatchObject({ status: 'failed', attempts: 1, error: 'OCR 执行器未配置' })
   })
 })

@@ -7,6 +7,7 @@ type CreateMediaEvidenceTaskInput = {
   mediaPath: string
   sourceFingerprint: string
   inputHash: string
+  inputText?: string
   ranges?: readonly MediaEvidenceRange[]
   maxRetries?: number
 }
@@ -39,7 +40,7 @@ function nowOr(value: number | undefined): number {
 }
 
 function taskId(input: CreateMediaEvidenceTaskInput, ranges: readonly MediaEvidenceRange[]): string {
-  return `evidence-task-${hash([input.kind, input.mediaPath, input.sourceFingerprint, input.inputHash, JSON.stringify(ranges)].join('\0'))}`
+  return `evidence-task-${hash([input.kind, input.mediaPath, input.sourceFingerprint, input.inputHash, input.inputText?.trim() ?? '', JSON.stringify(ranges)].join('\0'))}`
 }
 
 function copyTask(task: MediaEvidenceTask, patch: Partial<MediaEvidenceTask>, updatedAt: number): MediaEvidenceTask {
@@ -54,6 +55,7 @@ export function createMediaEvidenceTask(input: CreateMediaEvidenceTaskInput, cre
     mediaPath: input.mediaPath,
     sourceFingerprint: input.sourceFingerprint,
     inputHash: input.inputHash,
+    ...(input.inputText?.trim() ? { inputText: input.inputText.trim() } : {}),
     ranges,
     status: 'queued',
     progress: 0,
