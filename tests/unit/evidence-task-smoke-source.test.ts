@@ -11,6 +11,8 @@ describe('evidence task Electron smoke contract', () => {
     expect(packageJson.scripts?.['smoke:evidence-task']).toContain('smoke-evidence-task.ts')
     expect(smoke).toContain('startMediaEvidenceTask')
     expect(smoke).toContain('startOcrFromUi')
+    expect(smoke).toContain('searchOcrAndLocate')
+    expect(smoke).toContain('data-evidence-type="ocr"')
     expect(smoke).toContain('vision-ocr-start-button')
     expect(smoke).toContain('persistenceStatus')
     expect(smoke).toContain("'skipped-stale'")

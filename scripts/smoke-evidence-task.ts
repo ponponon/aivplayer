@@ -85,6 +85,24 @@ async function startOcrFromUi(page: Page): Promise<void> {
   await page.locator('[data-testid="vision-ocr-task"][data-persistence-status="persisted"]').waitFor({ timeout: 20_000 })
 }
 
+async function searchOcrAndLocate(page: Page): Promise<{ evidenceId: string; currentTime: number }> {
+  const searchInput = page.locator('.vision-text-search input')
+  await searchInput.fill('Smoke OCR text')
+  await page.locator('.vision-text-search .vision-search-button').click()
+  const result = page.locator('.vision-result[data-evidence-type="ocr"]')
+  await result.waitFor({ timeout: 30_000 })
+  const evidenceId = await result.getAttribute('data-evidence-id')
+  const matchedText = await result.locator('.vision-result-match').textContent()
+  if (!evidenceId || matchedText?.trim() !== 'Smoke OCR text') throw new Error(`OCR search result mismatch: ${JSON.stringify({ evidenceId, matchedText })}`)
+  await result.click()
+  await page.waitForFunction(() => {
+    const video = document.querySelector('video.video-surface') as HTMLVideoElement | null
+    return video !== null && video.currentTime >= 0.45 && video.currentTime <= 1.55
+  }, undefined, { timeout: 15_000 })
+  const currentTime = await page.locator('video.video-surface').evaluate((video) => (video as HTMLVideoElement).currentTime)
+  return { evidenceId, currentTime }
+}
+
 async function seedVisualEvidence(userDataDirectory: string, mediaPath: string): Promise<void> {
   const database = await connect(join(userDataDirectory, 'library', 'vision', 'lancedb'))
   const table = await database.openTable('video_evidence')
@@ -134,6 +152,7 @@ async function main(): Promise<void> {
     await startOcrFromUi(first.page)
     const stablePersistenceStatus = await first.page.locator('[data-testid="vision-ocr-task"]').getAttribute('data-persistence-status')
     if (stablePersistenceStatus !== 'persisted') throw new Error(`Stable OCR persistence mismatch: ${stablePersistenceStatus}`)
+    const locatedOcr = await searchOcrAndLocate(first.page)
     const screenshotPath = join(userDataDirectory, 'aivplayer-smoke-evidence-ocr.png')
     await first.page.screenshot({ path: screenshotPath, fullPage: false })
     await first.app.close()
@@ -160,7 +179,7 @@ async function main(): Promise<void> {
       throw new Error(`Evidence table contents mismatch: ${JSON.stringify(rows)}`)
     }
     if (first.errors.length > 0 || second.errors.length > 0) throw new Error(`Renderer errors during evidence smoke: ${[...first.errors, ...second.errors].join('\n')}`)
-    console.log(`Evidence task smoke passed: ${JSON.stringify({ capabilities, stablePersistence: stablePersistenceStatus, stalePersistence: staleResult.persistenceStatus, evidenceRows: rows.length, ocrRows: ocrRows.length, visualRows: visualRows.length, screenshotPath })}`)
+    console.log(`Evidence task smoke passed: ${JSON.stringify({ capabilities, stablePersistence: stablePersistenceStatus, locatedOcr, stalePersistence: staleResult.persistenceStatus, evidenceRows: rows.length, ocrRows: ocrRows.length, visualRows: visualRows.length, screenshotPath })}`)
   } finally {
     await firstApp?.close().catch(() => undefined)
     await secondApp?.close().catch(() => undefined)
