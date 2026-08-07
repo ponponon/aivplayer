@@ -126,7 +126,9 @@
       segmentRange: (start: string, end: string) => `${start}–${end}`,
       trickplayPreview: (time: string) => `タイムラインプレビュー：${time}`,
       trickplayLoading: 'タイムラインプレビューを生成中…',
-      trickplayUnavailable: 'サムネイルプレビューはありません'
+      trickplayUnavailable: 'サムネイルプレビューはありません',
+      structureSkipNames: { intro: 'イントロ黒画面', outro: 'アウトロ黒画面', black: '黒画面' },
+      skipStructureAt: (label: string, time: string) => `${label}をスキップ：${time}`
     },
     editing: {
       cornerBottomRight: '右下コーナー', cornerTopLeft: '左上コーナー', splitLeft: '左分割', splitRight: '右分割', treatmentSize: '構図サイズ', framingOrientationHint: '縦長→コーナー · 横長/正方形→分割', recommended: '推奨', framingPresetTitle: '構図プリセット', framingPresetTarget: (count: number) => count > 1 ? `${count}個のクリップに適用` : '現在のクリップ', framingPresetNames: { full: '全景ベース', 'punch-in': '注目ズーム', 'corner-br': '右下の余白', 'corner-tl': '左上の余白', 'split-left': '左分割', 'split-right': '右分割' },

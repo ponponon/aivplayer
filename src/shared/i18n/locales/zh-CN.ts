@@ -126,7 +126,9 @@
       segmentRange: (start: string, end: string) => `${start}–${end}`,
       trickplayPreview: (time: string) => `时间轴预览：${time}`,
       trickplayLoading: '正在生成时间轴预览…',
-      trickplayUnavailable: '暂无缩略图预览'
+      trickplayUnavailable: '暂无缩略图预览',
+      structureSkipNames: { intro: '片头黑场', outro: '片尾黑场', black: '黑场' },
+      skipStructureAt: (label: string, time: string) => `跳过${label} · ${time}`
     },
     editing: {
       framingOrientationHint: '竖屏优先角落 · 横屏/方形优先分屏', recommended: '推荐', framingPresetTitle: '构图预设', framingPresetTarget: (count: number) => count > 1 ? `应用到 ${count} 个片段` : '当前片段', framingPresetNames: { full: '全景基线', 'punch-in': '重点特写', 'corner-br': '右下留白', 'corner-tl': '左上留白', 'split-left': '左侧分屏', 'split-right': '右侧分屏' },

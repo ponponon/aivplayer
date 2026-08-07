@@ -4,8 +4,9 @@ import type { PlaybackHistoryEntry } from './playback-history'
 import { DEFAULT_APP_LOCALE, DEFAULT_SUBTITLE_LANGUAGE, type AppLocale, type SubtitleLanguageId } from './localization'
 import type { SubtitleEmphasisMode, SubtitlePresetId } from './subtitle-presets'
 import type { PlaybackBookmark, PlaybackEndAction, PlaybackMediaProfile, PlaybackOrder, PlaybackRepeatMode, PlaybackSegment } from './playback-memory'
+import type { MediaStructureCorrection } from './media-base-types'
 
-export const APP_SETTINGS_SCHEMA_VERSION = 21
+export const APP_SETTINGS_SCHEMA_VERSION = 22
 
 export const SIDE_PANEL_WIDTH_MIN = 240
 export const SIDE_PANEL_WIDTH_MAX = 480
@@ -70,6 +71,7 @@ export type AppSettings = {
     profilesByFingerprint: Record<string, PlaybackMediaProfile>
     bookmarksByFingerprint: Record<string, PlaybackBookmark[]>
     segmentsByFingerprint: Record<string, PlaybackSegment[]>
+    structureCorrectionsByFingerprint: Record<string, MediaStructureCorrection[]>
     history: PlaybackHistoryEntry[]
   }
   subtitles: {
@@ -224,6 +226,7 @@ export function createDefaultAppSettings(): AppSettings {
       profilesByFingerprint: {},
       bookmarksByFingerprint: {},
       segmentsByFingerprint: {},
+      structureCorrectionsByFingerprint: {},
       history: []
     },
     subtitles: {

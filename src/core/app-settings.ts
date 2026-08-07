@@ -22,6 +22,7 @@ import type { PlaybackBookmark, PlaybackEndAction, PlaybackMediaProfile, Playbac
 import { isSubtitleEmphasisMode, isSubtitlePresetId, normalizeSubtitleKeywords } from '../shared/subtitle-presets'
 import { isClipExportLengthSeconds, isClipExportMode } from '../shared/clip-export'
 import type { AsrModelSourceId } from '../shared/media-types'
+import type { MediaStructureCorrection, MediaStructureSegmentKind } from '../shared/media-base-types'
 import { isAppLocale, isSubtitleLanguageId } from '../shared/localization'
 import { MAX_PLAYBACK_HISTORY_ITEMS, type PlaybackHistoryEntry } from '../shared/playback-history'
 
@@ -384,6 +385,35 @@ function sanitizePlaybackSegments(value: unknown, fallback: Record<string, Playb
   )
 }
 
+function isMediaStructureSegmentKind(value: unknown): value is MediaStructureSegmentKind {
+  return value === 'intro' || value === 'outro' || value === 'black'
+}
+
+function sanitizeStructureCorrections(value: unknown, fallback: Record<string, MediaStructureCorrection[]>): Record<string, MediaStructureCorrection[]> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return fallback
+
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .filter(([key, corrections]) => key.length > 0 && key.length <= 512 && Array.isArray(corrections))
+      .slice(0, 500)
+      .map(([key, corrections]) => {
+        const sanitized = (corrections as unknown[])
+          .filter((correction): correction is Partial<MediaStructureCorrection> => Boolean(correction) && typeof correction === 'object')
+          .map((correction) => ({
+            segmentId: typeof correction.segmentId === 'string' ? correction.segmentId.trim().slice(0, 160) : '',
+            kind: correction.kind,
+            startSeconds: correction.startSeconds,
+            endSeconds: correction.endSeconds,
+            action: correction.action,
+            updatedAt: correction.updatedAt
+          }))
+          .filter((correction) => correction.segmentId && isMediaStructureSegmentKind(correction.kind) && correction.action === 'ignore' && isFiniteNumber(correction.startSeconds) && correction.startSeconds >= 0 && isFiniteNumber(correction.endSeconds) && correction.endSeconds > correction.startSeconds && isFiniteNumber(correction.updatedAt) && correction.updatedAt > 0)
+          .slice(0, 100) as MediaStructureCorrection[]
+        return [key, sanitized] as const
+      })
+  )
+}
+
 function sanitizePlaybackSettings(
   value: Partial<AppSettings['playback']> | undefined,
   defaults: AppSettings['playback']
@@ -436,6 +466,7 @@ function sanitizePlaybackSettings(
     profilesByFingerprint: sanitizePlaybackProfiles(playback.profilesByFingerprint, defaults.profilesByFingerprint),
     bookmarksByFingerprint: sanitizePlaybackBookmarks(playback.bookmarksByFingerprint, defaults.bookmarksByFingerprint),
     segmentsByFingerprint: sanitizePlaybackSegments(playback.segmentsByFingerprint, defaults.segmentsByFingerprint),
+    structureCorrectionsByFingerprint: sanitizeStructureCorrections(playback.structureCorrectionsByFingerprint, defaults.structureCorrectionsByFingerprint),
     history: sanitizePlaybackHistory(playback.history, defaults.history)
   }
 }

@@ -26,6 +26,7 @@ export type MediaSilenceInterval = { startSeconds: number; endSeconds: number }
 export type MediaSilenceDetectionResult = { success: boolean; message: string; intervals: MediaSilenceInterval[] }
 export type MediaStructureSegmentKind = 'intro' | 'outro' | 'black'
 export type MediaStructureSegment = { id: string; kind: MediaStructureSegmentKind; startSeconds: number; endSeconds: number; confidence: number }
+export type MediaStructureCorrection = { segmentId: string; kind: MediaStructureSegmentKind; startSeconds: number; endSeconds: number; action: 'ignore'; updatedAt: number }
 export type MediaStructureAnalysisRequest = { mediaPath: string; durationSeconds?: number; minBlackDurationSeconds?: number; pixelThreshold?: number }
 export type MediaStructureAnalysisResult = { success: boolean; message: string; cacheHit: boolean; cacheKey: string | null; segments: MediaStructureSegment[] }
 export type PlaybackState = { isPlaying: boolean; currentTime: number; duration: number; volume: number; muted: boolean; playbackRate: number }

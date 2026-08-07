@@ -14,6 +14,7 @@ import { EditingVideoBlockControl } from './editing-video-block-control'; import
 import { useEditingFilmstrips } from './use-editing-filmstrip'; import { useEditingElementAssets } from './use-editing-element-assets'; import { useEditingThemes } from './use-editing-themes'
 import { getEditingSceneCopy } from '../../../shared/editing-scene-copy'; import { getEditingSilenceCopy } from '../../../shared/editing-silence-copy'; import { getEditingScriptCopy } from '../../../shared/editing-script-copy'
 import { getEditingStructureCopy } from '../../../shared/editing-structure-copy'; import type { MediaStructureAnalysisResult, MediaStructureSegment } from '../../../shared/media-types'
+import { getPlaybackMediaKey } from '../../../shared/playback-memory'
 import { useEditingClipReorder } from './use-editing-clip-reorder'; import { useEditingTimelineSelection } from './use-editing-timeline-selection'; import { EditingStructureAnalysis } from './editing-structure-analysis'
 const MAX_RULER_TICKS = 121; function formatClipLabel(startSeconds: number, endSeconds: number): string { return `${formatTime(startSeconds)} – ${formatTime(endSeconds)}` }
 export function EditingTimeline(): React.ReactElement | null {
@@ -37,6 +38,9 @@ export function EditingTimeline(): React.ReactElement | null {
   const { clipDrag, suppressClipClickRef, startClipDrag, moveClipDrag, finishClipDrag } = useEditingClipReorder(app, spans, durationSeconds)
   const { selection, selectionCount, selectionPayload, marquee, selectTimelineItem, removeTimelineItemFromSelection, clearTimelineSelection, deleteTimelineSelection, duplicateTimelineSelection, beginTimelineMarquee, moveTimelineMarquee, finishTimelineMarquee, handleTimelineKeyDown } = useEditingTimelineSelection(app, project, timelineContentRef)
   const structureCopy = getEditingStructureCopy(app.appSettings.ui.locale)
+  const structureSource = project?.sources.find((source) => source.id === structureAnalysisSourceId) ?? null
+  const structureSourceKey = structureSource ? getPlaybackMediaKey(structureSource) : null
+  const ignoredStructureSegmentIds = new Set((structureSourceKey ? app.appSettings.playback.structureCorrectionsByFingerprint[structureSourceKey] ?? [] : []).filter((correction) => correction.action === 'ignore').map((correction) => correction.segmentId))
   useEffect(() => {
     setStructureAnalysis(null)
     setStructureAnalysisSourceId(null)
@@ -64,6 +68,8 @@ export function EditingTimeline(): React.ReactElement | null {
     const editedRange = sourceRangeToEditedRanges(project.videoClips, structureAnalysisSourceId, segment.startSeconds, segment.endSeconds)[0]
     if (editedRange) app.seekEditingTime(editedRange.startSeconds)
   }
+  const ignoreStructureSegment = (segment: MediaStructureSegment): void => app.ignorePlaybackStructureSegment(segment, structureSourceKey ?? undefined)
+  const restoreStructureSegment = (segment: MediaStructureSegment): void => app.restorePlaybackStructureSegment(segment.id, structureSourceKey ?? undefined)
   if (!project) return null
   const selectedClip = project.videoClips.find((clip) => clip.id === app.editingSelectedClipId) ?? null
   const selectedFramingClipIds = selection.clipIds.size > 0 ? [...selection.clipIds] : selectedClip ? [selectedClip.id] : []
@@ -145,7 +151,7 @@ export function EditingTimeline(): React.ReactElement | null {
           <button className="editing-tool-button editing-tool-button-accent" type="button" onClick={app.splitEditingClip} disabled={!canSplit} title={app.copy.editing.split} aria-label={app.copy.editing.split} data-testid="editing-split"><Scissors size={15} /><span>{app.copy.editing.splitShort}</span></button>
           <button className="editing-tool-button" type="button" onClick={() => void app.detectEditingScenes()} disabled={app.isDetectingEditingScenes || !currentPoint} title={app.isDetectingEditingScenes ? sceneCopy.detecting : sceneCopy.title} aria-label={sceneCopy.title} data-testid="editing-scene-split"><ScanSearch size={15} /><span>{app.isDetectingEditingScenes ? sceneCopy.detectingShort : sceneCopy.split}</span></button>
           <button className="editing-tool-button" type="button" onClick={() => void app.removeEditingSilence()} disabled={app.isDetectingEditingSilence || spans.length === 0} title={app.isDetectingEditingSilence ? silenceCopy.detecting : silenceCopy.title} aria-label={silenceCopy.title} data-testid="editing-remove-silence"><Volume2 size={15} /><span>{app.isDetectingEditingSilence ? silenceCopy.detectingShort : silenceCopy.label}</span></button>
-          <EditingStructureAnalysis analysis={structureAnalysis} isAnalyzing={isAnalyzingStructure} copy={structureCopy} onAnalyze={() => void analyzeStructure()} onSeek={seekStructureSegment} />
+          <EditingStructureAnalysis analysis={structureAnalysis} isAnalyzing={isAnalyzingStructure} copy={structureCopy} ignoredSegmentIds={ignoredStructureSegmentIds} onAnalyze={() => void analyzeStructure()} onSeek={seekStructureSegment} onIgnore={ignoreStructureSegment} onRestore={restoreStructureSegment} />
           <button className="editing-tool-button editing-tool-button-danger" type="button" onClick={app.deleteEditingClip} disabled={spans.length <= 1} title={app.copy.editing.deleteClip} aria-label={app.copy.editing.deleteClip}><Trash2 size={15} /><span>{app.copy.editing.deleteShort}</span></button>
         </div>
         {selectionCount > 1 || movableSelectionCount > 0 ? <div className="editing-selection-toolbar" data-testid="editing-selection-toolbar" role="status" aria-live="polite">{selectionCount > 1 ? <span data-testid="editing-selection-count">{app.copy.editing.selectionCount(selectionCount)}</span> : null}{movableSelectionCount > 0 ? <><button className="editing-tool-button" type="button" onClick={duplicateTimelineSelection} title={app.copy.editing.duplicateSelection} aria-label={app.copy.editing.duplicateSelection} data-testid="editing-duplicate-selection"><Copy size={15} /><span>{app.copy.editing.duplicateSelection}</span></button>{selectionCount > 1 ? <><button className="editing-tool-button" type="button" onClick={() => app.moveEditingSelection(selectionPayload(), -0.1)} title={app.copy.editing.moveSelectionLeft} aria-label={app.copy.editing.moveSelectionLeft} data-testid="editing-selection-move-left"><ChevronLeft size={15} /><span>{app.copy.editing.moveSelectionLeft}</span></button><button className="editing-tool-button" type="button" onClick={() => app.moveEditingSelection(selectionPayload(), 0.1)} title={app.copy.editing.moveSelectionRight} aria-label={app.copy.editing.moveSelectionRight} data-testid="editing-selection-move-right"><ChevronRight size={15} /><span>{app.copy.editing.moveSelectionRight}</span></button></> : null}</> : null}{selectionCount > 1 ? <button className="editing-tool-button editing-tool-button-danger" type="button" onClick={deleteTimelineSelection} title={app.copy.editing.deleteSelection} aria-label={app.copy.editing.deleteSelection} data-testid="editing-delete-selection"><Trash2 size={15} /><span>{app.copy.editing.deleteSelection}</span></button> : null}</div> : null}

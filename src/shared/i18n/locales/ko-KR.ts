@@ -126,7 +126,9 @@
       segmentRange: (start: string, end: string) => `${start}–${end}`,
       trickplayPreview: (time: string) => `타임라인 미리보기: ${time}`,
       trickplayLoading: '타임라인 미리보기 생성 중…',
-      trickplayUnavailable: '썸네일 미리보기를 사용할 수 없음'
+      trickplayUnavailable: '썸네일 미리보기를 사용할 수 없음',
+      structureSkipNames: { intro: '인트로 검은 화면', outro: '아웃트로 검은 화면', black: '검은 구간' },
+      skipStructureAt: (label: string, time: string) => `${label} 건너뛰기 · ${time}`
     },
     editing: {
       cornerBottomRight: '오른쪽 아래', cornerTopLeft: '왼쪽 위', splitLeft: '왼쪽 분할', splitRight: '오른쪽 분할', treatmentSize: '구도 크기', framingOrientationHint: '세로→코너 · 가로/정사각형→분할', recommended: '추천', framingPresetTitle: '구도 프리셋', framingPresetTarget: (count: number) => count > 1 ? `${count}개 클립에 적용` : '현재 클립', framingPresetNames: { full: '전체 기준', 'punch-in': '강조 클로즈업', 'corner-br': '오른쪽 아래 여백', 'corner-tl': '왼쪽 위 여백', 'split-left': '왼쪽 분할', 'split-right': '오른쪽 분할' },

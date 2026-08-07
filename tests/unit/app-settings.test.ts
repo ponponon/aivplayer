@@ -72,6 +72,7 @@ describe('app settings', () => {
     settings.playback.profilesByFingerprint['media-fingerprint'] = { positionSeconds: 42, durationSeconds: 600, volume: 0.42, muted: true, playbackRate: 1.5, updatedAt: 123 }
     settings.playback.bookmarksByFingerprint['media-fingerprint'] = [{ id: 'bookmark-1', timeSeconds: 42, name: '重点', createdAt: 123 }]
     settings.playback.segmentsByFingerprint['media-fingerprint'] = [{ id: 'segment-1', startSeconds: 10, endSeconds: 30, name: '开场', color: 'cyan', createdAt: 123 }]
+    settings.playback.structureCorrectionsByFingerprint['media-fingerprint'] = [{ segmentId: 'structure-black-0-2000', kind: 'black', startSeconds: 0, endSeconds: 2, action: 'ignore', updatedAt: 123 }]
     settings.playback.history = [{
       path: `${tempDirectory}/history.mp4`,
       name: 'history.mp4',
@@ -163,7 +164,7 @@ describe('app settings', () => {
     )
 
     await expect(readAppSettings(tempDirectory)).resolves.toMatchObject({
-      schemaVersion: 21,
+      schemaVersion: 22,
       playback: {
         singleClickPause: true
       }

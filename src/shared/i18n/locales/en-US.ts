@@ -126,7 +126,9 @@
       segmentRange: (start: string, end: string) => `${start}–${end}`,
       trickplayPreview: (time: string) => `Timeline preview: ${time}`,
       trickplayLoading: 'Generating timeline preview…',
-      trickplayUnavailable: 'No thumbnail preview available'
+      trickplayUnavailable: 'No thumbnail preview available',
+      structureSkipNames: { intro: 'intro black', outro: 'outro black', black: 'black section' },
+      skipStructureAt: (label: string, time: string) => `Skip ${label} · ${time}`
     },
     editing: {
       framingOrientationHint: 'Portrait → corner · landscape/square → split', recommended: 'Recommended', framingPresetTitle: 'Shot presets', framingPresetTarget: (count: number) => count > 1 ? `Apply to ${count} shots` : 'Current shot', framingPresetNames: { full: 'Full baseline', 'punch-in': 'Focus punch-in', 'corner-br': 'Bottom-right room', 'corner-tl': 'Top-left room', 'split-left': 'Left split', 'split-right': 'Right split' },

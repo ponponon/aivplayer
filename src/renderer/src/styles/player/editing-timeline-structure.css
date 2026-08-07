@@ -77,7 +77,6 @@
 .editing-structure-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
   min-width: 0;
   padding: 6px;
@@ -85,8 +84,6 @@
   background: rgba(var(--overlay-rgb), 0.05);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);
-  text-align: left;
-  cursor: pointer;
 }
 
 .editing-structure-item:hover {
@@ -94,30 +91,67 @@
   border-color: rgba(var(--accent-rgb), 0.32);
 }
 
-.editing-structure-item > span {
+.editing-structure-item.is-ignored {
+  color: var(--text-muted);
+  opacity: 0.72;
+}
+
+.editing-structure-item-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1;
+  min-width: 0;
+  gap: 8px;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.editing-structure-item-main > span {
   display: grid;
   min-width: 0;
   gap: 2px;
 }
 
-.editing-structure-item strong,
-.editing-structure-item small {
+.editing-structure-item-main strong,
+.editing-structure-item-main small {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.editing-structure-item small,
-.editing-structure-item em,
+.editing-structure-item-main small,
+.editing-structure-item-main em,
 .editing-structure-empty {
   color: var(--text-muted);
   font-size: 10px;
   font-style: normal;
 }
 
-.editing-structure-item em {
+.editing-structure-item-main em {
   flex: 0 0 auto;
   color: var(--accent);
+}
+
+.editing-structure-item-action {
+  flex: 0 0 auto;
+  min-height: 24px;
+  padding: 0 6px;
+  color: var(--text-muted);
+  background: rgba(var(--overlay-rgb), 0.07);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 10px;
+}
+
+.editing-structure-item-action:hover {
+  color: var(--accent);
+  border-color: rgba(var(--accent-rgb), 0.34);
 }
 
 .editing-structure-empty {
