@@ -293,6 +293,30 @@
   white-space: nowrap;
 }
 
+.round-button.structure-skip-button {
+  display: inline-flex;
+  width: auto;
+  max-width: 220px;
+  padding: 0 9px;
+  gap: 5px;
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.1);
+  border-color: rgba(var(--accent-rgb), 0.28);
+}
+
+.round-button.structure-skip-button:hover {
+  color: var(--accent-ink);
+  background: var(--accent);
+}
+
+.round-button.structure-skip-button span {
+  overflow: hidden;
+  font-size: 10px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .volume {
   width: 100%;
   min-width: 96px;

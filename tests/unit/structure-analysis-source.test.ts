@@ -26,7 +26,23 @@ describe('structure analysis integration', () => {
     expect(timeline).toContain('window.aiv.analyzeMediaStructure')
     expect(component).toContain('editing-structure-analysis')
     expect(component).toContain('editing-structure-item')
+    expect(component).toContain('onIgnore')
+    expect(component).toContain('onRestore')
+    expect(component).toContain('data-segment-id')
+    expect(timeline).toContain('structureCorrectionsByFingerprint')
     expect(styles).toContain("./player/editing-timeline-structure.css")
+  })
+
+  it('keeps playback skip and per-media correction actions wired', () => {
+    const controls = readFileSync(join(projectRoot, 'src/renderer/src/app/playback-controls.tsx'), 'utf8')
+    const analysisHook = readFileSync(join(projectRoot, 'src/renderer/src/app/use-playback-structure-analysis.ts'), 'utf8')
+    const actionsHook = readFileSync(join(projectRoot, 'src/renderer/src/app/use-playback-structure-actions.ts'), 'utf8')
+    expect(controls).toContain('playback-structure-skip')
+    expect(controls).toContain('usePlaybackStructureAnalysis')
+    expect(analysisHook).toContain('activeSegment')
+    expect(analysisHook).toContain("segment.kind === 'black'")
+    expect(actionsHook).toContain('structureCorrectionsByFingerprint')
+    expect(actionsHook).toContain('restorePlaybackStructureSegment')
   })
 
   it('keeps a dedicated real-media smoke entry', () => {
@@ -36,5 +52,7 @@ describe('structure analysis integration', () => {
     expect(smoke).toContain('analyzeMediaStructure')
     expect(smoke).toContain('black-structure.mp4')
     expect(smoke).toContain('editing-structure-analysis')
+    expect(smoke).toContain('playback-structure-skip')
+    expect(smoke).toContain('structureCorrectionsByFingerprint')
   })
 })
