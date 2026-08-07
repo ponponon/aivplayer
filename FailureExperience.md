@@ -648,3 +648,9 @@
 - 现象：OCR / TTS 任务通过主进程执行，如果所有窗口共用一个 AbortController，一个窗口取消会误杀另一个窗口的任务；如果直接接受 Renderer 传来的指纹，媒体替换后可能继续使用旧证据。
 - 经验：长任务的取消控制器必须按 `sender.id` 隔离，并在任务开始前由主进程依据当前文件 `path + size + mtime` 重算 source fingerprint；进度事件也必须回发到原 sender。
 - 处理：新增证据任务 IPC 的 sender 级控制器、启动 / 取消 / 能力探测 / 进度通道；请求只携带媒体路径和输入哈希，任务合同中的媒体指纹由主进程生成。
+
+## 2026-08-08：OCR 落库不能重建整张 evidence 表
+
+- 现象：视觉索引已有字幕和视觉证据；如果 OCR 完成后复用全量 `replaceEvidenceRows`，一次 OCR 任务就可能删除旧字幕 / 视觉行，导致检索结果回退或丢失。
+- 经验：派生证据必须按稳定 evidence id 做单条 upsert，只删除同一个 id 的旧版本；落库前再次读取媒体 `path + size + mtime` 指纹，任务期间媒体发生变化就跳过写入。
+- 处理：新增 `VisionLibrary.upsertEvidence` 和 `persistOcrResult`，并用真实 Electron Smoke 验证 1 条 OCR + 1 条已有 visual 同时存在，stale 媒体不会新增 OCR 行。
