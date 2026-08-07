@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { WebShareMediaItem } from '../../src/shared/web-types'
-import { buildWebLibraryTree, createDefaultWebLibraryPreferences, filterWebLibraryItems, getHistoryEntry, isInProgress, sortWebLibraryItems } from '../../src/web/library-state'
+import { buildWebLibraryTree, createDefaultWebLibraryPreferences, filterWebLibraryItems, getHistoryEntry, getWebLibraryBreadcrumbs, isInProgress, sortWebLibraryItems } from '../../src/web/library-state'
 
 function createItem(overrides: Partial<WebShareMediaItem>): WebShareMediaItem {
   return {
@@ -47,6 +47,7 @@ describe('Web library state', () => {
     expect(root.itemCount).toBe(2)
     expect(movieFolder.kind).toBe('directory')
     expect(sciFiFolder.itemCount).toBe(1)
+    expect(getWebLibraryBreadcrumbs(tree, sciFiFolder.id).map((node) => node.label)).toEqual(['Movies', '电影', '科幻'])
     expect(filterWebLibraryItems([first, second], '', preferences).map((item) => item.id)).toEqual(['first'])
   })
 })

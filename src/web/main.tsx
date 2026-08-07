@@ -7,6 +7,7 @@ import { useDesktopState } from './use-desktop-state'
 import { useDesktopFollow } from './use-desktop-follow'
 import { useVisibleSelection } from './use-visible-selection'
 import { readJson } from './web-ui'
+import { useWebCopyLink } from './use-web-copy-link'
 import './styles.css'
 import './library-styles.css'
 
@@ -36,6 +37,7 @@ function WebApp(): ReactElement {
   const autoPlayNextRef = useRef(false)
   const { desktopState, allowRemoteControl } = useDesktopState(authenticated === true)
   const selected = items.find((item) => item.id === selectedId) ?? items[0] ?? null
+  const { copyLinkStatus, copyLinkMessage, copySelectedLink } = useWebCopyLink(selected)
   selectedIdRef.current = selected?.id ?? null
   const selectedWithDetails = selected && details?.id === selected.id ? { ...selected, browserSupport: details.browserSupport } : selected
   const isTranscoding = selected ? transcodingIds.has(selected.id) : false
@@ -74,7 +76,6 @@ function WebApp(): ReactElement {
       setIsLoading(false)
     }
   }, [updatePreferences])
-
   const login = async (token: string): Promise<void> => {
     setError(null)
     try {
@@ -91,7 +92,6 @@ function WebApp(): ReactElement {
     lastSavedAtRef.current = now
     updatePreferences((current) => ({ ...current, history: { ...current.history, [item.id]: { position, duration: duration && duration > 0 ? duration : null, updatedAt: now } } }))
   }, [preferences.history, updatePreferences])
-
   const selectItem = useCallback((item: WebShareMediaItem, autoPlay = false): void => {
     autoPlayNextRef.current = autoPlay
     setSelectedId(item.id)
@@ -99,11 +99,9 @@ function WebApp(): ReactElement {
     setError(null)
     if (allowRemoteControl) void sendRemoteCommand({ type: 'select', mediaId: item.id })
   }, [allowRemoteControl, sendRemoteCommand])
-
   useDesktopFollow({ followDesktop, desktopState, items, selected, videoRef, selectItem })
 
   useVisibleSelection(visibleItems, selected, setSelectedId, setIsPlaying)
-
   const playAdjacent = useCallback((direction: -1 | 1, autoPlay = true): void => {
     if (!selected) return
     const index = visibleItems.findIndex((item) => item.id === selected.id)
@@ -192,7 +190,7 @@ function WebApp(): ReactElement {
     <main className="web-layout">
       <LibrarySidebar items={items} visibleItems={visibleItems} tree={tree} selectedId={selected?.id ?? null} query={query} preferences={preferences} onQueryChange={(value) => { setFollowDesktop(false); setQuery(value) }} onSelect={selectItem} onSelectNode={(nodeId) => { setFollowDesktop(false); updatePreferences((current) => ({ ...current, selectedGroupId: nodeId })) }} updatePreferences={updatePreferences} />
       <PlayerPanel selected={selected} selectedWithDetails={selectedWithDetails} selectedSubtitleTrack={selectedSubtitleTrack} currentHistory={currentHistory} showResume={Boolean(selected && currentHistory && isInProgress(selected, preferences))} selectedIndex={selectedIndex} queueItems={visibleItems} mediaPlaybackUrl={mediaPlaybackUrl} isPlaying={isPlaying} isSelectedFavorite={isSelectedFavorite} desktopState={desktopState} allowRemoteControl={allowRemoteControl} desktopItem={desktopItem} remoteError={remoteError} error={error} isTranscoding={isTranscoding} transcodeStatus={transcodeStatus} canRequestTranscode={audioTrack === 'direct' && !transcodePlaybackUrl} videoRef={videoRef} autoPlayNextRef={autoPlayNextRef} onSelect={selectItem} onPlayAdjacent={playAdjacent} onToggleFavorite={() => selected && updatePreferences((current) => ({ ...current, favorites: current.favorites.includes(selected.id) ? current.favorites.filter((id) => id !== selected.id) : [...current.favorites, selected.id] }))} onSendRemoteCommand={(command) => void sendRemoteCommand(command)} onSaveProgress={saveProgress} onSetPlaying={setIsPlaying} onRequestTranscode={(itemId) => void requestTranscode(itemId)} onClearError={() => setError(null)} onSetError={setError} />
-      <DetailsPanel item={selectedWithDetails} details={details} subtitleTrack={subtitleTrack} audioTrack={audioTrack} onSubtitleTrackChange={setSubtitleTrack} onAudioTrackChange={(trackId) => { setAudioTrack(trackId); setTranscodePlaybackUrl(null) }} />
+      <DetailsPanel item={selectedWithDetails} details={details} subtitleTrack={subtitleTrack} audioTrack={audioTrack} copyLinkStatus={copyLinkStatus} copyLinkMessage={copyLinkMessage} onCopyLink={() => void copySelectedLink()} onSubtitleTrackChange={setSubtitleTrack} onAudioTrackChange={(trackId) => { setAudioTrack(trackId); setTranscodePlaybackUrl(null) }} />
     </main>
   </div>
 }

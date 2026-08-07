@@ -104,6 +104,11 @@ export type WebShareMediaDetails = WebShareMediaItem & {
   audioTracks: WebAudioTrack[]
 }
 
+export type WebShareMediaLinks = {
+  url: string
+  downloadUrl: string
+}
+
 export type WebShareLibraryResponse = {
   items: WebShareMediaItem[]
 }

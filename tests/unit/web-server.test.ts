@@ -65,6 +65,30 @@ describe('WebServer', () => {
     expect(library.items[0]?.thumbnailUrl).toMatch(/^\/thumbnail\//u)
     expect(library.items[0]?.sourceGroupLabel).toBe('当前播放列表')
 
+    const mediaId = library.items[0]!.id
+    const unauthorizedLink = await fetch(new URL(`/api/v1/media/${mediaId}/link`, accessUrl))
+    expect(unauthorizedLink.status).toBe(401)
+    const linksResponse = await fetch(new URL(`/api/v1/media/${mediaId}/link`, accessUrl), { headers: { Cookie: cookie! } })
+    expect(linksResponse.status).toBe(200)
+    const links = await linksResponse.json() as { url: string; downloadUrl: string }
+    expect(new URL(links.url).pathname).toBe(`/media/${mediaId}`)
+    expect(new URL(links.url).searchParams.get('access')).toBeTruthy()
+    expect(new URL(links.downloadUrl).pathname).toBe(`/download/${mediaId}`)
+    expect(new URL(links.downloadUrl).searchParams.get('access')).toBeTruthy()
+
+    const sharedMedia = await fetch(links.url)
+    expect(sharedMedia.status).toBe(200)
+    expect(sharedMedia.headers.get('content-disposition')).toContain('inline')
+    expect(await sharedMedia.text()).toBe('0123456789')
+
+    const sharedDownload = await fetch(links.downloadUrl)
+    expect(sharedDownload.status).toBe(200)
+    expect(sharedDownload.headers.get('content-disposition')).toContain('attachment')
+    expect(await sharedDownload.text()).toBe('0123456789')
+
+    const unauthorizedDownload = await fetch(new URL(`/download/${mediaId}`, accessUrl))
+    expect(unauthorizedDownload.status).toBe(401)
+
     server.updateDesktopState({ currentFilePath: fixture.mediaPath, playlistFilePaths: [fixture.mediaPath], currentTime: 12, duration: 90, isPlaying: true, volume: 0.8, muted: false, playbackRate: 1 })
     const desktopStateResponse = await fetch(new URL('/api/v1/desktop/state', accessUrl), { headers: { Cookie: cookie! } })
     expect(desktopStateResponse.status).toBe(200)

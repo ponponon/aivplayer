@@ -19,6 +19,7 @@ import type {
   WebShareLibraryResponse,
   WebShareMediaDetails,
   WebShareMediaItem,
+  WebShareMediaLinks,
   WebShareStartRequest,
   WebShareStatus,
   WebSubtitleTrack,
@@ -204,9 +205,9 @@ function formatSubtitleTextAsVtt(content: string): string {
   return `WEBVTT\n\n${cues.join('\n\n')}\n`
 }
 
-function getContentDisposition(fileName: string): string {
+function getContentDisposition(fileName: string, disposition: 'inline' | 'attachment' = 'inline'): string {
   const safeName = fileName.replace(/[\r\n"]/gu, '_')
-  return `inline; filename*=UTF-8''${encodeURIComponent(safeName)}`
+  return `${disposition}; filename*=UTF-8''${encodeURIComponent(safeName)}`
 }
 
 function getStreamText(stream: Record<string, unknown>, key: string): string | null {
@@ -600,6 +601,23 @@ export class WebServer {
       return
     }
 
+    const mediaLinksMatch = /^\/api\/v1\/media\/([^/]+)\/link$/u.exec(url.pathname)
+    if (mediaLinksMatch && request.method === 'GET') {
+      const record = this.records.get(mediaLinksMatch[1]!)
+      if (!record) {
+        sendJson(response, 404, { message: '媒体文件不存在' })
+        return
+      }
+      const origin = `${url.protocol}//${url.host}`
+      const access = `access=${encodeURIComponent(this.sessionToken!)}`
+      const links: WebShareMediaLinks = {
+        url: `${origin}/media/${record.id}?${access}`,
+        downloadUrl: `${origin}/download/${record.id}?${access}`
+      }
+      sendJson(response, 200, links)
+      return
+    }
+
     const transcodeStartMatch = /^\/api\/v1\/media\/([^/]+)\/transcode$/u.exec(url.pathname)
     if (transcodeStartMatch && request.method === 'POST') {
       const status = await this.startTranscode(transcodeStartMatch[1]!)
@@ -625,6 +643,12 @@ export class WebServer {
     const streamMatch = /^\/media\/([^/]+)$/u.exec(url.pathname)
     if (streamMatch && (request.method === 'GET' || request.method === 'HEAD')) {
       await this.streamMedia(streamMatch[1]!, request, response)
+      return
+    }
+
+    const downloadMatch = /^\/download\/([^/]+)$/u.exec(url.pathname)
+    if (downloadMatch && (request.method === 'GET' || request.method === 'HEAD')) {
+      await this.streamMedia(downloadMatch[1]!, request, response, 'attachment')
       return
     }
 
@@ -833,7 +857,7 @@ export class WebServer {
     }
   }
 
-  private async streamMedia(id: string, request: IncomingMessage, response: ServerResponse): Promise<void> {
+  private async streamMedia(id: string, request: IncomingMessage, response: ServerResponse, disposition: 'inline' | 'attachment' = 'inline'): Promise<void> {
     if (!MEDIA_ID_PATTERN.test(id)) {
       sendText(response, 400, 'Invalid media id')
       return
@@ -844,7 +868,7 @@ export class WebServer {
       return
     }
 
-    await this.streamFile(record.path, record.name, record.mimeType, request, response)
+    await this.streamFile(record.path, record.name, record.mimeType, request, response, disposition)
   }
 
   private async streamTranscodedMedia(id: string, request: IncomingMessage, response: ServerResponse): Promise<void> {
@@ -866,7 +890,7 @@ export class WebServer {
     await this.streamFile(outputPath, `${record.name}.mp4`, 'video/mp4', request, response)
   }
 
-  private async streamFile(filePath: string, fileName: string, mimeType: string, request: IncomingMessage, response: ServerResponse): Promise<void> {
+  private async streamFile(filePath: string, fileName: string, mimeType: string, request: IncomingMessage, response: ServerResponse, disposition: 'inline' | 'attachment' = 'inline'): Promise<void> {
     let fileStat
     try {
       fileStat = await stat(filePath)
@@ -880,7 +904,7 @@ export class WebServer {
     const commonHeaders = {
       'Accept-Ranges': 'bytes',
       'Cache-Control': 'private, no-store',
-      'Content-Disposition': getContentDisposition(fileName),
+      'Content-Disposition': getContentDisposition(fileName, disposition),
       'Content-Type': mimeType,
       'Last-Modified': fileStat.mtime.toUTCString(),
       'X-Content-Type-Options': 'nosniff'

@@ -2,6 +2,7 @@ import type { WebShareMediaItem } from '../shared/web-types'
 
 export type WebLibrarySortMode = 'name-asc' | 'name-desc' | 'size-desc' | 'duration-desc' | 'recent'
 export type WebLibraryFilterMode = 'all' | 'favorites' | 'in-progress' | 'unwatched'
+export type WebLibraryViewMode = 'list' | 'grid'
 export type WebLibraryTreeNodeKind = 'group' | 'directory' | 'file'
 
 export type WebLibraryTreeNode = {
@@ -26,6 +27,7 @@ export type WebLibraryPreferences = {
   history: Record<string, WebPlaybackHistoryEntry>
   sort: WebLibrarySortMode
   filter: WebLibraryFilterMode
+  view: WebLibraryViewMode
   selectedGroupId: string
   expandedGroups: string[]
 }
@@ -38,6 +40,7 @@ export function createDefaultWebLibraryPreferences(): WebLibraryPreferences {
     history: {},
     sort: 'name-asc',
     filter: 'all',
+    view: 'list',
     selectedGroupId: 'all',
     expandedGroups: ['playlist']
   }
@@ -54,12 +57,27 @@ export function readWebLibraryPreferences(): WebLibraryPreferences {
       history: value.history && typeof value.history === 'object' && !Array.isArray(value.history) ? value.history as Record<string, WebPlaybackHistoryEntry> : fallback.history,
       sort: value.sort === 'name-desc' || value.sort === 'size-desc' || value.sort === 'duration-desc' || value.sort === 'recent' ? value.sort : fallback.sort,
       filter: value.filter === 'favorites' || value.filter === 'in-progress' || value.filter === 'unwatched' ? value.filter : fallback.filter,
+      view: value.view === 'grid' ? 'grid' : fallback.view,
       selectedGroupId: typeof value.selectedGroupId === 'string' ? value.selectedGroupId : fallback.selectedGroupId,
       expandedGroups: Array.isArray(value.expandedGroups) ? value.expandedGroups.filter((id): id is string => typeof id === 'string') : fallback.expandedGroups
     }
   } catch {
     return fallback
   }
+}
+
+export function getWebLibraryBreadcrumbs(tree: WebLibraryTreeNode[], selectedGroupId: string): WebLibraryTreeNode[] {
+  if (selectedGroupId === 'all') return []
+  const visit = (nodes: WebLibraryTreeNode[], parents: WebLibraryTreeNode[]): WebLibraryTreeNode[] | null => {
+    for (const node of nodes) {
+      const trail = [...parents, node]
+      if (node.id === selectedGroupId) return trail
+      const nested = visit(node.children, trail)
+      if (nested) return nested
+    }
+    return null
+  }
+  return visit(tree, []) ?? []
 }
 
 export function writeWebLibraryPreferences(preferences: WebLibraryPreferences): void {
