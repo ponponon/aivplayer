@@ -78,6 +78,8 @@ async function startOcrFromUi(page: Page): Promise<void> {
   await page.locator('.panel-tab').nth(4).click()
   const task = page.locator('[data-testid="vision-ocr-task"]')
   await task.waitFor({ timeout: 10_000 })
+  await page.locator('[data-testid="vision-ocr-start"]').fill('0.5')
+  await page.locator('[data-testid="vision-ocr-end"]').fill('1.5')
   const startButton = page.locator('[data-testid="vision-ocr-start-button"]')
   await startButton.waitFor({ timeout: 10_000 })
   await page.waitForFunction(() => !(document.querySelector('[data-testid="vision-ocr-start-button"]') as HTMLButtonElement | null)?.disabled, undefined, { timeout: 15_000 })
@@ -97,7 +99,7 @@ async function searchOcrAndLocate(page: Page): Promise<{ evidenceId: string; cur
   await result.click()
   await page.waitForFunction(() => {
     const video = document.querySelector('video.video-surface') as HTMLVideoElement | null
-    return video !== null && video.currentTime >= 0.45 && video.currentTime <= 1.55
+    return video !== null && Math.abs(video.currentTime - 0.5) <= 0.1
   }, undefined, { timeout: 15_000 })
   const currentTime = await page.locator('video.video-surface').evaluate((video) => (video as HTMLVideoElement).currentTime)
   return { evidenceId, currentTime }

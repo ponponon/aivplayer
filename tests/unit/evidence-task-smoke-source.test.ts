@@ -13,6 +13,8 @@ describe('evidence task Electron smoke contract', () => {
     expect(smoke).toContain('startOcrFromUi')
     expect(smoke).toContain('searchOcrAndLocate')
     expect(smoke).toContain('data-evidence-type="ocr"')
+    expect(smoke).toContain("fill('0.5')")
+    expect(smoke).toContain("fill('1.5')")
     expect(smoke).toContain('vision-ocr-start-button')
     expect(smoke).toContain('persistenceStatus')
     expect(smoke).toContain("'skipped-stale'")
