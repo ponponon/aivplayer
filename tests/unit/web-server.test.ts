@@ -88,6 +88,17 @@ describe('WebServer', () => {
 
     const unauthorizedDownload = await fetch(new URL(`/download/${mediaId}`, accessUrl))
     expect(unauthorizedDownload.status).toBe(401)
+    const unauthorizedBatchDownload = await fetch(new URL(`/download/package?id=${mediaId}`, accessUrl))
+    expect(unauthorizedBatchDownload.status).toBe(401)
+    const batchDownload = await fetch(new URL(`/download/package?id=${mediaId}`, accessUrl), { headers: { Cookie: cookie! } })
+    expect(batchDownload.status).toBe(200)
+    expect(batchDownload.headers.get('content-type')).toContain('application/zip')
+    expect(batchDownload.headers.get('content-disposition')).toContain('aivplayer-media.zip')
+    const zipBody = Buffer.from(await batchDownload.arrayBuffer())
+    expect(zipBody.readUInt32LE(0)).toBe(0x04034b50)
+    expect(zipBody.toString('utf8')).toContain('当前播放列表/sample.mp4')
+    expect(zipBody.toString('utf8')).toContain('0123456789')
+    expect(zipBody.readUInt32LE(zipBody.length - 22)).toBe(0x06054b50)
 
     server.updateDesktopState({ currentFilePath: fixture.mediaPath, playlistFilePaths: [fixture.mediaPath], currentTime: 12, duration: 90, isPlaying: true, volume: 0.8, muted: false, playbackRate: 1 })
     const desktopStateResponse = await fetch(new URL('/api/v1/desktop/state', accessUrl), { headers: { Cookie: cookie! } })

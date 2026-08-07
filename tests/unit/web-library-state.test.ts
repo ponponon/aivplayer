@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { WebShareMediaItem } from '../../src/shared/web-types'
-import { buildWebLibraryTree, createDefaultWebLibraryPreferences, filterWebLibraryItems, getHistoryEntry, getWebLibraryBreadcrumbs, isInProgress, sortWebLibraryItems } from '../../src/web/library-state'
+import { applyWebLibraryUrlPreferences, buildWebLibraryTree, createDefaultWebLibraryPreferences, filterWebLibraryItems, getHistoryEntry, getWebLibraryBreadcrumbs, isInProgress, sortWebLibraryItems } from '../../src/web/library-state'
 
 function createItem(overrides: Partial<WebShareMediaItem>): WebShareMediaItem {
   return {
@@ -32,6 +32,13 @@ describe('Web library state', () => {
     const preferences = createDefaultWebLibraryPreferences()
     preferences.history.finished = { position: 95, duration: 100, updatedAt: 1 }
     expect(isInProgress(item, preferences)).toBe(false)
+  })
+
+  it('applies shareable URL state without losing local preferences', () => {
+    const preferences = createDefaultWebLibraryPreferences()
+    preferences.favorites = ['keep-me']
+    const next = applyWebLibraryUrlPreferences(preferences, new URLSearchParams('sort=size-desc&filter=favorites&view=grid&group=movies%3A%3Aseason-1'))
+    expect(next).toMatchObject({ sort: 'size-desc', filter: 'favorites', view: 'grid', selectedGroupId: 'movies::season-1', favorites: ['keep-me'] })
   })
 
   it('builds nested directory nodes and filters by a nested node', () => {

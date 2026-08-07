@@ -46,23 +46,50 @@ export function createDefaultWebLibraryPreferences(): WebLibraryPreferences {
   }
 }
 
+function isWebLibrarySortMode(value: string | null): value is WebLibrarySortMode {
+  return value === 'name-asc' || value === 'name-desc' || value === 'size-desc' || value === 'duration-desc' || value === 'recent'
+}
+
+function isWebLibraryFilterMode(value: string | null): value is WebLibraryFilterMode {
+  return value === 'all' || value === 'favorites' || value === 'in-progress' || value === 'unwatched'
+}
+
+export function applyWebLibraryUrlPreferences(preferences: WebLibraryPreferences, searchParams: URLSearchParams): WebLibraryPreferences {
+  const sort = searchParams.get('sort')
+  const filter = searchParams.get('filter')
+  const view = searchParams.get('view')
+  const group = searchParams.get('group')
+  return {
+    ...preferences,
+    sort: isWebLibrarySortMode(sort) ? sort : preferences.sort,
+    filter: isWebLibraryFilterMode(filter) ? filter : preferences.filter,
+    view: view === 'list' || view === 'grid' ? view : preferences.view,
+    selectedGroupId: group?.trim() ? group : preferences.selectedGroupId
+  }
+}
+
 export function readWebLibraryPreferences(): WebLibraryPreferences {
   const fallback = createDefaultWebLibraryPreferences()
+  let preferences = fallback
   try {
     const parsed: unknown = JSON.parse(window.localStorage.getItem(WEB_LIBRARY_STORAGE_KEY) ?? 'null')
-    if (!parsed || typeof parsed !== 'object') return fallback
-    const value = parsed as Partial<WebLibraryPreferences>
-    return {
-      favorites: Array.isArray(value.favorites) ? value.favorites.filter((id): id is string => typeof id === 'string') : fallback.favorites,
-      history: value.history && typeof value.history === 'object' && !Array.isArray(value.history) ? value.history as Record<string, WebPlaybackHistoryEntry> : fallback.history,
-      sort: value.sort === 'name-desc' || value.sort === 'size-desc' || value.sort === 'duration-desc' || value.sort === 'recent' ? value.sort : fallback.sort,
-      filter: value.filter === 'favorites' || value.filter === 'in-progress' || value.filter === 'unwatched' ? value.filter : fallback.filter,
-      view: value.view === 'grid' ? 'grid' : fallback.view,
-      selectedGroupId: typeof value.selectedGroupId === 'string' ? value.selectedGroupId : fallback.selectedGroupId,
-      expandedGroups: Array.isArray(value.expandedGroups) ? value.expandedGroups.filter((id): id is string => typeof id === 'string') : fallback.expandedGroups
+    if (parsed && typeof parsed === 'object') {
+      const value = parsed as Partial<WebLibraryPreferences>
+      const storedSort = value.sort ?? null
+      const storedFilter = value.filter ?? null
+      preferences = {
+        favorites: Array.isArray(value.favorites) ? value.favorites.filter((id): id is string => typeof id === 'string') : fallback.favorites,
+        history: value.history && typeof value.history === 'object' && !Array.isArray(value.history) ? value.history as Record<string, WebPlaybackHistoryEntry> : fallback.history,
+        sort: isWebLibrarySortMode(storedSort) ? storedSort : fallback.sort,
+        filter: isWebLibraryFilterMode(storedFilter) ? storedFilter : fallback.filter,
+        view: value.view === 'grid' ? 'grid' : fallback.view,
+        selectedGroupId: typeof value.selectedGroupId === 'string' ? value.selectedGroupId : fallback.selectedGroupId,
+        expandedGroups: Array.isArray(value.expandedGroups) ? value.expandedGroups.filter((id): id is string => typeof id === 'string') : fallback.expandedGroups
+      }
     }
+    return applyWebLibraryUrlPreferences(preferences, new URL(window.location.href).searchParams)
   } catch {
-    return fallback
+    return preferences
   }
 }
 
@@ -85,6 +112,20 @@ export function writeWebLibraryPreferences(preferences: WebLibraryPreferences): 
     window.localStorage.setItem(WEB_LIBRARY_STORAGE_KEY, JSON.stringify(preferences))
   } catch {
     // Private browsing or a full storage quota should not stop playback.
+  }
+}
+
+export function syncWebLibraryPreferencesToUrl(preferences: WebLibraryPreferences): void {
+  try {
+    const url = new URL(window.location.href)
+    url.searchParams.set('sort', preferences.sort)
+    url.searchParams.set('filter', preferences.filter)
+    url.searchParams.set('view', preferences.view)
+    if (preferences.selectedGroupId === 'all') url.searchParams.delete('group')
+    else url.searchParams.set('group', preferences.selectedGroupId)
+    window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
+  } catch {
+    // 不支持 history API 的嵌入式浏览器仍可使用 localStorage 状态。
   }
 }
 

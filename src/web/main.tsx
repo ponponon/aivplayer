@@ -1,13 +1,14 @@
 import { StrictMode, useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { WebRemoteCommand, WebShareMediaDetails, WebShareMediaItem, WebShareLibraryResponse, WebSubtitleTrack, WebTranscodeStatus } from '../shared/web-types'
-import { buildWebLibraryTree, filterWebLibraryItems, getHistoryEntry, isInProgress, readWebLibraryPreferences, sortWebLibraryItems, writeWebLibraryPreferences, type WebLibraryPreferences } from './library-state'
+import { buildWebLibraryTree, filterWebLibraryItems, getHistoryEntry, isInProgress, readWebLibraryPreferences, sortWebLibraryItems, syncWebLibraryPreferencesToUrl, writeWebLibraryPreferences, type WebLibraryPreferences } from './library-state'
 import { DetailsPanel, LibrarySidebar, LoginScreen, PlayerPanel } from './web-panels'
 import { useDesktopState } from './use-desktop-state'
 import { useDesktopFollow } from './use-desktop-follow'
 import { useVisibleSelection } from './use-visible-selection'
 import { readJson } from './web-ui'
 import { useWebCopyLink } from './use-web-copy-link'
+import { useWebLibraryBatch } from './use-web-library-batch'
 import './styles.css'
 import './library-styles.css'
 
@@ -46,7 +47,8 @@ function WebApp(): ReactElement {
   const updatePreferences = useCallback((updater: (current: WebLibraryPreferences) => WebLibraryPreferences): void => {
     setPreferences((current) => updater(current))
   }, [])
-  useEffect(() => { writeWebLibraryPreferences(preferences) }, [preferences])
+  const batch = useWebLibraryBatch(visibleItems, preferences, updatePreferences)
+  useEffect(() => { writeWebLibraryPreferences(preferences); syncWebLibraryPreferencesToUrl(preferences) }, [preferences])
   const sendRemoteCommand = useCallback(async (command: WebRemoteCommand): Promise<void> => {
     setRemoteError(null)
     try {
@@ -185,10 +187,10 @@ function WebApp(): ReactElement {
       <div className="brand-lockup"><span className="brand-mark">A</span><strong>AIVPlayer</strong><span>LAN Web</span></div>
       <div className="connection-status"><span className="status-dot" />局域网连接<span className="status-divider">·</span>{items.length} 个文件</div>
       <button className="text-button" type="button" onClick={() => setFollowDesktop((current) => !current)}>{followDesktop ? '取消跟随 Desktop' : '跟随 Desktop'}</button>
-      <button className="text-button" type="button" onClick={() => void loadLibrary(true)} disabled={isLoading}>{isLoading ? '刷新中…' : '刷新媒体库'}</button>
+      <button className="text-button" type="button" onClick={() => void loadLibrary(true)} disabled={isLoading} title={preferences.selectedGroupId === 'all' ? '重新扫描全部共享媒体' : '重新扫描当前目录'}>{isLoading ? '刷新中…' : preferences.selectedGroupId === 'all' ? '刷新媒体库' : '刷新目录'}</button>
     </header>
     <main className="web-layout">
-      <LibrarySidebar items={items} visibleItems={visibleItems} tree={tree} selectedId={selected?.id ?? null} query={query} preferences={preferences} onQueryChange={(value) => { setFollowDesktop(false); setQuery(value) }} onSelect={selectItem} onSelectNode={(nodeId) => { setFollowDesktop(false); updatePreferences((current) => ({ ...current, selectedGroupId: nodeId })) }} updatePreferences={updatePreferences} />
+      <LibrarySidebar items={items} visibleItems={visibleItems} tree={tree} selectedId={selected?.id ?? null} query={query} preferences={preferences} selectionMode={batch.selectionMode} selectedBatchIds={batch.selectedIds} allVisibleSelected={batch.allVisibleSelected} allSelectedFavorited={batch.allSelectedFavorited} onQueryChange={(value) => { setFollowDesktop(false); setQuery(value) }} onSelect={selectItem} onSelectNode={(nodeId) => { setFollowDesktop(false); updatePreferences((current) => ({ ...current, selectedGroupId: nodeId })) }} updatePreferences={updatePreferences} onEnterSelectionMode={batch.enterSelectionMode} onExitSelectionMode={batch.exitSelectionMode} onToggleBatchSelection={batch.toggleSelection} onSelectAllVisible={batch.selectAllVisible} onClearBatchSelection={batch.clearSelection} onBatchFavorite={batch.toggleFavorites} />
       <PlayerPanel selected={selected} selectedWithDetails={selectedWithDetails} selectedSubtitleTrack={selectedSubtitleTrack} currentHistory={currentHistory} showResume={Boolean(selected && currentHistory && isInProgress(selected, preferences))} selectedIndex={selectedIndex} queueItems={visibleItems} mediaPlaybackUrl={mediaPlaybackUrl} isPlaying={isPlaying} isSelectedFavorite={isSelectedFavorite} desktopState={desktopState} allowRemoteControl={allowRemoteControl} desktopItem={desktopItem} remoteError={remoteError} error={error} isTranscoding={isTranscoding} transcodeStatus={transcodeStatus} canRequestTranscode={audioTrack === 'direct' && !transcodePlaybackUrl} videoRef={videoRef} autoPlayNextRef={autoPlayNextRef} onSelect={selectItem} onPlayAdjacent={playAdjacent} onToggleFavorite={() => selected && updatePreferences((current) => ({ ...current, favorites: current.favorites.includes(selected.id) ? current.favorites.filter((id) => id !== selected.id) : [...current.favorites, selected.id] }))} onSendRemoteCommand={(command) => void sendRemoteCommand(command)} onSaveProgress={saveProgress} onSetPlaying={setIsPlaying} onRequestTranscode={(itemId) => void requestTranscode(itemId)} onClearError={() => setError(null)} onSetError={setError} />
       <DetailsPanel item={selectedWithDetails} details={details} subtitleTrack={subtitleTrack} audioTrack={audioTrack} copyLinkStatus={copyLinkStatus} copyLinkMessage={copyLinkMessage} onCopyLink={() => void copySelectedLink()} onSubtitleTrackChange={setSubtitleTrack} onAudioTrackChange={(trackId) => { setAudioTrack(trackId); setTranscodePlaybackUrl(null) }} />
     </main>

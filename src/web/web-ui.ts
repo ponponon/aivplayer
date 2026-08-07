@@ -34,6 +34,13 @@ export function getSupportLabel(item: WebShareMediaItem): string {
 export function getSupportClass(item: WebShareMediaItem): string { return `support-${item.browserSupport}` }
 export function formatProgress(progress: number | null): string { return progress == null || !Number.isFinite(progress) ? '处理中' : `${Math.round(progress * 100)}%` }
 
+export function buildWebBatchDownloadUrl(ids: string[]): string {
+  const params = new URLSearchParams()
+  for (const id of ids) if (id.trim()) params.append('id', id)
+  const query = params.toString()
+  return `/download/package${query ? `?${query}` : ''}`
+}
+
 export async function readJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
   const response = await fetch(input, init)
   const body = await response.json() as T | ApiError

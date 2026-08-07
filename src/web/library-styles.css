@@ -7,6 +7,14 @@
 .library-view-toggle button { min-height: 27px; padding: 0 8px; color: #777c83; background: transparent; border: 0; border-radius: 5px; cursor: pointer; font-size: 10px; white-space: nowrap; }
 .library-view-toggle button:hover { color: #d8d7d1; background: #1a1c20; }
 .library-view-toggle button.is-selected { color: #dda052; background: rgba(211, 154, 75, 0.14); }
+.library-batch-toolbar { display: grid; gap: 7px; margin-bottom: 10px; padding: 8px; background: rgba(211, 154, 75, 0.055); border: 1px solid rgba(211, 154, 75, 0.2); border-radius: 7px; }
+.library-batch-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: #d8d7d1; font-size: 10px; }
+.library-batch-heading span { color: #858a91; font-weight: 500; }
+.library-batch-actions { display: flex; flex-wrap: wrap; gap: 5px; }
+.library-batch-actions button, .library-batch-entry, .library-batch-button { display: inline-flex; align-items: center; justify-content: center; min-height: 27px; padding: 0 8px; color: #b8babd; background: #15171a; border: 1px solid #303238; border-radius: 5px; cursor: pointer; font-size: 10px; line-height: 1; text-decoration: none; white-space: nowrap; }
+.library-batch-actions button:hover:not(:disabled), .library-batch-entry:hover, .library-batch-button:hover:not(.is-disabled) { color: #e5b466; border-color: #9d6d32; }
+.library-batch-actions button:disabled, .library-batch-button.is-disabled { cursor: default; opacity: 0.4; pointer-events: none; }
+.library-batch-entry { width: 100%; }
 .library-tree { display: grid; gap: 1px; max-height: 240px; margin-bottom: 10px; overflow: auto; padding-bottom: 9px; border-bottom: 1px solid #25272b; }
 .library-tree-all, .library-tree-select { display: flex; align-items: center; gap: 7px; width: 100%; min-width: 0; padding: 6px 7px; color: #858a91; background: transparent; border: 1px solid transparent; border-radius: 5px; cursor: pointer; font-size: 11px; text-align: left; }
 .library-tree-all:hover, .library-tree-select:hover { color: #c9c8c3; background: #15171a; }
@@ -31,6 +39,7 @@
 .library-breadcrumbs button:hover { color: #dda052; background: rgba(211, 154, 75, 0.08); }
 .library-item { display: flex; align-items: stretch; gap: 4px; min-height: 72px; padding: 4px; }
 .library-item:hover, .library-item.is-selected { background: #17191c; border-color: #bd7d31; }
+.library-item.is-batch-selected { background: rgba(211, 154, 75, 0.1); box-shadow: inset 2px 0 #d39845; }
 .library-item-select { display: flex; flex: 1; gap: 9px; min-width: 0; padding: 5px; color: inherit; background: none; border: 0; cursor: pointer; text-align: left; }
 .library-thumbnail { position: relative; display: block; flex: 0 0 74px; width: 74px; height: 46px; overflow: hidden; align-self: center; background: #090a0b; border: 1px solid #2c2e32; border-radius: 5px; }
 .library-thumbnail img { position: relative; z-index: 1; display: block; width: 100%; height: 100%; object-fit: cover; }
@@ -42,13 +51,17 @@
 .library-progress span { display: block; height: 100%; background: #d39845; }
 .favorite-button { align-self: center; width: 25px; height: 25px; color: #666b72; background: transparent; border: 0; cursor: pointer; font-size: 17px; }
 .favorite-button:hover, .favorite-button.is-favorite, .player-controls .is-favorite { color: #e0a24e; }
+.selection-button { align-self: center; width: 25px; height: 25px; color: #666b72; background: transparent; border: 0; cursor: pointer; font-size: 15px; line-height: 1; }
+.selection-button:hover, .selection-button.is-selected { color: #e0a24e; }
 .library-list.is-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); align-content: start; gap: 7px; }
 .library-list.is-grid .library-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; min-height: 166px; padding: 5px; }
+.library-list.is-grid .library-item.is-selection-mode { grid-template-columns: minmax(0, 1fr) auto auto; }
 .library-list.is-grid .library-item-select { display: grid; grid-template-rows: 92px auto; gap: 8px; padding: 3px; }
 .library-list.is-grid .library-thumbnail { width: 100%; height: 92px; flex-basis: auto; align-self: stretch; }
 .library-list.is-grid .library-item-copy { align-content: start; gap: 4px; }
 .library-list.is-grid .library-item-title { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .library-list.is-grid .favorite-button { align-self: start; }
+.library-list.is-grid .selection-button { align-self: start; }
 .library-list.is-grid .empty-panel { grid-column: 1 / -1; }
 .details-actions { display: flex; flex-wrap: wrap; gap: 7px; margin: 15px 0 8px; }
 .details-action-button { display: inline-flex; align-items: center; justify-content: center; min-height: 29px; padding: 0 9px; color: #c9c8c3; background: #15171a; border: 1px solid #303238; border-radius: 5px; cursor: pointer; font-size: 10px; line-height: 1; text-decoration: none; white-space: nowrap; }

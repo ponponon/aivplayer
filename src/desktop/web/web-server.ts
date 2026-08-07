@@ -1,4 +1,5 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
+import { once } from 'node:events'
 import { createReadStream, existsSync, realpathSync } from 'node:fs'
 import { access, mkdir, readFile, readdir, rename, stat, realpath, writeFile } from 'node:fs/promises'
 import { execFile } from 'node:child_process'
@@ -79,6 +80,18 @@ const MEDIA_ID_PATTERN = /^[a-z0-9-]+$/u
 const THUMBNAIL_MAX_BUFFER_BYTES = 4 * 1024 * 1024
 const EMBEDDED_SUBTITLE_MAX_BUFFER_BYTES = 8 * 1024 * 1024
 const AUDIO_REMAP_MAX_BUFFER_BYTES = 2 * 1024 * 1024
+const MAX_BATCH_DOWNLOAD_FILES = 50
+const MAX_BATCH_DOWNLOAD_BYTES = 4 * 1024 ** 3
+const ZIP_DATA_DESCRIPTOR_SIGNATURE = 0x08074b50
+const ZIP_LOCAL_FILE_SIGNATURE = 0x04034b50
+const ZIP_CENTRAL_DIRECTORY_SIGNATURE = 0x02014b50
+const ZIP_END_OF_CENTRAL_DIRECTORY_SIGNATURE = 0x06054b50
+
+const CRC32_TABLE = Array.from({ length: 256 }, (_, index) => {
+  let value = index
+  for (let bit = 0; bit < 8; bit += 1) value = (value & 1) === 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1
+  return value >>> 0
+})
 
 const STATIC_MIME_TYPES: Record<string, string> = {
   '.css': 'text/css; charset=utf-8',
@@ -208,6 +221,98 @@ function formatSubtitleTextAsVtt(content: string): string {
 function getContentDisposition(fileName: string, disposition: 'inline' | 'attachment' = 'inline'): string {
   const safeName = fileName.replace(/[\r\n"]/gu, '_')
   return `${disposition}; filename*=UTF-8''${encodeURIComponent(safeName)}`
+}
+
+function updateCrc32(crc: number, chunk: Buffer): number {
+  let value = (crc ^ 0xffffffff) >>> 0
+  for (const byte of chunk) value = CRC32_TABLE[(value ^ byte) & 0xff]! ^ (value >>> 8)
+  return (value ^ 0xffffffff) >>> 0
+}
+
+function sanitizeZipPath(value: string): string {
+  const parts = value.replaceAll('\\', '/').split('/').filter((part) => part && part !== '.' && part !== '..' && !part.includes('\u0000'))
+  return parts.join('/') || 'media'
+}
+
+function getZipEntryName(record: SharedMediaRecord, usedNames: Set<string>): string {
+  const baseName = sanitizeZipPath(`${record.sourceGroupLabel}/${record.relativePath || record.name}`)
+  let candidate = baseName
+  let suffix = 2
+  while (usedNames.has(candidate)) {
+    const extension = extname(baseName)
+    const stem = extension ? baseName.slice(0, -extension.length) : baseName
+    candidate = `${stem} (${suffix})${extension}`
+    suffix += 1
+  }
+  usedNames.add(candidate)
+  return candidate
+}
+
+function createZipLocalFileHeader(name: Buffer): Buffer {
+  const header = Buffer.alloc(30 + name.byteLength)
+  header.writeUInt32LE(ZIP_LOCAL_FILE_SIGNATURE, 0)
+  header.writeUInt16LE(20, 4)
+  header.writeUInt16LE(0x808, 6)
+  header.writeUInt16LE(0, 8)
+  header.writeUInt16LE(0, 10)
+  header.writeUInt16LE(0, 12)
+  header.writeUInt32LE(0, 14)
+  header.writeUInt32LE(0, 18)
+  header.writeUInt32LE(0, 22)
+  header.writeUInt16LE(name.byteLength, 26)
+  header.writeUInt16LE(0, 28)
+  name.copy(header, 30)
+  return header
+}
+
+function createZipDataDescriptor(crc: number, size: number): Buffer {
+  const descriptor = Buffer.alloc(16)
+  descriptor.writeUInt32LE(ZIP_DATA_DESCRIPTOR_SIGNATURE, 0)
+  descriptor.writeUInt32LE(crc >>> 0, 4)
+  descriptor.writeUInt32LE(size, 8)
+  descriptor.writeUInt32LE(size, 12)
+  return descriptor
+}
+
+function createZipCentralDirectoryHeader(name: Buffer, crc: number, size: number, localOffset: number): Buffer {
+  const header = Buffer.alloc(46 + name.byteLength)
+  header.writeUInt32LE(ZIP_CENTRAL_DIRECTORY_SIGNATURE, 0)
+  header.writeUInt16LE(20, 4)
+  header.writeUInt16LE(20, 6)
+  header.writeUInt16LE(0x808, 8)
+  header.writeUInt16LE(0, 10)
+  header.writeUInt16LE(0, 12)
+  header.writeUInt16LE(0, 14)
+  header.writeUInt32LE(crc >>> 0, 16)
+  header.writeUInt32LE(size, 20)
+  header.writeUInt32LE(size, 24)
+  header.writeUInt16LE(name.byteLength, 28)
+  header.writeUInt16LE(0, 30)
+  header.writeUInt16LE(0, 32)
+  header.writeUInt16LE(0, 34)
+  header.writeUInt16LE(0, 36)
+  header.writeUInt32LE(0, 38)
+  header.writeUInt32LE(localOffset, 42)
+  name.copy(header, 46)
+  return header
+}
+
+function createZipEndOfCentralDirectory(entryCount: number, centralDirectorySize: number, centralDirectoryOffset: number): Buffer {
+  const end = Buffer.alloc(22)
+  end.writeUInt32LE(ZIP_END_OF_CENTRAL_DIRECTORY_SIGNATURE, 0)
+  end.writeUInt16LE(0, 4)
+  end.writeUInt16LE(0, 6)
+  end.writeUInt16LE(entryCount, 8)
+  end.writeUInt16LE(entryCount, 10)
+  end.writeUInt32LE(centralDirectorySize, 12)
+  end.writeUInt32LE(centralDirectoryOffset, 16)
+  end.writeUInt16LE(0, 20)
+  return end
+}
+
+async function writeResponseChunk(response: ServerResponse, chunk: Buffer): Promise<void> {
+  if (response.write(chunk)) return
+  await once(response, 'drain')
 }
 
 function getStreamText(stream: Record<string, unknown>, key: string): string | null {
@@ -646,6 +751,11 @@ export class WebServer {
       return
     }
 
+    if (url.pathname === '/download/package' && request.method === 'GET') {
+      await this.streamBatchDownload(url.searchParams.getAll('id'), response)
+      return
+    }
+
     const downloadMatch = /^\/download\/([^/]+)$/u.exec(url.pathname)
     if (downloadMatch && (request.method === 'GET' || request.method === 'HEAD')) {
       await this.streamMedia(downloadMatch[1]!, request, response, 'attachment')
@@ -869,6 +979,82 @@ export class WebServer {
     }
 
     await this.streamFile(record.path, record.name, record.mimeType, request, response, disposition)
+  }
+
+  private async streamBatchDownload(ids: string[], response: ServerResponse): Promise<void> {
+    const uniqueIds = [...new Set(ids)]
+    if (uniqueIds.length === 0 || uniqueIds.length > MAX_BATCH_DOWNLOAD_FILES || uniqueIds.some((id) => !MEDIA_ID_PATTERN.test(id))) {
+      sendText(response, 400, `批量下载最多支持 ${MAX_BATCH_DOWNLOAD_FILES} 个有效媒体文件`)
+      return
+    }
+    const records = uniqueIds.map((id) => this.records.get(id) ?? null)
+    if (records.some((record) => !record)) {
+      sendText(response, 404, '批量下载中包含不存在的媒体文件')
+      return
+    }
+    const resolvedRecords = records.filter((record): record is SharedMediaRecord => Boolean(record))
+    let estimatedBytes = 0
+    for (const record of resolvedRecords) {
+      try {
+        const fileStat = await stat(record.path)
+        if (!fileStat.isFile() || fileStat.size > 0xffffffff) {
+          sendText(response, 413, '批量下载中的文件超过 ZIP 格式限制')
+          return
+        }
+        estimatedBytes += fileStat.size
+        if (estimatedBytes > MAX_BATCH_DOWNLOAD_BYTES) {
+          sendText(response, 413, '批量下载总大小超过 4 GB 限制')
+          return
+        }
+      } catch {
+        sendText(response, 404, '批量下载中的媒体文件已不存在')
+        return
+      }
+    }
+
+    const usedNames = new Set<string>()
+    const centralEntries: Array<{ name: Buffer; crc: number; size: number; localOffset: number }> = []
+    let offset = 0
+    response.writeHead(200, {
+      'Cache-Control': 'private, no-store',
+      'Content-Disposition': getContentDisposition('aivplayer-media.zip', 'attachment'),
+      'Content-Type': 'application/zip',
+      'X-Content-Type-Options': 'nosniff'
+    })
+    try {
+      for (const record of resolvedRecords) {
+        const name = Buffer.from(getZipEntryName(record, usedNames), 'utf8')
+        const localOffset = offset
+        const localHeader = createZipLocalFileHeader(name)
+        await writeResponseChunk(response, localHeader)
+        offset += localHeader.byteLength
+
+        let crc = 0
+        let size = 0
+        const stream = createReadStream(record.path)
+        for await (const chunk of stream) {
+          const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+          crc = updateCrc32(crc, buffer)
+          size += buffer.byteLength
+          await writeResponseChunk(response, buffer)
+        }
+        const descriptor = createZipDataDescriptor(crc, size)
+        await writeResponseChunk(response, descriptor)
+        offset += size + descriptor.byteLength
+        centralEntries.push({ name, crc, size, localOffset })
+      }
+
+      const centralDirectoryOffset = offset
+      let centralDirectorySize = 0
+      for (const entry of centralEntries) {
+        const header = createZipCentralDirectoryHeader(entry.name, entry.crc, entry.size, entry.localOffset)
+        await writeResponseChunk(response, header)
+        centralDirectorySize += header.byteLength
+      }
+      response.end(createZipEndOfCentralDirectory(centralEntries.length, centralDirectorySize, centralDirectoryOffset))
+    } catch (error) {
+      response.destroy(error instanceof Error ? error : undefined)
+    }
   }
 
   private async streamTranscodedMedia(id: string, request: IncomingMessage, response: ServerResponse): Promise<void> {
