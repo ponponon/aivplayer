@@ -642,3 +642,9 @@
 - 现象：当前开发机能找到 Homebrew 的 `tesseract`、FFmpeg 和 macOS `say`，但这些路径和命令并不等于 Windows / Linux 发布包中的可用运行时；如果直接写进主进程，换机器后会变成启动即失败。
 - 经验：本地二进制必须由桌面层或发布运行时探测后显式注入，核心适配器只负责参数安全、临时文件清理和取消传播；TTS 还要保留可替换 provider 边界，不能把 macOS `say` 当成跨平台实现。
 - 处理：新增 `local-evidence-adapters`，FFmpeg / Tesseract / TTS 命令均通过参数传入，使用参数数组避免 shell 插值；能力探测独立返回 OCR、TTS 各自状态，单个能力缺失不影响另一个能力。
+
+## 2026-08-08：证据任务 IPC 不能复用全局取消控制器或相信 Renderer 指纹
+
+- 现象：OCR / TTS 任务通过主进程执行，如果所有窗口共用一个 AbortController，一个窗口取消会误杀另一个窗口的任务；如果直接接受 Renderer 传来的指纹，媒体替换后可能继续使用旧证据。
+- 经验：长任务的取消控制器必须按 `sender.id` 隔离，并在任务开始前由主进程依据当前文件 `path + size + mtime` 重算 source fingerprint；进度事件也必须回发到原 sender。
+- 处理：新增证据任务 IPC 的 sender 级控制器、启动 / 取消 / 能力探测 / 进度通道；请求只携带媒体路径和输入哈希，任务合同中的媒体指纹由主进程生成。
