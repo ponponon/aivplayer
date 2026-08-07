@@ -1,5 +1,5 @@
 import { _electron as electron, type ElectronApplication, type Page } from 'playwright'
-import { access, appendFile, chmod, copyFile, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { access, appendFile, chmod, copyFile, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { connect } from '@lancedb/lancedb'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -25,7 +25,7 @@ async function waitForFile(filePath: string, timeoutMs = 10_000): Promise<void> 
   throw new Error(`Smoke marker was not created: ${filePath}`)
 }
 
-async function launchPlayer(userDataDirectory: string, mediaPath: string, tesseractPath: string, markerPath: string): Promise<SmokeSession> {
+async function launchPlayer(userDataDirectory: string, mediaPath: string, tesseractPath: string, ttsPath: string, markerPath: string, ttsMarkerPath: string): Promise<SmokeSession> {
   const app = await electron.launch({
     args: ['--no-sandbox', '--in-process-gpu', `--user-data-dir=${userDataDirectory}`, 'out/main/index.js', mediaPath],
     env: {
@@ -33,7 +33,9 @@ async function launchPlayer(userDataDirectory: string, mediaPath: string, tesser
       HOME: userDataDirectory,
       AIVPLAYER_TESSERACT_PATH: tesseractPath,
       AIVPLAYER_TESSERACT_LANG: 'eng',
-      AIVPLAYER_EVIDENCE_SMOKE_MARKER: markerPath
+      AIVPLAYER_TTS_PATH: ttsPath,
+      AIVPLAYER_EVIDENCE_SMOKE_MARKER: markerPath,
+      AIVPLAYER_TTS_SMOKE_MARKER: ttsMarkerPath
     }
   })
   const page = await app.firstWindow()
@@ -64,6 +66,32 @@ async function installFakeTesseract(directory: string, markerPath: string): Prom
   return path
 }
 
+async function installFakeTts(directory: string, markerPath: string): Promise<string> {
+  const path = join(directory, 'fake-tts.sh')
+  await writeFile(path, [
+    '#!/bin/sh',
+    'if [ "$1" = "--version" ] || { [ "$1" = "-v" ] && [ "$2" = "?" ]; }; then',
+    "  printf 'aivplayer fake tts 1.0\\n'",
+    '  exit 0',
+    'fi',
+    'output=""',
+    'while [ "$#" -gt 0 ]; do',
+    '  case "$1" in',
+    '    -o) output="$2"; shift 2 ;;',
+    '    -v|--data-format) shift 2 ;;',
+    '    *) shift ;;',
+    '  esac',
+    'done',
+    '[ -n "$output" ] || exit 2',
+    ': > "$AIVPLAYER_TTS_SMOKE_MARKER"',
+    'ffmpeg -hide_banner -loglevel error -f lavfi -i sine=frequency=880:duration=0.35 -y "$output"',
+    ''
+  ].join('\n'), 'utf8')
+  await chmod(path, 0o755)
+  await rm(markerPath, { force: true })
+  return path
+}
+
 async function startOcr(page: Page, mediaPath: string): Promise<unknown> {
   return page.evaluate((path) => window.aiv.startMediaEvidenceTask({
     kind: 'ocr',
@@ -85,6 +113,32 @@ async function startOcrFromUi(page: Page): Promise<void> {
   await page.waitForFunction(() => !(document.querySelector('[data-testid="vision-ocr-start-button"]') as HTMLButtonElement | null)?.disabled, undefined, { timeout: 15_000 })
   await startButton.click()
   await page.locator('[data-testid="vision-ocr-task"][data-persistence-status="persisted"]').waitFor({ timeout: 20_000 })
+}
+
+async function startTtsFromUi(page: Page): Promise<void> {
+  const task = page.locator('[data-testid="vision-tts-task"]')
+  await task.waitFor({ timeout: 10_000 })
+  await page.locator('[data-testid="vision-tts-text"]').fill('Smoke TTS text')
+  await page.locator('[data-testid="vision-tts-start"]').fill('0.5')
+  await page.locator('[data-testid="vision-tts-end"]').fill('1.5')
+  const startButton = page.locator('[data-testid="vision-tts-start-button"]')
+  await page.waitForFunction(() => !(document.querySelector('[data-testid="vision-tts-start-button"]') as HTMLButtonElement | null)?.disabled, undefined, { timeout: 15_000 })
+  await startButton.click()
+  await page.locator('[data-testid="vision-tts-audio"]').waitFor({ timeout: 20_000 })
+  await page.waitForFunction(() => {
+    const audio = document.querySelector('[data-testid="vision-tts-audio"]') as HTMLAudioElement | null
+    return audio !== null && (audio.readyState >= 1 || audio.error !== null)
+  }, undefined, { timeout: 20_000 })
+  const audioState = await page.locator('[data-testid="vision-tts-audio"]').evaluate((element) => {
+    const audio = element as HTMLAudioElement
+    return { readyState: audio.readyState, error: audio.error?.message ?? null, networkState: audio.networkState }
+  })
+  if (audioState.error) throw new Error(`TTS audio protocol error: ${JSON.stringify(audioState)}`)
+  if (await task.getAttribute('data-draft-status') !== 'idle') throw new Error('TTS draft appeared before explicit confirmation')
+  await page.locator('[data-testid="vision-tts-draft-text"]').fill('Smoke TTS confirmed draft')
+  await page.locator('[data-testid="vision-tts-save-draft-button"]').click()
+  await page.locator('[data-testid="vision-tts-task"][data-draft-status="saved"]').waitFor({ timeout: 15_000 })
+  if (await page.locator('[data-testid="vision-ocr-task"]').getAttribute('data-persistence-status') !== 'persisted') throw new Error('TTS progress leaked into OCR task card')
 }
 
 async function searchOcrAndLocate(page: Page): Promise<{ evidenceId: string; currentTime: number }> {
@@ -139,21 +193,35 @@ async function main(): Promise<void> {
   const stableMediaPath = join(smokeDirectory, 'stable.mp4')
   const staleMediaPath = join(smokeDirectory, 'stale.mp4')
   const markerPath = join(smokeDirectory, 'tesseract.started')
+  const ttsMarkerPath = join(smokeDirectory, 'tts.started')
   await copyFile(sourceMediaPath, stableMediaPath)
   await copyFile(sourceMediaPath, staleMediaPath)
   const tesseractPath = await installFakeTesseract(smokeDirectory, markerPath)
+  const ttsPath = await installFakeTts(smokeDirectory, ttsMarkerPath)
   let firstApp: ElectronApplication | null = null
   let secondApp: ElectronApplication | null = null
 
   try {
-    const first = await launchPlayer(userDataDirectory, stableMediaPath, tesseractPath, markerPath)
+    const first = await launchPlayer(userDataDirectory, stableMediaPath, tesseractPath, ttsPath, markerPath, ttsMarkerPath)
     firstApp = first.app
     const capabilities = await first.page.evaluate(() => window.aiv.getMediaEvidenceCapabilities())
-    if (!capabilities.ocr.available) throw new Error(`OCR capability is unavailable: ${JSON.stringify(capabilities)}`)
+    if (!capabilities.ocr.available || !capabilities.tts.available) throw new Error(`Evidence capability is unavailable: ${JSON.stringify(capabilities)}`)
 
     await startOcrFromUi(first.page)
     const stablePersistenceStatus = await first.page.locator('[data-testid="vision-ocr-task"]').getAttribute('data-persistence-status')
     if (stablePersistenceStatus !== 'persisted') throw new Error(`Stable OCR persistence mismatch: ${stablePersistenceStatus}`)
+    await startTtsFromUi(first.page)
+    const draftDirectory = join(userDataDirectory, 'evidence-drafts')
+    const draftFiles = (await readdir(draftDirectory)).filter((fileName) => fileName.endsWith('.vtt'))
+    if (draftFiles.length !== 1) throw new Error(`TTS draft file count mismatch: ${JSON.stringify(draftFiles)}`)
+    const draftContent = await readFile(join(draftDirectory, draftFiles[0]!), 'utf8')
+    if (!draftContent.includes('00:00:00.500 --> 00:00:01.500') || !draftContent.includes('Smoke TTS confirmed draft')) throw new Error(`TTS draft content mismatch: ${draftContent}`)
+    try {
+      await access(`${stableMediaPath}.vtt`)
+      throw new Error('TTS draft unexpectedly wrote a formal subtitle sidecar')
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+    }
     const locatedOcr = await searchOcrAndLocate(first.page)
     const screenshotPath = join(userDataDirectory, 'aivplayer-smoke-evidence-ocr.png')
     await first.page.screenshot({ path: screenshotPath, fullPage: false })
@@ -162,7 +230,7 @@ async function main(): Promise<void> {
     await seedVisualEvidence(userDataDirectory, stableMediaPath)
 
     await rm(markerPath, { force: true })
-    const second = await launchPlayer(userDataDirectory, stableMediaPath, tesseractPath, markerPath)
+    const second = await launchPlayer(userDataDirectory, stableMediaPath, tesseractPath, ttsPath, markerPath, ttsMarkerPath)
     secondApp = second.app
     const stalePromise = startOcr(second.page, staleMediaPath)
     await waitForFile(markerPath)
@@ -181,7 +249,7 @@ async function main(): Promise<void> {
       throw new Error(`Evidence table contents mismatch: ${JSON.stringify(rows)}`)
     }
     if (first.errors.length > 0 || second.errors.length > 0) throw new Error(`Renderer errors during evidence smoke: ${[...first.errors, ...second.errors].join('\n')}`)
-    console.log(`Evidence task smoke passed: ${JSON.stringify({ capabilities, stablePersistence: stablePersistenceStatus, locatedOcr, stalePersistence: staleResult.persistenceStatus, evidenceRows: rows.length, ocrRows: ocrRows.length, visualRows: visualRows.length, screenshotPath })}`)
+    console.log(`Evidence task smoke passed: ${JSON.stringify({ capabilities, stablePersistence: stablePersistenceStatus, ttsDraft: draftFiles[0], locatedOcr, stalePersistence: staleResult.persistenceStatus, evidenceRows: rows.length, ocrRows: ocrRows.length, visualRows: visualRows.length, screenshotPath })}`)
   } finally {
     await firstApp?.close().catch(() => undefined)
     await secondApp?.close().catch(() => undefined)
