@@ -1,6 +1,26 @@
 export type MediaEvidenceTaskKind = 'ocr' | 'tts'
 export type MediaEvidenceTaskStatus = 'queued' | 'running' | 'retrying' | 'completed' | 'failed' | 'cancelled'
 
+export type MediaEvidenceTaskRequest = {
+  kind: MediaEvidenceTaskKind
+  mediaPath: string
+  inputHash: string
+  inputText?: string
+  ranges?: MediaEvidenceRange[]
+  maxRetries?: number
+}
+
+export type MediaEvidenceEngineCapability = {
+  available: boolean
+  command: string
+  message: string
+}
+
+export type MediaEvidenceCapabilities = {
+  ocr: MediaEvidenceEngineCapability
+  tts: MediaEvidenceEngineCapability
+}
+
 export type MediaEvidenceRange = {
   startSeconds: number
   endSeconds: number

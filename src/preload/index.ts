@@ -94,6 +94,7 @@ import type {
 import type { LivePhotoExportRequest, LivePhotoExportResult, LivePhotoProbeResult } from '../shared/live-photo-types'
 import type { EditingProjectFileOpenResult, EditingProjectFileSaveRequest, EditingProjectFileSaveResult } from '../shared/editing-types'
 import type { WebDesktopStateUpdate, WebRemoteCommandForDesktop, WebShareStartRequest, WebShareStatus } from '../shared/web-types'
+import type { MediaEvidenceCapabilities, MediaEvidenceTask, MediaEvidenceTaskRequest } from '../shared/evidence-task-types'
 
 const api = {
   platform: process.platform,
@@ -226,6 +227,9 @@ const api = {
   saveVisionClipCollection: (input: VisionClipCollectionInput): Promise<VisionClipCollection> => ipcRenderer.invoke(IPC_CHANNELS.VISION_CLIP_COLLECTION_SAVE, input),
   deleteVisionClipCollection: (collectionId: string): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.VISION_CLIP_COLLECTION_DELETE, collectionId),
   exportVisionClipCollection: (request: VisionClipCollectionExportRequest): Promise<VisionClipCollectionExportResult> => ipcRenderer.invoke(IPC_CHANNELS.VISION_CLIP_COLLECTION_EXPORT, request),
+  getMediaEvidenceCapabilities: (): Promise<MediaEvidenceCapabilities> => ipcRenderer.invoke(IPC_CHANNELS.EVIDENCE_TASK_CAPABILITIES),
+  startMediaEvidenceTask: (request: MediaEvidenceTaskRequest): Promise<MediaEvidenceTask> => ipcRenderer.invoke(IPC_CHANNELS.EVIDENCE_TASK_START, request),
+  cancelMediaEvidenceTask: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.EVIDENCE_TASK_CANCEL),
   stopNativePlayer: (): Promise<NativePlaybackResult> => ipcRenderer.invoke(IPC_CHANNELS.STOP_NATIVE_PLAYER),
   minimizeWindow: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.WINDOW_MINIMIZE),
   toggleMaximizeWindow: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.WINDOW_TOGGLE_MAXIMIZE),
@@ -275,6 +279,11 @@ const api = {
     const listener = (_event: Electron.IpcRendererEvent, progress: VisionDirectoryScanProgress): void => callback(progress)
     ipcRenderer.on(IPC_CHANNELS.VISION_SCAN_DIRECTORY_PROGRESS, listener)
     return () => ipcRenderer.removeListener(IPC_CHANNELS.VISION_SCAN_DIRECTORY_PROGRESS, listener)
+  },
+  onMediaEvidenceTaskProgress: (callback: (task: MediaEvidenceTask) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, task: MediaEvidenceTask): void => callback(task)
+    ipcRenderer.on(IPC_CHANNELS.EVIDENCE_TASK_PROGRESS, listener)
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.EVIDENCE_TASK_PROGRESS, listener)
   },
   onPersonMatteModelDownloadProgress: (callback: (progress: PersonMatteModelDownloadProgress) => void): (() => void) => {
     const listener = (_event: Electron.IpcRendererEvent, progress: PersonMatteModelDownloadProgress): void => callback(progress)

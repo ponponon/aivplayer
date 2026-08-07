@@ -21,6 +21,7 @@ export const desktopState: {
   visionIndexQueue: VisionIndexQueue | null
   visionScanAbortControllers: Map<number, AbortController>
   visionAbortControllers: Map<number, AbortController>
+  evidenceTaskAbortControllers: Map<number, AbortController>
   batchSubtitleManager: BatchSubtitleManager | null
   dramaStore: DramaStore | null
   clipInboxStore: ClipInboxStore | null
@@ -37,6 +38,7 @@ export const desktopState: {
   visionIndexQueue: null,
   visionScanAbortControllers: new Map(),
   visionAbortControllers: new Map(),
+  evidenceTaskAbortControllers: new Map(),
   batchSubtitleManager: null,
   dramaStore: null,
   clipInboxStore: null

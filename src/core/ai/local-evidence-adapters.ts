@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { promisify } from 'node:util'
-import type { TtsAudioArtifact, OcrEvidenceArtifact } from '../../shared/evidence-task-types'
+import type { MediaEvidenceCapabilities, MediaEvidenceEngineCapability, TtsAudioArtifact, OcrEvidenceArtifact } from '../../shared/evidence-task-types'
 import type { MediaEvidenceTaskOperation } from './evidence-task-runner'
 
 const execFileAsync = promisify(execFile)
@@ -34,16 +34,8 @@ export type LocalTtsAdapterOptions = {
   runCommand?: EvidenceCommandRunner
 }
 
-export type LocalEvidenceEngineProbe = {
-  available: boolean
-  command: string
-  message: string
-}
-
-export type LocalEvidenceCapabilities = {
-  ocr: LocalEvidenceEngineProbe
-  tts: LocalEvidenceEngineProbe
-}
+export type LocalEvidenceEngineProbe = MediaEvidenceEngineCapability
+export type LocalEvidenceCapabilities = MediaEvidenceCapabilities
 
 const defaultRunCommand: EvidenceCommandRunner = async (command, args, signal) => {
   const result = await execFileAsync(command, [...args], { encoding: 'utf8', maxBuffer: MAX_COMMAND_OUTPUT, signal })
