@@ -8,6 +8,7 @@ import { useAppContext } from './app-context'
 import { useVisionLibraryFolder } from './use-vision-library-folder'
 import { VisionLibraryFolder } from './vision-library-folder'
 import { VisionOcrTask } from './vision-ocr-task'
+import { VisionTtsTask } from './vision-tts-task'
 import { VisionSearchResults } from './vision-search-results'
 
 function formatDuration(milliseconds: number): string {
@@ -379,6 +380,7 @@ export function VisionPanel(): React.ReactElement {
     </section>
 
     <VisionOcrTask copy={app.copy.vision} mediaPath={app.state.currentFile?.path ?? null} currentTime={app.state.currentTime} />
+    <VisionTtsTask copy={app.copy.vision} mediaPath={app.state.currentFile?.path ?? null} currentTime={app.state.currentTime} />
 
     <section className="vision-card vision-search-card">
       <form className="vision-text-search" onSubmit={(event) => { event.preventDefault(); runTextSearch() }}>

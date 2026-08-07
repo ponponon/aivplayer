@@ -38,7 +38,7 @@ export function VisionOcrTask({ copy, mediaPath, currentTime }: VisionOcrTaskPro
       if (active) setError(reason instanceof Error ? reason.message : String(reason))
     })
     const removeProgressListener = window.aiv.onMediaEvidenceTaskProgress((next) => {
-      if (active) setTask(next)
+      if (active && next.kind === 'ocr') setTask(next)
     })
     return () => {
       active = false
