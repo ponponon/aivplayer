@@ -38,8 +38,13 @@ function formatTimestamp(seconds: number): string {
 function formatEvidenceRange(result: VisionSearchResult): string {
   const start = result.startSeconds
   const end = result.endSeconds
+  const format = result.evidenceType === 'ocr' ? formatPreciseTimestamp : formatTimestamp
   if (start !== undefined && end !== undefined && Number.isFinite(start) && Number.isFinite(end) && end > start) {
-    return `${formatTimestamp(start)}–${formatTimestamp(end)}`
+    return `${format(start)}–${format(end)}`
   }
-  return formatTimestamp(result.timestampSeconds)
+  return format(result.timestampSeconds)
+}
+
+function formatPreciseTimestamp(seconds: number): string {
+  return `${Math.max(0, seconds).toFixed(1)}s`
 }

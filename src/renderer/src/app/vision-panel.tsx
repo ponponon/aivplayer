@@ -35,6 +35,7 @@ export function VisionPanel(): React.ReactElement {
   const [isSearching, setIsSearching] = useState(false)
   const [isCreatingProject, setIsCreatingProject] = useState(false)
   const [repairingCollectionId, setRepairingCollectionId] = useState<string | null>(null)
+  const [pendingResultSeek, setPendingResultSeek] = useState<{ videoPath: string; seconds: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const isIndexing = progress?.status === 'loading' || progress?.status === 'indexing'
   const folder = useVisionLibraryFolder(app, isIndexing, { onError: setError })
@@ -112,6 +113,24 @@ export function VisionPanel(): React.ReactElement {
     return () => { active = false }
   }, [results])
 
+  useEffect(() => {
+    if (!pendingResultSeek || app.state.currentFile?.path !== pendingResultSeek.videoPath) return
+    const video = app.videoRef.current
+    if (!video) return
+    let cancelled = false
+    const seekWhenReady = (): void => {
+      if (cancelled) return
+      app.seekTo(pendingResultSeek.seconds)
+      setPendingResultSeek(null)
+    }
+    if (video.readyState >= HTMLMediaElement.HAVE_METADATA) seekWhenReady()
+    else video.addEventListener('loadedmetadata', seekWhenReady, { once: true })
+    return () => {
+      cancelled = true
+      video.removeEventListener('loadedmetadata', seekWhenReady)
+    }
+  }, [app.seekTo, app.state.currentFile?.path, app.videoRef, pendingResultSeek])
+
   const startIndex = (): void => {
     if (app.state.playlist.length === 0 || isBusy) return
     setError(null)
@@ -176,7 +195,7 @@ export function VisionPanel(): React.ReactElement {
     void app.createMediaFilesFromPaths([result.videoPath]).then((files) => {
       if (files.length === 0) return
       app.loadFiles(files)
-      window.setTimeout(() => app.seekTo(result.timestampSeconds), 120)
+      setPendingResultSeek({ videoPath: result.videoPath, seconds: result.timestampSeconds })
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
   }
 

@@ -52,6 +52,8 @@ describe('vision library setup', () => {
     expect(panel).toContain('isMediaFileAvailable')
     expect(panel).toContain('repairCollection')
     expect(panel).toContain('collectionRepairNoMatch')
+    expect(panel).toContain('pendingResultSeek')
+    expect(panel).toContain('loadedmetadata')
     expect(actions).toContain('getMediaMetadata')
     expect(actions).toContain('createEditingProjectFromVisionSearchResults')
     expect(actions).toContain('setEditingSourceFiles')
