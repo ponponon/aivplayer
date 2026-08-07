@@ -3,12 +3,14 @@ import { execFile } from 'node:child_process'
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { basename, extname, join, relative, resolve, sep } from 'node:path'
 import { promisify } from 'node:util'
+import { Field, Float64, Schema, Utf8 } from 'apache-arrow'
 import { connect, Index, type Table, type VectorQuery } from '@lancedb/lancedb'
 import { isVideoFilePath } from '../media/file-opening'
 import { parseVtt } from './subtitle-writer.ts'
 import { resolveFfmpegPath, resolveFfprobePath } from './whisper-cpp-runtime'
 import { VisionEmbeddingRuntime } from './vision-model'
 import { calculateVisionLexicalMatch, combineVisionHybridScore } from './vision-search'
+import { createVisionEvidenceId, createVisionSourceId } from './vision-evidence'
 import {
   VISION_FRAME_INTERVAL_SECONDS,
   VISION_MODEL_ID,
@@ -22,7 +24,8 @@ import {
   type VisionMatchSource,
   type VisionRuntimeStatus,
   type VisionSearchMode,
-  type VisionSearchResult
+  type VisionSearchResult,
+  type VisionEvidenceType
 } from '../../shared/vision-types'
 
 const execFileAsync = promisify(execFile)
@@ -30,6 +33,24 @@ const TABLE_NAME = 'video_frames'
 const SOURCE_TABLE_NAME = 'video_sources'
 const CAPTION_TABLE_NAME = 'video_captions'
 const SEARCH_DOCUMENT_TABLE_NAME = 'video_search_documents'
+const EVIDENCE_TABLE_NAME = 'video_evidence'
+const VISION_EVIDENCE_SCHEMA = new Schema([
+  new Field('id', new Utf8(), false),
+  new Field('source_id', new Utf8(), false),
+  new Field('video_path', new Utf8(), false),
+  new Field('file_name', new Utf8(), false),
+  new Field('evidence_type', new Utf8(), false),
+  new Field('start_seconds', new Float64(), false),
+  new Field('end_seconds', new Float64(), false),
+  new Field('text', new Utf8(), false),
+  new Field('frame_id', new Utf8(), false),
+  new Field('thumbnail_path', new Utf8(), false),
+  new Field('confidence', new Float64(), true),
+  new Field('source_fingerprint', new Utf8(), false),
+  new Field('model_id', new Utf8(), false),
+  new Field('model_variant', new Utf8(), false),
+  new Field('generated_at', new Float64(), false)
+])
 const SEARCH_TEXT_COLUMN = 'search_text'
 const VECTOR_COLUMN = 'embedding'
 const VECTOR_INDEX_NAME = `${VECTOR_COLUMN}_idx`
@@ -93,6 +114,24 @@ type VisionSearchDocumentRow = {
   thumbnail_path: string
   caption_text: string
   search_text: string
+}
+
+type VisionEvidenceRow = {
+  id: string
+  source_id: string
+  video_path: string
+  file_name: string
+  evidence_type: VisionEvidenceType
+  start_seconds: number
+  end_seconds: number
+  text: string
+  frame_id: string
+  thumbnail_path: string
+  confidence: number | null
+  source_fingerprint: string
+  model_id: string
+  model_variant: string
+  generated_at: number
 }
 
 type SubtitleSnapshot = {
@@ -270,6 +309,10 @@ export class VisionLibrary {
 
   private async getSearchDocumentTable(): Promise<Table | null> {
     return this.getTableByName(SEARCH_DOCUMENT_TABLE_NAME)
+  }
+
+  private async getEvidenceTable(): Promise<Table | null> {
+    return this.getTableByName(EVIDENCE_TABLE_NAME)
   }
 
   private async countRows(): Promise<number> {
@@ -450,6 +493,18 @@ export class VisionLibrary {
     await db.createTable(SEARCH_DOCUMENT_TABLE_NAME, rows)
   }
 
+  private async replaceEvidenceRows(videoPath: string, rows: VisionEvidenceRow[]): Promise<void> {
+    const db = await this.getDatabase()
+    const existing = await this.getEvidenceTable()
+    if (existing) await existing.delete(`video_path = '${escapeSqlString(videoPath)}'`)
+    if (rows.length === 0) return
+    if (existing) {
+      await existing.add(rows)
+      return
+    }
+    await db.createTable(EVIDENCE_TABLE_NAME, rows, { schema: VISION_EVIDENCE_SCHEMA })
+  }
+
   private async getAllFramePointers(): Promise<VisionFramePointer[]> {
     const table = await this.getTable()
     if (!table) return []
@@ -617,6 +672,64 @@ export class VisionLibrary {
       })
   }
 
+  private buildEvidenceRows(
+    videoPath: string,
+    snapshot: VideoSourceSnapshot,
+    intervalSeconds: number,
+    framePointers: VisionFramePointer[],
+    captionRows: VisionCaptionRow[]
+  ): VisionEvidenceRow[] {
+    const sourceId = createVisionSourceId(videoPath)
+    const sourceFingerprint = `${videoPath}:${snapshot.sizeBytes}:${snapshot.mtimeMs}`
+    const generatedAt = Date.now()
+    const subtitleRows = captionRows.map((caption): VisionEvidenceRow => ({
+      id: createVisionEvidenceId({
+        videoPath,
+        evidenceType: 'subtitle',
+        startSeconds: caption.start_seconds,
+        endSeconds: caption.end_seconds,
+        text: caption.text,
+        sourceFingerprint
+      }),
+      source_id: sourceId,
+      video_path: videoPath,
+      file_name: caption.file_name,
+      evidence_type: 'subtitle',
+      start_seconds: caption.start_seconds,
+      end_seconds: caption.end_seconds,
+      text: caption.text,
+      frame_id: caption.frame_id,
+      thumbnail_path: caption.thumbnail_path,
+      confidence: null,
+      source_fingerprint: sourceFingerprint,
+      model_id: 'subtitle-parser',
+      model_variant: 'v1',
+      generated_at: generatedAt
+    }))
+    const visualRows = framePointers.map((frame): VisionEvidenceRow => {
+      const startSeconds = Math.max(0, frame.timestamp_seconds - intervalSeconds / 2)
+      const endSeconds = Math.max(startSeconds + 0.001, frame.timestamp_seconds + intervalSeconds / 2)
+      return {
+        id: createVisionEvidenceId({ videoPath, evidenceType: 'visual', startSeconds, endSeconds, sourceFingerprint }),
+        source_id: sourceId,
+        video_path: videoPath,
+        file_name: frame.file_name,
+        evidence_type: 'visual',
+        start_seconds: Number(startSeconds.toFixed(3)),
+        end_seconds: Number(endSeconds.toFixed(3)),
+        text: '',
+        frame_id: frame.id,
+        thumbnail_path: frame.thumbnail_path,
+        confidence: null,
+        source_fingerprint: sourceFingerprint,
+        model_id: VISION_MODEL_ID,
+        model_variant: VISION_MODEL_VARIANT,
+        generated_at: generatedAt
+      }
+    })
+    return [...subtitleRows, ...visualRows]
+  }
+
   private createSourceRow(videoPath: string, snapshot: VideoSourceSnapshot, intervalSeconds: number, frameCount: number): VisionSourceRow {
     return {
       id: createHash('sha1').update(videoPath).digest('hex'),
@@ -640,6 +753,7 @@ export class VisionLibrary {
     const captionRows = this.buildCaptionRows(videoPath, snapshot.subtitle, framePointers)
     await this.replaceCaptionRows(videoPath, captionRows)
     await this.replaceSearchDocumentRows(videoPath, this.buildSearchDocumentRows(framePointers, captionRows))
+    await this.replaceEvidenceRows(videoPath, this.buildEvidenceRows(videoPath, snapshot, intervalSeconds, framePointers, captionRows))
     await this.upsertSourceRow(this.createSourceRow(videoPath, snapshot, intervalSeconds, source.frame_count))
   }
 
@@ -683,6 +797,7 @@ export class VisionLibrary {
     const captionRows = this.buildCaptionRows(videoPath, snapshot.subtitle, rows)
     await this.replaceCaptionRows(videoPath, captionRows)
     await this.replaceSearchDocumentRows(videoPath, this.buildSearchDocumentRows(rows, captionRows))
+    await this.replaceEvidenceRows(videoPath, this.buildEvidenceRows(videoPath, snapshot, intervalSeconds, rows, captionRows))
     await this.upsertSourceRow(this.createSourceRow(videoPath, snapshot, intervalSeconds, rows.length))
     return rows.length
   }
@@ -807,11 +922,14 @@ export class VisionLibrary {
       .limit(clampLimit(limit))
       .select(['id', 'video_path', 'file_name', 'timestamp_seconds', 'thumbnail_path', 'model_id', 'model_variant', '_distance'])
       .toArray() as unknown as Array<Record<string, unknown>>
+    const evidenceByFrame = await this.getVisualEvidenceByFrameIds(rows.map((item) => String(item.id)))
     return rows.map((item) => {
+      const frameId = String(item.id)
+      const evidence = evidenceByFrame.get(frameId)
       const distance = Number(item._distance)
       const score = Number.isFinite(distance) ? Math.max(0, Math.min(1, 1 - distance)) : 0
       return {
-        id: String(item.id),
+        id: frameId,
         videoPath: String(item.video_path),
         fileName: String(item.file_name),
         timestampSeconds: Number(item.timestamp_seconds),
@@ -819,10 +937,38 @@ export class VisionLibrary {
         score,
         visualScore: score,
         matchSource: 'visual',
+        evidenceId: evidence?.id,
+        frameId,
+        sourceId: evidence?.source_id,
+        startSeconds: evidence?.start_seconds,
+        endSeconds: evidence?.end_seconds,
+        evidenceType: evidence?.evidence_type ?? 'visual',
+        confidence: evidence?.confidence ?? undefined,
+        sourceFingerprint: evidence?.source_fingerprint,
         modelId: String(item.model_id),
         modelVariant: String(item.model_variant)
       }
     })
+  }
+
+  private async getVisualEvidenceByFrameIds(frameIds: readonly string[]): Promise<Map<string, VisionEvidenceRow>> {
+    const result = new Map<string, VisionEvidenceRow>()
+    if (frameIds.length === 0) return result
+    try {
+      const table = await this.getEvidenceTable()
+      if (!table) return result
+      const wanted = new Set(frameIds)
+      const rows = await table.query()
+        .select(['id', 'source_id', 'video_path', 'file_name', 'evidence_type', 'start_seconds', 'end_seconds', 'text', 'frame_id', 'thumbnail_path', 'confidence', 'source_fingerprint', 'model_id', 'model_variant', 'generated_at'])
+        .limit(METADATA_SCAN_LIMIT)
+        .toArray() as unknown as VisionEvidenceRow[]
+      for (const row of rows) {
+        if (row.evidence_type === 'visual' && wanted.has(row.frame_id)) result.set(row.frame_id, row)
+      }
+    } catch {
+      // Evidence is an additive layer. A malformed or old table must not break visual search.
+    }
+    return result
   }
 
   private async searchVisualCandidates(embedding: number[], limit: number): Promise<VisualSearchCandidate[]> {
@@ -839,7 +985,7 @@ export class VisionLibrary {
     const captionTable = await this.getCaptionTable()
     if (captionTable) {
       const rows = await captionTable.query()
-        .select(['id', 'video_path', 'file_name', 'frame_id', 'timestamp_seconds', 'thumbnail_path', 'text'])
+        .select(['id', 'video_path', 'file_name', 'frame_id', 'timestamp_seconds', 'thumbnail_path', 'start_seconds', 'end_seconds', 'text'])
         .limit(METADATA_SCAN_LIMIT)
         .toArray() as unknown as Array<Record<string, unknown>>
       for (const row of rows) {
@@ -856,6 +1002,11 @@ export class VisionLibrary {
           lexicalScore: match.score,
           matchedText: match.matchedText,
           matchSource: match.source,
+          evidenceId: String(row.id),
+          frameId: id,
+          startSeconds: Number(row.start_seconds),
+          endSeconds: Number(row.end_seconds),
+          evidenceType: 'subtitle',
           modelId: VISION_MODEL_ID,
           modelVariant: VISION_MODEL_VARIANT
         }
@@ -897,7 +1048,54 @@ export class VisionLibrary {
       .slice(0, Math.min(100, Math.max(clampLimit(limit) * 4, 50)))
   }
 
+  private async searchLexicalByEvidence(query: string, limit: number): Promise<LexicalSearchCandidate[] | null> {
+    const table = await this.getEvidenceTable()
+    if (!table) return null
+    const candidates = new Map<string, LexicalSearchCandidate>()
+    const rows = await table.query()
+      .select(['id', 'source_id', 'video_path', 'file_name', 'evidence_type', 'start_seconds', 'end_seconds', 'text', 'frame_id', 'thumbnail_path', 'confidence', 'source_fingerprint'])
+      .limit(METADATA_SCAN_LIMIT)
+      .toArray() as unknown as Array<Record<string, unknown>>
+    for (const row of rows) {
+      const frameId = String(row.frame_id ?? row.id)
+      const match = calculateVisionLexicalMatch(query, String(row.text ?? ''), String(row.file_name ?? ''))
+      if (!match) continue
+      const result: VisionSearchResult = {
+        id: frameId,
+        videoPath: String(row.video_path),
+        fileName: String(row.file_name),
+        timestampSeconds: Number(row.start_seconds),
+        thumbnailPath: String(row.thumbnail_path ?? ''),
+        score: match.score,
+        lexicalScore: match.score,
+        matchedText: match.matchedText,
+        matchSource: match.source,
+        evidenceId: String(row.id),
+        frameId,
+        sourceId: String(row.source_id),
+        startSeconds: Number(row.start_seconds),
+        endSeconds: Number(row.end_seconds),
+        evidenceType: String(row.evidence_type) as VisionEvidenceType,
+        confidence: Number.isFinite(Number(row.confidence)) && Number(row.confidence) >= 0 ? Number(row.confidence) : undefined,
+        sourceFingerprint: String(row.source_fingerprint ?? ''),
+        modelId: VISION_MODEL_ID,
+        modelVariant: VISION_MODEL_VARIANT
+      }
+      const existing = candidates.get(frameId)
+      if (!existing || match.score > existing.lexicalScore) candidates.set(frameId, { result, lexicalScore: match.score, matchSource: match.source })
+    }
+    return [...candidates.values()]
+      .sort((left, right) => right.lexicalScore - left.lexicalScore)
+      .slice(0, Math.min(100, Math.max(clampLimit(limit) * 4, 50)))
+  }
+
   private async searchLexical(query: string, limit: number): Promise<LexicalSearchCandidate[]> {
+    try {
+      const evidenceCandidates = await this.searchLexicalByEvidence(query, limit)
+      if (evidenceCandidates) return evidenceCandidates
+    } catch {
+      // Fall through to the legacy caption/FTS path for old or partially written indexes.
+    }
     try {
       const table = await this.ensureSearchDocuments()
       if (!table) return []
@@ -910,8 +1108,9 @@ export class VisionLibrary {
       for (const row of rows) {
         const match = calculateVisionLexicalMatch(query, String(row.caption_text ?? ''), String(row.file_name ?? ''))
         if (!match) continue
+        const frameId = String(row.frame_id ?? row.id)
         const result: VisionSearchResult = {
-          id: String(row.frame_id ?? row.id),
+          id: frameId,
           videoPath: String(row.video_path),
           fileName: String(row.file_name),
           timestampSeconds: Number(row.timestamp_seconds),
@@ -920,6 +1119,7 @@ export class VisionLibrary {
           lexicalScore: match.score,
           matchedText: match.matchedText,
           matchSource: match.source,
+          frameId,
           modelId: VISION_MODEL_ID,
           modelVariant: VISION_MODEL_VARIANT
         }
@@ -938,8 +1138,10 @@ export class VisionLibrary {
     const lexicalCandidates = await this.searchLexical(query, limit)
     const merged = new Map<string, { result: VisionSearchResult; visualRankScore: number; lexicalScore: number; matchSource: VisionMatchSource }>()
 
+    const mergeKey = (result: VisionSearchResult): string => `${result.videoPath}\0${result.frameId ?? result.id}`
+
     for (const candidate of visualCandidates) {
-      merged.set(candidate.result.id, {
+      merged.set(mergeKey(candidate.result), {
         result: candidate.result,
         visualRankScore: candidate.visualRankScore,
         lexicalScore: 0,
@@ -948,13 +1150,20 @@ export class VisionLibrary {
     }
 
     for (const candidate of lexicalCandidates) {
-      const existing = merged.get(candidate.result.id)
+      const existing = merged.get(mergeKey(candidate.result))
       if (existing) {
         existing.lexicalScore = candidate.lexicalScore
         existing.matchSource = 'both'
         existing.result.matchedText = candidate.result.matchedText
+        existing.result.evidenceId = candidate.result.evidenceId ?? existing.result.evidenceId
+        if (candidate.result.evidenceType === 'subtitle') existing.result.timestampSeconds = candidate.result.timestampSeconds
+        existing.result.startSeconds = candidate.result.startSeconds ?? existing.result.startSeconds
+        existing.result.endSeconds = candidate.result.endSeconds ?? existing.result.endSeconds
+        existing.result.evidenceType = candidate.result.evidenceType ?? existing.result.evidenceType
+        existing.result.sourceId = candidate.result.sourceId ?? existing.result.sourceId
+        existing.result.sourceFingerprint = candidate.result.sourceFingerprint ?? existing.result.sourceFingerprint
       } else {
-        merged.set(candidate.result.id, {
+        merged.set(mergeKey(candidate.result), {
           result: candidate.result,
           visualRankScore: 0,
           lexicalScore: candidate.lexicalScore,

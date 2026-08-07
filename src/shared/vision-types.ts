@@ -101,6 +101,76 @@ export type VisionSearchRequest = {
 
 export type VisionMatchSource = 'visual' | 'subtitle' | 'filename' | 'both'
 
+/** A searchable fact anchored to a source-media time range. */
+export type VisionEvidenceType = 'subtitle' | 'visual' | 'scene' | 'ocr' | 'entity'
+
+export type VisionEvidence = {
+  id: string
+  sourceId: string
+  videoPath: string
+  fileName: string
+  evidenceType: VisionEvidenceType
+  startSeconds: number
+  endSeconds: number
+  text?: string
+  frameId?: string
+  thumbnailPath?: string
+  confidence?: number
+  sourceFingerprint?: string
+  modelId?: string
+  modelVariant?: string
+  generatedAt?: number
+}
+
+export type VisionClipSelection = {
+  sourceId: string
+  videoPath: string
+  fileName: string
+  fingerprint: string
+  durationSeconds: number
+  width?: number
+  height?: number
+  startSeconds: number
+  endSeconds: number
+  evidenceIds: string[]
+  text?: string
+  evidenceTypes: VisionEvidenceType[]
+}
+
+export type VisionClipCollection = {
+  id: string
+  title: string
+  tags: string[]
+  sortMode: VisionClipCollectionSortMode
+  createdAt: number
+  updatedAt: number
+  selections: VisionClipSelection[]
+}
+
+export type VisionClipCollectionSortMode = 'source-time' | 'duration-desc' | 'file-name'
+
+export type VisionClipCollectionInput = {
+  id?: string
+  title: string
+  tags?: string[]
+  sortMode?: VisionClipCollectionSortMode
+  selections: VisionClipSelection[]
+}
+
+export type VisionClipCollectionExportFormat = 'json' | 'csv' | 'edl'
+
+export type VisionClipCollectionExportRequest = {
+  collectionId: string
+  format: VisionClipCollectionExportFormat
+}
+
+export type VisionClipCollectionExportResult = {
+  success: boolean
+  message: string
+  filePath?: string
+  canceled?: boolean
+}
+
 export type VisionSearchResult = {
   id: string
   videoPath: string
@@ -112,6 +182,17 @@ export type VisionSearchResult = {
   lexicalScore?: number
   matchedText?: string
   matchSource?: VisionMatchSource
+  /** Stable evidence row that explains this result, when the evidence table exists. */
+  evidenceId?: string
+  /** Frame id remains separate from evidence id so multiple subtitle cues can share a frame. */
+  frameId?: string
+  sourceId?: string
+  durationSeconds?: number
+  startSeconds?: number
+  endSeconds?: number
+  evidenceType?: VisionEvidenceType
+  confidence?: number
+  sourceFingerprint?: string
   modelId: string
   modelVariant: string
 }
