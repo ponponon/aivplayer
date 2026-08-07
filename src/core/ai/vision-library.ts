@@ -25,6 +25,7 @@ import {
   type VisionRuntimeStatus,
   type VisionSearchMode,
   type VisionSearchResult,
+  type VisionEvidence,
   type VisionEvidenceType
 } from '../../shared/vision-types'
 
@@ -503,6 +504,35 @@ export class VisionLibrary {
       return
     }
     await db.createTable(EVIDENCE_TABLE_NAME, rows, { schema: VISION_EVIDENCE_SCHEMA })
+  }
+
+  /** Adds one derived evidence row without replacing subtitle or visual evidence for the source. */
+  async upsertEvidence(evidence: VisionEvidence): Promise<void> {
+    const row: VisionEvidenceRow = {
+      id: evidence.id,
+      source_id: evidence.sourceId,
+      video_path: evidence.videoPath,
+      file_name: evidence.fileName,
+      evidence_type: evidence.evidenceType,
+      start_seconds: evidence.startSeconds,
+      end_seconds: evidence.endSeconds,
+      text: evidence.text?.trim() ?? '',
+      frame_id: evidence.frameId?.trim() ?? '',
+      thumbnail_path: evidence.thumbnailPath?.trim() ?? '',
+      confidence: evidence.confidence !== undefined && Number.isFinite(evidence.confidence) ? evidence.confidence : null,
+      source_fingerprint: evidence.sourceFingerprint?.trim() ?? '',
+      model_id: evidence.modelId?.trim() || 'unknown',
+      model_variant: evidence.modelVariant?.trim() || 'unknown',
+      generated_at: evidence.generatedAt !== undefined && Number.isFinite(evidence.generatedAt) ? evidence.generatedAt : Date.now()
+    }
+    const db = await this.getDatabase()
+    const existing = await this.getEvidenceTable()
+    if (existing) {
+      await existing.delete(`id = '${escapeSqlString(row.id)}'`)
+      await existing.add([row])
+      return
+    }
+    await db.createTable(EVIDENCE_TABLE_NAME, [row], { schema: VISION_EVIDENCE_SCHEMA })
   }
 
   private async getAllFramePointers(): Promise<VisionFramePointer[]> {

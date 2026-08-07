@@ -95,6 +95,8 @@ describe('vision library setup', () => {
     expect(source).toContain('schema: VISION_EVIDENCE_SCHEMA')
     expect(source).toContain('buildEvidenceRows')
     expect(source).toContain('replaceEvidenceRows')
+    expect(source).toContain('async upsertEvidence(evidence: VisionEvidence)')
+    expect(source).toContain("await existing.delete(`id = '")
     expect(source).toContain('searchLexicalByEvidence')
     expect(source).toContain('getVisualEvidenceByFrameIds')
     expect(source).toContain("baseTokenizer: 'ngram'")

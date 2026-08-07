@@ -1,5 +1,6 @@
 export type MediaEvidenceTaskKind = 'ocr' | 'tts'
 export type MediaEvidenceTaskStatus = 'queued' | 'running' | 'retrying' | 'completed' | 'failed' | 'cancelled'
+export type MediaEvidencePersistenceStatus = 'persisted' | 'skipped-stale' | 'failed' | 'not-applicable'
 
 export type MediaEvidenceTaskRequest = {
   kind: MediaEvidenceTaskKind
@@ -63,6 +64,9 @@ export type MediaEvidenceTask = {
   attempts: number
   maxRetries: number
   artifacts: MediaEvidenceArtifact[]
+  persistenceStatus?: MediaEvidencePersistenceStatus
+  persistedArtifactCount?: number
+  persistenceMessage?: string
   error?: string
   createdAt: number
   updatedAt: number
