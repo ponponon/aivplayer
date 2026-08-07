@@ -666,3 +666,9 @@
 - 现象：OCR 证据只绑定时间范围，通常没有 `frame_id`；如果搜索结果继续把空 frame id 当作主键，同一视频的多条 OCR 会互相覆盖，点击结果也无法稳定对应具体证据。
 - 经验：字幕 / 视觉证据可以按 frame 合并，但 OCR、场景和实体等派生证据必须按 `evidenceId` 保持身份；结果显示和 Clip Inbox 也要沿用同一个身份规则。
 - 处理：新增统一 `getVisionSearchResultKey`，修复证据词法检索和混合检索合并键；真实 Smoke 搜索 `Smoke OCR text`、校验证据 ID，并确认点击后播放头落在 `0.5–1.5s`。
+
+## 2026-08-08：搜索结果定位不能依赖固定延迟
+
+- 现象：媒体切换后，视频元数据加载和 React 状态更新的耗时并不固定；用 `setTimeout(120)` 调 `seekTo` 时，偶发只能落在目标时间附近，无法证明已经定位到正确证据。
+- 经验：跨媒体跳转要把目标路径和时间暂存为 pending 状态，等目标视频触发 `loadedmetadata` 后再执行 seek；Smoke 应使用明确的 OCR 起点并断言目标时间误差，而不是只断言视频曾经播放过。
+- 处理：VisionPanel 改为元数据就绪后定位；Smoke 固定 OCR 范围为 `0.5–1.5s`，真实结果校验 `currentTime=0.5`，同时保留 renderer error 检查。
