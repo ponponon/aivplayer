@@ -94,7 +94,7 @@ import type {
 import type { LivePhotoExportRequest, LivePhotoExportResult, LivePhotoProbeResult } from '../shared/live-photo-types'
 import type { EditingProjectFileOpenResult, EditingProjectFileSaveRequest, EditingProjectFileSaveResult } from '../shared/editing-types'
 import type { WebDesktopStateUpdate, WebRemoteCommandForDesktop, WebShareStartRequest, WebShareStatus } from '../shared/web-types'
-import type { MediaEvidenceCapabilities, MediaEvidenceTask, MediaEvidenceTaskRequest } from '../shared/evidence-task-types'
+import type { MediaEvidenceCapabilities, MediaEvidenceDraft, MediaEvidenceDraftSaveRequest, MediaEvidenceTask, MediaEvidenceTaskRequest } from '../shared/evidence-task-types'
 
 const api = {
   platform: process.platform,
@@ -230,6 +230,7 @@ const api = {
   getMediaEvidenceCapabilities: (): Promise<MediaEvidenceCapabilities> => ipcRenderer.invoke(IPC_CHANNELS.EVIDENCE_TASK_CAPABILITIES),
   startMediaEvidenceTask: (request: MediaEvidenceTaskRequest): Promise<MediaEvidenceTask> => ipcRenderer.invoke(IPC_CHANNELS.EVIDENCE_TASK_START, request),
   cancelMediaEvidenceTask: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.EVIDENCE_TASK_CANCEL),
+  saveMediaEvidenceDraft: (request: MediaEvidenceDraftSaveRequest): Promise<MediaEvidenceDraft> => ipcRenderer.invoke(IPC_CHANNELS.EVIDENCE_DRAFT_SAVE, request),
   stopNativePlayer: (): Promise<NativePlaybackResult> => ipcRenderer.invoke(IPC_CHANNELS.STOP_NATIVE_PLAYER),
   minimizeWindow: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.WINDOW_MINIMIZE),
   toggleMaximizeWindow: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.WINDOW_TOGGLE_MAXIMIZE),

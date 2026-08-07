@@ -103,6 +103,7 @@ export const IPC_CHANNELS = {
   EVIDENCE_TASK_START: 'evidence-task:start',
   EVIDENCE_TASK_CANCEL: 'evidence-task:cancel',
   EVIDENCE_TASK_PROGRESS: 'evidence-task:progress',
+  EVIDENCE_DRAFT_SAVE: 'evidence-draft:save',
   PERSON_MATTE_STATUS: 'person-matte:status',
   PERSON_MATTE_DOWNLOAD: 'person-matte:download',
   PERSON_MATTE_DOWNLOAD_PROGRESS: 'person-matte:download-progress',
