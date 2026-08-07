@@ -1,0 +1,48 @@
+export type MediaEvidenceTaskKind = 'ocr' | 'tts'
+export type MediaEvidenceTaskStatus = 'queued' | 'running' | 'retrying' | 'completed' | 'failed' | 'cancelled'
+
+export type MediaEvidenceRange = {
+  startSeconds: number
+  endSeconds: number
+}
+
+export type OcrEvidenceArtifact = {
+  id: string
+  artifactType: 'ocr-evidence'
+  sourceFingerprint: string
+  startSeconds: number
+  endSeconds: number
+  text: string
+  confidence?: number
+  frameId?: string
+}
+
+export type TtsAudioArtifact = {
+  id: string
+  artifactType: 'tts-audio'
+  sourceFingerprint: string
+  startSeconds: number
+  endSeconds: number
+  text: string
+  audioPath?: string
+  mimeType?: string
+}
+
+export type MediaEvidenceArtifact = OcrEvidenceArtifact | TtsAudioArtifact
+
+export type MediaEvidenceTask = {
+  id: string
+  kind: MediaEvidenceTaskKind
+  mediaPath: string
+  sourceFingerprint: string
+  inputHash: string
+  ranges: MediaEvidenceRange[]
+  status: MediaEvidenceTaskStatus
+  progress: number
+  attempts: number
+  maxRetries: number
+  artifacts: MediaEvidenceArtifact[]
+  error?: string
+  createdAt: number
+  updatedAt: number
+}
