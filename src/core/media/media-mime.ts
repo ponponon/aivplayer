@@ -72,6 +72,8 @@ const CONTENT_TYPE_BY_EXTENSION = new Map<string, string>([
   ['.mp3', 'audio/mpeg'],
   ['.m4a', 'audio/mp4'],
   ['.aac', 'audio/aac'],
+  ['.aif', 'audio/aiff'],
+  ['.aiff', 'audio/aiff'],
   ['.wav', 'audio/wav'],
   ['.vtt', 'text/vtt; charset=utf-8'],
   ['.srt', 'application/x-subrip; charset=utf-8'],

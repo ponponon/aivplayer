@@ -41,6 +41,7 @@ describe('media protocol helpers', () => {
     expect(getContentTypeForFile('/tmp/stream.h265')).toBe('video/h265')
     expect(getContentTypeForFile('/tmp/camera.r3d')).toBe('video/x-red')
     expect(getContentTypeForFile('/tmp/archive.wtv')).toBe('video/x-ms-wtv')
+    expect(getContentTypeForFile('/tmp/tts.aiff')).toBe('audio/aiff')
     expect(getContentTypeForFile('/tmp/subtitle.vtt')).toBe('text/vtt; charset=utf-8')
   })
 
