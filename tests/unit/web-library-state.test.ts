@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { WebShareMediaItem } from '../../src/shared/web-types'
-import { applyWebLibraryUrlPreferences, buildWebLibraryTree, createDefaultWebLibraryPreferences, filterWebLibraryItems, getHistoryEntry, getWebLibraryBreadcrumbs, isInProgress, sortWebLibraryItems } from '../../src/web/library-state'
+import { applyWebLibraryUrlPreferences, buildWebLibraryTree, createDefaultWebLibraryPreferences, filterWebLibraryItems, getHistoryEntry, getWebLibraryBreadcrumbs, getWebLibraryDirectoryItems, isInProgress, sortWebLibraryItems } from '../../src/web/library-state'
 
 function createItem(overrides: Partial<WebShareMediaItem>): WebShareMediaItem {
   return {
@@ -56,5 +56,19 @@ describe('Web library state', () => {
     expect(sciFiFolder.itemCount).toBe(1)
     expect(getWebLibraryBreadcrumbs(tree, sciFiFolder.id).map((node) => node.label)).toEqual(['Movies', '电影', '科幻'])
     expect(filterWebLibraryItems([first, second], '', preferences).map((item) => item.id)).toEqual(['first'])
+  })
+
+  it('builds a directory package from all files in the current directory', () => {
+    const first = createItem({ id: 'first', relativePath: '电影/first.mp4' })
+    const second = createItem({ id: 'second', relativePath: '电影/second.mp4' })
+    const outside = createItem({ id: 'outside', relativePath: '其他/outside.mp4' })
+    const tree = buildWebLibraryTree([first, second, outside])
+    const directory = tree[0]!.children.find((node) => node.label === '电影')!
+    const preferences = createDefaultWebLibraryPreferences()
+    preferences.selectedGroupId = directory.id
+    preferences.filter = 'favorites'
+    preferences.favorites = ['first']
+
+    expect(getWebLibraryDirectoryItems([first, second, outside], preferences).map((item) => item.id)).toEqual(['first', 'second'])
   })
 })

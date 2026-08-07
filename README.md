@@ -77,6 +77,7 @@ AIVPlayer 的产品介绍、功能演示和下载入口位于 **[aivplayer.pages
 
 - 支持 MP4、WebM、MOV、MKV、AVI、FLV、WMV、MPEG-TS、3GP、VOB、MXF、RMVB，以及 MPEG elementary stream、F4V、OGM、NUT、DV、GXF、CAVS、Dirac、R3D、WTV、FLI/FLC、RoQ、Smacker、Motion JPEG、Bink、Y4M、H.264/H.265 raw stream 等常见及专业视频格式；浏览器不兼容时可自动转码，支持拖拽打开和播放列表。
 - 支持启动仅限局域网的 Web 播放：用 Chrome、Firefox、Safari 或手机浏览器访问桌面端共享的播放列表和选定目录；媒体通过 HTTP Range 流式读取，网页端可刷新目录发现新增文件；多网卡设备会展示所有可用访问地址并提供本地二维码，手机/平板还可以将页面添加到主屏幕。
+- LAN Web 媒体库支持目录树、搜索、排序、收藏和多选操作；可批量下载选中文件，或直接把当前目录打包下载，目录层级会保留在 ZIP 中。
 - 浏览器不兼容的媒体可按需在本机转为 H.264 + AAC MP4，原文件不改写，转码结果按源文件指纹缓存。
 - 多台局域网设备同时请求转码时，任务会按本机并发上限排队，避免多部大视频并行转码耗尽资源。
 - 转码前会检查缓存磁盘空间，过期结果和异常退出留下的临时文件会自动清理；源文件被替换后不会误用旧的兼容版本。

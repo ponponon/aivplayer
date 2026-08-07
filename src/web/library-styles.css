@@ -15,6 +15,9 @@
 .library-batch-actions button:hover:not(:disabled), .library-batch-entry:hover, .library-batch-button:hover:not(.is-disabled) { color: #e5b466; border-color: #9d6d32; }
 .library-batch-actions button:disabled, .library-batch-button.is-disabled { cursor: default; opacity: 0.4; pointer-events: none; }
 .library-batch-entry { width: 100%; }
+.library-batch-entry-row { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.library-batch-entry-row .library-batch-entry { width: auto; }
+.library-batch-entry-row .library-batch-button { width: 100%; }
 .library-tree { display: grid; gap: 1px; max-height: 240px; margin-bottom: 10px; overflow: auto; padding-bottom: 9px; border-bottom: 1px solid #25272b; }
 .library-tree-all, .library-tree-select { display: flex; align-items: center; gap: 7px; width: 100%; min-width: 0; padding: 6px 7px; color: #858a91; background: transparent; border: 1px solid transparent; border-radius: 5px; cursor: pointer; font-size: 11px; text-align: left; }
 .library-tree-all:hover, .library-tree-select:hover { color: #c9c8c3; background: #15171a; }

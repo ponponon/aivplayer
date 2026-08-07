@@ -214,3 +214,7 @@ export function filterWebLibraryItems(items: WebShareMediaItem[], query: string,
     return true
   })
 }
+
+export function getWebLibraryDirectoryItems(items: WebShareMediaItem[], preferences: WebLibraryPreferences): WebShareMediaItem[] {
+  return filterWebLibraryItems(items, '', { ...preferences, filter: 'all' })
+}
