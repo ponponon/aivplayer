@@ -91,3 +91,21 @@ export type MediaEvidenceDraft = {
   draftUrl: string
   createdAt: number
 }
+
+export type MediaEvidenceDraftImportRequest = {
+  draftId: string
+  mediaPath: string
+  overwriteExisting: boolean
+}
+
+export type MediaEvidenceDraftImportResult = {
+  success: boolean
+  message: string
+  requiresOverwriteConfirmation?: boolean
+  existingSubtitlePaths?: string[]
+  draft?: MediaEvidenceDraft
+  subtitlePath?: string
+  subtitleSrtPath?: string
+  subtitleUrl?: string
+  subtitleSrtUrl?: string
+}
