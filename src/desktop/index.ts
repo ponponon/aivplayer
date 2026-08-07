@@ -12,6 +12,7 @@ import { registerAsrTranslationIpc } from './ipc-asr-translation'
 import { registerAsrSummaryIpc } from './ipc-asr-summary'
 import { registerSettingsIpc } from './ipc-settings'
 import { registerFilmstripIpc } from './ipc-filmstrip'
+import { registerWaveformIpc } from './ipc-waveform'
 import { registerSceneDetectionIpc } from './ipc-scene-detection'
 import { registerSilenceDetectionIpc } from './ipc-silence-detection'
 import { registerStructureAnalysisIpc } from './ipc-structure-analysis'
@@ -59,6 +60,7 @@ function registerIpc(): void {
   registerSettingsIpc()
   registerAppUpdaterIpc()
   registerFilmstripIpc()
+  registerWaveformIpc()
   registerSceneDetectionIpc()
   registerSilenceDetectionIpc()
   registerStructureAnalysisIpc()

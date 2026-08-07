@@ -59,6 +59,8 @@ import type {
   MediaFfmpegCapabilities,
   MediaFilmstripRequest,
   MediaFilmstripResult,
+  MediaWaveformRequest,
+  MediaWaveformResult,
   MediaSceneDetectionRequest,
   MediaSceneDetectionResult,
   MediaSilenceDetectionRequest,
@@ -131,6 +133,8 @@ const api = {
   getFfmpegCapabilities: (): Promise<MediaFfmpegCapabilities> => ipcRenderer.invoke(IPC_CHANNELS.MEDIA_GET_FFMPEG_CAPABILITIES),
   extractMediaFilmstrip: (request: MediaFilmstripRequest): Promise<MediaFilmstripResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.EXTRACT_MEDIA_FILMSTRIP, request),
+  extractMediaWaveform: (request: MediaWaveformRequest): Promise<MediaWaveformResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.EXTRACT_MEDIA_WAVEFORM, request),
   detectMediaScenes: (request: MediaSceneDetectionRequest): Promise<MediaSceneDetectionResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.DETECT_MEDIA_SCENES, request),
   detectMediaSilence: (request: MediaSilenceDetectionRequest): Promise<MediaSilenceDetectionResult> =>
