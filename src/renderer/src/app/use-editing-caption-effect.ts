@@ -6,6 +6,7 @@ import { createEditingCaptionPathCandidates, loadEditingCaptions } from './editi
 import { saveEditingProject } from './editing-project-storage'
 import { mergeEditingScriptSegments } from '../../../core/editing/script-operations'
 import { applyEditingSubtitleReloadAddition, applyEditingSubtitleReloadChange, applyEditingSubtitleReloadKeep, applyEditingSubtitleReloadRemoval, buildEditingSubtitleReloadPreview, filterEditingSubtitleReloadPreview, getEditingSubtitleReloadChangeKey, getEditingSubtitleReloadRemovalResolutionKeys, recordEditingSubtitleReloadResolution, replaceEditingCaptionsForReload, type EditingSubtitleReloadChange, type EditingSubtitleReloadPreview } from '../../../core/editing/subtitle-reload'
+import { isEditingScriptSegmentCaption } from '../../../core/editing/script-operations'
 
 export type EditingCaptionReloadConflict = {
   sourceRevisionKey: string
@@ -63,15 +64,16 @@ export function useEditingCaptionEffect(model: AppModel, derived: AppDerived): {
         const scriptSegments = mergeEditingScriptSegments(current.scriptSegments, captions)
         const deletedSegments = scriptSegments.filter((segment) => segment.deleted)
         const isDeletedCaption = (caption: typeof captions[number]): boolean => {
-          if (caption.kind === 'source') return deletedSegments.some((segment) => segment.id === caption.id)
           if (!caption.sourceId || caption.sourceStartSeconds === undefined || caption.sourceEndSeconds === undefined) return false
-          return deletedSegments.some((segment) => {
-            if (segment.sourceId !== caption.sourceId) return false
-            return Math.min(segment.sourceEndSeconds, caption.sourceEndSeconds!) - Math.max(segment.sourceStartSeconds, caption.sourceStartSeconds!) > 0.05
-          })
+          return deletedSegments.some((segment) => isEditingScriptSegmentCaption(caption, segment))
         }
         const existingIds = new Set(current.captions.map((caption) => caption.id))
-        const additions = captions.filter((caption) => !existingIds.has(caption.id) && !isDeletedCaption(caption))
+        const hasExistingCaption = (caption: typeof captions[number]): boolean => {
+          if (existingIds.has(caption.id)) return true
+          const segment = scriptSegments.find((candidate) => isEditingScriptSegmentCaption(caption, candidate))
+          return segment ? current.captions.some((existing) => isEditingScriptSegmentCaption(existing, segment)) : false
+        }
+        const additions = captions.filter((caption) => !hasExistingCaption(caption) && !isDeletedCaption(caption))
         const loadedById = new Map(captions.map((caption) => [caption.id, caption]))
         const enrichedExisting = current.captions.map((caption) => {
           const loaded = loadedById.get(caption.id)
