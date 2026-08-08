@@ -125,6 +125,65 @@ async function main(): Promise<void> {
     await page.evaluate(({ projectId, current }) => {
       if (!projectId || !current) return
       const parsed = JSON.parse(localStorage.getItem('aivplayer.editing-ui-preferences.v1') ?? '{}') as { projects?: Record<string, unknown> }
+      parsed.projects = { ...(parsed.projects ?? {}), [projectId]: current, 'other-project-kept-by-reset': { detailsOpen: true, openGroups: { other: true } } }
+      localStorage.setItem('aivplayer.editing-ui-preferences.v1', JSON.stringify(parsed))
+    }, { projectId: baseline.id ?? null, current: candidateAuditResetSeed.current })
+    await sessionCandidateDetails.locator(':scope > summary').click()
+    await sessionCandidateFirstGroup.locator(':scope > summary').click()
+    await page.waitForFunction(({ projectId }) => {
+      const parsed = JSON.parse(localStorage.getItem('aivplayer.editing-ui-preferences.v1') ?? '{}') as { projects?: Record<string, { detailsOpen?: boolean; openGroups?: Record<string, boolean> }> }
+      const current = projectId ? parsed.projects?.[projectId] : undefined
+      return current?.detailsOpen === true && Object.values(current.openGroups ?? {}).some(Boolean)
+    }, { projectId: baseline.id ?? null }, { timeout: 10_000 })
+    const candidateAuditGlobalResetButton = page.locator('[data-testid="editing-reset-all-candidate-details-preferences"]')
+    await candidateAuditGlobalResetButton.waitFor({ timeout: 10_000 })
+    const nextConfirmDialog = (accept: boolean): Promise<string> => new Promise((resolve) => {
+      page.once('dialog', async (dialog) => {
+        const message = dialog.message()
+        if (accept) await dialog.accept()
+        else await dialog.dismiss()
+        resolve(message)
+      })
+    })
+    const cancelledDialog = nextConfirmDialog(false)
+    await candidateAuditGlobalResetButton.click()
+    const candidateAuditGlobalResetDialogShown = await cancelledDialog
+    const candidateAuditGlobalResetOuterOpenAfterCancel = await sessionCandidateDetails.evaluate((details) => (details as HTMLDetailsElement).open)
+    const candidateAuditGlobalResetGroupOpenAfterCancel = await sessionCandidateFirstGroup.evaluate((group) => (group as HTMLDetailsElement).open)
+    const candidateAuditGlobalResetCancelled = await page.evaluate(({ projectId }) => {
+      const parsed = JSON.parse(localStorage.getItem('aivplayer.editing-ui-preferences.v1') ?? '{}') as { projects?: Record<string, { detailsOpen?: boolean; openGroups?: Record<string, boolean> }> }
+      const current = projectId ? parsed.projects?.[projectId] : undefined
+      const other = parsed.projects?.['other-project-kept-by-reset']
+      return Boolean(current?.detailsOpen) && Object.values(current?.openGroups ?? {}).some(Boolean) && Boolean(other?.detailsOpen) && Object.values(other?.openGroups ?? {}).some(Boolean)
+    }, { projectId: baseline.id ?? null })
+    const acceptedDialog = nextConfirmDialog(true)
+    await candidateAuditGlobalResetButton.click()
+    const candidateAuditGlobalResetAcceptedDialog = await acceptedDialog
+    await page.waitForFunction(({ projectId }) => {
+      const parsed = JSON.parse(localStorage.getItem('aivplayer.editing-ui-preferences.v1') ?? '{}') as { projects?: Record<string, { detailsOpen?: boolean; openGroups?: Record<string, boolean> }> }
+      const current = projectId ? parsed.projects?.[projectId] : undefined
+      return current?.detailsOpen === false && Object.values(current?.openGroups ?? {}).every((open) => open === false) && !parsed.projects?.['other-project-kept-by-reset']
+    }, { projectId: baseline.id ?? null }, { timeout: 10_000 })
+    const candidateAuditGlobalResetOuterOpen = await sessionCandidateDetails.evaluate((details) => (details as HTMLDetailsElement).open)
+    const candidateAuditGlobalResetGroupOpen = await sessionCandidateFirstGroup.evaluate((group) => (group as HTMLDetailsElement).open)
+    const candidateAuditGlobalResetPreference = await page.evaluate(({ projectId, smokeDirectory }) => {
+      const raw = localStorage.getItem('aivplayer.editing-ui-preferences.v1') ?? ''
+      const parsed = JSON.parse(raw) as { projects?: Record<string, { detailsOpen?: boolean; openGroups?: Record<string, boolean> }> }
+      const current = projectId ? parsed.projects?.[projectId] : undefined
+      return {
+        currentProjectPresent: Boolean(current),
+        currentDetailsOpen: current?.detailsOpen ?? true,
+        currentOpenGroupCount: Object.values(current?.openGroups ?? {}).filter(Boolean).length,
+        otherProjectPresent: Boolean(parsed.projects?.['other-project-kept-by-reset']),
+        remainingProjectCount: Object.keys(parsed.projects ?? {}).length,
+        containsSmokePath: raw.includes(smokeDirectory)
+      }
+    }, { projectId: baseline.id ?? null, smokeDirectory })
+    const candidateAuditGlobalResetScreenshotPath = join(smokeHomeDirectory, 'aivplayer-smoke-sidecar-paths-global-reset.png')
+    await page.screenshot({ path: candidateAuditGlobalResetScreenshotPath, fullPage: false })
+    await page.evaluate(({ projectId, current }) => {
+      if (!projectId || !current) return
+      const parsed = JSON.parse(localStorage.getItem('aivplayer.editing-ui-preferences.v1') ?? '{}') as { projects?: Record<string, unknown> }
       parsed.projects = { ...(parsed.projects ?? {}), [projectId]: current }
       localStorage.setItem('aivplayer.editing-ui-preferences.v1', JSON.stringify(parsed))
     }, { projectId: baseline.id ?? null, current: candidateAuditResetSeed.current })
@@ -297,6 +356,15 @@ async function main(): Promise<void> {
       candidateAuditResetOuterOpen,
       candidateAuditResetGroupOpen,
       candidateAuditResetPreference,
+      candidateAuditGlobalResetDialogShown,
+      candidateAuditGlobalResetAcceptedDialog,
+      candidateAuditGlobalResetOuterOpenAfterCancel,
+      candidateAuditGlobalResetGroupOpenAfterCancel,
+      candidateAuditGlobalResetCancelled,
+      candidateAuditGlobalResetOuterOpen,
+      candidateAuditGlobalResetGroupOpen,
+      candidateAuditGlobalResetPreference,
+      candidateAuditGlobalResetScreenshotPath,
       candidateAuditPrunedPreference,
       candidateAuditRestartedOuterOpen,
       candidateAuditRestartedGroupOpen,
@@ -330,7 +398,7 @@ async function main(): Promise<void> {
     }
     console.log('AIVPlayer Smoke Editing Sidecar Paths')
     console.log(JSON.stringify(result))
-    if (result.selectedSourcePath?.toLowerCase() !== sourcePath.toLowerCase() || result.selectedTranslationPath?.toLowerCase() !== translationPath.toLowerCase() || result.candidateRows < 6 || result.conflictRows !== 2 || result.ambiguityCount !== 1 || !result.ambiguityText?.includes('2') || result.equivalentCount < 1 || !result.equivalentText?.includes('内容相同') || result.candidateAuditStatus?.includes(smokeDirectory) || !result.candidateAuditDetailsSummary?.includes('查看完整候选路径') || !result.candidateAuditSessionInitialOuterOpen || !result.candidateAuditSessionInitialGroupOpen || !result.candidateAuditSessionRefreshedOuterOpen || !result.candidateAuditSessionRefreshedGroupOpen || result.candidateAuditSessionStorageValue !== null || result.candidateAuditResetOuterOpen || result.candidateAuditResetGroupOpen || !result.candidateAuditResetPreference.currentProjectPresent || result.candidateAuditResetPreference.currentDetailsOpen || result.candidateAuditResetPreference.currentOpenGroupCount !== 0 || !result.candidateAuditResetPreference.otherProjectPresent || !result.candidateAuditResetPreference.otherDetailsOpen || result.candidateAuditResetPreference.otherOpenGroupCount !== 1 || result.candidateAuditResetPreference.containsSmokePath || result.candidateAuditPrunedPreference.staleProjectPresent || !result.candidateAuditPrunedPreference.currentProjectPresent || result.candidateAuditPrunedPreference.containsSmokePath || !result.candidateAuditRestartedOuterOpen || !result.candidateAuditRestartedGroupOpen || result.candidateAuditRestartedPreference.schemaVersion !== 1 || result.candidateAuditRestartedPreference.detailsOpen !== true || result.candidateAuditRestartedPreference.openGroupCount !== 1 || result.candidateAuditRestartedPreference.containsSmokePath || !result.candidateAuditReloadedOuterOpen || !result.candidateAuditReloadedGroupOpen[0] || result.candidateAuditReloadedGroupOpen[1] || result.candidateAuditGroupCount !== 2 || result.candidateAuditGroupOpenBefore.some(Boolean) || !result.candidateAuditGroupLabels.some((label) => label.includes('原文')) || !result.candidateAuditGroupLabels.some((label) => label.includes('译文')) || !result.candidateAuditFirstGroupOpen || !result.candidateAuditFirstGroupDetailsVisible || !result.candidateAuditSecondGroupOpen || !result.candidateAuditFirstGroupClosed || !result.candidateAuditSecondGroupStillOpen || !result.candidateAuditDetailsText?.includes('内容相同') || !result.candidateAuditDetailsText?.includes('内容不同') || !result.candidateAuditDetailsText?.includes(smokeDirectory) || result.selectedCandidatePath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.selectedCandidateText !== '更新跨设备备用译文' || result.selectedCandidateRevision === null || result.undoPreferredPath?.toLowerCase() === result.alternateTranslationCandidatePath.toLowerCase() || result.undoCaptionText !== '初始跨设备译文' || result.redoPreferredPath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.redoCaptionText !== '更新跨设备备用译文' || result.clearedPreferredPath !== null || result.clearedCaptionText !== '更新跨设备译文' || result.clearUndoPreferredPath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.clearRedoPreferredPath !== null || result.consoleErrors.length > 0) process.exitCode = 1
+    if (result.selectedSourcePath?.toLowerCase() !== sourcePath.toLowerCase() || result.selectedTranslationPath?.toLowerCase() !== translationPath.toLowerCase() || result.candidateRows < 6 || result.conflictRows !== 2 || result.ambiguityCount !== 1 || !result.ambiguityText?.includes('2') || result.equivalentCount < 1 || !result.equivalentText?.includes('内容相同') || result.candidateAuditStatus?.includes(smokeDirectory) || !result.candidateAuditDetailsSummary?.includes('查看完整候选路径') || !result.candidateAuditSessionInitialOuterOpen || !result.candidateAuditSessionInitialGroupOpen || !result.candidateAuditSessionRefreshedOuterOpen || !result.candidateAuditSessionRefreshedGroupOpen || result.candidateAuditSessionStorageValue !== null || result.candidateAuditResetOuterOpen || result.candidateAuditResetGroupOpen || !result.candidateAuditResetPreference.currentProjectPresent || result.candidateAuditResetPreference.currentDetailsOpen || result.candidateAuditResetPreference.currentOpenGroupCount !== 0 || !result.candidateAuditResetPreference.otherProjectPresent || !result.candidateAuditResetPreference.otherDetailsOpen || result.candidateAuditResetPreference.otherOpenGroupCount !== 1 || result.candidateAuditResetPreference.containsSmokePath || !result.candidateAuditGlobalResetDialogShown.includes('候选详情') || !result.candidateAuditGlobalResetAcceptedDialog.includes('候选详情') || !result.candidateAuditGlobalResetOuterOpenAfterCancel || !result.candidateAuditGlobalResetGroupOpenAfterCancel || !result.candidateAuditGlobalResetCancelled || result.candidateAuditGlobalResetOuterOpen || result.candidateAuditGlobalResetGroupOpen || !result.candidateAuditGlobalResetPreference.currentProjectPresent || result.candidateAuditGlobalResetPreference.currentDetailsOpen || result.candidateAuditGlobalResetPreference.currentOpenGroupCount !== 0 || result.candidateAuditGlobalResetPreference.otherProjectPresent || result.candidateAuditGlobalResetPreference.remainingProjectCount !== 1 || result.candidateAuditGlobalResetPreference.containsSmokePath || result.candidateAuditPrunedPreference.staleProjectPresent || !result.candidateAuditPrunedPreference.currentProjectPresent || result.candidateAuditPrunedPreference.containsSmokePath || !result.candidateAuditRestartedOuterOpen || !result.candidateAuditRestartedGroupOpen || result.candidateAuditRestartedPreference.schemaVersion !== 1 || result.candidateAuditRestartedPreference.detailsOpen !== true || result.candidateAuditRestartedPreference.openGroupCount !== 1 || result.candidateAuditRestartedPreference.containsSmokePath || !result.candidateAuditReloadedOuterOpen || !result.candidateAuditReloadedGroupOpen[0] || result.candidateAuditReloadedGroupOpen[1] || result.candidateAuditGroupCount !== 2 || result.candidateAuditGroupOpenBefore.some(Boolean) || !result.candidateAuditGroupLabels.some((label) => label.includes('原文')) || !result.candidateAuditGroupLabels.some((label) => label.includes('译文')) || !result.candidateAuditFirstGroupOpen || !result.candidateAuditFirstGroupDetailsVisible || !result.candidateAuditSecondGroupOpen || !result.candidateAuditFirstGroupClosed || !result.candidateAuditSecondGroupStillOpen || !result.candidateAuditDetailsText?.includes('内容相同') || !result.candidateAuditDetailsText?.includes('内容不同') || !result.candidateAuditDetailsText?.includes(smokeDirectory) || result.selectedCandidatePath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.selectedCandidateText !== '更新跨设备备用译文' || result.selectedCandidateRevision === null || result.undoPreferredPath?.toLowerCase() === result.alternateTranslationCandidatePath.toLowerCase() || result.undoCaptionText !== '初始跨设备译文' || result.redoPreferredPath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.redoCaptionText !== '更新跨设备备用译文' || result.clearedPreferredPath !== null || result.clearedCaptionText !== '更新跨设备译文' || result.clearUndoPreferredPath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.clearRedoPreferredPath !== null || result.consoleErrors.length > 0) process.exitCode = 1
   } finally {
     await app.close()
   }
