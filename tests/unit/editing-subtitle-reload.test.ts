@@ -296,6 +296,43 @@ describe('editing subtitle reload', () => {
     expect(filterEditingSubtitleReloadPreview(reloadedPreview, removedWithTranslationKept.captionReloadResolution?.changeKeys ?? []).hasChanges).toBe(false)
   })
 
+  it('removes or preserves every fragment in a source and translation family independently', () => {
+    const segment = { id: 'source-source-fragment-1', sourceId: source.id, sourceStartSeconds: 1, sourceEndSeconds: 2, text: '片段原文', translationText: '片段译文' }
+    const current = [
+      { ...caption({ id: segment.id, text: segment.text, startSeconds: 0 }), editedRangeGroupId: segment.id, editedRangeIndex: 0 },
+      { ...caption({ id: `${segment.id}-1`, text: segment.text, startSeconds: 2 }), editedRangeGroupId: segment.id, editedRangeIndex: 1 },
+      { ...caption({ id: 'translation-source-fragment-1', kind: 'translation', text: segment.translationText, startSeconds: 0 }), editedRangeGroupId: segment.id, editedRangeIndex: 0 },
+      { ...caption({ id: 'translation-source-fragment-1-1', kind: 'translation', text: segment.translationText, startSeconds: 2 }), editedRangeGroupId: segment.id, editedRangeIndex: 1 }
+    ]
+    const project = {
+      ...createEditingProject(source, { now: 100 }),
+      captions: current,
+      scriptSegments: [segment]
+    }
+    const sourceRemoved = { id: segment.id, kind: 'source' as const, status: 'removed' as const, currentText: segment.text, currentStartSeconds: 0, currentEndSeconds: 1 }
+    const translationRemoved = { id: 'translation-source-fragment-1', kind: 'translation' as const, status: 'removed' as const, currentText: segment.translationText, currentStartSeconds: 0, currentEndSeconds: 1 }
+
+    const preview = buildEditingSubtitleReloadPreview(current, [], [segment])
+    expect(preview.changes).toMatchObject([
+      { id: segment.id, kind: 'source', status: 'removed' },
+      { id: translationRemoved.id, kind: 'translation', status: 'removed' }
+    ])
+
+    const keptTranslation = applyEditingSubtitleReloadRemoval(project, sourceRemoved, 200, [getEditingSubtitleReloadChangeKey(translationRemoved)])
+    expect(keptTranslation?.captions).toHaveLength(2)
+    expect(keptTranslation?.captions.every((caption) => caption.kind === 'translation')).toBe(true)
+    expect(keptTranslation?.captions.map((caption) => caption.editedRangeIndex)).toEqual([0, 1])
+    expect(keptTranslation?.scriptSegments?.[0]).toMatchObject({ deleted: true, translationText: segment.translationText })
+
+    const removedFamily = applyEditingSubtitleReloadRemoval(project, sourceRemoved, 300)
+    expect(removedFamily?.captions).toEqual([])
+
+    const removedTranslation = applyEditingSubtitleReloadRemoval(project, translationRemoved, 400)
+    expect(removedTranslation?.captions).toHaveLength(2)
+    expect(removedTranslation?.captions.every((caption) => caption.kind === 'source')).toBe(true)
+    expect(removedTranslation?.scriptSegments?.[0]).not.toHaveProperty('translationText')
+  })
+
   it('rejects keeping a changed, non-removed, stale, or missing cue', () => {
     const current = caption({})
     const project = { ...createEditingProject(source, { now: 100 }), captions: [current] }
