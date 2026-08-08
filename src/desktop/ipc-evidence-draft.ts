@@ -1,7 +1,8 @@
 import { app, ipcMain } from 'electron'
 import { createHash } from 'node:crypto'
 import { mkdir, readdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises'
-import { basename, dirname, extname, join, resolve } from 'node:path'
+import { join, resolve } from 'node:path'
+import { getMediaSubtitleSidecarPaths } from '../core/ai/subtitle-sidecar'
 import { writeSrt, writeVtt } from '../core/ai/subtitle-writer'
 import { createMediaEvidenceDraftId, normalizeMediaEvidenceDraftCues, summarizeMediaEvidenceDraftCues } from '../core/ai/media-evidence-draft'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
@@ -142,8 +143,7 @@ async function pathExists(filePath: string): Promise<boolean> {
 }
 
 function getFormalSubtitlePaths(mediaPath: string): { subtitlePath: string; subtitleSrtPath: string } {
-  const stem = join(dirname(mediaPath), basename(mediaPath, extname(mediaPath)))
-  return { subtitlePath: `${stem}.vtt`, subtitleSrtPath: `${stem}.srt` }
+  return getMediaSubtitleSidecarPaths(mediaPath)
 }
 
 async function importDraft(directoryPath: string, request: MediaEvidenceDraftImportRequest): Promise<MediaEvidenceDraftImportResult> {

@@ -960,6 +960,7 @@
       subtitleGenerationCanceled: '字幕生成已取消。',
       subtitleCacheMiss: '未命中本地字幕缓存。',
       subtitleCacheHit: '已命中本地字幕缓存（VTT / SRT）。',
+      subtitleSidecarLoaded: '已恢复当前媒体旁车字幕。',
       subtitleExported: '已根据 VTT 导出 SRT。',
       subtitleTranslated: '字幕翻译完成，译文 VTT 已挂载，SRT 已导出。',
       subtitleTranslationCanceled: '字幕翻译已取消，未生成新的译文缓存。',

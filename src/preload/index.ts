@@ -51,6 +51,7 @@ import type {
   ClipboardWriteTextRequest,
   ClipboardWriteTextResult,
   AsrSubtitleRequest,
+  AsrSubtitleSidecarRequest,
   AsrSubtitleResult,
   BatchSubtitleJob,
   BatchSubtitleScanRequest,
@@ -173,6 +174,8 @@ const api = {
   cancelAsrSubtitle: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.ASR_CANCEL_SUBTITLE),
   resolveAsrSubtitleCache: (request: AsrSubtitleRequest): Promise<AsrSubtitleResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.ASR_RESOLVE_SUBTITLE_CACHE, request),
+  resolveMediaSubtitleSidecar: (request: AsrSubtitleSidecarRequest): Promise<AsrSubtitleResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.ASR_RESOLVE_MEDIA_SUBTITLE_SIDECAR, request),
   resolveAsrSubtitleCheckpoint: (request: AsrSubtitleCheckpointRequest): Promise<AsrSubtitleCheckpointResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.ASR_RESOLVE_SUBTITLE_CHECKPOINT, request),
   resolveTranslatedAsrSubtitleCache: (request: AsrSubtitleTranslationRequest): Promise<AsrSubtitleTranslationResult> =>

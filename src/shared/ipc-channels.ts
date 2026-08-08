@@ -39,6 +39,7 @@ export const IPC_CHANNELS = {
   ASR_GENERATE_SUBTITLE: 'asr:generate-subtitle',
   ASR_CANCEL_SUBTITLE: 'asr:cancel-subtitle',
   ASR_RESOLVE_SUBTITLE_CACHE: 'asr:resolve-subtitle-cache',
+  ASR_RESOLVE_MEDIA_SUBTITLE_SIDECAR: 'asr:resolve-media-subtitle-sidecar',
   ASR_RESOLVE_SUBTITLE_CHECKPOINT: 'asr:resolve-subtitle-checkpoint',
   ASR_RESOLVE_TRANSLATED_SUBTITLE_CACHE: 'asr:resolve-translated-subtitle-cache',
   ASR_EXPORT_SUBTITLE_SRT: 'asr:export-subtitle-srt',

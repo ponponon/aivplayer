@@ -61,6 +61,7 @@ export type AsrJobProgress = {
   priorityTranslationTargetLanguage?: SubtitleTargetLanguageId
 }
 export type AsrSubtitleRequest = { mediaPath: string; modelId?: string; language?: string; streamTranslationTargetLanguage?: SubtitleTargetLanguageId; priorityWindow?: AsrPriorityWindow }
+export type AsrSubtitleSidecarRequest = { mediaPath: string }
 export type AsrSubtitleCheckpointRequest = { mediaPath: string; modelId?: string }
 export type AsrSubtitleCheckpointResult = { success: boolean; available: boolean; lastEndSeconds?: number; resumeFromSeconds?: number; subtitleCueCount?: number; message?: string }
 export type AsrSubtitleGenerationStats = { elapsedMs: number; subtitleCueCount: number; cacheHit: boolean }

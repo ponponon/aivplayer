@@ -1,12 +1,15 @@
 import { ipcMain } from 'electron'
 import { unlink } from 'node:fs/promises'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
-import type { AsrJobProgress, AsrSubtitleCheckpointRequest, AsrSubtitleExportRequest, AsrSubtitleExportResult, AsrSubtitleIncrementalTranslationResult, AsrSubtitleRequest, AsrSubtitleTranslationRequest, AsrSubtitleTranslationResult } from '../shared/media-types'
+import type { AsrJobProgress, AsrSubtitleCheckpointRequest, AsrSubtitleExportRequest, AsrSubtitleExportResult, AsrSubtitleIncrementalTranslationResult, AsrSubtitleRequest, AsrSubtitleResult, AsrSubtitleSidecarRequest, AsrSubtitleTranslationRequest, AsrSubtitleTranslationResult } from '../shared/media-types'
 import { appendAsrDiagnosticLog, getAsrLogDirectoryPath, redactAsrErrorDetails } from '../core/ai/asr-diagnostics'
+import { resolveMediaSubtitleSidecar } from '../core/ai/subtitle-sidecar'
 import { createMediaFile } from './media/media-protocol'
 import { getAsrRuntime } from './desktop-services'
 import { desktopState } from './desktop-state'
 import { app } from 'electron'
+import { getAppCopy } from '../shared/i18n'
+import { getCurrentLocale } from './desktop-settings'
 
 const streamingTranslationBatchSize = 6
 
@@ -255,6 +258,11 @@ export function registerAsrSubtitleIpc(): void {
     return true
   })
   ipcMain.handle(IPC_CHANNELS.ASR_RESOLVE_SUBTITLE_CACHE, async (_event, request: AsrSubtitleRequest) => withSubtitleUrls(await getAsrRuntime().resolveSubtitleCache(request)))
+  ipcMain.handle(IPC_CHANNELS.ASR_RESOLVE_MEDIA_SUBTITLE_SIDECAR, async (_event, request: AsrSubtitleSidecarRequest) => {
+    const sidecar = await resolveMediaSubtitleSidecar(request?.mediaPath)
+    if (!sidecar) return { success: false, message: getAppCopy(getCurrentLocale()).runtime.subtitleCacheMiss } satisfies AsrSubtitleResult
+    return withSubtitleUrls({ success: true, message: getAppCopy(getCurrentLocale()).runtime.subtitleSidecarLoaded, ...sidecar }) satisfies AsrSubtitleResult
+  })
   ipcMain.handle(IPC_CHANNELS.ASR_RESOLVE_SUBTITLE_CHECKPOINT, (_event, request: AsrSubtitleCheckpointRequest) => getAsrRuntime().resolveSubtitleCheckpoint(request))
   ipcMain.handle(IPC_CHANNELS.ASR_RESOLVE_TRANSLATED_SUBTITLE_CACHE, async (_event, request: AsrSubtitleTranslationRequest) => withSubtitleUrls(await getAsrRuntime().resolveTranslatedSubtitleCache(request)) satisfies AsrSubtitleTranslationResult)
   ipcMain.handle(IPC_CHANNELS.ASR_EXPORT_SUBTITLE_SRT, async (_event, request: AsrSubtitleExportRequest) => {

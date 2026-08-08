@@ -962,6 +962,7 @@
       subtitleGenerationCanceled: '자막 생성을 취소했습니다.',
       subtitleCacheMiss: '로컬 자막 캐시를 찾지 못했습니다.',
       subtitleCacheHit: '로컬 자막 캐시가 있습니다(VTT / SRT).',
+      subtitleSidecarLoaded: '현재 미디어의 사이드카 자막을 복원했습니다.',
       subtitleExported: 'VTT에서 SRT를 내보냈습니다.',
       subtitleTranslated: '자막 번역이 완료되었습니다. 번역 VTT는 마운트됐고 SRT는 내보냈습니다.',
       subtitleTranslationCanceled: '자막 번역을 취소했습니다. 새 번역 캐시는 생성되지 않았습니다.',
