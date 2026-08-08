@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createEditingProject } from '../../src/core/editing/project'
-import { applyEditingSubtitleReloadAddition, applyEditingSubtitleReloadChange, applyEditingSubtitleReloadKeep, applyEditingSubtitleReloadRemoval, buildEditingSubtitleReloadPreview, filterEditingSubtitleReloadPreview, getEditingSubtitleReloadChangeKey, getEditingSubtitleReloadChangePage, getEditingSubtitleReloadChangePreview, getEditingSubtitleReloadChangeScriptSegmentId, getEditingSubtitleReloadIncomingPreview, getEditingSubtitleReloadResolutionKeys, replaceEditingCaptionsForReload, shareEditingSubtitleReloadScriptSegmentIds } from '../../src/core/editing/subtitle-reload'
+import { applyEditingSubtitleReloadAddition, applyEditingSubtitleReloadChange, applyEditingSubtitleReloadKeep, applyEditingSubtitleReloadRemoval, buildEditingSubtitleReloadPreview, filterEditingSubtitleReloadPreview, getEditingSubtitleReloadChangeKey, getEditingSubtitleReloadChangePage, getEditingSubtitleReloadChangePreview, getEditingSubtitleReloadChangeScriptSegmentId, getEditingSubtitleReloadIncomingPreview, getEditingSubtitleReloadRemovalResolutionKeys, getEditingSubtitleReloadResolutionKeys, recordEditingSubtitleReloadResolution, replaceEditingCaptionsForReload, shareEditingSubtitleReloadScriptSegmentIds } from '../../src/core/editing/subtitle-reload'
 
 const source = { id: 'source-1', path: '/tmp/demo.mp4', name: 'demo.mp4', fingerprint: 'demo:10', durationSeconds: 10 }
 
@@ -212,6 +212,11 @@ describe('editing subtitle reload', () => {
     expect(afterSource?.videoClips).toEqual(project.videoClips)
     expect(afterSource?.updatedAt).toBe(200)
 
+    const translationResolutionKey = getEditingSubtitleReloadChangeKey(translationRemoved)
+    const afterSourceWithTranslationKept = applyEditingSubtitleReloadRemoval(project, sourceRemoved, 250, [translationResolutionKey])
+    expect(afterSourceWithTranslationKept?.captions).toEqual([currentTranslation, untouched])
+    expect(afterSourceWithTranslationKept?.scriptSegments?.find((segment) => segment.id === currentSource.id)).toMatchObject({ translationText: '当前译文', deleted: true })
+
     const afterTranslation = applyEditingSubtitleReloadRemoval(project, translationRemoved, 300)
     expect(afterTranslation?.captions).toEqual([currentSource, untouched])
     expect(afterTranslation?.scriptSegments?.find((segment) => segment.id === currentSource.id)).toMatchObject({ text: '当前原文' })
@@ -240,6 +245,7 @@ describe('editing subtitle reload', () => {
     const sourceRemoved = { id: currentSource.id, kind: 'source' as const, status: 'removed' as const, currentText: currentSource.text, currentStartSeconds: 1, currentEndSeconds: 2 }
     const translationRemoved = { id: currentTranslation.id, kind: 'translation' as const, status: 'removed' as const, currentText: currentTranslation.text, currentStartSeconds: 1, currentEndSeconds: 2 }
     const changes = [sourceRemoved, translationRemoved]
+    expect(getEditingSubtitleReloadRemovalResolutionKeys(changes, sourceRemoved)).toEqual([getEditingSubtitleReloadChangeKey(sourceRemoved), getEditingSubtitleReloadChangeKey(translationRemoved)])
     const kept = applyEditingSubtitleReloadKeep(project, changes, sourceRemoved, 'source=next|translation=next', 200)
     expect(kept?.captions).toEqual(project.captions)
     expect(kept?.scriptSegments).toEqual(project.scriptSegments)
@@ -251,6 +257,11 @@ describe('editing subtitle reload', () => {
     expect(translationKept?.captionReloadResolution?.changeKeys).toEqual([getEditingSubtitleReloadChangeKey(translationRemoved)])
     const bothKept = applyEditingSubtitleReloadKeep(kept!, changes, translationRemoved, 'source=next|translation=next')
     expect(filterEditingSubtitleReloadPreview(preview, bothKept?.captionReloadResolution?.changeKeys ?? []).hasChanges).toBe(false)
+
+    const sourceRemovedWithTranslationKept = applyEditingSubtitleReloadRemoval(project, sourceRemoved, 250, [getEditingSubtitleReloadChangeKey(translationRemoved)])
+    const removedWithTranslationKept = recordEditingSubtitleReloadResolution(sourceRemovedWithTranslationKept!, 'source=next|translation=next', getEditingSubtitleReloadRemovalResolutionKeys(changes, sourceRemoved))
+    const reloadedPreview = buildEditingSubtitleReloadPreview(removedWithTranslationKept.captions, project.captions)
+    expect(filterEditingSubtitleReloadPreview(reloadedPreview, removedWithTranslationKept.captionReloadResolution?.changeKeys ?? []).hasChanges).toBe(false)
   })
 
   it('rejects keeping a changed, non-removed, stale, or missing cue', () => {
