@@ -1104,3 +1104,9 @@
 - 现象：会话内开合状态解决了候选审计刷新时的 UI 跳动，但如果直接把它写入 `EditingProject` 或 `.aivproj`，工程格式会被 UI 偏好污染；如果不做版本和异常处理，损坏的 localStorage 还可能阻断编辑器启动。
 - 经验：跨会话 UI 状态应使用独立、版本化的 renderer 存储，以 `project.id` 隔离工程，只保存布尔值和稳定分组 ID；必须限制条目数量和 ID 长度，解析失败、版本不支持或存储 API 抛错时回退默认状态，不能把本机绝对路径带入偏好。
 - 处理：新增 `aivplayer.editing-ui-preferences.v1`，采用 schema version 1 保存外层 / 分组 `open` 状态，限制最多 32 个工程和每个工程 32 个分组；单测覆盖坏 JSON、未知版本、类型清洗、边界裁剪和存储异常，Electron Smoke 覆盖同一 user-data 目录重启、整页 reload、工程隔离和 `containsSmokePath:false`。
+
+## 2026-08-09：UI 偏好容量上限不能代替失效工程清理
+
+- 现象：只限制 UI 偏好最多保留 32 个工程，无法清理用户已经删除、被本地工程索引淘汰或长期不再使用的工程 ID；如果直接按当前工程覆盖整个偏好对象，又会误删其他仍可恢复的工程状态。
+- 经验：清理应以已有的本地工程索引作为白名单，只移除确定不存在的工程；当前正在打开的工程必须额外加入白名单，兼容新建工程和外部 `.aivproj` 刚打开、尚未完成本地索引写回的时间窗口。清理仍只能作用于独立 UI 偏好，不能修改工程文件。
+- 处理：新增 `readEditingProjectIds` 和 `pruneEditingUiPreferences`，在候选状态组件初始化时读取 `editing-projects.v1`，保留本地工程 ID 与当前 `project.id`，清理其余 UI 偏好；存储不可用、索引损坏或偏好 JSON 异常时安全回退。单测覆盖有效 / 非法索引、孤儿偏好、当前工程保护和存储异常，Electron Smoke 验证 `staleProjectPresent:false`、`currentProjectPresent:true`、无路径泄露且重启 / reload / 候选操作不回归。
