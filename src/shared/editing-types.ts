@@ -169,6 +169,15 @@ export type EditingCaptionReloadResolution = {
   changeKeys: string[]
 }
 
+/** Mtime revisions accepted for one source's source and translation sidecars. */
+export type EditingCaptionSourceRevision = {
+  source: number | null
+  translation: number | null
+}
+
+/** Per-source sidecar baseline; source IDs remain stable across source order changes. */
+export type EditingCaptionSourceRevisions = Record<string, EditingCaptionSourceRevision>
+
 export type EditingProject = {
   schemaVersion: typeof EDITING_PROJECT_SCHEMA_VERSION
   id: string
@@ -195,6 +204,8 @@ export type EditingProject = {
   overlayTrackOrder?: EditingOverlayTrackKind[]
   /** Revision key of the subtitle sidecars currently accepted by this project. */
   captionSourceRevision?: string
+  /** Per-source sidecar revisions used to build and explain captionSourceRevision. */
+  captionSourceRevisions?: EditingCaptionSourceRevisions
   /** Pending per-cue decisions made while reviewing a newer subtitle revision. */
   captionReloadResolution?: EditingCaptionReloadResolution
   /** Optional for backward compatibility with schema version 1 project files. */

@@ -14,6 +14,7 @@ export const IPC_CHANNELS = {
   DETECT_MEDIA_SILENCE: 'media:detect-silence',
   ANALYZE_MEDIA_STRUCTURE: 'media:analyze-structure',
   READ_FILE_CONTENT: 'media:read-file-content',
+  GET_FILE_REVISION: 'media:get-file-revision',
   GET_APP_VERSION: 'app:get-version',
   APP_UPDATE_GET_STATE: 'app-update:get-state',
   APP_UPDATE_CHECK: 'app-update:check',

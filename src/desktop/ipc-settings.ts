@@ -1,5 +1,5 @@
 import { app, ipcMain } from 'electron'
-import { readFile, writeFile } from 'node:fs/promises'
+import { readFile, stat, writeFile } from 'node:fs/promises'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type { ImageSaveRequest, ImageSaveResult, MediaProbeMetadata } from '../shared/media-types'
 import type { LivePhotoExportRequest, LivePhotoExportResult } from '../shared/live-photo-types'
@@ -37,6 +37,14 @@ export function registerSettingsIpc(): void {
   ipcMain.handle(IPC_CHANNELS.CREATE_MEDIA_FILE, (_event, filePath: string) => createMediaFile(filePath))
   ipcMain.handle(IPC_CHANNELS.CHECK_MEDIA_FILE, (_event, filePath: string) => isMediaFileAvailable(filePath))
   ipcMain.handle(IPC_CHANNELS.READ_FILE_CONTENT, (_event, filePath: string): Promise<string> => readFile(filePath, 'utf-8'))
+  ipcMain.handle(IPC_CHANNELS.GET_FILE_REVISION, async (_event, filePath: string): Promise<number | null> => {
+    try {
+      const fileStat = await stat(filePath)
+      return Number.isFinite(fileStat.mtimeMs) ? Math.round(fileStat.mtimeMs) : null
+    } catch {
+      return null
+    }
+  })
   ipcMain.handle(IPC_CHANNELS.IMAGE_SAVE, async (_event, request: ImageSaveRequest): Promise<ImageSaveResult> => {
     const safeExtension = sanitizeImageExtension(request.extension)
     const safeName = sanitizeImageFileName(request.fileName, safeExtension)

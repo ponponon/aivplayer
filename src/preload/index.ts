@@ -108,6 +108,7 @@ const api = {
   createMediaFile: (filePath: string): Promise<MediaFile> => ipcRenderer.invoke(IPC_CHANNELS.CREATE_MEDIA_FILE, filePath),
   isMediaFileAvailable: (filePath: string): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.CHECK_MEDIA_FILE, filePath),
   readFileContent: (filePath: string): Promise<string> => ipcRenderer.invoke(IPC_CHANNELS.READ_FILE_CONTENT, filePath),
+  getFileRevision: (filePath: string): Promise<number | null> => ipcRenderer.invoke(IPC_CHANNELS.GET_FILE_REVISION, filePath),
   listMediaFilesInDirectory: (directoryPath: string): Promise<MediaFile[]> =>
     ipcRenderer.invoke(IPC_CHANNELS.LIST_MEDIA_FILES_IN_DIRECTORY, directoryPath),
   scanBatchSubtitleDirectory: (request: BatchSubtitleScanRequest): Promise<MediaFile[]> =>
