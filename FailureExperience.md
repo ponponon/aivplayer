@@ -870,3 +870,9 @@
 - 现象：字幕冲突功能同时涉及核心算法、Renderer、Smoke 和工程记录；如果因为任务连续推进就把多层文件一次性提交，review 很难确认每一阶段的行为和证据。
 - 经验：持续任务不等于可以合并提交边界；核心数据契约、界面接入、真实 Smoke 和文档仍应分别验证、分别暂存、分别提交，且每次提交前都要扫描 staged diff。
 - 处理：本轮按 `a1446ac`（核心选择性接受）、`749e2e3`（撤销历史与 UI 接入）、`47c6ec3`（Electron Smoke）拆分；FEATURE / FailureExperience 另行提交，内部计划保持 ignored。
+
+## 2026-08-08：added source / translation 必须允许分开确认
+
+- 现象：incoming-only source 与 translation 共享同一个 source segment，但它们在冲突 diff 中是两条独立 cue；如果点击 source 的“加入工程”就隐式整对加入，用户无法保留其中一条，也会让撤销粒度与列表行不一致。
+- 经验：单条冲突操作的粒度应与 diff row 一致；source 加入负责建立脚本上下文，translation 加入负责补齐 `translationText`，两者分别进入撤销栈，才能与 changed cue 的单条接受行为保持一致。
+- 处理：新增 `applyEditingSubtitleReloadAddition`，按 id / kind / incoming 快照校验后只添加一条 caption；真实 Smoke 验证 source 加入后 translation diff 仍保留 1 条，并覆盖 source 的 undo / redo。

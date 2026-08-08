@@ -529,6 +529,7 @@
 - 新增字幕预览会按 source segment 配对 incoming 原文 / 译文：时间轴显示两张只读临时卡片，对照条明确展示“当前工程（无内容）→ 新字幕”、两条轨道文本和各自时间范围；预览不会写入 `captions` 或 `scriptSegments`。
 - changed cue 在点击任一定位动作后会投影 incoming 原文 / 译文 ghost 卡片，并在对照条同时展示 current / incoming 文本与时间；旧实体仍保持可选中，时间移动通过 current / incoming 区间并集可回溯，不会改写工程。
 - changed cue 支持单条“接受新字幕”：只替换用户确认的 source / translation cue，并同步对应脚本文本、源时间和词级数据；未确认的其他差异继续保留，操作会进入编辑器撤销 / 重做历史。
+- added cue 支持单条“加入工程”：source cue 会创建或合并对应脚本段和时间轴卡片，translation cue 只补充对应脚本译文；其他新增、修改和删除差异保持待处理，操作同样进入撤销 / 重做历史。
 
 ## 编辑器画布交互层级
 
