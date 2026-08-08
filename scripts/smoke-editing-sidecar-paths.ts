@@ -105,6 +105,39 @@ async function main(): Promise<void> {
     const redoneProject = await readStoredProject()
     const redoPreferredPath = redoneProject?.captionSourcePaths?.[sourceId]?.translation ?? null
     const redoCaptionText = redoneProject?.captions.find((caption) => caption.text.includes('更新跨设备备用译文'))?.text ?? null
+    await writeFile(translationAlternatePath, makeVtt('再次更新跨设备备用译文'))
+    await utimes(translationAlternatePath, new Date(revisionMs + 3_000), new Date(revisionMs + 3_000))
+    await page.reload()
+    await openEditor()
+    await page.locator('[data-testid="editing-caption-reload-conflict"]').waitFor({ timeout: 10_000 })
+    const clearSidecarDetails = page.locator('[data-testid="editing-caption-reload-sidecar-paths"]')
+    await clearSidecarDetails.locator('summary').click()
+    const clearSidecarSource = clearSidecarDetails.locator('.editing-caption-reload-sidecar-source').first()
+    const clearCandidateButton = clearSidecarSource.locator('button[data-testid^="editing-caption-reload-clear-sidecar-"][data-testid$="-translation"]')
+    if (await clearCandidateButton.count() !== 1) throw new Error('Clear automatic translation candidate button was not rendered')
+    await clearCandidateButton.click()
+    await page.locator('[data-testid="editing-caption-reload-conflict"]').waitFor({ state: 'detached', timeout: 10_000 })
+    await page.waitForFunction(() => {
+      const entries = Object.values(JSON.parse(localStorage.getItem('aivplayer.editing-projects.v1') ?? '{}') as Record<string, { captionSourcePaths?: Record<string, { translation: string | null }> }>)
+      return Object.values(entries[0]?.captionSourcePaths ?? {})[0]?.translation === null
+    }, undefined, { timeout: 10_000 })
+    const clearedProject = await readStoredProject()
+    const clearedPreferredPath = clearedProject?.captionSourcePaths?.[sourceId]?.translation ?? null
+    const clearedCaptionText = clearedProject?.captions.find((caption) => caption.kind === 'translation')?.text ?? null
+    await page.locator('[data-testid="editing-undo"]').click()
+    await page.waitForFunction((expectedPath) => {
+      const entries = Object.values(JSON.parse(localStorage.getItem('aivplayer.editing-projects.v1') ?? '{}') as Record<string, { captionSourcePaths?: Record<string, { translation: string | null }> }>)
+      return Object.values(entries[0]?.captionSourcePaths ?? {})[0]?.translation === expectedPath
+    }, alternateTranslationCandidatePath, { timeout: 10_000 })
+    const clearUndoneProject = await readStoredProject()
+    const clearUndoPreferredPath = clearUndoneProject?.captionSourcePaths?.[sourceId]?.translation ?? null
+    await page.locator('[data-testid="editing-redo"]').click()
+    await page.waitForFunction(() => {
+      const entries = Object.values(JSON.parse(localStorage.getItem('aivplayer.editing-projects.v1') ?? '{}') as Record<string, { captionSourcePaths?: Record<string, { translation: string | null }> }>)
+      return Object.values(entries[0]?.captionSourcePaths ?? {})[0]?.translation === null
+    }, undefined, { timeout: 10_000 })
+    const clearRedoneProject = await readStoredProject()
+    const clearRedoPreferredPath = clearRedoneProject?.captionSourcePaths?.[sourceId]?.translation ?? null
     const screenshotPath = join(smokeHomeDirectory, 'aivplayer-smoke-sidecar-paths.png')
     await page.screenshot({ path: screenshotPath, fullPage: false })
     const result = {
@@ -125,12 +158,16 @@ async function main(): Promise<void> {
       undoCaptionText,
       redoPreferredPath,
       redoCaptionText,
+      clearedPreferredPath,
+      clearedCaptionText,
+      clearUndoPreferredPath,
+      clearRedoPreferredPath,
       screenshotPath,
       consoleErrors
     }
     console.log('AIVPlayer Smoke Editing Sidecar Paths')
     console.log(JSON.stringify(result))
-    if (result.selectedSourcePath?.toLowerCase() !== sourcePath.toLowerCase() || result.selectedTranslationPath?.toLowerCase() !== translationPath.toLowerCase() || result.candidateRows < 6 || result.conflictRows !== 2 || result.ambiguityCount !== 1 || !result.ambiguityText?.includes('2') || result.selectedCandidatePath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.selectedCandidateText !== '更新跨设备备用译文' || result.selectedCandidateRevision === null || result.undoPreferredPath?.toLowerCase() === result.alternateTranslationCandidatePath.toLowerCase() || result.undoCaptionText !== '初始跨设备译文' || result.redoPreferredPath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.redoCaptionText !== '更新跨设备备用译文' || result.consoleErrors.length > 0) process.exitCode = 1
+    if (result.selectedSourcePath?.toLowerCase() !== sourcePath.toLowerCase() || result.selectedTranslationPath?.toLowerCase() !== translationPath.toLowerCase() || result.candidateRows < 6 || result.conflictRows !== 2 || result.ambiguityCount !== 1 || !result.ambiguityText?.includes('2') || result.selectedCandidatePath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.selectedCandidateText !== '更新跨设备备用译文' || result.selectedCandidateRevision === null || result.undoPreferredPath?.toLowerCase() === result.alternateTranslationCandidatePath.toLowerCase() || result.undoCaptionText !== '初始跨设备译文' || result.redoPreferredPath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.redoCaptionText !== '更新跨设备备用译文' || result.clearedPreferredPath !== null || result.clearedCaptionText !== '更新跨设备译文' || result.clearUndoPreferredPath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.clearRedoPreferredPath !== null || result.consoleErrors.length > 0) process.exitCode = 1
   } finally {
     await app.close()
   }
