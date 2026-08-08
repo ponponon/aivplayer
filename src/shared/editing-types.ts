@@ -184,6 +184,8 @@ export type EditingProject = {
   captionLayout?: EditingCaptionLayout
   /** Optional persisted back-to-front order for the three overlay tracks. */
   overlayTrackOrder?: EditingOverlayTrackKind[]
+  /** Revision key of the subtitle sidecars currently accepted by this project. */
+  captionSourceRevision?: string
   /** Optional for backward compatibility with schema version 1 project files. */
   scriptSegments?: EditingScriptSegment[]
 }

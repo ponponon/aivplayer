@@ -209,6 +209,7 @@ export function parseEditingProject(value: unknown): EditingProject {
   if (captionLayout === null) throw new Error('Invalid editing project caption layout')
   const overlayTrackOrder = value.overlayTrackOrder === undefined ? undefined : parseOverlayTrackOrder(value.overlayTrackOrder)
   if (overlayTrackOrder === null) throw new Error('Invalid editing project overlay track order')
+  if (value.captionSourceRevision !== undefined && !isNonEmptyString(value.captionSourceRevision)) throw new Error('Invalid editing project caption source revision')
   return {
     schemaVersion: EDITING_PROJECT_SCHEMA_VERSION,
     id: value.id,
@@ -223,6 +224,7 @@ export function parseEditingProject(value: unknown): EditingProject {
     ...(canvasPreset === undefined ? {} : { canvasPreset }),
     ...(captionLayout === undefined ? {} : { captionLayout }),
     ...(overlayTrackOrder === undefined ? {} : { overlayTrackOrder }),
+    ...(value.captionSourceRevision === undefined ? {} : { captionSourceRevision: value.captionSourceRevision }),
     ...(scriptSegments === undefined ? {} : { scriptSegments: scriptSegments as EditingScriptSegment[] }),
     ...(graphics === undefined ? {} : { graphics: graphics as EditingGraphic[] }),
     ...(videoBlocks === undefined ? {} : { videoBlocks: videoBlocks as EditingVideoBlock[] })

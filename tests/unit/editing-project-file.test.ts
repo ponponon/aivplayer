@@ -184,6 +184,15 @@ describe('editing project files', () => {
     expect(parseEditingProjectFile(serializeEditingProject(withScript))).toEqual(withScript)
   })
 
+  it('round-trips the accepted subtitle source revision while keeping legacy projects valid', () => {
+    const project = createEditingProject(source)
+    const withRevision = { ...project, captionSourceRevision: 'raw:123:translation:456' }
+
+    expect(parseEditingProjectFile(serializeEditingProject(withRevision))).toEqual(withRevision)
+    expect(parseEditingProject({ ...project, captionSourceRevision: undefined }).captionSourceRevision).toBeUndefined()
+    expect(() => parseEditingProject({ ...project, captionSourceRevision: '   ' })).toThrow('Invalid editing project caption source revision')
+  })
+
   it('round-trips relative caption word timing for karaoke preview and burn-in', () => {
     const project = createEditingProject(source)
     const withWords = {
