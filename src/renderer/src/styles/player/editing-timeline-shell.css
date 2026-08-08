@@ -90,8 +90,10 @@
 .editing-project-status-details { min-width: 0; }
 .editing-project-status-details summary { width: fit-content; color: var(--accent); cursor: pointer; font-size: 8px; font-weight: 700; }
 .editing-project-status-details-groups { display: grid; gap: 5px; max-height: 112px; margin-top: 3px; overflow: auto; }
-.editing-project-status-details-group { display: grid; gap: 2px; min-width: 0; }
-.editing-project-status-details-group > strong { color: var(--text-secondary); font-size: 8px; font-weight: 700; }
+.editing-project-status-details-group { min-width: 0; }
+.editing-project-status-details-group > summary { color: var(--text-secondary); }
+.editing-project-status-details-group > summary:hover,
+.editing-project-status-details-group[open] > summary { color: var(--text-primary); }
 .editing-project-status-details-list { display: grid; gap: 2px; color: var(--text-muted); font-size: 8px; line-height: 1.35; }
 .editing-project-status-details-list span { min-width: 0; overflow-wrap: anywhere; }
 
