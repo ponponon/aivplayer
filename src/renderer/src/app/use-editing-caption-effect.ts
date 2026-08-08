@@ -312,14 +312,15 @@ export function useEditingCaptionEffect(model: AppModel, derived: AppDerived): {
     setIsRebuildingEditingCaptionManifest(true)
     try {
       const sources = createEditingCaptionSources(project, { currentMediaPath: model.state.currentFile?.path ?? null, subtitlePath: derived.subtitlePath, subtitleSrtPath: derived.subtitleSrtPath, translatedSubtitlePath: derived.translatedSubtitlePath, translatedSubtitleSrtPath: derived.translatedSubtitleSrtPath, translationLanguage: derived.quickTargetLanguage, preferredCaptionPaths: project.captionSourcePaths })
-      const { sourceRevisions } = await loadEditingCaptionSnapshot(sources)
+      const { sourceRevisions, sourcePaths } = await loadEditingCaptionSnapshot(sources)
       const sourceRevisionKey = createEditingCaptionSourceRevisionKey(project, sourceRevisions)
       const next = acceptCaptionSourceRevisions(withoutCaptionReloadResolution(project), sourceRevisionKey, sourceRevisions)
       if (model.editingProject?.id !== project.id) return
       model.setEditingProject(next)
       saveEditingProject(next)
       setEditingCaptionReloadConflict(null)
-      model.setEditingProjectStatus({ success: true, message: derived.copy.editing.captionManifestRebuilt })
+      const candidateStatus = formatEditingCaptionCandidateStatus(project, sourcePaths, model.appSettings.ui.locale)
+      model.setEditingProjectStatus(candidateStatus ?? { success: true, message: derived.copy.editing.captionManifestRebuilt })
     } catch (error) {
       model.setEditingProjectStatus({ success: false, message: `${derived.copy.editing.captionManifestRebuildFailed}：${error instanceof Error ? error.message : String(error)}` })
     } finally {

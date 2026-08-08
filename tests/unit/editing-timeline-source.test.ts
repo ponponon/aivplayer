@@ -145,6 +145,8 @@ describe('editing timeline source contracts', () => {
     expect(captionEffect).toContain('formatEditingCaptionCandidateStatus')
     expect(captionEffect).toContain('mergeEditingCaptionCandidateStatus(currentStatus, candidateStatus)')
     expect(captionEffect).toContain("origin: 'caption-candidates'")
+    expect(captionEffect).toContain('const { sourceRevisions, sourcePaths } = await loadEditingCaptionSnapshot(sources)')
+    expect(captionEffect).toContain('candidateStatus ?? { success: true, message: derived.copy.editing.captionManifestRebuilt }')
     expect(captionEffect).toContain('details: { label: candidateCopy.detailsLabel, groups')
     expect(timeline).toContain('editing-project-status-details')
     expect(timeline).toContain('editing-project-status-message')
