@@ -14,6 +14,7 @@ export type SubtitleCacheManifestAsr = {
 
 export type SubtitleCacheManifestTranslation = {
   sourceSubtitlePath: string
+  sourceSubtitleRevision?: number
   sourceLanguage: string
   targetLanguage: SubtitleTargetLanguageId
   model: string
@@ -61,7 +62,7 @@ function hash(value: string): string {
 
 function artifactKey(artifact: SubtitleCacheManifestArtifact): string {
   if (artifact.kind === 'asr') return ['asr', artifact.modelId, artifact.subtitlePath].join('\n')
-  if (artifact.kind === 'translation') return ['translation', artifact.sourceSubtitlePath, artifact.sourceLanguage, artifact.targetLanguage, artifact.model, hash(artifact.glossary ?? ''), artifact.subtitlePath].join('\n')
+  if (artifact.kind === 'translation') return ['translation', artifact.sourceSubtitlePath, artifact.sourceSubtitleRevision ?? '', artifact.sourceLanguage, artifact.targetLanguage, artifact.model, hash(artifact.glossary ?? ''), artifact.subtitlePath].join('\n')
   return ['summary', artifact.sourceSubtitlePath, artifact.sourceLanguage, artifact.sourceType, artifact.targetLanguage, artifact.mode, artifact.model, artifact.summaryPath].join('\n')
 }
 
@@ -109,7 +110,7 @@ async function writeManifest(cacheDirectory: string, mediaPath: string, artifact
   } else if (artifact.kind === 'translation') {
     const { glossary, ...translationArtifact } = artifact
     const item: SubtitleCacheManifestTranslation = { ...translationArtifact, glossaryHash: hash(glossary ?? ''), updatedAt }
-    manifest.translations = upsert(manifest.translations, item, (value) => ['translation', value.sourceSubtitlePath, value.sourceLanguage, value.targetLanguage, value.model, value.glossaryHash, value.subtitlePath].join('\n'))
+    manifest.translations = upsert(manifest.translations, item, (value) => ['translation', value.sourceSubtitlePath, value.sourceSubtitleRevision ?? '', value.sourceLanguage, value.targetLanguage, value.model, value.glossaryHash, value.subtitlePath].join('\n'))
   } else {
     const item: SubtitleCacheManifestSummary = { ...artifact, updatedAt }
     manifest.summaries = upsert(manifest.summaries, item, (value) => artifactKey({ kind: 'summary', ...value }))

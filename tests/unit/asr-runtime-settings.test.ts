@@ -1,4 +1,4 @@
-import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -392,6 +392,7 @@ describe('ASR runtime settings', () => {
     expect(resolved.sourceLanguage).toBe('en')
     expect(resolved.targetLanguage).toBe('zh')
     expect(resolved.translationModel).toBe('translation-model')
+    expect(resolved.sourceSubtitleRevision).toBe(Math.round((await stat(vttPath)).mtimeMs))
     expect(resolved.subtitlePath).toContain(`${join(tempDirectory, 'asr-cache', 'subtitles')}`)
     expect(resolved.subtitlePath).toContain('-translated-zh-')
     expect(resolved.subtitleSrtPath).toContain('-translated-zh-')

@@ -22,6 +22,13 @@ export type MediaSubtitleSidecarInvalid = {
 
 export type MediaSubtitleSidecarResolution = MediaSubtitleSidecarReady | MediaSubtitleSidecarInvalid | null
 
+export async function getSubtitleRevision(subtitlePath: string, subtitleSrtPath?: string): Promise<number | undefined> {
+  const paths = [...new Set([subtitlePath, subtitleSrtPath].filter((path): path is string => Boolean(path)))]
+  const stats = await Promise.all(paths.map((path) => stat(path).catch(() => null)))
+  const revisions = stats.filter((value): value is NonNullable<typeof value> => value !== null).map((value) => value.mtimeMs)
+  return revisions.length > 0 ? Math.round(Math.max(...revisions)) : undefined
+}
+
 export function getMediaSubtitleSidecarPaths(mediaPath: string): { subtitlePath: string; subtitleSrtPath: string } {
   const stem = join(dirname(mediaPath), basename(mediaPath, extname(mediaPath)))
   return { subtitlePath: `${stem}.vtt`, subtitleSrtPath: `${stem}.srt` }

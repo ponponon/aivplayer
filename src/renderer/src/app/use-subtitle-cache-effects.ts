@@ -12,6 +12,7 @@ export function useSubtitleCacheEffects(model: AppModel, derived: AppDerived, pa
 
   const matchesCurrentContext = (result: AsrSubtitleTranslationResult | null): boolean => {
     if (!result?.subtitleUrl || result.sourceSubtitlePath !== derived.subtitlePath) return false
+    if (derived.subtitleRevision !== undefined && result.sourceSubtitleRevision !== derived.subtitleRevision) return false
     if ((result.sourceLanguage ?? 'auto') !== derived.subtitleTranslationSourceLanguage) return false
     if (result.targetLanguage !== model.appSettings.subtitles.targetLanguage) return false
     if (derived.subtitleTranslationModel && (result.translationModel ?? '') !== derived.subtitleTranslationModel) return false
@@ -97,7 +98,7 @@ export function useSubtitleCacheEffects(model: AppModel, derived: AppDerived, pa
 
   useEffect(() => {
     if (model.translatedSubtitleResult?.subtitleUrl && !matchesCurrentContext(model.translatedSubtitleResult)) model.setTranslatedSubtitleResult(null)
-  }, [model.translatedSubtitleResult?.subtitleUrl, model.translatedSubtitleResult?.sourceSubtitlePath, model.translatedSubtitleResult?.targetLanguage, derived.subtitlePath, derived.subtitleTranslationSourceLanguage, derived.subtitleTranslationModel, derived.subtitleTranslationGlossary, model.appSettings.subtitles.targetLanguage])
+  }, [model.translatedSubtitleResult?.subtitleUrl, model.translatedSubtitleResult?.sourceSubtitlePath, model.translatedSubtitleResult?.sourceSubtitleRevision, model.translatedSubtitleResult?.targetLanguage, derived.subtitlePath, derived.subtitleRevision, derived.subtitleTranslationSourceLanguage, derived.subtitleTranslationModel, derived.subtitleTranslationGlossary, model.appSettings.subtitles.targetLanguage])
 
   useEffect(() => {
     if (!model.state.currentFile || !derived.subtitlePath || !model.appSettings.asr.autoLoadCachedSubtitles || model.isTranslatingSubtitle || matchesCurrentContext(model.translatedSubtitleResult)) return
@@ -114,7 +115,7 @@ export function useSubtitleCacheEffects(model: AppModel, derived: AppDerived, pa
       if (model.appSettings.subtitles.displayMode === 'source') patchDisplay({ displayMode: 'translation' })
     })
     return () => { cancelled = true }
-  }, [model.state.currentFile?.path, derived.subtitlePath, derived.subtitleSrtPath, derived.subtitleTranslationSourceLanguage, derived.subtitleTranslationModel, derived.subtitleTranslationGlossary, model.appSettings.asr.autoLoadCachedSubtitles, model.appSettings.subtitles.targetLanguage, model.appSettings.subtitles.displayMode, model.isTranslatingSubtitle, model.translatedSubtitleResult?.subtitleUrl])
+  }, [model.state.currentFile?.path, derived.subtitlePath, derived.subtitleSrtPath, derived.subtitleRevision, derived.subtitleTranslationSourceLanguage, derived.subtitleTranslationModel, derived.subtitleTranslationGlossary, model.appSettings.asr.autoLoadCachedSubtitles, model.appSettings.subtitles.targetLanguage, model.appSettings.subtitles.displayMode, model.isTranslatingSubtitle, model.translatedSubtitleResult?.subtitleUrl])
 
   useEffect(() => {
     const sourcePath = derived.summarySourcePath

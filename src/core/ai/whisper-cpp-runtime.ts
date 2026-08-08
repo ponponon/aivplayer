@@ -13,6 +13,7 @@ import {
   runAsrSubtitleJob
 } from './asr-subtitle-job.ts'
 import { recordSubtitleCacheManifest } from './subtitle-cache-manifest.ts'
+import { getSubtitleRevision } from './subtitle-sidecar.ts'
 import { convertVttToSrt } from './subtitle-writer.ts'
 import { readAsrRuntimeSettings, saveWhisperBinaryPath } from './asr-settings.ts'
 import { clearStaleSubtitleCache, getSubtitleCacheStats } from './subtitle-cache-management.ts'
@@ -740,6 +741,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
     ): Promise<AsrSubtitleTranslationResult> {
       const copy = getCopy()
       const sourceLanguage = request.sourceLanguage ?? 'auto'
+      const sourceSubtitleRevision = await getSubtitleRevision(request.subtitlePath, request.subtitleSrtPath)
       const provider = getTranslationProviderRef()
       const translationGlossary = getTranslationServiceConfig().glossary ?? undefined
 
@@ -748,6 +750,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
           success: false,
           message: copy.runtime.translationServiceMissing,
           sourceSubtitlePath: request.subtitlePath,
+          sourceSubtitleRevision,
           sourceLanguage,
           targetLanguage: request.targetLanguage,
           translationGlossary
@@ -768,6 +771,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
             success: false,
             message: copy.runtime.subtitleCacheMiss,
             sourceSubtitlePath: request.subtitlePath,
+            sourceSubtitleRevision,
             sourceLanguage,
             targetLanguage: request.targetLanguage,
             translationModel: provider.model,
@@ -778,13 +782,14 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
         await recordSubtitleCacheManifest({
           cacheDirectory: getSubtitleCacheDirectory(),
           mediaPath: request.mediaPath,
-          artifact: { kind: 'translation', sourceSubtitlePath: request.subtitlePath, sourceLanguage, targetLanguage: request.targetLanguage, model: provider.model, glossary: provider.glossary, subtitlePath: cached.subtitlePath, subtitleSrtPath: cached.subtitleSrtPath }
+          artifact: { kind: 'translation', sourceSubtitlePath: request.subtitlePath, sourceSubtitleRevision, sourceLanguage, targetLanguage: request.targetLanguage, model: provider.model, glossary: provider.glossary, subtitlePath: cached.subtitlePath, subtitleSrtPath: cached.subtitleSrtPath }
         })
 
         return {
           success: true,
           message: copy.runtime.subtitleTranslated,
           sourceSubtitlePath: request.subtitlePath,
+          sourceSubtitleRevision,
           sourceLanguage,
           targetLanguage: request.targetLanguage,
           translationModel: provider.model,
@@ -797,6 +802,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
           success: false,
           ...formatTranslationServiceError(copy, error),
           sourceSubtitlePath: request.subtitlePath,
+          sourceSubtitleRevision,
           sourceLanguage,
           targetLanguage: request.targetLanguage,
           translationModel: provider.model,
@@ -836,6 +842,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
     ): Promise<AsrSubtitleTranslationResult> {
       const copy = getCopy()
       const sourceLanguage = request.sourceLanguage ?? 'auto'
+      const sourceSubtitleRevision = await getSubtitleRevision(request.subtitlePath, request.subtitleSrtPath)
       const provider = createTranslationProvider()
 
       if (!provider) {
@@ -843,6 +850,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
           success: false,
           message: copy.runtime.translationServiceMissing,
           sourceSubtitlePath: request.subtitlePath,
+          sourceSubtitleRevision,
           sourceLanguage,
           targetLanguage: request.targetLanguage,
           translationGlossary: getTranslationServiceConfig().glossary ?? undefined
@@ -878,7 +886,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
         await recordSubtitleCacheManifest({
           cacheDirectory: getSubtitleCacheDirectory(),
           mediaPath: request.mediaPath,
-          artifact: { kind: 'translation', sourceSubtitlePath: request.subtitlePath, sourceLanguage, targetLanguage: request.targetLanguage, model: provider.model, glossary: provider.glossary, subtitlePath: result.subtitlePath, subtitleSrtPath: result.subtitleSrtPath }
+          artifact: { kind: 'translation', sourceSubtitlePath: request.subtitlePath, sourceSubtitleRevision, sourceLanguage, targetLanguage: request.targetLanguage, model: provider.model, glossary: provider.glossary, subtitlePath: result.subtitlePath, subtitleSrtPath: result.subtitleSrtPath }
         })
 
         jobOptions.onProgress?.({
@@ -891,6 +899,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
           success: true,
           message: copy.runtime.subtitleTranslated,
           sourceSubtitlePath: request.subtitlePath,
+          sourceSubtitleRevision,
           sourceLanguage,
           targetLanguage: request.targetLanguage,
           translationModel: provider.model,
@@ -913,6 +922,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
           message: failure.message,
           canceled,
           sourceSubtitlePath: request.subtitlePath,
+          sourceSubtitleRevision,
           sourceLanguage,
           targetLanguage: request.targetLanguage,
           translationModel: provider.model,
@@ -926,6 +936,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
     ): Promise<AsrSubtitleIncrementalTranslationResult> {
       const copy = getCopy()
       const sourceLanguage = request.sourceLanguage ?? 'auto'
+      const sourceSubtitleRevision = await getSubtitleRevision(request.sourceSubtitlePath)
       const provider = createTranslationProvider()
       const previousCueCount = request.translatedCueCount ?? 0
 
@@ -934,6 +945,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
           success: false,
           message: copy.runtime.translationServiceMissing,
           sourceSubtitlePath: request.sourceSubtitlePath,
+          sourceSubtitleRevision,
           sourceLanguage,
           targetLanguage: request.targetLanguage,
           translationGlossary: getTranslationServiceConfig().glossary ?? undefined,
@@ -989,7 +1001,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
           await recordSubtitleCacheManifest({
             cacheDirectory: getSubtitleCacheDirectory(),
             mediaPath: request.mediaPath,
-            artifact: { kind: 'translation', sourceSubtitlePath: request.sourceSubtitlePath, sourceLanguage, targetLanguage: request.targetLanguage, model: provider.model, glossary: provider.glossary, subtitlePath: resultPaths.subtitlePath, subtitleSrtPath: resultPaths.subtitleSrtPath }
+            artifact: { kind: 'translation', sourceSubtitlePath: request.sourceSubtitlePath, sourceSubtitleRevision, sourceLanguage, targetLanguage: request.targetLanguage, model: provider.model, glossary: provider.glossary, subtitlePath: resultPaths.subtitlePath, subtitleSrtPath: resultPaths.subtitleSrtPath }
           })
           if (result.subtitlePath !== resultPaths.subtitlePath) {
             await Promise.all([
@@ -1003,6 +1015,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
           success: true,
           message: copy.runtime.subtitleTranslated,
           sourceSubtitlePath: request.sourceSubtitlePath,
+          sourceSubtitleRevision,
           sourceLanguage,
           targetLanguage: request.targetLanguage,
           translationModel: provider.model,
@@ -1021,6 +1034,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
           message: failure.message,
           canceled,
           sourceSubtitlePath: request.sourceSubtitlePath,
+          sourceSubtitleRevision,
           sourceLanguage,
           targetLanguage: request.targetLanguage,
           translationModel: provider.model,

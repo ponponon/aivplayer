@@ -120,6 +120,31 @@ describe('subtitle translation', () => {
     )
   })
 
+  it('invalidates the translated cache when the source subtitle content changes', async () => {
+    const sourceSubtitlePath = join(tempDirectory, 'changing-source.vtt')
+    const cacheDirectory = join(tempDirectory, 'cache')
+    let callCount = 0
+    const provider: SubtitleTranslationProvider = {
+      id: 'mock',
+      model: 'mock-model',
+      translateBatch: async ({ segments }) => {
+        callCount += 1
+        return segments.map((segment) => ({ id: segment.id, text: `翻译：${segment.text}` }))
+      }
+    }
+
+    await writeFile(sourceSubtitlePath, ['WEBVTT', '', '00:00:00.000 --> 00:00:01.000', 'first'].join('\n'))
+    const first = await runSubtitleTranslationJob({ sourceSubtitlePath, cacheDirectory, sourceLanguage: 'en', targetLanguage: 'zh', provider })
+    await writeFile(sourceSubtitlePath, ['WEBVTT', '', '00:00:00.000 --> 00:00:01.000', 'second'].join('\n'))
+
+    await expect(findSubtitleTranslationCache({ sourceSubtitlePath, cacheDirectory, sourceLanguage: 'en', targetLanguage: 'zh', provider })).resolves.toBeNull()
+    const second = await runSubtitleTranslationJob({ sourceSubtitlePath, cacheDirectory, sourceLanguage: 'en', targetLanguage: 'zh', provider })
+
+    expect(second.subtitlePath).not.toBe(first.subtitlePath)
+    expect(callCount).toBe(2)
+    await expect(readFile(second.subtitlePath, 'utf8')).resolves.toContain('翻译：second')
+  })
+
   it('translates only newly completed batches while a source subtitle grows', async () => {
     const sourceSubtitlePath = join(tempDirectory, 'streaming-source.vtt')
     const cacheDirectory = join(tempDirectory, 'cache')

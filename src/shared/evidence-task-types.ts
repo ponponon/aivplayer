@@ -116,4 +116,5 @@ export type MediaEvidenceDraftImportResult = {
   subtitleSrtPath?: string
   subtitleUrl?: string
   subtitleSrtUrl?: string
+  subtitleRevision?: number
 }

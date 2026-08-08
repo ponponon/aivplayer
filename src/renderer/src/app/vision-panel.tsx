@@ -230,10 +230,11 @@ export function VisionPanel(): React.ReactElement {
       subtitleSrtPath: result.subtitleSrtPath,
       subtitleUrl: result.subtitleUrl,
       subtitleSrtUrl: result.subtitleSrtUrl,
-      subtitleRevision: Date.now()
+      subtitleRevision: result.subtitleRevision ?? Date.now()
     }
     app.setActiveSubtitle(subtitleResult)
     app.setSubtitleResult(subtitleResult)
+    app.setTranslatedSubtitleResult(null)
   }
 
   const saveSelectedCollection = (): void => {

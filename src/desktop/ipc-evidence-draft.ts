@@ -2,7 +2,7 @@ import { app, ipcMain } from 'electron'
 import { createHash } from 'node:crypto'
 import { mkdir, readdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
-import { getMediaSubtitleSidecarPaths } from '../core/ai/subtitle-sidecar'
+import { getMediaSubtitleSidecarPaths, resolveMediaSubtitleSidecar } from '../core/ai/subtitle-sidecar'
 import { writeSrt, writeVtt } from '../core/ai/subtitle-writer'
 import { createMediaEvidenceDraftId, normalizeMediaEvidenceDraftCues, summarizeMediaEvidenceDraftCues } from '../core/ai/media-evidence-draft'
 import { createVisionSourceFingerprint } from '../core/ai/vision-evidence'
@@ -180,6 +180,7 @@ async function importDraft(directoryPath: string, request: MediaEvidenceDraftImp
   const subtitleContent = writeVtt(draft.cues)
   await writeAtomic(subtitlePath, subtitleContent)
   await writeAtomic(subtitleSrtPath, writeSrt(draft.cues))
+  const importedSidecar = await resolveMediaSubtitleSidecar(draft.mediaPath)
   const subtitleFile = createMediaFile(subtitlePath)
   const subtitleSrtFile = createMediaFile(subtitleSrtPath)
   return {
@@ -189,7 +190,8 @@ async function importDraft(directoryPath: string, request: MediaEvidenceDraftImp
     subtitlePath,
     subtitleSrtPath,
     subtitleUrl: subtitleFile.url,
-    subtitleSrtUrl: subtitleSrtFile.url
+    subtitleSrtUrl: subtitleSrtFile.url,
+    subtitleRevision: importedSidecar?.status === 'ready' ? importedSidecar.revision : Date.now()
   }
 }
 
