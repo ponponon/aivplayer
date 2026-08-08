@@ -1,4 +1,4 @@
-import type { ClipExportMode } from './clip-export'
+import type { ClipExportMode, TimelineExportMode } from './clip-export'
 import type { EditingClipFilter, EditingClipTransition, EditingClipTreatment, EditingFrameId, EditingGraphic, EditingGraphicMotion, EditingOverlayTrackKind, EditingPersonMatte, EditingProjectFileOpenResult, EditingProjectFileSaveRequest, EditingProjectFileSaveResult, EditingTreatmentAnchor, EditingVideoBlockMotion, EditingVideoBlockPosition } from './editing-types'
 import type { SubtitleRenderSettings } from './subtitle-presets'
 import type { SubtitleWord } from './subtitle-timing'
@@ -36,9 +36,9 @@ export type MediaClipExportRequest = { mediaPath: string; startSeconds: number; 
 export type MediaClipExportResult = { success: boolean; message: string; videoPath?: string; videoUrl?: string; subtitleSrtPath?: string; subtitleSrtUrl?: string; canceled?: boolean }
 export type MediaTimelineExportClip = { mediaPath: string; startSeconds: number; endSeconds: number; volume?: number; muted?: boolean; treatment?: EditingClipTreatment; treatmentScale?: number; treatmentAnchor?: EditingTreatmentAnchor; treatmentSize?: number; filter?: EditingClipFilter; personMatte?: EditingPersonMatte; personMatteSourceFingerprint?: string; transitionIn?: EditingClipTransition; enterMotion?: EditingGraphicMotion; exitMotion?: EditingGraphicMotion; motionDurationSeconds?: number }
 export type MediaTimelineExportVideoBlock = { mediaPath: string; sourceStartSeconds: number; sourceEndSeconds: number; startSeconds: number; durationSeconds: number; position: EditingVideoBlockPosition; sizePercent?: number; borderRadius?: number; borderWidth?: number; enterMotion?: EditingVideoBlockMotion; exitMotion?: EditingVideoBlockMotion; motionDurationSeconds?: number }
-export type MediaTimelineExportPathRequest = { mediaPath: string; clipCount: number; durationSeconds: number; mode: ClipExportMode; suggestedPath?: string }
+export type MediaTimelineExportPathRequest = { mediaPath: string; clipCount: number; durationSeconds: number; mode: TimelineExportMode; suggestedPath?: string }
 export type MediaTimelineExportPathResult = { success: boolean; message: string; filePath?: string; canceled?: boolean }
-export type MediaTimelineExportRequest = { mediaPath: string; clips: MediaTimelineExportClip[]; graphics?: EditingGraphic[]; videoBlocks?: MediaTimelineExportVideoBlock[]; frameId?: EditingFrameId; overlayTrackOrder?: EditingOverlayTrackKind[]; mode: ClipExportMode; subtitlePath?: string; subtitleSrtPath?: string; subtitleText?: string; subtitleAssText?: string; subtitleRender?: SubtitleRenderSettings; targetWidth?: number; targetHeight?: number; fitMode?: 'contain' | 'cover'; outputVideoPath?: string }
+export type MediaTimelineExportRequest = { mediaPath: string; clips: MediaTimelineExportClip[]; graphics?: EditingGraphic[]; videoBlocks?: MediaTimelineExportVideoBlock[]; frameId?: EditingFrameId; overlayTrackOrder?: EditingOverlayTrackKind[]; mode: TimelineExportMode; subtitlePath?: string; subtitleSrtPath?: string; subtitleText?: string; subtitleAssText?: string; subtitleRender?: SubtitleRenderSettings; targetWidth?: number; targetHeight?: number; fitMode?: 'contain' | 'cover'; outputVideoPath?: string }
 export type ClipboardWriteTextRequest = { text: string }
 export type ClipboardWriteTextResult = { success: boolean; message: string }
 export type ImageSaveRequest = { dataUrl: string; fileName: string; extension: string; outputDirectoryPath?: string; overwriteOriginal?: boolean; originalPath?: string }

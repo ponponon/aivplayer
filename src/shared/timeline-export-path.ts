@@ -1,4 +1,4 @@
-import type { ClipExportMode } from './clip-export'
+import type { TimelineExportMode } from './clip-export'
 
 function lastPathSeparator(filePath: string): number {
   return Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'))
@@ -23,11 +23,11 @@ export function sanitizeTimelineExportStem(filePath: string): string {
   return stem || 'media'
 }
 
-export function timelineExportModeSuffix(mode: ClipExportMode): string {
-  return mode === 'external-subtitle' ? 'subs' : mode === 'burn-subtitle' ? 'burn' : 'video'
+export function timelineExportModeSuffix(mode: TimelineExportMode): string {
+  return mode === 'external-subtitle' ? 'subs' : mode === 'translation-subtitle' ? 'translation' : mode === 'burn-subtitle' ? 'burn' : 'video'
 }
 
-export function buildTimelineExportDefaultFileName(mediaPath: string, clipCount: number, durationSeconds: number, mode: ClipExportMode): string {
+export function buildTimelineExportDefaultFileName(mediaPath: string, clipCount: number, durationSeconds: number, mode: TimelineExportMode): string {
   const safeDuration = Math.max(0, Math.floor(durationSeconds))
   return `${sanitizeTimelineExportStem(mediaPath)}-timeline-${Math.max(0, clipCount)}clips-${safeDuration}s-${timelineExportModeSuffix(mode)}.mp4`
 }

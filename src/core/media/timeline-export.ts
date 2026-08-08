@@ -6,7 +6,7 @@ import { convertVttToSrt } from '../ai/subtitle-writer.ts'
 import { getAppCopy } from '../../shared/i18n'
 import type { EditingClipTransitionType, EditingFrameId, EditingGraphic, EditingGraphicMotion, EditingOverlayTrackKind, EditingVideoBlockPosition, EditingVideoBlockMotion } from '../../shared/editing-types'
 import type { AppLocale } from '../../shared/localization'
-import { MIN_CLIP_DURATION_SECONDS, type ClipExportMode } from '../../shared/clip-export'
+import { MIN_CLIP_DURATION_SECONDS, type TimelineExportMode } from '../../shared/clip-export'
 import { buildClipExportSubtitlePath, remapSrtToTimeline } from './clip-export'
 import type { MediaTimelineExportClip, MediaTimelineExportVideoBlock } from '../../shared/media-types'
 import { getEditingClipVolume, isEditingClipMuted } from '../editing/audio-operations'
@@ -29,7 +29,7 @@ export type RunTimelineExportOptions = {
   mediaPath: string
   clips: readonly TimelineExportClip[]
   outputVideoPath: string
-  mode: ClipExportMode
+  mode: TimelineExportMode
   subtitlePath?: string
   subtitleSrtPath?: string
   /** Already-remapped SRT text in edited timeline time. */
@@ -121,7 +121,7 @@ function normalizeClips(clips: readonly TimelineExportClip[]): NormalizedClip[] 
   })
 }
 
-export function buildTimelineExportDefaultVideoPath(mediaPath: string, clipCount: number, durationSeconds: number, mode: ClipExportMode): string {
+export function buildTimelineExportDefaultVideoPath(mediaPath: string, clipCount: number, durationSeconds: number, mode: TimelineExportMode): string {
   return joinTimelineExportPath(getTimelineExportPathDirectory(mediaPath), buildTimelineExportDefaultFileName(mediaPath, clipCount, durationSeconds, mode))
 }
 
@@ -655,7 +655,7 @@ export async function runTimelineExport(options: RunTimelineExportOptions): Prom
       if (burnResult.code !== 0) throw new Error(`${copy.runtime.clipExportFailed}：${tailOutput(burnResult.output)}`)
     }
 
-    if (options.mode === 'external-subtitle' && remappedSubtitleText != null) {
+    if ((options.mode === 'external-subtitle' || options.mode === 'translation-subtitle') && remappedSubtitleText != null) {
       const subtitleSrtPath = buildClipExportSubtitlePath(options.outputVideoPath)
       await writeFile(subtitleSrtPath, remappedSubtitleText, 'utf8')
       return { videoPath: options.outputVideoPath, subtitleSrtPath }
