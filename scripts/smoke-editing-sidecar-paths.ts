@@ -52,6 +52,9 @@ async function main(): Promise<void> {
       return entries[0] ?? null
     })
 
+    await page.waitForLoadState('domcontentloaded')
+    await page.waitForSelector('video.video-surface', { timeout: 10_000 })
+    await page.evaluate(() => localStorage.setItem('aivplayer.editing-ui-preferences.v1', JSON.stringify({ schemaVersion: 1, projects: { 'stale-project-from-removed-index': { detailsOpen: true, openGroups: { stale: true } } } })))
     await openEditor()
     const baseline = await readStoredProject()
     if (!baseline?.captionSourceRevision || !baseline.captionSourceRevisions || !baseline.captions.some((caption) => caption.text.includes('初始跨设备原文'))) throw new Error(`Sidecar path baseline was not loaded: ${JSON.stringify(baseline)}`)
@@ -75,6 +78,15 @@ async function main(): Promise<void> {
     const candidateAuditSessionScreenshotPath = join(smokeHomeDirectory, 'aivplayer-smoke-sidecar-paths-session.png')
     await page.screenshot({ path: candidateAuditSessionScreenshotPath, fullPage: false })
     await page.waitForFunction(() => localStorage.getItem('aivplayer.editing-ui-preferences.v1') !== null, undefined, { timeout: 10_000 })
+    const candidateAuditPrunedPreference = await page.evaluate(({ projectId, smokeDirectory }) => {
+      const raw = localStorage.getItem('aivplayer.editing-ui-preferences.v1') ?? ''
+      const parsed = JSON.parse(raw) as { projects?: Record<string, { detailsOpen?: boolean; openGroups?: Record<string, boolean> }> }
+      return {
+        staleProjectPresent: Boolean(parsed.projects?.['stale-project-from-removed-index']),
+        currentProjectPresent: projectId ? Boolean(parsed.projects?.[projectId]) : false,
+        containsSmokePath: raw.includes(smokeDirectory)
+      }
+    }, { projectId: baseline.id ?? null, smokeDirectory })
 
     await app.close()
     app = await electron.launch({
@@ -241,6 +253,7 @@ async function main(): Promise<void> {
       candidateAuditSessionRefreshedGroupOpen,
       candidateAuditSessionStorageValue,
       candidateAuditSessionScreenshotPath,
+      candidateAuditPrunedPreference,
       candidateAuditRestartedOuterOpen,
       candidateAuditRestartedGroupOpen,
       candidateAuditRestartedPreference,
@@ -273,7 +286,7 @@ async function main(): Promise<void> {
     }
     console.log('AIVPlayer Smoke Editing Sidecar Paths')
     console.log(JSON.stringify(result))
-    if (result.selectedSourcePath?.toLowerCase() !== sourcePath.toLowerCase() || result.selectedTranslationPath?.toLowerCase() !== translationPath.toLowerCase() || result.candidateRows < 6 || result.conflictRows !== 2 || result.ambiguityCount !== 1 || !result.ambiguityText?.includes('2') || result.equivalentCount < 1 || !result.equivalentText?.includes('内容相同') || result.candidateAuditStatus?.includes(smokeDirectory) || !result.candidateAuditDetailsSummary?.includes('查看完整候选路径') || !result.candidateAuditSessionInitialOuterOpen || !result.candidateAuditSessionInitialGroupOpen || !result.candidateAuditSessionRefreshedOuterOpen || !result.candidateAuditSessionRefreshedGroupOpen || result.candidateAuditSessionStorageValue !== null || !result.candidateAuditRestartedOuterOpen || !result.candidateAuditRestartedGroupOpen || result.candidateAuditRestartedPreference.schemaVersion !== 1 || result.candidateAuditRestartedPreference.detailsOpen !== true || result.candidateAuditRestartedPreference.openGroupCount !== 1 || result.candidateAuditRestartedPreference.containsSmokePath || !result.candidateAuditReloadedOuterOpen || !result.candidateAuditReloadedGroupOpen[0] || result.candidateAuditReloadedGroupOpen[1] || result.candidateAuditGroupCount !== 2 || result.candidateAuditGroupOpenBefore.some(Boolean) || !result.candidateAuditGroupLabels.some((label) => label.includes('原文')) || !result.candidateAuditGroupLabels.some((label) => label.includes('译文')) || !result.candidateAuditFirstGroupOpen || !result.candidateAuditFirstGroupDetailsVisible || !result.candidateAuditSecondGroupOpen || !result.candidateAuditFirstGroupClosed || !result.candidateAuditSecondGroupStillOpen || !result.candidateAuditDetailsText?.includes('内容相同') || !result.candidateAuditDetailsText?.includes('内容不同') || !result.candidateAuditDetailsText?.includes(smokeDirectory) || result.selectedCandidatePath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.selectedCandidateText !== '更新跨设备备用译文' || result.selectedCandidateRevision === null || result.undoPreferredPath?.toLowerCase() === result.alternateTranslationCandidatePath.toLowerCase() || result.undoCaptionText !== '初始跨设备译文' || result.redoPreferredPath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.redoCaptionText !== '更新跨设备备用译文' || result.clearedPreferredPath !== null || result.clearedCaptionText !== '更新跨设备译文' || result.clearUndoPreferredPath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.clearRedoPreferredPath !== null || result.consoleErrors.length > 0) process.exitCode = 1
+    if (result.selectedSourcePath?.toLowerCase() !== sourcePath.toLowerCase() || result.selectedTranslationPath?.toLowerCase() !== translationPath.toLowerCase() || result.candidateRows < 6 || result.conflictRows !== 2 || result.ambiguityCount !== 1 || !result.ambiguityText?.includes('2') || result.equivalentCount < 1 || !result.equivalentText?.includes('内容相同') || result.candidateAuditStatus?.includes(smokeDirectory) || !result.candidateAuditDetailsSummary?.includes('查看完整候选路径') || !result.candidateAuditSessionInitialOuterOpen || !result.candidateAuditSessionInitialGroupOpen || !result.candidateAuditSessionRefreshedOuterOpen || !result.candidateAuditSessionRefreshedGroupOpen || result.candidateAuditSessionStorageValue !== null || result.candidateAuditPrunedPreference.staleProjectPresent || !result.candidateAuditPrunedPreference.currentProjectPresent || result.candidateAuditPrunedPreference.containsSmokePath || !result.candidateAuditRestartedOuterOpen || !result.candidateAuditRestartedGroupOpen || result.candidateAuditRestartedPreference.schemaVersion !== 1 || result.candidateAuditRestartedPreference.detailsOpen !== true || result.candidateAuditRestartedPreference.openGroupCount !== 1 || result.candidateAuditRestartedPreference.containsSmokePath || !result.candidateAuditReloadedOuterOpen || !result.candidateAuditReloadedGroupOpen[0] || result.candidateAuditReloadedGroupOpen[1] || result.candidateAuditGroupCount !== 2 || result.candidateAuditGroupOpenBefore.some(Boolean) || !result.candidateAuditGroupLabels.some((label) => label.includes('原文')) || !result.candidateAuditGroupLabels.some((label) => label.includes('译文')) || !result.candidateAuditFirstGroupOpen || !result.candidateAuditFirstGroupDetailsVisible || !result.candidateAuditSecondGroupOpen || !result.candidateAuditFirstGroupClosed || !result.candidateAuditSecondGroupStillOpen || !result.candidateAuditDetailsText?.includes('内容相同') || !result.candidateAuditDetailsText?.includes('内容不同') || !result.candidateAuditDetailsText?.includes(smokeDirectory) || result.selectedCandidatePath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.selectedCandidateText !== '更新跨设备备用译文' || result.selectedCandidateRevision === null || result.undoPreferredPath?.toLowerCase() === result.alternateTranslationCandidatePath.toLowerCase() || result.undoCaptionText !== '初始跨设备译文' || result.redoPreferredPath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.redoCaptionText !== '更新跨设备备用译文' || result.clearedPreferredPath !== null || result.clearedCaptionText !== '更新跨设备译文' || result.clearUndoPreferredPath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.clearRedoPreferredPath !== null || result.consoleErrors.length > 0) process.exitCode = 1
   } finally {
     await app.close()
   }
