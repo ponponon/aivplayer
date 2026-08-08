@@ -185,6 +185,10 @@ function escapeSqlString(value: string): string {
   return value.replaceAll("'", "''")
 }
 
+function createVisionSourceFingerprint(videoPath: string, sizeBytes: number, mtimeMs: number): string {
+  return `${videoPath}:${sizeBytes}:${mtimeMs}`
+}
+
 function clampLimit(value: number | undefined): number {
   if (!Number.isFinite(value)) return 24
   return Math.min(100, Math.max(1, Math.floor(value as number)))
@@ -494,16 +498,21 @@ export class VisionLibrary {
     await db.createTable(SEARCH_DOCUMENT_TABLE_NAME, rows)
   }
 
-  private async replaceEvidenceRows(videoPath: string, rows: VisionEvidenceRow[]): Promise<void> {
+  private async replaceEvidenceRows(videoPath: string, rows: VisionEvidenceRow[], sourceFingerprint: string): Promise<void> {
     const db = await this.getDatabase()
     const existing = await this.getEvidenceTable()
+    const preservedRows = existing
+      ? (await existing.query().where(`video_path = '${escapeSqlString(videoPath)}'`).toArray() as unknown as VisionEvidenceRow[])
+        .filter((row) => row.evidence_type !== 'subtitle' && row.evidence_type !== 'visual' && row.source_fingerprint === sourceFingerprint)
+      : []
+    const nextRows = [...preservedRows, ...rows]
     if (existing) await existing.delete(`video_path = '${escapeSqlString(videoPath)}'`)
-    if (rows.length === 0) return
+    if (nextRows.length === 0) return
     if (existing) {
-      await existing.add(rows)
+      await existing.add(nextRows)
       return
     }
-    await db.createTable(EVIDENCE_TABLE_NAME, rows, { schema: VISION_EVIDENCE_SCHEMA })
+    await db.createTable(EVIDENCE_TABLE_NAME, nextRows, { schema: VISION_EVIDENCE_SCHEMA })
   }
 
   /** Adds one derived evidence row without replacing subtitle or visual evidence for the source. */
@@ -710,7 +719,7 @@ export class VisionLibrary {
     captionRows: VisionCaptionRow[]
   ): VisionEvidenceRow[] {
     const sourceId = createVisionSourceId(videoPath)
-    const sourceFingerprint = `${videoPath}:${snapshot.sizeBytes}:${snapshot.mtimeMs}`
+    const sourceFingerprint = createVisionSourceFingerprint(videoPath, snapshot.sizeBytes, snapshot.mtimeMs)
     const generatedAt = Date.now()
     const subtitleRows = captionRows.map((caption): VisionEvidenceRow => ({
       id: createVisionEvidenceId({
@@ -783,7 +792,7 @@ export class VisionLibrary {
     const captionRows = this.buildCaptionRows(videoPath, snapshot.subtitle, framePointers)
     await this.replaceCaptionRows(videoPath, captionRows)
     await this.replaceSearchDocumentRows(videoPath, this.buildSearchDocumentRows(framePointers, captionRows))
-    await this.replaceEvidenceRows(videoPath, this.buildEvidenceRows(videoPath, snapshot, intervalSeconds, framePointers, captionRows))
+    await this.replaceEvidenceRows(videoPath, this.buildEvidenceRows(videoPath, snapshot, intervalSeconds, framePointers, captionRows), createVisionSourceFingerprint(videoPath, snapshot.sizeBytes, snapshot.mtimeMs))
     await this.upsertSourceRow(this.createSourceRow(videoPath, snapshot, intervalSeconds, source.frame_count))
   }
 
@@ -827,7 +836,7 @@ export class VisionLibrary {
     const captionRows = this.buildCaptionRows(videoPath, snapshot.subtitle, rows)
     await this.replaceCaptionRows(videoPath, captionRows)
     await this.replaceSearchDocumentRows(videoPath, this.buildSearchDocumentRows(rows, captionRows))
-    await this.replaceEvidenceRows(videoPath, this.buildEvidenceRows(videoPath, snapshot, intervalSeconds, rows, captionRows))
+    await this.replaceEvidenceRows(videoPath, this.buildEvidenceRows(videoPath, snapshot, intervalSeconds, rows, captionRows), createVisionSourceFingerprint(videoPath, snapshot.sizeBytes, snapshot.mtimeMs))
     await this.upsertSourceRow(this.createSourceRow(videoPath, snapshot, intervalSeconds, rows.length))
     return rows.length
   }
