@@ -1127,3 +1127,4 @@
 
 Object.assign(enUS.editing.transitionLabels, { circleopen: 'Circle open', crosszoom: 'Cross zoom' })
 Object.assign(enUS.editing, { rebuildCaptionManifest: 'Rebuild caption manifest', rebuildingCaptionManifest: 'Rebuilding caption manifest…', captionManifestRebuilt: 'Caption manifest rebuilt', captionManifestRebuildFailed: 'Caption manifest rebuild failed' })
+Object.assign(enUS.editing, { projectOverwriteTitle: 'Overwrite project file', projectOverwriteDescription: (path: string) => `The file already exists: ${path}. Overwrite it?`, projectOverwriteConfirm: 'Overwrite and save', projectOverwriteCancel: 'Cancel' })

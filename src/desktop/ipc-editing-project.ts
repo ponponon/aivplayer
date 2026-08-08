@@ -1,4 +1,4 @@
-import { app, ipcMain } from 'electron'
+import { app, dialog, ipcMain } from 'electron'
 import { readFile, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -7,7 +7,7 @@ import { getAppCopy } from '../shared/i18n'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type { EditingProjectFileSaveRequest, EditingProjectFileSaveResult, EditingProjectFileOpenResult } from '../shared/editing-types'
 import { getCurrentLocale } from './desktop-settings'
-import { addEditingProjectSourcePathHints, resolveEditingProjectSourcePathHints } from './editing-project-path-hints'
+import { addEditingProjectSourcePathHints, resolveEditingProjectPathCaseInsensitive, resolveEditingProjectSourcePathHints } from './editing-project-path-hints'
 import { promptForOpenPath, promptForSavePath } from './media-dialogs'
 
 function safeProjectName(title: string): string {
@@ -27,7 +27,7 @@ export function registerEditingProjectIpc(): void {
     const filePath = await promptForOpenPath({ title: copy.openProject, filters: [{ name: 'AIVPlayer project', extensions: ['aivproj'] }, { name: 'All files', extensions: ['*'] }] })
     if (!filePath) return { success: false, canceled: true, message: '' }
     try {
-      const project = resolveEditingProjectSourcePathHints(parseEditingProjectFile(await readFile(filePath, 'utf8')), filePath, existsSync)
+      const project = resolveEditingProjectSourcePathHints(parseEditingProjectFile(await readFile(filePath, 'utf8')), filePath, existsSync, resolveEditingProjectPathCaseInsensitive)
       return { success: true, project, filePath, message: '' }
     } catch (error) {
       return { success: false, filePath, message: `${copy.projectOpenFailed}：${error instanceof Error ? error.message : String(error)}` }
@@ -39,6 +39,10 @@ export function registerEditingProjectIpc(): void {
       const selectedPath = await promptForSavePath({ title: copy.saveProject, defaultPath: request.suggestedPath ?? defaultProjectPath(request.project), buttonLabel: copy.saveProject, filters: [{ name: 'AIVPlayer project', extensions: ['aivproj'] }] })
       if (!selectedPath) return { success: false, canceled: true, message: '' }
       const filePath = selectedPath.toLowerCase().endsWith('.aivproj') ? selectedPath : `${selectedPath}.aivproj`
+      if (existsSync(filePath)) {
+        const overwrite = await dialog.showMessageBox({ type: 'warning', title: copy.projectOverwriteTitle, message: copy.projectOverwriteDescription(filePath), buttons: [copy.projectOverwriteConfirm, copy.projectOverwriteCancel], defaultId: 0, cancelId: 1, noLink: true })
+        if (overwrite.response !== 0) return { success: false, canceled: true, message: '' }
+      }
       await writeFile(filePath, serializeEditingProject(addEditingProjectSourcePathHints(request.project, filePath)), 'utf8')
       return { success: true, filePath, message: '' }
     } catch (error) {

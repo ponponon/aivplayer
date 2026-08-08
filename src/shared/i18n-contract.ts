@@ -17,6 +17,10 @@ type CaptionManifestCopy = {
   rebuildingCaptionManifest: string
   captionManifestRebuilt: string
   captionManifestRebuildFailed: string
+  projectOverwriteTitle: string
+  projectOverwriteDescription: (path: string) => string
+  projectOverwriteConfirm: string
+  projectOverwriteCancel: string
 }
 
 type BaseLocaleCopy = Widen<typeof zhCN>

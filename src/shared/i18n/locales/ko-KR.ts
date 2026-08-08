@@ -1127,3 +1127,4 @@
 
 Object.assign(koKR.editing.transitionLabels, { circleopen: '원형 열기', crosszoom: '크로스 줌' })
 Object.assign(koKR.editing, { rebuildCaptionManifest: '자막 매니페스트 재구축', rebuildingCaptionManifest: '자막 매니페스트 재구축 중…', captionManifestRebuilt: '자막 매니페스트를 재구축했습니다', captionManifestRebuildFailed: '자막 매니페스트 재구축 실패' })
+Object.assign(koKR.editing, { projectOverwriteTitle: '프로젝트 파일 덮어쓰기', projectOverwriteDescription: (path: string) => `파일이 이미 있습니다: ${path}. 덮어쓸까요?`, projectOverwriteConfirm: '덮어쓰고 저장', projectOverwriteCancel: '취소' })
