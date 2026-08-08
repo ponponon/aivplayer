@@ -47,6 +47,23 @@ describe('editing script text operations', () => {
     expect(isEditingScriptSegmentCaption(next[3]!, segment)).toBe(true)
   })
 
+  it('does not associate a caption from another media source by a reused ID or range', () => {
+    const foreignCaption = {
+      id: segment.id,
+      sourceId: 'other-source',
+      sourceStartSeconds: segment.sourceStartSeconds,
+      sourceEndSeconds: segment.sourceEndSeconds,
+      startSeconds: 0,
+      durationSeconds: 1,
+      kind: 'source' as const,
+      text: '另一素材字幕'
+    }
+
+    expect(isEditingScriptSegmentCaption(foreignCaption, segment)).toBe(false)
+    expect(isEditingScriptSegmentCaption({ ...foreignCaption, sourceId: segment.sourceId }, segment)).toBe(true)
+    expect(isEditingScriptSegmentCaption({ ...foreignCaption, sourceId: undefined }, segment)).toBe(true)
+  })
+
   it('normalizes one script row while preserving timing and translation', () => {
     const next = updateEditingScriptSegmentText([segment], segment.id, '  new   text  ')
     expect(next).toEqual([{ ...segment, text: 'new text' }])

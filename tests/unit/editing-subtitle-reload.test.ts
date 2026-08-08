@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createEditingProject } from '../../src/core/editing/project'
-import { applyEditingSubtitleReloadAddition, applyEditingSubtitleReloadChange, applyEditingSubtitleReloadKeep, applyEditingSubtitleReloadRemoval, buildEditingSubtitleReloadPreview, filterEditingSubtitleReloadPreview, getEditingSubtitleReloadChangeKey, getEditingSubtitleReloadChangePage, getEditingSubtitleReloadChangePreview, getEditingSubtitleReloadChangeScriptSegmentId, getEditingSubtitleReloadIncomingPreview, getEditingSubtitleReloadRemovalResolutionKeys, getEditingSubtitleReloadResolutionKeys, recordEditingSubtitleReloadResolution, replaceEditingCaptionsForReload, shareEditingSubtitleReloadScriptSegmentIds } from '../../src/core/editing/subtitle-reload'
+import { applyEditingSubtitleReloadAddition, applyEditingSubtitleReloadChange, applyEditingSubtitleReloadKeep, applyEditingSubtitleReloadRemoval, buildEditingSubtitleReloadPreview, filterEditingSubtitleReloadPreview, getEditingSubtitleReloadChangeKey, getEditingSubtitleReloadChangePage, getEditingSubtitleReloadChangePreview, getEditingSubtitleReloadChangeScriptSegmentId, getEditingSubtitleReloadIncomingPreview, getEditingSubtitleReloadRemovalResolutionKeys, getEditingSubtitleReloadResolutionKeys, isEditingOrphanTranslationCaption, recordEditingSubtitleReloadResolution, replaceEditingCaptionsForReload, shareEditingSubtitleReloadScriptSegmentIds } from '../../src/core/editing/subtitle-reload'
 
 const source = { id: 'source-1', path: '/tmp/demo.mp4', name: 'demo.mp4', fingerprint: 'demo:10', durationSeconds: 10 }
 
@@ -331,6 +331,27 @@ describe('editing subtitle reload', () => {
     expect(removedTranslation?.captions).toHaveLength(2)
     expect(removedTranslation?.captions.every((caption) => caption.kind === 'source')).toBe(true)
     expect(removedTranslation?.scriptSegments?.[0]).not.toHaveProperty('translationText')
+  })
+
+  it('does not let a deleted segment from another media source mark a translation orphan', () => {
+    const oldSegment = { id: 'source-reused-caption-1', sourceId: 'source-old', sourceStartSeconds: 5, sourceEndSeconds: 6, text: '旧素材原文', translationText: '旧素材译文', deleted: true }
+    const oldTranslation = { id: 'translation-reused-caption-1', sourceId: 'source-old', kind: 'translation' as const, text: oldSegment.translationText, startSeconds: 2, durationSeconds: 1 }
+    const newTranslation = { ...oldTranslation, sourceId: 'source-new', text: '新素材译文' }
+
+    expect(isEditingOrphanTranslationCaption({ scriptSegments: [oldSegment] }, oldTranslation)).toBe(true)
+    expect(isEditingOrphanTranslationCaption({ scriptSegments: [oldSegment] }, newTranslation)).toBe(false)
+  })
+
+  it('does not merge reload families when reused IDs belong to different media sources', () => {
+    const current = [{ id: 'source-reused-caption-1', sourceId: 'source-old', sourceStartSeconds: 1, sourceEndSeconds: 2, startSeconds: 0, durationSeconds: 1, kind: 'source' as const, text: '旧素材原文' }]
+    const incoming = [{ ...current[0], sourceId: 'source-new', text: '新素材原文' }]
+    const preview = buildEditingSubtitleReloadPreview(current, incoming, [{ id: current[0]!.id, sourceId: 'source-old', sourceStartSeconds: 1, sourceEndSeconds: 2, text: current[0]!.text }])
+
+    expect(preview.changes).toMatchObject([
+      { id: 'source-reused-caption-1', kind: 'source', status: 'added', incomingText: '新素材原文' },
+      { id: 'source-reused-caption-1', kind: 'source', status: 'removed', currentText: '旧素材原文' }
+    ])
+    expect(preview.changedCount).toBe(0)
   })
 
   it('rejects keeping a changed, non-removed, stale, or missing cue', () => {
