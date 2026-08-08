@@ -28,7 +28,11 @@ export type EditingProjectStatus = {
   message: string
   details?: {
     label: string
-    items: string[]
+    groups: Array<{
+      id: string
+      label: string
+      items: string[]
+    }>
   }
 }
 

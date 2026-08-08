@@ -57,16 +57,17 @@ export function formatEditingCaptionCandidateStatus(project: Pick<EditingProject
     const kindLabel = audit.kind === 'source' ? reloadCopy.source : reloadCopy.translation
     return candidateCopy.auditSummary(sourceName, kindLabel, audit.validPathCount, audit.validCandidateCount, getEditingCaptionCandidatePathLabel(audit.selectedPath))
   })
-  const details = audits.flatMap((audit) => {
+  const groups = audits.map((audit) => {
     const sourceName = sourceNames.get(audit.sourceId) ?? reloadCopy.unknownSource
     const kindLabel = audit.kind === 'source' ? reloadCopy.source : reloadCopy.translation
-    return [
+    const items = [
       candidateCopy.auditSelected(sourceName, kindLabel, audit.selectedPath ?? '—'),
       ...audit.equivalentCandidateGroups.map((group) => candidateCopy.auditEquivalent(sourceName, kindLabel, group.join(' · '))),
       ...(audit.validCandidateCount > 1 ? [candidateCopy.auditDistinct(sourceName, kindLabel, audit.validCandidatePaths.join(' · '))] : [])
     ]
+    return { id: `${audit.sourceId}-${audit.kind}`, label: `${sourceName} / ${kindLabel}`, items }
   })
-  return { success: audits.every((audit) => audit.validCandidateCount <= 1), message: messages.join('；'), details: { label: candidateCopy.detailsLabel, items: details } }
+  return { success: audits.every((audit) => audit.validCandidateCount <= 1), message: messages.join('；'), details: { label: candidateCopy.detailsLabel, groups } }
 }
 
 export function useEditingCaptionEffect(model: AppModel, derived: AppDerived): {

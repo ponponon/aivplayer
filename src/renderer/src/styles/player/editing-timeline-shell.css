@@ -89,7 +89,10 @@
 
 .editing-project-status-details { min-width: 0; }
 .editing-project-status-details summary { width: fit-content; color: var(--accent); cursor: pointer; font-size: 8px; font-weight: 700; }
-.editing-project-status-details-list { display: grid; gap: 2px; max-height: 96px; margin-top: 2px; overflow: auto; color: var(--text-muted); font-size: 8px; line-height: 1.35; }
+.editing-project-status-details-groups { display: grid; gap: 5px; max-height: 112px; margin-top: 3px; overflow: auto; }
+.editing-project-status-details-group { display: grid; gap: 2px; min-width: 0; }
+.editing-project-status-details-group > strong { color: var(--text-secondary); font-size: 8px; font-weight: 700; }
+.editing-project-status-details-list { display: grid; gap: 2px; color: var(--text-muted); font-size: 8px; line-height: 1.35; }
 .editing-project-status-details-list span { min-width: 0; overflow-wrap: anywhere; }
 
 .editing-project-status.is-success {
