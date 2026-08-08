@@ -846,3 +846,9 @@
 - 现象：首次 Smoke 用 `source-caption-10` 作为 DOM test id，实际 loader 会把媒体 fingerprint 生成的随机 source ID 拼进 cue ID，导致功能已选中但测试找不到元素。
 - 经验：涉及媒体 fingerprint、临时目录或持久化生成 ID 时，Smoke 应按稳定可见文本 / 时间范围定位目标，再读取实际 test id；不要把存储层随机值当用户行为契约。
 - 处理：Smoke 按“原始字幕 10”定位脚本行和字幕卡片，随后验证它们的实际 class 都包含 `is-selected`；真实重跑通过并保留选中态截图。
+
+## 2026-08-08：新增字幕预览不能伪造当前工程实体
+
+- 现象：incoming-only cue 在强制重载前不存在于当前 `scriptSegments` / captions；如果直接调用统一选中入口，会留下旧选中态，或制造一条不可持久化的假行。
+- 经验：预览必须是独立、只读、临时 overlay；点击 added cue 时先清空旧选择，只显示 incoming 文本和时间范围；关闭、保留当前编辑或强制重载时清理预览。
+- 处理：新增 core preview helper、时间线状态条和临时字幕卡片；真实 Electron Smoke 验证预览出现、旧脚本行取消选中、关闭后两个 preview DOM 均消失，并确认控制台无错误。
