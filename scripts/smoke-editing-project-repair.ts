@@ -24,7 +24,8 @@ async function main(): Promise<void> {
     updatedAt: 100,
     sources: [{ id: 'source-repair-smoke', path: missingPath, name: 'repair-source.mp4', fingerprint: `${missingPath}:${durationSeconds}`, durationSeconds }],
     videoClips: [{ id: 'clip-repair-smoke', sourceId: 'source-repair-smoke', sourceStartSeconds: 0, sourceEndSeconds: durationSeconds }],
-    captions: []
+    captions: [],
+    captionSourcePaths: { 'source-repair-smoke': { source: join(smokeDirectory, 'old-location', 'repair-source.srt'), translation: null } }
   }
   await writeFile(projectPath, `${JSON.stringify(project, null, 2)}\n`, 'utf8')
   const smokeHomeDirectory = await mkdtemp(join(tmpdir(), 'aivplayer-smoke-editing-project-repair-home-'))
@@ -48,12 +49,12 @@ async function main(): Promise<void> {
     await page.waitForFunction(() => document.querySelector('.editing-project-status')?.textContent?.includes('→') === true, null, { timeout: 20_000 })
     const status = await page.locator('.editing-project-status').textContent()
     const stored = await page.evaluate(() => {
-      const projects = JSON.parse(localStorage.getItem('aivplayer.editing-projects.v1') ?? '{}') as Record<string, { sources?: Array<{ id: string; path: string }>; title?: string }>
+      const projects = JSON.parse(localStorage.getItem('aivplayer.editing-projects.v1') ?? '{}') as Record<string, { sources?: Array<{ id: string; path: string }>; captionSourcePaths?: Record<string, { source: string | null; translation: string | null }>; title?: string }>
       return Object.values(projects).find((candidate) => candidate.title === 'Repair summary Smoke') ?? null
     })
-    const result = { status: status ?? '', repairedSource: stored?.sources?.find((source) => source.id === 'source-repair-smoke') ?? null, consoleErrors }
+    const result = { status: status ?? '', repairedSource: stored?.sources?.find((source) => source.id === 'source-repair-smoke') ?? null, repairedCaptionPaths: stored?.captionSourcePaths?.['source-repair-smoke'] ?? null, consoleErrors }
     console.log(`AIVPlayer Smoke Editing Project Repair\n${JSON.stringify(result)}`)
-    if (!status?.includes('→') || result.repairedSource?.path !== replacementPath || result.repairedSource.id !== 'source-repair-smoke' || consoleErrors.length > 0) process.exitCode = 1
+    if (!status?.includes('→') || !status.includes('固定') || result.repairedSource?.path !== replacementPath || result.repairedSource.id !== 'source-repair-smoke' || result.repairedCaptionPaths?.source !== null || consoleErrors.length > 0) process.exitCode = 1
   } finally {
     await app.close()
   }
