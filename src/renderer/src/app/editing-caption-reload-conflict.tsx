@@ -10,6 +10,7 @@ type EditingCaptionReloadConflictProps = {
   onSeek: (seconds: number) => void
   onPreviewIncoming: (change: EditingSubtitleReloadChange) => void
   onAcceptIncoming: (change: EditingSubtitleReloadChange) => void
+  onAddIncoming: (change: EditingSubtitleReloadChange) => void
   onSelectScriptSegment: (segmentId: string) => void
   onKeepCurrent: () => void
   onForceReload: () => void
@@ -49,7 +50,7 @@ function parseSeconds(value: string): number | undefined {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined
 }
 
-export function EditingCaptionReloadConflict({ conflict, copy, onSeek, onPreviewIncoming, onAcceptIncoming, onSelectScriptSegment, onKeepCurrent, onForceReload }: EditingCaptionReloadConflictProps): React.ReactElement {
+export function EditingCaptionReloadConflict({ conflict, copy, onSeek, onPreviewIncoming, onAcceptIncoming, onAddIncoming, onSelectScriptSegment, onKeepCurrent, onForceReload }: EditingCaptionReloadConflictProps): React.ReactElement {
   const { preview } = conflict
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<EditingSubtitleReloadChangeStatusFilter>('all')
@@ -132,6 +133,7 @@ export function EditingCaptionReloadConflict({ conflict, copy, onSeek, onPreview
                 <button type="button" disabled={change.currentStartSeconds === undefined} onClick={() => change.currentStartSeconds !== undefined && seekChange(change, change.currentStartSeconds)} title={copy.seekCurrent} data-testid={`editing-caption-reload-seek-current-${change.status}-${change.kind}-${change.id}`}>{copy.seekCurrent} {formatSubtitleReloadTime(change.currentStartSeconds)}</button>
                 <button type="button" disabled={change.incomingStartSeconds === undefined} onClick={() => change.incomingStartSeconds !== undefined && seekChange(change, change.incomingStartSeconds)} title={incomingActionLabel(change, copy)} data-testid={`editing-caption-reload-seek-incoming-${change.status}-${change.kind}-${change.id}`}>{incomingActionLabel(change, copy)} {formatSubtitleReloadTime(change.incomingStartSeconds)}</button>
                 {change.status === 'changed' ? <button className="editing-caption-reload-accept" type="button" onClick={() => onAcceptIncoming(change)} title={copy.acceptIncoming} data-testid={`editing-caption-reload-accept-${change.kind}-${change.id}`}><Check size={12} aria-hidden="true" />{copy.acceptIncoming}</button> : null}
+                {change.status === 'added' ? <button className="editing-caption-reload-add" type="button" onClick={() => onAddIncoming(change)} title={copy.addIncoming} data-testid={`editing-caption-reload-add-${change.kind}-${change.id}`}><Check size={12} aria-hidden="true" />{copy.addIncoming}</button> : null}
               </div>
             </div>
           ))}
