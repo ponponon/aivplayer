@@ -75,6 +75,7 @@ describe('editing timeline source contracts', () => {
     const timelineExport = readSource('src/core/media/timeline-export.ts')
     const timelineExportIpc = readSource('src/desktop/ipc-timeline-export.ts')
     const smokeScript = readSource('scripts/smoke-editing-script.ts')
+    const captionReloadSmoke = readSource('scripts/smoke-editing-caption-reload.ts')
     const bilingualCaptionSmoke = readSource('scripts/smoke-bilingual-caption-export.ts')
 
     expect(stage).toContain("app.isEditingMode ? <EditingTimeline /> : <PlaybackControls />")
@@ -246,6 +247,9 @@ describe('editing timeline source contracts', () => {
     expect(videoBlockTrack).toContain('editing-timeline-trim-handle')
     expect(trackTrim).toContain('updateEditingTrackTrim')
     expect(smokeScript).toContain('graphicTrimBefore')
+    expect(captionReloadSmoke).toContain('editing-caption-reload-conflict')
+    expect(captionReloadSmoke).toContain('editing-caption-reload-keep')
+    expect(captionReloadSmoke).toContain('editing-caption-reload-force')
     expect(smokeScript).toContain('filterAfterSliderDrag')
     expect(smokeScript).toContain('filterAfterOneUndo')
     expect(smokeScript).toContain('scriptWordCount')

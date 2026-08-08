@@ -1,12 +1,18 @@
 import { parseVtt } from '../../../core/ai/subtitle-writer'
 import type { EditingCaption } from '../../../shared/editing-types'
-import { attachSubtitleWords, getSubtitleWordSidecarPath, parseWhisperSubtitleWords } from '../../../shared/subtitle-timing'
+import { attachSubtitleWords, getSubtitleWordSidecarPath, joinSubtitleWords, parseWhisperSubtitleWords, type SubtitleWord } from '../../../shared/subtitle-timing'
 
 export type CaptionSource = {
   path: string | null
   pathCandidates?: readonly string[]
   sourceId: string
   kind: EditingCaption['kind']
+}
+
+/** Prevent a stale Whisper token sidecar from rendering words from an older subtitle revision. */
+export function areEditingCaptionWordsCompatible(captionText: string, words: readonly SubtitleWord[]): boolean {
+  const normalize = (text: string): string => text.replace(/\s+/gu, '').trim()
+  return normalize(captionText) === normalize(joinSubtitleWords(words))
 }
 
 export function createEditingCaptionPathCandidates(mediaPath: string, preferredPath: string | null, kind: EditingCaption['kind']): string[] {
@@ -34,7 +40,7 @@ async function loadCaptionSource(source: CaptionSource): Promise<EditingCaption[
   const segments = attachSubtitleWords(parseVtt(text), words, source.kind === 'source')
   return segments.flatMap((segment, index) => {
       const durationSeconds = Math.max(0, segment.endSeconds - segment.startSeconds)
-      const captionWords = source.kind === 'source' && segment.words
+      const captionWords = source.kind === 'source' && segment.words && areEditingCaptionWordsCompatible(segment.text, segment.words)
         ? segment.words.map((word) => ({ startSeconds: Math.max(0, word.startSeconds - segment.startSeconds), endSeconds: Math.max(0, word.endSeconds - segment.startSeconds), text: word.text }))
         : undefined
       return durationSeconds > 0 ? [{ id: `${source.kind}-${source.sourceId}-${index}`, sourceId: source.sourceId, sourceStartSeconds: segment.startSeconds, sourceEndSeconds: segment.endSeconds, kind: source.kind, startSeconds: segment.startSeconds, durationSeconds, text: segment.text, ...(captionWords && captionWords.length > 0 ? { words: captionWords } : {}) }] : []
