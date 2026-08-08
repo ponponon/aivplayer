@@ -1068,3 +1068,9 @@
 - 现象：source ID 会在人工素材修复时保持不变，但旧工程里的 `captionSourcePaths` 可能只有绝对路径、没有相对工程提示；如果直接保留，字幕 loader 会优先读取旧素材旁车，即使新素材文件名已经变化。
 - 经验：旁车偏好必须和迁移证据绑定。存在非空 `captionSourcePathHints` 时可以保留用户明确选择；没有可迁移 hint 的固定路径不能静默跨素材复用，应清除后按新媒体路径重新生成候选。
 - 处理：`relinkEditingProjectSources` 在 source 重绑定时按 sourceId 清理无 portable hint 的 source / translation 偏好，保留有相对 hint 的路径；工程状态显示清理数量，单测验证一条清除、一条保留，Smoke 验证旧 source 字幕路径变为 `null` 且控制台无错误。
+
+## 2026-08-09：字幕候选摘要必须区分同内容别名和不同内容
+
+- 现象：loader 为了避免 macOS 大小写不敏感文件系统的重复告警，会把解析内容相同的 `.vtt` / `.VTT` 合并；如果只保留合并后的代表路径，工程打开状态无法解释实际扫描过的路径；反过来如果按路径直接计数，又会把同一份字幕误报成歧义。
+- 经验：候选路径证据、内容变体和人工决策是三个不同维度。应保留等价候选分组，使用不同内容的代表路径驱动切换按钮，并在状态与冲突面板中明确说明当前选中路径及两类候选。
+- 处理：新增 `equivalentCandidateGroups` 与 `getEditingCaptionCandidateAudits`，四语言状态 / UI 文案分别说明内容相同别名和内容不同候选；真实 Electron Smoke 验证同内容分组、不同内容提示、候选切换、撤销 / 重做和 `consoleErrors:[]`。
