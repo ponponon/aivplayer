@@ -85,6 +85,38 @@ describe('editing subtitle reload', () => {
     expect(buildEditingSubtitleReloadPreview(current, incoming).hasChanges).toBe(false)
   })
 
+  it('treats multi-range fragments as one sidecar family and updates every materialized copy', () => {
+    const segment = { id: 'segment-1', sourceId: source.id, sourceStartSeconds: 1, sourceEndSeconds: 2, text: '旧原文', translationText: '旧译文' }
+    const currentSource = [
+      { ...caption({ id: segment.id, text: segment.text, startSeconds: 0 }), editedRangeGroupId: segment.id, editedRangeIndex: 0 },
+      { ...caption({ id: `${segment.id}-1`, text: segment.text, startSeconds: 2 }), editedRangeGroupId: segment.id, editedRangeIndex: 1 }
+    ]
+    const currentTranslation = [
+      { ...caption({ id: `translation-${segment.id}`, kind: 'translation', text: segment.translationText, startSeconds: 0 }), editedRangeGroupId: segment.id, editedRangeIndex: 0 },
+      { ...caption({ id: `translation-${segment.id}-1`, kind: 'translation', text: segment.translationText, startSeconds: 2 }), editedRangeGroupId: segment.id, editedRangeIndex: 1 }
+    ]
+    const current = [...currentSource, ...currentTranslation]
+    const incoming = [
+      caption({ id: segment.id, text: '新原文', startSeconds: 1 }),
+      caption({ id: `translation-${segment.id}`, kind: 'translation', text: '新译文', startSeconds: 1 })
+    ]
+    const project = { ...createEditingProject(source, { now: 100 }), captions: current, scriptSegments: [segment] }
+    const preview = buildEditingSubtitleReloadPreview(current, incoming, [segment])
+
+    expect(preview.changes).toMatchObject([
+      { id: segment.id, kind: 'source', status: 'changed', incomingText: '新原文' },
+      { id: `translation-${segment.id}`, kind: 'translation', status: 'changed', incomingText: '新译文' }
+    ])
+    expect(preview.removedCount).toBe(0)
+
+    const next = applyEditingSubtitleReloadChange(project, incoming, preview.changes[0]!, 200)
+    expect(next?.captions.filter((item) => item.kind === 'source')).toMatchObject([
+      { id: segment.id, text: '新原文', startSeconds: 0, editedRangeIndex: 0 },
+      { id: `${segment.id}-1`, text: '新原文', startSeconds: 2, editedRangeIndex: 1 }
+    ])
+    expect(next?.captions.filter((item) => item.kind === 'translation')).toEqual(currentTranslation)
+  })
+
   it('keeps the complete diff and paginates searchable changes without losing counts', () => {
     const current = Array.from({ length: 18 }, (_, index) => caption({ id: `source-caption-${index}`, text: `当前字幕 ${index}`, startSeconds: index + 1, sourceStartSeconds: index + 1, sourceEndSeconds: index + 2 }))
     const incoming = current.map((item, index) => ({ ...item, text: `外部字幕 ${index}` }))

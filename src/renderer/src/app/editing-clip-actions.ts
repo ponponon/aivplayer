@@ -31,7 +31,7 @@ export function createEditingClipActions(model: AppModel) {
       ...project,
       updatedAt: Date.now(),
       videoClips: nextClips,
-      captions: reorderEditingCaptions(project.captions, project.videoClips, nextClips)
+      captions: reorderEditingCaptions(project.captions, project.videoClips, nextClips, project.scriptSegments)
     }
     model.setEditingPast((past) => [...past, project])
     model.setEditingFuture([])

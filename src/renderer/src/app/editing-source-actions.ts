@@ -22,7 +22,7 @@ function createSource(file: MediaFile, metadata: MediaProbeMetadata | null, exis
 function buildNextProject(model: AppModel, sources: EditingSource[], clips: EditingVideoClip[]): EditingProject | null {
   const project = model.editingProject
   if (!project) return null
-  return { ...project, updatedAt: Date.now(), sources, videoClips: clips, captions: reorderEditingCaptions(project.captions, project.videoClips, clips) }
+  return { ...project, updatedAt: Date.now(), sources, videoClips: clips, captions: reorderEditingCaptions(project.captions, project.videoClips, clips, project.scriptSegments) }
 }
 
 export function createEditingSourceActions(model: AppModel, derived: AppDerived) {

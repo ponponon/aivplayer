@@ -116,6 +116,29 @@ export function isEditingScriptSegmentCaption(caption: EditingCaption, segment: 
   return belongsToEditingScriptSegment(caption, segment, 'source') || belongsToEditingScriptSegment(caption, segment, 'translation')
 }
 
+/** Finds the script row represented by a source or translation caption, including legacy fragments. */
+export function findEditingCaptionScriptSegment(caption: EditingCaption, segments: readonly EditingScriptSegment[] | undefined): EditingScriptSegment | undefined {
+  return segments?.find((segment) => isEditingScriptSegmentCaption(caption, segment))
+}
+
+/** Returns the materialized range index, deriving it from legacy IDs when needed. */
+export function getEditingCaptionFragmentIndex(caption: EditingCaption, segments?: readonly EditingScriptSegment[]): number | null {
+  if (caption.editedRangeIndex !== undefined && Number.isInteger(caption.editedRangeIndex) && caption.editedRangeIndex >= 0) return caption.editedRangeIndex
+  const segment = findEditingCaptionScriptSegment(caption, segments)
+  if (!segment) return null
+  const baseId = caption.kind === 'source' ? segment.id : `translation-${segment.id}`
+  if (caption.id === baseId) return 0
+  const suffix = caption.id.startsWith(`${baseId}-`) ? caption.id.slice(baseId.length + 1) : ''
+  return /^\d+$/.test(suffix) ? Number(suffix) : null
+}
+
+/** Returns the stable fragment family key, including for captions saved before the metadata was added. */
+export function getEditingCaptionFragmentGroupId(caption: EditingCaption, segments?: readonly EditingScriptSegment[]): string | null {
+  if (caption.editedRangeGroupId) return caption.editedRangeGroupId
+  const fragmentIndex = getEditingCaptionFragmentIndex(caption, segments)
+  return fragmentIndex === null ? null : findEditingCaptionScriptSegment(caption, segments)?.id ?? null
+}
+
 /** Updates a source caption's visible text without discarding its surviving word timings. */
 export function syncEditingSourceCaptionText(captions: readonly EditingCaption[], captionId: string, text: string): EditingCaption[] {
   const normalizedText = normalizeScriptText(text)
@@ -175,11 +198,11 @@ export function scriptSegmentCaption(
   text: string,
   startSeconds: number,
   durationSeconds: number,
-  fragmentIndex = 0
+  fragmentIndex?: number
 ): EditingCaption {
   const baseId = kind === 'source' ? segment.id : `${kind}-${segment.id}`
   return {
-    id: fragmentIndex === 0 ? baseId : `${baseId}-${fragmentIndex}`,
+    id: fragmentIndex === undefined || fragmentIndex === 0 ? baseId : `${baseId}-${fragmentIndex}`,
     sourceId: segment.sourceId,
     sourceStartSeconds: segment.sourceStartSeconds,
     sourceEndSeconds: segment.sourceEndSeconds,
@@ -187,6 +210,7 @@ export function scriptSegmentCaption(
     text,
     startSeconds,
     durationSeconds,
+    ...(fragmentIndex !== undefined ? { editedRangeGroupId: segment.id, editedRangeIndex: fragmentIndex } : {}),
     ...(segment.words && segment.words.length > 0 ? { words: segment.words } : {})
   }
 }
@@ -202,8 +226,9 @@ export function restoreEditingScriptSegmentCaptions(
 
   const existingTranslation = captions.find((caption) => belongsToEditingScriptSegment(caption, segment, 'translation'))
   const next = captions.filter((caption) => !isEditingScriptSegmentCaption(caption, segment))
-  next.push(...ranges.map((range, index) => scriptSegmentCaption(segment, 'source', segment.text, range.startSeconds, Math.max(0.1, range.endSeconds - range.startSeconds), index)))
+  const fragmentIndex = ranges.length > 1 ? (index: number): number | undefined => index : undefined
+  next.push(...ranges.map((range, index) => scriptSegmentCaption(segment, 'source', segment.text, range.startSeconds, Math.max(0.1, range.endSeconds - range.startSeconds), fragmentIndex?.(index))))
   if (existingTranslation) next.push(existingTranslation)
-  else if (segment.translationText) next.push(...ranges.map((range, index) => scriptSegmentCaption(segment, 'translation', segment.translationText!, range.startSeconds, Math.max(0.1, range.endSeconds - range.startSeconds), index)))
+  else if (segment.translationText) next.push(...ranges.map((range, index) => scriptSegmentCaption(segment, 'translation', segment.translationText!, range.startSeconds, Math.max(0.1, range.endSeconds - range.startSeconds), fragmentIndex?.(index))))
   return next.sort((left, right) => left.startSeconds - right.startSeconds || left.kind.localeCompare(right.kind) || left.id.localeCompare(right.id))
 }

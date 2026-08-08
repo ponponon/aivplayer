@@ -52,7 +52,7 @@ export function useEditingCaptionEffect(model: AppModel, derived: AppDerived): {
       if (cancelled || captions.length === 0) return
       model.setEditingProject((current) => {
         if (!current || current.id !== project.id) return current
-        const fullPreview = buildEditingSubtitleReloadPreview(current.captions, captions)
+        const fullPreview = buildEditingSubtitleReloadPreview(current.captions, captions, current.scriptSegments)
         const preview = getPendingCaptionReloadPreview(current, sourceRevisionKey, fullPreview)
         const hasAcceptedRevision = typeof current.captionSourceRevision === 'string' && current.captionSourceRevision.length > 0
         if (hasAcceptedRevision && current.captionSourceRevision !== sourceRevisionKey && preview.hasChanges) {

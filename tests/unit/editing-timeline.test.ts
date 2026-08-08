@@ -157,6 +157,21 @@ describe('editing timeline operations', () => {
     expect(reorderEditingCaptions(captions, clips, next)).toMatchObject([{ id: 'caption-b', startSeconds: 0.5, durationSeconds: 1 }])
   })
 
+  it('re-maps each materialized fragment to its own range without duplicating captions', () => {
+    const clips = [clip('a', 0, 1), clip('b', 10, 11), clip('c', 0, 1)]
+    const next = [clips[1]!, clips[0]!, clips[2]!]
+    const segment = { id: 'segment-1', sourceId: 'main', sourceStartSeconds: 0, sourceEndSeconds: 1, text: '重复片段' }
+    const captions: EditingCaption[] = [
+      { id: 'segment-1', sourceId: 'main', sourceStartSeconds: 0, sourceEndSeconds: 1, editedRangeGroupId: segment.id, editedRangeIndex: 0, startSeconds: 0, durationSeconds: 1, text: segment.text, kind: 'source' },
+      { id: 'segment-1-1', sourceId: 'main', sourceStartSeconds: 0, sourceEndSeconds: 1, editedRangeGroupId: segment.id, editedRangeIndex: 1, startSeconds: 1, durationSeconds: 1, text: segment.text, kind: 'source' }
+    ]
+
+    expect(reorderEditingCaptions(captions, clips, next, [segment])).toMatchObject([
+      { id: 'segment-1', editedRangeIndex: 0, startSeconds: 1, durationSeconds: 1 },
+      { id: 'segment-1-1', editedRangeIndex: 1, startSeconds: 2, durationSeconds: 1 }
+    ])
+  })
+
   it('trims either side and reports the removed edited range', () => {
     const initial = [clip('a', 0, 10)]
     const left = trimVideoClipLeftAtEdited(initial, 3)

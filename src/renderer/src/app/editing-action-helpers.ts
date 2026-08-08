@@ -1,6 +1,7 @@
-import type { EditingCaption, EditingProject, EditingSource } from '../../../shared/editing-types'
+import type { EditingCaption, EditingProject, EditingScriptSegment, EditingSource } from '../../../shared/editing-types'
 import { editedDurationSeconds, editedTimeToSource, removeEditedInterval, sourceRangeToEditedRanges, sourceTimeToEdited } from '../../../core/editing/timeline-math'
 import { removeEditingCaptionInterval } from '../../../core/editing/caption-operations'
+import { getEditingCaptionFragmentGroupId, getEditingCaptionFragmentIndex } from '../../../core/editing/script-operations'
 import type { EditingGraphic, EditingVideoBlock } from '../../../shared/editing-types'
 import { createEditingProject } from '../../../core/editing/project'
 import type { AppModel } from './app-types'
@@ -117,10 +118,25 @@ function remapUnanchoredCaption(caption: EditingCaption, previousClips: EditingP
 }
 
 /** Rebuilds caption positions after clip order changes, using source anchors when available. */
-export function reorderEditingCaptions(captions: readonly EditingCaption[], previousClips: EditingProject['videoClips'], nextClips: EditingProject['videoClips']): EditingCaption[] {
+export function reorderEditingCaptions(captions: readonly EditingCaption[], previousClips: EditingProject['videoClips'], nextClips: EditingProject['videoClips'], scriptSegments?: readonly EditingScriptSegment[]): EditingCaption[] {
   return captions.flatMap((caption) => {
     if (caption.sourceId && caption.sourceStartSeconds !== undefined && caption.sourceEndSeconds !== undefined) {
-      return sourceRangeToEditedRanges(nextClips, caption.sourceId, caption.sourceStartSeconds, caption.sourceEndSeconds).map((range, index) => ({
+      const ranges = sourceRangeToEditedRanges(nextClips, caption.sourceId, caption.sourceStartSeconds, caption.sourceEndSeconds)
+      const fragmentIndex = getEditingCaptionFragmentIndex(caption, scriptSegments)
+      const fragmentGroupId = getEditingCaptionFragmentGroupId(caption, scriptSegments)
+      const hasLegacyFragmentFamily = fragmentGroupId !== null && captions.some((candidate) => candidate !== caption && candidate.kind === caption.kind && getEditingCaptionFragmentGroupId(candidate, scriptSegments) === fragmentGroupId)
+      if (fragmentIndex !== null && (caption.editedRangeGroupId !== undefined || caption.editedRangeIndex !== undefined || hasLegacyFragmentFamily)) {
+        const range = ranges[fragmentIndex]
+        if (!range) return []
+        return [{
+          ...caption,
+          editedRangeGroupId: caption.editedRangeGroupId ?? fragmentGroupId ?? undefined,
+          editedRangeIndex: fragmentIndex,
+          startSeconds: range.startSeconds,
+          durationSeconds: range.endSeconds - range.startSeconds
+        }]
+      }
+      return ranges.map((range, index) => ({
         ...caption,
         id: index === 0 ? caption.id : `${caption.id}-${index}`,
         startSeconds: range.startSeconds,

@@ -38,10 +38,10 @@ describe('editing script text operations', () => {
     const next = restoreEditingScriptSegmentCaptions([], segment, clips)
 
     expect(next).toEqual([
-      { id: segment.id, sourceId: segment.sourceId, sourceStartSeconds: 1, sourceEndSeconds: 2, kind: 'source', text: segment.text, startSeconds: 0, durationSeconds: 1 },
-      { id: `translation-${segment.id}`, sourceId: segment.sourceId, sourceStartSeconds: 1, sourceEndSeconds: 2, kind: 'translation', text: segment.translationText, startSeconds: 0, durationSeconds: 1 },
-      { id: `${segment.id}-1`, sourceId: segment.sourceId, sourceStartSeconds: 1, sourceEndSeconds: 2, kind: 'source', text: segment.text, startSeconds: 2, durationSeconds: 1 },
-      { id: `translation-${segment.id}-1`, sourceId: segment.sourceId, sourceStartSeconds: 1, sourceEndSeconds: 2, kind: 'translation', text: segment.translationText, startSeconds: 2, durationSeconds: 1 }
+      { id: segment.id, sourceId: segment.sourceId, sourceStartSeconds: 1, sourceEndSeconds: 2, editedRangeGroupId: segment.id, editedRangeIndex: 0, kind: 'source', text: segment.text, startSeconds: 0, durationSeconds: 1 },
+      { id: `translation-${segment.id}`, sourceId: segment.sourceId, sourceStartSeconds: 1, sourceEndSeconds: 2, editedRangeGroupId: segment.id, editedRangeIndex: 0, kind: 'translation', text: segment.translationText, startSeconds: 0, durationSeconds: 1 },
+      { id: `${segment.id}-1`, sourceId: segment.sourceId, sourceStartSeconds: 1, sourceEndSeconds: 2, editedRangeGroupId: segment.id, editedRangeIndex: 1, kind: 'source', text: segment.text, startSeconds: 2, durationSeconds: 1 },
+      { id: `translation-${segment.id}-1`, sourceId: segment.sourceId, sourceStartSeconds: 1, sourceEndSeconds: 2, editedRangeGroupId: segment.id, editedRangeIndex: 1, kind: 'translation', text: segment.translationText, startSeconds: 2, durationSeconds: 1 }
     ])
     expect(isEditingScriptSegmentCaption(next[2]!, segment)).toBe(true)
     expect(isEditingScriptSegmentCaption(next[3]!, segment)).toBe(true)

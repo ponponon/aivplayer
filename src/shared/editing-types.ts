@@ -138,6 +138,10 @@ export type EditingCaption = EditingTimedItem & {
   sourceId?: string
   sourceStartSeconds?: number
   sourceEndSeconds?: number
+  /** Stable script-row identity for captions materialized into non-contiguous edit ranges. */
+  editedRangeGroupId?: string
+  /** Zero-based materialized range index within the script row. */
+  editedRangeIndex?: number
   text: string
   kind: 'source' | 'translation'
   words?: EditingCaptionWord[]
