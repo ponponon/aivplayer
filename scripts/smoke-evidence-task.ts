@@ -1,5 +1,6 @@
 import { _electron as electron, type ElectronApplication, type Page } from 'playwright'
 import { access, appendFile, chmod, copyFile, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { createServer, type Server } from 'node:http'
 import { connect } from '@lancedb/lancedb'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -25,7 +26,7 @@ async function waitForFile(filePath: string, timeoutMs = 10_000): Promise<void> 
   throw new Error(`Smoke marker was not created: ${filePath}`)
 }
 
-async function launchPlayer(userDataDirectory: string, mediaPath: string, tesseractPath: string, ttsPath: string, markerPath: string, ttsMarkerPath: string): Promise<SmokeSession> {
+async function launchPlayer(userDataDirectory: string, mediaPath: string, tesseractPath: string, ttsPath: string, markerPath: string, ttsMarkerPath: string, translationBaseUrl: string): Promise<SmokeSession> {
   const app = await electron.launch({
     args: ['--no-sandbox', '--in-process-gpu', `--user-data-dir=${userDataDirectory}`, 'out/main/index.js', mediaPath],
     env: {
@@ -34,6 +35,9 @@ async function launchPlayer(userDataDirectory: string, mediaPath: string, tesser
       AIVPLAYER_TESSERACT_PATH: tesseractPath,
       AIVPLAYER_TESSERACT_LANG: 'eng',
       AIVPLAYER_TTS_PATH: ttsPath,
+      AIVPLAYER_TRANSLATION_BASE_URL: translationBaseUrl,
+      AIVPLAYER_TRANSLATION_API_KEY: 'smoke',
+      AIVPLAYER_TRANSLATION_MODEL: 'smoke-model',
       AIVPLAYER_EVIDENCE_SMOKE_MARKER: markerPath,
       AIVPLAYER_TTS_SMOKE_MARKER: ttsMarkerPath
     }
@@ -46,6 +50,26 @@ async function launchPlayer(userDataDirectory: string, mediaPath: string, tesser
   await page.waitForSelector('#root', { timeout: 15_000 })
   await page.locator('video.video-surface').waitFor({ timeout: 15_000 })
   return { app, page, errors }
+}
+
+async function startFakeTranslationServer(): Promise<{ server: Server; baseUrl: string }> {
+  const server = createServer((request, response) => {
+    let body = ''
+    request.setEncoding('utf8')
+    request.on('data', (chunk) => { body += chunk })
+    request.on('end', () => {
+      const ids = [...body.matchAll(/cue-\d+/g)].map((match) => match[0]).filter((id, index, values) => values.indexOf(id) === index)
+      response.writeHead(200, { 'content-type': 'application/json' })
+      response.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(ids.map((id) => ({ id, text: `Smoke translated ${id}` }))) } }] }))
+    })
+  })
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', reject)
+    server.listen(0, '127.0.0.1', () => resolve())
+  })
+  const address = server.address()
+  if (!address || typeof address === 'string') throw new Error('Fake translation server did not expose a port')
+  return { server, baseUrl: `http://127.0.0.1:${address.port}/v1/chat/completions` }
 }
 
 async function installFakeTesseract(directory: string, markerPath: string): Promise<string> {
@@ -147,6 +171,62 @@ async function startTtsFromUi(page: Page): Promise<void> {
   if (await page.locator('[data-testid="vision-ocr-task"]').getAttribute('data-persistence-status') !== 'persisted') throw new Error('TTS progress leaked into OCR task card')
 }
 
+async function saveReplacementTtsDraft(page: Page): Promise<string> {
+  await page.locator('.panel-tab').nth(4).click()
+  const task = page.locator('[data-testid="vision-tts-task"]')
+  await task.waitFor({ timeout: 10_000 })
+  await page.locator('[data-testid="vision-tts-text"]').fill('Smoke replacement source')
+  await page.locator('[data-testid="vision-tts-start"]').fill('0.5')
+  await page.locator('[data-testid="vision-tts-end"]').fill('1.5')
+  await page.locator('[data-testid="vision-tts-start-button"]').click()
+  await page.locator('[data-testid="vision-tts-audio"]').waitFor({ timeout: 20_000 })
+  await page.waitForFunction(() => {
+    const audio = document.querySelector('[data-testid="vision-tts-audio"]') as HTMLAudioElement | null
+    return audio !== null && (audio.readyState >= 1 || audio.error !== null)
+  }, undefined, { timeout: 20_000 })
+  await page.locator('[data-testid="vision-tts-draft-text"]').fill('Smoke replacement draft')
+  await page.locator('[data-testid="vision-tts-save-draft-button"]').click()
+  await page.waitForFunction(async () => (await window.aiv.listMediaEvidenceDrafts()).length === 1, undefined, { timeout: 15_000 })
+  const drafts = await page.evaluate(() => window.aiv.listMediaEvidenceDrafts())
+  const draftId = drafts[0]?.id
+  if (!draftId) throw new Error(`Replacement TTS draft was not saved: ${JSON.stringify(drafts)}`)
+  return draftId
+}
+
+async function translateFormalSubtitleFromUi(page: Page, mediaPath: string, translationBaseUrl: string): Promise<void> {
+  await page.locator('.panel-tab').nth(1).click()
+  const sidecar = await page.evaluate((path) => window.aiv.resolveMediaSubtitleSidecar({ mediaPath: path }), mediaPath)
+  if (!sidecar.success || !sidecar.subtitlePath) throw new Error(`Translation smoke source sidecar unavailable: ${JSON.stringify(sidecar)}`)
+  const translatedResult = await page.evaluate((request) => window.aiv.translateAsrSubtitle(request), {
+    mediaPath,
+    subtitlePath: sidecar.subtitlePath,
+    subtitleSrtPath: sidecar.subtitleSrtPath,
+    sourceLanguage: 'auto',
+    targetLanguage: 'zh' as const
+  })
+  if (!translatedResult.success || !translatedResult.subtitlePath) throw new Error(`Translation smoke generation failed: ${JSON.stringify(translatedResult)}`)
+  await page.evaluate(async (baseUrl) => {
+    const settings = await window.aiv.getAppSettings()
+    await window.aiv.setAppSettings({ ...settings, asr: { ...settings.asr, translationBaseUrl: baseUrl, translationApiKey: 'smoke', translationModel: 'smoke-model' } })
+  }, translationBaseUrl)
+  await page.reload({ waitUntil: 'domcontentloaded' })
+  await page.waitForSelector('#root', { timeout: 15_000 })
+  await page.locator('video.video-surface').waitFor({ timeout: 15_000 })
+  await page.locator('.panel-tab').nth(1).click()
+  await page.waitForFunction(() => document.querySelectorAll('.subtitle-tools-row .subtitle-status.ready').length >= 2, undefined, { timeout: 20_000 })
+}
+
+async function assertTranslationClearedAfterFormalImport(page: Page): Promise<void> {
+  await page.waitForFunction(() => document.querySelectorAll('.subtitle-tools-row .subtitle-status.ready').length < 2, undefined, { timeout: 20_000 })
+  await page.locator('video.video-surface').evaluate((video) => {
+    (video as HTMLVideoElement).currentTime = 0.7
+    video.dispatchEvent(new Event('timeupdate'))
+  })
+  await page.waitForFunction(() => document.querySelector('.subtitle-overlay')?.textContent?.includes('Smoke replacement draft') === true, undefined, { timeout: 10_000 })
+  const overlay = await page.locator('.subtitle-overlay').textContent()
+  if (overlay?.includes('Smoke translated')) throw new Error(`Old translation remained after formal import: ${overlay}`)
+}
+
 function getFormalSubtitlePath(mediaPath: string, extension: 'vtt' | 'srt'): string {
   return `${mediaPath.replace(/\.[^./\\]+$/, '')}.${extension}`
 }
@@ -232,14 +312,14 @@ async function searchOcrAndLocate(page: Page): Promise<{ evidenceId: string; cur
   return { evidenceId, currentTime }
 }
 
-async function assertRestoredFormalSubtitle(page: Page): Promise<void> {
+async function assertRestoredFormalSubtitle(page: Page, expectedText: string): Promise<void> {
   await page.waitForFunction(() => (document.querySelector('video.video-surface') as HTMLVideoElement | null)?.readyState !== undefined && (document.querySelector('video.video-surface') as HTMLVideoElement).readyState >= 1, undefined, { timeout: 20_000 })
   await page.locator('video.video-surface').evaluate((video) => {
     const element = video as HTMLVideoElement
     element.currentTime = 0.7
     element.dispatchEvent(new Event('timeupdate'))
   })
-  await page.waitForFunction(() => document.querySelector('.subtitle-overlay')?.textContent?.includes('Smoke TTS confirmed draft') === true, undefined, { timeout: 20_000 })
+  await page.waitForFunction((text) => document.querySelector('.subtitle-overlay')?.textContent?.includes(text) === true, expectedText, { timeout: 20_000 })
 }
 
 async function assertNoSubtitleLeak(page: Page): Promise<void> {
@@ -313,9 +393,10 @@ async function main(): Promise<void> {
   let secondApp: ElectronApplication | null = null
   let thirdApp: ElectronApplication | null = null
   let fourthApp: ElectronApplication | null = null
+  const translationServer = await startFakeTranslationServer()
 
   try {
-    const first = await launchPlayer(userDataDirectory, stableMediaPath, tesseractPath, ttsPath, markerPath, ttsMarkerPath)
+    const first = await launchPlayer(userDataDirectory, stableMediaPath, tesseractPath, ttsPath, markerPath, ttsMarkerPath, translationServer.baseUrl)
     firstApp = first.app
     const capabilities = await first.page.evaluate(() => window.aiv.getMediaEvidenceCapabilities())
     if (!capabilities.ocr.available || !capabilities.tts.available) throw new Error(`Evidence capability is unavailable: ${JSON.stringify(capabilities)}`)
@@ -334,6 +415,20 @@ async function main(): Promise<void> {
       throw new Error(`TTS draft content mismatch: ${draftContents.join('\n---\n')}`)
     }
     const formalSubtitles = await importAndDeleteTtsDraft(first.page, stableMediaPath)
+    await translateFormalSubtitleFromUi(first.page, stableMediaPath, translationServer.baseUrl)
+    const replacementDraftId = await saveReplacementTtsDraft(first.page)
+    const replacementImportButton = first.page.locator(`[data-testid="vision-tts-import-${replacementDraftId}"]`)
+    await replacementImportButton.click()
+    const confirmReplacementImportButton = first.page.locator('[data-testid="vision-tts-confirm-import-button"]')
+    await first.page.waitForFunction(() => !(document.querySelector('[data-testid="vision-tts-confirm-import-button"]') as HTMLButtonElement | null)?.disabled, undefined, { timeout: 10_000 })
+    await confirmReplacementImportButton.click()
+    await first.page.waitForFunction(() => document.querySelector('[data-testid="vision-tts-confirm-import-button"]') === null, undefined, { timeout: 10_000 })
+    const replacementVtt = await readFile(formalSubtitles.formalVttPath, 'utf8')
+    if (!replacementVtt.includes('Smoke replacement draft')) throw new Error('Formal subtitle content mismatch after replacement import')
+    await assertTranslationClearedAfterFormalImport(first.page)
+    await first.page.locator(`[data-testid="vision-tts-delete-${replacementDraftId}"]`).click()
+    await first.page.waitForFunction((id) => document.querySelector(`[data-testid="vision-tts-draft-${id}"]`) === null, replacementDraftId, { timeout: 10_000 })
+    await first.page.locator('.panel-tab').nth(4).click()
     const draftFilesAfterDelete = (await readdir(draftDirectory)).filter((fileName) => fileName.endsWith('.vtt') || fileName.endsWith('.json'))
     if (draftFilesAfterDelete.length !== 0) throw new Error(`TTS draft files remained after delete: ${JSON.stringify(draftFilesAfterDelete)}`)
     const locatedOcr = await searchOcrAndLocate(first.page)
@@ -344,9 +439,9 @@ async function main(): Promise<void> {
     await seedVisualEvidence(userDataDirectory, stableMediaPath)
 
     await rm(markerPath, { force: true })
-    const second = await launchPlayer(userDataDirectory, stableMediaPath, tesseractPath, ttsPath, markerPath, ttsMarkerPath)
+    const second = await launchPlayer(userDataDirectory, stableMediaPath, tesseractPath, ttsPath, markerPath, ttsMarkerPath, translationServer.baseUrl)
     secondApp = second.app
-    await assertRestoredFormalSubtitle(second.page)
+    await assertRestoredFormalSubtitle(second.page, 'Smoke replacement draft')
     const stalePromise = startOcr(second.page, staleMediaPath)
     await waitForFile(markerPath)
     await appendFile(staleMediaPath, Buffer.from('changed-after-task-start'))
@@ -357,13 +452,13 @@ async function main(): Promise<void> {
     await second.app.close()
     secondApp = null
 
-    const third = await launchPlayer(userDataDirectory, isolatedMediaPath, tesseractPath, ttsPath, markerPath, ttsMarkerPath)
+    const third = await launchPlayer(userDataDirectory, isolatedMediaPath, tesseractPath, ttsPath, markerPath, ttsMarkerPath, translationServer.baseUrl)
     thirdApp = third.app
     await assertNoSubtitleLeak(third.page)
     await third.app.close()
     thirdApp = null
 
-    const fourth = await launchPlayer(userDataDirectory, invalidMediaPath, tesseractPath, ttsPath, markerPath, ttsMarkerPath)
+    const fourth = await launchPlayer(userDataDirectory, invalidMediaPath, tesseractPath, ttsPath, markerPath, ttsMarkerPath, translationServer.baseUrl)
     fourthApp = fourth.app
     await assertInvalidSubtitleNotice(fourth.page, invalidMediaPath)
     await fourth.app.close()
@@ -374,7 +469,7 @@ async function main(): Promise<void> {
     const subtitleRows = rows.filter((row) => row.evidence_type === 'subtitle')
     const visualRows = rows.filter((row) => row.id === 'smoke-visual-evidence')
     const subtitleTexts = new Set(subtitleRows.map((row) => row.text))
-    if (ocrRows.length !== 1 || ![0, 2].includes(subtitleRows.length) || visualRows.length !== 1 || ocrRows[0]?.text !== 'Smoke OCR text' || ocrRows[0]?.video_path !== stableMediaPath || (subtitleRows.length === 2 && (!subtitleTexts.has('Smoke TTS confirmed draft') || !subtitleTexts.has('Smoke TTS second draft'))) || rows.some((row) => row.video_path === staleMediaPath)) {
+    if (ocrRows.length !== 1 || subtitleRows.length !== 1 || visualRows.length !== 1 || ocrRows[0]?.text !== 'Smoke OCR text' || ocrRows[0]?.video_path !== stableMediaPath || !subtitleTexts.has('Smoke replacement draft') || rows.some((row) => row.video_path === staleMediaPath)) {
       throw new Error(`Evidence table contents mismatch: ${JSON.stringify(rows)}`)
     }
     if (first.errors.length > 0 || second.errors.length > 0 || third.errors.length > 0 || fourth.errors.length > 0) throw new Error(`Renderer errors during evidence smoke: ${[...first.errors, ...second.errors, ...third.errors, ...fourth.errors].join('\n')}`)
@@ -384,6 +479,7 @@ async function main(): Promise<void> {
     await secondApp?.close().catch(() => undefined)
     await thirdApp?.close().catch(() => undefined)
     await fourthApp?.close().catch(() => undefined)
+    await new Promise<void>((resolve) => translationServer.server.close(() => resolve()))
   }
 }
 
