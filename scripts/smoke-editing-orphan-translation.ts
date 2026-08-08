@@ -98,11 +98,36 @@ async function main(): Promise<void> {
     const orphanAttributeAfterReload = await translationCaptionAfterReload.getAttribute('data-editing-orphan-translation')
     const screenshotPath = join(smokeHomeDirectory, 'aivplayer-smoke-orphan-translation.png')
     await page.screenshot({ path: screenshotPath, fullPage: false })
-    const result = { sourceCaptionCountAfterReload, translationCaptionCountAfterReload, scriptClassAfterReload: scriptClassAfterReload ?? '', orphanNoticeBeforeReload: orphanNoticeBeforeReload ?? '', orphanNoticeAfterReload: orphanNoticeAfterReload ?? '', orphanClassBeforeReload: orphanClassBeforeReload ?? '', orphanClassAfterReload: orphanClassAfterReload ?? '', orphanAttributeBeforeReload, orphanAttributeAfterReload, screenshotPath, consoleErrors }
+    const translationStyleLeftBeforeRestore = await translationCaptionAfterReload.evaluate((item) => (item as HTMLElement).style.left)
+    await translationCaptionAfterReload.locator('.editing-caption-item-button').press('Shift+ArrowRight')
+    await page.waitForFunction((before) => {
+      const item = Array.from(document.querySelectorAll<HTMLElement>('[data-testid^="editing-caption-item-"]')).find((candidate) => candidate.textContent?.includes('原始译文 3'))
+      return Boolean(item && item.style.left !== before)
+    }, translationStyleLeftBeforeRestore, { timeout: 10_000 })
+    const translationStyleLeftAfterMove = await page.locator('[data-testid^="editing-caption-item-"]').filter({ hasText: '原始译文 3' }).evaluate((item) => (item as HTMLElement).style.left)
+    const orphanScriptRow = page.locator('[data-testid^="editing-script-row-"]').filter({ hasText: '原始字幕3' })
+    await orphanScriptRow.locator('[data-testid^="editing-script-restore-"]').click()
+    await page.waitForFunction(() => {
+      const sourceCaptionPresent = Array.from(document.querySelectorAll('[data-testid^="editing-caption-item-"]')).some((item) => item.textContent?.includes('原始字幕 3') === true)
+      const translationCaption = Array.from(document.querySelectorAll<HTMLElement>('[data-testid^="editing-caption-item-"]')).find((item) => item.textContent?.includes('原始译文 3'))
+      const scriptRow = Array.from(document.querySelectorAll('[data-testid^="editing-script-row-"]')).find((row) => row.textContent?.replace(/\s+/g, '').includes('原始字幕3'))
+      return sourceCaptionPresent && Boolean(translationCaption && translationCaption.getAttribute('data-editing-orphan-translation') !== 'true') && Boolean(scriptRow && !scriptRow.classList.contains('is-deleted')) && !document.querySelector('[data-testid="editing-caption-orphan-notice"]')
+    }, null, { timeout: 10_000 })
+    const sourceCaptionCountAfterRestore = await page.locator('[data-testid^="editing-caption-item-"]').filter({ hasText: '原始字幕 3' }).count()
+    const translationCaptionAfterRestore = page.locator('[data-testid^="editing-caption-item-"]').filter({ hasText: '原始译文 3' })
+    const translationCaptionCountAfterRestore = await translationCaptionAfterRestore.count()
+    const scriptClassAfterRestore = await page.locator('[data-testid^="editing-script-row-"]').filter({ hasText: '原始字幕3' }).getAttribute('class')
+    const orphanNoticeCountAfterRestore = await page.locator('[data-testid="editing-caption-orphan-notice"]').count()
+    const orphanClassAfterRestore = await translationCaptionAfterRestore.getAttribute('class')
+    const orphanAttributeAfterRestore = await translationCaptionAfterRestore.getAttribute('data-editing-orphan-translation')
+    const translationStyleLeftAfterRestore = await translationCaptionAfterRestore.evaluate((item) => (item as HTMLElement).style.left)
+    const restoredScreenshotPath = join(smokeHomeDirectory, 'aivplayer-smoke-orphan-translation-restored.png')
+    await page.screenshot({ path: restoredScreenshotPath, fullPage: false })
+    const result = { sourceCaptionCountAfterReload, translationCaptionCountAfterReload, scriptClassAfterReload: scriptClassAfterReload ?? '', orphanNoticeBeforeReload: orphanNoticeBeforeReload ?? '', orphanNoticeAfterReload: orphanNoticeAfterReload ?? '', orphanClassBeforeReload: orphanClassBeforeReload ?? '', orphanClassAfterReload: orphanClassAfterReload ?? '', orphanAttributeBeforeReload, orphanAttributeAfterReload, translationStyleLeftBeforeRestore, translationStyleLeftAfterMove, sourceCaptionCountAfterRestore, translationCaptionCountAfterRestore, scriptClassAfterRestore: scriptClassAfterRestore ?? '', orphanNoticeCountAfterRestore, orphanClassAfterRestore: orphanClassAfterRestore ?? '', orphanAttributeAfterRestore, translationStyleLeftAfterRestore, screenshotPath, restoredScreenshotPath, consoleErrors }
     console.log('AIVPlayer Smoke Orphan Translation')
     console.log(`Media: ${mediaPath}`)
     console.log(`Result: ${JSON.stringify(result)}`)
-    if (result.sourceCaptionCountAfterReload !== 0 || result.translationCaptionCountAfterReload !== 1 || !result.scriptClassAfterReload.includes('is-deleted') || !result.orphanNoticeBeforeReload || !result.orphanNoticeAfterReload || !result.orphanClassBeforeReload.includes('is-orphan-translation') || !result.orphanClassAfterReload.includes('is-orphan-translation') || result.orphanAttributeBeforeReload !== 'true' || result.orphanAttributeAfterReload !== 'true' || consoleErrors.length > 0) process.exitCode = 1
+    if (result.sourceCaptionCountAfterReload !== 0 || result.translationCaptionCountAfterReload !== 1 || !result.scriptClassAfterReload.includes('is-deleted') || !result.orphanNoticeBeforeReload || !result.orphanNoticeAfterReload || !result.orphanClassBeforeReload.includes('is-orphan-translation') || !result.orphanClassAfterReload.includes('is-orphan-translation') || result.orphanAttributeBeforeReload !== 'true' || result.orphanAttributeAfterReload !== 'true' || result.sourceCaptionCountAfterRestore !== 1 || result.translationCaptionCountAfterRestore !== 1 || result.scriptClassAfterRestore.includes('is-deleted') || result.orphanNoticeCountAfterRestore !== 0 || result.orphanClassAfterRestore.includes('is-orphan-translation') || result.orphanAttributeAfterRestore !== null || result.translationStyleLeftBeforeRestore === result.translationStyleLeftAfterMove || result.translationStyleLeftAfterMove !== result.translationStyleLeftAfterRestore || consoleErrors.length > 0) process.exitCode = 1
   } finally {
     await app.close()
   }
