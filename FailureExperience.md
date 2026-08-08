@@ -1098,3 +1098,9 @@
 - 现象：候选审计会在重建字幕版本清单、自动回退或重新扫描后刷新 `editingProjectStatus`；如果详情组件随普通状态消息一起卸载，用户刚展开的长路径证据会立即丢失；如果把开合字段写进 `EditingProject`，又会污染工程格式并影响跨设备迁移。
 - 经验：临时 UI 状态应由独立 renderer 组件持有，并以工程 ID 作为组件边界：同一工程的 status prop 更新保留外层 / 分组 open 状态，切换工程或整页重载自然创建新会话；status 暂时为 null 时组件也要保持挂载，才能覆盖短暂的普通状态窗口。
 - 处理：新增 `EditingProjectStatusView`，使用受控原生 `details` 保存会话内开合状态；Electron Smoke 通过“展开 → 重建字幕版本清单 → 等待候选状态刷新”验证状态保留，检查 localStorage 没有 UI 状态键，并验证整页 reload 后全部重置。
+
+## 2026-08-09：跨会话 UI 偏好必须独立于工程数据并可安全降级
+
+- 现象：会话内开合状态解决了候选审计刷新时的 UI 跳动，但如果直接把它写入 `EditingProject` 或 `.aivproj`，工程格式会被 UI 偏好污染；如果不做版本和异常处理，损坏的 localStorage 还可能阻断编辑器启动。
+- 经验：跨会话 UI 状态应使用独立、版本化的 renderer 存储，以 `project.id` 隔离工程，只保存布尔值和稳定分组 ID；必须限制条目数量和 ID 长度，解析失败、版本不支持或存储 API 抛错时回退默认状态，不能把本机绝对路径带入偏好。
+- 处理：新增 `aivplayer.editing-ui-preferences.v1`，采用 schema version 1 保存外层 / 分组 `open` 状态，限制最多 32 个工程和每个工程 32 个分组；单测覆盖坏 JSON、未知版本、类型清洗、边界裁剪和存储异常，Electron Smoke 覆盖同一 user-data 目录重启、整页 reload、工程隔离和 `containsSmokePath:false`。
