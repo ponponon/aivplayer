@@ -132,6 +132,7 @@ export function EditingCaptionTrack({ captions, durationSeconds, selectedCaption
         style={{ left: `${durationSeconds > 0 ? (startSeconds / durationSeconds) * 100 : 0}%`, width: `${durationSeconds > 0 ? ((endSeconds - startSeconds) / durationSeconds) * 100 : 0}%` }}
         data-editing-selection-kind="caption"
         data-editing-selection-id={caption.id}
+        data-testid={`editing-caption-item-${caption.id}`}
       >
         <button
           className="editing-caption-item-button"

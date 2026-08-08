@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AlertTriangle, ArrowRight, ChevronLeft, ChevronRight, RefreshCw, Search, ShieldCheck } from 'lucide-react'
-import { EDITING_SUBTITLE_RELOAD_PAGE_SIZE, getEditingSubtitleReloadChangePage, getEditingSubtitleReloadChangeTimeRange, type EditingSubtitleReloadChange, type EditingSubtitleReloadChangeKindFilter, type EditingSubtitleReloadChangeStatusFilter } from '../../../core/editing/subtitle-reload'
+import { EDITING_SUBTITLE_RELOAD_PAGE_SIZE, getEditingSubtitleReloadChangePage, getEditingSubtitleReloadChangeScriptSegmentId, getEditingSubtitleReloadChangeTimeRange, type EditingSubtitleReloadChange, type EditingSubtitleReloadChangeKindFilter, type EditingSubtitleReloadChangeStatusFilter } from '../../../core/editing/subtitle-reload'
 import type { EditingSubtitleReloadCopy } from '../../../shared/editing-subtitle-reload-copy'
 import type { EditingCaptionReloadConflict } from './use-editing-caption-effect'
 
@@ -8,6 +8,7 @@ type EditingCaptionReloadConflictProps = {
   conflict: EditingCaptionReloadConflict
   copy: EditingSubtitleReloadCopy
   onSeek: (seconds: number) => void
+  onSelectScriptSegment: (segmentId: string) => void
   onKeepCurrent: () => void
   onForceReload: () => void
 }
@@ -42,7 +43,7 @@ function parseSeconds(value: string): number | undefined {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined
 }
 
-export function EditingCaptionReloadConflict({ conflict, copy, onSeek, onKeepCurrent, onForceReload }: EditingCaptionReloadConflictProps): React.ReactElement {
+export function EditingCaptionReloadConflict({ conflict, copy, onSeek, onSelectScriptSegment, onKeepCurrent, onForceReload }: EditingCaptionReloadConflictProps): React.ReactElement {
   const { preview } = conflict
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<EditingSubtitleReloadChangeStatusFilter>('all')
@@ -51,6 +52,10 @@ export function EditingCaptionReloadConflict({ conflict, copy, onSeek, onKeepCur
   const [timeEnd, setTimeEnd] = useState('')
   const [pageIndex, setPageIndex] = useState(0)
   const changePage = getEditingSubtitleReloadChangePage(preview.changes, { query, status, kind, timeStartSeconds: parseSeconds(timeStart), timeEndSeconds: parseSeconds(timeEnd), pageIndex, pageSize: EDITING_SUBTITLE_RELOAD_PAGE_SIZE })
+  const seekChange = (change: EditingSubtitleReloadChange, seconds: number): void => {
+    onSelectScriptSegment(getEditingSubtitleReloadChangeScriptSegmentId(change))
+    onSeek(seconds)
+  }
 
   useEffect(() => {
     setQuery('')
@@ -117,8 +122,8 @@ export function EditingCaptionReloadConflict({ conflict, copy, onSeek, onKeepCur
                 <span title={copy.incoming}>{change.incomingText ?? copy.empty}</span>
               </div>
               <div className="editing-caption-reload-seek-actions">
-                <button type="button" disabled={change.currentStartSeconds === undefined} onClick={() => change.currentStartSeconds !== undefined && onSeek(change.currentStartSeconds)} title={copy.seekCurrent} data-testid={`editing-caption-reload-seek-current-${change.status}-${change.kind}-${change.id}`}>{copy.seekCurrent} {formatSubtitleReloadTime(change.currentStartSeconds)}</button>
-                <button type="button" disabled={change.incomingStartSeconds === undefined} onClick={() => change.incomingStartSeconds !== undefined && onSeek(change.incomingStartSeconds)} title={copy.seekIncoming} data-testid={`editing-caption-reload-seek-incoming-${change.status}-${change.kind}-${change.id}`}>{copy.seekIncoming} {formatSubtitleReloadTime(change.incomingStartSeconds)}</button>
+                <button type="button" disabled={change.currentStartSeconds === undefined} onClick={() => change.currentStartSeconds !== undefined && seekChange(change, change.currentStartSeconds)} title={copy.seekCurrent} data-testid={`editing-caption-reload-seek-current-${change.status}-${change.kind}-${change.id}`}>{copy.seekCurrent} {formatSubtitleReloadTime(change.currentStartSeconds)}</button>
+                <button type="button" disabled={change.incomingStartSeconds === undefined} onClick={() => change.incomingStartSeconds !== undefined && seekChange(change, change.incomingStartSeconds)} title={copy.seekIncoming} data-testid={`editing-caption-reload-seek-incoming-${change.status}-${change.kind}-${change.id}`}>{copy.seekIncoming} {formatSubtitleReloadTime(change.incomingStartSeconds)}</button>
               </div>
             </div>
           ))}

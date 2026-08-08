@@ -156,7 +156,7 @@ export function EditingScriptPanel({
       {fillerWords.length > 0 ? <button className="editing-script-batch-action" type="button" onClick={() => { onDeleteWords(fillerWords); setSelectedWords([]); closeWordActions() }} data-testid="editing-script-filler-delete"><Trash2 size={11} />{fillerDeleteLabel}</button> : null}
     </div>
     {segments.length > 0 ? <div className="editing-script-list" data-testid="editing-script-list">
-      {segments.map((segment) => <div key={segment.id} className={`editing-script-row ${segment.deleted ? 'is-deleted' : ''} ${selectedSegmentId === segment.id ? 'is-selected' : ''}`}>
+      {segments.map((segment) => <div key={segment.id} className={`editing-script-row ${segment.deleted ? 'is-deleted' : ''} ${selectedSegmentId === segment.id ? 'is-selected' : ''}`} data-testid={`editing-script-row-${segment.id}`}>
         {editingSegmentId === segment.id ? <div className="editing-script-editor">
           <span className="editing-script-time">{formatTime(segment.sourceStartSeconds)}–{formatTime(segment.sourceEndSeconds)}</span>
           <input className="editing-script-input" type="text" value={draftText} placeholder={editPlaceholder} aria-label={editLabel} autoFocus onChange={(event) => setDraftText(event.currentTarget.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); saveEdit(segment.id) } if (event.key === 'Escape') { event.preventDefault(); cancelEdit() } }} data-testid={`editing-script-input-${segment.id}`} />
