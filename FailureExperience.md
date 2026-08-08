@@ -900,3 +900,9 @@
 - 现象：单条保留操作会更新冲突对象并重置搜索框；Smoke 等待搜索框为空后直接复用旧 row locator 点击移除按钮，实际页面已经回到第一页，locator 找不到目标按钮并超时。
 - 经验：任何会重建分页 / 搜索组件的交互后，不能假设旧 locator 仍处于目标可见页；应重新填写稳定文本查询并等待唯一 row，再执行下一步。
 - 处理：Smoke 在保留撤销后重新搜索“原始字幕 18”再点击移除，并保留 `keepCurrentButtonCount`、`undoKeptRemovedRows` 等结果字段，避免把编排竞态误判为业务失败。
+
+## 2026-08-08：source 保留不能隐式解决 translation removed
+
+- 现象：source removed 的保留逻辑沿用 source / translation 配对规则，点击后译文 removed 行也被隐藏，无法组合“保留原文、移除译文”。
+- 经验：source 删除时可以成对物化移除；但冲突裁决必须按 diff row 独立记录，不能把字幕配对关系直接等价为决策关系。
+- 处理：resolution key 改为精确到当前 removed row；source 保留只解决原文行，translation 可继续单独保留或移除；真实 Electron Smoke 覆盖 source keep + translation remove、translation undo / redo，以及随后 source remove 流程。

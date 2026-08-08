@@ -530,7 +530,7 @@
 - changed cue 在点击任一定位动作后会投影 incoming 原文 / 译文 ghost 卡片，并在对照条同时展示 current / incoming 文本与时间；旧实体仍保持可选中，时间移动通过 current / incoming 区间并集可回溯，不会改写工程。
 - changed cue 支持单条“接受新字幕”：只替换用户确认的 source / translation cue，并同步对应脚本文本、源时间和词级数据；未确认的其他差异继续保留，操作会进入编辑器撤销 / 重做历史。
 - added cue 支持单条“加入工程”：source cue 会创建或合并对应脚本段和时间轴卡片，translation cue 只补充对应脚本译文；其他新增、修改和删除差异保持待处理，操作同样进入撤销 / 重做历史。
-- removed cue 支持单条“保留当前字幕”或“从工程移除”：保留会记录当前字幕对该新 revision 的处理结果，source cue 会连同配对译文一起解决；移除会同步移除对应原文 / 译文字幕并将脚本段标记为 `deleted`，translation cue 只清除对应译文。其他差异保持待处理，决策进入撤销 / 重做历史，并兼容真实 loader 的 source-prefixed ID。
+- removed cue 支持单条“保留当前字幕”或“从工程移除”：保留会记录当前字幕对该新 revision 的处理结果，原文和译文 removed row 可以分别裁决；source cue 从工程移除时仍会同步移除对应译文字幕并将脚本段标记为 `deleted`，translation cue 从工程移除只清除对应译文。其他差异保持待处理，决策进入撤销 / 重做历史，并兼容真实 loader 的 source-prefixed ID。
 
 ## 编辑器画布交互层级
 
