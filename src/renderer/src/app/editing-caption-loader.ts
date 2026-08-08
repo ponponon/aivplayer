@@ -9,17 +9,29 @@ export type CaptionSource = {
   kind: EditingCaption['kind']
 }
 
+export type EditingCaptionSidecarPathInfo = {
+  selectedPath: string | null
+  candidates: string[]
+}
+
+export type EditingCaptionSourcePaths = Record<string, {
+  source: EditingCaptionSidecarPathInfo
+  translation: EditingCaptionSidecarPathInfo
+}>
+
 export type EditingCaptionSourceOptions = {
   currentMediaPath: string | null
   subtitlePath: string | null
   subtitleSrtPath: string | null
   translatedSubtitlePath: string | null
   translatedSubtitleSrtPath: string | null
+  translationLanguage?: string | null
 }
 
 export type EditingCaptionLoadResult = {
   captions: EditingCaption[]
   sourceRevisions: EditingCaptionSourceRevisions
+  sourcePaths: EditingCaptionSourcePaths
 }
 
 /**
@@ -35,7 +47,7 @@ export function createEditingCaptionSources(project: Pick<EditingProject, 'sourc
     const preferredTranslationPath = isCurrentMedia ? (options.translatedSubtitleSrtPath ?? options.translatedSubtitlePath) : null
     return [
       { path: preferredSourcePath, pathCandidates: createEditingCaptionPathCandidates(source.path, preferredSourcePath, 'source'), sourceId: source.id, kind: 'source' as const },
-      { path: preferredTranslationPath, pathCandidates: createEditingCaptionPathCandidates(source.path, preferredTranslationPath, 'translation'), sourceId: source.id, kind: 'translation' as const }
+      { path: preferredTranslationPath, pathCandidates: createEditingCaptionPathCandidates(source.path, preferredTranslationPath, 'translation', options.translationLanguage), sourceId: source.id, kind: 'translation' as const }
     ]
   })
 }
@@ -75,51 +87,85 @@ export function areEditingCaptionWordsCompatible(captionText: string, words: rea
   return normalize(captionText) === normalize(joinSubtitleWords(words))
 }
 
-export function createEditingCaptionPathCandidates(mediaPath: string, preferredPath: string | null, kind: EditingCaption['kind']): string[] {
+function createLanguageVariants(language: string | null | undefined): string[] {
+  const normalized = language?.trim().replace(/_/gu, '-')
+  if (!normalized) return ['zh-CN', 'zh', 'zh-cn']
+  const baseLanguage = normalized.split('-')[0] ?? normalized
+  const genericLanguageAliases = normalized === 'zh' ? ['zh-CN', 'zh-cn'] : normalized === 'en' ? ['en-US', 'en-us'] : normalized === 'ja' ? ['ja-JP', 'ja-jp'] : normalized === 'ko' ? ['ko-KR', 'ko-kr'] : []
+  return [...new Set([normalized, normalized.toLowerCase(), normalized.replace('-', '_'), baseLanguage, baseLanguage.toLowerCase(), ...genericLanguageAliases])]
+}
+
+function createExtensionVariants(stem: string): string[] {
+  return [`${stem}.srt`, `${stem}.vtt`, `${stem}.SRT`, `${stem}.VTT`]
+}
+
+export function createEditingCaptionPathCandidates(mediaPath: string, preferredPath: string | null, kind: EditingCaption['kind'], translationLanguage?: string | null): string[] {
   const extensionIndex = mediaPath.lastIndexOf('.')
   const separatorIndex = Math.max(mediaPath.lastIndexOf('/'), mediaPath.lastIndexOf('\\'))
   const basePath = extensionIndex > separatorIndex ? mediaPath.slice(0, extensionIndex) : mediaPath
   const suffixes = kind === 'source'
-    ? ['.srt', '.vtt']
-    : ['.translated.srt', '.translated.vtt', '.translation.srt', '.translation.vtt', '.zh-CN.srt', '.zh-CN.vtt', '.zh.srt', '.zh.vtt']
+    ? createExtensionVariants('')
+    : [
+      ...createExtensionVariants('.translated'),
+      ...createExtensionVariants('.translation'),
+      ...createLanguageVariants(translationLanguage).flatMap((language) => createExtensionVariants(`.${language}`))
+    ]
   return [...new Set([preferredPath, ...suffixes.map((suffix) => `${basePath}${suffix}`)].filter((path): path is string => Boolean(path)))]
 }
 
-async function loadCaptionSource(source: CaptionSource): Promise<{ captions: EditingCaption[]; revision: number | null }> {
-  const paths = [...new Set([source.path, ...(source.pathCandidates ?? [])].filter((path): path is string => Boolean(path)))]
-  const texts = await Promise.all(paths.map(async (path) => {
-    try { return { path, text: await window.aiv.readFileContent(path) } } catch { return null }
-  }))
-  const loadedText = texts.find((candidate): candidate is { path: string; text: string } => candidate !== null)
-  if (!loadedText) return { captions: [], revision: null }
+function getCaptionSourceCandidatePaths(source: CaptionSource): string[] {
+  return [...new Set([source.path, ...(source.pathCandidates ?? [])].filter((path): path is string => Boolean(path)))]
+}
+
+async function loadCaptionSource(source: CaptionSource): Promise<{ captions: EditingCaption[]; revision: number | null; selectedPath: string | null }> {
+  const paths = getCaptionSourceCandidatePaths(source)
+  let loadedText: { path: string } | null = null
+  let segments: ReturnType<typeof parseVtt> = []
+  for (const path of paths) {
+    try {
+      const text = await window.aiv.readFileContent(path)
+      const parsed = parseVtt(text)
+      if (parsed.length === 0) continue
+      loadedText = { path }
+      segments = parsed
+      break
+    } catch {
+      continue
+    }
+  }
+  if (!loadedText) return { captions: [], revision: null, selectedPath: null }
   const revision = await window.aiv.getFileRevision(loadedText.path).catch(() => null)
-  const wordPaths = [...new Set(paths.map(getSubtitleWordSidecarPath).filter((path): path is string => Boolean(path)))]
+  const wordPaths = [...new Set([loadedText.path, ...paths].map(getSubtitleWordSidecarPath).filter((path): path is string => Boolean(path)))]
   const wordTexts = await Promise.all(wordPaths.map(async (path) => {
     try { return await window.aiv.readFileContent(path) } catch { return null }
   }))
   const words = parseWhisperSubtitleWords(wordTexts.find((candidate): candidate is string => candidate !== null) ?? '')
-  const segments = attachSubtitleWords(parseVtt(loadedText.text), words, source.kind === 'source')
-  const captions = segments.flatMap((segment, index) => {
+  const captions = attachSubtitleWords(segments, words, source.kind === 'source').flatMap((segment, index) => {
       const durationSeconds = Math.max(0, segment.endSeconds - segment.startSeconds)
       const captionWords = source.kind === 'source' && segment.words && areEditingCaptionWordsCompatible(segment.text, segment.words)
         ? segment.words.map((word) => ({ startSeconds: Math.max(0, word.startSeconds - segment.startSeconds), endSeconds: Math.max(0, word.endSeconds - segment.startSeconds), text: word.text }))
         : undefined
       return durationSeconds > 0 ? [{ id: `${source.kind}-${source.sourceId}-${index}`, sourceId: source.sourceId, sourceStartSeconds: segment.startSeconds, sourceEndSeconds: segment.endSeconds, kind: source.kind, startSeconds: segment.startSeconds, durationSeconds, text: segment.text, ...(captionWords && captionWords.length > 0 ? { words: captionWords } : {}) }] : []
     })
-  return { captions, revision }
+  return { captions, revision, selectedPath: loadedText.path }
 }
 
 export async function loadEditingCaptionSnapshot(sources: readonly CaptionSource[]): Promise<EditingCaptionLoadResult> {
   const loaded = await Promise.all(sources.map(loadCaptionSource))
   const sourceRevisions: EditingCaptionSourceRevisions = {}
+  const sourcePaths: EditingCaptionSourcePaths = {}
   sources.forEach((source, index) => {
     const current = sourceRevisions[source.sourceId] ?? { source: null, translation: null }
     current[source.kind] = loaded[index]?.revision ?? null
     sourceRevisions[source.sourceId] = current
+    const currentPaths = sourcePaths[source.sourceId] ?? { source: { selectedPath: null, candidates: [] }, translation: { selectedPath: null, candidates: [] } }
+    currentPaths[source.kind] = { selectedPath: loaded[index]?.selectedPath ?? null, candidates: getCaptionSourceCandidatePaths(source) }
+    sourcePaths[source.sourceId] = currentPaths
   })
   return {
     captions: loaded.flatMap((item) => item.captions).sort((left, right) => left.startSeconds - right.startSeconds || left.kind.localeCompare(right.kind)),
-    sourceRevisions
+    sourceRevisions,
+    sourcePaths
   }
 }
 

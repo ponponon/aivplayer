@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { areEditingCaptionWordsCompatible, createEditingCaptionSources, createEditingCaptionSourceRevisionKey, hasEditingCaptionSourceRevisionChanges } from '../../src/renderer/src/app/editing-caption-loader'
+import { afterEach, describe, expect, it } from 'vitest'
+import { areEditingCaptionWordsCompatible, createEditingCaptionPathCandidates, createEditingCaptionSources, createEditingCaptionSourceRevisionKey, hasEditingCaptionSourceRevisionChanges, loadEditingCaptionSnapshot } from '../../src/renderer/src/app/editing-caption-loader'
 
 const primary = { id: 'source-primary', path: '/videos/primary.mp4', name: 'primary.mp4', fingerprint: 'primary:10', durationSeconds: 10 }
 const secondary = { id: 'source-secondary', path: '/videos/secondary.mp4', name: 'secondary.mp4', fingerprint: 'secondary:10', durationSeconds: 10 }
@@ -20,6 +20,45 @@ describe('editing caption word sidecar compatibility', () => {
 })
 
 describe('editing caption sidecar source selection', () => {
+  const originalWindowDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'window')
+
+  afterEach(() => {
+    if (originalWindowDescriptor) Object.defineProperty(globalThis, 'window', originalWindowDescriptor)
+    else Reflect.deleteProperty(globalThis, 'window')
+  })
+
+  it('skips an empty candidate and reports the selected path with all candidates', async () => {
+    const contents = new Map([
+      ['/media/demo.SRT', ''],
+      ['/media/demo.VTT', 'WEBVTT\n\n00:00:00.000 --> 00:00:01.000\n跨设备字幕\n']
+    ])
+    Object.defineProperty(globalThis, 'window', { configurable: true, writable: true, value: { aiv: {
+      readFileContent: async (path: string) => {
+        const text = contents.get(path)
+        if (text === undefined) throw new Error('missing')
+        return text
+      },
+      getFileRevision: async () => 123
+    } } })
+
+    const result = await loadEditingCaptionSnapshot([{ path: null, pathCandidates: ['/media/demo.SRT', '/media/demo.VTT'], sourceId: primary.id, kind: 'source' }])
+
+    expect(result.captions.map((caption) => caption.text)).toEqual(['跨设备字幕'])
+    expect(result.sourcePaths[primary.id]?.source).toEqual({ selectedPath: '/media/demo.VTT', candidates: ['/media/demo.SRT', '/media/demo.VTT'] })
+  })
+
+  it('uses the configured translation language before language-agnostic fallbacks', () => {
+    const candidates = createEditingCaptionPathCandidates('/media/demo.mp4', null, 'translation', 'en-US')
+    expect(candidates.indexOf('/media/demo.en-US.srt')).toBeLessThan(candidates.indexOf('/media/demo.en.srt'))
+    expect(candidates).not.toContain('/media/demo.zh-CN.srt')
+  })
+
+  it('accepts a common regional alias when the configured language is generic', () => {
+    const candidates = createEditingCaptionPathCandidates('/media/demo.mp4', null, 'translation', 'zh')
+    expect(candidates.indexOf('/media/demo.zh.srt')).toBeLessThan(candidates.indexOf('/media/demo.zh-CN.srt'))
+    expect(candidates).toContain('/media/demo.zh-CN.VTT')
+  })
+
   it('loads sidecars only for sources still used by the timeline', () => {
     const sources = createEditingCaptionSources({ sources: [primary, secondary], videoClips: [{ id: 'clip-1', sourceId: secondary.id, sourceStartSeconds: 0, sourceEndSeconds: 1 }] }, {
       currentMediaPath: primary.path,

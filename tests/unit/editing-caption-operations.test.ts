@@ -16,9 +16,11 @@ const caption: EditingCaption = {
 
 describe('editing caption operations', () => {
   it('builds source and translation sidecar candidates from a media path', () => {
-    expect(createEditingCaptionPathCandidates('/videos/demo.mp4', null, 'source')).toEqual(['/videos/demo.srt', '/videos/demo.vtt'])
+    expect(createEditingCaptionPathCandidates('/videos/demo.mp4', null, 'source')).toEqual(['/videos/demo.srt', '/videos/demo.vtt', '/videos/demo.SRT', '/videos/demo.VTT'])
     expect(createEditingCaptionPathCandidates('/videos/demo.mp4', '/cache/demo.srt', 'translation')).toContain('/cache/demo.srt')
     expect(createEditingCaptionPathCandidates('/videos/demo.mp4', null, 'translation')).toContain('/videos/demo.zh-CN.vtt')
+    expect(createEditingCaptionPathCandidates('/videos/demo.mp4', null, 'translation', 'en-US')).toContain('/videos/demo.en-US.srt')
+    expect(createEditingCaptionPathCandidates('/videos/demo.mp4', null, 'translation', 'en-US')).not.toContain('/videos/demo.zh-CN.srt')
   })
 
   it('clamps a moved caption to the edited timeline and removes source anchoring', () => {
