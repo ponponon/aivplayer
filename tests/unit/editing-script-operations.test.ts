@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getEditingScriptWordSourceRange, isEditingScriptFillerWord, mergeEditingScriptSegments, removeEditingScriptWord, removeEditingScriptWords, replaceEditingScriptWord, restoreEditingScriptSegmentCaptions, syncEditingSourceCaptionText, updateEditingScriptSegmentText, updateEditingSourceCaptionText } from '../../src/core/editing/script-operations'
+import { getEditingScriptWordSourceRange, isEditingScriptFillerWord, isEditingScriptSegmentCaption, mergeEditingScriptSegments, removeEditingScriptWord, removeEditingScriptWords, replaceEditingScriptWord, restoreEditingScriptSegmentCaptions, syncEditingSourceCaptionText, updateEditingScriptSegmentText, updateEditingSourceCaptionText } from '../../src/core/editing/script-operations'
 
 const segment = { id: 'segment-1', sourceId: 'source-1', sourceStartSeconds: 1, sourceEndSeconds: 2, text: 'old text', translationText: '旧文本' }
 
@@ -27,6 +27,24 @@ describe('editing script text operations', () => {
       { id: segment.id, sourceId: segment.sourceId, sourceStartSeconds: 1, sourceEndSeconds: 2, kind: 'source', text: segment.text, startSeconds: 1, durationSeconds: 1 },
       { id: `translation-${segment.id}`, sourceId: segment.sourceId, sourceStartSeconds: 1, sourceEndSeconds: 2, kind: 'translation', text: segment.translationText, startSeconds: 1, durationSeconds: 1 }
     ])
+  })
+
+  it('materializes one source and translation fragment per non-contiguous edited range', () => {
+    const clips = [
+      { id: 'clip-a', sourceId: segment.sourceId, sourceStartSeconds: 1, sourceEndSeconds: 2 },
+      { id: 'clip-b', sourceId: 'other-source', sourceStartSeconds: 4, sourceEndSeconds: 5 },
+      { id: 'clip-c', sourceId: segment.sourceId, sourceStartSeconds: 1, sourceEndSeconds: 2 }
+    ]
+    const next = restoreEditingScriptSegmentCaptions([], segment, clips)
+
+    expect(next).toEqual([
+      { id: segment.id, sourceId: segment.sourceId, sourceStartSeconds: 1, sourceEndSeconds: 2, kind: 'source', text: segment.text, startSeconds: 0, durationSeconds: 1 },
+      { id: `translation-${segment.id}`, sourceId: segment.sourceId, sourceStartSeconds: 1, sourceEndSeconds: 2, kind: 'translation', text: segment.translationText, startSeconds: 0, durationSeconds: 1 },
+      { id: `${segment.id}-1`, sourceId: segment.sourceId, sourceStartSeconds: 1, sourceEndSeconds: 2, kind: 'source', text: segment.text, startSeconds: 2, durationSeconds: 1 },
+      { id: `translation-${segment.id}-1`, sourceId: segment.sourceId, sourceStartSeconds: 1, sourceEndSeconds: 2, kind: 'translation', text: segment.translationText, startSeconds: 2, durationSeconds: 1 }
+    ])
+    expect(isEditingScriptSegmentCaption(next[2]!, segment)).toBe(true)
+    expect(isEditingScriptSegmentCaption(next[3]!, segment)).toBe(true)
   })
 
   it('normalizes one script row while preserving timing and translation', () => {
