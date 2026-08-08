@@ -173,7 +173,9 @@ async function importAndDeleteTtsDraft(page: Page, mediaPath: string): Promise<{
   await page.waitForFunction(() => document.querySelector('.subtitle-overlay')?.textContent?.includes('Smoke TTS confirmed draft') === true, undefined, { timeout: 10_000 })
 
   await importButton.click()
-  await page.locator('[data-testid="vision-tts-confirm-import-button"]').click()
+  const confirmImportButton = page.locator('[data-testid="vision-tts-confirm-import-button"]')
+  await page.waitForFunction(() => !(document.querySelector('[data-testid="vision-tts-confirm-import-button"]') as HTMLButtonElement | null)?.disabled, undefined, { timeout: 10_000 })
+  await confirmImportButton.click()
   await page.waitForFunction(() => document.querySelector('[data-testid="vision-tts-confirm-import-button"]') === null, undefined, { timeout: 10_000 })
   const overwrittenVtt = await readFile(formalVttPath, 'utf8')
   if (!overwrittenVtt.includes('Smoke TTS confirmed draft')) throw new Error('Formal subtitle content mismatch after overwrite confirmation')
