@@ -4,13 +4,22 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 
 const sourceMediaPath = process.argv[2] ?? '/Users/ponponon/Music/aivplayer_test_video_1min.mp4'
+const expectedCueCount = 18
+
+function formatSrtTime(seconds: number): string {
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  const wholeSeconds = Math.floor(seconds % 60)
+  const milliseconds = Math.round((seconds - Math.floor(seconds)) * 1000)
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(wholeSeconds).padStart(2, '0')},${String(milliseconds).padStart(3, '0')}`
+}
 
 function srt(first: string, second: string, third: string): string {
-  return [
-    '1', '00:00:00,000 --> 00:00:02,000', first, '',
-    '2', '00:00:04,000 --> 00:00:06,000', second, '',
-    '3', '00:00:08,000 --> 00:00:10,000', third, ''
-  ].join('\n')
+  const texts = [first, second, third, ...Array.from({ length: expectedCueCount - 3 }, (_, index) => `${first} ${index + 4}`)]
+  return texts.map((text, index) => {
+    const start = index * 2
+    return [String(index + 1), `${formatSrtTime(start)} --> ${formatSrtTime(start + 1.5)}`, text, ''].join('\n')
+  }).join('\n')
 }
 
 async function main(): Promise<void> {
@@ -45,7 +54,7 @@ async function main(): Promise<void> {
     const openEditor = async (): Promise<void> => {
       await page.locator('.clip-editor-tool-button').click()
       await page.locator('[data-testid="editing-timeline"]').waitFor({ timeout: 10_000 })
-      await page.waitForFunction(() => document.querySelectorAll('[data-testid="editing-script-list"] .editing-script-row').length === 3, null, { timeout: 10_000 })
+      await page.waitForFunction((count) => document.querySelectorAll('[data-testid="editing-script-list"] .editing-script-row').length === count, expectedCueCount, { timeout: 10_000 })
     }
     const reloadAndOpenEditor = async (): Promise<void> => {
       await page.reload()
@@ -56,7 +65,7 @@ async function main(): Promise<void> {
     }
 
     await openEditor()
-    await page.waitForFunction(() => Object.values(JSON.parse(localStorage.getItem('aivplayer.editing-projects.v1') ?? '{}') as Record<string, { captionSourceRevision?: string; scriptSegments?: unknown[] }>).some((project) => Boolean(project.captionSourceRevision) && project.scriptSegments?.length === 3), null, { timeout: 10_000 })
+    await page.waitForFunction((count) => Object.values(JSON.parse(localStorage.getItem('aivplayer.editing-projects.v1') ?? '{}') as Record<string, { captionSourceRevision?: string; scriptSegments?: unknown[] }>).some((project) => Boolean(project.captionSourceRevision) && project.scriptSegments?.length === count), expectedCueCount, { timeout: 10_000 })
     const editButton = page.locator('[data-testid^="editing-script-edit-"]').first()
     const editTestId = await editButton.getAttribute('data-testid')
     if (!editTestId) throw new Error('Caption reload Smoke could not identify the script edit action')
@@ -71,11 +80,29 @@ async function main(): Promise<void> {
     await reloadAndOpenEditor()
     await page.locator('[data-testid="editing-caption-reload-conflict"]').waitFor({ timeout: 10_000 })
     await page.locator('[data-testid="editing-caption-reload-preview"] summary').click()
-    const previewText = await page.locator('[data-testid="editing-caption-reload-preview"]').textContent()
+    const preview = page.locator('[data-testid="editing-caption-reload-preview"]')
+    const previewText = await preview.textContent()
     const protectedText = await page.locator('.editing-script-text').first().textContent()
     const conflictScreenshotPath = join(smokeHomeDirectory, 'aivplayer-smoke-caption-reload-conflict.png')
     await page.screenshot({ path: conflictScreenshotPath, fullPage: false })
     if (!previewText?.includes('外部更新字幕') || protectedText !== manualText) throw new Error(`Caption reload conflict did not protect manual text: ${JSON.stringify({ previewText, protectedText })}`)
+
+    const firstPageRows = await preview.locator('.editing-caption-reload-row').count()
+    const nextPage = preview.locator('[data-testid="editing-caption-reload-next"]')
+    const pageBeforeNext = await preview.locator('.editing-caption-reload-pagination').textContent()
+    await nextPage.click()
+    await page.waitForFunction((before) => document.querySelector('[data-testid="editing-caption-reload-preview"] .editing-caption-reload-pagination')?.textContent !== before, pageBeforeNext)
+    const secondPageRows = await preview.locator('.editing-caption-reload-row').count()
+    const pageAfterNext = await preview.locator('.editing-caption-reload-pagination').textContent()
+    const search = preview.locator('[data-testid="editing-caption-reload-search"]')
+    await search.fill('外部更新字幕 10')
+    await page.waitForFunction(() => document.querySelectorAll('[data-testid="editing-caption-reload-preview"] .editing-caption-reload-row').length === 1, null, { timeout: 10_000 })
+    const searchedText = await preview.locator('.editing-caption-reload-row').textContent()
+    await page.locator('[data-testid="editing-caption-reload-status-filter"]').selectOption('added')
+    await page.locator('[data-testid="editing-caption-reload-no-matches"]').waitFor({ timeout: 10_000 })
+    const noMatchesShown = await page.locator('[data-testid="editing-caption-reload-no-matches"]').count() > 0
+    await page.locator('[data-testid="editing-caption-reload-status-filter"]').selectOption('all')
+    await search.fill('')
 
     await page.locator('[data-testid="editing-caption-reload-keep"]').click()
     await page.waitForFunction(() => document.querySelector('[data-testid="editing-caption-reload-conflict"]') === null, null, { timeout: 10_000 })
@@ -91,11 +118,11 @@ async function main(): Promise<void> {
     const forceAfterText = await page.locator('.editing-script-text').first().textContent()
     const forceScreenshotPath = join(smokeHomeDirectory, 'aivplayer-smoke-caption-reload-force.png')
     await page.screenshot({ path: forceScreenshotPath, fullPage: false })
-    const result = { previewIncludesIncoming: previewText?.includes('外部更新字幕') === true, protectedText: protectedText ?? '', keepPreserved: keptText === manualText, forceBeforeText: forceBeforeText ?? '', forceReplaced: forceAfterText === '强制重载后的字幕', conflictScreenshotPath, forceScreenshotPath, consoleErrors }
+    const result = { previewIncludesIncoming: previewText?.includes('外部更新字幕') === true, protectedText: protectedText ?? '', keepPreserved: keptText === manualText, forceBeforeText: forceBeforeText ?? '', forceReplaced: forceAfterText === '强制重载后的字幕', expectedCueCount, firstPageRows, secondPageRows, pageAfterNext, searchedText: searchedText ?? '', noMatchesShown, conflictScreenshotPath, forceScreenshotPath, consoleErrors }
     console.log('AIVPlayer Smoke Editing Caption Reload')
     console.log(`Media: ${mediaPath}`)
     console.log(`Result: ${JSON.stringify(result)}`)
-    if (!result.previewIncludesIncoming || !result.keepPreserved || !result.forceReplaced || result.forceBeforeText !== manualText || consoleErrors.length > 0) process.exitCode = 1
+    if (!result.previewIncludesIncoming || !result.keepPreserved || !result.forceReplaced || result.forceBeforeText !== manualText || result.expectedCueCount !== expectedCueCount || result.firstPageRows !== 8 || result.secondPageRows !== 8 || !result.pageAfterNext?.includes('第 2 / 3 页') || !result.searchedText?.includes('外部更新字幕 10') || !result.noMatchesShown || consoleErrors.length > 0) process.exitCode = 1
   } finally {
     await app.close()
   }
