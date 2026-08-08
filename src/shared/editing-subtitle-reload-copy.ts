@@ -37,6 +37,8 @@ export type EditingSubtitleReloadCopy = {
   sidecarTranslation: string
   sidecarNotFound: string
   candidatePaths: string
+  validCandidatePaths: string
+  multipleValidCandidates: (count: number, selectedRank: number) => string
   unknownSource: string
   empty: string
   source: string
@@ -90,6 +92,8 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     sidecarTranslation: '译文文件',
     sidecarNotFound: '未找到',
     candidatePaths: '候选路径',
+    validCandidatePaths: '有效候选',
+    multipleValidCandidates: (count, selectedRank) => `发现 ${count} 个有效候选，当前按优先级使用第 ${selectedRank} 个，请确认来源。`,
     unknownSource: '未知素材',
     empty: '（无内容）',
     source: '原文',
@@ -141,6 +145,8 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     sidecarTranslation: 'Translation file',
     sidecarNotFound: 'Not found',
     candidatePaths: 'Candidates',
+    validCandidatePaths: 'Valid candidates',
+    multipleValidCandidates: (count, selectedRank) => `${count} valid candidates found; candidate ${selectedRank} is selected by priority. Please confirm the source.`,
     unknownSource: 'Unknown source',
     empty: '(empty)',
     source: 'Source',
@@ -192,6 +198,8 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     sidecarTranslation: '翻訳ファイル',
     sidecarNotFound: '見つかりません',
     candidatePaths: '候補パス',
+    validCandidatePaths: '有効な候補',
+    multipleValidCandidates: (count, selectedRank) => `${count} 件の有効な候補があります。優先順位 ${selectedRank} の候補を使用中です。`,
     unknownSource: '不明な素材',
     empty: '（空）',
     source: '原文',
@@ -243,6 +251,8 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     sidecarTranslation: '번역 파일',
     sidecarNotFound: '찾을 수 없음',
     candidatePaths: '후보 경로',
+    validCandidatePaths: '유효한 후보',
+    multipleValidCandidates: (count, selectedRank) => `유효한 후보 ${count}개가 있습니다. 우선순위 ${selectedRank}번 후보를 사용 중입니다.`,
     unknownSource: '알 수 없는 소재',
     empty: '(비어 있음)',
     source: '원문',

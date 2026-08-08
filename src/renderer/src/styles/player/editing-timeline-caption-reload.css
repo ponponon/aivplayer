@@ -21,6 +21,8 @@
 .editing-caption-reload-sidecar-source > strong { overflow: hidden; color: var(--text-primary); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .editing-caption-reload-sidecar-source > small { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 5px; min-width: 0; color: var(--text-muted); font-size: 8px; line-height: 1.35; }
 .editing-caption-reload-sidecar-source code { min-width: 0; overflow: hidden; color: var(--text-secondary); font: inherit; text-overflow: ellipsis; white-space: nowrap; }
+.editing-caption-reload-sidecar-ambiguity { display: flex !important; grid-template-columns: none !important; align-items: flex-start; gap: 4px !important; color: var(--warning, #d99a46) !important; }
+.editing-caption-reload-sidecar-ambiguity svg { flex: 0 0 auto; margin-top: 1px; }
 .editing-caption-reload-details { min-width: 0; }
 .editing-caption-reload-details summary { width: fit-content; color: var(--accent); cursor: pointer; font-size: 10px; font-weight: 700; }
 .editing-caption-reload-filters { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 5px; margin-top: 6px; }

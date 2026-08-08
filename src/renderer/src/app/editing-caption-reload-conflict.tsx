@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { AlertTriangle, ArrowRight, Check, ChevronLeft, ChevronRight, RefreshCw, Search, ShieldCheck, Trash2 } from 'lucide-react'
 import { EDITING_SUBTITLE_RELOAD_PAGE_SIZE, getEditingSubtitleReloadChangePage, getEditingSubtitleReloadChangeScriptSegmentId, getEditingSubtitleReloadChangeTimeRange, type EditingSubtitleReloadChange, type EditingSubtitleReloadChangeKindFilter, type EditingSubtitleReloadChangeStatusFilter } from '../../../core/editing/subtitle-reload'
 import type { EditingSubtitleReloadCopy } from '../../../shared/editing-subtitle-reload-copy'
+import type { EditingCaptionSidecarPathInfo } from './editing-caption-loader'
 import type { EditingCaptionReloadConflict } from './use-editing-caption-effect'
 
 type EditingCaptionReloadConflictProps = {
@@ -61,6 +62,22 @@ function formatSidecarPath(path: string | null | undefined, copy: EditingSubtitl
   return path ?? copy.sidecarNotFound
 }
 
+function selectedSidecarCandidateRank(info: EditingCaptionSidecarPathInfo): number {
+  const selectedIndex = info.validCandidatePaths.indexOf(info.selectedPath ?? '')
+  return selectedIndex >= 0 ? selectedIndex + 1 : 1
+}
+
+function renderSidecarTrack(label: string, info: EditingCaptionSidecarPathInfo | undefined, copy: EditingSubtitleReloadCopy, trackId: string): React.ReactNode {
+  if (!info) return null
+  const selectedRank = selectedSidecarCandidateRank(info)
+  return <>
+    <small data-testid={`editing-caption-reload-sidecar-selected-${trackId}`}><span>{label}</span><code>{formatSidecarPath(info.selectedPath, copy)}</code></small>
+    {info.validCandidatePaths.length > 1 ? <small className="editing-caption-reload-sidecar-ambiguity" data-testid={`editing-caption-reload-sidecar-ambiguity-${trackId}`}><AlertTriangle size={11} aria-hidden="true" /><span>{copy.multipleValidCandidates(info.validCandidatePaths.length, selectedRank)}</span></small> : null}
+    {info.validCandidatePaths.length ? <small><span>{copy.validCandidatePaths}</span><code title={info.validCandidatePaths.join('\n')}>{info.validCandidatePaths.join(' · ')}</code></small> : null}
+    {info.candidates.length ? <small><span>{copy.candidatePaths}</span><code title={info.candidates.join('\n')}>{info.candidates.join(' · ')}</code></small> : null}
+  </>
+}
+
 export function EditingCaptionReloadConflict({ conflict, copy, onSeek, onPreviewIncoming, onAcceptIncoming, onAddIncoming, onRemoveCurrent, onKeepCurrentChange, onSelectScriptSegment, onKeepCurrent, onForceReload }: EditingCaptionReloadConflictProps): React.ReactElement {
   const { preview } = conflict
   const [query, setQuery] = useState('')
@@ -107,10 +124,8 @@ export function EditingCaptionReloadConflict({ conflict, copy, onSeek, onPreview
             const paths = conflict.sourcePaths[source.id]
             return <div className="editing-caption-reload-sidecar-source" key={source.id}>
               <strong title={source.path}>{source.name}</strong>
-              <small><span>{copy.sidecarSource}</span><code>{formatSidecarPath(paths?.source.selectedPath, copy)}</code></small>
-              <small><span>{copy.sidecarTranslation}</span><code>{formatSidecarPath(paths?.translation.selectedPath, copy)}</code></small>
-              {paths?.source.candidates.length ? <small><span>{copy.candidatePaths}</span><code title={paths.source.candidates.join('\n')}>{paths.source.candidates.join(' · ')}</code></small> : null}
-              {paths?.translation.candidates.length ? <small><span>{copy.candidatePaths}</span><code title={paths.translation.candidates.join('\n')}>{paths.translation.candidates.join(' · ')}</code></small> : null}
+              {renderSidecarTrack(copy.sidecarSource, paths?.source, copy, `${source.id}-source`)}
+              {renderSidecarTrack(copy.sidecarTranslation, paths?.translation, copy, `${source.id}-translation`)}
             </div>
           })}
         </div>
