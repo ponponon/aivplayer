@@ -1110,3 +1110,9 @@
 - 现象：只限制 UI 偏好最多保留 32 个工程，无法清理用户已经删除、被本地工程索引淘汰或长期不再使用的工程 ID；如果直接按当前工程覆盖整个偏好对象，又会误删其他仍可恢复的工程状态。
 - 经验：清理应以已有的本地工程索引作为白名单，只移除确定不存在的工程；当前正在打开的工程必须额外加入白名单，兼容新建工程和外部 `.aivproj` 刚打开、尚未完成本地索引写回的时间窗口。清理仍只能作用于独立 UI 偏好，不能修改工程文件。
 - 处理：新增 `readEditingProjectIds` 和 `pruneEditingUiPreferences`，在候选状态组件初始化时读取 `editing-projects.v1`，保留本地工程 ID 与当前 `project.id`，清理其余 UI 偏好；存储不可用、索引损坏或偏好 JSON 异常时安全回退。单测覆盖有效 / 非法索引、孤儿偏好、当前工程保护和存储异常，Electron Smoke 验证 `staleProjectPresent:false`、`currentProjectPresent:true`、无路径泄露且重启 / reload / 候选操作不回归。
+
+## 2026-08-09：恢复默认 UI 偏好必须和受控 details 状态同步
+
+- 现象：恢复默认同时修改 localStorage 和受控 `details` 状态；若跳过下一次写入，原生 `toggle` 事件可能让 React state / DOM 不一致，或点击后又把旧状态写回。
+- 经验：恢复默认语义应明确为当前工程 `detailsOpen=false`、`openGroups={}` 并持久化该默认值；只重置当前 `projectId`，其他工程偏好必须保留。恢复后继续允许普通 `onToggle` 写入，避免事件竞态。
+- 处理：新增 `resetEditingUiProjectPreferences`，候选详情旁新增可访问按钮与四语言 label；Smoke 验证当前外层 / 分组关闭、当前偏好为默认、其他工程偏好仍为 true，并继续验证重启、reload、候选切换、撤销 / 重做链路。
