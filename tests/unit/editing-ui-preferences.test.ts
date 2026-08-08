@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { EDITING_UI_PREFERENCES_SCHEMA_VERSION, EDITING_UI_PREFERENCES_STORAGE_KEY, parseEditingUiPreferences, readEditingUiProjectPreferences, writeEditingUiProjectPreferences } from '../../src/renderer/src/app/editing-ui-preferences'
+import { EDITING_UI_PREFERENCES_SCHEMA_VERSION, EDITING_UI_PREFERENCES_STORAGE_KEY, parseEditingUiPreferences, pruneEditingUiPreferences, readEditingProjectIds, readEditingUiProjectPreferences, writeEditingUiProjectPreferences } from '../../src/renderer/src/app/editing-ui-preferences'
 
 function createMemoryStorage(): { storage: Storage; getRaw: () => string | null } {
-  let raw: string | null = null
+  const values = new Map<string, string>()
   const storage = {
-    getItem: () => raw,
-    setItem: (_key: string, value: string) => { raw = value }
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => { values.set(key, value) }
   } as unknown as Storage
-  return { storage, getRaw: () => raw }
+  return { storage, getRaw: () => values.get(EDITING_UI_PREFERENCES_STORAGE_KEY) ?? null }
 }
 
 describe('editing UI preferences', () => {
@@ -43,6 +43,20 @@ describe('editing UI preferences', () => {
     expect(parsed.projects['project-39']).toBeDefined()
   })
 
+  it('prunes preferences for projects absent from the local project index', () => {
+    const { storage } = createMemoryStorage()
+    storage.setItem('aivplayer.editing-projects.v1', JSON.stringify({ first: { id: 'project-a' }, invalid: { id: 42 } }))
+    writeEditingUiProjectPreferences(storage, 'project-a', { detailsOpen: true, openGroups: {} })
+    writeEditingUiProjectPreferences(storage, 'orphan-project', { detailsOpen: true, openGroups: {} })
+    writeEditingUiProjectPreferences(storage, 'new-project', { detailsOpen: true, openGroups: {} })
+
+    expect(readEditingProjectIds(storage)).toEqual(['project-a'])
+    expect(pruneEditingUiPreferences(storage, [...readEditingProjectIds(storage), 'new-project'])).toBe(1)
+    expect(readEditingUiProjectPreferences(storage, 'project-a')).not.toBeNull()
+    expect(readEditingUiProjectPreferences(storage, 'new-project')).not.toBeNull()
+    expect(readEditingUiProjectPreferences(storage, 'orphan-project')).toBeNull()
+  })
+
   it('does not throw when renderer storage is unavailable', () => {
     const brokenStorage = {
       getItem: () => { throw new Error('storage unavailable') },
@@ -51,5 +65,6 @@ describe('editing UI preferences', () => {
 
     expect(readEditingUiProjectPreferences(brokenStorage, 'project-a')).toBeNull()
     expect(() => writeEditingUiProjectPreferences(brokenStorage, 'project-a', { detailsOpen: true, openGroups: {} })).not.toThrow()
+    expect(() => pruneEditingUiPreferences(brokenStorage, ['project-a'])).not.toThrow()
   })
 })
