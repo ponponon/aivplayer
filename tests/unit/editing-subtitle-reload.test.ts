@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createEditingProject } from '../../src/core/editing/project'
-import { buildEditingSubtitleReloadPreview, getEditingSubtitleReloadChangePage, replaceEditingCaptionsForReload } from '../../src/core/editing/subtitle-reload'
+import { buildEditingSubtitleReloadPreview, getEditingSubtitleReloadChangePage, getEditingSubtitleReloadChangeScriptSegmentId, replaceEditingCaptionsForReload } from '../../src/core/editing/subtitle-reload'
 
 const source = { id: 'source-1', path: '/tmp/demo.mp4', name: 'demo.mp4', fingerprint: 'demo:10', durationSeconds: 10 }
 
@@ -17,6 +17,12 @@ const caption = (overrides: Partial<{ id: string; kind: 'source' | 'translation'
 })
 
 describe('editing subtitle reload', () => {
+  it('maps source and translation diff IDs back to script segments', () => {
+    expect(getEditingSubtitleReloadChangeScriptSegmentId({ id: 'source-caption-1', kind: 'source' })).toBe('source-caption-1')
+    expect(getEditingSubtitleReloadChangeScriptSegmentId({ id: 'translation-source-caption-1', kind: 'translation' })).toBe('source-caption-1')
+    expect(getEditingSubtitleReloadChangeScriptSegmentId({ id: 'translation-caption-1', kind: 'translation' })).toBe('caption-1')
+  })
+
   it('summarizes changed, added and removed source/translation captions', () => {
     const current = [caption({}), caption({ id: 'translation-caption-1', kind: 'translation', text: '旧翻译' })]
     const incoming = [caption({ text: '外部新字幕' }), caption({ id: 'source-caption-2', text: '新增字幕', startSeconds: 3, sourceStartSeconds: 3, sourceEndSeconds: 4 })]

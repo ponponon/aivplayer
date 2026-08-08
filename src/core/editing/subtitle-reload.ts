@@ -15,6 +15,14 @@ export type EditingSubtitleReloadChange = {
   incomingEndSeconds?: number
 }
 
+/** Maps a source or translation caption diff back to its persistent script row. */
+export function getEditingSubtitleReloadChangeScriptSegmentId(change: Pick<EditingSubtitleReloadChange, 'id' | 'kind'>): string {
+  const translationPrefix = 'translation-'
+  return change.kind === 'translation' && change.id.startsWith(translationPrefix)
+    ? change.id.slice(translationPrefix.length)
+    : change.id
+}
+
 export type EditingSubtitleReloadPreview = {
   hasChanges: boolean
   addedCount: number
