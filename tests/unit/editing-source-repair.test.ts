@@ -29,6 +29,16 @@ describe('editing source repair', () => {
 
     expect(result.replacements).toEqual([])
     expect(result.ambiguousSourceIds).toEqual([firstSource.id])
+    expect(result.ambiguous).toEqual([{ sourceId: firstSource.id, sourceName: firstSource.name, candidatePaths: ['/new/a/first.mp4', '/new/b/first.mp4'] }])
+  })
+
+  it('keeps an explicit unresolved issue when no candidate is usable', () => {
+    const result = matchEditingSourceRepairCandidates([firstSource], [
+      { path: '/new/other.mp4', name: 'other.mp4', durationSeconds: 5 }
+    ])
+
+    expect(result.unresolvedSourceIds).toEqual([firstSource.id])
+    expect(result.unresolved).toEqual([{ sourceId: firstSource.id, sourceName: firstSource.name, candidatePaths: [] }])
   })
 
   it('relinks paths while preserving source IDs and timeline references', () => {
