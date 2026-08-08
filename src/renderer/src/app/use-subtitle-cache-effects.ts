@@ -81,6 +81,11 @@ export function useSubtitleCacheEffects(model: AppModel, derived: AppDerived, pa
         model.setAsrProgress(null)
         return
       }
+      if (sidecar?.errorDetails?.code === 'INVALID_SUBTITLE_SIDECAR') {
+        model.setAsrNotice(sidecar)
+        model.setAsrProgress(null)
+        return
+      }
 
       const modelId = model.asrStatus?.recommendedModelManifest.id
       if (!modelId) return
