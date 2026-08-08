@@ -118,26 +118,32 @@ async function startOcrFromUi(page: Page): Promise<void> {
 async function startTtsFromUi(page: Page): Promise<void> {
   const task = page.locator('[data-testid="vision-tts-task"]')
   await task.waitFor({ timeout: 10_000 })
-  await page.locator('[data-testid="vision-tts-text"]').fill('Smoke TTS text')
-  await page.locator('[data-testid="vision-tts-start"]').fill('0.5')
-  await page.locator('[data-testid="vision-tts-end"]').fill('1.5')
-  const startButton = page.locator('[data-testid="vision-tts-start-button"]')
-  await page.waitForFunction(() => !(document.querySelector('[data-testid="vision-tts-start-button"]') as HTMLButtonElement | null)?.disabled, undefined, { timeout: 15_000 })
-  await startButton.click()
-  await page.locator('[data-testid="vision-tts-audio"]').waitFor({ timeout: 20_000 })
-  await page.waitForFunction(() => {
-    const audio = document.querySelector('[data-testid="vision-tts-audio"]') as HTMLAudioElement | null
-    return audio !== null && (audio.readyState >= 1 || audio.error !== null)
-  }, undefined, { timeout: 20_000 })
-  const audioState = await page.locator('[data-testid="vision-tts-audio"]').evaluate((element) => {
-    const audio = element as HTMLAudioElement
-    return { readyState: audio.readyState, error: audio.error?.message ?? null, networkState: audio.networkState }
-  })
-  if (audioState.error) throw new Error(`TTS audio protocol error: ${JSON.stringify(audioState)}`)
-  if (await task.getAttribute('data-draft-status') !== 'idle') throw new Error('TTS draft appeared before explicit confirmation')
-  await page.locator('[data-testid="vision-tts-draft-text"]').fill('Smoke TTS confirmed draft')
-  await page.locator('[data-testid="vision-tts-save-draft-button"]').click()
-  await page.locator('[data-testid="vision-tts-task"][data-draft-status="saved"]').waitFor({ timeout: 15_000 })
+  const saveOneDraft = async (text: string, start: string, end: string, draftText: string, expectedDraftCount: number, assertIdleBeforeSave: boolean): Promise<void> => {
+    await page.locator('[data-testid="vision-tts-text"]').fill(text)
+    await page.locator('[data-testid="vision-tts-start"]').fill(start)
+    await page.locator('[data-testid="vision-tts-end"]').fill(end)
+    const startButton = page.locator('[data-testid="vision-tts-start-button"]')
+    await page.waitForFunction(() => !(document.querySelector('[data-testid="vision-tts-start-button"]') as HTMLButtonElement | null)?.disabled, undefined, { timeout: 15_000 })
+    await startButton.click()
+    await page.locator('[data-testid="vision-tts-audio"]').waitFor({ timeout: 20_000 })
+    await page.waitForFunction(() => {
+      const audio = document.querySelector('[data-testid="vision-tts-audio"]') as HTMLAudioElement | null
+      return audio !== null && (audio.readyState >= 1 || audio.error !== null)
+    }, undefined, { timeout: 20_000 })
+    const audioState = await page.locator('[data-testid="vision-tts-audio"]').evaluate((element) => {
+      const audio = element as HTMLAudioElement
+      return { readyState: audio.readyState, error: audio.error?.message ?? null, networkState: audio.networkState }
+    })
+    if (audioState.error) throw new Error(`TTS audio protocol error: ${JSON.stringify(audioState)}`)
+    if (assertIdleBeforeSave && await task.getAttribute('data-draft-status') !== 'idle') throw new Error('TTS draft appeared before explicit confirmation')
+    await page.locator('[data-testid="vision-tts-draft-text"]').fill(draftText)
+    await page.locator('[data-testid="vision-tts-save-draft-button"]').click()
+    await page.waitForFunction(async (count) => (await window.aiv.listMediaEvidenceDrafts()).length === count, expectedDraftCount, { timeout: 15_000 })
+    await page.locator('[data-testid="vision-tts-task"][data-draft-status="saved"]').waitFor({ timeout: 15_000 })
+  }
+
+  await saveOneDraft('Smoke TTS text', '0.5', '1.5', 'Smoke TTS confirmed draft', 1, true)
+  await saveOneDraft('Smoke TTS second text', '2.0', '3.0', 'Smoke TTS second draft', 2, false)
   if (await page.locator('[data-testid="vision-ocr-task"]').getAttribute('data-persistence-status') !== 'persisted') throw new Error('TTS progress leaked into OCR task card')
 }
 
@@ -145,10 +151,20 @@ function getFormalSubtitlePath(mediaPath: string, extension: 'vtt' | 'srt'): str
   return `${mediaPath.replace(/\.[^./\\]+$/, '')}.${extension}`
 }
 
-async function importAndDeleteTtsDraft(page: Page, mediaPath: string): Promise<{ draftId: string; formalVttPath: string; formalSrtPath: string }> {
+async function importAndDeleteTtsDraft(page: Page, mediaPath: string): Promise<{ draftId: string; formalVttPath: string; formalSrtPath: string; cueCount: number }> {
   const drafts = await page.evaluate(() => window.aiv.listMediaEvidenceDrafts())
-  if (drafts.length !== 1 || drafts[0]?.mediaPath !== mediaPath) throw new Error(`TTS draft list mismatch: ${JSON.stringify(drafts)}`)
-  const draftId = drafts[0].id
+  if (drafts.length !== 2 || drafts.some((draft) => draft.mediaPath !== mediaPath || draft.cues.length !== 1)) throw new Error(`TTS draft list mismatch: ${JSON.stringify(drafts)}`)
+  for (const draft of drafts) {
+    await page.locator(`[data-testid="vision-tts-select-${draft.id}"]`).check()
+  }
+  const mergeButton = page.locator('[data-testid="vision-tts-merge-drafts-button"]')
+  await mergeButton.waitFor({ timeout: 10_000 })
+  await mergeButton.click()
+  await page.waitForFunction(async () => (await window.aiv.listMediaEvidenceDrafts()).some((draft) => draft.cues.length === 2), undefined, { timeout: 15_000 })
+  const draftsAfterMerge = await page.evaluate(() => window.aiv.listMediaEvidenceDrafts())
+  const mergedDraft = draftsAfterMerge.find((draft) => draft.cues.length === 2)
+  if (!mergedDraft || draftsAfterMerge.length !== 3) throw new Error(`Merged TTS draft mismatch: ${JSON.stringify(draftsAfterMerge)}`)
+  const draftId = mergedDraft.id
   const formalVttPath = getFormalSubtitlePath(mediaPath, 'vtt')
   const formalSrtPath = getFormalSubtitlePath(mediaPath, 'srt')
   for (const path of [formalVttPath, formalSrtPath]) {
@@ -167,10 +183,12 @@ async function importAndDeleteTtsDraft(page: Page, mediaPath: string): Promise<{
   await waitForFile(formalSrtPath)
   const importedVtt = await readFile(formalVttPath, 'utf8')
   const importedSrt = await readFile(formalSrtPath, 'utf8')
-  if (!importedVtt.includes('Smoke TTS confirmed draft') || !importedSrt.includes('Smoke TTS confirmed draft')) throw new Error('Formal subtitle content mismatch after import')
+  if (!importedVtt.includes('00:00:00.500 --> 00:00:01.500') || !importedVtt.includes('00:00:02.000 --> 00:00:03.000') || !importedVtt.includes('Smoke TTS confirmed draft') || !importedVtt.includes('Smoke TTS second draft') || !importedSrt.includes('2\n00:00:02,000 --> 00:00:03,000\nSmoke TTS second draft')) throw new Error('Formal multi-cue subtitle content mismatch after import')
 
   await page.locator('video.video-surface').evaluate((video) => { (video as HTMLVideoElement).currentTime = 0.7 })
   await page.waitForFunction(() => document.querySelector('.subtitle-overlay')?.textContent?.includes('Smoke TTS confirmed draft') === true, undefined, { timeout: 10_000 })
+  await page.locator('video.video-surface').evaluate((video) => { (video as HTMLVideoElement).currentTime = 2.5 })
+  await page.waitForFunction(() => document.querySelector('.subtitle-overlay')?.textContent?.includes('Smoke TTS second draft') === true, undefined, { timeout: 10_000 })
 
   await importButton.click()
   const confirmImportButton = page.locator('[data-testid="vision-tts-confirm-import-button"]')
@@ -180,11 +198,15 @@ async function importAndDeleteTtsDraft(page: Page, mediaPath: string): Promise<{
   const overwrittenVtt = await readFile(formalVttPath, 'utf8')
   if (!overwrittenVtt.includes('Smoke TTS confirmed draft')) throw new Error('Formal subtitle content mismatch after overwrite confirmation')
 
-  await page.locator(`[data-testid="vision-tts-delete-${draftId}"]`).click()
+  const draftsBeforeDelete = await page.evaluate(() => window.aiv.listMediaEvidenceDrafts())
+  for (const draft of draftsBeforeDelete) {
+    await page.locator(`[data-testid="vision-tts-delete-${draft.id}"]`).click()
+    await page.waitForFunction((id) => document.querySelector(`[data-testid="vision-tts-draft-${id}"]`) === null, draft.id, { timeout: 10_000 })
+  }
   await page.waitForFunction(() => document.querySelector('[data-testid="vision-tts-draft-list"]') === null, undefined, { timeout: 10_000 })
   const draftsAfterDelete = await page.evaluate(() => window.aiv.listMediaEvidenceDrafts())
   if (draftsAfterDelete.length !== 0) throw new Error(`TTS draft was not deleted: ${JSON.stringify(draftsAfterDelete)}`)
-  return { draftId, formalVttPath, formalSrtPath }
+  return { draftId, formalVttPath, formalSrtPath, cueCount: mergedDraft.cues.length }
 }
 
 async function searchOcrAndLocate(page: Page): Promise<{ evidenceId: string; currentTime: number }> {
@@ -259,12 +281,16 @@ async function main(): Promise<void> {
     await startTtsFromUi(first.page)
     const draftDirectory = join(userDataDirectory, 'evidence-drafts')
     const draftFiles = (await readdir(draftDirectory)).filter((fileName) => fileName.endsWith('.vtt'))
-    if (draftFiles.length !== 1) throw new Error(`TTS draft file count mismatch: ${JSON.stringify(draftFiles)}`)
+    if (draftFiles.length !== 2) throw new Error(`TTS draft file count mismatch: ${JSON.stringify(draftFiles)}`)
     const draftManifestFiles = (await readdir(draftDirectory)).filter((fileName) => fileName.endsWith('.json'))
-    if (draftManifestFiles.length !== 1) throw new Error(`TTS draft manifest count mismatch: ${JSON.stringify(draftManifestFiles)}`)
-    const draftContent = await readFile(join(draftDirectory, draftFiles[0]!), 'utf8')
-    if (!draftContent.includes('00:00:00.500 --> 00:00:01.500') || !draftContent.includes('Smoke TTS confirmed draft')) throw new Error(`TTS draft content mismatch: ${draftContent}`)
+    if (draftManifestFiles.length !== 2) throw new Error(`TTS draft manifest count mismatch: ${JSON.stringify(draftManifestFiles)}`)
+    const draftContents = await Promise.all(draftFiles.map((fileName) => readFile(join(draftDirectory, fileName), 'utf8')))
+    if (!draftContents.some((content) => content.includes('00:00:00.500 --> 00:00:01.500') && content.includes('Smoke TTS confirmed draft')) || !draftContents.some((content) => content.includes('00:00:02.000 --> 00:00:03.000') && content.includes('Smoke TTS second draft'))) {
+      throw new Error(`TTS draft content mismatch: ${draftContents.join('\n---\n')}`)
+    }
     const formalSubtitles = await importAndDeleteTtsDraft(first.page, stableMediaPath)
+    const draftFilesAfterDelete = (await readdir(draftDirectory)).filter((fileName) => fileName.endsWith('.vtt') || fileName.endsWith('.json'))
+    if (draftFilesAfterDelete.length !== 0) throw new Error(`TTS draft files remained after delete: ${JSON.stringify(draftFilesAfterDelete)}`)
     const locatedOcr = await searchOcrAndLocate(first.page)
     const screenshotPath = join(userDataDirectory, 'aivplayer-smoke-evidence-ocr.png')
     await first.page.screenshot({ path: screenshotPath, fullPage: false })
@@ -292,7 +318,7 @@ async function main(): Promise<void> {
       throw new Error(`Evidence table contents mismatch: ${JSON.stringify(rows)}`)
     }
     if (first.errors.length > 0 || second.errors.length > 0) throw new Error(`Renderer errors during evidence smoke: ${[...first.errors, ...second.errors].join('\n')}`)
-    console.log(`Evidence task smoke passed: ${JSON.stringify({ capabilities, stablePersistence: stablePersistenceStatus, ttsDraft: draftFiles[0], formalSubtitles, locatedOcr, stalePersistence: staleResult.persistenceStatus, evidenceRows: rows.length, ocrRows: ocrRows.length, visualRows: visualRows.length, screenshotPath })}`)
+    console.log(`Evidence task smoke passed: ${JSON.stringify({ capabilities, stablePersistence: stablePersistenceStatus, ttsDrafts: draftFiles, formalSubtitles, locatedOcr, stalePersistence: staleResult.persistenceStatus, evidenceRows: rows.length, ocrRows: ocrRows.length, visualRows: visualRows.length, screenshotPath })}`)
   } finally {
     await firstApp?.close().catch(() => undefined)
     await secondApp?.close().catch(() => undefined)
