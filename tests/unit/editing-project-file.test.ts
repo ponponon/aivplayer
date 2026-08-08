@@ -223,6 +223,21 @@ describe('editing project files', () => {
     expect(parseEditingProjectFile(serializeEditingProject(withWords))).toEqual(withWords)
   })
 
+  it('round-trips materialized caption fragment relations and rejects partial metadata', () => {
+    const project = createEditingProject(source)
+    const withFragments = {
+      ...project,
+      captions: [
+        { id: 'segment-1', sourceId: source.id, sourceStartSeconds: 1, sourceEndSeconds: 2, startSeconds: 0, durationSeconds: 1, text: '片段', kind: 'source' as const, editedRangeGroupId: 'segment-1', editedRangeIndex: 0 },
+        { id: 'segment-1-1', sourceId: source.id, sourceStartSeconds: 1, sourceEndSeconds: 2, startSeconds: 2, durationSeconds: 1, text: '片段', kind: 'source' as const, editedRangeGroupId: 'segment-1', editedRangeIndex: 1 }
+      ]
+    }
+
+    expect(parseEditingProjectFile(serializeEditingProject(withFragments))).toEqual(withFragments)
+    expect(() => parseEditingProject({ ...withFragments, captions: [{ ...withFragments.captions[0]!, editedRangeGroupId: undefined }] })).toThrow('Invalid editing project caption')
+    expect(() => parseEditingProject({ ...withFragments, captions: [{ ...withFragments.captions[0]!, editedRangeIndex: -1 }] })).toThrow('Invalid editing project caption')
+  })
+
   it('rejects malformed JSON before it reaches the editor', () => {
     expect(() => parseEditingProjectFile('{"schemaVersion": 1}')).toThrow('Invalid AIVPlayer editing project')
   })

@@ -334,4 +334,32 @@ describe('editing subtitle reload', () => {
     expect(next).not.toHaveProperty('captionReloadResolution')
     expect(next.updatedAt).toBe(300)
   })
+
+  it('force reloads a fragment family without discarding edited positions or duplicating script rows', () => {
+    const segment = { id: 'segment-force', sourceId: source.id, sourceStartSeconds: 1, sourceEndSeconds: 2, text: '旧原文', translationText: '旧译文' }
+    const current = [
+      { ...caption({ id: segment.id, text: segment.text, startSeconds: 1 }), editedRangeGroupId: segment.id, editedRangeIndex: 0 },
+      { ...caption({ id: `${segment.id}-1`, text: segment.text, startSeconds: 4 }), editedRangeGroupId: segment.id, editedRangeIndex: 1 },
+      { ...caption({ id: `translation-${segment.id}`, kind: 'translation', text: segment.translationText, startSeconds: 1 }), editedRangeGroupId: segment.id, editedRangeIndex: 0 },
+      { ...caption({ id: `translation-${segment.id}-1`, kind: 'translation', text: segment.translationText, startSeconds: 4 }), editedRangeGroupId: segment.id, editedRangeIndex: 1 }
+    ]
+    const incoming = [
+      caption({ id: segment.id, text: '强制新原文', startSeconds: 0 }),
+      caption({ id: `translation-${segment.id}`, kind: 'translation', text: '强制新译文', startSeconds: 0 })
+    ]
+    const project = { ...createEditingProject(source, { now: 100 }), captions: current, scriptSegments: [segment], captionReloadResolution: { sourceRevisionKey: 'old', changeKeys: ['changed:source:segment-force'] } }
+
+    const next = replaceEditingCaptionsForReload(project, incoming, 'source=new|translation=new', 300)
+
+    expect(next.captions.filter((item) => item.kind === 'source')).toMatchObject([
+      { id: segment.id, text: '强制新原文', startSeconds: 1, editedRangeIndex: 0 },
+      { id: `${segment.id}-1`, text: '强制新原文', startSeconds: 4, editedRangeIndex: 1 }
+    ])
+    expect(next.captions.filter((item) => item.kind === 'translation')).toMatchObject([
+      { id: `translation-${segment.id}`, text: '强制新译文', startSeconds: 1, editedRangeIndex: 0 },
+      { id: `translation-${segment.id}-1`, text: '强制新译文', startSeconds: 4, editedRangeIndex: 1 }
+    ])
+    expect(next.scriptSegments).toEqual([{ id: segment.id, sourceId: source.id, sourceStartSeconds: 1, sourceEndSeconds: 2, text: '强制新原文', translationText: '强制新译文' }])
+    expect(next).not.toHaveProperty('captionReloadResolution')
+  })
 })
