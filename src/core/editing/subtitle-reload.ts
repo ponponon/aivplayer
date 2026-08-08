@@ -134,10 +134,15 @@ function getIncomingPreviewTrack(change: EditingSubtitleReloadChange): EditingSu
   return getChangePreviewTrack(change, 'incoming')
 }
 
-function shareIncomingPreviewScriptSegment(left: Pick<EditingSubtitleReloadChange, 'id' | 'kind'>, right: Pick<EditingSubtitleReloadChange, 'id' | 'kind'>): boolean {
+/** Matches the loader's source-prefixed script IDs with the normalized diff ID. */
+export function shareEditingSubtitleReloadScriptSegmentIds(left: string, right: string): boolean {
+  return left === right || left === `source-${right}` || right === `source-${left}`
+}
+
+export function shareEditingSubtitleReloadScriptSegments(left: Pick<EditingSubtitleReloadChange, 'id' | 'kind'>, right: Pick<EditingSubtitleReloadChange, 'id' | 'kind'>): boolean {
   const leftSegmentId = getEditingSubtitleReloadChangeScriptSegmentId(left)
   const rightSegmentId = getEditingSubtitleReloadChangeScriptSegmentId(right)
-  return leftSegmentId === rightSegmentId || leftSegmentId === `source-${rightSegmentId}` || rightSegmentId === `source-${leftSegmentId}`
+  return shareEditingSubtitleReloadScriptSegmentIds(leftSegmentId, rightSegmentId)
 }
 
 /** Builds a transient preview for added or changed cues; it never mutates the project. */
@@ -154,7 +159,7 @@ export function getEditingSubtitleReloadChangePreview(change: EditingSubtitleRel
   for (const relatedChange of relatedChanges) {
     if (relatedChange.id === change.id && relatedChange.kind === change.kind) continue
     if (relatedChange.status !== change.status) continue
-    if (!shareIncomingPreviewScriptSegment(change, relatedChange)) continue
+    if (!shareEditingSubtitleReloadScriptSegments(change, relatedChange)) continue
     const relatedTrack = getIncomingPreviewTrack(relatedChange)
     if (relatedTrack) incoming[relatedTrack.kind] = relatedTrack
     if (current) {
@@ -291,7 +296,7 @@ export function applyEditingSubtitleReloadChange(project: EditingProject, incomi
   const captions = sortCaptions(project.captions.map((caption) => caption === currentCaption ? incomingCaption : caption))
   const scriptSegmentId = getEditingSubtitleReloadChangeScriptSegmentId(change)
   const scriptSegments = project.scriptSegments?.map((segment) => {
-    if (segment.id !== scriptSegmentId) return segment
+    if (!shareEditingSubtitleReloadScriptSegmentIds(segment.id, scriptSegmentId)) return segment
     if (change.kind === 'translation') return { ...segment, translationText: incomingCaption.text }
     const sourceRange = sourceRangeOfCaption(incomingCaption)
     const next = {
@@ -331,12 +336,12 @@ export function applyEditingSubtitleReloadRemoval(project: EditingProject, chang
   const removedCaptionIds = new Set([change.id])
   if (change.kind === 'source') {
     for (const caption of project.captions) {
-      if (getEditingSubtitleReloadChangeScriptSegmentId(caption) === scriptSegmentId) removedCaptionIds.add(caption.id)
+      if (shareEditingSubtitleReloadScriptSegmentIds(getEditingSubtitleReloadChangeScriptSegmentId(caption), scriptSegmentId)) removedCaptionIds.add(caption.id)
     }
   }
   const captions = sortCaptions(project.captions.filter((caption) => !removedCaptionIds.has(caption.id)))
   const scriptSegments = project.scriptSegments?.map((segment) => {
-    if (segment.id !== scriptSegmentId) return segment
+    if (!shareEditingSubtitleReloadScriptSegmentIds(segment.id, scriptSegmentId)) return segment
     if (change.kind === 'source') return { ...segment, deleted: true }
     const next = { ...segment }
     delete next.translationText

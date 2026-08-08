@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createEditingProject } from '../../src/core/editing/project'
-import { applyEditingSubtitleReloadAddition, applyEditingSubtitleReloadChange, applyEditingSubtitleReloadRemoval, buildEditingSubtitleReloadPreview, getEditingSubtitleReloadChangePage, getEditingSubtitleReloadChangePreview, getEditingSubtitleReloadChangeScriptSegmentId, getEditingSubtitleReloadIncomingPreview, replaceEditingCaptionsForReload } from '../../src/core/editing/subtitle-reload'
+import { applyEditingSubtitleReloadAddition, applyEditingSubtitleReloadChange, applyEditingSubtitleReloadRemoval, buildEditingSubtitleReloadPreview, getEditingSubtitleReloadChangePage, getEditingSubtitleReloadChangePreview, getEditingSubtitleReloadChangeScriptSegmentId, getEditingSubtitleReloadIncomingPreview, replaceEditingCaptionsForReload, shareEditingSubtitleReloadScriptSegmentIds } from '../../src/core/editing/subtitle-reload'
 
 const source = { id: 'source-1', path: '/tmp/demo.mp4', name: 'demo.mp4', fingerprint: 'demo:10', durationSeconds: 10 }
 
@@ -21,6 +21,8 @@ describe('editing subtitle reload', () => {
     expect(getEditingSubtitleReloadChangeScriptSegmentId({ id: 'source-caption-1', kind: 'source' })).toBe('source-caption-1')
     expect(getEditingSubtitleReloadChangeScriptSegmentId({ id: 'translation-source-caption-1', kind: 'translation' })).toBe('source-caption-1')
     expect(getEditingSubtitleReloadChangeScriptSegmentId({ id: 'translation-caption-1', kind: 'translation' })).toBe('caption-1')
+    expect(shareEditingSubtitleReloadScriptSegmentIds('source-source-abc-1', 'source-abc-1')).toBe(true)
+    expect(shareEditingSubtitleReloadScriptSegmentIds('source-source-abc-1', 'source-other-1')).toBe(false)
   })
 
   it('builds a transient preview only for valid incoming-only cues', () => {
@@ -129,6 +131,17 @@ describe('editing subtitle reload', () => {
     expect(afterTranslation?.captions).toEqual([currentSource, incomingTranslation, untouched])
     expect(afterTranslation?.scriptSegments?.[0]).toMatchObject({ text: '手工原文', translationText: 'New translation', sourceStartSeconds: 1, sourceEndSeconds: 2, deleted: true })
     expect(afterTranslation?.scriptSegments?.[0]?.words).toEqual(project.scriptSegments?.[0]?.words)
+
+    const loaderSource = caption({ id: 'source-source-abc-1', text: '加载原文' })
+    const loaderTranslation = caption({ id: 'translation-source-abc-1', kind: 'translation', text: '加载译文' })
+    const loaderIncomingTranslation = { ...loaderTranslation, text: 'Loader translation' }
+    const loaderProject = {
+      ...createEditingProject(source, { now: 100 }),
+      captions: [loaderSource, loaderTranslation],
+      scriptSegments: [{ id: loaderSource.id, sourceId: source.id, sourceStartSeconds: 1, sourceEndSeconds: 2, text: loaderSource.text, translationText: loaderTranslation.text }]
+    }
+    const loaderTranslationChange = { id: loaderTranslation.id, kind: 'translation' as const, status: 'changed' as const, currentText: loaderTranslation.text, incomingText: loaderIncomingTranslation.text, currentStartSeconds: 1, currentEndSeconds: 2, incomingStartSeconds: 1, incomingEndSeconds: 2 }
+    expect(applyEditingSubtitleReloadChange(loaderProject, [loaderSource, loaderIncomingTranslation], loaderTranslationChange)?.scriptSegments?.[0]).toMatchObject({ id: loaderSource.id, translationText: loaderIncomingTranslation.text })
   })
 
   it('rejects added, removed, stale, or missing cues instead of applying a broad reload', () => {
@@ -203,6 +216,17 @@ describe('editing subtitle reload', () => {
     expect(afterTranslation?.captions).toEqual([currentSource, untouched])
     expect(afterTranslation?.scriptSegments?.find((segment) => segment.id === currentSource.id)).toMatchObject({ text: '当前原文' })
     expect(afterTranslation?.scriptSegments?.find((segment) => segment.id === currentSource.id)).not.toHaveProperty('translationText')
+
+    const loaderSource = caption({ id: 'source-source-abc-1', text: '加载原文' })
+    const loaderTranslation = caption({ id: 'translation-source-abc-1', kind: 'translation', text: '加载译文' })
+    const loaderProject = {
+      ...createEditingProject(source, { now: 100 }),
+      captions: [loaderSource, loaderTranslation],
+      scriptSegments: [{ id: loaderSource.id, sourceId: source.id, sourceStartSeconds: 1, sourceEndSeconds: 2, text: loaderSource.text, translationText: loaderTranslation.text }]
+    }
+    const loaderRemoved = { id: loaderSource.id, kind: 'source' as const, status: 'removed' as const, currentText: loaderSource.text, currentStartSeconds: 1, currentEndSeconds: 2 }
+    expect(applyEditingSubtitleReloadRemoval(loaderProject, loaderRemoved)?.captions).toEqual([])
+    expect(applyEditingSubtitleReloadRemoval(loaderProject, loaderRemoved)?.scriptSegments?.[0]).toMatchObject({ id: loaderSource.id, deleted: true })
   })
 
   it('rejects non-removed, stale, or missing cues instead of deleting current edits', () => {
