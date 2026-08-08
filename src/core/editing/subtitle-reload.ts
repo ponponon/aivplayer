@@ -6,6 +6,8 @@ export type EditingSubtitleReloadChangeStatus = 'added' | 'removed' | 'changed'
 export type EditingSubtitleReloadChange = {
   id: string
   kind: EditingCaption['kind']
+  /** Source identity is kept separate from caption IDs so multi-source conflicts remain explainable. */
+  sourceId?: string
   status: EditingSubtitleReloadChangeStatus
   currentText?: string
   incomingText?: string
@@ -311,9 +313,9 @@ export function buildEditingSubtitleReloadPreview(current: readonly EditingCapti
     family.forEach((candidate) => matchedCurrentIds.add(`${candidate.kind}:${candidate.id}`))
     const previous = family.find((candidate) => getEditingCaptionFragmentIndex(candidate, scriptSegments) === 0) ?? family[0]
     if (!previous) {
-      changes.push({ id: caption.id, kind: caption.kind, status: 'added', incomingText: caption.text, incomingStartSeconds: caption.startSeconds, incomingEndSeconds: captionEndSeconds(caption) })
+      changes.push({ id: caption.id, kind: caption.kind, sourceId: caption.sourceId, status: 'added', incomingText: caption.text, incomingStartSeconds: caption.startSeconds, incomingEndSeconds: captionEndSeconds(caption) })
     } else if (!sameReloadCaptionContent(previous, caption, isMaterializedCaptionFamily(previous, family))) {
-      changes.push({ id: caption.id, kind: caption.kind, status: 'changed', currentText: previous.text, incomingText: caption.text, currentStartSeconds: previous.startSeconds, currentEndSeconds: captionEndSeconds(previous), incomingStartSeconds: caption.startSeconds, incomingEndSeconds: captionEndSeconds(caption) })
+      changes.push({ id: caption.id, kind: caption.kind, sourceId: caption.sourceId ?? previous.sourceId, status: 'changed', currentText: previous.text, incomingText: caption.text, currentStartSeconds: previous.startSeconds, currentEndSeconds: captionEndSeconds(previous), incomingStartSeconds: caption.startSeconds, incomingEndSeconds: captionEndSeconds(caption) })
     }
   }
   const emittedRemovedCaptionIds = new Set<string>()
@@ -323,7 +325,7 @@ export function buildEditingSubtitleReloadPreview(current: readonly EditingCapti
     const family = getEditingCaptionReloadFamily(caption, current, scriptSegments).filter((candidate) => !matchedCurrentIds.has(`${candidate.kind}:${candidate.id}`))
     family.forEach((candidate) => emittedRemovedCaptionIds.add(`${candidate.kind}:${candidate.id}`))
     const representative = family.find((candidate) => getEditingCaptionFragmentIndex(candidate, scriptSegments) === 0) ?? family[0] ?? caption
-    changes.push({ id: representative.id, kind: representative.kind, status: 'removed', currentText: representative.text, currentStartSeconds: representative.startSeconds, currentEndSeconds: captionEndSeconds(representative) })
+    changes.push({ id: representative.id, kind: representative.kind, sourceId: representative.sourceId, status: 'removed', currentText: representative.text, currentStartSeconds: representative.startSeconds, currentEndSeconds: captionEndSeconds(representative) })
   }
 
   return summarizeEditingSubtitleReloadChanges([...changes].sort(changeOrder))
@@ -367,6 +369,10 @@ function matchesCurrentCaption(change: EditingSubtitleReloadChange, caption: Edi
   return true
 }
 
+function matchesChangeSource(change: EditingSubtitleReloadChange, caption: EditingCaption): boolean {
+  return change.sourceId === undefined || caption.sourceId === undefined || caption.sourceId === change.sourceId
+}
+
 function sourceRangeOfCaption(caption: EditingCaption): { sourceStartSeconds: number; sourceEndSeconds: number } {
   return {
     sourceStartSeconds: caption.sourceStartSeconds ?? caption.startSeconds,
@@ -389,10 +395,10 @@ function captionBelongsToReloadScriptSegment(caption: EditingCaption, scriptSegm
 }
 
 function findCurrentCaptionForReloadChange(project: EditingProject, change: EditingSubtitleReloadChange): EditingCaption | undefined {
-  const exact = project.captions.find((caption) => caption.id === change.id && caption.kind === change.kind)
+  const exact = project.captions.find((caption) => caption.id === change.id && caption.kind === change.kind && matchesChangeSource(change, caption))
   if (exact) return exact
   const scriptSegmentId = getEditingSubtitleReloadChangeScriptSegmentId(change)
-  return project.captions.find((caption) => caption.kind === change.kind && captionBelongsToReloadScriptSegment(caption, scriptSegmentId, project.scriptSegments))
+  return project.captions.find((caption) => caption.kind === change.kind && matchesChangeSource(change, caption) && captionBelongsToReloadScriptSegment(caption, scriptSegmentId, project.scriptSegments))
 }
 
 function getResolvedChangeId(resolvedKey: string, kind: EditingCaption['kind']): string | null {
@@ -411,8 +417,8 @@ function hasResolvedCaptionForReloadScriptSegment(kind: EditingCaption['kind'], 
 /** Applies exactly one changed cue while leaving additions, removals, and other cues untouched. */
 export function applyEditingSubtitleReloadChange(project: EditingProject, incoming: readonly EditingCaption[], change: EditingSubtitleReloadChange, updatedAt = Date.now()): EditingProject | null {
   if (change.status !== 'changed') return null
-  const incomingCaption = incoming.find((caption) => caption.id === change.id && caption.kind === change.kind)
-  const currentCaption = project.captions.find((caption) => caption.id === change.id && caption.kind === change.kind)
+  const incomingCaption = incoming.find((caption) => caption.id === change.id && caption.kind === change.kind && matchesChangeSource(change, caption))
+  const currentCaption = findCurrentCaptionForReloadChange(project, change)
     ?? (incomingCaption ? getEditingCaptionReloadFamily(incomingCaption, project.captions, project.scriptSegments).find((caption) => getEditingCaptionFragmentIndex(caption, project.scriptSegments) === 0) : undefined)
   if (!currentCaption || !incomingCaption || !matchesCurrentCaption(change, currentCaption)) return null
 
@@ -445,8 +451,8 @@ export function applyEditingSubtitleReloadChange(project: EditingProject, incomi
 /** Adds exactly one incoming cue and merges only the affected script context. */
 export function applyEditingSubtitleReloadAddition(project: EditingProject, incoming: readonly EditingCaption[], change: EditingSubtitleReloadChange, updatedAt = Date.now()): EditingProject | null {
   if (change.status !== 'added') return null
-  const incomingCaption = incoming.find((caption) => caption.id === change.id && caption.kind === change.kind)
-  if (!incomingCaption || project.captions.some((caption) => caption.id === change.id && caption.kind === change.kind) || !matchesIncomingCaption(change, incomingCaption)) return null
+  const incomingCaption = incoming.find((caption) => caption.id === change.id && caption.kind === change.kind && matchesChangeSource(change, caption))
+  if (!incomingCaption || project.captions.some((caption) => caption.id === change.id && caption.kind === change.kind && matchesChangeSource(change, caption)) || !matchesIncomingCaption(change, incomingCaption)) return null
 
   const captions = sortCaptions([...project.captions, incomingCaption])
   const shouldMaterializeScript = project.scriptSegments !== undefined || captions.some((caption) => caption.kind === 'source')
@@ -490,7 +496,7 @@ export function applyEditingSubtitleReloadRemoval(project: EditingProject, chang
 /** Keeps one removed cue in the project while recording the resolved diff keys for the pending revision. */
 export function applyEditingSubtitleReloadKeep(project: EditingProject, changes: readonly EditingSubtitleReloadChange[], change: EditingSubtitleReloadChange, sourceRevisionKey: string, updatedAt = Date.now()): EditingProject | null {
   if (change.status !== 'removed' || sourceRevisionKey.trim().length === 0) return null
-  const currentCaption = project.captions.find((caption) => caption.id === change.id && caption.kind === change.kind)
+  const currentCaption = findCurrentCaptionForReloadChange(project, change)
   if (!currentCaption || !matchesCurrentCaption(change, currentCaption)) return null
   return recordEditingSubtitleReloadResolution(project, sourceRevisionKey, getEditingSubtitleReloadResolutionKeys(changes, change), updatedAt)
 }

@@ -1,5 +1,6 @@
 import { createEditingProject } from '../../../core/editing/project'
 import { editedDurationSeconds } from '../../../core/editing/timeline-math'
+import { matchEditingSourceRepairCandidates, relinkEditingProjectSources } from '../../../core/editing/source-repair'
 import type { EditingProject } from '../../../shared/editing-types'
 import type { AppDerived } from './use-app-derived'
 import type { AppModel } from './app-types'
@@ -72,24 +73,43 @@ export function createEditingProjectFileActions(model: AppModel, derived: AppDer
       model.setEditingProjectStatus({ success: false, message: result.message || derived.copy.editing.projectOpenFailed })
       return
     }
-    const source = result.project.sources[0]
-    if (!source) {
-      model.setEditingProjectStatus({ success: false, message: derived.copy.editing.projectSourceMissing })
-      return
-    }
     try {
-      const availability = await Promise.all(result.project.sources.map(async (item) => ({ item, available: await window.aiv.isMediaFileAvailable(item.path) })))
-      if (availability.some(({ available }) => !available)) {
+      let project = result.project
+      const availability = await Promise.all(project.sources.map(async (item) => ({ item, available: await window.aiv.isMediaFileAvailable(item.path) })))
+      const missingSources = availability.filter(({ available }) => !available).map(({ item }) => item)
+      if (missingSources.length > 0) {
+        const missingSourceNames = missingSources.map((item) => item.name).join('、')
+        model.setEditingProjectStatus({ success: false, message: `${derived.copy.editing.projectSourceMissing}：${missingSourceNames}` })
+        const replacementFiles = await window.aiv.openMediaFiles()
+        if (replacementFiles.length === 0) {
+          model.setEditingProjectStatus({ success: false, message: derived.copy.editing.projectSourceMissing })
+          return
+        }
+        const replacementMetadata = await Promise.all(replacementFiles.map((file) => window.aiv.getMediaMetadata(file.path)))
+        const match = matchEditingSourceRepairCandidates(missingSources, replacementFiles.map((file, index) => ({ path: file.path, name: file.name, durationSeconds: replacementMetadata[index]?.durationSeconds ?? 0, width: replacementMetadata[index]?.video?.width ?? undefined, height: replacementMetadata[index]?.video?.height ?? undefined })))
+        if (match.unresolvedSourceIds.length > 0 || match.ambiguousSourceIds.length > 0 || match.replacements.length !== missingSources.length) {
+          model.setEditingProjectStatus({ success: false, message: derived.copy.editing.projectSourceMissing })
+          return
+        }
+        const repaired = relinkEditingProjectSources(project, match.replacements)
+        if (!repaired) {
+          model.setEditingProjectStatus({ success: false, message: derived.copy.editing.projectSourceMissing })
+          return
+        }
+        project = repaired
+      }
+      const source = project.sources[0]
+      if (!source) {
         model.setEditingProjectStatus({ success: false, message: derived.copy.editing.projectSourceMissing })
         return
       }
-      const mediaFiles = await Promise.all(result.project.sources.map((item) => window.aiv.createMediaFile(item.path)))
+      const mediaFiles = await Promise.all(project.sources.map((item) => window.aiv.createMediaFile(item.path)))
       if (model.state.currentFile?.path !== source.path) selectFile(mediaFiles[0]!)
-      model.setEditingSourceFiles(Object.fromEntries(result.project.sources.map((item, index) => [item.id, mediaFiles[index]!])) as Record<string, NonNullable<AppModel['state']['currentFile']>>)
+      model.setEditingSourceFiles(Object.fromEntries(project.sources.map((item, index) => [item.id, mediaFiles[index]!])) as Record<string, NonNullable<AppModel['state']['currentFile']>>)
       model.setEditingPreviewSourceId(source.id)
       model.setEditingProjectFilePath(result.filePath ?? null)
-      model.setEditingProjectStatus({ success: true, message: derived.copy.editing.projectOpened(result.project.title) })
-      setEditingProject(model, result.project, 0)
+      model.setEditingProjectStatus({ success: true, message: derived.copy.editing.projectOpened(project.title) })
+      setEditingProject(model, project, 0)
     } catch (error) {
       model.setEditingProjectStatus({ success: false, message: `${derived.copy.editing.projectOpenFailed}：${error instanceof Error ? error.message : String(error)}` })
     }
