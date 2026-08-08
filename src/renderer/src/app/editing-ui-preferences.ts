@@ -123,3 +123,16 @@ export function pruneEditingUiPreferences(storage: EditingUiPreferenceStorage, k
     return 0
   }
 }
+
+export function resetEditingUiProjectPreferences(storage: EditingUiPreferenceStorage, projectId: string): boolean {
+  if (!projectId || projectId.length > MAX_ID_LENGTH) return false
+  try {
+    const current = parseEditingUiPreferences(storage.getItem(EDITING_UI_PREFERENCES_STORAGE_KEY))
+    if (!current.projects[projectId]) return false
+    const projects = Object.fromEntries(Object.entries(current.projects).filter(([id]) => id !== projectId))
+    storage.setItem(EDITING_UI_PREFERENCES_STORAGE_KEY, serializeEditingUiPreferences({ schemaVersion: EDITING_UI_PREFERENCES_SCHEMA_VERSION, projects }))
+    return true
+  } catch {
+    return false
+  }
+}
