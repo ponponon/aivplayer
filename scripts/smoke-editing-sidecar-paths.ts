@@ -1,5 +1,5 @@
 import { _electron as electron } from 'playwright'
-import { copyFile, mkdtemp, utimes, writeFile } from 'node:fs/promises'
+import { copyFile, mkdtemp, rename, utimes, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 
@@ -14,9 +14,12 @@ async function main(): Promise<void> {
   const mediaPath = join(smokeDirectory, 'sidecar-paths-smoke.mp4')
   const sourceEmptyPath = join(smokeDirectory, 'sidecar-paths-smoke.SRT')
   const sourcePath = join(smokeDirectory, 'sidecar-paths-smoke.VTT')
+  const sourceBackupPath = join(smokeDirectory, 'sidecar-paths-smoke.VTT.disabled')
   const translationEmptyPath = join(smokeDirectory, 'sidecar-paths-smoke.translated.SRT')
   const translationPath = join(smokeDirectory, 'sidecar-paths-smoke.zh-CN.srt')
+  const translationBackupPath = join(smokeDirectory, 'sidecar-paths-smoke.zh-CN.srt.disabled')
   const translationAlternatePath = join(smokeDirectory, 'sidecar-paths-smoke.zh-CN.VTT')
+  const translationAlternateBackupPath = join(smokeDirectory, 'sidecar-paths-smoke.zh-CN.VTT.disabled')
   const smokeHomeDirectory = await mkdtemp(join(tmpdir(), 'aivplayer-smoke-sidecar-paths-home-'))
   await copyFile(sourceMediaPath, mediaPath)
   await writeFile(sourceEmptyPath, '')
@@ -77,6 +80,27 @@ async function main(): Promise<void> {
     const candidateAuditSessionStorageValue = await page.evaluate(() => localStorage.getItem('aivplayer.editing-project-status'))
     const candidateAuditSessionScreenshotPath = join(smokeHomeDirectory, 'aivplayer-smoke-sidecar-paths-session.png')
     await page.screenshot({ path: candidateAuditSessionScreenshotPath, fullPage: false })
+    await rename(sourcePath, sourceBackupPath)
+    await rename(translationPath, translationBackupPath)
+    await rename(translationAlternatePath, translationAlternateBackupPath)
+    await page.locator('[data-testid="editing-rebuild-caption-manifest"]').click()
+    await page.waitForFunction(() => {
+      const button = document.querySelector('[data-testid="editing-rebuild-caption-manifest"]') as HTMLButtonElement | null
+      return Boolean(button && !button.disabled)
+    }, undefined, { timeout: 10_000 })
+    await page.waitForFunction(() => document.querySelector('[data-testid="editing-project-status-details"]') === null, undefined, { timeout: 10_000 })
+    const candidateAuditClearedDetailsCount = await page.locator('[data-testid="editing-project-status-details"]').count()
+    const candidateAuditClearedStatus = await page.locator('[data-testid="editing-project-status-message"]').textContent()
+    await rename(sourceBackupPath, sourcePath)
+    await rename(translationBackupPath, translationPath)
+    await rename(translationAlternateBackupPath, translationAlternatePath)
+    await page.locator('[data-testid="editing-rebuild-caption-manifest"]').click()
+    await page.waitForFunction(() => {
+      const button = document.querySelector('[data-testid="editing-rebuild-caption-manifest"]') as HTMLButtonElement | null
+      return Boolean(button && !button.disabled)
+    }, undefined, { timeout: 10_000 })
+    await sessionCandidateDetails.waitFor({ timeout: 10_000 })
+    const candidateAuditRestoredDetailsCount = await sessionCandidateDetails.count()
     await page.waitForFunction(() => localStorage.getItem('aivplayer.editing-ui-preferences.v1') !== null, undefined, { timeout: 10_000 })
     const candidateAuditPrunedPreference = await page.evaluate(({ projectId, smokeDirectory }) => {
       const raw = localStorage.getItem('aivplayer.editing-ui-preferences.v1') ?? ''
@@ -353,6 +377,9 @@ async function main(): Promise<void> {
       candidateAuditSessionRefreshedGroupOpen,
       candidateAuditSessionStorageValue,
       candidateAuditSessionScreenshotPath,
+      candidateAuditClearedDetailsCount,
+      candidateAuditClearedStatus,
+      candidateAuditRestoredDetailsCount,
       candidateAuditResetOuterOpen,
       candidateAuditResetGroupOpen,
       candidateAuditResetPreference,
@@ -398,7 +425,7 @@ async function main(): Promise<void> {
     }
     console.log('AIVPlayer Smoke Editing Sidecar Paths')
     console.log(JSON.stringify(result))
-    if (result.selectedSourcePath?.toLowerCase() !== sourcePath.toLowerCase() || result.selectedTranslationPath?.toLowerCase() !== translationPath.toLowerCase() || result.candidateRows < 6 || result.conflictRows !== 2 || result.ambiguityCount !== 1 || !result.ambiguityText?.includes('2') || result.equivalentCount < 1 || !result.equivalentText?.includes('内容相同') || result.candidateAuditStatus?.includes(smokeDirectory) || !result.candidateAuditDetailsSummary?.includes('查看完整候选路径') || !result.candidateAuditSessionInitialOuterOpen || !result.candidateAuditSessionInitialGroupOpen || !result.candidateAuditSessionRefreshedOuterOpen || !result.candidateAuditSessionRefreshedGroupOpen || result.candidateAuditSessionStorageValue !== null || result.candidateAuditResetOuterOpen || result.candidateAuditResetGroupOpen || !result.candidateAuditResetPreference.currentProjectPresent || result.candidateAuditResetPreference.currentDetailsOpen || result.candidateAuditResetPreference.currentOpenGroupCount !== 0 || !result.candidateAuditResetPreference.otherProjectPresent || !result.candidateAuditResetPreference.otherDetailsOpen || result.candidateAuditResetPreference.otherOpenGroupCount !== 1 || result.candidateAuditResetPreference.containsSmokePath || !result.candidateAuditGlobalResetDialogShown.includes('候选详情') || !result.candidateAuditGlobalResetAcceptedDialog.includes('候选详情') || !result.candidateAuditGlobalResetOuterOpenAfterCancel || !result.candidateAuditGlobalResetGroupOpenAfterCancel || !result.candidateAuditGlobalResetCancelled || result.candidateAuditGlobalResetOuterOpen || result.candidateAuditGlobalResetGroupOpen || !result.candidateAuditGlobalResetPreference.currentProjectPresent || result.candidateAuditGlobalResetPreference.currentDetailsOpen || result.candidateAuditGlobalResetPreference.currentOpenGroupCount !== 0 || result.candidateAuditGlobalResetPreference.otherProjectPresent || result.candidateAuditGlobalResetPreference.remainingProjectCount !== 1 || result.candidateAuditGlobalResetPreference.containsSmokePath || result.candidateAuditPrunedPreference.staleProjectPresent || !result.candidateAuditPrunedPreference.currentProjectPresent || result.candidateAuditPrunedPreference.containsSmokePath || !result.candidateAuditRestartedOuterOpen || !result.candidateAuditRestartedGroupOpen || result.candidateAuditRestartedPreference.schemaVersion !== 1 || result.candidateAuditRestartedPreference.detailsOpen !== true || result.candidateAuditRestartedPreference.openGroupCount !== 1 || result.candidateAuditRestartedPreference.containsSmokePath || !result.candidateAuditReloadedOuterOpen || !result.candidateAuditReloadedGroupOpen[0] || result.candidateAuditReloadedGroupOpen[1] || result.candidateAuditGroupCount !== 2 || result.candidateAuditGroupOpenBefore.some(Boolean) || !result.candidateAuditGroupLabels.some((label) => label.includes('原文')) || !result.candidateAuditGroupLabels.some((label) => label.includes('译文')) || !result.candidateAuditFirstGroupOpen || !result.candidateAuditFirstGroupDetailsVisible || !result.candidateAuditSecondGroupOpen || !result.candidateAuditFirstGroupClosed || !result.candidateAuditSecondGroupStillOpen || !result.candidateAuditDetailsText?.includes('内容相同') || !result.candidateAuditDetailsText?.includes('内容不同') || !result.candidateAuditDetailsText?.includes(smokeDirectory) || result.selectedCandidatePath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.selectedCandidateText !== '更新跨设备备用译文' || result.selectedCandidateRevision === null || result.undoPreferredPath?.toLowerCase() === result.alternateTranslationCandidatePath.toLowerCase() || result.undoCaptionText !== '初始跨设备译文' || result.redoPreferredPath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.redoCaptionText !== '更新跨设备备用译文' || result.clearedPreferredPath !== null || result.clearedCaptionText !== '更新跨设备译文' || result.clearUndoPreferredPath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.clearRedoPreferredPath !== null || result.consoleErrors.length > 0) process.exitCode = 1
+    if (result.selectedSourcePath?.toLowerCase() !== sourcePath.toLowerCase() || result.selectedTranslationPath?.toLowerCase() !== translationPath.toLowerCase() || result.candidateRows < 6 || result.conflictRows !== 2 || result.ambiguityCount !== 1 || !result.ambiguityText?.includes('2') || result.equivalentCount < 1 || !result.equivalentText?.includes('内容相同') || result.candidateAuditStatus?.includes(smokeDirectory) || !result.candidateAuditDetailsSummary?.includes('查看完整候选路径') || !result.candidateAuditSessionInitialOuterOpen || !result.candidateAuditSessionInitialGroupOpen || !result.candidateAuditSessionRefreshedOuterOpen || !result.candidateAuditSessionRefreshedGroupOpen || result.candidateAuditSessionStorageValue !== null || result.candidateAuditClearedDetailsCount !== 0 || !result.candidateAuditClearedStatus || result.candidateAuditClearedStatus.includes(smokeDirectory) || result.candidateAuditRestoredDetailsCount !== 1 || result.candidateAuditResetOuterOpen || result.candidateAuditResetGroupOpen || !result.candidateAuditResetPreference.currentProjectPresent || result.candidateAuditResetPreference.currentDetailsOpen || result.candidateAuditResetPreference.currentOpenGroupCount !== 0 || !result.candidateAuditResetPreference.otherProjectPresent || !result.candidateAuditResetPreference.otherDetailsOpen || result.candidateAuditResetPreference.otherOpenGroupCount !== 1 || result.candidateAuditResetPreference.containsSmokePath || !result.candidateAuditGlobalResetDialogShown.includes('候选详情') || !result.candidateAuditGlobalResetAcceptedDialog.includes('候选详情') || !result.candidateAuditGlobalResetOuterOpenAfterCancel || !result.candidateAuditGlobalResetGroupOpenAfterCancel || !result.candidateAuditGlobalResetCancelled || result.candidateAuditGlobalResetOuterOpen || result.candidateAuditGlobalResetGroupOpen || !result.candidateAuditGlobalResetPreference.currentProjectPresent || result.candidateAuditGlobalResetPreference.currentDetailsOpen || result.candidateAuditGlobalResetPreference.currentOpenGroupCount !== 0 || result.candidateAuditGlobalResetPreference.otherProjectPresent || result.candidateAuditGlobalResetPreference.remainingProjectCount !== 1 || result.candidateAuditGlobalResetPreference.containsSmokePath || result.candidateAuditPrunedPreference.staleProjectPresent || !result.candidateAuditPrunedPreference.currentProjectPresent || result.candidateAuditPrunedPreference.containsSmokePath || !result.candidateAuditRestartedOuterOpen || !result.candidateAuditRestartedGroupOpen || result.candidateAuditRestartedPreference.schemaVersion !== 1 || result.candidateAuditRestartedPreference.detailsOpen !== true || result.candidateAuditRestartedPreference.openGroupCount !== 1 || result.candidateAuditRestartedPreference.containsSmokePath || !result.candidateAuditReloadedOuterOpen || !result.candidateAuditReloadedGroupOpen[0] || result.candidateAuditReloadedGroupOpen[1] || result.candidateAuditGroupCount !== 2 || result.candidateAuditGroupOpenBefore.some(Boolean) || !result.candidateAuditGroupLabels.some((label) => label.includes('原文')) || !result.candidateAuditGroupLabels.some((label) => label.includes('译文')) || !result.candidateAuditFirstGroupOpen || !result.candidateAuditFirstGroupDetailsVisible || !result.candidateAuditSecondGroupOpen || !result.candidateAuditFirstGroupClosed || !result.candidateAuditSecondGroupStillOpen || !result.candidateAuditDetailsText?.includes('内容相同') || !result.candidateAuditDetailsText?.includes('内容不同') || !result.candidateAuditDetailsText?.includes(smokeDirectory) || result.selectedCandidatePath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.selectedCandidateText !== '更新跨设备备用译文' || result.selectedCandidateRevision === null || result.undoPreferredPath?.toLowerCase() === result.alternateTranslationCandidatePath.toLowerCase() || result.undoCaptionText !== '初始跨设备译文' || result.redoPreferredPath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.redoCaptionText !== '更新跨设备备用译文' || result.clearedPreferredPath !== null || result.clearedCaptionText !== '更新跨设备译文' || result.clearUndoPreferredPath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.clearRedoPreferredPath !== null || result.consoleErrors.length > 0) process.exitCode = 1
   } finally {
     await app.close()
   }
