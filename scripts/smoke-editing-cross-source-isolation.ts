@@ -1,5 +1,5 @@
 import { _electron as electron } from 'playwright'
-import { copyFile, mkdtemp } from 'node:fs/promises'
+import { copyFile, mkdtemp, utimes, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 
@@ -27,12 +27,18 @@ type StoredProject = {
 
 async function main(): Promise<void> {
   const smokeDirectory = await mkdtemp(join(tmpdir(), 'aivplayer-smoke-cross-source-isolation-'))
+  const primaryMediaPath = join(smokeDirectory, 'primary-source.mp4')
+  const primarySubtitlePath = join(smokeDirectory, 'primary-source.srt')
+  const primaryTranslationPath = join(smokeDirectory, 'primary-source.translated.srt')
   const secondaryMediaPath = join(smokeDirectory, 'secondary-source.mp4')
   const smokeHomeDirectory = await mkdtemp(join(tmpdir(), 'aivplayer-smoke-cross-source-isolation-home-'))
+  await copyFile(sourceMediaPath, primaryMediaPath)
   await copyFile(sourceMediaPath, secondaryMediaPath)
+  await writeFile(primarySubtitlePath, '1\n00:00:00,000 --> 00:00:01,000\n旧素材 sidecar 原文\n')
+  await writeFile(primaryTranslationPath, '1\n00:00:00,000 --> 00:00:01,000\n旧素材 sidecar 译文\n')
 
   const app = await electron.launch({
-    args: ['--no-sandbox', '--in-process-gpu', `--user-data-dir=${smokeHomeDirectory}`, 'out/main/index.js', sourceMediaPath],
+    args: ['--no-sandbox', '--in-process-gpu', `--user-data-dir=${smokeHomeDirectory}`, 'out/main/index.js', primaryMediaPath],
     env: { ...process.env, HOME: smokeHomeDirectory }
   })
 
@@ -100,12 +106,20 @@ async function main(): Promise<void> {
     const orphanAfterReplace = await translationAfterReplace.getAttribute('data-editing-orphan-translation')
     const translationClassAfterReplace = await translationAfterReplace.getAttribute('class')
 
+    await writeFile(primarySubtitlePath, '1\n00:00:00,000 --> 00:00:01,000\n旧素材 sidecar 被修改\n')
+    await writeFile(primaryTranslationPath, '1\n00:00:00,000 --> 00:00:01,000\n旧素材 sidecar 译文被修改\n')
+    const staleSidecarRevision = Date.now() + 5_000
+    await utimes(primarySubtitlePath, new Date(staleSidecarRevision), new Date(staleSidecarRevision))
+    await utimes(primaryTranslationPath, new Date(staleSidecarRevision + 1_000), new Date(staleSidecarRevision + 1_000))
     await page.reload()
     await openEditor()
+    await page.waitForTimeout(700)
     const persisted = await waitForStored((project) => project.videoClips[0]?.sourceId === prepared.secondaryId && project.captions.every((caption) => caption.sourceId === prepared.secondaryId) && project.scriptSegments?.[0]?.sourceId === prepared.primaryId && project.scriptSegments[0]?.deleted === true)
     const translationAfterReload = page.locator('[data-testid^="editing-caption-item-"]').filter({ hasText: '旧素材译文' })
     const orphanAfterReload = await translationAfterReload.getAttribute('data-editing-orphan-translation')
     const orphanNoticeAfterReload = await page.locator('[data-testid="editing-caption-orphan-notice"]').count()
+    const staleSidecarConflictCount = await page.locator('[data-testid="editing-caption-reload-conflict"]').count()
+    const staleSidecarPreviewCount = await page.locator('[data-testid="editing-caption-reload-conflict"]').filter({ hasText: '旧素材 sidecar 被修改' }).count()
     const screenshotPath = join(smokeHomeDirectory, 'aivplayer-smoke-cross-source-isolation.png')
     await page.screenshot({ path: screenshotPath, fullPage: false })
     const result = {
@@ -115,6 +129,8 @@ async function main(): Promise<void> {
       translationClassAfterReplace: translationClassAfterReplace ?? '',
       orphanAfterReload,
       orphanNoticeAfterReload,
+      staleSidecarConflictCount,
+      staleSidecarPreviewCount,
       replacedSourceId: replaced.videoClips[0]?.sourceId,
       replacedScriptSourceId: replaced.scriptSegments?.[0]?.sourceId,
       persistedSourceId: persisted.videoClips[0]?.sourceId,
@@ -124,7 +140,7 @@ async function main(): Promise<void> {
     }
     console.log('AIVPlayer Smoke Editing Cross-Source Isolation')
     console.log(JSON.stringify(result))
-    if (result.orphanBeforeReplace !== 'true' || result.orphanNoticeBeforeReplace !== 1 || result.orphanAfterReplace !== null || result.translationClassAfterReplace.includes('is-orphan-translation') || result.orphanAfterReload !== null || result.orphanNoticeAfterReload !== 0 || result.replacedSourceId !== prepared.secondaryId || result.replacedScriptSourceId !== prepared.primaryId || result.persistedSourceId !== prepared.secondaryId || result.persistedScriptSourceId !== prepared.primaryId || result.consoleErrors.length > 0) process.exitCode = 1
+    if (result.orphanBeforeReplace !== 'true' || result.orphanNoticeBeforeReplace !== 1 || result.orphanAfterReplace !== null || result.translationClassAfterReplace.includes('is-orphan-translation') || result.orphanAfterReload !== null || result.orphanNoticeAfterReload !== 0 || result.staleSidecarConflictCount !== 0 || result.staleSidecarPreviewCount !== 0 || result.replacedSourceId !== prepared.secondaryId || result.replacedScriptSourceId !== prepared.primaryId || result.persistedSourceId !== prepared.secondaryId || result.persistedScriptSourceId !== prepared.primaryId || result.consoleErrors.length > 0) process.exitCode = 1
   } finally {
     await app.close()
   }
