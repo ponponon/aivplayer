@@ -1128,3 +1128,9 @@
 - 现象：候选审计只在字幕 effect 的依赖变化时重新计算；当用户移走重复旁车但选中的字幕文件 revision 没变时，重建字幕版本清单仍可能留下旧的候选详情。macOS 大小写不敏感时，单独移走 `.VTT` 还会被 `.vtt` 别名重新读到，容易误判 Smoke 没有覆盖清理分支。
 - 经验：状态清理必须绑定触发动作本身，而不是假设依赖键一定变化；候选状态要有明确来源标记，清理时只删除该来源，不能把项目保存、媒体添加等普通状态一起清掉。跨平台 Smoke 还要同时考虑大小写别名，必须让全部有效候选暂时不可读后再验证无候选状态。
 - 处理：为 `EditingProjectStatus` 增加候选来源标记和安全合并函数；字幕版本清单重建直接使用本次快照的 `sourcePaths` 计算候选状态，无候选时显示普通重建成功提示；Smoke 临时移走全部有效 source / translation sidecar，验证 `candidateAuditClearedDetailsCount:0`、恢复后详情重新出现且 `consoleErrors:[]`。
+
+## 2026-08-09：许可证不能只写在 package.json 里
+
+- 现象：`package.json` 虽然声明了 MIT，README 和网页也链接到 `LICENSE`，但仓库实际没有根许可证文件；Electron 打包配置也没有把项目许可证或第三方依赖清单带进安装包，发布工作流无法证明每个平台使用的是同一套许可证信息。
+- 经验：许可证必须形成“项目声明 → 依赖版本 / 许可证 → 安装包资源 → CI 阻断检查”的证据链。npm 直接依赖可以自动核对，但 FFmpeg 的 GPL 选项、libheif codec、模型 revision 等构建期组件不能用一个静态 MIT / LGPL 标签代替，必须保留未完成项并在发布前按实际构建参数复核。
+- 处理：新增根 `LICENSE`、`docs/THIRD_PARTY_LICENSES.md` 和 `npm run check:licenses`；Electron Builder 将许可证文件复制到资源目录，`release:check-packaged-resources` 强制检查，三平台 release job 在打包前执行清单校验；OpenList / VLC / Pireel 仅作为研究参考，不作为 AIVPlayer 代码或资源依赖。

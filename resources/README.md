@@ -31,3 +31,7 @@ The script normalizes binary names to the layout above and copies sibling runtim
 On macOS, it also recursively bundles non-system Mach-O dylib dependencies for ffmpeg and ffprobe, rewrites them to `@loader_path` references, applies an ad-hoc signature, and executes both binaries with `-version` before staging succeeds. Do not manually copy `/opt/homebrew/bin/ffmpeg` into this directory: that symlink points to a Homebrew build whose absolute Cellar paths are not portable.
 
 Large Whisper model files are intentionally not stored in this directory. The app downloads models into the user's app data directory so installers stay small and updates remain cheap.
+
+## License files in packaged resources
+
+Electron Builder copies the project `LICENSE` and `docs/THIRD_PARTY_LICENSES.md` into the packaged resources directory. `npm run release:check-packaged-resources` treats both files as required artifacts, so a desktop release cannot pass resource verification without the project and direct runtime license records.
