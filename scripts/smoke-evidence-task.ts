@@ -214,7 +214,12 @@ async function searchOcrAndLocate(page: Page): Promise<{ evidenceId: string; cur
   await searchInput.fill('Smoke OCR text')
   await page.locator('.vision-text-search .vision-search-button').click()
   const result = page.locator('.vision-result[data-evidence-type="ocr"]')
-  await result.waitFor({ timeout: 30_000 })
+  try {
+    await result.waitFor({ timeout: 30_000 })
+  } catch (error) {
+    const diagnostic = await page.evaluate(() => window.aiv.searchVisionText({ query: 'Smoke OCR text', limit: 24, mode: 'hybrid' }))
+    throw new Error(`OCR search result did not render: ${JSON.stringify({ diagnostic, error: error instanceof Error ? error.message : String(error) })}`)
+  }
   const evidenceId = await result.getAttribute('data-evidence-id')
   const matchedText = await result.locator('.vision-result-match').textContent()
   if (!evidenceId || matchedText?.trim() !== 'Smoke OCR text') throw new Error(`OCR search result mismatch: ${JSON.stringify({ evidenceId, matchedText })}`)
@@ -313,12 +318,14 @@ async function main(): Promise<void> {
 
     const rows = await readEvidenceRows(userDataDirectory)
     const ocrRows = rows.filter((row) => row.evidence_type === 'ocr')
+    const subtitleRows = rows.filter((row) => row.evidence_type === 'subtitle')
     const visualRows = rows.filter((row) => row.id === 'smoke-visual-evidence')
-    if (ocrRows.length !== 1 || visualRows.length !== 1 || ocrRows[0]?.text !== 'Smoke OCR text' || ocrRows[0]?.video_path !== stableMediaPath || rows.some((row) => row.video_path === staleMediaPath)) {
+    const subtitleTexts = new Set(subtitleRows.map((row) => row.text))
+    if (ocrRows.length !== 1 || ![0, 2].includes(subtitleRows.length) || visualRows.length !== 1 || ocrRows[0]?.text !== 'Smoke OCR text' || ocrRows[0]?.video_path !== stableMediaPath || (subtitleRows.length === 2 && (!subtitleTexts.has('Smoke TTS confirmed draft') || !subtitleTexts.has('Smoke TTS second draft'))) || rows.some((row) => row.video_path === staleMediaPath)) {
       throw new Error(`Evidence table contents mismatch: ${JSON.stringify(rows)}`)
     }
     if (first.errors.length > 0 || second.errors.length > 0) throw new Error(`Renderer errors during evidence smoke: ${[...first.errors, ...second.errors].join('\n')}`)
-    console.log(`Evidence task smoke passed: ${JSON.stringify({ capabilities, stablePersistence: stablePersistenceStatus, ttsDrafts: draftFiles, formalSubtitles, locatedOcr, stalePersistence: staleResult.persistenceStatus, evidenceRows: rows.length, ocrRows: ocrRows.length, visualRows: visualRows.length, screenshotPath })}`)
+    console.log(`Evidence task smoke passed: ${JSON.stringify({ capabilities, stablePersistence: stablePersistenceStatus, ttsDrafts: draftFiles, formalSubtitles, locatedOcr, stalePersistence: staleResult.persistenceStatus, evidenceRows: rows.length, ocrRows: ocrRows.length, subtitleRows: subtitleRows.length, visualRows: visualRows.length, screenshotPath })}`)
   } finally {
     await firstApp?.close().catch(() => undefined)
     await secondApp?.close().catch(() => undefined)
