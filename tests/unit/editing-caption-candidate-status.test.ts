@@ -27,6 +27,7 @@ describe('editing caption candidate status', () => {
     expect(status?.message).not.toContain('/old-machine/projects/very-long-directory')
     expect(status?.details?.label).toBe('查看完整候选路径')
     expect(status?.details?.groups).toHaveLength(2)
+    expect(status?.details?.groups.map((group) => group.id)).toEqual(['source-1-source', 'source-1-translation'])
     expect(status?.details?.groups[0]?.label).toContain('原文')
     expect(status?.details?.groups[1]?.label).toContain('译文')
     expect(status?.details?.groups.flatMap((group) => group.items).some((item) => item.includes('/old-machine/projects/very-long-directory/demo.VTT'))).toBe(true)
