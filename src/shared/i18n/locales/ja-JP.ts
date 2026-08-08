@@ -1126,3 +1126,4 @@
   }
 
 Object.assign(jaJP.editing.transitionLabels, { circleopen: '円形展開', crosszoom: 'クロスズーム' })
+Object.assign(jaJP.editing, { rebuildCaptionManifest: '字幕マニフェストを再構築', rebuildingCaptionManifest: '字幕マニフェストを再構築中…', captionManifestRebuilt: '字幕マニフェストを再構築しました', captionManifestRebuildFailed: '字幕マニフェストの再構築に失敗しました' })

@@ -1124,3 +1124,4 @@
   }
 
 Object.assign(zhCN.editing.transitionLabels, { circleopen: '圆形展开', crosszoom: '交叉缩放' })
+Object.assign(zhCN.editing, { rebuildCaptionManifest: '重建字幕版本清单', rebuildingCaptionManifest: '正在重建字幕版本清单…', captionManifestRebuilt: '已重建字幕版本清单', captionManifestRebuildFailed: '字幕版本清单重建失败' })

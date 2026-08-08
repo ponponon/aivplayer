@@ -1,4 +1,4 @@
-import { ArrowRight, ChevronLeft, ChevronRight, Copy, Download, FilePlus2, FolderOpen, Grid3X3, Pause, Play, Plus, Redo2, RotateCcw, Save, ScanSearch, Scissors, Trash2, Undo2, Volume2, X, ZoomIn, ZoomOut } from 'lucide-react'
+import { ArrowRight, ChevronLeft, ChevronRight, Copy, Download, FilePlus2, FolderOpen, Grid3X3, Pause, Play, Plus, Redo2, RefreshCw, RotateCcw, Save, ScanSearch, Scissors, Trash2, Undo2, Volume2, X, ZoomIn, ZoomOut } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { TimelineExportMode } from '../../../shared/clip-export'; import type { EditingThemeSettings } from '../../../core/editing/themes'
 import { getEditingCanvasDimensions } from '../../../core/editing/canvases'
@@ -167,6 +167,7 @@ export function EditingTimeline(): React.ReactElement | null {
           <button className="editing-icon-button" type="button" onClick={app.resetEditingProject} title={app.copy.editing.resetProject} aria-label={app.copy.editing.resetProject} data-testid="editing-reset-project"><RotateCcw size={15} /></button>
           <button className="editing-icon-button" type="button" onClick={() => void app.openEditingProjectFile()} title={app.copy.editing.openProject} aria-label={app.copy.editing.openProject} data-testid="editing-open-project"><FolderOpen size={15} /></button>
           <button className="editing-icon-button" type="button" onClick={() => void app.saveEditingProjectFile()} title={app.copy.editing.saveProject} aria-label={app.copy.editing.saveProject} data-testid="editing-save-project"><Save size={15} /></button>
+          <button className="editing-icon-button" type="button" onClick={() => void app.rebuildEditingCaptionManifest()} disabled={app.isRebuildingEditingCaptionManifest} title={app.isRebuildingEditingCaptionManifest ? app.copy.editing.rebuildingCaptionManifest : app.copy.editing.rebuildCaptionManifest} aria-label={app.copy.editing.rebuildCaptionManifest} data-testid="editing-rebuild-caption-manifest"><RefreshCw size={15} /></button>
           <span className="editing-toolbar-divider" aria-hidden="true" />
           <button className="editing-icon-button" type="button" onClick={app.undoEditing} disabled={app.editingPast.length === 0} title={app.copy.editing.undo} aria-label={app.copy.editing.undo} data-testid="editing-undo"><Undo2 size={15} /></button>
           <button className="editing-icon-button" type="button" onClick={app.redoEditing} disabled={app.editingFuture.length === 0} title={app.copy.editing.redo} aria-label={app.copy.editing.redo} data-testid="editing-redo"><Redo2 size={15} /></button>

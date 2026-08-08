@@ -1126,3 +1126,4 @@
   }
 
 Object.assign(enUS.editing.transitionLabels, { circleopen: 'Circle open', crosszoom: 'Cross zoom' })
+Object.assign(enUS.editing, { rebuildCaptionManifest: 'Rebuild caption manifest', rebuildingCaptionManifest: 'Rebuilding caption manifest…', captionManifestRebuilt: 'Caption manifest rebuilt', captionManifestRebuildFailed: 'Caption manifest rebuild failed' })

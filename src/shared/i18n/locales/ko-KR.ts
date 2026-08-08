@@ -1126,3 +1126,4 @@
   }
 
 Object.assign(koKR.editing.transitionLabels, { circleopen: '원형 열기', crosszoom: '크로스 줌' })
+Object.assign(koKR.editing, { rebuildCaptionManifest: '자막 매니페스트 재구축', rebuildingCaptionManifest: '자막 매니페스트 재구축 중…', captionManifestRebuilt: '자막 매니페스트를 재구축했습니다', captionManifestRebuildFailed: '자막 매니페스트 재구축 실패' })

@@ -117,6 +117,10 @@ async function main(): Promise<void> {
     await openEditor()
     const baseline = await waitForStored((project) => Boolean(project.captionSourceRevision) && Boolean(project.captionSourceRevisions?.[prepared.primaryId]) && Boolean(project.captionSourceRevisions?.[prepared.secondaryId]))
     const baselineConflictCount = await page.locator('[data-testid="editing-caption-reload-conflict"]').count()
+    const rebuildManifestButtonCount = await page.locator('[data-testid="editing-rebuild-caption-manifest"]').count()
+    await page.locator('[data-testid="editing-rebuild-caption-manifest"]').click()
+    const rebuiltManifest = await waitForStored((project) => project.updatedAt > baseline.updatedAt && project.captionSourceRevision === baseline.captionSourceRevision && Boolean(project.captionSourceRevisions?.[prepared.primaryId]) && Boolean(project.captionSourceRevisions?.[prepared.secondaryId]))
+    const rebuildManifestStatusCount = await page.locator('.editing-project-status').filter({ hasText: '已重建字幕版本清单' }).count()
 
     await writeFile(secondarySubtitlePath, makeSrt('第二素材新原文'))
     await writeFile(secondaryTranslationPath, makeSrt('第二素材新译文'))
@@ -168,6 +172,9 @@ async function main(): Promise<void> {
       baselineSourceRevision: baseline.captionSourceRevisions?.[prepared.primaryId]?.source ?? null,
       baselineTranslationRevision: baseline.captionSourceRevisions?.[prepared.primaryId]?.translation ?? null,
       baselineConflictCount,
+      rebuildManifestButtonCount,
+      rebuildManifestUpdatedAt: rebuiltManifest.updatedAt,
+      rebuildManifestStatusCount,
       conflictRowCount,
       secondaryChangedRows,
       primaryChangedRows,
@@ -191,7 +198,7 @@ async function main(): Promise<void> {
     }
     console.log('AIVPlayer Smoke Editing Multi-Source Revision')
     console.log(JSON.stringify(result))
-    if (result.baselineConflictCount !== 0 || result.conflictRowCount !== 2 || result.secondaryChangedRows !== 2 || result.primaryChangedRows !== 0 || result.secondarySourceLabelRows !== 2 || result.primarySourceLabelRows !== 0 || result.forceConflictCount !== 0 || result.forceSourceRevision === null || result.forceTranslationRevision === null || result.deletionConflictRowCount !== 2 || result.deletionRemovedRows !== 2 || result.deletionPrimaryRows !== 0 || result.deletionSecondarySourceLabelRows !== 2 || result.deletionPrimarySourceLabelRows !== 0 || result.deletionForceConflictCount !== 0 || result.deletionSourceCount !== 1 || result.deletionSecondarySourceRevision !== null || result.consoleErrors.length > 0) process.exitCode = 1
+    if (result.baselineConflictCount !== 0 || result.rebuildManifestButtonCount !== 1 || result.rebuildManifestUpdatedAt <= baseline.updatedAt || result.rebuildManifestStatusCount !== 1 || result.conflictRowCount !== 2 || result.secondaryChangedRows !== 2 || result.primaryChangedRows !== 0 || result.secondarySourceLabelRows !== 2 || result.primarySourceLabelRows !== 0 || result.forceConflictCount !== 0 || result.forceSourceRevision === null || result.forceTranslationRevision === null || result.deletionConflictRowCount !== 2 || result.deletionRemovedRows !== 2 || result.deletionPrimaryRows !== 0 || result.deletionSecondarySourceLabelRows !== 2 || result.deletionPrimarySourceLabelRows !== 0 || result.deletionForceConflictCount !== 0 || result.deletionSourceCount !== 1 || result.deletionSecondarySourceRevision !== null || result.consoleErrors.length > 0) process.exitCode = 1
   } finally {
     await app.close()
   }

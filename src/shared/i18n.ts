@@ -8,10 +8,10 @@ import type { LocaleCopy } from './i18n-contract.ts'
 export type { LocaleCopy } from './i18n-contract.ts'
 
 const APP_COPY: Record<AppLocale, LocaleCopy> = {
-  'zh-CN': zhCN,
-  'en-US': enUS,
-  'ja-JP': jaJP,
-  'ko-KR': koKR
+  'zh-CN': zhCN as LocaleCopy,
+  'en-US': enUS as LocaleCopy,
+  'ja-JP': jaJP as LocaleCopy,
+  'ko-KR': koKR as LocaleCopy
 }
 
 export function getAppCopy(locale: AppLocale = DEFAULT_APP_LOCALE): LocaleCopy {

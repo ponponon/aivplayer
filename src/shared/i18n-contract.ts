@@ -12,4 +12,15 @@ type Widen<T> = T extends (...args: infer Args) => infer Return
           ? { [Key in keyof T]: Widen<T[Key]> }
           : T
 
-export type LocaleCopy = Widen<typeof zhCN>
+type CaptionManifestCopy = {
+  rebuildCaptionManifest: string
+  rebuildingCaptionManifest: string
+  captionManifestRebuilt: string
+  captionManifestRebuildFailed: string
+}
+
+type BaseLocaleCopy = Widen<typeof zhCN>
+
+export type LocaleCopy = Omit<BaseLocaleCopy, 'editing'> & {
+  editing: BaseLocaleCopy['editing'] & CaptionManifestCopy
+}
