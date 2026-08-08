@@ -960,3 +960,11 @@
 - 现象：孤立译文已经允许在工程内编辑，但直接把它接入现有 external subtitle 流程会在没有 source caption 时误用原始 sidecar，导出的 SRT 既不是用户看到的译文轨，也可能重新带入已删除原文的上下文。
 - 经验：新增字幕轨导出必须显式声明轨道和可用性；source / translation 的 fallback 规则不能互相借用，孤立译文也不能因为“有文本”就获得导出资格。
 - 处理：增加时间线专属 `translation-subtitle` 模式，序列化时显式选择 `translation`，只允许活动译文启用；普通剪辑仍使用 `ClipExportMode`，避免编辑器专属模式污染基础剪辑设置。
+
+## 2026-08-09：多段字幕片段不能只按精确 ID 维护生命周期
+
+- 现象：同一脚本段在时间轴中有两个不连续可见区间时，重排每个 caption 都会重新映射到全部区间，导致片段数量翻倍、派生 ID 冲突；重开或刷新 sidecar 时，`segment-1` 又会被当作 removed，真实 loader 的 translation ID 还可能被重复回灌。
+- 经验：派生字幕需要持久化“所属脚本段 + 片段索引”，重排和 sidecar diff 必须先识别片段族群，再决定是重定位、更新还是删除；loader ID 的前缀差异不能用精确字符串比较替代。
+- 处理：`EditingCaption` 增加 `editedRangeGroupId` / `editedRangeIndex`；重排按自身索引映射，旧版无元数据的 `-数字` ID 通过脚本段关系兼容推导；重载 preview 将族群视为一条差异，接受更新时保留片段的成片位置和实体 ID；caption effect 按脚本段关系去重 sidecar 回灌。
+- 验证：核心 / UI 定向回归 54 项通过，`bun run typecheck`、`bun run build` 通过；独立真实 Electron Smoke 覆盖恢复 2+2、重排后 2+2、重开无误报、sidecar changed 2 / removed 0、双轨接受更新和 `consoleErrors:[]`。
+- 提交边界：核心关系修正 `d7b1f87`，sidecar 回灌去重修正 `019abdd`，独立 Electron Smoke `dc935b8`；本条工程记录另行提交，内部计划继续 ignored。
