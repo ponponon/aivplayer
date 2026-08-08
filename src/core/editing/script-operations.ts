@@ -108,7 +108,8 @@ function sharesEditingScriptSegmentSourceRange(caption: Pick<EditingCaption, 'so
 }
 
 function belongsToEditingScriptSegment(caption: EditingCaption, segment: EditingScriptSegment, kind: EditingCaption['kind']): boolean {
-  return caption.kind === kind && (shareEditingScriptSegmentIds(getEditingCaptionScriptSegmentId(caption), segment.id) || sharesEditingScriptSegmentSourceRange(caption, segment))
+  const sourceMatches = caption.sourceId === undefined || caption.sourceId === segment.sourceId
+  return caption.kind === kind && sourceMatches && (shareEditingScriptSegmentIds(getEditingCaptionScriptSegmentId(caption), segment.id) || sharesEditingScriptSegmentSourceRange(caption, segment))
 }
 
 /** Matches a materialized source/translation caption, including generated multi-range fragments. */

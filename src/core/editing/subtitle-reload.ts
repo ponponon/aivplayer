@@ -109,6 +109,7 @@ function sameReloadCaptionContent(left: EditingCaption, right: EditingCaption, m
 
 function sharesEditingCaptionReloadFamily(left: EditingCaption, right: EditingCaption, scriptSegments: readonly EditingScriptSegment[] | undefined): boolean {
   if (left.kind !== right.kind) return false
+  if (left.sourceId !== undefined && right.sourceId !== undefined && left.sourceId !== right.sourceId) return false
   if (left.id === right.id) return true
   const leftGroupId = getEditingCaptionFragmentGroupId(left, scriptSegments)
   const rightGroupId = getEditingCaptionFragmentGroupId(right, scriptSegments)
@@ -192,10 +193,10 @@ export function shareEditingSubtitleReloadScriptSegments(left: Pick<EditingSubti
 }
 
 /** A kept translation becomes orphaned when its source script row is deleted. */
-export function isEditingOrphanTranslationCaption(project: Pick<EditingProject, 'scriptSegments'>, caption: Pick<EditingCaption, 'id' | 'kind'>): boolean {
+export function isEditingOrphanTranslationCaption(project: Pick<EditingProject, 'scriptSegments'>, caption: Pick<EditingCaption, 'id' | 'kind' | 'sourceId'>): boolean {
   if (caption.kind !== 'translation') return false
   const scriptSegmentId = getEditingCaptionScriptSegmentId(caption)
-  return project.scriptSegments?.some((segment) => segment.deleted && shareEditingScriptSegmentIds(segment.id, scriptSegmentId)) ?? false
+  return project.scriptSegments?.some((segment) => segment.deleted && (caption.sourceId === undefined || caption.sourceId === segment.sourceId) && shareEditingScriptSegmentIds(segment.id, scriptSegmentId)) ?? false
 }
 
 export function getEditingSubtitleReloadChangeKey(change: Pick<EditingSubtitleReloadChange, 'id' | 'kind' | 'status'>): string {
@@ -381,8 +382,10 @@ function matchesIncomingCaption(change: EditingSubtitleReloadChange, caption: Ed
 }
 
 function captionBelongsToReloadScriptSegment(caption: EditingCaption, scriptSegmentId: string, scriptSegments: readonly EditingScriptSegment[] | undefined): boolean {
-  if (shareEditingSubtitleReloadScriptSegmentIds(getEditingCaptionScriptSegmentId(caption), scriptSegmentId)) return true
-  return scriptSegments?.some((segment) => shareEditingSubtitleReloadScriptSegmentIds(segment.id, scriptSegmentId) && isEditingScriptSegmentCaption(caption, segment)) ?? false
+  if (scriptSegments && scriptSegments.length > 0) {
+    return scriptSegments.some((segment) => shareEditingSubtitleReloadScriptSegmentIds(segment.id, scriptSegmentId) && isEditingScriptSegmentCaption(caption, segment))
+  }
+  return shareEditingSubtitleReloadScriptSegmentIds(getEditingCaptionScriptSegmentId(caption), scriptSegmentId)
 }
 
 function findCurrentCaptionForReloadChange(project: EditingProject, change: EditingSubtitleReloadChange): EditingCaption | undefined {
