@@ -5,7 +5,7 @@ import type { AppModel } from './app-types'
 import { createEditingCaptionPathCandidates, loadEditingCaptions } from './editing-caption-loader'
 import { saveEditingProject } from './editing-project-storage'
 import { mergeEditingScriptSegments } from '../../../core/editing/script-operations'
-import { applyEditingSubtitleReloadAddition, applyEditingSubtitleReloadChange, buildEditingSubtitleReloadPreview, replaceEditingCaptionsForReload, type EditingSubtitleReloadChange, type EditingSubtitleReloadPreview } from '../../../core/editing/subtitle-reload'
+import { applyEditingSubtitleReloadAddition, applyEditingSubtitleReloadChange, applyEditingSubtitleReloadRemoval, buildEditingSubtitleReloadPreview, replaceEditingCaptionsForReload, type EditingSubtitleReloadChange, type EditingSubtitleReloadPreview } from '../../../core/editing/subtitle-reload'
 
 export type EditingCaptionReloadConflict = {
   sourceRevisionKey: string
@@ -17,6 +17,7 @@ export function useEditingCaptionEffect(model: AppModel, derived: AppDerived): {
   editingCaptionReloadConflict: EditingCaptionReloadConflict | null
   acceptEditingSubtitleReloadChange: (change: EditingSubtitleReloadChange) => void
   acceptEditingSubtitleReloadAddition: (change: EditingSubtitleReloadChange) => void
+  removeEditingSubtitleReloadChange: (change: EditingSubtitleReloadChange) => void
   forceReloadEditingCaptions: () => void
   keepCurrentEditingCaptions: () => void
 } {
@@ -128,6 +129,24 @@ export function useEditingCaptionEffect(model: AppModel, derived: AppDerived): {
     setEditingCaptionReloadConflict(remainingPreview.hasChanges ? { ...conflict, preview: remainingPreview } : null)
   }, [editingCaptionReloadConflict, model.editingProject, model.setEditingFuture, model.setEditingPast, model.setEditingProject, model.setEditingSelectedCaptionId])
 
+  const removeEditingSubtitleReloadChange = useCallback((change: EditingSubtitleReloadChange): void => {
+    const project = model.editingProject
+    const conflict = editingCaptionReloadConflict
+    if (!project || !conflict) return
+    const removed = applyEditingSubtitleReloadRemoval(project, change)
+    if (!removed) return
+    const remainingPreview = buildEditingSubtitleReloadPreview(removed.captions, conflict.captions)
+    const next = remainingPreview.hasChanges
+      ? removed
+      : { ...removed, captionSourceRevision: conflict.sourceRevisionKey, updatedAt: Date.now() }
+    model.setEditingPast((past) => [...past, project])
+    model.setEditingFuture([])
+    model.setEditingProject(next)
+    model.setEditingSelectedCaptionId(null)
+    saveEditingProject(next)
+    setEditingCaptionReloadConflict(remainingPreview.hasChanges ? { ...conflict, preview: remainingPreview } : null)
+  }, [editingCaptionReloadConflict, model.editingProject, model.setEditingFuture, model.setEditingPast, model.setEditingProject, model.setEditingSelectedCaptionId])
+
   const keepCurrentEditingCaptions = useCallback((): void => {
     const project = model.editingProject
     const conflict = editingCaptionReloadConflict
@@ -138,5 +157,5 @@ export function useEditingCaptionEffect(model: AppModel, derived: AppDerived): {
     setEditingCaptionReloadConflict(null)
   }, [editingCaptionReloadConflict, model.editingProject, model.setEditingProject])
 
-  return { editingCaptionReloadConflict, acceptEditingSubtitleReloadChange, acceptEditingSubtitleReloadAddition, forceReloadEditingCaptions, keepCurrentEditingCaptions }
+  return { editingCaptionReloadConflict, acceptEditingSubtitleReloadChange, acceptEditingSubtitleReloadAddition, removeEditingSubtitleReloadChange, forceReloadEditingCaptions, keepCurrentEditingCaptions }
 }

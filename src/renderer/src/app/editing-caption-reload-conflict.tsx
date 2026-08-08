@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { AlertTriangle, ArrowRight, Check, ChevronLeft, ChevronRight, RefreshCw, Search, ShieldCheck } from 'lucide-react'
+import { AlertTriangle, ArrowRight, Check, ChevronLeft, ChevronRight, RefreshCw, Search, ShieldCheck, Trash2 } from 'lucide-react'
 import { EDITING_SUBTITLE_RELOAD_PAGE_SIZE, getEditingSubtitleReloadChangePage, getEditingSubtitleReloadChangeScriptSegmentId, getEditingSubtitleReloadChangeTimeRange, type EditingSubtitleReloadChange, type EditingSubtitleReloadChangeKindFilter, type EditingSubtitleReloadChangeStatusFilter } from '../../../core/editing/subtitle-reload'
 import type { EditingSubtitleReloadCopy } from '../../../shared/editing-subtitle-reload-copy'
 import type { EditingCaptionReloadConflict } from './use-editing-caption-effect'
@@ -11,6 +11,7 @@ type EditingCaptionReloadConflictProps = {
   onPreviewIncoming: (change: EditingSubtitleReloadChange) => void
   onAcceptIncoming: (change: EditingSubtitleReloadChange) => void
   onAddIncoming: (change: EditingSubtitleReloadChange) => void
+  onRemoveCurrent: (change: EditingSubtitleReloadChange) => void
   onSelectScriptSegment: (segmentId: string) => void
   onKeepCurrent: () => void
   onForceReload: () => void
@@ -50,7 +51,7 @@ function parseSeconds(value: string): number | undefined {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined
 }
 
-export function EditingCaptionReloadConflict({ conflict, copy, onSeek, onPreviewIncoming, onAcceptIncoming, onAddIncoming, onSelectScriptSegment, onKeepCurrent, onForceReload }: EditingCaptionReloadConflictProps): React.ReactElement {
+export function EditingCaptionReloadConflict({ conflict, copy, onSeek, onPreviewIncoming, onAcceptIncoming, onAddIncoming, onRemoveCurrent, onSelectScriptSegment, onKeepCurrent, onForceReload }: EditingCaptionReloadConflictProps): React.ReactElement {
   const { preview } = conflict
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<EditingSubtitleReloadChangeStatusFilter>('all')
@@ -134,6 +135,7 @@ export function EditingCaptionReloadConflict({ conflict, copy, onSeek, onPreview
                 <button type="button" disabled={change.incomingStartSeconds === undefined} onClick={() => change.incomingStartSeconds !== undefined && seekChange(change, change.incomingStartSeconds)} title={incomingActionLabel(change, copy)} data-testid={`editing-caption-reload-seek-incoming-${change.status}-${change.kind}-${change.id}`}>{incomingActionLabel(change, copy)} {formatSubtitleReloadTime(change.incomingStartSeconds)}</button>
                 {change.status === 'changed' ? <button className="editing-caption-reload-accept" type="button" onClick={() => onAcceptIncoming(change)} title={copy.acceptIncoming} data-testid={`editing-caption-reload-accept-${change.kind}-${change.id}`}><Check size={12} aria-hidden="true" />{copy.acceptIncoming}</button> : null}
                 {change.status === 'added' ? <button className="editing-caption-reload-add" type="button" onClick={() => onAddIncoming(change)} title={copy.addIncoming} data-testid={`editing-caption-reload-add-${change.kind}-${change.id}`}><Check size={12} aria-hidden="true" />{copy.addIncoming}</button> : null}
+                {change.status === 'removed' ? <button className="editing-caption-reload-remove" type="button" onClick={() => onRemoveCurrent(change)} title={copy.removeFromProject} data-testid={`editing-caption-reload-remove-${change.kind}-${change.id}`}><Trash2 size={12} aria-hidden="true" />{copy.removeFromProject}</button> : null}
               </div>
             </div>
           ))}
