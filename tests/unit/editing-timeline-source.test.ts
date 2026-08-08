@@ -77,6 +77,9 @@ describe('editing timeline source contracts', () => {
     const smokeScript = readSource('scripts/smoke-editing-script.ts')
     const captionReloadSmoke = readSource('scripts/smoke-editing-caption-reload.ts')
     const orphanTranslationSmoke = readSource('scripts/smoke-editing-orphan-translation.ts')
+    const multiSourceRevisionSmoke = readSource('scripts/smoke-editing-multi-source-revision.ts')
+    const preload = readSource('src/preload/index.ts')
+    const settingsIpc = readSource('src/desktop/ipc-settings.ts')
     const bilingualCaptionSmoke = readSource('scripts/smoke-bilingual-caption-export.ts')
 
     expect(stage).toContain("app.isEditingMode ? <EditingTimeline /> : <PlaybackControls />")
@@ -433,6 +436,13 @@ describe('editing timeline source contracts', () => {
     expect(actionHelpers).toContain('saveEditingProject(nextProject)')
     expect(storage).toContain('aivplayer.editing-projects.v1')
     expect(captionEffect).toContain('loadEditingCaptions')
+    expect(captionEffect).toContain('loadEditingCaptionSnapshot')
+    expect(captionEffect).toContain('captionSourceRevisions')
+    expect(captionLoader).toContain('getFileRevision')
+    expect(preload).toContain('getFileRevision')
+    expect(settingsIpc).toContain('GET_FILE_REVISION')
+    expect(multiSourceRevisionSmoke).toContain('captionSourceRevisions')
+    expect(multiSourceRevisionSmoke).toContain('secondaryChangedRows')
     expect(readSource('src/renderer/src/app/use-editing-playback-effect.ts')).toContain('loadedmetadata')
   })
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { areEditingCaptionWordsCompatible, createEditingCaptionSources, createEditingCaptionSourceRevisionKey } from '../../src/renderer/src/app/editing-caption-loader'
+import { areEditingCaptionWordsCompatible, createEditingCaptionSources, createEditingCaptionSourceRevisionKey, hasEditingCaptionSourceRevisionChanges } from '../../src/renderer/src/app/editing-caption-loader'
 
 const primary = { id: 'source-primary', path: '/videos/primary.mp4', name: 'primary.mp4', fingerprint: 'primary:10', durationSeconds: 10 }
 const secondary = { id: 'source-secondary', path: '/videos/secondary.mp4', name: 'secondary.mp4', fingerprint: 'secondary:10', durationSeconds: 10 }
@@ -49,7 +49,20 @@ describe('editing caption sidecar source selection', () => {
 
   it('ignores the revision of an inactive old current file', () => {
     const project = { sources: [primary, secondary], videoClips: [{ id: 'clip-1', sourceId: secondary.id, sourceStartSeconds: 0, sourceEndSeconds: 1 }] }
-    expect(createEditingCaptionSourceRevisionKey(project, { currentMediaPath: primary.path, subtitleRevision: 100, translatedSubtitleRevision: 200 })).toBe('sources=source-secondary:/videos/secondary.mp4|source=none|translation=none')
-    expect(createEditingCaptionSourceRevisionKey(project, { currentMediaPath: primary.path, subtitleRevision: 101, translatedSubtitleRevision: 201 })).toBe('sources=source-secondary:/videos/secondary.mp4|source=none|translation=none')
+    expect(createEditingCaptionSourceRevisionKey(project, { [primary.id]: { source: 100, translation: 200 }, [secondary.id]: { source: null, translation: null } })).toBe('sources=source-secondary:/videos/secondary.mp4:source=none:translation=none')
+    expect(createEditingCaptionSourceRevisionKey(project, { [primary.id]: { source: 101, translation: 201 }, [secondary.id]: { source: null, translation: null } })).toBe('sources=source-secondary:/videos/secondary.mp4:source=none:translation=none')
+  })
+
+  it('changes the revision key when an active source sidecar changes', () => {
+    const project = { sources: [primary, secondary], videoClips: [{ id: 'clip-1', sourceId: secondary.id, sourceStartSeconds: 0, sourceEndSeconds: 1 }] }
+    const before = createEditingCaptionSourceRevisionKey(project, { [secondary.id]: { source: 100, translation: 200 } })
+    const after = createEditingCaptionSourceRevisionKey(project, { [secondary.id]: { source: 101, translation: 200 } })
+    expect(before).not.toBe(after)
+  })
+
+  it('distinguishes an inactive source from a deleted active sidecar', () => {
+    expect(hasEditingCaptionSourceRevisionChanges({ [primary.id]: { source: 100, translation: 200 } }, { [secondary.id]: { source: null, translation: null } })).toBe(false)
+    expect(hasEditingCaptionSourceRevisionChanges({ [secondary.id]: { source: 100, translation: 200 } }, { [secondary.id]: { source: null, translation: null } })).toBe(true)
+    expect(hasEditingCaptionSourceRevisionChanges({ [secondary.id]: { source: null, translation: null } }, { [secondary.id]: { source: 100, translation: 200 } })).toBe(true)
   })
 })

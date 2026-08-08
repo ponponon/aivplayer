@@ -193,6 +193,16 @@ describe('editing project files', () => {
     expect(() => parseEditingProject({ ...project, captionSourceRevision: '   ' })).toThrow('Invalid editing project caption source revision')
   })
 
+  it('round-trips per-source source and translation sidecar revisions', () => {
+    const project = createEditingProject(source)
+    const withRevisions = { ...project, captionSourceRevisions: { [source.id]: { source: 123, translation: null } } }
+
+    expect(parseEditingProjectFile(serializeEditingProject(withRevisions)).captionSourceRevisions).toEqual(withRevisions.captionSourceRevisions)
+    expect(() => parseEditingProject({ ...project, captionSourceRevisions: { missing: { source: 123, translation: null } } })).toThrow('Invalid editing project caption source revisions')
+    expect(() => parseEditingProject({ ...project, captionSourceRevisions: { [source.id]: { source: -1, translation: null } } })).toThrow('Invalid editing project caption source revisions')
+    expect(() => parseEditingProject({ ...project, captionSourceRevisions: { [source.id]: { source: 123 } } })).toThrow('Invalid editing project caption source revisions')
+  })
+
   it('round-trips pending per-cue subtitle reload decisions and rejects malformed state', () => {
     const project = createEditingProject(source)
     const resolution = { sourceRevisionKey: 'source=next|translation=next', changeKeys: ['removed:source:source-caption-1'] }
