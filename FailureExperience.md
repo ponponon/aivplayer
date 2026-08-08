@@ -973,6 +973,12 @@
 
 - 现象：fragment 元数据只在 localStorage / 运行时对象中存在时，导出工程文件再导入会丢失 group / index；force reload 如果从已物化的 captions 直接 merge script，又会把一个脚本句子重建成多个 fragment 脚本行。
 - 经验：新增持久化字段必须同时覆盖工程文件 parser、serializer 的 round-trip 和非法半结构校验；重载动作要区分“显示轨道的 materialized fragments”和“脚本层的 canonical sidecar cue”，不能用同一个数组承担两个层级。
+
+## 2026-08-09：fragment family 的 removed diff 也必须聚合
+
+- 现象：changed preview 已经把同一脚本段的多个 materialized fragment 聚合成一条差异，但 removed preview 仍逐个遍历 caption；同一 source / translation family 会展示成四条 removed，用户需要重复裁决，source remove + translation keep 也可能只处理族群中的一个实体。
+- 经验：sidecar diff 的粒度必须在 added、changed、removed 三条路径保持一致；materialized fragment 是显示实体，不是独立的 sidecar cue。removed 代表当前族群的 canonical representative，实际删除动作再展开到整个 family。
+- 处理：`buildEditingSubtitleReloadPreview` 为未匹配的当前 caption 按 family 去重并选择 index 0 作为代表；`applyEditingSubtitleReloadRemoval` 按脚本段关系和 fragment metadata 删除完整 source / translation family，并用已解析的 script segment 关系识别已保留译文。单测和 Fragment Reload Electron Smoke 覆盖 removed 2 行、原文族群全删、译文族群全保留和 reload 持久化。
 - 处理：project file parser 校验并恢复 `editedRangeGroupId` / `editedRangeIndex`；force reload 继续使用现有 fragment family 保留成片位置，再以 incoming sidecar cues 重建 scriptSegments，确保一条 source cue 对应一条 canonical script row。
 - 验证：project file / subtitle reload 定向测试 44 项通过；`bun run typecheck`、`bun run build` 通过；Fragment Smoke 验证 force reload 后 source / translation 仍为 2+2、位置为 1/2、script segment 数为 1、冲突清除且 `consoleErrors:[]`。
 - 提交边界：核心修正 `32591af`，回归测试 `ae029ef`，Smoke `81583e6`；本条工程记录另行提交，内部计划继续 ignored。
