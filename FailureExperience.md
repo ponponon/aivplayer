@@ -876,3 +876,15 @@
 - 现象：incoming-only source 与 translation 共享同一个 source segment，但它们在冲突 diff 中是两条独立 cue；如果点击 source 的“加入工程”就隐式整对加入，用户无法保留其中一条，也会让撤销粒度与列表行不一致。
 - 经验：单条冲突操作的粒度应与 diff row 一致；source 加入负责建立脚本上下文，translation 加入负责补齐 `translationText`，两者分别进入撤销栈，才能与 changed cue 的单条接受行为保持一致。
 - 处理：新增 `applyEditingSubtitleReloadAddition`，按 id / kind / incoming 快照校验后只添加一条 caption；真实 Smoke 验证 source 加入后 translation diff 仍保留 1 条，并覆盖 source 的 undo / redo。
+
+## 2026-08-08：真实 loader 的字幕 ID 不能按简化 fixture 精确比较
+
+- 现象：单测使用简化的 `source-caption-1` / `translation-source-caption-1` 时，单条删除看似能同时处理原文和译文；真实 loader 使用 `source-${sourceId}-${index}` 与 `translation-${sourceId}-${index}`，实际点击删除后脚本行已标记删除，但译文字幕仍留在时间轴。
+- 经验：跨轨字幕操作必须复用同一套 ID 等价规则，既覆盖 translation 前缀归一化，也覆盖真实 source-prefixed 脚本段；变更、删除、预览配对和 UI 选中不能各自维护一份比较逻辑。
+- 处理：新增共享的脚本段 ID 等价 helper，修正 changed / removed 的脚本段更新、source 删除时的译文联动和冲突定位；单测加入真实 loader ID fixture，Electron Smoke 验证原文删除后原文 / 译文均消失、撤销恢复 2 条、重做再次删除。
+
+## 2026-08-08：用户再次提醒持续任务必须保持可 review 的小提交
+
+- 现象：跨核心、Renderer、Smoke 和文档连续推进时，容易因为“任务还没结束”而把多个阶段混在同一个提交思路里，降低审阅者对数据契约、UI 接线和验证证据的区分能力。
+- 经验：持续工作不改变提交边界；每个阶段仍需定向验证、只暂存相关文件、扫描 staged diff 后使用中文 commit message 提交，修复阶段也应追加独立小提交而不是重写或堆叠无关文件。
+- 处理：本轮按核心删除算法、真实 ID 修正、脚本行定位、契约测试、Electron Smoke、工程文档分别提交；`OPEN_SOURCE_INSPIRATION_PLAN.md` 保持 ignored，不进入 GitHub。
