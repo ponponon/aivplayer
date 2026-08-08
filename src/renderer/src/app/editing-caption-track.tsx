@@ -28,9 +28,11 @@ type EditingCaptionTrackProps = {
   incomingPreview?: EditingSubtitleReloadChangePreview | null
   incomingPreviewLabel?: string
   incomingPreviewTrackLabels?: Partial<Record<EditingCaption['kind'], string>>
+  orphanTranslationCaptionIds?: ReadonlySet<string>
+  orphanTranslationNotice?: string
 }
 
-export function EditingCaptionTrack({ captions, durationSeconds, selectedCaptionId, selectedCaptionIds, trackLabel, trackKind, onReorderTrack, emptyLabel, snapPoints = [], onSelectCaption, onMoveCaption, onResizeCaption, incomingPreview, incomingPreviewLabel = 'Incoming subtitle preview', incomingPreviewTrackLabels = {} }: EditingCaptionTrackProps): React.ReactElement {
+export function EditingCaptionTrack({ captions, durationSeconds, selectedCaptionId, selectedCaptionIds, trackLabel, trackKind, onReorderTrack, emptyLabel, snapPoints = [], onSelectCaption, onMoveCaption, onResizeCaption, incomingPreview, incomingPreviewLabel = 'Incoming subtitle preview', incomingPreviewTrackLabels = {}, orphanTranslationCaptionIds = new Set(), orphanTranslationNotice }: EditingCaptionTrackProps): React.ReactElement {
   const [drag, setDrag] = useState<CaptionDragState | null>(null)
   const dragRef = useRef<CaptionDragState | null>(null)
   const [trim, setTrim] = useState<EditingTrackTrimState | null>(null)
@@ -123,19 +125,23 @@ export function EditingCaptionTrack({ captions, durationSeconds, selectedCaption
     onReorderTrack(source, trackKind)
   }
 
-  return <div className="editing-track-row editing-caption-row" data-editing-overlay-track={trackKind} onDragOver={handleTrackDragOver} onDrop={handleTrackDrop}>
+  return <>
+    {orphanTranslationNotice ? <div className="editing-caption-orphan-notice" role="status" data-testid="editing-caption-orphan-notice">{orphanTranslationNotice}</div> : null}
+    <div className="editing-track-row editing-caption-row" data-editing-overlay-track={trackKind} onDragOver={handleTrackDragOver} onDrop={handleTrackDrop}>
     <button type="button" className="editing-track-label editing-track-reorder-handle" draggable title={trackLabel} aria-label={trackLabel} onDragStart={(event) => writeEditingOverlayTrackDrag(event, trackKind)}>{trackLabel}</button>
     <div className="editing-caption-track" data-testid="editing-caption-track">
     {captions.length > 0 ? captions.map((caption) => {
       const startSeconds = trim?.id === caption.id ? trim.startSeconds : drag?.id === caption.id ? drag.startSeconds : caption.startSeconds
       const endSeconds = trim?.id === caption.id ? trim.endSeconds : caption.startSeconds + caption.durationSeconds
       const selected = selectedCaptionIds?.has(caption.id) ?? selectedCaptionId === caption.id
+      const isOrphanTranslation = orphanTranslationCaptionIds.has(caption.id)
       return <div
         key={caption.id}
-        className={`editing-caption-item ${caption.kind === 'translation' ? 'is-translation' : ''} ${selected ? 'is-selected' : ''} ${drag?.id === caption.id && drag.moved ? 'is-dragging' : ''}`}
+        className={`editing-caption-item ${caption.kind === 'translation' ? 'is-translation' : ''} ${isOrphanTranslation ? 'is-orphan-translation' : ''} ${selected ? 'is-selected' : ''} ${drag?.id === caption.id && drag.moved ? 'is-dragging' : ''}`}
         style={{ left: `${durationSeconds > 0 ? (startSeconds / durationSeconds) * 100 : 0}%`, width: `${durationSeconds > 0 ? ((endSeconds - startSeconds) / durationSeconds) * 100 : 0}%` }}
         data-editing-selection-kind="caption"
         data-editing-selection-id={caption.id}
+        data-editing-orphan-translation={isOrphanTranslation ? 'true' : undefined}
         data-testid={`editing-caption-item-${caption.id}`}
       >
         <button
@@ -170,5 +176,6 @@ export function EditingCaptionTrack({ captions, durationSeconds, selectedCaption
       return <div key={`${incomingPreview.id}-${kind}`} className={`editing-caption-item editing-caption-item-incoming-preview ${kind === 'translation' ? 'is-translation' : ''} ${incomingPreview.current !== null ? 'is-changed' : ''}`} style={{ left: `${durationSeconds > 0 ? (startSeconds / durationSeconds) * 100 : 0}%`, width: `${durationSeconds > 0 ? ((endSeconds - startSeconds) / durationSeconds) * 100 : 0}%` }} data-testid="editing-caption-incoming-preview" data-preview-id={`${incomingPreview.id}-${kind}`} data-preview-kind={kind} data-preview-status={incomingPreview.current !== null ? 'changed' : 'added'} role="status" aria-label={`${previewLabel}: ${previewTrack.text}`}><span className="editing-caption-incoming-preview-label">{previewLabel}</span><span className="editing-caption-incoming-preview-text">{previewTrack.text}</span></div>
     }) : null}
     </div>
-  </div>
+    </div>
+  </>
 }

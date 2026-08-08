@@ -194,3 +194,19 @@
   background: rgba(var(--ambient-rgb), 0.2);
   border-color: rgba(var(--ambient-rgb), 0.46);
 }
+
+.editing-caption-item.is-orphan-translation {
+  border-style: dashed;
+  background: rgba(var(--ambient-rgb), 0.12);
+}
+
+.editing-caption-orphan-notice {
+  grid-column: 2;
+  padding: 5px 8px;
+  color: var(--text-secondary);
+  background: rgba(var(--ambient-rgb), 0.08);
+  border: 1px solid rgba(var(--ambient-rgb), 0.32);
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  line-height: 1.4;
+}
