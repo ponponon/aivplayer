@@ -69,16 +69,29 @@ export function useSubtitleCacheEffects(model: AppModel, derived: AppDerived, pa
 
   useEffect(() => {
     const currentFilePath = model.state.currentFile?.path
-    const modelId = model.asrStatus?.recommendedModelManifest.id
-    if (!currentFilePath || !modelId || !model.appSettings.asr.autoLoadCachedSubtitles) return
+    if (!currentFilePath || !model.appSettings.asr.autoLoadCachedSubtitles) return
     let cancelled = false
-    void window.aiv.resolveAsrSubtitleCache({ mediaPath: currentFilePath, modelId }).then((result) => {
+    const restoreSubtitle = async (): Promise<void> => {
+      const sidecar = await window.aiv.resolveMediaSubtitleSidecar({ mediaPath: currentFilePath }).catch(() => null)
+      if (cancelled) return
+      if (sidecar?.success && sidecar.subtitleUrl) {
+        model.setActiveSubtitle(sidecar)
+        model.setSubtitleResult(sidecar)
+        model.setAsrNotice(sidecar)
+        model.setAsrProgress(null)
+        return
+      }
+
+      const modelId = model.asrStatus?.recommendedModelManifest.id
+      if (!modelId) return
+      const result = await window.aiv.resolveAsrSubtitleCache({ mediaPath: currentFilePath, modelId })
       if (cancelled || !result.success || !result.subtitleUrl) return
       model.setActiveSubtitle(result)
       model.setSubtitleResult(result)
       model.setAsrNotice(result)
       model.setAsrProgress(null)
-    })
+    }
+    void restoreSubtitle()
     return () => { cancelled = true }
   }, [model.state.currentFile?.path, model.asrStatus?.recommendedModelManifest.id, model.appSettings.asr.autoLoadCachedSubtitles])
 
