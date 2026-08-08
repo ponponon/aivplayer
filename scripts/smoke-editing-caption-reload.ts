@@ -5,14 +5,16 @@ import { tmpdir } from 'node:os'
 
 const sourceMediaPath = process.argv[2] ?? '/Users/ponponon/Music/aivplayer_test_video_1min.mp4'
 const expectedCueCount = 18
-const incomingCueCount = expectedCueCount + 1
+const incomingCueCount = expectedCueCount
 const expectedAddedChangeCount = 2
+const expectedRemovedChangeCount = 2
 const expectedChangedTrackCount = 2
-const expectedDiffCount = incomingCueCount + 2
+const expectedDiffCount = expectedCueCount + expectedAddedChangeCount + expectedRemovedChangeCount
 
 type SrtOptions = {
   textOverrides?: Readonly<Record<number, string>>
   startOverrides?: Readonly<Record<number, number>>
+  zeroDurationCueNumbers?: readonly number[]
 }
 
 function formatSrtTime(seconds: number): string {
@@ -30,7 +32,8 @@ function srt(first: string, second: string, third: string, extraText?: string, o
     const cueNumber = index + 1
     const start = options.startOverrides?.[cueNumber] ?? index * 2
     const resolvedText = options.textOverrides?.[cueNumber] ?? text
-    return [String(cueNumber), `${formatSrtTime(start)} --> ${formatSrtTime(start + 1.5)}`, resolvedText, ''].join('\n')
+    const end = options.zeroDurationCueNumbers?.includes(cueNumber) ? start : start + 1.5
+    return [String(cueNumber), `${formatSrtTime(start)} --> ${formatSrtTime(end)}`, resolvedText, ''].join('\n')
   }).join('\n')
 }
 
@@ -95,8 +98,8 @@ async function main(): Promise<void> {
     await page.locator(`[data-testid="editing-script-save-${editSegmentId}"]`).click()
     await page.waitForFunction((expected) => document.querySelector('.editing-script-text')?.textContent === expected, manualText, { timeout: 10_000 })
 
-    await writeSubtitle('外部更新字幕', '外部更新第二句', '外部新增第三句', '外部只新增预览', { startOverrides: { 10: 19 } })
-    await writeTranslation('原始译文', '第二句译文', '第三句译文', '外部只新增译文预览', { textOverrides: { 10: '外部更新译文 10' }, startOverrides: { 10: 19 } })
+    await writeSubtitle('外部更新字幕', '外部更新第二句', '外部新增第三句', '外部只新增预览', { startOverrides: { 10: 19 }, zeroDurationCueNumbers: [18] })
+    await writeTranslation('原始译文', '第二句译文', '第三句译文', '外部只新增译文预览', { textOverrides: { 10: '外部更新译文 10' }, startOverrides: { 10: 19 }, zeroDurationCueNumbers: [18] })
     await reloadAndOpenEditor()
     await page.locator('[data-testid="editing-caption-reload-conflict"]').waitFor({ timeout: 10_000 })
     await page.locator('[data-testid="editing-caption-reload-preview"] summary').click()
@@ -213,6 +216,40 @@ async function main(): Promise<void> {
     await search.fill('')
     await page.locator('[data-testid="editing-caption-reload-status-filter"]').selectOption('all')
 
+    await search.fill('原始字幕 18')
+    await page.waitForFunction(() => document.querySelectorAll('.editing-caption-reload-row').length === 1 && document.querySelector('.editing-caption-reload-row')?.textContent?.includes('原始字幕 18') === true, null, { timeout: 10_000 })
+    const removedRow = preview.locator('.editing-caption-reload-row').filter({ hasText: '原始字幕 18' })
+    const removeButton = removedRow.locator('[data-testid^="editing-caption-reload-remove-"]')
+    const removeButtonCount = await removeButton.count()
+    const removedScriptRow = page.locator('[data-testid^="editing-script-row-"]').filter({ hasText: '原始字幕18' })
+    await removeButton.click()
+    await page.waitForFunction(() => {
+      const scriptRow = Array.from(document.querySelectorAll('[data-testid^="editing-script-row-"]')).find((row) => row.textContent?.replace(/\s+/g, '').includes('原始字幕18'))
+      const sourceCaptionPresent = Array.from(document.querySelectorAll('[data-testid^="editing-caption-item-"]')).some((item) => item.textContent?.includes('原始字幕 18') === true)
+      const translationCaptionPresent = Array.from(document.querySelectorAll('[data-testid^="editing-caption-item-"]')).some((item) => item.textContent?.includes('原始译文 18') === true)
+      return scriptRow?.classList.contains('is-deleted') === true && !sourceCaptionPresent && !translationCaptionPresent
+    }, null, { timeout: 10_000 })
+    const removedScriptClass = await removedScriptRow.getAttribute('class')
+    const removedSourceCaptionCount = await page.locator('[data-testid^="editing-caption-item-"]').filter({ hasText: '原始字幕 18' }).count()
+    const removedTranslationCaptionCount = await page.locator('[data-testid^="editing-caption-item-"]').filter({ hasText: '原始译文 18' }).count()
+    await page.waitForFunction(() => (document.querySelector('[data-testid="editing-caption-reload-search"]') as HTMLInputElement | null)?.value === '', null, { timeout: 10_000 })
+    await search.fill('原始译文 18')
+    await page.waitForFunction(() => document.querySelectorAll('.editing-caption-reload-row').length === 0, null, { timeout: 10_000 })
+    const remainingRemovedTranslationRows = await page.locator('.editing-caption-reload-row').filter({ hasText: '原始译文 18' }).count()
+    await page.locator('[data-testid="editing-undo"]').click()
+    await page.waitForFunction(() => Array.from(document.querySelectorAll('[data-testid^="editing-caption-item-"]')).some((item) => item.textContent?.includes('原始字幕 18') === true) && Array.from(document.querySelectorAll('[data-testid^="editing-caption-item-"]')).some((item) => item.textContent?.includes('原始译文 18') === true) && Array.from(document.querySelectorAll('[data-testid^="editing-script-row-"]')).some((row) => row.textContent?.replace(/\s+/g, '').includes('原始字幕18') === true && !row.classList.contains('is-deleted')), null, { timeout: 10_000 })
+    const undoRemovedCaptionCount = await page.locator('[data-testid^="editing-caption-item-"]').filter({ hasText: '原始字幕 18' }).count() + await page.locator('[data-testid^="editing-caption-item-"]').filter({ hasText: '原始译文 18' }).count()
+    await page.locator('[data-testid="editing-redo"]').click()
+    await page.waitForFunction(() => {
+      const scriptRow = Array.from(document.querySelectorAll('[data-testid^="editing-script-row-"]')).find((row) => row.textContent?.replace(/\s+/g, '').includes('原始字幕18'))
+      const sourceCaptionPresent = Array.from(document.querySelectorAll('[data-testid^="editing-caption-item-"]')).some((item) => item.textContent?.includes('原始字幕 18') === true)
+      const translationCaptionPresent = Array.from(document.querySelectorAll('[data-testid^="editing-caption-item-"]')).some((item) => item.textContent?.includes('原始译文 18') === true)
+      return scriptRow?.classList.contains('is-deleted') === true && !sourceCaptionPresent && !translationCaptionPresent
+    }, null, { timeout: 10_000 })
+    const redoRemovedScriptClass = await page.locator(`[data-testid="${await removedScriptRow.getAttribute('data-testid')}"]`).getAttribute('class')
+    await search.fill('')
+    await page.locator('[data-testid="editing-caption-reload-status-filter"]').selectOption('all')
+
     await page.locator('[data-testid="editing-caption-reload-keep"]').click()
     await page.waitForFunction(() => document.querySelector('[data-testid="editing-caption-reload-conflict"]') === null, null, { timeout: 10_000 })
     const keptText = await page.locator('.editing-script-text').first().textContent()
@@ -228,11 +265,11 @@ async function main(): Promise<void> {
     const forceAfterText = await page.locator('.editing-script-text').first().textContent()
     const forceScreenshotPath = join(smokeHomeDirectory, 'aivplayer-smoke-caption-reload-force.png')
     await page.screenshot({ path: forceScreenshotPath, fullPage: false })
-    const result = { previewIncludesIncoming: previewText?.includes('外部更新字幕') === true, protectedText: protectedText ?? '', keepPreserved: keptText === manualText, forceBeforeText: forceBeforeText ?? '', forceReplaced: forceAfterText === '强制重载后的字幕', expectedCueCount, incomingCueCount, expectedChangedTrackCount, expectedDiffCount, firstPageRows, secondPageRows, pageAfterNext, timeFilteredRows, timeFilteredText: timeFilteredText ?? '', searchedText: searchedText ?? '', seekReadout: seekReadout ?? '', changedPreviewText: changedPreviewText ?? '', changedCurrentText: changedCurrentText ?? '', changedIncomingText: changedIncomingText ?? '', changedPreviewCount, changedIncomingClass: changedIncomingClass ?? '', selectedScriptRow: selectedScriptRow ?? '', selectedCaptionItem: selectedCaptionItem ?? '', acceptButtonCount, acceptedScriptText: acceptedScriptText ?? '', acceptedCaptionText: acceptedCaptionText ?? '', remainingChangedTranslationRows, changedSourceRowsAfterAccept, undoRestoredText: undoRestoredText ?? '', redoAcceptedText: redoAcceptedText ?? '', addButtonCount, addedScriptText: addedScriptText ?? '', addedCaptionText: addedCaptionText ?? '', remainingAddedTranslationRows, undoAddedCount, redoAddedText: redoAddedText ?? '', noMatchesShown, incomingPreviewText: incomingPreviewText ?? '', incomingPreviewClass: incomingPreviewClass ?? '', incomingPreviewCount, incomingPreviewSourceText: incomingPreviewSourceText ?? '', incomingPreviewTranslationText: incomingPreviewTranslationText ?? '', selectedScriptCleared, incomingPreviewCleared, conflictScreenshotPath, selectionScreenshotPath, incomingPreviewScreenshotPath, forceScreenshotPath, consoleErrors }
+    const result = { previewIncludesIncoming: previewText?.includes('外部更新字幕') === true, protectedText: protectedText ?? '', keepPreserved: keptText === manualText, forceBeforeText: forceBeforeText ?? '', forceReplaced: forceAfterText === '强制重载后的字幕', expectedCueCount, incomingCueCount, expectedChangedTrackCount, expectedRemovedChangeCount, expectedDiffCount, firstPageRows, secondPageRows, pageAfterNext, timeFilteredRows, timeFilteredText: timeFilteredText ?? '', searchedText: searchedText ?? '', seekReadout: seekReadout ?? '', changedPreviewText: changedPreviewText ?? '', changedCurrentText: changedCurrentText ?? '', changedIncomingText: changedIncomingText ?? '', changedPreviewCount, changedIncomingClass: changedIncomingClass ?? '', selectedScriptRow: selectedScriptRow ?? '', selectedCaptionItem: selectedCaptionItem ?? '', acceptButtonCount, acceptedScriptText: acceptedScriptText ?? '', acceptedCaptionText: acceptedCaptionText ?? '', remainingChangedTranslationRows, changedSourceRowsAfterAccept, undoRestoredText: undoRestoredText ?? '', redoAcceptedText: redoAcceptedText ?? '', addButtonCount, addedScriptText: addedScriptText ?? '', addedCaptionText: addedCaptionText ?? '', remainingAddedTranslationRows, undoAddedCount, redoAddedText: redoAddedText ?? '', removeButtonCount, removedScriptClass: removedScriptClass ?? '', removedSourceCaptionCount, removedTranslationCaptionCount, remainingRemovedTranslationRows, undoRemovedCaptionCount, redoRemovedScriptClass: redoRemovedScriptClass ?? '', noMatchesShown, incomingPreviewText: incomingPreviewText ?? '', incomingPreviewClass: incomingPreviewClass ?? '', incomingPreviewCount, incomingPreviewSourceText: incomingPreviewSourceText ?? '', incomingPreviewTranslationText: incomingPreviewTranslationText ?? '', selectedScriptCleared, incomingPreviewCleared, conflictScreenshotPath, selectionScreenshotPath, incomingPreviewScreenshotPath, forceScreenshotPath, consoleErrors }
     console.log('AIVPlayer Smoke Editing Caption Reload')
     console.log(`Media: ${mediaPath}`)
     console.log(`Result: ${JSON.stringify(result)}`)
-    if (!result.previewIncludesIncoming || !result.keepPreserved || !result.forceReplaced || result.forceBeforeText !== manualText || result.expectedCueCount !== expectedCueCount || result.incomingCueCount !== expectedCueCount + 1 || result.expectedChangedTrackCount !== expectedChangedTrackCount || result.expectedDiffCount !== expectedDiffCount || result.firstPageRows !== 8 || result.secondPageRows !== 8 || !result.pageAfterNext?.includes('第 2 / 3 页') || !result.pageAfterNext?.includes(`${expectedDiffCount} 条匹配差异`) || result.timeFilteredRows !== expectedChangedTrackCount || !result.timeFilteredText?.includes('00:18.0–00:20.5') || !result.searchedText?.includes('外部更新字幕 10') || !result.seekReadout?.includes('00:19') || !result.changedPreviewText?.includes('新字幕') || !result.changedCurrentText?.includes('原始字幕 10') || !result.changedCurrentText?.includes('原始译文 10') || !result.changedIncomingText?.includes('外部更新字幕 10') || !result.changedIncomingText?.includes('外部更新译文 10') || result.changedPreviewCount !== expectedChangedTrackCount || !result.changedIncomingClass?.includes('is-changed') || !result.selectedScriptRow?.includes('is-selected') || !result.selectedCaptionItem?.includes('is-selected') || result.acceptButtonCount !== 1 || !result.acceptedScriptText?.replace(/\s+/g, '').includes('外部更新字幕10') || !result.acceptedCaptionText?.includes('外部更新字幕 10') || result.remainingChangedTranslationRows !== 1 || result.changedSourceRowsAfterAccept !== 0 || !result.undoRestoredText?.includes('原始字幕10') || !result.redoAcceptedText?.replace(/\s+/g, '').includes('外部更新字幕10') || result.addButtonCount !== 1 || !result.addedScriptText?.includes('外部只新增预览') || !result.addedCaptionText?.includes('外部只新增预览') || result.remainingAddedTranslationRows !== 1 || result.undoAddedCount !== 0 || !result.redoAddedText?.includes('外部只新增预览') || !result.noMatchesShown || !result.incomingPreviewText?.includes('外部只新增预览') || !result.incomingPreviewText?.includes('外部只新增译文预览') || !result.incomingPreviewClass?.includes('editing-caption-item-incoming-preview') || result.incomingPreviewCount !== expectedAddedChangeCount || !result.incomingPreviewSourceText?.includes('外部只新增预览') || !result.incomingPreviewTranslationText?.includes('外部只新增译文预览') || !result.selectedScriptCleared || !result.incomingPreviewCleared || consoleErrors.length > 0) process.exitCode = 1
+    if (!result.previewIncludesIncoming || !result.keepPreserved || !result.forceReplaced || result.forceBeforeText !== manualText || result.expectedCueCount !== expectedCueCount || result.incomingCueCount !== expectedCueCount || result.expectedChangedTrackCount !== expectedChangedTrackCount || result.expectedRemovedChangeCount !== expectedRemovedChangeCount || result.expectedDiffCount !== expectedDiffCount || result.firstPageRows !== 8 || result.secondPageRows !== 8 || !result.pageAfterNext?.includes('第 2 / 3 页') || !result.pageAfterNext?.includes(`${expectedDiffCount} 条匹配差异`) || result.timeFilteredRows !== expectedChangedTrackCount || !result.timeFilteredText?.includes('00:18.0–00:20.5') || !result.searchedText?.includes('外部更新字幕 10') || !result.seekReadout?.includes('00:19') || !result.changedPreviewText?.includes('新字幕') || !result.changedCurrentText?.includes('原始字幕 10') || !result.changedCurrentText?.includes('原始译文 10') || !result.changedIncomingText?.includes('外部更新字幕 10') || !result.changedIncomingText?.includes('外部更新译文 10') || result.changedPreviewCount !== expectedChangedTrackCount || !result.changedIncomingClass?.includes('is-changed') || !result.selectedScriptRow?.includes('is-selected') || !result.selectedCaptionItem?.includes('is-selected') || result.acceptButtonCount !== 1 || !result.acceptedScriptText?.replace(/\s+/g, '').includes('外部更新字幕10') || !result.acceptedCaptionText?.includes('外部更新字幕 10') || result.remainingChangedTranslationRows !== 1 || result.changedSourceRowsAfterAccept !== 0 || !result.undoRestoredText?.includes('原始字幕10') || !result.redoAcceptedText?.replace(/\s+/g, '').includes('外部更新字幕10') || result.addButtonCount !== 1 || !result.addedScriptText?.includes('外部只新增预览') || !result.addedCaptionText?.includes('外部只新增预览') || result.remainingAddedTranslationRows !== 1 || result.undoAddedCount !== 0 || !result.redoAddedText?.includes('外部只新增预览') || result.removeButtonCount !== 1 || !result.removedScriptClass?.includes('is-deleted') || result.removedSourceCaptionCount !== 0 || result.removedTranslationCaptionCount !== 0 || result.remainingRemovedTranslationRows !== 0 || result.undoRemovedCaptionCount !== 2 || !result.redoRemovedScriptClass?.includes('is-deleted') || !result.noMatchesShown || !result.incomingPreviewText?.includes('外部只新增预览') || !result.incomingPreviewText?.includes('外部只新增译文预览') || !result.incomingPreviewClass?.includes('editing-caption-item-incoming-preview') || result.incomingPreviewCount !== expectedAddedChangeCount || !result.incomingPreviewSourceText?.includes('外部只新增预览') || !result.incomingPreviewTranslationText?.includes('外部只新增译文预览') || !result.selectedScriptCleared || !result.incomingPreviewCleared || consoleErrors.length > 0) process.exitCode = 1
   } finally {
     await app.close()
   }
