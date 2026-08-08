@@ -20,7 +20,7 @@ import { getPlaybackMediaKey } from '../../../shared/playback-memory'
 import { useEditingClipReorder } from './use-editing-clip-reorder'; import { useEditingTimelineSelection } from './use-editing-timeline-selection'; import { EditingStructureAnalysis } from './editing-structure-analysis'; import { EditingSubtitleQa } from './editing-subtitle-qa'; import { EditingCaptionSyncControl } from './editing-caption-sync-control'
 import { EditingCaptionReloadConflict } from './editing-caption-reload-conflict'
 import { getEditingSubtitleReloadCopy } from '../../../shared/editing-subtitle-reload-copy'
-import { getEditingSubtitleReloadChangePreview, type EditingSubtitleReloadChange, type EditingSubtitleReloadChangePreview, type EditingSubtitleReloadIncomingPreviewTrack } from '../../../core/editing/subtitle-reload'
+import { getEditingSubtitleReloadChangePreview, shareEditingSubtitleReloadScriptSegmentIds, type EditingSubtitleReloadChange, type EditingSubtitleReloadChangePreview, type EditingSubtitleReloadIncomingPreviewTrack } from '../../../core/editing/subtitle-reload'
 const MAX_RULER_TICKS = 121; function formatClipLabel(startSeconds: number, endSeconds: number): string { return `${formatTime(startSeconds)} – ${formatTime(endSeconds)}` }
 function formatIncomingPreviewRange(track: EditingSubtitleReloadIncomingPreviewTrack): string { return `${formatTime(track.startSeconds)}–${formatTime(track.endSeconds)}` }
 export function EditingTimeline(): React.ReactElement | null {
@@ -102,10 +102,11 @@ export function EditingTimeline(): React.ReactElement | null {
     setIncomingCaptionPreview(next)
   }
   const selectScriptSegment = (segmentId: string): void => {
-    if (!project.scriptSegments?.some((segment) => segment.id === segmentId)) return
-    setSelectedScriptSegmentId(segmentId)
-    selectTimelineItem('caption', segmentId)
-    app.selectEditingScriptSegment(segmentId)
+    const resolvedSegmentId = project.scriptSegments?.find((segment) => shareEditingSubtitleReloadScriptSegmentIds(segment.id, segmentId))?.id
+    if (!resolvedSegmentId) return
+    setSelectedScriptSegmentId(resolvedSegmentId)
+    selectTimelineItem('caption', resolvedSegmentId)
+    app.selectEditingScriptSegment(resolvedSegmentId)
   }
   const canvasPreset = project.canvasPreset ?? 'source'
   const canvasDimensions = getEditingCanvasDimensions(canvasPreset, project.sources[0]?.width, project.sources[0]?.height)
