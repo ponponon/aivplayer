@@ -30,15 +30,17 @@ export type EditingSubtitleReloadIncomingPreviewTrack = {
   endSeconds: number
 }
 
-export type EditingSubtitleReloadIncomingPreview = {
+export type EditingSubtitleReloadChangePreview = {
   id: string
   kind: EditingCaption['kind']
   text: string
   startSeconds: number
   endSeconds: number
-  current: null
+  current: Partial<Record<EditingCaption['kind'], EditingSubtitleReloadIncomingPreviewTrack>> | null
   incoming: Partial<Record<EditingCaption['kind'], EditingSubtitleReloadIncomingPreviewTrack>>
 }
+
+export type EditingSubtitleReloadIncomingPreview = EditingSubtitleReloadChangePreview & { current: null }
 
 export type EditingSubtitleReloadPreview = {
   hasChanges: boolean
@@ -116,12 +118,20 @@ function getFiniteTime(value: number | undefined): number | undefined {
   return value !== undefined && Number.isFinite(value) ? Math.max(0, value) : undefined
 }
 
-function getIncomingPreviewTrack(change: EditingSubtitleReloadChange): EditingSubtitleReloadIncomingPreviewTrack | null {
-  if (change.status !== 'added' || change.incomingText === undefined) return null
-  const startSeconds = getFiniteTime(change.incomingStartSeconds)
-  const endSeconds = getFiniteTime(change.incomingEndSeconds)
+function getChangePreviewTrack(change: EditingSubtitleReloadChange, side: 'current' | 'incoming'): EditingSubtitleReloadIncomingPreviewTrack | null {
+  const text = side === 'current' ? change.currentText : change.incomingText
+  const start = side === 'current' ? change.currentStartSeconds : change.incomingStartSeconds
+  const end = side === 'current' ? change.currentEndSeconds : change.incomingEndSeconds
+  if (text === undefined) return null
+  const startSeconds = getFiniteTime(start)
+  const endSeconds = getFiniteTime(end)
   if (startSeconds === undefined || endSeconds === undefined || endSeconds <= startSeconds) return null
-  return { kind: change.kind, text: change.incomingText, startSeconds, endSeconds }
+  return { kind: change.kind, text, startSeconds, endSeconds }
+}
+
+function getIncomingPreviewTrack(change: EditingSubtitleReloadChange): EditingSubtitleReloadIncomingPreviewTrack | null {
+  if (change.status !== 'added' && change.status !== 'changed') return null
+  return getChangePreviewTrack(change, 'incoming')
 }
 
 function shareIncomingPreviewScriptSegment(left: Pick<EditingSubtitleReloadChange, 'id' | 'kind'>, right: Pick<EditingSubtitleReloadChange, 'id' | 'kind'>): boolean {
@@ -130,18 +140,37 @@ function shareIncomingPreviewScriptSegment(left: Pick<EditingSubtitleReloadChang
   return leftSegmentId === rightSegmentId || leftSegmentId === `source-${rightSegmentId}` || rightSegmentId === `source-${leftSegmentId}`
 }
 
-/** Builds a transient preview only for incoming-only cues; it never mutates the project. */
-export function getEditingSubtitleReloadIncomingPreview(change: EditingSubtitleReloadChange, relatedChanges: readonly EditingSubtitleReloadChange[] = []): EditingSubtitleReloadIncomingPreview | null {
+/** Builds a transient preview for added or changed cues; it never mutates the project. */
+export function getEditingSubtitleReloadChangePreview(change: EditingSubtitleReloadChange, relatedChanges: readonly EditingSubtitleReloadChange[] = []): EditingSubtitleReloadChangePreview | null {
+  if (change.status !== 'added' && change.status !== 'changed') return null
   const primaryTrack = getIncomingPreviewTrack(change)
   if (!primaryTrack) return null
+  const current: Partial<Record<EditingCaption['kind'], EditingSubtitleReloadIncomingPreviewTrack>> | null = change.status === 'added' ? null : {}
   const incoming: Partial<Record<EditingCaption['kind'], EditingSubtitleReloadIncomingPreviewTrack>> = { [primaryTrack.kind]: primaryTrack }
+  if (current) {
+    const primaryCurrentTrack = getChangePreviewTrack(change, 'current')
+    if (primaryCurrentTrack) current[primaryCurrentTrack.kind] = primaryCurrentTrack
+  }
   for (const relatedChange of relatedChanges) {
     if (relatedChange.id === change.id && relatedChange.kind === change.kind) continue
+    if (relatedChange.status !== change.status) continue
     if (!shareIncomingPreviewScriptSegment(change, relatedChange)) continue
     const relatedTrack = getIncomingPreviewTrack(relatedChange)
     if (relatedTrack) incoming[relatedTrack.kind] = relatedTrack
+    if (current) {
+      const relatedCurrentTrack = getChangePreviewTrack(relatedChange, 'current')
+      if (relatedCurrentTrack) current[relatedCurrentTrack.kind] = relatedCurrentTrack
+    }
   }
-  return { id: `incoming-${change.kind}-${change.id}`, kind: primaryTrack.kind, text: primaryTrack.text, startSeconds: primaryTrack.startSeconds, endSeconds: primaryTrack.endSeconds, current: null, incoming }
+  const idPrefix = change.status === 'added' ? 'incoming' : 'preview'
+  return { id: `${idPrefix}-${change.kind}-${change.id}`, kind: primaryTrack.kind, text: primaryTrack.text, startSeconds: primaryTrack.startSeconds, endSeconds: primaryTrack.endSeconds, current, incoming }
+}
+
+/** Builds the added-only preview contract used by the incoming subtitle action. */
+export function getEditingSubtitleReloadIncomingPreview(change: EditingSubtitleReloadChange, relatedChanges: readonly EditingSubtitleReloadChange[] = []): EditingSubtitleReloadIncomingPreview | null {
+  if (change.status !== 'added') return null
+  const preview = getEditingSubtitleReloadChangePreview(change, relatedChanges)
+  return preview?.current === null ? preview as EditingSubtitleReloadIncomingPreview : null
 }
 
 export function getEditingSubtitleReloadChangeTimeRange(change: EditingSubtitleReloadChange): { startSeconds?: number; endSeconds?: number } {

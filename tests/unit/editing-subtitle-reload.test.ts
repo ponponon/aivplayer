@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createEditingProject } from '../../src/core/editing/project'
-import { buildEditingSubtitleReloadPreview, getEditingSubtitleReloadChangePage, getEditingSubtitleReloadChangeScriptSegmentId, getEditingSubtitleReloadIncomingPreview, replaceEditingCaptionsForReload } from '../../src/core/editing/subtitle-reload'
+import { buildEditingSubtitleReloadPreview, getEditingSubtitleReloadChangePage, getEditingSubtitleReloadChangePreview, getEditingSubtitleReloadChangeScriptSegmentId, getEditingSubtitleReloadIncomingPreview, replaceEditingCaptionsForReload } from '../../src/core/editing/subtitle-reload'
 
 const source = { id: 'source-1', path: '/tmp/demo.mp4', name: 'demo.mp4', fingerprint: 'demo:10', durationSeconds: 10 }
 
@@ -33,6 +33,28 @@ describe('editing subtitle reload', () => {
     expect(getEditingSubtitleReloadIncomingPreview(loaderSourceChange, [loaderSourceChange, loaderTranslationChange])).toMatchObject({ incoming: { source: { text: 'Loader source' }, translation: { text: 'Loader translation' } } })
     expect(getEditingSubtitleReloadIncomingPreview({ id: 'source-caption-1', kind: 'source', status: 'changed', incomingText: '新文本', incomingStartSeconds: 1, incomingEndSeconds: 2 })).toBeNull()
     expect(getEditingSubtitleReloadIncomingPreview({ id: 'source-caption-3', kind: 'source', status: 'added', incomingText: '坏时间', incomingStartSeconds: 4, incomingEndSeconds: 4 })).toBeNull()
+  })
+
+  it('projects changed current and incoming source/translation ranges without mutating the current cue', () => {
+    const sourceChange = { id: 'source-source-abc-9', kind: 'source' as const, status: 'changed' as const, currentText: '旧原文', currentStartSeconds: 18, currentEndSeconds: 19.5, incomingText: '新原文', incomingStartSeconds: 19, incomingEndSeconds: 20.5 }
+    const translationChange = { id: 'translation-source-abc-9', kind: 'translation' as const, status: 'changed' as const, currentText: '旧译文', currentStartSeconds: 18, currentEndSeconds: 19.5, incomingText: 'New translation', incomingStartSeconds: 19, incomingEndSeconds: 20.5 }
+
+    expect(getEditingSubtitleReloadChangePreview(sourceChange, [sourceChange, translationChange])).toEqual({
+      id: 'preview-source-source-source-abc-9',
+      kind: 'source',
+      text: '新原文',
+      startSeconds: 19,
+      endSeconds: 20.5,
+      current: {
+        source: { kind: 'source', text: '旧原文', startSeconds: 18, endSeconds: 19.5 },
+        translation: { kind: 'translation', text: '旧译文', startSeconds: 18, endSeconds: 19.5 }
+      },
+      incoming: {
+        source: { kind: 'source', text: '新原文', startSeconds: 19, endSeconds: 20.5 },
+        translation: { kind: 'translation', text: 'New translation', startSeconds: 19, endSeconds: 20.5 }
+      }
+    })
+    expect(getEditingSubtitleReloadChangePreview({ ...sourceChange, status: 'removed', incomingText: undefined, incomingStartSeconds: undefined, incomingEndSeconds: undefined })).toBeNull()
   })
 
   it('summarizes changed, added and removed source/translation captions', () => {
