@@ -87,6 +87,47 @@ async function main(): Promise<void> {
         containsSmokePath: raw.includes(smokeDirectory)
       }
     }, { projectId: baseline.id ?? null, smokeDirectory })
+    const candidateAuditResetSeed = await page.evaluate(({ projectId }) => {
+      const raw = localStorage.getItem('aivplayer.editing-ui-preferences.v1') ?? '{}'
+      const parsed = JSON.parse(raw) as { projects?: Record<string, { detailsOpen?: boolean; openGroups?: Record<string, boolean> }> }
+      const current = projectId ? parsed.projects?.[projectId] ?? null : null
+      parsed.projects = { ...(parsed.projects ?? {}), 'other-project-kept-by-reset': { detailsOpen: true, openGroups: { other: true } } }
+      localStorage.setItem('aivplayer.editing-ui-preferences.v1', JSON.stringify(parsed))
+      return { current }
+    }, { projectId: baseline.id ?? null })
+    if (!candidateAuditResetSeed.current?.detailsOpen || Object.values(candidateAuditResetSeed.current.openGroups ?? {}).filter(Boolean).length !== 1) throw new Error('Current project preference was not ready for reset verification')
+    const candidateAuditResetButton = page.locator('[data-testid="editing-reset-candidate-details-preferences"]')
+    await candidateAuditResetButton.waitFor({ timeout: 10_000 })
+    await candidateAuditResetButton.click()
+    await page.waitForFunction(({ projectId }) => {
+      const parsed = JSON.parse(localStorage.getItem('aivplayer.editing-ui-preferences.v1') ?? '{}') as { projects?: Record<string, { detailsOpen?: boolean; openGroups?: Record<string, boolean> }> }
+      const current = projectId ? parsed.projects?.[projectId] : undefined
+      if (!current) return false
+      return Boolean(parsed.projects?.['other-project-kept-by-reset']) && current.detailsOpen === false && Object.values(current.openGroups ?? {}).every((open) => open === false)
+    }, { projectId: baseline.id ?? null }, { timeout: 10_000 })
+    const candidateAuditResetOuterOpen = await sessionCandidateDetails.evaluate((details) => (details as HTMLDetailsElement).open)
+    const candidateAuditResetGroupOpen = await sessionCandidateFirstGroup.evaluate((group) => (group as HTMLDetailsElement).open)
+    const candidateAuditResetPreference = await page.evaluate(({ projectId, smokeDirectory }) => {
+      const raw = localStorage.getItem('aivplayer.editing-ui-preferences.v1') ?? ''
+      const parsed = JSON.parse(raw) as { projects?: Record<string, { detailsOpen?: boolean; openGroups?: Record<string, boolean> }> }
+      const other = parsed.projects?.['other-project-kept-by-reset']
+      const current = projectId ? parsed.projects?.[projectId] : undefined
+      return {
+        currentProjectPresent: Boolean(current),
+        currentDetailsOpen: current?.detailsOpen ?? true,
+        currentOpenGroupCount: Object.values(current?.openGroups ?? {}).filter(Boolean).length,
+        otherProjectPresent: Boolean(other),
+        otherDetailsOpen: other?.detailsOpen ?? false,
+        otherOpenGroupCount: Object.values(other?.openGroups ?? {}).filter(Boolean).length,
+        containsSmokePath: raw.includes(smokeDirectory)
+      }
+    }, { projectId: baseline.id ?? null, smokeDirectory })
+    await page.evaluate(({ projectId, current }) => {
+      if (!projectId || !current) return
+      const parsed = JSON.parse(localStorage.getItem('aivplayer.editing-ui-preferences.v1') ?? '{}') as { projects?: Record<string, unknown> }
+      parsed.projects = { ...(parsed.projects ?? {}), [projectId]: current }
+      localStorage.setItem('aivplayer.editing-ui-preferences.v1', JSON.stringify(parsed))
+    }, { projectId: baseline.id ?? null, current: candidateAuditResetSeed.current })
 
     await app.close()
     app = await electron.launch({
@@ -253,6 +294,9 @@ async function main(): Promise<void> {
       candidateAuditSessionRefreshedGroupOpen,
       candidateAuditSessionStorageValue,
       candidateAuditSessionScreenshotPath,
+      candidateAuditResetOuterOpen,
+      candidateAuditResetGroupOpen,
+      candidateAuditResetPreference,
       candidateAuditPrunedPreference,
       candidateAuditRestartedOuterOpen,
       candidateAuditRestartedGroupOpen,
@@ -286,7 +330,7 @@ async function main(): Promise<void> {
     }
     console.log('AIVPlayer Smoke Editing Sidecar Paths')
     console.log(JSON.stringify(result))
-    if (result.selectedSourcePath?.toLowerCase() !== sourcePath.toLowerCase() || result.selectedTranslationPath?.toLowerCase() !== translationPath.toLowerCase() || result.candidateRows < 6 || result.conflictRows !== 2 || result.ambiguityCount !== 1 || !result.ambiguityText?.includes('2') || result.equivalentCount < 1 || !result.equivalentText?.includes('内容相同') || result.candidateAuditStatus?.includes(smokeDirectory) || !result.candidateAuditDetailsSummary?.includes('查看完整候选路径') || !result.candidateAuditSessionInitialOuterOpen || !result.candidateAuditSessionInitialGroupOpen || !result.candidateAuditSessionRefreshedOuterOpen || !result.candidateAuditSessionRefreshedGroupOpen || result.candidateAuditSessionStorageValue !== null || result.candidateAuditPrunedPreference.staleProjectPresent || !result.candidateAuditPrunedPreference.currentProjectPresent || result.candidateAuditPrunedPreference.containsSmokePath || !result.candidateAuditRestartedOuterOpen || !result.candidateAuditRestartedGroupOpen || result.candidateAuditRestartedPreference.schemaVersion !== 1 || result.candidateAuditRestartedPreference.detailsOpen !== true || result.candidateAuditRestartedPreference.openGroupCount !== 1 || result.candidateAuditRestartedPreference.containsSmokePath || !result.candidateAuditReloadedOuterOpen || !result.candidateAuditReloadedGroupOpen[0] || result.candidateAuditReloadedGroupOpen[1] || result.candidateAuditGroupCount !== 2 || result.candidateAuditGroupOpenBefore.some(Boolean) || !result.candidateAuditGroupLabels.some((label) => label.includes('原文')) || !result.candidateAuditGroupLabels.some((label) => label.includes('译文')) || !result.candidateAuditFirstGroupOpen || !result.candidateAuditFirstGroupDetailsVisible || !result.candidateAuditSecondGroupOpen || !result.candidateAuditFirstGroupClosed || !result.candidateAuditSecondGroupStillOpen || !result.candidateAuditDetailsText?.includes('内容相同') || !result.candidateAuditDetailsText?.includes('内容不同') || !result.candidateAuditDetailsText?.includes(smokeDirectory) || result.selectedCandidatePath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.selectedCandidateText !== '更新跨设备备用译文' || result.selectedCandidateRevision === null || result.undoPreferredPath?.toLowerCase() === result.alternateTranslationCandidatePath.toLowerCase() || result.undoCaptionText !== '初始跨设备译文' || result.redoPreferredPath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.redoCaptionText !== '更新跨设备备用译文' || result.clearedPreferredPath !== null || result.clearedCaptionText !== '更新跨设备译文' || result.clearUndoPreferredPath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.clearRedoPreferredPath !== null || result.consoleErrors.length > 0) process.exitCode = 1
+    if (result.selectedSourcePath?.toLowerCase() !== sourcePath.toLowerCase() || result.selectedTranslationPath?.toLowerCase() !== translationPath.toLowerCase() || result.candidateRows < 6 || result.conflictRows !== 2 || result.ambiguityCount !== 1 || !result.ambiguityText?.includes('2') || result.equivalentCount < 1 || !result.equivalentText?.includes('内容相同') || result.candidateAuditStatus?.includes(smokeDirectory) || !result.candidateAuditDetailsSummary?.includes('查看完整候选路径') || !result.candidateAuditSessionInitialOuterOpen || !result.candidateAuditSessionInitialGroupOpen || !result.candidateAuditSessionRefreshedOuterOpen || !result.candidateAuditSessionRefreshedGroupOpen || result.candidateAuditSessionStorageValue !== null || result.candidateAuditResetOuterOpen || result.candidateAuditResetGroupOpen || !result.candidateAuditResetPreference.currentProjectPresent || result.candidateAuditResetPreference.currentDetailsOpen || result.candidateAuditResetPreference.currentOpenGroupCount !== 0 || !result.candidateAuditResetPreference.otherProjectPresent || !result.candidateAuditResetPreference.otherDetailsOpen || result.candidateAuditResetPreference.otherOpenGroupCount !== 1 || result.candidateAuditResetPreference.containsSmokePath || result.candidateAuditPrunedPreference.staleProjectPresent || !result.candidateAuditPrunedPreference.currentProjectPresent || result.candidateAuditPrunedPreference.containsSmokePath || !result.candidateAuditRestartedOuterOpen || !result.candidateAuditRestartedGroupOpen || result.candidateAuditRestartedPreference.schemaVersion !== 1 || result.candidateAuditRestartedPreference.detailsOpen !== true || result.candidateAuditRestartedPreference.openGroupCount !== 1 || result.candidateAuditRestartedPreference.containsSmokePath || !result.candidateAuditReloadedOuterOpen || !result.candidateAuditReloadedGroupOpen[0] || result.candidateAuditReloadedGroupOpen[1] || result.candidateAuditGroupCount !== 2 || result.candidateAuditGroupOpenBefore.some(Boolean) || !result.candidateAuditGroupLabels.some((label) => label.includes('原文')) || !result.candidateAuditGroupLabels.some((label) => label.includes('译文')) || !result.candidateAuditFirstGroupOpen || !result.candidateAuditFirstGroupDetailsVisible || !result.candidateAuditSecondGroupOpen || !result.candidateAuditFirstGroupClosed || !result.candidateAuditSecondGroupStillOpen || !result.candidateAuditDetailsText?.includes('内容相同') || !result.candidateAuditDetailsText?.includes('内容不同') || !result.candidateAuditDetailsText?.includes(smokeDirectory) || result.selectedCandidatePath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.selectedCandidateText !== '更新跨设备备用译文' || result.selectedCandidateRevision === null || result.undoPreferredPath?.toLowerCase() === result.alternateTranslationCandidatePath.toLowerCase() || result.undoCaptionText !== '初始跨设备译文' || result.redoPreferredPath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.redoCaptionText !== '更新跨设备备用译文' || result.clearedPreferredPath !== null || result.clearedCaptionText !== '更新跨设备译文' || result.clearUndoPreferredPath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.clearRedoPreferredPath !== null || result.consoleErrors.length > 0) process.exitCode = 1
   } finally {
     await app.close()
   }
