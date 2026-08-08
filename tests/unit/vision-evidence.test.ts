@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createEditingProjectFromVisionSearchResults, createEditingProjectFromVisionSelections, createVisionClipSelections, mergeVisionClipSelections, normalizeVisionTimeRange } from '../../src/core/ai/vision-evidence'
+import { createEditingProjectFromVisionSearchResults, createEditingProjectFromVisionSelections, createVisionClipSelections, createVisionSourceFingerprint, mergeVisionClipSelections, normalizeVisionTimeRange } from '../../src/core/ai/vision-evidence'
 import { parseEditingProject } from '../../src/core/editing/project-file'
 import type { VisionClipSelection, VisionSearchResult } from '../../src/shared/vision-types'
 
@@ -20,6 +20,10 @@ function result(patch: Partial<VisionSearchResult> = {}): VisionSearchResult {
 }
 
 describe('vision evidence bridge', () => {
+  it('uses one source fingerprint format for index and derived evidence', () => {
+    expect(createVisionSourceFingerprint('/videos/demo.mp4', 120, 456.75)).toBe('/videos/demo.mp4:120:456.75')
+  })
+
   it('normalizes invalid and out-of-bounds source ranges', () => {
     expect(normalizeVisionTimeRange({ startSeconds: -2, endSeconds: 4 }, 3)).toEqual({ startSeconds: 0, endSeconds: 3 })
     expect(normalizeVisionTimeRange({ startSeconds: 4, endSeconds: 4 }, 10)).toBeNull()

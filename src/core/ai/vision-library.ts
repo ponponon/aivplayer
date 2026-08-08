@@ -10,7 +10,7 @@ import { parseVtt } from './subtitle-writer.ts'
 import { resolveFfmpegPath, resolveFfprobePath } from './whisper-cpp-runtime'
 import { VisionEmbeddingRuntime } from './vision-model'
 import { calculateVisionLexicalMatch, combineVisionHybridScore, getVisionSearchResultKey } from './vision-search'
-import { createVisionEvidenceId, createVisionSourceId } from './vision-evidence'
+import { createVisionEvidenceId, createVisionSourceFingerprint, createVisionSourceId } from './vision-evidence'
 import {
   VISION_FRAME_INTERVAL_SECONDS,
   VISION_MODEL_ID,
@@ -183,10 +183,6 @@ type LexicalSearchCandidate = {
 
 function escapeSqlString(value: string): string {
   return value.replaceAll("'", "''")
-}
-
-function createVisionSourceFingerprint(videoPath: string, sizeBytes: number, mtimeMs: number): string {
-  return `${videoPath}:${sizeBytes}:${mtimeMs}`
 }
 
 function clampLimit(value: number | undefined): number {

@@ -43,6 +43,10 @@ export function createVisionSourceId(videoPath: string): string {
   return `source-vision-${stableHash(videoPath)}`
 }
 
+export function createVisionSourceFingerprint(videoPath: string, sizeBytes: number, mtimeMs: number): string {
+  return `${videoPath}:${sizeBytes}:${mtimeMs}`
+}
+
 export function createVisionEvidenceId(input: {
   videoPath: string
   evidenceType: VisionEvidenceType

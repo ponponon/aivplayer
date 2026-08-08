@@ -1,12 +1,11 @@
 import { app, ipcMain } from 'electron'
-import { createHash } from 'node:crypto'
 import { stat } from 'node:fs/promises'
 import { basename, join } from 'node:path'
 import { createMediaEvidenceTask, toVisionOcrEvidence } from '../core/ai/evidence-task'
 import { runMediaEvidenceTask } from '../core/ai/evidence-task-runner'
 import { createLocalOcrOperation, createLocalTtsOperation, probeLocalEvidenceCapabilities } from '../core/ai/local-evidence-adapters'
 import { resolveFfmpegPath } from '../core/ai/whisper-cpp-runtime'
-import { createVisionSourceId } from '../core/ai/vision-evidence'
+import { createVisionSourceFingerprint, createVisionSourceId } from '../core/ai/vision-evidence'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type { MediaEvidenceCapabilities, MediaEvidenceRange, MediaEvidenceTask, MediaEvidenceTaskRequest } from '../shared/evidence-task-types'
 import { desktopState } from './desktop-state'
@@ -29,7 +28,7 @@ function resolveTesseractCommand(): string {
 
 async function getSourceFingerprint(mediaPath: string): Promise<string> {
   const fileStat = await stat(mediaPath)
-  return createHash('sha256').update(`${mediaPath}|${fileStat.size}|${fileStat.mtimeMs}`).digest('hex').slice(0, 24)
+  return createVisionSourceFingerprint(mediaPath, fileStat.size, fileStat.mtimeMs)
 }
 
 function normalizeRequest(request: MediaEvidenceTaskRequest): MediaEvidenceTaskRequest | null {
