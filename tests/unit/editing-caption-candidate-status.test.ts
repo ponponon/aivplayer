@@ -26,8 +26,11 @@ describe('editing caption candidate status', () => {
     expect(status?.message).toContain('demo.vtt')
     expect(status?.message).not.toContain('/old-machine/projects/very-long-directory')
     expect(status?.details?.label).toBe('查看完整候选路径')
-    expect(status?.details?.items.some((item) => item.includes('/old-machine/projects/very-long-directory/demo.VTT'))).toBe(true)
-    expect(status?.details?.items.some((item) => item.includes('内容不同的候选'))).toBe(true)
+    expect(status?.details?.groups).toHaveLength(2)
+    expect(status?.details?.groups[0]?.label).toContain('原文')
+    expect(status?.details?.groups[1]?.label).toContain('译文')
+    expect(status?.details?.groups.flatMap((group) => group.items).some((item) => item.includes('/old-machine/projects/very-long-directory/demo.VTT'))).toBe(true)
+    expect(status?.details?.groups.flatMap((group) => group.items).some((item) => item.includes('内容不同的候选'))).toBe(true)
   })
 
   it('does not create details for a source with one valid path', () => {
