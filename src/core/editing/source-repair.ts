@@ -12,10 +12,18 @@ export type EditingSourceRepairReplacement = EditingSourceRepairCandidate & {
   sourceId: string
 }
 
+export type EditingSourceRepairIssue = {
+  sourceId: string
+  sourceName: string
+  candidatePaths: string[]
+}
+
 export type EditingSourceRepairMatch = {
   replacements: EditingSourceRepairReplacement[]
   unresolvedSourceIds: string[]
   ambiguousSourceIds: string[]
+  unresolved: EditingSourceRepairIssue[]
+  ambiguous: EditingSourceRepairIssue[]
 }
 
 function normalizeName(value: string): string {
@@ -32,6 +40,8 @@ export function matchEditingSourceRepairCandidates(sources: readonly EditingSour
   const replacements: EditingSourceRepairReplacement[] = []
   const unresolvedSourceIds: string[] = []
   const ambiguousSourceIds: string[] = []
+  const unresolved: EditingSourceRepairIssue[] = []
+  const ambiguous: EditingSourceRepairIssue[] = []
 
   for (const source of sources) {
     const available = candidates.filter((candidate) => !usedPaths.has(candidate.path))
@@ -48,8 +58,14 @@ export function matchEditingSourceRepairCandidates(sources: readonly EditingSour
             ? sameDuration
             : []
     if (matches.length !== 1) {
-      if (matches.length > 1 || exact.length > 1 || sameName.length > 1 || sameDuration.length > 1) ambiguousSourceIds.push(source.id)
-      else unresolvedSourceIds.push(source.id)
+      if (matches.length > 1 || exact.length > 1 || sameName.length > 1 || sameDuration.length > 1) {
+        const ambiguousCandidates = matches.length > 1 ? matches : exact.length > 1 ? exact : sameName.length > 1 ? sameName : sameDuration
+        ambiguousSourceIds.push(source.id)
+        ambiguous.push({ sourceId: source.id, sourceName: source.name, candidatePaths: ambiguousCandidates.map((candidate) => candidate.path) })
+      } else {
+        unresolvedSourceIds.push(source.id)
+        unresolved.push({ sourceId: source.id, sourceName: source.name, candidatePaths: [] })
+      }
       continue
     }
     const candidate = matches[0]!
@@ -57,7 +73,7 @@ export function matchEditingSourceRepairCandidates(sources: readonly EditingSour
     replacements.push({ sourceId: source.id, ...candidate })
   }
 
-  return { replacements, unresolvedSourceIds, ambiguousSourceIds }
+  return { replacements, unresolvedSourceIds, ambiguousSourceIds, unresolved, ambiguous }
 }
 
 function getSourceRequiredDuration(project: EditingProject, sourceId: string): number {

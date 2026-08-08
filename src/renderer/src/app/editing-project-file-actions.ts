@@ -1,6 +1,6 @@
 import { createEditingProject } from '../../../core/editing/project'
 import { editedDurationSeconds } from '../../../core/editing/timeline-math'
-import { matchEditingSourceRepairCandidates, relinkEditingProjectSources } from '../../../core/editing/source-repair'
+import { matchEditingSourceRepairCandidates, relinkEditingProjectSources, type EditingSourceRepairMatch } from '../../../core/editing/source-repair'
 import type { EditingProject } from '../../../shared/editing-types'
 import type { AppDerived } from './use-app-derived'
 import type { AppModel } from './app-types'
@@ -12,6 +12,14 @@ type SelectFile = (file: NonNullable<AppModel['state']['currentFile']>) => void
 function getCurrentSource(model: AppModel, derived: AppDerived) {
   const durationSeconds = Math.max(0, derived.mediaDurationSeconds ?? model.state.duration)
   return { source: createEditingSource(model, durationSeconds), durationSeconds }
+}
+
+function formatSourceRepairSummary(copy: AppDerived['copy']['editing'], sources: readonly EditingProject['sources'][number][], match: EditingSourceRepairMatch): string {
+  const sourceNames = new Map(sources.map((source) => [source.id, source.name]))
+  const mapped = match.replacements.map((replacement) => copy.projectRepairMapped(sourceNames.get(replacement.sourceId) ?? replacement.sourceId, replacement.path))
+  const unresolved = match.unresolved.map((issue) => copy.projectRepairUnresolved(issue.sourceName))
+  const ambiguous = match.ambiguous.map((issue) => copy.projectRepairAmbiguous(issue.sourceName, issue.candidatePaths))
+  return [copy.projectRepairSummary(match.replacements.length, match.unresolved.length, match.ambiguous.length), ...mapped, ...unresolved, ...ambiguous].join('；')
 }
 
 export function setEditingProject(model: AppModel, project: EditingProject, sourceTime = 0): void {
@@ -75,6 +83,7 @@ export function createEditingProjectFileActions(model: AppModel, derived: AppDer
     }
     try {
       let project = result.project
+      let repairSummary: string | null = null
       const availability = await Promise.all(project.sources.map(async (item) => ({ item, available: await window.aiv.isMediaFileAvailable(item.path) })))
       const missingSources = availability.filter(({ available }) => !available).map(({ item }) => item)
       if (missingSources.length > 0) {
@@ -88,14 +97,15 @@ export function createEditingProjectFileActions(model: AppModel, derived: AppDer
         const replacementMetadata = await Promise.all(replacementFiles.map((file) => window.aiv.getMediaMetadata(file.path)))
         const match = matchEditingSourceRepairCandidates(missingSources, replacementFiles.map((file, index) => ({ path: file.path, name: file.name, durationSeconds: replacementMetadata[index]?.durationSeconds ?? 0, width: replacementMetadata[index]?.video?.width ?? undefined, height: replacementMetadata[index]?.video?.height ?? undefined })))
         if (match.unresolvedSourceIds.length > 0 || match.ambiguousSourceIds.length > 0 || match.replacements.length !== missingSources.length) {
-          model.setEditingProjectStatus({ success: false, message: derived.copy.editing.projectSourceMissing })
+          model.setEditingProjectStatus({ success: false, message: formatSourceRepairSummary(derived.copy.editing, missingSources, match) })
           return
         }
         const repaired = relinkEditingProjectSources(project, match.replacements)
         if (!repaired) {
-          model.setEditingProjectStatus({ success: false, message: derived.copy.editing.projectSourceMissing })
+          model.setEditingProjectStatus({ success: false, message: derived.copy.editing.projectRepairFailed })
           return
         }
+        repairSummary = formatSourceRepairSummary(derived.copy.editing, missingSources, match)
         project = repaired
       }
       const source = project.sources[0]
@@ -108,7 +118,7 @@ export function createEditingProjectFileActions(model: AppModel, derived: AppDer
       model.setEditingSourceFiles(Object.fromEntries(project.sources.map((item, index) => [item.id, mediaFiles[index]!])) as Record<string, NonNullable<AppModel['state']['currentFile']>>)
       model.setEditingPreviewSourceId(source.id)
       model.setEditingProjectFilePath(result.filePath ?? null)
-      model.setEditingProjectStatus({ success: true, message: derived.copy.editing.projectOpened(project.title) })
+      model.setEditingProjectStatus({ success: true, message: repairSummary ? `${derived.copy.editing.projectOpened(project.title)}；${repairSummary}` : derived.copy.editing.projectOpened(project.title) })
       setEditingProject(model, project, 0)
     } catch (error) {
       model.setEditingProjectStatus({ success: false, message: `${derived.copy.editing.projectOpenFailed}：${error instanceof Error ? error.message : String(error)}` })

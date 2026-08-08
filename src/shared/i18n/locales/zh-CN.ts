@@ -1126,3 +1126,4 @@
 Object.assign(zhCN.editing.transitionLabels, { circleopen: '圆形展开', crosszoom: '交叉缩放' })
 Object.assign(zhCN.editing, { rebuildCaptionManifest: '重建字幕版本清单', rebuildingCaptionManifest: '正在重建字幕版本清单…', captionManifestRebuilt: '已重建字幕版本清单', captionManifestRebuildFailed: '字幕版本清单重建失败' })
 Object.assign(zhCN.editing, { projectOverwriteTitle: '覆盖工程文件', projectOverwriteDescription: (path: string) => `文件已存在：${path}，是否覆盖？`, projectOverwriteConfirm: '覆盖保存', projectOverwriteCancel: '取消' })
+Object.assign(zhCN.editing, { projectRepairSummary: (relinked: number, unresolved: number, ambiguous: number) => `素材修复结果：已匹配 ${relinked} 个，未解决 ${unresolved} 个，歧义 ${ambiguous} 个`, projectRepairMapped: (source: string, path: string) => `${source} → ${path}`, projectRepairUnresolved: (source: string) => `未找到唯一匹配：${source}`, projectRepairAmbiguous: (source: string, paths: readonly string[]) => `匹配有歧义：${source}（${paths.join('、')}）`, projectRepairFailed: '素材修复未写入工程' })

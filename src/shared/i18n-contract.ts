@@ -21,6 +21,11 @@ type CaptionManifestCopy = {
   projectOverwriteDescription: (path: string) => string
   projectOverwriteConfirm: string
   projectOverwriteCancel: string
+  projectRepairSummary: (relinked: number, unresolved: number, ambiguous: number) => string
+  projectRepairMapped: (source: string, path: string) => string
+  projectRepairUnresolved: (source: string) => string
+  projectRepairAmbiguous: (source: string, paths: readonly string[]) => string
+  projectRepairFailed: string
 }
 
 type BaseLocaleCopy = Widen<typeof zhCN>
