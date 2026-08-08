@@ -1,6 +1,7 @@
 export const EDITING_UI_PREFERENCES_STORAGE_KEY = 'aivplayer.editing-ui-preferences.v1'
 export const EDITING_UI_PREFERENCES_SCHEMA_VERSION = 1
 
+const EDITING_PROJECT_STORAGE_KEY = 'aivplayer.editing-projects.v1'
 const MAX_PROJECT_PREFERENCES = 32
 const MAX_GROUP_PREFERENCES = 32
 const MAX_ID_LENGTH = 256
@@ -41,6 +42,28 @@ function sanitizeProjectPreferences(value: unknown): EditingUiProjectPreferences
 
 export function createDefaultEditingUiPreferences(): EditingUiPreferences {
   return { schemaVersion: EDITING_UI_PREFERENCES_SCHEMA_VERSION, projects: {} }
+}
+
+export function getEditingUiPreferenceStorage(): EditingUiPreferenceStorage | null {
+  if (typeof window === 'undefined') return null
+  try {
+    return window.localStorage
+  } catch {
+    return null
+  }
+}
+
+export function readEditingProjectIds(storage: EditingUiPreferenceStorage): string[] {
+  try {
+    const parsed: unknown = JSON.parse(storage.getItem(EDITING_PROJECT_STORAGE_KEY) ?? '{}')
+    if (!isRecord(parsed)) return []
+    return Object.values(parsed).flatMap((project) => {
+      if (!isRecord(project) || typeof project.id !== 'string' || project.id.length === 0 || project.id.length > MAX_ID_LENGTH) return []
+      return [project.id]
+    })
+  } catch {
+    return []
+  }
 }
 
 export function parseEditingUiPreferences(raw: string | null): EditingUiPreferences {
@@ -84,5 +107,19 @@ export function writeEditingUiProjectPreferences(storage: EditingUiPreferenceSto
     storage.setItem(EDITING_UI_PREFERENCES_STORAGE_KEY, serializeEditingUiPreferences({ schemaVersion: EDITING_UI_PREFERENCES_SCHEMA_VERSION, projects }))
   } catch {
     // Renderer storage can be disabled or full; the in-memory preference remains authoritative for this session.
+  }
+}
+
+export function pruneEditingUiPreferences(storage: EditingUiPreferenceStorage, knownProjectIds: readonly string[]): number {
+  const knownIds = new Set(knownProjectIds.filter((id) => id.length > 0 && id.length <= MAX_ID_LENGTH))
+  try {
+    const current = parseEditingUiPreferences(storage.getItem(EDITING_UI_PREFERENCES_STORAGE_KEY))
+    const projects = Object.fromEntries(Object.entries(current.projects).filter(([id]) => knownIds.has(id)))
+    const removedCount = Object.keys(current.projects).length - Object.keys(projects).length
+    if (removedCount === 0) return 0
+    storage.setItem(EDITING_UI_PREFERENCES_STORAGE_KEY, serializeEditingUiPreferences({ schemaVersion: EDITING_UI_PREFERENCES_SCHEMA_VERSION, projects }))
+    return removedCount
+  } catch {
+    return 0
   }
 }

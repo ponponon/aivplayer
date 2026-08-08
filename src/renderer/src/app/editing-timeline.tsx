@@ -22,7 +22,7 @@ import { analyzeSubtitleQa } from '../../../shared/subtitle-qa'
 import { getPlaybackMediaKey } from '../../../shared/playback-memory'
 import { useEditingClipReorder } from './use-editing-clip-reorder'; import { useEditingTimelineSelection } from './use-editing-timeline-selection'; import { EditingStructureAnalysis } from './editing-structure-analysis'; import { EditingSubtitleQa } from './editing-subtitle-qa'; import { EditingCaptionSyncControl } from './editing-caption-sync-control'
 import { EditingCaptionReloadConflict } from './editing-caption-reload-conflict'
-import { readEditingUiProjectPreferences, writeEditingUiProjectPreferences } from './editing-ui-preferences'
+import { getEditingUiPreferenceStorage, pruneEditingUiPreferences, readEditingProjectIds, readEditingUiProjectPreferences, writeEditingUiProjectPreferences } from './editing-ui-preferences'
 import { getEditingSubtitleReloadCopy } from '../../../shared/editing-subtitle-reload-copy'
 import { getEditingSubtitleCandidateCopy } from '../../../shared/editing-subtitle-candidate-copy'
 import { getEditingSubtitleReloadChangePreview, getEditingSubtitleReloadChangeScriptSegmentId, shareEditingSubtitleReloadScriptSegmentIds, type EditingSubtitleReloadChange, type EditingSubtitleReloadChangePreview, type EditingSubtitleReloadIncomingPreviewTrack } from '../../../core/editing/subtitle-reload'
@@ -34,14 +34,23 @@ function EditingProjectStatusView({ projectId, status }: { projectId: string; st
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
   const [preferencesLoaded, setPreferencesLoaded] = useState(false)
   useEffect(() => {
-    const preference = readEditingUiProjectPreferences(window.localStorage, projectId)
+    const storage = getEditingUiPreferenceStorage()
+    if (!storage) {
+      setDetailsOpen(false)
+      setOpenGroups({})
+      setPreferencesLoaded(true)
+      return
+    }
+    pruneEditingUiPreferences(storage, [...readEditingProjectIds(storage), projectId])
+    const preference = readEditingUiProjectPreferences(storage, projectId)
     setDetailsOpen(preference?.detailsOpen ?? false)
     setOpenGroups(preference?.openGroups ?? {})
     setPreferencesLoaded(true)
   }, [projectId])
   useEffect(() => {
     if (!preferencesLoaded || !status?.details?.groups.length) return
-    writeEditingUiProjectPreferences(window.localStorage, projectId, { detailsOpen, openGroups })
+    const storage = getEditingUiPreferenceStorage()
+    if (storage) writeEditingUiProjectPreferences(storage, projectId, { detailsOpen, openGroups })
   }, [detailsOpen, openGroups, preferencesLoaded, projectId, status?.details?.groups.length])
   if (!status) return null
   const groups = status.details?.groups ?? []
