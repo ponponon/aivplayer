@@ -40,6 +40,15 @@ describe('subtitle QA analyzer', () => {
     ])
   })
 
+  it('allows source and translation tracks to share identical timing', () => {
+    const issues = analyzeSubtitleQa([
+      caption('source', 0, 2, 'source', 'source'),
+      caption('translation', 0, 2, 'translation', 'translation')
+    ])
+
+    expect(issues.filter((item) => item.kind === 'overlap')).toEqual([])
+  })
+
   it('sorts findings deterministically and respects custom thresholds', () => {
     const captions = [
       caption('later', 3, 0.8, 'later'),
