@@ -10,6 +10,7 @@ export function useSubtitleDerived(model: AppModel) {
   const subtitleRevision = model.activeSubtitle?.subtitleRevision ?? model.subtitleResult?.subtitleRevision
   const translatedSubtitlePath = model.translatedSubtitleResult?.subtitlePath ?? null
   const translatedSubtitleSrtPath = model.translatedSubtitleResult?.subtitleSrtPath ?? null
+  const translatedSubtitleRevision = model.translatedSubtitleResult?.subtitleRevision
   const subtitleTargetLanguageLabel = copy.subtitleLanguageOptions[model.appSettings.subtitles.targetLanguage].label
   const subtitleSourceLanguage = model.activeSubtitle?.subtitleLanguage ?? model.subtitleResult?.subtitleLanguage ?? null
   const subtitleSourceLanguageLabel = formatSubtitleLanguageLabel(copy, subtitleSourceLanguage)
@@ -44,6 +45,7 @@ export function useSubtitleDerived(model: AppModel) {
     subtitleRevision,
     translatedSubtitlePath,
     translatedSubtitleSrtPath,
+    translatedSubtitleRevision,
     canTranslateSubtitle: Boolean(subtitlePath && !model.isAsrBusy && !model.isTranslatingSubtitle),
     subtitleTargetLanguageLabel,
     subtitleSourceLanguage,

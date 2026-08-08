@@ -123,17 +123,18 @@ export function useSubtitleCacheEffects(model: AppModel, derived: AppDerived, pa
     const sourceLanguage = derived.summarySourceLanguage
     const current = model.subtitleSummaryResult
     const currentSourceType = current?.sourceType ?? 'raw'
-    const currentContextMatches = Boolean(current?.summary && current.targetLanguage === model.appSettings.subtitles.targetLanguage && current.summaryModel === derived.subtitleTranslationModel && (current.mode ?? 'detailed') === model.summaryMode)
-    const currentSourceIsAvailable = currentSourceType === 'translated'
-      ? current?.sourceSubtitlePath === model.translatedSubtitleResult?.subtitlePath
-      : current?.sourceSubtitlePath === derived.subtitlePath
-    if (currentContextMatches && currentSourceIsAvailable) return
-    if (current?.summary && currentContextMatches && !currentSourceIsAvailable) {
-      model.setSubtitleSummaryResult(null)
-      model.setSummaryNotice(null)
-      return
-    }
-    if (current?.summary && (current.targetLanguage !== model.appSettings.subtitles.targetLanguage || current.summaryModel !== derived.subtitleTranslationModel || (current.mode ?? 'detailed') !== model.summaryMode)) {
+    const sourceRevisionMatches = derived.summarySourceRevision === undefined || current?.sourceSubtitleRevision === derived.summarySourceRevision
+    const currentContextMatches = Boolean(
+      current?.summary &&
+      current.sourceSubtitlePath === sourcePath &&
+      currentSourceType === derived.summarySourceType &&
+      current.targetLanguage === model.appSettings.subtitles.targetLanguage &&
+      current.summaryModel === derived.subtitleTranslationModel &&
+      (current.mode ?? 'detailed') === model.summaryMode &&
+      sourceRevisionMatches
+    )
+    if (currentContextMatches) return
+    if (current?.summary) {
       model.setSubtitleSummaryResult(null)
       model.setSummaryNotice(null)
       return
@@ -146,5 +147,5 @@ export function useSubtitleCacheEffects(model: AppModel, derived: AppDerived, pa
       model.setSummaryNotice(result)
     })
     return () => { cancelled = true }
-  }, [model.state.currentFile?.path, derived.summarySourcePath, derived.summarySourceLanguage, derived.subtitleTranslationModel, model.appSettings.asr.autoLoadCachedSubtitles, model.appSettings.subtitles.targetLanguage, model.summaryMode, model.isSummarizingSubtitle, model.subtitleSummaryResult?.sourceSubtitlePath, model.subtitleSummaryResult?.summaryModel, model.subtitleSummaryResult?.mode])
+  }, [model.state.currentFile?.path, derived.summarySourcePath, derived.summarySourceRevision, derived.summarySourceLanguage, derived.summarySourceType, derived.subtitleTranslationModel, model.appSettings.asr.autoLoadCachedSubtitles, model.appSettings.subtitles.targetLanguage, model.summaryMode, model.isSummarizingSubtitle, model.subtitleSummaryResult?.sourceSubtitlePath, model.subtitleSummaryResult?.sourceSubtitleRevision, model.subtitleSummaryResult?.sourceType, model.subtitleSummaryResult?.summaryModel, model.subtitleSummaryResult?.mode])
 }

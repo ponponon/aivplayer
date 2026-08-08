@@ -17,11 +17,13 @@ export function useSummaryExport(model: AppModel, derived: AppDerived): SummaryE
 
   useEffect(() => {
     setSummaryExportMessage(null)
-  }, [model.state.currentFile?.path, model.subtitleSummaryResult?.sourceSubtitlePath, model.subtitleSummaryResult?.mode, model.summaryMode])
+  }, [model.state.currentFile?.path, derived.summarySourcePath, derived.summarySourceRevision, model.subtitleSummaryResult?.sourceSubtitlePath, model.subtitleSummaryResult?.sourceSubtitleRevision, model.subtitleSummaryResult?.mode, model.summaryMode])
 
   const getCurrentSummary = (): AsrSubtitleSummary | null => {
     const result = model.subtitleSummaryResult
-    return result?.summary && (result.mode ?? 'detailed') === model.summaryMode ? result.summary : null
+    const sourceRevisionMatches = derived.summarySourceRevision === undefined || result?.sourceSubtitleRevision === derived.summarySourceRevision
+    const sourceTypeMatches = (result?.sourceType ?? 'raw') === derived.summarySourceType
+    return result?.summary && result.sourceSubtitlePath === derived.summarySourcePath && sourceTypeMatches && sourceRevisionMatches && (result.mode ?? 'detailed') === model.summaryMode ? result.summary : null
   }
 
   const getMeta = (): SummaryExportMeta => ({

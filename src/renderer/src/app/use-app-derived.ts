@@ -32,6 +32,7 @@ export function useAppDerived(model: AppModel) {
     canOpenSubtitleSrt: Boolean(subtitle.subtitleSrtPath),
     canOpenTranslatedSubtitleSrt: Boolean(subtitle.translatedSubtitleSrtPath),
     summarySourcePath: summaryUsesTranslation ? subtitle.translatedSubtitlePath : subtitle.subtitlePath,
+    summarySourceRevision: summaryUsesTranslation ? subtitle.translatedSubtitleRevision : subtitle.subtitleRevision,
     summarySourceLanguage: summaryUsesTranslation ? model.appSettings.subtitles.targetLanguage : subtitle.subtitleTranslationSourceLanguage,
     summarySourceType: summaryUsesTranslation ? 'translated' as const : 'raw' as const,
     canGenerateSummary: Boolean(model.state.currentFile && !model.isAsrBusy && !model.isTranslatingSubtitle && !model.isSummarizingSubtitle && !model.isDownloadingModel && (subtitle.subtitlePath || model.asrStatus?.available)),

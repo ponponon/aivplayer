@@ -21,7 +21,7 @@ describe('subtitle display source constraints', () => {
   })
 
   it('wires translated subtitle results into the overlay and ASR panel', () => {
-    const appSource = `${readSource('src/renderer/src/app/use-subtitle-derived.ts')}\n${readSource('src/renderer/src/app/use-settings-actions.ts')}\n${readSource('src/renderer/src/app/use-subtitle-translation.ts')}\n${readSource('src/renderer/src/app/use-quick-subtitle-action.ts')}\n${readSource('src/renderer/src/app/use-subtitle-cache-effects.ts')}\n${readSource('src/renderer/src/app/use-subtitle-file-actions.ts')}\n${readSource('src/renderer/src/app/subtitle-tools-card.tsx')}\n${readSource('src/renderer/src/app/subtitle-actions-menu.tsx')}\n${readSource('src/renderer/src/app/subtitle-result-summary.tsx')}\n${readSource('src/renderer/src/app/app-overlays.tsx')}\n${readSource('src/renderer/src/app/player-stage.tsx')}`
+    const appSource = `${readSource('src/renderer/src/app/use-subtitle-derived.ts')}\n${readSource('src/renderer/src/app/use-app-derived.ts')}\n${readSource('src/renderer/src/app/use-settings-actions.ts')}\n${readSource('src/renderer/src/app/use-subtitle-translation.ts')}\n${readSource('src/renderer/src/app/use-quick-subtitle-action.ts')}\n${readSource('src/renderer/src/app/use-subtitle-cache-effects.ts')}\n${readSource('src/renderer/src/app/use-summary-export.ts')}\n${readSource('src/renderer/src/app/use-subtitle-file-actions.ts')}\n${readSource('src/renderer/src/app/subtitle-tools-card.tsx')}\n${readSource('src/renderer/src/app/subtitle-actions-menu.tsx')}\n${readSource('src/renderer/src/app/subtitle-result-summary.tsx')}\n${readSource('src/renderer/src/app/app-overlays.tsx')}\n${readSource('src/renderer/src/app/player-stage.tsx')}`
     const i18nSource = readSource('src/shared/i18n.ts')
     const preloadSource = readSource('src/preload/index.ts')
     const ipcSource = readSource('src/shared/ipc-channels.ts')
@@ -91,6 +91,10 @@ describe('subtitle display source constraints', () => {
     expect(appSource).toContain('matchesCurrentContext')
     expect(appSource).toContain('sourceSubtitleRevision')
     expect(appSource).toContain('derived.subtitleRevision')
+    expect(appSource).toContain('translatedSubtitleRevision')
+    expect(appSource).toContain('summarySourceRevision')
+    expect(appSource).toContain('derived.summarySourceRevision')
+    expect(appSource).toContain('result.sourceSubtitlePath === derived.summarySourcePath')
     expect(appSource).toContain('resolveTranslatedAsrSubtitleCache')
     expect(i18nSource).toContain("translationModel: '翻译模型'")
     expect(i18nSource).toContain("translationModel: 'Translation model'")
