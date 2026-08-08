@@ -21,6 +21,43 @@
   opacity: 0.9;
 }
 
+.editing-caption-item-incoming-preview {
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  overflow: hidden;
+  padding: 2px 5px;
+  color: var(--accent-ink);
+  background: rgba(var(--accent-rgb), 0.24);
+  border: 1px dashed var(--accent);
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+.editing-caption-item-incoming-preview.is-translation {
+  color: var(--text-primary);
+  background: rgba(var(--ambient-rgb), 0.24);
+  border-color: rgba(var(--ambient-rgb), 0.8);
+}
+
+.editing-caption-incoming-preview-label,
+.editing-caption-incoming-preview-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editing-caption-incoming-preview-label {
+  font-size: 7px;
+  opacity: .78;
+}
+
+.editing-caption-incoming-preview-text {
+  font-size: 8px;
+}
+
 .editing-caption-item-button {
   width: 100%;
   height: 100%;

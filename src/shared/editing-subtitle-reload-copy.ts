@@ -13,6 +13,9 @@ export type EditingSubtitleReloadCopy = {
   timeEnd: string
   seekCurrent: string
   seekIncoming: string
+  previewIncoming: string
+  incomingPreviewNotice: string
+  clearPreview: string
   allChanges: string
   allTracks: string
   noMatches: string
@@ -49,6 +52,9 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     timeEnd: '结束秒',
     seekCurrent: '定位当前编辑',
     seekIncoming: '定位新字幕',
+    previewIncoming: '预览新字幕',
+    incomingPreviewNotice: '正在预览新增字幕，尚未写入工程',
+    clearPreview: '关闭预览',
     allChanges: '全部变更',
     allTracks: '全部轨道',
     noMatches: '没有匹配的差异',
@@ -83,6 +89,9 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     timeEnd: 'End seconds',
     seekCurrent: 'Go to current edit',
     seekIncoming: 'Go to new subtitle',
+    previewIncoming: 'Preview new subtitle',
+    incomingPreviewNotice: 'Previewing an incoming subtitle; the project is unchanged',
+    clearPreview: 'Close preview',
     allChanges: 'All changes',
     allTracks: 'All tracks',
     noMatches: 'No matching changes',
@@ -117,6 +126,9 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     timeEnd: '終了秒',
     seekCurrent: '現在の編集へ移動',
     seekIncoming: '新しい字幕へ移動',
+    previewIncoming: '新しい字幕をプレビュー',
+    incomingPreviewNotice: '新しい字幕をプレビュー中（プロジェクトは未変更）',
+    clearPreview: 'プレビューを閉じる',
     allChanges: 'すべての変更',
     allTracks: 'すべてのトラック',
     noMatches: '一致する差分はありません',
@@ -151,6 +163,9 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     timeEnd: '종료 초',
     seekCurrent: '현재 편집으로 이동',
     seekIncoming: '새 자막으로 이동',
+    previewIncoming: '새 자막 미리보기',
+    incomingPreviewNotice: '새 자막 미리보기 중(프로젝트는 변경되지 않음)',
+    clearPreview: '미리보기 닫기',
     allChanges: '모든 변경',
     allTracks: '모든 트랙',
     noMatches: '일치하는 변경 사항이 없습니다',
