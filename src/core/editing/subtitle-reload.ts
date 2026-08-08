@@ -315,8 +315,14 @@ export function buildEditingSubtitleReloadPreview(current: readonly EditingCapti
       changes.push({ id: caption.id, kind: caption.kind, status: 'changed', currentText: previous.text, incomingText: caption.text, currentStartSeconds: previous.startSeconds, currentEndSeconds: captionEndSeconds(previous), incomingStartSeconds: caption.startSeconds, incomingEndSeconds: captionEndSeconds(caption) })
     }
   }
+  const emittedRemovedCaptionIds = new Set<string>()
   for (const caption of current) {
-    if (!matchedCurrentIds.has(`${caption.kind}:${caption.id}`)) changes.push({ id: caption.id, kind: caption.kind, status: 'removed', currentText: caption.text, currentStartSeconds: caption.startSeconds, currentEndSeconds: captionEndSeconds(caption) })
+    const captionKey = `${caption.kind}:${caption.id}`
+    if (matchedCurrentIds.has(captionKey) || emittedRemovedCaptionIds.has(captionKey)) continue
+    const family = getEditingCaptionReloadFamily(caption, current, scriptSegments).filter((candidate) => !matchedCurrentIds.has(`${candidate.kind}:${candidate.id}`))
+    family.forEach((candidate) => emittedRemovedCaptionIds.add(`${candidate.kind}:${candidate.id}`))
+    const representative = family.find((candidate) => getEditingCaptionFragmentIndex(candidate, scriptSegments) === 0) ?? family[0] ?? caption
+    changes.push({ id: representative.id, kind: representative.kind, status: 'removed', currentText: representative.text, currentStartSeconds: representative.startSeconds, currentEndSeconds: captionEndSeconds(representative) })
   }
 
   return summarizeEditingSubtitleReloadChanges([...changes].sort(changeOrder))
@@ -372,6 +378,31 @@ function matchesIncomingCaption(change: EditingSubtitleReloadChange, caption: Ed
   if (change.incomingStartSeconds !== undefined && !sameNumber(change.incomingStartSeconds, caption.startSeconds)) return false
   if (change.incomingEndSeconds !== undefined && !sameNumber(change.incomingEndSeconds, captionEndSeconds(caption))) return false
   return true
+}
+
+function captionBelongsToReloadScriptSegment(caption: EditingCaption, scriptSegmentId: string, scriptSegments: readonly EditingScriptSegment[] | undefined): boolean {
+  if (shareEditingSubtitleReloadScriptSegmentIds(getEditingCaptionScriptSegmentId(caption), scriptSegmentId)) return true
+  return scriptSegments?.some((segment) => shareEditingSubtitleReloadScriptSegmentIds(segment.id, scriptSegmentId) && isEditingScriptSegmentCaption(caption, segment)) ?? false
+}
+
+function findCurrentCaptionForReloadChange(project: EditingProject, change: EditingSubtitleReloadChange): EditingCaption | undefined {
+  const exact = project.captions.find((caption) => caption.id === change.id && caption.kind === change.kind)
+  if (exact) return exact
+  const scriptSegmentId = getEditingSubtitleReloadChangeScriptSegmentId(change)
+  return project.captions.find((caption) => caption.kind === change.kind && captionBelongsToReloadScriptSegment(caption, scriptSegmentId, project.scriptSegments))
+}
+
+function getResolvedChangeId(resolvedKey: string, kind: EditingCaption['kind']): string | null {
+  const marker = `${kind}:`
+  const markerIndex = resolvedKey.lastIndexOf(marker)
+  return markerIndex < 0 ? null : resolvedKey.slice(markerIndex + marker.length)
+}
+
+function hasResolvedCaptionForReloadScriptSegment(kind: EditingCaption['kind'], scriptSegmentId: string, resolvedChangeKeys: readonly string[]): boolean {
+  return resolvedChangeKeys.some((resolvedKey) => {
+    const id = getResolvedChangeId(resolvedKey, kind)
+    return id !== null && shareEditingSubtitleReloadScriptSegmentIds(getEditingCaptionScriptSegmentId({ id, kind }), scriptSegmentId)
+  })
 }
 
 /** Applies exactly one changed cue while leaving additions, removals, and other cues untouched. */
@@ -430,15 +461,16 @@ export function recordEditingSubtitleReloadResolution(project: EditingProject, s
 /** Removes one incoming-deleted cue; source removal hides its paired translation unless that row was kept independently. */
 export function applyEditingSubtitleReloadRemoval(project: EditingProject, change: EditingSubtitleReloadChange, updatedAt = Date.now(), resolvedChangeKeys: readonly string[] = []): EditingProject | null {
   if (change.status !== 'removed') return null
-  const currentCaption = project.captions.find((caption) => caption.id === change.id && caption.kind === change.kind)
+  const currentCaption = findCurrentCaptionForReloadChange(project, change)
   if (!currentCaption || !matchesCurrentCaption(change, currentCaption)) return null
 
   const scriptSegmentId = getEditingSubtitleReloadChangeScriptSegmentId(change)
-  const removedCaptionIds = new Set([change.id])
+  const family = getEditingCaptionReloadFamily(currentCaption, project.captions, project.scriptSegments)
+  const removedCaptionIds = new Set(family.filter((caption) => caption.kind === change.kind).map((caption) => caption.id))
   if (change.kind === 'source') {
+    const translationKept = hasResolvedCaptionForReloadScriptSegment('translation', scriptSegmentId, resolvedChangeKeys)
     for (const caption of project.captions) {
-      const pairedTranslation = caption.kind === 'translation' && isEditingSubtitleReloadChangeResolved({ id: caption.id, kind: caption.kind, status: 'removed' }, resolvedChangeKeys)
-      if (!pairedTranslation && shareEditingSubtitleReloadScriptSegmentIds(getEditingSubtitleReloadChangeScriptSegmentId(caption), scriptSegmentId)) removedCaptionIds.add(caption.id)
+      if (caption.kind === 'translation' && !translationKept && captionBelongsToReloadScriptSegment(caption, scriptSegmentId, project.scriptSegments)) removedCaptionIds.add(caption.id)
     }
   }
   const captions = sortCaptions(project.captions.filter((caption) => !removedCaptionIds.has(caption.id)))
