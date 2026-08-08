@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AlertTriangle, ArrowRight, ChevronLeft, ChevronRight, RefreshCw, Search, ShieldCheck } from 'lucide-react'
-import { EDITING_SUBTITLE_RELOAD_PAGE_SIZE, getEditingSubtitleReloadChangePage, type EditingSubtitleReloadChange, type EditingSubtitleReloadChangeKindFilter, type EditingSubtitleReloadChangeStatusFilter } from '../../../core/editing/subtitle-reload'
+import { EDITING_SUBTITLE_RELOAD_PAGE_SIZE, getEditingSubtitleReloadChangePage, getEditingSubtitleReloadChangeTimeRange, type EditingSubtitleReloadChange, type EditingSubtitleReloadChangeKindFilter, type EditingSubtitleReloadChangeStatusFilter } from '../../../core/editing/subtitle-reload'
 import type { EditingSubtitleReloadCopy } from '../../../shared/editing-subtitle-reload-copy'
 import type { EditingCaptionReloadConflict } from './use-editing-caption-effect'
 
@@ -21,18 +21,42 @@ function kindLabel(change: EditingSubtitleReloadChange, copy: EditingSubtitleRel
   return change.kind === 'source' ? copy.source : copy.translation
 }
 
+function formatSubtitleReloadTime(seconds: number | undefined): string {
+  if (seconds === undefined || !Number.isFinite(seconds)) return '—'
+  const minutes = Math.floor(seconds / 60)
+  const wholeSeconds = Math.floor(seconds % 60)
+  const tenths = Math.floor((seconds - Math.floor(seconds)) * 10)
+  return `${String(minutes).padStart(2, '0')}:${String(wholeSeconds).padStart(2, '0')}.${tenths}`
+}
+
+function changeTimeLabel(change: EditingSubtitleReloadChange): string {
+  const range = getEditingSubtitleReloadChangeTimeRange(change)
+  if (range.startSeconds === undefined || range.endSeconds === undefined) return '—'
+  return `${formatSubtitleReloadTime(range.startSeconds)}–${formatSubtitleReloadTime(range.endSeconds)}`
+}
+
+function parseSeconds(value: string): number | undefined {
+  if (!value.trim()) return undefined
+  const parsed = Number(value)
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined
+}
+
 export function EditingCaptionReloadConflict({ conflict, copy, onKeepCurrent, onForceReload }: EditingCaptionReloadConflictProps): React.ReactElement {
   const { preview } = conflict
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<EditingSubtitleReloadChangeStatusFilter>('all')
   const [kind, setKind] = useState<EditingSubtitleReloadChangeKindFilter>('all')
+  const [timeStart, setTimeStart] = useState('')
+  const [timeEnd, setTimeEnd] = useState('')
   const [pageIndex, setPageIndex] = useState(0)
-  const changePage = getEditingSubtitleReloadChangePage(preview.changes, { query, status, kind, pageIndex, pageSize: EDITING_SUBTITLE_RELOAD_PAGE_SIZE })
+  const changePage = getEditingSubtitleReloadChangePage(preview.changes, { query, status, kind, timeStartSeconds: parseSeconds(timeStart), timeEndSeconds: parseSeconds(timeEnd), pageIndex, pageSize: EDITING_SUBTITLE_RELOAD_PAGE_SIZE })
 
   useEffect(() => {
     setQuery('')
     setStatus('all')
     setKind('all')
+    setTimeStart('')
+    setTimeEnd('')
     setPageIndex(0)
   }, [conflict])
 
@@ -76,10 +100,16 @@ export function EditingCaptionReloadConflict({ conflict, copy, onKeepCurrent, on
             </select>
           </label>
         </div>
+        <div className="editing-caption-reload-time-filter" aria-label={copy.timeRange}>
+          <span>{copy.timeRange}</span>
+          <label><span className="editing-caption-reload-visually-hidden">{copy.timeStart}</span><input type="number" min="0" step="0.1" value={timeStart} onChange={(event) => { setTimeStart(event.currentTarget.value); setPageIndex(0) }} placeholder={copy.timeStart} aria-label={copy.timeStart} data-testid="editing-caption-reload-time-start" /></label>
+          <span aria-hidden="true">–</span>
+          <label><span className="editing-caption-reload-visually-hidden">{copy.timeEnd}</span><input type="number" min="0" step="0.1" value={timeEnd} onChange={(event) => { setTimeEnd(event.currentTarget.value); setPageIndex(0) }} placeholder={copy.timeEnd} aria-label={copy.timeEnd} data-testid="editing-caption-reload-time-end" /></label>
+        </div>
         <div className="editing-caption-reload-list">
           {changePage.changes.map((change) => (
             <div className={`editing-caption-reload-row is-${change.status}`} key={`${change.status}-${change.kind}-${change.id}`}>
-              <div className="editing-caption-reload-row-meta"><span>{statusLabel(change, copy)}</span><small>{kindLabel(change, copy)}</small></div>
+              <div className="editing-caption-reload-row-meta"><span>{statusLabel(change, copy)}</span><small>{kindLabel(change, copy)}</small><small className="editing-caption-reload-row-time">{changeTimeLabel(change)}</small></div>
               <div className="editing-caption-reload-values">
                 <span title={copy.current}>{change.currentText ?? copy.empty}</span>
                 <ArrowRight size={12} aria-hidden="true" />

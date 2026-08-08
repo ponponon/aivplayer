@@ -21,12 +21,16 @@
 .editing-caption-reload-search input, .editing-caption-reload-filters select { min-width: 0; height: 26px; color: var(--text-secondary); background: rgba(var(--overlay-rgb), 0.06); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); font: inherit; font-size: 9px; }
 .editing-caption-reload-search input { flex: 1 1 auto; width: 100%; padding: 0; color: var(--text-primary); background: transparent; border: 0; outline: 0; }
 .editing-caption-reload-filters select { max-width: 120px; padding: 0 5px; }
+.editing-caption-reload-time-filter { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; margin-top: 5px; color: var(--text-muted); font-size: 9px; }
+.editing-caption-reload-time-filter label { display: flex; min-width: 0; }
+.editing-caption-reload-time-filter input { width: 92px; height: 24px; padding: 0 6px; color: var(--text-primary); background: rgba(var(--overlay-rgb), 0.06); border: 1px solid var(--border-soft); border-radius: 4px; font: inherit; font-size: 9px; }
 .editing-caption-reload-list { display: grid; gap: 5px; max-height: 190px; margin-top: 6px; overflow: auto; }
 .editing-caption-reload-row { display: grid; gap: 4px; padding: 6px 7px; background: rgba(var(--overlay-rgb), 0.06); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); }
 .editing-caption-reload-row.is-removed { border-color: rgba(210, 102, 102, 0.34); }
 .editing-caption-reload-row.is-added { border-color: rgba(97, 180, 130, 0.34); }
 .editing-caption-reload-row-meta, .editing-caption-reload-values { display: flex; align-items: center; min-width: 0; gap: 5px; }
 .editing-caption-reload-row-meta small { color: var(--text-muted); }
+.editing-caption-reload-row-time { margin-left: auto; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .editing-caption-reload-values span { min-width: 0; flex: 1 1 0; overflow: hidden; color: var(--text-secondary); font-size: 10px; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
 .editing-caption-reload-values svg { flex: 0 0 auto; color: var(--text-muted); }
 .editing-caption-reload-empty { margin: 8px 0; color: var(--text-muted); font-size: 10px; text-align: center; }
@@ -47,4 +51,5 @@
   .editing-caption-reload-filters { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .editing-caption-reload-search { grid-column: 1 / -1; }
   .editing-caption-reload-filters select { width: 100%; max-width: none; }
+  .editing-caption-reload-time-filter input { flex: 1 1 0; width: 0; }
 }

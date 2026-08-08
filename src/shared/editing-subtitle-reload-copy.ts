@@ -8,6 +8,9 @@ export type EditingSubtitleReloadCopy = {
   searchPlaceholder: string
   statusFilter: string
   trackFilter: string
+  timeRange: string
+  timeStart: string
+  timeEnd: string
   allChanges: string
   allTracks: string
   noMatches: string
@@ -39,6 +42,9 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     searchPlaceholder: '搜索当前或新字幕文本…',
     statusFilter: '变更类型',
     trackFilter: '字幕轨',
+    timeRange: '时间范围（秒）',
+    timeStart: '起始秒',
+    timeEnd: '结束秒',
     allChanges: '全部变更',
     allTracks: '全部轨道',
     noMatches: '没有匹配的差异',
@@ -68,6 +74,9 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     searchPlaceholder: 'Search current or new subtitle text…',
     statusFilter: 'Change type',
     trackFilter: 'Caption track',
+    timeRange: 'Time range (seconds)',
+    timeStart: 'Start seconds',
+    timeEnd: 'End seconds',
     allChanges: 'All changes',
     allTracks: 'All tracks',
     noMatches: 'No matching changes',
@@ -97,6 +106,9 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     searchPlaceholder: '現在または新しい字幕を検索…',
     statusFilter: '変更種別',
     trackFilter: '字幕トラック',
+    timeRange: '時間範囲（秒）',
+    timeStart: '開始秒',
+    timeEnd: '終了秒',
     allChanges: 'すべての変更',
     allTracks: 'すべてのトラック',
     noMatches: '一致する差分はありません',
@@ -126,6 +138,9 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     searchPlaceholder: '현재 또는 새 자막 텍스트 검색…',
     statusFilter: '변경 유형',
     trackFilter: '자막 트랙',
+    timeRange: '시간 범위(초)',
+    timeStart: '시작 초',
+    timeEnd: '종료 초',
     allChanges: '모든 변경',
     allTracks: '모든 트랙',
     noMatches: '일치하는 변경 사항이 없습니다',
