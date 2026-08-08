@@ -1,5 +1,5 @@
 import { useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent } from 'react'
-import type { EditingSubtitleReloadIncomingPreview, EditingSubtitleReloadIncomingPreviewTrack } from '../../../core/editing/subtitle-reload'
+import type { EditingSubtitleReloadChangePreview, EditingSubtitleReloadIncomingPreviewTrack } from '../../../core/editing/subtitle-reload'
 import { snapEditedTime } from '../../../core/editing/timeline-snapping'
 import type { EditingCaption, EditingOverlayTrackKind } from '../../../shared/editing-types'
 import { EDITING_OVERLAY_TRACK_DRAG_TYPE, readEditingOverlayTrackDrag, writeEditingOverlayTrackDrag } from './editing-overlay-track-dnd'
@@ -25,7 +25,7 @@ type EditingCaptionTrackProps = {
   onSelectCaption: (captionId: string, additive?: boolean) => void
   onMoveCaption: (captionId: string, startSeconds: number) => void
   onResizeCaption: (captionId: string, startSeconds: number, endSeconds: number) => void
-  incomingPreview?: EditingSubtitleReloadIncomingPreview | null
+  incomingPreview?: EditingSubtitleReloadChangePreview | null
   incomingPreviewLabel?: string
   incomingPreviewTrackLabels?: Partial<Record<EditingCaption['kind'], string>>
 }
@@ -167,7 +167,7 @@ export function EditingCaptionTrack({ captions, durationSeconds, selectedCaption
       const startSeconds = Math.min(durationSeconds, Math.max(0, previewTrack.startSeconds))
       const endSeconds = Math.max(startSeconds, Math.min(durationSeconds, previewTrack.endSeconds))
       const previewLabel = incomingPreviewTrackLabels[kind] ? `${incomingPreviewLabel} · ${incomingPreviewTrackLabels[kind]}` : incomingPreviewLabel
-      return <div key={`${incomingPreview.id}-${kind}`} className={`editing-caption-item editing-caption-item-incoming-preview ${kind === 'translation' ? 'is-translation' : ''}`} style={{ left: `${durationSeconds > 0 ? (startSeconds / durationSeconds) * 100 : 0}%`, width: `${durationSeconds > 0 ? ((endSeconds - startSeconds) / durationSeconds) * 100 : 0}%` }} data-testid="editing-caption-incoming-preview" data-preview-id={`${incomingPreview.id}-${kind}`} data-preview-kind={kind} role="status" aria-label={`${previewLabel}: ${previewTrack.text}`}><span className="editing-caption-incoming-preview-label">{previewLabel}</span><span className="editing-caption-incoming-preview-text">{previewTrack.text}</span></div>
+      return <div key={`${incomingPreview.id}-${kind}`} className={`editing-caption-item editing-caption-item-incoming-preview ${kind === 'translation' ? 'is-translation' : ''} ${incomingPreview.current !== null ? 'is-changed' : ''}`} style={{ left: `${durationSeconds > 0 ? (startSeconds / durationSeconds) * 100 : 0}%`, width: `${durationSeconds > 0 ? ((endSeconds - startSeconds) / durationSeconds) * 100 : 0}%` }} data-testid="editing-caption-incoming-preview" data-preview-id={`${incomingPreview.id}-${kind}`} data-preview-kind={kind} data-preview-status={incomingPreview.current !== null ? 'changed' : 'added'} role="status" aria-label={`${previewLabel}: ${previewTrack.text}`}><span className="editing-caption-incoming-preview-label">{previewLabel}</span><span className="editing-caption-incoming-preview-text">{previewTrack.text}</span></div>
     }) : null}
     </div>
   </div>

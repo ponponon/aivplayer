@@ -15,6 +15,7 @@ export type EditingSubtitleReloadCopy = {
   seekIncoming: string
   previewIncoming: string
   incomingPreviewNotice: string
+  changedPreviewNotice: string
   incomingPreviewTime: string
   clearPreview: string
   allChanges: string
@@ -55,6 +56,7 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     seekIncoming: '定位新字幕',
     previewIncoming: '预览新字幕',
     incomingPreviewNotice: '正在预览新增字幕，尚未写入工程',
+    changedPreviewNotice: '正在预览字幕变更，当前工程未修改',
     incomingPreviewTime: '时间',
     clearPreview: '关闭预览',
     allChanges: '全部变更',
@@ -93,6 +95,7 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     seekIncoming: 'Go to new subtitle',
     previewIncoming: 'Preview new subtitle',
     incomingPreviewNotice: 'Previewing an incoming subtitle; the project is unchanged',
+    changedPreviewNotice: 'Previewing a subtitle change; the project is unchanged',
     incomingPreviewTime: 'Time',
     clearPreview: 'Close preview',
     allChanges: 'All changes',
@@ -131,6 +134,7 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     seekIncoming: '新しい字幕へ移動',
     previewIncoming: '新しい字幕をプレビュー',
     incomingPreviewNotice: '新しい字幕をプレビュー中（プロジェクトは未変更）',
+    changedPreviewNotice: '字幕の変更をプレビュー中（プロジェクトは未変更）',
     incomingPreviewTime: '時間',
     clearPreview: 'プレビューを閉じる',
     allChanges: 'すべての変更',
@@ -169,6 +173,7 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     seekIncoming: '새 자막으로 이동',
     previewIncoming: '새 자막 미리보기',
     incomingPreviewNotice: '새 자막 미리보기 중(프로젝트는 변경되지 않음)',
+    changedPreviewNotice: '자막 변경 미리보기 중(프로젝트는 변경되지 않음)',
     incomingPreviewTime: '시간',
     clearPreview: '미리보기 닫기',
     allChanges: '모든 변경',

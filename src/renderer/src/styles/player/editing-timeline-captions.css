@@ -42,6 +42,16 @@
   border-color: rgba(var(--ambient-rgb), 0.8);
 }
 
+.editing-caption-item-incoming-preview.is-changed {
+  background: rgba(220, 158, 73, 0.2);
+  border-color: rgba(220, 158, 73, 0.8);
+}
+
+.editing-caption-item-incoming-preview.is-changed.is-translation {
+  background: rgba(220, 158, 73, 0.14);
+  border-color: rgba(220, 158, 73, 0.68);
+}
+
 .editing-caption-incoming-preview-label,
 .editing-caption-incoming-preview-text {
   overflow: hidden;

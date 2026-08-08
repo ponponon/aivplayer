@@ -20,7 +20,7 @@ import { getPlaybackMediaKey } from '../../../shared/playback-memory'
 import { useEditingClipReorder } from './use-editing-clip-reorder'; import { useEditingTimelineSelection } from './use-editing-timeline-selection'; import { EditingStructureAnalysis } from './editing-structure-analysis'; import { EditingSubtitleQa } from './editing-subtitle-qa'; import { EditingCaptionSyncControl } from './editing-caption-sync-control'
 import { EditingCaptionReloadConflict } from './editing-caption-reload-conflict'
 import { getEditingSubtitleReloadCopy } from '../../../shared/editing-subtitle-reload-copy'
-import { getEditingSubtitleReloadIncomingPreview, type EditingSubtitleReloadChange, type EditingSubtitleReloadIncomingPreviewTrack } from '../../../core/editing/subtitle-reload'
+import { getEditingSubtitleReloadChangePreview, type EditingSubtitleReloadChange, type EditingSubtitleReloadChangePreview, type EditingSubtitleReloadIncomingPreviewTrack } from '../../../core/editing/subtitle-reload'
 const MAX_RULER_TICKS = 121; function formatClipLabel(startSeconds: number, endSeconds: number): string { return `${formatTime(startSeconds)} – ${formatTime(endSeconds)}` }
 function formatIncomingPreviewRange(track: EditingSubtitleReloadIncomingPreviewTrack): string { return `${formatTime(track.startSeconds)}–${formatTime(track.endSeconds)}` }
 export function EditingTimeline(): React.ReactElement | null {
@@ -39,7 +39,7 @@ export function EditingTimeline(): React.ReactElement | null {
   const [zoom, setZoom] = useState(1)
   const [isExportConfirmOpen, setIsExportConfirmOpen] = useState(false)
   const [selectedScriptSegmentId, setSelectedScriptSegmentId] = useState<string | null>(null)
-  const [incomingCaptionPreview, setIncomingCaptionPreview] = useState<ReturnType<typeof getEditingSubtitleReloadIncomingPreview>>(null)
+  const [incomingCaptionPreview, setIncomingCaptionPreview] = useState<EditingSubtitleReloadChangePreview | null>(null)
   const timelineContentRef = useRef<HTMLDivElement | null>(null)
   const spans = getVideoClipSpans(project?.videoClips ?? [])
   const durationSeconds = editedDurationSeconds(project?.videoClips ?? [])
@@ -92,7 +92,7 @@ export function EditingTimeline(): React.ReactElement | null {
   const selectedGraphic = project.graphics?.find((graphic) => graphic.id === app.editingSelectedGraphicId) ?? null
   const selectedVideoBlock = project.videoBlocks?.find((block) => block.id === app.editingSelectedVideoBlockId) ?? null; const selectedVideoBlockSource = selectedVideoBlock ? project.sources.find((source) => source.id === selectedVideoBlock.sourceId) ?? null : null
   const previewIncomingCaption = (change: EditingSubtitleReloadChange): void => {
-    const next = getEditingSubtitleReloadIncomingPreview(change, app.editingCaptionReloadConflict?.preview.changes ?? [])
+    const next = getEditingSubtitleReloadChangePreview(change, app.editingCaptionReloadConflict?.preview.changes ?? [])
     if (!next) {
       setIncomingCaptionPreview(null)
       return
@@ -210,24 +210,26 @@ export function EditingTimeline(): React.ReactElement | null {
       {app.editingCaptionReloadConflict ? <EditingCaptionReloadConflict conflict={app.editingCaptionReloadConflict} copy={subtitleReloadCopy} onSeek={app.seekEditingTime} onPreviewIncoming={previewIncomingCaption} onSelectScriptSegment={selectScriptSegment} onKeepCurrent={() => { setIncomingCaptionPreview(null); app.keepCurrentEditingCaptions() }} onForceReload={() => { setIncomingCaptionPreview(null); app.forceReloadEditingCaptions() }} /> : null}
       <EditingScriptPanel segments={project.scriptSegments ?? []} selectedSegmentId={selectedScriptSegmentId} title={app.copy.editing.scriptTitle} hint={app.copy.editing.scriptHint} emptyLabel={app.copy.editing.scriptEmpty} deleteLabel={app.copy.editing.scriptDelete} restoreLabel={app.copy.editing.scriptRestore} deletedLabel={app.copy.editing.scriptDeleted} editLabel={app.copy.editing.scriptEdit} saveLabel={app.copy.editing.scriptSave} cancelLabel={app.copy.editing.scriptCancel} editPlaceholder={app.copy.editing.scriptPlaceholder} countLabel={app.copy.editing.scriptCount} wordDeleteLabel={scriptCopy.wordDelete} wordReplaceLabel={scriptCopy.wordReplace} wordReplacePlaceholder={scriptCopy.wordReplacePlaceholder} selectedLabel={scriptCopy.selectedCount} fillerDeleteLabel={scriptCopy.fillerDelete} onSelect={selectScriptSegment} onUpdate={(segmentId, text) => { setSelectedScriptSegmentId(segmentId); app.updateEditingScriptText(segmentId, text) }} onDelete={(segmentId) => { setSelectedScriptSegmentId(segmentId); app.deleteEditingScriptSegment(segmentId) }} onRestore={(segmentId) => { setSelectedScriptSegmentId(segmentId); app.restoreEditingScriptSegment(segmentId) }} onDeleteWord={(segmentId, word) => { setSelectedScriptSegmentId(segmentId); app.deleteEditingScriptWord(segmentId, word) }} onReplaceWord={(segmentId, word, text) => { setSelectedScriptSegmentId(segmentId); app.replaceEditingScriptWord(segmentId, word, text) }} onDeleteWords={(targets) => { const first = targets[0]; if (first) setSelectedScriptSegmentId(first.segmentId); app.deleteEditingScriptWords(targets) }} />
       {incomingCaptionPreview ? (() => {
+        const currentTracks = (['source', 'translation'] as const).map((kind) => incomingCaptionPreview.current?.[kind]).filter((track): track is EditingSubtitleReloadIncomingPreviewTrack => Boolean(track))
         const incomingTracks = (['source', 'translation'] as const).map((kind) => incomingCaptionPreview.incoming[kind]).filter((track): track is EditingSubtitleReloadIncomingPreviewTrack => Boolean(track))
-        return <div className="editing-caption-reload-incoming-preview" data-testid="editing-caption-reload-incoming-preview" role="status" aria-live="polite">
-          <span className="editing-caption-reload-incoming-preview-notice">{subtitleReloadCopy.incomingPreviewNotice}</span>
+        const previewStatus = incomingCaptionPreview.current === null ? 'added' : 'changed'
+        const renderPreviewTrack = (track: EditingSubtitleReloadIncomingPreviewTrack, side: 'current' | 'incoming'): React.ReactElement => <div className="editing-caption-reload-incoming-track" key={`${side}-${track.kind}`} data-testid={`editing-caption-reload-${side}-track-${track.kind}`}>
+          <span>{track.kind === 'source' ? subtitleReloadCopy.source : subtitleReloadCopy.translation}</span>
+          <strong title={track.text}>{track.text}</strong>
+          <small>{subtitleReloadCopy.incomingPreviewTime} {formatIncomingPreviewRange(track)}</small>
+        </div>
+        return <div className={`editing-caption-reload-incoming-preview is-${previewStatus}`} data-testid="editing-caption-reload-incoming-preview" data-preview-status={previewStatus} role="status" aria-live="polite">
+          <span className="editing-caption-reload-incoming-preview-notice">{previewStatus === 'added' ? subtitleReloadCopy.incomingPreviewNotice : subtitleReloadCopy.changedPreviewNotice}</span>
           <div className="editing-caption-reload-incoming-comparison" data-testid="editing-caption-reload-incoming-comparison">
             <div className="editing-caption-reload-incoming-side is-current" data-testid="editing-caption-reload-incoming-current">
               <span>{subtitleReloadCopy.current}</span>
-              <strong>{incomingCaptionPreview.current ? subtitleReloadCopy.current : subtitleReloadCopy.empty}</strong>
-              <small>—</small>
+              {currentTracks.length > 0 ? <div className="editing-caption-reload-incoming-tracks">{currentTracks.map((track) => renderPreviewTrack(track, 'current'))}</div> : <div className="editing-caption-reload-incoming-empty"><strong>{subtitleReloadCopy.empty}</strong><small>—</small></div>}
             </div>
             <ArrowRight size={13} aria-hidden="true" />
             <div className="editing-caption-reload-incoming-side is-incoming" data-testid="editing-caption-reload-incoming-incoming">
               <span>{subtitleReloadCopy.incoming}</span>
               <div className="editing-caption-reload-incoming-tracks">
-                {incomingTracks.map((track) => <div className="editing-caption-reload-incoming-track" key={track.kind} data-testid={`editing-caption-reload-incoming-track-${track.kind}`}>
-                  <span>{track.kind === 'source' ? subtitleReloadCopy.source : subtitleReloadCopy.translation}</span>
-                  <strong title={track.text}>{track.text}</strong>
-                  <small>{subtitleReloadCopy.incomingPreviewTime} {formatIncomingPreviewRange(track)}</small>
-                </div>)}
+                {incomingTracks.map((track) => renderPreviewTrack(track, 'incoming'))}
               </div>
             </div>
           </div>
