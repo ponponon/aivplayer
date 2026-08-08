@@ -471,7 +471,10 @@ export function replaceEditingCaptionsForReload(project: EditingProject, incomin
   return {
     ...projectWithoutReloadResolution,
     captions,
-    scriptSegments: mergeEditingScriptSegments(undefined, captions),
+    // Force reload replaces materialized captions but rebuilds the script from
+    // canonical incoming sidecar cues, so one script row does not become one
+    // row per edited fragment.
+    scriptSegments: mergeEditingScriptSegments(undefined, incoming),
     captionSourceRevision,
     updatedAt
   }

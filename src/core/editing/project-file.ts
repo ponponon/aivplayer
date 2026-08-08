@@ -142,15 +142,21 @@ function parseCaption(value: unknown, sourceIds: Set<string>): EditingCaption | 
   if (value.sourceId !== undefined && (!isNonEmptyString(value.sourceId) || !sourceIds.has(value.sourceId))) return null
   if ((value.sourceStartSeconds === undefined) !== (value.sourceEndSeconds === undefined)) return null
   if (value.sourceStartSeconds !== undefined && (!isFiniteNonNegative(value.sourceStartSeconds) || !isFiniteNonNegative(value.sourceEndSeconds) || value.sourceEndSeconds <= value.sourceStartSeconds)) return null
+  if ((value.editedRangeGroupId === undefined) !== (value.editedRangeIndex === undefined)) return null
+  if (value.editedRangeGroupId !== undefined && !isNonEmptyString(value.editedRangeGroupId)) return null
+  const editedRangeIndex = value.editedRangeIndex
+  if (editedRangeIndex !== undefined && (typeof editedRangeIndex !== 'number' || !Number.isInteger(editedRangeIndex) || editedRangeIndex < 0)) return null
   const words = value.words === undefined ? undefined : parseCaptionWords(value.words)
   if (words === null) return null
   const sourceRange = value.sourceStartSeconds === undefined ? {} : { sourceStartSeconds: value.sourceStartSeconds as number, sourceEndSeconds: value.sourceEndSeconds as number }
+  const editedRange = value.editedRangeGroupId === undefined ? {} : { editedRangeGroupId: value.editedRangeGroupId as string, editedRangeIndex: editedRangeIndex as number }
   return {
     id: value.id,
     startSeconds: value.startSeconds,
     durationSeconds: value.durationSeconds,
     ...(value.sourceId === undefined ? {} : { sourceId: value.sourceId }),
     ...sourceRange,
+    ...editedRange,
     text: value.text,
     kind: value.kind,
     ...(words === undefined ? {} : { words })
