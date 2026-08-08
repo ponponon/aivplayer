@@ -1044,3 +1044,9 @@
 - 现象：如果候选切换只修改 UI 当前选中项，下一次 reload 会按旧 preferred path 重新选择；如果只更新 revision manifest，又会让工程显示旧字幕内容与新路径不一致，undo / redo 也无法恢复用户选择。
 - 经验：切换旁车是一个完整工程变更，必须在同一动作中重新加载目标 source / translation、持久化 `captionSourcePaths`、更新 per-source revision manifest，并把新字幕内容纳入编辑历史；失败时不能写入半个 preferred path 或半个基线。
 - 处理：新增 `EditingProject.captionSourcePaths` 的 schema 1 可选字段和严格 parser；冲突面板提供有效候选按钮，动作按 sourceId / kind 校验候选、重新加载并采用新字幕，保存一次 undo 快照；真实 Electron Smoke 覆盖切换、preferred path、revision、undo 和 redo。
+
+## 2026-08-09：跨设备 preferred path 必须有相对提示和持久化回退
+
+- 现象：只把用户选择的字幕绝对路径写进工程，复制 `.aivproj` 到另一台机器后，loader 虽然能尝试自动候选，但旧路径仍会留在工程；再次保存或重启后，失效选择会反复出现，用户无法确认实际挂载来源。
+- 经验：媒体相对路径提示不能只覆盖视频文件，字幕 source / translation 也需要相对于工程文件目录的可验证 hint；hint 不可用时应清理 preferred path，但不能静默接受新字幕内容，内容变化仍必须进入冲突审阅。
+- 处理：新增 `captionSourcePathHints` 可选字段，保存 / 打开 / 另存为时生成和解析相对字幕提示；loader 返回 preferred path 可用性并在失效时回退自动候选，hook 将清理结果同步写入 localStorage；冲突面板新增“恢复自动候选”，重新加载、更新 revision，并纳入 undo / redo。Smoke 覆盖清除动作、内容切换和历史恢复。
