@@ -12,6 +12,9 @@ type EditingScriptPanelProps = {
   emptyLabel: string
   deleteLabel: string
   restoreLabel: string
+  restoreWithTranslationLabel: string
+  orphanTranslationHint: string
+  orphanTranslationSegmentIds: ReadonlySet<string>
   deletedLabel: string
   editLabel: string
   saveLabel: string
@@ -53,6 +56,9 @@ export function EditingScriptPanel({
   emptyLabel,
   deleteLabel,
   restoreLabel,
+  restoreWithTranslationLabel,
+  orphanTranslationHint,
+  orphanTranslationSegmentIds,
   deletedLabel,
   editLabel,
   saveLabel,
@@ -173,9 +179,10 @@ export function EditingScriptPanel({
               return <span className="editing-script-word-wrap" key={`${word.startSeconds}-${word.endSeconds}-${index}`}><button className={`editing-script-word ${selected ? 'is-selected' : ''}`} type="button" title={wordDeleteLabel} aria-label={`${wordDeleteLabel}: ${word.text.trim()}`} onClick={(event) => { event.stopPropagation(); if (!segment.deleted) selectWord(segment.id, word, index, event.shiftKey, event.currentTarget) }} data-editing-script-word="true" data-editing-script-segment-id={segment.id} data-editing-script-word-index={index} data-testid={`editing-script-word-${segment.id}-${index}`}>{word.text}</button></span>
             }) : segment.text}</span>
             {segment.deleted ? <span className="editing-script-deleted">{deletedLabel}</span> : null}
+            {segment.deleted && orphanTranslationSegmentIds.has(segment.id) ? <span className="editing-script-restore-hint" data-testid={`editing-script-orphan-translation-${segment.id}`}>{orphanTranslationHint}</span> : null}
           </div>
           {!segment.deleted ? <button className="editing-script-action" type="button" onClick={() => beginEdit(segment)} title={editLabel} aria-label={editLabel} data-testid={`editing-script-edit-${segment.id}`}><Pencil size={12} /></button> : null}
-          {segment.deleted ? <button className="editing-script-action" type="button" onClick={() => onRestore(segment.id)} title={restoreLabel} aria-label={restoreLabel}><RotateCcw size={12} /></button> : <button className="editing-script-action is-danger" type="button" onClick={() => onDelete(segment.id)} title={deleteLabel} aria-label={deleteLabel}><Trash2 size={12} /></button>}
+          {segment.deleted ? <button className="editing-script-action" type="button" onClick={() => onRestore(segment.id)} title={orphanTranslationSegmentIds.has(segment.id) ? restoreWithTranslationLabel : restoreLabel} aria-label={orphanTranslationSegmentIds.has(segment.id) ? restoreWithTranslationLabel : restoreLabel} data-testid={`editing-script-restore-${segment.id}`} data-editing-script-restore-orphan-translation={orphanTranslationSegmentIds.has(segment.id) ? 'true' : undefined}><RotateCcw size={12} /></button> : <button className="editing-script-action is-danger" type="button" onClick={() => onDelete(segment.id)} title={deleteLabel} aria-label={deleteLabel}><Trash2 size={12} /></button>}
         </>}
       </div>)}
     </div> : <div className="editing-script-empty"><FileText size={14} aria-hidden="true" /><span>{emptyLabel}</span></div>}

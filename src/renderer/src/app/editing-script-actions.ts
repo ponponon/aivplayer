@@ -89,7 +89,8 @@ export function createEditingScriptActions(model: AppModel) {
       segment.sourceEndSeconds,
       (sourceStartSeconds, sourceEndSeconds) => createRestoredClip(project, segment.sourceId, sourceStartSeconds, sourceEndSeconds)
     )
-    if (!result.restored) return
+    const restoredRanges = sourceRangeToEditedRanges(result.clips, segment.sourceId, segment.sourceStartSeconds, segment.sourceEndSeconds)
+    if (!result.restored && restoredRanges.length === 0) return
     const nextProject = {
       ...project,
       updatedAt: Date.now(),
@@ -102,7 +103,7 @@ export function createEditingScriptActions(model: AppModel) {
     model.setEditingProject(nextProject)
     model.setEditingSelectedCaptionId(segment.id)
     saveEditingProject(nextProject)
-    const range = sourceRangeToEditedRanges(result.clips, segment.sourceId, segment.sourceStartSeconds, segment.sourceEndSeconds)[0]
+    const range = restoredRanges[0]
     if (range) seekEditingTime(model, range.startSeconds, nextProject)
   }
 

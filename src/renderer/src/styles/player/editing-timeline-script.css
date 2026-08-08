@@ -207,6 +207,13 @@
   color: var(--danger);
   font-size: 8px;
 }
+.editing-script-restore-hint {
+  overflow: hidden;
+  color: var(--accent);
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .editing-script-action {
   display: inline-flex;
   flex: 0 0 28px;
