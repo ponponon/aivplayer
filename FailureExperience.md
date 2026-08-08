@@ -864,3 +864,9 @@
 - 现象：changed source 与 translation 共享同一时间移动后，时间范围筛选会正确返回两条轨道；Smoke 仍用单元素 `textContent()`，Playwright strict mode 因 locator 命中 2 个 row 失败。
 - 经验：跨轨筛选的结果数量本身是用户可见契约，Smoke 应先断言轨道数量，再用 `allTextContents()` 聚合文本；不要为了复用单轨断言把合法的多轨结果压成一条。
 - 处理：Smoke 明确断言 changed track 数量为 2，并验证两条 row 都保留旧 / 新并集时间 `00:18.0–00:20.5`；真实重跑通过且 `consoleErrors:[]`。
+
+## 2026-08-08：持续任务也必须保持小提交边界
+
+- 现象：字幕冲突功能同时涉及核心算法、Renderer、Smoke 和工程记录；如果因为任务连续推进就把多层文件一次性提交，review 很难确认每一阶段的行为和证据。
+- 经验：持续任务不等于可以合并提交边界；核心数据契约、界面接入、真实 Smoke 和文档仍应分别验证、分别暂存、分别提交，且每次提交前都要扫描 staged diff。
+- 处理：本轮按 `a1446ac`（核心选择性接受）、`749e2e3`（撤销历史与 UI 接入）、`47c6ec3`（Electron Smoke）拆分；FEATURE / FailureExperience 另行提交，内部计划保持 ignored。
