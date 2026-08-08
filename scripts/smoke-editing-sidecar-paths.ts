@@ -15,13 +15,15 @@ async function main(): Promise<void> {
   const sourceEmptyPath = join(smokeDirectory, 'sidecar-paths-smoke.SRT')
   const sourcePath = join(smokeDirectory, 'sidecar-paths-smoke.VTT')
   const translationEmptyPath = join(smokeDirectory, 'sidecar-paths-smoke.translated.SRT')
-  const translationPath = join(smokeDirectory, 'sidecar-paths-smoke.zh-CN.VTT')
+  const translationPath = join(smokeDirectory, 'sidecar-paths-smoke.zh-CN.srt')
+  const translationAlternatePath = join(smokeDirectory, 'sidecar-paths-smoke.zh-CN.VTT')
   const smokeHomeDirectory = await mkdtemp(join(tmpdir(), 'aivplayer-smoke-sidecar-paths-home-'))
   await copyFile(sourceMediaPath, mediaPath)
   await writeFile(sourceEmptyPath, '')
   await writeFile(sourcePath, makeVtt('初始跨设备原文'))
   await writeFile(translationEmptyPath, '')
   await writeFile(translationPath, makeVtt('初始跨设备译文'))
+  await writeFile(translationAlternatePath, makeVtt('初始跨设备备用译文'))
 
   const app = await electron.launch({
     args: ['--no-sandbox', '--in-process-gpu', `--user-data-dir=${smokeHomeDirectory}`, 'out/main/index.js', mediaPath],
@@ -54,8 +56,10 @@ async function main(): Promise<void> {
     const revisionMs = Date.now() + 5_000
     await writeFile(sourcePath, makeVtt('更新跨设备原文'))
     await writeFile(translationPath, makeVtt('更新跨设备译文'))
+    await writeFile(translationAlternatePath, makeVtt('更新跨设备备用译文'))
     await utimes(sourcePath, new Date(revisionMs), new Date(revisionMs))
     await utimes(translationPath, new Date(revisionMs + 1_000), new Date(revisionMs + 1_000))
+    await utimes(translationAlternatePath, new Date(revisionMs + 2_000), new Date(revisionMs + 2_000))
 
     await page.reload()
     await openEditor()
@@ -63,10 +67,13 @@ async function main(): Promise<void> {
     const sidecarDetails = page.locator('[data-testid="editing-caption-reload-sidecar-paths"]')
     await sidecarDetails.locator('summary').click()
     const sidecarSource = sidecarDetails.locator('.editing-caption-reload-sidecar-source').first()
-    const selectedSourcePath = await sidecarSource.locator('small').nth(0).locator('code').textContent()
-    const selectedTranslationPath = await sidecarSource.locator('small').nth(1).locator('code').textContent()
+    const selectedSourcePath = await sidecarSource.locator('small[data-testid^="editing-caption-reload-sidecar-selected-"][data-testid$="-source"] code').textContent()
+    const selectedTranslationPath = await sidecarSource.locator('small[data-testid^="editing-caption-reload-sidecar-selected-"][data-testid$="-translation"] code').textContent()
     const candidateRows = await sidecarSource.locator('small').count()
     const conflictRows = await page.locator('[data-testid="editing-caption-reload-conflict"] .editing-caption-reload-row').count()
+    const ambiguity = page.locator('[data-testid^="editing-caption-reload-sidecar-ambiguity-"]').first()
+    const ambiguityCount = await page.locator('[data-testid^="editing-caption-reload-sidecar-ambiguity-"]').count()
+    const ambiguityText = await ambiguity.textContent()
     const screenshotPath = join(smokeHomeDirectory, 'aivplayer-smoke-sidecar-paths.png')
     await page.screenshot({ path: screenshotPath, fullPage: false })
     const result = {
@@ -77,12 +84,14 @@ async function main(): Promise<void> {
       expectedTranslationPath: translationPath,
       candidateRows,
       conflictRows,
+      ambiguityCount,
+      ambiguityText,
       screenshotPath,
       consoleErrors
     }
     console.log('AIVPlayer Smoke Editing Sidecar Paths')
     console.log(JSON.stringify(result))
-    if (result.selectedSourcePath?.toLowerCase() !== sourcePath.toLowerCase() || result.selectedTranslationPath?.toLowerCase() !== translationPath.toLowerCase() || result.candidateRows < 4 || result.conflictRows !== 2 || result.consoleErrors.length > 0) process.exitCode = 1
+    if (result.selectedSourcePath?.toLowerCase() !== sourcePath.toLowerCase() || result.selectedTranslationPath?.toLowerCase() !== translationPath.toLowerCase() || result.candidateRows < 6 || result.conflictRows !== 2 || result.ambiguityCount !== 1 || !result.ambiguityText?.includes('2') || result.consoleErrors.length > 0) process.exitCode = 1
   } finally {
     await app.close()
   }
