@@ -81,11 +81,7 @@ export function useSubtitleCacheEffects(model: AppModel, derived: AppDerived, pa
         model.setAsrProgress(null)
         return
       }
-      if (sidecar?.errorDetails?.code === 'INVALID_SUBTITLE_SIDECAR') {
-        model.setAsrNotice(sidecar)
-        model.setAsrProgress(null)
-        return
-      }
+      if (sidecar?.errorDetails?.code === 'INVALID_SUBTITLE_SIDECAR') { model.setAsrNotice(sidecar); model.setAsrProgress(null); return }
 
       const modelId = model.asrStatus?.recommendedModelManifest.id
       if (!modelId) return
@@ -93,8 +89,7 @@ export function useSubtitleCacheEffects(model: AppModel, derived: AppDerived, pa
       if (cancelled || !result.success || !result.subtitleUrl) return
       model.setActiveSubtitle(result)
       model.setSubtitleResult(result)
-      model.setAsrNotice(result)
-      model.setAsrProgress(null)
+      model.setAsrNotice(result); model.setAsrProgress(null)
     }
     void restoreSubtitle()
     return () => { cancelled = true }
