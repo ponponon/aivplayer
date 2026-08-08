@@ -193,6 +193,14 @@ describe('editing project files', () => {
     expect(() => parseEditingProject({ ...project, captionSourceRevision: '   ' })).toThrow('Invalid editing project caption source revision')
   })
 
+  it('round-trips pending per-cue subtitle reload decisions and rejects malformed state', () => {
+    const project = createEditingProject(source)
+    const resolution = { sourceRevisionKey: 'source=next|translation=next', changeKeys: ['removed:source:source-caption-1'] }
+    expect(parseEditingProjectFile(serializeEditingProject({ ...project, captionReloadResolution: resolution })).captionReloadResolution).toEqual(resolution)
+    expect(() => parseEditingProject({ ...project, captionReloadResolution: { sourceRevisionKey: 'next', changeKeys: [] } })).toThrow('Invalid editing project caption reload resolution')
+    expect(() => parseEditingProject({ ...project, captionReloadResolution: { sourceRevisionKey: 'next', changeKeys: ['same', 'same'] } })).toThrow('Invalid editing project caption reload resolution')
+  })
+
   it('round-trips relative caption word timing for karaoke preview and burn-in', () => {
     const project = createEditingProject(source)
     const withWords = {

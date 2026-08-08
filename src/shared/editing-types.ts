@@ -160,6 +160,11 @@ export type EditingScriptSegment = {
   deleted?: boolean
 }
 
+export type EditingCaptionReloadResolution = {
+  sourceRevisionKey: string
+  changeKeys: string[]
+}
+
 export type EditingProject = {
   schemaVersion: typeof EDITING_PROJECT_SCHEMA_VERSION
   id: string
@@ -186,6 +191,8 @@ export type EditingProject = {
   overlayTrackOrder?: EditingOverlayTrackKind[]
   /** Revision key of the subtitle sidecars currently accepted by this project. */
   captionSourceRevision?: string
+  /** Pending per-cue decisions made while reviewing a newer subtitle revision. */
+  captionReloadResolution?: EditingCaptionReloadResolution
   /** Optional for backward compatibility with schema version 1 project files. */
   scriptSegments?: EditingScriptSegment[]
 }

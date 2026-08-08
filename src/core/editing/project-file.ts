@@ -1,4 +1,4 @@
-import { EDITING_PUNCH_IN_MAX_SCALE, EDITING_PUNCH_IN_MIN_SCALE, EDITING_PROJECT_SCHEMA_VERSION, EDITING_TRANSITION_MAX_DURATION, EDITING_TRANSITION_MIN_DURATION, EDITING_TREATMENT_SIZE_MAX, EDITING_TREATMENT_SIZE_MIN, type EditingCanvasPresetId, type EditingCaption, type EditingCaptionEffect, type EditingCaptionWord, type EditingClipFilter, type EditingClipTransition, type EditingClipTreatment, type EditingFrameId, type EditingGraphic, type EditingGraphicMotion, type EditingOverlayTrackKind, type EditingPersonMatte, type EditingProject, type EditingScriptSegment, type EditingSource, type EditingVideoBlock, type EditingVideoBlockMotion, type EditingVideoClip } from '../../shared/editing-types'
+import { EDITING_PUNCH_IN_MAX_SCALE, EDITING_PUNCH_IN_MIN_SCALE, EDITING_PROJECT_SCHEMA_VERSION, EDITING_TRANSITION_MAX_DURATION, EDITING_TRANSITION_MIN_DURATION, EDITING_TREATMENT_SIZE_MAX, EDITING_TREATMENT_SIZE_MIN, type EditingCaptionReloadResolution, type EditingCanvasPresetId, type EditingCaption, type EditingCaptionEffect, type EditingCaptionWord, type EditingClipFilter, type EditingClipTransition, type EditingClipTreatment, type EditingFrameId, type EditingGraphic, type EditingGraphicMotion, type EditingOverlayTrackKind, type EditingPersonMatte, type EditingProject, type EditingScriptSegment, type EditingSource, type EditingVideoBlock, type EditingVideoBlockMotion, type EditingVideoClip } from '../../shared/editing-types'
 import { isEditingCanvasPresetId } from './canvases'
 import { isEditingCaptionLayout } from './caption-layout'
 import { isEditingCaptionEffect } from './caption-effects'
@@ -180,6 +180,13 @@ function parseOverlayTrackOrder(value: unknown): EditingOverlayTrackKind[] | nul
   return getEditingOverlayTrackOrder(value as EditingOverlayTrackKind[])
 }
 
+function parseCaptionReloadResolution(value: unknown): EditingCaptionReloadResolution | null {
+  if (!isRecord(value) || !isNonEmptyString(value.sourceRevisionKey) || !Array.isArray(value.changeKeys) || value.changeKeys.length === 0 || value.changeKeys.some((key) => !isNonEmptyString(key))) return null
+  const changeKeys = value.changeKeys as string[]
+  if (new Set(changeKeys).size !== changeKeys.length) return null
+  return { sourceRevisionKey: value.sourceRevisionKey, changeKeys }
+}
+
 export function parseEditingProject(value: unknown): EditingProject {
   if (!isRecord(value) || value.schemaVersion !== EDITING_PROJECT_SCHEMA_VERSION || !isNonEmptyString(value.id) || !isNonEmptyString(value.title) || !isFiniteNonNegative(value.createdAt) || !isFiniteNonNegative(value.updatedAt) || !Array.isArray(value.sources) || value.sources.length === 0 || !Array.isArray(value.videoClips) || !Array.isArray(value.captions)) throw new Error('Invalid AIVPlayer editing project')
   const sources = value.sources.map(parseSource)
@@ -210,6 +217,8 @@ export function parseEditingProject(value: unknown): EditingProject {
   const overlayTrackOrder = value.overlayTrackOrder === undefined ? undefined : parseOverlayTrackOrder(value.overlayTrackOrder)
   if (overlayTrackOrder === null) throw new Error('Invalid editing project overlay track order')
   if (value.captionSourceRevision !== undefined && !isNonEmptyString(value.captionSourceRevision)) throw new Error('Invalid editing project caption source revision')
+  const captionReloadResolution = value.captionReloadResolution === undefined ? undefined : parseCaptionReloadResolution(value.captionReloadResolution)
+  if (captionReloadResolution === null) throw new Error('Invalid editing project caption reload resolution')
   return {
     schemaVersion: EDITING_PROJECT_SCHEMA_VERSION,
     id: value.id,
@@ -225,6 +234,7 @@ export function parseEditingProject(value: unknown): EditingProject {
     ...(captionLayout === undefined ? {} : { captionLayout }),
     ...(overlayTrackOrder === undefined ? {} : { overlayTrackOrder }),
     ...(value.captionSourceRevision === undefined ? {} : { captionSourceRevision: value.captionSourceRevision }),
+    ...(captionReloadResolution === undefined ? {} : { captionReloadResolution }),
     ...(scriptSegments === undefined ? {} : { scriptSegments: scriptSegments as EditingScriptSegment[] }),
     ...(graphics === undefined ? {} : { graphics: graphics as EditingGraphic[] }),
     ...(videoBlocks === undefined ? {} : { videoBlocks: videoBlocks as EditingVideoBlock[] })

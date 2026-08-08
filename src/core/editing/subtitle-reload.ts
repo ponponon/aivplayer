@@ -145,6 +145,37 @@ export function shareEditingSubtitleReloadScriptSegments(left: Pick<EditingSubti
   return shareEditingSubtitleReloadScriptSegmentIds(leftSegmentId, rightSegmentId)
 }
 
+export function getEditingSubtitleReloadChangeKey(change: Pick<EditingSubtitleReloadChange, 'id' | 'kind' | 'status'>): string {
+  return `${change.status}:${change.kind}:${change.id}`
+}
+
+/** Returns the removed rows resolved together when the source row owns a paired translation row. */
+export function getEditingSubtitleReloadRelatedChangeKeys(changes: readonly EditingSubtitleReloadChange[], change: EditingSubtitleReloadChange): string[] {
+  return [...new Set(changes
+    .filter((candidate) => candidate.status === change.status)
+    .filter((candidate) => getEditingSubtitleReloadChangeKey(candidate) === getEditingSubtitleReloadChangeKey(change) || (change.status === 'removed' && change.kind === 'source' && shareEditingSubtitleReloadScriptSegments(change, candidate)))
+    .map(getEditingSubtitleReloadChangeKey))]
+}
+
+function summarizeEditingSubtitleReloadChanges(changes: readonly EditingSubtitleReloadChange[]): EditingSubtitleReloadPreview {
+  const orderedChanges = [...changes]
+  return {
+    hasChanges: orderedChanges.length > 0,
+    addedCount: orderedChanges.filter((change) => change.status === 'added').length,
+    removedCount: orderedChanges.filter((change) => change.status === 'removed').length,
+    changedCount: orderedChanges.filter((change) => change.status === 'changed').length,
+    sourceChangedCount: countByKind(orderedChanges, 'source'),
+    translationChangedCount: countByKind(orderedChanges, 'translation'),
+    changes: orderedChanges
+  }
+}
+
+export function filterEditingSubtitleReloadPreview(preview: EditingSubtitleReloadPreview, resolvedChangeKeys: readonly string[]): EditingSubtitleReloadPreview {
+  if (resolvedChangeKeys.length === 0) return preview
+  const resolved = new Set(resolvedChangeKeys)
+  return summarizeEditingSubtitleReloadChanges(preview.changes.filter((change) => !resolved.has(getEditingSubtitleReloadChangeKey(change))))
+}
+
 /** Builds a transient preview for added or changed cues; it never mutates the project. */
 export function getEditingSubtitleReloadChangePreview(change: EditingSubtitleReloadChange, relatedChanges: readonly EditingSubtitleReloadChange[] = []): EditingSubtitleReloadChangePreview | null {
   if (change.status !== 'added' && change.status !== 'changed') return null
@@ -222,16 +253,7 @@ export function buildEditingSubtitleReloadPreview(current: readonly EditingCapti
     if (!incomingById.has(caption.id)) changes.push({ id: caption.id, kind: caption.kind, status: 'removed', currentText: caption.text, currentStartSeconds: caption.startSeconds, currentEndSeconds: captionEndSeconds(caption) })
   }
 
-  const orderedChanges = [...changes].sort(changeOrder)
-  return {
-    hasChanges: orderedChanges.length > 0,
-    addedCount: orderedChanges.filter((change) => change.status === 'added').length,
-    removedCount: orderedChanges.filter((change) => change.status === 'removed').length,
-    changedCount: orderedChanges.filter((change) => change.status === 'changed').length,
-    sourceChangedCount: countByKind(orderedChanges, 'source'),
-    translationChangedCount: countByKind(orderedChanges, 'translation'),
-    changes: orderedChanges
-  }
+  return summarizeEditingSubtitleReloadChanges([...changes].sort(changeOrder))
 }
 
 /** Filters and paginates the complete diff without changing the conflict counts. */
@@ -348,6 +370,16 @@ export function applyEditingSubtitleReloadRemoval(project: EditingProject, chang
     return next
   })
   return { ...project, captions, ...(scriptSegments ? { scriptSegments } : {}), updatedAt }
+}
+
+/** Keeps one removed cue in the project while recording the resolved diff keys for the pending revision. */
+export function applyEditingSubtitleReloadKeep(project: EditingProject, changes: readonly EditingSubtitleReloadChange[], change: EditingSubtitleReloadChange, sourceRevisionKey: string, updatedAt = Date.now()): EditingProject | null {
+  if (change.status !== 'removed' || sourceRevisionKey.trim().length === 0) return null
+  const currentCaption = project.captions.find((caption) => caption.id === change.id && caption.kind === change.kind)
+  if (!currentCaption || !matchesCurrentCaption(change, currentCaption)) return null
+  const existingKeys = project.captionReloadResolution?.sourceRevisionKey === sourceRevisionKey ? project.captionReloadResolution.changeKeys : []
+  const resolvedChangeKeys = [...new Set([...existingKeys, ...getEditingSubtitleReloadRelatedChangeKeys(changes, change)])]
+  return { ...project, captionReloadResolution: { sourceRevisionKey, changeKeys: resolvedChangeKeys }, updatedAt }
 }
 
 /** Replaces only captions and script rows, preserving the edited timeline and all visual tracks. */
