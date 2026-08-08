@@ -888,3 +888,15 @@
 - 现象：跨核心、Renderer、Smoke 和文档连续推进时，容易因为“任务还没结束”而把多个阶段混在同一个提交思路里，降低审阅者对数据契约、UI 接线和验证证据的区分能力。
 - 经验：持续工作不改变提交边界；每个阶段仍需定向验证、只暂存相关文件、扫描 staged diff 后使用中文 commit message 提交，修复阶段也应追加独立小提交而不是重写或堆叠无关文件。
 - 处理：本轮按核心删除算法、真实 ID 修正、脚本行定位、契约测试、Electron Smoke、工程文档分别提交；`OPEN_SOURCE_INSPIRATION_PLAN.md` 保持 ignored，不进入 GitHub。
+
+## 2026-08-08：单条保留 removed cue 不能只从当前列表隐藏
+
+- 现象：removed cue 的“保留当前字幕”如果只把一行从 React 列表中删掉，刷新工程或撤销后，字幕版本 revision 仍未真正记录，下一次加载会再次弹出同一冲突；source / translation 配对行还可能只解决一半。
+- 经验：单条冲突决策同时属于工程状态和审阅状态，必须记录目标 source revision 与稳定 change key；source 行的保留 / 移除语义要和配对译文保持一致，translation 行才按单条粒度处理。
+- 处理：新增可持久化的 `captionReloadResolution`，核心层按真实 loader ID 生成 related change keys，Hook 在加载、撤销、重做时过滤 / 恢复已处理差异；Smoke 验证保留后两轨仍在、差异消失、撤销后差异回来，再完成移除和重做。
+
+## 2026-08-08：Smoke 搜索状态重置后必须重新定位分页行
+
+- 现象：单条保留操作会更新冲突对象并重置搜索框；Smoke 等待搜索框为空后直接复用旧 row locator 点击移除按钮，实际页面已经回到第一页，locator 找不到目标按钮并超时。
+- 经验：任何会重建分页 / 搜索组件的交互后，不能假设旧 locator 仍处于目标可见页；应重新填写稳定文本查询并等待唯一 row，再执行下一步。
+- 处理：Smoke 在保留撤销后重新搜索“原始字幕 18”再点击移除，并保留 `keepCurrentButtonCount`、`undoKeptRemovedRows` 等结果字段，避免把编排竞态误判为业务失败。
