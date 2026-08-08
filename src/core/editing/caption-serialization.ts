@@ -1,5 +1,11 @@
 import { formatSrtTimestamp } from '../ai/subtitle-writer.ts'
-import type { EditingCaption } from '../../shared/editing-types'
+import type { EditingCaption, EditingProject } from '../../shared/editing-types'
+import { isEditingOrphanTranslationCaption } from './subtitle-reload'
+
+/** Filters captions for the current export contract; orphan translations stay project-only until a translation export mode exists. */
+export function getEditingCaptionsForSubtitleExport(project: Pick<EditingProject, 'captions' | 'scriptSegments'>): EditingCaption[] {
+  return project.captions.filter((caption) => !isEditingOrphanTranslationCaption(project, caption))
+}
 
 export function serializeEditingCaptionsToSrt(captions: readonly EditingCaption[]): string {
   const sourceCaptions = [...captions

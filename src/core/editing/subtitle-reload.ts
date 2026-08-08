@@ -149,6 +149,13 @@ export function shareEditingSubtitleReloadScriptSegments(left: Pick<EditingSubti
   return shareEditingSubtitleReloadScriptSegmentIds(leftSegmentId, rightSegmentId)
 }
 
+/** A kept translation becomes orphaned when its source script row is deleted. */
+export function isEditingOrphanTranslationCaption(project: Pick<EditingProject, 'scriptSegments'>, caption: Pick<EditingCaption, 'id' | 'kind'>): boolean {
+  if (caption.kind !== 'translation') return false
+  const scriptSegmentId = getEditingSubtitleReloadChangeScriptSegmentId(caption)
+  return project.scriptSegments?.some((segment) => segment.deleted && shareEditingSubtitleReloadScriptSegmentIds(segment.id, scriptSegmentId)) ?? false
+}
+
 export function getEditingSubtitleReloadChangeKey(change: Pick<EditingSubtitleReloadChange, 'id' | 'kind' | 'status'>): string {
   return `${change.status}:${getEditingSubtitleReloadChangeIdentity(change)}`
 }

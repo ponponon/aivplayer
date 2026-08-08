@@ -1,4 +1,4 @@
-import { serializeEditingCaptionsToSrt } from '../../../core/editing/caption-serialization'
+import { getEditingCaptionsForSubtitleExport, serializeEditingCaptionsToSrt } from '../../../core/editing/caption-serialization'
 import { getEditingCanvasDimensions } from '../../../core/editing/canvases'
 import { getEditingCaptionLayout } from '../../../core/editing/caption-layout'
 import { buildAssSubtitleFromEditingCaptions } from '../../../core/media/subtitle-ass'
@@ -23,11 +23,12 @@ export async function exportEditingTimeline(model: AppModel, derived: AppDerived
     return mediaPath ? [{ mediaPath, sourceStartSeconds: block.sourceStartSeconds, sourceEndSeconds: block.sourceEndSeconds, startSeconds: block.startSeconds, durationSeconds: block.durationSeconds, position: block.position, sizePercent: block.sizePercent, borderRadius: block.borderRadius, borderWidth: block.borderWidth, enterMotion: block.enterMotion, exitMotion: block.exitMotion, motionDurationSeconds: block.motionDurationSeconds }] : []
   })
   if (clips.length === 0) return
-  const subtitleText = serializeEditingCaptionsToSrt(project.captions)
+  const exportCaptions = getEditingCaptionsForSubtitleExport(project)
+  const subtitleText = serializeEditingCaptionsToSrt(exportCaptions)
   const hasProjectSubtitle = subtitleText.length > 0
   const mode = hasProjectSubtitle || derived.hasClipExportSubtitle ? requestedMode ?? model.appSettings.capture.clipExportMode : 'video'
   const subtitleAssText = hasProjectSubtitle && mode === 'burn-subtitle'
-    ? buildAssSubtitleFromEditingCaptions(project.captions, { ...model.appSettings.subtitles, fontSizePx: captionLayout.fontSizePx, effect: project.captionEffect ?? 'none', includeTranslation: model.appSettings.subtitles.displayMode !== 'source', captionLayout, playResX: canvas.width, playResY: canvas.height })
+    ? buildAssSubtitleFromEditingCaptions(exportCaptions, { ...model.appSettings.subtitles, fontSizePx: captionLayout.fontSizePx, effect: project.captionEffect ?? 'none', includeTranslation: model.appSettings.subtitles.displayMode !== 'source', captionLayout, playResX: canvas.width, playResY: canvas.height })
     : undefined
   model.setIsExportingClip(true)
   try {
