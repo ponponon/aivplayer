@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { EDITING_UI_PREFERENCES_SCHEMA_VERSION, EDITING_UI_PREFERENCES_STORAGE_KEY, parseEditingUiPreferences, pruneEditingUiPreferences, readEditingProjectIds, readEditingUiProjectPreferences, writeEditingUiProjectPreferences } from '../../src/renderer/src/app/editing-ui-preferences'
+import { EDITING_UI_PREFERENCES_SCHEMA_VERSION, EDITING_UI_PREFERENCES_STORAGE_KEY, parseEditingUiPreferences, pruneEditingUiPreferences, readEditingProjectIds, readEditingUiProjectPreferences, resetEditingUiProjectPreferences, writeEditingUiProjectPreferences } from '../../src/renderer/src/app/editing-ui-preferences'
 
 function createMemoryStorage(): { storage: Storage; getRaw: () => string | null } {
   const values = new Map<string, string>()
@@ -57,6 +57,17 @@ describe('editing UI preferences', () => {
     expect(readEditingUiProjectPreferences(storage, 'orphan-project')).toBeNull()
   })
 
+  it('resets only the requested project while preserving other project preferences', () => {
+    const { storage } = createMemoryStorage()
+    writeEditingUiProjectPreferences(storage, 'project-a', { detailsOpen: true, openGroups: { source: true } })
+    writeEditingUiProjectPreferences(storage, 'project-b', { detailsOpen: true, openGroups: { translation: true } })
+
+    expect(resetEditingUiProjectPreferences(storage, 'project-a')).toBe(true)
+    expect(readEditingUiProjectPreferences(storage, 'project-a')).toBeNull()
+    expect(readEditingUiProjectPreferences(storage, 'project-b')).toEqual({ detailsOpen: true, openGroups: { translation: true } })
+    expect(resetEditingUiProjectPreferences(storage, 'project-a')).toBe(false)
+  })
+
   it('does not throw when renderer storage is unavailable', () => {
     const brokenStorage = {
       getItem: () => { throw new Error('storage unavailable') },
@@ -66,5 +77,6 @@ describe('editing UI preferences', () => {
     expect(readEditingUiProjectPreferences(brokenStorage, 'project-a')).toBeNull()
     expect(() => writeEditingUiProjectPreferences(brokenStorage, 'project-a', { detailsOpen: true, openGroups: {} })).not.toThrow()
     expect(() => pruneEditingUiPreferences(brokenStorage, ['project-a'])).not.toThrow()
+    expect(resetEditingUiProjectPreferences(brokenStorage, 'project-a')).toBe(false)
   })
 })
