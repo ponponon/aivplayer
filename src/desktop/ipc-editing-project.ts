@@ -1,11 +1,13 @@
 import { app, ipcMain } from 'electron'
 import { readFile, writeFile } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { parseEditingProjectFile, serializeEditingProject } from '../core/editing/project-file'
 import { getAppCopy } from '../shared/i18n'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type { EditingProjectFileSaveRequest, EditingProjectFileSaveResult, EditingProjectFileOpenResult } from '../shared/editing-types'
 import { getCurrentLocale } from './desktop-settings'
+import { addEditingProjectSourcePathHints, resolveEditingProjectSourcePathHints } from './editing-project-path-hints'
 import { promptForOpenPath, promptForSavePath } from './media-dialogs'
 
 function safeProjectName(title: string): string {
@@ -25,7 +27,7 @@ export function registerEditingProjectIpc(): void {
     const filePath = await promptForOpenPath({ title: copy.openProject, filters: [{ name: 'AIVPlayer project', extensions: ['aivproj'] }, { name: 'All files', extensions: ['*'] }] })
     if (!filePath) return { success: false, canceled: true, message: '' }
     try {
-      const project = parseEditingProjectFile(await readFile(filePath, 'utf8'))
+      const project = resolveEditingProjectSourcePathHints(parseEditingProjectFile(await readFile(filePath, 'utf8')), filePath, existsSync)
       return { success: true, project, filePath, message: '' }
     } catch (error) {
       return { success: false, filePath, message: `${copy.projectOpenFailed}：${error instanceof Error ? error.message : String(error)}` }
@@ -37,7 +39,7 @@ export function registerEditingProjectIpc(): void {
       const selectedPath = await promptForSavePath({ title: copy.saveProject, defaultPath: request.suggestedPath ?? defaultProjectPath(request.project), buttonLabel: copy.saveProject, filters: [{ name: 'AIVPlayer project', extensions: ['aivproj'] }] })
       if (!selectedPath) return { success: false, canceled: true, message: '' }
       const filePath = selectedPath.toLowerCase().endsWith('.aivproj') ? selectedPath : `${selectedPath}.aivproj`
-      await writeFile(filePath, serializeEditingProject(request.project), 'utf8')
+      await writeFile(filePath, serializeEditingProject(addEditingProjectSourcePathHints(request.project, filePath)), 'utf8')
       return { success: true, filePath, message: '' }
     } catch (error) {
       return { success: false, message: `${copy.projectSaveFailed}：${error instanceof Error ? error.message : String(error)}` }

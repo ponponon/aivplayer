@@ -193,6 +193,15 @@ describe('editing project files', () => {
     expect(() => parseEditingProject({ ...project, captionSourceRevision: '   ' })).toThrow('Invalid editing project caption source revision')
   })
 
+  it('round-trips a portable source path hint and rejects absolute hints', () => {
+    const project = createEditingProject(source)
+    const withHint = { ...project, sources: [{ ...source, relativePath: '../media/demo.mp4' }] }
+
+    expect(parseEditingProjectFile(serializeEditingProject(withHint)).sources[0]).toMatchObject({ relativePath: '../media/demo.mp4' })
+    expect(() => parseEditingProject({ ...project, sources: [{ ...source, relativePath: '/videos/demo.mp4' }] })).toThrow('Invalid editing project source')
+    expect(() => parseEditingProject({ ...project, sources: [{ ...source, relativePath: 'C:\\videos\\demo.mp4' }] })).toThrow('Invalid editing project source')
+  })
+
   it('round-trips per-source source and translation sidecar revisions', () => {
     const project = createEditingProject(source)
     const withRevisions = { ...project, captionSourceRevisions: { [source.id]: { source: 123, translation: null } } }

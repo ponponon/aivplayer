@@ -23,6 +23,10 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0
 }
 
+function isRelativePathHint(value: unknown): value is string {
+  return isNonEmptyString(value) && !value.startsWith('/') && !value.startsWith('\\') && !/^[A-Za-z]:[\\/]/u.test(value)
+}
+
 function parseClipFilter(value: unknown): EditingClipFilter | null {
   if (!isRecord(value)) return null
   for (const key of ['brightness', 'contrast', 'saturate'] as const) if (value[key] !== undefined && (typeof value[key] !== 'number' || !Number.isFinite(value[key]) || value[key] < 0.5 || value[key] > 1.5)) return null
@@ -92,11 +96,13 @@ function parseVideoBlock(value: unknown, sourceIds: Set<string>): EditingVideoBl
 
 function parseSource(value: unknown): EditingSource | null {
   if (!isRecord(value) || !isNonEmptyString(value.id) || !isNonEmptyString(value.path) || !isNonEmptyString(value.name) || !isNonEmptyString(value.fingerprint) || !isFiniteNonNegative(value.durationSeconds)) return null
+  if (value.relativePath !== undefined && !isRelativePathHint(value.relativePath)) return null
   if (value.width !== undefined && !isFiniteNonNegative(value.width)) return null
   if (value.height !== undefined && !isFiniteNonNegative(value.height)) return null
   return {
     id: value.id,
     path: value.path,
+    ...(value.relativePath === undefined ? {} : { relativePath: value.relativePath }),
     name: value.name,
     fingerprint: value.fingerprint,
     durationSeconds: value.durationSeconds,

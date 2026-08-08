@@ -13,6 +13,8 @@ export const EDITING_PROJECT_SCHEMA_VERSION = 1 as const
 export type EditingSource = {
   id: string
   path: string
+  /** Optional portable hint relative to the .aivproj file location. */
+  relativePath?: string
   name: string
   fingerprint: string
   durationSeconds: number
