@@ -556,6 +556,7 @@
 - 编辑器工具栏新增“重建字幕版本清单”入口：只重新读取活动素材的 source / translation sidecar revision 并更新 manifest，不直接覆盖当前时间线字幕；真实 Electron Smoke 覆盖按钮点击、工程更新时间、状态提示和后续多素材冲突回归。
 - 字幕旁车候选按配置目标语言、通用 `translated` / `translation` 命名、区域语言别名和大小写扩展名排序；空文件或无有效 cue 的候选会跳过，冲突预览可展开查看实际选中路径与全部候选。
 - 当多个候选解析出不同字幕内容时，冲突预览会显示有效候选数量与当前按优先级选中的序号；解析内容相同的大小写 / 命名别名只保留一条有效候选提示，避免 macOS 大小写文件系统产生重复告警。
+- 冲突预览可对另一份有效 source / translation 旁车执行“切换并采用”：工程持久化用户选择的 preferred path，重新加载双轨字幕并更新 revision manifest；切换、撤销和重做都保留完整工程历史。
 - 新增 `npm run smoke:editing-sidecar-paths`，真实 Electron 覆盖空 `.SRT` 后回退有效 `.VTT`、`zh` 到 `zh-CN` 区域别名、双轨候选展示和控制台健康。
 
 ## 编辑器画布交互层级

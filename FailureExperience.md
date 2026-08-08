@@ -1038,3 +1038,9 @@
 - 现象：为了识别“多个候选均有效”而读取所有候选后，macOS 的大小写不敏感文件系统会让 `.vtt` / `.VTT` 两个候选字符串读到同一份字幕；如果直接按路径计数，会把同一内容误报为两份候选。
 - 经验：候选路径列表和歧义判断要分开：路径列表保留完整规则证据，歧义数量只统计解析后内容不同的有效候选；当前仍按候选优先级选择第一份，不能因为存在第二份候选就静默覆盖用户工程。
 - 处理：loader 返回去重后的 `validCandidatePaths`，按解析 cue 内容签名合并等价候选；UI 展示有效候选数量、当前选中序号和完整候选路径；单测与真实 Electron Smoke 固化两份不同译文触发一次提示、大小写别名不重复告警的边界。
+
+## 2026-08-09：切换旁车必须同时更新路径、内容和版本基线
+
+- 现象：如果候选切换只修改 UI 当前选中项，下一次 reload 会按旧 preferred path 重新选择；如果只更新 revision manifest，又会让工程显示旧字幕内容与新路径不一致，undo / redo 也无法恢复用户选择。
+- 经验：切换旁车是一个完整工程变更，必须在同一动作中重新加载目标 source / translation、持久化 `captionSourcePaths`、更新 per-source revision manifest，并把新字幕内容纳入编辑历史；失败时不能写入半个 preferred path 或半个基线。
+- 处理：新增 `EditingProject.captionSourcePaths` 的 schema 1 可选字段和严格 parser；冲突面板提供有效候选按钮，动作按 sourceId / kind 校验候选、重新加载并采用新字幕，保存一次 undo 快照；真实 Electron Smoke 覆盖切换、preferred path、revision、undo 和 redo。
