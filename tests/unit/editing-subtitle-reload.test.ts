@@ -275,6 +275,7 @@ describe('editing subtitle reload', () => {
       ...createEditingProject(source, { now: 100 }),
       videoClips: [{ ...createEditingProject(source, { now: 100 }).videoClips[0]!, sourceStartSeconds: 2 }],
       captions: [caption({})],
+      captionReloadResolution: { sourceRevisionKey: 'old', changeKeys: ['removed:source:source-caption-1'] },
       scriptSegments: [{ id: 'source-caption-1', sourceId: source.id, sourceStartSeconds: 1, sourceEndSeconds: 2, text: '手工修改', deleted: true }]
     }
     const incoming = [caption({ text: '外部新字幕' })]
@@ -285,6 +286,7 @@ describe('editing subtitle reload', () => {
     expect(next.captions).toEqual(incoming)
     expect(next.scriptSegments).toEqual([{ id: 'source-caption-1', sourceId: source.id, sourceStartSeconds: 1, sourceEndSeconds: 2, text: '外部新字幕' }])
     expect(next.captionSourceRevision).toBe('raw:200')
+    expect(next).not.toHaveProperty('captionReloadResolution')
     expect(next.updatedAt).toBe(300)
   })
 })

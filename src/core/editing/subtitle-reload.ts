@@ -385,8 +385,9 @@ export function applyEditingSubtitleReloadKeep(project: EditingProject, changes:
 /** Replaces only captions and script rows, preserving the edited timeline and all visual tracks. */
 export function replaceEditingCaptionsForReload(project: EditingProject, incoming: readonly EditingCaption[], captionSourceRevision: string, updatedAt = Date.now()): EditingProject {
   const captions = sortCaptions(incoming)
+  const { captionReloadResolution: _captionReloadResolution, ...projectWithoutReloadResolution } = project
   return {
-    ...project,
+    ...projectWithoutReloadResolution,
     captions,
     scriptSegments: mergeEditingScriptSegments(undefined, captions),
     captionSourceRevision,
