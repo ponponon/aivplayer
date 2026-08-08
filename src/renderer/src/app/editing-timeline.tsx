@@ -22,15 +22,27 @@ import { analyzeSubtitleQa } from '../../../shared/subtitle-qa'
 import { getPlaybackMediaKey } from '../../../shared/playback-memory'
 import { useEditingClipReorder } from './use-editing-clip-reorder'; import { useEditingTimelineSelection } from './use-editing-timeline-selection'; import { EditingStructureAnalysis } from './editing-structure-analysis'; import { EditingSubtitleQa } from './editing-subtitle-qa'; import { EditingCaptionSyncControl } from './editing-caption-sync-control'
 import { EditingCaptionReloadConflict } from './editing-caption-reload-conflict'
+import { readEditingUiProjectPreferences, writeEditingUiProjectPreferences } from './editing-ui-preferences'
 import { getEditingSubtitleReloadCopy } from '../../../shared/editing-subtitle-reload-copy'
 import { getEditingSubtitleCandidateCopy } from '../../../shared/editing-subtitle-candidate-copy'
 import { getEditingSubtitleReloadChangePreview, getEditingSubtitleReloadChangeScriptSegmentId, shareEditingSubtitleReloadScriptSegmentIds, type EditingSubtitleReloadChange, type EditingSubtitleReloadChangePreview, type EditingSubtitleReloadIncomingPreviewTrack } from '../../../core/editing/subtitle-reload'
 const MAX_RULER_TICKS = 121; function formatClipLabel(startSeconds: number, endSeconds: number): string { return `${formatTime(startSeconds)} – ${formatTime(endSeconds)}` }
 function formatIncomingPreviewRange(track: EditingSubtitleReloadIncomingPreviewTrack): string { return `${formatTime(track.startSeconds)}–${formatTime(track.endSeconds)}` }
 
-function EditingProjectStatusView({ status }: { status: EditingProjectStatus | null }): React.ReactElement | null {
+function EditingProjectStatusView({ projectId, status }: { projectId: string; status: EditingProjectStatus | null }): React.ReactElement | null {
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false)
+  useEffect(() => {
+    const preference = readEditingUiProjectPreferences(window.localStorage, projectId)
+    setDetailsOpen(preference?.detailsOpen ?? false)
+    setOpenGroups(preference?.openGroups ?? {})
+    setPreferencesLoaded(true)
+  }, [projectId])
+  useEffect(() => {
+    if (!preferencesLoaded || !status?.details?.groups.length) return
+    writeEditingUiProjectPreferences(window.localStorage, projectId, { detailsOpen, openGroups })
+  }, [detailsOpen, openGroups, preferencesLoaded, projectId, status?.details?.groups.length])
   if (!status) return null
   const groups = status.details?.groups ?? []
   return <div className={`editing-project-status ${status.success ? 'is-success' : 'is-error'}`} role="status"><span className="editing-project-status-message" data-testid="editing-project-status-message">{status.message}</span>{groups.length ? <details className="editing-project-status-details" data-testid="editing-project-status-details" open={detailsOpen} onToggle={(event) => setDetailsOpen(event.currentTarget.open)}><summary>{status.details?.label}</summary><div className="editing-project-status-details-groups">{groups.map((group) => <details className="editing-project-status-details-group" data-testid={`editing-project-status-details-group-${group.id}`} key={group.id} open={openGroups[group.id] ?? false} onToggle={(event) => { const open = event.currentTarget.open; setOpenGroups((current) => open === (current[group.id] ?? false) ? current : { ...current, [group.id]: open }) }}><summary>{group.label}</summary><div className="editing-project-status-details-list">{group.items.map((item, index) => <span key={`${item}-${index}`}>{item}</span>)}</div></details>)}</div></details> : null}</div>
@@ -171,7 +183,7 @@ export function EditingTimeline(): React.ReactElement | null {
         <div className="editing-toolbar-heading">
           <span className="editing-toolbar-kicker">{app.copy.editing.kicker}</span>
           <strong>{project.title}</strong>
-          <EditingProjectStatusView key={project.id} status={app.editingProjectStatus} />
+          <EditingProjectStatusView key={project.id} projectId={project.id} status={app.editingProjectStatus} />
         </div>
         <div className="editing-toolbar-actions">
           <button className="editing-icon-button" type="button" onClick={() => void app.addEditingSources()} disabled={app.isAddingEditingMedia} title={app.isAddingEditingMedia ? app.copy.editing.addingMedia : app.copy.editing.addMedia} aria-label={app.copy.editing.addMedia} data-testid="editing-add-media"><Plus size={15} /></button>
