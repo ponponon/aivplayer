@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 const projectRoot = process.cwd()
 const releaseWorkflow = readFileSync(join(projectRoot, '.github/workflows/release.yml'), 'utf8')
 const electronBuilder = readFileSync(join(projectRoot, 'electron-builder.yml'), 'utf8')
+const giteeSync = readFileSync(join(projectRoot, 'scripts/sync-gitee-release.mjs'), 'utf8')
 
 describe('release workflow source constraints', () => {
   it('keeps platform builds separate from release publishing', () => {
@@ -37,5 +38,14 @@ describe('release workflow source constraints', () => {
   it('installs the generated Debian package by absolute path in CI', () => {
     expect(releaseWorkflow).toContain('deb_file="$(realpath "$deb_file")"')
     expect(releaseWorkflow).toContain('dpkg-deb -f "$deb_file" Package')
+  })
+
+  it('keeps Gitee artifact selection aligned with GitHub releases', () => {
+    expect(releaseWorkflow).toContain('node scripts/sync-gitee-release.mjs')
+    expect(giteeSync).toContain("/\\.(?:dmg|zip|pkg|exe|AppImage|deb|yml|blockmap)$/i")
+    expect(giteeSync).toContain('files.sort()')
+    expect(giteeSync).toContain('const names = new Set(files.map((file) => basename(file)))')
+    expect(giteeSync).toContain('RELEASE_TAG')
+    expect(giteeSync).toContain('GITEE_TARGET_COMMITISH')
   })
 })
