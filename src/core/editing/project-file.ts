@@ -1,4 +1,4 @@
-import { EDITING_PUNCH_IN_MAX_SCALE, EDITING_PUNCH_IN_MIN_SCALE, EDITING_PROJECT_SCHEMA_VERSION, EDITING_TRANSITION_MAX_DURATION, EDITING_TRANSITION_MIN_DURATION, EDITING_TREATMENT_SIZE_MAX, EDITING_TREATMENT_SIZE_MIN, type EditingCaptionReloadResolution, type EditingCanvasPresetId, type EditingCaption, type EditingCaptionEffect, type EditingCaptionWord, type EditingCaptionSourceRevisions, type EditingClipFilter, type EditingClipTransition, type EditingClipTreatment, type EditingFrameId, type EditingGraphic, type EditingGraphicMotion, type EditingOverlayTrackKind, type EditingPersonMatte, type EditingProject, type EditingScriptSegment, type EditingSource, type EditingVideoBlock, type EditingVideoBlockMotion, type EditingVideoClip } from '../../shared/editing-types'
+import { EDITING_PUNCH_IN_MAX_SCALE, EDITING_PUNCH_IN_MIN_SCALE, EDITING_PROJECT_SCHEMA_VERSION, EDITING_TRANSITION_MAX_DURATION, EDITING_TRANSITION_MIN_DURATION, EDITING_TREATMENT_SIZE_MAX, EDITING_TREATMENT_SIZE_MIN, type EditingCaptionReloadResolution, type EditingCanvasPresetId, type EditingCaption, type EditingCaptionEffect, type EditingCaptionWord, type EditingCaptionPreferredPaths, type EditingCaptionSourceRevisions, type EditingClipFilter, type EditingClipTransition, type EditingClipTreatment, type EditingFrameId, type EditingGraphic, type EditingGraphicMotion, type EditingOverlayTrackKind, type EditingPersonMatte, type EditingProject, type EditingScriptSegment, type EditingSource, type EditingVideoBlock, type EditingVideoBlockMotion, type EditingVideoClip } from '../../shared/editing-types'
 import { isEditingCanvasPresetId } from './canvases'
 import { isEditingCaptionLayout } from './caption-layout'
 import { isEditingCaptionEffect } from './caption-effects'
@@ -212,6 +212,19 @@ function parseCaptionSourceRevisions(value: unknown, sourceIds: Set<string>): Ed
   return revisions
 }
 
+function parseCaptionPreferredPaths(value: unknown, sourceIds: Set<string>): EditingCaptionPreferredPaths | null {
+  if (!isRecord(value)) return null
+  const paths: EditingCaptionPreferredPaths = {}
+  for (const [sourceId, sourcePaths] of Object.entries(value)) {
+    if (!sourceIds.has(sourceId) || !isRecord(sourcePaths)) return null
+    if (!Object.prototype.hasOwnProperty.call(sourcePaths, 'source') || !Object.prototype.hasOwnProperty.call(sourcePaths, 'translation')) return null
+    if (sourcePaths.source !== null && !isNonEmptyString(sourcePaths.source)) return null
+    if (sourcePaths.translation !== null && !isNonEmptyString(sourcePaths.translation)) return null
+    paths[sourceId] = { source: sourcePaths.source as string | null, translation: sourcePaths.translation as string | null }
+  }
+  return paths
+}
+
 export function parseEditingProject(value: unknown): EditingProject {
   if (!isRecord(value) || value.schemaVersion !== EDITING_PROJECT_SCHEMA_VERSION || !isNonEmptyString(value.id) || !isNonEmptyString(value.title) || !isFiniteNonNegative(value.createdAt) || !isFiniteNonNegative(value.updatedAt) || !Array.isArray(value.sources) || value.sources.length === 0 || !Array.isArray(value.videoClips) || !Array.isArray(value.captions)) throw new Error('Invalid AIVPlayer editing project')
   const sources = value.sources.map(parseSource)
@@ -244,6 +257,8 @@ export function parseEditingProject(value: unknown): EditingProject {
   if (value.captionSourceRevision !== undefined && !isNonEmptyString(value.captionSourceRevision)) throw new Error('Invalid editing project caption source revision')
   const captionSourceRevisions = value.captionSourceRevisions === undefined ? undefined : parseCaptionSourceRevisions(value.captionSourceRevisions, sourceIds)
   if (captionSourceRevisions === null) throw new Error('Invalid editing project caption source revisions')
+  const captionSourcePaths = value.captionSourcePaths === undefined ? undefined : parseCaptionPreferredPaths(value.captionSourcePaths, sourceIds)
+  if (captionSourcePaths === null) throw new Error('Invalid editing project caption source paths')
   const captionReloadResolution = value.captionReloadResolution === undefined ? undefined : parseCaptionReloadResolution(value.captionReloadResolution)
   if (captionReloadResolution === null) throw new Error('Invalid editing project caption reload resolution')
   return {
@@ -262,6 +277,7 @@ export function parseEditingProject(value: unknown): EditingProject {
     ...(overlayTrackOrder === undefined ? {} : { overlayTrackOrder }),
     ...(value.captionSourceRevision === undefined ? {} : { captionSourceRevision: value.captionSourceRevision }),
     ...(captionSourceRevisions === undefined ? {} : { captionSourceRevisions }),
+    ...(captionSourcePaths === undefined ? {} : { captionSourcePaths }),
     ...(captionReloadResolution === undefined ? {} : { captionReloadResolution }),
     ...(scriptSegments === undefined ? {} : { scriptSegments: scriptSegments as EditingScriptSegment[] }),
     ...(graphics === undefined ? {} : { graphics: graphics as EditingGraphic[] }),

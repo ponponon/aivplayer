@@ -1,5 +1,5 @@
 import { parseVtt } from '../../../core/ai/subtitle-writer'
-import type { EditingCaption, EditingCaptionSourceRevisions, EditingProject } from '../../../shared/editing-types'
+import type { EditingCaption, EditingCaptionPreferredPaths, EditingCaptionSourceRevisions, EditingProject } from '../../../shared/editing-types'
 import { attachSubtitleWords, getSubtitleWordSidecarPath, joinSubtitleWords, parseWhisperSubtitleWords, type SubtitleWord } from '../../../shared/subtitle-timing'
 
 export type CaptionSource = {
@@ -27,6 +27,7 @@ export type EditingCaptionSourceOptions = {
   translatedSubtitlePath: string | null
   translatedSubtitleSrtPath: string | null
   translationLanguage?: string | null
+  preferredCaptionPaths?: EditingCaptionPreferredPaths
 }
 
 export type EditingCaptionLoadResult = {
@@ -44,8 +45,9 @@ export function createEditingCaptionSources(project: Pick<EditingProject, 'sourc
   const activeSourceIds = new Set(project.videoClips.map((clip) => clip.sourceId))
   return project.sources.filter((source) => activeSourceIds.has(source.id)).flatMap((source) => {
     const isCurrentMedia = source.path === options.currentMediaPath
-    const preferredSourcePath = isCurrentMedia ? (options.subtitleSrtPath ?? options.subtitlePath) : null
-    const preferredTranslationPath = isCurrentMedia ? (options.translatedSubtitleSrtPath ?? options.translatedSubtitlePath) : null
+    const preferredPaths = options.preferredCaptionPaths?.[source.id]
+    const preferredSourcePath = preferredPaths?.source ?? (isCurrentMedia ? (options.subtitleSrtPath ?? options.subtitlePath) : null)
+    const preferredTranslationPath = preferredPaths?.translation ?? (isCurrentMedia ? (options.translatedSubtitleSrtPath ?? options.translatedSubtitlePath) : null)
     return [
       { path: preferredSourcePath, pathCandidates: createEditingCaptionPathCandidates(source.path, preferredSourcePath, 'source'), sourceId: source.id, kind: 'source' as const },
       { path: preferredTranslationPath, pathCandidates: createEditingCaptionPathCandidates(source.path, preferredTranslationPath, 'translation', options.translationLanguage), sourceId: source.id, kind: 'translation' as const }

@@ -180,6 +180,12 @@ export type EditingCaptionSourceRevision = {
 /** Per-source sidecar baseline; source IDs remain stable across source order changes. */
 export type EditingCaptionSourceRevisions = Record<string, EditingCaptionSourceRevision>
 
+/** Persisted preferred sidecar paths selected by the user for each source. */
+export type EditingCaptionPreferredPaths = Record<string, {
+  source: string | null
+  translation: string | null
+}>
+
 export type EditingProject = {
   schemaVersion: typeof EDITING_PROJECT_SCHEMA_VERSION
   id: string
@@ -208,6 +214,8 @@ export type EditingProject = {
   captionSourceRevision?: string
   /** Per-source sidecar revisions used to build and explain captionSourceRevision. */
   captionSourceRevisions?: EditingCaptionSourceRevisions
+  /** User-selected source / translation sidecar paths; candidates still provide fallback. */
+  captionSourcePaths?: EditingCaptionPreferredPaths
   /** Pending per-cue decisions made while reviewing a newer subtitle revision. */
   captionReloadResolution?: EditingCaptionReloadResolution
   /** Optional for backward compatibility with schema version 1 project files. */

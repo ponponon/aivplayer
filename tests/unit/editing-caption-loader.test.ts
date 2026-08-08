@@ -100,6 +100,21 @@ describe('editing caption sidecar source selection', () => {
     expect(candidates).toContain('/media/demo.zh-CN.VTT')
   })
 
+  it('puts a persisted preferred path before generated candidates', () => {
+    const sources = createEditingCaptionSources({ sources: [primary], videoClips: [{ id: 'clip-1', sourceId: primary.id, sourceStartSeconds: 0, sourceEndSeconds: 1 }] }, {
+      currentMediaPath: primary.path,
+      subtitlePath: '/cache/generated.srt',
+      subtitleSrtPath: '/cache/generated.srt',
+      translatedSubtitlePath: null,
+      translatedSubtitleSrtPath: null,
+      preferredCaptionPaths: { [primary.id]: { source: '/videos/selected.VTT', translation: '/videos/selected.zh-CN.srt' } }
+    })
+
+    expect(sources[0]?.path).toBe('/videos/selected.VTT')
+    expect(sources[0]?.pathCandidates?.[0]).toBe('/videos/selected.VTT')
+    expect(sources[1]?.path).toBe('/videos/selected.zh-CN.srt')
+  })
+
   it('loads sidecars only for sources still used by the timeline', () => {
     const sources = createEditingCaptionSources({ sources: [primary, secondary], videoClips: [{ id: 'clip-1', sourceId: secondary.id, sourceStartSeconds: 0, sourceEndSeconds: 1 }] }, {
       currentMediaPath: primary.path,

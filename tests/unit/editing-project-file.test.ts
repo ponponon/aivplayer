@@ -212,6 +212,15 @@ describe('editing project files', () => {
     expect(() => parseEditingProject({ ...project, captionSourceRevisions: { [source.id]: { source: 123 } } })).toThrow('Invalid editing project caption source revisions')
   })
 
+  it('round-trips user-selected sidecar paths and rejects unknown sources', () => {
+    const project = createEditingProject(source)
+    const captionSourcePaths = { [source.id]: { source: '/videos/demo.VTT', translation: '/videos/demo.zh-CN.srt' } }
+    expect(parseEditingProjectFile(serializeEditingProject({ ...project, captionSourcePaths })).captionSourcePaths).toEqual(captionSourcePaths)
+    expect(() => parseEditingProject({ ...project, captionSourcePaths: { missing: { source: '/videos/missing.srt', translation: null } } })).toThrow('Invalid editing project caption source paths')
+    expect(() => parseEditingProject({ ...project, captionSourcePaths: { [source.id]: { source: '', translation: null } } })).toThrow('Invalid editing project caption source paths')
+    expect(() => parseEditingProject({ ...project, captionSourcePaths: { [source.id]: { source: '/videos/demo.srt' } } })).toThrow('Invalid editing project caption source paths')
+  })
+
   it('round-trips pending per-cue subtitle reload decisions and rejects malformed state', () => {
     const project = createEditingProject(source)
     const resolution = { sourceRevisionKey: 'source=next|translation=next', changeKeys: ['removed:source:source-caption-1'] }
