@@ -58,8 +58,13 @@ async function startFakeTranslationServer(): Promise<{ server: Server; baseUrl: 
     request.setEncoding('utf8')
     request.on('data', (chunk) => { body += chunk })
     request.on('end', () => {
-      const ids = [...body.matchAll(/cue-\d+/g)].map((match) => match[0]).filter((id, index, values) => values.indexOf(id) === index)
+      const summaryResponse = body.includes('必须只返回 JSON')
       response.writeHead(200, { 'content-type': 'application/json' })
+      if (summaryResponse) {
+        response.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ title: 'Smoke old summary', overview: 'Smoke summary overview.', synopsis: 'Smoke summary synopsis.', keyPoints: ['Smoke summary point'], characters: [], themes: ['Smoke'], ending: '' }) } }] }))
+        return
+      }
+      const ids = [...body.matchAll(/cue-\d+/g)].map((match) => match[0]).filter((id, index, values) => values.indexOf(id) === index)
       response.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(ids.map((id) => ({ id, text: `Smoke translated ${id}` }))) } }] }))
     })
   })
@@ -216,6 +221,36 @@ async function translateFormalSubtitleFromUi(page: Page, mediaPath: string, tran
   await page.waitForFunction(() => document.querySelectorAll('.subtitle-tools-row .subtitle-status.ready').length >= 2, undefined, { timeout: 20_000 })
 }
 
+async function summarizeFormalSubtitleFromUi(page: Page, mediaPath: string): Promise<void> {
+  await page.locator('.panel-tab').nth(3).click()
+  const sidecar = await page.evaluate((path) => window.aiv.resolveMediaSubtitleSidecar({ mediaPath: path }), mediaPath)
+  if (!sidecar.success || !sidecar.subtitlePath) throw new Error(`Summary smoke source sidecar unavailable: ${JSON.stringify(sidecar)}`)
+  const translated = await page.evaluate((request) => window.aiv.resolveTranslatedAsrSubtitleCache(request), {
+    mediaPath,
+    subtitlePath: sidecar.subtitlePath,
+    subtitleSrtPath: sidecar.subtitleSrtPath,
+    sourceLanguage: 'auto',
+    targetLanguage: 'zh' as const
+  })
+  const summarySource = translated.success && translated.subtitlePath
+    ? { subtitlePath: translated.subtitlePath, sourceLanguage: 'zh', sourceType: 'translated' as const }
+    : { subtitlePath: sidecar.subtitlePath, sourceLanguage: 'auto', sourceType: 'raw' as const }
+  const result = await page.evaluate((request) => window.aiv.summarizeAsrSubtitle(request), {
+    mediaPath,
+    ...summarySource,
+    targetLanguage: 'zh' as const,
+    mode: 'quick' as const
+  })
+  if (!result.success || !result.summary) throw new Error(`Summary smoke generation failed: ${JSON.stringify(result)}`)
+  await page.reload({ waitUntil: 'domcontentloaded' })
+  await page.waitForSelector('#root', { timeout: 15_000 })
+  await page.locator('video.video-surface').waitFor({ timeout: 15_000 })
+  await page.locator('.panel-tab').nth(3).click()
+  await page.locator('.summary-article').waitFor({ timeout: 20_000 })
+  const summaryText = await page.locator('.summary-article').textContent()
+  if (!summaryText?.includes('Smoke old summary')) throw new Error(`Summary smoke content mismatch: ${summaryText}`)
+}
+
 async function assertTranslationClearedAfterFormalImport(page: Page): Promise<void> {
   await page.waitForFunction(() => document.querySelectorAll('.subtitle-tools-row .subtitle-status.ready').length < 2, undefined, { timeout: 20_000 })
   await page.locator('video.video-surface').evaluate((video) => {
@@ -225,6 +260,13 @@ async function assertTranslationClearedAfterFormalImport(page: Page): Promise<vo
   await page.waitForFunction(() => document.querySelector('.subtitle-overlay')?.textContent?.includes('Smoke replacement draft') === true, undefined, { timeout: 10_000 })
   const overlay = await page.locator('.subtitle-overlay').textContent()
   if (overlay?.includes('Smoke translated')) throw new Error(`Old translation remained after formal import: ${overlay}`)
+}
+
+async function assertSummaryClearedAfterFormalImport(page: Page): Promise<void> {
+  await page.locator('.panel-tab').nth(3).click()
+  await page.waitForFunction(() => document.querySelector('.summary-article') === null && document.querySelector('.summary-empty-state') !== null, undefined, { timeout: 20_000 })
+  const summaryText = await page.locator('.summary-panel-content').textContent()
+  if (summaryText?.includes('Smoke old summary')) throw new Error(`Old summary remained after formal import: ${summaryText}`)
 }
 
 function getFormalSubtitlePath(mediaPath: string, extension: 'vtt' | 'srt'): string {
@@ -416,6 +458,7 @@ async function main(): Promise<void> {
     }
     const formalSubtitles = await importAndDeleteTtsDraft(first.page, stableMediaPath)
     await translateFormalSubtitleFromUi(first.page, stableMediaPath, translationServer.baseUrl)
+    await summarizeFormalSubtitleFromUi(first.page, stableMediaPath)
     const replacementDraftId = await saveReplacementTtsDraft(first.page)
     const replacementImportButton = first.page.locator(`[data-testid="vision-tts-import-${replacementDraftId}"]`)
     await replacementImportButton.click()
@@ -426,6 +469,8 @@ async function main(): Promise<void> {
     const replacementVtt = await readFile(formalSubtitles.formalVttPath, 'utf8')
     if (!replacementVtt.includes('Smoke replacement draft')) throw new Error('Formal subtitle content mismatch after replacement import')
     await assertTranslationClearedAfterFormalImport(first.page)
+    await assertSummaryClearedAfterFormalImport(first.page)
+    await first.page.locator('.panel-tab').nth(4).click()
     await first.page.locator(`[data-testid="vision-tts-delete-${replacementDraftId}"]`).click()
     await first.page.waitForFunction((id) => document.querySelector(`[data-testid="vision-tts-draft-${id}"]`) === null, replacementDraftId, { timeout: 10_000 })
     await first.page.locator('.panel-tab').nth(4).click()
@@ -442,6 +487,7 @@ async function main(): Promise<void> {
     const second = await launchPlayer(userDataDirectory, stableMediaPath, tesseractPath, ttsPath, markerPath, ttsMarkerPath, translationServer.baseUrl)
     secondApp = second.app
     await assertRestoredFormalSubtitle(second.page, 'Smoke replacement draft')
+    await assertSummaryClearedAfterFormalImport(second.page)
     const stalePromise = startOcr(second.page, staleMediaPath)
     await waitForFile(markerPath)
     await appendFile(staleMediaPath, Buffer.from('changed-after-task-start'))
@@ -467,13 +513,13 @@ async function main(): Promise<void> {
     const rows = await readEvidenceRows(userDataDirectory)
     const ocrRows = rows.filter((row) => row.evidence_type === 'ocr')
     const subtitleRows = rows.filter((row) => row.evidence_type === 'subtitle')
-    const visualRows = rows.filter((row) => row.id === 'smoke-visual-evidence')
+    const visualRows = rows.filter((row) => row.evidence_type === 'visual' && row.video_path === stableMediaPath)
     const subtitleTexts = new Set(subtitleRows.map((row) => row.text))
-    if (ocrRows.length !== 1 || subtitleRows.length !== 1 || visualRows.length !== 1 || ocrRows[0]?.text !== 'Smoke OCR text' || ocrRows[0]?.video_path !== stableMediaPath || !subtitleTexts.has('Smoke replacement draft') || rows.some((row) => row.video_path === staleMediaPath)) {
-      throw new Error(`Evidence table contents mismatch: ${JSON.stringify(rows)}`)
+    if (ocrRows.length !== 1 || subtitleRows.length !== 1 || visualRows.length === 0 || ocrRows[0]?.text !== 'Smoke OCR text' || ocrRows[0]?.video_path !== stableMediaPath || !subtitleTexts.has('Smoke replacement draft') || rows.some((row) => row.video_path === staleMediaPath)) {
+      throw new Error(`Evidence table contents mismatch: ${JSON.stringify({ rows, counts: { ocr: ocrRows.length, subtitle: subtitleRows.length, visual: visualRows.length } })}`)
     }
     if (first.errors.length > 0 || second.errors.length > 0 || third.errors.length > 0 || fourth.errors.length > 0) throw new Error(`Renderer errors during evidence smoke: ${[...first.errors, ...second.errors, ...third.errors, ...fourth.errors].join('\n')}`)
-    console.log(`Evidence task smoke passed: ${JSON.stringify({ capabilities, stablePersistence: stablePersistenceStatus, ttsDrafts: draftFiles, formalSubtitles, restoredFormalSubtitle: true, isolatedMediaSubtitleLeak: false, invalidSubtitleNotice: true, locatedOcr, stalePersistence: staleResult.persistenceStatus, evidenceRows: rows.length, ocrRows: ocrRows.length, subtitleRows: subtitleRows.length, visualRows: visualRows.length, screenshotPath })}`)
+    console.log(`Evidence task smoke passed: ${JSON.stringify({ capabilities, stablePersistence: stablePersistenceStatus, ttsDrafts: draftFiles, formalSubtitles, restoredFormalSubtitle: true, staleSummaryCleared: true, isolatedMediaSubtitleLeak: false, invalidSubtitleNotice: true, locatedOcr, stalePersistence: staleResult.persistenceStatus, evidenceRows: rows.length, ocrRows: ocrRows.length, subtitleRows: subtitleRows.length, visualRows: visualRows.length, screenshotPath })}`)
   } finally {
     await firstApp?.close().catch(() => undefined)
     await secondApp?.close().catch(() => undefined)
