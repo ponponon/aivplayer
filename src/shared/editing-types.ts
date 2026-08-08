@@ -186,6 +186,12 @@ export type EditingCaptionPreferredPaths = Record<string, {
   translation: string | null
 }>
 
+/** Portable sidecar path hints relative to the saved .aivproj file. */
+export type EditingCaptionPathHints = Record<string, {
+  source: string | null
+  translation: string | null
+}>
+
 export type EditingProject = {
   schemaVersion: typeof EDITING_PROJECT_SCHEMA_VERSION
   id: string
@@ -216,6 +222,8 @@ export type EditingProject = {
   captionSourceRevisions?: EditingCaptionSourceRevisions
   /** User-selected source / translation sidecar paths; candidates still provide fallback. */
   captionSourcePaths?: EditingCaptionPreferredPaths
+  /** Relative hints for moving a project together with its selected sidecars. */
+  captionSourcePathHints?: EditingCaptionPathHints
   /** Pending per-cue decisions made while reviewing a newer subtitle revision. */
   captionReloadResolution?: EditingCaptionReloadResolution
   /** Optional for backward compatibility with schema version 1 project files. */

@@ -5,6 +5,8 @@ import { attachSubtitleWords, getSubtitleWordSidecarPath, joinSubtitleWords, par
 export type CaptionSource = {
   path: string | null
   pathCandidates?: readonly string[]
+  /** User-selected path, distinct from the current-media default path. */
+  preferredPath?: string | null
   sourceId: string
   kind: EditingCaption['kind']
 }
@@ -13,6 +15,8 @@ export type EditingCaptionSidecarPathInfo = {
   selectedPath: string | null
   candidates: string[]
   validCandidatePaths: string[]
+  preferredPath?: string | null
+  preferredPathAvailable?: boolean
 }
 
 export type EditingCaptionSourcePaths = Record<string, {
@@ -46,11 +50,13 @@ export function createEditingCaptionSources(project: Pick<EditingProject, 'sourc
   return project.sources.filter((source) => activeSourceIds.has(source.id)).flatMap((source) => {
     const isCurrentMedia = source.path === options.currentMediaPath
     const preferredPaths = options.preferredCaptionPaths?.[source.id]
-    const preferredSourcePath = preferredPaths?.source ?? (isCurrentMedia ? (options.subtitleSrtPath ?? options.subtitlePath) : null)
-    const preferredTranslationPath = preferredPaths?.translation ?? (isCurrentMedia ? (options.translatedSubtitleSrtPath ?? options.translatedSubtitlePath) : null)
+    const preferredSourcePath = preferredPaths?.source
+    const preferredTranslationPath = preferredPaths?.translation
+    const sourcePath = preferredSourcePath ?? (isCurrentMedia ? (options.subtitleSrtPath ?? options.subtitlePath) : null)
+    const translationPath = preferredTranslationPath ?? (isCurrentMedia ? (options.translatedSubtitleSrtPath ?? options.translatedSubtitlePath) : null)
     return [
-      { path: preferredSourcePath, pathCandidates: createEditingCaptionPathCandidates(source.path, preferredSourcePath, 'source'), sourceId: source.id, kind: 'source' as const },
-      { path: preferredTranslationPath, pathCandidates: createEditingCaptionPathCandidates(source.path, preferredTranslationPath, 'translation', options.translationLanguage), sourceId: source.id, kind: 'translation' as const }
+      { path: sourcePath, pathCandidates: createEditingCaptionPathCandidates(source.path, sourcePath, 'source'), ...(preferredSourcePath === undefined ? {} : { preferredPath: preferredSourcePath }), sourceId: source.id, kind: 'source' as const },
+      { path: translationPath, pathCandidates: createEditingCaptionPathCandidates(source.path, translationPath, 'translation', options.translationLanguage), ...(preferredTranslationPath === undefined ? {} : { preferredPath: preferredTranslationPath }), sourceId: source.id, kind: 'translation' as const }
     ]
   })
 }
@@ -120,7 +126,7 @@ function getCaptionSourceCandidatePaths(source: CaptionSource): string[] {
   return [...new Set([source.path, ...(source.pathCandidates ?? [])].filter((path): path is string => Boolean(path)))]
 }
 
-async function loadCaptionSource(source: CaptionSource): Promise<{ captions: EditingCaption[]; revision: number | null; selectedPath: string | null; validCandidatePaths: string[] }> {
+async function loadCaptionSource(source: CaptionSource): Promise<{ captions: EditingCaption[]; revision: number | null; selectedPath: string | null; validCandidatePaths: string[]; preferredPath?: string | null; preferredPathAvailable?: boolean }> {
   const paths = getCaptionSourceCandidatePaths(source)
   const loadedCandidates = await Promise.all(paths.map(async (path) => {
     try {
@@ -134,7 +140,7 @@ async function loadCaptionSource(source: CaptionSource): Promise<{ captions: Edi
   const validCandidates = loadedCandidates.filter((candidate): candidate is { path: string; segments: ReturnType<typeof parseVtt>; signature: string } => candidate !== null)
   const distinctValidCandidates = validCandidates.filter((candidate, index) => validCandidates.findIndex((other) => other.signature === candidate.signature) === index)
   const loadedText = validCandidates[0]
-  if (!loadedText) return { captions: [], revision: null, selectedPath: null, validCandidatePaths: [] }
+  if (!loadedText) return { captions: [], revision: null, selectedPath: null, validCandidatePaths: [], ...(source.preferredPath === undefined ? {} : { preferredPath: source.preferredPath, preferredPathAvailable: false }) }
   const revision = await window.aiv.getFileRevision(loadedText.path).catch(() => null)
   const wordPaths = [...new Set([loadedText.path, ...paths].map(getSubtitleWordSidecarPath).filter((path): path is string => Boolean(path)))]
   const wordTexts = await Promise.all(wordPaths.map(async (path) => {
@@ -148,7 +154,8 @@ async function loadCaptionSource(source: CaptionSource): Promise<{ captions: Edi
         : undefined
       return durationSeconds > 0 ? [{ id: `${source.kind}-${source.sourceId}-${index}`, sourceId: source.sourceId, sourceStartSeconds: segment.startSeconds, sourceEndSeconds: segment.endSeconds, kind: source.kind, startSeconds: segment.startSeconds, durationSeconds, text: segment.text, ...(captionWords && captionWords.length > 0 ? { words: captionWords } : {}) }] : []
     })
-  return { captions, revision, selectedPath: loadedText.path, validCandidatePaths: distinctValidCandidates.map((candidate) => candidate.path) }
+  const validCandidatePaths = distinctValidCandidates.map((candidate) => candidate.path)
+  return { captions, revision, selectedPath: loadedText.path, validCandidatePaths, ...(source.preferredPath === undefined ? {} : { preferredPath: source.preferredPath, preferredPathAvailable: validCandidatePaths.includes(source.preferredPath ?? '') }) }
 }
 
 export async function loadEditingCaptionSnapshot(sources: readonly CaptionSource[]): Promise<EditingCaptionLoadResult> {
@@ -160,7 +167,8 @@ export async function loadEditingCaptionSnapshot(sources: readonly CaptionSource
     current[source.kind] = loaded[index]?.revision ?? null
     sourceRevisions[source.sourceId] = current
     const currentPaths = sourcePaths[source.sourceId] ?? { source: { selectedPath: null, candidates: [], validCandidatePaths: [] }, translation: { selectedPath: null, candidates: [], validCandidatePaths: [] } }
-    currentPaths[source.kind] = { selectedPath: loaded[index]?.selectedPath ?? null, candidates: getCaptionSourceCandidatePaths(source), validCandidatePaths: loaded[index]?.validCandidatePaths ?? [] }
+    const loadedSource = loaded[index]
+    currentPaths[source.kind] = { selectedPath: loadedSource?.selectedPath ?? null, candidates: getCaptionSourceCandidatePaths(source), validCandidatePaths: loadedSource?.validCandidatePaths ?? [], ...(loadedSource?.preferredPath === undefined ? {} : { preferredPath: loadedSource.preferredPath, preferredPathAvailable: loadedSource.preferredPathAvailable }) }
     sourcePaths[source.sourceId] = currentPaths
   })
   return {
@@ -168,6 +176,25 @@ export async function loadEditingCaptionSnapshot(sources: readonly CaptionSource
     sourceRevisions,
     sourcePaths
   }
+}
+
+/** Clears only preferences that failed to load and lets normal candidate priority take over. */
+export function normalizeEditingCaptionPreferredPaths(preferredPaths: EditingCaptionPreferredPaths | undefined, sourcePaths: EditingCaptionSourcePaths): EditingCaptionPreferredPaths | undefined {
+  if (!preferredPaths) return undefined
+  let changed = false
+  const next: EditingCaptionPreferredPaths = Object.fromEntries(Object.entries(preferredPaths).map(([sourceId, paths]) => [sourceId, { ...paths }]))
+  for (const [sourceId, paths] of Object.entries(next)) {
+    const loadedPaths = sourcePaths[sourceId]
+    if (!loadedPaths) continue
+    for (const kind of ['source', 'translation'] as const) {
+      const preferredPath = paths[kind]
+      if (preferredPath && loadedPaths[kind].selectedPath !== preferredPath) {
+        paths[kind] = null
+        changed = true
+      }
+    }
+  }
+  return changed ? next : preferredPaths
 }
 
 export async function loadEditingCaptions(sources: readonly CaptionSource[]): Promise<EditingCaption[]> {

@@ -25,4 +25,28 @@ describe('editing project source path hints', () => {
 
     expect(unresolved.sources[0]).toEqual(project.sources[0])
   })
+
+  it('writes and resolves selected sidecar hints relative to the project file', () => {
+    const project = {
+      ...createEditingProject(source),
+      captionSourcePaths: { [source.id]: { source: '/workspace/media/demo.srt', translation: '/workspace/media/demo.zh-CN.srt' } }
+    }
+    const saved = addEditingProjectSourcePathHints(project, '/workspace/projects/demo.aivproj')
+
+    expect(saved.captionSourcePathHints).toEqual({ [source.id]: { source: '../media/demo.srt', translation: '../media/demo.zh-CN.srt' } })
+    const resolved = resolveEditingProjectSourcePathHints({ ...saved, captionSourcePaths: { [source.id]: { source: '/old/media/demo.srt', translation: '/old/media/demo.zh-CN.srt' } } }, '/workspace/projects/demo.aivproj', (path) => path === '/workspace/media/demo.mp4' || path === '/workspace/media/demo.srt' || path === '/workspace/media/demo.zh-CN.srt')
+    expect(resolved.captionSourcePaths).toEqual({ [source.id]: { source: '/workspace/media/demo.srt', translation: '/workspace/media/demo.zh-CN.srt' } })
+  })
+
+  it('clears a stale absolute preference when its portable hint is unavailable', () => {
+    const project = {
+      ...createEditingProject(source),
+      captionSourcePaths: { [source.id]: { source: '/old/media/demo.srt', translation: null } },
+      captionSourcePathHints: { [source.id]: { source: '../missing/demo.srt', translation: null } }
+    }
+    const resolved = resolveEditingProjectSourcePathHints(project, '/workspace/projects/demo.aivproj', (path) => path === '/workspace/media/demo.mp4')
+
+    expect(resolved.captionSourcePaths).toEqual({ [source.id]: { source: null, translation: null } })
+    expect(resolved.captionSourcePathHints).toEqual(project.captionSourcePathHints)
+  })
 })

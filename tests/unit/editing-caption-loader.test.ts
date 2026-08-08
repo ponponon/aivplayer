@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { areEditingCaptionWordsCompatible, createEditingCaptionPathCandidates, createEditingCaptionSources, createEditingCaptionSourceRevisionKey, hasEditingCaptionSourceRevisionChanges, loadEditingCaptionSnapshot } from '../../src/renderer/src/app/editing-caption-loader'
+import { areEditingCaptionWordsCompatible, createEditingCaptionPathCandidates, createEditingCaptionSources, createEditingCaptionSourceRevisionKey, hasEditingCaptionSourceRevisionChanges, loadEditingCaptionSnapshot, normalizeEditingCaptionPreferredPaths } from '../../src/renderer/src/app/editing-caption-loader'
 
 const primary = { id: 'source-primary', path: '/videos/primary.mp4', name: 'primary.mp4', fingerprint: 'primary:10', durationSeconds: 10 }
 const secondary = { id: 'source-secondary', path: '/videos/secondary.mp4', name: 'secondary.mp4', fingerprint: 'secondary:10', durationSeconds: 10 }
@@ -113,6 +113,34 @@ describe('editing caption sidecar source selection', () => {
     expect(sources[0]?.path).toBe('/videos/selected.VTT')
     expect(sources[0]?.pathCandidates?.[0]).toBe('/videos/selected.VTT')
     expect(sources[1]?.path).toBe('/videos/selected.zh-CN.srt')
+  })
+
+  it('reports and clears a missing preferred path after automatic fallback', async () => {
+    const contents = new Map([
+      ['/videos/primary.zh-CN.srt', 'WEBVTT\n\n00:00:00.000 --> 00:00:01.000\n自动译文\n']
+    ])
+    Object.defineProperty(globalThis, 'window', { configurable: true, writable: true, value: { aiv: {
+      readFileContent: async (path: string) => {
+        const text = contents.get(path)
+        if (text === undefined) throw new Error('missing')
+        return text
+      },
+      getFileRevision: async () => 999
+    } } })
+
+    const sources = createEditingCaptionSources({ sources: [primary], videoClips: [{ id: 'clip-1', sourceId: primary.id, sourceStartSeconds: 0, sourceEndSeconds: 1 }] }, {
+      currentMediaPath: null,
+      subtitlePath: null,
+      subtitleSrtPath: null,
+      translatedSubtitlePath: null,
+      translatedSubtitleSrtPath: null,
+      translationLanguage: 'zh-CN',
+      preferredCaptionPaths: { [primary.id]: { source: null, translation: '/old-machine/demo.zh-CN.srt' } }
+    })
+    const result = await loadEditingCaptionSnapshot(sources)
+
+    expect(result.sourcePaths[primary.id]?.translation).toMatchObject({ selectedPath: '/videos/primary.zh-CN.srt', preferredPath: '/old-machine/demo.zh-CN.srt', preferredPathAvailable: false })
+    expect(normalizeEditingCaptionPreferredPaths({ [primary.id]: { source: null, translation: '/old-machine/demo.zh-CN.srt' } }, result.sourcePaths)).toEqual({ [primary.id]: { source: null, translation: null } })
   })
 
   it('loads sidecars only for sources still used by the timeline', () => {
