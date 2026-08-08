@@ -677,12 +677,17 @@
           label: 'External subtitles',
           description: 'Export the video clip and a matching SRT subtitle file.'
         },
+        'translation-subtitle': {
+          label: 'Translation subtitles',
+          description: 'Export the video clip with an SRT containing only the current translation track.'
+        },
         'burn-subtitle': {
           label: 'Burn subtitles',
           description: 'Render subtitles directly into the exported video.'
         }
       },
       subtitleRequired: 'No subtitles are available right now, so only video-only export can be chosen.',
+      translationSubtitleRequired: 'No active translation subtitles are available, so translation-only export cannot be chosen.',
       outputTitle: 'Output target',
       outputFileName: 'File name',
       outputDirectory: 'Save directory',

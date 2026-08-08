@@ -677,12 +677,17 @@
           label: '外部字幕',
           description: '動画クリップと対応する SRT 字幕を書き出します。'
         },
+        'translation-subtitle': {
+          label: '翻訳字幕のみ',
+          description: '現在の翻訳トラックだけを含む SRT と動画クリップを書き出します。'
+        },
         'burn-subtitle': {
           label: '字幕を焼き込み',
           description: '字幕を動画に直接焼き込んで書き出します。'
         }
       },
       subtitleRequired: '今は使える字幕がないため、動画のみの書き出ししか選べません。',
+      translationSubtitleRequired: '有効な翻訳字幕がないため、翻訳字幕のみの書き出しは選べません。',
       outputTitle: '出力先',
       outputFileName: 'ファイル名',
       outputDirectory: '保存フォルダー',

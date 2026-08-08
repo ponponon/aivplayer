@@ -677,12 +677,17 @@
           label: '外挂字幕',
           description: '导出视频片段，并生成同名 SRT 字幕。'
         },
+        'translation-subtitle': {
+          label: '仅译文字幕',
+          description: '导出视频片段，并生成只包含当前译文轨的同名 SRT。'
+        },
         'burn-subtitle': {
           label: '烧录字幕',
           description: '将字幕直接烧录进视频。'
         }
       },
       subtitleRequired: '当前没有可用字幕，只能选择纯视频导出。',
+      translationSubtitleRequired: '当前没有可用的活动译文字幕，无法选择仅译文导出。',
       outputTitle: '输出目标',
       outputFileName: '文件名',
       outputDirectory: '保存目录',

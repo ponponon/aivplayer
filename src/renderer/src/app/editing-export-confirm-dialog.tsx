@@ -1,6 +1,6 @@
 import { Download, FolderOpen, X } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactElement } from 'react'
-import type { ClipExportMode } from '../../../shared/clip-export'
+import type { TimelineExportMode } from '../../../shared/clip-export'
 import type { EditingVideoClip } from '../../../shared/editing-types'
 import type { LocaleCopy } from '../../../shared/i18n'
 import type { EditingExportAudit, EditingExportAuditIssue } from '../../../core/editing/export-audit'
@@ -9,7 +9,7 @@ import { EditingExportSummary } from './editing-export-summary'
 import { FfmpegCapabilityStatus, useFfmpegCapabilities } from './ffmpeg-capability-status'
 import { useModalFocusTrap } from './use-modal-focus-trap'
 
-const EXPORT_MODES: ClipExportMode[] = ['video', 'external-subtitle', 'burn-subtitle']
+const EXPORT_MODES: TimelineExportMode[] = ['video', 'external-subtitle', 'translation-subtitle', 'burn-subtitle']
 
 type EditingExportConfirmDialogProps = {
   copy: LocaleCopy
@@ -19,10 +19,11 @@ type EditingExportConfirmDialogProps = {
   canvasWidth?: number
   canvasHeight?: number
   hasSubtitle: boolean
+  hasTranslationSubtitle: boolean
   audit: EditingExportAudit
-  initialMode: ClipExportMode
+  initialMode: TimelineExportMode
   onClose: () => void
-  onConfirm: (mode: ClipExportMode, outputVideoPath: string) => void
+  onConfirm: (mode: TimelineExportMode, outputVideoPath: string) => void
 }
 
 function describeAuditIssue(issue: EditingExportAuditIssue, copy: LocaleCopy['editing']): string {
@@ -38,9 +39,9 @@ function describeAuditIssue(issue: EditingExportAuditIssue, copy: LocaleCopy['ed
   }
 }
 
-export function EditingExportConfirmDialog({ copy, mediaPath, clips, durationSeconds, canvasWidth, canvasHeight, hasSubtitle, audit, initialMode, onClose, onConfirm }: EditingExportConfirmDialogProps): ReactElement {
+export function EditingExportConfirmDialog({ copy, mediaPath, clips, durationSeconds, canvasWidth, canvasHeight, hasSubtitle, hasTranslationSubtitle, audit, initialMode, onClose, onConfirm }: EditingExportConfirmDialogProps): ReactElement {
   const dialogRef = useRef<HTMLElement | null>(null)
-  const [selectedMode, setSelectedMode] = useState<ClipExportMode>(initialMode)
+  const [selectedMode, setSelectedMode] = useState<TimelineExportMode>(initialMode)
   const defaultFileName = buildTimelineExportDefaultFileName(mediaPath, clips.length, durationSeconds, selectedMode)
   const previousDefaultFileNameRef = useRef(defaultFileName)
   const [outputDirectory, setOutputDirectory] = useState(() => getTimelineExportPathDirectory(mediaPath))
@@ -59,8 +60,9 @@ export function EditingExportConfirmDialog({ copy, mediaPath, clips, durationSec
   }, [defaultFileName, outputFileName])
 
   useEffect(() => {
-    if (!hasSubtitle && selectedMode !== 'video') setSelectedMode('video')
-  }, [hasSubtitle, selectedMode])
+    const selectedModeUnavailable = selectedMode === 'translation-subtitle' ? !hasTranslationSubtitle : !hasSubtitle && selectedMode !== 'video'
+    if (selectedModeUnavailable) setSelectedMode('video')
+  }, [hasSubtitle, hasTranslationSubtitle, selectedMode])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
@@ -100,11 +102,12 @@ export function EditingExportConfirmDialog({ copy, mediaPath, clips, durationSec
         <div className="clip-export-mode-grid" role="group" aria-label={copy.clipExportDialog.modeTitle}>
           {EXPORT_MODES.map((mode) => {
             const option = copy.clipExportDialog.modeOptions[mode]
-            const disabled = !hasSubtitle && mode !== 'video'
+            const disabled = mode === 'translation-subtitle' ? !hasTranslationSubtitle : !hasSubtitle && mode !== 'video'
             return <button key={mode} className={`clip-export-mode-option ${selectedMode === mode ? 'is-selected' : ''}`} type="button" onClick={() => { if (!disabled) setSelectedMode(mode) }} disabled={disabled} aria-pressed={selectedMode === mode}><span className="clip-export-mode-heading"><strong>{option.label}</strong></span><span className="clip-export-mode-description">{option.description}</span></button>
           })}
         </div>
-        {!hasSubtitle ? <p className="clip-export-warning">{copy.clipExportDialog.subtitleRequired}</p> : null}
+        {!hasSubtitle && !hasTranslationSubtitle ? <p className="clip-export-warning">{copy.clipExportDialog.subtitleRequired}</p> : null}
+        {hasSubtitle && !hasTranslationSubtitle ? <p className="clip-export-warning">{copy.clipExportDialog.translationSubtitleRequired}</p> : null}
         <FfmpegCapabilityStatus copy={copy.editing} enabled={burnInSelected} capabilities={capabilities} isChecking={isChecking} />
       </section>
       <section className="editing-export-target" data-testid="editing-export-target">

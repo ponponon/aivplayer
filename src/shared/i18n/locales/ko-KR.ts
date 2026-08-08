@@ -677,12 +677,17 @@
           label: '외부 자막',
           description: '영상 클립과 같은 이름의 SRT 자막 파일을 함께 내보냅니다.'
         },
+        'translation-subtitle': {
+          label: '번역 자막만',
+          description: '현재 번역 트랙만 포함한 SRT와 영상 클립을 내보냅니다.'
+        },
         'burn-subtitle': {
           label: '자막 굽기',
           description: '자막을 영상에 직접 굽어서 내보냅니다.'
         }
       },
       subtitleRequired: '현재 사용할 수 있는 자막이 없어서 비디오만 내보낼 수 있습니다.',
+      translationSubtitleRequired: '활성 번역 자막이 없어서 번역 자막만 내보낼 수 없습니다.',
       outputTitle: '출력 대상',
       outputFileName: '파일 이름',
       outputDirectory: '저장 폴더',

@@ -1,6 +1,6 @@
 import { ArrowRight, ChevronLeft, ChevronRight, Copy, Download, FilePlus2, FolderOpen, Grid3X3, Pause, Play, Plus, Redo2, RotateCcw, Save, ScanSearch, Scissors, Trash2, Undo2, Volume2, X, ZoomIn, ZoomOut } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import type { ClipExportMode } from '../../../shared/clip-export'; import type { EditingThemeSettings } from '../../../core/editing/themes'
+import type { TimelineExportMode } from '../../../shared/clip-export'; import type { EditingThemeSettings } from '../../../core/editing/themes'
 import { getEditingCanvasDimensions } from '../../../core/editing/canvases'
 import { getEditingCaptionsForSubtitleExport } from '../../../core/editing/caption-serialization'
 import { getEditingFramingOrientation } from '../../../core/editing/framing-orientation'
@@ -119,7 +119,8 @@ export function EditingTimeline(): React.ReactElement | null {
   const currentPoint = editedTimeToSource(project.videoClips, currentTime)
   const canSplit = Boolean(currentPoint && currentPoint.sourceSeconds > currentPoint.clip.sourceStartSeconds + 0.01 && currentPoint.sourceSeconds < currentPoint.clip.sourceEndSeconds - 0.01)
   const canExport = spans.length > 0
-  const hasExportSubtitle = getEditingCaptionsForSubtitleExport(project).some((caption) => caption.text.trim().length > 0) || app.hasClipExportSubtitle
+  const hasExportSubtitle = getEditingCaptionsForSubtitleExport(project, 'source').some((caption) => caption.text.trim().length > 0) || app.hasClipExportSubtitle
+  const hasTranslationSubtitle = getEditingCaptionsForSubtitleExport(project, 'translation').some((caption) => caption.text.trim().length > 0)
   const currentTheme: EditingThemeSettings = { frameId: project.frameId ?? 'clean', captionEffect: project.captionEffect ?? 'none', subtitlePresetId: app.appSettings.subtitles.presetId, emphasisMode: app.appSettings.subtitles.emphasisMode, graphicStyle: selectedGraphic?.style ?? graphicDefaults.graphicStyle, graphicPosition: selectedGraphic?.position ?? graphicDefaults.graphicPosition }
   const applyEditingTheme = (theme: EditingThemeSettings): void => {
     app.patchSubtitleDisplaySettings({ presetId: theme.subtitlePresetId, emphasisMode: theme.emphasisMode })
@@ -147,9 +148,9 @@ export function EditingTimeline(): React.ReactElement | null {
     return <EditingVideoBlockTrack key={kind} blocks={project.videoBlocks ?? []} durationSeconds={durationSeconds} selectedBlockId={selectedVideoBlock?.id ?? null} selectedBlockIds={selection.videoBlockIds} trackLabel={app.copy.editing.videoBlockTrack} trackKind="videoBlocks" onReorderTrack={reorderOverlayTracks} emptyLabel={app.copy.editing.videoBlockEmpty} deleteLabel={app.copy.editing.videoBlockDelete} snapPoints={overlaySnapPoints} onSelect={(blockId, additive) => selectTimelineItem('videoBlock', blockId, additive)} onDelete={(blockId) => { app.deleteEditingVideoBlock(blockId); removeTimelineItemFromSelection('videoBlock', blockId) }} onMove={(blockId, startSeconds) => app.updateEditingVideoBlock(blockId, { startSeconds })} onResize={(blockId, startSeconds, endSeconds) => { const block = project.videoBlocks?.find((candidate) => candidate.id === blockId); const sourceStartSeconds = block && Math.abs(startSeconds - block.startSeconds) > 0.001 ? block.sourceStartSeconds + (startSeconds - block.startSeconds) : block?.sourceStartSeconds; app.updateEditingVideoBlock(blockId, { startSeconds, durationSeconds: endSeconds - startSeconds, ...(sourceStartSeconds === undefined ? {} : { sourceStartSeconds }) }) }} onDropSource={(sourceId, startSeconds) => app.addEditingVideoBlock(sourceId, { position: 'bottom-right', startSeconds })} />
   }
   const movableSelectionCount = selection.captionIds.size + selection.graphicIds.size + selection.videoBlockIds.size
-  const confirmEditingExport = (mode: ClipExportMode, outputVideoPath: string): void => {
+  const confirmEditingExport = (mode: TimelineExportMode, outputVideoPath: string): void => {
     setIsExportConfirmOpen(false)
-    app.syncClipExportPreferences(app.appSettings.capture.clipExportLengthSeconds, mode)
+    if (mode !== 'translation-subtitle') app.syncClipExportPreferences(app.appSettings.capture.clipExportLengthSeconds, mode)
     void app.exportEditingTimeline(mode, outputVideoPath)
   }
   return (
@@ -294,5 +295,5 @@ export function EditingTimeline(): React.ReactElement | null {
           {marquee ? <div className="editing-selection-marquee" aria-hidden="true" style={{ left: `${Math.min(marquee.startX, marquee.currentX) - (timelineContentRef.current?.getBoundingClientRect().left ?? 0)}px`, top: `${Math.min(marquee.startY, marquee.currentY) - (timelineContentRef.current?.getBoundingClientRect().top ?? 0)}px`, width: `${Math.abs(marquee.currentX - marquee.startX)}px`, height: `${Math.abs(marquee.currentY - marquee.startY)}px` }} /> : null}
         </div>
       </div>
-      {isExportConfirmOpen ? <EditingExportConfirmDialog copy={app.copy} mediaPath={project.sources[0]?.path ?? ''} clips={project.videoClips} durationSeconds={durationSeconds} canvasWidth={canvasDimensions.width} canvasHeight={canvasDimensions.height} hasSubtitle={hasExportSubtitle} audit={exportAudit} initialMode={hasExportSubtitle ? app.appSettings.capture.clipExportMode : 'video'} onClose={() => setIsExportConfirmOpen(false)} onConfirm={confirmEditingExport} /> : null}</section>
+      {isExportConfirmOpen ? <EditingExportConfirmDialog copy={app.copy} mediaPath={project.sources[0]?.path ?? ''} clips={project.videoClips} durationSeconds={durationSeconds} canvasWidth={canvasDimensions.width} canvasHeight={canvasDimensions.height} hasSubtitle={hasExportSubtitle} hasTranslationSubtitle={hasTranslationSubtitle} audit={exportAudit} initialMode={hasExportSubtitle ? app.appSettings.capture.clipExportMode : hasTranslationSubtitle ? 'translation-subtitle' : 'video'} onClose={() => setIsExportConfirmOpen(false)} onConfirm={confirmEditingExport} /> : null}</section>
   )}

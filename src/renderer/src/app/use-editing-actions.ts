@@ -3,7 +3,7 @@ import { createEditingProject } from '../../../core/editing/project'
 import { createEditingProjectFromVisionSearchResults, createEditingProjectFromVisionSelections, type VisionSourceMetadata } from '../../../core/ai/vision-evidence'
 import { editedDurationSeconds, editedTimeToSource } from '../../../core/editing/timeline-math'
 import { deleteVideoClipAtEdited, splitVideoClipAtEdited, trimVideoClipLeftAtEdited, trimVideoClipRightAtEdited } from '../../../core/editing/timeline-operations'
-import type { ClipExportMode } from '../../../shared/clip-export'
+import type { TimelineExportMode } from '../../../shared/clip-export'
 import type { VisionClipCollection, VisionSearchResult } from '../../../shared/vision-types'
 import type { AppDerived } from './use-app-derived'
 import type { AppModel } from './app-types'
@@ -206,7 +206,7 @@ export function useEditingActions(model: AppModel, derived: AppDerived, selectFi
     duplicateEditingSelection: (selection: import('../../../core/editing/selection').EditingSelection) => duplicateEditingSelection(model, selection),
     moveEditingSelection: (selection: import('../../../core/editing/selection').EditingSelection, deltaSeconds: number) => moveEditingSelection(model, selection, deltaSeconds),
     reorderEditingOverlayTracks: (source: import('../../../shared/editing-types').EditingOverlayTrackKind, target: import('../../../shared/editing-types').EditingOverlayTrackKind) => reorderEditingOverlayTracks(model, source, target),
-    exportEditingTimeline: (mode?: ClipExportMode, outputVideoPath?: string) => runEditingTimelineExport(model, derived, mode, outputVideoPath)
+    exportEditingTimeline: (mode?: TimelineExportMode, outputVideoPath?: string) => runEditingTimelineExport(model, derived, mode, outputVideoPath)
     , createEditingProjectFromVisionResults, createEditingProjectFromVisionCollection
   }
 }
