@@ -527,6 +527,7 @@
 - 点击差异定位时会同步选中对应的脚本 cue 和字幕时间轴卡片；translation diff 会映射到对应的 source 脚本段，added 且当前工程不存在的 cue 不制造虚假选中。
 - incoming-only cue 支持“预览新字幕”：冲突确认期间以只读临时卡片和状态条显示新文本 / 时间范围，明确标注尚未写入工程；点击关闭、保留当前编辑或强制重载时都会清理临时预览。
 - 新增字幕预览会按 source segment 配对 incoming 原文 / 译文：时间轴显示两张只读临时卡片，对照条明确展示“当前工程（无内容）→ 新字幕”、两条轨道文本和各自时间范围；预览不会写入 `captions` 或 `scriptSegments`。
+- changed cue 在点击任一定位动作后会投影 incoming 原文 / 译文 ghost 卡片，并在对照条同时展示 current / incoming 文本与时间；旧实体仍保持可选中，时间移动通过 current / incoming 区间并集可回溯，不会改写工程。
 
 ## 编辑器画布交互层级
 

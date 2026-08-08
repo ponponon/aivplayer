@@ -858,3 +858,9 @@
 - 现象：简化单测中的 translation ID（`translation-source-caption-2`）可以直接去掉 `translation-` 与 source ID 对齐，但真实 loader 生成的是 `source-${sourceId}-${index}` 与 `translation-${sourceId}-${index}`；只使用单一字符串映射会导致译文临时卡片不出现。
 - 经验：涉及持久化 ID 的跨轨配对，单测既要覆盖人为构造的稳定 ID，也要覆盖真实 loader 生成形态；不能因为一个简化 fixture 通过就认为配对契约完整。
 - 处理：新增 source segment 配对的兼容归一化，双轨 Smoke 使用真实旁车路径和 19 个 cue 验证 source / translation 两张预览卡片、对照文本和时间范围同时出现。
+
+## 2026-08-08：多轨时间筛选 Smoke 不能假设单条结果
+
+- 现象：changed source 与 translation 共享同一时间移动后，时间范围筛选会正确返回两条轨道；Smoke 仍用单元素 `textContent()`，Playwright strict mode 因 locator 命中 2 个 row 失败。
+- 经验：跨轨筛选的结果数量本身是用户可见契约，Smoke 应先断言轨道数量，再用 `allTextContents()` 聚合文本；不要为了复用单轨断言把合法的多轨结果压成一条。
+- 处理：Smoke 明确断言 changed track 数量为 2，并验证两条 row 都保留旧 / 新并集时间 `00:18.0–00:20.5`；真实重跑通过且 `consoleErrors:[]`。
