@@ -149,12 +149,10 @@ export function getEditingSubtitleReloadChangeKey(change: Pick<EditingSubtitleRe
   return `${change.status}:${change.kind}:${change.id}`
 }
 
-/** Returns the removed rows resolved together when the source row owns a paired translation row. */
-export function getEditingSubtitleReloadRelatedChangeKeys(changes: readonly EditingSubtitleReloadChange[], change: EditingSubtitleReloadChange): string[] {
-  return [...new Set(changes
-    .filter((candidate) => candidate.status === change.status)
-    .filter((candidate) => getEditingSubtitleReloadChangeKey(candidate) === getEditingSubtitleReloadChangeKey(change) || (change.status === 'removed' && change.kind === 'source' && shareEditingSubtitleReloadScriptSegments(change, candidate)))
-    .map(getEditingSubtitleReloadChangeKey))]
+/** Returns only the selected removed row so source and translation can be decided independently. */
+export function getEditingSubtitleReloadResolutionKeys(changes: readonly EditingSubtitleReloadChange[], change: EditingSubtitleReloadChange): string[] {
+  const changeKey = getEditingSubtitleReloadChangeKey(change)
+  return changes.some((candidate) => getEditingSubtitleReloadChangeKey(candidate) === changeKey) ? [changeKey] : []
 }
 
 function summarizeEditingSubtitleReloadChanges(changes: readonly EditingSubtitleReloadChange[]): EditingSubtitleReloadPreview {
@@ -378,7 +376,7 @@ export function applyEditingSubtitleReloadKeep(project: EditingProject, changes:
   const currentCaption = project.captions.find((caption) => caption.id === change.id && caption.kind === change.kind)
   if (!currentCaption || !matchesCurrentCaption(change, currentCaption)) return null
   const existingKeys = project.captionReloadResolution?.sourceRevisionKey === sourceRevisionKey ? project.captionReloadResolution.changeKeys : []
-  const resolvedChangeKeys = [...new Set([...existingKeys, ...getEditingSubtitleReloadRelatedChangeKeys(changes, change)])]
+  const resolvedChangeKeys = [...new Set([...existingKeys, ...getEditingSubtitleReloadResolutionKeys(changes, change)])]
   return { ...project, captionReloadResolution: { sourceRevisionKey, changeKeys: resolvedChangeKeys }, updatedAt }
 }
 

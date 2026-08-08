@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createEditingProject } from '../../src/core/editing/project'
-import { applyEditingSubtitleReloadAddition, applyEditingSubtitleReloadChange, applyEditingSubtitleReloadKeep, applyEditingSubtitleReloadRemoval, buildEditingSubtitleReloadPreview, filterEditingSubtitleReloadPreview, getEditingSubtitleReloadChangeKey, getEditingSubtitleReloadChangePage, getEditingSubtitleReloadChangePreview, getEditingSubtitleReloadChangeScriptSegmentId, getEditingSubtitleReloadIncomingPreview, getEditingSubtitleReloadRelatedChangeKeys, replaceEditingCaptionsForReload, shareEditingSubtitleReloadScriptSegmentIds } from '../../src/core/editing/subtitle-reload'
+import { applyEditingSubtitleReloadAddition, applyEditingSubtitleReloadChange, applyEditingSubtitleReloadKeep, applyEditingSubtitleReloadRemoval, buildEditingSubtitleReloadPreview, filterEditingSubtitleReloadPreview, getEditingSubtitleReloadChangeKey, getEditingSubtitleReloadChangePage, getEditingSubtitleReloadChangePreview, getEditingSubtitleReloadChangeScriptSegmentId, getEditingSubtitleReloadIncomingPreview, getEditingSubtitleReloadResolutionKeys, replaceEditingCaptionsForReload, shareEditingSubtitleReloadScriptSegmentIds } from '../../src/core/editing/subtitle-reload'
 
 const source = { id: 'source-1', path: '/tmp/demo.mp4', name: 'demo.mp4', fingerprint: 'demo:10', durationSeconds: 10 }
 
@@ -229,7 +229,7 @@ describe('editing subtitle reload', () => {
     expect(applyEditingSubtitleReloadRemoval(loaderProject, loaderRemoved)?.scriptSegments?.[0]).toMatchObject({ id: loaderSource.id, deleted: true })
   })
 
-  it('keeps a removed source cue and resolves its paired removal rows without mutating captions', () => {
+  it('keeps removed source and translation cues as independent decisions without mutating captions', () => {
     const currentSource = caption({ id: 'source-source-abc-1', text: '当前原文' })
     const currentTranslation = caption({ id: 'translation-source-abc-1', kind: 'translation', text: '当前译文' })
     const project = {
@@ -243,12 +243,14 @@ describe('editing subtitle reload', () => {
     const kept = applyEditingSubtitleReloadKeep(project, changes, sourceRemoved, 'source=next|translation=next', 200)
     expect(kept?.captions).toEqual(project.captions)
     expect(kept?.scriptSegments).toEqual(project.scriptSegments)
-    expect(kept?.captionReloadResolution).toEqual({ sourceRevisionKey: 'source=next|translation=next', changeKeys: [getEditingSubtitleReloadChangeKey(sourceRemoved), getEditingSubtitleReloadChangeKey(translationRemoved)] })
-    expect(getEditingSubtitleReloadRelatedChangeKeys(changes, sourceRemoved)).toEqual([getEditingSubtitleReloadChangeKey(sourceRemoved), getEditingSubtitleReloadChangeKey(translationRemoved)])
+    expect(kept?.captionReloadResolution).toEqual({ sourceRevisionKey: 'source=next|translation=next', changeKeys: [getEditingSubtitleReloadChangeKey(sourceRemoved)] })
+    expect(getEditingSubtitleReloadResolutionKeys(changes, sourceRemoved)).toEqual([getEditingSubtitleReloadChangeKey(sourceRemoved)])
     const preview = buildEditingSubtitleReloadPreview(project.captions, [])
-    expect(filterEditingSubtitleReloadPreview(preview, kept?.captionReloadResolution?.changeKeys ?? []).hasChanges).toBe(false)
+    expect(filterEditingSubtitleReloadPreview(preview, kept?.captionReloadResolution?.changeKeys ?? []).changes).toEqual([translationRemoved])
     const translationKept = applyEditingSubtitleReloadKeep(project, changes, translationRemoved, 'source=next|translation=next')
     expect(translationKept?.captionReloadResolution?.changeKeys).toEqual([getEditingSubtitleReloadChangeKey(translationRemoved)])
+    const bothKept = applyEditingSubtitleReloadKeep(kept!, changes, translationRemoved, 'source=next|translation=next')
+    expect(filterEditingSubtitleReloadPreview(preview, bothKept?.captionReloadResolution?.changeKeys ?? []).hasChanges).toBe(false)
   })
 
   it('rejects keeping a changed, non-removed, stale, or missing cue', () => {
