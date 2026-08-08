@@ -23,6 +23,14 @@ export function getEditingSubtitleReloadChangeScriptSegmentId(change: Pick<Editi
     : change.id
 }
 
+export type EditingSubtitleReloadIncomingPreview = {
+  id: string
+  kind: EditingCaption['kind']
+  text: string
+  startSeconds: number
+  endSeconds: number
+}
+
 export type EditingSubtitleReloadPreview = {
   hasChanges: boolean
   addedCount: number
@@ -97,6 +105,15 @@ function captionEndSeconds(caption: EditingCaption): number {
 
 function getFiniteTime(value: number | undefined): number | undefined {
   return value !== undefined && Number.isFinite(value) ? Math.max(0, value) : undefined
+}
+
+/** Builds a transient preview only for incoming-only cues; it never mutates the project. */
+export function getEditingSubtitleReloadIncomingPreview(change: EditingSubtitleReloadChange): EditingSubtitleReloadIncomingPreview | null {
+  if (change.status !== 'added' || change.incomingText === undefined) return null
+  const startSeconds = getFiniteTime(change.incomingStartSeconds)
+  const endSeconds = getFiniteTime(change.incomingEndSeconds)
+  if (startSeconds === undefined || endSeconds === undefined || endSeconds <= startSeconds) return null
+  return { id: `incoming-${change.kind}-${change.id}`, kind: change.kind, text: change.incomingText, startSeconds, endSeconds }
 }
 
 export function getEditingSubtitleReloadChangeTimeRange(change: EditingSubtitleReloadChange): { startSeconds?: number; endSeconds?: number } {

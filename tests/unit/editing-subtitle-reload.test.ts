@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createEditingProject } from '../../src/core/editing/project'
-import { buildEditingSubtitleReloadPreview, getEditingSubtitleReloadChangePage, getEditingSubtitleReloadChangeScriptSegmentId, replaceEditingCaptionsForReload } from '../../src/core/editing/subtitle-reload'
+import { buildEditingSubtitleReloadPreview, getEditingSubtitleReloadChangePage, getEditingSubtitleReloadChangeScriptSegmentId, getEditingSubtitleReloadIncomingPreview, replaceEditingCaptionsForReload } from '../../src/core/editing/subtitle-reload'
 
 const source = { id: 'source-1', path: '/tmp/demo.mp4', name: 'demo.mp4', fingerprint: 'demo:10', durationSeconds: 10 }
 
@@ -21,6 +21,12 @@ describe('editing subtitle reload', () => {
     expect(getEditingSubtitleReloadChangeScriptSegmentId({ id: 'source-caption-1', kind: 'source' })).toBe('source-caption-1')
     expect(getEditingSubtitleReloadChangeScriptSegmentId({ id: 'translation-source-caption-1', kind: 'translation' })).toBe('source-caption-1')
     expect(getEditingSubtitleReloadChangeScriptSegmentId({ id: 'translation-caption-1', kind: 'translation' })).toBe('caption-1')
+  })
+
+  it('builds a transient preview only for valid incoming-only cues', () => {
+    expect(getEditingSubtitleReloadIncomingPreview({ id: 'source-caption-2', kind: 'source', status: 'added', incomingText: '新增字幕', incomingStartSeconds: 3, incomingEndSeconds: 4 })).toEqual({ id: 'incoming-source-source-caption-2', kind: 'source', text: '新增字幕', startSeconds: 3, endSeconds: 4 })
+    expect(getEditingSubtitleReloadIncomingPreview({ id: 'source-caption-1', kind: 'source', status: 'changed', incomingText: '新文本', incomingStartSeconds: 1, incomingEndSeconds: 2 })).toBeNull()
+    expect(getEditingSubtitleReloadIncomingPreview({ id: 'source-caption-3', kind: 'source', status: 'added', incomingText: '坏时间', incomingStartSeconds: 4, incomingEndSeconds: 4 })).toBeNull()
   })
 
   it('summarizes changed, added and removed source/translation captions', () => {
