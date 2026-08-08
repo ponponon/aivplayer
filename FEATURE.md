@@ -550,6 +550,8 @@
 - 编辑项目新增 `captionSourceRevisions` manifest，按活动素材的 source / translation sidecar 分别记录文件 revision；工程文件导入 / 导出会校验并完整保留该 manifest，旧项目仍兼容单一 `captionSourceRevision`。
 - 多素材同时存在时，reload key 会携带每个活动 source 的路径和双轨 revision；某个活动素材的原文或译文旁车被修改、删除或重新生成时，只对对应素材生成冲突预览，不会把另一个素材的差异混在一起。
 - 新增 `npm run smoke:editing-multi-source-revision`，真实 Electron 覆盖第二素材 source / translation 同时更新，以及第二素材两条 sidecar 删除；验证差异只归属于第二素材、force reload 更新 manifest，删除后 revision 回到 `null` 且第一素材不受影响。
+- 打开 `.aivproj` 时如果素材绝对路径已失效，会要求重新选择视频，并按文件名与时长保守匹配；source ID、片段引用和字幕关系保持不变，无法唯一匹配或素材时长不足时拒绝修复，不按选择顺序猜测。
+- 字幕冲突预览的每条差异会显示所属素材文件名，并把 `sourceId` 参与当前 / incoming caption 的匹配；多素材同时间段的差异不会因为字幕 ID 相同而互相应用。
 
 ## 编辑器画布交互层级
 

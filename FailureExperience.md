@@ -1004,3 +1004,13 @@
 - 验证：字幕 loader、工程文件和时间线契约单测 37 项通过；`bun run typecheck`、`bun run build` 通过；真实 Electron Smoke 覆盖第二素材双轨更新与双轨删除，更新阶段只出现第二素材 2 条差异，删除阶段只出现 2 条 removed，force reload 后第一素材保持不变，`consoleErrors:[]`。
 - 额外修正：首次实现把“当前 source 替换为没有 sidecar 的新素材”当成 sidecar 删除，造成无意义冲突；随后将“旧 source 被移出活动集合”和“同一活动 source revision 变为 null”分开判断，并用回归 Smoke 固化该边界。
 - 提交边界：核心 `b736487`，单测 `6a4530a`，Smoke `6737fe0`；本条工程记录另行提交，内部计划继续 ignored。
+
+## 2026-08-09：工程素材移动不能按数组顺序猜测
+
+- 现象：`.aivproj` 只保存绝对素材路径，复制工程或移动媒体目录后，打开工程会在任何字幕 / 时间线恢复前直接失败；如果直接按 `sources` 数组位置把用户新选的文件塞回去，还可能把不同素材的片段和 sidecar 绑定错。
+- 经验：素材重定位必须保留原 `sourceId`，候选文件至少同时校验文件名与时长；同名重复、无法唯一匹配或新文件短于已有片段源范围时必须拒绝自动修复，让用户重新选择，不能用选择顺序或“唯一剩余文件”静默猜测。
+- 处理：新增 `matchEditingSourceRepairCandidates` 与 `relinkEditingProjectSources`；打开工程发现缺失素材时复用视频选择器，按 source ID 更新 path / name / fingerprint / 媒体尺寸，保留 clips、captions、scriptSegments 和 fragment 关系。路径修复后字幕 effect 重新读取新路径 sidecar，只有内容确有差异才进入冲突流程。
+- 现象二：冲突 diff 原先只有 `id` 和轨道类型，多个素材的相同时间字幕难以解释，且按 ID 应用裁决存在跨 source 误命中的风险。
+- 处理二：`EditingSubtitleReloadChange` 携带 `sourceId`；当前 / incoming / removed 的查找都优先校验 sourceId，冲突行显示素材文件名和路径 tooltip；冲突筛选只在 revision 或差异集合真正变化时重置，避免 undo/redo 的异步状态更新清空用户刚输入的筛选。
+- 验证：素材修复与字幕来源定向测试 27 项通过；`bun run typecheck`、`bun run build` 通过；多素材 Smoke 更新 / 删除阶段均显示第二素材 2 条来源行、第一素材 0 条来源行，四个既有 Caption / Fragment / Orphan / Cross-Source Smoke 回归通过，均无 `consoleErrors`。
+- 提交边界：核心 `39a265f`，来源 UI `9728c1f`，单测 `a186cfc`，Smoke `760c500`；本条工程记录另行提交，内部计划继续 ignored。
