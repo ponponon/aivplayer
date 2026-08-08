@@ -25,16 +25,19 @@ async function main(): Promise<void> {
   await writeFile(translationPath, makeVtt('初始跨设备译文'))
   await writeFile(translationAlternatePath, makeVtt('初始跨设备备用译文'))
 
-  const app = await electron.launch({
+  let app = await electron.launch({
     args: ['--no-sandbox', '--in-process-gpu', `--user-data-dir=${smokeHomeDirectory}`, 'out/main/index.js', mediaPath],
     env: { ...process.env, HOME: smokeHomeDirectory }
   })
 
   try {
-    const page = await app.firstWindow()
+    let page = await app.firstWindow()
     const consoleErrors: string[] = []
-    page.on('console', (message) => { if (message.type() === 'error') consoleErrors.push(message.text()) })
-    page.on('pageerror', (error) => consoleErrors.push(error.message))
+    const attachConsoleErrorListeners = (windowPage: typeof page): void => {
+      windowPage.on('console', (message) => { if (message.type() === 'error') consoleErrors.push(message.text()) })
+      windowPage.on('pageerror', (error) => consoleErrors.push(error.message))
+    }
+    attachConsoleErrorListeners(page)
 
     const openEditor = async (): Promise<void> => {
       await page.waitForLoadState('domcontentloaded')
@@ -44,16 +47,14 @@ async function main(): Promise<void> {
       await page.locator('[data-testid^="editing-script-row-"]').first().waitFor({ timeout: 10_000 })
     }
 
-    const readStoredProject = async (): Promise<{ captionSourceRevision?: string; captionSourceRevisions?: Record<string, { source: number | null; translation: number | null }>; captionSourcePaths?: Record<string, { source: string | null; translation: string | null }>; captions: Array<{ text: string; kind?: 'source' | 'translation' }> } | null> => page.evaluate(() => {
-      const entries = Object.values(JSON.parse(localStorage.getItem('aivplayer.editing-projects.v1') ?? '{}') as Record<string, { captionSourceRevision?: string; captionSourceRevisions?: Record<string, { source: number | null; translation: number | null }>; captionSourcePaths?: Record<string, { source: string | null; translation: string | null }>; captions: Array<{ text: string; kind?: 'source' | 'translation' }> }>)
+    const readStoredProject = async (): Promise<{ id?: string; captionSourceRevision?: string; captionSourceRevisions?: Record<string, { source: number | null; translation: number | null }>; captionSourcePaths?: Record<string, { source: string | null; translation: string | null }>; captions: Array<{ text: string; kind?: 'source' | 'translation' }> } | null> => page.evaluate(() => {
+      const entries = Object.values(JSON.parse(localStorage.getItem('aivplayer.editing-projects.v1') ?? '{}') as Record<string, { id?: string; captionSourceRevision?: string; captionSourceRevisions?: Record<string, { source: number | null; translation: number | null }>; captionSourcePaths?: Record<string, { source: string | null; translation: string | null }>; captions: Array<{ text: string; kind?: 'source' | 'translation' }> }>)
       return entries[0] ?? null
     })
 
     await openEditor()
     const baseline = await readStoredProject()
     if (!baseline?.captionSourceRevision || !baseline.captionSourceRevisions || !baseline.captions.some((caption) => caption.text.includes('初始跨设备原文'))) throw new Error(`Sidecar path baseline was not loaded: ${JSON.stringify(baseline)}`)
-    const candidateAuditDetails = page.locator('[data-testid="editing-project-status-details"]')
-    const candidateAuditGroups = candidateAuditDetails.locator('.editing-project-status-details-group')
     const sessionCandidateDetails = page.locator('[data-testid="editing-project-status-details"]')
     await sessionCandidateDetails.waitFor({ timeout: 10_000 })
     await sessionCandidateDetails.locator(':scope > summary').click()
@@ -73,6 +74,36 @@ async function main(): Promise<void> {
     const candidateAuditSessionStorageValue = await page.evaluate(() => localStorage.getItem('aivplayer.editing-project-status'))
     const candidateAuditSessionScreenshotPath = join(smokeHomeDirectory, 'aivplayer-smoke-sidecar-paths-session.png')
     await page.screenshot({ path: candidateAuditSessionScreenshotPath, fullPage: false })
+    await page.waitForFunction(() => localStorage.getItem('aivplayer.editing-ui-preferences.v1') !== null, undefined, { timeout: 10_000 })
+
+    await app.close()
+    app = await electron.launch({
+      args: ['--no-sandbox', '--in-process-gpu', `--user-data-dir=${smokeHomeDirectory}`, 'out/main/index.js', mediaPath],
+      env: { ...process.env, HOME: smokeHomeDirectory }
+    })
+    page = await app.firstWindow()
+    attachConsoleErrorListeners(page)
+    await openEditor()
+    const restartedCandidateDetails = page.locator('[data-testid="editing-project-status-details"]')
+    await restartedCandidateDetails.waitFor({ timeout: 10_000 })
+    const restartedCandidateFirstGroup = restartedCandidateDetails.locator('.editing-project-status-details-group').first()
+    const candidateAuditRestartedOuterOpen = await restartedCandidateDetails.evaluate((details) => (details as HTMLDetailsElement).open)
+    const candidateAuditRestartedGroupOpen = await restartedCandidateFirstGroup.evaluate((group) => (group as HTMLDetailsElement).open)
+    const candidateAuditRestartedPreference = await page.evaluate(({ projectId, smokeDirectory }) => {
+      const raw = localStorage.getItem('aivplayer.editing-ui-preferences.v1') ?? ''
+      const parsed = JSON.parse(raw) as { schemaVersion?: number; projects?: Record<string, { detailsOpen?: boolean; openGroups?: Record<string, boolean> }> }
+      const project = projectId ? parsed.projects?.[projectId] : undefined
+      return {
+        schemaVersion: parsed.schemaVersion ?? null,
+        detailsOpen: project?.detailsOpen ?? null,
+        openGroupCount: Object.values(project?.openGroups ?? {}).filter(Boolean).length,
+        containsSmokePath: raw.includes(smokeDirectory)
+      }
+    }, { projectId: baseline.id ?? null, smokeDirectory })
+    const candidateAuditRestartScreenshotPath = join(smokeHomeDirectory, 'aivplayer-smoke-sidecar-paths-restarted.png')
+    await page.screenshot({ path: candidateAuditRestartScreenshotPath, fullPage: false })
+    const candidateAuditDetails = page.locator('[data-testid="editing-project-status-details"]')
+    const candidateAuditGroups = candidateAuditDetails.locator('.editing-project-status-details-group')
 
     const revisionMs = Date.now() + 5_000
     await writeFile(sourcePath, makeVtt('更新跨设备原文'))
@@ -103,13 +134,15 @@ async function main(): Promise<void> {
     const candidateAuditStatus = await page.locator('[data-testid="editing-project-status-message"]').textContent()
     if (await candidateAuditDetails.count() !== 1) throw new Error('Candidate audit details disclosure was not rendered')
     const candidateAuditDetailsSummary = await candidateAuditDetails.locator(':scope > summary').textContent()
-    await candidateAuditDetails.locator(':scope > summary').click()
+    if (!(await candidateAuditDetails.evaluate((details) => (details as HTMLDetailsElement).open))) await candidateAuditDetails.locator(':scope > summary').click()
     const candidateAuditDetailsText = await candidateAuditDetails.textContent()
     const candidateAuditGroupCount = await candidateAuditGroups.count()
     const candidateAuditGroupLabels = await candidateAuditGroups.locator(':scope > summary').allTextContents()
-    const candidateAuditGroupOpenBefore = await candidateAuditGroups.evaluateAll((groups) => groups.map((group) => (group as HTMLDetailsElement).open))
     const candidateAuditFirstGroup = candidateAuditGroups.nth(0)
     const candidateAuditSecondGroup = candidateAuditGroups.nth(1)
+    if (await candidateAuditFirstGroup.evaluate((group) => (group as HTMLDetailsElement).open)) await candidateAuditFirstGroup.locator(':scope > summary').click()
+    if (await candidateAuditSecondGroup.evaluate((group) => (group as HTMLDetailsElement).open)) await candidateAuditSecondGroup.locator(':scope > summary').click()
+    const candidateAuditGroupOpenBefore = await candidateAuditGroups.evaluateAll((groups) => groups.map((group) => (group as HTMLDetailsElement).open))
     await candidateAuditFirstGroup.locator(':scope > summary').click()
     const candidateAuditFirstGroupOpen = await candidateAuditFirstGroup.evaluate((group) => (group as HTMLDetailsElement).open)
     const candidateAuditFirstGroupDetailsVisible = await candidateAuditFirstGroup.locator('.editing-project-status-details-list').isVisible()
@@ -208,6 +241,10 @@ async function main(): Promise<void> {
       candidateAuditSessionRefreshedGroupOpen,
       candidateAuditSessionStorageValue,
       candidateAuditSessionScreenshotPath,
+      candidateAuditRestartedOuterOpen,
+      candidateAuditRestartedGroupOpen,
+      candidateAuditRestartedPreference,
+      candidateAuditRestartScreenshotPath,
       candidateAuditReloadedOuterOpen,
       candidateAuditReloadedGroupOpen,
       candidateAuditGroupCount,
@@ -236,7 +273,7 @@ async function main(): Promise<void> {
     }
     console.log('AIVPlayer Smoke Editing Sidecar Paths')
     console.log(JSON.stringify(result))
-    if (result.selectedSourcePath?.toLowerCase() !== sourcePath.toLowerCase() || result.selectedTranslationPath?.toLowerCase() !== translationPath.toLowerCase() || result.candidateRows < 6 || result.conflictRows !== 2 || result.ambiguityCount !== 1 || !result.ambiguityText?.includes('2') || result.equivalentCount < 1 || !result.equivalentText?.includes('内容相同') || result.candidateAuditStatus?.includes(smokeDirectory) || !result.candidateAuditDetailsSummary?.includes('查看完整候选路径') || !result.candidateAuditSessionInitialOuterOpen || !result.candidateAuditSessionInitialGroupOpen || !result.candidateAuditSessionRefreshedOuterOpen || !result.candidateAuditSessionRefreshedGroupOpen || result.candidateAuditSessionStorageValue !== null || result.candidateAuditReloadedOuterOpen || result.candidateAuditReloadedGroupOpen.some(Boolean) || result.candidateAuditGroupCount !== 2 || result.candidateAuditGroupOpenBefore.some(Boolean) || !result.candidateAuditGroupLabels.some((label) => label.includes('原文')) || !result.candidateAuditGroupLabels.some((label) => label.includes('译文')) || !result.candidateAuditFirstGroupOpen || !result.candidateAuditFirstGroupDetailsVisible || !result.candidateAuditSecondGroupOpen || !result.candidateAuditFirstGroupClosed || !result.candidateAuditSecondGroupStillOpen || !result.candidateAuditDetailsText?.includes('内容相同') || !result.candidateAuditDetailsText?.includes('内容不同') || !result.candidateAuditDetailsText?.includes(smokeDirectory) || result.selectedCandidatePath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.selectedCandidateText !== '更新跨设备备用译文' || result.selectedCandidateRevision === null || result.undoPreferredPath?.toLowerCase() === result.alternateTranslationCandidatePath.toLowerCase() || result.undoCaptionText !== '初始跨设备译文' || result.redoPreferredPath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.redoCaptionText !== '更新跨设备备用译文' || result.clearedPreferredPath !== null || result.clearedCaptionText !== '更新跨设备译文' || result.clearUndoPreferredPath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.clearRedoPreferredPath !== null || result.consoleErrors.length > 0) process.exitCode = 1
+    if (result.selectedSourcePath?.toLowerCase() !== sourcePath.toLowerCase() || result.selectedTranslationPath?.toLowerCase() !== translationPath.toLowerCase() || result.candidateRows < 6 || result.conflictRows !== 2 || result.ambiguityCount !== 1 || !result.ambiguityText?.includes('2') || result.equivalentCount < 1 || !result.equivalentText?.includes('内容相同') || result.candidateAuditStatus?.includes(smokeDirectory) || !result.candidateAuditDetailsSummary?.includes('查看完整候选路径') || !result.candidateAuditSessionInitialOuterOpen || !result.candidateAuditSessionInitialGroupOpen || !result.candidateAuditSessionRefreshedOuterOpen || !result.candidateAuditSessionRefreshedGroupOpen || result.candidateAuditSessionStorageValue !== null || !result.candidateAuditRestartedOuterOpen || !result.candidateAuditRestartedGroupOpen || result.candidateAuditRestartedPreference.schemaVersion !== 1 || result.candidateAuditRestartedPreference.detailsOpen !== true || result.candidateAuditRestartedPreference.openGroupCount !== 1 || result.candidateAuditRestartedPreference.containsSmokePath || !result.candidateAuditReloadedOuterOpen || !result.candidateAuditReloadedGroupOpen[0] || result.candidateAuditReloadedGroupOpen[1] || result.candidateAuditGroupCount !== 2 || result.candidateAuditGroupOpenBefore.some(Boolean) || !result.candidateAuditGroupLabels.some((label) => label.includes('原文')) || !result.candidateAuditGroupLabels.some((label) => label.includes('译文')) || !result.candidateAuditFirstGroupOpen || !result.candidateAuditFirstGroupDetailsVisible || !result.candidateAuditSecondGroupOpen || !result.candidateAuditFirstGroupClosed || !result.candidateAuditSecondGroupStillOpen || !result.candidateAuditDetailsText?.includes('内容相同') || !result.candidateAuditDetailsText?.includes('内容不同') || !result.candidateAuditDetailsText?.includes(smokeDirectory) || result.selectedCandidatePath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.selectedCandidateText !== '更新跨设备备用译文' || result.selectedCandidateRevision === null || result.undoPreferredPath?.toLowerCase() === result.alternateTranslationCandidatePath.toLowerCase() || result.undoCaptionText !== '初始跨设备译文' || result.redoPreferredPath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.redoCaptionText !== '更新跨设备备用译文' || result.clearedPreferredPath !== null || result.clearedCaptionText !== '更新跨设备译文' || result.clearUndoPreferredPath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.clearRedoPreferredPath !== null || result.consoleErrors.length > 0) process.exitCode = 1
   } finally {
     await app.close()
   }
