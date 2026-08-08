@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { EDITING_GRAPHIC_MOTION_MAX_DURATION, EDITING_GRAPHIC_MOTION_MIN_DURATION, EDITING_GRAPHIC_MOTIONS, getEditingGraphicMotion } from '../../../core/editing/graphic-motion'
 import type { EditingGraphic, EditingGraphicMotion, EditingGraphicPosition, EditingGraphicStyle } from '../../../shared/editing-types'
 
@@ -33,9 +33,12 @@ export function EditingGraphicEditor({ graphic, title, textLabel, textPlaceholde
   const [enterMotion, setEnterMotion] = useState<EditingGraphicMotion>(graphic ? getEditingGraphicMotion(graphic).enterMotion : 'none')
   const [exitMotion, setExitMotion] = useState<EditingGraphicMotion>(graphic ? getEditingGraphicMotion(graphic).exitMotion : 'none')
   const [motionDurationSeconds, setMotionDurationSeconds] = useState(graphic ? getEditingGraphicMotion(graphic).durationSeconds : 0.35)
+  const previousGraphicIdRef = useRef<string | null>(null)
 
   useEffect(() => {
-    if (!graphic) return
+    if (!graphic) { previousGraphicIdRef.current = null; return }
+    const selectionChanged = previousGraphicIdRef.current !== graphic.id
+    previousGraphicIdRef.current = graphic.id
     setText(graphic.text)
     setPosition(graphic.position)
     setStyle(graphic.style)
@@ -44,7 +47,7 @@ export function EditingGraphicEditor({ graphic, title, textLabel, textPlaceholde
     setEnterMotion(motion.enterMotion)
     setExitMotion(motion.exitMotion)
     setMotionDurationSeconds(motion.durationSeconds)
-    setIsOpen(true)
+    if (selectionChanged) setIsOpen(true)
   }, [graphic])
 
   if (!graphic) return null

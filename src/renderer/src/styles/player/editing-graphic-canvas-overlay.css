@@ -30,7 +30,7 @@
 .editing-graphic-canvas-handle { top: 50%; width: 8px; height: 28px; transform: translateY(-50%); border: 2px solid var(--accent); border-radius: 999px; background: var(--panel); box-shadow: 0 2px 8px rgba(0, 0, 0, .28); cursor: ew-resize; }
 .editing-graphic-canvas-handle.is-left { left: -5px; }
 .editing-graphic-canvas-handle.is-right { right: -5px; }
-.editing-graphic-canvas-rotate { left: 50%; bottom: -28px; width: 24px; height: 24px; transform: translateX(-50%); border: 1px solid var(--accent); border-radius: 50%; color: var(--accent); background: var(--panel); cursor: grab; }
+.editing-graphic-canvas-rotate { left: 50%; bottom: 4px; z-index: 2; width: 24px; height: 24px; transform: translateX(-50%); border: 1px solid var(--accent); border-radius: 50%; color: var(--accent); background: var(--panel); cursor: grab; }
 .editing-graphic-canvas-overlay.is-dragging .editing-graphic-canvas-box { border-style: dashed; background: rgba(var(--accent-rgb), .08); }
 .editing-graphic-canvas-guide { position: absolute; background: rgba(var(--accent-rgb), .82); box-shadow: 0 0 8px rgba(var(--accent-rgb), .66); pointer-events: none; }
 .editing-graphic-canvas-guide.is-vertical { top: 0; bottom: 0; left: 50%; width: 1px; }
