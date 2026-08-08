@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { EditingCaption, EditingCaptionSourceRevisions, EditingProject } from '../../../shared/editing-types'
+import type { EditingCaption, EditingCaptionSourceRevisions, EditingProject, EditingSource } from '../../../shared/editing-types'
 import type { AppDerived } from './use-app-derived'
 import type { AppModel } from './app-types'
 import { createEditingCaptionSources, createEditingCaptionSourceRevisionKey, hasEditingCaptionSourceRevisionChanges, loadEditingCaptionSnapshot } from './editing-caption-loader'
@@ -11,6 +11,7 @@ import { isEditingScriptSegmentCaption } from '../../../core/editing/script-oper
 export type EditingCaptionReloadConflict = {
   sourceRevisionKey: string
   sourceRevisions: EditingCaptionSourceRevisions
+  sources: Pick<EditingSource, 'id' | 'name' | 'path'>[]
   captions: EditingCaption[]
   changes: EditingSubtitleReloadChange[]
   preview: EditingSubtitleReloadPreview
@@ -63,7 +64,7 @@ export function useEditingCaptionEffect(model: AppModel, derived: AppDerived): {
         const preview = getPendingCaptionReloadPreview(current, sourceRevisionKey, fullPreview)
         const hasAcceptedRevision = (typeof current.captionSourceRevision === 'string' && current.captionSourceRevision.length > 0) || current.captionSourceRevisions !== undefined
         if (hasAcceptedRevision && current.captionSourceRevision !== sourceRevisionKey && hasEditingCaptionSourceRevisionChanges(current.captionSourceRevisions, sourceRevisions) && preview.hasChanges) {
-          setEditingCaptionReloadConflict({ sourceRevisionKey, sourceRevisions, captions, changes: fullPreview.changes, preview })
+          setEditingCaptionReloadConflict({ sourceRevisionKey, sourceRevisions, sources: current.sources.map(({ id, name, path }) => ({ id, name, path })), captions, changes: fullPreview.changes, preview })
           return current
         }
         setEditingCaptionReloadConflict((conflict) => conflict?.sourceRevisionKey === sourceRevisionKey ? null : conflict)

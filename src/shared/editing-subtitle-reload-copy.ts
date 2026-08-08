@@ -31,6 +31,8 @@ export type EditingSubtitleReloadCopy = {
   removed: (count: number) => string
   current: string
   incoming: string
+  sourceFile: string
+  unknownSource: string
   empty: string
   source: string
   translation: string
@@ -77,6 +79,8 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     removed: (count) => `${count} 条删除`,
     current: '当前编辑',
     incoming: '新字幕',
+    sourceFile: '素材',
+    unknownSource: '未知素材',
     empty: '（无内容）',
     source: '原文',
     translation: '译文',
@@ -121,6 +125,8 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     removed: (count) => `${count} removed`,
     current: 'Current edit',
     incoming: 'New subtitle',
+    sourceFile: 'Media source',
+    unknownSource: 'Unknown source',
     empty: '(empty)',
     source: 'Source',
     translation: 'Translation',
@@ -165,6 +171,8 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     removed: (count) => `${count} 件削除`,
     current: '現在の編集',
     incoming: '新しい字幕',
+    sourceFile: '素材',
+    unknownSource: '不明な素材',
     empty: '（空）',
     source: '原文',
     translation: '翻訳',
@@ -209,6 +217,8 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     removed: (count) => `${count}개 삭제`,
     current: '현재 편집',
     incoming: '새 자막',
+    sourceFile: '소재',
+    unknownSource: '알 수 없는 소재',
     empty: '(비어 있음)',
     source: '원문',
     translation: '번역',

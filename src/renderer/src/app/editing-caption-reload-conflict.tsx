@@ -28,6 +28,11 @@ function kindLabel(change: EditingSubtitleReloadChange, copy: EditingSubtitleRel
   return change.kind === 'source' ? copy.source : copy.translation
 }
 
+function sourceLabel(change: EditingSubtitleReloadChange, conflict: EditingCaptionReloadConflict, copy: EditingSubtitleReloadCopy): { name: string; path?: string } {
+  const source = change.sourceId ? conflict.sources.find((candidate) => candidate.id === change.sourceId) : undefined
+  return source ? { name: source.name, path: source.path } : { name: copy.unknownSource }
+}
+
 function incomingActionLabel(change: EditingSubtitleReloadChange, copy: EditingSubtitleReloadCopy): string {
   return change.status === 'added' ? copy.previewIncoming : copy.seekIncoming
 }
@@ -74,7 +79,7 @@ export function EditingCaptionReloadConflict({ conflict, copy, onSeek, onPreview
     setTimeStart('')
     setTimeEnd('')
     setPageIndex(0)
-  }, [conflict])
+  }, [conflict.sourceRevisionKey, conflict.preview.changes.map((change) => `${change.status}:${change.kind}:${change.sourceId ?? ''}:${change.id}`).join('|')])
 
   return (
     <section className="editing-caption-reload-conflict" data-testid="editing-caption-reload-conflict" role="alert">
@@ -125,8 +130,8 @@ export function EditingCaptionReloadConflict({ conflict, copy, onSeek, onPreview
         </div>
         <div className="editing-caption-reload-list">
           {changePage.changes.map((change) => (
-            <div className={`editing-caption-reload-row is-${change.status}`} key={`${change.status}-${change.kind}-${change.id}`}>
-              <div className="editing-caption-reload-row-meta"><span>{statusLabel(change, copy)}</span><small>{kindLabel(change, copy)}</small><small className="editing-caption-reload-row-time">{changeTimeLabel(change)}</small></div>
+            <div className={`editing-caption-reload-row is-${change.status}`} key={`${change.status}-${change.kind}-${change.sourceId ?? 'unknown'}-${change.id}`}>
+              <div className="editing-caption-reload-row-meta"><span>{statusLabel(change, copy)}</span><small>{kindLabel(change, copy)}</small><small className="editing-caption-reload-row-source" title={sourceLabel(change, conflict, copy).path}>{copy.sourceFile}：{sourceLabel(change, conflict, copy).name}</small><small className="editing-caption-reload-row-time">{changeTimeLabel(change)}</small></div>
               <div className="editing-caption-reload-values">
                 <span title={copy.current}>{change.currentText ?? copy.empty}</span>
                 <ArrowRight size={12} aria-hidden="true" />
