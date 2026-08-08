@@ -534,6 +534,7 @@
 - 孤立译文会由 `scriptSegment.deleted` 与 translation caption 的 loader ID 关系统一识别；时间轴显示四语言提示和虚线状态，仍允许调整时间，但当前 source-led 字幕导出不会包含孤立译文。
 - SRT、烧录 ASS 和时间线导出可用性判断共用 `getEditingCaptionsForSubtitleExport`，避免孤立译文只在某一种导出路径意外出现；当前没有“仅译文导出”模式。
 - 新增 `npm run smoke:editing-orphan-translation`，真实 Electron reload 后验证 source caption 不补回、孤立 translation 保留、脚本继续 `deleted`，并检查状态提示、data attribute 与 `consoleErrors:[]`。
+- 恢复已删除脚本段时，原文字幕按恢复后的源时间重新物化；如果工程中已有孤立译文，则按兼容 loader ID 重新关联并保留用户已编辑的译文文本、时间和实体 ID，不再用脚本快照覆盖它。
 
 ## 编辑器画布交互层级
 
