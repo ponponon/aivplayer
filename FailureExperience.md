@@ -768,3 +768,21 @@
 - 现象：Smoke 进程可以通过环境变量让主进程调用本地假翻译服务，但 Renderer 的 AI 设置守卫仍读取持久化 AppSettings，切换目标语言时会弹出设置遮罩，导致按钮点击测试误判为缓存失败。
 - 经验：涉及配置守卫的 UI Smoke 必须同时验证用户态设置写回；测试桩可以用环境变量提供服务，但要把临时 endpoint / model / fake key 写入隔离 user-data 后再重载窗口，才能覆盖真实恢复链路。
 - 处理：Smoke 通过 preload IPC 生成翻译缓存，将本地假服务配置写入临时设置并重启 Renderer，随后验证翻译状态恢复；覆盖导入不同正文后等待旧翻译状态消失，再检查新 source 和重启恢复。
+
+## 2026-08-08：总结缓存也必须绑定当前字幕 revision
+
+- 现象：总结文件虽然按字幕正文哈希生成不同路径，但 Renderer 状态、总结来源和导出 Hook 仍可能只看路径 / 模式；同一路径正式字幕覆盖后，旧总结可能在缓存 effect 清理前继续显示，甚至被复制或导出。
+- 经验：缓存文件键只能解决“下次查找命中哪个文件”，不能替代当前 UI 状态校验。总结结果、manifest、原文 / 译文来源选择和导出入口必须共享 source path、source type、source revision、语言、模型和模式这一组上下文。
+- 处理：总结 IPC 返回 `sourceSubtitleRevision`，manifest key 纳入 revision；Renderer 将译文输出 revision 传给总结来源选择，缓存恢复和导出前严格校验上下文；真实 Electron Smoke 生成旧总结、覆盖正式字幕并验证当前面板和重启后均不再出现旧总结。
+
+## 2026-08-08：Smoke 修改面板状态后必须恢复下一步操作的可见前置条件
+
+- 现象：总结清理断言需要切换到 Summary 面板，随后脚本直接点击 Vision 面板中的草稿删除按钮，Playwright 会等待不可见元素直到超时；业务断言其实已经通过，失败来自 Smoke 编排。
+- 经验：每个 UI 断言 helper 都应明确自己的面板副作用；helper 返回后不能假设调用者仍停留在原面板，下一次定位前要显式切回承载控件的面板。
+- 处理：总结清理 helper 后显式切回 Vision 面板再删除草稿，并重跑真实 Electron Smoke；以后把面板切换视为 Smoke helper 的可观察契约。
+
+## 2026-08-08：LanceDB 视觉证据行不能用固定自定义 ID 作为唯一回归条件
+
+- 现象：Smoke 通过 LanceDB 插入一条固定 `smoke-visual-evidence` 后，真实播放器启动会继续按时间片生成视觉证据；在当前 LanceDB 行为下，固定 ID 可能不再出现在最终查询结果，导致“视觉行必须恰好一条”的断言误报。
+- 经验：对异步索引副作用，应断言用户关心的稳定事实——稳定媒体至少有视觉证据、没有 stale 媒体行、OCR / 字幕数量和文本正确；不要把存储层自动生成的分段 ID 或固定行数当成唯一成功标准。
+- 处理：Smoke 改为按 `evidence_type=visual` 且绑定稳定媒体路径统计视觉行，并在失败信息中输出各类型计数；真实重跑得到 `evidenceRows:24`、`ocrRows:1`、`subtitleRows:1`、`visualRows:22`。
