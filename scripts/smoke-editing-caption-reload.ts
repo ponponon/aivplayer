@@ -107,9 +107,20 @@ async function main(): Promise<void> {
     await page.waitForFunction(() => document.querySelectorAll('[data-testid="editing-caption-reload-preview"] .editing-caption-reload-row').length === 1, null, { timeout: 10_000 })
     const searchedText = await preview.locator('.editing-caption-reload-row').textContent()
     const seekRow = preview.locator('.editing-caption-reload-row').filter({ hasText: '外部更新字幕 10' })
+    const targetScriptRow = page.locator('[data-testid^="editing-script-row-"]').filter({ hasText: '原始字幕10' })
+    const targetCaptionItem = page.locator('[data-testid^="editing-caption-item-"]').filter({ hasText: '原始字幕 10' })
+    const targetScriptRowTestId = await targetScriptRow.getAttribute('data-testid')
+    const targetCaptionItemTestId = await targetCaptionItem.getAttribute('data-testid')
+    if (!targetScriptRowTestId || !targetCaptionItemTestId) throw new Error('Caption reload Smoke could not identify the changed cue selections')
     await seekRow.locator('[data-testid^="editing-caption-reload-seek-incoming-"]').click()
     await page.waitForFunction(() => document.querySelector('[data-testid="editing-time-readout"]')?.textContent?.includes('00:18') === true, null, { timeout: 10_000 })
     const seekReadout = await page.locator('[data-testid="editing-time-readout"]').textContent()
+    await page.waitForFunction(({ scriptTestId, captionTestId }) => document.querySelector(`[data-testid="${scriptTestId}"]`)?.classList.contains('is-selected') === true && document.querySelector(`[data-testid="${captionTestId}"]`)?.classList.contains('is-selected') === true, { scriptTestId: targetScriptRowTestId, captionTestId: targetCaptionItemTestId }, { timeout: 10_000 })
+    const selectedScriptRow = await targetScriptRow.getAttribute('class')
+    const selectedCaptionItem = await targetCaptionItem.getAttribute('class')
+    await targetScriptRow.scrollIntoViewIfNeeded()
+    const selectionScreenshotPath = join(smokeHomeDirectory, 'aivplayer-smoke-caption-reload-selection.png')
+    await page.screenshot({ path: selectionScreenshotPath, fullPage: false })
     await page.locator('[data-testid="editing-caption-reload-status-filter"]').selectOption('added')
     await page.locator('[data-testid="editing-caption-reload-no-matches"]').waitFor({ timeout: 10_000 })
     const noMatchesShown = await page.locator('[data-testid="editing-caption-reload-no-matches"]').count() > 0
@@ -130,11 +141,11 @@ async function main(): Promise<void> {
     const forceAfterText = await page.locator('.editing-script-text').first().textContent()
     const forceScreenshotPath = join(smokeHomeDirectory, 'aivplayer-smoke-caption-reload-force.png')
     await page.screenshot({ path: forceScreenshotPath, fullPage: false })
-    const result = { previewIncludesIncoming: previewText?.includes('外部更新字幕') === true, protectedText: protectedText ?? '', keepPreserved: keptText === manualText, forceBeforeText: forceBeforeText ?? '', forceReplaced: forceAfterText === '强制重载后的字幕', expectedCueCount, firstPageRows, secondPageRows, pageAfterNext, timeFilteredText: timeFilteredText ?? '', searchedText: searchedText ?? '', seekReadout: seekReadout ?? '', noMatchesShown, conflictScreenshotPath, forceScreenshotPath, consoleErrors }
+    const result = { previewIncludesIncoming: previewText?.includes('外部更新字幕') === true, protectedText: protectedText ?? '', keepPreserved: keptText === manualText, forceBeforeText: forceBeforeText ?? '', forceReplaced: forceAfterText === '强制重载后的字幕', expectedCueCount, firstPageRows, secondPageRows, pageAfterNext, timeFilteredText: timeFilteredText ?? '', searchedText: searchedText ?? '', seekReadout: seekReadout ?? '', selectedScriptRow: selectedScriptRow ?? '', selectedCaptionItem: selectedCaptionItem ?? '', noMatchesShown, conflictScreenshotPath, selectionScreenshotPath, forceScreenshotPath, consoleErrors }
     console.log('AIVPlayer Smoke Editing Caption Reload')
     console.log(`Media: ${mediaPath}`)
     console.log(`Result: ${JSON.stringify(result)}`)
-    if (!result.previewIncludesIncoming || !result.keepPreserved || !result.forceReplaced || result.forceBeforeText !== manualText || result.expectedCueCount !== expectedCueCount || result.firstPageRows !== 8 || result.secondPageRows !== 8 || !result.pageAfterNext?.includes('第 2 / 3 页') || !result.timeFilteredText?.includes('00:18.0–00:19.5') || !result.searchedText?.includes('外部更新字幕 10') || !result.seekReadout?.includes('00:18') || !result.noMatchesShown || consoleErrors.length > 0) process.exitCode = 1
+    if (!result.previewIncludesIncoming || !result.keepPreserved || !result.forceReplaced || result.forceBeforeText !== manualText || result.expectedCueCount !== expectedCueCount || result.firstPageRows !== 8 || result.secondPageRows !== 8 || !result.pageAfterNext?.includes('第 2 / 3 页') || !result.timeFilteredText?.includes('00:18.0–00:19.5') || !result.searchedText?.includes('外部更新字幕 10') || !result.seekReadout?.includes('00:18') || !result.selectedScriptRow?.includes('is-selected') || !result.selectedCaptionItem?.includes('is-selected') || !result.noMatchesShown || consoleErrors.length > 0) process.exitCode = 1
   } finally {
     await app.close()
   }
