@@ -36,7 +36,7 @@ export function VisionTtsTask({ copy, mediaPath, currentTime, onSubtitleImported
   const [audioPath, setAudioPath] = useState<string | null>(null)
   const [isSavingDraft, setIsSavingDraft] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { draft, drafts, pendingImport, draftBusyId, draftNotice, clearCurrentDraft, clearPendingImport, saveDraft: saveDraftRequest, deleteDraft, importDraft } = useVisionTtsDrafts({ copy, mediaPath, onSubtitleImported, onError: setError })
+  const { draft, drafts, pendingImport, draftBusyId, draftNotice, selectedDraftIds, clearCurrentDraft, clearPendingImport, toggleDraftSelection, saveDraft: saveDraftRequest, deleteDraft, importDraft, mergeSelectedDrafts } = useVisionTtsDrafts({ copy, mediaPath, onSubtitleImported, onError: setError })
   const isRunning = task?.status === 'queued' || task?.status === 'running' || task?.status === 'retrying'
   const audioArtifact = task?.status === 'completed'
     ? task.artifacts.find((artifact): artifact is TtsAudioArtifact => artifact.artifactType === 'tts-audio' && Boolean(artifact.audioPath))
@@ -161,7 +161,7 @@ export function VisionTtsTask({ copy, mediaPath, currentTime, onSubtitleImported
       <button className="vision-secondary-action" data-testid="vision-tts-save-draft-button" type="button" onClick={saveDraft} disabled={!draftText.trim() || isSavingDraft}>{isSavingDraft ? copy.ttsSavingDraft : copy.ttsSaveDraft}</button>
       {draft ? <small className="vision-tts-draft-saved" data-testid="vision-tts-draft-saved">{copy.ttsDraftSaved} · {draft.draftPath.split(/[\\/]/).pop()}</small> : null}
     </div> : null}
-    <VisionTtsDraftList copy={copy} drafts={drafts} pendingImportId={pendingImport?.id ?? null} draftBusyId={draftBusyId} draftNotice={draftNotice} onImport={importDraft} onDelete={deleteDraft} onCancelImport={clearPendingImport} />
+    <VisionTtsDraftList copy={copy} drafts={drafts} pendingImportId={pendingImport?.id ?? null} draftBusyId={draftBusyId} draftNotice={draftNotice} selectedDraftIds={selectedDraftIds} onImport={importDraft} onDelete={deleteDraft} onToggleSelection={toggleDraftSelection} onMergeSelected={mergeSelectedDrafts} onCancelImport={clearPendingImport} />
     {error ? <small className="vision-error">{error}</small> : null}
   </section>
 }

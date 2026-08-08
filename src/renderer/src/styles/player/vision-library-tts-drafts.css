@@ -21,6 +21,30 @@
   color: var(--accent);
 }
 
+.vision-tts-draft-list-heading-actions,
+.vision-tts-draft-selection {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vision-tts-draft-selection {
+  align-items: flex-start;
+  cursor: pointer;
+}
+
+.vision-tts-draft-selection input {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  accent-color: var(--accent);
+}
+
+.vision-tts-draft-selection span {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
 .vision-tts-draft-list-heading div,
 .vision-tts-draft-item-copy {
   display: grid;

@@ -8,8 +8,11 @@ type VisionTtsDraftListProps = {
   pendingImportId: string | null
   draftBusyId: string | null
   draftNotice: string | null
+  selectedDraftIds: Set<string>
   onImport: (draft: MediaEvidenceDraft, overwriteExisting: boolean) => void
   onDelete: (draft: MediaEvidenceDraft) => void
+  onToggleSelection: (draftId: string) => void
+  onMergeSelected: () => void
   onCancelImport: () => void
 }
 
@@ -17,15 +20,15 @@ function formatSeconds(value: number): string {
   return Math.max(0, value).toFixed(1)
 }
 
-export function VisionTtsDraftList({ copy, drafts, pendingImportId, draftBusyId, draftNotice, onImport, onDelete, onCancelImport }: VisionTtsDraftListProps): React.ReactElement | null {
+export function VisionTtsDraftList({ copy, drafts, pendingImportId, draftBusyId, draftNotice, selectedDraftIds, onImport, onDelete, onToggleSelection, onMergeSelected, onCancelImport }: VisionTtsDraftListProps): React.ReactElement | null {
   if (drafts.length === 0) return null
   return <div className="vision-tts-draft-list" data-testid="vision-tts-draft-list">
-    <div className="vision-tts-draft-list-heading"><div><strong>{copy.ttsDraftListTitle}</strong><small>{copy.ttsDraftListDescription}</small></div><Download size={15} /></div>
+    <div className="vision-tts-draft-list-heading"><div><strong>{copy.ttsDraftListTitle}</strong><small>{copy.ttsDraftListDescription}</small></div><div className="vision-tts-draft-list-heading-actions"><Download size={15} />{selectedDraftIds.size > 1 ? <button className="vision-secondary-action" data-testid="vision-tts-merge-drafts-button" type="button" onClick={onMergeSelected} disabled={Boolean(draftBusyId)}>{copy.ttsDraftMergeSelected(selectedDraftIds.size)}</button> : null}</div></div>
     {drafts.map((draft) => {
       const isBusy = draftBusyId === draft.id
       const isPending = pendingImportId === draft.id
       return <article className="vision-tts-draft-item" data-testid={`vision-tts-draft-${draft.id}`} key={draft.id}>
-        <div className="vision-tts-draft-item-copy"><strong>{draft.text}</strong><small>{formatSeconds(draft.startSeconds)}s – {formatSeconds(draft.endSeconds)}s · {draft.draftPath.split(/[\\/]/).pop()}</small></div>
+        <div className="vision-tts-draft-item-copy"><label className="vision-tts-draft-selection"><input type="checkbox" data-testid={`vision-tts-select-${draft.id}`} checked={selectedDraftIds.has(draft.id)} disabled={Boolean(draftBusyId)} aria-label={`${copy.ttsDraftSelect}: ${draft.text}`} onChange={() => onToggleSelection(draft.id)} /><span><strong>{draft.text}</strong><small>{copy.ttsDraftCueCount(draft.cues.length)} · {formatSeconds(draft.startSeconds)}s – {formatSeconds(draft.endSeconds)}s · {draft.draftPath.split(/[\\/]/).pop()}</small></span></label></div>
         <div className="vision-tts-draft-item-actions">
           <button className="vision-secondary-action" data-testid={`vision-tts-import-${draft.id}`} type="button" onClick={() => onImport(draft, false)} disabled={Boolean(draftBusyId)}><Download size={13} />{copy.ttsDraftImport}</button>
           <button className="vision-secondary-action" data-testid={`vision-tts-delete-${draft.id}`} type="button" onClick={() => onDelete(draft)} disabled={Boolean(draftBusyId)}><Trash2 size={13} />{copy.ttsDraftDelete}</button>
