@@ -24,7 +24,10 @@ describe('editing subtitle reload', () => {
   })
 
   it('builds a transient preview only for valid incoming-only cues', () => {
-    expect(getEditingSubtitleReloadIncomingPreview({ id: 'source-caption-2', kind: 'source', status: 'added', incomingText: '新增字幕', incomingStartSeconds: 3, incomingEndSeconds: 4 })).toEqual({ id: 'incoming-source-source-caption-2', kind: 'source', text: '新增字幕', startSeconds: 3, endSeconds: 4 })
+    const sourceChange = { id: 'source-caption-2', kind: 'source' as const, status: 'added' as const, incomingText: '新增字幕', incomingStartSeconds: 3, incomingEndSeconds: 4 }
+    const translationChange = { id: 'translation-source-caption-2', kind: 'translation' as const, status: 'added' as const, incomingText: 'New subtitle', incomingStartSeconds: 3.1, incomingEndSeconds: 4.1 }
+    expect(getEditingSubtitleReloadIncomingPreview(sourceChange)).toEqual({ id: 'incoming-source-source-caption-2', kind: 'source', text: '新增字幕', startSeconds: 3, endSeconds: 4, current: null, incoming: { source: { kind: 'source', text: '新增字幕', startSeconds: 3, endSeconds: 4 } } })
+    expect(getEditingSubtitleReloadIncomingPreview(sourceChange, [sourceChange, translationChange])).toMatchObject({ current: null, incoming: { source: { text: '新增字幕' }, translation: { text: 'New subtitle', startSeconds: 3.1, endSeconds: 4.1 } } })
     expect(getEditingSubtitleReloadIncomingPreview({ id: 'source-caption-1', kind: 'source', status: 'changed', incomingText: '新文本', incomingStartSeconds: 1, incomingEndSeconds: 2 })).toBeNull()
     expect(getEditingSubtitleReloadIncomingPreview({ id: 'source-caption-3', kind: 'source', status: 'added', incomingText: '坏时间', incomingStartSeconds: 4, incomingEndSeconds: 4 })).toBeNull()
   })

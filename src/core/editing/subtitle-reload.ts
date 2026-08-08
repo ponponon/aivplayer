@@ -23,12 +23,21 @@ export function getEditingSubtitleReloadChangeScriptSegmentId(change: Pick<Editi
     : change.id
 }
 
+export type EditingSubtitleReloadIncomingPreviewTrack = {
+  kind: EditingCaption['kind']
+  text: string
+  startSeconds: number
+  endSeconds: number
+}
+
 export type EditingSubtitleReloadIncomingPreview = {
   id: string
   kind: EditingCaption['kind']
   text: string
   startSeconds: number
   endSeconds: number
+  current: null
+  incoming: Partial<Record<EditingCaption['kind'], EditingSubtitleReloadIncomingPreviewTrack>>
 }
 
 export type EditingSubtitleReloadPreview = {
@@ -107,13 +116,27 @@ function getFiniteTime(value: number | undefined): number | undefined {
   return value !== undefined && Number.isFinite(value) ? Math.max(0, value) : undefined
 }
 
-/** Builds a transient preview only for incoming-only cues; it never mutates the project. */
-export function getEditingSubtitleReloadIncomingPreview(change: EditingSubtitleReloadChange): EditingSubtitleReloadIncomingPreview | null {
+function getIncomingPreviewTrack(change: EditingSubtitleReloadChange): EditingSubtitleReloadIncomingPreviewTrack | null {
   if (change.status !== 'added' || change.incomingText === undefined) return null
   const startSeconds = getFiniteTime(change.incomingStartSeconds)
   const endSeconds = getFiniteTime(change.incomingEndSeconds)
   if (startSeconds === undefined || endSeconds === undefined || endSeconds <= startSeconds) return null
-  return { id: `incoming-${change.kind}-${change.id}`, kind: change.kind, text: change.incomingText, startSeconds, endSeconds }
+  return { kind: change.kind, text: change.incomingText, startSeconds, endSeconds }
+}
+
+/** Builds a transient preview only for incoming-only cues; it never mutates the project. */
+export function getEditingSubtitleReloadIncomingPreview(change: EditingSubtitleReloadChange, relatedChanges: readonly EditingSubtitleReloadChange[] = []): EditingSubtitleReloadIncomingPreview | null {
+  const primaryTrack = getIncomingPreviewTrack(change)
+  if (!primaryTrack) return null
+  const scriptSegmentId = getEditingSubtitleReloadChangeScriptSegmentId(change)
+  const incoming: Partial<Record<EditingCaption['kind'], EditingSubtitleReloadIncomingPreviewTrack>> = { [primaryTrack.kind]: primaryTrack }
+  for (const relatedChange of relatedChanges) {
+    if (relatedChange.id === change.id && relatedChange.kind === change.kind) continue
+    if (getEditingSubtitleReloadChangeScriptSegmentId(relatedChange) !== scriptSegmentId) continue
+    const relatedTrack = getIncomingPreviewTrack(relatedChange)
+    if (relatedTrack) incoming[relatedTrack.kind] = relatedTrack
+  }
+  return { id: `incoming-${change.kind}-${change.id}`, kind: primaryTrack.kind, text: primaryTrack.text, startSeconds: primaryTrack.startSeconds, endSeconds: primaryTrack.endSeconds, current: null, incoming }
 }
 
 export function getEditingSubtitleReloadChangeTimeRange(change: EditingSubtitleReloadChange): { startSeconds?: number; endSeconds?: number } {
