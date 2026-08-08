@@ -1,6 +1,8 @@
 import { Archive, Database, FilePlus, ImageUp, ScanSearch, Search, Square, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { VisionIndexProgress, VisionRuntimeStatus, VisionSearchResult } from '../../../shared/media-types'
+import type { AsrSubtitleResult } from '../../../shared/media-types'
+import type { MediaEvidenceDraftImportResult } from '../../../shared/evidence-task-types'
 import type { VisionClipCollection, VisionClipCollectionExportFormat, VisionClipCollectionSortMode } from '../../../shared/vision-types'
 import { invertVisionClipSelections, mergeVisionCollectionSelections, normalizeVisionCollectionTags } from '../../../core/ai/clip-inbox-operations'
 import { createVisionClipSelections, normalizeVisionTimeRange } from '../../../core/ai/vision-evidence'
@@ -219,6 +221,21 @@ export function VisionPanel(): React.ReactElement {
     })
   }
 
+  const handleImportedSubtitle = (result: MediaEvidenceDraftImportResult): void => {
+    if (!result.success || !result.subtitlePath || !result.subtitleUrl) return
+    const subtitleResult: AsrSubtitleResult = {
+      success: true,
+      message: result.message,
+      subtitlePath: result.subtitlePath,
+      subtitleSrtPath: result.subtitleSrtPath,
+      subtitleUrl: result.subtitleUrl,
+      subtitleSrtUrl: result.subtitleSrtUrl,
+      subtitleRevision: Date.now()
+    }
+    app.setActiveSubtitle(subtitleResult)
+    app.setSubtitleResult(subtitleResult)
+  }
+
   const saveSelectedCollection = (): void => {
     const selectedResults = results.filter((result) => selectedResultIds.has(result.id))
     const selections = createVisionClipSelections(selectedResults)
@@ -380,7 +397,7 @@ export function VisionPanel(): React.ReactElement {
     </section>
 
     <VisionOcrTask copy={app.copy.vision} mediaPath={app.state.currentFile?.path ?? null} currentTime={app.state.currentTime} />
-    <VisionTtsTask copy={app.copy.vision} mediaPath={app.state.currentFile?.path ?? null} currentTime={app.state.currentTime} />
+    <VisionTtsTask copy={app.copy.vision} mediaPath={app.state.currentFile?.path ?? null} currentTime={app.state.currentTime} onSubtitleImported={handleImportedSubtitle} />
 
     <section className="vision-card vision-search-card">
       <form className="vision-text-search" onSubmit={(event) => { event.preventDefault(); runTextSearch() }}>

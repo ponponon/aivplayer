@@ -156,6 +156,19 @@ async function main(): Promise<void> {
       }
     })
 
+    const ttsStatus = page.locator('[data-testid="settings-tts-status"]')
+    const initialTtsStatus = await ttsStatus.textContent()
+    await page.locator('[data-testid="settings-tts-executable-path"]').fill('/tmp/aivplayer-smoke-tts')
+    await page.locator('[data-testid="settings-tts-voice"]').fill('SmokeVoice')
+    await page.waitForTimeout(350)
+    const ttsSettingsState = await page.evaluate(async () => {
+      const settings = await window.aiv.getAppSettings()
+      return { executablePath: settings.tts.executablePath, voice: settings.tts.voice }
+    })
+    await page.locator('[data-testid="settings-tts-check-button"]').click()
+    await page.waitForFunction((previousStatus) => document.querySelector('[data-testid="settings-tts-status"]')?.textContent !== previousStatus, initialTtsStatus, { timeout: 10_000 })
+    const ttsStatusAfterCheck = await ttsStatus.textContent()
+
     await page.locator('[data-settings-tab="shortcuts"]').click()
     await page.waitForTimeout(250)
     dialogHeightByTab.shortcuts = await readDialogHeight()
@@ -208,6 +221,7 @@ async function main(): Promise<void> {
     console.log(`Settings layout state: ${JSON.stringify(settingsLayoutState)}`)
     console.log(`Video settings card height: ${JSON.stringify(videoCardHeight)}`)
     console.log(`Subtitle cache panel: ${JSON.stringify(cachePanelState)}`)
+    console.log(`TTS settings state: ${JSON.stringify({ ...ttsSettingsState, initialTtsStatus, ttsStatusAfterCheck })}`)
     console.log(`Shortcut panel: ${JSON.stringify({ shortcutCount, ...shortcutPanelState })}`)
     console.log(`About settings panel: ${JSON.stringify(aboutPanelState)}`)
     console.log(`Settings dialog screenshot: ${screenshotPath}`)
@@ -232,6 +246,9 @@ async function main(): Promise<void> {
       cachePanelState.display !== 'grid' ||
       cachePanelState.cachePanel !== 'present' ||
       cachePanelState.cacheButtons !== 2 ||
+      ttsSettingsState.executablePath !== '/tmp/aivplayer-smoke-tts' ||
+      ttsSettingsState.voice !== 'SmokeVoice' ||
+      ttsStatusAfterCheck === initialTtsStatus ||
       shortcutCount !== 9 ||
       shortcutPanelState.display !== 'grid' ||
       shortcutPanelState.ariaHidden !== 'false' ||

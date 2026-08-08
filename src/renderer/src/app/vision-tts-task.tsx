@@ -1,12 +1,15 @@
 import { AudioLines, Check, Square, Volume2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import type { MediaEvidenceCapabilities, MediaEvidenceDraft, MediaEvidenceTask, TtsAudioArtifact } from '../../../shared/evidence-task-types'
+import type { MediaEvidenceCapabilities, MediaEvidenceDraftImportResult, MediaEvidenceTask, TtsAudioArtifact } from '../../../shared/evidence-task-types'
 import type { LocaleCopy } from '../../../shared/i18n'
+import { useVisionTtsDrafts } from './vision-tts-drafts'
+import { VisionTtsDraftList } from './vision-tts-draft-list'
 
 type VisionTtsTaskProps = {
   copy: LocaleCopy['vision']
   mediaPath: string | null
   currentTime: number
+  onSubtitleImported?: (result: MediaEvidenceDraftImportResult) => void
 }
 
 function formatSeconds(value: number): string {
@@ -22,7 +25,7 @@ function taskStatusLabel(copy: LocaleCopy['vision'], task: MediaEvidenceTask | n
   return copy.ttsCompleted
 }
 
-export function VisionTtsTask({ copy, mediaPath, currentTime }: VisionTtsTaskProps): React.ReactElement {
+export function VisionTtsTask({ copy, mediaPath, currentTime, onSubtitleImported }: VisionTtsTaskProps): React.ReactElement {
   const [capabilities, setCapabilities] = useState<MediaEvidenceCapabilities | null>(null)
   const [task, setTask] = useState<MediaEvidenceTask | null>(null)
   const [startInput, setStartInput] = useState('0.0')
@@ -31,9 +34,9 @@ export function VisionTtsTask({ copy, mediaPath, currentTime }: VisionTtsTaskPro
   const [draftText, setDraftText] = useState('')
   const [audioUrl, setAudioUrl] = useState<string | null>(null)
   const [audioPath, setAudioPath] = useState<string | null>(null)
-  const [draft, setDraft] = useState<MediaEvidenceDraft | null>(null)
   const [isSavingDraft, setIsSavingDraft] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { draft, drafts, pendingImport, draftBusyId, draftNotice, clearCurrentDraft, clearPendingImport, saveDraft: saveDraftRequest, deleteDraft, importDraft } = useVisionTtsDrafts({ copy, mediaPath, onSubtitleImported, onError: setError })
   const isRunning = task?.status === 'queued' || task?.status === 'running' || task?.status === 'retrying'
   const audioArtifact = task?.status === 'completed'
     ? task.artifacts.find((artifact): artifact is TtsAudioArtifact => artifact.artifactType === 'tts-audio' && Boolean(artifact.audioPath))
@@ -74,7 +77,7 @@ export function VisionTtsTask({ copy, mediaPath, currentTime }: VisionTtsTaskPro
   useEffect(() => {
     if (task?.status !== 'completed' || !audioArtifact) return
     setDraftText(task.inputText ?? '')
-    setDraft(null)
+    clearCurrentDraft()
   }, [audioArtifact, task?.inputText, task?.status])
 
   const usePlayhead = (): void => {
@@ -98,7 +101,7 @@ export function VisionTtsTask({ copy, mediaPath, currentTime }: VisionTtsTaskPro
     }
     setError(null)
     setTask(null)
-    setDraft(null)
+    clearCurrentDraft()
     setAudioPath(null)
     setAudioUrl(null)
     void window.aiv.startMediaEvidenceTask({
@@ -121,13 +124,13 @@ export function VisionTtsTask({ copy, mediaPath, currentTime }: VisionTtsTaskPro
     if (!artifact) return
     setError(null)
     setIsSavingDraft(true)
-    void window.aiv.saveMediaEvidenceDraft({
+    void saveDraftRequest({
       mediaPath,
       sourceFingerprint: task.sourceFingerprint,
       startSeconds: artifact.startSeconds,
       endSeconds: artifact.endSeconds,
       text: draftText.trim()
-    }).then(setDraft).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setIsSavingDraft(false))
+    }).finally(() => setIsSavingDraft(false))
   }
 
   const capabilityMessage = capabilities === null
@@ -136,7 +139,7 @@ export function VisionTtsTask({ copy, mediaPath, currentTime }: VisionTtsTaskPro
       ? copy.ttsReady
       : capabilities.tts.message || copy.ttsUnavailable
 
-  return <section className="vision-card vision-tts-card" data-testid="vision-tts-task" data-draft-status={draft ? 'saved' : 'idle'}>
+  return <section className="vision-card vision-tts-card" data-testid="vision-tts-task" data-draft-status={draft || drafts.length > 0 ? 'saved' : 'idle'}>
     <div className="vision-heading"><div><span className="panel-kicker">{copy.ttsKicker}</span><h3>{copy.ttsTitle}</h3></div><AudioLines size={17} /></div>
     <p className="vision-tts-description">{copy.ttsDescription}</p>
     <div className={`vision-tts-capability${capabilities?.tts.available ? ' is-ready' : ''}`} role="status"><span>{capabilityMessage}</span><small>{mediaPath ? mediaPath.split(/[\\/]/).pop() : copy.ttsNoMedia}</small></div>
@@ -158,6 +161,7 @@ export function VisionTtsTask({ copy, mediaPath, currentTime }: VisionTtsTaskPro
       <button className="vision-secondary-action" data-testid="vision-tts-save-draft-button" type="button" onClick={saveDraft} disabled={!draftText.trim() || isSavingDraft}>{isSavingDraft ? copy.ttsSavingDraft : copy.ttsSaveDraft}</button>
       {draft ? <small className="vision-tts-draft-saved" data-testid="vision-tts-draft-saved">{copy.ttsDraftSaved} · {draft.draftPath.split(/[\\/]/).pop()}</small> : null}
     </div> : null}
+    <VisionTtsDraftList copy={copy} drafts={drafts} pendingImportId={pendingImport?.id ?? null} draftBusyId={draftBusyId} draftNotice={draftNotice} onImport={importDraft} onDelete={deleteDraft} onCancelImport={clearPendingImport} />
     {error ? <small className="vision-error">{error}</small> : null}
   </section>
 }

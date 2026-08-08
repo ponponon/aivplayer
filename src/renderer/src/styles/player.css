@@ -104,6 +104,7 @@
 @import './player/vision-library.css';
 @import './player/vision-library-ocr.css';
 @import './player/vision-library-tts.css';
+@import './player/vision-library-tts-drafts.css';
 @import './player/vision-library-folder.css';
 @import './player/vision-library-search.css';
 @import './player/vision-library-results.css';

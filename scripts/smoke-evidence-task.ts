@@ -141,6 +141,50 @@ async function startTtsFromUi(page: Page): Promise<void> {
   if (await page.locator('[data-testid="vision-ocr-task"]').getAttribute('data-persistence-status') !== 'persisted') throw new Error('TTS progress leaked into OCR task card')
 }
 
+function getFormalSubtitlePath(mediaPath: string, extension: 'vtt' | 'srt'): string {
+  return `${mediaPath.replace(/\.[^./\\]+$/, '')}.${extension}`
+}
+
+async function importAndDeleteTtsDraft(page: Page, mediaPath: string): Promise<{ draftId: string; formalVttPath: string; formalSrtPath: string }> {
+  const drafts = await page.evaluate(() => window.aiv.listMediaEvidenceDrafts())
+  if (drafts.length !== 1 || drafts[0]?.mediaPath !== mediaPath) throw new Error(`TTS draft list mismatch: ${JSON.stringify(drafts)}`)
+  const draftId = drafts[0].id
+  const formalVttPath = getFormalSubtitlePath(mediaPath, 'vtt')
+  const formalSrtPath = getFormalSubtitlePath(mediaPath, 'srt')
+  for (const path of [formalVttPath, formalSrtPath]) {
+    try {
+      await access(path)
+      throw new Error(`Formal subtitle unexpectedly exists before import: ${path}`)
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+    }
+  }
+
+  const importButton = page.locator(`[data-testid="vision-tts-import-${draftId}"]`)
+  await importButton.click()
+  await page.waitForFunction((id) => document.querySelector(`[data-testid="vision-tts-draft-${id}"] [data-testid="vision-tts-import-${id}"]`) !== null, draftId, { timeout: 10_000 })
+  await waitForFile(formalVttPath)
+  await waitForFile(formalSrtPath)
+  const importedVtt = await readFile(formalVttPath, 'utf8')
+  const importedSrt = await readFile(formalSrtPath, 'utf8')
+  if (!importedVtt.includes('Smoke TTS confirmed draft') || !importedSrt.includes('Smoke TTS confirmed draft')) throw new Error('Formal subtitle content mismatch after import')
+
+  await page.locator('video.video-surface').evaluate((video) => { (video as HTMLVideoElement).currentTime = 0.7 })
+  await page.waitForFunction(() => document.querySelector('.subtitle-overlay')?.textContent?.includes('Smoke TTS confirmed draft') === true, undefined, { timeout: 10_000 })
+
+  await importButton.click()
+  await page.locator('[data-testid="vision-tts-confirm-import-button"]').click()
+  await page.waitForFunction(() => document.querySelector('[data-testid="vision-tts-confirm-import-button"]') === null, undefined, { timeout: 10_000 })
+  const overwrittenVtt = await readFile(formalVttPath, 'utf8')
+  if (!overwrittenVtt.includes('Smoke TTS confirmed draft')) throw new Error('Formal subtitle content mismatch after overwrite confirmation')
+
+  await page.locator(`[data-testid="vision-tts-delete-${draftId}"]`).click()
+  await page.waitForFunction(() => document.querySelector('[data-testid="vision-tts-draft-list"]') === null, undefined, { timeout: 10_000 })
+  const draftsAfterDelete = await page.evaluate(() => window.aiv.listMediaEvidenceDrafts())
+  if (draftsAfterDelete.length !== 0) throw new Error(`TTS draft was not deleted: ${JSON.stringify(draftsAfterDelete)}`)
+  return { draftId, formalVttPath, formalSrtPath }
+}
+
 async function searchOcrAndLocate(page: Page): Promise<{ evidenceId: string; currentTime: number }> {
   const searchInput = page.locator('.vision-text-search input')
   await searchInput.fill('Smoke OCR text')
@@ -214,14 +258,11 @@ async function main(): Promise<void> {
     const draftDirectory = join(userDataDirectory, 'evidence-drafts')
     const draftFiles = (await readdir(draftDirectory)).filter((fileName) => fileName.endsWith('.vtt'))
     if (draftFiles.length !== 1) throw new Error(`TTS draft file count mismatch: ${JSON.stringify(draftFiles)}`)
+    const draftManifestFiles = (await readdir(draftDirectory)).filter((fileName) => fileName.endsWith('.json'))
+    if (draftManifestFiles.length !== 1) throw new Error(`TTS draft manifest count mismatch: ${JSON.stringify(draftManifestFiles)}`)
     const draftContent = await readFile(join(draftDirectory, draftFiles[0]!), 'utf8')
     if (!draftContent.includes('00:00:00.500 --> 00:00:01.500') || !draftContent.includes('Smoke TTS confirmed draft')) throw new Error(`TTS draft content mismatch: ${draftContent}`)
-    try {
-      await access(`${stableMediaPath}.vtt`)
-      throw new Error('TTS draft unexpectedly wrote a formal subtitle sidecar')
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
-    }
+    const formalSubtitles = await importAndDeleteTtsDraft(first.page, stableMediaPath)
     const locatedOcr = await searchOcrAndLocate(first.page)
     const screenshotPath = join(userDataDirectory, 'aivplayer-smoke-evidence-ocr.png')
     await first.page.screenshot({ path: screenshotPath, fullPage: false })
@@ -249,7 +290,7 @@ async function main(): Promise<void> {
       throw new Error(`Evidence table contents mismatch: ${JSON.stringify(rows)}`)
     }
     if (first.errors.length > 0 || second.errors.length > 0) throw new Error(`Renderer errors during evidence smoke: ${[...first.errors, ...second.errors].join('\n')}`)
-    console.log(`Evidence task smoke passed: ${JSON.stringify({ capabilities, stablePersistence: stablePersistenceStatus, ttsDraft: draftFiles[0], locatedOcr, stalePersistence: staleResult.persistenceStatus, evidenceRows: rows.length, ocrRows: ocrRows.length, visualRows: visualRows.length, screenshotPath })}`)
+    console.log(`Evidence task smoke passed: ${JSON.stringify({ capabilities, stablePersistence: stablePersistenceStatus, ttsDraft: draftFiles[0], formalSubtitles, locatedOcr, stalePersistence: staleResult.persistenceStatus, evidenceRows: rows.length, ocrRows: ocrRows.length, visualRows: visualRows.length, screenshotPath })}`)
   } finally {
     await firstApp?.close().catch(() => undefined)
     await secondApp?.close().catch(() => undefined)
