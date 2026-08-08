@@ -166,7 +166,10 @@ async function main(): Promise<void> {
       return { executablePath: settings.tts.executablePath, voice: settings.tts.voice }
     })
     await page.locator('[data-testid="settings-tts-check-button"]').click()
-    await page.waitForFunction((previousStatus) => document.querySelector('[data-testid="settings-tts-status"]')?.textContent !== previousStatus, initialTtsStatus, { timeout: 10_000 })
+    await page.waitForFunction((previousStatus) => {
+      const status = document.querySelector('[data-testid="settings-tts-status"]')?.textContent?.trim() ?? ''
+      return Boolean(status) && status !== previousStatus && !['检查中', 'Checking', '確認中', '확인 중'].some((label) => status.startsWith(label))
+    }, initialTtsStatus, { timeout: 10_000 })
     const ttsStatusAfterCheck = await ttsStatus.textContent()
 
     await page.locator('[data-settings-tab="shortcuts"]').click()
