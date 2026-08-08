@@ -20,5 +20,8 @@ describe('evidence task Electron smoke contract', () => {
     expect(smoke).toContain("'skipped-stale'")
     expect(smoke).toContain('video_evidence')
     expect(smoke).toContain('smoke-visual-evidence')
+    expect(smoke).toContain('assertInvalidSubtitleNotice')
+    expect(smoke).toContain('resolveMediaSubtitleSidecar')
+    expect(smoke).toContain('invalidSubtitleNotice: true')
   })
 })

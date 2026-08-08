@@ -246,6 +246,24 @@ async function assertNoSubtitleLeak(page: Page): Promise<void> {
   await page.waitForFunction(() => document.querySelector('.subtitle-overlay')?.classList.contains('empty') === true, undefined, { timeout: 20_000 })
 }
 
+async function assertInvalidSubtitleNotice(page: Page, mediaPath: string): Promise<void> {
+  await page.locator('.panel-tab').nth(1).click()
+  const notice = page.locator('[data-testid="subtitle-asr-notice"].failed')
+  try {
+    await notice.waitFor({ timeout: 20_000 })
+  } catch (error) {
+    const diagnostic = await page.evaluate(async (path) => ({
+      sidecar: await window.aiv.resolveMediaSubtitleSidecar({ mediaPath: path }).catch((reason: unknown) => ({ error: String(reason) })),
+      notice: document.querySelector('[data-testid="subtitle-asr-notice"]')?.textContent ?? null,
+      overlay: document.querySelector('.subtitle-overlay')?.textContent ?? null
+    }), mediaPath)
+    throw new Error(`Invalid sidecar notice did not render: ${JSON.stringify({ diagnostic, error: error instanceof Error ? error.message : String(error) })}`)
+  }
+  const message = await notice.textContent()
+  if (!message?.includes('字幕文件无法解析')) throw new Error(`Invalid sidecar notice mismatch: ${message ?? '<empty>'}`)
+  await assertNoSubtitleLeak(page)
+}
+
 async function seedVisualEvidence(userDataDirectory: string, mediaPath: string): Promise<void> {
   const database = await connect(join(userDataDirectory, 'library', 'vision', 'lancedb'))
   const table = await database.openTable('video_evidence')
@@ -280,16 +298,21 @@ async function main(): Promise<void> {
   const stableMediaPath = join(smokeDirectory, 'stable.mp4')
   const staleMediaPath = join(smokeDirectory, 'stale.mp4')
   const isolatedMediaPath = join(smokeDirectory, 'isolated.mp4')
+  const invalidMediaPath = join(smokeDirectory, 'invalid.mp4')
+  const invalidSubtitlePath = getFormalSubtitlePath(invalidMediaPath, 'vtt')
   const markerPath = join(smokeDirectory, 'tesseract.started')
   const ttsMarkerPath = join(smokeDirectory, 'tts.started')
   await copyFile(sourceMediaPath, stableMediaPath)
   await copyFile(sourceMediaPath, staleMediaPath)
   await copyFile(sourceMediaPath, isolatedMediaPath)
+  await copyFile(sourceMediaPath, invalidMediaPath)
+  await writeFile(invalidSubtitlePath, 'WEBVTT\n\n00:00:bad --> 00:00:01.000\nnot a valid cue\n', 'utf8')
   const tesseractPath = await installFakeTesseract(smokeDirectory, markerPath)
   const ttsPath = await installFakeTts(smokeDirectory, ttsMarkerPath)
   let firstApp: ElectronApplication | null = null
   let secondApp: ElectronApplication | null = null
   let thirdApp: ElectronApplication | null = null
+  let fourthApp: ElectronApplication | null = null
 
   try {
     const first = await launchPlayer(userDataDirectory, stableMediaPath, tesseractPath, ttsPath, markerPath, ttsMarkerPath)
@@ -340,6 +363,12 @@ async function main(): Promise<void> {
     await third.app.close()
     thirdApp = null
 
+    const fourth = await launchPlayer(userDataDirectory, invalidMediaPath, tesseractPath, ttsPath, markerPath, ttsMarkerPath)
+    fourthApp = fourth.app
+    await assertInvalidSubtitleNotice(fourth.page, invalidMediaPath)
+    await fourth.app.close()
+    fourthApp = null
+
     const rows = await readEvidenceRows(userDataDirectory)
     const ocrRows = rows.filter((row) => row.evidence_type === 'ocr')
     const subtitleRows = rows.filter((row) => row.evidence_type === 'subtitle')
@@ -348,12 +377,13 @@ async function main(): Promise<void> {
     if (ocrRows.length !== 1 || ![0, 2].includes(subtitleRows.length) || visualRows.length !== 1 || ocrRows[0]?.text !== 'Smoke OCR text' || ocrRows[0]?.video_path !== stableMediaPath || (subtitleRows.length === 2 && (!subtitleTexts.has('Smoke TTS confirmed draft') || !subtitleTexts.has('Smoke TTS second draft'))) || rows.some((row) => row.video_path === staleMediaPath)) {
       throw new Error(`Evidence table contents mismatch: ${JSON.stringify(rows)}`)
     }
-    if (first.errors.length > 0 || second.errors.length > 0 || third.errors.length > 0) throw new Error(`Renderer errors during evidence smoke: ${[...first.errors, ...second.errors, ...third.errors].join('\n')}`)
-    console.log(`Evidence task smoke passed: ${JSON.stringify({ capabilities, stablePersistence: stablePersistenceStatus, ttsDrafts: draftFiles, formalSubtitles, restoredFormalSubtitle: true, isolatedMediaSubtitleLeak: false, locatedOcr, stalePersistence: staleResult.persistenceStatus, evidenceRows: rows.length, ocrRows: ocrRows.length, subtitleRows: subtitleRows.length, visualRows: visualRows.length, screenshotPath })}`)
+    if (first.errors.length > 0 || second.errors.length > 0 || third.errors.length > 0 || fourth.errors.length > 0) throw new Error(`Renderer errors during evidence smoke: ${[...first.errors, ...second.errors, ...third.errors, ...fourth.errors].join('\n')}`)
+    console.log(`Evidence task smoke passed: ${JSON.stringify({ capabilities, stablePersistence: stablePersistenceStatus, ttsDrafts: draftFiles, formalSubtitles, restoredFormalSubtitle: true, isolatedMediaSubtitleLeak: false, invalidSubtitleNotice: true, locatedOcr, stalePersistence: staleResult.persistenceStatus, evidenceRows: rows.length, ocrRows: ocrRows.length, subtitleRows: subtitleRows.length, visualRows: visualRows.length, screenshotPath })}`)
   } finally {
     await firstApp?.close().catch(() => undefined)
     await secondApp?.close().catch(() => undefined)
     await thirdApp?.close().catch(() => undefined)
+    await fourthApp?.close().catch(() => undefined)
   }
 }
 
