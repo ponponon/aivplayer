@@ -210,6 +210,71 @@ async function main(): Promise<void> {
       return stats.source.length === 2 && stats.translation.length === 2 && stats.uniqueIds && stats.sourceStarts.join(',') === '1,2' && stats.translationStarts.join(',') === '1,2' && project.scriptSegments?.length === 1 && project.scriptSegments[0]?.text === '强制原文一' && project.scriptSegments[0]?.translationText === '强制译文一'
     })
     const forceConflictCleared = await page.locator('[data-testid="editing-caption-reload-conflict"]').count() === 0
+
+    const fragmentRemoval = await page.evaluate(() => {
+      const entries = Object.entries(JSON.parse(localStorage.getItem('aivplayer.editing-projects.v1') ?? '{}') as Record<string, StoredProject>)
+      const [storageKey, original] = entries[0] ?? []
+      if (!storageKey || !original) throw new Error('Fragment reload Smoke could not prepare the removal family')
+      const source = original.sources[0]
+      const sourceCaption = original.captions.find((caption) => caption.kind === 'source')
+      const translationCaption = original.captions.find((caption) => caption.kind === 'translation')
+      if (!source || !sourceCaption || !translationCaption) throw new Error('Fragment reload Smoke could not find the force-reloaded caption family')
+      const segmentId = `source-${source.id}-1`
+      const makeCaption = (kind: StoredCaption['kind'], id: string, text: string, startSeconds: number, index: number): StoredCaption => ({
+        ...(kind === 'source' ? sourceCaption : translationCaption),
+        id,
+        kind,
+        text,
+        startSeconds,
+        durationSeconds: 1,
+        sourceStartSeconds: 10,
+        sourceEndSeconds: 11,
+        editedRangeGroupId: segmentId,
+        editedRangeIndex: index
+      })
+      const fragmentSegment = { id: segmentId, sourceId: source.id, sourceStartSeconds: 10, sourceEndSeconds: 11, text: '待删除原文', translationText: '待保留译文' }
+      const project: StoredProject = {
+        ...original,
+        captions: [
+          ...original.captions,
+          makeCaption('source', segmentId, fragmentSegment.text, 10, 0),
+          makeCaption('source', `${segmentId}-1`, fragmentSegment.text, 12, 1),
+          makeCaption('translation', `translation-${segmentId.slice('source-'.length)}`, fragmentSegment.translationText, 10, 0),
+          makeCaption('translation', `translation-${segmentId.slice('source-'.length)}-1`, fragmentSegment.translationText, 12, 1)
+        ],
+        scriptSegments: [...(original.scriptSegments ?? []), fragmentSegment],
+        updatedAt: Date.now()
+      }
+      localStorage.setItem('aivplayer.editing-projects.v1', JSON.stringify({ [storageKey]: project }))
+      return { segmentId, sourceCaptionId: segmentId, translationCaptionId: `translation-${segmentId.slice('source-'.length)}` }
+    })
+
+    await page.reload()
+    await openEditor()
+    await writeFile(sourceSubtitlePath, makeSrt('强制原文一'))
+    await writeFile(translatedSubtitlePath, makeSrt('强制译文一'))
+    await touchSidecars()
+    await page.reload()
+    await openEditor()
+    await page.locator('[data-testid="editing-caption-reload-conflict"]').waitFor({ timeout: 10_000 })
+    await page.locator('[data-testid="editing-caption-reload-preview"] summary').click()
+    const fragmentRemovalRowCount = await page.locator('.editing-caption-reload-row').count()
+    const fragmentRemovalRemovedRowCount = await page.locator('.editing-caption-reload-row.is-removed').count()
+    await page.locator(`[data-testid="editing-caption-reload-keep-current-translation-${fragmentRemoval.translationCaptionId}"]`).click()
+    await page.locator(`[data-testid="editing-caption-reload-remove-source-${fragmentRemoval.sourceCaptionId}"]`).click()
+    const removedSourceKeptTranslation = await waitForStored((project) => {
+      const familySource = project.captions.filter((caption) => caption.editedRangeGroupId === fragmentRemoval.segmentId && caption.kind === 'source')
+      const familyTranslation = project.captions.filter((caption) => caption.editedRangeGroupId === fragmentRemoval.segmentId && caption.kind === 'translation')
+      return familySource.length === 0 && familyTranslation.length === 2 && project.scriptSegments?.some((segment) => segment.id === fragmentRemoval.segmentId && segment.deleted === true) === true
+    })
+    const fragmentRemovalConflictCleared = await page.locator('[data-testid="editing-caption-reload-conflict"]').count() === 0
+    await page.reload()
+    await openEditor()
+    const persistedOrphanTranslationFamily = await waitForStored((project) => {
+      const familySource = project.captions.filter((caption) => caption.editedRangeGroupId === fragmentRemoval.segmentId && caption.kind === 'source')
+      const familyTranslation = project.captions.filter((caption) => caption.editedRangeGroupId === fragmentRemoval.segmentId && caption.kind === 'translation')
+      return familySource.length === 0 && familyTranslation.length === 2 && project.scriptSegments?.some((segment) => segment.id === fragmentRemoval.segmentId && segment.deleted === true) === true
+    })
     const finalScreenshotPath = join(smokeHomeDirectory, 'aivplayer-smoke-fragment-reload-final.png')
     await page.screenshot({ path: finalScreenshotPath, fullPage: false })
     const result = {
@@ -225,6 +290,11 @@ async function main(): Promise<void> {
       refreshConflictCleared,
       forceConflictCleared,
       forceScriptSegmentCount: forceReloaded.scriptSegments?.length ?? 0,
+      fragmentRemovalRowCount,
+      fragmentRemovalRemovedRowCount,
+      fragmentRemovalConflictCleared,
+      removedSourceKeptTranslation: projectStats(removedSourceKeptTranslation),
+      persistedOrphanTranslationFamily: projectStats(persistedOrphanTranslationFamily),
       consoleErrors,
       screenshots: { reorderScreenshotPath, reloadScreenshotPath, finalScreenshotPath }
     }
@@ -237,6 +307,8 @@ async function main(): Promise<void> {
     if (result.reloadRowCount !== 2 || result.removedRowCount !== 0 || !result.refreshConflictCleared) process.exitCode = 1
     if (result.refreshed.source.some((caption) => caption.text !== '外部原文一') || result.refreshed.translation.some((caption) => caption.text !== '外部译文一')) process.exitCode = 1
     if (!result.forceConflictCleared || result.forceScriptSegmentCount !== 1 || result.forceReloaded.source.some((caption) => caption.text !== '强制原文一') || result.forceReloaded.translation.some((caption) => caption.text !== '强制译文一')) process.exitCode = 1
+    if (result.fragmentRemovalRowCount !== 2 || result.fragmentRemovalRemovedRowCount !== 2 || !result.fragmentRemovalConflictCleared || result.removedSourceKeptTranslation.translation.filter((caption) => caption.editedRangeGroupId === fragmentRemoval.segmentId).length !== 2 || result.removedSourceKeptTranslation.source.filter((caption) => caption.editedRangeGroupId === fragmentRemoval.segmentId).length !== 0) process.exitCode = 1
+    if (result.persistedOrphanTranslationFamily.translation.filter((caption) => caption.editedRangeGroupId === fragmentRemoval.segmentId).length !== 2 || result.persistedOrphanTranslationFamily.source.filter((caption) => caption.editedRangeGroupId === fragmentRemoval.segmentId).length !== 0) process.exitCode = 1
     if (result.consoleErrors.length > 0) process.exitCode = 1
   } finally {
     await app.close()
