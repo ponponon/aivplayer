@@ -988,3 +988,10 @@
 - 处理：`isEditingScriptSegmentCaption`、subtitle reload family、orphan translation 和 removed script segment 查找统一增加 sourceId 隔离；新增真实 Electron Smoke，先验证旧素材 orphan，再拖拽第二素材替换片段，确认新 translation 的 orphan 标记和提示消失，reload 后 sourceId 关系仍保持，`consoleErrors` 为空。
 - 验证：project file / subtitle reload 定向测试 44 项通过；`bun run typecheck`、`bun run build` 通过；Fragment Smoke 验证 force reload 后 source / translation 仍为 2+2、位置为 1/2、script segment 数为 1、冲突清除且 `consoleErrors:[]`。
 - 提交边界：核心修正 `32591af`，回归测试 `ae029ef`，Smoke `81583e6`；本条工程记录另行提交，内部计划继续 ignored。
+
+## 2026-08-09：跨媒体 sidecar reload 不能继续读取已替换素材
+
+- 现象：时间线片段已经从旧素材替换到新素材，但旧媒体文件和旧 `.srt` / `.translated.srt` 仍然存在；caption effect 仍会遍历项目全部 `sources`，并把当前文件的优先字幕路径按 `sources[0]` 传入。旧 sidecar 可能因此参与新素材的冲突预览，甚至被用户点击 force reload 后重新写回工程。
+- 经验：sidecar 的加载范围必须由“仍被时间线使用的 source”决定，不能由素材库是否保留决定；优先字幕路径也必须按真实媒体路径匹配，source 数组顺序在替换操作后并不等于当前播放素材。revision key 还要包含活动 source 集合，避免非活动旧素材的 mtime / revision 变化触发错误冲突。
+- 处理：新增 `createEditingCaptionSources` 与 `createEditingCaptionSourceRevisionKey`，过滤非活动 source、按路径分配 preferred sidecar，并在非活动旧 source 场景忽略旧 revision；新增 loader 单测和跨媒体 Electron Smoke，修改旧 sidecar 后确认无冲突预览、无旧 sidecar 预览、sourceId 持久化正确且 `consoleErrors:[]`。
+- 提交边界：核心 `2cb75da`，单测 `fe25da8`，Smoke `2985c89`；FEATURE / FailureExperience 单独提交，内部计划继续 ignored。

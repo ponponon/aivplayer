@@ -545,6 +545,8 @@
 - 工程文件导入 / 导出会完整保留 fragment group / index，并拒绝只提供一半的关系元数据；force reload 更新片段文本和词级数据时继续保留用户重排后的成片位置，同时从 canonical incoming cue 重建单一脚本行，不会生成重复脚本段。
 - sidecar 删除预览也按 fragment family 聚合为一条 source / translation diff；source remove + translation keep 会移除族群内全部原文片段、保留全部译文片段，并在 reload 后继续保持孤立译文的片段索引与脚本 deleted 状态。
 - fragment / script segment 关联在已知 `sourceId` 不一致时拒绝匹配；跨媒体替换后，旧素材的 deleted script 不会把新素材同 ID、同时间范围的 translation 误判为孤立译文。新增 `npm run smoke:editing-cross-source-isolation` 覆盖真实素材拖拽替换、reload 和控制台健康。
+- sidecar loader 只扫描仍被时间线片段使用的素材；当前文件的优先字幕路径按真实媒体路径匹配，不再按 `sources[0]` 的数组位置绑定，避免替换后旧素材旁车字幕参与新素材 reload。
+- `captionSourceRevision` 的 reload key 同时记录活动 source 集合；当旧素材仍在磁盘但已经没有时间线片段时，旧素材 sidecar 被修改不会触发冲突预览或 force reload。跨媒体 Smoke 额外覆盖旧 source / translation sidecar 修改后的 reload，确认冲突数、旧 sidecar 预览数和 Renderer 错误均为 0。
 
 ## 编辑器画布交互层级
 
