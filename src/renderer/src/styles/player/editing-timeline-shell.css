@@ -72,14 +72,25 @@
 }
 
 .editing-project-status {
+  display: grid;
+  gap: 3px;
   max-width: min(42vw, 440px);
-  overflow: hidden;
   color: var(--text-muted);
   font-size: 9px;
   line-height: 1.2;
+}
+
+.editing-project-status-message {
+  min-width: 0;
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.editing-project-status-details { min-width: 0; }
+.editing-project-status-details summary { width: fit-content; color: var(--accent); cursor: pointer; font-size: 8px; font-weight: 700; }
+.editing-project-status-details-list { display: grid; gap: 2px; max-height: 96px; margin-top: 2px; overflow: auto; color: var(--text-muted); font-size: 8px; line-height: 1.35; }
+.editing-project-status-details-list span { min-width: 0; overflow-wrap: anywhere; }
 
 .editing-project-status.is-success {
   color: var(--success);

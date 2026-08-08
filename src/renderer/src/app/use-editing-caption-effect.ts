@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { EditingCaption, EditingCaptionSourceRevisions, EditingProject, EditingSource } from '../../../shared/editing-types'
 import type { AppDerived } from './use-app-derived'
-import type { AppModel } from './app-types'
+import type { AppModel, EditingProjectStatus } from './app-types'
 import { createEditingCaptionSources, createEditingCaptionSourceRevisionKey, getEditingCaptionCandidateAudits, hasEditingCaptionSourceRevisionChanges, loadEditingCaptionSnapshot, normalizeEditingCaptionPreferredPaths, type EditingCaptionSourcePaths } from './editing-caption-loader'
 import { saveEditingProject } from './editing-project-storage'
 import { mergeEditingScriptSegments } from '../../../core/editing/script-operations'
@@ -39,23 +39,34 @@ function getPendingCaptionReloadPreview(project: EditingProject, sourceRevisionK
     : preview
 }
 
-export function formatEditingCaptionCandidateStatus(project: Pick<EditingProject, 'sources'>, sourcePaths: EditingCaptionSourcePaths, locale: Parameters<typeof getEditingSubtitleReloadCopy>[0]): { success: boolean; message: string } | null {
+function getEditingCaptionCandidatePathLabel(path: string | null): string {
+  if (!path) return '—'
+  const normalized = path.replace(/[\\/]+$/u, '') || path
+  const separatorIndex = Math.max(normalized.lastIndexOf('/'), normalized.lastIndexOf('\\'))
+  return separatorIndex >= 0 ? normalized.slice(separatorIndex + 1) : normalized
+}
+
+export function formatEditingCaptionCandidateStatus(project: Pick<EditingProject, 'sources'>, sourcePaths: EditingCaptionSourcePaths, locale: Parameters<typeof getEditingSubtitleReloadCopy>[0]): EditingProjectStatus | null {
   const audits = getEditingCaptionCandidateAudits(sourcePaths)
   if (audits.length === 0) return null
   const reloadCopy = getEditingSubtitleReloadCopy(locale)
   const candidateCopy = getEditingSubtitleCandidateCopy(locale)
   const sourceNames = new Map(project.sources.map((source) => [source.id, source.name]))
-  const messages = audits.flatMap((audit) => {
+  const messages = audits.map((audit) => {
     const sourceName = sourceNames.get(audit.sourceId) ?? reloadCopy.unknownSource
     const kindLabel = audit.kind === 'source' ? reloadCopy.source : reloadCopy.translation
-    const selectedPath = audit.selectedPath ?? '—'
+    return candidateCopy.auditSummary(sourceName, kindLabel, audit.validPathCount, audit.validCandidateCount, getEditingCaptionCandidatePathLabel(audit.selectedPath))
+  })
+  const details = audits.flatMap((audit) => {
+    const sourceName = sourceNames.get(audit.sourceId) ?? reloadCopy.unknownSource
+    const kindLabel = audit.kind === 'source' ? reloadCopy.source : reloadCopy.translation
     return [
-      candidateCopy.auditSummary(sourceName, kindLabel, audit.validPathCount, audit.validCandidateCount, selectedPath),
+      candidateCopy.auditSelected(sourceName, kindLabel, audit.selectedPath ?? '—'),
       ...audit.equivalentCandidateGroups.map((group) => candidateCopy.auditEquivalent(sourceName, kindLabel, group.join(' · '))),
       ...(audit.validCandidateCount > 1 ? [candidateCopy.auditDistinct(sourceName, kindLabel, audit.validCandidatePaths.join(' · '))] : [])
     ]
   })
-  return { success: audits.every((audit) => audit.validCandidateCount <= 1), message: messages.join('；') }
+  return { success: audits.every((audit) => audit.validCandidateCount <= 1), message: messages.join('；'), details: { label: candidateCopy.detailsLabel, items: details } }
 }
 
 export function useEditingCaptionEffect(model: AppModel, derived: AppDerived): {

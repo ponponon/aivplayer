@@ -161,7 +161,7 @@ export function EditingTimeline(): React.ReactElement | null {
         <div className="editing-toolbar-heading">
           <span className="editing-toolbar-kicker">{app.copy.editing.kicker}</span>
           <strong>{project.title}</strong>
-          {app.editingProjectStatus ? <span className={`editing-project-status ${app.editingProjectStatus.success ? 'is-success' : 'is-error'}`} role="status">{app.editingProjectStatus.message}</span> : null}
+          {app.editingProjectStatus ? <div className={`editing-project-status ${app.editingProjectStatus.success ? 'is-success' : 'is-error'}`} role="status"><span className="editing-project-status-message" data-testid="editing-project-status-message">{app.editingProjectStatus.message}</span>{app.editingProjectStatus.details?.items.length ? <details className="editing-project-status-details" data-testid="editing-project-status-details"><summary>{app.editingProjectStatus.details.label}</summary><div className="editing-project-status-details-list">{app.editingProjectStatus.details.items.map((item, index) => <span key={`${item}-${index}`}>{item}</span>)}</div></details> : null}</div> : null}
         </div>
         <div className="editing-toolbar-actions">
           <button className="editing-icon-button" type="button" onClick={() => void app.addEditingSources()} disabled={app.isAddingEditingMedia} title={app.isAddingEditingMedia ? app.copy.editing.addingMedia : app.copy.editing.addMedia} aria-label={app.copy.editing.addMedia} data-testid="editing-add-media"><Plus size={15} /></button>
