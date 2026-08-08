@@ -15,6 +15,7 @@ export type EditingCaptionSidecarPathInfo = {
   selectedPath: string | null
   candidates: string[]
   validCandidatePaths: string[]
+  equivalentCandidateGroups?: string[][]
   preferredPath?: string | null
   preferredPathAvailable?: boolean
 }
@@ -38,6 +39,16 @@ export type EditingCaptionLoadResult = {
   captions: EditingCaption[]
   sourceRevisions: EditingCaptionSourceRevisions
   sourcePaths: EditingCaptionSourcePaths
+}
+
+export type EditingCaptionCandidateAudit = {
+  sourceId: string
+  kind: EditingCaption['kind']
+  selectedPath: string | null
+  validCandidatePaths: string[]
+  validCandidateCount: number
+  validPathCount: number
+  equivalentCandidateGroups: string[][]
 }
 
 /**
@@ -126,7 +137,7 @@ function getCaptionSourceCandidatePaths(source: CaptionSource): string[] {
   return [...new Set([source.path, ...(source.pathCandidates ?? [])].filter((path): path is string => Boolean(path)))]
 }
 
-async function loadCaptionSource(source: CaptionSource): Promise<{ captions: EditingCaption[]; revision: number | null; selectedPath: string | null; validCandidatePaths: string[]; preferredPath?: string | null; preferredPathAvailable?: boolean }> {
+async function loadCaptionSource(source: CaptionSource): Promise<{ captions: EditingCaption[]; revision: number | null; selectedPath: string | null; validCandidatePaths: string[]; equivalentCandidateGroups?: string[][]; preferredPath?: string | null; preferredPathAvailable?: boolean }> {
   const paths = getCaptionSourceCandidatePaths(source)
   const loadedCandidates = await Promise.all(paths.map(async (path) => {
     try {
@@ -153,9 +164,12 @@ async function loadCaptionSource(source: CaptionSource): Promise<{ captions: Edi
         ? segment.words.map((word) => ({ startSeconds: Math.max(0, word.startSeconds - segment.startSeconds), endSeconds: Math.max(0, word.endSeconds - segment.startSeconds), text: word.text }))
         : undefined
       return durationSeconds > 0 ? [{ id: `${source.kind}-${source.sourceId}-${index}`, sourceId: source.sourceId, sourceStartSeconds: segment.startSeconds, sourceEndSeconds: segment.endSeconds, kind: source.kind, startSeconds: segment.startSeconds, durationSeconds, text: segment.text, ...(captionWords && captionWords.length > 0 ? { words: captionWords } : {}) }] : []
-    })
+  })
   const validCandidatePaths = distinctValidCandidates.map((candidate) => candidate.path)
-  return { captions, revision, selectedPath: loadedText.path, validCandidatePaths, ...(source.preferredPath === undefined ? {} : { preferredPath: source.preferredPath, preferredPathAvailable: validCandidatePaths.includes(source.preferredPath ?? '') }) }
+  const equivalentCandidateGroups = distinctValidCandidates
+    .map((candidate) => validCandidates.filter((other) => other.signature === candidate.signature).map((other) => other.path))
+    .filter((group) => group.length > 1)
+  return { captions, revision, selectedPath: loadedText.path, validCandidatePaths, ...(equivalentCandidateGroups.length > 0 ? { equivalentCandidateGroups } : {}), ...(source.preferredPath === undefined ? {} : { preferredPath: source.preferredPath, preferredPathAvailable: validCandidatePaths.includes(source.preferredPath ?? '') }) }
 }
 
 export async function loadEditingCaptionSnapshot(sources: readonly CaptionSource[]): Promise<EditingCaptionLoadResult> {
@@ -168,7 +182,7 @@ export async function loadEditingCaptionSnapshot(sources: readonly CaptionSource
     sourceRevisions[source.sourceId] = current
     const currentPaths = sourcePaths[source.sourceId] ?? { source: { selectedPath: null, candidates: [], validCandidatePaths: [] }, translation: { selectedPath: null, candidates: [], validCandidatePaths: [] } }
     const loadedSource = loaded[index]
-    currentPaths[source.kind] = { selectedPath: loadedSource?.selectedPath ?? null, candidates: getCaptionSourceCandidatePaths(source), validCandidatePaths: loadedSource?.validCandidatePaths ?? [], ...(loadedSource?.preferredPath === undefined ? {} : { preferredPath: loadedSource.preferredPath, preferredPathAvailable: loadedSource.preferredPathAvailable }) }
+    currentPaths[source.kind] = { selectedPath: loadedSource?.selectedPath ?? null, candidates: getCaptionSourceCandidatePaths(source), validCandidatePaths: loadedSource?.validCandidatePaths ?? [], ...(loadedSource?.equivalentCandidateGroups === undefined ? {} : { equivalentCandidateGroups: loadedSource.equivalentCandidateGroups }), ...(loadedSource?.preferredPath === undefined ? {} : { preferredPath: loadedSource.preferredPath, preferredPathAvailable: loadedSource.preferredPathAvailable }) }
     sourcePaths[source.sourceId] = currentPaths
   })
   return {
@@ -176,6 +190,23 @@ export async function loadEditingCaptionSnapshot(sources: readonly CaptionSource
     sourceRevisions,
     sourcePaths
   }
+}
+
+export function getEditingCaptionCandidateAudits(sourcePaths: EditingCaptionSourcePaths): EditingCaptionCandidateAudit[] {
+  return Object.entries(sourcePaths).flatMap(([sourceId, paths]) => (['source', 'translation'] as const).map((kind) => {
+    const info = paths[kind]
+    const equivalentCandidateGroups = info.equivalentCandidateGroups ?? []
+    const validPathCount = info.validCandidatePaths.length + equivalentCandidateGroups.reduce((count, group) => count + group.length - 1, 0)
+    return {
+      sourceId,
+      kind,
+      selectedPath: info.selectedPath,
+      validCandidatePaths: info.validCandidatePaths,
+      validCandidateCount: info.validCandidatePaths.length,
+      validPathCount,
+      equivalentCandidateGroups
+    }
+  })).filter((audit) => audit.validPathCount > 1)
 }
 
 /** Clears only preferences that failed to load and lets normal candidate priority take over. */
