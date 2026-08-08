@@ -57,6 +57,10 @@ function parseSeconds(value: string): number | undefined {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined
 }
 
+function formatSidecarPath(path: string | null | undefined, copy: EditingSubtitleReloadCopy): string {
+  return path ?? copy.sidecarNotFound
+}
+
 export function EditingCaptionReloadConflict({ conflict, copy, onSeek, onPreviewIncoming, onAcceptIncoming, onAddIncoming, onRemoveCurrent, onKeepCurrentChange, onSelectScriptSegment, onKeepCurrent, onForceReload }: EditingCaptionReloadConflictProps): React.ReactElement {
   const { preview } = conflict
   const [query, setQuery] = useState('')
@@ -96,6 +100,21 @@ export function EditingCaptionReloadConflict({ conflict, copy, onSeek, onPreview
         {preview.addedCount > 0 ? <span>{copy.added(preview.addedCount)}</span> : null}
         {preview.removedCount > 0 ? <span>{copy.removed(preview.removedCount)}</span> : null}
       </div>
+      <details className="editing-caption-reload-sidecar-paths" data-testid="editing-caption-reload-sidecar-paths">
+        <summary>{copy.sidecarPaths}</summary>
+        <div className="editing-caption-reload-sidecar-list">
+          {conflict.sources.map((source) => {
+            const paths = conflict.sourcePaths[source.id]
+            return <div className="editing-caption-reload-sidecar-source" key={source.id}>
+              <strong title={source.path}>{source.name}</strong>
+              <small><span>{copy.sidecarSource}</span><code>{formatSidecarPath(paths?.source.selectedPath, copy)}</code></small>
+              <small><span>{copy.sidecarTranslation}</span><code>{formatSidecarPath(paths?.translation.selectedPath, copy)}</code></small>
+              {paths?.source.candidates.length ? <small><span>{copy.candidatePaths}</span><code title={paths.source.candidates.join('\n')}>{paths.source.candidates.join(' · ')}</code></small> : null}
+              {paths?.translation.candidates.length ? <small><span>{copy.candidatePaths}</span><code title={paths.translation.candidates.join('\n')}>{paths.translation.candidates.join(' · ')}</code></small> : null}
+            </div>
+          })}
+        </div>
+      </details>
       <details className="editing-caption-reload-details" data-testid="editing-caption-reload-preview">
         <summary>{copy.preview}</summary>
         <div className="editing-caption-reload-filters">

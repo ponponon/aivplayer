@@ -32,6 +32,11 @@ export type EditingSubtitleReloadCopy = {
   current: string
   incoming: string
   sourceFile: string
+  sidecarPaths: string
+  sidecarSource: string
+  sidecarTranslation: string
+  sidecarNotFound: string
+  candidatePaths: string
   unknownSource: string
   empty: string
   source: string
@@ -80,6 +85,11 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     current: '当前编辑',
     incoming: '新字幕',
     sourceFile: '素材',
+    sidecarPaths: '字幕旁车路径',
+    sidecarSource: '原文文件',
+    sidecarTranslation: '译文文件',
+    sidecarNotFound: '未找到',
+    candidatePaths: '候选路径',
     unknownSource: '未知素材',
     empty: '（无内容）',
     source: '原文',
@@ -126,6 +136,11 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     current: 'Current edit',
     incoming: 'New subtitle',
     sourceFile: 'Media source',
+    sidecarPaths: 'Subtitle sidecar paths',
+    sidecarSource: 'Source file',
+    sidecarTranslation: 'Translation file',
+    sidecarNotFound: 'Not found',
+    candidatePaths: 'Candidates',
     unknownSource: 'Unknown source',
     empty: '(empty)',
     source: 'Source',
@@ -172,6 +187,11 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     current: '現在の編集',
     incoming: '新しい字幕',
     sourceFile: '素材',
+    sidecarPaths: '字幕サイドカーのパス',
+    sidecarSource: '原文ファイル',
+    sidecarTranslation: '翻訳ファイル',
+    sidecarNotFound: '見つかりません',
+    candidatePaths: '候補パス',
     unknownSource: '不明な素材',
     empty: '（空）',
     source: '原文',
@@ -218,6 +238,11 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     current: '현재 편집',
     incoming: '새 자막',
     sourceFile: '소재',
+    sidecarPaths: '자막 사이드카 경로',
+    sidecarSource: '원문 파일',
+    sidecarTranslation: '번역 파일',
+    sidecarNotFound: '찾을 수 없음',
+    candidatePaths: '후보 경로',
     unknownSource: '알 수 없는 소재',
     empty: '(비어 있음)',
     source: '원문',
