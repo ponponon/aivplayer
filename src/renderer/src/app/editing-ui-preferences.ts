@@ -136,3 +136,15 @@ export function resetEditingUiProjectPreferences(storage: EditingUiPreferenceSto
     return false
   }
 }
+
+export function resetAllEditingUiPreferences(storage: EditingUiPreferenceStorage): number {
+  try {
+    const current = parseEditingUiPreferences(storage.getItem(EDITING_UI_PREFERENCES_STORAGE_KEY))
+    const removedCount = Object.keys(current.projects).length
+    if (removedCount === 0) return 0
+    storage.setItem(EDITING_UI_PREFERENCES_STORAGE_KEY, serializeEditingUiPreferences(createDefaultEditingUiPreferences()))
+    return removedCount
+  } catch {
+    return 0
+  }
+}

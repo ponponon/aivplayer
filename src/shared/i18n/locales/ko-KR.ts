@@ -131,6 +131,7 @@
       skipStructureAt: (label: string, time: string) => `${label} 건너뛰기 · ${time}`
     },
     editing: {
+      resetAllCandidateDetails: '모든 후보 상세 기본 상태로 복원', resetAllCandidateDetailsConfirm: '모든 프로젝트의 후보 상세를 기본 상태로 되돌리고 현재 후보 상세도 닫습니다. 계속하시겠습니까?',
       orphanTranslationNotice: (count: number) => `${count}개의 고립된 번역을 유지했습니다. 타임라인에서 시간을 조정할 수 있지만 현재 내보내기에는 포함되지 않습니다.`,
       scriptRestoreWithTranslation: '원문 복원 및 번역 다시 연결',
       scriptOrphanTranslationHint: '보존된 번역은 복원 시 다시 연결됩니다',

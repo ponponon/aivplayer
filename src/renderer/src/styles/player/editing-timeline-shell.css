@@ -96,9 +96,12 @@
 .editing-project-status-details-group[open] > summary { color: var(--text-primary); }
 .editing-project-status-details-list { display: grid; gap: 2px; color: var(--text-muted); font-size: 8px; line-height: 1.35; }
 .editing-project-status-details-list span { min-width: 0; overflow-wrap: anywhere; }
+.editing-project-status-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; }
 .editing-project-status-reset { display: inline-flex; align-items: center; gap: 3px; width: fit-content; padding: 1px 3px; color: var(--text-muted); background: transparent; border: 1px solid transparent; border-radius: var(--radius-sm); cursor: pointer; font: inherit; font-size: 8px; }
 .editing-project-status-reset:hover { color: var(--text-primary); background: rgba(var(--overlay-rgb), 0.08); border-color: var(--border-soft); }
 .editing-project-status-reset:focus-visible { outline: 2px solid rgba(var(--accent-rgb), 0.72); outline-offset: 2px; }
+.editing-project-status-reset-all { color: var(--danger); }
+.editing-project-status-reset-all:hover { color: var(--danger); }
 
 .editing-project-status.is-success {
   color: var(--success);

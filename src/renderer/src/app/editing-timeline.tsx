@@ -22,14 +22,14 @@ import { analyzeSubtitleQa } from '../../../shared/subtitle-qa'
 import { getPlaybackMediaKey } from '../../../shared/playback-memory'
 import { useEditingClipReorder } from './use-editing-clip-reorder'; import { useEditingTimelineSelection } from './use-editing-timeline-selection'; import { EditingStructureAnalysis } from './editing-structure-analysis'; import { EditingSubtitleQa } from './editing-subtitle-qa'; import { EditingCaptionSyncControl } from './editing-caption-sync-control'
 import { EditingCaptionReloadConflict } from './editing-caption-reload-conflict'
-import { getEditingUiPreferenceStorage, pruneEditingUiPreferences, readEditingProjectIds, readEditingUiProjectPreferences, resetEditingUiProjectPreferences, writeEditingUiProjectPreferences } from './editing-ui-preferences'
+import { getEditingUiPreferenceStorage, pruneEditingUiPreferences, readEditingProjectIds, readEditingUiProjectPreferences, resetAllEditingUiPreferences, resetEditingUiProjectPreferences, writeEditingUiProjectPreferences } from './editing-ui-preferences'
 import { getEditingSubtitleReloadCopy } from '../../../shared/editing-subtitle-reload-copy'
 import { getEditingSubtitleCandidateCopy } from '../../../shared/editing-subtitle-candidate-copy'
 import { getEditingSubtitleReloadChangePreview, getEditingSubtitleReloadChangeScriptSegmentId, shareEditingSubtitleReloadScriptSegmentIds, type EditingSubtitleReloadChange, type EditingSubtitleReloadChangePreview, type EditingSubtitleReloadIncomingPreviewTrack } from '../../../core/editing/subtitle-reload'
 const MAX_RULER_TICKS = 121; function formatClipLabel(startSeconds: number, endSeconds: number): string { return `${formatTime(startSeconds)} – ${formatTime(endSeconds)}` }
 function formatIncomingPreviewRange(track: EditingSubtitleReloadIncomingPreviewTrack): string { return `${formatTime(track.startSeconds)}–${formatTime(track.endSeconds)}` }
 
-function EditingProjectStatusView({ projectId, status, resetLabel }: { projectId: string; status: EditingProjectStatus | null; resetLabel: string }): React.ReactElement | null {
+function EditingProjectStatusView({ projectId, status, resetLabel, resetAllLabel, resetAllConfirm }: { projectId: string; status: EditingProjectStatus | null; resetLabel: string; resetAllLabel: string; resetAllConfirm: string }): React.ReactElement | null {
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
   const [preferencesLoaded, setPreferencesLoaded] = useState(false)
@@ -60,7 +60,14 @@ function EditingProjectStatusView({ projectId, status, resetLabel }: { projectId
     setDetailsOpen(false)
     setOpenGroups({})
   }
-  return <div className={`editing-project-status ${status.success ? 'is-success' : 'is-error'}`} role="status"><span className="editing-project-status-message" data-testid="editing-project-status-message">{status.message}</span>{groups.length ? <><details className="editing-project-status-details" data-testid="editing-project-status-details" open={detailsOpen} onToggle={(event) => setDetailsOpen(event.currentTarget.open)}><summary>{status.details?.label}</summary><div className="editing-project-status-details-groups">{groups.map((group) => <details className="editing-project-status-details-group" data-testid={`editing-project-status-details-group-${group.id}`} key={group.id} open={openGroups[group.id] ?? false} onToggle={(event) => { const open = event.currentTarget.open; setOpenGroups((current) => open === (current[group.id] ?? false) ? current : { ...current, [group.id]: open }) }}><summary>{group.label}</summary><div className="editing-project-status-details-list">{group.items.map((item, index) => <span key={`${item}-${index}`}>{item}</span>)}</div></details>)}</div></details><button className="editing-project-status-reset" type="button" onClick={resetDetailsPreferences} title={resetLabel} aria-label={resetLabel} data-testid="editing-reset-candidate-details-preferences"><RotateCcw size={10} aria-hidden="true" /><span>{resetLabel}</span></button></> : null}</div>
+  const resetAllDetailsPreferences = (): void => {
+    if (!window.confirm(resetAllConfirm)) return
+    const storage = getEditingUiPreferenceStorage()
+    if (storage) resetAllEditingUiPreferences(storage)
+    setDetailsOpen(false)
+    setOpenGroups({})
+  }
+  return <div className={`editing-project-status ${status.success ? 'is-success' : 'is-error'}`} role="status"><span className="editing-project-status-message" data-testid="editing-project-status-message">{status.message}</span>{groups.length ? <><details className="editing-project-status-details" data-testid="editing-project-status-details" open={detailsOpen} onToggle={(event) => setDetailsOpen(event.currentTarget.open)}><summary>{status.details?.label}</summary><div className="editing-project-status-details-groups">{groups.map((group) => <details className="editing-project-status-details-group" data-testid={`editing-project-status-details-group-${group.id}`} key={group.id} open={openGroups[group.id] ?? false} onToggle={(event) => { const open = event.currentTarget.open; setOpenGroups((current) => open === (current[group.id] ?? false) ? current : { ...current, [group.id]: open }) }}><summary>{group.label}</summary><div className="editing-project-status-details-list">{group.items.map((item, index) => <span key={`${item}-${index}`}>{item}</span>)}</div></details>)}</div></details><div className="editing-project-status-actions"><button className="editing-project-status-reset" type="button" onClick={resetDetailsPreferences} title={resetLabel} aria-label={resetLabel} data-testid="editing-reset-candidate-details-preferences"><RotateCcw size={10} aria-hidden="true" /><span>{resetLabel}</span></button><button className="editing-project-status-reset editing-project-status-reset-all" type="button" onClick={resetAllDetailsPreferences} title={resetAllLabel} aria-label={resetAllLabel} data-testid="editing-reset-all-candidate-details-preferences"><RotateCcw size={10} aria-hidden="true" /><span>{resetAllLabel}</span></button></div></> : null}</div>
 }
 
 export function EditingTimeline(): React.ReactElement | null {
@@ -198,7 +205,7 @@ export function EditingTimeline(): React.ReactElement | null {
         <div className="editing-toolbar-heading">
           <span className="editing-toolbar-kicker">{app.copy.editing.kicker}</span>
           <strong>{project.title}</strong>
-          <EditingProjectStatusView key={project.id} projectId={project.id} status={app.editingProjectStatus} resetLabel={app.copy.editing.resetCandidateDetails} />
+          <EditingProjectStatusView key={project.id} projectId={project.id} status={app.editingProjectStatus} resetLabel={app.copy.editing.resetCandidateDetails} resetAllLabel={app.copy.editing.resetAllCandidateDetails} resetAllConfirm={app.copy.editing.resetAllCandidateDetailsConfirm} />
         </div>
         <div className="editing-toolbar-actions">
           <button className="editing-icon-button" type="button" onClick={() => void app.addEditingSources()} disabled={app.isAddingEditingMedia} title={app.isAddingEditingMedia ? app.copy.editing.addingMedia : app.copy.editing.addMedia} aria-label={app.copy.editing.addMedia} data-testid="editing-add-media"><Plus size={15} /></button>

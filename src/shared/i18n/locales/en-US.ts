@@ -131,6 +131,7 @@
       skipStructureAt: (label: string, time: string) => `Skip ${label} · ${time}`
     },
     editing: {
+      resetAllCandidateDetails: 'Reset all candidate details', resetAllCandidateDetailsConfirm: 'This resets candidate details for every project and closes the current candidate details. Continue?',
       orphanTranslationNotice: (count: number) => `${count} orphaned translation${count === 1 ? '' : 's'} kept: you can still adjust timing, but they are excluded from the current export.`,
       scriptRestoreWithTranslation: 'Restore and relink translation',
       scriptOrphanTranslationHint: 'Kept translation will be relinked on restore',

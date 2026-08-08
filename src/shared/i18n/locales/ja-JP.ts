@@ -131,6 +131,7 @@
       skipStructureAt: (label: string, time: string) => `${label}をスキップ：${time}`
     },
     editing: {
+      resetAllCandidateDetails: 'すべての候補詳細を初期状態に戻す', resetAllCandidateDetailsConfirm: 'すべてのプロジェクトの候補詳細を初期状態に戻し、現在の候補詳細も閉じます。続行しますか？',
       orphanTranslationNotice: (count: number) => `${count} 件の孤立した翻訳を保持中：タイムラインで時間を調整できますが、現在の書き出しには含まれません。`,
       scriptRestoreWithTranslation: '原文を復元して翻訳を再関連付け',
       scriptOrphanTranslationHint: '保持した翻訳は復元時に再関連付けされます',

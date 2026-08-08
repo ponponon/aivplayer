@@ -131,6 +131,7 @@
       skipStructureAt: (label: string, time: string) => `跳过${label} · ${time}`
     },
     editing: {
+      resetAllCandidateDetails: '恢复所有候选详情默认', resetAllCandidateDetailsConfirm: '将恢复所有工程的候选详情默认状态，当前候选详情也会关闭。是否继续？',
       orphanTranslationNotice: (count: number) => `已保留 ${count} 条孤立译文：仍可在时间轴调整时间，但当前导出不会写入这些译文。`,
       scriptRestoreWithTranslation: '恢复原文并重新关联译文',
       scriptOrphanTranslationHint: '已保留译文，恢复时会重新关联',
