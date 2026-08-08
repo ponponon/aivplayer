@@ -7,6 +7,7 @@ import { saveEditingProject } from './editing-project-storage'
 import { mergeEditingScriptSegments } from '../../../core/editing/script-operations'
 import { applyEditingSubtitleReloadAddition, applyEditingSubtitleReloadChange, applyEditingSubtitleReloadKeep, applyEditingSubtitleReloadRemoval, buildEditingSubtitleReloadPreview, filterEditingSubtitleReloadPreview, getEditingSubtitleReloadChangeKey, getEditingSubtitleReloadRemovalResolutionKeys, recordEditingSubtitleReloadResolution, replaceEditingCaptionsForReload, type EditingSubtitleReloadChange, type EditingSubtitleReloadPreview } from '../../../core/editing/subtitle-reload'
 import { isEditingScriptSegmentCaption } from '../../../core/editing/script-operations'
+import { getEditingSubtitleReloadCopy } from '../../../shared/editing-subtitle-reload-copy'
 
 export type EditingCaptionReloadConflict = {
   sourceRevisionKey: string
@@ -45,12 +46,16 @@ export function useEditingCaptionEffect(model: AppModel, derived: AppDerived): {
   acceptEditingSubtitleReloadAddition: (change: EditingSubtitleReloadChange) => void
   removeEditingSubtitleReloadChange: (change: EditingSubtitleReloadChange) => void
   keepEditingSubtitleReloadRemoval: (change: EditingSubtitleReloadChange) => void
+  selectEditingCaptionCandidate: (sourceId: string, kind: EditingCaption['kind'], path: string) => Promise<void>
+  isSelectingEditingCaptionCandidate: string | null
   forceReloadEditingCaptions: () => void
   keepCurrentEditingCaptions: () => void
 } {
   const [editingCaptionReloadConflict, setEditingCaptionReloadConflict] = useState<EditingCaptionReloadConflict | null>(null)
   const [isRebuildingEditingCaptionManifest, setIsRebuildingEditingCaptionManifest] = useState(false)
+  const [isSelectingEditingCaptionCandidate, setIsSelectingEditingCaptionCandidate] = useState<string | null>(null)
   const sourceKey = model.editingProject?.sources.map((source) => `${source.id}:${source.path}`).join('|') ?? ''
+  const preferredCaptionPathKey = JSON.stringify(model.editingProject?.captionSourcePaths ?? {})
   useEffect(() => {
     const project = model.editingProject
     if (!model.isEditingMode || !project || project.sources.length === 0) {
@@ -58,7 +63,7 @@ export function useEditingCaptionEffect(model: AppModel, derived: AppDerived): {
       return
     }
     let cancelled = false
-    const sources = createEditingCaptionSources(project, { currentMediaPath: model.state.currentFile?.path ?? null, subtitlePath: derived.subtitlePath, subtitleSrtPath: derived.subtitleSrtPath, translatedSubtitlePath: derived.translatedSubtitlePath, translatedSubtitleSrtPath: derived.translatedSubtitleSrtPath, translationLanguage: derived.quickTargetLanguage })
+    const sources = createEditingCaptionSources(project, { currentMediaPath: model.state.currentFile?.path ?? null, subtitlePath: derived.subtitlePath, subtitleSrtPath: derived.subtitleSrtPath, translatedSubtitlePath: derived.translatedSubtitlePath, translatedSubtitleSrtPath: derived.translatedSubtitleSrtPath, translationLanguage: derived.quickTargetLanguage, preferredCaptionPaths: project.captionSourcePaths })
     void loadEditingCaptionSnapshot(sources).then(({ captions, sourceRevisions, sourcePaths }) => {
       if (cancelled) return
       model.setEditingProject((current) => {
@@ -106,7 +111,7 @@ export function useEditingCaptionEffect(model: AppModel, derived: AppDerived): {
       })
     })
     return () => { cancelled = true }
-  }, [model.isEditingMode, model.editingProject?.id, model.editingProject?.captionSourceRevision, model.editingProject?.captionSourceRevisions, model.editingProject?.captionReloadResolution?.sourceRevisionKey, model.editingProject?.captionReloadResolution?.changeKeys.join('|'), model.state.currentFile?.path, sourceKey, derived.subtitlePath, derived.subtitleSrtPath, derived.subtitleRevision, derived.translatedSubtitlePath, derived.translatedSubtitleSrtPath, derived.translatedSubtitleRevision, derived.quickTargetLanguage])
+  }, [model.isEditingMode, model.editingProject?.id, model.editingProject?.captionSourceRevision, model.editingProject?.captionSourceRevisions, model.editingProject?.captionReloadResolution?.sourceRevisionKey, model.editingProject?.captionReloadResolution?.changeKeys.join('|'), model.state.currentFile?.path, sourceKey, preferredCaptionPathKey, derived.subtitlePath, derived.subtitleSrtPath, derived.subtitleRevision, derived.translatedSubtitlePath, derived.translatedSubtitleSrtPath, derived.translatedSubtitleRevision, derived.quickTargetLanguage])
 
   const forceReloadEditingCaptions = useCallback((): void => {
     const project = model.editingProject
@@ -120,6 +125,44 @@ export function useEditingCaptionEffect(model: AppModel, derived: AppDerived): {
     saveEditingProject(next)
     setEditingCaptionReloadConflict(null)
   }, [editingCaptionReloadConflict, model.editingProject, model.setEditingFuture, model.setEditingPast, model.setEditingProject, model.setEditingSelectedCaptionId])
+
+  const selectEditingCaptionCandidate = useCallback(async (sourceId: string, kind: EditingCaption['kind'], path: string): Promise<void> => {
+    const project = model.editingProject
+    const conflict = editingCaptionReloadConflict
+    const pathInfo = conflict?.sourcePaths[sourceId]?.[kind]
+    const selectionKey = `${sourceId}:${kind}:${path}`
+    if (!project || !conflict || !pathInfo || !pathInfo.validCandidatePaths.includes(path) || pathInfo.selectedPath === path || isSelectingEditingCaptionCandidate) return
+    setIsSelectingEditingCaptionCandidate(selectionKey)
+    try {
+      const currentPreferred = project.captionSourcePaths?.[sourceId] ?? { source: null, translation: null }
+      const preferredCaptionPaths = {
+        ...project.captionSourcePaths,
+        [sourceId]: { ...currentPreferred, [kind]: path }
+      }
+      const sources = createEditingCaptionSources(project, { currentMediaPath: model.state.currentFile?.path ?? null, subtitlePath: derived.subtitlePath, subtitleSrtPath: derived.subtitleSrtPath, translatedSubtitlePath: derived.translatedSubtitlePath, translatedSubtitleSrtPath: derived.translatedSubtitleSrtPath, translationLanguage: derived.quickTargetLanguage, preferredCaptionPaths })
+      const targetSource = sources.find((source) => source.sourceId === sourceId && source.kind === kind)
+      if (!targetSource) throw new Error('字幕来源已不再活动')
+      const snapshot = await loadEditingCaptionSnapshot(sources)
+      if (snapshot.sourcePaths[sourceId]?.[kind].selectedPath !== path) throw new Error('所选字幕候选已不可读取')
+      if (model.editingProject?.id !== project.id) return
+      const baseProject = { ...project, captionSourcePaths: preferredCaptionPaths }
+      const sourceRevisionKey = createEditingCaptionSourceRevisionKey(baseProject, snapshot.sourceRevisions)
+      const next = { ...replaceEditingCaptionsForReload(baseProject, snapshot.captions, sourceRevisionKey), captionSourceRevisions: snapshot.sourceRevisions, captionSourcePaths: preferredCaptionPaths }
+      model.setEditingPast((past) => [...past, project])
+      model.setEditingFuture([])
+      model.setEditingProject(next)
+      model.setEditingSelectedCaptionId(null)
+      saveEditingProject(next)
+      setEditingCaptionReloadConflict(null)
+      const copy = getEditingSubtitleReloadCopy(model.appSettings.ui.locale)
+      model.setEditingProjectStatus({ success: true, message: copy.candidateSelected(path) })
+    } catch (error) {
+      const copy = getEditingSubtitleReloadCopy(model.appSettings.ui.locale)
+      model.setEditingProjectStatus({ success: false, message: `${copy.candidateSelectionFailed}：${error instanceof Error ? error.message : String(error)}` })
+    } finally {
+      setIsSelectingEditingCaptionCandidate(null)
+    }
+  }, [derived.quickTargetLanguage, derived.subtitlePath, derived.subtitleSrtPath, derived.translatedSubtitlePath, derived.translatedSubtitleSrtPath, editingCaptionReloadConflict, isSelectingEditingCaptionCandidate, model.appSettings.ui.locale, model.editingProject, model.setEditingFuture, model.setEditingPast, model.setEditingProject, model.setEditingProjectStatus, model.setEditingSelectedCaptionId, model.state.currentFile?.path])
 
   const acceptEditingSubtitleReloadChange = useCallback((change: EditingSubtitleReloadChange): void => {
     const project = model.editingProject
@@ -212,7 +255,7 @@ export function useEditingCaptionEffect(model: AppModel, derived: AppDerived): {
     if (!project || isRebuildingEditingCaptionManifest) return
     setIsRebuildingEditingCaptionManifest(true)
     try {
-      const sources = createEditingCaptionSources(project, { currentMediaPath: model.state.currentFile?.path ?? null, subtitlePath: derived.subtitlePath, subtitleSrtPath: derived.subtitleSrtPath, translatedSubtitlePath: derived.translatedSubtitlePath, translatedSubtitleSrtPath: derived.translatedSubtitleSrtPath, translationLanguage: derived.quickTargetLanguage })
+      const sources = createEditingCaptionSources(project, { currentMediaPath: model.state.currentFile?.path ?? null, subtitlePath: derived.subtitlePath, subtitleSrtPath: derived.subtitleSrtPath, translatedSubtitlePath: derived.translatedSubtitlePath, translatedSubtitleSrtPath: derived.translatedSubtitleSrtPath, translationLanguage: derived.quickTargetLanguage, preferredCaptionPaths: project.captionSourcePaths })
       const { sourceRevisions } = await loadEditingCaptionSnapshot(sources)
       const sourceRevisionKey = createEditingCaptionSourceRevisionKey(project, sourceRevisions)
       const next = acceptCaptionSourceRevisions(withoutCaptionReloadResolution(project), sourceRevisionKey, sourceRevisions)
@@ -228,5 +271,5 @@ export function useEditingCaptionEffect(model: AppModel, derived: AppDerived): {
     }
   }, [derived.copy.editing.captionManifestRebuildFailed, derived.copy.editing.captionManifestRebuilt, derived.quickTargetLanguage, derived.subtitlePath, derived.subtitleSrtPath, derived.translatedSubtitlePath, derived.translatedSubtitleSrtPath, isRebuildingEditingCaptionManifest, model.editingProject, model.setEditingProject, model.setEditingProjectStatus, model.state.currentFile?.path])
 
-  return { editingCaptionReloadConflict, isRebuildingEditingCaptionManifest, rebuildEditingCaptionManifest, acceptEditingSubtitleReloadChange, acceptEditingSubtitleReloadAddition, removeEditingSubtitleReloadChange, keepEditingSubtitleReloadRemoval, forceReloadEditingCaptions, keepCurrentEditingCaptions }
+  return { editingCaptionReloadConflict, isRebuildingEditingCaptionManifest, rebuildEditingCaptionManifest, acceptEditingSubtitleReloadChange, acceptEditingSubtitleReloadAddition, removeEditingSubtitleReloadChange, keepEditingSubtitleReloadRemoval, selectEditingCaptionCandidate, isSelectingEditingCaptionCandidate, forceReloadEditingCaptions, keepCurrentEditingCaptions }
 }

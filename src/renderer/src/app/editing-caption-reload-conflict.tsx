@@ -14,6 +14,8 @@ type EditingCaptionReloadConflictProps = {
   onAddIncoming: (change: EditingSubtitleReloadChange) => void
   onRemoveCurrent: (change: EditingSubtitleReloadChange) => void
   onKeepCurrentChange: (change: EditingSubtitleReloadChange) => void
+  onSelectSidecarCandidate: (sourceId: string, kind: 'source' | 'translation', path: string) => void
+  isSelectingSidecarCandidate: string | null
   onSelectScriptSegment: (segmentId: string) => void
   onKeepCurrent: () => void
   onForceReload: () => void
@@ -67,18 +69,31 @@ function selectedSidecarCandidateRank(info: EditingCaptionSidecarPathInfo): numb
   return selectedIndex >= 0 ? selectedIndex + 1 : 1
 }
 
-function renderSidecarTrack(label: string, info: EditingCaptionSidecarPathInfo | undefined, copy: EditingSubtitleReloadCopy, trackId: string): React.ReactNode {
+function renderSidecarTrack(label: string, info: EditingCaptionSidecarPathInfo | undefined, copy: EditingSubtitleReloadCopy, sourceId: string, kind: 'source' | 'translation', selectingKey: string | null, onSelect: (sourceId: string, kind: 'source' | 'translation', path: string) => void): React.ReactNode {
   if (!info) return null
   const selectedRank = selectedSidecarCandidateRank(info)
+  const trackId = `${sourceId}-${kind}`
   return <>
     <small data-testid={`editing-caption-reload-sidecar-selected-${trackId}`}><span>{label}</span><code>{formatSidecarPath(info.selectedPath, copy)}</code></small>
     {info.validCandidatePaths.length > 1 ? <small className="editing-caption-reload-sidecar-ambiguity" data-testid={`editing-caption-reload-sidecar-ambiguity-${trackId}`}><AlertTriangle size={11} aria-hidden="true" /><span>{copy.multipleValidCandidates(info.validCandidatePaths.length, selectedRank)}</span></small> : null}
     {info.validCandidatePaths.length ? <small><span>{copy.validCandidatePaths}</span><code title={info.validCandidatePaths.join('\n')}>{info.validCandidatePaths.join(' · ')}</code></small> : null}
     {info.candidates.length ? <small><span>{copy.candidatePaths}</span><code title={info.candidates.join('\n')}>{info.candidates.join(' · ')}</code></small> : null}
+    {info.validCandidatePaths.length > 1 ? <div className="editing-caption-reload-sidecar-candidate-actions">
+      {info.validCandidatePaths.map((path, index) => {
+        const selected = path === info.selectedPath
+        const selectionKey = `${sourceId}:${kind}:${path}`
+        const selecting = selectionKey === selectingKey
+        return <button type="button" key={`${path}-${index}`} disabled={selected || selectingKey !== null} onClick={() => onSelect(sourceId, kind, path)} title={selected ? copy.selectedCandidate : selecting ? copy.selectingCandidate : copy.selectCandidate} data-testid={`editing-caption-reload-select-sidecar-${sourceId}-${kind}-${index}`}>
+          {selected ? <Check size={11} aria-hidden="true" /> : null}
+          <span>{selected ? copy.selectedCandidate : selecting ? copy.selectingCandidate : copy.selectCandidate}</span>
+          <code title={path}>{path}</code>
+        </button>
+      })}
+    </div> : null}
   </>
 }
 
-export function EditingCaptionReloadConflict({ conflict, copy, onSeek, onPreviewIncoming, onAcceptIncoming, onAddIncoming, onRemoveCurrent, onKeepCurrentChange, onSelectScriptSegment, onKeepCurrent, onForceReload }: EditingCaptionReloadConflictProps): React.ReactElement {
+export function EditingCaptionReloadConflict({ conflict, copy, onSeek, onPreviewIncoming, onAcceptIncoming, onAddIncoming, onRemoveCurrent, onKeepCurrentChange, onSelectSidecarCandidate, isSelectingSidecarCandidate, onSelectScriptSegment, onKeepCurrent, onForceReload }: EditingCaptionReloadConflictProps): React.ReactElement {
   const { preview } = conflict
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<EditingSubtitleReloadChangeStatusFilter>('all')
@@ -124,8 +139,8 @@ export function EditingCaptionReloadConflict({ conflict, copy, onSeek, onPreview
             const paths = conflict.sourcePaths[source.id]
             return <div className="editing-caption-reload-sidecar-source" key={source.id}>
               <strong title={source.path}>{source.name}</strong>
-              {renderSidecarTrack(copy.sidecarSource, paths?.source, copy, `${source.id}-source`)}
-              {renderSidecarTrack(copy.sidecarTranslation, paths?.translation, copy, `${source.id}-translation`)}
+              {renderSidecarTrack(copy.sidecarSource, paths?.source, copy, source.id, 'source', isSelectingSidecarCandidate, onSelectSidecarCandidate)}
+              {renderSidecarTrack(copy.sidecarTranslation, paths?.translation, copy, source.id, 'translation', isSelectingSidecarCandidate, onSelectSidecarCandidate)}
             </div>
           })}
         </div>

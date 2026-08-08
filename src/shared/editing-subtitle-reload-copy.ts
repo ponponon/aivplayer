@@ -39,6 +39,11 @@ export type EditingSubtitleReloadCopy = {
   candidatePaths: string
   validCandidatePaths: string
   multipleValidCandidates: (count: number, selectedRank: number) => string
+  selectCandidate: string
+  selectedCandidate: string
+  selectingCandidate: string
+  candidateSelected: (path: string) => string
+  candidateSelectionFailed: string
   unknownSource: string
   empty: string
   source: string
@@ -94,6 +99,11 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     candidatePaths: '候选路径',
     validCandidatePaths: '有效候选',
     multipleValidCandidates: (count, selectedRank) => `发现 ${count} 个有效候选，当前按优先级使用第 ${selectedRank} 个，请确认来源。`,
+    selectCandidate: '切换并采用',
+    selectedCandidate: '当前使用',
+    selectingCandidate: '正在切换…',
+    candidateSelected: (path) => `已切换字幕候选：${path}`,
+    candidateSelectionFailed: '字幕候选切换失败',
     unknownSource: '未知素材',
     empty: '（无内容）',
     source: '原文',
@@ -147,6 +157,11 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     candidatePaths: 'Candidates',
     validCandidatePaths: 'Valid candidates',
     multipleValidCandidates: (count, selectedRank) => `${count} valid candidates found; candidate ${selectedRank} is selected by priority. Please confirm the source.`,
+    selectCandidate: 'Switch and use',
+    selectedCandidate: 'In use',
+    selectingCandidate: 'Switching…',
+    candidateSelected: (path) => `Subtitle candidate selected: ${path}`,
+    candidateSelectionFailed: 'Failed to switch subtitle candidate',
     unknownSource: 'Unknown source',
     empty: '(empty)',
     source: 'Source',
@@ -200,6 +215,11 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     candidatePaths: '候補パス',
     validCandidatePaths: '有効な候補',
     multipleValidCandidates: (count, selectedRank) => `${count} 件の有効な候補があります。優先順位 ${selectedRank} の候補を使用中です。`,
+    selectCandidate: '切り替えて使用',
+    selectedCandidate: '使用中',
+    selectingCandidate: '切り替え中…',
+    candidateSelected: (path) => `字幕候補を切り替えました：${path}`,
+    candidateSelectionFailed: '字幕候補の切り替えに失敗しました',
     unknownSource: '不明な素材',
     empty: '（空）',
     source: '原文',
@@ -253,6 +273,11 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     candidatePaths: '후보 경로',
     validCandidatePaths: '유효한 후보',
     multipleValidCandidates: (count, selectedRank) => `유효한 후보 ${count}개가 있습니다. 우선순위 ${selectedRank}번 후보를 사용 중입니다.`,
+    selectCandidate: '전환하여 사용',
+    selectedCandidate: '사용 중',
+    selectingCandidate: '전환 중…',
+    candidateSelected: (path) => `자막 후보를 전환했습니다: ${path}`,
+    candidateSelectionFailed: '자막 후보 전환 실패',
     unknownSource: '알 수 없는 소재',
     empty: '(비어 있음)',
     source: '원문',
