@@ -101,4 +101,34 @@ describe('subtitle summary', () => {
     expect(cachedDetailed?.ending).toBe('案件真相被公开。')
     expect(callCount).toBe(4)
   })
+
+  it('invalidates the summary cache when the source subtitle content changes', async () => {
+    const sourceSubtitlePath = join(tempDirectory, 'movie.vtt')
+    const cacheDirectory = join(tempDirectory, 'cache')
+    let callCount = 0
+    const provider: SubtitleSummaryProvider = {
+      id: 'openai-compatible',
+      model: 'summary-model',
+      complete: async ({ system }) => {
+        callCount += 1
+        if (system.includes('必须只返回 JSON')) {
+          return `{"title":"版本 ${callCount}","overview":"内容已更新。","synopsis":"内容已更新。","keyPoints":[],"characters":[],"themes":[],"ending":""}`
+        }
+        return '阶段笔记：字幕内容已更新。'
+      }
+    }
+
+    await writeFile(sourceSubtitlePath, ['WEBVTT', '', '00:00:00.000 --> 00:00:01.000', '第一版字幕。'].join('\n'))
+    const first = await runSubtitleSummaryJob({ sourceSubtitlePath, cacheDirectory, targetLanguage: 'zh', mode: 'quick', provider })
+    await writeFile(sourceSubtitlePath, ['WEBVTT', '', '00:00:00.000 --> 00:00:01.000', '第二版字幕。'].join('\n'))
+
+    await expect(findSubtitleSummaryCache({ sourceSubtitlePath, cacheDirectory, targetLanguage: 'zh', mode: 'quick', provider: { id: 'openai-compatible', model: 'summary-model' } })).resolves.toBeNull()
+
+    const second = await runSubtitleSummaryJob({ sourceSubtitlePath, cacheDirectory, targetLanguage: 'zh', mode: 'quick', provider })
+
+    expect(first.summaryStats.cacheHit).toBe(false)
+    expect(second.summaryStats.cacheHit).toBe(false)
+    expect(second.summary.title).not.toBe(first.summary.title)
+    expect(callCount).toBe(4)
+  })
 })

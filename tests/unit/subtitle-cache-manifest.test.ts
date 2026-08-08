@@ -23,16 +23,17 @@ describe('subtitle cache manifest', () => {
     await Promise.all([
       recordSubtitleCacheManifest({ cacheDirectory, mediaPath, artifact: { kind: 'asr', modelId: 'whisper-large', subtitlePath: '/cache/movie-raw.vtt', subtitleSrtPath: '/cache/movie-raw.srt' } }),
       recordSubtitleCacheManifest({ cacheDirectory, mediaPath, artifact: { kind: 'translation', sourceSubtitlePath: '/cache/movie-raw.vtt', sourceSubtitleRevision: 1234, sourceLanguage: 'en', targetLanguage: 'zh', model: 'translation-model', glossary: 'secret=敏感词', subtitlePath: '/cache/movie-translated.vtt', subtitleSrtPath: '/cache/movie-translated.srt' } }),
-      recordSubtitleCacheManifest({ cacheDirectory, mediaPath, artifact: { kind: 'summary', sourceSubtitlePath: '/cache/movie-translated.vtt', sourceLanguage: 'zh', sourceType: 'translated', targetLanguage: 'zh', mode: 'quick', model: 'summary-model', summaryPath: '/cache/movie-summary.json' } })
+      recordSubtitleCacheManifest({ cacheDirectory, mediaPath, artifact: { kind: 'summary', sourceSubtitlePath: '/cache/movie-translated.vtt', sourceSubtitleRevision: 5678, sourceLanguage: 'zh', sourceType: 'translated', targetLanguage: 'zh', mode: 'quick', model: 'summary-model', summaryPath: '/cache/movie-summary.json' } })
     ])
 
     const manifestPath = await getSubtitleCacheManifestPath(cacheDirectory, mediaPath)
-    const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as { schemaVersion: number; asr: unknown[]; translations: Array<{ sourceSubtitleRevision?: number; glossaryHash?: string; glossary?: string }>; summaries: unknown[] }
+    const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as { schemaVersion: number; asr: unknown[]; translations: Array<{ sourceSubtitleRevision?: number; glossaryHash?: string; glossary?: string }>; summaries: Array<{ sourceSubtitleRevision?: number }> }
     expect(manifest.schemaVersion).toBe(1)
     expect(manifest.asr).toHaveLength(1)
     expect(manifest.translations).toHaveLength(1)
     expect(manifest.translations[0].sourceSubtitleRevision).toBe(1234)
     expect(manifest.summaries).toHaveLength(1)
+    expect(manifest.summaries[0].sourceSubtitleRevision).toBe(5678)
     expect(manifest.translations[0].glossary).toBeUndefined()
     expect(manifest.translations[0].glossaryHash).toMatch(/^[a-f0-9]{16}$/)
   })

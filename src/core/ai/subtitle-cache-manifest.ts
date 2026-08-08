@@ -26,6 +26,7 @@ export type SubtitleCacheManifestTranslation = {
 
 export type SubtitleCacheManifestSummary = {
   sourceSubtitlePath: string
+  sourceSubtitleRevision?: number
   sourceLanguage: string
   sourceType: AsrSubtitleSummarySourceType
   targetLanguage: SubtitleTargetLanguageId
@@ -63,7 +64,7 @@ function hash(value: string): string {
 function artifactKey(artifact: SubtitleCacheManifestArtifact): string {
   if (artifact.kind === 'asr') return ['asr', artifact.modelId, artifact.subtitlePath].join('\n')
   if (artifact.kind === 'translation') return ['translation', artifact.sourceSubtitlePath, artifact.sourceSubtitleRevision ?? '', artifact.sourceLanguage, artifact.targetLanguage, artifact.model, hash(artifact.glossary ?? ''), artifact.subtitlePath].join('\n')
-  return ['summary', artifact.sourceSubtitlePath, artifact.sourceLanguage, artifact.sourceType, artifact.targetLanguage, artifact.mode, artifact.model, artifact.summaryPath].join('\n')
+  return ['summary', artifact.sourceSubtitlePath, artifact.sourceSubtitleRevision ?? '', artifact.sourceLanguage, artifact.sourceType, artifact.targetLanguage, artifact.mode, artifact.model, artifact.summaryPath].join('\n')
 }
 
 function manifestPath(cacheDirectory: string, mediaPath: string, sizeBytes: number, mtimeMs: number): string {

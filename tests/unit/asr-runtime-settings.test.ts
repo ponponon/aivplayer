@@ -696,4 +696,35 @@ describe('ASR runtime settings', () => {
     expect(result.message).toBe(getAppCopy().runtime.translationServiceEmptyResponse)
     expect(result.sampleSourceText).toBe('今天的天气很好，我们正在测试字幕翻译。')
   })
+
+  it('returns the current source subtitle revision when generating a summary', async () => {
+    const subtitleDirectory = join(tempDirectory, 'subtitles')
+    const vttPath = join(subtitleDirectory, 'summary-demo.vtt')
+    await mkdir(subtitleDirectory, { recursive: true })
+    await writeFile(vttPath, 'WEBVTT\n\n00:00:00.000 --> 00:00:01.000\nhello world\n')
+
+    const runtime = createWhisperCppRuntime({
+      userDataPath: tempDirectory,
+      resourcePath: join(tempDirectory, 'resources'),
+      env: {
+        AIVPLAYER_TRANSLATION_BASE_URL: 'https://example.test/v1/chat/completions',
+        AIVPLAYER_TRANSLATION_API_KEY: 'summary-key',
+        AIVPLAYER_TRANSLATION_MODEL: 'summary-model'
+      },
+      translationFetch: async (_url, init) => {
+        const body = JSON.parse(String(init?.body ?? '{}')) as { messages?: Array<{ content?: string }> }
+        const system = body.messages?.[0]?.content ?? ''
+        const content = system.includes('阶段性剧情笔记')
+          ? '{"title":"测试总结","overview":"测试概览。","synopsis":"测试梗概。","keyPoints":[],"characters":[],"themes":[],"ending":""}'
+          : '阶段笔记：测试字幕内容。'
+        return new Response(JSON.stringify({ choices: [{ message: { content } }] }), { status: 200, headers: { 'content-type': 'application/json' } })
+      }
+    })
+
+    const result = await runtime.summarizeSubtitle({ subtitlePath: vttPath, sourceLanguage: 'en', targetLanguage: 'zh', mode: 'quick' })
+
+    expect(result.success).toBe(true)
+    expect(result.sourceSubtitleRevision).toBe(Math.round((await stat(vttPath)).mtimeMs))
+    expect(result.summary?.title).toBe('测试总结')
+  })
 })

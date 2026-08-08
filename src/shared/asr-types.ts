@@ -95,7 +95,7 @@ export type AsrSubtitleSummary = {
 }
 export type AsrSubtitleSummaryStats = { elapsedMs: number; subtitleCueCount: number; chunkCount: number; cacheHit: boolean; inputCharacterCount: number }
 export type AsrSubtitleSummaryRequest = { mediaPath?: string; subtitlePath: string; sourceLanguage?: string; sourceType?: AsrSubtitleSummarySourceType; targetLanguage: SubtitleTargetLanguageId; mode?: AsrSubtitleSummaryMode; force?: boolean }
-export type AsrSubtitleSummaryResult = { success: boolean; message: string; canceled?: boolean; sourceSubtitlePath?: string; sourceLanguage?: string; sourceType?: AsrSubtitleSummarySourceType; targetLanguage?: SubtitleTargetLanguageId; mode?: AsrSubtitleSummaryMode; summaryModel?: string; summary?: AsrSubtitleSummary; summaryStats?: AsrSubtitleSummaryStats; errorDetails?: AsrErrorDetails }
+export type AsrSubtitleSummaryResult = { success: boolean; message: string; canceled?: boolean; sourceSubtitlePath?: string; sourceSubtitleRevision?: number; sourceLanguage?: string; sourceType?: AsrSubtitleSummarySourceType; targetLanguage?: SubtitleTargetLanguageId; mode?: AsrSubtitleSummaryMode; summaryModel?: string; summary?: AsrSubtitleSummary; summaryStats?: AsrSubtitleSummaryStats; errorDetails?: AsrErrorDetails }
 export type AsrSubtitleSummaryExportFormat = 'markdown' | 'txt' | 'json'
 export type AsrSubtitleSummaryExportRequest = { format: AsrSubtitleSummaryExportFormat; content: string; defaultFileName?: string }
 export type AsrSubtitleSummaryExportResult = { success: boolean; canceled?: boolean; message: string; format?: AsrSubtitleSummaryExportFormat; filePath?: string }
