@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { EditingCaption, EditingProject } from '../../../shared/editing-types'
+import type { EditingCaption, EditingCaptionSourceRevisions, EditingProject } from '../../../shared/editing-types'
 import type { AppDerived } from './use-app-derived'
 import type { AppModel } from './app-types'
-import { createEditingCaptionSources, createEditingCaptionSourceRevisionKey, loadEditingCaptions } from './editing-caption-loader'
+import { createEditingCaptionSources, createEditingCaptionSourceRevisionKey, hasEditingCaptionSourceRevisionChanges, loadEditingCaptionSnapshot } from './editing-caption-loader'
 import { saveEditingProject } from './editing-project-storage'
 import { mergeEditingScriptSegments } from '../../../core/editing/script-operations'
 import { applyEditingSubtitleReloadAddition, applyEditingSubtitleReloadChange, applyEditingSubtitleReloadKeep, applyEditingSubtitleReloadRemoval, buildEditingSubtitleReloadPreview, filterEditingSubtitleReloadPreview, getEditingSubtitleReloadChangeKey, getEditingSubtitleReloadRemovalResolutionKeys, recordEditingSubtitleReloadResolution, replaceEditingCaptionsForReload, type EditingSubtitleReloadChange, type EditingSubtitleReloadPreview } from '../../../core/editing/subtitle-reload'
@@ -10,6 +10,7 @@ import { isEditingScriptSegmentCaption } from '../../../core/editing/script-oper
 
 export type EditingCaptionReloadConflict = {
   sourceRevisionKey: string
+  sourceRevisions: EditingCaptionSourceRevisions
   captions: EditingCaption[]
   changes: EditingSubtitleReloadChange[]
   preview: EditingSubtitleReloadPreview
@@ -18,6 +19,14 @@ export type EditingCaptionReloadConflict = {
 function withoutCaptionReloadResolution(project: EditingProject): EditingProject {
   const { captionReloadResolution: _captionReloadResolution, ...next } = project
   return next
+}
+
+function acceptCaptionSourceRevisions(project: EditingProject, sourceRevisionKey: string, sourceRevisions: EditingCaptionSourceRevisions, updatedAt = Date.now()): EditingProject {
+  return { ...project, captionSourceRevision: sourceRevisionKey, captionSourceRevisions: sourceRevisions, updatedAt }
+}
+
+function areCaptionSourceRevisionsEqual(left: EditingCaptionSourceRevisions | undefined, right: EditingCaptionSourceRevisions): boolean {
+  return JSON.stringify(left ?? {}) === JSON.stringify(right)
 }
 
 function getPendingCaptionReloadPreview(project: EditingProject, sourceRevisionKey: string, preview: EditingSubtitleReloadPreview): EditingSubtitleReloadPreview {
@@ -37,9 +46,6 @@ export function useEditingCaptionEffect(model: AppModel, derived: AppDerived): {
 } {
   const [editingCaptionReloadConflict, setEditingCaptionReloadConflict] = useState<EditingCaptionReloadConflict | null>(null)
   const sourceKey = model.editingProject?.sources.map((source) => `${source.id}:${source.path}`).join('|') ?? ''
-  const sourceRevisionKey = model.editingProject
-    ? createEditingCaptionSourceRevisionKey(model.editingProject, { currentMediaPath: model.state.currentFile?.path ?? null, subtitleRevision: derived.subtitleRevision, translatedSubtitleRevision: derived.translatedSubtitleRevision })
-    : 'sources=none|source=none|translation=none'
   useEffect(() => {
     const project = model.editingProject
     if (!model.isEditingMode || !project || project.sources.length === 0) {
@@ -48,15 +54,16 @@ export function useEditingCaptionEffect(model: AppModel, derived: AppDerived): {
     }
     let cancelled = false
     const sources = createEditingCaptionSources(project, { currentMediaPath: model.state.currentFile?.path ?? null, subtitlePath: derived.subtitlePath, subtitleSrtPath: derived.subtitleSrtPath, translatedSubtitlePath: derived.translatedSubtitlePath, translatedSubtitleSrtPath: derived.translatedSubtitleSrtPath })
-    void loadEditingCaptions(sources).then((captions) => {
-      if (cancelled || captions.length === 0) return
+    void loadEditingCaptionSnapshot(sources).then(({ captions, sourceRevisions }) => {
+      if (cancelled) return
       model.setEditingProject((current) => {
         if (!current || current.id !== project.id) return current
+        const sourceRevisionKey = createEditingCaptionSourceRevisionKey(current, sourceRevisions)
         const fullPreview = buildEditingSubtitleReloadPreview(current.captions, captions, current.scriptSegments)
         const preview = getPendingCaptionReloadPreview(current, sourceRevisionKey, fullPreview)
-        const hasAcceptedRevision = typeof current.captionSourceRevision === 'string' && current.captionSourceRevision.length > 0
-        if (hasAcceptedRevision && current.captionSourceRevision !== sourceRevisionKey && preview.hasChanges) {
-          setEditingCaptionReloadConflict({ sourceRevisionKey, captions, changes: fullPreview.changes, preview })
+        const hasAcceptedRevision = (typeof current.captionSourceRevision === 'string' && current.captionSourceRevision.length > 0) || current.captionSourceRevisions !== undefined
+        if (hasAcceptedRevision && current.captionSourceRevision !== sourceRevisionKey && hasEditingCaptionSourceRevisionChanges(current.captionSourceRevisions, sourceRevisions) && preview.hasChanges) {
+          setEditingCaptionReloadConflict({ sourceRevisionKey, sourceRevisions, captions, changes: fullPreview.changes, preview })
           return current
         }
         setEditingCaptionReloadConflict((conflict) => conflict?.sourceRevisionKey === sourceRevisionKey ? null : conflict)
@@ -86,20 +93,21 @@ export function useEditingCaptionEffect(model: AppModel, derived: AppDerived): {
           const previous = previousSegments[index]
           return !previous || JSON.stringify(previous) !== JSON.stringify(segment)
         })
-        if (additions.length === 0 && !scriptChanged && !captionsChanged && current.captionSourceRevision === sourceRevisionKey) return current
-        const next = { ...current, captions: [...enrichedExisting, ...additions].sort((left, right) => left.startSeconds - right.startSeconds || left.kind.localeCompare(right.kind)), scriptSegments, captionSourceRevision: sourceRevisionKey, updatedAt: Date.now() }
+        const revisionsChanged = !areCaptionSourceRevisionsEqual(current.captionSourceRevisions, sourceRevisions)
+        if (additions.length === 0 && !scriptChanged && !captionsChanged && !revisionsChanged && current.captionSourceRevision === sourceRevisionKey) return current
+        const next = acceptCaptionSourceRevisions({ ...current, captions: [...enrichedExisting, ...additions].sort((left, right) => left.startSeconds - right.startSeconds || left.kind.localeCompare(right.kind)), scriptSegments }, sourceRevisionKey, sourceRevisions)
         saveEditingProject(next)
         return next
       })
     })
     return () => { cancelled = true }
-  }, [model.isEditingMode, model.editingProject?.id, model.editingProject?.captionSourceRevision, model.editingProject?.captionReloadResolution?.sourceRevisionKey, model.editingProject?.captionReloadResolution?.changeKeys.join('|'), model.state.currentFile?.path, sourceKey, sourceRevisionKey, derived.subtitlePath, derived.subtitleSrtPath, derived.translatedSubtitlePath, derived.translatedSubtitleSrtPath])
+  }, [model.isEditingMode, model.editingProject?.id, model.editingProject?.captionSourceRevision, model.editingProject?.captionSourceRevisions, model.editingProject?.captionReloadResolution?.sourceRevisionKey, model.editingProject?.captionReloadResolution?.changeKeys.join('|'), model.state.currentFile?.path, sourceKey, derived.subtitlePath, derived.subtitleSrtPath, derived.subtitleRevision, derived.translatedSubtitlePath, derived.translatedSubtitleSrtPath, derived.translatedSubtitleRevision])
 
   const forceReloadEditingCaptions = useCallback((): void => {
     const project = model.editingProject
     const conflict = editingCaptionReloadConflict
     if (!project || !conflict) return
-    const next = replaceEditingCaptionsForReload(project, conflict.captions, conflict.sourceRevisionKey)
+    const next = { ...replaceEditingCaptionsForReload(project, conflict.captions, conflict.sourceRevisionKey), captionSourceRevisions: conflict.sourceRevisions }
     model.setEditingPast((past) => [...past, project])
     model.setEditingFuture([])
     model.setEditingProject(next)
@@ -118,7 +126,7 @@ export function useEditingCaptionEffect(model: AppModel, derived: AppDerived): {
     const remainingPreview = getPendingCaptionReloadPreview(resolved, conflict.sourceRevisionKey, conflict.preview)
     const next = remainingPreview.hasChanges
       ? resolved
-      : { ...withoutCaptionReloadResolution(resolved), captionSourceRevision: conflict.sourceRevisionKey, updatedAt: Date.now() }
+      : acceptCaptionSourceRevisions(withoutCaptionReloadResolution(resolved), conflict.sourceRevisionKey, conflict.sourceRevisions)
     model.setEditingPast((past) => [...past, project])
     model.setEditingFuture([])
     model.setEditingProject(next)
@@ -137,7 +145,7 @@ export function useEditingCaptionEffect(model: AppModel, derived: AppDerived): {
     const remainingPreview = getPendingCaptionReloadPreview(resolved, conflict.sourceRevisionKey, conflict.preview)
     const next = remainingPreview.hasChanges
       ? resolved
-      : { ...withoutCaptionReloadResolution(resolved), captionSourceRevision: conflict.sourceRevisionKey, updatedAt: Date.now() }
+      : acceptCaptionSourceRevisions(withoutCaptionReloadResolution(resolved), conflict.sourceRevisionKey, conflict.sourceRevisions)
     model.setEditingPast((past) => [...past, project])
     model.setEditingFuture([])
     model.setEditingProject(next)
@@ -157,7 +165,7 @@ export function useEditingCaptionEffect(model: AppModel, derived: AppDerived): {
     const remainingPreview = getPendingCaptionReloadPreview(resolved, conflict.sourceRevisionKey, conflict.preview)
     const next = remainingPreview.hasChanges
       ? resolved
-      : { ...withoutCaptionReloadResolution(resolved), captionSourceRevision: conflict.sourceRevisionKey, updatedAt: Date.now() }
+      : acceptCaptionSourceRevisions(withoutCaptionReloadResolution(resolved), conflict.sourceRevisionKey, conflict.sourceRevisions)
     model.setEditingPast((past) => [...past, project])
     model.setEditingFuture([])
     model.setEditingProject(next)
@@ -175,7 +183,7 @@ export function useEditingCaptionEffect(model: AppModel, derived: AppDerived): {
     const remainingPreview = getPendingCaptionReloadPreview(kept, conflict.sourceRevisionKey, conflict.preview)
     const next = remainingPreview.hasChanges
       ? kept
-      : { ...withoutCaptionReloadResolution(kept), captionSourceRevision: conflict.sourceRevisionKey, updatedAt: Date.now() }
+      : acceptCaptionSourceRevisions(withoutCaptionReloadResolution(kept), conflict.sourceRevisionKey, conflict.sourceRevisions)
     model.setEditingPast((past) => [...past, project])
     model.setEditingFuture([])
     model.setEditingProject(next)
@@ -188,7 +196,7 @@ export function useEditingCaptionEffect(model: AppModel, derived: AppDerived): {
     const project = model.editingProject
     const conflict = editingCaptionReloadConflict
     if (!project || !conflict) return
-    const next = { ...withoutCaptionReloadResolution(project), captionSourceRevision: conflict.sourceRevisionKey, updatedAt: Date.now() }
+    const next = acceptCaptionSourceRevisions(withoutCaptionReloadResolution(project), conflict.sourceRevisionKey, conflict.sourceRevisions)
     model.setEditingProject(next)
     saveEditingProject(next)
     setEditingCaptionReloadConflict(null)

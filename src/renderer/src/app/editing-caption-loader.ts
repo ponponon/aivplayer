@@ -1,5 +1,5 @@
 import { parseVtt } from '../../../core/ai/subtitle-writer'
-import type { EditingCaption, EditingProject } from '../../../shared/editing-types'
+import type { EditingCaption, EditingCaptionSourceRevisions, EditingProject } from '../../../shared/editing-types'
 import { attachSubtitleWords, getSubtitleWordSidecarPath, joinSubtitleWords, parseWhisperSubtitleWords, type SubtitleWord } from '../../../shared/subtitle-timing'
 
 export type CaptionSource = {
@@ -15,6 +15,11 @@ export type EditingCaptionSourceOptions = {
   subtitleSrtPath: string | null
   translatedSubtitlePath: string | null
   translatedSubtitleSrtPath: string | null
+}
+
+export type EditingCaptionLoadResult = {
+  captions: EditingCaption[]
+  sourceRevisions: EditingCaptionSourceRevisions
 }
 
 /**
@@ -40,13 +45,28 @@ export function createEditingCaptionSources(project: Pick<EditingProject, 'sourc
  * from an unused/old current file must not trigger a reload for a replacement
  * source that is now the only clip on the timeline.
  */
-export function createEditingCaptionSourceRevisionKey(project: Pick<EditingProject, 'sources' | 'videoClips'>, options: Pick<EditingCaptionSourceOptions, 'currentMediaPath'> & { subtitleRevision?: number; translatedSubtitleRevision?: number }): string {
+export function createEditingCaptionSourceRevisionKey(project: Pick<EditingProject, 'sources' | 'videoClips'>, sourceRevisions: EditingCaptionSourceRevisions): string {
   const activeSourceKey = project.sources
     .filter((source) => project.videoClips.some((clip) => clip.sourceId === source.id))
-    .map((source) => `${source.id}:${source.path}`)
+    .map((source) => {
+      const revision = sourceRevisions[source.id] ?? { source: null, translation: null }
+      return `${source.id}:${source.path}:source=${revision.source ?? 'none'}:translation=${revision.translation ?? 'none'}`
+    })
     .join('|') || 'none'
-  const currentMediaIsActive = project.sources.some((source) => source.path === options.currentMediaPath && project.videoClips.some((clip) => clip.sourceId === source.id))
-  return `sources=${activeSourceKey}|source=${currentMediaIsActive ? (options.subtitleRevision ?? 'none') : 'none'}|translation=${currentMediaIsActive ? (options.translatedSubtitleRevision ?? 'none') : 'none'}`
+  return `sources=${activeSourceKey}`
+}
+
+/**
+ * Reports only revisions that belong to the current active source set. An old
+ * source disappearing from the set is not a sidecar deletion; a sidecar going
+ * from a known revision to null on the same source is.
+ */
+export function hasEditingCaptionSourceRevisionChanges(previous: EditingCaptionSourceRevisions | undefined, next: EditingCaptionSourceRevisions): boolean {
+  return Object.entries(next).some(([sourceId, revision]) => {
+    const previousRevision = previous?.[sourceId]
+    if (!previousRevision) return revision.source !== null || revision.translation !== null
+    return previousRevision.source !== revision.source || previousRevision.translation !== revision.translation
+  })
 }
 
 /** Prevent a stale Whisper token sidecar from rendering words from an older subtitle revision. */
@@ -65,29 +85,44 @@ export function createEditingCaptionPathCandidates(mediaPath: string, preferredP
   return [...new Set([preferredPath, ...suffixes.map((suffix) => `${basePath}${suffix}`)].filter((path): path is string => Boolean(path)))]
 }
 
-async function loadCaptionSource(source: CaptionSource): Promise<EditingCaption[]> {
+async function loadCaptionSource(source: CaptionSource): Promise<{ captions: EditingCaption[]; revision: number | null }> {
   const paths = [...new Set([source.path, ...(source.pathCandidates ?? [])].filter((path): path is string => Boolean(path)))]
   const texts = await Promise.all(paths.map(async (path) => {
-    try { return await window.aiv.readFileContent(path) } catch { return null }
+    try { return { path, text: await window.aiv.readFileContent(path) } } catch { return null }
   }))
-  const text = texts.find((candidate): candidate is string => candidate !== null)
-  if (text === undefined) return []
+  const loadedText = texts.find((candidate): candidate is { path: string; text: string } => candidate !== null)
+  if (!loadedText) return { captions: [], revision: null }
+  const revision = await window.aiv.getFileRevision(loadedText.path).catch(() => null)
   const wordPaths = [...new Set(paths.map(getSubtitleWordSidecarPath).filter((path): path is string => Boolean(path)))]
   const wordTexts = await Promise.all(wordPaths.map(async (path) => {
     try { return await window.aiv.readFileContent(path) } catch { return null }
   }))
   const words = parseWhisperSubtitleWords(wordTexts.find((candidate): candidate is string => candidate !== null) ?? '')
-  const segments = attachSubtitleWords(parseVtt(text), words, source.kind === 'source')
-  return segments.flatMap((segment, index) => {
+  const segments = attachSubtitleWords(parseVtt(loadedText.text), words, source.kind === 'source')
+  const captions = segments.flatMap((segment, index) => {
       const durationSeconds = Math.max(0, segment.endSeconds - segment.startSeconds)
       const captionWords = source.kind === 'source' && segment.words && areEditingCaptionWordsCompatible(segment.text, segment.words)
         ? segment.words.map((word) => ({ startSeconds: Math.max(0, word.startSeconds - segment.startSeconds), endSeconds: Math.max(0, word.endSeconds - segment.startSeconds), text: word.text }))
         : undefined
       return durationSeconds > 0 ? [{ id: `${source.kind}-${source.sourceId}-${index}`, sourceId: source.sourceId, sourceStartSeconds: segment.startSeconds, sourceEndSeconds: segment.endSeconds, kind: source.kind, startSeconds: segment.startSeconds, durationSeconds, text: segment.text, ...(captionWords && captionWords.length > 0 ? { words: captionWords } : {}) }] : []
     })
+  return { captions, revision }
+}
+
+export async function loadEditingCaptionSnapshot(sources: readonly CaptionSource[]): Promise<EditingCaptionLoadResult> {
+  const loaded = await Promise.all(sources.map(loadCaptionSource))
+  const sourceRevisions: EditingCaptionSourceRevisions = {}
+  sources.forEach((source, index) => {
+    const current = sourceRevisions[source.sourceId] ?? { source: null, translation: null }
+    current[source.kind] = loaded[index]?.revision ?? null
+    sourceRevisions[source.sourceId] = current
+  })
+  return {
+    captions: loaded.flatMap((item) => item.captions).sort((left, right) => left.startSeconds - right.startSeconds || left.kind.localeCompare(right.kind)),
+    sourceRevisions
+  }
 }
 
 export async function loadEditingCaptions(sources: readonly CaptionSource[]): Promise<EditingCaption[]> {
-  const loaded = await Promise.all(sources.map(loadCaptionSource))
-  return loaded.flat().sort((left, right) => left.startSeconds - right.startSeconds || left.kind.localeCompare(right.kind))
+  return (await loadEditingCaptionSnapshot(sources)).captions
 }
