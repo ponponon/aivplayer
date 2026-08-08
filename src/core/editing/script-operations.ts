@@ -1,4 +1,5 @@
-import type { EditingCaption, EditingCaptionWord, EditingScriptSegment } from '../../shared/editing-types'
+import { sourceRangeToEditedRanges } from './timeline-math'
+import type { EditingCaption, EditingCaptionWord, EditingScriptSegment, EditingVideoClip } from '../../shared/editing-types'
 import { joinSubtitleWords } from '../../shared/subtitle-timing'
 
 const EPSILON_SECONDS = 0.05
@@ -85,6 +86,23 @@ export function updateEditingSourceCaptionText(captions: readonly EditingCaption
   })
 }
 
+/** Normalizes loader translation IDs back to the script segment ID space. */
+export function getEditingCaptionScriptSegmentId(caption: Pick<EditingCaption, 'id' | 'kind'>): string {
+  const translationPrefix = 'translation-'
+  return caption.kind === 'translation' && caption.id.startsWith(translationPrefix)
+    ? caption.id.slice(translationPrefix.length)
+    : caption.id
+}
+
+/** Matches a normalized script ID with the loader's optional source prefix. */
+export function shareEditingScriptSegmentIds(left: string, right: string): boolean {
+  return left === right || left === `source-${right}` || right === `source-${left}`
+}
+
+function belongsToEditingScriptSegment(caption: Pick<EditingCaption, 'id' | 'kind'>, segmentId: string, kind: EditingCaption['kind']): boolean {
+  return caption.kind === kind && shareEditingScriptSegmentIds(getEditingCaptionScriptSegmentId(caption), segmentId)
+}
+
 /** Updates a source caption's visible text without discarding its surviving word timings. */
 export function syncEditingSourceCaptionText(captions: readonly EditingCaption[], captionId: string, text: string): EditingCaption[] {
   const normalizedText = normalizeScriptText(text)
@@ -156,4 +174,24 @@ export function scriptSegmentCaption(
     durationSeconds,
     ...(segment.words && segment.words.length > 0 ? { words: segment.words } : {})
   }
+}
+
+/** Restores a script row while reusing any independently kept translation caption. */
+export function restoreEditingScriptSegmentCaptions(
+  captions: readonly EditingCaption[],
+  segment: EditingScriptSegment,
+  clips: readonly EditingVideoClip[]
+): EditingCaption[] {
+  const ranges = sourceRangeToEditedRanges(clips, segment.sourceId, segment.sourceStartSeconds, segment.sourceEndSeconds)
+  if (ranges.length === 0) return [...captions]
+
+  const startSeconds = ranges[0]!.startSeconds
+  const endSeconds = ranges[ranges.length - 1]!.endSeconds
+  const durationSeconds = Math.max(0.1, endSeconds - startSeconds)
+  const existingTranslation = captions.find((caption) => belongsToEditingScriptSegment(caption, segment.id, 'translation'))
+  const next = captions.filter((caption) => !belongsToEditingScriptSegment(caption, segment.id, 'source') && !belongsToEditingScriptSegment(caption, segment.id, 'translation'))
+  next.push(scriptSegmentCaption(segment, 'source', segment.text, startSeconds, durationSeconds))
+  if (existingTranslation) next.push(existingTranslation)
+  else if (segment.translationText) next.push(scriptSegmentCaption(segment, 'translation', segment.translationText, startSeconds, durationSeconds))
+  return next.sort((left, right) => left.startSeconds - right.startSeconds || left.kind.localeCompare(right.kind) || left.id.localeCompare(right.id))
 }

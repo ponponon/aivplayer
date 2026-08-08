@@ -1,6 +1,6 @@
 import { sourceRangeToEditedRanges } from '../../../core/editing/timeline-math'
 import { removeSourceVideoRanges, restoreSourceVideoRange } from '../../../core/editing/timeline-operations'
-import { getEditingScriptWordSourceRange, removeEditingScriptWord, removeEditingScriptWords, replaceEditingScriptWord, scriptSegmentCaption, setEditingScriptSegmentDeleted, syncEditingSourceCaptionText, updateEditingScriptSegmentText, updateEditingSourceCaptionText } from '../../../core/editing/script-operations'
+import { getEditingScriptWordSourceRange, removeEditingScriptWord, removeEditingScriptWords, replaceEditingScriptWord, restoreEditingScriptSegmentCaptions, setEditingScriptSegmentDeleted, syncEditingSourceCaptionText, updateEditingScriptSegmentText, updateEditingSourceCaptionText } from '../../../core/editing/script-operations'
 import type { EditingCaptionWord, EditingProject, EditingScriptSegment, EditingVideoClip } from '../../../shared/editing-types'
 import type { AppModel } from './app-types'
 import { saveEditingProject } from './editing-project-storage'
@@ -42,19 +42,6 @@ function createRestoredClip(project: EditingProject, sourceId: string, sourceSta
 export type EditingScriptWordTarget = {
   segmentId: string
   word: EditingCaptionWord
-}
-
-function restoreScriptCaptions(project: EditingProject, segment: EditingScriptSegment, clips: EditingVideoClip[]): EditingProject['captions'] {
-  const ranges = sourceRangeToEditedRanges(clips, segment.sourceId, segment.sourceStartSeconds, segment.sourceEndSeconds)
-  if (ranges.length === 0) return project.captions
-  const startSeconds = ranges[0]!.startSeconds
-  const endSeconds = ranges[ranges.length - 1]!.endSeconds
-  const durationSeconds = Math.max(0.1, endSeconds - startSeconds)
-  const existingIds = new Set([segment.id, `translation-${segment.id}`])
-  const next = project.captions.filter((caption) => !existingIds.has(caption.id))
-  next.push(scriptSegmentCaption(segment, 'source', segment.text, startSeconds, durationSeconds))
-  if (segment.translationText) next.push(scriptSegmentCaption(segment, 'translation', segment.translationText, startSeconds, durationSeconds))
-  return next.sort((left, right) => left.startSeconds - right.startSeconds || left.kind.localeCompare(right.kind))
 }
 
 export function createEditingScriptActions(model: AppModel) {
@@ -107,7 +94,7 @@ export function createEditingScriptActions(model: AppModel) {
       ...project,
       updatedAt: Date.now(),
       videoClips: result.clips,
-      captions: restoreScriptCaptions(project, segment, result.clips),
+      captions: restoreEditingScriptSegmentCaptions(project.captions, segment, result.clips),
       scriptSegments: setEditingScriptSegmentDeleted(scriptSegmentsOf(project), segmentId, false)
     }
     model.setEditingPast((past) => [...past, project])

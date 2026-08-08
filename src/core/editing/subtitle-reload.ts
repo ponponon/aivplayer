@@ -1,5 +1,5 @@
 import type { EditingCaption, EditingProject } from '../../shared/editing-types'
-import { mergeEditingScriptSegments } from './script-operations'
+import { getEditingCaptionScriptSegmentId, mergeEditingScriptSegments, shareEditingScriptSegmentIds } from './script-operations'
 
 export type EditingSubtitleReloadChangeStatus = 'added' | 'removed' | 'changed'
 
@@ -17,10 +17,7 @@ export type EditingSubtitleReloadChange = {
 
 /** Maps a source or translation caption diff back to its persistent script row. */
 export function getEditingSubtitleReloadChangeScriptSegmentId(change: Pick<EditingSubtitleReloadChange, 'id' | 'kind'>): string {
-  const translationPrefix = 'translation-'
-  return change.kind === 'translation' && change.id.startsWith(translationPrefix)
-    ? change.id.slice(translationPrefix.length)
-    : change.id
+  return getEditingCaptionScriptSegmentId(change)
 }
 
 export function getEditingSubtitleReloadChangeIdentity(change: Pick<EditingSubtitleReloadChange, 'id' | 'kind'>): string {
@@ -140,7 +137,7 @@ function getIncomingPreviewTrack(change: EditingSubtitleReloadChange): EditingSu
 
 /** Matches the loader's source-prefixed script IDs with the normalized diff ID. */
 export function shareEditingSubtitleReloadScriptSegmentIds(left: string, right: string): boolean {
-  return left === right || left === `source-${right}` || right === `source-${left}`
+  return shareEditingScriptSegmentIds(left, right)
 }
 
 export function shareEditingSubtitleReloadScriptSegments(left: Pick<EditingSubtitleReloadChange, 'id' | 'kind'>, right: Pick<EditingSubtitleReloadChange, 'id' | 'kind'>): boolean {
@@ -152,8 +149,8 @@ export function shareEditingSubtitleReloadScriptSegments(left: Pick<EditingSubti
 /** A kept translation becomes orphaned when its source script row is deleted. */
 export function isEditingOrphanTranslationCaption(project: Pick<EditingProject, 'scriptSegments'>, caption: Pick<EditingCaption, 'id' | 'kind'>): boolean {
   if (caption.kind !== 'translation') return false
-  const scriptSegmentId = getEditingSubtitleReloadChangeScriptSegmentId(caption)
-  return project.scriptSegments?.some((segment) => segment.deleted && shareEditingSubtitleReloadScriptSegmentIds(segment.id, scriptSegmentId)) ?? false
+  const scriptSegmentId = getEditingCaptionScriptSegmentId(caption)
+  return project.scriptSegments?.some((segment) => segment.deleted && shareEditingScriptSegmentIds(segment.id, scriptSegmentId)) ?? false
 }
 
 export function getEditingSubtitleReloadChangeKey(change: Pick<EditingSubtitleReloadChange, 'id' | 'kind' | 'status'>): string {

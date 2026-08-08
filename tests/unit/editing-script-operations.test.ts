@@ -1,9 +1,34 @@
 import { describe, expect, it } from 'vitest'
-import { getEditingScriptWordSourceRange, isEditingScriptFillerWord, mergeEditingScriptSegments, removeEditingScriptWord, removeEditingScriptWords, replaceEditingScriptWord, syncEditingSourceCaptionText, updateEditingScriptSegmentText, updateEditingSourceCaptionText } from '../../src/core/editing/script-operations'
+import { getEditingScriptWordSourceRange, isEditingScriptFillerWord, mergeEditingScriptSegments, removeEditingScriptWord, removeEditingScriptWords, replaceEditingScriptWord, restoreEditingScriptSegmentCaptions, syncEditingSourceCaptionText, updateEditingScriptSegmentText, updateEditingSourceCaptionText } from '../../src/core/editing/script-operations'
 
 const segment = { id: 'segment-1', sourceId: 'source-1', sourceStartSeconds: 1, sourceEndSeconds: 2, text: 'old text', translationText: '旧文本' }
 
 describe('editing script text operations', () => {
+  it('restores the source caption without replacing a kept translation caption', () => {
+    const translation = {
+      id: 'translation-source-1',
+      kind: 'translation' as const,
+      text: '手动调整后的译文',
+      startSeconds: 1.25,
+      durationSeconds: 0.5
+    }
+    const next = restoreEditingScriptSegmentCaptions([translation], { ...segment, id: 'source-source-1' }, [{ id: 'clip-1', sourceId: segment.sourceId, sourceStartSeconds: 0, sourceEndSeconds: 4 }])
+
+    expect(next).toEqual([
+      { id: 'source-source-1', sourceId: segment.sourceId, sourceStartSeconds: 1, sourceEndSeconds: 2, kind: 'source', text: segment.text, startSeconds: 1, durationSeconds: 1 },
+      translation
+    ])
+  })
+
+  it('creates a translation at the restored source range when no kept caption exists', () => {
+    const next = restoreEditingScriptSegmentCaptions([], segment, [{ id: 'clip-1', sourceId: segment.sourceId, sourceStartSeconds: 0, sourceEndSeconds: 4 }])
+
+    expect(next).toEqual([
+      { id: segment.id, sourceId: segment.sourceId, sourceStartSeconds: 1, sourceEndSeconds: 2, kind: 'source', text: segment.text, startSeconds: 1, durationSeconds: 1 },
+      { id: `translation-${segment.id}`, sourceId: segment.sourceId, sourceStartSeconds: 1, sourceEndSeconds: 2, kind: 'translation', text: segment.translationText, startSeconds: 1, durationSeconds: 1 }
+    ])
+  })
+
   it('normalizes one script row while preserving timing and translation', () => {
     const next = updateEditingScriptSegmentText([segment], segment.id, '  new   text  ')
     expect(next).toEqual([{ ...segment, text: 'new text' }])
