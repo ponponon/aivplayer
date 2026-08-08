@@ -906,3 +906,15 @@
 - 现象：source removed 的保留逻辑沿用 source / translation 配对规则，点击后译文 removed 行也被隐藏，无法组合“保留原文、移除译文”。
 - 经验：source 删除时可以成对物化移除；但冲突裁决必须按 diff row 独立记录，不能把字幕配对关系直接等价为决策关系。
 - 处理：resolution key 改为精确到当前 removed row；source 保留只解决原文行，translation 可继续单独保留或移除；真实 Electron Smoke 覆盖 source keep + translation remove、translation undo / redo，以及随后 source remove 流程。
+
+## 2026-08-08：source remove + translation keep 必须保留已裁决的译文
+
+- 现象：source 的“从工程移除”原本无条件移除配对 translation；当用户先明确保留译文、再移除原文时，译文仍会被错误吞掉；移除后的当前 / incoming 重算还可能把已解决的 removed row 反转成 added row。
+- 经验：字幕配对关系只决定默认联动，不应覆盖用户已经做出的逐行裁决；resolution key 在同一 revision 内应按 `kind:id` 识别，不能只按当下的 `status:kind:id` 精确匹配。
+- 处理：source removal 读取既有 translation resolution，保留已裁决译文并继续标记脚本 `deleted`；所有单条接受 / 加入 / 保留 / 移除动作统一记录 resolution，重算 diff 过滤已处理实体；Smoke 覆盖 source remove + translation keep、冲突中其他差异继续存在，以及两次 undo 回到未裁决状态。
+
+## 2026-08-08：Smoke 应区分目标差异已解决和整个冲突已关闭
+
+- 现象：新组合完成后，目标 source / translation removed row 已经消失，但页面仍有其他 changed / added 差异；Smoke 如果直接等待整个 conflict DOM 消失，会把正确的部分解决误判为失败。
+- 经验：多条差异的交互验证应分别断言目标 row 的消失、其余差异的保留和最终整体关闭，不要把“当前操作已完成”与“所有差异已完成”混成一个条件。
+- 处理：Smoke 改为确认目标 removed row 不再出现，同时要求 conflict 仍包含其他差异；随后用撤销恢复目标字幕，再继续既有 source 成对移除回归。
