@@ -237,7 +237,7 @@ async function main(): Promise<void> {
       quickToggleThemeState.appTheme !== 'light' ||
       lightThemeState.documentTheme !== 'light' ||
       lightThemeState.appTheme !== 'light' ||
-      lightThemeState.appBackground !== 'rgb(248, 250, 253)' ||
+      lightThemeState.appBackground !== 'rgb(246, 244, 241)' ||
       Object.values(dialogHeightByTab).some((height) => height !== dialogHeightByTab.general) ||
       Object.entries(aboutVisibilityByTab).some(([tab, display]) => tab !== 'about' && display !== 'none') ||
       settingsLayoutState.bodyOverflow !== 'hidden' ||
