@@ -12,6 +12,7 @@ export type CaptionSource = {
 export type EditingCaptionSidecarPathInfo = {
   selectedPath: string | null
   candidates: string[]
+  validCandidatePaths: string[]
 }
 
 export type EditingCaptionSourcePaths = Record<string, {
@@ -106,9 +107,9 @@ export function createEditingCaptionPathCandidates(mediaPath: string, preferredP
   const suffixes = kind === 'source'
     ? createExtensionVariants('')
     : [
+      ...createLanguageVariants(translationLanguage).flatMap((language) => createExtensionVariants(`.${language}`)),
       ...createExtensionVariants('.translated'),
-      ...createExtensionVariants('.translation'),
-      ...createLanguageVariants(translationLanguage).flatMap((language) => createExtensionVariants(`.${language}`))
+      ...createExtensionVariants('.translation')
     ]
   return [...new Set([preferredPath, ...suffixes.map((suffix) => `${basePath}${suffix}`)].filter((path): path is string => Boolean(path)))]
 }
@@ -117,37 +118,35 @@ function getCaptionSourceCandidatePaths(source: CaptionSource): string[] {
   return [...new Set([source.path, ...(source.pathCandidates ?? [])].filter((path): path is string => Boolean(path)))]
 }
 
-async function loadCaptionSource(source: CaptionSource): Promise<{ captions: EditingCaption[]; revision: number | null; selectedPath: string | null }> {
+async function loadCaptionSource(source: CaptionSource): Promise<{ captions: EditingCaption[]; revision: number | null; selectedPath: string | null; validCandidatePaths: string[] }> {
   const paths = getCaptionSourceCandidatePaths(source)
-  let loadedText: { path: string } | null = null
-  let segments: ReturnType<typeof parseVtt> = []
-  for (const path of paths) {
+  const loadedCandidates = await Promise.all(paths.map(async (path) => {
     try {
       const text = await window.aiv.readFileContent(path)
       const parsed = parseVtt(text)
-      if (parsed.length === 0) continue
-      loadedText = { path }
-      segments = parsed
-      break
+      return parsed.length > 0 ? { path, segments: parsed, signature: JSON.stringify(parsed) } : null
     } catch {
-      continue
+      return null
     }
-  }
-  if (!loadedText) return { captions: [], revision: null, selectedPath: null }
+  }))
+  const validCandidates = loadedCandidates.filter((candidate): candidate is { path: string; segments: ReturnType<typeof parseVtt>; signature: string } => candidate !== null)
+  const distinctValidCandidates = validCandidates.filter((candidate, index) => validCandidates.findIndex((other) => other.signature === candidate.signature) === index)
+  const loadedText = validCandidates[0]
+  if (!loadedText) return { captions: [], revision: null, selectedPath: null, validCandidatePaths: [] }
   const revision = await window.aiv.getFileRevision(loadedText.path).catch(() => null)
   const wordPaths = [...new Set([loadedText.path, ...paths].map(getSubtitleWordSidecarPath).filter((path): path is string => Boolean(path)))]
   const wordTexts = await Promise.all(wordPaths.map(async (path) => {
     try { return await window.aiv.readFileContent(path) } catch { return null }
   }))
   const words = parseWhisperSubtitleWords(wordTexts.find((candidate): candidate is string => candidate !== null) ?? '')
-  const captions = attachSubtitleWords(segments, words, source.kind === 'source').flatMap((segment, index) => {
+  const captions = attachSubtitleWords(loadedText.segments, words, source.kind === 'source').flatMap((segment, index) => {
       const durationSeconds = Math.max(0, segment.endSeconds - segment.startSeconds)
       const captionWords = source.kind === 'source' && segment.words && areEditingCaptionWordsCompatible(segment.text, segment.words)
         ? segment.words.map((word) => ({ startSeconds: Math.max(0, word.startSeconds - segment.startSeconds), endSeconds: Math.max(0, word.endSeconds - segment.startSeconds), text: word.text }))
         : undefined
       return durationSeconds > 0 ? [{ id: `${source.kind}-${source.sourceId}-${index}`, sourceId: source.sourceId, sourceStartSeconds: segment.startSeconds, sourceEndSeconds: segment.endSeconds, kind: source.kind, startSeconds: segment.startSeconds, durationSeconds, text: segment.text, ...(captionWords && captionWords.length > 0 ? { words: captionWords } : {}) }] : []
     })
-  return { captions, revision, selectedPath: loadedText.path }
+  return { captions, revision, selectedPath: loadedText.path, validCandidatePaths: distinctValidCandidates.map((candidate) => candidate.path) }
 }
 
 export async function loadEditingCaptionSnapshot(sources: readonly CaptionSource[]): Promise<EditingCaptionLoadResult> {
@@ -158,8 +157,8 @@ export async function loadEditingCaptionSnapshot(sources: readonly CaptionSource
     const current = sourceRevisions[source.sourceId] ?? { source: null, translation: null }
     current[source.kind] = loaded[index]?.revision ?? null
     sourceRevisions[source.sourceId] = current
-    const currentPaths = sourcePaths[source.sourceId] ?? { source: { selectedPath: null, candidates: [] }, translation: { selectedPath: null, candidates: [] } }
-    currentPaths[source.kind] = { selectedPath: loaded[index]?.selectedPath ?? null, candidates: getCaptionSourceCandidatePaths(source) }
+    const currentPaths = sourcePaths[source.sourceId] ?? { source: { selectedPath: null, candidates: [], validCandidatePaths: [] }, translation: { selectedPath: null, candidates: [], validCandidatePaths: [] } }
+    currentPaths[source.kind] = { selectedPath: loaded[index]?.selectedPath ?? null, candidates: getCaptionSourceCandidatePaths(source), validCandidatePaths: loaded[index]?.validCandidatePaths ?? [] }
     sourcePaths[source.sourceId] = currentPaths
   })
   return {

@@ -19,7 +19,9 @@ describe('editing caption operations', () => {
     expect(createEditingCaptionPathCandidates('/videos/demo.mp4', null, 'source')).toEqual(['/videos/demo.srt', '/videos/demo.vtt', '/videos/demo.SRT', '/videos/demo.VTT'])
     expect(createEditingCaptionPathCandidates('/videos/demo.mp4', '/cache/demo.srt', 'translation')).toContain('/cache/demo.srt')
     expect(createEditingCaptionPathCandidates('/videos/demo.mp4', null, 'translation')).toContain('/videos/demo.zh-CN.vtt')
-    expect(createEditingCaptionPathCandidates('/videos/demo.mp4', null, 'translation', 'en-US')).toContain('/videos/demo.en-US.srt')
+    const englishCandidates = createEditingCaptionPathCandidates('/videos/demo.mp4', null, 'translation', 'en-US')
+    expect(englishCandidates).toContain('/videos/demo.en-US.srt')
+    expect(englishCandidates.indexOf('/videos/demo.en-US.srt')).toBeLessThan(englishCandidates.indexOf('/videos/demo.translated.srt'))
     expect(createEditingCaptionPathCandidates('/videos/demo.mp4', null, 'translation', 'en-US')).not.toContain('/videos/demo.zh-CN.srt')
   })
 

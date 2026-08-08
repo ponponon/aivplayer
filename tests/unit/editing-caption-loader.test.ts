@@ -44,12 +44,53 @@ describe('editing caption sidecar source selection', () => {
     const result = await loadEditingCaptionSnapshot([{ path: null, pathCandidates: ['/media/demo.SRT', '/media/demo.VTT'], sourceId: primary.id, kind: 'source' }])
 
     expect(result.captions.map((caption) => caption.text)).toEqual(['跨设备字幕'])
-    expect(result.sourcePaths[primary.id]?.source).toEqual({ selectedPath: '/media/demo.VTT', candidates: ['/media/demo.SRT', '/media/demo.VTT'] })
+    expect(result.sourcePaths[primary.id]?.source).toEqual({ selectedPath: '/media/demo.VTT', candidates: ['/media/demo.SRT', '/media/demo.VTT'], validCandidatePaths: ['/media/demo.VTT'] })
+  })
+
+  it('selects the first valid candidate while reporting other valid candidates', async () => {
+    const contents = new Map([
+      ['/media/demo.srt', 'WEBVTT\n\n00:00:00.000 --> 00:00:01.000\n优先字幕\n'],
+      ['/media/demo.vtt', 'WEBVTT\n\n00:00:00.000 --> 00:00:01.000\n后备字幕\n']
+    ])
+    Object.defineProperty(globalThis, 'window', { configurable: true, writable: true, value: { aiv: {
+      readFileContent: async (path: string) => {
+        const text = contents.get(path)
+        if (text === undefined) throw new Error('missing')
+        return text
+      },
+      getFileRevision: async () => 456
+    } } })
+
+    const result = await loadEditingCaptionSnapshot([{ path: null, pathCandidates: ['/media/demo.srt', '/media/demo.vtt'], sourceId: primary.id, kind: 'source' }])
+
+    expect(result.captions.map((caption) => caption.text)).toEqual(['优先字幕'])
+    expect(result.sourcePaths[primary.id]?.source.validCandidatePaths).toEqual(['/media/demo.srt', '/media/demo.vtt'])
+  })
+
+  it('collapses valid candidates with identical parsed subtitle content', async () => {
+    const content = 'WEBVTT\n\n00:00:00.000 --> 00:00:01.000\n同一份字幕\n'
+    const contents = new Map([
+      ['/media/demo.vtt', content],
+      ['/media/demo.VTT', content]
+    ])
+    Object.defineProperty(globalThis, 'window', { configurable: true, writable: true, value: { aiv: {
+      readFileContent: async (path: string) => {
+        const text = contents.get(path)
+        if (text === undefined) throw new Error('missing')
+        return text
+      },
+      getFileRevision: async () => 789
+    } } })
+
+    const result = await loadEditingCaptionSnapshot([{ path: null, pathCandidates: ['/media/demo.vtt', '/media/demo.VTT'], sourceId: primary.id, kind: 'source' }])
+
+    expect(result.sourcePaths[primary.id]?.source.validCandidatePaths).toEqual(['/media/demo.vtt'])
   })
 
   it('uses the configured translation language before language-agnostic fallbacks', () => {
     const candidates = createEditingCaptionPathCandidates('/media/demo.mp4', null, 'translation', 'en-US')
     expect(candidates.indexOf('/media/demo.en-US.srt')).toBeLessThan(candidates.indexOf('/media/demo.en.srt'))
+    expect(candidates.indexOf('/media/demo.en-US.srt')).toBeLessThan(candidates.indexOf('/media/demo.translated.srt'))
     expect(candidates).not.toContain('/media/demo.zh-CN.srt')
   })
 
