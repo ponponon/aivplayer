@@ -9,6 +9,10 @@ export type EditingSubtitleReloadChange = {
   status: EditingSubtitleReloadChangeStatus
   currentText?: string
   incomingText?: string
+  currentStartSeconds?: number
+  currentEndSeconds?: number
+  incomingStartSeconds?: number
+  incomingEndSeconds?: number
 }
 
 export type EditingSubtitleReloadPreview = {
@@ -28,6 +32,8 @@ export type EditingSubtitleReloadChangePageOptions = {
   query?: string
   status?: EditingSubtitleReloadChangeStatusFilter
   kind?: EditingSubtitleReloadChangeKindFilter
+  timeStartSeconds?: number
+  timeEndSeconds?: number
   pageIndex?: number
   pageSize?: number
 }
@@ -37,6 +43,8 @@ export type EditingSubtitleReloadChangePage = {
   query: string
   status: EditingSubtitleReloadChangeStatusFilter
   kind: EditingSubtitleReloadChangeKindFilter
+  timeStartSeconds?: number
+  timeEndSeconds?: number
   pageIndex: number
   pageSize: number
   total: number
@@ -75,9 +83,36 @@ function normalizeQuery(query: string | undefined): string {
   return query?.trim().toLocaleLowerCase() ?? ''
 }
 
-function matchesChange(change: EditingSubtitleReloadChange, query: string, status: EditingSubtitleReloadChangeStatusFilter, kind: EditingSubtitleReloadChangeKindFilter): boolean {
+function captionEndSeconds(caption: EditingCaption): number {
+  return caption.startSeconds + caption.durationSeconds
+}
+
+function getFiniteTime(value: number | undefined): number | undefined {
+  return value !== undefined && Number.isFinite(value) ? Math.max(0, value) : undefined
+}
+
+export function getEditingSubtitleReloadChangeTimeRange(change: EditingSubtitleReloadChange): { startSeconds?: number; endSeconds?: number } {
+  const starts = [change.currentStartSeconds, change.incomingStartSeconds].map(getFiniteTime).filter((value): value is number => value !== undefined)
+  const ends = [change.currentEndSeconds, change.incomingEndSeconds].map(getFiniteTime).filter((value): value is number => value !== undefined)
+  return {
+    startSeconds: starts.length > 0 ? Math.min(...starts) : undefined,
+    endSeconds: ends.length > 0 ? Math.max(...ends) : undefined
+  }
+}
+
+function matchesTimeRange(change: EditingSubtitleReloadChange, timeStartSeconds: number | undefined, timeEndSeconds: number | undefined): boolean {
+  if (timeStartSeconds === undefined && timeEndSeconds === undefined) return true
+  const range = getEditingSubtitleReloadChangeTimeRange(change)
+  if (range.startSeconds === undefined || range.endSeconds === undefined) return false
+  if (timeStartSeconds !== undefined && range.endSeconds < timeStartSeconds) return false
+  if (timeEndSeconds !== undefined && range.startSeconds > timeEndSeconds) return false
+  return true
+}
+
+function matchesChange(change: EditingSubtitleReloadChange, query: string, status: EditingSubtitleReloadChangeStatusFilter, kind: EditingSubtitleReloadChangeKindFilter, timeStartSeconds: number | undefined, timeEndSeconds: number | undefined): boolean {
   if (status !== 'all' && change.status !== status) return false
   if (kind !== 'all' && change.kind !== kind) return false
+  if (!matchesTimeRange(change, timeStartSeconds, timeEndSeconds)) return false
   if (!query) return true
   return [change.id, change.currentText, change.incomingText].filter(Boolean).join(' ').toLocaleLowerCase().includes(query)
 }
@@ -91,13 +126,13 @@ export function buildEditingSubtitleReloadPreview(current: readonly EditingCapti
   for (const caption of incoming) {
     const previous = currentById.get(caption.id)
     if (!previous) {
-      changes.push({ id: caption.id, kind: caption.kind, status: 'added', incomingText: caption.text })
+      changes.push({ id: caption.id, kind: caption.kind, status: 'added', incomingText: caption.text, incomingStartSeconds: caption.startSeconds, incomingEndSeconds: captionEndSeconds(caption) })
     } else if (!sameCaptionContent(previous, caption)) {
-      changes.push({ id: caption.id, kind: caption.kind, status: 'changed', currentText: previous.text, incomingText: caption.text })
+      changes.push({ id: caption.id, kind: caption.kind, status: 'changed', currentText: previous.text, incomingText: caption.text, currentStartSeconds: previous.startSeconds, currentEndSeconds: captionEndSeconds(previous), incomingStartSeconds: caption.startSeconds, incomingEndSeconds: captionEndSeconds(caption) })
     }
   }
   for (const caption of current) {
-    if (!incomingById.has(caption.id)) changes.push({ id: caption.id, kind: caption.kind, status: 'removed', currentText: caption.text })
+    if (!incomingById.has(caption.id)) changes.push({ id: caption.id, kind: caption.kind, status: 'removed', currentText: caption.text, currentStartSeconds: caption.startSeconds, currentEndSeconds: captionEndSeconds(caption) })
   }
 
   const orderedChanges = [...changes].sort(changeOrder)
@@ -117,8 +152,12 @@ export function getEditingSubtitleReloadChangePage(changes: readonly EditingSubt
   const query = normalizeQuery(options.query)
   const status = options.status ?? 'all'
   const kind = options.kind ?? 'all'
+  const rawTimeStartSeconds = getFiniteTime(options.timeStartSeconds)
+  const rawTimeEndSeconds = getFiniteTime(options.timeEndSeconds)
+  const timeStartSeconds = rawTimeStartSeconds !== undefined && rawTimeEndSeconds !== undefined ? Math.min(rawTimeStartSeconds, rawTimeEndSeconds) : rawTimeStartSeconds
+  const timeEndSeconds = rawTimeStartSeconds !== undefined && rawTimeEndSeconds !== undefined ? Math.max(rawTimeStartSeconds, rawTimeEndSeconds) : rawTimeEndSeconds
   const pageSize = Math.max(1, Math.min(100, Math.trunc(options.pageSize ?? EDITING_SUBTITLE_RELOAD_PAGE_SIZE)))
-  const filtered = changes.filter((change) => matchesChange(change, query, status, kind))
+  const filtered = changes.filter((change) => matchesChange(change, query, status, kind, timeStartSeconds, timeEndSeconds))
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize))
   const pageIndex = Math.min(pageCount - 1, Math.max(0, Math.trunc(options.pageIndex ?? 0)))
   return {
@@ -126,6 +165,8 @@ export function getEditingSubtitleReloadChangePage(changes: readonly EditingSubt
     query,
     status,
     kind,
+    timeStartSeconds,
+    timeEndSeconds,
     pageIndex,
     pageSize,
     total: filtered.length,

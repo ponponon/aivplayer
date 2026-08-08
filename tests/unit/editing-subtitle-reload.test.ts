@@ -59,6 +59,10 @@ describe('editing subtitle reload', () => {
     const lastPage = getEditingSubtitleReloadChangePage(preview.changes, { status: 'changed', kind: 'source', pageSize: 4, pageIndex: 99 })
     expect(lastPage.pageIndex).toBe(4)
     expect(lastPage.changes).toHaveLength(2)
+
+    const timedPage = getEditingSubtitleReloadChangePage(preview.changes, { timeStartSeconds: 5.1, timeEndSeconds: 5.9 })
+    expect(timedPage.total).toBe(1)
+    expect(timedPage.changes[0]).toMatchObject({ id: 'source-caption-4', currentStartSeconds: 5, incomingStartSeconds: 5 })
   })
 
   it('replaces caption and script tracks while preserving timeline edits', () => {
