@@ -10,7 +10,9 @@ describe('editing subtitle candidate copy', () => {
       const copy = getEditingSubtitleCandidateCopy(locale)
       expect(copy.equivalentCandidatePaths('/a.vtt · /a.VTT')).toContain('/a.vtt')
       expect(copy.distinctCandidatePaths('/a.vtt · /a.srt')).toContain('/a.srt')
+      expect(copy.detailsLabel.length).toBeGreaterThan(0)
       expect(copy.auditSummary('demo.mp4', '原文', 2, 1, '/a.vtt')).toContain('/a.vtt')
+      expect(copy.auditSelected('demo.mp4', '原文', '/a.vtt')).toContain('/a.vtt')
       expect(copy.auditEquivalent('demo.mp4', '原文', '/a.vtt · /a.VTT')).toContain('/a.VTT')
       expect(copy.auditDistinct('demo.mp4', '原文', '/a.vtt · /a.srt')).toContain('/a.srt')
     }
