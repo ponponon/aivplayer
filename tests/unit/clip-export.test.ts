@@ -59,6 +59,7 @@ describe('clip export helpers', () => {
   it('builds a timeline output name and concat command', () => {
     expect(buildTimelineExportDefaultVideoPath('/clips/demo.mp4', 2, 10.8, 'video')).toBe('/clips/demo-timeline-2clips-10s-video.mp4')
     expect(buildTimelineExportDefaultFileName('/clips/demo.mp4', 2, 10.8, 'burn-subtitle')).toBe('demo-timeline-2clips-10s-burn.mp4')
+    expect(buildTimelineExportDefaultFileName('/clips/demo.mp4', 2, 10.8, 'translation-subtitle')).toBe('demo-timeline-2clips-10s-translation.mp4')
     expect(getTimelineExportPathDirectory('/clips/demo.mp4')).toBe('/clips')
     expect(getTimelineExportPathBaseName('/clips/demo.mp4')).toBe('demo.mp4')
     expect(joinTimelineExportPath('/clips', 'edited.mp4')).toBe('/clips/edited.mp4')

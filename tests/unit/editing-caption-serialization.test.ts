@@ -38,5 +38,18 @@ describe('editing caption serialization', () => {
     } satisfies Pick<EditingProject, 'captions' | 'scriptSegments'>
 
     expect(getEditingCaptionsForSubtitleExport(project)).toEqual([translation])
+    expect(getEditingCaptionsForSubtitleExport(project, 'translation')).toEqual([translation])
+    expect(serializeEditingCaptionsToSrt(getEditingCaptionsForSubtitleExport(project, 'translation'), 'translation')).toContain('你好')
+  })
+
+  it('excludes an orphan translation from the translation-only export track', () => {
+    const translation: EditingCaption = { id: 'translation-source-1', sourceId: 'media', sourceStartSeconds: 0, sourceEndSeconds: 2, startSeconds: 0, durationSeconds: 2, kind: 'translation', text: '孤立译文' }
+    const project = {
+      captions: [translation],
+      scriptSegments: [{ id: 'source-1', sourceId: 'media', sourceStartSeconds: 0, sourceEndSeconds: 2, text: 'Hello', translationText: '孤立译文', deleted: true }]
+    } satisfies Pick<EditingProject, 'captions' | 'scriptSegments'>
+
+    expect(getEditingCaptionsForSubtitleExport(project, 'translation')).toEqual([])
+    expect(serializeEditingCaptionsToSrt(getEditingCaptionsForSubtitleExport(project, 'translation'), 'translation')).toBe('')
   })
 })

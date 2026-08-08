@@ -19,6 +19,9 @@ describe('dialog smoke source constraints', () => {
     expect(packageJson.scripts?.['smoke:editing-script']).toBe(
       'node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-editing-script.ts'
     )
+    expect(packageJson.scripts?.['smoke:editing-translation-export']).toBe(
+      'node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-editing-translation-export.ts'
+    )
     expect(packageJson.scripts?.['smoke:graphic-motion-export']).toBe(
       'node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-graphic-motion-export.ts'
     )
@@ -56,6 +59,19 @@ describe('dialog smoke source constraints', () => {
     expect(smokeScript).toContain('subtitleText:')
     expect(smokeScript).toContain('subtitleSrtPath')
     expect(smokeScript).toContain("page.screenshot({ path: screenshotPath, fullPage: false })")
+  })
+
+  it('keeps translation-only export smoke on stable editor selectors', () => {
+    const smokeScript = readSource('scripts/smoke-editing-translation-export.ts')
+
+    expect(smokeScript).toContain('translation-export-smoke.srt')
+    expect(smokeScript).toContain('translation-export-smoke.translated.srt')
+    expect(smokeScript).toContain("page.locator('[data-testid=\"editing-export\"]').click()")
+    expect(smokeScript).toContain('仅译文字幕')
+    expect(smokeScript).toContain("mode: 'translation-subtitle'")
+    expect(smokeScript).toContain('subtitleText')
+    expect(smokeScript).toContain('consoleErrors')
+    expect(smokeScript).toContain('page.screenshot({ path: screenshotPath, fullPage: false })')
   })
 
   it('covers transcript deletion, restore, undo, and redo in the editing script smoke script', () => {

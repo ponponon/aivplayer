@@ -181,6 +181,8 @@ describe('editing timeline source contracts', () => {
     expect(subtitleReloadCopy).toContain('timeRange')
     expect(captionLoader).toContain('createEditingCaptionPathCandidates')
     expect(exportAction).toContain('serializeEditingCaptionsToSrt')
+    expect(exportAction).toContain("configuredMode === 'translation-subtitle'")
+    expect(exportAction).toContain("getEditingCaptionsForSubtitleExport(project, exportKind)")
     expect(exportAction).toContain('subtitleText')
     expect(timeline).toContain('<EditingAudioControl')
     expect(timeline).toContain('app.setEditingClipVolume')
