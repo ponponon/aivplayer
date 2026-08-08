@@ -23,6 +23,10 @@
 .editing-caption-reload-sidecar-source code { min-width: 0; overflow: hidden; color: var(--text-secondary); font: inherit; text-overflow: ellipsis; white-space: nowrap; }
 .editing-caption-reload-sidecar-ambiguity { display: flex !important; grid-template-columns: none !important; align-items: flex-start; gap: 4px !important; color: var(--warning, #d99a46) !important; }
 .editing-caption-reload-sidecar-ambiguity svg { flex: 0 0 auto; margin-top: 1px; }
+.editing-caption-reload-sidecar-distinct { display: flex !important; grid-template-columns: none !important; align-items: flex-start; gap: 4px !important; color: var(--warning, #d99a46) !important; }
+.editing-caption-reload-sidecar-distinct svg { flex: 0 0 auto; margin-top: 1px; }
+.editing-caption-reload-sidecar-equivalent { display: flex !important; grid-template-columns: none !important; align-items: flex-start; gap: 4px !important; color: var(--text-secondary) !important; }
+.editing-caption-reload-sidecar-equivalent svg { flex: 0 0 auto; margin-top: 1px; }
 .editing-caption-reload-sidecar-fallback { display: grid !important; grid-template-columns: auto minmax(0, auto) minmax(0, 1fr) !important; align-items: flex-start; color: var(--warning, #d99a46) !important; }
 .editing-caption-reload-sidecar-fallback svg { flex: 0 0 auto; margin-top: 1px; }
 .editing-caption-reload-sidecar-candidate-actions { display: grid; gap: 3px; margin-top: 2px; }

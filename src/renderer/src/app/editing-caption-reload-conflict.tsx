@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react'
 import { AlertTriangle, ArrowRight, Check, ChevronLeft, ChevronRight, RefreshCw, Search, ShieldCheck, Trash2 } from 'lucide-react'
 import { EDITING_SUBTITLE_RELOAD_PAGE_SIZE, getEditingSubtitleReloadChangePage, getEditingSubtitleReloadChangeScriptSegmentId, getEditingSubtitleReloadChangeTimeRange, type EditingSubtitleReloadChange, type EditingSubtitleReloadChangeKindFilter, type EditingSubtitleReloadChangeStatusFilter } from '../../../core/editing/subtitle-reload'
 import type { EditingSubtitleReloadCopy } from '../../../shared/editing-subtitle-reload-copy'
+import type { EditingSubtitleCandidateCopy } from '../../../shared/editing-subtitle-candidate-copy'
 import type { EditingCaptionSidecarPathInfo } from './editing-caption-loader'
 import type { EditingCaptionReloadConflict } from './use-editing-caption-effect'
 
 type EditingCaptionReloadConflictProps = {
   conflict: EditingCaptionReloadConflict
   copy: EditingSubtitleReloadCopy
+  candidateCopy: EditingSubtitleCandidateCopy
   onSeek: (seconds: number) => void
   onPreviewIncoming: (change: EditingSubtitleReloadChange) => void
   onAcceptIncoming: (change: EditingSubtitleReloadChange) => void
@@ -70,7 +72,7 @@ function selectedSidecarCandidateRank(info: EditingCaptionSidecarPathInfo): numb
   return selectedIndex >= 0 ? selectedIndex + 1 : 1
 }
 
-function renderSidecarTrack(label: string, info: EditingCaptionSidecarPathInfo | undefined, copy: EditingSubtitleReloadCopy, sourceId: string, kind: 'source' | 'translation', selectingKey: string | null, onSelect: (sourceId: string, kind: 'source' | 'translation', path: string) => void, onClear: (sourceId: string, kind: 'source' | 'translation') => void): React.ReactNode {
+function renderSidecarTrack(label: string, info: EditingCaptionSidecarPathInfo | undefined, copy: EditingSubtitleReloadCopy, candidateCopy: EditingSubtitleCandidateCopy, sourceId: string, kind: 'source' | 'translation', selectingKey: string | null, onSelect: (sourceId: string, kind: 'source' | 'translation', path: string) => void, onClear: (sourceId: string, kind: 'source' | 'translation') => void): React.ReactNode {
   if (!info) return null
   const selectedRank = selectedSidecarCandidateRank(info)
   const trackId = `${sourceId}-${kind}`
@@ -78,6 +80,8 @@ function renderSidecarTrack(label: string, info: EditingCaptionSidecarPathInfo |
     <small data-testid={`editing-caption-reload-sidecar-selected-${trackId}`}><span>{label}</span><code>{formatSidecarPath(info.selectedPath, copy)}</code></small>
     {info.preferredPath && info.preferredPathAvailable === false ? <small className="editing-caption-reload-sidecar-fallback" data-testid={`editing-caption-reload-sidecar-fallback-${trackId}`}><AlertTriangle size={11} aria-hidden="true" /><span>{copy.preferredPathFallback}</span><code title={info.preferredPath}>{info.preferredPath}</code></small> : null}
     {info.validCandidatePaths.length > 1 ? <small className="editing-caption-reload-sidecar-ambiguity" data-testid={`editing-caption-reload-sidecar-ambiguity-${trackId}`}><AlertTriangle size={11} aria-hidden="true" /><span>{copy.multipleValidCandidates(info.validCandidatePaths.length, selectedRank)}</span></small> : null}
+    {info.validCandidatePaths.length > 1 ? <small className="editing-caption-reload-sidecar-distinct" data-testid={`editing-caption-reload-sidecar-distinct-${trackId}`}><AlertTriangle size={11} aria-hidden="true" /><span>{candidateCopy.distinctCandidatePaths(info.validCandidatePaths.join(' · '))}</span></small> : null}
+    {info.equivalentCandidateGroups?.map((group, index) => <small className="editing-caption-reload-sidecar-equivalent" data-testid={`editing-caption-reload-sidecar-equivalent-${trackId}-${index}`} key={`${trackId}-equivalent-${index}`}><Check size={11} aria-hidden="true" /><span>{candidateCopy.equivalentCandidatePaths(group.join(' · '))}</span></small>)}
     {info.validCandidatePaths.length ? <small><span>{copy.validCandidatePaths}</span><code title={info.validCandidatePaths.join('\n')}>{info.validCandidatePaths.join(' · ')}</code></small> : null}
     {info.candidates.length ? <small><span>{copy.candidatePaths}</span><code title={info.candidates.join('\n')}>{info.candidates.join(' · ')}</code></small> : null}
     {info.validCandidatePaths.length > 1 ? <div className="editing-caption-reload-sidecar-candidate-actions">
@@ -96,7 +100,7 @@ function renderSidecarTrack(label: string, info: EditingCaptionSidecarPathInfo |
   </>
 }
 
-export function EditingCaptionReloadConflict({ conflict, copy, onSeek, onPreviewIncoming, onAcceptIncoming, onAddIncoming, onRemoveCurrent, onKeepCurrentChange, onSelectSidecarCandidate, onClearSidecarCandidate, isSelectingSidecarCandidate, onSelectScriptSegment, onKeepCurrent, onForceReload }: EditingCaptionReloadConflictProps): React.ReactElement {
+export function EditingCaptionReloadConflict({ conflict, copy, candidateCopy, onSeek, onPreviewIncoming, onAcceptIncoming, onAddIncoming, onRemoveCurrent, onKeepCurrentChange, onSelectSidecarCandidate, onClearSidecarCandidate, isSelectingSidecarCandidate, onSelectScriptSegment, onKeepCurrent, onForceReload }: EditingCaptionReloadConflictProps): React.ReactElement {
   const { preview } = conflict
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<EditingSubtitleReloadChangeStatusFilter>('all')
@@ -142,8 +146,8 @@ export function EditingCaptionReloadConflict({ conflict, copy, onSeek, onPreview
             const paths = conflict.sourcePaths[source.id]
             return <div className="editing-caption-reload-sidecar-source" key={source.id}>
               <strong title={source.path}>{source.name}</strong>
-              {renderSidecarTrack(copy.sidecarSource, paths?.source, copy, source.id, 'source', isSelectingSidecarCandidate, onSelectSidecarCandidate, onClearSidecarCandidate)}
-              {renderSidecarTrack(copy.sidecarTranslation, paths?.translation, copy, source.id, 'translation', isSelectingSidecarCandidate, onSelectSidecarCandidate, onClearSidecarCandidate)}
+              {renderSidecarTrack(copy.sidecarSource, paths?.source, copy, candidateCopy, source.id, 'source', isSelectingSidecarCandidate, onSelectSidecarCandidate, onClearSidecarCandidate)}
+              {renderSidecarTrack(copy.sidecarTranslation, paths?.translation, copy, candidateCopy, source.id, 'translation', isSelectingSidecarCandidate, onSelectSidecarCandidate, onClearSidecarCandidate)}
             </div>
           })}
         </div>
