@@ -535,6 +535,7 @@
 - SRT、烧录 ASS 和时间线导出可用性判断共用 `getEditingCaptionsForSubtitleExport`，避免孤立译文只在某一种导出路径意外出现；当前没有“仅译文导出”模式。
 - 新增 `npm run smoke:editing-orphan-translation`，真实 Electron reload 后验证 source caption 不补回、孤立 translation 保留、脚本继续 `deleted`，并检查状态提示、data attribute 与 `consoleErrors:[]`。
 - 恢复已删除脚本段时，原文字幕按恢复后的源时间重新物化；如果工程中已有孤立译文，则按兼容 loader ID 重新关联并保留用户已编辑的译文文本、时间和实体 ID，不再用脚本快照覆盖它。
+- 脚本面板会对仍有孤立译文的已删除行显示“恢复原文并重新关联译文”提示；恢复按钮提供稳定测试入口，恢复后孤立状态提示和虚线样式会自动消失。
 
 ## 编辑器画布交互层级
 
