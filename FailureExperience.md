@@ -756,3 +756,15 @@
 - 现象：坏旁车 IPC 已返回 `INVALID_SUBTITLE_SIDECAR`，但 Smoke 直接查询字幕卡片时失败，因为默认面板不是 ASR；这会把“用户看不到提示”和“业务没有返回错误”混成同一个失败。
 - 经验：UI Smoke 的断言前置条件也要显式操作，例如先切换到 ASR 面板，再检查稳定 `data-testid`；IPC 诊断和用户可见 DOM 断言应同时保留。
 - 处理：Smoke 先打开 ASR 标签，再确认失败提示、空 overlay 和 IPC 返回值；新增启动失败时的诊断信息，后续排查可以区分数据链路和面板可见性。
+
+## 2026-08-08：同一路径正式字幕覆盖必须携带源 revision
+
+- 现象：翻译缓存文件按源字幕正文哈希生成新路径，但 Renderer 只按 `subtitlePath`、语言、模型和 glossary 判断上下文；正式字幕覆盖后同名 sidecar 路径不变，旧译文仍可能留在内存状态并继续显示。
+- 经验：缓存命中键和 UI 当前状态是两层边界，不能只依赖文件缓存自然 miss。正式字幕导入、旁车恢复和翻译结果必须共享可比较的源字幕 revision；revision 已变化时要先清理旧结果，再尝试恢复新缓存。
+- 处理：主进程计算 VTT / SRT 最大 mtime revision，翻译结果和 manifest 记录 `sourceSubtitleRevision`；Renderer 严格比较当前 source revision；编辑器把 source revision 纳入双轨字幕加载 effect，但继续用脚本 merge 保护人工修改。
+
+## 2026-08-08：Electron Smoke 的环境变量不等于 Renderer 已保存配置
+
+- 现象：Smoke 进程可以通过环境变量让主进程调用本地假翻译服务，但 Renderer 的 AI 设置守卫仍读取持久化 AppSettings，切换目标语言时会弹出设置遮罩，导致按钮点击测试误判为缓存失败。
+- 经验：涉及配置守卫的 UI Smoke 必须同时验证用户态设置写回；测试桩可以用环境变量提供服务，但要把临时 endpoint / model / fake key 写入隔离 user-data 后再重载窗口，才能覆盖真实恢复链路。
+- 处理：Smoke 通过 preload IPC 生成翻译缓存，将本地假服务配置写入临时设置并重启 Renderer，随后验证翻译状态恢复；覆盖导入不同正文后等待旧翻译状态消失，再检查新 source 和重启恢复。
