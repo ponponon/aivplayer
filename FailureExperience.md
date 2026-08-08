@@ -980,5 +980,11 @@
 - 经验：sidecar diff 的粒度必须在 added、changed、removed 三条路径保持一致；materialized fragment 是显示实体，不是独立的 sidecar cue。removed 代表当前族群的 canonical representative，实际删除动作再展开到整个 family。
 - 处理：`buildEditingSubtitleReloadPreview` 为未匹配的当前 caption 按 family 去重并选择 index 0 作为代表；`applyEditingSubtitleReloadRemoval` 按脚本段关系和 fragment metadata 删除完整 source / translation family，并用已解析的 script segment 关系识别已保留译文。单测和 Fragment Reload Electron Smoke 覆盖 removed 2 行、原文族群全删、译文族群全保留和 reload 持久化。
 - 处理：project file parser 校验并恢复 `editedRangeGroupId` / `editedRangeIndex`；force reload 继续使用现有 fragment family 保留成片位置，再以 incoming sidecar cues 重建 scriptSegments，确保一条 source cue 对应一条 canonical script row。
+
+## 2026-08-09：跨媒体替换不能复用旧素材的 script identity
+
+- 现象：替换时间线片段素材时，caption 会被重新锚定到新 `sourceId`，但旧素材的 script segment 可能继续保留相同 ID、时间范围和 `deleted` 状态；如果关联只比较 ID，新的 translation 会被误判为旧素材的孤立译文，fragment family 也可能跨素材合并。
+- 经验：ID 是兼容 loader 的辅助身份，不足以跨媒体证明归属；当 caption 与 script segment 都有 `sourceId` 时，ID、源时间范围和 fragment group 都必须在同一素材上下文内解释。旧工程缺失 sourceId 时才允许降级到 ID 兼容匹配。
+- 处理：`isEditingScriptSegmentCaption`、subtitle reload family、orphan translation 和 removed script segment 查找统一增加 sourceId 隔离；新增真实 Electron Smoke，先验证旧素材 orphan，再拖拽第二素材替换片段，确认新 translation 的 orphan 标记和提示消失，reload 后 sourceId 关系仍保持，`consoleErrors` 为空。
 - 验证：project file / subtitle reload 定向测试 44 项通过；`bun run typecheck`、`bun run build` 通过；Fragment Smoke 验证 force reload 后 source / translation 仍为 2+2、位置为 1/2、script segment 数为 1、冲突清除且 `consoleErrors:[]`。
 - 提交边界：核心修正 `32591af`，回归测试 `ae029ef`，Smoke `81583e6`；本条工程记录另行提交，内部计划继续 ignored。

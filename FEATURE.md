@@ -544,6 +544,7 @@
 - sidecar 自动回灌按 script segment 关系去重，兼容真实 loader 的 source-prefixed / translation-prefixed ID，避免恢复后同时出现生成字幕和 loader 字幕；新增 `npm run smoke:editing-fragment-reload` 覆盖恢复、重排、重开、双轨刷新和控制台健康。
 - 工程文件导入 / 导出会完整保留 fragment group / index，并拒绝只提供一半的关系元数据；force reload 更新片段文本和词级数据时继续保留用户重排后的成片位置，同时从 canonical incoming cue 重建单一脚本行，不会生成重复脚本段。
 - sidecar 删除预览也按 fragment family 聚合为一条 source / translation diff；source remove + translation keep 会移除族群内全部原文片段、保留全部译文片段，并在 reload 后继续保持孤立译文的片段索引与脚本 deleted 状态。
+- fragment / script segment 关联在已知 `sourceId` 不一致时拒绝匹配；跨媒体替换后，旧素材的 deleted script 不会把新素材同 ID、同时间范围的 translation 误判为孤立译文。新增 `npm run smoke:editing-cross-source-isolation` 覆盖真实素材拖拽替换、reload 和控制台健康。
 
 ## 编辑器画布交互层级
 
