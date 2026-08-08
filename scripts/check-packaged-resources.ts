@@ -47,19 +47,25 @@ export async function checkPackagedResources(options: {
     join(resourcePath, 'web', 'index.html'),
     join(resourcePath, 'web', 'assets'),
     join(resourcePath, 'ffmpeg', getExecutableName(platform)),
-    join(resourcePath, 'ffmpeg', getFfprobeName(platform))
+    join(resourcePath, 'ffmpeg', getFfprobeName(platform)),
+    join(resourcePath, 'LICENSE'),
+    join(resourcePath, 'THIRD_PARTY_LICENSES.md')
   ]
-  const [webIndexExists, webAssetsExist, ffmpegExists, ffprobeExists] = await Promise.all([
+  const [webIndexExists, webAssetsExist, ffmpegExists, ffprobeExists, licenseExists, thirdPartyLicenseExists] = await Promise.all([
     fileExists(checked[0]!, 'win32'),
     hasWebAssets(join(resourcePath, 'web')),
     fileExists(checked[2]!, platform),
-    fileExists(checked[3]!, platform)
+    fileExists(checked[3]!, platform),
+    fileExists(checked[4]!, 'win32'),
+    fileExists(checked[5]!, 'win32')
   ])
   const missing = [
     ...(webIndexExists ? [] : [checked[0]!]),
     ...(webAssetsExist ? [] : [checked[1]!]),
     ...(ffmpegExists ? [] : [checked[2]!]),
-    ...(ffprobeExists ? [] : [checked[3]!])
+    ...(ffprobeExists ? [] : [checked[3]!]),
+    ...(licenseExists ? [] : [checked[4]!]),
+    ...(thirdPartyLicenseExists ? [] : [checked[5]!])
   ]
   const ok = missing.length === 0
   return {

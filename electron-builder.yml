@@ -26,6 +26,10 @@ asarUnpack:
   - "**/node_modules/sharp/**/*"
   - "**/node_modules/@img/**/*"
 extraResources:
+  - from: LICENSE
+    to: LICENSE
+  - from: docs/THIRD_PARTY_LICENSES.md
+    to: THIRD_PARTY_LICENSES.md
   - from: out/web
     to: web
     filter:

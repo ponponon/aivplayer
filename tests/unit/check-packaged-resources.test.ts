@@ -19,6 +19,8 @@ async function createResourceFixture(): Promise<string> {
   await writeFile(join(directory, 'web', 'assets', 'index.js'), 'ready')
   await writeFile(join(directory, 'ffmpeg', 'ffmpeg'), 'ffmpeg')
   await writeFile(join(directory, 'ffmpeg', 'ffprobe'), 'ffprobe')
+  await writeFile(join(directory, 'LICENSE'), 'MIT License')
+  await writeFile(join(directory, 'THIRD_PARTY_LICENSES.md'), '# licenses')
   await chmod(join(directory, 'ffmpeg', 'ffmpeg'), 0o755)
   await chmod(join(directory, 'ffmpeg', 'ffprobe'), 0o755)
   return directory
@@ -41,6 +43,20 @@ describe('checkPackagedResources', () => {
     expect(result.ok).toBe(false)
     expect(result.missing).toContain(join(resourcePath, 'web', 'assets'))
     expect(result.missing).not.toContain(join(resourcePath, 'ffmpeg', 'ffmpeg.exe'))
+  })
+
+  it('requires the project and third-party license files in packaged resources', async () => {
+    const resourcePath = await createResourceFixture()
+    await rm(join(resourcePath, 'LICENSE'), { force: true })
+    await rm(join(resourcePath, 'THIRD_PARTY_LICENSES.md'), { force: true })
+
+    const result = await checkPackagedResources({ resourcePath, platform: 'darwin' })
+
+    expect(result.ok).toBe(false)
+    expect(result.missing).toEqual([
+      join(resourcePath, 'LICENSE'),
+      join(resourcePath, 'THIRD_PARTY_LICENSES.md')
+    ])
   })
 
   it('accepts explicit platform names for cross-platform artifact checks', async () => {

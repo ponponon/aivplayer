@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 const projectRoot = process.cwd()
 const releaseWorkflow = readFileSync(join(projectRoot, '.github/workflows/release.yml'), 'utf8')
+const electronBuilder = readFileSync(join(projectRoot, 'electron-builder.yml'), 'utf8')
 
 describe('release workflow source constraints', () => {
   it('keeps platform builds separate from release publishing', () => {
@@ -25,6 +26,12 @@ describe('release workflow source constraints', () => {
     expect(releaseWorkflow).toContain('release:prepare-runtime -- --platform win32')
     expect(releaseWorkflow).toContain('release:prepare-runtime -- --platform linux')
     expect(releaseWorkflow).toContain('--x265-library $x265Library')
+  })
+
+  it('checks the license manifest before every platform package build', () => {
+    expect(releaseWorkflow.match(/npm run check:licenses/g)).toHaveLength(3)
+    expect(electronBuilder).toContain('from: LICENSE')
+    expect(electronBuilder).toContain('from: docs/THIRD_PARTY_LICENSES.md')
   })
 
   it('installs the generated Debian package by absolute path in CI', () => {
