@@ -36,6 +36,7 @@ export type EditingSubtitleReloadCopy = {
   acceptIncoming: string
   addIncoming: string
   removeFromProject: string
+  keepCurrentCaption: string
   keep: string
   force: string
   changedLabel: string
@@ -80,6 +81,7 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     acceptIncoming: '接受新字幕',
     addIncoming: '加入工程',
     removeFromProject: '从工程移除',
+    keepCurrentCaption: '保留当前字幕',
     keep: '保留当前编辑',
     force: '强制重载字幕',
     changedLabel: '修改',
@@ -122,6 +124,7 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     acceptIncoming: 'Accept new subtitle',
     addIncoming: 'Add to project',
     removeFromProject: 'Remove from project',
+    keepCurrentCaption: 'Keep current subtitle',
     keep: 'Keep current edit',
     force: 'Force reload subtitles',
     changedLabel: 'Changed',
@@ -164,6 +167,7 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     acceptIncoming: '新しい字幕を受け入れる',
     addIncoming: 'プロジェクトに追加',
     removeFromProject: 'プロジェクトから削除',
+    keepCurrentCaption: '現在の字幕を保持',
     keep: '現在の編集を保持',
     force: '字幕を強制再読み込み',
     changedLabel: '変更',
@@ -206,6 +210,7 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     acceptIncoming: '새 자막 적용',
     addIncoming: '프로젝트에 추가',
     removeFromProject: '프로젝트에서 제거',
+    keepCurrentCaption: '현재 자막 유지',
     keep: '현재 편집 유지',
     force: '자막 강제 다시 불러오기',
     changedLabel: '변경',
