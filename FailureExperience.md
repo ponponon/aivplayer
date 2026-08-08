@@ -834,3 +834,15 @@
 - 现象：只有文字和时间标签的冲突列表仍需要用户手动在时间轴寻找 cue，长字幕审阅成本高，也容易定位到相邻句子。
 - 经验：冲突 row 应提供 current / incoming 两个明确定位动作；added / removed 不存在对应时间时必须禁用该侧按钮，不能用另一个版本的时间冒充定位点。
 - 处理：新增 `onSeek` 接口和当前 / 新字幕定位按钮，真实 Electron Smoke 搜索第 10 条 cue 后点击新字幕定位，验证 `editing-time-readout` 跳到 `00:18`，再继续保留和强制重载。
+
+## 2026-08-08：差异定位必须复用时间轴统一选中状态
+
+- 现象：只调用 `seekEditingTime` 可以移动播放头，但脚本面板和字幕轨不会告诉用户当前审阅的是哪一条 cue；如果单独维护局部高亮，还会与时间轴已有的多选状态分叉。
+- 经验：差异定位应复用 `selectTimelineItem('caption', segmentId)`，同时更新脚本面板的 selected segment；translation diff 先映射回 source script segment，added 且当前工程不存在的行保持不可选。
+- 处理：冲突组件增加 `onSelectScriptSegment`，时间线统一接入脚本 / 字幕双选中态；Smoke 验证脚本 row 和 caption item 都包含 `is-selected`。
+
+## 2026-08-08：Smoke 不应写死带随机 fingerprint 的 cue ID
+
+- 现象：首次 Smoke 用 `source-caption-10` 作为 DOM test id，实际 loader 会把媒体 fingerprint 生成的随机 source ID 拼进 cue ID，导致功能已选中但测试找不到元素。
+- 经验：涉及媒体 fingerprint、临时目录或持久化生成 ID 时，Smoke 应按稳定可见文本 / 时间范围定位目标，再读取实际 test id；不要把存储层随机值当用户行为契约。
+- 处理：Smoke 按“原始字幕 10”定位脚本行和字幕卡片，随后验证它们的实际 class 都包含 `is-selected`；真实重跑通过并保留选中态截图。
