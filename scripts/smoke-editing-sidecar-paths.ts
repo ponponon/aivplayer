@@ -79,11 +79,26 @@ async function main(): Promise<void> {
     const candidateAuditStatus = await page.locator('[data-testid="editing-project-status-message"]').textContent()
     const candidateAuditDetails = page.locator('[data-testid="editing-project-status-details"]')
     if (await candidateAuditDetails.count() !== 1) throw new Error('Candidate audit details disclosure was not rendered')
-    const candidateAuditDetailsSummary = await candidateAuditDetails.locator('summary').textContent()
-    await candidateAuditDetails.locator('summary').click()
+    const candidateAuditDetailsSummary = await candidateAuditDetails.locator(':scope > summary').textContent()
+    await candidateAuditDetails.locator(':scope > summary').click()
     const candidateAuditDetailsText = await candidateAuditDetails.textContent()
-    const candidateAuditGroupCount = await page.locator('[data-testid^="editing-project-status-details-group-"]').count()
-    const candidateAuditGroupLabels = await candidateAuditDetails.locator('.editing-project-status-details-group > strong').allTextContents()
+    const candidateAuditGroups = candidateAuditDetails.locator('.editing-project-status-details-group')
+    const candidateAuditGroupCount = await candidateAuditGroups.count()
+    const candidateAuditGroupLabels = await candidateAuditGroups.locator(':scope > summary').allTextContents()
+    const candidateAuditGroupOpenBefore = await candidateAuditGroups.evaluateAll((groups) => groups.map((group) => (group as HTMLDetailsElement).open))
+    const candidateAuditFirstGroup = candidateAuditGroups.nth(0)
+    const candidateAuditSecondGroup = candidateAuditGroups.nth(1)
+    await candidateAuditFirstGroup.locator(':scope > summary').click()
+    const candidateAuditFirstGroupOpen = await candidateAuditFirstGroup.evaluate((group) => (group as HTMLDetailsElement).open)
+    const candidateAuditFirstGroupDetailsVisible = await candidateAuditFirstGroup.locator('.editing-project-status-details-list').isVisible()
+    await candidateAuditSecondGroup.locator(':scope > summary').press('Enter')
+    const candidateAuditSecondGroupOpen = await candidateAuditSecondGroup.evaluate((group) => (group as HTMLDetailsElement).open)
+    await candidateAuditFirstGroup.locator(':scope > summary').click()
+    const candidateAuditFirstGroupClosed = !(await candidateAuditFirstGroup.evaluate((group) => (group as HTMLDetailsElement).open))
+    const candidateAuditSecondGroupStillOpen = await candidateAuditSecondGroup.evaluate((group) => (group as HTMLDetailsElement).open)
+    const candidateAuditScreenshotPath = join(smokeHomeDirectory, 'aivplayer-smoke-sidecar-paths-groups.png')
+    await page.screenshot({ path: candidateAuditScreenshotPath, fullPage: false })
+    await candidateAuditSecondGroup.locator(':scope > summary').press('Enter')
     const alternateTranslationButton = sidecarSource.locator('button[data-testid^="editing-caption-reload-select-sidecar-"][data-testid$="-translation-1"]')
     if (await alternateTranslationButton.count() !== 1) throw new Error('Alternate translation candidate button was not rendered')
     const alternateTranslationCandidatePath = await alternateTranslationButton.locator('code').textContent()
@@ -167,6 +182,13 @@ async function main(): Promise<void> {
       candidateAuditDetailsText,
       candidateAuditGroupCount,
       candidateAuditGroupLabels,
+      candidateAuditGroupOpenBefore,
+      candidateAuditFirstGroupOpen,
+      candidateAuditFirstGroupDetailsVisible,
+      candidateAuditSecondGroupOpen,
+      candidateAuditFirstGroupClosed,
+      candidateAuditSecondGroupStillOpen,
+      candidateAuditScreenshotPath,
       selectedCandidatePath,
       alternateTranslationCandidatePath,
       selectedCandidateText,
@@ -184,7 +206,7 @@ async function main(): Promise<void> {
     }
     console.log('AIVPlayer Smoke Editing Sidecar Paths')
     console.log(JSON.stringify(result))
-    if (result.selectedSourcePath?.toLowerCase() !== sourcePath.toLowerCase() || result.selectedTranslationPath?.toLowerCase() !== translationPath.toLowerCase() || result.candidateRows < 6 || result.conflictRows !== 2 || result.ambiguityCount !== 1 || !result.ambiguityText?.includes('2') || result.equivalentCount < 1 || !result.equivalentText?.includes('内容相同') || result.candidateAuditStatus?.includes(smokeDirectory) || !result.candidateAuditDetailsSummary?.includes('查看完整候选路径') || result.candidateAuditGroupCount !== 2 || !result.candidateAuditGroupLabels.some((label) => label.includes('原文')) || !result.candidateAuditGroupLabels.some((label) => label.includes('译文')) || !result.candidateAuditDetailsText?.includes('内容相同') || !result.candidateAuditDetailsText?.includes('内容不同') || !result.candidateAuditDetailsText?.includes(smokeDirectory) || result.selectedCandidatePath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.selectedCandidateText !== '更新跨设备备用译文' || result.selectedCandidateRevision === null || result.undoPreferredPath?.toLowerCase() === result.alternateTranslationCandidatePath.toLowerCase() || result.undoCaptionText !== '初始跨设备译文' || result.redoPreferredPath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.redoCaptionText !== '更新跨设备备用译文' || result.clearedPreferredPath !== null || result.clearedCaptionText !== '更新跨设备译文' || result.clearUndoPreferredPath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.clearRedoPreferredPath !== null || result.consoleErrors.length > 0) process.exitCode = 1
+    if (result.selectedSourcePath?.toLowerCase() !== sourcePath.toLowerCase() || result.selectedTranslationPath?.toLowerCase() !== translationPath.toLowerCase() || result.candidateRows < 6 || result.conflictRows !== 2 || result.ambiguityCount !== 1 || !result.ambiguityText?.includes('2') || result.equivalentCount < 1 || !result.equivalentText?.includes('内容相同') || result.candidateAuditStatus?.includes(smokeDirectory) || !result.candidateAuditDetailsSummary?.includes('查看完整候选路径') || result.candidateAuditGroupCount !== 2 || result.candidateAuditGroupOpenBefore.some(Boolean) || !result.candidateAuditGroupLabels.some((label) => label.includes('原文')) || !result.candidateAuditGroupLabels.some((label) => label.includes('译文')) || !result.candidateAuditFirstGroupOpen || !result.candidateAuditFirstGroupDetailsVisible || !result.candidateAuditSecondGroupOpen || !result.candidateAuditFirstGroupClosed || !result.candidateAuditSecondGroupStillOpen || !result.candidateAuditDetailsText?.includes('内容相同') || !result.candidateAuditDetailsText?.includes('内容不同') || !result.candidateAuditDetailsText?.includes(smokeDirectory) || result.selectedCandidatePath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.selectedCandidateText !== '更新跨设备备用译文' || result.selectedCandidateRevision === null || result.undoPreferredPath?.toLowerCase() === result.alternateTranslationCandidatePath.toLowerCase() || result.undoCaptionText !== '初始跨设备译文' || result.redoPreferredPath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.redoCaptionText !== '更新跨设备备用译文' || result.clearedPreferredPath !== null || result.clearedCaptionText !== '更新跨设备译文' || result.clearUndoPreferredPath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.clearRedoPreferredPath !== null || result.consoleErrors.length > 0) process.exitCode = 1
   } finally {
     await app.close()
   }
