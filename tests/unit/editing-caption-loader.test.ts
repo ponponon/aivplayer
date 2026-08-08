@@ -170,6 +170,23 @@ describe('editing caption sidecar source selection', () => {
     expect(sources.every((source) => !source.pathCandidates?.includes('/cache/primary.srt'))).toBe(true)
   })
 
+  it('derives automatic sidecar names from the rebound media path', () => {
+    const rebound = { ...primary, path: '/videos/renamed.mp4', name: 'renamed.mp4' }
+    const sources = createEditingCaptionSources({ sources: [rebound], videoClips: [{ id: 'clip-1', sourceId: rebound.id, sourceStartSeconds: 0, sourceEndSeconds: 1 }] }, {
+      currentMediaPath: rebound.path,
+      subtitlePath: null,
+      subtitleSrtPath: null,
+      translatedSubtitlePath: null,
+      translatedSubtitleSrtPath: null,
+      translationLanguage: 'zh-CN'
+    })
+
+    expect(sources[0]?.pathCandidates).toContain('/videos/renamed.srt')
+    expect(sources[0]?.pathCandidates).not.toContain('/videos/primary.srt')
+    expect(sources[1]?.pathCandidates).toContain('/videos/renamed.zh-CN.srt')
+    expect(sources[1]?.pathCandidates).not.toContain('/videos/primary.zh-CN.srt')
+  })
+
   it('ignores the revision of an inactive old current file', () => {
     const project = { sources: [primary, secondary], videoClips: [{ id: 'clip-1', sourceId: secondary.id, sourceStartSeconds: 0, sourceEndSeconds: 1 }] }
     expect(createEditingCaptionSourceRevisionKey(project, { [primary.id]: { source: 100, translation: 200 }, [secondary.id]: { source: null, translation: null } })).toBe('sources=source-secondary:/videos/secondary.mp4:source=none:translation=none')

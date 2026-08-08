@@ -475,6 +475,8 @@ describe('editing timeline source contracts', () => {
     expect(projectFileActions).toContain('formatSourceRepairSummary')
     expect(projectFileActions).toContain('projectRepairSummary')
     expect(projectFileActions).toContain('projectRepairAmbiguous')
+    expect(projectFileActions).toContain('countEditingSourceRepairUnportableCaptionPaths')
+    expect(sourceRepair).toContain('clearUnportableCaptionPaths')
     expect(editingProjectIpc).toContain('resolveEditingProjectPathCaseInsensitive')
     expect(editingProjectIpc).toContain('dialog.showMessageBox')
     expect(editingProjectIpc).toContain('projectOverwriteConfirm')

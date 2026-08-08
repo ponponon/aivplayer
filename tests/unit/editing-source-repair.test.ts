@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createEditingProject } from '../../src/core/editing/project'
-import { matchEditingSourceRepairCandidates, relinkEditingProjectSources } from '../../src/core/editing/source-repair'
+import { countEditingSourceRepairUnportableCaptionPaths, matchEditingSourceRepairCandidates, relinkEditingProjectSources } from '../../src/core/editing/source-repair'
 import type { EditingSource } from '../../src/shared/editing-types'
 
 const firstSource: EditingSource = { id: 'source-first', path: '/old/first.mp4', name: 'first.mp4', fingerprint: '/old/first.mp4:10', durationSeconds: 10 }
@@ -48,6 +48,19 @@ describe('editing source repair', () => {
     expect(repaired).toMatchObject({ updatedAt: 200, videoClips: [{ sourceId: secondSource.id }] })
     expect(repaired?.sources).toEqual([{ ...firstSource, path: '/new/first.mp4', fingerprint: '/new/first.mp4:10' }, secondSource])
     expect(relinkedSource(repaired, firstSource.id)).toMatchObject({ id: firstSource.id, path: '/new/first.mp4', fingerprint: '/new/first.mp4:10' })
+  })
+
+  it('clears fixed sidecar paths without portable hints when a source is manually repaired', () => {
+    const project = {
+      ...createEditingProject(firstSource),
+      sources: [firstSource],
+      captionSourcePaths: { [firstSource.id]: { source: '/old/first.srt', translation: '/old/first.zh-CN.srt' } },
+      captionSourcePathHints: { [firstSource.id]: { source: null, translation: '../captions/first.zh-CN.srt' } }
+    }
+    const replacement = [{ sourceId: firstSource.id, path: '/new/first-renamed.mp4', name: 'first-renamed.mp4', durationSeconds: 10 }]
+
+    expect(countEditingSourceRepairUnportableCaptionPaths(project, replacement)).toBe(1)
+    expect(relinkEditingProjectSources(project, replacement, 200)?.captionSourcePaths).toEqual({ [firstSource.id]: { source: null, translation: '/old/first.zh-CN.srt' } })
   })
 
   it('rejects a replacement that cannot contain the existing source range', () => {

@@ -12,6 +12,7 @@ describe('editing project repair copy', () => {
       expect(copy.projectRepairMapped('source.mp4', '/new/source.mp4')).toContain('/new/source.mp4')
       expect(copy.projectRepairUnresolved('source.mp4')).toContain('source.mp4')
       expect(copy.projectRepairAmbiguous('source.mp4', ['/a/source.mp4'])).toContain('/a/source.mp4')
+      expect(copy.projectRepairSidecarReset(1)).toContain('1')
       expect(copy.projectRepairFailed.length).toBeGreaterThan(0)
     }
   })
