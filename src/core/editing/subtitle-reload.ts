@@ -260,6 +260,48 @@ function sortCaptions(captions: readonly EditingCaption[]): EditingCaption[] {
   return [...captions].sort((left, right) => left.startSeconds - right.startSeconds || left.kind.localeCompare(right.kind) || left.id.localeCompare(right.id))
 }
 
+function matchesCurrentCaption(change: EditingSubtitleReloadChange, caption: EditingCaption): boolean {
+  if (change.currentText !== undefined && change.currentText !== caption.text) return false
+  if (change.currentStartSeconds !== undefined && !sameNumber(change.currentStartSeconds, caption.startSeconds)) return false
+  if (change.currentEndSeconds !== undefined && !sameNumber(change.currentEndSeconds, captionEndSeconds(caption))) return false
+  return true
+}
+
+function sourceRangeOfCaption(caption: EditingCaption): { sourceStartSeconds: number; sourceEndSeconds: number } {
+  return {
+    sourceStartSeconds: caption.sourceStartSeconds ?? caption.startSeconds,
+    sourceEndSeconds: caption.sourceEndSeconds ?? caption.startSeconds + caption.durationSeconds
+  }
+}
+
+/** Applies exactly one changed cue while leaving additions, removals, and other cues untouched. */
+export function applyEditingSubtitleReloadChange(project: EditingProject, incoming: readonly EditingCaption[], change: EditingSubtitleReloadChange, updatedAt = Date.now()): EditingProject | null {
+  if (change.status !== 'changed') return null
+  const currentCaption = project.captions.find((caption) => caption.id === change.id && caption.kind === change.kind)
+  const incomingCaption = incoming.find((caption) => caption.id === change.id && caption.kind === change.kind)
+  if (!currentCaption || !incomingCaption || !matchesCurrentCaption(change, currentCaption)) return null
+
+  const captions = sortCaptions(project.captions.map((caption) => caption === currentCaption ? incomingCaption : caption))
+  const scriptSegmentId = getEditingSubtitleReloadChangeScriptSegmentId(change)
+  const scriptSegments = project.scriptSegments?.map((segment) => {
+    if (segment.id !== scriptSegmentId) return segment
+    if (change.kind === 'translation') return { ...segment, translationText: incomingCaption.text }
+    const sourceRange = sourceRangeOfCaption(incomingCaption)
+    const next = {
+      ...segment,
+      sourceId: incomingCaption.sourceId ?? segment.sourceId,
+      sourceStartSeconds: sourceRange.sourceStartSeconds,
+      sourceEndSeconds: sourceRange.sourceEndSeconds,
+      text: incomingCaption.text
+    }
+    if (incomingCaption.words && incomingCaption.words.length > 0) next.words = incomingCaption.words
+    else delete next.words
+    return next
+  })
+
+  return { ...project, captions, ...(scriptSegments ? { scriptSegments } : {}), updatedAt }
+}
+
 /** Replaces only captions and script rows, preserving the edited timeline and all visual tracks. */
 export function replaceEditingCaptionsForReload(project: EditingProject, incoming: readonly EditingCaption[], captionSourceRevision: string, updatedAt = Date.now()): EditingProject {
   const captions = sortCaptions(incoming)
