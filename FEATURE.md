@@ -542,6 +542,7 @@
 - 多段字幕片段持久化 `editedRangeGroupId` / `editedRangeIndex`，重排时按自身片段索引映射到新编辑时间，不再让每个片段重复展开到全部可见区间；旧版派生 ID 也会按脚本段和数字后缀兼容恢复。
 - source / translation sidecar 重载按脚本片段族群比较，合法的 `segment` / `segment-1` 不会被误报为 removed；接受外部更新时会保留每个片段的成片位置、实体 ID 和片段关系，只同步文本、源锚点与词级数据。
 - sidecar 自动回灌按 script segment 关系去重，兼容真实 loader 的 source-prefixed / translation-prefixed ID，避免恢复后同时出现生成字幕和 loader 字幕；新增 `npm run smoke:editing-fragment-reload` 覆盖恢复、重排、重开、双轨刷新和控制台健康。
+- 工程文件导入 / 导出会完整保留 fragment group / index，并拒绝只提供一半的关系元数据；force reload 更新片段文本和词级数据时继续保留用户重排后的成片位置，同时从 canonical incoming cue 重建单一脚本行，不会生成重复脚本段。
 
 ## 编辑器画布交互层级
 

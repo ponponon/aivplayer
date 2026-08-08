@@ -968,3 +968,11 @@
 - 处理：`EditingCaption` 增加 `editedRangeGroupId` / `editedRangeIndex`；重排按自身索引映射，旧版无元数据的 `-数字` ID 通过脚本段关系兼容推导；重载 preview 将族群视为一条差异，接受更新时保留片段的成片位置和实体 ID；caption effect 按脚本段关系去重 sidecar 回灌。
 - 验证：核心 / UI 定向回归 54 项通过，`bun run typecheck`、`bun run build` 通过；独立真实 Electron Smoke 覆盖恢复 2+2、重排后 2+2、重开无误报、sidecar changed 2 / removed 0、双轨接受更新和 `consoleErrors:[]`。
 - 提交边界：核心关系修正 `d7b1f87`，sidecar 回灌去重修正 `019abdd`，独立 Electron Smoke `dc935b8`；本条工程记录另行提交，内部计划继续 ignored。
+
+## 2026-08-09：fragment 元数据和 force reload 必须同时闭环
+
+- 现象：fragment 元数据只在 localStorage / 运行时对象中存在时，导出工程文件再导入会丢失 group / index；force reload 如果从已物化的 captions 直接 merge script，又会把一个脚本句子重建成多个 fragment 脚本行。
+- 经验：新增持久化字段必须同时覆盖工程文件 parser、serializer 的 round-trip 和非法半结构校验；重载动作要区分“显示轨道的 materialized fragments”和“脚本层的 canonical sidecar cue”，不能用同一个数组承担两个层级。
+- 处理：project file parser 校验并恢复 `editedRangeGroupId` / `editedRangeIndex`；force reload 继续使用现有 fragment family 保留成片位置，再以 incoming sidecar cues 重建 scriptSegments，确保一条 source cue 对应一条 canonical script row。
+- 验证：project file / subtitle reload 定向测试 44 项通过；`bun run typecheck`、`bun run build` 通过；Fragment Smoke 验证 force reload 后 source / translation 仍为 2+2、位置为 1/2、script segment 数为 1、冲突清除且 `consoleErrors:[]`。
+- 提交边界：核心修正 `32591af`，回归测试 `ae029ef`，Smoke `81583e6`；本条工程记录另行提交，内部计划继续 ignored。
