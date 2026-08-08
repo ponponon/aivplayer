@@ -5,6 +5,7 @@ import { join, resolve } from 'node:path'
 import { getMediaSubtitleSidecarPaths } from '../core/ai/subtitle-sidecar'
 import { writeSrt, writeVtt } from '../core/ai/subtitle-writer'
 import { createMediaEvidenceDraftId, normalizeMediaEvidenceDraftCues, summarizeMediaEvidenceDraftCues } from '../core/ai/media-evidence-draft'
+import { createVisionSourceFingerprint } from '../core/ai/vision-evidence'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type {
   MediaEvidenceDraft,
@@ -107,7 +108,14 @@ async function writeAtomic(filePath: string, content: string): Promise<void> {
 
 async function getSourceFingerprint(mediaPath: string): Promise<string> {
   const fileStat = await stat(mediaPath)
-  return createHash('sha256').update(`${mediaPath}|${fileStat.size}|${fileStat.mtimeMs}`).digest('hex').slice(0, 24)
+  return createVisionSourceFingerprint(mediaPath, fileStat.size, fileStat.mtimeMs)
+}
+
+async function matchesSourceFingerprint(mediaPath: string, expectedFingerprint: string): Promise<boolean> {
+  const fileStat = await stat(mediaPath)
+  if (createVisionSourceFingerprint(mediaPath, fileStat.size, fileStat.mtimeMs) === expectedFingerprint) return true
+  const legacyFingerprint = createHash('sha256').update(`${mediaPath}|${fileStat.size}|${fileStat.mtimeMs}`).digest('hex').slice(0, 24)
+  return legacyFingerprint === expectedFingerprint
 }
 
 async function readDraft(directoryPath: string, draftId: string): Promise<MediaEvidenceDraft | null> {
@@ -150,7 +158,7 @@ async function importDraft(directoryPath: string, request: MediaEvidenceDraftImp
   const draft = await readDraft(directoryPath, request.draftId)
   if (!draft) throw new Error('字幕草稿不存在或已损坏')
   if (resolve(draft.mediaPath) !== resolve(request.mediaPath)) throw new Error('字幕草稿不属于当前媒体')
-  if (await getSourceFingerprint(draft.mediaPath) !== draft.sourceFingerprint) {
+  if (!(await matchesSourceFingerprint(draft.mediaPath, draft.sourceFingerprint))) {
     return { success: false, message: '媒体已变化，字幕草稿未导入' }
   }
 
