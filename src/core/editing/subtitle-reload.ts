@@ -124,15 +124,20 @@ function getIncomingPreviewTrack(change: EditingSubtitleReloadChange): EditingSu
   return { kind: change.kind, text: change.incomingText, startSeconds, endSeconds }
 }
 
+function shareIncomingPreviewScriptSegment(left: Pick<EditingSubtitleReloadChange, 'id' | 'kind'>, right: Pick<EditingSubtitleReloadChange, 'id' | 'kind'>): boolean {
+  const leftSegmentId = getEditingSubtitleReloadChangeScriptSegmentId(left)
+  const rightSegmentId = getEditingSubtitleReloadChangeScriptSegmentId(right)
+  return leftSegmentId === rightSegmentId || leftSegmentId === `source-${rightSegmentId}` || rightSegmentId === `source-${leftSegmentId}`
+}
+
 /** Builds a transient preview only for incoming-only cues; it never mutates the project. */
 export function getEditingSubtitleReloadIncomingPreview(change: EditingSubtitleReloadChange, relatedChanges: readonly EditingSubtitleReloadChange[] = []): EditingSubtitleReloadIncomingPreview | null {
   const primaryTrack = getIncomingPreviewTrack(change)
   if (!primaryTrack) return null
-  const scriptSegmentId = getEditingSubtitleReloadChangeScriptSegmentId(change)
   const incoming: Partial<Record<EditingCaption['kind'], EditingSubtitleReloadIncomingPreviewTrack>> = { [primaryTrack.kind]: primaryTrack }
   for (const relatedChange of relatedChanges) {
     if (relatedChange.id === change.id && relatedChange.kind === change.kind) continue
-    if (getEditingSubtitleReloadChangeScriptSegmentId(relatedChange) !== scriptSegmentId) continue
+    if (!shareIncomingPreviewScriptSegment(change, relatedChange)) continue
     const relatedTrack = getIncomingPreviewTrack(relatedChange)
     if (relatedTrack) incoming[relatedTrack.kind] = relatedTrack
   }
