@@ -1,6 +1,6 @@
 import { createEditingProject } from '../../../core/editing/project'
 import { editedDurationSeconds } from '../../../core/editing/timeline-math'
-import { matchEditingSourceRepairCandidates, relinkEditingProjectSources, type EditingSourceRepairMatch } from '../../../core/editing/source-repair'
+import { countEditingSourceRepairUnportableCaptionPaths, matchEditingSourceRepairCandidates, relinkEditingProjectSources, type EditingSourceRepairMatch } from '../../../core/editing/source-repair'
 import type { EditingProject } from '../../../shared/editing-types'
 import type { AppDerived } from './use-app-derived'
 import type { AppModel } from './app-types'
@@ -14,12 +14,13 @@ function getCurrentSource(model: AppModel, derived: AppDerived) {
   return { source: createEditingSource(model, durationSeconds), durationSeconds }
 }
 
-function formatSourceRepairSummary(copy: AppDerived['copy']['editing'], sources: readonly EditingProject['sources'][number][], match: EditingSourceRepairMatch): string {
+function formatSourceRepairSummary(copy: AppDerived['copy']['editing'], sources: readonly EditingProject['sources'][number][], match: EditingSourceRepairMatch, sidecarResetCount = 0): string {
   const sourceNames = new Map(sources.map((source) => [source.id, source.name]))
   const mapped = match.replacements.map((replacement) => copy.projectRepairMapped(sourceNames.get(replacement.sourceId) ?? replacement.sourceId, replacement.path))
   const unresolved = match.unresolved.map((issue) => copy.projectRepairUnresolved(issue.sourceName))
   const ambiguous = match.ambiguous.map((issue) => copy.projectRepairAmbiguous(issue.sourceName, issue.candidatePaths))
-  return [copy.projectRepairSummary(match.replacements.length, match.unresolved.length, match.ambiguous.length), ...mapped, ...unresolved, ...ambiguous].join('；')
+  const sidecarReset = sidecarResetCount > 0 ? [copy.projectRepairSidecarReset(sidecarResetCount)] : []
+  return [copy.projectRepairSummary(match.replacements.length, match.unresolved.length, match.ambiguous.length), ...mapped, ...unresolved, ...ambiguous, ...sidecarReset].join('；')
 }
 
 export function setEditingProject(model: AppModel, project: EditingProject, sourceTime = 0): void {
@@ -105,7 +106,7 @@ export function createEditingProjectFileActions(model: AppModel, derived: AppDer
           model.setEditingProjectStatus({ success: false, message: derived.copy.editing.projectRepairFailed })
           return
         }
-        repairSummary = formatSourceRepairSummary(derived.copy.editing, missingSources, match)
+        repairSummary = formatSourceRepairSummary(derived.copy.editing, missingSources, match, countEditingSourceRepairUnportableCaptionPaths(project, match.replacements))
         project = repaired
       }
       const source = project.sources[0]

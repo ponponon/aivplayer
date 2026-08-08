@@ -1,4 +1,4 @@
-import type { EditingProject, EditingSource } from '../../shared/editing-types'
+import type { EditingCaptionPreferredPaths, EditingProject, EditingSource } from '../../shared/editing-types'
 
 export type EditingSourceRepairCandidate = {
   path: string
@@ -82,6 +82,28 @@ function getSourceRequiredDuration(project: EditingProject, sourceId: string): n
   return Math.max(clipEnd, blockEnd)
 }
 
+/** Counts fixed sidecar paths that cannot migrate with a manually repaired source. */
+export function countEditingSourceRepairUnportableCaptionPaths(project: EditingProject, replacements: readonly EditingSourceRepairReplacement[]): number {
+  return replacements.reduce((count, replacement) => {
+    const paths = project.captionSourcePaths?.[replacement.sourceId]
+    if (!paths) return count
+    const hints = project.captionSourcePathHints?.[replacement.sourceId]
+    return count + (paths.source && !hints?.source ? 1 : 0) + (paths.translation && !hints?.translation ? 1 : 0)
+  }, 0)
+}
+
+function clearUnportableCaptionPaths(project: EditingProject, reboundSourceIds: ReadonlySet<string>): EditingCaptionPreferredPaths | undefined {
+  if (!project.captionSourcePaths) return undefined
+  return Object.fromEntries(Object.entries(project.captionSourcePaths).map(([sourceId, paths]) => {
+    if (!reboundSourceIds.has(sourceId)) return [sourceId, { ...paths }]
+    const hints = project.captionSourcePathHints?.[sourceId]
+    return [sourceId, {
+      source: hints?.source ? paths.source : null,
+      translation: hints?.translation ? paths.translation : null
+    }]
+  }))
+}
+
 /** Rebinds moved files while keeping source IDs and every timeline reference stable. */
 export function relinkEditingProjectSources(project: EditingProject, replacements: readonly EditingSourceRepairReplacement[], updatedAt = Date.now()): EditingProject | null {
   const replacementById = new Map(replacements.map((replacement) => [replacement.sourceId, replacement]))
@@ -102,5 +124,6 @@ export function relinkEditingProjectSources(project: EditingProject, replacement
     }
   })
   if (sources.some((source): source is null => source === null) || replacementById.size !== replacements.length || replacements.some((replacement) => !project.sources.some((source) => source.id === replacement.sourceId))) return null
-  return { ...project, sources: sources as EditingSource[], updatedAt }
+  const captionSourcePaths = clearUnportableCaptionPaths(project, new Set(replacements.map((replacement) => replacement.sourceId)))
+  return { ...project, sources: sources as EditingSource[], updatedAt, ...(captionSourcePaths === undefined ? {} : { captionSourcePaths }) }
 }

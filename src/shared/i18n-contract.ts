@@ -25,6 +25,7 @@ type CaptionManifestCopy = {
   projectRepairMapped: (source: string, path: string) => string
   projectRepairUnresolved: (source: string) => string
   projectRepairAmbiguous: (source: string, paths: readonly string[]) => string
+  projectRepairSidecarReset: (count: number) => string
   projectRepairFailed: string
 }
 
