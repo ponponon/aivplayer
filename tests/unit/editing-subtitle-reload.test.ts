@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createEditingProject } from '../../src/core/editing/project'
-import { buildEditingSubtitleReloadPreview, replaceEditingCaptionsForReload } from '../../src/core/editing/subtitle-reload'
+import { buildEditingSubtitleReloadPreview, getEditingSubtitleReloadChangePage, replaceEditingCaptionsForReload } from '../../src/core/editing/subtitle-reload'
 
 const source = { id: 'source-1', path: '/tmp/demo.mp4', name: 'demo.mp4', fingerprint: 'demo:10', durationSeconds: 10 }
 
@@ -41,6 +41,24 @@ describe('editing subtitle reload', () => {
     const incoming = [{ ...current[0], words: [{ startSeconds: 0, endSeconds: 1, text: '原始字幕' }] }]
 
     expect(buildEditingSubtitleReloadPreview(current, incoming).hasChanges).toBe(false)
+  })
+
+  it('keeps the complete diff and paginates searchable changes without losing counts', () => {
+    const current = Array.from({ length: 18 }, (_, index) => caption({ id: `source-caption-${index}`, text: `当前字幕 ${index}`, startSeconds: index + 1, sourceStartSeconds: index + 1, sourceEndSeconds: index + 2 }))
+    const incoming = current.map((item, index) => ({ ...item, text: `外部字幕 ${index}` }))
+    const preview = buildEditingSubtitleReloadPreview(current, incoming)
+    expect(preview.changes).toHaveLength(18)
+    expect(preview.changedCount).toBe(18)
+
+    const page = getEditingSubtitleReloadChangePage(preview.changes, { query: '外部字幕 1', pageSize: 2, pageIndex: 0 })
+    expect(page.total).toBe(9)
+    expect(page.pageCount).toBe(5)
+    expect(page.changes).toHaveLength(2)
+    expect(page.changes.every((change) => change.incomingText?.includes('外部字幕 1'))).toBe(true)
+
+    const lastPage = getEditingSubtitleReloadChangePage(preview.changes, { status: 'changed', kind: 'source', pageSize: 4, pageIndex: 99 })
+    expect(lastPage.pageIndex).toBe(4)
+    expect(lastPage.changes).toHaveLength(2)
   })
 
   it('replaces caption and script tracks while preserving timeline edits', () => {

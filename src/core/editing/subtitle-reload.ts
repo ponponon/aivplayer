@@ -21,8 +21,31 @@ export type EditingSubtitleReloadPreview = {
   changes: EditingSubtitleReloadChange[]
 }
 
+export type EditingSubtitleReloadChangeStatusFilter = EditingSubtitleReloadChangeStatus | 'all'
+export type EditingSubtitleReloadChangeKindFilter = EditingCaption['kind'] | 'all'
+
+export type EditingSubtitleReloadChangePageOptions = {
+  query?: string
+  status?: EditingSubtitleReloadChangeStatusFilter
+  kind?: EditingSubtitleReloadChangeKindFilter
+  pageIndex?: number
+  pageSize?: number
+}
+
+export type EditingSubtitleReloadChangePage = {
+  changes: EditingSubtitleReloadChange[]
+  query: string
+  status: EditingSubtitleReloadChangeStatusFilter
+  kind: EditingSubtitleReloadChangeKindFilter
+  pageIndex: number
+  pageSize: number
+  total: number
+  pageCount: number
+}
+
+export const EDITING_SUBTITLE_RELOAD_PAGE_SIZE = 8
+
 const CAPTION_COMPARE_EPSILON = 0.001
-const PREVIEW_CHANGE_LIMIT = 12
 
 function sameNumber(left: number | undefined, right: number | undefined): boolean {
   if (left === undefined || right === undefined) return left === right
@@ -46,6 +69,17 @@ function countByKind(changes: readonly EditingSubtitleReloadChange[], kind: Edit
 function changeOrder(left: EditingSubtitleReloadChange, right: EditingSubtitleReloadChange): number {
   const statusOrder: Record<EditingSubtitleReloadChangeStatus, number> = { changed: 0, added: 1, removed: 2 }
   return statusOrder[left.status] - statusOrder[right.status] || left.kind.localeCompare(right.kind) || left.id.localeCompare(right.id)
+}
+
+function normalizeQuery(query: string | undefined): string {
+  return query?.trim().toLocaleLowerCase() ?? ''
+}
+
+function matchesChange(change: EditingSubtitleReloadChange, query: string, status: EditingSubtitleReloadChangeStatusFilter, kind: EditingSubtitleReloadChangeKindFilter): boolean {
+  if (status !== 'all' && change.status !== status) return false
+  if (kind !== 'all' && change.kind !== kind) return false
+  if (!query) return true
+  return [change.id, change.currentText, change.incomingText].filter(Boolean).join(' ').toLocaleLowerCase().includes(query)
 }
 
 /** Compares the materialized subtitle tracks without treating word timing enrichment as a conflict. */
@@ -74,7 +108,28 @@ export function buildEditingSubtitleReloadPreview(current: readonly EditingCapti
     changedCount: orderedChanges.filter((change) => change.status === 'changed').length,
     sourceChangedCount: countByKind(orderedChanges, 'source'),
     translationChangedCount: countByKind(orderedChanges, 'translation'),
-    changes: orderedChanges.slice(0, PREVIEW_CHANGE_LIMIT)
+    changes: orderedChanges
+  }
+}
+
+/** Filters and paginates the complete diff without changing the conflict counts. */
+export function getEditingSubtitleReloadChangePage(changes: readonly EditingSubtitleReloadChange[], options: EditingSubtitleReloadChangePageOptions = {}): EditingSubtitleReloadChangePage {
+  const query = normalizeQuery(options.query)
+  const status = options.status ?? 'all'
+  const kind = options.kind ?? 'all'
+  const pageSize = Math.max(1, Math.min(100, Math.trunc(options.pageSize ?? EDITING_SUBTITLE_RELOAD_PAGE_SIZE)))
+  const filtered = changes.filter((change) => matchesChange(change, query, status, kind))
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize))
+  const pageIndex = Math.min(pageCount - 1, Math.max(0, Math.trunc(options.pageIndex ?? 0)))
+  return {
+    changes: filtered.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize),
+    query,
+    status,
+    kind,
+    pageIndex,
+    pageSize,
+    total: filtered.length,
+    pageCount
   }
 }
 
