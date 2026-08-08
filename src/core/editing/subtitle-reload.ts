@@ -274,6 +274,13 @@ function sourceRangeOfCaption(caption: EditingCaption): { sourceStartSeconds: nu
   }
 }
 
+function matchesIncomingCaption(change: EditingSubtitleReloadChange, caption: EditingCaption): boolean {
+  if (change.incomingText !== undefined && change.incomingText !== caption.text) return false
+  if (change.incomingStartSeconds !== undefined && !sameNumber(change.incomingStartSeconds, caption.startSeconds)) return false
+  if (change.incomingEndSeconds !== undefined && !sameNumber(change.incomingEndSeconds, captionEndSeconds(caption))) return false
+  return true
+}
+
 /** Applies exactly one changed cue while leaving additions, removals, and other cues untouched. */
 export function applyEditingSubtitleReloadChange(project: EditingProject, incoming: readonly EditingCaption[], change: EditingSubtitleReloadChange, updatedAt = Date.now()): EditingProject | null {
   if (change.status !== 'changed') return null
@@ -299,6 +306,18 @@ export function applyEditingSubtitleReloadChange(project: EditingProject, incomi
     return next
   })
 
+  return { ...project, captions, ...(scriptSegments ? { scriptSegments } : {}), updatedAt }
+}
+
+/** Adds exactly one incoming cue and merges only the affected script context. */
+export function applyEditingSubtitleReloadAddition(project: EditingProject, incoming: readonly EditingCaption[], change: EditingSubtitleReloadChange, updatedAt = Date.now()): EditingProject | null {
+  if (change.status !== 'added') return null
+  const incomingCaption = incoming.find((caption) => caption.id === change.id && caption.kind === change.kind)
+  if (!incomingCaption || project.captions.some((caption) => caption.id === change.id && caption.kind === change.kind) || !matchesIncomingCaption(change, incomingCaption)) return null
+
+  const captions = sortCaptions([...project.captions, incomingCaption])
+  const shouldMaterializeScript = project.scriptSegments !== undefined || captions.some((caption) => caption.kind === 'source')
+  const scriptSegments = shouldMaterializeScript ? mergeEditingScriptSegments(project.scriptSegments, captions) : undefined
   return { ...project, captions, ...(scriptSegments ? { scriptSegments } : {}), updatedAt }
 }
 

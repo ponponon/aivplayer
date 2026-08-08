@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createEditingProject } from '../../src/core/editing/project'
-import { applyEditingSubtitleReloadChange, buildEditingSubtitleReloadPreview, getEditingSubtitleReloadChangePage, getEditingSubtitleReloadChangePreview, getEditingSubtitleReloadChangeScriptSegmentId, getEditingSubtitleReloadIncomingPreview, replaceEditingCaptionsForReload } from '../../src/core/editing/subtitle-reload'
+import { applyEditingSubtitleReloadAddition, applyEditingSubtitleReloadChange, buildEditingSubtitleReloadPreview, getEditingSubtitleReloadChangePage, getEditingSubtitleReloadChangePreview, getEditingSubtitleReloadChangeScriptSegmentId, getEditingSubtitleReloadIncomingPreview, replaceEditingCaptionsForReload } from '../../src/core/editing/subtitle-reload'
 
 const source = { id: 'source-1', path: '/tmp/demo.mp4', name: 'demo.mp4', fingerprint: 'demo:10', durationSeconds: 10 }
 
@@ -139,6 +139,43 @@ describe('editing subtitle reload', () => {
     expect(applyEditingSubtitleReloadChange(project, [current], { ...changed, status: 'removed', incomingText: undefined })).toBeNull()
     expect(applyEditingSubtitleReloadChange(project, [current], { ...changed, currentText: '已被再次编辑' })).toBeNull()
     expect(applyEditingSubtitleReloadChange(project, [], changed)).toBeNull()
+  })
+
+  it('adds one incoming source or translation cue while preserving the rest of the project', () => {
+    const currentSource = caption({ text: '当前原文' })
+    const incomingSource = { ...currentSource, id: 'source-caption-2', text: '新增原文', startSeconds: 3, sourceStartSeconds: 3, sourceEndSeconds: 4, durationSeconds: 1, words: [{ startSeconds: 0, endSeconds: 0.5, text: '新增原文' }] }
+    const incomingTranslation = { ...incomingSource, id: 'translation-source-caption-2', kind: 'translation' as const, text: 'New translation' }
+    const project = {
+      ...createEditingProject(source, { now: 100 }),
+      captions: [currentSource],
+      scriptSegments: [{ id: currentSource.id, sourceId: source.id, sourceStartSeconds: 1, sourceEndSeconds: 2, text: '手工原文', deleted: true }]
+    }
+    const sourceChange = { id: incomingSource.id, kind: 'source' as const, status: 'added' as const, incomingText: incomingSource.text, incomingStartSeconds: 3, incomingEndSeconds: 4 }
+    const translationChange = { id: incomingTranslation.id, kind: 'translation' as const, status: 'added' as const, incomingText: incomingTranslation.text, incomingStartSeconds: 3, incomingEndSeconds: 4 }
+
+    const afterSource = applyEditingSubtitleReloadAddition(project, [currentSource, incomingSource, incomingTranslation], sourceChange, 200)
+    expect(afterSource?.captions).toEqual([currentSource, incomingSource])
+    expect(afterSource?.scriptSegments).toEqual([
+      { id: currentSource.id, sourceId: source.id, sourceStartSeconds: 1, sourceEndSeconds: 2, text: '手工原文', deleted: true },
+      { id: incomingSource.id, sourceId: source.id, sourceStartSeconds: 3, sourceEndSeconds: 4, text: '新增原文', words: incomingSource.words, translationText: undefined }
+    ])
+    expect(afterSource?.videoClips).toEqual(project.videoClips)
+    expect(afterSource?.updatedAt).toBe(200)
+
+    const afterTranslation = applyEditingSubtitleReloadAddition(afterSource!, [currentSource, incomingSource, incomingTranslation], translationChange, 300)
+    expect(afterTranslation?.captions).toEqual([currentSource, incomingSource, incomingTranslation])
+    expect(afterTranslation?.scriptSegments?.find((segment) => segment.id === incomingSource.id)).toMatchObject({ text: '新增原文', translationText: 'New translation' })
+  })
+
+  it('rejects non-added, duplicate, stale, or missing incoming cues', () => {
+    const current = caption({})
+    const incoming = caption({ id: 'source-caption-2', text: '新增字幕', startSeconds: 3, sourceStartSeconds: 3, sourceEndSeconds: 4 })
+    const project = { ...createEditingProject(source, { now: 100 }), captions: [current] }
+    const added = { id: incoming.id, kind: 'source' as const, status: 'added' as const, incomingText: incoming.text, incomingStartSeconds: 3, incomingEndSeconds: 4 }
+    expect(applyEditingSubtitleReloadAddition(project, [incoming], { ...added, status: 'changed' })).toBeNull()
+    expect(applyEditingSubtitleReloadAddition({ ...project, captions: [current, incoming] }, [incoming], added)).toBeNull()
+    expect(applyEditingSubtitleReloadAddition(project, [incoming], { ...added, incomingText: '已变化' })).toBeNull()
+    expect(applyEditingSubtitleReloadAddition(project, [], added)).toBeNull()
   })
 
   it('replaces caption and script tracks while preserving timeline edits', () => {
