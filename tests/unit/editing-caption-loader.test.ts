@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { areEditingCaptionWordsCompatible } from '../../src/renderer/src/app/editing-caption-loader'
+import { areEditingCaptionWordsCompatible, createEditingCaptionSources, createEditingCaptionSourceRevisionKey } from '../../src/renderer/src/app/editing-caption-loader'
+
+const primary = { id: 'source-primary', path: '/videos/primary.mp4', name: 'primary.mp4', fingerprint: 'primary:10', durationSeconds: 10 }
+const secondary = { id: 'source-secondary', path: '/videos/secondary.mp4', name: 'secondary.mp4', fingerprint: 'secondary:10', durationSeconds: 10 }
 
 describe('editing caption word sidecar compatibility', () => {
   it('keeps word timings when the sidecar text matches the formal caption', () => {
@@ -13,5 +16,40 @@ describe('editing caption word sidecar compatibility', () => {
     expect(areEditingCaptionWordsCompatible('外部更新字幕', [
       { startSeconds: 0, endSeconds: 0.5, text: '第一句脚本' }
     ])).toBe(false)
+  })
+})
+
+describe('editing caption sidecar source selection', () => {
+  it('loads sidecars only for sources still used by the timeline', () => {
+    const sources = createEditingCaptionSources({ sources: [primary, secondary], videoClips: [{ id: 'clip-1', sourceId: secondary.id, sourceStartSeconds: 0, sourceEndSeconds: 1 }] }, {
+      currentMediaPath: primary.path,
+      subtitlePath: '/cache/primary.srt',
+      subtitleSrtPath: '/cache/primary.srt',
+      translatedSubtitlePath: null,
+      translatedSubtitleSrtPath: null
+    })
+
+    expect(sources.map((source) => source.sourceId)).toEqual(['source-secondary', 'source-secondary'])
+    expect(sources[0]?.path).toBeNull()
+    expect(sources[0]?.pathCandidates).not.toContain('/cache/primary.srt')
+  })
+
+  it('does not assign the current file sidecar to a replacement source by array position', () => {
+    const sources = createEditingCaptionSources({ sources: [primary, secondary], videoClips: [{ id: 'clip-1', sourceId: secondary.id, sourceStartSeconds: 0, sourceEndSeconds: 1 }] }, {
+      currentMediaPath: primary.path,
+      subtitlePath: '/cache/primary.srt',
+      subtitleSrtPath: '/cache/primary.srt',
+      translatedSubtitlePath: '/cache/primary.translated.srt',
+      translatedSubtitleSrtPath: '/cache/primary.translated.srt'
+    })
+
+    expect(sources.every((source) => source.path === null)).toBe(true)
+    expect(sources.every((source) => !source.pathCandidates?.includes('/cache/primary.srt'))).toBe(true)
+  })
+
+  it('ignores the revision of an inactive old current file', () => {
+    const project = { sources: [primary, secondary], videoClips: [{ id: 'clip-1', sourceId: secondary.id, sourceStartSeconds: 0, sourceEndSeconds: 1 }] }
+    expect(createEditingCaptionSourceRevisionKey(project, { currentMediaPath: primary.path, subtitleRevision: 100, translatedSubtitleRevision: 200 })).toBe('sources=source-secondary:/videos/secondary.mp4|source=none|translation=none')
+    expect(createEditingCaptionSourceRevisionKey(project, { currentMediaPath: primary.path, subtitleRevision: 101, translatedSubtitleRevision: 201 })).toBe('sources=source-secondary:/videos/secondary.mp4|source=none|translation=none')
   })
 })
