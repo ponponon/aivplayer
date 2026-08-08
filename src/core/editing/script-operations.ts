@@ -99,8 +99,21 @@ export function shareEditingScriptSegmentIds(left: string, right: string): boole
   return left === right || left === `source-${right}` || right === `source-${left}`
 }
 
-function belongsToEditingScriptSegment(caption: Pick<EditingCaption, 'id' | 'kind'>, segmentId: string, kind: EditingCaption['kind']): boolean {
-  return caption.kind === kind && shareEditingScriptSegmentIds(getEditingCaptionScriptSegmentId(caption), segmentId)
+function sharesEditingScriptSegmentSourceRange(caption: Pick<EditingCaption, 'sourceId' | 'sourceStartSeconds' | 'sourceEndSeconds'>, segment: Pick<EditingScriptSegment, 'sourceId' | 'sourceStartSeconds' | 'sourceEndSeconds'>): boolean {
+  return caption.sourceId === segment.sourceId
+    && caption.sourceStartSeconds !== undefined
+    && caption.sourceEndSeconds !== undefined
+    && Math.abs(caption.sourceStartSeconds - segment.sourceStartSeconds) <= 0.001
+    && Math.abs(caption.sourceEndSeconds - segment.sourceEndSeconds) <= 0.001
+}
+
+function belongsToEditingScriptSegment(caption: EditingCaption, segment: EditingScriptSegment, kind: EditingCaption['kind']): boolean {
+  return caption.kind === kind && (shareEditingScriptSegmentIds(getEditingCaptionScriptSegmentId(caption), segment.id) || sharesEditingScriptSegmentSourceRange(caption, segment))
+}
+
+/** Matches a materialized source/translation caption, including generated multi-range fragments. */
+export function isEditingScriptSegmentCaption(caption: EditingCaption, segment: EditingScriptSegment): boolean {
+  return belongsToEditingScriptSegment(caption, segment, 'source') || belongsToEditingScriptSegment(caption, segment, 'translation')
 }
 
 /** Updates a source caption's visible text without discarding its surviving word timings. */
@@ -161,10 +174,12 @@ export function scriptSegmentCaption(
   kind: EditingCaption['kind'],
   text: string,
   startSeconds: number,
-  durationSeconds: number
+  durationSeconds: number,
+  fragmentIndex = 0
 ): EditingCaption {
+  const baseId = kind === 'source' ? segment.id : `${kind}-${segment.id}`
   return {
-    id: kind === 'source' ? segment.id : `${kind}-${segment.id}`,
+    id: fragmentIndex === 0 ? baseId : `${baseId}-${fragmentIndex}`,
     sourceId: segment.sourceId,
     sourceStartSeconds: segment.sourceStartSeconds,
     sourceEndSeconds: segment.sourceEndSeconds,
@@ -185,13 +200,10 @@ export function restoreEditingScriptSegmentCaptions(
   const ranges = sourceRangeToEditedRanges(clips, segment.sourceId, segment.sourceStartSeconds, segment.sourceEndSeconds)
   if (ranges.length === 0) return [...captions]
 
-  const startSeconds = ranges[0]!.startSeconds
-  const endSeconds = ranges[ranges.length - 1]!.endSeconds
-  const durationSeconds = Math.max(0.1, endSeconds - startSeconds)
-  const existingTranslation = captions.find((caption) => belongsToEditingScriptSegment(caption, segment.id, 'translation'))
-  const next = captions.filter((caption) => !belongsToEditingScriptSegment(caption, segment.id, 'source') && !belongsToEditingScriptSegment(caption, segment.id, 'translation'))
-  next.push(scriptSegmentCaption(segment, 'source', segment.text, startSeconds, durationSeconds))
+  const existingTranslation = captions.find((caption) => belongsToEditingScriptSegment(caption, segment, 'translation'))
+  const next = captions.filter((caption) => !isEditingScriptSegmentCaption(caption, segment))
+  next.push(...ranges.map((range, index) => scriptSegmentCaption(segment, 'source', segment.text, range.startSeconds, Math.max(0.1, range.endSeconds - range.startSeconds), index)))
   if (existingTranslation) next.push(existingTranslation)
-  else if (segment.translationText) next.push(scriptSegmentCaption(segment, 'translation', segment.translationText, startSeconds, durationSeconds))
+  else if (segment.translationText) next.push(...ranges.map((range, index) => scriptSegmentCaption(segment, 'translation', segment.translationText!, range.startSeconds, Math.max(0.1, range.endSeconds - range.startSeconds), index)))
   return next.sort((left, right) => left.startSeconds - right.startSeconds || left.kind.localeCompare(right.kind) || left.id.localeCompare(right.id))
 }

@@ -1,6 +1,6 @@
 import { sourceRangeToEditedRanges } from '../../../core/editing/timeline-math'
 import { removeSourceVideoRanges, restoreSourceVideoRange } from '../../../core/editing/timeline-operations'
-import { getEditingScriptWordSourceRange, removeEditingScriptWord, removeEditingScriptWords, replaceEditingScriptWord, restoreEditingScriptSegmentCaptions, setEditingScriptSegmentDeleted, syncEditingSourceCaptionText, updateEditingScriptSegmentText, updateEditingSourceCaptionText } from '../../../core/editing/script-operations'
+import { getEditingScriptWordSourceRange, isEditingScriptSegmentCaption, removeEditingScriptWord, removeEditingScriptWords, replaceEditingScriptWord, restoreEditingScriptSegmentCaptions, setEditingScriptSegmentDeleted, syncEditingSourceCaptionText, updateEditingScriptSegmentText, updateEditingSourceCaptionText } from '../../../core/editing/script-operations'
 import type { EditingCaptionWord, EditingProject, EditingScriptSegment, EditingVideoClip } from '../../../shared/editing-types'
 import type { AppModel } from './app-types'
 import { saveEditingProject } from './editing-project-storage'
@@ -67,7 +67,7 @@ export function createEditingScriptActions(model: AppModel) {
     const timelineProject = withUpdatedTimelineRanges(project, result.clips, result.removedRanges)
     const nextProject = {
       ...timelineProject,
-      captions: timelineProject.captions.filter((caption) => caption.id !== segment.id && caption.id !== `translation-${segment.id}`),
+      captions: timelineProject.captions.filter((caption) => !isEditingScriptSegmentCaption(caption, segment)),
       scriptSegments: setEditingScriptSegmentDeleted(scriptSegmentsOf(project), segmentId, true)
     }
     model.setEditingPast((past) => [...past, project])
