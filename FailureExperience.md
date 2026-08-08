@@ -852,3 +852,9 @@
 - 现象：incoming-only cue 在强制重载前不存在于当前 `scriptSegments` / captions；如果直接调用统一选中入口，会留下旧选中态，或制造一条不可持久化的假行。
 - 经验：预览必须是独立、只读、临时 overlay；点击 added cue 时先清空旧选择，只显示 incoming 文本和时间范围；关闭、保留当前编辑或强制重载时清理预览。
 - 处理：新增 core preview helper、时间线状态条和临时字幕卡片；真实 Electron Smoke 验证预览出现、旧脚本行取消选中、关闭后两个 preview DOM 均消失，并确认控制台无错误。
+
+## 2026-08-08：source / translation cue 配对必须覆盖真实 loader ID
+
+- 现象：简化单测中的 translation ID（`translation-source-caption-2`）可以直接去掉 `translation-` 与 source ID 对齐，但真实 loader 生成的是 `source-${sourceId}-${index}` 与 `translation-${sourceId}-${index}`；只使用单一字符串映射会导致译文临时卡片不出现。
+- 经验：涉及持久化 ID 的跨轨配对，单测既要覆盖人为构造的稳定 ID，也要覆盖真实 loader 生成形态；不能因为一个简化 fixture 通过就认为配对契约完整。
+- 处理：新增 source segment 配对的兼容归一化，双轨 Smoke 使用真实旁车路径和 19 个 cue 验证 source / translation 两张预览卡片、对照文本和时间范围同时出现。
