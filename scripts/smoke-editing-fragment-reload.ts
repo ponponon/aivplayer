@@ -198,6 +198,18 @@ async function main(): Promise<void> {
       return stats.source.length === 2 && stats.translation.length === 2 && stats.uniqueIds && stats.source.every((caption) => caption.text === '外部原文一') && stats.translation.every((caption) => caption.text === '外部译文一')
     })
     const refreshConflictCleared = await page.locator('[data-testid="editing-caption-reload-conflict"]').count() === 0
+    await writeFile(sourceSubtitlePath, makeSrt('强制原文一'))
+    await writeFile(translatedSubtitlePath, makeSrt('强制译文一'))
+    await touchSidecars()
+    await page.reload()
+    await openEditor()
+    await page.locator('[data-testid="editing-caption-reload-conflict"]').waitFor({ timeout: 10_000 })
+    await page.locator('[data-testid="editing-caption-reload-force"]').click()
+    const forceReloaded = await waitForStored((project) => {
+      const stats = projectStats(project)
+      return stats.source.length === 2 && stats.translation.length === 2 && stats.uniqueIds && stats.sourceStarts.join(',') === '1,2' && stats.translationStarts.join(',') === '1,2' && project.scriptSegments?.length === 1 && project.scriptSegments[0]?.text === '强制原文一' && project.scriptSegments[0]?.translationText === '强制译文一'
+    })
+    const forceConflictCleared = await page.locator('[data-testid="editing-caption-reload-conflict"]').count() === 0
     const finalScreenshotPath = join(smokeHomeDirectory, 'aivplayer-smoke-fragment-reload-final.png')
     await page.screenshot({ path: finalScreenshotPath, fullPage: false })
     const result = {
@@ -205,11 +217,14 @@ async function main(): Promise<void> {
       reordered: projectStats(reordered),
       reopened: projectStats(reopened),
       refreshed: projectStats(refreshed),
+      forceReloaded: projectStats(forceReloaded),
       reorderPreservedIds,
       noFalseReopenConflict,
       reloadRowCount,
       removedRowCount,
       refreshConflictCleared,
+      forceConflictCleared,
+      forceScriptSegmentCount: forceReloaded.scriptSegments?.length ?? 0,
       consoleErrors,
       screenshots: { reorderScreenshotPath, reloadScreenshotPath, finalScreenshotPath }
     }
@@ -221,6 +236,7 @@ async function main(): Promise<void> {
     if (!result.noFalseReopenConflict || result.reopened.source.length !== 2 || result.reopened.translation.length !== 2) process.exitCode = 1
     if (result.reloadRowCount !== 2 || result.removedRowCount !== 0 || !result.refreshConflictCleared) process.exitCode = 1
     if (result.refreshed.source.some((caption) => caption.text !== '外部原文一') || result.refreshed.translation.some((caption) => caption.text !== '外部译文一')) process.exitCode = 1
+    if (!result.forceConflictCleared || result.forceScriptSegmentCount !== 1 || result.forceReloaded.source.some((caption) => caption.text !== '强制原文一') || result.forceReloaded.translation.some((caption) => caption.text !== '强制译文一')) process.exitCode = 1
     if (result.consoleErrors.length > 0) process.exitCode = 1
   } finally {
     await app.close()
