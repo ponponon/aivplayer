@@ -71,11 +71,21 @@ describe('editing subtitle reload', () => {
       sourceChangedCount: 2,
       translationChangedCount: 1,
       changes: [
-        { id: 'source-caption-1', status: 'changed', currentText: '原始字幕', incomingText: '外部新字幕' },
-        { id: 'source-caption-2', status: 'added', incomingText: '新增字幕' },
-        { id: 'translation-caption-1', status: 'removed', currentText: '旧翻译' }
+        { id: 'source-caption-1', sourceId: source.id, status: 'changed', currentText: '原始字幕', incomingText: '外部新字幕' },
+        { id: 'source-caption-2', sourceId: source.id, status: 'added', incomingText: '新增字幕' },
+        { id: 'translation-caption-1', sourceId: source.id, status: 'removed', currentText: '旧翻译' }
       ]
     })
+  })
+
+  it('carries source identity on every diff row for multi-source explanations', () => {
+    const otherSource = { ...source, id: 'source-2', path: '/tmp/other.mp4', name: 'other.mp4' }
+    const current = [{ ...caption({}), sourceId: otherSource.id }]
+    const incoming = [{ ...caption({}), sourceId: otherSource.id, text: '另一素材新字幕' }]
+
+    expect(buildEditingSubtitleReloadPreview(current, incoming).changes).toEqual([
+      expect.objectContaining({ id: 'source-caption-1', kind: 'source', sourceId: otherSource.id, status: 'changed' })
+    ])
   })
 
   it('ignores word-timing enrichment when deciding whether a reload is destructive', () => {
@@ -284,7 +294,7 @@ describe('editing subtitle reload', () => {
     expect(kept?.captionReloadResolution).toEqual({ sourceRevisionKey: 'source=next|translation=next', changeKeys: [getEditingSubtitleReloadChangeKey(sourceRemoved)] })
     expect(getEditingSubtitleReloadResolutionKeys(changes, sourceRemoved)).toEqual([getEditingSubtitleReloadChangeKey(sourceRemoved)])
     const preview = buildEditingSubtitleReloadPreview(project.captions, [])
-    expect(filterEditingSubtitleReloadPreview(preview, kept?.captionReloadResolution?.changeKeys ?? []).changes).toEqual([translationRemoved])
+    expect(filterEditingSubtitleReloadPreview(preview, kept?.captionReloadResolution?.changeKeys ?? []).changes).toEqual([expect.objectContaining(translationRemoved)])
     const translationKept = applyEditingSubtitleReloadKeep(project, changes, translationRemoved, 'source=next|translation=next')
     expect(translationKept?.captionReloadResolution?.changeKeys).toEqual([getEditingSubtitleReloadChangeKey(translationRemoved)])
     const bothKept = applyEditingSubtitleReloadKeep(kept!, changes, translationRemoved, 'source=next|translation=next')
