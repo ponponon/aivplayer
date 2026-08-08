@@ -76,6 +76,7 @@ describe('editing timeline source contracts', () => {
     const timelineExportIpc = readSource('src/desktop/ipc-timeline-export.ts')
     const smokeScript = readSource('scripts/smoke-editing-script.ts')
     const captionReloadSmoke = readSource('scripts/smoke-editing-caption-reload.ts')
+    const orphanTranslationSmoke = readSource('scripts/smoke-editing-orphan-translation.ts')
     const bilingualCaptionSmoke = readSource('scripts/smoke-bilingual-caption-export.ts')
 
     expect(stage).toContain("app.isEditingMode ? <EditingTimeline /> : <PlaybackControls />")
@@ -304,6 +305,9 @@ describe('editing timeline source contracts', () => {
     expect(captionReloadSmoke).toContain('editing-caption-reload-conflict')
     expect(captionReloadSmoke).toContain('editing-caption-reload-keep')
     expect(captionReloadSmoke).toContain('editing-caption-reload-force')
+    expect(orphanTranslationSmoke).toContain('editing-caption-orphan-notice')
+    expect(orphanTranslationSmoke).toContain('data-editing-orphan-translation')
+    expect(orphanTranslationSmoke).toContain('page.reload()')
     expect(smokeScript).toContain('filterAfterSliderDrag')
     expect(smokeScript).toContain('filterAfterOneUndo')
     expect(smokeScript).toContain('scriptWordCount')
