@@ -83,6 +83,7 @@ export function EditingCaptionReloadConflict({ conflict, copy, onSeek, onPreview
         <div>
           <strong>{copy.title}</strong>
           <p>{copy.description}</p>
+          <small className="editing-caption-reload-independent-hint">{copy.independentRemovalHint}</small>
         </div>
       </div>
       <div className="editing-caption-reload-summary" aria-label={copy.preview}>

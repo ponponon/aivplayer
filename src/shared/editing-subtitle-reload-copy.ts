@@ -3,6 +3,7 @@ import type { AppLocale } from './localization'
 export type EditingSubtitleReloadCopy = {
   title: string
   description: string
+  independentRemovalHint: string
   preview: string
   searchLabel: string
   searchPlaceholder: string
@@ -48,6 +49,7 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
   'zh-CN': {
     title: '检测到字幕版本变化',
     description: '正式字幕文件已经更新。为避免覆盖你的脚本编辑，当前字幕轨和脚本暂时保持不变，请先查看差异并选择处理方式。',
+    independentRemovalHint: '原文和译文的删除差异可以分别处理。',
     preview: '查看冲突预览',
     searchLabel: '搜索差异',
     searchPlaceholder: '搜索当前或新字幕文本…',
@@ -91,6 +93,7 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
   'en-US': {
     title: 'Subtitle version changed',
     description: 'The formal subtitle files changed. Your current caption track and script stay untouched until you review the differences and choose an action.',
+    independentRemovalHint: 'Source and translation removals can be resolved separately.',
     preview: 'Review conflict preview',
     searchLabel: 'Search changes',
     searchPlaceholder: 'Search current or new subtitle text…',
@@ -134,6 +137,7 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
   'ja-JP': {
     title: '字幕のバージョンが変わりました',
     description: '正式な字幕ファイルが更新されました。差分を確認して選択するまで、現在の字幕トラックとスクリプト編集は保持されます。',
+    independentRemovalHint: '原文と翻訳の削除は個別に処理できます。',
     preview: '競合を確認',
     searchLabel: '差分を検索',
     searchPlaceholder: '現在または新しい字幕を検索…',
@@ -177,6 +181,7 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
   'ko-KR': {
     title: '자막 버전이 변경되었습니다',
     description: '공식 자막 파일이 업데이트되었습니다. 차이를 확인하고 선택할 때까지 현재 자막 트랙과 스크립트 편집은 유지됩니다.',
+    independentRemovalHint: '원문과 번역 삭제 항목은 별도로 처리할 수 있습니다.',
     preview: '충돌 미리보기 확인',
     searchLabel: '변경 사항 검색',
     searchPlaceholder: '현재 또는 새 자막 텍스트 검색…',
