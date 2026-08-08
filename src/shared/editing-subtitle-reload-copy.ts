@@ -44,6 +44,11 @@ export type EditingSubtitleReloadCopy = {
   selectingCandidate: string
   candidateSelected: (path: string) => string
   candidateSelectionFailed: string
+  clearCandidate: string
+  clearingCandidate: string
+  candidateCleared: string
+  candidateClearFailed: string
+  preferredPathFallback: string
   unknownSource: string
   empty: string
   source: string
@@ -104,6 +109,11 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     selectingCandidate: '正在切换…',
     candidateSelected: (path) => `已切换字幕候选：${path}`,
     candidateSelectionFailed: '字幕候选切换失败',
+    clearCandidate: '恢复自动候选',
+    clearingCandidate: '正在恢复…',
+    candidateCleared: '已恢复自动字幕候选',
+    candidateClearFailed: '恢复自动字幕候选失败',
+    preferredPathFallback: '固定候选不可用，当前已回退自动候选：',
     unknownSource: '未知素材',
     empty: '（无内容）',
     source: '原文',
@@ -162,6 +172,11 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     selectingCandidate: 'Switching…',
     candidateSelected: (path) => `Subtitle candidate selected: ${path}`,
     candidateSelectionFailed: 'Failed to switch subtitle candidate',
+    clearCandidate: 'Use automatic candidate',
+    clearingCandidate: 'Restoring…',
+    candidateCleared: 'Automatic subtitle candidate restored',
+    candidateClearFailed: 'Failed to restore automatic subtitle candidate',
+    preferredPathFallback: 'The preferred candidate is unavailable; using the automatic candidate:',
     unknownSource: 'Unknown source',
     empty: '(empty)',
     source: 'Source',
@@ -220,6 +235,11 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     selectingCandidate: '切り替え中…',
     candidateSelected: (path) => `字幕候補を切り替えました：${path}`,
     candidateSelectionFailed: '字幕候補の切り替えに失敗しました',
+    clearCandidate: '自動候補に戻す',
+    clearingCandidate: '復元中…',
+    candidateCleared: '自動字幕候補に戻しました',
+    candidateClearFailed: '自動字幕候補の復元に失敗しました',
+    preferredPathFallback: '固定候補が利用できないため、自動候補に戻しました：',
     unknownSource: '不明な素材',
     empty: '（空）',
     source: '原文',
@@ -278,6 +298,11 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     selectingCandidate: '전환 중…',
     candidateSelected: (path) => `자막 후보를 전환했습니다: ${path}`,
     candidateSelectionFailed: '자막 후보 전환 실패',
+    clearCandidate: '자동 후보 사용',
+    clearingCandidate: '복원 중…',
+    candidateCleared: '자동 자막 후보로 복원했습니다',
+    candidateClearFailed: '자동 자막 후보 복원 실패',
+    preferredPathFallback: '고정 후보를 사용할 수 없어 자동 후보로 전환했습니다:',
     unknownSource: '알 수 없는 소재',
     empty: '(비어 있음)',
     source: '원문',
