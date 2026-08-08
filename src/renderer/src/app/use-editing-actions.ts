@@ -174,7 +174,7 @@ export function useEditingActions(model: AppModel, derived: AppDerived, selectFi
     await video.play()
   }
 
-  useEditingPlaybackEffect(model); useEditingCaptionEffect(model, derived); useEditingSourceEffect(model)
+  useEditingPlaybackEffect(model); const captionEffect = useEditingCaptionEffect(model, derived); useEditingSourceEffect(model)
 
   const projectFileActions = createEditingProjectFileActions(model, derived, selectFile); const clipActions = createEditingClipActions(model); const captionActions = createEditingCaptionActions(model); const audioActions = createEditingAudioActions(model); const sourceActions = createEditingSourceActions(model, derived); const scriptActions = createEditingScriptActions(model); const graphicActions = createEditingGraphicActions(model); const videoBlockActions = createEditingVideoBlockActions(model); const sceneActions = createEditingSceneActions(model); const silenceActions = createEditingSilenceActions(model)
 
@@ -200,6 +200,7 @@ export function useEditingActions(model: AppModel, derived: AppDerived, selectFi
     ...silenceActions,
     ...audioActions,
     ...sourceActions,
+    ...captionEffect,
     ...projectFileActions,
     deleteEditingSelection: (selection: import('../../../core/editing/selection').EditingSelection) => deleteEditingSelection(model, selection),
     duplicateEditingSelection: (selection: import('../../../core/editing/selection').EditingSelection) => duplicateEditingSelection(model, selection),
