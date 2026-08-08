@@ -552,6 +552,8 @@
 - 新增 `npm run smoke:editing-multi-source-revision`，真实 Electron 覆盖第二素材 source / translation 同时更新，以及第二素材两条 sidecar 删除；验证差异只归属于第二素材、force reload 更新 manifest，删除后 revision 回到 `null` 且第一素材不受影响。
 - 打开 `.aivproj` 时如果素材绝对路径已失效，会要求重新选择视频，并按文件名与时长保守匹配；source ID、片段引用和字幕关系保持不变，无法唯一匹配或素材时长不足时拒绝修复，不按选择顺序猜测。
 - 字幕冲突预览的每条差异会显示所属素材文件名，并把 `sourceId` 参与当前 / incoming caption 的匹配；多素材同时间段的差异不会因为字幕 ID 相同而互相应用。
+- `.aivproj` 保存时为绝对素材路径写入相对工程文件目录的 `relativePath` 提示；打开工程只在提示目标真实存在时自动恢复路径，旧工程和无法恢复的素材继续进入显式修复流程。
+- 编辑器工具栏新增“重建字幕版本清单”入口：只重新读取活动素材的 source / translation sidecar revision 并更新 manifest，不直接覆盖当前时间线字幕；真实 Electron Smoke 覆盖按钮点击、工程更新时间、状态提示和后续多素材冲突回归。
 
 ## 编辑器画布交互层级
 

@@ -1014,3 +1014,15 @@
 - 处理二：`EditingSubtitleReloadChange` 携带 `sourceId`；当前 / incoming / removed 的查找都优先校验 sourceId，冲突行显示素材文件名和路径 tooltip；冲突筛选只在 revision 或差异集合真正变化时重置，避免 undo/redo 的异步状态更新清空用户刚输入的筛选。
 - 验证：素材修复与字幕来源定向测试 27 项通过；`bun run typecheck`、`bun run build` 通过；多素材 Smoke 更新 / 删除阶段均显示第二素材 2 条来源行、第一素材 0 条来源行，四个既有 Caption / Fragment / Orphan / Cross-Source Smoke 回归通过，均无 `consoleErrors`。
 - 提交边界：核心 `39a265f`，来源 UI `9728c1f`，单测 `a186cfc`，Smoke `760c500`；本条工程记录另行提交，内部计划继续 ignored。
+
+## 2026-08-09：工程文件应同时保存可迁移路径提示和显式版本基线动作
+
+- 现象：只保存素材绝对路径时，工程文件随媒体目录移动后只能依赖用户重新选择；而路径修复或字幕旁车迁移后，如果没有明确的 manifest 重建入口，用户无法判断当前工程是否已经接受新的 source / translation revision。
+- 经验：相对路径只能作为可验证提示，不能覆盖绝对路径或未经检查地猜测素材；字幕版本基线也必须是显式动作，且只更新 revision 元数据，不应把“重建 manifest”误当成“强制重载字幕内容”。
+- 处理：`.aivproj` 保存时按工程目录写入可选 `relativePath`，打开时仅对存在的提示目标自动修复；编辑器工具栏新增 manifest 重建按钮，读取活动 source 的双轨 revision、清除已处理冲突状态并持久化更新时间。新增路径提示单测和真实 Multi-Source Revision Smoke。
+
+## 2026-08-09：提交消息必须使用中文 Conventional Commit 格式
+
+- 现象：持续任务中如果只顾功能实现而忽略提交规范，后续 review 和自动化日志会失去统一的类型、影响范围与中文摘要。
+- 经验：每次提交都必须使用 `type(scope): 中文 subject`，`type` 只允许项目约定值，subject 控制在 50 个字符内；功能、测试、Smoke 和文档仍按边界拆分，不能用一条模糊消息覆盖所有变更。
+- 处理：本轮新增提交统一使用 `feat(editing): ...`，提交前检查 staged diff、敏感内容和工作区边界；内部跟踪计划保持 ignored，不进入远程仓库。
