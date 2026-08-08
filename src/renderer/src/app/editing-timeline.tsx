@@ -1,5 +1,6 @@
 import { ArrowRight, ChevronLeft, ChevronRight, Copy, Download, FilePlus2, FolderOpen, Grid3X3, Pause, Play, Plus, Redo2, RefreshCw, RotateCcw, Save, ScanSearch, Scissors, Trash2, Undo2, Volume2, X, ZoomIn, ZoomOut } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import type { EditingProjectStatus } from './app-types'
 import type { TimelineExportMode } from '../../../shared/clip-export'; import type { EditingThemeSettings } from '../../../core/editing/themes'
 import { getEditingCanvasDimensions } from '../../../core/editing/canvases'
 import { getEditingCaptionsForSubtitleExport } from '../../../core/editing/caption-serialization'
@@ -26,6 +27,15 @@ import { getEditingSubtitleCandidateCopy } from '../../../shared/editing-subtitl
 import { getEditingSubtitleReloadChangePreview, getEditingSubtitleReloadChangeScriptSegmentId, shareEditingSubtitleReloadScriptSegmentIds, type EditingSubtitleReloadChange, type EditingSubtitleReloadChangePreview, type EditingSubtitleReloadIncomingPreviewTrack } from '../../../core/editing/subtitle-reload'
 const MAX_RULER_TICKS = 121; function formatClipLabel(startSeconds: number, endSeconds: number): string { return `${formatTime(startSeconds)} – ${formatTime(endSeconds)}` }
 function formatIncomingPreviewRange(track: EditingSubtitleReloadIncomingPreviewTrack): string { return `${formatTime(track.startSeconds)}–${formatTime(track.endSeconds)}` }
+
+function EditingProjectStatusView({ status }: { status: EditingProjectStatus | null }): React.ReactElement | null {
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
+  if (!status) return null
+  const groups = status.details?.groups ?? []
+  return <div className={`editing-project-status ${status.success ? 'is-success' : 'is-error'}`} role="status"><span className="editing-project-status-message" data-testid="editing-project-status-message">{status.message}</span>{groups.length ? <details className="editing-project-status-details" data-testid="editing-project-status-details" open={detailsOpen} onToggle={(event) => setDetailsOpen(event.currentTarget.open)}><summary>{status.details?.label}</summary><div className="editing-project-status-details-groups">{groups.map((group) => <details className="editing-project-status-details-group" data-testid={`editing-project-status-details-group-${group.id}`} key={group.id} open={openGroups[group.id] ?? false} onToggle={(event) => { const open = event.currentTarget.open; setOpenGroups((current) => open === (current[group.id] ?? false) ? current : { ...current, [group.id]: open }) }}><summary>{group.label}</summary><div className="editing-project-status-details-list">{group.items.map((item, index) => <span key={`${item}-${index}`}>{item}</span>)}</div></details>)}</div></details> : null}</div>
+}
+
 export function EditingTimeline(): React.ReactElement | null {
   const app = useAppContext()
   const project = app.editingProject
@@ -161,7 +171,7 @@ export function EditingTimeline(): React.ReactElement | null {
         <div className="editing-toolbar-heading">
           <span className="editing-toolbar-kicker">{app.copy.editing.kicker}</span>
           <strong>{project.title}</strong>
-          {app.editingProjectStatus ? <div className={`editing-project-status ${app.editingProjectStatus.success ? 'is-success' : 'is-error'}`} role="status"><span className="editing-project-status-message" data-testid="editing-project-status-message">{app.editingProjectStatus.message}</span>{app.editingProjectStatus.details?.groups.length ? <details className="editing-project-status-details" data-testid="editing-project-status-details"><summary>{app.editingProjectStatus.details.label}</summary><div className="editing-project-status-details-groups">{app.editingProjectStatus.details.groups.map((group) => <details className="editing-project-status-details-group" data-testid={`editing-project-status-details-group-${group.id}`} key={group.id}><summary>{group.label}</summary><div className="editing-project-status-details-list">{group.items.map((item, index) => <span key={`${item}-${index}`}>{item}</span>)}</div></details>)}</div></details> : null}</div> : null}
+          <EditingProjectStatusView key={project.id} status={app.editingProjectStatus} />
         </div>
         <div className="editing-toolbar-actions">
           <button className="editing-icon-button" type="button" onClick={() => void app.addEditingSources()} disabled={app.isAddingEditingMedia} title={app.isAddingEditingMedia ? app.copy.editing.addingMedia : app.copy.editing.addMedia} aria-label={app.copy.editing.addMedia} data-testid="editing-add-media"><Plus size={15} /></button>
