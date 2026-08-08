@@ -7,6 +7,7 @@ import type { EditingCaptionReloadConflict } from './use-editing-caption-effect'
 type EditingCaptionReloadConflictProps = {
   conflict: EditingCaptionReloadConflict
   copy: EditingSubtitleReloadCopy
+  onSeek: (seconds: number) => void
   onKeepCurrent: () => void
   onForceReload: () => void
 }
@@ -41,7 +42,7 @@ function parseSeconds(value: string): number | undefined {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined
 }
 
-export function EditingCaptionReloadConflict({ conflict, copy, onKeepCurrent, onForceReload }: EditingCaptionReloadConflictProps): React.ReactElement {
+export function EditingCaptionReloadConflict({ conflict, copy, onSeek, onKeepCurrent, onForceReload }: EditingCaptionReloadConflictProps): React.ReactElement {
   const { preview } = conflict
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<EditingSubtitleReloadChangeStatusFilter>('all')
@@ -114,6 +115,10 @@ export function EditingCaptionReloadConflict({ conflict, copy, onKeepCurrent, on
                 <span title={copy.current}>{change.currentText ?? copy.empty}</span>
                 <ArrowRight size={12} aria-hidden="true" />
                 <span title={copy.incoming}>{change.incomingText ?? copy.empty}</span>
+              </div>
+              <div className="editing-caption-reload-seek-actions">
+                <button type="button" disabled={change.currentStartSeconds === undefined} onClick={() => change.currentStartSeconds !== undefined && onSeek(change.currentStartSeconds)} title={copy.seekCurrent} data-testid={`editing-caption-reload-seek-current-${change.status}-${change.kind}-${change.id}`}>{copy.seekCurrent} {formatSubtitleReloadTime(change.currentStartSeconds)}</button>
+                <button type="button" disabled={change.incomingStartSeconds === undefined} onClick={() => change.incomingStartSeconds !== undefined && onSeek(change.incomingStartSeconds)} title={copy.seekIncoming} data-testid={`editing-caption-reload-seek-incoming-${change.status}-${change.kind}-${change.id}`}>{copy.seekIncoming} {formatSubtitleReloadTime(change.incomingStartSeconds)}</button>
               </div>
             </div>
           ))}

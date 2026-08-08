@@ -11,6 +11,8 @@ export type EditingSubtitleReloadCopy = {
   timeRange: string
   timeStart: string
   timeEnd: string
+  seekCurrent: string
+  seekIncoming: string
   allChanges: string
   allTracks: string
   noMatches: string
@@ -45,6 +47,8 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     timeRange: '时间范围（秒）',
     timeStart: '起始秒',
     timeEnd: '结束秒',
+    seekCurrent: '定位当前编辑',
+    seekIncoming: '定位新字幕',
     allChanges: '全部变更',
     allTracks: '全部轨道',
     noMatches: '没有匹配的差异',
@@ -77,6 +81,8 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     timeRange: 'Time range (seconds)',
     timeStart: 'Start seconds',
     timeEnd: 'End seconds',
+    seekCurrent: 'Go to current edit',
+    seekIncoming: 'Go to new subtitle',
     allChanges: 'All changes',
     allTracks: 'All tracks',
     noMatches: 'No matching changes',
@@ -109,6 +115,8 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     timeRange: '時間範囲（秒）',
     timeStart: '開始秒',
     timeEnd: '終了秒',
+    seekCurrent: '現在の編集へ移動',
+    seekIncoming: '新しい字幕へ移動',
     allChanges: 'すべての変更',
     allTracks: 'すべてのトラック',
     noMatches: '一致する差分はありません',
@@ -141,6 +149,8 @@ const copy: Record<AppLocale, EditingSubtitleReloadCopy> = {
     timeRange: '시간 범위(초)',
     timeStart: '시작 초',
     timeEnd: '종료 초',
+    seekCurrent: '현재 편집으로 이동',
+    seekIncoming: '새 자막으로 이동',
     allChanges: '모든 변경',
     allTracks: '모든 트랙',
     noMatches: '일치하는 변경 사항이 없습니다',
