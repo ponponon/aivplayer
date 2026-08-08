@@ -132,6 +132,8 @@ async function main(): Promise<void> {
     const conflictRowCount = await conflictRows.count()
     const secondaryChangedRows = await conflictRows.filter({ hasText: '第二素材新' }).count()
     const primaryChangedRows = await conflictRows.filter({ hasText: '第一素材' }).count()
+    const secondarySourceLabelRows = await conflictRows.filter({ hasText: 'secondary-source.mp4' }).count()
+    const primarySourceLabelRows = await conflictRows.filter({ hasText: 'primary-source.mp4' }).count()
     await page.locator('[data-testid="editing-caption-reload-force"]').click()
     const forceReloaded = await waitForStored((project) => {
       const sourceTexts = project.captions.filter((caption) => caption.kind === 'source').map((caption) => caption.text)
@@ -150,6 +152,8 @@ async function main(): Promise<void> {
     const deletionConflictRowCount = await deletionRows.count()
     const deletionRemovedRows = await deletionConflict.locator('.editing-caption-reload-row.is-removed').count()
     const deletionPrimaryRows = await deletionRows.filter({ hasText: '第一素材' }).count()
+    const deletionSecondarySourceLabelRows = await deletionRows.filter({ hasText: 'secondary-source.mp4' }).count()
+    const deletionPrimarySourceLabelRows = await deletionRows.filter({ hasText: 'primary-source.mp4' }).count()
     await page.locator('[data-testid="editing-caption-reload-force"]').click()
     const deletionForceReloaded = await waitForStored((project) => {
       const sourceTexts = project.captions.filter((caption) => caption.kind === 'source').map((caption) => caption.text)
@@ -167,12 +171,16 @@ async function main(): Promise<void> {
       conflictRowCount,
       secondaryChangedRows,
       primaryChangedRows,
+      secondarySourceLabelRows,
+      primarySourceLabelRows,
       forceConflictCount,
       forceSourceRevision: forceReloaded.captionSourceRevisions?.[prepared.secondaryId]?.source ?? null,
       forceTranslationRevision: forceReloaded.captionSourceRevisions?.[prepared.secondaryId]?.translation ?? null,
       deletionConflictRowCount,
       deletionRemovedRows,
       deletionPrimaryRows,
+      deletionSecondarySourceLabelRows,
+      deletionPrimarySourceLabelRows,
       deletionForceConflictCount,
       deletionSourceCount: deletionForceReloaded.captions.filter((caption) => caption.kind === 'source').length,
       deletionSecondarySourceRevision: deletionForceReloaded.captionSourceRevisions?.[prepared.secondaryId]?.source ?? null,
@@ -183,7 +191,7 @@ async function main(): Promise<void> {
     }
     console.log('AIVPlayer Smoke Editing Multi-Source Revision')
     console.log(JSON.stringify(result))
-    if (result.baselineConflictCount !== 0 || result.conflictRowCount !== 2 || result.secondaryChangedRows !== 2 || result.primaryChangedRows !== 0 || result.forceConflictCount !== 0 || result.forceSourceRevision === null || result.forceTranslationRevision === null || result.deletionConflictRowCount !== 2 || result.deletionRemovedRows !== 2 || result.deletionPrimaryRows !== 0 || result.deletionForceConflictCount !== 0 || result.deletionSourceCount !== 1 || result.deletionSecondarySourceRevision !== null || result.consoleErrors.length > 0) process.exitCode = 1
+    if (result.baselineConflictCount !== 0 || result.conflictRowCount !== 2 || result.secondaryChangedRows !== 2 || result.primaryChangedRows !== 0 || result.secondarySourceLabelRows !== 2 || result.primarySourceLabelRows !== 0 || result.forceConflictCount !== 0 || result.forceSourceRevision === null || result.forceTranslationRevision === null || result.deletionConflictRowCount !== 2 || result.deletionRemovedRows !== 2 || result.deletionPrimaryRows !== 0 || result.deletionSecondarySourceLabelRows !== 2 || result.deletionPrimarySourceLabelRows !== 0 || result.deletionForceConflictCount !== 0 || result.deletionSourceCount !== 1 || result.deletionSecondarySourceRevision !== null || result.consoleErrors.length > 0) process.exitCode = 1
   } finally {
     await app.close()
   }
