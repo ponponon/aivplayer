@@ -531,6 +531,9 @@
 - changed cue 支持单条“接受新字幕”：只替换用户确认的 source / translation cue，并同步对应脚本文本、源时间和词级数据；未确认的其他差异继续保留，操作会进入编辑器撤销 / 重做历史。
 - added cue 支持单条“加入工程”：source cue 会创建或合并对应脚本段和时间轴卡片，translation cue 只补充对应脚本译文；其他新增、修改和删除差异保持待处理，操作同样进入撤销 / 重做历史。
 - removed cue 支持单条“保留当前字幕”或“从工程移除”：保留会记录当前字幕对该新 revision 的处理结果，原文和译文 removed row 可以分别裁决；source cue 从工程移除时默认同步移除对应译文并将脚本段标记为 `deleted`，但如果译文 row 已单独保留，则保留译文 caption / `translationText`，只移除原文；translation cue 从工程移除只清除对应译文。所有已处理 row 都进入 revision resolution，重算 diff 时不会把已确认的删除误报为新增，决策进入撤销 / 重做历史，并兼容真实 loader 的 source-prefixed ID。
+- 孤立译文会由 `scriptSegment.deleted` 与 translation caption 的 loader ID 关系统一识别；时间轴显示四语言提示和虚线状态，仍允许调整时间，但当前 source-led 字幕导出不会包含孤立译文。
+- SRT、烧录 ASS 和时间线导出可用性判断共用 `getEditingCaptionsForSubtitleExport`，避免孤立译文只在某一种导出路径意外出现；当前没有“仅译文导出”模式。
+- 新增 `npm run smoke:editing-orphan-translation`，真实 Electron reload 后验证 source caption 不补回、孤立 translation 保留、脚本继续 `deleted`，并检查状态提示、data attribute 与 `consoleErrors:[]`。
 
 ## 编辑器画布交互层级
 

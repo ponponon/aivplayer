@@ -918,3 +918,21 @@
 - 现象：新组合完成后，目标 source / translation removed row 已经消失，但页面仍有其他 changed / added 差异；Smoke 如果直接等待整个 conflict DOM 消失，会把正确的部分解决误判为失败。
 - 经验：多条差异的交互验证应分别断言目标 row 的消失、其余差异的保留和最终整体关闭，不要把“当前操作已完成”与“所有差异已完成”混成一个条件。
 - 处理：Smoke 改为确认目标 removed row 不再出现，同时要求 conflict 仍包含其他差异；随后用撤销恢复目标字幕，再继续既有 source 成对移除回归。
+
+## 2026-08-08：孤立译文的所有导出路径必须共用同一筛选
+
+- 现象：source remove + translation keep 让工程里留下了 translation caption；SRT 序列化天然只输出 source，但烧录 ASS 入口原本直接消费全部 captions，导致同一个孤立译文在外置字幕和视频烧录两条导出路径表现不一致。
+- 经验：导出边界不能只修某一种格式；凡是从同一工程生成字幕文件或烧录文本，都应先经过同一份“当前可导出 caption”筛选。孤立译文在没有明确独立导出契约前应保留在工程内，但排除在当前 source-led subtitle export 外。
+- 处理：新增 `getEditingCaptionsForSubtitleExport`，SRT / ASS 都复用过滤结果；单测覆盖已删除 source 下的保留译文会被排除、source 仍活动时的译文不被误排除；时间轴的导出可用性判断也复用同一筛选。
+
+## 2026-08-08：已有长 Smoke 不适合继续堆叠孤立场景
+
+- 现象：字幕冲突 Smoke 已包含分页、筛选、定位、changed / added / removed、组合裁决、撤销重做和强制重载；继续把真实 reload 后的孤立译文断言塞入其中，会让失败位置和历史状态依赖更难定位。
+- 经验：持续任务中的真实 UI 证据也应按行为边界拆分；新增持久化边界优先建立最小独立 Electron Smoke，同时保留旧 Smoke 作为回归，避免一条脚本承担互不相关的编排状态。
+- 处理：新增 `smoke:editing-orphan-translation`，只验证译文保留、原文移除、页面 reload、孤立状态提示和控制台健康；旧 `smoke:editing-caption-reload` 单独回归通过。
+
+## 2026-08-08：时间轴脚本文本与字幕块文本的空格格式不能混用
+
+- 现象：Smoke 用“原始字幕 3”定位脚本行，但脚本面板渲染会压缩或移除文本空格，字幕时间轴块仍保留原文空格，导致业务状态已正确而断言超时。
+- 经验：跨组件断言应按展示契约分别匹配：脚本行文本先归一化空白，字幕块文本保留可见文本匹配；不要因为 fixture 文本相同就假定 DOM 格式也相同。
+- 处理：独立 Smoke 对脚本行使用空白归一化，对 caption 使用原始可见文本，并在失败时输出 caption / script 的 DOM 状态，便于区分断言问题和业务问题。
