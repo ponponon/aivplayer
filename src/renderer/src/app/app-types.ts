@@ -26,6 +26,7 @@ export type AsrNotice = {
 export type EditingProjectStatus = {
   success: boolean
   message: string
+  origin?: 'caption-candidates'
   details?: {
     label: string
     groups: Array<{

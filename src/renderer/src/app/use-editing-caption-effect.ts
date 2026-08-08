@@ -67,7 +67,12 @@ export function formatEditingCaptionCandidateStatus(project: Pick<EditingProject
     ]
     return { id: `${audit.sourceId}-${audit.kind}`, label: `${sourceName} / ${kindLabel}`, items }
   })
-  return { success: audits.every((audit) => audit.validCandidateCount <= 1), message: messages.join('；'), details: { label: candidateCopy.detailsLabel, groups } }
+  return { success: audits.every((audit) => audit.validCandidateCount <= 1), message: messages.join('；'), origin: 'caption-candidates', details: { label: candidateCopy.detailsLabel, groups } }
+}
+
+export function mergeEditingCaptionCandidateStatus(currentStatus: EditingProjectStatus | null, candidateStatus: EditingProjectStatus | null): EditingProjectStatus | null {
+  if (candidateStatus) return candidateStatus
+  return currentStatus?.origin === 'caption-candidates' ? null : currentStatus
 }
 
 export function useEditingCaptionEffect(model: AppModel, derived: AppDerived): {
@@ -100,7 +105,7 @@ export function useEditingCaptionEffect(model: AppModel, derived: AppDerived): {
     void loadEditingCaptionSnapshot(sources).then(({ captions, sourceRevisions, sourcePaths }) => {
       if (cancelled) return
       const candidateStatus = formatEditingCaptionCandidateStatus(project, sourcePaths, model.appSettings.ui.locale)
-      if (candidateStatus) model.setEditingProjectStatus(candidateStatus)
+      model.setEditingProjectStatus((currentStatus) => mergeEditingCaptionCandidateStatus(currentStatus, candidateStatus))
       model.setEditingProject((current) => {
         if (!current || current.id !== project.id) return current
         const normalizedPreferredPaths = normalizeEditingCaptionPreferredPaths(current.captionSourcePaths, sourcePaths)
