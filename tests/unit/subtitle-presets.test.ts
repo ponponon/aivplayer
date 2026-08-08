@@ -30,6 +30,14 @@ describe('subtitle visual presets', () => {
     expect(ass).toContain('关键')
   })
 
+  it('keeps multiple formal subtitle cues in ASS order', () => {
+    const ass = buildAssSubtitle('1\n00:00:00,000 --> 00:00:01,500\nfirst\n\n2\n00:00:02,000 --> 00:00:03,250\nsecond', { effect: 'none', emphasisMode: 'none' })
+    const dialogueLines = ass.split('\n').filter((line) => line.startsWith('Dialogue:'))
+    expect(dialogueLines).toHaveLength(2)
+    expect(dialogueLines[0]).toContain('0:00:00.00,0:00:01.50')
+    expect(dialogueLines[1]).toContain('0:00:02.00,0:00:03.25')
+  })
+
   it('serializes editing caption position, width and scale into ASS', () => {
     const ass = buildAssSubtitleFromEditingCaptions([{ id: 'caption-layout', startSeconds: 0, durationSeconds: 1, text: '布局测试', kind: 'source' }], { effect: 'none', captionLayout: { xPercent: 42, yPercent: 76, widthPercent: 68, fontSizePx: 64 }, playResX: 1080, playResY: 1920 })
     expect(ass).toContain('Style: Default,Arial,64')

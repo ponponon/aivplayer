@@ -34,6 +34,16 @@ describe('subtitle writer', () => {
     )
   })
 
+  it('keeps multiple cue order and boundaries across VTT and SRT output', () => {
+    const segments = [
+      { startSeconds: 0, endSeconds: 1.5, text: 'first' },
+      { startSeconds: 2, endSeconds: 3.25, text: '第二句' }
+    ]
+    const vtt = writeVtt(segments)
+    expect(parseVtt(vtt)).toEqual(segments)
+    expect(convertVttToSrt(vtt)).toContain('2\n00:00:02,000 --> 00:00:03,250\n第二句')
+  })
+
   it('escapes special characters when writing VTT segments', () => {
     expect(writeVtt([{ startSeconds: 0, endSeconds: 1, text: '5 < 7 & 8 > 6' }])).toBe(
       'WEBVTT\n\n00:00:00.000 --> 00:00:01.000\n5 &lt; 7 &amp; 8 &gt; 6\n'

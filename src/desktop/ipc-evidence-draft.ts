@@ -3,9 +3,11 @@ import { createHash } from 'node:crypto'
 import { mkdir, readdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises'
 import { basename, dirname, extname, join, resolve } from 'node:path'
 import { writeSrt, writeVtt } from '../core/ai/subtitle-writer'
+import { createMediaEvidenceDraftId, normalizeMediaEvidenceDraftCues, summarizeMediaEvidenceDraftCues } from '../core/ai/media-evidence-draft'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type {
   MediaEvidenceDraft,
+  MediaEvidenceDraftCue,
   MediaEvidenceDraftImportRequest,
   MediaEvidenceDraftImportResult,
   MediaEvidenceDraftSaveRequest
@@ -15,6 +17,11 @@ import { createMediaFile } from './media/media-protocol'
 const DRAFT_ID_PATTERN = /^tts-draft-[a-f0-9]{24}$/
 
 type StoredMediaEvidenceDraft = Omit<MediaEvidenceDraft, 'draftUrl' | 'draftPath'>
+type NormalizedMediaEvidenceDraftRequest = {
+  mediaPath: string
+  sourceFingerprint: string
+  cues: MediaEvidenceDraftCue[]
+}
 
 function getDraftDirectoryPath(): string {
   return join(app.getPath('userData'), 'evidence-drafts')
@@ -33,21 +40,16 @@ function normalizeDraftId(value: unknown): string {
   return value
 }
 
-function normalizeRequest(request: MediaEvidenceDraftSaveRequest): MediaEvidenceDraftSaveRequest {
+function normalizeRequest(request: MediaEvidenceDraftSaveRequest): NormalizedMediaEvidenceDraftRequest {
   if (!request || typeof request.mediaPath !== 'string' || !request.mediaPath.trim()) throw new Error('字幕草稿缺少媒体路径')
   if (typeof request.sourceFingerprint !== 'string' || !request.sourceFingerprint.trim()) throw new Error('字幕草稿缺少媒体指纹')
-  if (!Number.isFinite(request.startSeconds) || request.startSeconds < 0 || !Number.isFinite(request.endSeconds) || request.endSeconds <= request.startSeconds) {
-    throw new Error('字幕草稿时间范围无效')
-  }
-  const text = typeof request.text === 'string' ? request.text.trim() : ''
-  if (!text) throw new Error('字幕草稿内容不能为空')
-  if (text.length > 20_000) throw new Error('字幕草稿内容过长')
+  const rawCues = request.cues ?? [
+    { startSeconds: request.startSeconds, endSeconds: request.endSeconds, text: request.text }
+  ]
   return {
     mediaPath: request.mediaPath.trim(),
     sourceFingerprint: request.sourceFingerprint.trim(),
-    startSeconds: Math.round(request.startSeconds * 1000) / 1000,
-    endSeconds: Math.round(request.endSeconds * 1000) / 1000,
-    text
+    cues: normalizeMediaEvidenceDraftCues(rawCues)
   }
 }
 
@@ -72,20 +74,24 @@ function toDraft(directoryPath: string, raw: unknown): MediaEvidenceDraft | null
     typeof value.id !== 'string' || !DRAFT_ID_PATTERN.test(value.id) ||
     typeof value.mediaPath !== 'string' || !value.mediaPath ||
     typeof value.sourceFingerprint !== 'string' || !value.sourceFingerprint ||
-    typeof value.startSeconds !== 'number' || !Number.isFinite(value.startSeconds) || value.startSeconds < 0 ||
-    typeof value.endSeconds !== 'number' || !Number.isFinite(value.endSeconds) || value.endSeconds <= value.startSeconds ||
-    typeof value.text !== 'string' || !value.text.trim() || value.text.length > 20_000 ||
     typeof value.createdAt !== 'number' || !Number.isFinite(value.createdAt)
   ) return null
+
+  let cues: MediaEvidenceDraftCue[]
+  try {
+    cues = normalizeMediaEvidenceDraftCues(value.cues ?? [{ startSeconds: value.startSeconds, endSeconds: value.endSeconds, text: value.text }])
+  } catch {
+    return null
+  }
+  const summary = summarizeMediaEvidenceDraftCues(cues)
 
   const draftPath = getDraftPath(directoryPath, value.id)
   return {
     id: value.id,
     mediaPath: value.mediaPath,
     sourceFingerprint: value.sourceFingerprint,
-    startSeconds: value.startSeconds,
-    endSeconds: value.endSeconds,
-    text: value.text,
+    cues,
+    ...summary,
     draftPath,
     draftUrl: createMediaFile(draftPath).url,
     createdAt: value.createdAt
@@ -163,9 +169,9 @@ async function importDraft(directoryPath: string, request: MediaEvidenceDraftImp
     }
   }
 
-  const subtitleContent = writeVtt([{ startSeconds: draft.startSeconds, endSeconds: draft.endSeconds, text: draft.text }])
+  const subtitleContent = writeVtt(draft.cues)
   await writeAtomic(subtitlePath, subtitleContent)
-  await writeAtomic(subtitleSrtPath, writeSrt([{ startSeconds: draft.startSeconds, endSeconds: draft.endSeconds, text: draft.text }]))
+  await writeAtomic(subtitleSrtPath, writeSrt(draft.cues))
   const subtitleFile = createMediaFile(subtitlePath)
   const subtitleSrtFile = createMediaFile(subtitleSrtPath)
   return {
@@ -185,12 +191,12 @@ export function registerEvidenceDraftIpc(): void {
     const currentFingerprint = await getSourceFingerprint(normalized.mediaPath)
     if (currentFingerprint !== normalized.sourceFingerprint) throw new Error('媒体已变化，字幕草稿未保存')
 
-    const id = `tts-draft-${createHash('sha256').update(`${normalized.sourceFingerprint}|${normalized.startSeconds}|${normalized.endSeconds}|${normalized.text}`).digest('hex').slice(0, 24)}`
+    const id = createMediaEvidenceDraftId(normalized.sourceFingerprint, normalized.cues)
     const directoryPath = getDraftDirectoryPath()
     const draftPath = getDraftPath(directoryPath, id)
-    const draft = { id, ...normalized, draftPath, draftUrl: createMediaFile(draftPath).url, createdAt: Date.now() }
+    const draft = { id, ...normalized, ...summarizeMediaEvidenceDraftCues(normalized.cues), draftPath, draftUrl: createMediaFile(draftPath).url, createdAt: Date.now() }
     await mkdir(directoryPath, { recursive: true })
-    await writeAtomic(draftPath, writeVtt([{ startSeconds: normalized.startSeconds, endSeconds: normalized.endSeconds, text: normalized.text }]))
+    await writeAtomic(draftPath, writeVtt(normalized.cues))
     await writeAtomic(getDraftManifestPath(directoryPath, id), `${JSON.stringify(toStoredDraft(draft), null, 2)}\n`)
     return draft
   })

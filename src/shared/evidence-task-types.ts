@@ -72,18 +72,26 @@ export type MediaEvidenceTask = {
   updatedAt: number
 }
 
-export type MediaEvidenceDraftSaveRequest = {
-  mediaPath: string
-  sourceFingerprint: string
+export type MediaEvidenceDraftCue = {
   startSeconds: number
   endSeconds: number
   text: string
+}
+
+export type MediaEvidenceDraftSaveRequest = {
+  mediaPath: string
+  sourceFingerprint: string
+  cues?: MediaEvidenceDraftCue[]
+  startSeconds?: number
+  endSeconds?: number
+  text?: string
 }
 
 export type MediaEvidenceDraft = {
   id: string
   mediaPath: string
   sourceFingerprint: string
+  cues: MediaEvidenceDraftCue[]
   startSeconds: number
   endSeconds: number
   text: string
