@@ -1,5 +1,5 @@
 import { parseVtt } from '../../../core/ai/subtitle-writer'
-import type { EditingCaption } from '../../../shared/editing-types'
+import type { EditingCaption, EditingProject } from '../../../shared/editing-types'
 import { attachSubtitleWords, getSubtitleWordSidecarPath, joinSubtitleWords, parseWhisperSubtitleWords, type SubtitleWord } from '../../../shared/subtitle-timing'
 
 export type CaptionSource = {
@@ -7,6 +7,46 @@ export type CaptionSource = {
   pathCandidates?: readonly string[]
   sourceId: string
   kind: EditingCaption['kind']
+}
+
+export type EditingCaptionSourceOptions = {
+  currentMediaPath: string | null
+  subtitlePath: string | null
+  subtitleSrtPath: string | null
+  translatedSubtitlePath: string | null
+  translatedSubtitleSrtPath: string | null
+}
+
+/**
+ * Builds sidecar inputs only for sources that still own a timeline clip.
+ * The preferred paths belong to the actual current media path, not to the
+ * first source array entry; source order can remain stable after a clip swap.
+ */
+export function createEditingCaptionSources(project: Pick<EditingProject, 'sources' | 'videoClips'>, options: EditingCaptionSourceOptions): CaptionSource[] {
+  const activeSourceIds = new Set(project.videoClips.map((clip) => clip.sourceId))
+  return project.sources.filter((source) => activeSourceIds.has(source.id)).flatMap((source) => {
+    const isCurrentMedia = source.path === options.currentMediaPath
+    const preferredSourcePath = isCurrentMedia ? (options.subtitleSrtPath ?? options.subtitlePath) : null
+    const preferredTranslationPath = isCurrentMedia ? (options.translatedSubtitleSrtPath ?? options.translatedSubtitlePath) : null
+    return [
+      { path: preferredSourcePath, pathCandidates: createEditingCaptionPathCandidates(source.path, preferredSourcePath, 'source'), sourceId: source.id, kind: 'source' as const },
+      { path: preferredTranslationPath, pathCandidates: createEditingCaptionPathCandidates(source.path, preferredTranslationPath, 'translation'), sourceId: source.id, kind: 'translation' as const }
+    ]
+  })
+}
+
+/**
+ * Revision identity must include the active source set. A subtitle revision
+ * from an unused/old current file must not trigger a reload for a replacement
+ * source that is now the only clip on the timeline.
+ */
+export function createEditingCaptionSourceRevisionKey(project: Pick<EditingProject, 'sources' | 'videoClips'>, options: Pick<EditingCaptionSourceOptions, 'currentMediaPath'> & { subtitleRevision?: number; translatedSubtitleRevision?: number }): string {
+  const activeSourceKey = project.sources
+    .filter((source) => project.videoClips.some((clip) => clip.sourceId === source.id))
+    .map((source) => `${source.id}:${source.path}`)
+    .join('|') || 'none'
+  const currentMediaIsActive = project.sources.some((source) => source.path === options.currentMediaPath && project.videoClips.some((clip) => clip.sourceId === source.id))
+  return `sources=${activeSourceKey}|source=${currentMediaIsActive ? (options.subtitleRevision ?? 'none') : 'none'}|translation=${currentMediaIsActive ? (options.translatedSubtitleRevision ?? 'none') : 'none'}`
 }
 
 /** Prevent a stale Whisper token sidecar from rendering words from an older subtitle revision. */

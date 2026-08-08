@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { EditingCaption, EditingProject } from '../../../shared/editing-types'
 import type { AppDerived } from './use-app-derived'
 import type { AppModel } from './app-types'
-import { createEditingCaptionPathCandidates, loadEditingCaptions } from './editing-caption-loader'
+import { createEditingCaptionSources, createEditingCaptionSourceRevisionKey, loadEditingCaptions } from './editing-caption-loader'
 import { saveEditingProject } from './editing-project-storage'
 import { mergeEditingScriptSegments } from '../../../core/editing/script-operations'
 import { applyEditingSubtitleReloadAddition, applyEditingSubtitleReloadChange, applyEditingSubtitleReloadKeep, applyEditingSubtitleReloadRemoval, buildEditingSubtitleReloadPreview, filterEditingSubtitleReloadPreview, getEditingSubtitleReloadChangeKey, getEditingSubtitleReloadRemovalResolutionKeys, recordEditingSubtitleReloadResolution, replaceEditingCaptionsForReload, type EditingSubtitleReloadChange, type EditingSubtitleReloadPreview } from '../../../core/editing/subtitle-reload'
@@ -37,7 +37,9 @@ export function useEditingCaptionEffect(model: AppModel, derived: AppDerived): {
 } {
   const [editingCaptionReloadConflict, setEditingCaptionReloadConflict] = useState<EditingCaptionReloadConflict | null>(null)
   const sourceKey = model.editingProject?.sources.map((source) => `${source.id}:${source.path}`).join('|') ?? ''
-  const sourceRevisionKey = `source=${derived.subtitleRevision ?? 'none'}|translation=${derived.translatedSubtitleRevision ?? 'none'}`
+  const sourceRevisionKey = model.editingProject
+    ? createEditingCaptionSourceRevisionKey(model.editingProject, { currentMediaPath: model.state.currentFile?.path ?? null, subtitleRevision: derived.subtitleRevision, translatedSubtitleRevision: derived.translatedSubtitleRevision })
+    : 'sources=none|source=none|translation=none'
   useEffect(() => {
     const project = model.editingProject
     if (!model.isEditingMode || !project || project.sources.length === 0) {
@@ -45,10 +47,7 @@ export function useEditingCaptionEffect(model: AppModel, derived: AppDerived): {
       return
     }
     let cancelled = false
-    const sources = project.sources.flatMap((source, index) => [
-      { path: index === 0 ? (derived.subtitleSrtPath ?? derived.subtitlePath) : null, pathCandidates: createEditingCaptionPathCandidates(source.path, index === 0 ? (derived.subtitleSrtPath ?? derived.subtitlePath) : null, 'source'), sourceId: source.id, kind: 'source' as const },
-      { path: index === 0 ? (derived.translatedSubtitleSrtPath ?? derived.translatedSubtitlePath) : null, pathCandidates: createEditingCaptionPathCandidates(source.path, index === 0 ? (derived.translatedSubtitleSrtPath ?? derived.translatedSubtitlePath) : null, 'translation'), sourceId: source.id, kind: 'translation' as const }
-    ])
+    const sources = createEditingCaptionSources(project, { currentMediaPath: model.state.currentFile?.path ?? null, subtitlePath: derived.subtitlePath, subtitleSrtPath: derived.subtitleSrtPath, translatedSubtitlePath: derived.translatedSubtitlePath, translatedSubtitleSrtPath: derived.translatedSubtitleSrtPath })
     void loadEditingCaptions(sources).then((captions) => {
       if (cancelled || captions.length === 0) return
       model.setEditingProject((current) => {
@@ -94,7 +93,7 @@ export function useEditingCaptionEffect(model: AppModel, derived: AppDerived): {
       })
     })
     return () => { cancelled = true }
-  }, [model.isEditingMode, model.editingProject?.id, model.editingProject?.captionSourceRevision, model.editingProject?.captionReloadResolution?.sourceRevisionKey, model.editingProject?.captionReloadResolution?.changeKeys.join('|'), sourceKey, sourceRevisionKey, derived.subtitlePath, derived.subtitleSrtPath, derived.translatedSubtitlePath, derived.translatedSubtitleSrtPath])
+  }, [model.isEditingMode, model.editingProject?.id, model.editingProject?.captionSourceRevision, model.editingProject?.captionReloadResolution?.sourceRevisionKey, model.editingProject?.captionReloadResolution?.changeKeys.join('|'), model.state.currentFile?.path, sourceKey, sourceRevisionKey, derived.subtitlePath, derived.subtitleSrtPath, derived.translatedSubtitlePath, derived.translatedSubtitleSrtPath])
 
   const forceReloadEditingCaptions = useCallback((): void => {
     const project = model.editingProject
