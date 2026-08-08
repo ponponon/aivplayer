@@ -7,6 +7,7 @@ import { mergeEditingScriptSegments } from '../../../core/editing/script-operati
 
 export function useEditingCaptionEffect(model: AppModel, derived: AppDerived): void {
   const sourceKey = model.editingProject?.sources.map((source) => `${source.id}:${source.path}`).join('|') ?? ''
+  const sourceRevisionKey = derived.subtitleRevision ?? 'none'
   useEffect(() => {
     const project = model.editingProject
     if (!model.isEditingMode || !project || project.sources.length === 0) return
@@ -51,5 +52,5 @@ export function useEditingCaptionEffect(model: AppModel, derived: AppDerived): v
       })
     })
     return () => { cancelled = true }
-  }, [model.isEditingMode, model.editingProject?.id, sourceKey, derived.subtitlePath, derived.subtitleSrtPath, derived.translatedSubtitlePath, derived.translatedSubtitleSrtPath])
+  }, [model.isEditingMode, model.editingProject?.id, sourceKey, sourceRevisionKey, derived.subtitlePath, derived.subtitleSrtPath, derived.translatedSubtitlePath, derived.translatedSubtitleSrtPath])
 }

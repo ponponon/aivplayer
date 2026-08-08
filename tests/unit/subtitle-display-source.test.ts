@@ -89,6 +89,8 @@ describe('subtitle display source constraints', () => {
     expect(appSource).toContain('translationServiceTestMessage={app.translationServiceTestMessage}')
     expect(appSource).toContain('isTestingTranslationService={app.isTestingTranslationService}')
     expect(appSource).toContain('matchesCurrentContext')
+    expect(appSource).toContain('sourceSubtitleRevision')
+    expect(appSource).toContain('derived.subtitleRevision')
     expect(appSource).toContain('resolveTranslatedAsrSubtitleCache')
     expect(i18nSource).toContain("translationModel: '翻译模型'")
     expect(i18nSource).toContain("translationModel: 'Translation model'")
