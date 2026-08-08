@@ -82,6 +82,8 @@ async function main(): Promise<void> {
     const candidateAuditDetailsSummary = await candidateAuditDetails.locator('summary').textContent()
     await candidateAuditDetails.locator('summary').click()
     const candidateAuditDetailsText = await candidateAuditDetails.textContent()
+    const candidateAuditGroupCount = await page.locator('[data-testid^="editing-project-status-details-group-"]').count()
+    const candidateAuditGroupLabels = await candidateAuditDetails.locator('.editing-project-status-details-group > strong').allTextContents()
     const alternateTranslationButton = sidecarSource.locator('button[data-testid^="editing-caption-reload-select-sidecar-"][data-testid$="-translation-1"]')
     if (await alternateTranslationButton.count() !== 1) throw new Error('Alternate translation candidate button was not rendered')
     const alternateTranslationCandidatePath = await alternateTranslationButton.locator('code').textContent()
@@ -163,6 +165,8 @@ async function main(): Promise<void> {
       candidateAuditStatus,
       candidateAuditDetailsSummary,
       candidateAuditDetailsText,
+      candidateAuditGroupCount,
+      candidateAuditGroupLabels,
       selectedCandidatePath,
       alternateTranslationCandidatePath,
       selectedCandidateText,
@@ -180,7 +184,7 @@ async function main(): Promise<void> {
     }
     console.log('AIVPlayer Smoke Editing Sidecar Paths')
     console.log(JSON.stringify(result))
-    if (result.selectedSourcePath?.toLowerCase() !== sourcePath.toLowerCase() || result.selectedTranslationPath?.toLowerCase() !== translationPath.toLowerCase() || result.candidateRows < 6 || result.conflictRows !== 2 || result.ambiguityCount !== 1 || !result.ambiguityText?.includes('2') || result.equivalentCount < 1 || !result.equivalentText?.includes('内容相同') || result.candidateAuditStatus?.includes(smokeDirectory) || !result.candidateAuditDetailsSummary?.includes('查看完整候选路径') || !result.candidateAuditDetailsText?.includes('内容相同') || !result.candidateAuditDetailsText?.includes('内容不同') || !result.candidateAuditDetailsText?.includes(smokeDirectory) || result.selectedCandidatePath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.selectedCandidateText !== '更新跨设备备用译文' || result.selectedCandidateRevision === null || result.undoPreferredPath?.toLowerCase() === result.alternateTranslationCandidatePath.toLowerCase() || result.undoCaptionText !== '初始跨设备译文' || result.redoPreferredPath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.redoCaptionText !== '更新跨设备备用译文' || result.clearedPreferredPath !== null || result.clearedCaptionText !== '更新跨设备译文' || result.clearUndoPreferredPath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.clearRedoPreferredPath !== null || result.consoleErrors.length > 0) process.exitCode = 1
+    if (result.selectedSourcePath?.toLowerCase() !== sourcePath.toLowerCase() || result.selectedTranslationPath?.toLowerCase() !== translationPath.toLowerCase() || result.candidateRows < 6 || result.conflictRows !== 2 || result.ambiguityCount !== 1 || !result.ambiguityText?.includes('2') || result.equivalentCount < 1 || !result.equivalentText?.includes('内容相同') || result.candidateAuditStatus?.includes(smokeDirectory) || !result.candidateAuditDetailsSummary?.includes('查看完整候选路径') || result.candidateAuditGroupCount !== 2 || !result.candidateAuditGroupLabels.some((label) => label.includes('原文')) || !result.candidateAuditGroupLabels.some((label) => label.includes('译文')) || !result.candidateAuditDetailsText?.includes('内容相同') || !result.candidateAuditDetailsText?.includes('内容不同') || !result.candidateAuditDetailsText?.includes(smokeDirectory) || result.selectedCandidatePath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.selectedCandidateText !== '更新跨设备备用译文' || result.selectedCandidateRevision === null || result.undoPreferredPath?.toLowerCase() === result.alternateTranslationCandidatePath.toLowerCase() || result.undoCaptionText !== '初始跨设备译文' || result.redoPreferredPath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.redoCaptionText !== '更新跨设备备用译文' || result.clearedPreferredPath !== null || result.clearedCaptionText !== '更新跨设备译文' || result.clearUndoPreferredPath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.clearRedoPreferredPath !== null || result.consoleErrors.length > 0) process.exitCode = 1
   } finally {
     await app.close()
   }
