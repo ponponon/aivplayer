@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createEditingProject } from '../../src/core/editing/project'
-import { applyEditingSubtitleReloadAddition, applyEditingSubtitleReloadChange, buildEditingSubtitleReloadPreview, getEditingSubtitleReloadChangePage, getEditingSubtitleReloadChangePreview, getEditingSubtitleReloadChangeScriptSegmentId, getEditingSubtitleReloadIncomingPreview, replaceEditingCaptionsForReload } from '../../src/core/editing/subtitle-reload'
+import { applyEditingSubtitleReloadAddition, applyEditingSubtitleReloadChange, applyEditingSubtitleReloadRemoval, buildEditingSubtitleReloadPreview, getEditingSubtitleReloadChangePage, getEditingSubtitleReloadChangePreview, getEditingSubtitleReloadChangeScriptSegmentId, getEditingSubtitleReloadIncomingPreview, replaceEditingCaptionsForReload } from '../../src/core/editing/subtitle-reload'
 
 const source = { id: 'source-1', path: '/tmp/demo.mp4', name: 'demo.mp4', fingerprint: 'demo:10', durationSeconds: 10 }
 
@@ -176,6 +176,42 @@ describe('editing subtitle reload', () => {
     expect(applyEditingSubtitleReloadAddition({ ...project, captions: [current, incoming] }, [incoming], added)).toBeNull()
     expect(applyEditingSubtitleReloadAddition(project, [incoming], { ...added, incomingText: '已变化' })).toBeNull()
     expect(applyEditingSubtitleReloadAddition(project, [], added)).toBeNull()
+  })
+
+  it('removes one source cue with its paired translation or only clears a translation cue', () => {
+    const currentSource = caption({ text: '当前原文' })
+    const currentTranslation = caption({ id: 'translation-source-caption-1', kind: 'translation', text: '当前译文' })
+    const untouched = caption({ id: 'source-caption-2', text: '保留字幕', startSeconds: 3, sourceStartSeconds: 3, sourceEndSeconds: 4 })
+    const project = {
+      ...createEditingProject(source, { now: 100 }),
+      captions: [currentSource, currentTranslation, untouched],
+      scriptSegments: [
+        { id: currentSource.id, sourceId: source.id, sourceStartSeconds: 1, sourceEndSeconds: 2, text: '当前原文', translationText: '当前译文' },
+        { id: untouched.id, sourceId: source.id, sourceStartSeconds: 3, sourceEndSeconds: 4, text: '保留字幕' }
+      ]
+    }
+    const sourceRemoved = { id: currentSource.id, kind: 'source' as const, status: 'removed' as const, currentText: currentSource.text, currentStartSeconds: 1, currentEndSeconds: 2 }
+    const translationRemoved = { id: currentTranslation.id, kind: 'translation' as const, status: 'removed' as const, currentText: currentTranslation.text, currentStartSeconds: 1, currentEndSeconds: 2 }
+
+    const afterSource = applyEditingSubtitleReloadRemoval(project, sourceRemoved, 200)
+    expect(afterSource?.captions).toEqual([untouched])
+    expect(afterSource?.scriptSegments?.find((segment) => segment.id === currentSource.id)).toMatchObject({ text: '当前原文', translationText: '当前译文', deleted: true })
+    expect(afterSource?.videoClips).toEqual(project.videoClips)
+    expect(afterSource?.updatedAt).toBe(200)
+
+    const afterTranslation = applyEditingSubtitleReloadRemoval(project, translationRemoved, 300)
+    expect(afterTranslation?.captions).toEqual([currentSource, untouched])
+    expect(afterTranslation?.scriptSegments?.find((segment) => segment.id === currentSource.id)).toMatchObject({ text: '当前原文' })
+    expect(afterTranslation?.scriptSegments?.find((segment) => segment.id === currentSource.id)).not.toHaveProperty('translationText')
+  })
+
+  it('rejects non-removed, stale, or missing cues instead of deleting current edits', () => {
+    const current = caption({})
+    const project = { ...createEditingProject(source, { now: 100 }), captions: [current] }
+    const removed = { id: current.id, kind: 'source' as const, status: 'removed' as const, currentText: current.text, currentStartSeconds: 1, currentEndSeconds: 2 }
+    expect(applyEditingSubtitleReloadRemoval(project, { ...removed, status: 'changed' })).toBeNull()
+    expect(applyEditingSubtitleReloadRemoval(project, { ...removed, currentText: '已再次编辑' })).toBeNull()
+    expect(applyEditingSubtitleReloadRemoval(project, { ...removed, id: 'missing' })).toBeNull()
   })
 
   it('replaces caption and script tracks while preserving timeline edits', () => {

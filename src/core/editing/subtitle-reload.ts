@@ -321,6 +321,30 @@ export function applyEditingSubtitleReloadAddition(project: EditingProject, inco
   return { ...project, captions, ...(scriptSegments ? { scriptSegments } : {}), updatedAt }
 }
 
+/** Removes one incoming-deleted cue; source removal also hides its paired translation and preserves a restorable script row. */
+export function applyEditingSubtitleReloadRemoval(project: EditingProject, change: EditingSubtitleReloadChange, updatedAt = Date.now()): EditingProject | null {
+  if (change.status !== 'removed') return null
+  const currentCaption = project.captions.find((caption) => caption.id === change.id && caption.kind === change.kind)
+  if (!currentCaption || !matchesCurrentCaption(change, currentCaption)) return null
+
+  const scriptSegmentId = getEditingSubtitleReloadChangeScriptSegmentId(change)
+  const removedCaptionIds = new Set([change.id])
+  if (change.kind === 'source') {
+    for (const caption of project.captions) {
+      if (getEditingSubtitleReloadChangeScriptSegmentId(caption) === scriptSegmentId) removedCaptionIds.add(caption.id)
+    }
+  }
+  const captions = sortCaptions(project.captions.filter((caption) => !removedCaptionIds.has(caption.id)))
+  const scriptSegments = project.scriptSegments?.map((segment) => {
+    if (segment.id !== scriptSegmentId) return segment
+    if (change.kind === 'source') return { ...segment, deleted: true }
+    const next = { ...segment }
+    delete next.translationText
+    return next
+  })
+  return { ...project, captions, ...(scriptSegments ? { scriptSegments } : {}), updatedAt }
+}
+
 /** Replaces only captions and script rows, preserving the edited timeline and all visual tracks. */
 export function replaceEditingCaptionsForReload(project: EditingProject, incoming: readonly EditingCaption[], captionSourceRevision: string, updatedAt = Date.now()): EditingProject {
   const captions = sortCaptions(incoming)
