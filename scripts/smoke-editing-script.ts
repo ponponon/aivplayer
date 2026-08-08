@@ -337,6 +337,11 @@ async function main(): Promise<void> {
     const graphicAfterShiftNudge = await page.locator('.editing-graphic-item.is-selected').evaluate((element) => (element as HTMLElement).style.left)
     await page.locator('[data-testid="editing-undo"]').click()
     await page.waitForFunction((before) => (document.querySelector('.editing-graphic-item.is-selected') as HTMLElement | null)?.style.left === before, graphicBeforeShiftNudge)
+    const graphicEditorBeforeCanvas = page.locator('[data-testid="editing-graphic-editor"] .editing-graphic-summary')
+    if (await graphicEditorBeforeCanvas.count() > 0 && await page.locator('[data-testid="editing-graphic-editor"]').getAttribute('open') !== null) {
+      await graphicEditorBeforeCanvas.click({ force: true })
+      await page.waitForFunction(() => !document.querySelector('[data-testid="editing-graphic-editor"]')?.hasAttribute('open'))
+    }
     const graphicCanvasOverlay = page.locator('[data-testid="editing-graphic-canvas-overlay"]')
     await graphicCanvasOverlay.waitFor({ timeout: 10_000 })
     const graphicCanvasBox = page.locator('.editing-graphic-canvas-box')
