@@ -1,5 +1,5 @@
 import { useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent } from 'react'
-import type { EditingSubtitleReloadIncomingPreview } from '../../../core/editing/subtitle-reload'
+import type { EditingSubtitleReloadIncomingPreview, EditingSubtitleReloadIncomingPreviewTrack } from '../../../core/editing/subtitle-reload'
 import { snapEditedTime } from '../../../core/editing/timeline-snapping'
 import type { EditingCaption, EditingOverlayTrackKind } from '../../../shared/editing-types'
 import { EDITING_OVERLAY_TRACK_DRAG_TYPE, readEditingOverlayTrackDrag, writeEditingOverlayTrackDrag } from './editing-overlay-track-dnd'
@@ -27,9 +27,10 @@ type EditingCaptionTrackProps = {
   onResizeCaption: (captionId: string, startSeconds: number, endSeconds: number) => void
   incomingPreview?: EditingSubtitleReloadIncomingPreview | null
   incomingPreviewLabel?: string
+  incomingPreviewTrackLabels?: Partial<Record<EditingCaption['kind'], string>>
 }
 
-export function EditingCaptionTrack({ captions, durationSeconds, selectedCaptionId, selectedCaptionIds, trackLabel, trackKind, onReorderTrack, emptyLabel, snapPoints = [], onSelectCaption, onMoveCaption, onResizeCaption, incomingPreview, incomingPreviewLabel = 'Incoming subtitle preview' }: EditingCaptionTrackProps): React.ReactElement {
+export function EditingCaptionTrack({ captions, durationSeconds, selectedCaptionId, selectedCaptionIds, trackLabel, trackKind, onReorderTrack, emptyLabel, snapPoints = [], onSelectCaption, onMoveCaption, onResizeCaption, incomingPreview, incomingPreviewLabel = 'Incoming subtitle preview', incomingPreviewTrackLabels = {} }: EditingCaptionTrackProps): React.ReactElement {
   const [drag, setDrag] = useState<CaptionDragState | null>(null)
   const dragRef = useRef<CaptionDragState | null>(null)
   const [trim, setTrim] = useState<EditingTrackTrimState | null>(null)
@@ -160,11 +161,14 @@ export function EditingCaptionTrack({ captions, durationSeconds, selectedCaption
         <span className="editing-timeline-trim-handle editing-timeline-trim-handle-end" data-editing-trim-edge="end" role="presentation" onPointerDown={(event) => beginTrim(event, caption, 'end')} onPointerMove={moveTrim} onPointerUp={finishTrim} onPointerCancel={finishTrim} />
       </div>
     }) : <span className="editing-caption-empty">{emptyLabel}</span>}
-    {incomingPreview ? (() => {
-      const startSeconds = Math.min(durationSeconds, Math.max(0, incomingPreview.startSeconds))
-      const endSeconds = Math.max(startSeconds, Math.min(durationSeconds, incomingPreview.endSeconds))
-      return <div className={`editing-caption-item editing-caption-item-incoming-preview ${incomingPreview.kind === 'translation' ? 'is-translation' : ''}`} style={{ left: `${durationSeconds > 0 ? (startSeconds / durationSeconds) * 100 : 0}%`, width: `${durationSeconds > 0 ? ((endSeconds - startSeconds) / durationSeconds) * 100 : 0}%` }} data-testid="editing-caption-incoming-preview" data-preview-id={incomingPreview.id} role="status" aria-label={`${incomingPreviewLabel}: ${incomingPreview.text}`}><span className="editing-caption-incoming-preview-label">{incomingPreviewLabel}</span><span className="editing-caption-incoming-preview-text">{incomingPreview.text}</span></div>
-    })() : null}
+    {incomingPreview ? (['source', 'translation'] as const).map((kind) => {
+      const previewTrack = incomingPreview.incoming[kind]
+      if (!previewTrack) return null
+      const startSeconds = Math.min(durationSeconds, Math.max(0, previewTrack.startSeconds))
+      const endSeconds = Math.max(startSeconds, Math.min(durationSeconds, previewTrack.endSeconds))
+      const previewLabel = incomingPreviewTrackLabels[kind] ? `${incomingPreviewLabel} · ${incomingPreviewTrackLabels[kind]}` : incomingPreviewLabel
+      return <div key={`${incomingPreview.id}-${kind}`} className={`editing-caption-item editing-caption-item-incoming-preview ${kind === 'translation' ? 'is-translation' : ''}`} style={{ left: `${durationSeconds > 0 ? (startSeconds / durationSeconds) * 100 : 0}%`, width: `${durationSeconds > 0 ? ((endSeconds - startSeconds) / durationSeconds) * 100 : 0}%` }} data-testid="editing-caption-incoming-preview" data-preview-id={`${incomingPreview.id}-${kind}`} data-preview-kind={kind} role="status" aria-label={`${previewLabel}: ${previewTrack.text}`}><span className="editing-caption-incoming-preview-label">{previewLabel}</span><span className="editing-caption-incoming-preview-text">{previewTrack.text}</span></div>
+    }) : null}
     </div>
   </div>
 }

@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Copy, Download, FilePlus2, FolderOpen, Grid3X3, Pause, Play, Plus, Redo2, RotateCcw, Save, ScanSearch, Scissors, Trash2, Undo2, Volume2, X, ZoomIn, ZoomOut } from 'lucide-react'
+import { ArrowRight, ChevronLeft, ChevronRight, Copy, Download, FilePlus2, FolderOpen, Grid3X3, Pause, Play, Plus, Redo2, RotateCcw, Save, ScanSearch, Scissors, Trash2, Undo2, Volume2, X, ZoomIn, ZoomOut } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { ClipExportMode } from '../../../shared/clip-export'; import type { EditingThemeSettings } from '../../../core/editing/themes'
 import { getEditingCanvasDimensions } from '../../../core/editing/canvases'
@@ -20,8 +20,9 @@ import { getPlaybackMediaKey } from '../../../shared/playback-memory'
 import { useEditingClipReorder } from './use-editing-clip-reorder'; import { useEditingTimelineSelection } from './use-editing-timeline-selection'; import { EditingStructureAnalysis } from './editing-structure-analysis'; import { EditingSubtitleQa } from './editing-subtitle-qa'; import { EditingCaptionSyncControl } from './editing-caption-sync-control'
 import { EditingCaptionReloadConflict } from './editing-caption-reload-conflict'
 import { getEditingSubtitleReloadCopy } from '../../../shared/editing-subtitle-reload-copy'
-import { getEditingSubtitleReloadIncomingPreview, type EditingSubtitleReloadChange } from '../../../core/editing/subtitle-reload'
+import { getEditingSubtitleReloadIncomingPreview, type EditingSubtitleReloadChange, type EditingSubtitleReloadIncomingPreviewTrack } from '../../../core/editing/subtitle-reload'
 const MAX_RULER_TICKS = 121; function formatClipLabel(startSeconds: number, endSeconds: number): string { return `${formatTime(startSeconds)} – ${formatTime(endSeconds)}` }
+function formatIncomingPreviewRange(track: EditingSubtitleReloadIncomingPreviewTrack): string { return `${formatTime(track.startSeconds)}–${formatTime(track.endSeconds)}` }
 export function EditingTimeline(): React.ReactElement | null {
   const app = useAppContext()
   const project = app.editingProject
@@ -91,7 +92,7 @@ export function EditingTimeline(): React.ReactElement | null {
   const selectedGraphic = project.graphics?.find((graphic) => graphic.id === app.editingSelectedGraphicId) ?? null
   const selectedVideoBlock = project.videoBlocks?.find((block) => block.id === app.editingSelectedVideoBlockId) ?? null; const selectedVideoBlockSource = selectedVideoBlock ? project.sources.find((source) => source.id === selectedVideoBlock.sourceId) ?? null : null
   const previewIncomingCaption = (change: EditingSubtitleReloadChange): void => {
-    const next = getEditingSubtitleReloadIncomingPreview(change)
+    const next = getEditingSubtitleReloadIncomingPreview(change, app.editingCaptionReloadConflict?.preview.changes ?? [])
     if (!next) {
       setIncomingCaptionPreview(null)
       return
@@ -136,7 +137,7 @@ export function EditingTimeline(): React.ReactElement | null {
   const overlayTrackOrder = getEditingOverlayTrackOrder(project.overlayTrackOrder)
   const reorderOverlayTracks = (source: EditingOverlayTrackKind, target: EditingOverlayTrackKind): void => app.reorderEditingOverlayTracks(source, target)
   const renderOverlayTrack = (kind: EditingOverlayTrackKind): React.ReactElement => {
-    if (kind === 'captions') return <EditingCaptionTrack key={kind} captions={project.captions} durationSeconds={durationSeconds} selectedCaptionId={app.editingSelectedCaptionId} selectedCaptionIds={selection.captionIds} trackLabel={app.copy.editing.captionTrack} trackKind="captions" onReorderTrack={reorderOverlayTracks} emptyLabel={app.copy.editing.captionEmpty} snapPoints={overlaySnapPoints} onSelectCaption={(captionId, additive) => selectTimelineItem('caption', captionId, additive)} onMoveCaption={app.moveEditingCaption} onResizeCaption={app.resizeEditingCaption} incomingPreview={incomingCaptionPreview} incomingPreviewLabel={subtitleReloadCopy.previewIncoming} />
+    if (kind === 'captions') return <EditingCaptionTrack key={kind} captions={project.captions} durationSeconds={durationSeconds} selectedCaptionId={app.editingSelectedCaptionId} selectedCaptionIds={selection.captionIds} trackLabel={app.copy.editing.captionTrack} trackKind="captions" onReorderTrack={reorderOverlayTracks} emptyLabel={app.copy.editing.captionEmpty} snapPoints={overlaySnapPoints} onSelectCaption={(captionId, additive) => selectTimelineItem('caption', captionId, additive)} onMoveCaption={app.moveEditingCaption} onResizeCaption={app.resizeEditingCaption} incomingPreview={incomingCaptionPreview} incomingPreviewLabel={subtitleReloadCopy.previewIncoming} incomingPreviewTrackLabels={{ source: subtitleReloadCopy.source, translation: subtitleReloadCopy.translation }} />
     if (kind === 'graphics') return <EditingGraphicTrack key={kind} graphics={project.graphics ?? []} durationSeconds={durationSeconds} selectedGraphicId={app.editingSelectedGraphicId} selectedGraphicIds={selection.graphicIds} trackLabel={app.copy.editing.graphicTrack} trackKind="graphics" onReorderTrack={reorderOverlayTracks} emptyLabel={app.copy.editing.graphicEmpty} deleteLabel={app.copy.editing.graphicDelete} snapPoints={overlaySnapPoints} onSelect={(graphicId, additive) => selectTimelineItem('graphic', graphicId, additive)} onDelete={(graphicId) => { app.deleteEditingGraphic(graphicId); removeTimelineItemFromSelection('graphic', graphicId) }} onMove={(graphicId, startSeconds) => app.updateEditingGraphic(graphicId, { startSeconds })} onResize={(graphicId, startSeconds, endSeconds) => app.updateEditingGraphic(graphicId, { startSeconds, durationSeconds: endSeconds - startSeconds })} />
     return <EditingVideoBlockTrack key={kind} blocks={project.videoBlocks ?? []} durationSeconds={durationSeconds} selectedBlockId={selectedVideoBlock?.id ?? null} selectedBlockIds={selection.videoBlockIds} trackLabel={app.copy.editing.videoBlockTrack} trackKind="videoBlocks" onReorderTrack={reorderOverlayTracks} emptyLabel={app.copy.editing.videoBlockEmpty} deleteLabel={app.copy.editing.videoBlockDelete} snapPoints={overlaySnapPoints} onSelect={(blockId, additive) => selectTimelineItem('videoBlock', blockId, additive)} onDelete={(blockId) => { app.deleteEditingVideoBlock(blockId); removeTimelineItemFromSelection('videoBlock', blockId) }} onMove={(blockId, startSeconds) => app.updateEditingVideoBlock(blockId, { startSeconds })} onResize={(blockId, startSeconds, endSeconds) => { const block = project.videoBlocks?.find((candidate) => candidate.id === blockId); const sourceStartSeconds = block && Math.abs(startSeconds - block.startSeconds) > 0.001 ? block.sourceStartSeconds + (startSeconds - block.startSeconds) : block?.sourceStartSeconds; app.updateEditingVideoBlock(blockId, { startSeconds, durationSeconds: endSeconds - startSeconds, ...(sourceStartSeconds === undefined ? {} : { sourceStartSeconds }) }) }} onDropSource={(sourceId, startSeconds) => app.addEditingVideoBlock(sourceId, { position: 'bottom-right', startSeconds })} />
   }
@@ -208,7 +209,31 @@ export function EditingTimeline(): React.ReactElement | null {
       <EditingAssetsPanel sources={project.sources} sourceFiles={app.editingSourceFiles} filmstrips={filmstrips} usedSourceIds={project.videoClips.map((clip) => clip.sourceId)} copy={app.copy.editing} onInsertMain={app.insertEditingSourceClip} onAppendMain={app.appendEditingSourceClips} onInsertOverlay={(sourceId) => app.addEditingVideoBlock(sourceId, { position: 'bottom-right' })} />
       {app.editingCaptionReloadConflict ? <EditingCaptionReloadConflict conflict={app.editingCaptionReloadConflict} copy={subtitleReloadCopy} onSeek={app.seekEditingTime} onPreviewIncoming={previewIncomingCaption} onSelectScriptSegment={selectScriptSegment} onKeepCurrent={() => { setIncomingCaptionPreview(null); app.keepCurrentEditingCaptions() }} onForceReload={() => { setIncomingCaptionPreview(null); app.forceReloadEditingCaptions() }} /> : null}
       <EditingScriptPanel segments={project.scriptSegments ?? []} selectedSegmentId={selectedScriptSegmentId} title={app.copy.editing.scriptTitle} hint={app.copy.editing.scriptHint} emptyLabel={app.copy.editing.scriptEmpty} deleteLabel={app.copy.editing.scriptDelete} restoreLabel={app.copy.editing.scriptRestore} deletedLabel={app.copy.editing.scriptDeleted} editLabel={app.copy.editing.scriptEdit} saveLabel={app.copy.editing.scriptSave} cancelLabel={app.copy.editing.scriptCancel} editPlaceholder={app.copy.editing.scriptPlaceholder} countLabel={app.copy.editing.scriptCount} wordDeleteLabel={scriptCopy.wordDelete} wordReplaceLabel={scriptCopy.wordReplace} wordReplacePlaceholder={scriptCopy.wordReplacePlaceholder} selectedLabel={scriptCopy.selectedCount} fillerDeleteLabel={scriptCopy.fillerDelete} onSelect={selectScriptSegment} onUpdate={(segmentId, text) => { setSelectedScriptSegmentId(segmentId); app.updateEditingScriptText(segmentId, text) }} onDelete={(segmentId) => { setSelectedScriptSegmentId(segmentId); app.deleteEditingScriptSegment(segmentId) }} onRestore={(segmentId) => { setSelectedScriptSegmentId(segmentId); app.restoreEditingScriptSegment(segmentId) }} onDeleteWord={(segmentId, word) => { setSelectedScriptSegmentId(segmentId); app.deleteEditingScriptWord(segmentId, word) }} onReplaceWord={(segmentId, word, text) => { setSelectedScriptSegmentId(segmentId); app.replaceEditingScriptWord(segmentId, word, text) }} onDeleteWords={(targets) => { const first = targets[0]; if (first) setSelectedScriptSegmentId(first.segmentId); app.deleteEditingScriptWords(targets) }} />
-      {incomingCaptionPreview ? <div className="editing-caption-reload-incoming-preview" data-testid="editing-caption-reload-incoming-preview" role="status" aria-live="polite"><span>{subtitleReloadCopy.incomingPreviewNotice}</span><strong title={incomingCaptionPreview.text}>{incomingCaptionPreview.text}</strong><button type="button" onClick={() => setIncomingCaptionPreview(null)} aria-label={subtitleReloadCopy.clearPreview} title={subtitleReloadCopy.clearPreview} data-testid="editing-caption-reload-clear-preview"><X size={12} aria-hidden="true" />{subtitleReloadCopy.clearPreview}</button></div> : null}
+      {incomingCaptionPreview ? (() => {
+        const incomingTracks = (['source', 'translation'] as const).map((kind) => incomingCaptionPreview.incoming[kind]).filter((track): track is EditingSubtitleReloadIncomingPreviewTrack => Boolean(track))
+        return <div className="editing-caption-reload-incoming-preview" data-testid="editing-caption-reload-incoming-preview" role="status" aria-live="polite">
+          <span className="editing-caption-reload-incoming-preview-notice">{subtitleReloadCopy.incomingPreviewNotice}</span>
+          <div className="editing-caption-reload-incoming-comparison" data-testid="editing-caption-reload-incoming-comparison">
+            <div className="editing-caption-reload-incoming-side is-current" data-testid="editing-caption-reload-incoming-current">
+              <span>{subtitleReloadCopy.current}</span>
+              <strong>{incomingCaptionPreview.current ? subtitleReloadCopy.current : subtitleReloadCopy.empty}</strong>
+              <small>—</small>
+            </div>
+            <ArrowRight size={13} aria-hidden="true" />
+            <div className="editing-caption-reload-incoming-side is-incoming" data-testid="editing-caption-reload-incoming-incoming">
+              <span>{subtitleReloadCopy.incoming}</span>
+              <div className="editing-caption-reload-incoming-tracks">
+                {incomingTracks.map((track) => <div className="editing-caption-reload-incoming-track" key={track.kind} data-testid={`editing-caption-reload-incoming-track-${track.kind}`}>
+                  <span>{track.kind === 'source' ? subtitleReloadCopy.source : subtitleReloadCopy.translation}</span>
+                  <strong title={track.text}>{track.text}</strong>
+                  <small>{subtitleReloadCopy.incomingPreviewTime} {formatIncomingPreviewRange(track)}</small>
+                </div>)}
+              </div>
+            </div>
+          </div>
+          <button type="button" onClick={() => setIncomingCaptionPreview(null)} aria-label={subtitleReloadCopy.clearPreview} title={subtitleReloadCopy.clearPreview} data-testid="editing-caption-reload-clear-preview"><X size={12} aria-hidden="true" />{subtitleReloadCopy.clearPreview}</button>
+        </div>
+      })() : null}
       <div className="editing-timeline-scroll">
         <div ref={timelineContentRef} className="editing-timeline-content" style={{ width: `${Math.max(100, zoom * 100)}%` }} onPointerDown={beginTimelineMarquee} onPointerMove={moveTimelineMarquee} onPointerUp={finishTimelineMarquee} onPointerCancel={finishTimelineMarquee} onKeyDown={handleTimelineKeyDown}>
           <div className="editing-ruler-row">
