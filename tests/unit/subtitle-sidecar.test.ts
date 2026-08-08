@@ -16,12 +16,14 @@ describe('media subtitle sidecar resolver', () => {
     const mediaPath = join(temporaryDirectory, 'episode.mp4')
     const paths = getMediaSubtitleSidecarPaths(mediaPath)
     await writeFile(mediaPath, 'media')
-    await writeFile(paths.subtitlePath, 'WEBVTT\n')
+    await writeFile(paths.subtitlePath, 'WEBVTT\n\n00:00:00.000 --> 00:00:01.000\nhello\n')
     await writeFile(paths.subtitleSrtPath, '1\n00:00:00,000 --> 00:00:01,000\nhello\n')
 
     await expect(resolveMediaSubtitleSidecar(mediaPath)).resolves.toMatchObject({
+      status: 'ready',
       subtitlePath: paths.subtitlePath,
-      subtitleSrtPath: paths.subtitleSrtPath
+      subtitleSrtPath: paths.subtitleSrtPath,
+      cueCount: 1
     })
     const resolved = await resolveMediaSubtitleSidecar(mediaPath)
     expect(resolved?.revision).toBeGreaterThanOrEqual(0)
@@ -37,9 +39,32 @@ describe('media subtitle sidecar resolver', () => {
     await writeFile(paths.subtitleSrtPath, '1\n00:00:00,000 --> 00:00:01,000\nhello\n')
 
     await expect(resolveMediaSubtitleSidecar(mediaPath)).resolves.toMatchObject({
+      status: 'ready',
       subtitlePath: paths.subtitleSrtPath,
-      subtitleSrtPath: paths.subtitleSrtPath
+      subtitleSrtPath: paths.subtitleSrtPath,
+      cueCount: 1
     })
     await expect(resolveMediaSubtitleSidecar(otherMediaPath)).resolves.toBeNull()
+  })
+
+  it('reports an empty or malformed sidecar instead of treating it as a subtitle', async () => {
+    temporaryDirectory = await mkdtemp(join('/tmp', 'aivplayer-subtitle-sidecar-'))
+    const mediaPath = join(temporaryDirectory, 'episode.mp4')
+    const paths = getMediaSubtitleSidecarPaths(mediaPath)
+    await writeFile(mediaPath, 'media')
+    await writeFile(paths.subtitlePath, 'WEBVTT\n')
+
+    await expect(resolveMediaSubtitleSidecar(mediaPath)).resolves.toMatchObject({
+      status: 'invalid',
+      path: paths.subtitlePath,
+      reason: 'no-cues'
+    })
+
+    await writeFile(paths.subtitlePath, 'WEBVTT\n\n00:00:bad --> 00:00:01.000\nnot valid\n')
+    await expect(resolveMediaSubtitleSidecar(mediaPath)).resolves.toMatchObject({
+      status: 'invalid',
+      path: paths.subtitlePath,
+      reason: 'no-cues'
+    })
   })
 })

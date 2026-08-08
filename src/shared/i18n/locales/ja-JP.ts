@@ -963,6 +963,7 @@
       subtitleCacheMiss: 'ローカル字幕キャッシュが見つかりませんでした。',
       subtitleCacheHit: 'ローカル字幕キャッシュにヒットしました（VTT / SRT）。',
       subtitleSidecarLoaded: '現在のメディアのサイドカー字幕を復元しました。',
+      subtitleSidecarInvalid: (fileName: string) => `字幕ファイルを解析できませんでした: ${fileName}。マウントしません。`,
       subtitleExported: 'VTT から SRT を書き出しました。',
       subtitleTranslated: '字幕の翻訳が完了しました。翻訳 VTT はマウント済みで、SRT は書き出し済みです。',
       subtitleTranslationCanceled: '字幕の翻訳をキャンセルしました。新しい翻訳キャッシュは作成されていません。',

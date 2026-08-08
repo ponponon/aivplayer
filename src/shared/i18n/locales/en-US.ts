@@ -963,6 +963,7 @@
       subtitleCacheMiss: 'No local subtitle cache was found.',
       subtitleCacheHit: 'Local subtitle cache hit (VTT / SRT).',
       subtitleSidecarLoaded: 'Restored the sidecar subtitle for the current media.',
+      subtitleSidecarInvalid: (fileName: string) => `Subtitle file could not be parsed: ${fileName}. It was not mounted.`,
       subtitleExported: 'SRT exported from VTT.',
       subtitleTranslated: 'Subtitle translation completed. Translated VTT is mounted and SRT has been exported.',
       subtitleTranslationCanceled: 'Subtitle translation was cancelled. No new translated cache was written.',

@@ -10,6 +10,7 @@ import { desktopState } from './desktop-state'
 import { app } from 'electron'
 import { getAppCopy } from '../shared/i18n'
 import { getCurrentLocale } from './desktop-settings'
+import { basename } from 'node:path'
 
 const streamingTranslationBatchSize = 6
 
@@ -260,8 +261,16 @@ export function registerAsrSubtitleIpc(): void {
   ipcMain.handle(IPC_CHANNELS.ASR_RESOLVE_SUBTITLE_CACHE, async (_event, request: AsrSubtitleRequest) => withSubtitleUrls(await getAsrRuntime().resolveSubtitleCache(request)))
   ipcMain.handle(IPC_CHANNELS.ASR_RESOLVE_MEDIA_SUBTITLE_SIDECAR, async (_event, request: AsrSubtitleSidecarRequest) => {
     const sidecar = await resolveMediaSubtitleSidecar(request?.mediaPath)
-    if (!sidecar) return { success: false, message: getAppCopy(getCurrentLocale()).runtime.subtitleCacheMiss } satisfies AsrSubtitleResult
-    return withSubtitleUrls({ success: true, message: getAppCopy(getCurrentLocale()).runtime.subtitleSidecarLoaded, ...sidecar }) satisfies AsrSubtitleResult
+    const copy = getAppCopy(getCurrentLocale())
+    if (!sidecar) return { success: false, message: copy.runtime.subtitleCacheMiss } satisfies AsrSubtitleResult
+    if (sidecar.status === 'invalid') {
+      return {
+        success: false,
+        message: copy.runtime.subtitleSidecarInvalid(basename(sidecar.path)),
+        errorDetails: { code: 'INVALID_SUBTITLE_SIDECAR' }
+      } satisfies AsrSubtitleResult
+    }
+    return withSubtitleUrls({ success: true, message: copy.runtime.subtitleSidecarLoaded, subtitlePath: sidecar.subtitlePath, subtitleSrtPath: sidecar.subtitleSrtPath, subtitleRevision: sidecar.revision }) satisfies AsrSubtitleResult
   })
   ipcMain.handle(IPC_CHANNELS.ASR_RESOLVE_SUBTITLE_CHECKPOINT, (_event, request: AsrSubtitleCheckpointRequest) => getAsrRuntime().resolveSubtitleCheckpoint(request))
   ipcMain.handle(IPC_CHANNELS.ASR_RESOLVE_TRANSLATED_SUBTITLE_CACHE, async (_event, request: AsrSubtitleTranslationRequest) => withSubtitleUrls(await getAsrRuntime().resolveTranslatedSubtitleCache(request)) satisfies AsrSubtitleTranslationResult)
