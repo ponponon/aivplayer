@@ -94,6 +94,14 @@ async function main(): Promise<void> {
     await page.waitForFunction((before) => document.querySelector('[data-testid="editing-caption-reload-preview"] .editing-caption-reload-pagination')?.textContent !== before, pageBeforeNext)
     const secondPageRows = await preview.locator('.editing-caption-reload-row').count()
     const pageAfterNext = await preview.locator('.editing-caption-reload-pagination').textContent()
+    const timeStart = preview.locator('[data-testid="editing-caption-reload-time-start"]')
+    const timeEnd = preview.locator('[data-testid="editing-caption-reload-time-end"]')
+    await timeStart.fill('18')
+    await timeEnd.fill('19.5')
+    await page.waitForFunction(() => document.querySelectorAll('[data-testid="editing-caption-reload-preview"] .editing-caption-reload-row').length === 1, null, { timeout: 10_000 })
+    const timeFilteredText = await preview.locator('.editing-caption-reload-row').textContent()
+    await timeStart.fill('')
+    await timeEnd.fill('')
     const search = preview.locator('[data-testid="editing-caption-reload-search"]')
     await search.fill('外部更新字幕 10')
     await page.waitForFunction(() => document.querySelectorAll('[data-testid="editing-caption-reload-preview"] .editing-caption-reload-row').length === 1, null, { timeout: 10_000 })
@@ -118,11 +126,11 @@ async function main(): Promise<void> {
     const forceAfterText = await page.locator('.editing-script-text').first().textContent()
     const forceScreenshotPath = join(smokeHomeDirectory, 'aivplayer-smoke-caption-reload-force.png')
     await page.screenshot({ path: forceScreenshotPath, fullPage: false })
-    const result = { previewIncludesIncoming: previewText?.includes('外部更新字幕') === true, protectedText: protectedText ?? '', keepPreserved: keptText === manualText, forceBeforeText: forceBeforeText ?? '', forceReplaced: forceAfterText === '强制重载后的字幕', expectedCueCount, firstPageRows, secondPageRows, pageAfterNext, searchedText: searchedText ?? '', noMatchesShown, conflictScreenshotPath, forceScreenshotPath, consoleErrors }
+    const result = { previewIncludesIncoming: previewText?.includes('外部更新字幕') === true, protectedText: protectedText ?? '', keepPreserved: keptText === manualText, forceBeforeText: forceBeforeText ?? '', forceReplaced: forceAfterText === '强制重载后的字幕', expectedCueCount, firstPageRows, secondPageRows, pageAfterNext, timeFilteredText: timeFilteredText ?? '', searchedText: searchedText ?? '', noMatchesShown, conflictScreenshotPath, forceScreenshotPath, consoleErrors }
     console.log('AIVPlayer Smoke Editing Caption Reload')
     console.log(`Media: ${mediaPath}`)
     console.log(`Result: ${JSON.stringify(result)}`)
-    if (!result.previewIncludesIncoming || !result.keepPreserved || !result.forceReplaced || result.forceBeforeText !== manualText || result.expectedCueCount !== expectedCueCount || result.firstPageRows !== 8 || result.secondPageRows !== 8 || !result.pageAfterNext?.includes('第 2 / 3 页') || !result.searchedText?.includes('外部更新字幕 10') || !result.noMatchesShown || consoleErrors.length > 0) process.exitCode = 1
+    if (!result.previewIncludesIncoming || !result.keepPreserved || !result.forceReplaced || result.forceBeforeText !== manualText || result.expectedCueCount !== expectedCueCount || result.firstPageRows !== 8 || result.secondPageRows !== 8 || !result.pageAfterNext?.includes('第 2 / 3 页') || !result.timeFilteredText?.includes('00:18.0–00:19.5') || !result.searchedText?.includes('外部更新字幕 10') || !result.noMatchesShown || consoleErrors.length > 0) process.exitCode = 1
   } finally {
     await app.close()
   }
