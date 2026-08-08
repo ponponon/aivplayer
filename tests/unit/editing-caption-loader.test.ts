@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { areEditingCaptionWordsCompatible, createEditingCaptionPathCandidates, createEditingCaptionSources, createEditingCaptionSourceRevisionKey, hasEditingCaptionSourceRevisionChanges, loadEditingCaptionSnapshot, normalizeEditingCaptionPreferredPaths } from '../../src/renderer/src/app/editing-caption-loader'
+import { areEditingCaptionWordsCompatible, createEditingCaptionPathCandidates, createEditingCaptionSources, createEditingCaptionSourceRevisionKey, getEditingCaptionCandidateAudits, hasEditingCaptionSourceRevisionChanges, loadEditingCaptionSnapshot, normalizeEditingCaptionPreferredPaths } from '../../src/renderer/src/app/editing-caption-loader'
 
 const primary = { id: 'source-primary', path: '/videos/primary.mp4', name: 'primary.mp4', fingerprint: 'primary:10', durationSeconds: 10 }
 const secondary = { id: 'source-secondary', path: '/videos/secondary.mp4', name: 'secondary.mp4', fingerprint: 'secondary:10', durationSeconds: 10 }
@@ -65,6 +65,15 @@ describe('editing caption sidecar source selection', () => {
 
     expect(result.captions.map((caption) => caption.text)).toEqual(['优先字幕'])
     expect(result.sourcePaths[primary.id]?.source.validCandidatePaths).toEqual(['/media/demo.srt', '/media/demo.vtt'])
+    expect(getEditingCaptionCandidateAudits(result.sourcePaths)).toEqual([{
+      sourceId: primary.id,
+      kind: 'source',
+      selectedPath: '/media/demo.srt',
+      validCandidatePaths: ['/media/demo.srt', '/media/demo.vtt'],
+      validCandidateCount: 2,
+      validPathCount: 2,
+      equivalentCandidateGroups: []
+    }])
   })
 
   it('collapses valid candidates with identical parsed subtitle content', async () => {
@@ -85,6 +94,16 @@ describe('editing caption sidecar source selection', () => {
     const result = await loadEditingCaptionSnapshot([{ path: null, pathCandidates: ['/media/demo.vtt', '/media/demo.VTT'], sourceId: primary.id, kind: 'source' }])
 
     expect(result.sourcePaths[primary.id]?.source.validCandidatePaths).toEqual(['/media/demo.vtt'])
+    expect(result.sourcePaths[primary.id]?.source.equivalentCandidateGroups).toEqual([['/media/demo.vtt', '/media/demo.VTT']])
+    expect(getEditingCaptionCandidateAudits(result.sourcePaths)).toEqual([{
+      sourceId: primary.id,
+      kind: 'source',
+      selectedPath: '/media/demo.vtt',
+      validCandidatePaths: ['/media/demo.vtt'],
+      validCandidateCount: 1,
+      validPathCount: 2,
+      equivalentCandidateGroups: [['/media/demo.vtt', '/media/demo.VTT']]
+    }])
   })
 
   it('uses the configured translation language before language-agnostic fallbacks', () => {
