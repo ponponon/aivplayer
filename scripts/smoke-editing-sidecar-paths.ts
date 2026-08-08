@@ -74,6 +74,9 @@ async function main(): Promise<void> {
     const ambiguity = page.locator('[data-testid^="editing-caption-reload-sidecar-ambiguity-"]').first()
     const ambiguityCount = await page.locator('[data-testid^="editing-caption-reload-sidecar-ambiguity-"]').count()
     const ambiguityText = await ambiguity.textContent()
+    const equivalentCount = await page.locator('[data-testid^="editing-caption-reload-sidecar-equivalent-"]').count()
+    const equivalentText = await page.locator('[data-testid^="editing-caption-reload-sidecar-equivalent-"]').first().textContent()
+    const candidateAuditStatus = await page.locator('.editing-project-status').textContent()
     const alternateTranslationButton = sidecarSource.locator('button[data-testid^="editing-caption-reload-select-sidecar-"][data-testid$="-translation-1"]')
     if (await alternateTranslationButton.count() !== 1) throw new Error('Alternate translation candidate button was not rendered')
     const alternateTranslationCandidatePath = await alternateTranslationButton.locator('code').textContent()
@@ -150,6 +153,9 @@ async function main(): Promise<void> {
       conflictRows,
       ambiguityCount,
       ambiguityText,
+      equivalentCount,
+      equivalentText,
+      candidateAuditStatus,
       selectedCandidatePath,
       alternateTranslationCandidatePath,
       selectedCandidateText,
@@ -167,7 +173,7 @@ async function main(): Promise<void> {
     }
     console.log('AIVPlayer Smoke Editing Sidecar Paths')
     console.log(JSON.stringify(result))
-    if (result.selectedSourcePath?.toLowerCase() !== sourcePath.toLowerCase() || result.selectedTranslationPath?.toLowerCase() !== translationPath.toLowerCase() || result.candidateRows < 6 || result.conflictRows !== 2 || result.ambiguityCount !== 1 || !result.ambiguityText?.includes('2') || result.selectedCandidatePath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.selectedCandidateText !== '更新跨设备备用译文' || result.selectedCandidateRevision === null || result.undoPreferredPath?.toLowerCase() === result.alternateTranslationCandidatePath.toLowerCase() || result.undoCaptionText !== '初始跨设备译文' || result.redoPreferredPath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.redoCaptionText !== '更新跨设备备用译文' || result.clearedPreferredPath !== null || result.clearedCaptionText !== '更新跨设备译文' || result.clearUndoPreferredPath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.clearRedoPreferredPath !== null || result.consoleErrors.length > 0) process.exitCode = 1
+    if (result.selectedSourcePath?.toLowerCase() !== sourcePath.toLowerCase() || result.selectedTranslationPath?.toLowerCase() !== translationPath.toLowerCase() || result.candidateRows < 6 || result.conflictRows !== 2 || result.ambiguityCount !== 1 || !result.ambiguityText?.includes('2') || result.equivalentCount < 1 || !result.equivalentText?.includes('内容相同') || !result.candidateAuditStatus?.includes('内容相同') || !result.candidateAuditStatus?.includes('内容不同') || result.selectedCandidatePath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.selectedCandidateText !== '更新跨设备备用译文' || result.selectedCandidateRevision === null || result.undoPreferredPath?.toLowerCase() === result.alternateTranslationCandidatePath.toLowerCase() || result.undoCaptionText !== '初始跨设备译文' || result.redoPreferredPath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.redoCaptionText !== '更新跨设备备用译文' || result.clearedPreferredPath !== null || result.clearedCaptionText !== '更新跨设备译文' || result.clearUndoPreferredPath?.toLowerCase() !== result.alternateTranslationCandidatePath.toLowerCase() || result.clearRedoPreferredPath !== null || result.consoleErrors.length > 0) process.exitCode = 1
   } finally {
     await app.close()
   }
