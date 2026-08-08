@@ -1062,3 +1062,9 @@
 - 现象：工程素材移动后，匹配器虽然会拒绝数组顺序猜测，但打开工程失败时只显示“素材不存在”；即使成功重绑定，也只显示“已打开工程”，用户无法确认 source ID、旧文件名和新路径是否对应正确。
 - 经验：人工修复是一个需要可审计结果的迁移动作。匹配结果必须保留未解决 source、歧义 source 和候选路径；成功状态也要显示每条映射，失败时不应把部分修复静默写入工程。
 - 处理：扩展 `EditingSourceRepairMatch` 的 issue 摘要，renderer 状态按四语言格式化匹配 / 未解决 / 歧义结果；新增修复单测、四语言文案测试和 `smoke:editing-project-repair`，验证 source ID 保持、路径重绑定及 `consoleErrors:[]`。
+
+## 2026-08-09：素材重定位不能沿用没有迁移证据的旧旁车路径
+
+- 现象：source ID 会在人工素材修复时保持不变，但旧工程里的 `captionSourcePaths` 可能只有绝对路径、没有相对工程提示；如果直接保留，字幕 loader 会优先读取旧素材旁车，即使新素材文件名已经变化。
+- 经验：旁车偏好必须和迁移证据绑定。存在非空 `captionSourcePathHints` 时可以保留用户明确选择；没有可迁移 hint 的固定路径不能静默跨素材复用，应清除后按新媒体路径重新生成候选。
+- 处理：`relinkEditingProjectSources` 在 source 重绑定时按 sourceId 清理无 portable hint 的 source / translation 偏好，保留有相对 hint 的路径；工程状态显示清理数量，单测验证一条清除、一条保留，Smoke 验证旧 source 字幕路径变为 `null` 且控制台无错误。

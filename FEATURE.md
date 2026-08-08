@@ -568,6 +568,7 @@
 - 工程路径提示新增 Windows 分隔符、大小写路径恢复和另存为覆盖边界测试；`smoke:editing-sidecar-paths` 继续验证真实 Electron 字幕路径链路无 Renderer 控制台错误。
 - 工程打开遇到失效素材并进入人工修复时，状态摘要会显示已匹配数量、未解决数量、歧义数量，以及每个 source 从旧文件名到新路径的映射；不唯一匹配会列出候选路径并保持工程不变。
 - 新增 `npm run smoke:editing-project-repair`，真实 Electron 验证失效 `.aivproj` 的候选重绑定、source ID 保持、修复摘要和 `consoleErrors:[]`；四种语言均有修复摘要文案。
+- 人工重定位素材时，如果 source / translation 的固定旁车路径没有相对工程提示，会清除该旧偏好并按新素材文件名重新生成候选；存在有效相对提示的明确旁车选择会保留，摘要会显示清理数量。
 
 ## 编辑器画布交互层级
 
