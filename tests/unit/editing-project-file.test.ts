@@ -223,7 +223,7 @@ describe('editing project files', () => {
 
   it('round-trips portable sidecar path hints and rejects absolute hints', () => {
     const project = createEditingProject(source)
-    const captionSourcePathHints = { [source.id]: { source: '../media/demo.srt', translation: '../media/demo.zh-CN.srt' } }
+    const captionSourcePathHints = { [source.id]: { source: '..\\media\\demo.srt', translation: '../media/demo.zh-CN.srt' } }
     expect(parseEditingProjectFile(serializeEditingProject({ ...project, captionSourcePathHints })).captionSourcePathHints).toEqual(captionSourcePathHints)
     expect(() => parseEditingProject({ ...project, captionSourcePathHints: { [source.id]: { source: '/videos/demo.srt', translation: null } } })).toThrow('Invalid editing project caption source path hints')
   })

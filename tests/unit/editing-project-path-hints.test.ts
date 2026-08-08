@@ -1,6 +1,9 @@
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { createEditingProject } from '../../src/core/editing/project'
-import { addEditingProjectSourcePathHints, resolveEditingProjectSourcePathHints } from '../../src/desktop/editing-project-path-hints'
+import { addEditingProjectSourcePathHints, resolveEditingProjectPathCaseInsensitive, resolveEditingProjectSourcePathHints } from '../../src/desktop/editing-project-path-hints'
 
 const source = { id: 'source-1', path: '/workspace/media/demo.mp4', name: 'demo.mp4', fingerprint: '/workspace/media/demo.mp4:12', durationSeconds: 12 }
 
@@ -48,5 +51,35 @@ describe('editing project source path hints', () => {
 
     expect(resolved.captionSourcePaths).toEqual({ [source.id]: { source: null, translation: null } })
     expect(resolved.captionSourcePathHints).toEqual(project.captionSourcePathHints)
+  })
+
+  it('normalizes Windows separators and accepts canonical casing from a case-insensitive resolver', () => {
+    const project = {
+      ...createEditingProject({ ...source, path: '/old/media/demo.mp4' }),
+      sources: [{ ...source, path: '/old/media/demo.mp4', relativePath: '..\\Media\\Demo.MP4' }],
+      captionSourcePaths: { [source.id]: { source: '/old/media/demo.SRT', translation: null } },
+      captionSourcePathHints: { [source.id]: { source: '..\\Media\\Demo.SRT', translation: null } }
+    }
+    const resolved = resolveEditingProjectSourcePathHints(project, '/workspace/projects/demo.aivproj', () => false, (path) => {
+      if (path === '/workspace/Media/Demo.MP4') return '/workspace/Media/Demo.MP4'
+      if (path === '/workspace/Media/Demo.SRT') return '/workspace/Media/Demo.SRT'
+      return null
+    })
+
+    expect(resolved.sources[0]?.path).toBe('/workspace/Media/Demo.MP4')
+    expect(resolved.captionSourcePaths).toEqual({ [source.id]: { source: '/workspace/Media/Demo.SRT', translation: null } })
+  })
+
+  it('walks a real path when directory and file casing differ', () => {
+    const root = mkdtempSync(join(tmpdir(), 'aivplayer-path-hints-'))
+    const canonicalPath = join(root, 'Media', 'Demo.SRT')
+    mkdirSync(join(root, 'Media'))
+    writeFileSync(canonicalPath, 'demo')
+
+    try {
+      expect(resolveEditingProjectPathCaseInsensitive(join(root, 'media', 'demo.srt'))).toBe(canonicalPath)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
   })
 })
