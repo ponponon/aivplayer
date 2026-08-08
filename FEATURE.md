@@ -554,6 +554,8 @@
 - 字幕冲突预览的每条差异会显示所属素材文件名，并把 `sourceId` 参与当前 / incoming caption 的匹配；多素材同时间段的差异不会因为字幕 ID 相同而互相应用。
 - `.aivproj` 保存时为绝对素材路径写入相对工程文件目录的 `relativePath` 提示；打开工程只在提示目标真实存在时自动恢复路径，旧工程和无法恢复的素材继续进入显式修复流程。
 - 编辑器工具栏新增“重建字幕版本清单”入口：只重新读取活动素材的 source / translation sidecar revision 并更新 manifest，不直接覆盖当前时间线字幕；真实 Electron Smoke 覆盖按钮点击、工程更新时间、状态提示和后续多素材冲突回归。
+- 字幕旁车候选按配置目标语言、通用 `translated` / `translation` 命名、区域语言别名和大小写扩展名排序；空文件或无有效 cue 的候选会跳过，冲突预览可展开查看实际选中路径与全部候选。
+- 新增 `npm run smoke:editing-sidecar-paths`，真实 Electron 覆盖空 `.SRT` 后回退有效 `.VTT`、`zh` 到 `zh-CN` 区域别名、双轨候选展示和控制台健康。
 
 ## 编辑器画布交互层级
 
