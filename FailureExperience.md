@@ -1116,3 +1116,9 @@
 - 现象：恢复默认同时修改 localStorage 和受控 `details` 状态；若跳过下一次写入，原生 `toggle` 事件可能让 React state / DOM 不一致，或点击后又把旧状态写回。
 - 经验：恢复默认语义应明确为当前工程 `detailsOpen=false`、`openGroups={}` 并持久化该默认值；只重置当前 `projectId`，其他工程偏好必须保留。恢复后继续允许普通 `onToggle` 写入，避免事件竞态。
 - 处理：新增 `resetEditingUiProjectPreferences`，候选详情旁新增可访问按钮与四语言 label；Smoke 验证当前外层 / 分组关闭、当前偏好为默认、其他工程偏好仍为 true，并继续验证重启、reload、候选切换、撤销 / 重做链路。
+
+## 2026-08-09：全量 UI 偏好恢复必须先确认并验证取消分支
+
+- 现象：全量清除候选详情偏好会同时影响多个工程，直接点击就执行容易造成用户误操作；只验证确认后的清空结果，还可能遗漏“取消后状态被意外折叠或旧偏好被改写”的回归。
+- 经验：跨工程的 renderer UI 偏好清理必须使用本地化确认提示；取消时 DOM 和存储都保持原值，确认时才清空全部工程记录，并把当前工程的受控 `details` 状态同步为关闭，避免旧状态在 effect 中回写。
+- 处理：新增 `resetAllEditingUiPreferences` 与“恢复所有候选详情默认”入口；四语言确认文案覆盖，真实 Electron Smoke 先 dismiss 再 accept，分别验证当前外层 / 分组、当前偏好、其他工程偏好和 `consoleErrors:[]`，随后继续验证重启、reload、候选切换、撤销 / 重做链路。
