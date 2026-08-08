@@ -995,3 +995,12 @@
 - 经验：sidecar 的加载范围必须由“仍被时间线使用的 source”决定，不能由素材库是否保留决定；优先字幕路径也必须按真实媒体路径匹配，source 数组顺序在替换操作后并不等于当前播放素材。revision key 还要包含活动 source 集合，避免非活动旧素材的 mtime / revision 变化触发错误冲突。
 - 处理：新增 `createEditingCaptionSources` 与 `createEditingCaptionSourceRevisionKey`，过滤非活动 source、按路径分配 preferred sidecar，并在非活动旧 source 场景忽略旧 revision；新增 loader 单测和跨媒体 Electron Smoke，修改旧 sidecar 后确认无冲突预览、无旧 sidecar 预览、sourceId 持久化正确且 `consoleErrors:[]`。
 - 提交边界：核心 `2cb75da`，单测 `fe25da8`，Smoke `2985c89`；FEATURE / FailureExperience 单独提交，内部计划继续 ignored。
+
+## 2026-08-09：多素材字幕 revision 必须使用 per-source manifest
+
+- 现象：上一轮把活动 source 集合加入 reload key 后，只能知道“整体 key 变了”，无法判断多个活动素材中究竟是哪一个 source / translation sidecar 变化；同时将旧 source 从活动集合移除时，不能把它误判为当前 source 的 sidecar 删除。
+- 经验：多素材 reload 的版本状态必须按 `sourceId` 和字幕轨道拆分持久化；比较时只遍历下一次仍活动的 source，活动 source 的 revision 从已知数字变成 `null` 才代表 sidecar 删除，旧 source 消失本身不是删除事件。
+- 处理：新增 `captionSourceRevisions` 工程字段和 `media:get-file-revision` IPC；loader 返回字幕与 revision 快照，caption effect 按活动 source manifest 生成冲突、force reload 和显式接受后的新基线。工程文件 parser / serializer 对 manifest 做结构校验，避免半结构数据静默进入项目。
+- 验证：字幕 loader、工程文件和时间线契约单测 37 项通过；`bun run typecheck`、`bun run build` 通过；真实 Electron Smoke 覆盖第二素材双轨更新与双轨删除，更新阶段只出现第二素材 2 条差异，删除阶段只出现 2 条 removed，force reload 后第一素材保持不变，`consoleErrors:[]`。
+- 额外修正：首次实现把“当前 source 替换为没有 sidecar 的新素材”当成 sidecar 删除，造成无意义冲突；随后将“旧 source 被移出活动集合”和“同一活动 source revision 变为 null”分开判断，并用回归 Smoke 固化该边界。
+- 提交边界：核心 `b736487`，单测 `6a4530a`，Smoke `6737fe0`；本条工程记录另行提交，内部计划继续 ignored。

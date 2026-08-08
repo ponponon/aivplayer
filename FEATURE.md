@@ -547,6 +547,9 @@
 - fragment / script segment 关联在已知 `sourceId` 不一致时拒绝匹配；跨媒体替换后，旧素材的 deleted script 不会把新素材同 ID、同时间范围的 translation 误判为孤立译文。新增 `npm run smoke:editing-cross-source-isolation` 覆盖真实素材拖拽替换、reload 和控制台健康。
 - sidecar loader 只扫描仍被时间线片段使用的素材；当前文件的优先字幕路径按真实媒体路径匹配，不再按 `sources[0]` 的数组位置绑定，避免替换后旧素材旁车字幕参与新素材 reload。
 - `captionSourceRevision` 的 reload key 同时记录活动 source 集合；当旧素材仍在磁盘但已经没有时间线片段时，旧素材 sidecar 被修改不会触发冲突预览或 force reload。跨媒体 Smoke 额外覆盖旧 source / translation sidecar 修改后的 reload，确认冲突数、旧 sidecar 预览数和 Renderer 错误均为 0。
+- 编辑项目新增 `captionSourceRevisions` manifest，按活动素材的 source / translation sidecar 分别记录文件 revision；工程文件导入 / 导出会校验并完整保留该 manifest，旧项目仍兼容单一 `captionSourceRevision`。
+- 多素材同时存在时，reload key 会携带每个活动 source 的路径和双轨 revision；某个活动素材的原文或译文旁车被修改、删除或重新生成时，只对对应素材生成冲突预览，不会把另一个素材的差异混在一起。
+- 新增 `npm run smoke:editing-multi-source-revision`，真实 Electron 覆盖第二素材 source / translation 同时更新，以及第二素材两条 sidecar 删除；验证差异只归属于第二素材、force reload 更新 manifest，删除后 revision 回到 `null` 且第一素材不受影响。
 
 ## 编辑器画布交互层级
 
