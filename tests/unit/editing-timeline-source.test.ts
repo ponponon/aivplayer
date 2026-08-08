@@ -157,7 +157,7 @@ describe('editing timeline source contracts', () => {
     expect(subtitleReloadCopy).toContain('addIncoming')
     expect(subtitleReloadCopy).toContain('removeFromProject')
     expect(captionTrack).toContain('incomingPreview.incoming[kind]')
-    expect(timeline).toContain("selectTimelineItem('caption', segmentId)")
+    expect(timeline).toContain("selectTimelineItem('caption', resolvedSegmentId)")
     expect(timeline).toContain('onSeek={app.seekEditingTime}')
     expect(timeline).toContain('data-testid="editing-time-readout"')
     expect(subtitleReloadCopy).toContain("'zh-CN'")
