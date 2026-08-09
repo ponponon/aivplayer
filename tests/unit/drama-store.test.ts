@@ -102,4 +102,25 @@ describe('drama store', () => {
     expect(store.getAsset(project.id, asset.id)).toBeNull()
     expect(() => store.deleteAsset(project.id, asset.id)).toThrow('短剧资产不存在')
   })
+
+  it('keeps image, video and audio generation queues independent and recoverable', () => {
+    const project = store.createProject({ title: '生成队列' })
+    const image = store.createGenerationTask(project.id, { mediaType: 'image', targetId: 'asset-character', prompt: '角色正面肖像' })
+    const secondImage = store.createGenerationTask(project.id, { mediaType: 'image', prompt: '场景概念图' })
+    const video = store.createGenerationTask(project.id, { mediaType: 'video', prompt: '雨夜车站推镜' })
+    const audio = store.createGenerationTask(project.id, { mediaType: 'audio', prompt: '雨声氛围' })
+
+    expect(store.listGenerationTasks(project.id, 'image')).toHaveLength(2)
+    expect(store.claimNextGenerationTask(project.id, 'image')).toMatchObject({ id: image.id, status: 'running' })
+    expect(store.claimNextGenerationTask(project.id, 'image')).toMatchObject({ id: secondImage.id, status: 'running' })
+    expect(store.claimNextGenerationTask(project.id, 'image')).toBeNull()
+    expect(store.claimNextGenerationTask(project.id, 'video')).toMatchObject({ id: video.id, status: 'running' })
+
+    const completed = store.updateGenerationTask(project.id, image.id, { status: 'completed', resultPath: '/tmp/character.png', message: '图片完成' })
+    expect(completed).toMatchObject({ status: 'completed', progress: 1, resultPath: '/tmp/character.png' })
+    expect(store.cancelGenerationTask(project.id, audio.id)).toMatchObject({ status: 'cancelled' })
+    expect(store.recoverGenerationTasks(project.id)).toBe(2)
+    expect(store.getGenerationTask(project.id, secondImage.id)).toMatchObject({ status: 'queued', progress: 0 })
+    expect(store.getGenerationTask(project.id, video.id)).toMatchObject({ status: 'queued', progress: 0 })
+  })
 })

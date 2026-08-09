@@ -9,6 +9,10 @@ import type {
   DramaAsset,
   DramaAssetPatch,
   DramaAssetInput,
+  DramaGenerationTask,
+  DramaGenerationTaskInput,
+  DramaGenerationTaskPatch,
+  DramaGenerationTaskStatus,
   DramaImportChapterInput,
   DramaPlan,
   DramaProject,
@@ -155,10 +159,26 @@ export class DramaStore {
         started_at INTEGER NOT NULL,
         completed_at INTEGER
       );
+      CREATE TABLE IF NOT EXISTS drama_generation_tasks (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL REFERENCES drama_projects(id) ON DELETE CASCADE,
+        media_type TEXT NOT NULL,
+        target_id TEXT,
+        prompt TEXT NOT NULL,
+        status TEXT NOT NULL,
+        progress REAL NOT NULL DEFAULT 0,
+        message TEXT NOT NULL DEFAULT '',
+        error TEXT,
+        result_path TEXT,
+        created_at INTEGER NOT NULL,
+        started_at INTEGER,
+        completed_at INTEGER
+      );
       CREATE INDEX IF NOT EXISTS drama_chapters_project_index ON drama_chapters(project_id, chapter_index);
       CREATE INDEX IF NOT EXISTS drama_assets_project_type ON drama_assets(project_id, asset_type);
       CREATE INDEX IF NOT EXISTS drama_storyboards_project_episode ON drama_storyboards(project_id, episode_index, scene_index);
       CREATE INDEX IF NOT EXISTS drama_tasks_project_started ON drama_tasks(project_id, started_at DESC);
+      CREATE INDEX IF NOT EXISTS drama_generation_tasks_project_queue ON drama_generation_tasks(project_id, media_type, status, created_at ASC);
     `)
   }
 
@@ -468,6 +488,105 @@ export class DramaStore {
     }
   }
 
+  listGenerationTasks(projectId: string, mediaType?: DramaGenerationTask['mediaType']): DramaGenerationTask[] {
+    const query = mediaType == null
+      ? 'SELECT * FROM drama_generation_tasks WHERE project_id = ? ORDER BY created_at ASC'
+      : 'SELECT * FROM drama_generation_tasks WHERE project_id = ? AND media_type = ? ORDER BY created_at ASC'
+    const rows = (mediaType == null
+      ? this.database.prepare(query).all(projectId)
+      : this.database.prepare(query).all(projectId, mediaType)) as SqliteRow[]
+    return rows.map((row) => this.toGenerationTask(row))
+  }
+
+  getGenerationTask(projectId: string, taskId: string): DramaGenerationTask | null {
+    const row = this.database.prepare('SELECT * FROM drama_generation_tasks WHERE project_id = ? AND id = ?').get(projectId, taskId) as SqliteRow | undefined
+    return row ? this.toGenerationTask(row) : null
+  }
+
+  createGenerationTask(projectId: string, input: DramaGenerationTaskInput): DramaGenerationTask {
+    this.requireProject(projectId)
+    const normalized = normalizeGenerationTaskInput(input)
+    const task: DramaGenerationTask = {
+      id: randomUUID(),
+      projectId,
+      mediaType: normalized.mediaType,
+      targetId: normalized.targetId,
+      prompt: normalized.prompt,
+      status: 'queued',
+      progress: 0,
+      message: normalized.message || '等待生成',
+      createdAt: Date.now()
+    }
+    this.database.prepare(`
+      INSERT INTO drama_generation_tasks (id, project_id, media_type, target_id, prompt, status, progress, message, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(task.id, task.projectId, task.mediaType, task.targetId ?? null, task.prompt, task.status, task.progress, task.message, task.createdAt)
+    this.touchProject(projectId)
+    return task
+  }
+
+  claimNextGenerationTask(projectId: string, mediaType: DramaGenerationTask['mediaType']): DramaGenerationTask | null {
+    this.requireProject(projectId)
+    if (!isGenerationMediaType(mediaType)) throw new Error('生成任务媒体类型无效')
+    this.database.exec('BEGIN IMMEDIATE')
+    try {
+      const row = this.database.prepare(`
+        SELECT * FROM drama_generation_tasks
+        WHERE project_id = ? AND media_type = ? AND status = 'queued'
+        ORDER BY created_at ASC
+        LIMIT 1
+      `).get(projectId, mediaType) as SqliteRow | undefined
+      if (!row) {
+        this.database.exec('COMMIT')
+        return null
+      }
+      const startedAt = Date.now()
+      this.database.prepare(`UPDATE drama_generation_tasks SET status = 'running', started_at = ?, message = ? WHERE id = ?`).run(startedAt, '生成中', stringValue(row, 'id'))
+      this.database.exec('COMMIT')
+      return this.getGenerationTask(projectId, stringValue(row, 'id'))
+    } catch (error) {
+      this.database.exec('ROLLBACK')
+      throw error
+    }
+  }
+
+  updateGenerationTask(projectId: string, taskId: string, patch: DramaGenerationTaskPatch): DramaGenerationTask {
+    const current = this.getGenerationTask(projectId, taskId)
+    if (!current) throw new Error(`生成任务不存在：${taskId}`)
+    const nextStatus = patch.status ?? current.status
+    if (!isGenerationTaskStatus(nextStatus)) throw new Error('生成任务状态无效')
+    const nextProgress = patch.progress == null ? current.progress : normalizeProgress(patch.progress)
+    const nextMessage = patch.message ?? current.message
+    const nextError = patch.error === undefined ? current.error ?? null : patch.error
+    const nextResultPath = patch.resultPath === undefined ? current.resultPath ?? null : patch.resultPath
+    const startedAt = nextStatus === 'running' ? current.startedAt ?? Date.now() : current.startedAt ?? null
+    const completedAt = ['completed', 'failed', 'cancelled'].includes(nextStatus) ? current.completedAt ?? Date.now() : null
+    this.database.prepare(`
+      UPDATE drama_generation_tasks
+      SET status = ?, progress = ?, message = ?, error = ?, result_path = ?, started_at = ?, completed_at = ?
+      WHERE project_id = ? AND id = ?
+    `).run(nextStatus, nextStatus === 'completed' ? 1 : nextProgress, nextMessage, nextError, nextResultPath, startedAt, completedAt, projectId, taskId)
+    this.touchProject(projectId)
+    return this.getGenerationTask(projectId, taskId) as DramaGenerationTask
+  }
+
+  cancelGenerationTask(projectId: string, taskId: string): DramaGenerationTask {
+    const current = this.getGenerationTask(projectId, taskId)
+    if (!current) throw new Error(`生成任务不存在：${taskId}`)
+    if (['completed', 'failed', 'cancelled'].includes(current.status)) return current
+    return this.updateGenerationTask(projectId, taskId, { status: 'cancelled', message: '已取消' })
+  }
+
+  recoverGenerationTasks(projectId?: string): number {
+    if (projectId) this.requireProject(projectId)
+    const result = projectId == null
+      ? this.database.prepare("UPDATE drama_generation_tasks SET status = 'queued', progress = 0, message = '等待恢复', error = NULL, started_at = NULL, completed_at = NULL WHERE status = 'running'").run()
+      : this.database.prepare("UPDATE drama_generation_tasks SET status = 'queued', progress = 0, message = '等待恢复', error = NULL, started_at = NULL, completed_at = NULL WHERE project_id = ? AND status = 'running'").run(projectId)
+    const changes = Number(result.changes)
+    if (changes > 0 && projectId) this.touchProject(projectId)
+    return changes
+  }
+
   private requireProject(projectId: string): DramaProject {
     const project = this.getProject(projectId)
     if (!project) throw new Error(`短剧项目不存在：${projectId}`)
@@ -489,6 +608,24 @@ export class DramaStore {
       status: stringValue(row, 'status', 'draft') as DramaProject['status'],
       createdAt: numberValue(row, 'created_at'),
       updatedAt: numberValue(row, 'updated_at')
+    }
+  }
+
+  private toGenerationTask(row: SqliteRow): DramaGenerationTask {
+    return {
+      id: stringValue(row, 'id'),
+      projectId: stringValue(row, 'project_id'),
+      mediaType: stringValue(row, 'media_type') as DramaGenerationTask['mediaType'],
+      targetId: typeof row.target_id === 'string' ? row.target_id : undefined,
+      prompt: stringValue(row, 'prompt'),
+      status: stringValue(row, 'status') as DramaGenerationTask['status'],
+      progress: numberValue(row, 'progress'),
+      message: stringValue(row, 'message'),
+      error: typeof row.error === 'string' ? row.error : undefined,
+      resultPath: typeof row.result_path === 'string' ? row.result_path : undefined,
+      createdAt: numberValue(row, 'created_at'),
+      startedAt: typeof row.started_at === 'number' ? row.started_at : undefined,
+      completedAt: typeof row.completed_at === 'number' ? row.completed_at : undefined
     }
   }
 
@@ -584,6 +721,32 @@ function normalizeAssetPatch(current: DramaAsset, patch: DramaAssetPatch): Requi
   })
   if (patch.status != null && !['draft', 'ready'].includes(patch.status)) throw new Error('短剧资产状态无效')
   return { ...next, status: patch.status ?? current.status }
+}
+
+function isGenerationMediaType(value: unknown): value is DramaGenerationTask['mediaType'] {
+  return value === 'image' || value === 'video' || value === 'audio'
+}
+
+function isGenerationTaskStatus(value: unknown): value is DramaGenerationTaskStatus {
+  return value === 'queued' || value === 'running' || value === 'completed' || value === 'failed' || value === 'cancelled'
+}
+
+function normalizeGenerationTaskInput(input: DramaGenerationTaskInput): Required<Pick<DramaGenerationTaskInput, 'mediaType' | 'prompt'>> & Pick<DramaGenerationTaskInput, 'targetId' | 'message'> {
+  if (!input || typeof input !== 'object') throw new Error('生成任务参数无效')
+  if (!isGenerationMediaType(input.mediaType)) throw new Error('生成任务媒体类型无效')
+  const prompt = input.prompt.trim()
+  if (!prompt) throw new Error('生成任务提示词不能为空')
+  return {
+    mediaType: input.mediaType,
+    targetId: input.targetId?.trim() || undefined,
+    prompt,
+    message: input.message?.trim() || undefined
+  }
+}
+
+function normalizeProgress(value: number): number {
+  if (!Number.isFinite(value)) throw new Error('生成任务进度无效')
+  return Math.min(1, Math.max(0, value))
 }
 
 function normalizePositiveInteger(value: number | undefined, fallback: number): number {

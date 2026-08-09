@@ -3,6 +3,8 @@ export type DramaChapterEventStatus = 'pending' | 'running' | 'completed' | 'fai
 export type DramaTaskStatus = 'running' | 'completed' | 'failed'
 export type DramaAssetType = 'character' | 'location' | 'prop'
 export type DramaAssetStatus = 'draft' | 'ready'
+export type DramaGenerationMediaType = 'image' | 'video' | 'audio'
+export type DramaGenerationTaskStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled'
 
 export type DramaProject = {
   id: string
@@ -121,6 +123,37 @@ export type DramaTask = {
   error?: string
   startedAt: number
   completedAt?: number
+}
+
+export type DramaGenerationTask = {
+  id: string
+  projectId: string
+  mediaType: DramaGenerationMediaType
+  targetId?: string
+  prompt: string
+  status: DramaGenerationTaskStatus
+  progress: number
+  message: string
+  error?: string
+  resultPath?: string
+  createdAt: number
+  startedAt?: number
+  completedAt?: number
+}
+
+export type DramaGenerationTaskInput = {
+  mediaType: DramaGenerationMediaType
+  targetId?: string
+  prompt: string
+  message?: string
+}
+
+export type DramaGenerationTaskPatch = {
+  status?: DramaGenerationTaskStatus
+  progress?: number
+  message?: string
+  error?: string | null
+  resultPath?: string | null
 }
 
 export type DramaCreateProjectInput = {
