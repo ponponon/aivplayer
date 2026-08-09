@@ -13,6 +13,7 @@ import { formatBatchResult, runBatch } from './cli-batch'
 import { BatchPlanError } from './cli-batch-plan'
 import { runDrama } from './cli-drama'
 import { EditingProjectFileError, inspectEditingProject, loadEditingProjectFile, searchEditingProjectCaptions } from './cli-edit'
+import { buildDeleteScriptProposal, EditingProposalError } from '../core/editing/edit-proposal'
 
 const FALLBACK_CLI_VERSION = '0.1.0'
 
@@ -86,6 +87,7 @@ function printHelp(): void {
   aivcli media info <video>
   aivcli edit inspect <project.aivproj> [--json]
   aivcli edit captions <project.aivproj> [--query text] [--limit N] [--json]
+  aivcli edit propose delete-script <project.aivproj> <segment-id...> [--json]
   aivcli asr <video...> [--language auto] [--model id] [--format both|vtt|srt] [--output-dir dir] [--force]
   aivcli subtitle convert <input.vtt> [--output output.srt]
   aivcli subtitle translate <input.vtt> --to zh|en|ja|ko [--from auto] [--output-dir dir] [--force]
@@ -236,7 +238,23 @@ async function runEdit(parsed: ParsedCliArgs): Promise<number> {
     return 0
   }
 
-  throw new CliError('目前只支持 edit inspect 和 edit captions')
+  if (action === 'propose' && parsed.positionals[1] === 'delete-script') {
+    const loaded = await loadEditProject({ ...parsed, positionals: parsed.positionals.slice(2) }, 'aivcli edit propose delete-script <project.aivproj> <segment-id...>')
+    const segmentIds = parsed.positionals.slice(3)
+    let proposal
+    try {
+      proposal = buildDeleteScriptProposal(loaded.project, segmentIds)
+    } catch (error) {
+      if (error instanceof EditingProposalError) throw new CliError(error.message, 2, { code: error.code, details: error.details })
+      throw error
+    }
+    const payload = { ok: true, command: 'edit propose', projectPath: loaded.filePath, proposal }
+    printJson(parsed, payload)
+    printHuman(parsed, `${proposal.title}：${proposal.summary}\n预计时长：${formatDuration(proposal.diff.before.durationSeconds)} → ${formatDuration(proposal.diff.after.durationSeconds)}\n删除区间：${proposal.diff.removedEditedRanges.length} 个，影响字幕：${proposal.diff.captions.removedIds.length} 条\nProposal ID：${proposal.id}`)
+    return 0
+  }
+
+  throw new CliError('目前只支持 edit inspect、edit captions 和 edit propose')
 }
 
 async function runAsr(parsed: ParsedCliArgs): Promise<number> {
