@@ -451,6 +451,7 @@
       inboxBatchQueue: '批量入队',
       inboxBatchIgnore: '批量忽略',
       inboxBatchRetry: '批量重试',
+      inboxBatchClear: '清理选中记录',
       inboxBatchSaving: '正在批量处理…'
     },
     drama: {

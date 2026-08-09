@@ -451,6 +451,7 @@
       inboxBatchQueue: 'Queue selected',
       inboxBatchIgnore: 'Ignore selected',
       inboxBatchRetry: 'Retry selected',
+      inboxBatchClear: 'Clear selected records',
       inboxBatchSaving: 'Applying batch…'
     },
     drama: {

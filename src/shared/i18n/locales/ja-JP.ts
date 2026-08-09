@@ -451,6 +451,7 @@
       inboxBatchQueue: '選択項目をキューへ',
       inboxBatchIgnore: '選択項目を無視',
       inboxBatchRetry: '選択項目を再試行',
+      inboxBatchClear: '選択した記録を削除',
       inboxBatchSaving: '一括処理中…'
     },
     drama: {

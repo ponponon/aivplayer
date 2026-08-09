@@ -451,6 +451,7 @@
       inboxBatchQueue: '선택 항목 대기열 추가',
       inboxBatchIgnore: '선택 항목 무시',
       inboxBatchRetry: '선택 항목 재시도',
+      inboxBatchClear: '선택한 기록 정리',
       inboxBatchSaving: '일괄 처리 중…'
     },
     drama: {
