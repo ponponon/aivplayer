@@ -265,11 +265,12 @@ jobs:
         run: |
           $source = Join-Path $env:RUNNER_TEMP "whisper.cpp"
           $build = Join-Path $env:RUNNER_TEMP "whisper-build"
-          $toolchain = Join-Path $source "cmake/arm64-windows-llvm.cmake"
+          $toolchain = Join-Path $source "cmake\arm64-windows-llvm.cmake"
           git clone --depth 1 --branch "v$env:WHISPER_CPP_VERSION" https://github.com/ggml-org/whisper.cpp.git $source
           clang --version
           ninja --version
-          cmake -S $source -B $build -G Ninja -DCMAKE_TOOLCHAIN_FILE=$toolchain -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_EXAMPLES=ON -DCMAKE_BUILD_TYPE=Release
+          $ninja = (Get-Command ninja -CommandType Application).Path
+          cmake -S $source -B $build -G Ninja "-DCMAKE_MAKE_PROGRAM=$ninja" "-DCMAKE_TOOLCHAIN_FILE=$toolchain" -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_EXAMPLES=ON -DCMAKE_BUILD_TYPE=Release
           cmake --build $build --config Release --parallel
           $whisperBinary = Get-ChildItem -Path $build -Filter "whisper-cli.exe" -Recurse | Select-Object -First 1
           if ($null -eq $whisperBinary) { throw "whisper-cli.exe was not built." }
