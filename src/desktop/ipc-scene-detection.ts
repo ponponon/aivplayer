@@ -1,13 +1,10 @@
-import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
 import { ipcMain } from 'electron'
-import { DEFAULT_MIN_SCENE_DURATION_SECONDS, DEFAULT_SCENE_DETECTION_THRESHOLD, parseSceneCutTimestamps } from '../core/media/scene-detection'
+import { DEFAULT_MIN_SCENE_DURATION_SECONDS, DEFAULT_SCENE_DETECTION_THRESHOLD } from '../core/media/scene-detection'
+import { detectSceneCutTimestamps } from '../core/media/scene-detection-runtime'
 import { resolveFfmpegPath } from '../core/ai/whisper-cpp-runtime'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type { MediaSceneDetectionRequest, MediaSceneDetectionResult } from '../shared/media-types'
 import { resolveResourcePath } from './desktop-services'
-
-const execFileAsync = promisify(execFile)
 
 function normalizeRequest(request: MediaSceneDetectionRequest): { mediaPath: string; threshold: number; minSceneDurationSeconds: number } | null {
   if (!request || typeof request.mediaPath !== 'string' || !request.mediaPath.trim()) return null
@@ -27,10 +24,8 @@ export function registerSceneDetectionIpc(): void {
     const ffmpegPath = await resolveFfmpegPath(resolveResourcePath(), process.env, undefined)
     if (!ffmpegPath) return { success: false, message: 'FFmpeg is unavailable', cuts: [] }
     try {
-      const filter = `select='gt(scene,${normalized.threshold})',showinfo`
-      const { stdout, stderr } = await execFileAsync(ffmpegPath, ['-hide_banner', '-loglevel', 'info', '-i', normalized.mediaPath, '-vf', filter, '-an', '-f', 'null', '-'], { encoding: 'utf8', maxBuffer: 12 * 1024 * 1024 })
-      const output = `${stdout}\n${stderr}`
-      return { success: true, message: 'Scene detection completed', cuts: parseSceneCutTimestamps(output, normalized.minSceneDurationSeconds).map((timestampSeconds) => ({ timestampSeconds })) }
+      const cuts = await detectSceneCutTimestamps(ffmpegPath, normalized.mediaPath, normalized.threshold, normalized.minSceneDurationSeconds)
+      return { success: true, message: 'Scene detection completed', cuts: cuts.map((timestampSeconds) => ({ timestampSeconds })) }
     } catch (error) {
       const output = error && typeof error === 'object' && 'stderr' in error && typeof error.stderr === 'string' ? error.stderr : ''
       return { success: false, message: output.trim().slice(-500) || 'Scene detection failed', cuts: [] }
