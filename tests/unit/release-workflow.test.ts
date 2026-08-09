@@ -10,6 +10,7 @@ const artifactPolicy = readFileSync(join(projectRoot, 'scripts/release-artifact-
 const remoteVerification = readFileSync(join(projectRoot, 'scripts/verify-remote-release.mjs'), 'utf8')
 const releaseVersion = readFileSync(join(projectRoot, 'scripts/check-release-version.mjs'), 'utf8')
 const platformRelease = readFileSync(join(projectRoot, 'scripts/check-platform-release-artifacts.mjs'), 'utf8')
+const packageFormats = readFileSync(join(projectRoot, 'scripts/check-release-package-formats.mjs'), 'utf8')
 
 describe('release workflow source constraints', () => {
   it('keeps platform builds separate from release publishing', () => {
@@ -95,5 +96,14 @@ describe('release workflow source constraints', () => {
     expect(platformRelease).toContain("packages: ['.dmg', '.zip', '.pkg']")
     expect(platformRelease).toContain("packages: ['.AppImage', '.deb']")
     expect(platformRelease).toContain('unexpected packages')
+  })
+
+  it('checks package format signatures before uploading artifacts', () => {
+    expect(releaseWorkflow.match(/release:check-formats/g)).toHaveLength(3)
+    expect(packageFormats).toContain("case '.dmg':")
+    expect(packageFormats).toContain("case '.pkg':")
+    expect(packageFormats).toContain("case '.exe':")
+    expect(packageFormats).toContain("case '.deb':")
+    expect(packageFormats).toContain("case '.appimage':")
   })
 })
