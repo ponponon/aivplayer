@@ -588,6 +588,7 @@
 - 发布 job 会先校验 `v<package.json.version>` 与 tag 完全一致，再校验每个 `latest*.yml` 的版本和 `url` / `path` 引用都指向当前批次资产；artifact policy 只接收 `latest*.yml`，不会把 `builder-debug.yml` 等调试文件发布到 GitHub / Gitee。
 - 三个平台的构建 job 会在上传前执行平台产物契约：macOS 必须有 DMG / ZIP / PKG 与 `latest-mac.yml`，Windows 必须有 EXE 与 `latest.yml`，Linux 必须有 AppImage / DEB 与 `latest-linux.yml`；缺包、跨平台包泄漏或 metadata 命名错误会在合并 manifest 前阻断发布。
 - 构建上传前还会读取安装包格式边界：DMG 校验 UDIF `koly` trailer，ZIP / PKG 校验对应容器头，Windows EXE 校验 PE `MZ`，Linux AppImage 校验 ELF、DEB 校验 ar 头；空文件或伪装文件不会仅凭文件名进入发布批次。
+- 每个构建 Runner 在上传前生成独立的 `platform-release-report-*.json` evidence artifact，记录平台契约、资产文件名、大小和 SHA-256；报告参与 workflow 证据留存，但 JSON 不匹配发布 artifact policy，不会进入 GitHub / Gitee Release。
 
 ## 编辑器画布交互层级
 

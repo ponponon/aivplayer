@@ -1170,3 +1170,9 @@
 - 现象：electron-builder 在多目标 macOS 打包过程中会先创建临时文件；如果只按扩展名或文件名扫描，零字节 PKG、未完成的 ZIP 或被错误重命名的文件可能进入上传目录。
 - 经验：发布前至少读取每种安装包的轻量格式签名，并拒绝零字节文件：DMG 使用末尾 512 字节的 `koly`，ZIP / PKG 使用容器头，EXE 使用 `MZ`，AppImage 使用 ELF，DEB 使用 ar 头。格式检查不能替代平台契约、版本校验和安装 Smoke，但能截断最早的伪产物。
 - 处理：新增 `release:check-formats` 与 `check-release-package-formats.mjs`，三平台 Upload artifacts 前执行；本机真实生成的 0.4.0 DMG 已通过 `koly` 校验。第一次查看 electron-builder 输出时只拿到会话中间日志，误把仍在运行的 ZIP / PKG 临时状态当成失败；改为轮询长期会话并检查退出码后，完整 `dmg + zip + pkg` 以 exit 0 完成，6 个真实 macOS 发布资产全部通过平台、格式、版本和 manifest 校验。
+
+## 2026-08-09：Runner 日志不能代替可下载的构建证据
+
+- 现象：平台检查只把文件数量和成功消息打印到 CI 日志；日志滚动、job 结束或多人复核时，无法快速确认某个平台实际上传了哪些文件、大小是否异常、哈希是否与最终 manifest 一致。
+- 经验：每个 Runner 应在上传前写出独立、无凭据的证据报告，至少包含平台契约、文件名、大小和 SHA-256；报告要和发布资产分开保存，避免把审计 JSON 意外上传到 Release 或被 updater 当成安装包。
+- 处理：扩展 `release:check-platform` 支持 `--report-path`，三平台分别上传 `release-evidence-macos/windows/linux` workflow artifact；报告文件名不符合 release artifact policy，不进入 GitHub / Gitee 发布物和 manifest，但可在 Actions 中下载复核。
