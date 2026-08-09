@@ -30,6 +30,11 @@ describe('release workflow source constraints', () => {
     expect(releaseWorkflow).toContain('release:check-version')
     expect(releaseWorkflow).toContain('artifacts/release-manifest.json')
     expect(releaseWorkflow).toContain('name: release-manifest')
+    expect(releaseWorkflow).toContain('--commit "${{ github.sha }}"')
+    expect(releaseWorkflow).toContain('--repository "${{ github.repository }}"')
+    expect(releaseWorkflow).toContain('--workflow "${{ github.workflow }}"')
+    expect(releaseWorkflow).toContain('--workflow-run-id "${{ github.run_id }}"')
+    expect(releaseWorkflow).toContain('--workflow-run-attempt "${{ github.run_attempt }}"')
   })
 
   it('stages platform runtimes before packaging', () => {
