@@ -295,14 +295,14 @@ jobs:
           tag_name: ${{ inputs.tag || github.ref_name }}
           generate_release_notes: true
           files: |
-            artifacts/*.dmg
-            artifacts/*.zip
-            artifacts/*.pkg
-            artifacts/*.exe
-            artifacts/*.AppImage
-            artifacts/*.deb
-            artifacts/*.yml
-            artifacts/*.blockmap
+            artifacts/**/*.dmg
+            artifacts/**/*.zip
+            artifacts/**/*.pkg
+            artifacts/**/*.exe
+            artifacts/**/*.AppImage
+            artifacts/**/*.deb
+            artifacts/**/*.yml
+            artifacts/**/*.blockmap
             artifacts/release-manifest.json
           fail_on_unmatched_files: false
         env:
