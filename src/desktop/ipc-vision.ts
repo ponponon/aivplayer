@@ -2,16 +2,24 @@ import { app, ipcMain } from 'electron'
 import { writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
-import type { VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionSearchRequest } from '../shared/vision-types'
+import type { VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionSearchRequest, VisionSearchResult } from '../shared/vision-types'
 import type { VisionEntityCatalogBatchPatch, VisionEntityCatalogPatch } from '../shared/vision-entity-types'
 import { scanVisionDirectory, isVisionScanAbortError } from '../core/ai/vision-directory-scan'
 import { renderVisionClipCollectionExport } from '../core/ai/clip-inbox-export'
-import { getClipInboxStore, getVisionEntityCatalogStore, getVisionIndexFailureStore, getVisionIndexQueue, getVisionLibrary, trackVisionIndexProgress } from './desktop-services'
+import { getClipInboxStore, getMediaImportInboxStore, getVisionEntityCatalogStore, getVisionIndexCoordinator, getVisionIndexFailureStore, getVisionIndexQueue, getVisionLibrary, trackVisionIndexProgress } from './desktop-services'
 import { desktopState } from './desktop-state'
 import { promptForSavePath } from './media-dialogs'
 import { createVisionTaskCenterEvent } from '../core/tasks/task-center-adapters'
 import { sendTaskCenterEvent } from './task-center-events'
 import { VISION_INDEX_FAILURE_MAX_RETRY_BATCH } from '../core/ai/vision-index-failure'
+import { mergeVisionLibrarySourceMetadata } from '../core/ai/vision-library-source-metadata'
+
+async function listVisionSourcesWithMetadata(request: VisionLibrarySourceRequest = {}): Promise<ReturnType<typeof mergeVisionLibrarySourceMetadata>> {
+  const sources = await getVisionLibrary().listSources(request.limit, request.offset)
+  const inbox = getMediaImportInboxStore()
+  await inbox.refreshSidecars(sources.map((source) => source.videoPath))
+  return mergeVisionLibrarySourceMetadata(sources, inbox.listItems())
+}
 
 function sendVisionProgress(sender: Electron.WebContents, progress: VisionIndexProgress): void {
   if (!sender.isDestroyed()) sender.send(IPC_CHANNELS.VISION_INDEX_PROGRESS, progress)
@@ -145,6 +153,8 @@ export function registerVisionIpc(): void {
     if (!request?.imagePath?.trim()) return []
     return getVisionLibrary().searchImage(request.imagePath, request.limit)
   })
+
+  ipcMain.handle(IPC_CHANNELS.VISION_LIST_SOURCES, (_event, request: VisionLibrarySourceRequest = {}) => listVisionSourcesWithMetadata(request))
 
   ipcMain.handle(IPC_CHANNELS.VISION_ENTITY_CATALOG_GET, () => getVisionEntityCatalogStore().get())
   ipcMain.handle(IPC_CHANNELS.VISION_ENTITY_CATALOG_UPDATE, (_event, patch: VisionEntityCatalogPatch) => getVisionEntityCatalogStore().update(patch))

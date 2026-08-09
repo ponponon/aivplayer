@@ -105,6 +105,7 @@ export const IPC_CHANNELS = {
   VISION_ENTITY_CATALOG_GET: 'vision:entity-catalog-get',
   VISION_ENTITY_CATALOG_UPDATE: 'vision:entity-catalog-update',
   VISION_ENTITY_CATALOG_BATCH_UPDATE: 'vision:entity-catalog-batch-update',
+  VISION_LIST_SOURCES: 'vision:list-sources',
   VISION_READ_THUMBNAIL: 'vision:read-thumbnail',
   VISION_CLIP_COLLECTION_LIST: 'vision:clip-collection-list',
   VISION_CLIP_COLLECTION_SAVE: 'vision:clip-collection-save',
