@@ -24,6 +24,7 @@ import {
   type VisionMatchSource,
   type VisionRuntimeStatus,
   type VisionSearchMode,
+  type VisionLibrarySource,
   type VisionSearchResult,
   type VisionEvidence,
   type VisionEvidenceType
@@ -190,6 +191,16 @@ function clampLimit(value: number | undefined): number {
   return Math.min(100, Math.max(1, Math.floor(value as number)))
 }
 
+function clampSourceLimit(value: number | undefined): number {
+  if (!Number.isFinite(value)) return 100
+  return Math.min(500, Math.max(1, Math.floor(value as number)))
+}
+
+function clampSourceOffset(value: number | undefined): number {
+  if (!Number.isFinite(value)) return 0
+  return Math.max(0, Math.floor(value as number))
+}
+
 function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError'
 }
@@ -352,6 +363,60 @@ export class VisionLibrary {
       ...vectorIndex,
       message: this.model.getStatusMessage()
     }
+  }
+
+  async listSources(limit?: number, offset?: number): Promise<VisionLibrarySource[]> {
+    const sourceLimit = clampSourceLimit(limit)
+    const sourceOffset = clampSourceOffset(offset)
+    const sourceTable = await this.getSourceTable()
+    if (sourceTable) {
+      const rows = await sourceTable.query()
+        .select(['id', 'video_path', 'file_name', 'file_size_bytes', 'file_mtime_ms', 'subtitle_path', 'frame_count', 'indexed_at_ms'])
+        .limit(METADATA_SCAN_LIMIT)
+        .toArray() as unknown as VisionSourceRow[]
+      const selectedRows = rows
+        .sort((left, right) => right.indexed_at_ms - left.indexed_at_ms || left.file_name.localeCompare(right.file_name, undefined, { sensitivity: 'base', numeric: true }))
+        .slice(sourceOffset, sourceOffset + sourceLimit)
+      const sources = await Promise.all(selectedRows.map(async (row): Promise<VisionLibrarySource> => {
+        const frame = (await this.getFramePointers(row.video_path))[0]
+        return {
+          sourceId: row.id,
+          videoPath: row.video_path,
+          fileName: row.file_name,
+          fileSizeBytes: row.file_size_bytes,
+          fileMtimeMs: row.file_mtime_ms,
+          frameCount: row.frame_count,
+          indexedAtMs: row.indexed_at_ms,
+          subtitlePath: row.subtitle_path || null,
+          thumbnailPath: frame?.thumbnail_path || null,
+          metadata: null
+        }
+      }))
+      return sources
+    }
+
+    const pointers = await this.getAllFramePointers()
+    const grouped = new Map<string, VisionFramePointer[]>()
+    for (const pointer of pointers) {
+      const frames = grouped.get(pointer.video_path) ?? []
+      frames.push(pointer)
+      grouped.set(pointer.video_path, frames)
+    }
+    return [...grouped.entries()]
+      .sort(([left], [right]) => left.localeCompare(right, undefined, { sensitivity: 'base' }))
+      .slice(sourceOffset, sourceOffset + sourceLimit)
+      .map(([videoPath, frames]) => ({
+        sourceId: createHash('sha1').update(videoPath).digest('hex'),
+        videoPath,
+        fileName: frames[0]?.file_name ?? basename(videoPath),
+        fileSizeBytes: 0,
+        fileMtimeMs: 0,
+        frameCount: frames.length,
+        indexedAtMs: 0,
+        subtitlePath: null,
+        thumbnailPath: frames[0]?.thumbnail_path || null,
+        metadata: null
+      }))
   }
 
   private async getVectorIndex(): Promise<{ name: string; columns: string[]; indexType: string } | null> {
