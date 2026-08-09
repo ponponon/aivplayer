@@ -1194,3 +1194,9 @@
 - 现象：第一次本地演练把 macOS、Windows、Linux fixture 直接放在同一目录，再逐个平台执行契约检查；脚本正确拒绝了其他平台包，暴露出这种拓扑与真实 CI 不一致。
 - 经验：平台契约和格式检查必须在各自 Runner 暂存目录执行，之后才复制到 publish 合并目录；合并目录只交给 evidence、版本和 manifest 门禁，不能用放宽契约的方式掩盖跨平台泄漏。
 - 处理：`release:dry-run` 改为分平台暂存、分别生成 report 并通过格式签名检查，再合并 9 个小型资产到根目录，执行三份 evidence 交叉校验、版本检查、manifest 生成和哈希复核；默认不调用远端脚本、不联网并清理临时目录。
+
+## 2026-08-09：真实三平台验证需要独立于发布写操作
+
+- 现象：本地 dry-run 只能验证编排，无法证明 Windows / Linux Runner 的真实 electron-builder 产物；直接用 workflow_dispatch 触发原发布流程又会创建 GitHub Release，并可能继续同步 Gitee，增加误发布风险。
+- 经验：真实 CI preflight 应复用同一套构建和发布前门禁，但把 GitHub Release、远端回读和 Gitee sync 作为明确条件保护的写操作；不能为了演练复制另一套校验流程。
+- 处理：workflow_dispatch 新增布尔 `verify_only` 输入；该模式仍下载合并三平台 artifact 并执行 evidence、版本和 manifest 检查，只跳过 GitHub Release、GitHub 远端校验和整个 Gitee sync job。push tag 的既有发布行为保持不变。

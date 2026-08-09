@@ -592,6 +592,7 @@
 - publish job 下载三份 Runner evidence 后，会先逐项核对平台契约、文件集合、大小和 SHA-256，再执行版本门禁和 `release-manifest.json` 生成；任一 Runner 报告缺失、重叠、漂移或合并目录出现未报告资产都会阻断发布。
 - 发布清单会记录受控的 CI provenance（提交 SHA、仓库、workflow、运行 ID 和尝试次数）；只允许 GitHub Actions 提供的非敏感标识进入 `release-manifest.json`，不写入 token、URL 查询凭据或本机绝对路径。
 - 新增 `npm run release:dry-run` 本地发布演练：用小型格式签名 fixture 分别模拟 macOS / Windows / Linux Runner，执行平台契约、安装包格式、合并 evidence、版本、manifest 和哈希复核；演练不联网、不调用 GitHub / Gitee API，临时目录默认自动清理。
+- Release workflow 的 `workflow_dispatch` 新增 `verify_only` 模式：仍执行真实 macOS / Windows / Linux 构建、artifact 合并、evidence、版本和 manifest 门禁，但跳过 GitHub Release 创建、GitHub 远端回读和 Gitee 同步，适合真实 CI 发布前演练。
 
 ## 编辑器画布交互层级
 
