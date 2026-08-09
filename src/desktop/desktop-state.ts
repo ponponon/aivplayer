@@ -11,6 +11,7 @@ import { DramaGenerationWorker } from '../core/drama/drama-generation-worker'
 import { ClipInboxStore } from '../core/ai/clip-inbox-store'
 import { MediaImportInboxStore } from '../core/media/media-import-inbox'
 import { MediaImportInboxProcessor } from '../core/media/media-import-inbox-processor'
+import { TaskCenterStore } from '../core/tasks/task-center-store'
 import { VisionIndexFailureStore } from '../core/ai/vision-index-failure-store'
 
 export const desktopState: {
@@ -34,6 +35,7 @@ export const desktopState: {
   clipInboxStore: ClipInboxStore | null
   mediaImportInboxStore: MediaImportInboxStore | null
   mediaImportInboxProcessor: MediaImportInboxProcessor | null
+  taskCenterStore: TaskCenterStore | null
   visionIndexFailureStore: VisionIndexFailureStore | null
 } = {
   mainWindow: null,
@@ -56,5 +58,6 @@ export const desktopState: {
   clipInboxStore: null,
   mediaImportInboxStore: null,
   mediaImportInboxProcessor: null,
+  taskCenterStore: null,
   visionIndexFailureStore: null
 }

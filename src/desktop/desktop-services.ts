@@ -88,6 +88,7 @@ export function getVisionIndexQueue(): VisionIndexQueue {
 export function getBatchSubtitleManager(sender: Electron.WebContents): BatchSubtitleManager {
   const emit = (job: BatchSubtitleJob): void => {
     if (!sender.isDestroyed()) sender.send(IPC_CHANNELS.BATCH_SUBTITLE_PROGRESS, job)
+    sendTaskCenterEvent(createBatchSubtitleTaskCenterEvent(job))
   }
   if (!desktopState.batchSubtitleManager) {
     desktopState.batchSubtitleManager = new BatchSubtitleManager({

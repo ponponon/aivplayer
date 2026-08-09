@@ -110,6 +110,7 @@ import type { MediaEvidenceCapabilities, MediaEvidenceDraft, MediaEvidenceDraftI
 import type { VisionEntityCatalog, VisionEntityCatalogBatchPatch, VisionEntityCatalogPatch } from '../shared/vision-entity-types'
 import type { EditingAgentProposalDecision, EditingAgentProposalRequest } from '../shared/editing-agent'
 import type { MediaImportInboxDirectoriesChangedEvent, MediaImportInboxItem, MediaImportInboxMetadataUpdateRequest, MediaImportInboxPipelineProgress, MediaImportInboxScanRequest, MediaImportInboxScanResponse, MediaImportInboxScanProgress, MediaImportInboxTransitionRequest, MediaImportInboxWatchRequest, MediaImportInboxWatchStartResult } from '../shared/media-import-inbox'
+import type { TaskCenterEvent } from '../shared/task-center-types'
 
 const editingAgentProposalListeners = new Set<(request: EditingAgentProposalRequest) => void>()
 const queuedEditingAgentProposals: EditingAgentProposalRequest[] = []
@@ -306,6 +307,13 @@ const api = {
     ipcRenderer.on(IPC_CHANNELS.MEDIA_IMPORT_INBOX_PIPELINE_PROGRESS, listener)
     return () => ipcRenderer.removeListener(IPC_CHANNELS.MEDIA_IMPORT_INBOX_PIPELINE_PROGRESS, listener)
   },
+  onTaskCenterEvent: (callback: (event: TaskCenterEvent) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, event: TaskCenterEvent): void => callback(event)
+    ipcRenderer.on(IPC_CHANNELS.TASK_CENTER_EVENT, listener)
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.TASK_CENTER_EVENT, listener)
+  },
+  getTaskCenterEvents: (): Promise<TaskCenterEvent[]> => ipcRenderer.invoke(IPC_CHANNELS.TASK_CENTER_LIST),
+  clearTaskCenterFinished: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.TASK_CENTER_CLEAR_FINISHED),
   stopNativePlayer: (): Promise<NativePlaybackResult> => ipcRenderer.invoke(IPC_CHANNELS.STOP_NATIVE_PLAYER),
   minimizeWindow: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.WINDOW_MINIMIZE),
   toggleMaximizeWindow: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.WINDOW_TOGGLE_MAXIMIZE),

@@ -27,6 +27,7 @@ import { registerPersonMatteIpc } from './ipc-person-matte'
 import { registerDramaIpc } from './ipc-drama'
 import { registerMediaImportInboxIpc, stopMediaImportInboxIpc } from './ipc-media-import-inbox'
 import { registerWebIpc, stopWebServer } from './ipc-web'
+import { registerTaskCenterIpc } from './ipc-task-center'
 import { registerAppUpdaterIpc, startAppUpdater, stopAppUpdater } from './app-updater'
 import { applyMacDockIcon, createWindow, focusMainWindow, queueIncomingMediaPaths } from './window-lifecycle'
 import { runCli } from '../cli/cli-main'
@@ -89,6 +90,7 @@ function registerIpc(): void {
   registerPersonMatteIpc()
   registerDramaIpc()
   registerWebIpc()
+  registerTaskCenterIpc()
 }
 
 if (isCliInvocation) {
