@@ -1188,3 +1188,9 @@
 - 现象：`release-manifest.json` 只有 tag、生成时间和文件哈希时，能证明“发布了什么”，但不能快速回答“哪次提交、哪个 workflow、哪次运行生成了它”；把完整环境变量写入清单又可能泄露 token、代理或本机路径。
 - 经验：provenance 只能使用固定白名单的 CI 标识，并在写入前校验格式；来源信息应作为审计字段，不改变安装包、更新 metadata 和远端回读的文件集合。
 - 处理：manifest 增加可选 provenance，读取 `GITHUB_SHA`、`GITHUB_REPOSITORY`、`GITHUB_WORKFLOW`、`GITHUB_RUN_ID` 和 `GITHUB_RUN_ATTEMPT`；本地无 CI 环境时不伪造值，CLI 只接受显式的同格式参数，单测覆盖 CI 来源写入和非法值拒绝。
+
+## 2026-08-09：发布 dry-run 不能把三平台文件混在 Runner 门禁前
+
+- 现象：第一次本地演练把 macOS、Windows、Linux fixture 直接放在同一目录，再逐个平台执行契约检查；脚本正确拒绝了其他平台包，暴露出这种拓扑与真实 CI 不一致。
+- 经验：平台契约和格式检查必须在各自 Runner 暂存目录执行，之后才复制到 publish 合并目录；合并目录只交给 evidence、版本和 manifest 门禁，不能用放宽契约的方式掩盖跨平台泄漏。
+- 处理：`release:dry-run` 改为分平台暂存、分别生成 report 并通过格式签名检查，再合并 9 个小型资产到根目录，执行三份 evidence 交叉校验、版本检查、manifest 生成和哈希复核；默认不调用远端脚本、不联网并清理临时目录。

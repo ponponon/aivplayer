@@ -591,6 +591,7 @@
 - 每个构建 Runner 在上传前生成独立的 `platform-release-report-*.json` evidence artifact，记录平台契约、资产文件名、大小和 SHA-256；报告参与 workflow 证据留存，但 JSON 不匹配发布 artifact policy，不会进入 GitHub / Gitee Release。
 - publish job 下载三份 Runner evidence 后，会先逐项核对平台契约、文件集合、大小和 SHA-256，再执行版本门禁和 `release-manifest.json` 生成；任一 Runner 报告缺失、重叠、漂移或合并目录出现未报告资产都会阻断发布。
 - 发布清单会记录受控的 CI provenance（提交 SHA、仓库、workflow、运行 ID 和尝试次数）；只允许 GitHub Actions 提供的非敏感标识进入 `release-manifest.json`，不写入 token、URL 查询凭据或本机绝对路径。
+- 新增 `npm run release:dry-run` 本地发布演练：用小型格式签名 fixture 分别模拟 macOS / Windows / Linux Runner，执行平台契约、安装包格式、合并 evidence、版本、manifest 和哈希复核；演练不联网、不调用 GitHub / Gitee API，临时目录默认自动清理。
 
 ## 编辑器画布交互层级
 
