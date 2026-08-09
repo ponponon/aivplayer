@@ -7,6 +7,7 @@ const releaseWorkflow = readFileSync(join(projectRoot, '.github/workflows/releas
 const electronBuilder = readFileSync(join(projectRoot, 'electron-builder.yml'), 'utf8')
 const giteeSync = readFileSync(join(projectRoot, 'scripts/sync-gitee-release.mjs'), 'utf8')
 const artifactPolicy = readFileSync(join(projectRoot, 'scripts/release-artifact-policy.mjs'), 'utf8')
+const remoteVerification = readFileSync(join(projectRoot, 'scripts/verify-remote-release.mjs'), 'utf8')
 
 describe('release workflow source constraints', () => {
   it('keeps platform builds separate from release publishing', () => {
@@ -58,5 +59,19 @@ describe('release workflow source constraints', () => {
     expect(giteeSync).toContain('const names = new Set(files.map((file) => basename(file)))')
     expect(giteeSync).toContain('RELEASE_TAG')
     expect(giteeSync).toContain('GITEE_TARGET_COMMITISH')
+  })
+
+  it('reads back both remote releases after publishing without write APIs', () => {
+    expect(releaseWorkflow).toContain('name: Verify GitHub remote assets')
+    expect(releaseWorkflow).toContain('--platform github')
+    expect(releaseWorkflow).toContain('name: Verify Gitee remote assets')
+    expect(releaseWorkflow).toContain('--platform gitee')
+    expect(releaseWorkflow).toContain('remote-verification-github')
+    expect(releaseWorkflow).toContain('remote-verification-gitee')
+    expect(remoteVerification).toContain('sha256File')
+    expect(remoteVerification).toContain('Readable.fromWeb')
+    expect(remoteVerification).toContain('redirect: \'follow\'')
+    expect(remoteVerification).not.toContain("method: 'POST'")
+    expect(remoteVerification).not.toContain("method: 'DELETE'")
   })
 })

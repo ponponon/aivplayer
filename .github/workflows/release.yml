@@ -308,6 +308,18 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Verify GitHub remote assets
+        env:
+          RELEASE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run release:verify-remote -- --platform github --owner "${{ github.repository_owner }}" --repo "${{ github.event.repository.name }}" --artifacts-dir artifacts --manifest-path artifacts/release-manifest.json --tag "${{ inputs.tag || github.ref_name }}" --report-path artifacts/github-remote-verification.json
+
+      - name: Share GitHub remote verification report
+        uses: actions/upload-artifact@v7
+        with:
+          name: remote-verification-github
+          path: artifacts/github-remote-verification.json
+          if-no-files-found: error
+
   sync-gitee-release:
     needs: [publish-release]
     runs-on: ubuntu-latest
@@ -338,3 +350,17 @@ jobs:
       - name: Sync release to Gitee
         if: ${{ env.GITEE_TOKEN != '' }}
         run: node scripts/sync-gitee-release.mjs
+
+      - name: Verify Gitee remote assets
+        if: ${{ env.GITEE_TOKEN != '' }}
+        env:
+          RELEASE_TOKEN: ${{ env.GITEE_TOKEN }}
+        run: npm run release:verify-remote -- --platform gitee --owner "$GITEE_OWNER" --repo "$GITEE_REPO" --artifacts-dir artifacts --manifest-path artifacts/release-manifest.json --tag "$RELEASE_TAG" --report-path artifacts/gitee-remote-verification.json
+
+      - name: Share Gitee remote verification report
+        if: ${{ env.GITEE_TOKEN != '' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: remote-verification-gitee
+          path: artifacts/gitee-remote-verification.json
+          if-no-files-found: error
