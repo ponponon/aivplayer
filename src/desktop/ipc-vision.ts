@@ -2,12 +2,20 @@ import { app, ipcMain } from 'electron'
 import { writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
-import type { VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionIndexRequest, VisionSearchRequest } from '../shared/vision-types'
+import type { VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionSearchRequest } from '../shared/vision-types'
 import { scanVisionDirectory, isVisionScanAbortError } from '../core/ai/vision-directory-scan'
 import { renderVisionClipCollectionExport } from '../core/ai/clip-inbox-export'
-import { getClipInboxStore, getVisionIndexQueue, getVisionLibrary } from './desktop-services'
+import { getClipInboxStore, getVisionIndexFailureStore, getVisionIndexQueue, getVisionLibrary, trackVisionIndexProgress } from './desktop-services'
 import { desktopState } from './desktop-state'
 import { promptForSavePath } from './media-dialogs'
+import { createVisionTaskCenterEvent } from '../core/tasks/task-center-adapters'
+import { sendTaskCenterEvent } from './task-center-events'
+import { VISION_INDEX_FAILURE_MAX_RETRY_BATCH } from '../core/ai/vision-index-failure'
+
+function sendVisionProgress(sender: Electron.WebContents, progress: VisionIndexProgress): void {
+  if (!sender.isDestroyed()) sender.send(IPC_CHANNELS.VISION_INDEX_PROGRESS, progress)
+  sendTaskCenterEvent(createVisionTaskCenterEvent(progress))
+}
 
 function normalizeMediaPaths(request: VisionIndexRequest): string[] {
   if (!request || !Array.isArray(request.mediaPaths)) return []
@@ -59,6 +67,36 @@ export function registerVisionIpc(): void {
     const controller = desktopState.visionAbortControllers.get(event.sender.id)
     if (!controller) return queueCancelled
     controller.abort()
+    return true
+  })
+
+  ipcMain.handle(IPC_CHANNELS.VISION_INDEX_FAILURE_LIST, () => getVisionIndexFailureStore().list())
+
+  ipcMain.handle(IPC_CHANNELS.VISION_INDEX_FAILURE_RETRY, (event, request: VisionIndexFailureRetryRequest) => {
+    if (!request || typeof request.id !== 'string' || !request.id.trim()) return false
+    const failure = getVisionIndexFailureStore().beginRetry(request.id.trim())
+    if (!failure) return false
+    const options = { intervalSeconds: failure.intervalSeconds, includeSceneEvidence: failure.includeSceneEvidence, includeEntityEvidence: failure.includeEntityEvidence }
+    getVisionIndexQueue().enqueue([failure.mediaPath], failure.intervalSeconds, (progress) => {
+      trackVisionIndexProgress(progress, [failure.mediaPath], options)
+      sendVisionProgress(event.sender, progress)
+    }, { includeSceneEvidence: options.includeSceneEvidence, includeEntityEvidence: options.includeEntityEvidence })
+    return true
+  })
+
+  ipcMain.handle(IPC_CHANNELS.VISION_INDEX_FAILURE_BATCH_RETRY, (event, request: VisionIndexFailureRetryBatchRequest) => {
+    if (!request || !Array.isArray(request.ids)) return false
+    const ids = request.ids.filter((id): id is string => typeof id === 'string').map((id) => id.trim()).filter(Boolean)
+    if (ids.length === 0 || ids.length > VISION_INDEX_FAILURE_MAX_RETRY_BATCH || new Set(ids).size !== ids.length) return false
+    const failures = getVisionIndexFailureStore().beginRetryBatch(ids)
+    if (!failures) return false
+    for (const failure of failures) {
+      const options = { intervalSeconds: failure.intervalSeconds, includeSceneEvidence: failure.includeSceneEvidence, includeEntityEvidence: failure.includeEntityEvidence }
+      getVisionIndexQueue().enqueue([failure.mediaPath], failure.intervalSeconds, (progress) => {
+        trackVisionIndexProgress(progress, [failure.mediaPath], options)
+        sendVisionProgress(event.sender, progress)
+      }, { includeSceneEvidence: options.includeSceneEvidence, includeEntityEvidence: options.includeEntityEvidence })
+    }
     return true
   })
 
