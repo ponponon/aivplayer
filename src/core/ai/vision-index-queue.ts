@@ -1,54 +1,60 @@
-import type { VisionIndexProgress } from '../../shared/vision-types'
+import type { VisionIndexOptions, VisionIndexProgress } from '../../shared/vision-types'
 
 export type VisionIndexRunner = (
   mediaPaths: string[],
   intervalSeconds: number | undefined,
   signal: AbortSignal,
-  onProgress: (progress: VisionIndexProgress) => void
+  onProgress: (progress: VisionIndexProgress) => void,
+  options?: VisionIndexOptions
 ) => Promise<VisionIndexProgress>
+
+type VisionIndexQueueJob = {
+  mediaPaths: string[]
+  intervalSeconds: number | undefined
+  onProgress: (progress: VisionIndexProgress) => void
+  options: VisionIndexOptions | undefined
+}
 
 export class VisionIndexQueue {
   private readonly runner: VisionIndexRunner
-  private readonly pendingPaths = new Set<string>()
+  private readonly pendingJobs: VisionIndexQueueJob[] = []
+  private readonly queuedPaths = new Set<string>()
   private activeController: AbortController | null = null
   private drainPromise: Promise<void> | null = null
-  private intervalSeconds: number | undefined
-  private onProgress: ((progress: VisionIndexProgress) => void) | null = null
 
   constructor(runner: VisionIndexRunner) {
     this.runner = runner
   }
 
-  enqueue(mediaPaths: string[], intervalSeconds: number | undefined, onProgress: (progress: VisionIndexProgress) => void): void {
-    for (const mediaPath of mediaPaths) {
-      if (mediaPath.trim()) this.pendingPaths.add(mediaPath)
-    }
-    this.intervalSeconds = intervalSeconds
-    this.onProgress = onProgress
-    if (!this.drainPromise && this.pendingPaths.size > 0) {
-      this.drainPromise = this.drain().finally(() => { this.drainPromise = null })
-    }
+  enqueue(mediaPaths: string[], intervalSeconds: number | undefined, onProgress: (progress: VisionIndexProgress) => void, options?: VisionIndexOptions): void {
+    const uniquePaths = [...new Set(mediaPaths.map((mediaPath) => mediaPath.trim()).filter((mediaPath) => mediaPath && !this.queuedPaths.has(mediaPath)))]
+    if (uniquePaths.length === 0) return
+    uniquePaths.forEach((mediaPath) => this.queuedPaths.add(mediaPath))
+    this.pendingJobs.push({ mediaPaths: uniquePaths, intervalSeconds, onProgress, options })
+    if (!this.drainPromise) this.drainPromise = this.drain().finally(() => { this.drainPromise = null })
   }
 
   cancel(): boolean {
-    const hadWork = this.pendingPaths.size > 0 || this.activeController !== null
-    this.pendingPaths.clear()
+    const hadWork = this.pendingJobs.length > 0 || this.activeController !== null
+    this.pendingJobs.length = 0
+    this.queuedPaths.clear()
     this.activeController?.abort()
     return hadWork
   }
 
   get isRunning(): boolean {
-    return this.activeController !== null || this.pendingPaths.size > 0
+    return this.activeController !== null || this.pendingJobs.length > 0
   }
 
   private async drain(): Promise<void> {
-    while (this.pendingPaths.size > 0) {
-      const mediaPaths = [...this.pendingPaths]
-      this.pendingPaths.clear()
+    while (this.pendingJobs.length > 0) {
+      const job = this.pendingJobs.shift()
+      if (!job) continue
+      job.mediaPaths.forEach((mediaPath) => this.queuedPaths.delete(mediaPath))
       const controller = new AbortController()
       this.activeController = controller
       try {
-        await this.runner(mediaPaths, this.intervalSeconds, controller.signal, (progress) => this.onProgress?.(progress))
+        await this.runner(job.mediaPaths, job.intervalSeconds, controller.signal, job.onProgress, job.options)
       } catch {
         // VisionLibrary emits an error progress before throwing. The queue must
         // stay alive so a later playlist change can schedule another attempt.

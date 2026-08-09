@@ -56,4 +56,21 @@ describe('vision index queue', () => {
     await waitForIdle(queue)
     expect(queue.isRunning).toBe(false)
   })
+
+  it('keeps interval and evidence options isolated across queued jobs', async () => {
+    const received: Array<{ path: string; interval: number | undefined; scene: boolean | undefined; entity: boolean | undefined }> = []
+    const queue = new VisionIndexQueue(async (paths, interval, _signal, _onProgress, options) => {
+      received.push({ path: paths[0] ?? '', interval, scene: options?.includeSceneEvidence, entity: options?.includeEntityEvidence })
+      return completedProgress
+    })
+
+    queue.enqueue(['/video/one.mp4'], 3, () => undefined, { includeSceneEvidence: true })
+    queue.enqueue(['/video/two.mp4'], 7, () => undefined, { includeEntityEvidence: true })
+    await waitForIdle(queue)
+
+    expect(received).toEqual([
+      { path: '/video/one.mp4', interval: 3, scene: true, entity: undefined },
+      { path: '/video/two.mp4', interval: 7, scene: undefined, entity: true }
+    ])
+  })
 })
