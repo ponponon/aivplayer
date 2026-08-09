@@ -1164,3 +1164,9 @@
 - 现象：三个 build job 的 artifact 会在 publish job 合并；只要总目录里仍有一个平台的文件，旧流程就可能生成 manifest 并创建 Release，无法发现 macOS 缺 PKG、Windows 缺 EXE 或 Linux 缺 DEB 等平台级缺包。
 - 经验：平台构建必须在自身 runner 上验证自己的输出契约，再进入跨平台合并：目标安装包扩展名、平台专属 `latest*.yml` 文件名和不允许出现的其他平台安装包都要明确列出；跨平台污染也应在上传前失败。
 - 处理：新增 `release:check-platform` 与 `check-platform-release-artifacts.mjs`，分别接入 macOS / Windows / Linux 上传步骤；单测覆盖三平台完整集合、缺少目标包、跨平台包泄漏、调试 YAML 排除和未知平台。
+
+## 2026-08-09：安装包文件名不是格式完整性的证据
+
+- 现象：electron-builder 在多目标 macOS 打包过程中会先创建临时文件；如果只按扩展名或文件名扫描，零字节 PKG、未完成的 ZIP 或被错误重命名的文件可能进入上传目录。
+- 经验：发布前至少读取每种安装包的轻量格式签名，并拒绝零字节文件：DMG 使用末尾 512 字节的 `koly`，ZIP / PKG 使用容器头，EXE 使用 `MZ`，AppImage 使用 ELF，DEB 使用 ar 头。格式检查不能替代平台契约、版本校验和安装 Smoke，但能截断最早的伪产物。
+- 处理：新增 `release:check-formats` 与 `check-release-package-formats.mjs`，三平台 Upload artifacts 前执行；本机真实生成的 0.4.0 DMG 已通过 `koly` 校验。默认全目标演练中未完成最终 ZIP / PKG 的临时文件不被当作成功证据。
