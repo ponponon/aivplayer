@@ -1,0 +1,108 @@
+.vision-index-failures {
+  display: grid;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.vision-index-failures-heading,
+.vision-index-failure {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.vision-index-failures-heading {
+  justify-content: space-between;
+  color: var(--danger, #ef8a8a);
+  font-size: 11px;
+}
+
+.vision-index-failures-heading > div {
+  display: grid;
+  gap: 2px;
+}
+
+.vision-index-failures-heading small,
+.vision-index-failure-copy small,
+.vision-index-failure-copy span,
+.vision-index-failure-copy em,
+.vision-index-failures-batch {
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.vision-index-failures-heading small {
+  font-weight: 400;
+}
+
+.vision-index-failures-batch {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.vision-index-failures-batch .vision-primary-action,
+.vision-index-failures-batch .vision-secondary-action,
+.vision-index-failure > .vision-secondary-action {
+  min-height: 25px;
+  padding: 0 7px;
+  font-size: 9px;
+}
+
+.vision-index-failure-list {
+  display: grid;
+  gap: 5px;
+}
+
+.vision-index-failure {
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 7px;
+  background: rgba(var(--danger-rgb, 239, 138, 138), 0.05);
+  border: 1px solid rgba(var(--danger-rgb, 239, 138, 138), 0.18);
+  border-radius: var(--radius-sm);
+}
+
+.vision-index-failure-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.vision-index-failure-title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+}
+
+.vision-index-failure-title input[type='checkbox'] {
+  flex: 0 0 auto;
+  accent-color: var(--accent);
+}
+
+.vision-index-failure-copy strong,
+.vision-index-failure-copy small,
+.vision-index-failure-copy span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vision-index-failure-copy strong {
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+.vision-index-failure-copy em {
+  font-style: normal;
+}
+
+.vision-index-failure-copy span {
+  color: var(--danger, #ef8a8a);
+}

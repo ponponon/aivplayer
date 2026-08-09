@@ -88,6 +88,8 @@
 @import './player/summary-details.css';
 @import './player/ai-workflow.css';
 @import './player/ai-workflow-responsive.css';
+@import './player/task-center.css';
+@import './player/vision-index-failures.css';
 @import './player/summary-modes-chapters.css';
 @import './player/summary-export.css';
 @import './player/window-controls.css';
