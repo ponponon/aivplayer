@@ -583,6 +583,7 @@
 - 候选审计状态带有明确来源标记；候选从多份有效旁车恢复为无歧义或无有效字幕时，重建字幕版本清单会清除过期候选详情，但会保留项目保存等其他来源的状态提示；真实 Electron Smoke 覆盖文件移走、清单重建、状态清除和文件恢复。
 - 发布链路新增项目 MIT `LICENSE` 与直接运行时依赖清单；三平台打包前校验清单，Electron 安装包资源检查强制包含 `LICENSE` 和 `THIRD_PARTY_LICENSES.md`，GitHub / Gitee 继续复用同一批已校验产物。
 - 发布链路新增固定 revision 的 SigLIP2 视觉模型暂存；打包前生成 `runtime-metadata.json`，记录 whisper.cpp、FFmpeg、libheif、macOS `sips` fallback 和视觉模型文件的版本、构建特征与 SHA-256，安装包资源检查会阻断缺失元数据的产物。
+- GitHub / Gitee 发布前会从合并后的三平台产物生成 `release-manifest.json`，记录每个安装包和更新元数据的大小与 SHA-256；Gitee 同步复用该清单并在上传前阻断文件集合或内容漂移。
 
 ## 编辑器画布交互层级
 

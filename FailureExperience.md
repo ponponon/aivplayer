@@ -1140,3 +1140,9 @@
 - 现象：`resources/vision` 被 `.gitignore` 忽略，开发机上虽然有 758 MB 的 SigLIP2 UINT8 模型，但三平台 release workflow 没有下载步骤；electron-builder 的 `extraResources` 因此无法保证新 Runner 上视觉搜索可用。
 - 经验：任何被忽略但被 `extraResources` 引用的资源，都必须有固定来源、revision、原子暂存脚本和打包前检查；只在本机验证一次不能证明 CI 能重建。
 - 处理：新增 `release:prepare-vision-model`，固定 `onnx-community/siglip2-base-patch16-224-ONNX` revision；`release:write-runtime-metadata` 记录九个随包模型文件及运行时二进制的哈希，`release:check-packaged-resources` 强制要求元数据随安装包存在。
+
+## 2026-08-09：GitHub 和 Gitee 不能各自重新扫描发布物
+
+- 现象：原流程由 GitHub Release 使用一组 glob 上传产物，Gitee 脚本再按扩展名递归扫描；两边没有共享文件集合、大小和内容指纹，发布过程中如果产物被替换或漏传，单靠文件名无法发现。
+- 经验：多渠道发布必须先在合并后的唯一工作目录生成不可循环引用的 manifest，再让每个渠道复用并验证它；manifest 自身可以上传，但不能把自身哈希写入自身内容。
+- 处理：新增统一 artifact policy 和 `release-manifest.json`；发布 job 生成并校验清单，同时上传给 Gitee sync job；Gitee 上传前逐个比较文件集合、大小和 SHA-256，漂移时在任何 API 写操作前失败。
