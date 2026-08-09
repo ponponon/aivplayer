@@ -43,6 +43,7 @@
     "smoke:vision-clip-inbox": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-inbox.ts",
     "smoke:vision-custom-entity": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-custom-entity.ts",
     "smoke:speaker-diarization": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --experimental-loader=./scripts/resolve-ts-loader.mjs scripts/smoke-speaker-diarization.ts",
+    "smoke:speaker-diarization:panel": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --experimental-loader=./scripts/resolve-ts-loader.mjs scripts/smoke-speaker-diarization-panel.ts",
     "smoke:web-format-matrix": "node scripts/run-web-format-matrix.mjs",
     "smoke:web-concurrency": "node scripts/run-web-concurrency.mjs",
     "smoke:web-real-file": "node scripts/smoke-web-real-file.mjs",
