@@ -12,7 +12,7 @@ import type {
   DramaProviderSettingsInput
 } from '../shared/drama-types'
 import { parseDramaChapters } from '../core/drama/drama-text'
-import { getDramaProviderSettings, getDramaStore, getDramaWorkflow, saveDramaProviderSettings, testDramaProvider } from './desktop-services'
+import { getDramaGenerationWorker, getDramaProviderSettings, getDramaStore, getDramaWorkflow, saveDramaProviderSettings, testDramaProvider } from './desktop-services'
 
 function requireProjectId(projectId: unknown): string {
   if (typeof projectId !== 'string' || !projectId.trim()) throw new Error('短剧项目 ID 不能为空')
@@ -140,8 +140,15 @@ export function registerDramaIpc(): void {
   ipcMain.handle(IPC_CHANNELS.DRAMA_DELETE_ASSET, (_event, projectId: string, assetId: string) => {
     getDramaStore().deleteAsset(requireProjectId(projectId), requireProjectId(assetId))
   })
-  ipcMain.handle(IPC_CHANNELS.DRAMA_CREATE_GENERATION_TASK, (_event, projectId: string, input: unknown) =>
-    getDramaStore().createGenerationTask(requireProjectId(projectId), normalizeGenerationTaskInput(input)))
+  ipcMain.handle(IPC_CHANNELS.DRAMA_CREATE_GENERATION_TASK, (_event, projectId: string, input: unknown) => {
+    const normalizedProjectId = requireProjectId(projectId)
+    const normalizedInput = normalizeGenerationTaskInput(input)
+    const provider = getDramaProviderSettings().media[normalizedInput.mediaType]
+    return getDramaStore().createGenerationTask(normalizedProjectId, {
+      ...normalizedInput,
+      estimatedCost: normalizedInput.estimatedCost ?? provider.costPerRequest ?? undefined
+    })
+  })
   ipcMain.handle(IPC_CHANNELS.DRAMA_CLAIM_GENERATION_TASK, (_event, projectId: string, mediaType: unknown) => {
     if (!['image', 'video', 'audio'].includes(String(mediaType))) throw new Error('生成任务媒体类型无效')
     return getDramaStore().claimNextGenerationTask(requireProjectId(projectId), mediaType as 'image' | 'video' | 'audio')
@@ -149,7 +156,14 @@ export function registerDramaIpc(): void {
   ipcMain.handle(IPC_CHANNELS.DRAMA_UPDATE_GENERATION_TASK, (_event, projectId: string, taskId: string, patch: unknown) =>
     getDramaStore().updateGenerationTask(requireProjectId(projectId), requireProjectId(taskId), normalizeGenerationTaskPatch(patch)))
   ipcMain.handle(IPC_CHANNELS.DRAMA_CANCEL_GENERATION_TASK, (_event, projectId: string, taskId: string) =>
-    getDramaStore().cancelGenerationTask(requireProjectId(projectId), requireProjectId(taskId)))
+    getDramaGenerationWorker().cancelTask(requireProjectId(projectId), requireProjectId(taskId)))
+  ipcMain.handle(IPC_CHANNELS.DRAMA_RUN_GENERATION_QUEUE, (_event, projectId: string) =>
+    getDramaGenerationWorker().runProject(requireProjectId(projectId)))
+  ipcMain.handle(IPC_CHANNELS.DRAMA_STOP_GENERATION_QUEUE, (_event, projectId: string) => {
+    const normalizedProjectId = requireProjectId(projectId)
+    getDramaGenerationWorker().stop(normalizedProjectId)
+    return getDramaStore().listGenerationTasks(normalizedProjectId)
+  })
   ipcMain.handle(IPC_CHANNELS.DRAMA_SAVE_GRAPH_TEMPLATE, (_event, templateId: unknown, input: unknown) =>
     getDramaStore().saveGraphTemplate(typeof templateId === 'string' && templateId.trim() ? templateId.trim() : undefined, normalizeGraphTemplateInput(input)))
   ipcMain.handle(IPC_CHANNELS.DRAMA_DELETE_GRAPH_TEMPLATE, (_event, templateId: string) =>
