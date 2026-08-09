@@ -89,6 +89,7 @@
 - AI 短剧 Provider 配置已接入短剧面板：支持保存 OpenAI-compatible 地址、模型、API Key、本地 Mock 模式和连接测试；API Key 沿用 Electron `safeStorage` 编码，GUI 与 `aivcli drama` 共用本地配置，未配置本地 Provider 时继续兼容环境变量；CLI 增加 `aivcli drama provider show/test`，只显示脱敏状态，不支持把 Key 放进命令行参数。
 - AI 短剧 P1 已增加资产与分镜文本链路：根据章节事件抽取角色、场景、道具资产，基于分集剧本生成结构化分镜大纲（镜头、时长、地点、角色、动作、对白、画面提示词、镜头提示词）；数据保存到 SQLite，支持强制重算和断点跳过，GUI/CLI 共用，尚未绑定具体图片或视频生成厂商。
 - 桌面安装包集成 `aivcli` 启动器：Windows NSIS 将启动器加入用户 PATH，macOS `.pkg` 在 `/usr/local/bin/aivcli` 安装命令，Linux `.deb` 在 `/usr/bin/aivcli` 安装命令；启动器只转发到 AIVPlayer 的 `--cli` 模式，不重复打包业务运行时。
+- M4 Agent 剪辑第一阶段新增 `aivcli edit inspect/captions` 只读查询：复用严格 `.aivproj` 解析器，输出稳定的素材、成片时间线、字幕统计和脚本行检索结果；包含已删除脚本行与译文命中信息，不写工程、媒体或字幕文件，为后续 Proposal 提供可复核输入。
 - LanceDB 的 Apache Arrow peer dependency 已显式声明为桌面运行时依赖，确保 electron-builder 生成的 macOS、Windows、Linux 安装包都把 `apache-arrow` 一起放入应用资源，Finder“打开方式”启动时不会因视觉影视库模块加载失败而崩溃。
 
 - 播放器 CSS 已按页面职责改为语义化文件名，保留稳定的加载顺序，并通过自动检查禁止新增 `part-数字.css`，降低多分支并行开发时的文件名冲突。

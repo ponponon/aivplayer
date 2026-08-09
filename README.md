@@ -142,6 +142,15 @@ aivcli subtitle convert ./movie.vtt
 aivcli subtitle translate ./movie.vtt --to zh --output-dir ./subtitles
 ```
 
+### 剪辑工程只读查询
+
+`aivcli edit` 当前只读取 `.aivproj` 工程，不会修改工程、媒体或字幕文件。`inspect` 输出可复核的时间线和字幕统计，`captions` 可按原文或译文检索脚本行，并保留已经标记删除的行，方便后续生成剪辑方案：
+
+```bash
+aivcli edit inspect ./project.aivproj --json
+aivcli edit captions ./project.aivproj --query "删除停顿" --limit 20 --json
+```
+
 ### 视觉影视库
 
 ```bash

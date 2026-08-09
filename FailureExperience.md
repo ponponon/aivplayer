@@ -1242,3 +1242,9 @@
 - 现象：publish job 的汇总目录同时包含 macOS、Windows 和 Linux 的安装包；把这个目录分别交给三次单平台契约检查，会把其他平台的合法资产报告为 `unexpected packages`，导致 0.5.0 在发布前失败，GitHub Release 因此不会创建。
 - 经验：构建 Runner 的架构报告与最终发布平台报告不是同一个拓扑。Windows / Linux 的架构报告必须先合并，且合并后的更新元数据内容已经变化，不能沿用任一 Runner 报告中的旧哈希。
 - 处理：汇总安装包和更新元数据后，从五份 Runner 报告保留包文件证据，重新计算最终 `latest*.yml` 的大小与 SHA-256，写出三份标准平台报告；publish job 只执行合并目录的格式检查和三平台 evidence 交叉校验。
+
+## 2026-08-09：Windows updater metadata 与安装包文件名必须同源
+
+- 现象：0.5.0 最近一次发布的五个平台构建均成功，但 publish job 的 `release:check-version` 报告 `latest.yml` 引用了 `AIVPlayer-Setup-0.5.0-x64.exe`，合并目录中不存在对应文件；因此 GitHub Release、远端回读和 Gitee sync 都被跳过，重复重试还会重新消耗整轮跨平台构建时间。
+- 经验：Windows 安装包的实际 artifact 文件名、`latest.yml` 的 `url/path` 和最终汇总目录必须从同一个命名契约生成；不能只在文件上传前检查扩展名，也不能让 metadata 引用一个经过连字符归一化但实际文件仍是空格命名的文件。
+- 处理：当前先保留版本校验作为发布门禁，不绕过错误创建 Release；后续修复应统一 electron-builder artifactName 与 updater metadata 引用，并在本地 assembly fixture、Windows Runner 和 `release:check-version` 三层同时验证空格 / 连字符命名一致性。
