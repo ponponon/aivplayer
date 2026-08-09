@@ -1207,6 +1207,12 @@
 - 经验：合并校验应原子写出独立 JSON，记录最终目录实际文件的名称、大小和 SHA-256，并与安装包发布边界隔离；失败路径使用 `always()` 尝试保留已有报告，但不能因此放宽门禁。
 - 处理：`release:check-evidence` 新增 `--report-path`，publish job 上传 `release-evidence-merged`；报告不进入 `release-manifest.json` 或 GitHub / Gitee Release，单测覆盖成功报告内容、哈希格式和 workflow 上传步骤。
 
+## 2026-08-09：目录 watcher 单测不能依赖宿主文件监听额度
+
+- 现象：直接用宿主机 `fs.watch` 做单元测试时，macOS 测试环境可能因为已有 watcher 数量或系统文件描述符额度返回 `EMFILE`；这会把测试环境资源问题误报成旁车监听逻辑失败。
+- 经验：目录监听核心应注入 `watchDirectory` seam，单测用可控的模拟事件验证候选路径过滤、去抖和 stop 生命周期；真实 `fs.watch` 只保留在桌面运行时，并让目录消失 / watcher error 不阻断播放器。
+- 处理：字幕 watcher 核心增加可注入 watcher 工厂，定向单测改为模拟 rename / change 事件；Electron Smoke 继续作为真实宿主权限下的补充证据，不把宿主文件监听额度当作单元测试前置条件。
+
 ## 2026-08-09：push 前审计必须先拒绝脏工作区
 
 - 现象：如果 push readiness 只检查提交内容而忽略当前工作区，未提交的内部计划、临时配置或敏感文件可能被开发者误以为已经纳入审计；在测试代码尚未提交时直接运行成功路径，也会错误地把脏工作区当成可推送状态。
