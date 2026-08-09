@@ -154,6 +154,8 @@ aivcli edit propose delete-script ./project.aivproj segment-1 segment-2 --json
 
 `edit propose delete-script` 会输出删除源时间区间、保留区间、受影响脚本行、字幕变化和预计时长。Proposal 使用工程快照指纹做 stale 检查；当前 CLI 只生成 JSON，不会写回 `.aivproj`。
 
+桌面剪辑器删除脚本行时会先打开同一套 Proposal 预览，确认后才写入编辑历史和本地工程缓存；如果确认前工程已经变化，应用会被拒绝并要求重新生成方案。
+
 ### 视觉影视库
 
 ```bash

@@ -91,6 +91,7 @@
 - 桌面安装包集成 `aivcli` 启动器：Windows NSIS 将启动器加入用户 PATH，macOS `.pkg` 在 `/usr/local/bin/aivcli` 安装命令，Linux `.deb` 在 `/usr/bin/aivcli` 安装命令；启动器只转发到 AIVPlayer 的 `--cli` 模式，不重复打包业务运行时。
 - M4 Agent 剪辑第一阶段新增 `aivcli edit inspect/captions` 只读查询：复用严格 `.aivproj` 解析器，输出稳定的素材、成片时间线、字幕统计和脚本行检索结果；包含已删除脚本行与译文命中信息，不写工程、媒体或字幕文件，为后续 Proposal 提供可复核输入。
 - M4 Agent 剪辑第二阶段新增 `aivcli edit propose delete-script`：基于工程 revision 生成确定性的 Proposal / Diff，展示删除源区间、原编辑时间线区间、保留区间、脚本行状态、字幕变化和预计时长；应用前会拒绝 stale 工程，CLI 仍只读生成方案，不写回 `.aivproj`。
+- M4 Agent 剪辑第三阶段把脚本行删除接入桌面确认链路：删除动作先展示 Proposal 的删除 / 保留源区间、脚本行、字幕影响和时长变化，确认后才通过工程 revision 校验写入现有撤销 / 重做历史和本地工程缓存，确认期间工程被修改会拒绝应用。
 - LanceDB 的 Apache Arrow peer dependency 已显式声明为桌面运行时依赖，确保 electron-builder 生成的 macOS、Windows、Linux 安装包都把 `apache-arrow` 一起放入应用资源，Finder“打开方式”启动时不会因视觉影视库模块加载失败而崩溃。
 
 - 播放器 CSS 已按页面职责改为语义化文件名，保留稳定的加载顺序，并通过自动检查禁止新增 `part-数字.css`，降低多分支并行开发时的文件名冲突。
