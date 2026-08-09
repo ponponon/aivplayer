@@ -1212,3 +1212,9 @@
 - 现象：如果 push readiness 只检查提交内容而忽略当前工作区，未提交的内部计划、临时配置或敏感文件可能被开发者误以为已经纳入审计；在测试代码尚未提交时直接运行成功路径，也会错误地把脏工作区当成可推送状态。
 - 经验：推送前门必须先检查 `git status --porcelain`，再检查相对基准的 diff、提交格式和敏感模式；成功路径应在真正干净的工作区运行，单测不应通过放宽 guard 来绕过这一前置条件。
 - 处理：新增 `release:check-push`，固定拒绝脏工作区、禁止 `OPEN_SOURCE_INSPIRATION_PLAN.md` 进入变更范围，并保证脚本自身没有 `git push` / workflow 写操作；当前工作区清理并提交测试后再执行成功路径。
+
+## 2026-08-09：远端回读不能只过滤“像发布物”的额外附件
+
+- 现象：原 verifier 只把符合 artifact policy 的额外资产列为 unexpected，`builder-debug.yml` 或其他非发布文件可能残留在 Release 里而不触发失败；下载失败时的原始 URL 还可能把 query token 带入报告 message。
+- 经验：远端附件集合必须与本地 manifest 完全相等，远端服务返回的任何附件都不能被静默忽略；所有写入报告或错误文本的 URL 都必须先去掉 query 和 fragment。
+- 处理：远端回读改为拒绝所有 manifest 外附件，缺失名称 / 下载 URL 也直接失败；API 和资产下载错误统一经过 URL 脱敏，单测覆盖调试 YAML 额外附件和 `?token=...#...` 报告脱敏。
