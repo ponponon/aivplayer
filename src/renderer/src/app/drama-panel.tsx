@@ -1,8 +1,9 @@
 import { BookOpen, Clapperboard, FilePlus, RefreshCw, Sparkles, TestTube, Upload } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import type { DramaAsset, DramaAssetInput, DramaAssetStatus, DramaProject, DramaProjectData, DramaProviderSettings } from '../../../shared/drama-types'
+import type { DramaAsset, DramaAssetInput, DramaAssetStatus, DramaGenerationTask, DramaGenerationTaskInput, DramaProject, DramaProjectData, DramaProviderSettings } from '../../../shared/drama-types'
 import { useAppContext } from './app-context'
 import { DramaAssetLibrary } from './drama-asset-library'
+import { DramaGenerationQueue } from './drama-generation-queue'
 
 export function DramaPanel(): React.ReactElement {
   const app = useAppContext()
@@ -155,6 +156,20 @@ export function DramaPanel(): React.ReactElement {
     void window.aiv.deleteDramaAsset(selectedProjectId, asset.id).then(() => refreshData()).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setBusy(false))
   }
 
+  const createGenerationTask = (input: DramaGenerationTaskInput): void => {
+    if (!selectedProjectId || busy) return
+    setBusy(true)
+    setError(null)
+    void window.aiv.createDramaGenerationTask(selectedProjectId, input).then(() => refreshData()).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setBusy(false))
+  }
+
+  const cancelGenerationTask = (task: DramaGenerationTask): void => {
+    if (!selectedProjectId || busy || !window.confirm(copy.generationCancelConfirm)) return
+    setBusy(true)
+    setError(null)
+    void window.aiv.cancelDramaGenerationTask(selectedProjectId, task.id).then(() => refreshData()).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setBusy(false))
+  }
+
   const selectedChapterCount = data?.chapters.length ?? 0
   const eventsReady = selectedChapterCount > 0 && data?.chapters.every((chapter) => chapter.eventStatus === 'completed')
   const scriptReady = Boolean(data?.scripts.some((script) => script.episodeIndex === 1 && script.content))
@@ -204,6 +219,7 @@ export function DramaPanel(): React.ReactElement {
       </div>
       {progress ? <div className="drama-progress" role="status">{progress}</div> : null}
       <DramaAssetLibrary assets={data.assets} copy={copy} busy={busy} onSave={saveAsset} onDelete={deleteAsset} />
+      <DramaGenerationQueue assets={data.assets} tasks={data.generationTasks} copy={copy} busy={busy} onCreate={createGenerationTask} onCancel={cancelGenerationTask} />
       {data.scripts[0] ? <article className="drama-script-preview"><strong>{data.scripts[0].title}</strong><p>{data.scripts[0].content}</p></article> : null}
       {data.storyboards[0] ? <article className="drama-script-preview"><strong>{copy.storyboardStage} · {data.storyboards[0].title}</strong><p>{data.storyboards[0].location} · {data.storyboards[0].characters.join('、')}\n{data.storyboards[0].action}\n{data.storyboards[0].dialogue}</p></article> : null}
     </section> : null}

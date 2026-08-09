@@ -4,6 +4,8 @@ import type {
   DramaCreateProjectInput,
   DramaAssetInput,
   DramaAssetPatch,
+  DramaGenerationTaskInput,
+  DramaGenerationTaskPatch,
   DramaImportChapterInput,
   DramaProgress,
   DramaProviderSettingsInput
@@ -68,11 +70,33 @@ function normalizeAssetPatch(value: unknown): DramaAssetPatch {
   return patch as DramaAssetPatch
 }
 
+function normalizeGenerationTaskInput(value: unknown): DramaGenerationTaskInput {
+  if (!value || typeof value !== 'object') throw new Error('生成任务参数无效')
+  const input = value as Partial<DramaGenerationTaskInput>
+  if (!['image', 'video', 'audio'].includes(input.mediaType ?? '')) throw new Error('生成任务媒体类型无效')
+  if (typeof input.prompt !== 'string' || !input.prompt.trim()) throw new Error('生成任务提示词不能为空')
+  if (input.targetId != null && typeof input.targetId !== 'string') throw new Error('生成任务目标无效')
+  if (input.message != null && typeof input.message !== 'string') throw new Error('生成任务说明必须是文本')
+  return input as DramaGenerationTaskInput
+}
+
+function normalizeGenerationTaskPatch(value: unknown): DramaGenerationTaskPatch {
+  if (!value || typeof value !== 'object') throw new Error('生成任务修改参数无效')
+  const patch = value as Partial<DramaGenerationTaskPatch>
+  if (patch.status != null && !['queued', 'running', 'completed', 'failed', 'cancelled'].includes(patch.status)) throw new Error('生成任务状态无效')
+  if (patch.progress != null && (typeof patch.progress !== 'number' || !Number.isFinite(patch.progress))) throw new Error('生成任务进度无效')
+  for (const field of ['message', 'resultPath', 'error'] as const) {
+    if (patch[field] != null && typeof patch[field] !== 'string') throw new Error('生成任务字段必须是文本')
+  }
+  return patch as DramaGenerationTaskPatch
+}
+
 function sendProgress(event: Electron.IpcMainInvokeEvent, progress: DramaProgress): void {
   if (!event.sender.isDestroyed()) event.sender.send(IPC_CHANNELS.DRAMA_PROGRESS, progress)
 }
 
 export function registerDramaIpc(): void {
+  getDramaStore().recoverGenerationTasks()
   ipcMain.handle(IPC_CHANNELS.DRAMA_LIST_PROJECTS, () => getDramaStore().listProjects())
   ipcMain.handle(IPC_CHANNELS.DRAMA_CREATE_PROJECT, (_event, input: DramaCreateProjectInput) => getDramaStore().createProject(normalizeCreateInput(input)))
   ipcMain.handle(IPC_CHANNELS.DRAMA_IMPORT_CHAPTERS, (_event, projectId: string, chapters: unknown) => getDramaStore().importChapters(requireProjectId(projectId), normalizeChapters(chapters)))
@@ -86,7 +110,7 @@ export function registerDramaIpc(): void {
     const store = getDramaStore()
     const project = store.getProject(normalizedProjectId)
     if (!project) throw new Error(`短剧项目不存在：${normalizedProjectId}`)
-    return { project, chapters: store.listChapters(normalizedProjectId), plan: store.getPlan(normalizedProjectId), scripts: store.listScripts(normalizedProjectId), assets: store.listAssets(normalizedProjectId), storyboards: store.listStoryboards(normalizedProjectId) }
+    return { project, chapters: store.listChapters(normalizedProjectId), plan: store.getPlan(normalizedProjectId), scripts: store.listScripts(normalizedProjectId), assets: store.listAssets(normalizedProjectId), storyboards: store.listStoryboards(normalizedProjectId), generationTasks: store.listGenerationTasks(normalizedProjectId) }
   })
   ipcMain.handle(IPC_CHANNELS.DRAMA_GENERATE_EVENTS, async (event, projectId: string, force?: boolean) =>
     getDramaWorkflow().extractEvents(requireProjectId(projectId), { force: force === true, onProgress: (progress) => sendProgress(event, progress) }))
@@ -105,6 +129,16 @@ export function registerDramaIpc(): void {
   ipcMain.handle(IPC_CHANNELS.DRAMA_DELETE_ASSET, (_event, projectId: string, assetId: string) => {
     getDramaStore().deleteAsset(requireProjectId(projectId), requireProjectId(assetId))
   })
+  ipcMain.handle(IPC_CHANNELS.DRAMA_CREATE_GENERATION_TASK, (_event, projectId: string, input: unknown) =>
+    getDramaStore().createGenerationTask(requireProjectId(projectId), normalizeGenerationTaskInput(input)))
+  ipcMain.handle(IPC_CHANNELS.DRAMA_CLAIM_GENERATION_TASK, (_event, projectId: string, mediaType: unknown) => {
+    if (!['image', 'video', 'audio'].includes(String(mediaType))) throw new Error('生成任务媒体类型无效')
+    return getDramaStore().claimNextGenerationTask(requireProjectId(projectId), mediaType as 'image' | 'video' | 'audio')
+  })
+  ipcMain.handle(IPC_CHANNELS.DRAMA_UPDATE_GENERATION_TASK, (_event, projectId: string, taskId: string, patch: unknown) =>
+    getDramaStore().updateGenerationTask(requireProjectId(projectId), requireProjectId(taskId), normalizeGenerationTaskPatch(patch)))
+  ipcMain.handle(IPC_CHANNELS.DRAMA_CANCEL_GENERATION_TASK, (_event, projectId: string, taskId: string) =>
+    getDramaStore().cancelGenerationTask(requireProjectId(projectId), requireProjectId(taskId)))
   ipcMain.handle(IPC_CHANNELS.DRAMA_GENERATE_STORYBOARD, async (event, projectId: string, episodeIndex: number, force?: boolean) =>
     getDramaWorkflow().generateStoryboard(requireProjectId(projectId), episodeIndex, { force: force === true, onProgress: (progress) => sendProgress(event, progress) }))
   ipcMain.handle(IPC_CHANNELS.DRAMA_GET_PROVIDER_SETTINGS, () => getDramaProviderSettings())

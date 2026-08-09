@@ -69,3 +69,34 @@
 .drama-asset-card-actions .drama-secondary-action { min-height: 25px; padding: 0 7px; font-size: 10px; }
 .drama-asset-card-actions .drama-asset-delete { margin-left: auto; color: #ffaaa6; }
 .drama-asset-empty { margin: 0; padding: 16px 8px; color: var(--text-muted); text-align: center; font-size: 10px; }
+.drama-generation-queue { display: grid; gap: 9px; padding-top: 10px; border-top: 1px solid var(--border-soft); }
+.drama-generation-heading, .drama-generation-toolbar, .drama-generation-task-heading { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.drama-generation-heading, .drama-generation-toolbar { justify-content: space-between; }
+.drama-generation-heading > div { display: grid; gap: 3px; }
+.drama-generation-heading strong { color: var(--text-primary); font-size: 12px; }
+.drama-generation-heading small, .drama-generation-description, .drama-generation-hint { color: var(--text-muted); font-size: 10px; line-height: 1.45; }
+.drama-generation-description, .drama-generation-hint { margin: 0; }
+.drama-generation-form { display: grid; gap: 7px; padding: 9px; background: rgba(var(--overlay-rgb), 0.035); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); }
+.drama-generation-form-row { display: grid; grid-template-columns: 0.85fr 1.15fr; gap: 7px; }
+.drama-generation-form label { display: grid; gap: 4px; color: var(--text-muted); font-size: 10px; }
+.drama-generation-form select, .drama-generation-form textarea { width: 100%; min-width: 0; padding: 6px 8px; color: var(--text-primary); background: rgba(var(--overlay-rgb), 0.06); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); outline: 0; font: inherit; font-size: 11px; resize: vertical; }
+.drama-generation-form select:focus, .drama-generation-form textarea:focus { border-color: var(--accent); }
+.drama-generation-filters { display: flex; gap: 4px; overflow-x: auto; }
+.drama-generation-filters button { min-height: 24px; padding: 0 7px; color: var(--text-muted); background: transparent; border: 1px solid transparent; border-radius: 999px; cursor: pointer; font-size: 10px; white-space: nowrap; }
+.drama-generation-filters button:hover, .drama-generation-filters button.is-active { color: var(--text-primary); background: rgba(var(--accent-rgb), 0.1); border-color: rgba(var(--accent-rgb), 0.3); }
+.drama-generation-search { display: flex; align-items: center; gap: 5px; min-width: 100px; padding: 0 6px; color: var(--text-muted); background: rgba(var(--overlay-rgb), 0.05); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); }
+.drama-generation-search input { width: 100%; min-width: 0; padding: 5px 0; color: var(--text-primary); background: transparent; border: 0; outline: 0; font: inherit; font-size: 10px; }
+.drama-generation-list { display: grid; gap: 6px; }
+.drama-generation-task { position: relative; display: grid; gap: 5px; padding: 8px 30px 8px 9px; background: rgba(var(--overlay-rgb), 0.035); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); }
+.drama-generation-task-heading { justify-content: space-between; color: var(--accent); font-size: 10px; font-weight: 700; }
+.drama-generation-task-heading span { display: inline-flex; align-items: center; gap: 4px; }
+.drama-generation-status { padding: 2px 5px; border-radius: 999px; font-size: 9px; }
+.drama-generation-status.queued { color: var(--accent); background: rgba(var(--accent-rgb), 0.1); }
+.drama-generation-status.running { color: #ffd479; background: rgba(255, 212, 121, 0.1); }
+.drama-generation-status.completed { color: var(--ok); background: rgba(var(--ok-rgb), 0.1); }
+.drama-generation-status.failed { color: #ffaaa6; background: rgba(255, 115, 111, 0.1); }
+.drama-generation-status.cancelled { color: var(--text-muted); background: rgba(var(--overlay-rgb), 0.08); }
+.drama-generation-task p, .drama-generation-task small { margin: 0; color: var(--text-secondary); font-size: 10px; line-height: 1.4; overflow-wrap: anywhere; }
+.drama-generation-task small { color: var(--text-muted); }
+.drama-generation-cancel { position: absolute; top: 7px; right: 7px; color: #ffaaa6; }
+.drama-generation-empty { margin: 0; padding: 14px 8px; color: var(--text-muted); text-align: center; font-size: 10px; }

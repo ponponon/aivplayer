@@ -194,6 +194,7 @@ export type DramaProjectData = {
   scripts: DramaScript[]
   assets: DramaAsset[]
   storyboards: DramaStoryboard[]
+  generationTasks: DramaGenerationTask[]
 }
 
 export type DramaProviderRequest = {

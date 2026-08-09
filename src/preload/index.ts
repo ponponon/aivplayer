@@ -6,6 +6,8 @@ import type {
   DramaCreateProjectInput,
   DramaAssetInput,
   DramaAssetPatch,
+  DramaGenerationTaskInput,
+  DramaGenerationTaskPatch,
   DramaImportChapterInput,
   DramaProgress,
   DramaProject,
@@ -336,6 +338,14 @@ const api = {
     ipcRenderer.invoke(IPC_CHANNELS.DRAMA_UPDATE_ASSET, projectId, assetId, patch),
   deleteDramaAsset: (projectId: string, assetId: string): Promise<void> =>
     ipcRenderer.invoke(IPC_CHANNELS.DRAMA_DELETE_ASSET, projectId, assetId),
+  createDramaGenerationTask: (projectId: string, input: DramaGenerationTaskInput): Promise<DramaProjectData['generationTasks'][number]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.DRAMA_CREATE_GENERATION_TASK, projectId, input),
+  claimDramaGenerationTask: (projectId: string, mediaType: DramaGenerationTaskInput['mediaType']): Promise<DramaProjectData['generationTasks'][number] | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.DRAMA_CLAIM_GENERATION_TASK, projectId, mediaType),
+  updateDramaGenerationTask: (projectId: string, taskId: string, patch: DramaGenerationTaskPatch): Promise<DramaProjectData['generationTasks'][number]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.DRAMA_UPDATE_GENERATION_TASK, projectId, taskId, patch),
+  cancelDramaGenerationTask: (projectId: string, taskId: string): Promise<DramaProjectData['generationTasks'][number]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.DRAMA_CANCEL_GENERATION_TASK, projectId, taskId),
   generateDramaStoryboard: (projectId: string, episodeIndex: number, force = false): Promise<{ result: DramaStageResult; storyboard: DramaProjectData['storyboards'] }> =>
     ipcRenderer.invoke(IPC_CHANNELS.DRAMA_GENERATE_STORYBOARD, projectId, episodeIndex, force),
   getDramaProviderSettings: (): Promise<DramaProviderSettings> => ipcRenderer.invoke(IPC_CHANNELS.DRAMA_GET_PROVIDER_SETTINGS),

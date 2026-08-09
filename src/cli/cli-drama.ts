@@ -93,7 +93,7 @@ async function runShow(parsed: ParsedCliArgs): Promise<number> {
   const store = getDramaStore()
   const project = store.getProject(projectId)
   if (!project) throw new Error(`短剧项目不存在：${projectId}`)
-  const data: DramaProjectData = { project, chapters: store.listChapters(projectId), plan: store.getPlan(projectId), scripts: store.listScripts(projectId), assets: store.listAssets(projectId), storyboards: store.listStoryboards(projectId) }
+  const data: DramaProjectData = { project, chapters: store.listChapters(projectId), plan: store.getPlan(projectId), scripts: store.listScripts(projectId), assets: store.listAssets(projectId), storyboards: store.listStoryboards(projectId), generationTasks: store.listGenerationTasks(projectId) }
   printJson(parsed, data)
   printHuman(parsed, formatProjectData(data))
   return 0
