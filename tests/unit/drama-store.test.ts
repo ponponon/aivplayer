@@ -76,4 +76,30 @@ describe('drama store', () => {
     expect(updated).toMatchObject({ id: chapter!.id, title: '新标题', content: '新正文', eventStatus: 'pending' })
     expect(updated!.event).toBeUndefined()
   })
+
+  it('merges generated assets without deleting manual assets or resetting ready state', () => {
+    const project = store.createProject({ title: '资产库合并' })
+    const manual = store.createAsset(project.id, { assetType: 'prop', name: '旧怀表', description: '人工补充道具' })
+    const ready = store.updateAsset(project.id, manual.id, { status: 'ready' })
+    const generated = store.replaceAssets(project.id, [
+      { assetType: 'prop', name: '旧怀表', description: 'AI 补充描述', visualPrompt: '银色怀表特写' },
+      { assetType: 'character', name: '主角', description: '雨夜追信人' }
+    ])
+
+    expect(generated).toHaveLength(2)
+    expect(store.getAsset(project.id, manual.id)).toMatchObject({ id: manual.id, status: 'ready', description: 'AI 补充描述', visualPrompt: '银色怀表特写' })
+    expect(store.listAssets(project.id).find((asset) => asset.name === '主角')).toMatchObject({ status: 'draft' })
+    expect(ready.createdAt).toBe(manual.createdAt)
+  })
+
+  it('supports manual asset editing and deletion within a project boundary', () => {
+    const project = store.createProject({ title: '资产库维护' })
+    const asset = store.createAsset(project.id, { assetType: 'location', name: '旧车站' })
+    const updated = store.updateAsset(project.id, asset.id, { name: '废弃车站', description: '雨夜候车厅', status: 'ready' })
+
+    expect(updated).toMatchObject({ name: '废弃车站', description: '雨夜候车厅', status: 'ready' })
+    store.deleteAsset(project.id, asset.id)
+    expect(store.getAsset(project.id, asset.id)).toBeNull()
+    expect(() => store.deleteAsset(project.id, asset.id)).toThrow('短剧资产不存在')
+  })
 })

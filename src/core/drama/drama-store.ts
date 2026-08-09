@@ -7,6 +7,7 @@ import type {
   DramaChapterEvent,
   DramaCreateProjectInput,
   DramaAsset,
+  DramaAssetPatch,
   DramaAssetInput,
   DramaImportChapterInput,
   DramaPlan,
@@ -311,19 +312,72 @@ export class DramaStore {
     return rows.map((row) => this.toAsset(row))
   }
 
+  getAsset(projectId: string, assetId: string): DramaAsset | null {
+    const row = this.database.prepare('SELECT * FROM drama_assets WHERE project_id = ? AND id = ?').get(projectId, assetId) as SqliteRow | undefined
+    return row ? this.toAsset(row) : null
+  }
+
+  createAsset(projectId: string, input: DramaAssetInput): DramaAsset {
+    this.requireProject(projectId)
+    const normalized = normalizeAssetInput(input)
+    const now = Date.now()
+    const id = randomUUID()
+    this.database.prepare(`
+      INSERT INTO drama_assets (id, project_id, asset_type, name, description, visual_prompt, status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, 'draft', ?, ?)
+    `).run(id, projectId, normalized.assetType, normalized.name, normalized.description, normalized.visualPrompt, now, now)
+    this.touchProject(projectId)
+    return this.getAsset(projectId, id) as DramaAsset
+  }
+
+  updateAsset(projectId: string, assetId: string, patch: DramaAssetPatch): DramaAsset {
+    this.requireProject(projectId)
+    const current = this.getAsset(projectId, assetId)
+    if (!current) throw new Error(`短剧资产不存在：${assetId}`)
+    const next = normalizeAssetPatch(current, patch)
+    const now = Date.now()
+    this.database.prepare(`
+      UPDATE drama_assets
+      SET asset_type = ?, name = ?, description = ?, visual_prompt = ?, status = ?, updated_at = ?
+      WHERE project_id = ? AND id = ?
+    `).run(next.assetType, next.name, next.description, next.visualPrompt, next.status, now, projectId, assetId)
+    this.touchProject(projectId)
+    return this.getAsset(projectId, assetId) as DramaAsset
+  }
+
+  deleteAsset(projectId: string, assetId: string): void {
+    this.requireProject(projectId)
+    const result = this.database.prepare('DELETE FROM drama_assets WHERE project_id = ? AND id = ?').run(projectId, assetId)
+    if (result.changes === 0) throw new Error(`短剧资产不存在：${assetId}`)
+    this.touchProject(projectId)
+  }
+
   replaceAssets(projectId: string, inputs: DramaAssetInput[]): DramaAsset[] {
     this.requireProject(projectId)
     const now = Date.now()
+    const incoming = new Map<string, DramaAssetInput>()
+    for (const input of inputs) {
+      const normalized = normalizeAssetInput(input)
+      incoming.set(assetKey(normalized.assetType, normalized.name), normalized)
+    }
+    const existing = this.listAssets(projectId)
+    const existingByKey = new Map(existing.map((asset) => [assetKey(asset.assetType, asset.name), asset]))
     this.database.exec('BEGIN')
     try {
-      this.database.prepare('DELETE FROM drama_assets WHERE project_id = ?').run(projectId)
-      for (const input of inputs) {
-        const name = input.name.trim()
-        if (!name) continue
+      for (const input of incoming.values()) {
+        const previous = existingByKey.get(assetKey(input.assetType, input.name))
+        if (previous) {
+          this.database.prepare(`
+            UPDATE drama_assets
+            SET description = ?, visual_prompt = ?, updated_at = ?
+            WHERE project_id = ? AND id = ?
+          `).run(input.description ?? '', input.visualPrompt ?? '', now, projectId, previous.id)
+          continue
+        }
         this.database.prepare(`
           INSERT INTO drama_assets (id, project_id, asset_type, name, description, visual_prompt, status, created_at, updated_at)
           VALUES (?, ?, ?, ?, ?, ?, 'draft', ?, ?)
-        `).run(randomUUID(), projectId, input.assetType, name, input.description?.trim() ?? '', input.visualPrompt?.trim() ?? '', now, now)
+        `).run(randomUUID(), projectId, input.assetType, input.name, input.description ?? '', input.visualPrompt ?? '', now, now)
       }
       this.database.exec('COMMIT')
     } catch (error) {
@@ -501,6 +555,35 @@ export class DramaStore {
       updatedAt: numberValue(row, 'updated_at')
     }
   }
+}
+
+function assetKey(assetType: DramaAsset['assetType'], name: string): string {
+  return `${assetType}\u0000${name}`
+}
+
+function normalizeAssetInput(input: DramaAssetInput): Required<DramaAssetInput> {
+  if (!input || typeof input !== 'object') throw new Error('短剧资产参数无效')
+  if (!['character', 'location', 'prop'].includes(input.assetType)) throw new Error('短剧资产类型无效')
+  const name = input.name.trim()
+  if (!name) throw new Error('短剧资产名称不能为空')
+  return {
+    assetType: input.assetType,
+    name,
+    description: input.description?.trim() ?? '',
+    visualPrompt: input.visualPrompt?.trim() ?? ''
+  }
+}
+
+function normalizeAssetPatch(current: DramaAsset, patch: DramaAssetPatch): Required<DramaAssetInput> & Pick<DramaAsset, 'status'> {
+  if (!patch || typeof patch !== 'object') throw new Error('短剧资产修改参数无效')
+  const next = normalizeAssetInput({
+    assetType: patch.assetType ?? current.assetType,
+    name: patch.name ?? current.name,
+    description: patch.description ?? current.description,
+    visualPrompt: patch.visualPrompt ?? current.visualPrompt
+  })
+  if (patch.status != null && !['draft', 'ready'].includes(patch.status)) throw new Error('短剧资产状态无效')
+  return { ...next, status: patch.status ?? current.status }
 }
 
 function normalizePositiveInteger(value: number | undefined, fallback: number): number {

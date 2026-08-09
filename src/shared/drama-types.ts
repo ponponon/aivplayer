@@ -76,6 +76,10 @@ export type DramaAssetInput = {
   visualPrompt?: string
 }
 
+export type DramaAssetPatch = Partial<DramaAssetInput> & {
+  status?: DramaAssetStatus
+}
+
 export type DramaStoryboard = {
   id: string
   projectId: string
