@@ -408,6 +408,7 @@ pkg:
   scripts: pkg-scripts
 win:
   icon: brand/icon.ico
+  artifactName: '${productName} Setup ${version} ${arch}.${ext}'
   target:
     - nsis
 nsis:
@@ -415,6 +416,7 @@ nsis:
 linux:
   icon: brand/icon.png
   executableName: aivplayer
+  artifactName: '${name}-${version}-${arch}.${ext}'
   category: AudioVideo
   target:
     - AppImage
