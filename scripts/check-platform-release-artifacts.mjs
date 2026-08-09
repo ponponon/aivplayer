@@ -1,6 +1,8 @@
-import { basename, resolve } from 'node:path'
+import { mkdir, rename, stat, writeFile } from 'node:fs/promises'
+import { basename, dirname, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { listReleaseArtifacts } from './release-artifact-policy.mjs'
+import { sha256File } from './release-manifest.mjs'
 
 export const PLATFORM_CONTRACTS = {
   macos: {
@@ -25,6 +27,7 @@ function readOptions(argv) {
     if (!value || value.startsWith('--')) continue
     if (item === '--platform') options.platform = value
     else if (item === '--artifacts-dir') options.artifactsDir = value
+    else if (item === '--report-path') options.reportPath = value
     else continue
     index += 1
   }
@@ -46,6 +49,8 @@ export async function checkPlatformReleaseArtifacts(options = {}) {
   const files = await listReleaseArtifacts(artifactsDirectory, { includeManifest: false })
   if (files.length === 0) throw new Error(`No platform release artifacts found under ${artifactsDirectory}.`)
   const names = files.map((file) => basename(file))
+  const duplicateNames = names.filter((name, index) => names.indexOf(name) !== index)
+  if (duplicateNames.length > 0) throw new Error(`Platform ${platform} release artifacts contain duplicate names: ${[...new Set(duplicateNames)].join(', ')}`)
   const lowerNames = names.map((name) => name.toLowerCase())
   const requiredPackages = contract.packages.map((extension) => extension.toLowerCase())
   const foundPackages = requiredPackages.filter((extension) => lowerNames.some((name) => name.endsWith(extension)))
@@ -67,13 +72,29 @@ export async function checkPlatformReleaseArtifacts(options = {}) {
       `unexpected packages: ${unexpectedPackages.join(', ') || 'none'}`
     ].join(' '))
   }
-  return {
+  const artifacts = await Promise.all(files.map(async (file) => ({
+    name: basename(file),
+    sizeBytes: (await stat(file)).size,
+    sha256: await sha256File(file)
+  })))
+  const result = {
+    schemaVersion: 1,
     ok: true,
     platform,
-    artifactCount: files.length,
+    generatedAt: new Date().toISOString(),
+    artifactCount: artifacts.length,
     packageExtensions: contract.packages,
-    metadata: contract.metadata
+    metadata: contract.metadata,
+    artifacts
   }
+  if (options.reportPath) {
+    const reportPath = resolve(options.reportPath)
+    await mkdir(dirname(reportPath), { recursive: true })
+    const temporaryPath = `${reportPath}.${process.pid}.tmp`
+    await writeFile(temporaryPath, `${JSON.stringify(result, null, 2)}\n`, 'utf8')
+    await rename(temporaryPath, reportPath)
+  }
+  return result
 }
 
 async function main() {
