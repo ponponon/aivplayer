@@ -16,6 +16,7 @@ import { useVisionImportInbox } from './use-vision-import-inbox'
 import { VisionImportInbox } from './vision-import-inbox'
 import { VisionLibrarySources } from './vision-library-sources'
 import { VisionEntityCatalog } from './vision-entity-catalog'
+import { VisionIndexFailures } from './vision-index-failures'
 import type { VisionEntityCatalog as VisionEntityCatalogState, VisionEntityCatalogBatchPatch, VisionEntityCatalogPatch } from '../../../shared/vision-entity-types'
 
 const VISION_SOURCE_PAGE_SIZE = 100
@@ -40,6 +41,7 @@ export function VisionPanel(): React.ReactElement {
   const [sources, setSources] = useState<VisionLibrarySource[]>([])
   const [hasMoreSources, setHasMoreSources] = useState(false)
   const [isLoadingMoreSources, setIsLoadingMoreSources] = useState(false)
+  const [failures, setFailures] = useState<VisionIndexFailureRecord[]>([])
   const [entityCatalog, setEntityCatalog] = useState<VisionEntityCatalogState | null>(null)
   const [selectedResultIds, setSelectedResultIds] = useState<Set<string>>(new Set())
   const [collectionTitle, setCollectionTitle] = useState('')
@@ -60,6 +62,8 @@ export function VisionPanel(): React.ReactElement {
   const vectorIndexLabel = status?.vectorIndexType
     ? app.copy.vision.vectorIndex(status.vectorIndexType, status.vectorIndexDistanceType ?? '—', status.vectorIndexIndexedRows, status.vectorIndexUnindexedRows)
     : app.copy.vision.exactVectorSearch
+
+  const refreshFailures = (): void => { void window.aiv.listVisionIndexFailures().then(setFailures).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))) }
 
   useEffect(() => {
     let active = true
@@ -84,11 +88,12 @@ export function VisionPanel(): React.ReactElement {
     refreshStatus()
     refreshSources()
     refreshEntityCatalog()
+    refreshFailures()
     const statusTimer = window.setInterval(refreshStatus, 5000)
     const removeProgressListener = window.aiv.onVisionIndexProgress((next) => {
       if (!active) return
       setProgress(next)
-      if (next.status === 'completed' || next.status === 'cancelled') {
+      if (next.status === 'completed' || next.status === 'cancelled' || next.status === 'error') {
         refreshStatus()
         refreshSources()
       }
@@ -118,6 +123,29 @@ export function VisionPanel(): React.ReactElement {
       setError(reason instanceof Error ? reason.message : String(reason))
     } finally {
       setIsLoadingMoreSources(false)
+    }
+  }
+
+  const retryVisionFailure = async (failure: VisionIndexFailureRecord): Promise<void> => {
+    setError(null)
+    try {
+      const accepted = await window.aiv.retryVisionIndexFailure({ id: failure.id })
+      if (!accepted) throw new Error(app.copy.vision.indexFailureRetryUnavailable)
+      refreshFailures()
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    }
+  }
+
+  const retryVisionFailures = async (selectedFailures: VisionIndexFailureRecord[]): Promise<void> => {
+    setError(null)
+    try {
+      const accepted = await window.aiv.retryVisionIndexFailures({ ids: selectedFailures.map((failure) => failure.id) })
+      if (!accepted) throw new Error(app.copy.vision.indexFailureRetryUnavailable)
+      refreshFailures()
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+      throw reason
     }
   }
 
@@ -495,6 +523,7 @@ export function VisionPanel(): React.ReactElement {
       <VisionImportInbox copy={app.copy.vision} directories={importInbox.directories} items={importInbox.items} progress={importInbox.progress} pipelineProgress={importInbox.pipelineProgress} isBusy={importInbox.isBusy} error={importInbox.error} writeSidecars={importInbox.writeSidecars} onAddFolder={importInbox.addFolder} onRemoveFolder={importInbox.removeFolder} onScan={importInbox.scan} onQueue={importInbox.queueItem} onIgnore={importInbox.ignoreItem} onRetry={importInbox.retryItem} onBatchQueue={importInbox.batchQueue} onBatchIgnore={importInbox.batchIgnore} onBatchRetry={importInbox.batchRetry} onWriteSidecarsChange={importInbox.setWriteSidecars} onUpdateMetadata={importInbox.updateMetadata} />
       <VisionLibrarySources copy={app.copy.vision} sources={sources} thumbnailUrls={sourceThumbnailUrls} hasMoreSources={hasMoreSources} isLoadingMoreSources={isLoadingMoreSources} onLoadMore={loadMoreSources} onOpenSource={openSource} />
       <VisionEntityCatalog copy={app.copy.vision} catalog={entityCatalog} onUpdate={updateEntityCatalog} onBatchUpdate={updateEntityCatalogBatch} />
+      <VisionIndexFailures copy={app.copy.vision} failures={failures} onRetry={retryVisionFailure} onBatchRetry={retryVisionFailures} />
       <div className="vision-index-actions">
         <label className="vision-folder-option"><input type="checkbox" checked={includeEntityEvidence} disabled={isBusy} onChange={(event) => setIncludeEntityEvidence(event.target.checked)} /><span>{app.copy.vision.includeEntityEvidence}</span></label>
         <button className="vision-primary-action" type="button" onClick={startIndex} disabled={isBusy || app.state.playlist.length === 0}><Database size={15} />{app.copy.vision.indexPlaylist}</button>
