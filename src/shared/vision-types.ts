@@ -7,12 +7,14 @@ export const VISION_VECTOR_INDEX_MIN_ROWS = 10_000
 
 export type VisionIndexStatus = 'idle' | 'loading' | 'indexing' | 'completed' | 'cancelled' | 'error'
 
-export type VisionIndexStage = 'planning' | 'loading-model' | 'frames' | 'vector-index' | 'text-index' | 'completed' | 'cancelled' | 'error'
+export type VisionIndexStage = 'planning' | 'loading-model' | 'frames' | 'scene-evidence' | 'entity-evidence' | 'vector-index' | 'text-index' | 'completed' | 'cancelled' | 'error'
 
 export type VisionIndexTimings = {
   planningMs: number
   modelLoadingMs: number
   framesMs: number
+  sceneEvidenceMs: number
+  entityEvidenceMs: number
   vectorIndexMs: number
   textIndexMs: number
   totalMs: number
@@ -33,9 +35,43 @@ export type VisionRuntimeStatus = {
   message: string
 }
 
+export type VisionLibrarySourceRequest = {
+  limit?: number
+  offset?: number
+}
+
+export type VisionLibrarySourceMetadata = {
+  tags: string[]
+  favorite: boolean
+  note: string
+  source: string | null
+  projectId: string | null
+}
+
+export type VisionLibrarySource = {
+  sourceId: string
+  videoPath: string
+  fileName: string
+  fileSizeBytes: number
+  fileMtimeMs: number
+  frameCount: number
+  indexedAtMs: number
+  subtitlePath: string | null
+  thumbnailPath: string | null
+  metadata: VisionLibrarySourceMetadata | null
+}
+
 export type VisionIndexRequest = {
   mediaPaths: string[]
   intervalSeconds?: number
+  includeSceneEvidence?: boolean
+  includeEntityEvidence?: boolean
+}
+
+export type VisionIndexOptions = {
+  subtitlePaths?: ReadonlyMap<string, string>
+  includeSceneEvidence?: boolean
+  includeEntityEvidence?: boolean
 }
 
 export type VisionDirectoryScanRequest = {
@@ -85,9 +121,38 @@ export type VisionIndexProgress = {
   processedFrames: number
   skippedVideos: number
   captionOnlyVideos: number
+  sceneEvidenceTotal?: number
+  sceneEvidenceProcessed?: number
+  sceneEvidenceCount?: number
+  entityEvidenceTotal?: number
+  entityEvidenceProcessed?: number
+  entityEvidenceCount?: number
   currentVideoPath?: string
+  failedStage?: VisionIndexStage
   message?: string
   error?: string
+}
+
+export type VisionIndexFailureRecord = {
+  id: string
+  mediaPath: string
+  fileName: string
+  error: string
+  failedAt: number
+  lastAttemptAt: number
+  retryCount: number
+  intervalSeconds: number
+  includeSceneEvidence: boolean
+  includeEntityEvidence: boolean
+  stage: VisionIndexStage
+}
+
+export type VisionIndexFailureRetryRequest = {
+  id: string
+}
+
+export type VisionIndexFailureRetryBatchRequest = {
+  ids: string[]
 }
 
 export type VisionSearchMode = 'visual' | 'hybrid'
@@ -192,6 +257,7 @@ export type VisionSearchResult = {
   endSeconds?: number
   evidenceType?: VisionEvidenceType
   confidence?: number
+  entityLabelId?: string
   sourceFingerprint?: string
   modelId: string
   modelVariant: string
