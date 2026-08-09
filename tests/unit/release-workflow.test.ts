@@ -18,19 +18,19 @@ const releaseDryRun = readFileSync(join(projectRoot, 'scripts/release-dry-run.mj
 describe('release workflow source constraints', () => {
   it('keeps platform builds separate from release publishing', () => {
     expect(releaseWorkflow).not.toContain('GH_TOKEN:')
-    expect(releaseWorkflow.match(/npx electron-builder(?: --dir)? --publish never/g)).toHaveLength(3)
+    expect(releaseWorkflow.match(/npx electron-builder.*--publish never/g)).toHaveLength(5)
     expect(releaseWorkflow).not.toContain('build-snap')
     expect(releaseWorkflow).not.toContain('publish-snap')
     expect(releaseWorkflow).not.toContain('SNAPCRAFT_STORE_CREDENTIALS')
   })
 
   it('waits for all desktop artifacts before creating a release', () => {
-    expect(releaseWorkflow).toContain('needs: [build-macos, build-windows, build-linux]')
+    expect(releaseWorkflow).toContain('needs: [build-macos, build-windows, build-windows-arm64, build-linux, build-linux-arm64]')
     expect(releaseWorkflow).toContain('tag_name: ${{ inputs.tag || github.ref_name }}')
     expect(releaseWorkflow).toContain('release:create-manifest')
     expect(releaseWorkflow).toContain('release:check-manifest')
     expect(releaseWorkflow).toContain('release:check-version')
-    expect(releaseWorkflow).toContain('artifacts/release-manifest.json')
+    expect(releaseWorkflow).toContain('artifacts/assembled/release-manifest.json')
     expect(releaseWorkflow).toContain('name: release-manifest')
     expect(releaseWorkflow).toContain('--commit "${{ github.sha }}"')
     expect(releaseWorkflow).toContain('--repository "${{ github.repository }}"')
@@ -50,21 +50,25 @@ describe('release workflow source constraints', () => {
   })
 
   it('stages platform runtimes before packaging', () => {
-    expect(releaseWorkflow.match(/release:check-runtime/g)).toHaveLength(3)
-    expect(releaseWorkflow.match(/release:prepare-vision-model/g)).toHaveLength(3)
-    expect(releaseWorkflow.match(/release:write-runtime-metadata/g)).toHaveLength(3)
+    expect(releaseWorkflow.match(/release:check-runtime/g)).toHaveLength(5)
+    expect(releaseWorkflow.match(/release:prepare-vision-model/g)).toHaveLength(5)
+    expect(releaseWorkflow.match(/release:write-runtime-metadata/g)).toHaveLength(5)
     expect(releaseWorkflow).toContain('release:build-whisper-macos')
     expect(releaseWorkflow).toContain('release:prepare-runtime -- --platform win32')
     expect(releaseWorkflow).toContain('release:prepare-runtime -- --platform linux')
     expect(releaseWorkflow).toContain('--x265-library $x265Library')
+    expect(releaseWorkflow.match(/release:check-architecture/g)).toHaveLength(8)
+    expect(packageJson).toContain('release:check-architecture')
   })
 
   it('checks the license manifest before every platform package build', () => {
-    expect(releaseWorkflow.match(/npm run check:licenses/g)).toHaveLength(3)
+    expect(releaseWorkflow.match(/npm run check:licenses/g)).toHaveLength(5)
     expect(electronBuilder).toContain('from: LICENSE')
     expect(electronBuilder).toContain('from: docs/THIRD_PARTY_LICENSES.md')
     expect(electronBuilder).toContain('from: resources/runtime-metadata.json')
     expect(electronBuilder).toContain('resources/vision/siglip2-base-patch16-224-ONNX')
+    expect(electronBuilder).toContain("artifactName: '${productName} Setup ${version} ${arch}.${ext}'")
+    expect(electronBuilder).toContain("artifactName: '${name}-${version}-${arch}.${ext}'")
   })
 
   it('installs the generated Debian package by absolute path in CI', () => {
@@ -79,7 +83,7 @@ describe('release workflow source constraints', () => {
     expect(artifactPolicy).toContain("RELEASE_MANIFEST_NAME = 'release-manifest.json'")
     expect(artifactPolicy).toContain("/^latest(?:-[^/]+)?\\.yml$/i")
     expect(releaseWorkflow).toContain('release/latest*.yml')
-    expect(releaseWorkflow).toContain('artifacts/**/latest*.yml')
+    expect(releaseWorkflow).toContain('artifacts/assembled/latest*.yml')
     expect(giteeSync).toContain('const names = new Set(files.map((file) => basename(file)))')
     expect(giteeSync).toContain('RELEASE_TAG')
     expect(giteeSync).toContain('GITEE_TARGET_COMMITISH')
@@ -107,10 +111,12 @@ describe('release workflow source constraints', () => {
   })
 
   it('checks each platform package set before uploading artifacts', () => {
-    expect(releaseWorkflow.match(/release:check-platform/g)).toHaveLength(3)
+    expect(releaseWorkflow.match(/release:check-platform/g)).toHaveLength(8)
     expect(releaseWorkflow).toContain('--platform macos --artifacts-dir release')
-    expect(releaseWorkflow).toContain('--platform windows --artifacts-dir release')
-    expect(releaseWorkflow).toContain('--platform linux --artifacts-dir release')
+    expect(releaseWorkflow).toContain('--platform windows --architecture x64 --artifacts-dir release')
+    expect(releaseWorkflow).toContain('--platform windows --architecture arm64 --artifacts-dir release')
+    expect(releaseWorkflow).toContain('--platform linux --architecture x64 --artifacts-dir release')
+    expect(releaseWorkflow).toContain('--platform linux --architecture arm64 --artifacts-dir release')
     expect(platformRelease).toContain("packages: ['.dmg', '.zip', '.pkg']")
     expect(platformRelease).toContain("packages: ['.AppImage', '.deb']")
     expect(platformRelease).toContain('unexpected packages')
@@ -119,7 +125,9 @@ describe('release workflow source constraints', () => {
   it('retains one hash report per build runner without publishing reports as release assets', () => {
     expect(releaseWorkflow).toContain('release-evidence-macos')
     expect(releaseWorkflow).toContain('release-evidence-windows')
+    expect(releaseWorkflow).toContain('release-evidence-windows-arm64')
     expect(releaseWorkflow).toContain('release-evidence-linux')
+    expect(releaseWorkflow).toContain('release-evidence-linux-arm64')
     expect(releaseWorkflow).toContain('platform-release-report-macos.json')
     expect(releaseWorkflow).toContain('platform-release-report-windows.json')
     expect(releaseWorkflow).toContain('platform-release-report-linux.json')
@@ -130,7 +138,7 @@ describe('release workflow source constraints', () => {
 
   it('verifies evidence after artifact merge and before version / manifest checks', () => {
     expect(releaseWorkflow).toContain('release:check-evidence')
-    expect(releaseWorkflow).toContain('--report-path artifacts/merged-platform-evidence.json')
+    expect(releaseWorkflow).toContain('--report-path artifacts/assembled/merged-platform-evidence.json')
     expect(releaseWorkflow).toContain('name: release-evidence-merged')
     expect(releaseWorkflow.indexOf('release:check-evidence')).toBeLessThan(releaseWorkflow.indexOf('release:check-version'))
     expect(platformEvidence).toContain('Missing platform evidence report')
@@ -139,7 +147,7 @@ describe('release workflow source constraints', () => {
   })
 
   it('checks package format signatures before uploading artifacts', () => {
-    expect(releaseWorkflow.match(/release:check-formats/g)).toHaveLength(3)
+    expect(releaseWorkflow.match(/release:check-formats/g)).toHaveLength(8)
     expect(packageFormats).toContain("case '.dmg':")
     expect(packageFormats).toContain("case '.pkg':")
     expect(packageFormats).toContain("case '.exe':")

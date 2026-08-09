@@ -111,6 +111,12 @@ export async function assembleReleaseArtifacts(options = {}) {
   await mkdir(outputDirectory, { recursive: true })
   const copiedNames = await copyPackages(sourceNames.map((sourceName) => join(inputDirectory, sourceName)), outputDirectory)
 
+  try {
+    await copyUnique(join(inputDirectory, 'release-manifest', 'release-manifest.json'), outputDirectory, copiedNames)
+  } catch (error) {
+    if (error?.code !== 'ENOENT') throw error
+  }
+
   await copyUnique(join(inputDirectory, 'macos', 'latest-mac.yml'), outputDirectory, copiedNames)
 
   const windowsMetadata = await Promise.all(['windows-x64', 'windows-arm64'].map(async (sourceName) => {

@@ -164,6 +164,11 @@ jobs:
           npm run release:prepare-runtime -- --platform win32 --whisper-bin $whisperBinary.FullName --ffmpeg-dir $ffmpegDir
           npm run release:check-runtime
 
+      - name: Verify Windows x64 native binaries
+        shell: pwsh
+        run: |
+          npm run release:check-architecture -- --architecture x64 --file "$env:GITHUB_WORKSPACE/resources/whisper.cpp/whisper-cli.exe" --file "$env:GITHUB_WORKSPACE/resources/ffmpeg/ffmpeg.exe" --file "$env:GITHUB_WORKSPACE/resources/ffmpeg/ffprobe.exe" --file "$env:GITHUB_WORKSPACE/resources/heif/heif-enc.exe" --file "$env:GITHUB_WORKSPACE/resources/heif/heif-convert.exe"
+
       - name: Write runtime metadata
         shell: pwsh
         run: npm run release:write-runtime-metadata -- --platform win32 --resource-dir "$env:GITHUB_WORKSPACE/resources" --whisper-version "$env:WHISPER_CPP_VERSION" --libheif-version "$env:LIBHEIF_VERSION" --libheif-encoder x265
@@ -178,8 +183,15 @@ jobs:
           if ($null -eq $resourceDir) { throw 'Packaged resources directory was not found.' }
           npm run release:check-packaged-resources -- --resource-dir $resourceDir.FullName
 
+      - name: Verify packaged Windows x64 executable
+        shell: pwsh
+        run: |
+          $executable = Get-ChildItem -Path release -File -Recurse -Filter 'AIVPlayer.exe' | Select-Object -First 1
+          if ($null -eq $executable) { throw 'Packaged Windows x64 executable was not found.' }
+          npm run release:check-architecture -- --architecture x64 --file $executable.FullName
+
       - name: Verify Windows release artifacts
-        run: npm run release:check-platform -- --platform windows --artifacts-dir release --report-path release/platform-release-report-windows.json
+        run: npm run release:check-platform -- --platform windows --architecture x64 --artifacts-dir release --report-path release/platform-release-report-windows.json
 
       - name: Verify Windows package formats
         run: npm run release:check-formats -- --platform windows --artifacts-dir release
@@ -195,7 +207,115 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: windows
+          name: windows-x64
+          path: |
+            release/*.exe
+            release/latest*.yml
+            release/*.blockmap
+          if-no-files-found: error
+
+  build-windows-arm64:
+    runs-on: windows-11-arm
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Check license manifest
+        run: npm run check:licenses
+
+      - name: Stage vision model
+        shell: pwsh
+        run: npm run release:prepare-vision-model -- --resource-dir "$env:GITHUB_WORKSPACE/resources"
+
+      - name: Install HEIF build dependencies
+        shell: pwsh
+        run: |
+          choco install ffmpeg -y --no-progress
+          vcpkg install libde265:arm64-windows-static x265:arm64-windows-static libjpeg-turbo:arm64-windows-static tiff:arm64-windows-static
+
+      - name: Build static HEIF runtime
+        env:
+          AIVPLAYER_HEIF_ENCODER: x265
+        shell: pwsh
+        run: |
+          $source = Join-Path $env:RUNNER_TEMP "libheif"
+          $build = Join-Path $env:RUNNER_TEMP "libheif-build"
+          $install = Join-Path $env:RUNNER_TEMP "libheif-install"
+          $toolchain = Join-Path $env:VCPKG_INSTALLATION_ROOT "scripts/buildsystems/vcpkg.cmake"
+          $x265Library = Join-Path $env:VCPKG_INSTALLATION_ROOT "installed\arm64-windows-static\lib\x265-static.lib"
+          if (!(Test-Path $x265Library)) { throw "vcpkg x265 static library was not found: $x265Library" }
+          git clone --depth 1 --branch "v$env:LIBHEIF_VERSION" https://github.com/strukturag/libheif.git $source
+          npm run release:build-heif-source -- --source-dir $source --build-dir $build --install-dir $install --resource-dir "$env:GITHUB_WORKSPACE/resources" --platform win32 --toolchain-file $toolchain --vcpkg-triplet arm64-windows-static --encoder x265 --x265-library $x265Library
+          npm run release:check-heif-runtime
+
+      - name: Build and stage ARM64 ASR/media runtime
+        shell: pwsh
+        run: |
+          $source = Join-Path $env:RUNNER_TEMP "whisper.cpp"
+          $build = Join-Path $env:RUNNER_TEMP "whisper-build"
+          git clone --depth 1 --branch "v$env:WHISPER_CPP_VERSION" https://github.com/ggml-org/whisper.cpp.git $source
+          cmake -S $source -B $build -A ARM64 -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_EXAMPLES=ON -DCMAKE_BUILD_TYPE=Release
+          cmake --build $build --config Release --parallel
+          $whisperBinary = Get-ChildItem -Path $build -Filter "whisper-cli.exe" -Recurse | Select-Object -First 1
+          if ($null -eq $whisperBinary) { throw "whisper-cli.exe was not built." }
+          $ffmpegRoot = Join-Path $env:ChocolateyInstall 'lib\ffmpeg'
+          $ffmpegBinary = Get-ChildItem -Path $ffmpegRoot -Filter 'ffmpeg.exe' -File -Recurse | Select-Object -First 1
+          if ($null -eq $ffmpegBinary) { throw "The actual ffmpeg.exe was not found under $ffmpegRoot" }
+          $ffprobeBinary = Join-Path $ffmpegBinary.DirectoryName 'ffprobe.exe'
+          if (!(Test-Path $ffprobeBinary)) { throw "The matching ffprobe.exe was not found beside $($ffmpegBinary.FullName)" }
+          npm run release:prepare-runtime -- --platform win32 --whisper-bin $whisperBinary.FullName --ffmpeg-dir $ffmpegBinary.DirectoryName
+          npm run release:check-runtime
+
+      - name: Verify Windows ARM64 native binaries
+        shell: pwsh
+        run: |
+          npm run release:check-architecture -- --architecture arm64 --file "$env:GITHUB_WORKSPACE/resources/whisper.cpp/whisper-cli.exe" --file "$env:GITHUB_WORKSPACE/resources/ffmpeg/ffmpeg.exe" --file "$env:GITHUB_WORKSPACE/resources/ffmpeg/ffprobe.exe" --file "$env:GITHUB_WORKSPACE/resources/heif/heif-enc.exe" --file "$env:GITHUB_WORKSPACE/resources/heif/heif-convert.exe"
+
+      - name: Write runtime metadata
+        shell: pwsh
+        run: npm run release:write-runtime-metadata -- --platform win32 --resource-dir "$env:GITHUB_WORKSPACE/resources" --whisper-version "$env:WHISPER_CPP_VERSION" --libheif-version "$env:LIBHEIF_VERSION" --libheif-encoder x265
+
+      - name: Build & Package ARM64
+        run: npm run build && npx electron-builder --win --arm64 --publish never
+
+      - name: Verify packaged Web and FFmpeg resources
+        shell: pwsh
+        run: |
+          $resourceDir = Get-ChildItem -Path release -Directory -Recurse -Filter resources | Select-Object -First 1
+          if ($null -eq $resourceDir) { throw 'Packaged resources directory was not found.' }
+          npm run release:check-packaged-resources -- --resource-dir $resourceDir.FullName
+
+      - name: Verify packaged Windows ARM64 executable
+        shell: pwsh
+        run: |
+          $executable = Get-ChildItem -Path release -File -Recurse -Filter 'AIVPlayer.exe' | Select-Object -First 1
+          if ($null -eq $executable) { throw 'Packaged Windows ARM64 executable was not found.' }
+          npm run release:check-architecture -- --architecture arm64 --file $executable.FullName
+
+      - name: Verify Windows ARM64 release artifacts
+        run: npm run release:check-platform -- --platform windows --architecture arm64 --artifacts-dir release --report-path release/platform-release-report-windows-arm64.json
+
+      - name: Verify Windows ARM64 package formats
+        run: npm run release:check-formats -- --platform windows --artifacts-dir release
+
+      - name: Upload Windows ARM64 release evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-evidence-windows-arm64
+          path: release/platform-release-report-windows-arm64.json
+          if-no-files-found: ignore
+
+      - name: Upload Windows ARM64 artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-arm64
           path: |
             release/*.exe
             release/latest*.yml
@@ -251,6 +371,9 @@ jobs:
           npm run release:prepare-runtime -- --platform linux --whisper-dir "$build_dir/bin" --ffmpeg-dir /usr/bin
           npm run release:check-runtime
 
+      - name: Verify Linux x64 native binaries
+        run: npm run release:check-architecture -- --architecture x64 --file "$GITHUB_WORKSPACE/resources/whisper.cpp/whisper-cli" --file "$GITHUB_WORKSPACE/resources/ffmpeg/ffmpeg" --file "$GITHUB_WORKSPACE/resources/ffmpeg/ffprobe" --file "$GITHUB_WORKSPACE/resources/heif/heif-enc" --file "$GITHUB_WORKSPACE/resources/heif/heif-convert"
+
       - name: Write runtime metadata
         run: npm run release:write-runtime-metadata -- --platform linux --resource-dir "$GITHUB_WORKSPACE/resources" --whisper-version "$WHISPER_CPP_VERSION" --libheif-version "$LIBHEIF_VERSION" --libheif-encoder x265
 
@@ -263,6 +386,13 @@ jobs:
           resource_dir="release/linux-unpacked/resources"
           test -d "$resource_dir"
           npm run release:check-packaged-resources -- --resource-dir "$resource_dir"
+
+      - name: Verify packaged Linux x64 executable
+        shell: bash
+        run: |
+          executable="$(find release -type f -name 'AIVPlayer' -print -quit)"
+          test -n "$executable"
+          npm run release:check-architecture -- --architecture x64 --file "$executable"
 
       - name: Smoke test Debian install hooks
         shell: bash
@@ -285,7 +415,7 @@ jobs:
           test ! -e /usr/bin/aivcli
 
       - name: Verify Linux release artifacts
-        run: npm run release:check-platform -- --platform linux --artifacts-dir release --report-path release/platform-release-report-linux.json
+        run: npm run release:check-platform -- --platform linux --architecture x64 --artifacts-dir release --report-path release/platform-release-report-linux.json
 
       - name: Verify Linux package formats
         run: npm run release:check-formats -- --platform linux --artifacts-dir release
@@ -301,7 +431,104 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: linux
+          name: linux-x64
+          path: |
+            release/*.AppImage
+            release/*.deb
+            release/latest*.yml
+            release/*.blockmap
+          if-no-files-found: error
+
+  build-linux-arm64:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Check license manifest
+        run: npm run check:licenses
+
+      - name: Stage vision model
+        run: npm run release:prepare-vision-model -- --resource-dir "$GITHUB_WORKSPACE/resources"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-0 libnotify4 libnss3 libxss1 libxtst6 xdg-utils libatspi2.0-0 libuuid1 libsecret-1-0 ffmpeg cmake ninja-build pkg-config libde265-dev libx265-dev libjpeg-dev zlib1g-dev
+
+      - name: Build static HEIF runtime
+        env:
+          AIVPLAYER_HEIF_ENCODER: x265
+        shell: bash
+        run: |
+          git clone --depth 1 --branch "v${LIBHEIF_VERSION}" https://github.com/strukturag/libheif.git "$RUNNER_TEMP/libheif"
+          CXXFLAGS=-fpermissive npm run release:build-heif-source -- \
+            --source-dir "$RUNNER_TEMP/libheif" \
+            --build-dir "$RUNNER_TEMP/libheif-build" \
+            --install-dir "$RUNNER_TEMP/libheif-install" \
+            --resource-dir "$GITHUB_WORKSPACE/resources" \
+            --platform linux \
+            --encoder x265
+          npm run release:check-heif-runtime
+
+      - name: Build and stage ARM64 ASR/media runtime
+        shell: bash
+        run: |
+          source_dir="$RUNNER_TEMP/whisper.cpp"
+          build_dir="$RUNNER_TEMP/whisper-build"
+          git clone --depth 1 --branch "v${WHISPER_CPP_VERSION}" https://github.com/ggml-org/whisper.cpp.git "$source_dir"
+          cmake -S "$source_dir" -B "$build_dir" -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_EXAMPLES=ON -DCMAKE_BUILD_TYPE=Release
+          cmake --build "$build_dir" --parallel
+          npm run release:prepare-runtime -- --platform linux --whisper-dir "$build_dir/bin" --ffmpeg-dir /usr/bin
+          npm run release:check-runtime
+
+      - name: Verify Linux ARM64 native binaries
+        run: npm run release:check-architecture -- --architecture arm64 --file "$GITHUB_WORKSPACE/resources/whisper.cpp/whisper-cli" --file "$GITHUB_WORKSPACE/resources/ffmpeg/ffmpeg" --file "$GITHUB_WORKSPACE/resources/ffmpeg/ffprobe" --file "$GITHUB_WORKSPACE/resources/heif/heif-enc" --file "$GITHUB_WORKSPACE/resources/heif/heif-convert"
+
+      - name: Write runtime metadata
+        run: npm run release:write-runtime-metadata -- --platform linux --resource-dir "$GITHUB_WORKSPACE/resources" --whisper-version "$WHISPER_CPP_VERSION" --libheif-version "$LIBHEIF_VERSION" --libheif-encoder x265
+
+      - name: Build & Package ARM64
+        run: npm run build && npx electron-builder --linux --arm64 --publish never
+
+      - name: Verify packaged Web and FFmpeg resources
+        shell: bash
+        run: |
+          resource_dir="$(find release -type d -path '*/resources' -print -quit)"
+          test -n "$resource_dir"
+          npm run release:check-packaged-resources -- --resource-dir "$resource_dir"
+
+      - name: Verify packaged Linux ARM64 executable
+        shell: bash
+        run: |
+          executable="$(find release -type f -name 'AIVPlayer' -print -quit)"
+          test -n "$executable"
+          npm run release:check-architecture -- --architecture arm64 --file "$executable"
+
+      - name: Verify Linux ARM64 release artifacts
+        run: npm run release:check-platform -- --platform linux --architecture arm64 --artifacts-dir release --report-path release/platform-release-report-linux-arm64.json
+
+      - name: Verify Linux ARM64 package formats
+        run: npm run release:check-formats -- --platform linux --artifacts-dir release
+
+      - name: Upload Linux ARM64 release evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-evidence-linux-arm64
+          path: release/platform-release-report-linux-arm64.json
+          if-no-files-found: ignore
+
+      - name: Upload Linux ARM64 artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: linux-arm64
           path: |
             release/*.AppImage
             release/*.deb
@@ -310,7 +537,7 @@ jobs:
           if-no-files-found: error
 
   publish-release:
-    needs: [build-macos, build-windows, build-linux]
+    needs: [build-macos, build-windows, build-windows-arm64, build-linux, build-linux-arm64]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -319,36 +546,48 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           path: artifacts
-          merge-multiple: true
+          merge-multiple: false
+
+      - name: Assemble architecture-aware release artifacts
+        run: npm run release:assemble-artifacts -- --input-dir artifacts --output-dir artifacts/assembled
 
       - name: List artifacts
         run: find artifacts -type f | head -50
 
+      - name: Verify assembled platform artifacts
+        run: |
+          npm run release:check-platform -- --platform macos --artifacts-dir artifacts/assembled --report-path artifacts/assembled/platform-release-report-macos.json
+          npm run release:check-platform -- --platform windows --artifacts-dir artifacts/assembled --report-path artifacts/assembled/platform-release-report-windows.json
+          npm run release:check-platform -- --platform linux --artifacts-dir artifacts/assembled --report-path artifacts/assembled/platform-release-report-linux.json
+          npm run release:check-formats -- --platform macos --artifacts-dir artifacts/assembled
+          npm run release:check-formats -- --platform windows --artifacts-dir artifacts/assembled
+          npm run release:check-formats -- --platform linux --artifacts-dir artifacts/assembled
+
       - name: Verify merged platform evidence
-        run: npm run release:check-evidence -- --artifacts-dir artifacts --report-path artifacts/merged-platform-evidence.json
+        run: npm run release:check-evidence -- --artifacts-dir artifacts/assembled --report-path artifacts/assembled/merged-platform-evidence.json
 
       - name: Upload merged platform evidence
         if: ${{ always() }}
         uses: actions/upload-artifact@v7
         with:
           name: release-evidence-merged
-          path: artifacts/merged-platform-evidence.json
+          path: artifacts/assembled/merged-platform-evidence.json
           if-no-files-found: ignore
 
       - name: Verify release version and update metadata
-        run: npm run release:check-version -- --artifacts-dir artifacts --tag "${{ inputs.tag || github.ref_name }}"
+        run: npm run release:check-version -- --artifacts-dir artifacts/assembled --tag "${{ inputs.tag || github.ref_name }}"
 
       - name: Generate release manifest
-        run: npm run release:create-manifest -- --artifacts-dir artifacts --tag "${{ inputs.tag || github.ref_name }}" --commit "${{ github.sha }}" --repository "${{ github.repository }}" --workflow "${{ github.workflow }}" --workflow-run-id "${{ github.run_id }}" --workflow-run-attempt "${{ github.run_attempt }}"
+        run: npm run release:create-manifest -- --artifacts-dir artifacts/assembled --tag "${{ inputs.tag || github.ref_name }}" --commit "${{ github.sha }}" --repository "${{ github.repository }}" --workflow "${{ github.workflow }}" --workflow-run-id "${{ github.run_id }}" --workflow-run-attempt "${{ github.run_attempt }}"
 
       - name: Verify release manifest
-        run: npm run release:check-manifest -- --artifacts-dir artifacts --tag "${{ inputs.tag || github.ref_name }}"
+        run: npm run release:check-manifest -- --artifacts-dir artifacts/assembled --tag "${{ inputs.tag || github.ref_name }}"
 
       - name: Share release manifest with Gitee sync
         uses: actions/upload-artifact@v7
         with:
           name: release-manifest
-          path: artifacts/release-manifest.json
+          path: artifacts/assembled/release-manifest.json
           if-no-files-found: error
 
       - name: Create GitHub Release
@@ -358,15 +597,15 @@ jobs:
           tag_name: ${{ inputs.tag || github.ref_name }}
           generate_release_notes: true
           files: |
-            artifacts/**/*.dmg
-            artifacts/**/*.zip
-            artifacts/**/*.pkg
-            artifacts/**/*.exe
-            artifacts/**/*.AppImage
-            artifacts/**/*.deb
-            artifacts/**/latest*.yml
-            artifacts/**/*.blockmap
-            artifacts/release-manifest.json
+            artifacts/assembled/*.dmg
+            artifacts/assembled/*.zip
+            artifacts/assembled/*.pkg
+            artifacts/assembled/*.exe
+            artifacts/assembled/*.AppImage
+            artifacts/assembled/*.deb
+            artifacts/assembled/latest*.yml
+            artifacts/assembled/*.blockmap
+            artifacts/assembled/release-manifest.json
           fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -375,14 +614,14 @@ jobs:
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.verify_only != true }}
         env:
           RELEASE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run release:verify-remote -- --platform github --owner "${{ github.repository_owner }}" --repo "${{ github.event.repository.name }}" --artifacts-dir artifacts --manifest-path artifacts/release-manifest.json --tag "${{ inputs.tag || github.ref_name }}" --report-path artifacts/github-remote-verification.json
+        run: npm run release:verify-remote -- --platform github --owner "${{ github.repository_owner }}" --repo "${{ github.event.repository.name }}" --artifacts-dir artifacts/assembled --manifest-path artifacts/assembled/release-manifest.json --tag "${{ inputs.tag || github.ref_name }}" --report-path artifacts/assembled/github-remote-verification.json
 
       - name: Share GitHub remote verification report
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.verify_only != true }}
         uses: actions/upload-artifact@v7
         with:
           name: remote-verification-github
-          path: artifacts/github-remote-verification.json
+          path: artifacts/assembled/github-remote-verification.json
           if-no-files-found: error
 
   sync-gitee-release:
@@ -411,22 +650,28 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           path: artifacts
-          merge-multiple: true
+          merge-multiple: false
+
+      - name: Assemble architecture-aware Gitee artifacts
+        if: ${{ env.GITEE_TOKEN != '' }}
+        run: npm run release:assemble-artifacts -- --input-dir artifacts --output-dir artifacts/assembled
 
       - name: Sync release to Gitee
         if: ${{ env.GITEE_TOKEN != '' }}
+        env:
+          ARTIFACTS_DIR: artifacts/assembled
         run: node scripts/sync-gitee-release.mjs
 
       - name: Verify Gitee remote assets
         if: ${{ env.GITEE_TOKEN != '' }}
         env:
           RELEASE_TOKEN: ${{ env.GITEE_TOKEN }}
-        run: npm run release:verify-remote -- --platform gitee --owner "$GITEE_OWNER" --repo "$GITEE_REPO" --artifacts-dir artifacts --manifest-path artifacts/release-manifest.json --tag "$RELEASE_TAG" --report-path artifacts/gitee-remote-verification.json
+        run: npm run release:verify-remote -- --platform gitee --owner "$GITEE_OWNER" --repo "$GITEE_REPO" --artifacts-dir artifacts/assembled --manifest-path artifacts/assembled/release-manifest.json --tag "$RELEASE_TAG" --report-path artifacts/assembled/gitee-remote-verification.json
 
       - name: Share Gitee remote verification report
         if: ${{ env.GITEE_TOKEN != '' }}
         uses: actions/upload-artifact@v7
         with:
           name: remote-verification-gitee
-          path: artifacts/gitee-remote-verification.json
+          path: artifacts/assembled/gitee-remote-verification.json
           if-no-files-found: error

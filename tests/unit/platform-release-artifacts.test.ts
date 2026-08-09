@@ -21,12 +21,13 @@ async function createFixture(names: string[]) {
   return directory
 }
 
-async function runCheck(platform: string, artifactsDirectory: string, reportPath?: string) {
+async function runCheck(platform: string, artifactsDirectory: string, reportPath?: string, architecture?: string) {
   const args = [
     join(projectRoot, 'scripts/check-platform-release-artifacts.mjs'),
     '--platform', platform,
     '--artifacts-dir', artifactsDirectory
   ]
+  if (architecture) args.push('--architecture', architecture)
   if (reportPath) args.push('--report-path', reportPath)
   return execFileAsync(process.execPath, args, { cwd: projectRoot })
 }
@@ -51,6 +52,15 @@ describe('platform release artifact contract', () => {
     const artifactsDirectory = await createFixture(['AIVPlayer Setup 0.4.0.exe', 'latest.yml', 'aivplayer_0.4.0_amd64.deb'])
     await expect(runCheck('windows', artifactsDirectory)).rejects.toThrow('unexpected packages: aivplayer_0.4.0_amd64.deb')
     await expect(runCheck('android', artifactsDirectory)).rejects.toThrow('Unsupported release platform')
+  })
+
+  it('checks an architecture-specific Linux artifact set', async () => {
+    const artifactsDirectory = await createFixture(['AIVPlayer-0.4.0-arm64.AppImage', 'aivplayer_0.4.0_arm64.deb', 'latest-linux-arm64.yml'])
+    const result = await runCheck('linux', artifactsDirectory, undefined, 'arm64')
+    expect(result.stdout).toContain('Platform release artifacts verified: linux')
+
+    const wrongArchitectureDirectory = await createFixture(['AIVPlayer-0.4.0-x64.AppImage', 'aivplayer_0.4.0_x64.deb', 'latest-linux-arm64.yml'])
+    await expect(runCheck('linux', wrongArchitectureDirectory, undefined, 'arm64')).rejects.toThrow('wrong architecture packages')
   })
 
   it('writes a hashable evidence report without debug files', async () => {

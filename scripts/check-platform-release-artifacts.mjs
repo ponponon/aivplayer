@@ -26,12 +26,27 @@ function readOptions(argv) {
     const value = argv[index + 1]
     if (!value || value.startsWith('--')) continue
     if (item === '--platform') options.platform = value
+    else if (item === '--architecture') options.architecture = value
     else if (item === '--artifacts-dir') options.artifactsDir = value
     else if (item === '--report-path') options.reportPath = value
     else continue
     index += 1
   }
   return options
+}
+
+function getPlatformContract(platform, architecture) {
+  const contract = PLATFORM_CONTRACTS[platform]
+  if (!contract) throw new Error(`Unsupported release platform: ${String(platform)}`)
+  if (!architecture) return contract
+  if (architecture !== 'x64' && architecture !== 'arm64') throw new Error(`Unsupported release architecture: ${String(architecture)}`)
+  if (platform === 'linux') {
+    return {
+      ...contract,
+      metadata: architecture === 'arm64' ? ['latest-linux-arm64.yml'] : ['latest-linux.yml']
+    }
+  }
+  return contract
 }
 
 function extensionOf(name) {
@@ -43,8 +58,8 @@ function extensionOf(name) {
 
 export async function checkPlatformReleaseArtifacts(options = {}) {
   const platform = options.platform ?? process.env.RELEASE_PLATFORM
-  const contract = PLATFORM_CONTRACTS[platform]
-  if (!contract) throw new Error(`Unsupported release platform: ${String(platform)}`)
+  const architecture = options.architecture ?? process.env.RELEASE_ARCHITECTURE
+  const contract = getPlatformContract(platform, architecture)
   const artifactsDirectory = resolve(options.artifactsDir ?? process.env.ARTIFACTS_DIR ?? 'release')
   const files = await listReleaseArtifacts(artifactsDirectory, { includeManifest: false })
   if (files.length === 0) throw new Error(`No platform release artifacts found under ${artifactsDirectory}.`)
@@ -63,13 +78,18 @@ export async function checkPlatformReleaseArtifacts(options = {}) {
     const extension = extensionOf(name)
     return extension !== '.yml' && !allowedExtensions.has(extension)
   })
-  if (missingPackages.length > 0 || missingMetadata.length > 0 || unexpectedMetadata.length > 0 || unexpectedPackages.length > 0) {
+  const packageNames = names.filter((name) => requiredPackages.some((extension) => name.toLowerCase().endsWith(extension)))
+  const wrongArchitecturePackages = architecture
+    ? packageNames.filter((name) => !name.toLowerCase().includes(architecture.toLowerCase()))
+    : []
+  if (missingPackages.length > 0 || missingMetadata.length > 0 || unexpectedMetadata.length > 0 || unexpectedPackages.length > 0 || wrongArchitecturePackages.length > 0) {
     throw new Error([
       `Platform ${platform} release artifact contract failed.`,
       `missing packages: ${missingPackages.join(', ') || 'none'}`,
       `missing metadata: ${missingMetadata.join(', ') || 'none'}`,
       `unexpected metadata: ${unexpectedMetadata.join(', ') || 'none'}`,
-      `unexpected packages: ${unexpectedPackages.join(', ') || 'none'}`
+      `unexpected packages: ${unexpectedPackages.join(', ') || 'none'}`,
+      `wrong architecture packages: ${wrongArchitecturePackages.join(', ') || 'none'}`
     ].join(' '))
   }
   const artifacts = await Promise.all(files.map(async (file) => ({
@@ -81,6 +101,7 @@ export async function checkPlatformReleaseArtifacts(options = {}) {
     schemaVersion: 1,
     ok: true,
     platform,
+    ...(architecture ? { architecture } : {}),
     generatedAt: new Date().toISOString(),
     artifactCount: artifacts.length,
     packageExtensions: contract.packages,
