@@ -1,7 +1,9 @@
 import { sourceRangeToEditedRanges } from '../../../core/editing/timeline-math'
 import { removeSourceVideoRanges, restoreSourceVideoRange } from '../../../core/editing/timeline-operations'
+import { applyEditingProposal, buildDeleteScriptProposal, EditingProposalError } from '../../../core/editing/edit-proposal'
 import { getEditingScriptWordSourceRange, isEditingScriptSegmentCaption, removeEditingScriptWord, removeEditingScriptWords, replaceEditingScriptWord, restoreEditingScriptSegmentCaptions, setEditingScriptSegmentDeleted, syncEditingSourceCaptionText, updateEditingScriptSegmentText, updateEditingSourceCaptionText } from '../../../core/editing/script-operations'
 import type { EditingCaptionWord, EditingProject, EditingScriptSegment, EditingVideoClip } from '../../../shared/editing-types'
+import type { EditingProposal } from '../../../shared/editing-proposal'
 import type { AppModel } from './app-types'
 import { saveEditingProject } from './editing-project-storage'
 import { seekEditingTime, withUpdatedTimelineRanges } from './editing-action-helpers'
@@ -44,6 +46,11 @@ export type EditingScriptWordTarget = {
   word: EditingCaptionWord
 }
 
+export type EditingProposalApplyResult = {
+  success: boolean
+  message?: string
+}
+
 export function createEditingScriptActions(model: AppModel) {
   const selectEditingScriptSegment = (segmentId: string): void => {
     const project = model.editingProject
@@ -76,6 +83,40 @@ export function createEditingScriptActions(model: AppModel) {
     model.setEditingSelectedCaptionId(null)
     saveEditingProject(nextProject)
     seekEditingTime(model, result.removedRanges[0]?.startSeconds ?? model.editingCurrentTime, nextProject)
+  }
+
+  const createDeleteEditingScriptProposal = (segmentIds: readonly string[]): EditingProposal | null => {
+    const project = model.editingProject
+    if (!project) return null
+    try {
+      return buildDeleteScriptProposal(project, segmentIds)
+    } catch (error) {
+      const message = error instanceof EditingProposalError ? error.message : String(error)
+      model.setEditingProjectStatus({ success: false, message })
+      return null
+    }
+  }
+
+  const applyEditingScriptProposal = (proposal: EditingProposal): EditingProposalApplyResult => {
+    const project = model.editingProject
+    if (!project) return { success: false, message: '当前没有打开的剪辑工程' }
+    try {
+      const nextProject = applyEditingProposal(project, proposal, { updatedAt: Date.now() })
+      model.setEditingPast((past) => [...past, project])
+      model.setEditingFuture([])
+      model.setEditingProject(nextProject)
+      model.setEditingSelectedCaptionId(null)
+      if (model.editingSelectedClipId && !nextProject.videoClips.some((clip) => clip.id === model.editingSelectedClipId)) model.setEditingSelectedClipId(null)
+      if (model.editingSelectedGraphicId && !nextProject.graphics?.some((graphic) => graphic.id === model.editingSelectedGraphicId)) model.setEditingSelectedGraphicId(null)
+      if (model.editingSelectedVideoBlockId && !nextProject.videoBlocks?.some((block) => block.id === model.editingSelectedVideoBlockId)) model.setEditingSelectedVideoBlockId(null)
+      saveEditingProject(nextProject)
+      seekEditingTime(model, proposal.diff.removedEditedRanges[0]?.startSeconds ?? model.editingCurrentTime, nextProject)
+      return { success: true }
+    } catch (error) {
+      const message = error instanceof EditingProposalError ? error.message : String(error)
+      model.setEditingProjectStatus({ success: false, message })
+      return { success: false, message }
+    }
   }
 
   const restoreEditingScriptSegment = (segmentId: string): void => {
@@ -249,5 +290,5 @@ export function createEditingScriptActions(model: AppModel) {
     seekEditingTime(model, model.editingCurrentTime, nextProject)
   }
 
-  return { selectEditingScriptSegment, deleteEditingScriptSegment, restoreEditingScriptSegment, updateEditingScriptText, deleteEditingScriptWord, replaceEditingScriptWord: replaceEditingScriptWordAction, deleteEditingScriptWords }
+  return { selectEditingScriptSegment, deleteEditingScriptSegment, createDeleteEditingScriptProposal, applyEditingScriptProposal, restoreEditingScriptSegment, updateEditingScriptText, deleteEditingScriptWord, replaceEditingScriptWord: replaceEditingScriptWordAction, deleteEditingScriptWords }
 }

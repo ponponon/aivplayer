@@ -27,6 +27,23 @@ type CaptionManifestCopy = {
   projectRepairAmbiguous: (source: string, paths: readonly string[]) => string
   projectRepairSidecarReset: (count: number) => string
   projectRepairFailed: string
+  proposalTitle: string
+  proposalDescription: string
+  proposalDuration: string
+  proposalRemovedRanges: string
+  proposalAffectedSegments: string
+  proposalAffectedCaptions: string
+  proposalSourceRangeUnit: string
+  proposalSegmentUnit: string
+  proposalCaptionUnit: string
+  proposalDeleteTitle: string
+  proposalRetainedTitle: string
+  proposalSourceTime: string
+  proposalSegmentTitle: string
+  proposalDeleteAfterConfirm: string
+  proposalRevisionLabel: string
+  proposalConfirm: string
+  proposalCancel: string
 }
 
 type BaseLocaleCopy = Widen<typeof zhCN>

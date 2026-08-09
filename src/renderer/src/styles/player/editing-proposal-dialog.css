@@ -1,0 +1,49 @@
+.editing-proposal-dialog {
+  display: grid;
+  gap: 12px;
+  width: min(720px, calc(100vw - 32px));
+  min-width: 0;
+  max-height: calc(100dvh - 48px);
+  padding: 18px;
+  color: var(--text-primary);
+  background: rgba(var(--panel-rgb), 0.96);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.46);
+  overflow: auto;
+}
+
+.editing-proposal-dialog:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.editing-proposal-description { margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.6; }
+.editing-proposal-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; min-width: 0; }
+.editing-proposal-summary > div { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 3px 5px; min-width: 0; padding: 8px 9px; background: rgba(var(--overlay-rgb), 0.045); border: 1px solid var(--border-soft); border-radius: var(--radius-md); }
+.editing-proposal-summary svg { grid-row: span 2; align-self: center; color: var(--accent); }
+.editing-proposal-summary span { color: var(--text-muted); font-size: 9px; }
+.editing-proposal-summary strong { color: var(--text-primary); font-size: 14px; font-variant-numeric: tabular-nums; }
+.editing-proposal-summary small { grid-column: 2; color: var(--text-muted); font-size: 8px; }
+.editing-proposal-sections { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; min-width: 0; }
+.editing-proposal-section { display: grid; align-content: start; gap: 6px; min-width: 0; padding: 9px; background: rgba(var(--overlay-rgb), 0.035); border: 1px solid var(--border-soft); border-radius: var(--radius-md); }
+.editing-proposal-section:last-child { grid-column: 1 / -1; }
+.editing-proposal-section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-width: 0; }
+.editing-proposal-section-heading strong { color: var(--text-primary); font-size: 10px; }
+.editing-proposal-section-heading span { color: var(--text-muted); font-size: 8px; }
+.editing-proposal-range-list, .editing-proposal-segment-list { display: grid; gap: 4px; max-height: 130px; overflow: auto; }
+.editing-proposal-range { display: flex; align-items: baseline; gap: 6px; min-width: 0; padding: 4px 5px; background: rgba(var(--accent-rgb), 0.055); border: 1px solid rgba(var(--accent-rgb), 0.16); border-radius: 4px; }
+.editing-proposal-range.is-delete { background: rgba(210, 102, 102, 0.08); border-color: rgba(210, 102, 102, 0.25); }
+.editing-proposal-range code { flex: 0 0 auto; color: var(--accent); font-size: 9px; font-variant-numeric: tabular-nums; }
+.editing-proposal-range.is-delete code { color: var(--danger); }
+.editing-proposal-range span { min-width: 0; overflow: hidden; color: var(--text-muted); font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.editing-proposal-segment { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-width: 0; padding: 5px 6px; background: rgba(210, 102, 102, 0.07); border: 1px solid rgba(210, 102, 102, 0.2); border-radius: 4px; }
+.editing-proposal-segment > div { display: grid; gap: 2px; min-width: 0; }
+.editing-proposal-segment strong, .editing-proposal-segment span { min-width: 0; overflow: hidden; color: var(--text-secondary); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.editing-proposal-segment strong { color: var(--text-primary); }
+.editing-proposal-segment small { color: var(--text-muted); font-size: 8px; font-variant-numeric: tabular-nums; }
+.editing-proposal-revision { display: flex; align-items: baseline; gap: 6px; min-width: 0; margin: 0; color: var(--text-muted); font-size: 8px; }
+.editing-proposal-revision code { min-width: 0; overflow: hidden; color: var(--text-secondary); font: inherit; text-overflow: ellipsis; white-space: nowrap; }
+.editing-proposal-actions { margin-top: 2px; }
+
+@media (max-width: 620px) {
+  .editing-proposal-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .editing-proposal-sections { grid-template-columns: minmax(0, 1fr); }
+  .editing-proposal-section:last-child { grid-column: auto; }
+}
