@@ -36,6 +36,7 @@ export function VisionPanel(): React.ReactElement {
   const [query, setQuery] = useState('')
   const [sampleImagePath, setSampleImagePath] = useState<string | null>(null)
   const [sampleImageName, setSampleImageName] = useState<string | null>(null)
+  const [includeSceneEvidence, setIncludeSceneEvidence] = useState(false)
   const [includeEntityEvidence, setIncludeEntityEvidence] = useState(false)
   const [results, setResults] = useState<VisionSearchResult[]>([])
   const [sources, setSources] = useState<VisionLibrarySource[]>([])
@@ -252,7 +253,7 @@ export function VisionPanel(): React.ReactElement {
     if (app.state.playlist.length === 0 || isBusy) return
     setError(null)
     setProgress(null)
-    void window.aiv.startVisionIndex({ mediaPaths: app.state.playlist.map((file) => file.path), intervalSeconds: 3, includeEntityEvidence }).catch((reason: unknown) => {
+    void window.aiv.startVisionIndex({ mediaPaths: app.state.playlist.map((file) => file.path), intervalSeconds: 3, includeSceneEvidence, includeEntityEvidence }).catch((reason: unknown) => {
       setError(reason instanceof Error ? reason.message : String(reason))
     })
   }
@@ -261,7 +262,7 @@ export function VisionPanel(): React.ReactElement {
     if (folder.videoPaths.length === 0 || isBusy) return
     setError(null)
     setProgress(null)
-    void window.aiv.startVisionIndex({ mediaPaths: folder.videoPaths, intervalSeconds: 3, includeEntityEvidence }).catch((reason: unknown) => {
+    void window.aiv.startVisionIndex({ mediaPaths: folder.videoPaths, intervalSeconds: 3, includeSceneEvidence, includeEntityEvidence }).catch((reason: unknown) => {
       setError(reason instanceof Error ? reason.message : String(reason))
     })
   }
@@ -484,6 +485,8 @@ export function VisionPanel(): React.ReactElement {
       ? app.copy.vision.loading
       : progress?.stage === 'frames'
         ? app.copy.vision.indexing(progress.processedFrames, progress.totalFrames, progress.currentVideoIndex, progress.totalVideos)
+        : progress?.stage === 'scene-evidence'
+          ? app.copy.vision.sceneAnalyzing(progress.sceneEvidenceProcessed ?? 0, progress.sceneEvidenceTotal ?? 0)
         : progress?.stage === 'entity-evidence'
           ? app.copy.vision.entityAnalyzing(progress.entityEvidenceProcessed ?? 0, progress.entityEvidenceTotal ?? 0)
         : progress?.stage === 'vector-index'
@@ -506,6 +509,7 @@ export function VisionPanel(): React.ReactElement {
       formatDuration(progress.timings.planningMs),
       formatDuration(progress.timings.modelLoadingMs),
       formatDuration(progress.timings.framesMs),
+      formatDuration(progress.timings.sceneEvidenceMs),
       formatDuration(progress.timings.entityEvidenceMs),
       formatDuration(progress.timings.vectorIndexMs),
       formatDuration(progress.timings.textIndexMs),
@@ -525,6 +529,7 @@ export function VisionPanel(): React.ReactElement {
       <VisionEntityCatalog copy={app.copy.vision} catalog={entityCatalog} onUpdate={updateEntityCatalog} onBatchUpdate={updateEntityCatalogBatch} />
       <VisionIndexFailures copy={app.copy.vision} failures={failures} onRetry={retryVisionFailure} onBatchRetry={retryVisionFailures} />
       <div className="vision-index-actions">
+        <label className="vision-folder-option"><input type="checkbox" checked={includeSceneEvidence} disabled={isBusy} onChange={(event) => setIncludeSceneEvidence(event.target.checked)} /><span>{app.copy.vision.includeSceneEvidence}</span></label>
         <label className="vision-folder-option"><input type="checkbox" checked={includeEntityEvidence} disabled={isBusy} onChange={(event) => setIncludeEntityEvidence(event.target.checked)} /><span>{app.copy.vision.includeEntityEvidence}</span></label>
         <button className="vision-primary-action" type="button" onClick={startIndex} disabled={isBusy || app.state.playlist.length === 0}><Database size={15} />{app.copy.vision.indexPlaylist}</button>
         {isBusy ? <button className="vision-secondary-action" type="button" onClick={cancelCurrentTask}><Square size={13} />{app.copy.vision.cancelIndex}</button> : null}
