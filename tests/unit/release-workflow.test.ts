@@ -130,6 +130,8 @@ describe('release workflow source constraints', () => {
 
   it('verifies evidence after artifact merge and before version / manifest checks', () => {
     expect(releaseWorkflow).toContain('release:check-evidence')
+    expect(releaseWorkflow).toContain('--report-path artifacts/merged-platform-evidence.json')
+    expect(releaseWorkflow).toContain('name: release-evidence-merged')
     expect(releaseWorkflow.indexOf('release:check-evidence')).toBeLessThan(releaseWorkflow.indexOf('release:check-version'))
     expect(platformEvidence).toContain('Missing platform evidence report')
     expect(platformEvidence).toContain('Merged release evidence SHA-256 changed')

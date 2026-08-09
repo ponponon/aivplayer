@@ -56,11 +56,13 @@ async function createFixture() {
   return directory
 }
 
-async function runCheck(artifactsDirectory: string) {
-  return execFileAsync(process.execPath, [
+async function runCheck(artifactsDirectory: string, reportPath?: string) {
+  const args = [
     join(projectRoot, 'scripts/check-platform-evidence.mjs'),
     '--artifacts-dir', artifactsDirectory
-  ], { cwd: projectRoot })
+  ]
+  if (reportPath) args.push('--report-path', reportPath)
+  return execFileAsync(process.execPath, args, { cwd: projectRoot })
 }
 
 describe('merged platform evidence', () => {
@@ -68,6 +70,24 @@ describe('merged platform evidence', () => {
     const artifactsDirectory = await createFixture()
     const result = await runCheck(artifactsDirectory)
     expect(result.stdout).toContain('Platform evidence verified: macos, windows, linux, 9 artifact(s)')
+  })
+
+  it('writes a merged evidence report with the verified file hashes', async () => {
+    const artifactsDirectory = await createFixture()
+    const reportPath = join(artifactsDirectory, 'merged-platform-evidence.json')
+    await runCheck(artifactsDirectory, reportPath)
+
+    const report = JSON.parse(await readFile(reportPath, 'utf8')) as {
+      schemaVersion: number
+      kind: string
+      artifactCount: number
+      artifacts: Array<{ name: string; sizeBytes: number; sha256: string }>
+    }
+    expect(report.schemaVersion).toBe(1)
+    expect(report.kind).toBe('merged-platform-evidence')
+    expect(report.artifactCount).toBe(9)
+    expect(report.artifacts).toHaveLength(9)
+    expect(report.artifacts.every((artifact) => /^[a-f0-9]{64}$/.test(artifact.sha256))).toBe(true)
   })
 
   it('rejects missing reports and changed files before manifest creation', async () => {
