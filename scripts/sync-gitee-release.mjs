@@ -1,6 +1,8 @@
-import { readdir, stat } from 'node:fs/promises'
+import { stat } from 'node:fs/promises'
 import { openAsBlob } from 'node:fs'
 import { basename, join, resolve } from 'node:path'
+import { RELEASE_MANIFEST_NAME, listReleaseArtifacts } from './release-artifact-policy.mjs'
+import { verifyReleaseManifest } from './release-manifest.mjs'
 
 const apiBase = 'https://gitee.com/api/v5'
 const token = process.env.GITEE_TOKEN
@@ -62,35 +64,6 @@ async function getOrCreateRelease() {
   })
 }
 
-async function listArtifacts() {
-  const entries = await readdir(artifactsDir, { withFileTypes: true })
-  const files = []
-  for (const entry of entries) {
-    const path = join(artifactsDir, entry.name)
-    if (entry.isDirectory()) {
-      files.push(...await listFilesRecursively(path))
-      continue
-    }
-    if (isReleaseArtifact(entry.name)) files.push(path)
-  }
-  return files.sort()
-}
-
-async function listFilesRecursively(directory) {
-  const entries = await readdir(directory, { withFileTypes: true })
-  const files = []
-  for (const entry of entries) {
-    const path = join(directory, entry.name)
-    if (entry.isDirectory()) files.push(...await listFilesRecursively(path))
-    else if (isReleaseArtifact(entry.name)) files.push(path)
-  }
-  return files
-}
-
-function isReleaseArtifact(name) {
-  return /\.(?:dmg|zip|pkg|exe|AppImage|deb|yml|blockmap)$/i.test(name)
-}
-
 async function replaceArtifacts(release, files) {
   const releasePath = `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/releases/${release.id}`
   const attachments = await request(`${releasePath}/attach_files?page=1&per_page=100`)
@@ -111,8 +84,9 @@ async function replaceArtifacts(release, files) {
   }
 }
 
-const files = await listArtifacts()
+const files = await listReleaseArtifacts(artifactsDir)
 if (files.length === 0) throw new Error(`No release artifacts found under ${artifactsDir}.`)
+await verifyReleaseManifest({ artifactsDir, manifestPath: join(artifactsDir, RELEASE_MANIFEST_NAME), tag })
 const release = await getOrCreateRelease()
 console.log(`Syncing ${files.length} artifacts to Gitee release ${release.tag_name ?? tag}.`)
 await replaceArtifacts(release, files)

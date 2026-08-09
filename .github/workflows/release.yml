@@ -276,6 +276,19 @@ jobs:
       - name: List artifacts
         run: find artifacts -type f | head -50
 
+      - name: Generate release manifest
+        run: npm run release:create-manifest -- --artifacts-dir artifacts --tag "${{ inputs.tag || github.ref_name }}"
+
+      - name: Verify release manifest
+        run: npm run release:check-manifest -- --artifacts-dir artifacts --tag "${{ inputs.tag || github.ref_name }}"
+
+      - name: Share release manifest with Gitee sync
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-manifest
+          path: artifacts/release-manifest.json
+          if-no-files-found: error
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -290,6 +303,7 @@ jobs:
             artifacts/*.deb
             artifacts/*.yml
             artifacts/*.blockmap
+            artifacts/release-manifest.json
           fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -30,6 +30,7 @@ describe('app update source constraints', () => {
     expect(workflowSource).toContain('release/*.blockmap')
     expect(workflowSource).toContain('artifacts/*.yml')
     expect(workflowSource).toContain('artifacts/*.blockmap')
+    expect(workflowSource).toContain('artifacts/release-manifest.json')
     expect(workflowSource).toContain("Join-Path $env:ChocolateyInstall 'lib\\ffmpeg'")
     expect(workflowSource).toContain("Get-ChildItem -Path $ffmpegRoot -Filter 'ffmpeg.exe'")
   })
@@ -42,6 +43,7 @@ describe('app update source constraints', () => {
     expect(workflowSource).toContain('node scripts/sync-gitee-release.mjs')
     expect(syncSource).toContain("if (!token) {")
     expect(syncSource).toContain('if (!names.has(attachment.name)) continue')
+    expect(syncSource).toContain('verifyReleaseManifest')
     expect(syncSource).toContain("form.append('file'")
   })
 
