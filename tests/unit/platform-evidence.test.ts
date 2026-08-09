@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { execFile } from 'node:child_process'
-import { mkdtemp, readFile, rm, unlink, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, unlink, writeFile } from 'node:fs/promises'
 import { promisify } from 'node:util'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -29,6 +29,7 @@ afterEach(async () => {
 async function createFixture() {
   const directory = await mkdtemp(join(tmpdir(), 'aivplayer-platform-evidence-'))
   temporaryDirectories.push(directory)
+  await mkdir(join(directory, 'nested', 'linux-unpacked', 'resources'), { recursive: true })
   for (const names of Object.values(platformFiles)) {
     for (const name of names) await writeFile(join(directory, name), `fixture:${name}`)
   }
@@ -53,6 +54,8 @@ async function createFixture() {
       artifacts
     }))
   }
+  await writeFile(join(directory, 'nested', 'linux-unpacked', 'AIVPlayer.exe'), 'unpacked application')
+  await writeFile(join(directory, 'nested', 'linux-unpacked', 'resources', 'ffmpeg.exe'), 'unpacked runtime')
   return directory
 }
 

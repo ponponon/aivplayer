@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { promisify } from 'node:util'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -41,6 +41,9 @@ async function createFixture() {
   await writeFile(join(root, 'linux-arm64', 'aivplayer-0.5.1-arm64.AppImage'), 'appimage-arm64')
   await writeFile(join(root, 'linux-arm64', 'aivplayer-0.5.1-arm64.deb'), 'deb-arm64')
   await writeFile(join(root, 'linux-arm64', 'latest-linux-arm64.yml'), metadata('0.5.1', 'aivplayer-0.5.1-arm64.AppImage'))
+  await mkdir(join(root, 'windows-x64', 'release', 'win-unpacked', 'resources'), { recursive: true })
+  await writeFile(join(root, 'windows-x64', 'release', 'win-unpacked', 'AIVPlayer.exe'), 'unpacked application')
+  await writeFile(join(root, 'windows-x64', 'release', 'win-unpacked', 'resources', 'ffmpeg.exe'), 'unpacked runtime')
   await mkdir(join(root, 'release-manifest'), { recursive: true })
   await writeFile(join(root, 'release-manifest', 'release-manifest.json'), '{"tag":"v0.5.1"}\n')
   return root
@@ -65,6 +68,8 @@ describe('release artifact assembly', () => {
     expect(windowsMetadata).toContain('AIVPlayer Setup 0.5.1 arm64.exe')
     expect(await readFile(join(output, 'latest-linux-arm64.yml'), 'utf8')).toContain('aivplayer-0.5.1-arm64.AppImage')
     await expect(readFile(join(output, 'release-manifest.json'), 'utf8')).resolves.toContain('v0.5.1')
+    await expect(access(join(output, 'AIVPlayer.exe'))).rejects.toMatchObject({ code: 'ENOENT' })
+    await expect(access(join(output, 'ffmpeg.exe'))).rejects.toMatchObject({ code: 'ENOENT' })
   })
 
   it('rejects mixed Windows metadata versions before publishing', async () => {
