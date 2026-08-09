@@ -54,3 +54,18 @@ export type SpeakerDiarizationResult = {
   durationSeconds: number
   segments: SpeakerDiarizationSegment[]
 }
+
+export type SpeakerDiarizationRunRequest = {
+  mediaPath: string
+  numClusters?: number
+  threshold?: number
+  minDurationOn?: number
+  minDurationOff?: number
+}
+
+export type SpeakerDiarizationRunResult = {
+  success: boolean
+  message: string
+  status: SpeakerDiarizationModelStatus
+  result: SpeakerDiarizationResult | null
+}

@@ -100,7 +100,10 @@ import type {
   PersonMatteModelStatus,
   PersonMatteTrackProgress,
   PersonMatteTrackRequest,
-  PersonMatteTrackResult
+  PersonMatteTrackResult,
+  SpeakerDiarizationModelStatus,
+  SpeakerDiarizationRunRequest,
+  SpeakerDiarizationRunResult
 } from '../shared/media-types'
 import type { LivePhotoExportRequest, LivePhotoExportResult, LivePhotoProbeResult } from '../shared/live-photo-types'
 import type { EditingProjectFileOpenResult, EditingProjectFileSaveRequest, EditingProjectFileSaveResult } from '../shared/editing-types'
@@ -253,6 +256,8 @@ const api = {
   getPersonMatteModelStatus: (): Promise<PersonMatteModelStatus> => ipcRenderer.invoke(IPC_CHANNELS.PERSON_MATTE_STATUS),
   downloadPersonMatteModel: (): Promise<PersonMatteModelDownloadResult> => ipcRenderer.invoke(IPC_CHANNELS.PERSON_MATTE_DOWNLOAD),
   buildPersonMatteTrack: (request: PersonMatteTrackRequest): Promise<PersonMatteTrackResult> => ipcRenderer.invoke(IPC_CHANNELS.PERSON_MATTE_TRACK, request),
+  getSpeakerDiarizationStatus: (): Promise<SpeakerDiarizationModelStatus> => ipcRenderer.invoke(IPC_CHANNELS.SPEAKER_DIARIZATION_STATUS),
+  runSpeakerDiarization: (request: SpeakerDiarizationRunRequest): Promise<SpeakerDiarizationRunResult> => ipcRenderer.invoke(IPC_CHANNELS.SPEAKER_DIARIZATION_RUN, request),
   startVisionIndex: (request: VisionIndexRequest): Promise<VisionIndexProgress> => ipcRenderer.invoke(IPC_CHANNELS.VISION_INDEX_START, request),
   enqueueVisionIndex: (request: VisionIndexRequest): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.VISION_INDEX_AUTO_START, request),
   scanVisionDirectory: (request: VisionDirectoryScanRequest): Promise<VisionDirectoryScanResult> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SCAN_DIRECTORY_START, request),

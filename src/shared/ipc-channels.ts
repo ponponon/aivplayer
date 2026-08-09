@@ -142,6 +142,8 @@ export const IPC_CHANNELS = {
   PERSON_MATTE_DOWNLOAD_PROGRESS: 'person-matte:download-progress',
   PERSON_MATTE_TRACK: 'person-matte:track',
   PERSON_MATTE_TRACK_PROGRESS: 'person-matte:track-progress',
+  SPEAKER_DIARIZATION_STATUS: 'speaker-diarization:status',
+  SPEAKER_DIARIZATION_RUN: 'speaker-diarization:run',
   DRAMA_LIST_PROJECTS: 'drama:list-projects',
   DRAMA_CREATE_PROJECT: 'drama:create-project',
   DRAMA_IMPORT_CHAPTERS: 'drama:import-chapters',
