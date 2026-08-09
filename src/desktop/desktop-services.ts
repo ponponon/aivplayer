@@ -62,7 +62,8 @@ export function getVisionLibrary(): VisionLibrary {
     desktopState.visionLibrary = new VisionLibrary({
       userDataPath: app.getPath('userData'),
       resourcePath: resolveResourcePath(),
-      env: process.env
+      env: process.env,
+      getEntityLabels: () => getVisionEntityCatalogStore().getLabels()
     })
   }
   return desktopState.visionLibrary

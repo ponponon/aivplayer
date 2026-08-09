@@ -158,6 +158,7 @@ type VisionLibraryOptions = {
   userDataPath: string
   resourcePath: string
   env: NodeJS.ProcessEnv
+  getEntityLabels?: () => readonly VisionEntityLabel[] | Promise<readonly VisionEntityLabel[]>
 }
 
 type ProgressCallback = (progress: VisionIndexProgress) => void
@@ -294,6 +295,7 @@ export class VisionLibrary {
   private vectorIndexMaintenancePromise: Promise<void> | null = null
   private searchDocumentsReady = false
   private entityLabelEmbeddingsPromise: Promise<ReadonlyMap<string, number[]>> | null = null
+  private entityLabelEmbeddingsKey = ''
 
   private readonly options: VisionLibraryOptions
 
@@ -915,10 +917,20 @@ export class VisionLibrary {
     return rows.length
   }
 
-  private async getEntityLabelEmbeddings(): Promise<ReadonlyMap<string, number[]>> {
+  private async getEntityLabels(): Promise<readonly VisionEntityLabel[]> {
+    const labels = this.options.getEntityLabels ? await this.options.getEntityLabels() : DEFAULT_VISION_ENTITY_LABELS
+    return labels.filter((label): label is VisionEntityLabel => Boolean(label && typeof label.id === 'string' && label.id.trim() && typeof label.query === 'string' && label.query.trim() && typeof label.displayName === 'string' && label.displayName.trim())).slice(0, 100)
+  }
+
+  private async getEntityLabelEmbeddings(labels: readonly VisionEntityLabel[]): Promise<ReadonlyMap<string, number[]>> {
+    const cacheKey = labels.map((label) => `${label.id}\0${label.query}\0${label.displayName}`).join('\0')
+    if (this.entityLabelEmbeddingsKey !== cacheKey) {
+      this.entityLabelEmbeddingsKey = cacheKey
+      this.entityLabelEmbeddingsPromise = null
+    }
     this.entityLabelEmbeddingsPromise ??= (async () => {
       await this.model.prepareTextModel()
-      const entries = await Promise.all(DEFAULT_VISION_ENTITY_LABELS.map(async (label) => [label.id, await this.model.getTextEmbedding(label.query)] as const))
+      const entries = await Promise.all(labels.map(async (label) => [label.id, await this.model.getTextEmbedding(label.query)] as const))
       return new Map(entries)
     })().catch((error) => {
       this.entityLabelEmbeddingsPromise = null
@@ -932,11 +944,12 @@ export class VisionLibrary {
     snapshot: VideoSourceSnapshot,
     intervalSeconds: number,
     frameRows: VisionFrameRow[],
+    labels: readonly VisionEntityLabel[],
     labelEmbeddings: ReadonlyMap<string, number[]>,
     signal: AbortSignal
   ): Promise<number> {
     throwIfAborted(signal)
-    const labelsById = new Map<string, VisionEntityLabel>(DEFAULT_VISION_ENTITY_LABELS.map((label) => [label.id, label]))
+    const labelsById = new Map<string, VisionEntityLabel>(labels.map((label) => [label.id, label]))
     const sourceFingerprint = createVisionSourceFingerprint(videoPath, snapshot.sizeBytes, snapshot.mtimeMs)
     const rows = frameRows.flatMap((frame) => createVisionEntityEvidence({
       sourceId: createVisionSourceId(videoPath),
@@ -1150,12 +1163,13 @@ export class VisionLibrary {
           .map((path) => ({ path, snapshot: plannedSnapshots.get(path) }))
           .filter((plan): plan is { path: string; snapshot: VideoSourceSnapshot } => plan.snapshot !== undefined)
         emitProgress({ status: 'indexing', stage: 'entity-evidence', totalVideos: paths.length, currentVideoIndex: paths.length, totalFrames, processedFrames, skippedVideos, captionOnlyVideos, entityEvidenceTotal: entityPlans.length, entityEvidenceProcessed, entityEvidenceCount, message: '正在分析画面实体标签…' })
-        const labelEmbeddings = await this.getEntityLabelEmbeddings()
+        const entityLabels = await this.getEntityLabels()
+        const labelEmbeddings = await this.getEntityLabelEmbeddings(entityLabels)
         for (const plan of entityPlans) {
           throwIfAborted(signal)
           activeVideoPath = plan.path
           const frameRows = await this.getFrameRows(plan.path)
-          entityEvidenceCount += await this.refreshEntityEvidence(plan.path, plan.snapshot, interval, frameRows, labelEmbeddings, signal)
+          entityEvidenceCount += await this.refreshEntityEvidence(plan.path, plan.snapshot, interval, frameRows, entityLabels, labelEmbeddings, signal)
           entityEvidenceProcessed += 1
           emitProgress({ status: 'indexing', stage: 'entity-evidence', totalVideos: paths.length, currentVideoIndex: paths.length, totalFrames, processedFrames, skippedVideos, captionOnlyVideos, entityEvidenceTotal: entityPlans.length, entityEvidenceProcessed, entityEvidenceCount, currentVideoPath: plan.path, message: `已完成实体标签：${basename(plan.path)}` })
         }
