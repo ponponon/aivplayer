@@ -88,6 +88,11 @@ export class VisionEmbeddingRuntime {
     await Promise.all([this.getProcessor(), this.getVisionModel()])
   }
 
+  async prepareTextModel(): Promise<void> {
+    if (!this.isAvailable()) throw new Error(this.getStatusMessage())
+    await Promise.all([this.getTokenizer(), this.getTextModel()])
+  }
+
   private getTokenizer() {
     this.tokenizerPromise ??= AutoTokenizer.from_pretrained(VISION_MODEL_ID)
     return this.tokenizerPromise
