@@ -68,4 +68,7 @@ export type SpeakerDiarizationRunResult = {
   message: string
   status: SpeakerDiarizationModelStatus
   result: SpeakerDiarizationResult | null
+  evidencePersisted: boolean
+  evidenceCount: number
+  evidenceMessage?: string
 }
