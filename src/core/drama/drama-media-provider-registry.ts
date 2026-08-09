@@ -1,8 +1,9 @@
-import type { DramaGenerationMediaType, DramaMediaProviderSettings, DramaGenerationProvider } from '../../shared/drama-types'
+import type { DramaGenerationMediaType, DramaMediaProviderSettings } from '../../shared/drama-types'
 import { createArkVideoProvider } from './drama-ark-video-provider'
 import { createHttpDramaMediaProvider } from './drama-media-provider'
 import { createOpenAICompatibleAudioProvider } from './drama-openai-audio-provider'
 import { createOpenAICompatibleImageProvider } from './drama-openai-image-provider'
+import type { DramaGenerationProvider } from './drama-generation-worker'
 
 const MEDIA_TYPES: readonly DramaGenerationMediaType[] = ['image', 'video', 'audio']
 
