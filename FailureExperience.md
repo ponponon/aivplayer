@@ -1176,3 +1176,9 @@
 - 现象：平台检查只把文件数量和成功消息打印到 CI 日志；日志滚动、job 结束或多人复核时，无法快速确认某个平台实际上传了哪些文件、大小是否异常、哈希是否与最终 manifest 一致。
 - 经验：每个 Runner 应在上传前写出独立、无凭据的证据报告，至少包含平台契约、文件名、大小和 SHA-256；报告要和发布资产分开保存，避免把审计 JSON 意外上传到 Release 或被 updater 当成安装包。
 - 处理：扩展 `release:check-platform` 支持 `--report-path`，三平台分别上传 `release-evidence-macos/windows/linux` workflow artifact；报告文件名不符合 release artifact policy，不进入 GitHub / Gitee 发布物和 manifest，但可在 Actions 中下载复核。
+
+## 2026-08-09：保存 evidence 报告后还必须校验合并目录
+
+- 现象：三份 Runner 报告即使各自正确，`actions/download-artifact` 合并到 publish job 后仍可能发生文件缺失、同名覆盖、哈希漂移或额外文件混入；如果直接生成总 manifest，最终清单无法证明它来自三份报告对应的文件。
+- 经验：证据报告不是装饰性日志，必须成为 publish 前的输入约束：报告集合固定、平台契约固定、各报告之间不能重叠，报告联合文件集合必须与合并目录完全相等，最后逐文件复算大小和 SHA-256。
+- 处理：新增 `release:check-evidence` 和 `check-platform-evidence.mjs`，在 `release:check-version` / `release:create-manifest` 之前执行；单测覆盖成功合并、报告缺失、文件哈希变化、报告重叠和未报告额外文件。
