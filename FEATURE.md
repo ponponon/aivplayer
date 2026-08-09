@@ -598,6 +598,7 @@
 - 发布配置为 Windows 与 Linux 安装包启用架构文件名；后续正式版本将分别构建 x64 / arm64 原生 Electron、whisper.cpp、FFmpeg、libheif 和 LanceDB 运行时，Windows 合并双架构 `latest.yml`，Linux 使用 electron-updater 约定的 `latest-linux-arm64.yml`，并在发布前检查安装包与内置二进制的架构。
 - Windows ARM64 使用 LLVM 工具链构建 whisper.cpp，并下载带 SHA-256 校验的原生 ARM64 FFmpeg，避免把 x64 媒体运行时混入 ARM64 安装包。
 - 新增 `npm run release:check-push` 本地只读推送前审计：检查工作区干净、相对 `origin/main` 的 diff、commit message 格式、敏感模式和内部计划文件边界；命令不会执行 push 或 workflow 操作。
+- 发布汇总与合并 evidence 校验支持显式的根目录扫描边界；不会把平台安装包解包目录中的 `AIVPlayer.exe`、FFmpeg 等运行时文件误判为 Release 资产。
 
 ## 编辑器画布交互层级
 

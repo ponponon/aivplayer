@@ -1218,3 +1218,9 @@
 - 现象：原 verifier 只把符合 artifact policy 的额外资产列为 unexpected，`builder-debug.yml` 或其他非发布文件可能残留在 Release 里而不触发失败；下载失败时的原始 URL 还可能把 query token 带入报告 message。
 - 经验：远端附件集合必须与本地 manifest 完全相等，远端服务返回的任何附件都不能被静默忽略；所有写入报告或错误文本的 URL 都必须先去掉 query 和 fragment。
 - 处理：远端回读改为拒绝所有 manifest 外附件，缺失名称 / 下载 URL 也直接失败；API 和资产下载错误统一经过 URL 脱敏，单测覆盖调试 YAML 额外附件和 `?token=...#...` 报告脱敏。
+
+## 2026-08-09：发布汇总不能递归扫描解包运行时
+
+- 现象：旧版 publish job 直接递归扫描 `actions/download-artifact` 的总目录；Windows / Linux 的解包目录中包含 `AIVPlayer.exe`、FFmpeg、libheif 和 whisper-cli 等文件，证据报告会把它们误当成应上传到 Release 根目录的资产，最终在创建 Release 前报文件集合不一致。
+- 经验：发布资产 policy 的递归能力应保留给需要处理历史目录的本地工具，但汇总安装包和合并 evidence 必须明确只读取上传根目录；“文件名匹配扩展名”不能替代构建产物拓扑边界。
+- 处理：为 `listReleaseArtifacts` 增加 `recursive: false` 选项，汇总组装和合并 evidence 均显式使用根目录扫描；回归测试加入嵌套 `win-unpacked` / `linux-unpacked` 运行时，确认它们不会进入最终资产集合。
