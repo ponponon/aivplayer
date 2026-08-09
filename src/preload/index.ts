@@ -4,6 +4,8 @@ import type { AppSettings } from '../shared/app-settings'
 import type { AppUpdateState } from '../shared/app-update-types'
 import type {
   DramaCreateProjectInput,
+  DramaAssetInput,
+  DramaAssetPatch,
   DramaImportChapterInput,
   DramaProgress,
   DramaProject,
@@ -328,6 +330,12 @@ const api = {
     ipcRenderer.invoke(IPC_CHANNELS.DRAMA_GENERATE_SCRIPT, projectId, episodeIndex, force),
   generateDramaAssets: (projectId: string, force = false): Promise<DramaStageResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.DRAMA_GENERATE_ASSETS, projectId, force),
+  createDramaAsset: (projectId: string, input: DramaAssetInput): Promise<DramaProjectData['assets'][number]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.DRAMA_CREATE_ASSET, projectId, input),
+  updateDramaAsset: (projectId: string, assetId: string, patch: DramaAssetPatch): Promise<DramaProjectData['assets'][number]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.DRAMA_UPDATE_ASSET, projectId, assetId, patch),
+  deleteDramaAsset: (projectId: string, assetId: string): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.DRAMA_DELETE_ASSET, projectId, assetId),
   generateDramaStoryboard: (projectId: string, episodeIndex: number, force = false): Promise<{ result: DramaStageResult; storyboard: DramaProjectData['storyboards'] }> =>
     ipcRenderer.invoke(IPC_CHANNELS.DRAMA_GENERATE_STORYBOARD, projectId, episodeIndex, force),
   getDramaProviderSettings: (): Promise<DramaProviderSettings> => ipcRenderer.invoke(IPC_CHANNELS.DRAMA_GET_PROVIDER_SETTINGS),

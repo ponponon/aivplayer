@@ -2,6 +2,8 @@ import { ipcMain } from 'electron'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type {
   DramaCreateProjectInput,
+  DramaAssetInput,
+  DramaAssetPatch,
   DramaImportChapterInput,
   DramaProgress,
   DramaProviderSettingsInput
@@ -42,6 +44,30 @@ function normalizeChapters(value: unknown): DramaImportChapterInput[] {
   })
 }
 
+function normalizeAssetInput(value: unknown): DramaAssetInput {
+  if (!value || typeof value !== 'object') throw new Error('短剧资产参数无效')
+  const input = value as Partial<DramaAssetInput>
+  if (!['character', 'location', 'prop'].includes(input.assetType ?? '')) throw new Error('短剧资产类型无效')
+  if (typeof input.name !== 'string' || !input.name.trim()) throw new Error('短剧资产名称不能为空')
+  return {
+    assetType: input.assetType as DramaAssetInput['assetType'],
+    name: input.name,
+    description: typeof input.description === 'string' ? input.description : '',
+    visualPrompt: typeof input.visualPrompt === 'string' ? input.visualPrompt : ''
+  }
+}
+
+function normalizeAssetPatch(value: unknown): DramaAssetPatch {
+  if (!value || typeof value !== 'object') throw new Error('短剧资产修改参数无效')
+  const patch = value as Partial<DramaAssetPatch>
+  if (patch.assetType != null && !['character', 'location', 'prop'].includes(patch.assetType)) throw new Error('短剧资产类型无效')
+  if (patch.status != null && !['draft', 'ready'].includes(patch.status)) throw new Error('短剧资产状态无效')
+  for (const field of ['name', 'description', 'visualPrompt'] as const) {
+    if (patch[field] != null && typeof patch[field] !== 'string') throw new Error('短剧资产字段必须是文本')
+  }
+  return patch as DramaAssetPatch
+}
+
 function sendProgress(event: Electron.IpcMainInvokeEvent, progress: DramaProgress): void {
   if (!event.sender.isDestroyed()) event.sender.send(IPC_CHANNELS.DRAMA_PROGRESS, progress)
 }
@@ -72,6 +98,13 @@ export function registerDramaIpc(): void {
     getDramaWorkflow().generateScript(requireProjectId(projectId), episodeIndex, { force: force === true, onProgress: (progress) => sendProgress(event, progress) }))
   ipcMain.handle(IPC_CHANNELS.DRAMA_GENERATE_ASSETS, async (event, projectId: string, force?: boolean) =>
     getDramaWorkflow().extractAssets(requireProjectId(projectId), { force: force === true, onProgress: (progress) => sendProgress(event, progress) }))
+  ipcMain.handle(IPC_CHANNELS.DRAMA_CREATE_ASSET, (_event, projectId: string, input: unknown) =>
+    getDramaStore().createAsset(requireProjectId(projectId), normalizeAssetInput(input)))
+  ipcMain.handle(IPC_CHANNELS.DRAMA_UPDATE_ASSET, (_event, projectId: string, assetId: string, patch: unknown) =>
+    getDramaStore().updateAsset(requireProjectId(projectId), requireProjectId(assetId), normalizeAssetPatch(patch)))
+  ipcMain.handle(IPC_CHANNELS.DRAMA_DELETE_ASSET, (_event, projectId: string, assetId: string) => {
+    getDramaStore().deleteAsset(requireProjectId(projectId), requireProjectId(assetId))
+  })
   ipcMain.handle(IPC_CHANNELS.DRAMA_GENERATE_STORYBOARD, async (event, projectId: string, episodeIndex: number, force?: boolean) =>
     getDramaWorkflow().generateStoryboard(requireProjectId(projectId), episodeIndex, { force: force === true, onProgress: (progress) => sendProgress(event, progress) }))
   ipcMain.handle(IPC_CHANNELS.DRAMA_GET_PROVIDER_SETTINGS, () => getDramaProviderSettings())
