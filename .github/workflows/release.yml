@@ -325,7 +325,7 @@ jobs:
         run: npm run release:check-version -- --artifacts-dir artifacts --tag "${{ inputs.tag || github.ref_name }}"
 
       - name: Generate release manifest
-        run: npm run release:create-manifest -- --artifacts-dir artifacts --tag "${{ inputs.tag || github.ref_name }}"
+        run: npm run release:create-manifest -- --artifacts-dir artifacts --tag "${{ inputs.tag || github.ref_name }}" --commit "${{ github.sha }}" --repository "${{ github.repository }}" --workflow "${{ github.workflow }}" --workflow-run-id "${{ github.run_id }}" --workflow-run-attempt "${{ github.run_attempt }}"
 
       - name: Verify release manifest
         run: npm run release:check-manifest -- --artifacts-dir artifacts --tag "${{ inputs.tag || github.ref_name }}"
