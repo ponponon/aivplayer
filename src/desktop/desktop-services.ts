@@ -8,6 +8,7 @@ import { VisionIndexQueue } from '../core/ai/vision-index-queue'
 import { createDramaProviderFromConfig, createDramaProviderFromEnvironment, DramaProviderError } from '../core/drama/drama-provider'
 import { createDramaMediaProviders, toPublicDramaMediaProviderSettings } from '../core/drama/drama-media-provider-registry'
 import { DramaStore } from '../core/drama/drama-store'
+import { DramaGenerationWorker } from '../core/drama/drama-generation-worker'
 import { ClipInboxStore } from '../core/ai/clip-inbox-store'
 import { DramaWorkflow } from '../core/drama/drama-workflow'
 import type { DramaProviderSettings, DramaProviderSettingsInput, DramaProviderTestResult } from '../shared/drama-types'
@@ -16,6 +17,9 @@ import { getCurrentLocale } from './desktop-settings'
 import { desktopState } from './desktop-state'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type { BatchSubtitleJob } from '../shared/media-types'
+import type { DramaGenerationTask } from '../shared/drama-types'
+import { createDramaGenerationTaskCenterEvent } from '../core/tasks/task-center-adapters'
+import { sendTaskCenterEvent } from './task-center-events'
 
 export function resolveAppIconPath(): string | null {
   const iconPath = process.env.ELECTRON_RENDERER_URL ? resolve(process.cwd(), 'brand/icon.png') : join(process.resourcesPath, 'app-icon.png')
@@ -85,6 +89,20 @@ export function getDramaStore(): DramaStore {
   return desktopState.dramaStore
 }
 
+export function getDramaGenerationWorker(): DramaGenerationWorker {
+  if (!desktopState.dramaGenerationWorker) {
+    desktopState.dramaGenerationWorker = new DramaGenerationWorker(getDramaStore(), {
+      providers: createDramaGenerationProviders(),
+      onTask: (task: DramaGenerationTask) => {
+        const sender = desktopState.mainWindow?.webContents
+        if (sender && !sender.isDestroyed()) sender.send(IPC_CHANNELS.DRAMA_GENERATION_PROGRESS, task)
+        sendTaskCenterEvent(createDramaGenerationTaskCenterEvent(task))
+      }
+    })
+  } else desktopState.dramaGenerationWorker.setProviders(createDramaGenerationProviders())
+  return desktopState.dramaGenerationWorker
+}
+
 export function getClipInboxStore(): ClipInboxStore {
   if (!desktopState.clipInboxStore) desktopState.clipInboxStore = new ClipInboxStore(app.getPath('userData'))
   return desktopState.clipInboxStore
@@ -136,6 +154,7 @@ export async function saveDramaProviderSettings(input: DramaProviderSettingsInpu
     }
   }
   await saveAppSettings(next)
+  if (desktopState.dramaGenerationWorker) desktopState.dramaGenerationWorker.setProviders(createDramaGenerationProviders())
   return getDramaProviderSettings()
 }
 
