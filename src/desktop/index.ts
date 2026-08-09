@@ -5,6 +5,7 @@ import { registerBatchSubtitleIpc } from './ipc-batch-subtitle'
 import { registerClipExportIpc } from './ipc-clip-export'
 import { registerTimelineExportIpc } from './ipc-timeline-export'
 import { registerEditingProjectIpc } from './ipc-editing-project'
+import { registerEditingCaptionWatcherIpc, stopEditingCaptionWatcher } from './ipc-editing-caption-watcher'
 import { registerAsrRuntimeIpc } from './ipc-asr-runtime'
 import { registerAsrCacheIpc } from './ipc-asr-cache'
 import { registerAsrSubtitleIpc } from './ipc-asr-subtitles'
@@ -75,6 +76,7 @@ function registerIpc(): void {
   registerClipExportIpc()
   registerTimelineExportIpc()
   registerEditingProjectIpc()
+  registerEditingCaptionWatcherIpc()
   registerUtilityIpc()
   registerWindowControlsIpc()
   registerVisionIpc()
@@ -120,4 +122,4 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
 
-app.on('before-quit', () => { stopAppUpdater(); void stopWebServer() })
+app.on('before-quit', () => { stopAppUpdater(); stopEditingCaptionWatcher(); void stopWebServer() })

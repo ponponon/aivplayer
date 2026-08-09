@@ -94,6 +94,7 @@ import type {
 } from '../shared/media-types'
 import type { LivePhotoExportRequest, LivePhotoExportResult, LivePhotoProbeResult } from '../shared/live-photo-types'
 import type { EditingProjectFileOpenResult, EditingProjectFileSaveRequest, EditingProjectFileSaveResult } from '../shared/editing-types'
+import type { EditingCaptionFilesChangedEvent, EditingCaptionWatchRequest, EditingCaptionWatchStartResult } from '../shared/editing-caption-watcher'
 import type { WebDesktopStateUpdate, WebRemoteCommandForDesktop, WebShareStartRequest, WebShareStatus } from '../shared/web-types'
 import type { MediaEvidenceCapabilities, MediaEvidenceDraft, MediaEvidenceDraftImportRequest, MediaEvidenceDraftImportResult, MediaEvidenceDraftSaveRequest, MediaEvidenceTask, MediaEvidenceTaskRequest } from '../shared/evidence-task-types'
 
@@ -109,6 +110,8 @@ const api = {
   isMediaFileAvailable: (filePath: string): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.CHECK_MEDIA_FILE, filePath),
   readFileContent: (filePath: string): Promise<string> => ipcRenderer.invoke(IPC_CHANNELS.READ_FILE_CONTENT, filePath),
   getFileRevision: (filePath: string): Promise<number | null> => ipcRenderer.invoke(IPC_CHANNELS.GET_FILE_REVISION, filePath),
+  startEditingCaptionWatcher: (request: EditingCaptionWatchRequest): Promise<EditingCaptionWatchStartResult> => ipcRenderer.invoke(IPC_CHANNELS.EDITING_CAPTION_WATCH_START, request),
+  stopEditingCaptionWatcher: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.EDITING_CAPTION_WATCH_STOP),
   listMediaFilesInDirectory: (directoryPath: string): Promise<MediaFile[]> =>
     ipcRenderer.invoke(IPC_CHANNELS.LIST_MEDIA_FILES_IN_DIRECTORY, directoryPath),
   scanBatchSubtitleDirectory: (request: BatchSubtitleScanRequest): Promise<MediaFile[]> =>
@@ -252,6 +255,11 @@ const api = {
     const listener = (_event: Electron.IpcRendererEvent, files: MediaFile[]): void => callback(files)
     ipcRenderer.on(IPC_CHANNELS.MEDIA_FILES_OPENED, listener)
     return () => ipcRenderer.removeListener(IPC_CHANNELS.MEDIA_FILES_OPENED, listener)
+  },
+  onEditingCaptionFilesChanged: (callback: (event: EditingCaptionFilesChangedEvent) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, payload: EditingCaptionFilesChangedEvent): void => callback(payload)
+    ipcRenderer.on(IPC_CHANNELS.EDITING_CAPTION_FILES_CHANGED, listener)
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.EDITING_CAPTION_FILES_CHANGED, listener)
   },
   onAppMenuOpenSettings: (callback: () => void): (() => void) => {
     const listener = (): void => callback()
