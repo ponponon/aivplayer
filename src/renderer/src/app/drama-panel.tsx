@@ -26,6 +26,7 @@ export function DramaPanel(): React.ReactElement {
   const [providerMock, setProviderMock] = useState(false)
   const [providerBusy, setProviderBusy] = useState(false)
   const [providerMessage, setProviderMessage] = useState<string | null>(null)
+  const [generationRunning, setGenerationRunning] = useState(false)
 
   const refreshProjects = async (preferredId?: string): Promise<void> => {
     const next = await window.aiv.listDramaProjects()
@@ -50,9 +51,16 @@ export function DramaPanel(): React.ReactElement {
     const removeProgress = window.aiv.onDramaProgress((value) => {
       if (active) setProgress(copy.progress(value.message))
     })
+    const removeGenerationProgress = window.aiv.onDramaGenerationProgress((task) => {
+      if (!active) return
+      setData((current) => current && current.project.id === task.projectId
+        ? { ...current, generationTasks: current.generationTasks.some((item) => item.id === task.id) ? current.generationTasks.map((item) => item.id === task.id ? task : item) : [...current.generationTasks, task] }
+        : current)
+    })
     return () => {
       active = false
       removeProgress()
+      removeGenerationProgress()
     }
   }, [])
 
@@ -182,6 +190,18 @@ export function DramaPanel(): React.ReactElement {
     void window.aiv.cancelDramaGenerationTask(selectedProjectId, task.id).then(() => refreshData()).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setBusy(false))
   }
 
+  const runGenerationQueue = (): void => {
+    if (!selectedProjectId || generationRunning) return
+    setGenerationRunning(true)
+    setError(null)
+    void window.aiv.runDramaGenerationQueue(selectedProjectId).then((tasks) => setData((current) => current ? { ...current, generationTasks: tasks } : current)).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setGenerationRunning(false))
+  }
+
+  const stopGenerationQueue = (): void => {
+    if (!selectedProjectId) return
+    void window.aiv.stopDramaGenerationQueue(selectedProjectId).then((tasks) => setData((current) => current ? { ...current, generationTasks: tasks } : current)).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setGenerationRunning(false))
+  }
+
   const handoffGenerationTask = (task: DramaGenerationTask): void => {
     if (!task.resultPath || !app.isEditingMode) return
     void app.appendEditingSourcePath(task.resultPath)
@@ -251,7 +271,7 @@ export function DramaPanel(): React.ReactElement {
       </div>
       {progress ? <div className="drama-progress" role="status">{progress}</div> : null}
       <DramaAssetLibrary assets={data.assets} copy={copy} busy={busy} onSave={saveAsset} onDelete={deleteAsset} />
-      <DramaGenerationQueue assets={data.assets} tasks={data.generationTasks} copy={copy} busy={busy} onCreate={createGenerationTask} onCancel={cancelGenerationTask} canHandoff={app.isEditingMode} onHandoff={handoffGenerationTask} />
+      <DramaGenerationQueue assets={data.assets} tasks={data.generationTasks} copy={copy} busy={busy} running={generationRunning} onRun={runGenerationQueue} onStop={stopGenerationQueue} onCreate={createGenerationTask} onCancel={cancelGenerationTask} canHandoff={app.isEditingMode} onHandoff={handoffGenerationTask} />
       <DramaGraphTemplateLibrary templates={data.graphTemplates} copy={copy} busy={busy} onSave={saveGraphTemplate} onDelete={deleteGraphTemplate} />
       {data.scripts[0] ? <article className="drama-script-preview"><strong>{data.scripts[0].title}</strong><p>{data.scripts[0].content}</p></article> : null}
       {data.storyboards[0] ? <article className="drama-script-preview"><strong>{copy.storyboardStage} · {data.storyboards[0].title}</strong><p>{data.storyboards[0].location} · {data.storyboards[0].characters.join('、')}\n{data.storyboards[0].action}\n{data.storyboards[0].dialogue}</p></article> : null}

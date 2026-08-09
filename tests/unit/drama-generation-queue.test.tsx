@@ -13,6 +13,9 @@ describe('drama generation queue', () => {
       ]}
       copy={zhCN.drama}
       busy={false}
+      running={false}
+      onRun={() => undefined}
+      onStop={() => undefined}
       onCreate={() => undefined}
       onCancel={() => undefined}
       canHandoff
