@@ -1134,3 +1134,9 @@
 - 现象：`package.json` 虽然声明了 MIT，README 和网页也链接到 `LICENSE`，但仓库实际没有根许可证文件；Electron 打包配置也没有把项目许可证或第三方依赖清单带进安装包，发布工作流无法证明每个平台使用的是同一套许可证信息。
 - 经验：许可证必须形成“项目声明 → 依赖版本 / 许可证 → 安装包资源 → CI 阻断检查”的证据链。npm 直接依赖可以自动核对，但 FFmpeg 的 GPL 选项、libheif codec、模型 revision 等构建期组件不能用一个静态 MIT / LGPL 标签代替，必须保留未完成项并在发布前按实际构建参数复核。
 - 处理：新增根 `LICENSE`、`docs/THIRD_PARTY_LICENSES.md` 和 `npm run check:licenses`；Electron Builder 将许可证文件复制到资源目录，`release:check-packaged-resources` 强制检查，三平台 release job 在打包前执行清单校验；OpenList / VLC / Pireel 仅作为研究参考，不作为 AIVPlayer 代码或资源依赖。
+
+## 2026-08-09：忽略目录中的模型不能假设 CI 已经拥有
+
+- 现象：`resources/vision` 被 `.gitignore` 忽略，开发机上虽然有 758 MB 的 SigLIP2 UINT8 模型，但三平台 release workflow 没有下载步骤；electron-builder 的 `extraResources` 因此无法保证新 Runner 上视觉搜索可用。
+- 经验：任何被忽略但被 `extraResources` 引用的资源，都必须有固定来源、revision、原子暂存脚本和打包前检查；只在本机验证一次不能证明 CI 能重建。
+- 处理：新增 `release:prepare-vision-model`，固定 `onnx-community/siglip2-base-patch16-224-ONNX` revision；`release:write-runtime-metadata` 记录九个随包模型文件及运行时二进制的哈希，`release:check-packaged-resources` 强制要求元数据随安装包存在。

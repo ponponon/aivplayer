@@ -32,7 +32,7 @@
 | `whisper.cpp` | `v1.9.1`，由发布工作流从 [ggml-org/whisper.cpp](https://github.com/ggml-org/whisper.cpp) 构建 | MIT；发布包需要保留其版权和许可证声明。 |
 | FFmpeg / FFprobe | 各平台构建机提供，具体版本由构建日志确定 | FFmpeg 基线为 LGPL-2.1-or-later，但启用 GPL 组件后整体义务会变化；发布前必须以 `ffmpeg -version` 的 configuration 为准，不得笼统宣称为纯 LGPL。详见 [FFmpeg legal](https://ffmpeg.org/legal.html)。 |
 | `libheif` 工具 | `1.23.1`，由发布工作流从 [strukturag/libheif](https://github.com/strukturag/libheif) 构建 | libheif 为 LGPL；示例工具另有 MIT 许可，发布包需要同时保留对应声明。 |
-| SigLIP2 模型文件 | `google/siglip2-base-patch16-224` 的 ONNX 转换文件 | Apache-2.0；模型卡和来源见 [Hugging Face model card](https://huggingface.co/google/siglip2-base-patch16-224)。 |
+| SigLIP2 模型文件 | `onnx-community/siglip2-base-patch16-224-ONNX`，固定 revision `ba1f3b0843f24bc5417d38e19c37b287d719b2f4`；基座模型为 `google/siglip2-base-patch16-224` | Apache-2.0；模型来源见 [ONNX model card](https://huggingface.co/onnx-community/siglip2-base-patch16-224-ONNX)，基座模型许可见 [Google model card](https://huggingface.co/google/siglip2-base-patch16-224)。 |
 
 运行时二进制不是仓库中的源代码副本；`resources/` 中的产物由发布工作流按固定版本构建或暂存。任何更换编解码器、FFmpeg 构建参数、模型来源或运行时版本的改动，都必须重新审计本表和发布包内的许可证文件。
 
@@ -51,4 +51,5 @@
 - [ ] 记录 FFmpeg 实际版本、configuration、GPL / nonfree 选项和对应许可证文件。
 - [ ] 记录 libheif 使用的 codec / plugin 及其许可证；不要只记录 libheif 主库。
 - [ ] 记录模型文件的来源、版本 / revision 和模型卡许可证。
+- [ ] `npm run release:write-runtime-metadata` 通过，并检查安装包内 `runtime-metadata.json` 的二进制 / 模型哈希与构建工作区一致。
 - [ ] GitHub 与 Gitee 发布使用同一批已审计的安装包和更新元数据。
