@@ -1,11 +1,12 @@
-import { CheckSquare, Eye, EyeOff, GitMerge, Save, Settings2, Square } from 'lucide-react'
+import { CheckSquare, Eye, EyeOff, GitMerge, Plus, Save, Settings2, Square } from 'lucide-react'
 import { useEffect, useState, type ReactElement } from 'react'
 import type { LocaleCopy } from '../../../shared/i18n'
-import type { VisionEntityCatalog, VisionEntityCatalogBatchPatch, VisionEntityCatalogEntry, VisionEntityCatalogPatch } from '../../../shared/vision-entity-types'
+import type { VisionEntityCatalog, VisionEntityCatalogBatchPatch, VisionEntityCatalogCreateInput, VisionEntityCatalogEntry, VisionEntityCatalogPatch } from '../../../shared/vision-entity-types'
 
 type VisionEntityCatalogProps = {
   copy: LocaleCopy['vision']
   catalog: VisionEntityCatalog | null
+  onCreate: (input: VisionEntityCatalogCreateInput) => Promise<void>
   onUpdate: (patch: VisionEntityCatalogPatch) => Promise<void>
   onBatchUpdate: (patch: VisionEntityCatalogBatchPatch) => Promise<void>
 }
@@ -15,12 +16,16 @@ type EntityDraft = {
   aliases: string
 }
 
-export function VisionEntityCatalog({ copy, catalog, onUpdate, onBatchUpdate }: VisionEntityCatalogProps): ReactElement | null {
+export function VisionEntityCatalog({ copy, catalog, onCreate, onUpdate, onBatchUpdate }: VisionEntityCatalogProps): ReactElement | null {
   const [drafts, setDrafts] = useState<Record<string, EntityDraft>>({})
   const [savingLabelId, setSavingLabelId] = useState<string | null>(null)
   const [selectedLabelIds, setSelectedLabelIds] = useState<Set<string>>(new Set())
   const [batchTarget, setBatchTarget] = useState('')
   const [batchSaving, setBatchSaving] = useState(false)
+  const [createName, setCreateName] = useState('')
+  const [createQuery, setCreateQuery] = useState('')
+  const [createAliases, setCreateAliases] = useState('')
+  const [creating, setCreating] = useState(false)
 
   useEffect(() => {
     if (!catalog) return
@@ -79,8 +84,34 @@ export function VisionEntityCatalog({ copy, catalog, onUpdate, onBatchUpdate }: 
     }
   }
 
+  const createLabel = async (): Promise<void> => {
+    const name = createName.trim()
+    const query = createQuery.trim()
+    if (!name || !query || creating) return
+    setCreating(true)
+    try {
+      await onCreate({ name, query, aliases: createAliases.split(',').map((alias) => alias.trim()).filter(Boolean) })
+      setCreateName('')
+      setCreateQuery('')
+      setCreateAliases('')
+    } catch {
+      // The parent keeps the visible error state.
+    } finally {
+      setCreating(false)
+    }
+  }
+
   return <section className="vision-entity-catalog">
     <div className="vision-entity-catalog-heading"><div><strong>{copy.entityCatalogTitle}</strong><small>{copy.entityCatalogDescription}</small></div><div className="vision-entity-catalog-heading-actions"><button className="vision-secondary-action" type="button" onClick={toggleAll} disabled={batchSaving}>{selectedLabelIds.size === catalog.entries.length ? <Square size={12} /> : <CheckSquare size={12} />}{selectedLabelIds.size === catalog.entries.length ? copy.entityCatalogClearSelection : copy.entityCatalogSelectAll}</button><Settings2 size={15} /></div></div>
+    <form className="vision-entity-catalog-create" onSubmit={(event) => { event.preventDefault(); void createLabel() }}>
+      <strong>{copy.entityCatalogCreateTitle}</strong>
+      <div className="vision-entity-catalog-create-fields">
+        <input value={createName} onChange={(event) => setCreateName(event.target.value)} placeholder={copy.entityCatalogCreateNamePlaceholder} aria-label={copy.entityCatalogCreateNamePlaceholder} />
+        <input value={createQuery} onChange={(event) => setCreateQuery(event.target.value)} placeholder={copy.entityCatalogCreateQueryPlaceholder} aria-label={copy.entityCatalogCreateQueryPlaceholder} />
+        <input value={createAliases} onChange={(event) => setCreateAliases(event.target.value)} placeholder={copy.entityCatalogCreateAliasesPlaceholder} aria-label={copy.entityCatalogCreateAliasesPlaceholder} />
+        <button className="vision-secondary-action" type="submit" disabled={creating || !createName.trim() || !createQuery.trim()}><Plus size={12} />{creating ? copy.entityCatalogCreating : copy.entityCatalogCreate}</button>
+      </div>
+    </form>
     {selectedLabelIds.size > 0 ? <div className="vision-entity-catalog-batch"><span>{copy.entityCatalogSelected(selectedLabelIds.size)}</span><button className="vision-secondary-action" type="button" disabled={batchSaving} onClick={() => void runBatchUpdate('hide')}><EyeOff size={12} />{copy.entityCatalogBatchHide}</button><button className="vision-secondary-action" type="button" disabled={batchSaving} onClick={() => void runBatchUpdate('show')}><Eye size={12} />{copy.entityCatalogBatchShow}</button><select className="vision-entity-catalog-merge" value={batchTarget} disabled={batchSaving} aria-label={copy.entityCatalogBatchMergeTarget} onChange={(event) => setBatchTarget(event.target.value)}><option value="">{copy.entityCatalogBatchNoTarget}</option>{catalog.entries.filter((entry) => !selectedLabelIds.has(entry.labelId)).map((entry) => <option value={entry.labelId} key={entry.labelId}>{entry.name}</option>)}</select><button className="vision-secondary-action" type="button" disabled={batchSaving || !batchTarget} onClick={() => void runBatchUpdate('merge')}><GitMerge size={12} />{batchSaving ? copy.entityCatalogBatchSaving : copy.entityCatalogBatchMerge}</button></div> : null}
     <div className="vision-entity-catalog-list">
       {catalog.entries.map((entry) => {
@@ -88,7 +119,7 @@ export function VisionEntityCatalog({ copy, catalog, onUpdate, onBatchUpdate }: 
         const saving = savingLabelId === entry.labelId || batchSaving
         return <article className={`vision-entity-catalog-row ${entry.hidden ? 'is-hidden' : ''}`} key={entry.labelId}>
           <input className="vision-entity-catalog-select" type="checkbox" checked={selectedLabelIds.has(entry.labelId)} disabled={batchSaving} onChange={() => toggleSelected(entry.labelId)} aria-label={copy.entityCatalogSelectLabel(entry.name)} />
-          <div className="vision-entity-catalog-meta"><strong>{entry.defaultName}</strong><small>{copy.entityCatalogModelLabel(entry.labelId)}</small></div>
+          <div className="vision-entity-catalog-meta"><strong>{entry.name}</strong><small>{entry.kind === 'custom' ? copy.entityCatalogCustomQuery(entry.query) : copy.entityCatalogModelLabel(entry.labelId)}</small></div>
           <input className="vision-entity-catalog-input" value={draft.name} onChange={(event) => setDrafts((current) => ({ ...current, [entry.labelId]: { ...draft, name: event.target.value } }))} placeholder={copy.entityCatalogNamePlaceholder} aria-label={copy.entityCatalogNamePlaceholder} />
           <input className="vision-entity-catalog-input" value={draft.aliases} onChange={(event) => setDrafts((current) => ({ ...current, [entry.labelId]: { ...draft, aliases: event.target.value } }))} placeholder={copy.entityCatalogAliasesPlaceholder} aria-label={copy.entityCatalogAliasesLabel} />
           <select className="vision-entity-catalog-merge" value={entry.mergedInto ?? ''} aria-label={copy.entityCatalogMergeLabel} onChange={(event) => void updateEntry(entry, { labelId: entry.labelId, mergedInto: event.target.value || null })}>

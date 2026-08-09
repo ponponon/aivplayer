@@ -57,6 +57,7 @@ describe('vision library setup', () => {
     expect(panel).toContain('VisionEntityCatalog')
     expect(panel).toContain('updateVisionEntityCatalog')
     expect(panel).toContain('updateVisionEntityCatalogBatch')
+    expect(panel).toContain('createVisionEntityCatalog')
     expect(panel).toContain('onBatchRetry')
     expect(panel).toContain('collectionRepairNoMatch')
     expect(panel).toContain('pendingResultSeek')
@@ -71,6 +72,7 @@ describe('vision library setup', () => {
     expect(preload).toContain('getVisionEntityCatalog')
     expect(preload).toContain('updateVisionEntityCatalog')
     expect(preload).toContain('updateVisionEntityCatalogBatch')
+    expect(preload).toContain('createVisionEntityCatalog')
     expect(preload).toContain('retryVisionIndexFailures')
   })
 

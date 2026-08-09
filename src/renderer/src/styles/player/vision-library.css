@@ -350,6 +350,50 @@
   font-size: 9px;
 }
 
+.vision-entity-catalog-create {
+  display: grid;
+  gap: 5px;
+  padding: 7px;
+  background: rgba(var(--accent-rgb), 0.035);
+  border: 1px solid rgba(var(--accent-rgb), 0.14);
+  border-radius: var(--radius-sm);
+}
+
+.vision-entity-catalog-create > strong {
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+.vision-entity-catalog-create-fields {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.vision-entity-catalog-create-fields input {
+  min-width: 120px;
+  min-height: 26px;
+  flex: 1 1 140px;
+  padding: 0 6px;
+  color: var(--text-secondary);
+  background: rgba(var(--overlay-rgb), 0.06);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+}
+
+.vision-entity-catalog-create-fields input:focus {
+  border-color: var(--accent);
+  outline: 0;
+}
+
+.vision-entity-catalog-create-fields .vision-secondary-action {
+  min-height: 26px;
+  padding: 0 7px;
+  font-size: 10px;
+}
+
 .vision-entity-catalog-batch {
   flex-wrap: wrap;
   padding: 6px;
