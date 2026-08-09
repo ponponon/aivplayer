@@ -9,6 +9,7 @@ const giteeSync = readFileSync(join(projectRoot, 'scripts/sync-gitee-release.mjs
 const artifactPolicy = readFileSync(join(projectRoot, 'scripts/release-artifact-policy.mjs'), 'utf8')
 const remoteVerification = readFileSync(join(projectRoot, 'scripts/verify-remote-release.mjs'), 'utf8')
 const releaseVersion = readFileSync(join(projectRoot, 'scripts/check-release-version.mjs'), 'utf8')
+const platformRelease = readFileSync(join(projectRoot, 'scripts/check-platform-release-artifacts.mjs'), 'utf8')
 
 describe('release workflow source constraints', () => {
   it('keeps platform builds separate from release publishing', () => {
@@ -84,5 +85,15 @@ describe('release workflow source constraints', () => {
     expect(releaseVersion).toContain('Update metadata version mismatch')
     expect(releaseVersion).toContain('references missing artifact')
     expect(releaseVersion).toContain('No electron-updater latest*.yml metadata')
+  })
+
+  it('checks each platform package set before uploading artifacts', () => {
+    expect(releaseWorkflow.match(/release:check-platform/g)).toHaveLength(3)
+    expect(releaseWorkflow).toContain('--platform macos --artifacts-dir release')
+    expect(releaseWorkflow).toContain('--platform windows --artifacts-dir release')
+    expect(releaseWorkflow).toContain('--platform linux --artifacts-dir release')
+    expect(platformRelease).toContain("packages: ['.dmg', '.zip', '.pkg']")
+    expect(platformRelease).toContain("packages: ['.AppImage', '.deb']")
+    expect(platformRelease).toContain('unexpected packages')
   })
 })
