@@ -15,7 +15,7 @@ export const PLATFORM_CONTRACTS = {
   },
   linux: {
     packages: ['.AppImage', '.deb'],
-    metadata: ['latest-linux.yml']
+    metadata: ['latest-linux.yml', 'latest-linux-arm64.yml']
   }
 }
 

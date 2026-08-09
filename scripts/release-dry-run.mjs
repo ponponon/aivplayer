@@ -26,8 +26,14 @@ function packageName(version, suffix) {
   return `AIVPlayer-${version}-${suffix}`
 }
 
-function metadataContent(version, artifactName) {
-  return `version: ${version}\npath: ${artifactName}\nfiles:\n  - url: ${artifactName}\n`
+function metadataContent(version, artifactNames) {
+  const names = Array.isArray(artifactNames) ? artifactNames : [artifactNames]
+  return [
+    `version: ${version}`,
+    'files:',
+    ...names.flatMap((name) => [`  - url: ${name}`, '    sha512: dry-run', `    size: ${name.length}`]),
+    ''
+  ].join('\n')
 }
 
 async function writePackage(directory, name) {
@@ -38,8 +44,10 @@ async function writePackage(directory, name) {
 
 async function writeDryRunArtifacts(directory, version, platform) {
   const macZip = packageName(version, 'arm64-mac.zip')
-  const windowsExe = packageName(version, 'x64.exe')
-  const linuxAppImage = packageName(version, 'x86_64.AppImage')
+  const windowsX64Exe = packageName(version, 'x64.exe')
+  const windowsArm64Exe = packageName(version, 'arm64.exe')
+  const linuxX64AppImage = packageName(version, 'x64.AppImage')
+  const linuxArm64AppImage = packageName(version, 'arm64.AppImage')
   const fixtures = {
     macos: [
       ['package', packageName(version, 'arm64.dmg')],
@@ -48,13 +56,17 @@ async function writeDryRunArtifacts(directory, version, platform) {
       ['metadata', 'latest-mac.yml', macZip]
     ],
     windows: [
-      ['package', windowsExe],
-      ['metadata', 'latest.yml', windowsExe]
+      ['package', windowsX64Exe],
+      ['package', windowsArm64Exe],
+      ['metadata', 'latest.yml', [windowsX64Exe, windowsArm64Exe]]
     ],
     linux: [
-      ['package', linuxAppImage],
-      ['package', packageName(version, 'amd64.deb')],
-      ['metadata', 'latest-linux.yml', linuxAppImage]
+      ['package', linuxX64AppImage],
+      ['package', packageName(version, 'x64.deb')],
+      ['metadata', 'latest-linux.yml', linuxX64AppImage],
+      ['package', linuxArm64AppImage],
+      ['package', packageName(version, 'arm64.deb')],
+      ['metadata', 'latest-linux-arm64.yml', linuxArm64AppImage]
     ]
   }[platform]
   if (!fixtures) throw new Error(`Unsupported dry-run platform: ${platform}`)

@@ -12,14 +12,14 @@ const temporaryDirectories: string[] = []
 
 const platformFiles = {
   macos: ['AIVPlayer-0.4.0.dmg', 'AIVPlayer-0.4.0.zip', 'AIVPlayer-0.4.0.pkg', 'latest-mac.yml'],
-  windows: ['AIVPlayer Setup 0.4.0.exe', 'latest.yml'],
-  linux: ['AIVPlayer-0.4.0.AppImage', 'aivplayer_0.4.0_amd64.deb', 'latest-linux.yml']
+  windows: ['AIVPlayer Setup 0.4.0.exe', 'AIVPlayer Setup 0.4.0 arm64.exe', 'latest.yml'],
+  linux: ['AIVPlayer-0.4.0.AppImage', 'aivplayer_0.4.0_amd64.deb', 'AIVPlayer-0.4.0-arm64.AppImage', 'aivplayer_0.4.0_arm64.deb', 'latest-linux.yml', 'latest-linux-arm64.yml']
 } as const
 
 const platformContracts = {
   macos: { packages: ['.dmg', '.zip', '.pkg'], metadata: ['latest-mac.yml'] },
   windows: { packages: ['.exe'], metadata: ['latest.yml'] },
-  linux: { packages: ['.AppImage', '.deb'], metadata: ['latest-linux.yml'] }
+  linux: { packages: ['.AppImage', '.deb'], metadata: ['latest-linux.yml', 'latest-linux-arm64.yml'] }
 } as const
 
 afterEach(async () => {
@@ -69,7 +69,7 @@ describe('merged platform evidence', () => {
   it('matches all three Runner reports against the merged artifact directory', async () => {
     const artifactsDirectory = await createFixture()
     const result = await runCheck(artifactsDirectory)
-    expect(result.stdout).toContain('Platform evidence verified: macos, windows, linux, 9 artifact(s)')
+    expect(result.stdout).toContain('Platform evidence verified: macos, windows, linux, 13 artifact(s)')
   })
 
   it('writes a merged evidence report with the verified file hashes', async () => {
@@ -85,8 +85,8 @@ describe('merged platform evidence', () => {
     }
     expect(report.schemaVersion).toBe(1)
     expect(report.kind).toBe('merged-platform-evidence')
-    expect(report.artifactCount).toBe(9)
-    expect(report.artifacts).toHaveLength(9)
+    expect(report.artifactCount).toBe(13)
+    expect(report.artifacts).toHaveLength(13)
     expect(report.artifacts.every((artifact) => /^[a-f0-9]{64}$/.test(artifact.sha256))).toBe(true)
   })
 

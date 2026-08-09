@@ -587,14 +587,15 @@
 - GitHub Release 创建后、Gitee 同步后会通过只读 API 回读实际资产，流式下载并核对每个文件的大小、SHA-256 和 `release-manifest.json` 内容；两边分别上传不含凭据的校验报告，远端缺失、额外或漂移都会让发布任务失败。
 - 远端回读会拒绝所有不在本地 manifest 中的附件（包括调试 YAML 等非发布文件），并对成功报告及异常下载消息中的 URL 查询参数和 fragment 做脱敏，避免把远端凭据写入审计报告。
 - 发布 job 会先校验 `v<package.json.version>` 与 tag 完全一致，再校验每个 `latest*.yml` 的版本和 `url` / `path` 引用都指向当前批次资产；artifact policy 只接收 `latest*.yml`，不会把 `builder-debug.yml` 等调试文件发布到 GitHub / Gitee。
-- 三个平台的构建 job 会在上传前执行平台产物契约：macOS 必须有 DMG / ZIP / PKG 与 `latest-mac.yml`，Windows 必须有 EXE 与 `latest.yml`，Linux 必须有 AppImage / DEB 与 `latest-linux.yml`；缺包、跨平台包泄漏或 metadata 命名错误会在合并 manifest 前阻断发布。
+- 三个平台的构建 job 会在上传前执行平台产物契约：macOS 必须有 DMG / ZIP / PKG 与 `latest-mac.yml`，Windows 的 x64 / arm64 安装包会合并到包含两种架构文件的 `latest.yml`，Linux 则分别提供 `latest-linux.yml` 与 `latest-linux-arm64.yml`；缺包、跨平台包泄漏或 metadata 命名错误会在合并 manifest 前阻断发布。
 - 构建上传前还会读取安装包格式边界：DMG 校验 UDIF `koly` trailer，ZIP / PKG 校验对应容器头，Windows EXE 校验 PE `MZ`，Linux AppImage 校验 ELF、DEB 校验 ar 头；空文件或伪装文件不会仅凭文件名进入发布批次。
-- 每个构建 Runner 在上传前生成独立的 `platform-release-report-*.json` evidence artifact，记录平台契约、资产文件名、大小和 SHA-256；报告参与 workflow 证据留存，但 JSON 不匹配发布 artifact policy，不会进入 GitHub / Gitee Release。
-- publish job 下载三份 Runner evidence 后，会先逐项核对平台契约、文件集合、大小和 SHA-256，再执行版本门禁和 `release-manifest.json` 生成；任一 Runner 报告缺失、重叠、漂移或合并目录出现未报告资产都会阻断发布。
+- 每个构建 Runner 在上传前生成独立的 `platform-release-report-*.json` evidence artifact，记录平台契约、资产文件名、大小和 SHA-256；Windows 双架构更新元数据会在汇总 job 中合并，Linux arm64 保留标准的 `latest-linux-arm64.yml`，报告参与 workflow 证据留存但不会进入 GitHub / Gitee Release。
+- publish job 下载五组平台构建产物后，会先组装唯一文件集合、合并 Windows 更新元数据，再逐项核对三平台契约、文件集合、大小和 SHA-256，最后执行版本门禁和 `release-manifest.json` 生成；任一架构构建缺失、报告重叠、漂移或合并目录出现未报告资产都会阻断发布。
 - 发布清单会记录受控的 CI provenance（提交 SHA、仓库、workflow、运行 ID 和尝试次数）；只允许 GitHub Actions 提供的非敏感标识进入 `release-manifest.json`，不写入 token、URL 查询凭据或本机绝对路径。
 - 新增 `npm run release:dry-run` 本地发布演练：用小型格式签名 fixture 分别模拟 macOS / Windows / Linux Runner，执行平台契约、安装包格式、合并 evidence、版本、manifest 和哈希复核；演练不联网、不调用 GitHub / Gitee API，临时目录默认自动清理。
 - Release workflow 的 `workflow_dispatch` 新增 `verify_only` 模式：仍执行真实 macOS / Windows / Linux 构建、artifact 合并、evidence、版本和 manifest 门禁，但跳过 GitHub Release 创建、GitHub 远端回读和 Gitee 同步，适合真实 CI 发布前演练。
 - publish job 会把合并目录的 `merged-platform-evidence.json` 作为独立 workflow artifact 留存，包含实际验证过的文件名、大小和 SHA-256；它只用于审计，不进入 GitHub / Gitee Release。
+- 发布配置为 Windows 与 Linux 安装包启用架构文件名；后续正式版本将分别构建 x64 / arm64 原生 Electron、whisper.cpp、FFmpeg、libheif 和 LanceDB 运行时，Windows 合并双架构 `latest.yml`，Linux 使用 electron-updater 约定的 `latest-linux-arm64.yml`，并在发布前检查安装包与内置二进制的架构。
 - 新增 `npm run release:check-push` 本地只读推送前审计：检查工作区干净、相对 `origin/main` 的 diff、commit message 格式、敏感模式和内部计划文件边界；命令不会执行 push 或 workflow 操作。
 
 ## 编辑器画布交互层级
