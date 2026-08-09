@@ -1152,3 +1152,9 @@
 - 现象：上传接口返回成功，只能证明服务端接受了请求，不能证明最终 Release 中的每个安装包、更新元数据和 manifest 都可下载，也不能发现 CDN / 服务端存储中的内容漂移。
 - 经验：发布后的验证必须走独立的只读链路：先用 GitHub / Gitee API 获取 tag 对应的实际资产，再对每个下载响应流式计算大小和 SHA-256；manifest 自身不把自身哈希写入清单，因此需要额外比较本地与远端 manifest 的内容。
 - 处理：新增 `release:verify-remote` 和 `verify-remote-release.mjs`；GitHub Release 创建后、Gitee 同步后分别执行回读校验，生成不含 token 的报告 artifact。脚本只发起 GET 请求，不创建、删除或上传 Release 资源；单测使用注入的 fetch seam 验证 GitHub、Gitee、远端篡改和无写操作边界。
+
+## 2026-08-09：Release tag 和更新元数据必须先锁定版本
+
+- 现象：只要 workflow 被 tag 触发，旧流程就会继续打包和上传；tag 可能与 `package.json` 版本不一致，`latest*.yml` 也可能残留旧版本或引用不存在 / 不属于当前批次的安装包。与此同时，electron-builder 生成的 `builder-debug.yml` 会被宽泛的 `*.yml` glob 一起带入发布物。
+- 经验：发布版本必须在生成跨渠道 manifest 之前形成单一约束：tag 必须是 `v${package.json.version}`；所有 updater metadata 的版本必须一致，引用的 `url` / `path` 必须落在当前 artifact 集合；更新元数据只允许明确的 `latest*.yml` 命名，不能把任意 YAML 当作用户下载资产。
+- 处理：新增 `release:check-version`；publish job 在生成 manifest 前执行 tag / package / metadata 校验，artifact policy 与三平台 glob 收紧到 `latest*.yml`，并补充调试文件排除、版本不匹配、引用缺失的单测。
