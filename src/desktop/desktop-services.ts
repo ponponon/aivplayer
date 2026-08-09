@@ -6,6 +6,7 @@ import { createWhisperCppRuntime } from '../core/ai/whisper-cpp-runtime'
 import { VisionLibrary } from '../core/ai/vision-library'
 import { VisionIndexQueue } from '../core/ai/vision-index-queue'
 import { createDramaProviderFromConfig, createDramaProviderFromEnvironment, DramaProviderError } from '../core/drama/drama-provider'
+import { createDramaMediaProviders, toPublicDramaMediaProviderSettings } from '../core/drama/drama-media-provider-registry'
 import { DramaStore } from '../core/drama/drama-store'
 import { ClipInboxStore } from '../core/ai/clip-inbox-store'
 import { DramaWorkflow } from '../core/drama/drama-workflow'
@@ -99,20 +100,39 @@ export function getDramaProviderSettings(): DramaProviderSettings {
     apiBaseUrl: drama.apiBaseUrl,
     model: drama.model,
     useMock: drama.useMock,
-    apiKeyConfigured: Boolean(drama.apiKey)
+    apiKeyConfigured: Boolean(drama.apiKey),
+    media: {
+      image: toPublicDramaMediaProviderSettings(drama.media.image),
+      video: toPublicDramaMediaProviderSettings(drama.media.video),
+      audio: toPublicDramaMediaProviderSettings(drama.media.audio)
+    }
   }
 }
 
 export async function saveDramaProviderSettings(input: DramaProviderSettingsInput): Promise<DramaProviderSettings> {
   const current = desktopState.currentAppSettings
   const drama = current.drama
+  const media = { ...drama.media }
+  for (const mediaType of ['image', 'video', 'audio'] as const) {
+    const patch = input.media?.[mediaType]
+    if (!patch) continue
+    const existing = drama.media[mediaType]
+    media[mediaType] = {
+      providerId: patch.providerId === undefined ? existing.providerId : patch.providerId,
+      apiBaseUrl: patch.apiBaseUrl === undefined ? existing.apiBaseUrl : patch.apiBaseUrl,
+      model: patch.model === undefined ? existing.model : patch.model,
+      apiKey: patch.apiKey === undefined ? existing.apiKey : patch.apiKey,
+      costPerRequest: patch.costPerRequest === undefined ? existing.costPerRequest : patch.costPerRequest
+    }
+  }
   const next = {
     ...current,
     drama: {
       apiBaseUrl: typeof input.apiBaseUrl === 'string' ? input.apiBaseUrl.trim() || null : input.apiBaseUrl === null ? null : drama.apiBaseUrl,
       model: typeof input.model === 'string' ? input.model.trim() || null : input.model === null ? null : drama.model,
       apiKey: input.apiKey === undefined ? drama.apiKey : typeof input.apiKey === 'string' ? input.apiKey.trim() || null : null,
-      useMock: typeof input.useMock === 'boolean' ? input.useMock : drama.useMock
+      useMock: typeof input.useMock === 'boolean' ? input.useMock : drama.useMock,
+      media
     }
   }
   await saveAppSettings(next)
@@ -146,4 +166,10 @@ function getDramaProvider() {
     if (error instanceof DramaProviderError) throw error
     throw error
   }
+}
+
+function createDramaGenerationProviders() {
+  return createDramaMediaProviders(desktopState.currentAppSettings.drama.media, {
+    outputDirectory: join(app.getPath('userData'), 'drama', 'generated')
+  })
 }
