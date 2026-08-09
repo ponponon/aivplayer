@@ -390,7 +390,7 @@ jobs:
       - name: Verify packaged Linux x64 executable
         shell: bash
         run: |
-          executable="$(find release -type f -name 'AIVPlayer' -print -quit)"
+          executable="$(find release -type f -iname 'aivplayer' -print -quit)"
           test -n "$executable"
           npm run release:check-architecture -- --architecture x64 --file "$executable"
 
@@ -507,7 +507,7 @@ jobs:
       - name: Verify packaged Linux ARM64 executable
         shell: bash
         run: |
-          executable="$(find release -type f -name 'AIVPlayer' -print -quit)"
+          executable="$(find release -type f -iname 'aivplayer' -print -quit)"
           test -n "$executable"
           npm run release:check-architecture -- --architecture arm64 --file "$executable"
 

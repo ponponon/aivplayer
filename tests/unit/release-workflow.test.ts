@@ -74,6 +74,7 @@ describe('release workflow source constraints', () => {
   it('installs the generated Debian package by absolute path in CI', () => {
     expect(releaseWorkflow).toContain('deb_file="$(realpath "$deb_file")"')
     expect(releaseWorkflow).toContain('dpkg-deb -f "$deb_file" Package')
+    expect(releaseWorkflow.match(/find release -type f -iname 'aivplayer'/g)).toHaveLength(2)
   })
 
   it('keeps Gitee artifact selection aligned with GitHub releases', () => {
