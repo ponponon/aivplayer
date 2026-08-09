@@ -3,7 +3,10 @@ import { type VisionEvidence } from '../../shared/vision-types'
 
 export const VISION_ENTITY_EVIDENCE_MODEL_ID = 'siglip2-zero-shot-labels'
 export const VISION_ENTITY_EVIDENCE_MODEL_VARIANT = 'label-v1'
-export const DEFAULT_MIN_ENTITY_SIMILARITY = 0.18
+// The bundled uint8 SigLIP2 pooler outputs are normalized before scoring. In
+// local runtime measurements, useful matches are commonly in the 0.05–0.12
+// range, so 0.18 would suppress every entity on ordinary photos.
+export const DEFAULT_MIN_ENTITY_SIMILARITY = 0.05
 export const DEFAULT_MAX_ENTITY_LABELS_PER_FRAME = 3
 
 export type VisionEntityLabel = {

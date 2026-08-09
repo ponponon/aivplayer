@@ -17,6 +17,10 @@ describe('vision entity evidence', () => {
     ], 0.2, 2).map((item) => [item.label.id, item.similarity])).toEqual([['person', 0.5], ['night', 0.4]])
   })
 
+  it('keeps low-but-useful normalized SigLIP2 matches at the default threshold', () => {
+    expect(selectVisionEntityLabels([{ label: labels[0]!, similarity: 0.06 }])).toEqual([{ label: labels[0], similarity: 0.06 }])
+  })
+
   it('creates stable source ranges and explainable entity labels', () => {
     const evidence = createVisionEntityEvidence({
       sourceId: 'source-1',
