@@ -105,6 +105,7 @@ export const IPC_CHANNELS = {
   VISION_SEARCH_TEXT: 'vision:search-text',
   VISION_SEARCH_IMAGE: 'vision:search-image',
   VISION_ENTITY_CATALOG_GET: 'vision:entity-catalog-get',
+  VISION_ENTITY_CATALOG_CREATE: 'vision:entity-catalog-create',
   VISION_ENTITY_CATALOG_UPDATE: 'vision:entity-catalog-update',
   VISION_ENTITY_CATALOG_BATCH_UPDATE: 'vision:entity-catalog-batch-update',
   VISION_LIST_SOURCES: 'vision:list-sources',
