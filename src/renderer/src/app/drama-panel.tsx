@@ -1,10 +1,11 @@
 import { BookOpen, Clapperboard, FilePlus, RefreshCw, Sparkles, TestTube, Upload } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import type { DramaAsset, DramaAssetInput, DramaAssetStatus, DramaGenerationTask, DramaGenerationTaskInput, DramaGraphTemplate, DramaGraphTemplateInput, DramaProject, DramaProjectData, DramaProviderSettings } from '../../../shared/drama-types'
+import type { DramaAsset, DramaAssetInput, DramaAssetStatus, DramaGenerationMediaType, DramaGenerationTask, DramaGenerationTaskInput, DramaGraphTemplate, DramaGraphTemplateInput, DramaMediaProviderSettings, DramaMediaProviderSettingsInput, DramaProject, DramaProjectData, DramaProviderSettings } from '../../../shared/drama-types'
 import { useAppContext } from './app-context'
 import { DramaAssetLibrary } from './drama-asset-library'
 import { DramaGenerationQueue } from './drama-generation-queue'
 import { DramaGraphTemplateLibrary } from './drama-graph-template-library'
+import { DramaMediaProviderSettingsPanel } from './drama-media-provider-settings'
 
 export function DramaPanel(): React.ReactElement {
   const app = useAppContext()
@@ -140,6 +141,16 @@ export function DramaPanel(): React.ReactElement {
     }).catch((reason: unknown) => setProviderMessage(reason instanceof Error ? reason.message : String(reason))).finally(() => setProviderBusy(false))
   }
 
+  const saveMediaProvider = (mediaType: DramaGenerationMediaType, input: DramaMediaProviderSettingsInput): void => {
+    if (providerBusy) return
+    setProviderBusy(true)
+    setProviderMessage(null)
+    void window.aiv.setDramaProviderSettings({ media: { [mediaType]: input } }).then((settings) => {
+      setProviderSettings(settings)
+      setProviderMessage(copy.providerSaved)
+    }).catch((reason: unknown) => setProviderMessage(reason instanceof Error ? reason.message : String(reason))).finally(() => setProviderBusy(false))
+  }
+
   const saveAsset = (assetId: string | null, input: DramaAssetInput, status: DramaAssetStatus = 'draft'): void => {
     if (!selectedProjectId || busy) return
     setBusy(true)
@@ -211,6 +222,7 @@ export function DramaPanel(): React.ReactElement {
       <label className="drama-provider-toggle"><input type="checkbox" checked={providerMock} onChange={(event) => setProviderMock(event.target.checked)} disabled={providerBusy} /><span><strong>{copy.mockMode}</strong><small>{copy.mockModeDescription}</small></span></label>
       <div className="drama-actions"><button className="drama-secondary-action" type="button" onClick={() => saveProvider(false)} disabled={providerBusy}><FilePlus size={14} />{copy.saveProvider}</button><button className="drama-primary-action" type="button" onClick={() => saveProvider(true)} disabled={providerBusy}>{providerBusy ? copy.testingProvider : copy.testProvider}</button>{providerSettings?.apiKeyConfigured ? <button className="drama-secondary-action" type="button" onClick={clearProviderKey} disabled={providerBusy}>{copy.clearApiKey}</button> : null}</div>
       {providerMessage ? <div className="drama-progress" role="status">{providerMessage}</div> : null}
+      <DramaMediaProviderSettingsPanel settings={providerSettings?.media ?? emptyMediaProviderSettings()} copy={copy} busy={providerBusy} onSave={saveMediaProvider} />
     </section>
 
     <section className="drama-card drama-project-card">
@@ -250,4 +262,9 @@ export function DramaPanel(): React.ReactElement {
 
 function StageRow({ label, ready }: { label: string; ready: boolean }): React.ReactElement {
   return <div className="drama-stage-row"><span>{label}</span><small className={ready ? 'ready' : ''}>{ready ? '✓' : '—'}</small></div>
+}
+
+function emptyMediaProviderSettings(): Record<DramaGenerationMediaType, DramaMediaProviderSettings> {
+  const empty = { providerId: null, apiBaseUrl: null, model: null, costPerRequest: null, apiKeyConfigured: false }
+  return { image: empty, video: empty, audio: empty }
 }
