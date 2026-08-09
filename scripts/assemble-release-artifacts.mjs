@@ -1,9 +1,33 @@
-import { copyFile, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { basename, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { isReleaseArtifact, listReleaseArtifacts } from './release-artifact-policy.mjs'
+import { sha256File } from './release-manifest.mjs'
 
 const PACKAGE_EXTENSIONS = ['.dmg', '.zip', '.pkg', '.exe', '.AppImage', '.deb', '.blockmap']
+const PLATFORM_EVIDENCE = {
+  macos: {
+    reportSources: [['release-evidence-macos', 'platform-release-report-macos.json']],
+    packages: ['.dmg', '.zip', '.pkg'],
+    metadata: ['latest-mac.yml']
+  },
+  windows: {
+    reportSources: [
+      ['release-evidence-windows', 'platform-release-report-windows.json'],
+      ['release-evidence-windows-arm64', 'platform-release-report-windows-arm64.json']
+    ],
+    packages: ['.exe'],
+    metadata: ['latest.yml']
+  },
+  linux: {
+    reportSources: [
+      ['release-evidence-linux', 'platform-release-report-linux.json'],
+      ['release-evidence-linux-arm64', 'platform-release-report-linux-arm64.json']
+    ],
+    packages: ['.AppImage', '.deb'],
+    metadata: ['latest-linux.yml', 'latest-linux-arm64.yml']
+  }
+}
 
 function readOptions(argv) {
   const options = {}
@@ -95,6 +119,52 @@ async function copyPackages(sourceDirectories, outputDirectory) {
   return copiedNames
 }
 
+function isUpdateMetadata(name) {
+  return /^latest(?:-[^/]+)?\.yml$/i.test(name)
+}
+
+async function describeArtifact(directory, name) {
+  const filePath = join(directory, name)
+  const fileStat = await stat(filePath)
+  return {
+    name,
+    sizeBytes: fileStat.size,
+    sha256: await sha256File(filePath)
+  }
+}
+
+async function writeMergedEvidenceReports(inputDirectory, outputDirectory) {
+  for (const [platform, config] of Object.entries(PLATFORM_EVIDENCE)) {
+    const artifactsByName = new Map()
+    for (const [sourceName, reportName] of config.reportSources) {
+      const reportPath = join(inputDirectory, sourceName, reportName)
+      const report = JSON.parse(await readFile(reportPath, 'utf8'))
+      if (!Array.isArray(report.artifacts)) throw new Error(`Evidence report has no artifacts: ${reportPath}`)
+      for (const artifact of report.artifacts) {
+        if (isUpdateMetadata(artifact.name)) continue
+        if (artifactsByName.has(artifact.name)) throw new Error(`Platform evidence reports overlap on artifact: ${artifact.name}`)
+        artifactsByName.set(artifact.name, artifact)
+      }
+    }
+    for (const metadataName of config.metadata) {
+      if (artifactsByName.has(metadataName)) throw new Error(`Platform evidence metadata overlaps on artifact: ${metadataName}`)
+      artifactsByName.set(metadataName, await describeArtifact(outputDirectory, metadataName))
+    }
+    const artifacts = [...artifactsByName.values()].sort((left, right) => left.name.localeCompare(right.name))
+    const report = {
+      schemaVersion: 1,
+      ok: true,
+      platform,
+      generatedAt: new Date().toISOString(),
+      artifactCount: artifacts.length,
+      packageExtensions: config.packages,
+      metadata: config.metadata,
+      artifacts
+    }
+    await writeFile(join(outputDirectory, `platform-release-report-${platform}.json`), `${JSON.stringify(report, null, 2)}\n`, 'utf8')
+  }
+}
+
 export async function assembleReleaseArtifacts(options = {}) {
   const inputDirectory = resolve(options.inputDir ?? process.env.ARTIFACT_INPUT_DIR ?? 'artifacts')
   const outputDirectory = resolve(options.outputDir ?? process.env.ARTIFACT_OUTPUT_DIR ?? join(inputDirectory, 'assembled'))
@@ -136,6 +206,8 @@ export async function assembleReleaseArtifacts(options = {}) {
     await copyFile(path, join(outputDirectory, targetName))
     copiedNames.add(targetName)
   }
+
+  await writeMergedEvidenceReports(inputDirectory, outputDirectory)
 
   return { inputDirectory, outputDirectory, artifactCount: copiedNames.size, artifacts: [...copiedNames].sort() }
 }

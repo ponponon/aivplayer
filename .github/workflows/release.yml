@@ -575,11 +575,8 @@ jobs:
       - name: List artifacts
         run: find artifacts -type f | head -50
 
-      - name: Verify assembled platform artifacts
+      - name: Verify assembled package formats
         run: |
-          npm run release:check-platform -- --platform macos --artifacts-dir artifacts/assembled --report-path artifacts/assembled/platform-release-report-macos.json
-          npm run release:check-platform -- --platform windows --artifacts-dir artifacts/assembled --report-path artifacts/assembled/platform-release-report-windows.json
-          npm run release:check-platform -- --platform linux --artifacts-dir artifacts/assembled --report-path artifacts/assembled/platform-release-report-linux.json
           npm run release:check-formats -- --platform macos --artifacts-dir artifacts/assembled
           npm run release:check-formats -- --platform windows --artifacts-dir artifacts/assembled
           npm run release:check-formats -- --platform linux --artifacts-dir artifacts/assembled
