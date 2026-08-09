@@ -1,9 +1,10 @@
 import { execFile } from 'node:child_process'
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { promisify } from 'node:util'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
+import { runReleaseDryRun } from '../../scripts/release-dry-run.mjs'
 
 const execFileAsync = promisify(execFile)
 const temporaryDirectories: string[] = []
@@ -91,5 +92,26 @@ describe('release manifest', () => {
 
     await expect(runManifest(artifactsDirectory, '--tag', 'v0.4.0', '--commit', 'not-a-commit'))
       .rejects.toThrow('Invalid release provenance field: commit')
+  })
+
+  it('runs all local release gates and removes its temporary fixture', async () => {
+    const result = await runReleaseDryRun()
+
+    expect(result.ok).toBe(true)
+    expect(result.tag).toBe('v0.4.0')
+    expect(result.artifactCount).toBe(9)
+    expect(result.platforms).toEqual({
+      macos: { artifactCount: 4, packageCount: 3 },
+      windows: { artifactCount: 2, packageCount: 1 },
+      linux: { artifactCount: 3, packageCount: 2 }
+    })
+    expect(result.manifest.provenance).toEqual({
+      commit: '0'.repeat(40),
+      repository: 'local/aivplayer',
+      workflow: 'Local release dry-run',
+      workflowRunId: '1',
+      workflowRunAttempt: '1'
+    })
+    await expect(access(result.artifactsDir)).rejects.toMatchObject({ code: 'ENOENT' })
   })
 })

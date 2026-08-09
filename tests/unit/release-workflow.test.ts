@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 const projectRoot = process.cwd()
 const releaseWorkflow = readFileSync(join(projectRoot, '.github/workflows/release.yml'), 'utf8')
+const packageJson = readFileSync(join(projectRoot, 'package.json'), 'utf8')
 const electronBuilder = readFileSync(join(projectRoot, 'electron-builder.yml'), 'utf8')
 const giteeSync = readFileSync(join(projectRoot, 'scripts/sync-gitee-release.mjs'), 'utf8')
 const artifactPolicy = readFileSync(join(projectRoot, 'scripts/release-artifact-policy.mjs'), 'utf8')
@@ -12,6 +13,7 @@ const releaseVersion = readFileSync(join(projectRoot, 'scripts/check-release-ver
 const platformRelease = readFileSync(join(projectRoot, 'scripts/check-platform-release-artifacts.mjs'), 'utf8')
 const packageFormats = readFileSync(join(projectRoot, 'scripts/check-release-package-formats.mjs'), 'utf8')
 const platformEvidence = readFileSync(join(projectRoot, 'scripts/check-platform-evidence.mjs'), 'utf8')
+const releaseDryRun = readFileSync(join(projectRoot, 'scripts/release-dry-run.mjs'), 'utf8')
 
 describe('release workflow source constraints', () => {
   it('keeps platform builds separate from release publishing', () => {
@@ -131,5 +133,14 @@ describe('release workflow source constraints', () => {
     expect(packageFormats).toContain("case '.exe':")
     expect(packageFormats).toContain("case '.deb':")
     expect(packageFormats).toContain("case '.appimage':")
+  })
+
+  it('keeps the local release dry-run offline and separate from remote publishing', () => {
+    expect(packageJson).toContain('"release:dry-run"')
+    expect(releaseDryRun).not.toContain('sync-gitee-release')
+    expect(releaseDryRun).not.toContain('verify-remote-release')
+    expect(releaseDryRun).not.toContain('fetch(')
+    expect(releaseDryRun).toContain('checkPlatformEvidence')
+    expect(releaseDryRun).toContain('verifyReleaseManifest')
   })
 })
