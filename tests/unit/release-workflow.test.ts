@@ -98,6 +98,18 @@ describe('release workflow source constraints', () => {
     expect(platformRelease).toContain('unexpected packages')
   })
 
+  it('retains one hash report per build runner without publishing reports as release assets', () => {
+    expect(releaseWorkflow).toContain('release-evidence-macos')
+    expect(releaseWorkflow).toContain('release-evidence-windows')
+    expect(releaseWorkflow).toContain('release-evidence-linux')
+    expect(releaseWorkflow).toContain('platform-release-report-macos.json')
+    expect(releaseWorkflow).toContain('platform-release-report-windows.json')
+    expect(releaseWorkflow).toContain('platform-release-report-linux.json')
+    expect(platformRelease).toContain('sha256File')
+    expect(platformRelease).toContain('reportPath')
+    expect(platformRelease).toContain('duplicate names')
+  })
+
   it('checks package format signatures before uploading artifacts', () => {
     expect(releaseWorkflow.match(/release:check-formats/g)).toHaveLength(3)
     expect(packageFormats).toContain("case '.dmg':")
