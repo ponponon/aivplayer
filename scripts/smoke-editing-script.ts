@@ -458,6 +458,20 @@ async function main(): Promise<void> {
       await page.waitForFunction(() => !document.querySelector('[data-testid="editing-graphic-editor"]')?.hasAttribute('open'))
     }
 
+    const selectableScriptRows = page.locator('[data-testid="editing-script-list"] .editing-script-row:not(.is-deleted) .editing-script-row-main')
+    await selectableScriptRows.nth(0).click()
+    await selectableScriptRows.nth(1).click({ modifiers: ['Shift'] })
+    await page.locator('[data-testid="editing-script-delete-segments"]').waitFor({ timeout: 10_000 })
+    const selectedScriptRowCount = await page.locator('[data-testid="editing-script-list"] .editing-script-row.is-segment-selected').count()
+    if (selectedScriptRowCount !== 2) throw new Error(`Expected two selected script rows, got ${selectedScriptRowCount}`)
+    await page.locator('[data-testid="editing-script-delete-segments"]').click()
+    await page.locator('[data-testid="editing-proposal-confirm"]').waitFor({ timeout: 10_000 })
+    const batchProposalSegmentCount = await page.locator('[data-testid="editing-proposal-segments"] .editing-proposal-segment').count()
+    if (batchProposalSegmentCount !== 2) throw new Error(`Expected two proposal segments, got ${batchProposalSegmentCount}`)
+    await page.locator('[data-testid="editing-proposal-cancel"]').click()
+    await page.locator('[data-testid="editing-script-clear-segments"]').click()
+    await page.locator('[data-testid="editing-script-delete-segments"]').waitFor({ state: 'detached', timeout: 10_000 })
+
     await page.locator('[data-testid="editing-script-list"] .editing-script-action.is-danger').first().click()
     await page.locator('[data-testid="editing-proposal-confirm"]').waitFor({ timeout: 10_000 })
     await page.locator('[data-testid="editing-proposal-deletions"]').waitFor({ timeout: 10_000 })
