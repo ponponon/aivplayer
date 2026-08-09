@@ -4,6 +4,7 @@
 - 说话人 Provider 运行时已接入 sherpa-onnx 原生 Node API 的本地调用边界：只接受 16 kHz WAV，按本地模型路径执行分段并输出统一的秒级 speaker segment；模型缺失、平台不支持、原生模块加载失败和采样率不匹配都会明确报错。
 - 说话人 Provider 已接通主进程 IPC：从媒体文件使用内置 FFmpeg 抽取 16 kHz 单声道 WAV，执行本地分段后通过 preload 返回统一结果；临时音频会在任务结束后清理，并对相同请求复用进行中的任务。
 - 视频设置中新增本地说话人 Provider 状态卡，展示平台能力、模型文件状态、模型目录和可刷新诊断；四种界面语言均有对应文案。
+- 新增 `smoke:speaker-diarization` 真实验证入口：通过环境变量指定本地模型目录和 16 kHz WAV，输出耗时、分段数和 speaker id；脚本不会联网下载测试资产。
 
 - README 已完成国际化：`README.md` 作为英文主文档，并提供 `README.zh-CN.md`、`README.ja-JP.md` 和 `README.ko-KR.md` 三份本地化版本；四份文档顶部互相提供语言切换入口。
 
