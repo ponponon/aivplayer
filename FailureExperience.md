@@ -1219,6 +1219,12 @@
 - 经验：远端附件集合必须与本地 manifest 完全相等，远端服务返回的任何附件都不能被静默忽略；所有写入报告或错误文本的 URL 都必须先去掉 query 和 fragment。
 - 处理：远端回读改为拒绝所有 manifest 外附件，缺失名称 / 下载 URL 也直接失败；API 和资产下载错误统一经过 URL 脱敏，单测覆盖调试 YAML 额外附件和 `?token=...#...` 报告脱敏。
 
+## 2026-08-09：Chocolatey 网络失败不能靠退出码判断 FFmpeg 已安装
+
+- 现象：Windows Runner 的 Chocolatey feed 返回 HTTP 504 后，命令输出“installed 0/0”，但步骤没有立即阻断；后续固定扫描 `lib\ffmpeg` 找不到真实 `ffmpeg.exe`，导致 whisper.cpp 虽已编译成功仍无法进入打包。
+- 经验：外部包管理器的成功条件必须是实际运行时文件和配套文件存在，不能只看命令退出码或 PATH 中的 shim；网络下载步骤需要有上限重试和指数退避，并在最终失败时给出明确路径。
+- 处理：Windows x64 安装步骤最多重试 3 次、每次检查 Chocolatey `lib` 下真实 `ffmpeg.exe`；构建步骤从整个 Chocolatey `lib` 树定位二进制，再校验同目录 `ffprobe.exe`，避免依赖固定包目录布局。
+
 ## 2026-08-09：发布汇总不能递归扫描解包运行时
 
 - 现象：旧版 publish job 直接递归扫描 `actions/download-artifact` 的总目录；Windows / Linux 的解包目录中包含 `AIVPlayer.exe`、FFmpeg、libheif 和 whisper-cli 等文件，证据报告会把它们误当成应上传到 Release 根目录的资产，最终在创建 Release 前报文件集合不一致。
