@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { createEditingProject } from '../../../core/editing/project'
+import { getEditingProjectRevision } from '../../../core/editing/edit-proposal'
 import { createEditingProjectFromVisionSearchResults, createEditingProjectFromVisionSelections, type VisionSourceMetadata } from '../../../core/ai/vision-evidence'
 import { editedDurationSeconds, editedTimeToSource } from '../../../core/editing/timeline-math'
 import { deleteVideoClipAtEdited, splitVideoClipAtEdited, trimVideoClipLeftAtEdited, trimVideoClipRightAtEdited } from '../../../core/editing/timeline-operations'
@@ -178,6 +179,52 @@ export function useEditingActions(model: AppModel, derived: AppDerived, selectFi
 
   const projectFileActions = createEditingProjectFileActions(model, derived, selectFile); const clipActions = createEditingClipActions(model); const captionActions = createEditingCaptionActions(model); const audioActions = createEditingAudioActions(model); const sourceActions = createEditingSourceActions(model, derived); const scriptActions = createEditingScriptActions(model); const graphicActions = createEditingGraphicActions(model); const videoBlockActions = createEditingVideoBlockActions(model); const sceneActions = createEditingSceneActions(model); const silenceActions = createEditingSilenceActions(model)
 
+  const resolveEditingAgentProposal = async (accepted: boolean): Promise<void> => {
+    const pending = model.editingAgentProposal
+    if (!pending) return
+    model.setEditingAgentProposal(null)
+    if (!accepted) {
+      await window.aiv.respondEditingAgentProposal(pending.requestId, { outcome: 'rejected', message: '用户取消了 Agent Proposal' })
+      return
+    }
+    const result = scriptActions.applyEditingScriptProposal(pending.proposal)
+    await window.aiv.respondEditingAgentProposal(pending.requestId, result.success
+      ? { outcome: 'applied' }
+      : { outcome: 'stale', message: result.message || 'Proposal 应用失败' })
+  }
+
+  useEffect(() => {
+    return window.aiv.onEditingAgentProposal((request) => {
+      const project = model.editingProject
+      if (!model.isEditingMode || !project || model.editingProjectFilePath !== request.projectPath) {
+        void window.aiv.respondEditingAgentProposal(request.requestId, { outcome: 'rejected', message: '桌面端当前没有打开匹配的 .aivproj 工程' })
+        return
+      }
+      if (model.editingAgentProposal) {
+        void window.aiv.respondEditingAgentProposal(request.requestId, { outcome: 'rejected', message: '已有一个 Agent Proposal 等待确认' })
+        return
+      }
+      if (project.id !== request.proposal.base.projectId || getEditingProjectRevision(project) !== request.proposal.base.revision) {
+        void window.aiv.respondEditingAgentProposal(request.requestId, { outcome: 'stale', message: '当前工程快照已变化，请让 Agent 重新生成 Proposal' })
+        return
+      }
+      model.setEditingAgentProposal(request)
+    })
+  }, [model.editingAgentProposal, model.editingProject, model.editingProjectFilePath, model.isEditingMode])
+
+  useEffect(() => {
+    const pending = model.editingAgentProposal
+    if (!pending) return
+    const project = model.editingProject
+    const projectMatches = model.isEditingMode && project && model.editingProjectFilePath === pending.projectPath && project.id === pending.proposal.base.projectId && getEditingProjectRevision(project) === pending.proposal.base.revision
+    if (projectMatches) return
+    model.setEditingAgentProposal(null)
+    void window.aiv.respondEditingAgentProposal(pending.requestId, {
+      outcome: project ? 'stale' : 'cancelled',
+      message: project ? '确认期间工程已变化，请让 Agent 重新生成 Proposal' : '桌面编辑器已关闭，未应用 Agent Proposal'
+    })
+  }, [model.editingAgentProposal, model.editingProject, model.editingProjectFilePath, model.isEditingMode])
+
   useEffect(() => { if (model.isEditingMode && !model.state.currentFile) closeEditingMode() }, [model.isEditingMode, model.state.currentFile?.path])
 
   return {
@@ -208,5 +255,6 @@ export function useEditingActions(model: AppModel, derived: AppDerived, selectFi
     reorderEditingOverlayTracks: (source: import('../../../shared/editing-types').EditingOverlayTrackKind, target: import('../../../shared/editing-types').EditingOverlayTrackKind) => reorderEditingOverlayTracks(model, source, target),
     exportEditingTimeline: (mode?: TimelineExportMode, outputVideoPath?: string) => runEditingTimelineExport(model, derived, mode, outputVideoPath)
     , createEditingProjectFromVisionResults, createEditingProjectFromVisionCollection
+    , resolveEditingAgentProposal
   }
 }

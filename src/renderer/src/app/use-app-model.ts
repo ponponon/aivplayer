@@ -17,6 +17,7 @@ import type { AppModel, AsrNotice, EditingClipPreview, EditingProjectStatus } fr
 import { useAppRefs } from './use-app-refs'
 import type { EditingProject } from '../../../shared/editing-types'
 import type { WebShareStatus } from '../../../shared/web-types'
+import type { EditingAgentProposalRequest } from '../../../shared/editing-agent'
 export function useAppModel(): AppModel {
   const refs = useAppRefs()
   const [state, setState] = useState(initialPlayerState)
@@ -66,6 +67,7 @@ export function useAppModel(): AppModel {
   const [isAddingEditingMedia, setIsAddingEditingMedia] = useState(false)
   const [isDetectingEditingScenes, setIsDetectingEditingScenes] = useState(false); const [isDetectingEditingSilence, setIsDetectingEditingSilence] = useState(false)
   const [editingProjectFilePath, setEditingProjectFilePath] = useState<string | null>(null); const [editingProjectStatus, setEditingProjectStatus] = useState<EditingProjectStatus | null>(null)
+  const [editingAgentProposal, setEditingAgentProposal] = useState<EditingAgentProposalRequest | null>(null)
   const [webShareStatus, setWebShareStatus] = useState<WebShareStatus>({ running: false, port: null, urls: [], sharedFileCount: 0, sharedDirectoryCount: 0, sharedDirectoryPaths: [] })
   const [isWebShareDialogOpen, setIsWebShareDialogOpen] = useState(false)
   const [webShareError, setWebShareError] = useState<string | null>(null)
@@ -154,7 +156,7 @@ export function useAppModel(): AppModel {
     isAddingEditingMedia, setIsAddingEditingMedia,
     isDetectingEditingScenes, setIsDetectingEditingScenes, isDetectingEditingSilence, setIsDetectingEditingSilence,
     editingProjectFilePath, setEditingProjectFilePath,
-    editingProjectStatus, setEditingProjectStatus
+    editingProjectStatus, setEditingProjectStatus, editingAgentProposal, setEditingAgentProposal
     , webShareStatus, setWebShareStatus, isWebShareDialogOpen, setIsWebShareDialogOpen, webShareError, setWebShareError, webShareNotice, setWebShareNotice
   }
 }
