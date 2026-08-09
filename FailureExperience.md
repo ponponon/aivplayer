@@ -1169,4 +1169,4 @@
 
 - 现象：electron-builder 在多目标 macOS 打包过程中会先创建临时文件；如果只按扩展名或文件名扫描，零字节 PKG、未完成的 ZIP 或被错误重命名的文件可能进入上传目录。
 - 经验：发布前至少读取每种安装包的轻量格式签名，并拒绝零字节文件：DMG 使用末尾 512 字节的 `koly`，ZIP / PKG 使用容器头，EXE 使用 `MZ`，AppImage 使用 ELF，DEB 使用 ar 头。格式检查不能替代平台契约、版本校验和安装 Smoke，但能截断最早的伪产物。
-- 处理：新增 `release:check-formats` 与 `check-release-package-formats.mjs`，三平台 Upload artifacts 前执行；本机真实生成的 0.4.0 DMG 已通过 `koly` 校验。默认全目标演练中未完成最终 ZIP / PKG 的临时文件不被当作成功证据。
+- 处理：新增 `release:check-formats` 与 `check-release-package-formats.mjs`，三平台 Upload artifacts 前执行；本机真实生成的 0.4.0 DMG 已通过 `koly` 校验。第一次查看 electron-builder 输出时只拿到会话中间日志，误把仍在运行的 ZIP / PKG 临时状态当成失败；改为轮询长期会话并检查退出码后，完整 `dmg + zip + pkg` 以 exit 0 完成，6 个真实 macOS 发布资产全部通过平台、格式、版本和 manifest 校验。
