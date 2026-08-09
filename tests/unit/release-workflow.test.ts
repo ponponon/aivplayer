@@ -75,7 +75,8 @@ describe('release workflow source constraints', () => {
     expect(electronBuilder).toContain('from: docs/THIRD_PARTY_LICENSES.md')
     expect(electronBuilder).toContain('from: resources/runtime-metadata.json')
     expect(electronBuilder).toContain('resources/vision/siglip2-base-patch16-224-ONNX')
-    expect(electronBuilder).toContain("artifactName: '${productName} Setup ${version} ${arch}.${ext}'")
+    expect(electronBuilder).toContain("artifactName: '${productName}-Setup-${version}-${arch}.${ext}'")
+    expect(electronBuilder).not.toContain("artifactName: '${productName} Setup ${version} ${arch}.${ext}'")
     expect(electronBuilder).toContain("artifactName: '${name}-${version}-${arch}.${ext}'")
   })
 

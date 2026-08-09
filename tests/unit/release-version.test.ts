@@ -49,6 +49,21 @@ describe('release version gate', () => {
     expect(result.stdout).toContain('Release version verified: v0.4.0')
   })
 
+  it('accepts the hyphenated Windows artifact name from electron-builder', async () => {
+    const fixture = await createFixture()
+    await writeFile(join(fixture.artifactsDirectory, 'AIVPlayer-Setup-0.4.0-x64.exe'), 'package')
+    await writeFile(join(fixture.artifactsDirectory, 'latest.yml'), [
+      'version: 0.4.0',
+      'files:',
+      '  - url: AIVPlayer-Setup-0.4.0-x64.exe',
+      '    sha512: fixture',
+      '    size: 7',
+      'path: AIVPlayer-Setup-0.4.0-x64.exe'
+    ].join('\n'))
+    const result = await runCheck(fixture)
+    expect(result.stdout).toContain('2 update metadata file(s)')
+  })
+
   it('excludes builder debug YAML from the publishable artifact boundary', async () => {
     const fixture = await createFixture()
     const result = await runCheck(fixture)

@@ -55,10 +55,10 @@ async function createFixture() {
   await writeFile(join(root, 'macos', 'AIVPlayer-0.5.1-arm64.zip'), 'zip')
   await writeFile(join(root, 'macos', 'AIVPlayer-0.5.1-arm64.pkg'), 'pkg')
   await writeFile(join(root, 'macos', 'latest-mac.yml'), metadata('0.5.1', 'AIVPlayer-0.5.1-arm64.zip'))
-  await writeFile(join(root, 'windows-x64', 'AIVPlayer Setup 0.5.1 x64.exe'), 'x64')
-  await writeFile(join(root, 'windows-x64', 'latest.yml'), metadata('0.5.1', 'AIVPlayer Setup 0.5.1 x64.exe'))
-  await writeFile(join(root, 'windows-arm64', 'AIVPlayer Setup 0.5.1 arm64.exe'), 'arm64')
-  await writeFile(join(root, 'windows-arm64', 'latest.yml'), metadata('0.5.1', 'AIVPlayer Setup 0.5.1 arm64.exe'))
+  await writeFile(join(root, 'windows-x64', 'AIVPlayer-Setup-0.5.1-x64.exe'), 'x64')
+  await writeFile(join(root, 'windows-x64', 'latest.yml'), metadata('0.5.1', 'AIVPlayer-Setup-0.5.1-x64.exe'))
+  await writeFile(join(root, 'windows-arm64', 'AIVPlayer-Setup-0.5.1-arm64.exe'), 'arm64')
+  await writeFile(join(root, 'windows-arm64', 'latest.yml'), metadata('0.5.1', 'AIVPlayer-Setup-0.5.1-arm64.exe'))
   await writeFile(join(root, 'linux-x64', 'aivplayer-0.5.1-x64.AppImage'), 'appimage-x64')
   await writeFile(join(root, 'linux-x64', 'aivplayer-0.5.1-x64.deb'), 'deb-x64')
   await writeFile(join(root, 'linux-x64', 'latest-linux.yml'), metadata('0.5.1', 'aivplayer-0.5.1-x64.AppImage'))
@@ -69,10 +69,10 @@ async function createFixture() {
     'AIVPlayer-0.5.1-arm64.dmg', 'AIVPlayer-0.5.1-arm64.zip', 'AIVPlayer-0.5.1-arm64.pkg', 'latest-mac.yml'
   ])
   await writeEvidenceReport(root, 'windows-x64', 'release-evidence-windows', 'platform-release-report-windows.json', 'windows', ['.exe'], ['latest.yml'], [
-    'AIVPlayer Setup 0.5.1 x64.exe', 'latest.yml'
+    'AIVPlayer-Setup-0.5.1-x64.exe', 'latest.yml'
   ])
   await writeEvidenceReport(root, 'windows-arm64', 'release-evidence-windows-arm64', 'platform-release-report-windows-arm64.json', 'windows', ['.exe'], ['latest.yml'], [
-    'AIVPlayer Setup 0.5.1 arm64.exe', 'latest.yml'
+    'AIVPlayer-Setup-0.5.1-arm64.exe', 'latest.yml'
   ])
   await writeEvidenceReport(root, 'linux-x64', 'release-evidence-linux', 'platform-release-report-linux.json', 'linux', ['.AppImage', '.deb'], ['latest-linux.yml'], [
     'aivplayer-0.5.1-x64.AppImage', 'aivplayer-0.5.1-x64.deb', 'latest-linux.yml'
@@ -110,8 +110,8 @@ describe('release artifact assembly', () => {
     await runAssembly(input, output)
 
     const windowsMetadata = await readFile(join(output, 'latest.yml'), 'utf8')
-    expect(windowsMetadata).toContain('AIVPlayer Setup 0.5.1 x64.exe')
-    expect(windowsMetadata).toContain('AIVPlayer Setup 0.5.1 arm64.exe')
+    expect(windowsMetadata).toContain('AIVPlayer-Setup-0.5.1-x64.exe')
+    expect(windowsMetadata).toContain('AIVPlayer-Setup-0.5.1-arm64.exe')
     expect(await readFile(join(output, 'latest-linux-arm64.yml'), 'utf8')).toContain('aivplayer-0.5.1-arm64.AppImage')
     await expect(readFile(join(output, 'release-manifest.json'), 'utf8')).resolves.toContain('v0.5.1')
     await expect(access(join(output, 'AIVPlayer.exe'))).rejects.toMatchObject({ code: 'ENOENT' })
@@ -121,15 +121,15 @@ describe('release artifact assembly', () => {
     expect(evidenceResult.stdout).toContain('Platform evidence verified: macos, windows, linux, 13 artifact(s)')
     const windowsReport = JSON.parse(await readFile(join(output, 'platform-release-report-windows.json'), 'utf8')) as { artifacts: Array<{ name: string }> }
     expect(windowsReport.artifacts.map(({ name }) => name)).toEqual([
-      'AIVPlayer Setup 0.5.1 arm64.exe',
-      'AIVPlayer Setup 0.5.1 x64.exe',
+      'AIVPlayer-Setup-0.5.1-arm64.exe',
+      'AIVPlayer-Setup-0.5.1-x64.exe',
       'latest.yml'
     ])
   })
 
   it('rejects mixed Windows metadata versions before publishing', async () => {
     const input = await createFixture()
-    await writeFile(join(input, 'windows-arm64', 'latest.yml'), metadata('0.5.2', 'AIVPlayer Setup 0.5.2 arm64.exe'))
+    await writeFile(join(input, 'windows-arm64', 'latest.yml'), metadata('0.5.2', 'AIVPlayer-Setup-0.5.2-arm64.exe'))
     await expect(runAssembly(input, join(input, 'assembled'))).rejects.toThrow('versions differ')
   })
 })
