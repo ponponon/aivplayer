@@ -11,6 +11,7 @@ const execFileAsync = promisify(execFile)
 
 const WHISPER_CPP_REPO = 'https://github.com/ggml-org/whisper.cpp.git'
 const DEFAULT_TAG = 'v1.9.1'
+const DEFAULT_MACOS_DEPLOYMENT_TARGET = '12.0'
 const CACHE_DIR = join(process.env.HOME ?? '~', '.cache', 'aivplayer', 'whisper.cpp')
 
 type BuildWhisperMacosOptions = {
@@ -101,9 +102,17 @@ async function cloneOrCheckout(sourceDir: string, tag: string): Promise<void> {
 
 async function runCmakeConfigure(sourceDir: string, buildDir: string): Promise<void> {
   console.log(`[build-whisper] cmake configure → ${buildDir}`)
+  const deploymentTarget = process.env.MACOSX_DEPLOYMENT_TARGET ?? DEFAULT_MACOS_DEPLOYMENT_TARGET
   await execFileAsync(
     'cmake',
-    ['-B', buildDir, '-DWHISPER_BUILD_TESTS=OFF', '-DWHISPER_BUILD_EXAMPLES=ON', '-DCMAKE_BUILD_TYPE=Release'],
+    [
+      '-B',
+      buildDir,
+      '-DWHISPER_BUILD_TESTS=OFF',
+      '-DWHISPER_BUILD_EXAMPLES=ON',
+      '-DCMAKE_BUILD_TYPE=Release',
+      `-DCMAKE_OSX_DEPLOYMENT_TARGET=${deploymentTarget}`
+    ],
     { cwd: sourceDir, timeout: 60_000 }
   )
 }

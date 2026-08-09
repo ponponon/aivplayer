@@ -6,6 +6,7 @@ import { promisify } from 'node:util'
 import { prepareHeifRuntime } from './prepare-heif-runtime.ts'
 
 const execFileAsync = promisify(execFile)
+const DEFAULT_MACOS_DEPLOYMENT_TARGET = '12.0'
 
 type HeifEncoder = 'x265' | 'kvazaar'
 
@@ -130,6 +131,10 @@ function getCmakeOptions(options: BuildHeifSourceOptions, installDirectory: stri
   if (options.toolchainFile) cmakeOptions.push(`-DCMAKE_TOOLCHAIN_FILE=${options.toolchainFile}`)
   if (options.vcpkgTriplet) cmakeOptions.push(`-DVCPKG_TARGET_TRIPLET=${options.vcpkgTriplet}`)
   if (options.x265Library) cmakeOptions.push(`-DX265_LIBRARY=${options.x265Library}`)
+  if (options.platform === 'darwin') {
+    const deploymentTarget = process.env.MACOSX_DEPLOYMENT_TARGET ?? DEFAULT_MACOS_DEPLOYMENT_TARGET
+    cmakeOptions.push(`-DCMAKE_OSX_DEPLOYMENT_TARGET=${deploymentTarget}`)
+  }
   if (options.platform === 'win32') cmakeOptions.push('-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded')
   if (options.staticLink) cmakeOptions.push('-DCMAKE_EXE_LINKER_FLAGS=-static -static-libgcc -static-libstdc++')
   return cmakeOptions
