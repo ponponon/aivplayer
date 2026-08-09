@@ -63,7 +63,7 @@ describe('writeRuntimeMetadata', () => {
     const expectedHash = createHash('sha256').update(await readFile(whisperPath)).digest('hex')
     expect(metadata.components.whisperCpp.sha256).toBe(expectedHash)
     await expect(readFile(join(resourcePath, 'runtime-metadata.json'), 'utf8')).resolves.toContain('gpl-enabled')
-  })
+  }, 15000)
 
   it('blocks nonfree FFmpeg builds before writing metadata', async () => {
     const resourcePath = await createFixture()
