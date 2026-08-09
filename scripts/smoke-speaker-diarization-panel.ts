@@ -92,6 +92,12 @@ async function runSmoke(): Promise<void> {
 
     const segments = await page.locator('.vision-speaker-segment').count()
     if (segments === 0) throw new Error('说话人面板没有生成可跳转的分段')
+    await page.locator('.vision-speaker-evidence-status.is-saved').waitFor({ timeout: 10_000 })
+    const evidenceStatus = await page.locator('.vision-speaker-evidence-status').textContent()
+
+    const searchResults = await page.evaluate(() => window.aiv.searchVisionText({ query: 'speaker 1', limit: 24, mode: 'hybrid' }))
+    const speakerEvidenceResult = searchResults.find((result) => result.evidenceType === 'speaker' && result.matchedText?.includes('Speaker 1'))
+    if (!speakerEvidenceResult) throw new Error(`视觉搜索没有返回 speaker evidence：${JSON.stringify(searchResults)}`)
 
     await page.locator('video.video-surface').evaluate((video) => { (video as HTMLVideoElement).pause() })
     const firstSegment = await page.locator('.vision-speaker-segment').first().getAttribute('title')
@@ -104,7 +110,7 @@ async function runSmoke(): Promise<void> {
 
     const rendererErrors = session.errors
     if (rendererErrors.length > 0) throw new Error(`说话人面板 Smoke 出现渲染错误：\n${rendererErrors.join('\n')}`)
-    console.log(`Speaker diarization panel Smoke passed: ${JSON.stringify({ mediaPath: smokeMediaPath, elapsedMs: Date.now() - startedAt, segments, firstSegment, playback })}`)
+    console.log(`Speaker diarization panel Smoke passed: ${JSON.stringify({ mediaPath: smokeMediaPath, elapsedMs: Date.now() - startedAt, segments, evidenceStatus, speakerEvidenceResult, firstSegment, playback })}`)
   } finally {
     if (app) await app.close().catch(() => undefined)
     await rm(smokeDirectory, { recursive: true, force: true }).catch(() => undefined)
