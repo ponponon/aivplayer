@@ -23,6 +23,8 @@ describe('release workflow source constraints', () => {
 
   it('stages platform runtimes before packaging', () => {
     expect(releaseWorkflow.match(/release:check-runtime/g)).toHaveLength(3)
+    expect(releaseWorkflow.match(/release:prepare-vision-model/g)).toHaveLength(3)
+    expect(releaseWorkflow.match(/release:write-runtime-metadata/g)).toHaveLength(3)
     expect(releaseWorkflow).toContain('release:build-whisper-macos')
     expect(releaseWorkflow).toContain('release:prepare-runtime -- --platform win32')
     expect(releaseWorkflow).toContain('release:prepare-runtime -- --platform linux')
@@ -33,6 +35,8 @@ describe('release workflow source constraints', () => {
     expect(releaseWorkflow.match(/npm run check:licenses/g)).toHaveLength(3)
     expect(electronBuilder).toContain('from: LICENSE')
     expect(electronBuilder).toContain('from: docs/THIRD_PARTY_LICENSES.md')
+    expect(electronBuilder).toContain('from: resources/runtime-metadata.json')
+    expect(electronBuilder).toContain('resources/vision/siglip2-base-patch16-224-ONNX')
   })
 
   it('installs the generated Debian package by absolute path in CI', () => {

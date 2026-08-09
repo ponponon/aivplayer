@@ -33,10 +33,15 @@ jobs:
       - name: Check license manifest
         run: npm run check:licenses
 
+      - name: Stage vision model
+        run: npm run release:prepare-vision-model -- --resource-dir "$GITHUB_WORKSPACE/resources"
+
       - name: Install HEIF and media runtime dependencies
         run: brew install cmake ninja pkg-config libde265 kvazaar jpeg-turbo ffmpeg
 
       - name: Build static HEIF runtime
+        env:
+          AIVPLAYER_HEIF_ENCODER: kvazaar
         shell: bash
         run: |
           git clone --depth 1 --branch "v${LIBHEIF_VERSION}" https://github.com/strukturag/libheif.git "$RUNNER_TEMP/libheif"
@@ -54,6 +59,9 @@ jobs:
           export AIVPLAYER_STAGE_FFMPEG_BIN="$(brew --prefix)/bin/ffmpeg"
           npm run release:build-whisper-macos -- --tag "v${WHISPER_CPP_VERSION}"
           npm run release:check-runtime
+
+      - name: Write runtime metadata
+        run: npm run release:write-runtime-metadata -- --platform darwin --resource-dir "$GITHUB_WORKSPACE/resources" --whisper-version "$WHISPER_CPP_VERSION" --libheif-version "$LIBHEIF_VERSION" --libheif-encoder kvazaar
 
       - name: Build & Package
         run: npm run build && npx electron-builder --publish never
@@ -92,6 +100,10 @@ jobs:
       - name: Check license manifest
         run: npm run check:licenses
 
+      - name: Stage vision model
+        shell: pwsh
+        run: npm run release:prepare-vision-model -- --resource-dir "$env:GITHUB_WORKSPACE/resources"
+
       - name: Install HEIF build dependencies
         shell: pwsh
         run: |
@@ -99,6 +111,8 @@ jobs:
           vcpkg install libde265:x64-windows-static x265:x64-windows-static libjpeg-turbo:x64-windows-static tiff:x64-windows-static
 
       - name: Build static HEIF runtime
+        env:
+          AIVPLAYER_HEIF_ENCODER: x265
         shell: pwsh
         run: |
           $source = Join-Path $env:RUNNER_TEMP "libheif"
@@ -129,6 +143,10 @@ jobs:
           $ffmpegDir = $ffmpegBinary.DirectoryName
           npm run release:prepare-runtime -- --platform win32 --whisper-bin $whisperBinary.FullName --ffmpeg-dir $ffmpegDir
           npm run release:check-runtime
+
+      - name: Write runtime metadata
+        shell: pwsh
+        run: npm run release:write-runtime-metadata -- --platform win32 --resource-dir "$env:GITHUB_WORKSPACE/resources" --whisper-version "$env:WHISPER_CPP_VERSION" --libheif-version "$env:LIBHEIF_VERSION" --libheif-encoder x265
 
       - name: Build & Package
         run: npm run build && npx electron-builder --publish never
@@ -165,12 +183,17 @@ jobs:
       - name: Check license manifest
         run: npm run check:licenses
 
+      - name: Stage vision model
+        run: npm run release:prepare-vision-model -- --resource-dir "$GITHUB_WORKSPACE/resources"
+
       - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-0 libnotify4 libnss3 libxss1 libxtst6 xdg-utils libatspi2.0-0 libuuid1 libsecret-1-0 ffmpeg cmake ninja-build pkg-config libde265-dev libx265-dev libjpeg-dev zlib1g-dev
 
       - name: Build static HEIF runtime
+        env:
+          AIVPLAYER_HEIF_ENCODER: x265
         shell: bash
         run: |
           git clone --depth 1 --branch "v${LIBHEIF_VERSION}" https://github.com/strukturag/libheif.git "$RUNNER_TEMP/libheif"
@@ -193,6 +216,9 @@ jobs:
           cmake --build "$build_dir" --parallel
           npm run release:prepare-runtime -- --platform linux --whisper-dir "$build_dir/bin" --ffmpeg-dir /usr/bin
           npm run release:check-runtime
+
+      - name: Write runtime metadata
+        run: npm run release:write-runtime-metadata -- --platform linux --resource-dir "$GITHUB_WORKSPACE/resources" --whisper-version "$WHISPER_CPP_VERSION" --libheif-version "$LIBHEIF_VERSION" --libheif-encoder x265
 
       - name: Build & Package
         run: npm run build && npx electron-builder --publish never

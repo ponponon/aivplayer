@@ -21,6 +21,18 @@ async function createResourceFixture(): Promise<string> {
   await writeFile(join(directory, 'ffmpeg', 'ffprobe'), 'ffprobe')
   await writeFile(join(directory, 'LICENSE'), 'MIT License')
   await writeFile(join(directory, 'THIRD_PARTY_LICENSES.md'), '# licenses')
+  await writeFile(join(directory, 'runtime-metadata.json'), JSON.stringify({
+    schemaVersion: 1,
+    applicationVersion: '0.4.0',
+    platform: 'darwin',
+    components: {
+      whisperCpp: {},
+      ffmpeg: {},
+      ffprobe: {},
+      libheif: {},
+      siglip2: { files: [] }
+    }
+  }))
   await chmod(join(directory, 'ffmpeg', 'ffmpeg'), 0o755)
   await chmod(join(directory, 'ffmpeg', 'ffprobe'), 0o755)
   return directory
@@ -57,6 +69,26 @@ describe('checkPackagedResources', () => {
       join(resourcePath, 'LICENSE'),
       join(resourcePath, 'THIRD_PARTY_LICENSES.md')
     ])
+  })
+
+  it('requires runtime metadata in packaged resources', async () => {
+    const resourcePath = await createResourceFixture()
+    await rm(join(resourcePath, 'runtime-metadata.json'), { force: true })
+
+    const result = await checkPackagedResources({ resourcePath, platform: 'darwin' })
+
+    expect(result.ok).toBe(false)
+    expect(result.missing).toEqual([join(resourcePath, 'runtime-metadata.json')])
+  })
+
+  it('rejects malformed runtime metadata instead of checking file existence only', async () => {
+    const resourcePath = await createResourceFixture()
+    await writeFile(join(resourcePath, 'runtime-metadata.json'), '{"schemaVersion":1}')
+
+    const result = await checkPackagedResources({ resourcePath, platform: 'darwin' })
+
+    expect(result.ok).toBe(false)
+    expect(result.missing).toEqual([join(resourcePath, 'runtime-metadata.json')])
   })
 
   it('accepts explicit platform names for cross-platform artifact checks', async () => {

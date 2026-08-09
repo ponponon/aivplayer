@@ -30,6 +30,8 @@ extraResources:
     to: LICENSE
   - from: docs/THIRD_PARTY_LICENSES.md
     to: THIRD_PARTY_LICENSES.md
+  - from: resources/runtime-metadata.json
+    to: runtime-metadata.json
   - from: out/web
     to: web
     filter:

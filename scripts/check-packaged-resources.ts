@@ -1,4 +1,4 @@
-import { access, readdir } from 'node:fs/promises'
+import { access, readFile, readdir } from 'node:fs/promises'
 import { constants } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -37,6 +37,26 @@ async function hasWebAssets(webDirectory: string): Promise<boolean> {
   }
 }
 
+async function hasValidRuntimeMetadata(filePath: string): Promise<boolean> {
+  try {
+    const value = JSON.parse(await readFile(filePath, 'utf8')) as {
+      schemaVersion?: unknown
+      applicationVersion?: unknown
+      platform?: unknown
+      components?: Record<string, unknown>
+    }
+    const components = value.components
+    return value.schemaVersion === 1
+      && typeof value.applicationVersion === 'string'
+      && typeof value.platform === 'string'
+      && Boolean(components)
+      && ['whisperCpp', 'ffmpeg', 'ffprobe', 'libheif', 'siglip2'].every((name) => Boolean(components?.[name]))
+      && Array.isArray((components?.siglip2 as { files?: unknown } | undefined)?.files)
+  } catch {
+    return false
+  }
+}
+
 export async function checkPackagedResources(options: {
   resourcePath: string
   platform?: NodeJS.Platform
@@ -49,15 +69,17 @@ export async function checkPackagedResources(options: {
     join(resourcePath, 'ffmpeg', getExecutableName(platform)),
     join(resourcePath, 'ffmpeg', getFfprobeName(platform)),
     join(resourcePath, 'LICENSE'),
-    join(resourcePath, 'THIRD_PARTY_LICENSES.md')
+    join(resourcePath, 'THIRD_PARTY_LICENSES.md'),
+    join(resourcePath, 'runtime-metadata.json')
   ]
-  const [webIndexExists, webAssetsExist, ffmpegExists, ffprobeExists, licenseExists, thirdPartyLicenseExists] = await Promise.all([
+  const [webIndexExists, webAssetsExist, ffmpegExists, ffprobeExists, licenseExists, thirdPartyLicenseExists, runtimeMetadataExists] = await Promise.all([
     fileExists(checked[0]!, 'win32'),
     hasWebAssets(join(resourcePath, 'web')),
     fileExists(checked[2]!, platform),
     fileExists(checked[3]!, platform),
     fileExists(checked[4]!, 'win32'),
-    fileExists(checked[5]!, 'win32')
+    fileExists(checked[5]!, 'win32'),
+    hasValidRuntimeMetadata(checked[6]!)
   ])
   const missing = [
     ...(webIndexExists ? [] : [checked[0]!]),
@@ -65,7 +87,8 @@ export async function checkPackagedResources(options: {
     ...(ffmpegExists ? [] : [checked[2]!]),
     ...(ffprobeExists ? [] : [checked[3]!]),
     ...(licenseExists ? [] : [checked[4]!]),
-    ...(thirdPartyLicenseExists ? [] : [checked[5]!])
+    ...(thirdPartyLicenseExists ? [] : [checked[5]!]),
+    ...(runtimeMetadataExists ? [] : [checked[6]!])
   ]
   const ok = missing.length === 0
   return {
