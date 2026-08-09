@@ -12,6 +12,7 @@ import { getCliOption, hasCliOption, parseCliArgs, type ParsedCliArgs } from './
 import { formatBatchResult, runBatch } from './cli-batch'
 import { BatchPlanError } from './cli-batch-plan'
 import { runDrama } from './cli-drama'
+import { EditingProjectFileError, inspectEditingProject, loadEditingProjectFile, searchEditingProjectCaptions } from './cli-edit'
 
 const FALLBACK_CLI_VERSION = '0.1.0'
 
@@ -83,6 +84,8 @@ function printHelp(): void {
 用法：
   aivcli doctor [--json]
   aivcli media info <video>
+  aivcli edit inspect <project.aivproj> [--json]
+  aivcli edit captions <project.aivproj> [--query text] [--limit N] [--json]
   aivcli asr <video...> [--language auto] [--model id] [--format both|vtt|srt] [--output-dir dir] [--force]
   aivcli subtitle convert <input.vtt> [--output output.srt]
   aivcli subtitle translate <input.vtt> --to zh|en|ja|ko [--from auto] [--output-dir dir] [--force]
@@ -181,6 +184,59 @@ async function runMediaInfo(parsed: ParsedCliArgs): Promise<number> {
     `音频：${metadata.audio ? `${metadata.audio.codec ?? '未知'} ${metadata.audio.channelLayout ?? ''}`.trim() : '无'}`
   ].join('\n'))
   return 0
+}
+
+async function loadEditProject(parsed: ParsedCliArgs, usage: string): Promise<{ filePath: string; project: import('../shared/editing-types').EditingProject }> {
+  requirePositionals(parsed, 1, usage)
+  try {
+    return await loadEditingProjectFile(parsed.positionals[0] as string)
+  } catch (error) {
+    if (error instanceof EditingProjectFileError) {
+      throw new CliError(error.message, 3, { code: error.code, path: error.filePath })
+    }
+    throw error
+  }
+}
+
+function parseEditLimit(parsed: ParsedCliArgs): number {
+  const rawLimit = getCliOption(parsed, 'limit') ?? '50'
+  const limit = Number(rawLimit)
+  if (!Number.isInteger(limit) || limit < 1 || limit > 200) throw new CliError('--limit 必须是 1 到 200 之间的整数')
+  return limit
+}
+
+async function runEdit(parsed: ParsedCliArgs): Promise<number> {
+  const action = parsed.positionals[0]
+  if (action === 'inspect') {
+    const loaded = await loadEditProject({ ...parsed, positionals: parsed.positionals.slice(1) }, 'aivcli edit inspect <project.aivproj>')
+    const inspection = inspectEditingProject(loaded.project)
+    const result = { ok: true, command: 'edit inspect', projectPath: loaded.filePath, project: inspection }
+    printJson(parsed, result)
+    printHuman(parsed, [
+      `工程：${inspection.title}`,
+      `项目 ID：${inspection.id}`,
+      `素材：${inspection.sources.length} 个，主时间线：${inspection.timeline.clipCount} 段 / ${formatDuration(inspection.timeline.durationSeconds)}`,
+      `字幕：${inspection.captions.total} 条，脚本：${inspection.script.total} 行（已删除 ${inspection.script.deletedCount} 行）`
+    ].join('\n'))
+    return 0
+  }
+
+  if (action === 'captions') {
+    const loaded = await loadEditProject({ ...parsed, positionals: parsed.positionals.slice(1) }, 'aivcli edit captions <project.aivproj>')
+    const query = getCliOption(parsed, 'query')
+    const result = searchEditingProjectCaptions(loaded.project, query, parseEditLimit(parsed))
+    const payload = { ok: true, command: 'edit captions', projectPath: loaded.filePath, projectId: loaded.project.id, ...result }
+    printJson(parsed, payload)
+    if (!parsed.global.json) {
+      printHuman(parsed, result.totalMatches === 0 ? '没有找到匹配字幕' : result.matches.map((match, index) => {
+        const status = match.deleted ? '（已删除）' : ''
+        return `${index + 1}. ${formatDuration(match.sourceStartSeconds)}–${formatDuration(match.sourceEndSeconds)}${status}\n   ${match.text}${match.translationText ? `\n   译文：${match.translationText}` : ''}`
+      }).join('\n'))
+    }
+    return 0
+  }
+
+  throw new CliError('目前只支持 edit inspect 和 edit captions')
 }
 
 async function runAsr(parsed: ParsedCliArgs): Promise<number> {
@@ -443,6 +499,7 @@ async function runCommand(parsed: ParsedCliArgs): Promise<number> {
     if (parsed.positionals[0] !== 'info') throw new CliError('目前只支持 media info')
     return runMediaInfo({ ...parsed, positionals: parsed.positionals.slice(1) })
   }
+  if (parsed.command === 'edit') return runEdit(parsed)
   if (parsed.command === 'asr') return runAsr(parsed)
   if (parsed.command === 'subtitle') return runSubtitle(parsed)
   if (parsed.command === 'batch') {
