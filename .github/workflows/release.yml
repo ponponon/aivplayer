@@ -9,6 +9,12 @@ on:
       tag:
         description: 'Release tag (e.g. v0.3.0)'
         required: true
+        type: string
+      verify_only:
+        description: 'Build and validate all release artifacts without creating or syncing a release'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -338,6 +344,7 @@ jobs:
           if-no-files-found: error
 
       - name: Create GitHub Release
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.verify_only != true }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.tag || github.ref_name }}
@@ -357,11 +364,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Verify GitHub remote assets
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.verify_only != true }}
         env:
           RELEASE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run release:verify-remote -- --platform github --owner "${{ github.repository_owner }}" --repo "${{ github.event.repository.name }}" --artifacts-dir artifacts --manifest-path artifacts/release-manifest.json --tag "${{ inputs.tag || github.ref_name }}" --report-path artifacts/github-remote-verification.json
 
       - name: Share GitHub remote verification report
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.verify_only != true }}
         uses: actions/upload-artifact@v7
         with:
           name: remote-verification-github
@@ -370,6 +379,7 @@ jobs:
 
   sync-gitee-release:
     needs: [publish-release]
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.verify_only != true }}
     runs-on: ubuntu-latest
     env:
       GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
