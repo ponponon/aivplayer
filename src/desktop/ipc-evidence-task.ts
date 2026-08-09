@@ -10,6 +10,8 @@ import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type { MediaEvidenceCapabilities, MediaEvidenceRange, MediaEvidenceTask, MediaEvidenceTaskRequest } from '../shared/evidence-task-types'
 import { desktopState } from './desktop-state'
 import { getVisionLibrary, resolveResourcePath } from './desktop-services'
+import { createEvidenceTaskCenterEvent } from '../core/tasks/task-center-adapters'
+import { sendTaskCenterEvent } from './task-center-events'
 
 function commandFromEnvironment(name: string, fallback: string): string {
   return process.env[name]?.trim() || fallback
@@ -68,6 +70,7 @@ async function getCapabilities(): Promise<MediaEvidenceCapabilities> {
 
 function sendTask(sender: Electron.WebContents, task: MediaEvidenceTask): void {
   if (!sender.isDestroyed()) sender.send(IPC_CHANNELS.EVIDENCE_TASK_PROGRESS, task)
+  sendTaskCenterEvent(createEvidenceTaskCenterEvent(task))
 }
 
 async function persistOcrResult(task: MediaEvidenceTask): Promise<MediaEvidenceTask> {
