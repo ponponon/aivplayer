@@ -12,6 +12,7 @@ import { DramaStore } from '../core/drama/drama-store'
 import { DramaGenerationWorker } from '../core/drama/drama-generation-worker'
 import { ClipInboxStore } from '../core/ai/clip-inbox-store'
 import { VisionEntityCatalogStore } from '../core/ai/vision-entity-catalog-store'
+import { SpeakerDiarizationCatalogStore } from '../core/ai/speaker-diarization-catalog-store'
 import { MediaImportInboxStore } from '../core/media/media-import-inbox'
 import { createDefaultMediaImportInboxProcessorDependencies, MediaImportInboxProcessor } from '../core/media/media-import-inbox-processor'
 import { VisionIndexFailureStore } from '../core/ai/vision-index-failure-store'
@@ -131,6 +132,11 @@ export function getClipInboxStore(): ClipInboxStore {
 export function getVisionEntityCatalogStore(): VisionEntityCatalogStore {
   if (!desktopState.visionEntityCatalogStore) desktopState.visionEntityCatalogStore = new VisionEntityCatalogStore(app.getPath('userData'))
   return desktopState.visionEntityCatalogStore
+}
+
+export function getSpeakerDiarizationCatalogStore(): SpeakerDiarizationCatalogStore {
+  if (!desktopState.speakerDiarizationCatalogStore) desktopState.speakerDiarizationCatalogStore = new SpeakerDiarizationCatalogStore(app.getPath('userData'))
+  return desktopState.speakerDiarizationCatalogStore
 }
 
 export function getVisionIndexFailureStore(): VisionIndexFailureStore {

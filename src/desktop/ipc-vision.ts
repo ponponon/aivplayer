@@ -6,7 +6,7 @@ import type { VisionClipCollectionExportFormat, VisionClipCollectionExportReques
 import type { VisionEntityCatalogBatchPatch, VisionEntityCatalogCreateInput, VisionEntityCatalogPatch } from '../shared/vision-entity-types'
 import { scanVisionDirectory, isVisionScanAbortError } from '../core/ai/vision-directory-scan'
 import { renderVisionClipCollectionExport } from '../core/ai/clip-inbox-export'
-import { getClipInboxStore, getMediaImportInboxStore, getVisionEntityCatalogStore, getVisionIndexCoordinator, getVisionIndexFailureStore, getVisionIndexQueue, getVisionLibrary, trackVisionIndexProgress } from './desktop-services'
+import { getClipInboxStore, getMediaImportInboxStore, getSpeakerDiarizationCatalogStore, getVisionEntityCatalogStore, getVisionIndexCoordinator, getVisionIndexFailureStore, getVisionIndexQueue, getVisionLibrary, trackVisionIndexProgress } from './desktop-services'
 import { desktopState } from './desktop-state'
 import { promptForSavePath } from './media-dialogs'
 import { createVisionTaskCenterEvent } from '../core/tasks/task-center-adapters'
@@ -160,15 +160,19 @@ export function registerVisionIpc(): void {
 
   ipcMain.handle(IPC_CHANNELS.VISION_SEARCH_TEXT, (_event, request: VisionSearchRequest) => {
     if (!request?.query?.trim()) return []
-    const catalog = getVisionEntityCatalogStore()
-    const queries = [request.query, ...catalog.getSearchQueries(request.query)]
+    const entityCatalog = getVisionEntityCatalogStore()
+    const speakerCatalog = getSpeakerDiarizationCatalogStore()
+    const queries = [...new Set([request.query, ...entityCatalog.getSearchQueries(request.query), ...speakerCatalog.getSearchQueries(request.query)])]
     return Promise.all(queries.map((query) => getVisionLibrary().searchText(query, request.limit, request.mode)))
-      .then((groups) => catalog.applyResults(mergeVisionSearchResults(groups)))
+      .then((groups) => speakerCatalog.applyResults(entityCatalog.applyResults(mergeVisionSearchResults(groups))))
   })
 
   ipcMain.handle(IPC_CHANNELS.VISION_SEARCH_IMAGE, (_event, request: VisionSearchRequest) => {
     if (!request?.imagePath?.trim()) return []
-    return getVisionLibrary().searchImage(request.imagePath, request.limit).then((results) => getVisionEntityCatalogStore().applyResults(results))
+    return getVisionLibrary().searchImage(request.imagePath, request.limit).then((results) => {
+      const entityCatalog = getVisionEntityCatalogStore()
+      return getSpeakerDiarizationCatalogStore().applyResults(entityCatalog.applyResults(results))
+    })
   })
 
   ipcMain.handle(IPC_CHANNELS.VISION_LIST_SOURCES, (_event, request: VisionLibrarySourceRequest = {}) => listVisionSourcesWithMetadata(request))

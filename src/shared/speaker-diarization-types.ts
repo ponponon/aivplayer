@@ -70,5 +70,6 @@ export type SpeakerDiarizationRunResult = {
   result: SpeakerDiarizationResult | null
   evidencePersisted: boolean
   evidenceCount: number
+  sourceFingerprint?: string
   evidenceMessage?: string
 }

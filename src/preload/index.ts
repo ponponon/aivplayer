@@ -111,6 +111,7 @@ import type { EditingCaptionFilesChangedEvent, EditingCaptionWatchRequest, Editi
 import type { WebDesktopStateUpdate, WebRemoteCommandForDesktop, WebShareStartRequest, WebShareStatus } from '../shared/web-types'
 import type { MediaEvidenceCapabilities, MediaEvidenceDraft, MediaEvidenceDraftImportRequest, MediaEvidenceDraftImportResult, MediaEvidenceDraftSaveRequest, MediaEvidenceTask, MediaEvidenceTaskRequest } from '../shared/evidence-task-types'
 import type { VisionEntityCatalog, VisionEntityCatalogBatchPatch, VisionEntityCatalogCreateInput, VisionEntityCatalogPatch } from '../shared/vision-entity-types'
+import type { SpeakerDiarizationCatalog, SpeakerDiarizationCatalogPatch } from '../shared/speaker-diarization-catalog-types'
 import type { EditingAgentProposalDecision, EditingAgentProposalRequest } from '../shared/editing-agent'
 import type { MediaImportInboxDirectoriesChangedEvent, MediaImportInboxItem, MediaImportInboxMetadataUpdateRequest, MediaImportInboxPipelineProgress, MediaImportInboxScanRequest, MediaImportInboxScanResponse, MediaImportInboxScanProgress, MediaImportInboxTransitionRequest, MediaImportInboxWatchRequest, MediaImportInboxWatchStartResult } from '../shared/media-import-inbox'
 import type { TaskCenterEvent } from '../shared/task-center-types'
@@ -258,6 +259,8 @@ const api = {
   buildPersonMatteTrack: (request: PersonMatteTrackRequest): Promise<PersonMatteTrackResult> => ipcRenderer.invoke(IPC_CHANNELS.PERSON_MATTE_TRACK, request),
   getSpeakerDiarizationStatus: (): Promise<SpeakerDiarizationModelStatus> => ipcRenderer.invoke(IPC_CHANNELS.SPEAKER_DIARIZATION_STATUS),
   runSpeakerDiarization: (request: SpeakerDiarizationRunRequest): Promise<SpeakerDiarizationRunResult> => ipcRenderer.invoke(IPC_CHANNELS.SPEAKER_DIARIZATION_RUN, request),
+  getSpeakerDiarizationCatalog: (): Promise<SpeakerDiarizationCatalog> => ipcRenderer.invoke(IPC_CHANNELS.SPEAKER_DIARIZATION_CATALOG_GET),
+  updateSpeakerDiarizationCatalog: (patch: SpeakerDiarizationCatalogPatch): Promise<SpeakerDiarizationCatalog> => ipcRenderer.invoke(IPC_CHANNELS.SPEAKER_DIARIZATION_CATALOG_UPDATE, patch),
   startVisionIndex: (request: VisionIndexRequest): Promise<VisionIndexProgress> => ipcRenderer.invoke(IPC_CHANNELS.VISION_INDEX_START, request),
   enqueueVisionIndex: (request: VisionIndexRequest): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.VISION_INDEX_AUTO_START, request),
   scanVisionDirectory: (request: VisionDirectoryScanRequest): Promise<VisionDirectoryScanResult> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SCAN_DIRECTORY_START, request),

@@ -13,6 +13,7 @@ import { MediaImportInboxStore } from '../core/media/media-import-inbox'
 import { MediaImportInboxProcessor } from '../core/media/media-import-inbox-processor'
 import { TaskCenterStore } from '../core/tasks/task-center-store'
 import { VisionEntityCatalogStore } from '../core/ai/vision-entity-catalog-store'
+import { SpeakerDiarizationCatalogStore } from '../core/ai/speaker-diarization-catalog-store'
 import { VisionIndexFailureStore } from '../core/ai/vision-index-failure-store'
 
 export const desktopState: {
@@ -38,6 +39,7 @@ export const desktopState: {
   mediaImportInboxProcessor: MediaImportInboxProcessor | null
   taskCenterStore: TaskCenterStore | null
   visionEntityCatalogStore: VisionEntityCatalogStore | null
+  speakerDiarizationCatalogStore: SpeakerDiarizationCatalogStore | null
   visionIndexFailureStore: VisionIndexFailureStore | null
 } = {
   mainWindow: null,
@@ -62,5 +64,6 @@ export const desktopState: {
   mediaImportInboxProcessor: null,
   taskCenterStore: null,
   visionEntityCatalogStore: null,
+  speakerDiarizationCatalogStore: null,
   visionIndexFailureStore: null
 }

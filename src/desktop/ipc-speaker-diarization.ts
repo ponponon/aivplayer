@@ -11,9 +11,9 @@ import { SpeakerDiarizationRuntime } from '../core/ai/speaker-diarization-runtim
 import { createVisionSourceFingerprint, createVisionSourceId } from '../core/ai/vision-evidence'
 import { resolveFfmpegPath } from '../core/ai/whisper-cpp-runtime'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
+import type { SpeakerDiarizationCatalogPatch } from '../shared/speaker-diarization-catalog-types'
 import type { SpeakerDiarizationModelStatus, SpeakerDiarizationRunRequest, SpeakerDiarizationRunResult } from '../shared/speaker-diarization-types'
-import { resolveResourcePath } from './desktop-services'
-import { getVisionLibrary } from './desktop-services'
+import { getSpeakerDiarizationCatalogStore, getVisionLibrary, resolveResourcePath } from './desktop-services'
 
 const execFileAsync = promisify(execFile)
 const runPromises = new Map<string, Promise<SpeakerDiarizationRunResult>>()
@@ -44,6 +44,25 @@ function getFailureMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
+function normalizeCatalogPatch(value: unknown): SpeakerDiarizationCatalogPatch | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const patch = value as Partial<SpeakerDiarizationCatalogPatch>
+  if (typeof patch.sourceFingerprint !== 'string' || !patch.sourceFingerprint.trim()) return null
+  if (typeof patch.videoPath !== 'string' || !patch.videoPath.trim()) return null
+  if (typeof patch.fileName !== 'string') return null
+  if (typeof patch.speakerId !== 'number' || !Number.isInteger(patch.speakerId) || patch.speakerId < 0) return null
+  if (typeof patch.name !== 'string' || !patch.name.trim()) return null
+  const aliases = Array.isArray(patch.aliases) ? patch.aliases.filter((alias): alias is string => typeof alias === 'string') : []
+  return {
+    sourceFingerprint: patch.sourceFingerprint.trim(),
+    videoPath: patch.videoPath.trim(),
+    fileName: patch.fileName.trim(),
+    speakerId: patch.speakerId,
+    name: patch.name,
+    aliases
+  }
+}
+
 export function registerSpeakerDiarizationIpc(): void {
   ipcMain.handle(IPC_CHANNELS.SPEAKER_DIARIZATION_STATUS, (): SpeakerDiarizationModelStatus => getCurrentSpeakerDiarizationStatus())
   ipcMain.handle(IPC_CHANNELS.SPEAKER_DIARIZATION_RUN, async (_event, request: SpeakerDiarizationRunRequest): Promise<SpeakerDiarizationRunResult> => {
@@ -67,14 +86,16 @@ export function registerSpeakerDiarizationIpc(): void {
         const result = await runtime.diarizeWaveFile(audioPath, normalized)
         let evidencePersisted = false
         let evidenceCount = 0
+        let sourceFingerprint: string | undefined
         let evidenceMessage: string | undefined
         try {
           const sourceFile = await stat(normalized.mediaPath)
+          sourceFingerprint = createVisionSourceFingerprint(normalized.mediaPath, sourceFile.size, sourceFile.mtimeMs)
           const evidence = createSpeakerDiarizationEvidence({
             sourceId: createVisionSourceId(normalized.mediaPath),
             videoPath: normalized.mediaPath,
             fileName: basename(normalized.mediaPath),
-            sourceFingerprint: createVisionSourceFingerprint(normalized.mediaPath, sourceFile.size, sourceFile.mtimeMs),
+            sourceFingerprint,
             durationSeconds: result.durationSeconds,
             segments: result.segments
           })
@@ -91,6 +112,7 @@ export function registerSpeakerDiarizationIpc(): void {
           result,
           evidencePersisted,
           evidenceCount,
+          sourceFingerprint: evidencePersisted ? sourceFingerprint : undefined,
           evidenceMessage
         }
       } catch (error) {
@@ -102,5 +124,10 @@ export function registerSpeakerDiarizationIpc(): void {
     runPromises.set(key, promise)
     void promise.finally(() => runPromises.delete(key))
     return promise
+  })
+  ipcMain.handle(IPC_CHANNELS.SPEAKER_DIARIZATION_CATALOG_GET, () => getSpeakerDiarizationCatalogStore().get())
+  ipcMain.handle(IPC_CHANNELS.SPEAKER_DIARIZATION_CATALOG_UPDATE, (_event, value: unknown) => {
+    const patch = normalizeCatalogPatch(value)
+    return patch ? getSpeakerDiarizationCatalogStore().update(patch) : getSpeakerDiarizationCatalogStore().get()
   })
 }
