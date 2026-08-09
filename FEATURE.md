@@ -1,6 +1,7 @@
 # AIVPlayer 功能列表
 
 - 说话人 Provider 已建立独立的模型契约：模型目录按版本隔离，状态检查同时核对分段模型、说话人向量模型和随附许可证文件，并明确识别各平台原生包能力；当前只完成能力诊断，尚未自动下载或打包模型。
+- 说话人 Provider 运行时已接入 sherpa-onnx 原生 Node API 的本地调用边界：只接受 16 kHz WAV，按本地模型路径执行分段并输出统一的秒级 speaker segment；模型缺失、平台不支持、原生模块加载失败和采样率不匹配都会明确报错。
 
 - README 已完成国际化：`README.md` 作为英文主文档，并提供 `README.zh-CN.md`、`README.ja-JP.md` 和 `README.ko-KR.md` 三份本地化版本；四份文档顶部互相提供语言切换入口。
 

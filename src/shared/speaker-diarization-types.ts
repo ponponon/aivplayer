@@ -42,3 +42,15 @@ export type SpeakerDiarizationModelStatus = {
   missingFiles: string[]
   message: string
 }
+
+export type SpeakerDiarizationSegment = {
+  startSeconds: number
+  endSeconds: number
+  speakerId: number
+}
+
+export type SpeakerDiarizationResult = {
+  sampleRate: number
+  durationSeconds: number
+  segments: SpeakerDiarizationSegment[]
+}
