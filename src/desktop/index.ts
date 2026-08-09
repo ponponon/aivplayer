@@ -6,6 +6,7 @@ import { registerClipExportIpc } from './ipc-clip-export'
 import { registerTimelineExportIpc } from './ipc-timeline-export'
 import { registerEditingProjectIpc } from './ipc-editing-project'
 import { registerEditingCaptionWatcherIpc, stopEditingCaptionWatcher } from './ipc-editing-caption-watcher'
+import { registerEditingAgentBridgeIpc, startEditingAgentBridge, stopEditingAgentBridge } from './editing-agent-bridge'
 import { registerAsrRuntimeIpc } from './ipc-asr-runtime'
 import { registerAsrCacheIpc } from './ipc-asr-cache'
 import { registerAsrSubtitleIpc } from './ipc-asr-subtitles'
@@ -78,6 +79,7 @@ function registerIpc(): void {
   registerTimelineExportIpc()
   registerEditingProjectIpc()
   registerEditingCaptionWatcherIpc()
+  registerEditingAgentBridgeIpc()
   registerUtilityIpc()
   registerWindowControlsIpc()
   registerVisionIpc()
@@ -113,7 +115,10 @@ if (isCliInvocation) {
       app.setAboutPanelOptions({ applicationName: APP_NAME })
       installApplicationMenu()
       applyMacDockIcon()
-      createWindow()
+      const mainWindow = createWindow()
+      mainWindow.webContents.once('did-finish-load', () => {
+        void startEditingAgentBridge().catch((error) => console.error('[editing-agent-bridge] 启动失败', error))
+      })
       startAppUpdater(false)
       app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() })
     })
@@ -124,4 +129,4 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
 
-app.on('before-quit', () => { stopAppUpdater(); stopEditingCaptionWatcher(); stopMediaImportInboxIpc(); void stopWebServer() })
+app.on('before-quit', () => { stopAppUpdater(); stopEditingCaptionWatcher(); stopMediaImportInboxIpc(); void stopEditingAgentBridge(); void stopWebServer() })

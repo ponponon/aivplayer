@@ -108,6 +108,17 @@ import type { EditingCaptionFilesChangedEvent, EditingCaptionWatchRequest, Editi
 import type { WebDesktopStateUpdate, WebRemoteCommandForDesktop, WebShareStartRequest, WebShareStatus } from '../shared/web-types'
 import type { MediaEvidenceCapabilities, MediaEvidenceDraft, MediaEvidenceDraftImportRequest, MediaEvidenceDraftImportResult, MediaEvidenceDraftSaveRequest, MediaEvidenceTask, MediaEvidenceTaskRequest } from '../shared/evidence-task-types'
 import type { VisionEntityCatalog, VisionEntityCatalogBatchPatch, VisionEntityCatalogPatch } from '../shared/vision-entity-types'
+import type { EditingAgentProposalDecision, EditingAgentProposalRequest } from '../shared/editing-agent'
+
+const editingAgentProposalListeners = new Set<(request: EditingAgentProposalRequest) => void>()
+const queuedEditingAgentProposals: EditingAgentProposalRequest[] = []
+ipcRenderer.on(IPC_CHANNELS.EDITING_AGENT_PROPOSAL, (_event, request: EditingAgentProposalRequest) => {
+  if (editingAgentProposalListeners.size === 0) {
+    queuedEditingAgentProposals.push(request)
+    return
+  }
+  for (const listener of editingAgentProposalListeners) listener(request)
+})
 
 const api = {
   platform: process.platform,
@@ -123,6 +134,13 @@ const api = {
   getFileRevision: (filePath: string): Promise<number | null> => ipcRenderer.invoke(IPC_CHANNELS.GET_FILE_REVISION, filePath),
   startEditingCaptionWatcher: (request: EditingCaptionWatchRequest): Promise<EditingCaptionWatchStartResult> => ipcRenderer.invoke(IPC_CHANNELS.EDITING_CAPTION_WATCH_START, request),
   stopEditingCaptionWatcher: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.EDITING_CAPTION_WATCH_STOP),
+  onEditingAgentProposal: (callback: (request: EditingAgentProposalRequest) => void): (() => void) => {
+    editingAgentProposalListeners.add(callback)
+    for (const request of queuedEditingAgentProposals.splice(0)) callback(request)
+    return () => editingAgentProposalListeners.delete(callback)
+  },
+  respondEditingAgentProposal: (requestId: string, decision: EditingAgentProposalDecision): Promise<{ ok: boolean }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.EDITING_AGENT_PROPOSAL_RESPONSE, { requestId, decision }),
   listMediaFilesInDirectory: (directoryPath: string): Promise<MediaFile[]> =>
     ipcRenderer.invoke(IPC_CHANNELS.LIST_MEDIA_FILES_IN_DIRECTORY, directoryPath),
   scanBatchSubtitleDirectory: (request: BatchSubtitleScanRequest): Promise<MediaFile[]> =>

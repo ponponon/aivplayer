@@ -18,6 +18,8 @@ export const IPC_CHANNELS = {
   EDITING_CAPTION_WATCH_START: 'editing:caption-watch-start',
   EDITING_CAPTION_WATCH_STOP: 'editing:caption-watch-stop',
   EDITING_CAPTION_FILES_CHANGED: 'editing:caption-files-changed',
+  EDITING_AGENT_PROPOSAL: 'editing:agent-proposal',
+  EDITING_AGENT_PROPOSAL_RESPONSE: 'editing:agent-proposal-response',
   GET_APP_VERSION: 'app:get-version',
   APP_UPDATE_GET_STATE: 'app-update:get-state',
   APP_UPDATE_CHECK: 'app-update:check',
