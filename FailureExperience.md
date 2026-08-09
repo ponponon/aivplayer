@@ -1182,3 +1182,9 @@
 - 现象：三份 Runner 报告即使各自正确，`actions/download-artifact` 合并到 publish job 后仍可能发生文件缺失、同名覆盖、哈希漂移或额外文件混入；如果直接生成总 manifest，最终清单无法证明它来自三份报告对应的文件。
 - 经验：证据报告不是装饰性日志，必须成为 publish 前的输入约束：报告集合固定、平台契约固定、各报告之间不能重叠，报告联合文件集合必须与合并目录完全相等，最后逐文件复算大小和 SHA-256。
 - 处理：新增 `release:check-evidence` 和 `check-platform-evidence.mjs`，在 `release:check-version` / `release:create-manifest` 之前执行；单测覆盖成功合并、报告缺失、文件哈希变化、报告重叠和未报告额外文件。
+
+## 2026-08-09：发布清单还需要记录可验证的 CI 来源
+
+- 现象：`release-manifest.json` 只有 tag、生成时间和文件哈希时，能证明“发布了什么”，但不能快速回答“哪次提交、哪个 workflow、哪次运行生成了它”；把完整环境变量写入清单又可能泄露 token、代理或本机路径。
+- 经验：provenance 只能使用固定白名单的 CI 标识，并在写入前校验格式；来源信息应作为审计字段，不改变安装包、更新 metadata 和远端回读的文件集合。
+- 处理：manifest 增加可选 provenance，读取 `GITHUB_SHA`、`GITHUB_REPOSITORY`、`GITHUB_WORKFLOW`、`GITHUB_RUN_ID` 和 `GITHUB_RUN_ATTEMPT`；本地无 CI 环境时不伪造值，CLI 只接受显式的同格式参数，单测覆盖 CI 来源写入和非法值拒绝。
