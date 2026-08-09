@@ -12,6 +12,7 @@ import { DramaStore } from '../core/drama/drama-store'
 import { DramaGenerationWorker } from '../core/drama/drama-generation-worker'
 import { ClipInboxStore } from '../core/ai/clip-inbox-store'
 import { MediaImportInboxStore } from '../core/media/media-import-inbox'
+import { createDefaultMediaImportInboxProcessorDependencies, MediaImportInboxProcessor } from '../core/media/media-import-inbox-processor'
 import { VisionIndexFailureStore } from '../core/ai/vision-index-failure-store'
 import { DramaWorkflow } from '../core/drama/drama-workflow'
 import type { DramaProviderSettings, DramaProviderSettingsInput, DramaProviderTestResult } from '../shared/drama-types'
@@ -24,7 +25,8 @@ import type { DramaGenerationTask } from '../shared/drama-types'
 import type { VisionIndexFailureInput } from '../core/ai/vision-index-failure'
 import type { VisionIndexProgress } from '../shared/vision-types'
 import { visionIndexFailureFromProgress as getVisionIndexFailureInput } from '../core/ai/vision-index-failure'
-import { createDramaGenerationTaskCenterEvent } from '../core/tasks/task-center-adapters'
+import type { MediaImportInboxItem, MediaImportInboxPipelineProgress } from '../shared/media-import-inbox'
+import { createBatchSubtitleTaskCenterEvent, createDramaGenerationTaskCenterEvent, createMediaImportTaskCenterEvent } from '../core/tasks/task-center-adapters'
 import { sendTaskCenterEvent } from './task-center-events'
 
 export function resolveAppIconPath(): string | null {
@@ -144,6 +146,34 @@ export function trackVisionIndexProgress(
 export function getMediaImportInboxStore(): MediaImportInboxStore {
   if (!desktopState.mediaImportInboxStore) desktopState.mediaImportInboxStore = new MediaImportInboxStore(app.getPath('userData'))
   return desktopState.mediaImportInboxStore
+}
+
+export function getMediaImportInboxProcessor(): MediaImportInboxProcessor {
+  if (!desktopState.mediaImportInboxProcessor) {
+    const mainWindowEvents = {
+      onItemChanged: (item: MediaImportInboxItem): void => {
+        const sender = desktopState.mainWindow?.webContents
+        if (sender && !sender.isDestroyed()) sender.send(IPC_CHANNELS.MEDIA_IMPORT_INBOX_ITEM_CHANGED, item)
+      },
+      onProgress: (progress: MediaImportInboxPipelineProgress): void => {
+        const sender = desktopState.mainWindow?.webContents
+        if (sender && !sender.isDestroyed()) sender.send(IPC_CHANNELS.MEDIA_IMPORT_INBOX_PIPELINE_PROGRESS, progress)
+        const item = getMediaImportInboxStore().listItems().find((candidate) => candidate.id === progress.itemId)
+        sendTaskCenterEvent(createMediaImportTaskCenterEvent(progress, item))
+      }
+    }
+    const dependencies = createDefaultMediaImportInboxProcessorDependencies(
+      getMediaImportInboxStore(),
+      resolveResourcePath(),
+      (mediaPath, signal, onProgress) => getVisionIndexCoordinator().run([mediaPath], 3, signal, (progress) => {
+        trackVisionIndexProgress(progress, [mediaPath], { intervalSeconds: 3 })
+        onProgress(progress)
+      }),
+      mainWindowEvents
+    )
+    desktopState.mediaImportInboxProcessor = new MediaImportInboxProcessor(dependencies)
+  }
+  return desktopState.mediaImportInboxProcessor
 }
 
 export function getDramaWorkflow(): DramaWorkflow {
