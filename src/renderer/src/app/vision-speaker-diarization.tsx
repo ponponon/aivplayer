@@ -1,6 +1,7 @@
-import { AudioLines, Play, RefreshCcw } from 'lucide-react'
+import { AudioLines, Play, RefreshCcw, Save } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { SpeakerDiarizationModelStatus, SpeakerDiarizationResult } from '../../../shared/speaker-diarization-types'
+import type { SpeakerDiarizationCatalog } from '../../../shared/speaker-diarization-catalog-types'
 import type { LocaleCopy } from '../../../shared/i18n'
 
 type VisionSpeakerDiarizationProps = {
@@ -20,6 +21,19 @@ function getSpeakerCount(result: SpeakerDiarizationResult | null): number {
   return result ? new Set(result.segments.map((segment) => segment.speakerId)).size : 0
 }
 
+type SpeakerDraft = {
+  name: string
+  aliases: string
+}
+
+function getSpeakerIds(result: SpeakerDiarizationResult | null): number[] {
+  return result ? [...new Set(result.segments.map((segment) => segment.speakerId))].sort((left, right) => left - right) : []
+}
+
+function getSpeakerEntry(catalog: SpeakerDiarizationCatalog | null, sourceFingerprint: string | null, speakerId: number) {
+  return catalog?.sources.find((source) => source.sourceFingerprint === sourceFingerprint)?.entries.find((entry) => entry.speakerId === speakerId) ?? null
+}
+
 export function VisionSpeakerDiarization({ copy, mediaPath, onSeek }: VisionSpeakerDiarizationProps): React.ReactElement {
   const [status, setStatus] = useState<SpeakerDiarizationModelStatus | null>(null)
   const [result, setResult] = useState<SpeakerDiarizationResult | null>(null)
@@ -28,6 +42,11 @@ export function VisionSpeakerDiarization({ copy, mediaPath, onSeek }: VisionSpea
   const [error, setError] = useState<string | null>(null)
   const [evidenceStatus, setEvidenceStatus] = useState<string | null>(null)
   const [evidenceSaved, setEvidenceSaved] = useState<boolean | null>(null)
+  const [catalog, setCatalog] = useState<SpeakerDiarizationCatalog | null>(null)
+  const [sourceFingerprint, setSourceFingerprint] = useState<string | null>(null)
+  const [speakerDrafts, setSpeakerDrafts] = useState<Record<number, SpeakerDraft>>({})
+  const [savingSpeakerId, setSavingSpeakerId] = useState<number | null>(null)
+  const [labelStatus, setLabelStatus] = useState<string | null>(null)
 
   const refreshStatus = (): void => {
     setIsRefreshing(true)
@@ -45,7 +64,22 @@ export function VisionSpeakerDiarization({ copy, mediaPath, onSeek }: VisionSpea
     setError(null)
     setEvidenceStatus(null)
     setEvidenceSaved(null)
+    setCatalog(null)
+    setSourceFingerprint(null)
+    setSpeakerDrafts({})
+    setLabelStatus(null)
   }, [mediaPath])
+
+  useEffect(() => {
+    if (!result || !sourceFingerprint) {
+      setSpeakerDrafts({})
+      return
+    }
+    setSpeakerDrafts(Object.fromEntries(getSpeakerIds(result).map((speakerId) => {
+      const entry = getSpeakerEntry(catalog, sourceFingerprint, speakerId)
+      return [speakerId, { name: entry?.name ?? copy.speakerLabelDefault(speakerId), aliases: entry?.aliases.join(', ') ?? '' }]
+    })))
+  }, [catalog, copy, result, sourceFingerprint])
 
   const run = (): void => {
     if (!mediaPath || !status?.available || isRunning) return
@@ -61,15 +95,42 @@ export function VisionSpeakerDiarization({ copy, mediaPath, onSeek }: VisionSpea
       }
       setStatus(response.status)
       setResult(response.result)
+      setSourceFingerprint(response.sourceFingerprint ?? null)
       setEvidenceSaved(response.evidencePersisted)
       setEvidenceStatus(response.evidencePersisted
         ? copy.speakerEvidenceSaved(response.evidenceCount)
         : response.evidenceMessage
-          ? copy.speakerEvidenceSaveFailed(response.evidenceMessage)
-          : null)
+            ? copy.speakerEvidenceSaveFailed(response.evidenceMessage)
+            : null)
+      setLabelStatus(null)
+      if (response.sourceFingerprint) {
+        void window.aiv.getSpeakerDiarizationCatalog().then(setCatalog).catch((reason: unknown) => {
+          setError(reason instanceof Error ? reason.message : String(reason))
+        })
+      }
     }).catch((reason: unknown) => {
       setError(reason instanceof Error ? reason.message : String(reason))
     }).finally(() => setIsRunning(false))
+  }
+
+  const saveSpeakerLabel = (speakerId: number): void => {
+    const draft = speakerDrafts[speakerId]
+    if (!mediaPath || !sourceFingerprint || !draft?.name.trim() || savingSpeakerId !== null) return
+    setSavingSpeakerId(speakerId)
+    setLabelStatus(null)
+    void window.aiv.updateSpeakerDiarizationCatalog({
+      sourceFingerprint,
+      videoPath: mediaPath,
+      fileName: mediaPath.split(/[\\/]/).pop() ?? mediaPath,
+      speakerId,
+      name: draft.name,
+      aliases: draft.aliases.split(',').map((alias) => alias.trim()).filter(Boolean)
+    }).then((nextCatalog) => {
+      setCatalog(nextCatalog)
+      setLabelStatus(copy.speakerLabelSaved)
+    }).catch((reason: unknown) => {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    }).finally(() => setSavingSpeakerId(null))
   }
 
   const capabilityMessage = status === null
@@ -88,7 +149,27 @@ export function VisionSpeakerDiarization({ copy, mediaPath, onSeek }: VisionSpea
     </div>
     {result ? <>
       <div className="vision-speaker-summary" role="status">{copy.speakerCompleted(result.segments.length, getSpeakerCount(result), result.sampleRate)}</div>
-      {result.segments.length > 0 ? <div className="vision-speaker-results">{result.segments.map((segment, index) => <button className="vision-speaker-segment" type="button" key={`${segment.startSeconds}-${segment.endSeconds}-${index}`} onClick={() => onSeek(segment.startSeconds)} title={copy.speakerSegment(segment.speakerId, formatTime(segment.startSeconds), formatTime(segment.endSeconds))}><span>{copy.speakerSegment(segment.speakerId, formatTime(segment.startSeconds), formatTime(segment.endSeconds))}</span><small>{formatTime(segment.startSeconds)}–{formatTime(segment.endSeconds)}</small></button>)}</div> : <p className="vision-speaker-empty">{copy.speakerNoSegments}</p>}
+      {result.segments.length > 0 ? <div className="vision-speaker-results">{result.segments.map((segment, index) => {
+        const entry = getSpeakerEntry(catalog, sourceFingerprint, segment.speakerId)
+        const fallbackLabel = copy.speakerSegment(segment.speakerId, formatTime(segment.startSeconds), formatTime(segment.endSeconds))
+        const label = entry ? copy.speakerNamedSegment(entry.name, formatTime(segment.startSeconds), formatTime(segment.endSeconds)) : fallbackLabel
+        return <button className="vision-speaker-segment" type="button" key={`${segment.startSeconds}-${segment.endSeconds}-${index}`} onClick={() => onSeek(segment.startSeconds)} title={label}><span>{label}</span><small>{formatTime(segment.startSeconds)}–{formatTime(segment.endSeconds)}</small></button>
+      })}</div> : <p className="vision-speaker-empty">{copy.speakerNoSegments}</p>}
+      {sourceFingerprint ? <div className="vision-speaker-labels">
+        <div className="vision-speaker-labels-heading"><div><strong>{copy.speakerLabelsTitle}</strong><small>{copy.speakerLabelsDescription}</small></div></div>
+        <div className="vision-speaker-label-list">{getSpeakerIds(result).map((speakerId) => {
+          const entry = getSpeakerEntry(catalog, sourceFingerprint, speakerId)
+          const draft = speakerDrafts[speakerId] ?? { name: entry?.name ?? copy.speakerLabelDefault(speakerId), aliases: entry?.aliases.join(', ') ?? '' }
+          const saving = savingSpeakerId === speakerId
+          return <div className="vision-speaker-label-row" key={speakerId}>
+            <div className="vision-speaker-label-meta"><strong>{copy.speakerLabelDefault(speakerId)}</strong><small>{entry?.name ?? copy.speakerLabelUnassigned}</small></div>
+            <input className="vision-speaker-label-input" value={draft.name} onChange={(event) => setSpeakerDrafts((current) => ({ ...current, [speakerId]: { ...draft, name: event.target.value } }))} placeholder={copy.speakerLabelNamePlaceholder} aria-label={copy.speakerLabelNamePlaceholder} />
+            <input className="vision-speaker-label-input" value={draft.aliases} onChange={(event) => setSpeakerDrafts((current) => ({ ...current, [speakerId]: { ...draft, aliases: event.target.value } }))} placeholder={copy.speakerLabelAliasesPlaceholder} aria-label={copy.speakerLabelAliasesPlaceholder} />
+            <button className="vision-secondary-action" type="button" disabled={savingSpeakerId !== null || !draft.name.trim()} onClick={() => saveSpeakerLabel(speakerId)}><Save size={12} />{saving ? copy.speakerLabelSaving : copy.speakerLabelSave}</button>
+          </div>
+        })}</div>
+        {labelStatus ? <small className="vision-speaker-label-status">{labelStatus}</small> : null}
+      </div> : null}
       {evidenceStatus ? <small className={`vision-speaker-evidence-status${evidenceSaved ? ' is-saved' : ''}`}>{evidenceStatus}</small> : null}
     </> : null}
     {error ? <small className="vision-error">{error}</small> : null}
