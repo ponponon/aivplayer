@@ -15,6 +15,8 @@ const packageFormats = readFileSync(join(projectRoot, 'scripts/check-release-pac
 const platformEvidence = readFileSync(join(projectRoot, 'scripts/check-platform-evidence.mjs'), 'utf8')
 const releaseDryRun = readFileSync(join(projectRoot, 'scripts/release-dry-run.mjs'), 'utf8')
 const macosFfmpegRuntime = readFileSync(join(projectRoot, 'scripts/check-macos-ffmpeg-runtime.ts'), 'utf8')
+const buildWhisperMacos = readFileSync(join(projectRoot, 'scripts/build-whisper-macos.ts'), 'utf8')
+const buildHeifSource = readFileSync(join(projectRoot, 'scripts/build-heif-source.ts'), 'utf8')
 
 describe('release workflow source constraints', () => {
   it('keeps platform builds separate from release publishing', () => {
@@ -80,6 +82,18 @@ describe('release workflow source constraints', () => {
     expect(macosFfmpegRuntime).toContain("commandRunner('otool', ['-l'")
     expect(macosFfmpegRuntime).toContain("commandRunner(binaryPath, ['-version']")
     expect(macosFfmpegRuntime).toContain('maximum allowed is ${maxMinos}')
+  })
+
+  it('builds macOS native runtimes with an explicit deployment target', () => {
+    expect(releaseWorkflow).toContain("MACOSX_DEPLOYMENT_TARGET: '12.0'")
+    expect(releaseWorkflow).toContain("HOMEBREW_BUILD_FROM_SOURCE: '1'")
+    expect(releaseWorkflow).toContain("CFLAGS: '-mmacosx-version-min=12.0'")
+    expect(releaseWorkflow).toContain('build_from_source()')
+    expect(releaseWorkflow).toContain('libde265 kvazaar jpeg-turbo')
+    expect(releaseWorkflow).toContain('dav1d lame mpg123 libvmaf libvpx openssl@3 opus')
+    expect(releaseWorkflow).toContain('sdl2-compat sdl3 svt-av1 x264 x265 ffmpeg')
+    expect(buildWhisperMacos).toContain('`-DCMAKE_OSX_DEPLOYMENT_TARGET=${deploymentTarget}`')
+    expect(buildHeifSource).toContain('`-DCMAKE_OSX_DEPLOYMENT_TARGET=${deploymentTarget}`')
   })
 
   it('checks the license manifest before every platform package build', () => {

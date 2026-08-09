@@ -26,6 +26,8 @@ env:
 jobs:
   build-macos:
     runs-on: macos-latest
+    env:
+      MACOSX_DEPLOYMENT_TARGET: '12.0'
     steps:
       - uses: actions/checkout@v7
 
@@ -43,7 +45,29 @@ jobs:
         run: npm run release:prepare-vision-model -- --resource-dir "$GITHUB_WORKSPACE/resources"
 
       - name: Install HEIF and media runtime dependencies
-        run: brew install cmake ninja pkg-config libde265 kvazaar jpeg-turbo ffmpeg
+        shell: bash
+        env:
+          HOMEBREW_BUILD_FROM_SOURCE: '1'
+          CFLAGS: '-mmacosx-version-min=12.0'
+          CXXFLAGS: '-mmacosx-version-min=12.0'
+          LDFLAGS: '-mmacosx-version-min=12.0'
+        run: |
+          brew install cmake ninja pkg-config
+          build_from_source() {
+            local formula="$1"
+            if brew list --formula "$formula" >/dev/null 2>&1; then
+              brew reinstall --build-from-source "$formula"
+            else
+              brew install --build-from-source "$formula"
+            fi
+          }
+
+          for formula in \
+            libde265 kvazaar jpeg-turbo \
+            dav1d lame mpg123 libvmaf libvpx openssl@3 opus \
+            sdl2-compat sdl3 svt-av1 x264 x265 ffmpeg; do
+            build_from_source "$formula"
+          done
 
       - name: Build static HEIF runtime
         env:
