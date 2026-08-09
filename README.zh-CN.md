@@ -109,6 +109,9 @@ AIVPlayer 的产品介绍、功能演示和下载入口位于 **[aivplayer.pages
 - 使用本地 SigLIP2 模型对视频按时间间隔抽帧，并将向量保存到本机 LanceDB。
 - 支持文字描述搜索、以图搜图和文字 / 视觉 / 文件名混合检索。
 - 搜索结果可显示命中的字幕片段，并直接跳转到视频对应时间点。
+- 可选分析 FFmpeg 场景切换并写入可搜索的场景片段证据；默认关闭，不会让普通索引和本地导入额外解码整部视频。
+- 可选使用本地 SigLIP2 生成固定词表的零样本实体标签（人物、车辆、动物、室内 / 室外等）并参与搜索；不联网、不做人物身份识别，默认关闭。
+- 可在本地实体标签目录中改名、添加别名、隐藏或合并标签；目录只保存在用户数据目录，搜索结果会应用这些维护规则。
 - 支持目录递归扫描、增量索引、后台索引队列、播放列表自动扫描和索引进度 / 阶段耗时展示。
 - CLI 也可以执行扫描、索引、状态查看和搜索，适合批量维护个人视频库。
 
@@ -167,7 +170,7 @@ aivcli edit propose delete-script ./project.aivproj segment-1 segment-2 --json
 
 ### 本机剪辑 MCP
 
-可以把固定工程以本机 stdio MCP 方式提供给 Agent；服务只暴露 `inspect`、`captions` 和 `propose delete-script` 三个只读工具，不监听网络端口，也不能应用 Proposal、写文件、删除媒体或执行 shell：
+可以把固定工程以本机 stdio MCP 方式提供给 Agent；默认服务只暴露 `inspect`、`captions` 和 `propose delete-script` 三个只读工具，不监听网络端口，也不能应用 Proposal、写文件、删除媒体或执行 shell：
 
 ```bash
 aivcli mcp serve ./project.aivproj
@@ -187,6 +190,14 @@ MCP 客户端配置示例：
 ```
 
 工程路径在服务启动时固定，Agent 不能通过工具参数切换到其他文件；真正应用仍必须回到桌面确认 Dialog，并经过工程 revision 校验。
+
+如果要让可信的本机 Agent 把 Proposal 交给当前打开的桌面编辑器确认，可以加上 `--desktop`：
+
+```bash
+aivcli mcp serve ./project.aivproj --desktop
+```
+
+桌面模式使用按用户隔离的 Unix socket（Windows 使用 named pipe）和每次启动生成的令牌。只有匹配的 `.aivproj` 已在桌面端打开时才会进入现有确认弹窗；拒绝、过期、取消和 revision 冲突都会作为决策返回给 Agent。桥接不会提供直接 apply 工具、网络监听、任意文件访问、媒体删除、shell 或 Provider 凭据能力。只有桌面应用与 CLI 刻意使用不同用户数据目录时，才需要指定 `--bridge-manifest path`。
 
 ### 视觉影视库
 

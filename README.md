@@ -109,6 +109,9 @@ For subtitle translation, content summaries, or the AI Short-Drama Studio, confi
 - Use a local SigLIP2 model to sample video frames at intervals and store vectors in a local LanceDB database.
 - Search by text description, image, or a hybrid of text, visual, and filename signals.
 - Search results can show matching subtitle snippets and jump directly to the corresponding point in the video.
+- Optionally detect FFmpeg scene changes and index bounded scene-segment evidence; this is off by default so ordinary indexing and local imports do not decode each video twice.
+- Optionally generate fixed-vocabulary zero-shot entity labels with the local SigLIP2 model (people, vehicles, animals, indoor/outdoor, and more); no network or identity recognition, and off by default.
+- Provides a local entity-label catalog for renaming, aliases, hiding, and merging labels; the catalog stays in the user data directory and is applied to search results.
 - Supports recursive directory scanning, incremental indexing, a background indexing queue, automatic playlist scanning, and index progress/phase-duration reporting.
 - The CLI can also scan, index, inspect status, and search, making it suitable for maintaining a personal video library in batches.
 
@@ -167,7 +170,7 @@ When the desktop editor deletes script lines, it first opens the same proposal p
 
 ### Local editing MCP
 
-A fixed project can be exposed to an Agent through a local stdio MCP server. The server exposes only the three read-only tools `inspect`, `captions`, and `propose delete-script`; it does not listen on a network port and cannot apply proposals, write files, delete media, or run shell commands:
+A fixed project can be exposed to an Agent through a local stdio MCP server. The default server exposes only the three read-only tools `inspect`, `captions`, and `propose delete-script`; it does not listen on a network port and cannot apply proposals, write files, delete media, or run shell commands:
 
 ```bash
 aivcli mcp serve ./project.aivproj
@@ -187,6 +190,14 @@ Example MCP client configuration:
 ```
 
 The project path is fixed when the server starts, so an Agent cannot switch to another file through tool arguments. Applying changes still requires returning to the desktop confirmation dialog and passing the project-revision check.
+
+To connect a trusted local Agent to the open desktop editor, add `--desktop`:
+
+```bash
+aivcli mcp serve ./project.aivproj --desktop
+```
+
+Desktop mode uses a per-user local Unix socket (Windows named pipe) with a rotating token. A proposal is accepted only when the matching `.aivproj` is open, then appears in the existing confirmation dialog; reject, stale, cancel, and timeout outcomes are returned to the Agent. The bridge never exposes a direct apply tool, network listener, arbitrary file access, media deletion, shell execution, or provider credentials. Use `--bridge-manifest path` only when the desktop app and CLI intentionally use different user-data directories.
 
 ### Visual media library
 

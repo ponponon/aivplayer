@@ -167,7 +167,7 @@ aivcli edit propose delete-script ./project.aivproj segment-1 segment-2 --json
 
 ### 로컬 편집 MCP
 
-고정된 프로젝트를 로컬 stdio MCP 방식으로 Agent에 제공할 수 있습니다. 서비스는 `inspect`, `captions`, `propose delete-script` 세 가지 읽기 전용 도구만 노출하며 네트워크 포트를 열지 않고 Proposal 적용, 파일 쓰기, 미디어 삭제 또는 셸 실행을 할 수 없습니다.
+고정된 프로젝트를 로컬 stdio MCP 방식으로 Agent에 제공할 수 있습니다. 기본 서비스는 `inspect`, `captions`, `propose delete-script` 세 가지 읽기 전용 도구만 노출하며 네트워크 포트를 열지 않고 Proposal 적용, 파일 쓰기, 미디어 삭제 또는 셸 실행을 할 수 없습니다.
 
 ```bash
 aivcli mcp serve ./project.aivproj
@@ -187,6 +187,14 @@ MCP 클라이언트 설정 예시:
 ```
 
 프로젝트 경로는 서비스 시작 시 고정되므로 Agent가 도구 인자로 다른 파일로 전환할 수 없습니다. 실제 적용은 데스크톱 확인 대화상자로 돌아가 프로젝트 revision 검증을 통과해야 합니다.
+
+신뢰할 수 있는 로컬 Agent가 현재 열려 있는 데스크톱 편집기로 Proposal을 보내 확인하도록 하려면 `--desktop`을 추가합니다.
+
+```bash
+aivcli mcp serve ./project.aivproj --desktop
+```
+
+데스크톱 모드는 사용자별 로컬 Unix socket(Windows는 named pipe)과 실행마다 새로 생성되는 토큰을 사용합니다. 일치하는 `.aivproj`가 열려 있을 때만 기존 확인 대화상자에 표시하며 거부, 만료, 취소 및 revision 충돌 결과를 Agent에 반환합니다. 직접 apply 도구, 네트워크 수신, 임의 파일 접근, 미디어 삭제, 셸 실행 또는 Provider 자격 증명은 제공하지 않습니다. 데스크톱 앱과 CLI가 의도적으로 서로 다른 사용자 데이터 디렉터리를 사용할 때만 `--bridge-manifest path`를 지정하세요.
 
 ### 비주얼 미디어 라이브러리
 
