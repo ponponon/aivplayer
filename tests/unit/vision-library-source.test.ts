@@ -4,10 +4,18 @@ import { describe, expect, it } from 'vitest'
 import { VISION_FRAME_INTERVAL_SECONDS, VISION_MODEL_ID, VISION_MODEL_VARIANT, VISION_VECTOR_DISTANCE_TYPE, VISION_VECTOR_INDEX_MIN_ROWS, VISION_VECTOR_INDEX_TYPE } from '../../src/shared/vision-types'
 import { getVisionModelPaths } from '../../src/core/ai/vision-model'
 import { calculateVisionLexicalMatch, combineVisionHybridScore, getVisionSearchResultKey } from '../../src/core/ai/vision-search'
+import { dotProduct } from '../../src/core/ai/vision-library'
 
 const projectRoot = process.cwd()
 
 describe('vision library setup', () => {
+  it('reads both JavaScript arrays and LanceDB Arrow vectors', () => {
+    const arrowVector = { length: 3, get: (index: number) => [0.2, 0.3, 0.5][index] }
+
+    expect(dotProduct([1, 2, 3], [4, 5, 6])).toBe(32)
+    expect(dotProduct(arrowVector, [1, 2, 3])).toBeCloseTo(2.3)
+  })
+
   it('uses the checked-in model layout and the expected frame interval', () => {
     const paths = getVisionModelPaths(join(projectRoot, 'resources'))
 

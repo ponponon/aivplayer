@@ -217,12 +217,23 @@ function throwIfAborted(signal: AbortSignal): void {
   }
 }
 
-function dotProduct(left: readonly number[], right: readonly number[]): number {
-  const length = Math.min(left.length, right.length)
+function vectorLength(value: unknown): number {
+  const candidate = value as { length?: unknown }
+  return typeof candidate?.length === 'number' && Number.isFinite(candidate.length) ? candidate.length : 0
+}
+
+function vectorValue(value: unknown, index: number): number {
+  const candidate = value as { get?: (index: number) => unknown; [index: number]: unknown }
+  const raw = typeof candidate?.get === 'function' ? candidate.get(index) : candidate?.[index]
+  return Number(raw)
+}
+
+export function dotProduct(left: unknown, right: unknown): number {
+  const length = Math.min(vectorLength(left), vectorLength(right))
   let total = 0
   for (let index = 0; index < length; index += 1) {
-    const leftValue = Number(left[index])
-    const rightValue = Number(right[index])
+    const leftValue = vectorValue(left, index)
+    const rightValue = vectorValue(right, index)
     if (Number.isFinite(leftValue) && Number.isFinite(rightValue)) total += leftValue * rightValue
   }
   return total
