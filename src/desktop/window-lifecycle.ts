@@ -48,7 +48,7 @@ function flushPendingMediaPaths(): void {
   if (paths.length > 0) void deliverMediaPaths(paths)
 }
 
-export function createWindow(): void {
+export function createWindow(): BrowserWindow {
   const iconPath = resolveAppIconPath()
   const isMac = process.platform === 'darwin'
   const useCustomWindowControls = process.platform === 'linux' || process.platform === 'win32'
@@ -88,4 +88,5 @@ export function createWindow(): void {
   })
   if (process.argv.includes('--devtools')) desktopState.mainWindow.webContents.openDevTools({ mode: 'detach' })
   desktopState.mainWindow.on('closed', () => { desktopState.mainWindow = null })
+  return desktopState.mainWindow
 }
