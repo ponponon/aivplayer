@@ -10,6 +10,7 @@ import { promptForSavePath } from './media-dialogs'
 import { getAppCopy } from '../shared/i18n'
 import { getCurrentLocale } from './desktop-settings'
 import { SingleFlight } from '../core/ai/single-flight'
+import { sendAsrTaskCenterEvent } from './task-center-events'
 
 const summarySingleFlight = new SingleFlight<Awaited<ReturnType<ReturnType<typeof getAsrRuntime>['summarizeSubtitle']>>, AbortController>()
 
@@ -60,7 +61,10 @@ export function registerAsrSummaryIpc(): void {
           try {
             const result = await getAsrRuntime().summarizeSubtitle(request, {
               signal: sharedController.signal,
-              onProgress: (progress) => event.sender.send(IPC_CHANNELS.ASR_JOB_PROGRESS, progress)
+              onProgress: (progress) => {
+                if (!event.sender.isDestroyed()) event.sender.send(IPC_CHANNELS.ASR_JOB_PROGRESS, progress)
+                sendAsrTaskCenterEvent(progress)
+              }
             })
             await appendAsrDiagnosticLog(logDirectoryPath, 'subtitle-summary-finished', { subtitlePath: request.subtitlePath, targetLanguage: request.targetLanguage, mode: result.mode, success: result.success, canceled: result.canceled, message: result.message, summaryStats: result.summaryStats, errorDetails: redactAsrErrorDetails(result.errorDetails) })
             return result

@@ -7,6 +7,7 @@ import { createMediaFile } from './media/media-protocol'
 import { openPathInDefaultApp } from './system/file-actions'
 import { getAsrRuntime } from './desktop-services'
 import { desktopState } from './desktop-state'
+import { sendAsrTaskCenterEvent } from './task-center-events'
 
 export function registerAsrTranslationIpc(): void {
   ipcMain.handle(IPC_CHANNELS.ASR_TRANSLATE_SUBTITLE, async (event, request: AsrSubtitleTranslationRequest) => {
@@ -17,7 +18,10 @@ export function registerAsrTranslationIpc(): void {
     desktopState.translationAbortControllers.set(senderId, controller)
     await appendAsrDiagnosticLog(logDirectoryPath, 'subtitle-translation-started', { subtitlePath: request.subtitlePath, sourceLanguage: request.sourceLanguage, targetLanguage: request.targetLanguage })
     try {
-      const result = await getAsrRuntime().translateSubtitle(request, { signal: controller.signal, onProgress: (progress) => event.sender.send(IPC_CHANNELS.ASR_JOB_PROGRESS, progress) })
+      const result = await getAsrRuntime().translateSubtitle(request, { signal: controller.signal, onProgress: (progress) => {
+        if (!event.sender.isDestroyed()) event.sender.send(IPC_CHANNELS.ASR_JOB_PROGRESS, progress)
+        sendAsrTaskCenterEvent(progress)
+      } })
       await appendAsrDiagnosticLog(logDirectoryPath, 'subtitle-translation-finished', { subtitlePath: request.subtitlePath, targetLanguage: request.targetLanguage, success: result.success, canceled: result.canceled, message: result.message, translationStats: result.translationStats, errorDetails: redactAsrErrorDetails(result.errorDetails) })
       if (!result.subtitlePath) return result
       const subtitleFile = createMediaFile(result.subtitlePath)

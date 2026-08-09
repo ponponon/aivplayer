@@ -11,6 +11,7 @@ import { app } from 'electron'
 import { getAppCopy } from '../shared/i18n'
 import { getCurrentLocale } from './desktop-settings'
 import { basename } from 'node:path'
+import { sendAsrTaskCenterEvent } from './task-center-events'
 
 const streamingTranslationBatchSize = 6
 
@@ -232,10 +233,15 @@ export function registerAsrSubtitleIpc(): void {
         request,
         runtime,
         signal: controller.signal,
-        sendProgress: (progress) => event.sender.send(IPC_CHANNELS.ASR_JOB_PROGRESS, progress)
+        sendProgress: (progress) => {
+          if (!event.sender.isDestroyed()) event.sender.send(IPC_CHANNELS.ASR_JOB_PROGRESS, progress)
+          sendAsrTaskCenterEvent(progress)
+        }
       })
       const result = await runtime.generateSubtitle(request, (progress) => {
-        event.sender.send(IPC_CHANNELS.ASR_JOB_PROGRESS, streamingTranslation?.decorateProgress(progress) ?? progress)
+        const decoratedProgress = streamingTranslation?.decorateProgress(progress) ?? progress
+        if (!event.sender.isDestroyed()) event.sender.send(IPC_CHANNELS.ASR_JOB_PROGRESS, decoratedProgress)
+        sendAsrTaskCenterEvent(decoratedProgress)
         return streamingTranslation?.enqueue(progress)
       }, { signal: controller.signal })
       const translated = result.success && streamingTranslation ? await streamingTranslation.finish(result) : null
