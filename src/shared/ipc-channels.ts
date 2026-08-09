@@ -134,6 +134,8 @@ export const IPC_CHANNELS = {
   DRAMA_CLAIM_GENERATION_TASK: 'drama:claim-generation-task',
   DRAMA_UPDATE_GENERATION_TASK: 'drama:update-generation-task',
   DRAMA_CANCEL_GENERATION_TASK: 'drama:cancel-generation-task',
+  DRAMA_SAVE_GRAPH_TEMPLATE: 'drama:save-graph-template',
+  DRAMA_DELETE_GRAPH_TEMPLATE: 'drama:delete-graph-template',
   DRAMA_GENERATE_STORYBOARD: 'drama:generate-storyboard',
   DRAMA_GET_PROVIDER_SETTINGS: 'drama:get-provider-settings',
   DRAMA_SET_PROVIDER_SETTINGS: 'drama:set-provider-settings',

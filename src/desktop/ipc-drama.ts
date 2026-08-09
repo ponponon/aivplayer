@@ -6,6 +6,7 @@ import type {
   DramaAssetPatch,
   DramaGenerationTaskInput,
   DramaGenerationTaskPatch,
+  DramaGraphTemplateInput,
   DramaImportChapterInput,
   DramaProgress,
   DramaProviderSettingsInput
@@ -91,6 +92,16 @@ function normalizeGenerationTaskPatch(value: unknown): DramaGenerationTaskPatch 
   return patch as DramaGenerationTaskPatch
 }
 
+function normalizeGraphTemplateInput(value: unknown): DramaGraphTemplateInput {
+  if (!value || typeof value !== 'object') throw new Error('节点图模板参数无效')
+  const input = value as Partial<DramaGraphTemplateInput>
+  if (typeof input.name !== 'string' || !input.name.trim()) throw new Error('节点图模板名称不能为空')
+  if (input.description != null && typeof input.description !== 'string') throw new Error('节点图模板说明必须是文本')
+  if (input.nodes != null && !Array.isArray(input.nodes)) throw new Error('节点图模板节点必须是数组')
+  if (input.edges != null && !Array.isArray(input.edges)) throw new Error('节点图模板连线必须是数组')
+  return input as DramaGraphTemplateInput
+}
+
 function sendProgress(event: Electron.IpcMainInvokeEvent, progress: DramaProgress): void {
   if (!event.sender.isDestroyed()) event.sender.send(IPC_CHANNELS.DRAMA_PROGRESS, progress)
 }
@@ -110,7 +121,7 @@ export function registerDramaIpc(): void {
     const store = getDramaStore()
     const project = store.getProject(normalizedProjectId)
     if (!project) throw new Error(`短剧项目不存在：${normalizedProjectId}`)
-    return { project, chapters: store.listChapters(normalizedProjectId), plan: store.getPlan(normalizedProjectId), scripts: store.listScripts(normalizedProjectId), assets: store.listAssets(normalizedProjectId), storyboards: store.listStoryboards(normalizedProjectId), generationTasks: store.listGenerationTasks(normalizedProjectId) }
+    return { project, chapters: store.listChapters(normalizedProjectId), plan: store.getPlan(normalizedProjectId), scripts: store.listScripts(normalizedProjectId), assets: store.listAssets(normalizedProjectId), storyboards: store.listStoryboards(normalizedProjectId), generationTasks: store.listGenerationTasks(normalizedProjectId), graphTemplates: store.listGraphTemplates() }
   })
   ipcMain.handle(IPC_CHANNELS.DRAMA_GENERATE_EVENTS, async (event, projectId: string, force?: boolean) =>
     getDramaWorkflow().extractEvents(requireProjectId(projectId), { force: force === true, onProgress: (progress) => sendProgress(event, progress) }))
@@ -139,6 +150,10 @@ export function registerDramaIpc(): void {
     getDramaStore().updateGenerationTask(requireProjectId(projectId), requireProjectId(taskId), normalizeGenerationTaskPatch(patch)))
   ipcMain.handle(IPC_CHANNELS.DRAMA_CANCEL_GENERATION_TASK, (_event, projectId: string, taskId: string) =>
     getDramaStore().cancelGenerationTask(requireProjectId(projectId), requireProjectId(taskId)))
+  ipcMain.handle(IPC_CHANNELS.DRAMA_SAVE_GRAPH_TEMPLATE, (_event, templateId: unknown, input: unknown) =>
+    getDramaStore().saveGraphTemplate(typeof templateId === 'string' && templateId.trim() ? templateId.trim() : undefined, normalizeGraphTemplateInput(input)))
+  ipcMain.handle(IPC_CHANNELS.DRAMA_DELETE_GRAPH_TEMPLATE, (_event, templateId: string) =>
+    getDramaStore().deleteGraphTemplate(requireProjectId(templateId)))
   ipcMain.handle(IPC_CHANNELS.DRAMA_GENERATE_STORYBOARD, async (event, projectId: string, episodeIndex: number, force?: boolean) =>
     getDramaWorkflow().generateStoryboard(requireProjectId(projectId), episodeIndex, { force: force === true, onProgress: (progress) => sendProgress(event, progress) }))
   ipcMain.handle(IPC_CHANNELS.DRAMA_GET_PROVIDER_SETTINGS, () => getDramaProviderSettings())

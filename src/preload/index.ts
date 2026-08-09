@@ -8,6 +8,7 @@ import type {
   DramaAssetPatch,
   DramaGenerationTaskInput,
   DramaGenerationTaskPatch,
+  DramaGraphTemplateInput,
   DramaImportChapterInput,
   DramaProgress,
   DramaProject,
@@ -346,6 +347,10 @@ const api = {
     ipcRenderer.invoke(IPC_CHANNELS.DRAMA_UPDATE_GENERATION_TASK, projectId, taskId, patch),
   cancelDramaGenerationTask: (projectId: string, taskId: string): Promise<DramaProjectData['generationTasks'][number]> =>
     ipcRenderer.invoke(IPC_CHANNELS.DRAMA_CANCEL_GENERATION_TASK, projectId, taskId),
+  saveDramaGraphTemplate: (templateId: string | null, input: DramaGraphTemplateInput): Promise<DramaProjectData['graphTemplates'][number]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.DRAMA_SAVE_GRAPH_TEMPLATE, templateId, input),
+  deleteDramaGraphTemplate: (templateId: string): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.DRAMA_DELETE_GRAPH_TEMPLATE, templateId),
   generateDramaStoryboard: (projectId: string, episodeIndex: number, force = false): Promise<{ result: DramaStageResult; storyboard: DramaProjectData['storyboards'] }> =>
     ipcRenderer.invoke(IPC_CHANNELS.DRAMA_GENERATE_STORYBOARD, projectId, episodeIndex, force),
   getDramaProviderSettings: (): Promise<DramaProviderSettings> => ipcRenderer.invoke(IPC_CHANNELS.DRAMA_GET_PROVIDER_SETTINGS),
