@@ -318,6 +318,9 @@ jobs:
       - name: List artifacts
         run: find artifacts -type f | head -50
 
+      - name: Verify merged platform evidence
+        run: npm run release:check-evidence -- --artifacts-dir artifacts
+
       - name: Verify release version and update metadata
         run: npm run release:check-version -- --artifacts-dir artifacts --tag "${{ inputs.tag || github.ref_name }}"
 
