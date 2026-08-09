@@ -347,6 +347,10 @@ const api = {
     ipcRenderer.invoke(IPC_CHANNELS.DRAMA_UPDATE_GENERATION_TASK, projectId, taskId, patch),
   cancelDramaGenerationTask: (projectId: string, taskId: string): Promise<DramaProjectData['generationTasks'][number]> =>
     ipcRenderer.invoke(IPC_CHANNELS.DRAMA_CANCEL_GENERATION_TASK, projectId, taskId),
+  runDramaGenerationQueue: (projectId: string): Promise<DramaProjectData['generationTasks']> =>
+    ipcRenderer.invoke(IPC_CHANNELS.DRAMA_RUN_GENERATION_QUEUE, projectId),
+  stopDramaGenerationQueue: (projectId: string): Promise<DramaProjectData['generationTasks']> =>
+    ipcRenderer.invoke(IPC_CHANNELS.DRAMA_STOP_GENERATION_QUEUE, projectId),
   saveDramaGraphTemplate: (templateId: string | null, input: DramaGraphTemplateInput): Promise<DramaProjectData['graphTemplates'][number]> =>
     ipcRenderer.invoke(IPC_CHANNELS.DRAMA_SAVE_GRAPH_TEMPLATE, templateId, input),
   deleteDramaGraphTemplate: (templateId: string): Promise<void> =>
@@ -360,6 +364,11 @@ const api = {
     const listener = (_event: Electron.IpcRendererEvent, progress: DramaProgress): void => callback(progress)
     ipcRenderer.on(IPC_CHANNELS.DRAMA_PROGRESS, listener)
     return () => ipcRenderer.removeListener(IPC_CHANNELS.DRAMA_PROGRESS, listener)
+  },
+  onDramaGenerationProgress: (callback: (task: DramaProjectData['generationTasks'][number]) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, task: DramaProjectData['generationTasks'][number]): void => callback(task)
+    ipcRenderer.on(IPC_CHANNELS.DRAMA_GENERATION_PROGRESS, listener)
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.DRAMA_GENERATION_PROGRESS, listener)
   },
   getPathForFile: (file: File): string => webUtils.getPathForFile(file)
 }
