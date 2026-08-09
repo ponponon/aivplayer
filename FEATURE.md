@@ -1,5 +1,7 @@
 # AIVPlayer 功能列表
 
+- 说话人 Provider 已建立独立的模型契约：模型目录按版本隔离，状态检查同时核对分段模型、说话人向量模型和随附许可证文件，并明确识别各平台原生包能力；当前只完成能力诊断，尚未自动下载或打包模型。
+
 - README 已完成国际化：`README.md` 作为英文主文档，并提供 `README.zh-CN.md`、`README.ja-JP.md` 和 `README.ko-KR.md` 三份本地化版本；四份文档顶部互相提供语言切换入口。
 
 - macOS 原生运行时构建目标固定为 12.0：FFmpeg 及其 Homebrew 依赖从源码构建，whisper.cpp 和 libheif 的 CMake 构建显式设置 `CMAKE_OSX_DEPLOYMENT_TARGET`，避免 macOS 26 构建机把过高的最低系统版本带进发布包。

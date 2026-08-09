@@ -1,0 +1,44 @@
+export type SpeakerDiarizationPlatformId =
+  | 'darwin-arm64'
+  | 'darwin-x64'
+  | 'linux-arm64'
+  | 'linux-x64'
+  | 'win32-ia32'
+  | 'win32-x64'
+  | 'unsupported'
+
+export type SpeakerDiarizationProviderId = 'sherpa-onnx'
+
+export type SpeakerDiarizationModelId = 'sherpa-onnx-pyannote-3.0-3dspeaker-eres2net-zh-cn'
+
+export type SpeakerDiarizationModelFileKind = 'segmentation' | 'embedding' | 'license'
+
+export type SpeakerDiarizationModelFile = {
+  relativePath: string
+  kind: SpeakerDiarizationModelFileKind
+}
+
+export type SpeakerDiarizationPlatformCapability = {
+  platform: SpeakerDiarizationPlatformId
+  supported: boolean
+  nativePackageId: string | null
+  reason: string
+}
+
+export type SpeakerDiarizationModelFileStatus = SpeakerDiarizationModelFile & {
+  path: string
+  available: boolean
+}
+
+export type SpeakerDiarizationModelStatus = {
+  available: boolean
+  modelFilesAvailable: boolean
+  providerId: SpeakerDiarizationProviderId
+  modelId: SpeakerDiarizationModelId
+  modelVersion: string
+  modelDirectory: string
+  platform: SpeakerDiarizationPlatformCapability
+  files: SpeakerDiarizationModelFileStatus[]
+  missingFiles: string[]
+  message: string
+}
