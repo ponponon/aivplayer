@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createVisionEntityEvidence, selectVisionEntityLabels, type VisionEntityLabel } from '../../src/core/ai/vision-entity-evidence'
+import { createVisionEntityEvidence, DEFAULT_VISION_ENTITY_LABELS, selectVisionEntityLabels, type VisionEntityLabel } from '../../src/core/ai/vision-entity-evidence'
 
 const labels: VisionEntityLabel[] = [
   { id: 'person', query: 'a person', displayName: '人物 / person' },
@@ -8,6 +8,17 @@ const labels: VisionEntityLabel[] = [
 ]
 
 describe('vision entity evidence', () => {
+  it('includes a bounded frame-level object vocabulary without duplicate ids', () => {
+    const objectLabels = DEFAULT_VISION_ENTITY_LABELS.filter((label) => label.id.startsWith('object-'))
+
+    expect(objectLabels.map((label) => label.id)).toEqual([
+      'object-backpack', 'object-bag', 'object-book', 'object-camera', 'object-computer',
+      'object-phone', 'object-chair', 'object-table', 'object-screen', 'object-building'
+    ])
+    expect(new Set(DEFAULT_VISION_ENTITY_LABELS.map((label) => label.id)).size).toBe(DEFAULT_VISION_ENTITY_LABELS.length)
+    expect(DEFAULT_VISION_ENTITY_LABELS.length).toBeLessThanOrEqual(100)
+  })
+
   it('keeps only thresholded top labels and de-duplicates label ids', () => {
     expect(selectVisionEntityLabels([
       { label: labels[0]!, similarity: 0.3 },

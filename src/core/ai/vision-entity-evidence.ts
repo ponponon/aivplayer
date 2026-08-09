@@ -26,7 +26,17 @@ export const DEFAULT_VISION_ENTITY_LABELS: readonly VisionEntityLabel[] = [
   { id: 'city', query: 'a city scene', displayName: '城市 / city' },
   { id: 'nature', query: 'a nature scene', displayName: '自然 / nature' },
   { id: 'night', query: 'a night scene', displayName: '夜景 / night' },
-  { id: 'text', query: 'a scene with readable text', displayName: '文字 / text' }
+  { id: 'text', query: 'a scene with readable text', displayName: '文字 / text' },
+  { id: 'object-backpack', query: 'a photo of a backpack', displayName: '背包 / backpack' },
+  { id: 'object-bag', query: 'a photo of a bag', displayName: '包 / bag' },
+  { id: 'object-book', query: 'a photo of a book', displayName: '书本 / book' },
+  { id: 'object-camera', query: 'a photo of a camera', displayName: '相机 / camera' },
+  { id: 'object-computer', query: 'a photo of a computer', displayName: '电脑 / computer' },
+  { id: 'object-phone', query: 'a photo of a smartphone', displayName: '手机 / smartphone' },
+  { id: 'object-chair', query: 'a photo of a chair', displayName: '椅子 / chair' },
+  { id: 'object-table', query: 'a photo of a table', displayName: '桌子 / table' },
+  { id: 'object-screen', query: 'a photo of a screen', displayName: '屏幕 / screen' },
+  { id: 'object-building', query: 'a photo of a building', displayName: '建筑 / building' }
 ]
 
 export function getVisionEntityLabelIdForDisplayName(displayName: string): string | undefined {
