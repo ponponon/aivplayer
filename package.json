@@ -28,6 +28,7 @@
     "release:check-formats": "node scripts/check-release-package-formats.mjs",
     "release:check-evidence": "node scripts/check-platform-evidence.mjs",
     "release:dry-run": "node scripts/release-dry-run.mjs",
+    "release:check-push": "node scripts/check-release-push-readiness.mjs",
     "release:verify-remote": "node scripts/verify-remote-release.mjs",
     "release:check-packaged-resources": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/check-packaged-resources.ts",
     "release:prepare-heif-runtime": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/prepare-heif-runtime.ts",
