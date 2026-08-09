@@ -74,10 +74,18 @@ jobs:
           npm run release:check-packaged-resources -- --resource-dir "$resource_dir"
 
       - name: Verify macOS release artifacts
-        run: npm run release:check-platform -- --platform macos --artifacts-dir release
+        run: npm run release:check-platform -- --platform macos --artifacts-dir release --report-path release/platform-release-report-macos.json
 
       - name: Verify macOS package formats
         run: npm run release:check-formats -- --platform macos --artifacts-dir release
+
+      - name: Upload macOS release evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-evidence-macos
+          path: release/platform-release-report-macos.json
+          if-no-files-found: ignore
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
@@ -165,10 +173,18 @@ jobs:
           npm run release:check-packaged-resources -- --resource-dir $resourceDir.FullName
 
       - name: Verify Windows release artifacts
-        run: npm run release:check-platform -- --platform windows --artifacts-dir release
+        run: npm run release:check-platform -- --platform windows --artifacts-dir release --report-path release/platform-release-report-windows.json
 
       - name: Verify Windows package formats
         run: npm run release:check-formats -- --platform windows --artifacts-dir release
+
+      - name: Upload Windows release evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-evidence-windows
+          path: release/platform-release-report-windows.json
+          if-no-files-found: ignore
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
@@ -263,10 +279,18 @@ jobs:
           test ! -e /usr/bin/aivcli
 
       - name: Verify Linux release artifacts
-        run: npm run release:check-platform -- --platform linux --artifacts-dir release
+        run: npm run release:check-platform -- --platform linux --artifacts-dir release --report-path release/platform-release-report-linux.json
 
       - name: Verify Linux package formats
         run: npm run release:check-formats -- --platform linux --artifacts-dir release
+
+      - name: Upload Linux release evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-evidence-linux
+          path: release/platform-release-report-linux.json
+          if-no-files-found: ignore
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
