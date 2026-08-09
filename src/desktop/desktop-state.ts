@@ -8,6 +8,7 @@ import { VisionIndexQueue } from '../core/ai/vision-index-queue'
 import { DramaStore } from '../core/drama/drama-store'
 import { DramaGenerationWorker } from '../core/drama/drama-generation-worker'
 import { ClipInboxStore } from '../core/ai/clip-inbox-store'
+import { MediaImportInboxStore } from '../core/media/media-import-inbox'
 import { VisionIndexFailureStore } from '../core/ai/vision-index-failure-store'
 
 export const desktopState: {
@@ -28,6 +29,7 @@ export const desktopState: {
   dramaStore: DramaStore | null
   dramaGenerationWorker: DramaGenerationWorker | null
   clipInboxStore: ClipInboxStore | null
+  mediaImportInboxStore: MediaImportInboxStore | null
   visionIndexFailureStore: VisionIndexFailureStore | null
 } = {
   mainWindow: null,
@@ -47,5 +49,6 @@ export const desktopState: {
   dramaStore: null,
   dramaGenerationWorker: null,
   clipInboxStore: null,
+  mediaImportInboxStore: null,
   visionIndexFailureStore: null
 }

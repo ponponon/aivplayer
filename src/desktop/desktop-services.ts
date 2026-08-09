@@ -10,6 +10,7 @@ import { createDramaMediaProviders, toPublicDramaMediaProviderSettings } from '.
 import { DramaStore } from '../core/drama/drama-store'
 import { DramaGenerationWorker } from '../core/drama/drama-generation-worker'
 import { ClipInboxStore } from '../core/ai/clip-inbox-store'
+import { MediaImportInboxStore } from '../core/media/media-import-inbox'
 import { VisionIndexFailureStore } from '../core/ai/vision-index-failure-store'
 import { DramaWorkflow } from '../core/drama/drama-workflow'
 import type { DramaProviderSettings, DramaProviderSettingsInput, DramaProviderTestResult } from '../shared/drama-types'
@@ -128,6 +129,11 @@ export function trackVisionIndexProgress(
   if (progress.status === 'completed') {
     for (const mediaPath of mediaPaths) store.clear(mediaPath)
   }
+}
+
+export function getMediaImportInboxStore(): MediaImportInboxStore {
+  if (!desktopState.mediaImportInboxStore) desktopState.mediaImportInboxStore = new MediaImportInboxStore(app.getPath('userData'))
+  return desktopState.mediaImportInboxStore
 }
 
 export function getDramaWorkflow(): DramaWorkflow {
