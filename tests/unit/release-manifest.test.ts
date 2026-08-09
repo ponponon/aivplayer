@@ -4,6 +4,7 @@ import { promisify } from 'node:util'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
+// @ts-expect-error JavaScript release utility is exercised through its exported test seam.
 import { runReleaseDryRun } from '../../scripts/release-dry-run.mjs'
 
 const execFileAsync = promisify(execFile)
