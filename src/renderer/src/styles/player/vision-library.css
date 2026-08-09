@@ -78,6 +78,155 @@
   flex-wrap: wrap;
 }
 
+.vision-entity-catalog {
+  display: grid;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.vision-entity-catalog-heading,
+.vision-entity-catalog-row,
+.vision-entity-catalog-meta,
+.vision-entity-catalog-actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.vision-entity-catalog-heading {
+  justify-content: space-between;
+  color: var(--text-primary);
+  font-size: 11px;
+}
+
+.vision-entity-catalog-heading-actions,
+.vision-entity-catalog-batch {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+}
+
+.vision-entity-catalog-heading-actions {
+  justify-content: flex-end;
+}
+
+.vision-entity-catalog-heading-actions .vision-secondary-action {
+  min-height: 24px;
+  padding: 0 6px;
+  font-size: 9px;
+}
+
+.vision-entity-catalog-batch {
+  flex-wrap: wrap;
+  padding: 6px;
+  color: var(--text-muted);
+  background: rgba(var(--accent-rgb), 0.045);
+  border: 1px solid rgba(var(--accent-rgb), 0.16);
+  border-radius: var(--radius-sm);
+  font-size: 9px;
+}
+
+.vision-entity-catalog-batch .vision-entity-catalog-merge {
+  min-width: 130px;
+  min-height: 26px;
+  flex: 1 1 130px;
+}
+
+.vision-entity-catalog-batch .vision-secondary-action {
+  min-height: 26px;
+  padding: 0 7px;
+  font-size: 10px;
+}
+
+.vision-entity-catalog-heading > div,
+.vision-entity-catalog-meta {
+  display: grid;
+  gap: 2px;
+}
+
+.vision-entity-catalog-heading small,
+.vision-entity-catalog-meta small,
+.vision-entity-catalog-merged {
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.vision-entity-catalog-list {
+  display: grid;
+  gap: 5px;
+}
+
+.vision-entity-catalog-row {
+  align-items: flex-start;
+  flex-wrap: wrap;
+  padding: 6px;
+  background: rgba(var(--overlay-rgb), 0.04);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+}
+
+.vision-entity-catalog-select {
+  flex: 0 0 auto;
+  margin-top: 5px;
+  accent-color: var(--accent);
+}
+
+.vision-entity-catalog-row.is-hidden {
+  opacity: 0.62;
+}
+
+.vision-entity-catalog-meta {
+  flex: 1 1 130px;
+  align-items: flex-start;
+}
+
+.vision-entity-catalog-meta strong {
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+.vision-entity-catalog-input,
+.vision-entity-catalog-merge {
+  min-width: 120px;
+  min-height: 26px;
+  flex: 1 1 130px;
+  padding: 0 6px;
+  color: var(--text-secondary);
+  background: rgba(var(--overlay-rgb), 0.06);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+}
+
+.vision-entity-catalog-input:focus,
+.vision-entity-catalog-merge:focus {
+  border-color: var(--accent);
+  outline: 0;
+}
+
+.vision-entity-catalog-actions {
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.vision-entity-catalog-actions .vision-secondary-action {
+  min-height: 26px;
+  padding: 0 7px;
+  font-size: 10px;
+}
+
+.vision-entity-catalog-merged {
+  display: inline-flex;
+  flex-basis: 100%;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent);
+}
+
 .vision-selection-actions {
   justify-content: space-between;
   flex-wrap: wrap;

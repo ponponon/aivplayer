@@ -12,6 +12,8 @@ import { VisionLibraryFolder } from './vision-library-folder'
 import { VisionOcrTask } from './vision-ocr-task'
 import { VisionTtsTask } from './vision-tts-task'
 import { VisionSearchResults } from './vision-search-results'
+import { VisionEntityCatalog } from './vision-entity-catalog'
+import type { VisionEntityCatalog as VisionEntityCatalogState, VisionEntityCatalogBatchPatch, VisionEntityCatalogPatch } from '../../../shared/vision-entity-types'
 
 function formatDuration(milliseconds: number): string {
   if (milliseconds < 1000) return `${Math.max(1, Math.round(milliseconds))}ms`
@@ -28,7 +30,9 @@ export function VisionPanel(): React.ReactElement {
   const [query, setQuery] = useState('')
   const [sampleImagePath, setSampleImagePath] = useState<string | null>(null)
   const [sampleImageName, setSampleImageName] = useState<string | null>(null)
+  const [includeEntityEvidence, setIncludeEntityEvidence] = useState(false)
   const [results, setResults] = useState<VisionSearchResult[]>([])
+  const [entityCatalog, setEntityCatalog] = useState<VisionEntityCatalogState | null>(null)
   const [selectedResultIds, setSelectedResultIds] = useState<Set<string>>(new Set())
   const [collectionTitle, setCollectionTitle] = useState('')
   const [collectionTags, setCollectionTags] = useState('')
@@ -54,7 +58,13 @@ export function VisionPanel(): React.ReactElement {
     }).catch((reason: unknown) => {
       if (active) setError(reason instanceof Error ? reason.message : String(reason))
     }) }
+    const refreshEntityCatalog = (): void => { void window.aiv.getVisionEntityCatalog().then((next) => {
+      if (active) setEntityCatalog(next)
+    }).catch((reason: unknown) => {
+      if (active) setError(reason instanceof Error ? reason.message : String(reason))
+    }) }
     refreshStatus()
+    refreshEntityCatalog()
     const statusTimer = window.setInterval(refreshStatus, 5000)
     const removeProgressListener = window.aiv.onVisionIndexProgress((next) => {
       if (!active) return
@@ -69,6 +79,26 @@ export function VisionPanel(): React.ReactElement {
       removeProgressListener()
     }
   }, [])
+
+  const updateEntityCatalog = async (patch: VisionEntityCatalogPatch): Promise<void> => {
+    setError(null)
+    try {
+      setEntityCatalog(await window.aiv.updateVisionEntityCatalog(patch))
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+      throw reason
+    }
+  }
+
+  const updateEntityCatalogBatch = async (patch: VisionEntityCatalogBatchPatch): Promise<void> => {
+    setError(null)
+    try {
+      setEntityCatalog(await window.aiv.updateVisionEntityCatalogBatch(patch))
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+      throw reason
+    }
+  }
 
   useEffect(() => {
     let active = true
@@ -138,7 +168,7 @@ export function VisionPanel(): React.ReactElement {
     if (app.state.playlist.length === 0 || isBusy) return
     setError(null)
     setProgress(null)
-    void window.aiv.startVisionIndex({ mediaPaths: app.state.playlist.map((file) => file.path), intervalSeconds: 3 }).catch((reason: unknown) => {
+    void window.aiv.startVisionIndex({ mediaPaths: app.state.playlist.map((file) => file.path), intervalSeconds: 3, includeEntityEvidence }).catch((reason: unknown) => {
       setError(reason instanceof Error ? reason.message : String(reason))
     })
   }
@@ -147,7 +177,7 @@ export function VisionPanel(): React.ReactElement {
     if (folder.videoPaths.length === 0 || isBusy) return
     setError(null)
     setProgress(null)
-    void window.aiv.startVisionIndex({ mediaPaths: folder.videoPaths, intervalSeconds: 3 }).catch((reason: unknown) => {
+    void window.aiv.startVisionIndex({ mediaPaths: folder.videoPaths, intervalSeconds: 3, includeEntityEvidence }).catch((reason: unknown) => {
       setError(reason instanceof Error ? reason.message : String(reason))
     })
   }
@@ -357,6 +387,8 @@ export function VisionPanel(): React.ReactElement {
       ? app.copy.vision.loading
       : progress?.stage === 'frames'
         ? app.copy.vision.indexing(progress.processedFrames, progress.totalFrames, progress.currentVideoIndex, progress.totalVideos)
+        : progress?.stage === 'entity-evidence'
+          ? app.copy.vision.entityAnalyzing(progress.entityEvidenceProcessed ?? 0, progress.entityEvidenceTotal ?? 0)
         : progress?.stage === 'vector-index'
           ? app.copy.vision.vectorIndexing
           : progress?.stage === 'text-index'
@@ -377,6 +409,7 @@ export function VisionPanel(): React.ReactElement {
       formatDuration(progress.timings.planningMs),
       formatDuration(progress.timings.modelLoadingMs),
       formatDuration(progress.timings.framesMs),
+      formatDuration(progress.timings.entityEvidenceMs),
       formatDuration(progress.timings.vectorIndexMs),
       formatDuration(progress.timings.textIndexMs),
       formatDuration(progress.timings.totalMs)
@@ -390,7 +423,9 @@ export function VisionPanel(): React.ReactElement {
       <div className="vision-model-status"><Database size={14} /><span>{status?.available ? app.copy.vision.model : app.copy.vision.unavailable}</span><small title={vectorIndexLabel}>{status?.indexedFrameCount ?? 0} · {vectorIndexLabel}</small></div>
       {!status?.available ? <small className="vision-error">{status?.message ?? app.copy.vision.unavailable}</small> : null}
       <VisionLibraryFolder copy={app.copy.vision} folderPath={folder.folderPath} savedFolders={folder.savedFolders} videoPaths={folder.videoPaths} includeSubfolders={folder.includeSubfolders} scanProgress={folder.scanProgress} batchScanProgress={folder.batchScanProgress} isBusy={isBusy} onChooseFolder={folder.chooseFolder} onScanFolder={folder.scanCurrentFolder} onScanAllFolders={folder.scanAllFolders} onIncludeSubfoldersChange={folder.setIncludeSubfolders} onStartIndex={startFolderIndex} onUseFolder={folder.useSavedFolder} onRemoveFolder={folder.removeSavedFolder} />
+      <VisionEntityCatalog copy={app.copy.vision} catalog={entityCatalog} onUpdate={updateEntityCatalog} onBatchUpdate={updateEntityCatalogBatch} />
       <div className="vision-index-actions">
+        <label className="vision-folder-option"><input type="checkbox" checked={includeEntityEvidence} disabled={isBusy} onChange={(event) => setIncludeEntityEvidence(event.target.checked)} /><span>{app.copy.vision.includeEntityEvidence}</span></label>
         <button className="vision-primary-action" type="button" onClick={startIndex} disabled={isBusy || app.state.playlist.length === 0}><Database size={15} />{app.copy.vision.indexPlaylist}</button>
         {isBusy ? <button className="vision-secondary-action" type="button" onClick={cancelCurrentTask}><Square size={13} />{app.copy.vision.cancelIndex}</button> : null}
       </div>
