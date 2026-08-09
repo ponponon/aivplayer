@@ -120,12 +120,14 @@ describe('release workflow source constraints', () => {
   })
 
   it('checks each platform package set before uploading artifacts', () => {
-    expect(releaseWorkflow.match(/release:check-platform/g)).toHaveLength(8)
+    expect(releaseWorkflow.match(/release:check-platform/g)).toHaveLength(5)
     expect(releaseWorkflow).toContain('--platform macos --artifacts-dir release')
     expect(releaseWorkflow).toContain('--platform windows --architecture x64 --artifacts-dir release')
     expect(releaseWorkflow).toContain('--platform windows --architecture arm64 --artifacts-dir release')
     expect(releaseWorkflow).toContain('--platform linux --architecture x64 --artifacts-dir release')
     expect(releaseWorkflow).toContain('--platform linux --architecture arm64 --artifacts-dir release')
+    expect(releaseWorkflow).toContain('name: Verify assembled package formats')
+    expect(releaseWorkflow).not.toContain('--artifacts-dir artifacts/assembled --report-path artifacts/assembled/platform-release-report-')
     expect(platformRelease).toContain("packages: ['.dmg', '.zip', '.pkg']")
     expect(platformRelease).toContain("packages: ['.AppImage', '.deb']")
     expect(platformRelease).toContain('unexpected packages')
