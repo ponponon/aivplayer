@@ -7,7 +7,7 @@ import { RELEASE_MANIFEST_NAME, listReleaseArtifacts } from './release-artifact-
 
 export const RELEASE_MANIFEST_SCHEMA_VERSION = 1
 
-async function sha256(filePath) {
+export async function sha256File(filePath) {
   const hash = createHash('sha256')
   for await (const chunk of createReadStream(filePath)) hash.update(chunk)
   return hash.digest('hex')
@@ -29,7 +29,7 @@ async function buildArtifactEntries(files) {
     return {
       name: basename(filePath),
       sizeBytes: fileStat.size,
-      sha256: await sha256(filePath)
+      sha256: await sha256File(filePath)
     }
   }))
   return entries.sort((left, right) => left.name.localeCompare(right.name))
@@ -55,7 +55,7 @@ export async function createReleaseManifest(options = {}) {
   return { manifest, manifestPath, files }
 }
 
-function assertManifestShape(value) {
+export function assertManifestShape(value) {
   if (!value || typeof value !== 'object') throw new Error('Release manifest must be a JSON object.')
   if (value.schemaVersion !== RELEASE_MANIFEST_SCHEMA_VERSION) throw new Error(`Unsupported release manifest schema: ${String(value.schemaVersion)}`)
   if (typeof value.tag !== 'string' || !value.tag) throw new Error('Release manifest tag is missing.')
@@ -92,7 +92,7 @@ export async function verifyReleaseManifest(options = {}) {
     const filePath = filesByName.get(artifact.name)
     const fileStat = await stat(filePath)
     if (fileStat.size !== artifact.sizeBytes) throw new Error(`Release artifact size changed: ${artifact.name}`)
-    const actualHash = await sha256(filePath)
+    const actualHash = await sha256File(filePath)
     if (actualHash !== artifact.sha256) throw new Error(`Release artifact SHA-256 changed: ${artifact.name}`)
   }
   return { ok: true, manifest, files }
