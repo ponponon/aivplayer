@@ -977,7 +977,19 @@
         holdRightArrowSpeed: '右キー長押しで早送り再生',
         holdRightArrowSpeedDescription: '右方向キーを長押しすると、一時的に高速再生へ切り替えます。',
         gpuAcceleration: 'GPU アクセラレーション',
-        gpuAccelerationDescription: 'ビデオ再生のパフォーマンスを向上させるために GPU ハードウェアアクセラレーションを有効にします。変更後はアプリの再起動が必要です。'
+        gpuAccelerationDescription: 'ビデオ再生のパフォーマンスを向上させるために GPU ハードウェアアクセラレーションを有効にします。変更後はアプリの再起動が必要です。',
+        speakerDiarization: {
+          title: 'ローカル話者分離',
+          description: 'sherpa-onnx をローカルで使って話者の時間区間を検出します。モデルは別途用意する必要があり、自動ダウンロードは行いません。',
+          providerLabel: 'Provider',
+          platformLabel: 'プラットフォーム',
+          modelLabel: 'モデルファイル',
+          modelReady: '準備完了',
+          modelMissing: '未準備',
+          checking: '確認中…',
+          refresh: '状態を更新',
+          refreshing: '更新中…'
+        }
       },
       gpuRestartTitle: '再起動が必要です',
       gpuRestartMessage: 'GPU アクセラレーション設定の変更はアプリの再起動後に有効になります。今すぐ再起動しますか？',

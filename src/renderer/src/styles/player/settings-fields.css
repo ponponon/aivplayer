@@ -88,6 +88,30 @@
   word-break: break-word;
 }
 
+.settings-speaker-status {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.settings-speaker-message {
+  margin: 0;
+}
+
+.settings-speaker-message.is-success {
+  color: var(--ok);
+}
+
+.settings-speaker-message.is-error {
+  color: var(--danger);
+}
+
+.settings-field-title-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .settings-choice-list {
   display: grid;
   gap: 8px;

@@ -1,8 +1,71 @@
-import { Camera, Captions, Clapperboard, Keyboard, LayoutGrid, Settings2 } from 'lucide-react'
-import type { ReactElement } from 'react'
+import { AudioLines, Clapperboard, RefreshCcw } from 'lucide-react'
+import { useCallback, useEffect, useState, type ReactElement } from 'react'
+import type { SpeakerDiarizationModelStatus } from '../../../../shared/media-types'
 import { SettingsField, SettingsFolderPicker, SettingsSelect, SettingsToggle, SettingsToggleValueRow } from '../settings-controls'
 import { SettingsNumberInput, SettingsTextInput, SettingsTextarea } from '../settings-inputs'
 import type { SettingsSectionProps } from '../settings-section-types'
+
+type SpeakerDiarizationCopy = {
+  title: string
+  description: string
+  providerLabel: string
+  platformLabel: string
+  modelLabel: string
+  modelReady: string
+  modelMissing: string
+  checking: string
+  refresh: string
+  refreshing: string
+}
+
+function SpeakerDiarizationStatusField({ copy }: { copy: SpeakerDiarizationCopy }): ReactElement {
+  const [status, setStatus] = useState<SpeakerDiarizationModelStatus | null>(null)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
+  const refresh = useCallback(async (): Promise<void> => {
+    setIsRefreshing(true)
+    try {
+      setStatus(await window.aiv.getSpeakerDiarizationStatus())
+    } catch {
+      setStatus(null)
+    } finally {
+      setIsRefreshing(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void refresh()
+  }, [refresh])
+
+  return (
+    <div className="settings-speaker-status" data-testid="settings-speaker-diarization">
+      <div className="settings-meta-grid">
+        <div className="settings-meta-item">
+          <span>{copy.providerLabel}</span>
+          <strong>{status?.providerId ?? '—'}</strong>
+        </div>
+        <div className="settings-meta-item">
+          <span>{copy.platformLabel}</span>
+          <strong>{status?.platform.platform ?? '—'}</strong>
+        </div>
+        <div className="settings-meta-item">
+          <span>{copy.modelLabel}</span>
+          <strong>{status ? (status.modelFilesAvailable ? copy.modelReady : copy.modelMissing) : copy.checking}</strong>
+        </div>
+      </div>
+      <p className={`settings-card-note settings-speaker-message ${status?.available ? 'is-success' : status ? 'is-error' : ''}`}>
+        {status?.message ?? copy.checking}
+      </p>
+      <div className="settings-inline-row">
+        <div className="settings-path-value" title={status?.modelDirectory ?? ''}>{status?.modelDirectory ?? '—'}</div>
+        <button className="settings-secondary-button" type="button" onClick={() => void refresh()} disabled={isRefreshing} data-testid="settings-speaker-diarization-refresh">
+          <RefreshCcw size={14} />
+          {isRefreshing ? copy.refreshing : copy.refresh}
+        </button>
+      </div>
+    </div>
+  )
+}
 
 export function VideoSettingsSection(props: SettingsSectionProps): ReactElement {
   const {
@@ -85,6 +148,14 @@ export function VideoSettingsSection(props: SettingsSectionProps): ReactElement 
           onGpuAccelerationChange?.(gpuAcceleration)
         }}
       />
+    </SettingsField>
+
+    <SettingsField
+      wide
+      title={<span className="settings-field-title-with-icon"><AudioLines size={14} />{copy.settingsDialog.video.speakerDiarization.title}</span>}
+      description={copy.settingsDialog.video.speakerDiarization.description}
+    >
+      <SpeakerDiarizationStatusField copy={copy.settingsDialog.video.speakerDiarization} />
     </SettingsField>
   </section>
   )

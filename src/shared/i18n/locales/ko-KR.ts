@@ -977,7 +977,19 @@
         holdRightArrowSpeed: '오른쪽 화살표 길게 눌러 고속 재생',
         holdRightArrowSpeedDescription: '오른쪽 방향키를 길게 누르면 잠시 더 높은 속도로 전환합니다.',
         gpuAcceleration: 'GPU 가속',
-        gpuAccelerationDescription: '비디오 재생 성능을 향상시키기 위해 GPU 하드웨어 가속을 활성화합니다. 변경 후 앱을 다시 시작해야 합니다.'
+        gpuAccelerationDescription: '비디오 재생 성능을 향상시키기 위해 GPU 하드웨어 가속을 활성화합니다. 변경 후 앱을 다시 시작해야 합니다.',
+        speakerDiarization: {
+          title: '로컬 화자 분할',
+          description: 'sherpa-onnx를 로컬에서 사용해 화자 시간 구간을 찾습니다. 모델 파일은 별도로 준비해야 하며 자동 네트워크 다운로드는 사용하지 않습니다.',
+          providerLabel: 'Provider',
+          platformLabel: '플랫폼 지원',
+          modelLabel: '모델 파일',
+          modelReady: '준비됨',
+          modelMissing: '미완료',
+          checking: '확인 중…',
+          refresh: '상태 새로 고침',
+          refreshing: '새로 고치는 중…'
+        }
       },
       gpuRestartTitle: '재시작 필요',
       gpuRestartMessage: 'GPU 가속 설정 변경은 적용을 위해 앱을 다시 시작해야 합니다. 지금 다시 시작하시겠습니까?',

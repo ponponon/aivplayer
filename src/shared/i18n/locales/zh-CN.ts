@@ -977,7 +977,19 @@
         holdRightArrowSpeed: '长按右方向键时倍速播放',
         holdRightArrowSpeedDescription: '按住右方向键一段时间后，临时切到更高倍速。',
         gpuAcceleration: 'GPU 加速',
-        gpuAccelerationDescription: '启用 GPU 硬件加速以获得更好的视频播放性能。更改后需要重启应用。'
+        gpuAccelerationDescription: '启用 GPU 硬件加速以获得更好的视频播放性能。更改后需要重启应用。',
+        speakerDiarization: {
+          title: '本地说话人分段',
+          description: '使用 sherpa-onnx 在本机识别说话人时间段。需要单独准备模型文件，不会自动联网下载。',
+          providerLabel: 'Provider',
+          platformLabel: '平台能力',
+          modelLabel: '模型文件',
+          modelReady: '已就绪',
+          modelMissing: '未完整准备',
+          checking: '检测中…',
+          refresh: '刷新状态',
+          refreshing: '刷新中…'
+        }
       },
       gpuRestartTitle: '需要重启',
       gpuRestartMessage: '更改 GPU 加速设置需要重启应用才能生效。是否现在重启？',

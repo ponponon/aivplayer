@@ -977,7 +977,19 @@
         holdRightArrowSpeed: 'Hold the right arrow for fast playback',
         holdRightArrowSpeedDescription: 'Hold the right arrow key to temporarily switch to a higher speed.',
         gpuAcceleration: 'GPU Acceleration',
-        gpuAccelerationDescription: 'Enable GPU hardware acceleration for better video playback performance. Requires restart to take effect.'
+        gpuAccelerationDescription: 'Enable GPU hardware acceleration for better video playback performance. Requires restart to take effect.',
+        speakerDiarization: {
+          title: 'Local speaker diarization',
+          description: 'Use sherpa-onnx locally to identify speaker time segments. Model files must be prepared separately; no automatic network download is used.',
+          providerLabel: 'Provider',
+          platformLabel: 'Platform capability',
+          modelLabel: 'Model files',
+          modelReady: 'Ready',
+          modelMissing: 'Incomplete',
+          checking: 'Checking…',
+          refresh: 'Refresh status',
+          refreshing: 'Refreshing…'
+        }
       },
       gpuRestartTitle: 'Restart Required',
       gpuRestartMessage: 'Changing GPU acceleration settings requires a restart to take effect. Restart now?',
