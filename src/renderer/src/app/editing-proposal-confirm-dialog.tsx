@@ -28,7 +28,7 @@ export function EditingProposalConfirmDialog({ copy, proposal, onClose, onConfir
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [onClose])
 
-  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+  return <div className="modal-backdrop editing-proposal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
     <section ref={dialogRef} className="editing-proposal-dialog" tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="editing-proposal-title" aria-describedby="editing-proposal-description">
       <div className="download-dialog-header">
         <div><span className="panel-kicker">{copy.kicker}</span><h2 id="editing-proposal-title">{copy.proposalTitle}</h2></div>
