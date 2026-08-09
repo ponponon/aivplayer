@@ -11,6 +11,7 @@ import { createDramaMediaProviders, toPublicDramaMediaProviderSettings } from '.
 import { DramaStore } from '../core/drama/drama-store'
 import { DramaGenerationWorker } from '../core/drama/drama-generation-worker'
 import { ClipInboxStore } from '../core/ai/clip-inbox-store'
+import { VisionEntityCatalogStore } from '../core/ai/vision-entity-catalog-store'
 import { MediaImportInboxStore } from '../core/media/media-import-inbox'
 import { createDefaultMediaImportInboxProcessorDependencies, MediaImportInboxProcessor } from '../core/media/media-import-inbox-processor'
 import { VisionIndexFailureStore } from '../core/ai/vision-index-failure-store'
@@ -124,6 +125,11 @@ export function getDramaGenerationWorker(): DramaGenerationWorker {
 export function getClipInboxStore(): ClipInboxStore {
   if (!desktopState.clipInboxStore) desktopState.clipInboxStore = new ClipInboxStore(app.getPath('userData'))
   return desktopState.clipInboxStore
+}
+
+export function getVisionEntityCatalogStore(): VisionEntityCatalogStore {
+  if (!desktopState.visionEntityCatalogStore) desktopState.visionEntityCatalogStore = new VisionEntityCatalogStore(app.getPath('userData'))
+  return desktopState.visionEntityCatalogStore
 }
 
 export function getVisionIndexFailureStore(): VisionIndexFailureStore {

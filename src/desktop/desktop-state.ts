@@ -12,6 +12,7 @@ import { ClipInboxStore } from '../core/ai/clip-inbox-store'
 import { MediaImportInboxStore } from '../core/media/media-import-inbox'
 import { MediaImportInboxProcessor } from '../core/media/media-import-inbox-processor'
 import { TaskCenterStore } from '../core/tasks/task-center-store'
+import { VisionEntityCatalogStore } from '../core/ai/vision-entity-catalog-store'
 import { VisionIndexFailureStore } from '../core/ai/vision-index-failure-store'
 
 export const desktopState: {
@@ -36,6 +37,7 @@ export const desktopState: {
   mediaImportInboxStore: MediaImportInboxStore | null
   mediaImportInboxProcessor: MediaImportInboxProcessor | null
   taskCenterStore: TaskCenterStore | null
+  visionEntityCatalogStore: VisionEntityCatalogStore | null
   visionIndexFailureStore: VisionIndexFailureStore | null
 } = {
   mainWindow: null,
@@ -59,5 +61,6 @@ export const desktopState: {
   mediaImportInboxStore: null,
   mediaImportInboxProcessor: null,
   taskCenterStore: null,
+  visionEntityCatalogStore: null,
   visionIndexFailureStore: null
 }
