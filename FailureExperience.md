@@ -1230,3 +1230,9 @@
 - 现象：旧版 publish job 直接递归扫描 `actions/download-artifact` 的总目录；Windows / Linux 的解包目录中包含 `AIVPlayer.exe`、FFmpeg、libheif 和 whisper-cli 等文件，证据报告会把它们误当成应上传到 Release 根目录的资产，最终在创建 Release 前报文件集合不一致。
 - 经验：发布资产 policy 的递归能力应保留给需要处理历史目录的本地工具，但汇总安装包和合并 evidence 必须明确只读取上传根目录；“文件名匹配扩展名”不能替代构建产物拓扑边界。
 - 处理：为 `listReleaseArtifacts` 增加 `recursive: false` 选项，汇总组装和合并 evidence 均显式使用根目录扫描；回归测试加入嵌套 `win-unpacked` / `linux-unpacked` 运行时，确认它们不会进入最终资产集合。
+
+## 2026-08-09：多架构 Runner evidence 不能直接当作单平台报告
+
+- 现象：publish job 的汇总目录同时包含 macOS、Windows 和 Linux 的安装包；把这个目录分别交给三次单平台契约检查，会把其他平台的合法资产报告为 `unexpected packages`，导致 0.5.0 在发布前失败，GitHub Release 因此不会创建。
+- 经验：构建 Runner 的架构报告与最终发布平台报告不是同一个拓扑。Windows / Linux 的架构报告必须先合并，且合并后的更新元数据内容已经变化，不能沿用任一 Runner 报告中的旧哈希。
+- 处理：汇总安装包和更新元数据后，从五份 Runner 报告保留包文件证据，重新计算最终 `latest*.yml` 的大小与 SHA-256，写出三份标准平台报告；publish job 只执行合并目录的格式检查和三平台 evidence 交叉校验。
