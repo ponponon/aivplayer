@@ -25,6 +25,7 @@ import type { AsrModelSourceId } from '../shared/media-types'
 import type { MediaStructureCorrection, MediaStructureSegmentKind } from '../shared/media-base-types'
 import { isAppLocale, isSubtitleLanguageId } from '../shared/localization'
 import { MAX_PLAYBACK_HISTORY_ITEMS, type PlaybackHistoryEntry } from '../shared/playback-history'
+import type { DramaGenerationMediaType } from '../shared/drama-types'
 
 export type AppSettingsSecretCodec = {
   encryptString: (value: string) => string
@@ -130,6 +131,29 @@ function normalizeTextField(value: unknown, fallback: string | null): string | n
   return trimmed.length > 0 ? trimmed : fallback
 }
 
+function normalizeDramaMediaProviderId(value: unknown, fallback: string | null): string | null {
+  if (typeof value !== 'string') return fallback
+  const trimmed = value.trim()
+  return trimmed.length > 0 && trimmed.length <= 128 ? trimmed : fallback
+}
+
+function normalizeDramaMediaProviderUrl(value: unknown, fallback: string | null): string | null {
+  const normalized = normalizeTextField(value, fallback)
+  if (!normalized) return null
+  try {
+    const url = new URL(normalized)
+    return (url.protocol === 'http:' || url.protocol === 'https:') && !url.username && !url.password ? normalized : fallback
+  } catch {
+    return fallback
+  }
+}
+
+function normalizeDramaMediaProviderCost(value: unknown, fallback: number | null): number | null {
+  if (value === null) return null
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 1_000_000) return fallback
+  return Math.round(value * 1_000_000) / 1_000_000
+}
+
 function encodeSecretValue(value: string | null | undefined, codec: AppSettingsSecretCodec | null): string | null {
   if (typeof value !== 'string' || value.length === 0) {
     return null
@@ -222,7 +246,18 @@ function sanitizeMediaSettings(
     autoLoadSameDirectoryFiles:
       typeof media.autoLoadSameDirectoryFiles === 'boolean'
         ? media.autoLoadSameDirectoryFiles
-        : defaults.autoLoadSameDirectoryFiles
+        : defaults.autoLoadSameDirectoryFiles,
+    importInboxDirectories: Array.isArray(media.importInboxDirectories)
+      ? media.importInboxDirectories
+          .filter((path): path is string => typeof path === 'string' && path.trim().length > 0 && path.length <= 4096 && isAbsolute(path))
+          .map((path) => path.trim())
+          .filter((path, index, paths) => paths.indexOf(path) === index)
+          .slice(0, 50)
+      : defaults.importInboxDirectories,
+    importInboxWriteSidecars:
+      typeof media.importInboxWriteSidecars === 'boolean'
+        ? media.importInboxWriteSidecars
+        : defaults.importInboxWriteSidecars
   }
 }
 
@@ -528,11 +563,31 @@ function sanitizeDramaSettings(
   defaults: AppSettings['drama']
 ): AppSettings['drama'] {
   const drama = value ?? {}
+  const media: Partial<Record<DramaGenerationMediaType, Partial<AppSettings['drama']['media'][DramaGenerationMediaType]>>> = drama.media ?? {}
   return {
     apiBaseUrl: normalizeTextField(drama.apiBaseUrl, defaults.apiBaseUrl),
     model: normalizeTextField(drama.model, defaults.model),
     apiKey: normalizeTextField(drama.apiKey, defaults.apiKey),
-    useMock: typeof drama.useMock === 'boolean' ? drama.useMock : defaults.useMock
+    useMock: typeof drama.useMock === 'boolean' ? drama.useMock : defaults.useMock,
+    media: {
+      image: sanitizeDramaMediaProviderSettings(media.image, defaults.media.image),
+      video: sanitizeDramaMediaProviderSettings(media.video, defaults.media.video),
+      audio: sanitizeDramaMediaProviderSettings(media.audio, defaults.media.audio)
+    }
+  }
+}
+
+function sanitizeDramaMediaProviderSettings(
+  value: Partial<AppSettings['drama']['media'][DramaGenerationMediaType]> | undefined,
+  defaults: AppSettings['drama']['media'][DramaGenerationMediaType]
+): AppSettings['drama']['media'][DramaGenerationMediaType] {
+  const media = value ?? {}
+  return {
+    providerId: normalizeDramaMediaProviderId(media.providerId, defaults.providerId),
+    apiBaseUrl: normalizeDramaMediaProviderUrl(media.apiBaseUrl, defaults.apiBaseUrl),
+    model: normalizeTextField(media.model, defaults.model),
+    apiKey: normalizeTextField(media.apiKey, defaults.apiKey),
+    costPerRequest: normalizeDramaMediaProviderCost(media.costPerRequest, defaults.costPerRequest)
   }
 }
 
@@ -574,7 +629,12 @@ function encodeAppSettingsForDisk(settings: AppSettings, secretCodec: AppSetting
     ...settings,
     drama: {
       ...settings.drama,
-      apiKey: encodeSecretValue(settings.drama.apiKey, secretCodec)
+      apiKey: encodeSecretValue(settings.drama.apiKey, secretCodec),
+      media: {
+        image: { ...settings.drama.media.image, apiKey: encodeSecretValue(settings.drama.media.image.apiKey, secretCodec) },
+        video: { ...settings.drama.media.video, apiKey: encodeSecretValue(settings.drama.media.video.apiKey, secretCodec) },
+        audio: { ...settings.drama.media.audio, apiKey: encodeSecretValue(settings.drama.media.audio.apiKey, secretCodec) }
+      }
     },
     asr: {
       ...settings.asr,
@@ -642,6 +702,7 @@ export async function readAppSettings(
       }
       drama?: Partial<AppSettings['drama']> & {
         apiKey?: unknown
+        media?: Partial<Record<DramaGenerationMediaType, Partial<AppSettings['drama']['media'][DramaGenerationMediaType]> & { apiKey?: unknown }>>
       }
     }
 
@@ -665,6 +726,20 @@ export async function readAppSettings(
         ...parsed.drama,
         apiKey: decodeSecretValue(parsed.drama.apiKey, secretCodec ?? (await resolveAppSettingsSecretCodec()))
       }
+    }
+
+    if (parsed.drama?.media && typeof parsed.drama.media === 'object') {
+      const media = { ...parsed.drama.media }
+      for (const mediaType of ['image', 'video', 'audio'] as const) {
+        const provider = media[mediaType]
+        if (provider && typeof provider.apiKey === 'string' && provider.apiKey.startsWith(APP_SETTINGS_SECRET_PREFIX)) {
+          media[mediaType] = {
+            ...provider,
+            apiKey: decodeSecretValue(provider.apiKey, secretCodec ?? (await resolveAppSettingsSecretCodec()))
+          }
+        }
+      }
+      parsed.drama = { ...parsed.drama, media }
     }
 
     return sanitizeAppSettings(parsed as unknown, captureDefaultDirectoryPath)

@@ -5,8 +5,9 @@ import { DEFAULT_APP_LOCALE, DEFAULT_SUBTITLE_LANGUAGE, type AppLocale, type Sub
 import type { SubtitleEmphasisMode, SubtitlePresetId } from './subtitle-presets'
 import type { PlaybackBookmark, PlaybackEndAction, PlaybackMediaProfile, PlaybackOrder, PlaybackRepeatMode, PlaybackSegment } from './playback-memory'
 import type { MediaStructureCorrection } from './media-base-types'
+import type { DramaGenerationMediaType } from './drama-types'
 
-export const APP_SETTINGS_SCHEMA_VERSION = 23
+export const APP_SETTINGS_SCHEMA_VERSION = 26
 
 export const SIDE_PANEL_WIDTH_MIN = 240
 export const SIDE_PANEL_WIDTH_MAX = 480
@@ -38,6 +39,8 @@ export type AppSettings = {
   media: {
     defaultOpenDirectoryPath: string | null
     autoLoadSameDirectoryFiles: boolean
+    importInboxDirectories: string[]
+    importInboxWriteSidecars: boolean
   }
   capture: {
     saveDirectoryPath: string | null
@@ -94,6 +97,7 @@ export type AppSettings = {
     model: string | null
     apiKey: string | null
     useMock: boolean
+    media: Record<DramaGenerationMediaType, DramaMediaProviderConfig>
   }
   asr: {
     preferredModelSourceId: AsrModelSourceId
@@ -108,6 +112,14 @@ export type AppSettings = {
     executablePath: string | null
     voice: string | null
   }
+}
+
+export type DramaMediaProviderConfig = {
+  providerId: string | null
+  apiBaseUrl: string | null
+  model: string | null
+  apiKey: string | null
+  costPerRequest: number | null
 }
 
 export type AppSettingsSectionKey = Exclude<keyof AppSettings, 'schemaVersion'>
@@ -196,7 +208,9 @@ export function createDefaultAppSettings(): AppSettings {
     },
     media: {
       defaultOpenDirectoryPath: null,
-      autoLoadSameDirectoryFiles: false
+      autoLoadSameDirectoryFiles: false,
+      importInboxDirectories: [],
+      importInboxWriteSidecars: true
     },
     capture: {
       saveDirectoryPath: null,
@@ -252,7 +266,12 @@ export function createDefaultAppSettings(): AppSettings {
       apiBaseUrl: null,
       model: null,
       apiKey: null,
-      useMock: false
+      useMock: false,
+      media: {
+        image: createDefaultDramaMediaProviderConfig(),
+        video: createDefaultDramaMediaProviderConfig(),
+        audio: createDefaultDramaMediaProviderConfig()
+      }
     },
     asr: {
       preferredModelSourceId: 'modelscope',
@@ -267,5 +286,15 @@ export function createDefaultAppSettings(): AppSettings {
       executablePath: null,
       voice: null
     }
+  }
+}
+
+function createDefaultDramaMediaProviderConfig(): DramaMediaProviderConfig {
+  return {
+    providerId: null,
+    apiBaseUrl: null,
+    model: null,
+    apiKey: null,
+    costPerRequest: null
   }
 }

@@ -65,6 +65,8 @@ describe('app settings', () => {
     settings.subtitles.displayMode = 'bilingual'
     settings.subtitles.targetLanguage = 'zh'
     settings.vision.libraryDirectories = [join(tempDirectory, 'library-one'), join(tempDirectory, 'library-two')]
+    settings.media.importInboxDirectories = [join(tempDirectory, 'inbox-one'), join(tempDirectory, 'inbox-two')]
+    settings.media.importInboxWriteSidecars = false
     settings.playback.lastVolume = 0.42
     settings.playback.lastMuted = true
     settings.playback.lastPlaybackRate = 1.5
@@ -166,7 +168,7 @@ describe('app settings', () => {
     )
 
     await expect(readAppSettings(tempDirectory)).resolves.toMatchObject({
-      schemaVersion: 23,
+      schemaVersion: 26,
       playback: {
         singleClickPause: true
       }
@@ -287,6 +289,11 @@ describe('app settings', () => {
     settings.drama.apiBaseUrl = 'https://example.test/v1/chat/completions'
     settings.drama.model = 'drama-model'
     settings.drama.apiKey = 'drama-secret-key'
+    settings.drama.media.image.providerId = 'fal'
+    settings.drama.media.image.apiBaseUrl = 'https://example.test/image'
+    settings.drama.media.image.model = 'image-model'
+    settings.drama.media.image.apiKey = 'image-secret-key'
+    settings.drama.media.image.costPerRequest = 0.04
     settings.capture.saveDirectoryPath = tempDirectory
 
     await writeAppSettings(tempDirectory, settings, tempDirectory, secretCodec)
@@ -294,6 +301,7 @@ describe('app settings', () => {
     const rawContent = await readFile(join(tempDirectory, 'app-settings.json'), 'utf8')
     expect(rawContent).not.toContain('secret-key')
     expect(rawContent).not.toContain('drama-secret-key')
+    expect(rawContent).not.toContain('image-secret-key')
     expect(rawContent).toContain('safe:')
 
     await expect(readAppSettings(tempDirectory, tempDirectory, secretCodec)).resolves.toEqual(settings)
