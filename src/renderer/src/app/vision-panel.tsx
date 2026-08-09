@@ -17,6 +17,7 @@ import { VisionImportInbox } from './vision-import-inbox'
 import { VisionLibrarySources } from './vision-library-sources'
 import { VisionEntityCatalog } from './vision-entity-catalog'
 import { VisionIndexFailures } from './vision-index-failures'
+import { VisionSpeakerDiarization } from './vision-speaker-diarization'
 import type { VisionEntityCatalog as VisionEntityCatalogState, VisionEntityCatalogBatchPatch, VisionEntityCatalogCreateInput, VisionEntityCatalogPatch } from '../../../shared/vision-entity-types'
 
 const VISION_SOURCE_PAGE_SIZE = 100
@@ -549,6 +550,7 @@ export function VisionPanel(): React.ReactElement {
 
     <VisionOcrTask copy={app.copy.vision} mediaPath={app.state.currentFile?.path ?? null} currentTime={app.state.currentTime} />
     <VisionTtsTask copy={app.copy.vision} mediaPath={app.state.currentFile?.path ?? null} currentTime={app.state.currentTime} onSubtitleImported={handleImportedSubtitle} />
+    <VisionSpeakerDiarization copy={app.copy.vision} mediaPath={app.state.currentFile?.path ?? null} onSeek={app.seekTo} />
 
     <section className="vision-card vision-search-card">
       <form className="vision-text-search" onSubmit={(event) => { event.preventDefault(); runTextSearch() }}>
