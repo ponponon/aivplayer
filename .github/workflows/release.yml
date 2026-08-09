@@ -325,7 +325,15 @@ jobs:
         run: find artifacts -type f | head -50
 
       - name: Verify merged platform evidence
-        run: npm run release:check-evidence -- --artifacts-dir artifacts
+        run: npm run release:check-evidence -- --artifacts-dir artifacts --report-path artifacts/merged-platform-evidence.json
+
+      - name: Upload merged platform evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-evidence-merged
+          path: artifacts/merged-platform-evidence.json
+          if-no-files-found: ignore
 
       - name: Verify release version and update metadata
         run: npm run release:check-version -- --artifacts-dir artifacts --tag "${{ inputs.tag || github.ref_name }}"
