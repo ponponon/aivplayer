@@ -33,9 +33,11 @@ export class EditingAgentBridgeServer {
   private server: Server | null = null
   private readonly sockets = new Set<Socket>()
   private manifest: EditingAgentBridgeManifest | null = null
+  private readonly options: EditingAgentBridgeServerOptions
   private readonly requestTimeoutMs: number
 
-  constructor(private readonly options: EditingAgentBridgeServerOptions) {
+  constructor(options: EditingAgentBridgeServerOptions) {
+    this.options = options
     this.requestTimeoutMs = normalizeTimeout(options.requestTimeoutMs)
   }
 
