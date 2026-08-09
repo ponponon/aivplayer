@@ -3,9 +3,10 @@ import { writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type { VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionSearchRequest } from '../shared/vision-types'
+import type { VisionEntityCatalogBatchPatch, VisionEntityCatalogPatch } from '../shared/vision-entity-types'
 import { scanVisionDirectory, isVisionScanAbortError } from '../core/ai/vision-directory-scan'
 import { renderVisionClipCollectionExport } from '../core/ai/clip-inbox-export'
-import { getClipInboxStore, getVisionIndexFailureStore, getVisionIndexQueue, getVisionLibrary, trackVisionIndexProgress } from './desktop-services'
+import { getClipInboxStore, getVisionEntityCatalogStore, getVisionIndexFailureStore, getVisionIndexQueue, getVisionLibrary, trackVisionIndexProgress } from './desktop-services'
 import { desktopState } from './desktop-state'
 import { promptForSavePath } from './media-dialogs'
 import { createVisionTaskCenterEvent } from '../core/tasks/task-center-adapters'
@@ -144,6 +145,10 @@ export function registerVisionIpc(): void {
     if (!request?.imagePath?.trim()) return []
     return getVisionLibrary().searchImage(request.imagePath, request.limit)
   })
+
+  ipcMain.handle(IPC_CHANNELS.VISION_ENTITY_CATALOG_GET, () => getVisionEntityCatalogStore().get())
+  ipcMain.handle(IPC_CHANNELS.VISION_ENTITY_CATALOG_UPDATE, (_event, patch: VisionEntityCatalogPatch) => getVisionEntityCatalogStore().update(patch))
+  ipcMain.handle(IPC_CHANNELS.VISION_ENTITY_CATALOG_BATCH_UPDATE, (_event, patch: VisionEntityCatalogBatchPatch) => getVisionEntityCatalogStore().updateBatch(patch))
 
   ipcMain.handle(IPC_CHANNELS.VISION_READ_THUMBNAIL, (_event, thumbnailPath: string) => getVisionLibrary().readThumbnail(thumbnailPath))
   ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_LIST, () => getClipInboxStore().listCollections())

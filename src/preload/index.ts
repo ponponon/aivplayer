@@ -105,6 +105,7 @@ import type { EditingProjectFileOpenResult, EditingProjectFileSaveRequest, Editi
 import type { EditingCaptionFilesChangedEvent, EditingCaptionWatchRequest, EditingCaptionWatchStartResult } from '../shared/editing-caption-watcher'
 import type { WebDesktopStateUpdate, WebRemoteCommandForDesktop, WebShareStartRequest, WebShareStatus } from '../shared/web-types'
 import type { MediaEvidenceCapabilities, MediaEvidenceDraft, MediaEvidenceDraftImportRequest, MediaEvidenceDraftImportResult, MediaEvidenceDraftSaveRequest, MediaEvidenceTask, MediaEvidenceTaskRequest } from '../shared/evidence-task-types'
+import type { VisionEntityCatalog, VisionEntityCatalogBatchPatch, VisionEntityCatalogPatch } from '../shared/vision-entity-types'
 
 const api = {
   platform: process.platform,
@@ -240,6 +241,9 @@ const api = {
   retryVisionIndexFailures: (request: VisionIndexFailureRetryBatchRequest): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.VISION_INDEX_FAILURE_BATCH_RETRY, request),
   searchVisionText: (request: VisionSearchRequest): Promise<VisionSearchResult[]> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SEARCH_TEXT, request),
   searchVisionImage: (request: VisionSearchRequest): Promise<VisionSearchResult[]> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SEARCH_IMAGE, request),
+  getVisionEntityCatalog: (): Promise<VisionEntityCatalog> => ipcRenderer.invoke(IPC_CHANNELS.VISION_ENTITY_CATALOG_GET),
+  updateVisionEntityCatalog: (patch: VisionEntityCatalogPatch): Promise<VisionEntityCatalog> => ipcRenderer.invoke(IPC_CHANNELS.VISION_ENTITY_CATALOG_UPDATE, patch),
+  updateVisionEntityCatalogBatch: (patch: VisionEntityCatalogBatchPatch): Promise<VisionEntityCatalog> => ipcRenderer.invoke(IPC_CHANNELS.VISION_ENTITY_CATALOG_BATCH_UPDATE, patch),
   readVisionThumbnail: (thumbnailPath: string): Promise<string> => ipcRenderer.invoke(IPC_CHANNELS.VISION_READ_THUMBNAIL, thumbnailPath),
   listVisionClipCollections: (): Promise<VisionClipCollection[]> => ipcRenderer.invoke(IPC_CHANNELS.VISION_CLIP_COLLECTION_LIST),
   saveVisionClipCollection: (input: VisionClipCollectionInput): Promise<VisionClipCollection> => ipcRenderer.invoke(IPC_CHANNELS.VISION_CLIP_COLLECTION_SAVE, input),
