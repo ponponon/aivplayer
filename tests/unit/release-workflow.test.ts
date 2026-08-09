@@ -11,6 +11,7 @@ const remoteVerification = readFileSync(join(projectRoot, 'scripts/verify-remote
 const releaseVersion = readFileSync(join(projectRoot, 'scripts/check-release-version.mjs'), 'utf8')
 const platformRelease = readFileSync(join(projectRoot, 'scripts/check-platform-release-artifacts.mjs'), 'utf8')
 const packageFormats = readFileSync(join(projectRoot, 'scripts/check-release-package-formats.mjs'), 'utf8')
+const platformEvidence = readFileSync(join(projectRoot, 'scripts/check-platform-evidence.mjs'), 'utf8')
 
 describe('release workflow source constraints', () => {
   it('keeps platform builds separate from release publishing', () => {
@@ -108,6 +109,14 @@ describe('release workflow source constraints', () => {
     expect(platformRelease).toContain('sha256File')
     expect(platformRelease).toContain('reportPath')
     expect(platformRelease).toContain('duplicate names')
+  })
+
+  it('verifies evidence after artifact merge and before version / manifest checks', () => {
+    expect(releaseWorkflow).toContain('release:check-evidence')
+    expect(releaseWorkflow.indexOf('release:check-evidence')).toBeLessThan(releaseWorkflow.indexOf('release:check-version'))
+    expect(platformEvidence).toContain('Missing platform evidence report')
+    expect(platformEvidence).toContain('Merged release evidence SHA-256 changed')
+    expect(platformEvidence).toContain('reports overlap on artifact')
   })
 
   it('checks package format signatures before uploading artifacts', () => {
