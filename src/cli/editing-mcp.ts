@@ -1,7 +1,7 @@
 import { createInterface } from 'node:readline'
 import { extname, resolve } from 'node:path'
-import { buildDeleteScriptProposal, EditingProposalError } from '../core/editing/edit-proposal'
-import { inspectEditingProject, loadEditingProjectFile, searchEditingProjectCaptions } from './cli-edit'
+import { buildDeleteScriptProposal, EditingProposalError } from '../core/editing/edit-proposal.ts'
+import { inspectEditingProject, loadEditingProjectFile, searchEditingProjectCaptions } from './cli-edit.ts'
 
 const MCP_PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'] as const
 const MCP_SERVER_NAME = 'aivplayer-editing'
