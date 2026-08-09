@@ -5,6 +5,7 @@ import { getBatchSubtitleHistoryPath, getBatchSubtitleLogDirectoryPath, getBatch
 import { createWhisperCppRuntime } from '../core/ai/whisper-cpp-runtime'
 import { VisionLibrary } from '../core/ai/vision-library'
 import { VisionIndexQueue } from '../core/ai/vision-index-queue'
+import { VisionIndexCoordinator } from '../core/ai/vision-index-coordinator'
 import { createDramaProviderFromConfig, createDramaProviderFromEnvironment, DramaProviderError } from '../core/drama/drama-provider'
 import { createDramaMediaProviders, toPublicDramaMediaProviderSettings } from '../core/drama/drama-media-provider-registry'
 import { DramaStore } from '../core/drama/drama-store'
@@ -64,10 +65,19 @@ export function getVisionLibrary(): VisionLibrary {
   return desktopState.visionLibrary
 }
 
+export function getVisionIndexCoordinator(): VisionIndexCoordinator {
+  if (!desktopState.visionIndexCoordinator) {
+    desktopState.visionIndexCoordinator = new VisionIndexCoordinator((mediaPaths, intervalSeconds, signal, onProgress, options) =>
+      getVisionLibrary().indexVideos(mediaPaths, intervalSeconds, signal, onProgress, options)
+    )
+  }
+  return desktopState.visionIndexCoordinator
+}
+
 export function getVisionIndexQueue(): VisionIndexQueue {
   if (!desktopState.visionIndexQueue) {
-    desktopState.visionIndexQueue = new VisionIndexQueue((mediaPaths, intervalSeconds, signal, onProgress) =>
-      getVisionLibrary().indexVideos(mediaPaths, intervalSeconds, signal, onProgress)
+    desktopState.visionIndexQueue = new VisionIndexQueue((mediaPaths, intervalSeconds, signal, onProgress, options) =>
+      getVisionIndexCoordinator().run(mediaPaths, intervalSeconds, signal, onProgress, options)
     )
   }
   return desktopState.visionIndexQueue

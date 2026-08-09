@@ -5,6 +5,7 @@ import { BatchSubtitleManager } from '../core/ai/batch-subtitle-manager'
 import { createWhisperCppRuntime } from '../core/ai/whisper-cpp-runtime'
 import { VisionLibrary } from '../core/ai/vision-library'
 import { VisionIndexQueue } from '../core/ai/vision-index-queue'
+import { VisionIndexCoordinator } from '../core/ai/vision-index-coordinator'
 import { DramaStore } from '../core/drama/drama-store'
 import { DramaGenerationWorker } from '../core/drama/drama-generation-worker'
 import { ClipInboxStore } from '../core/ai/clip-inbox-store'
@@ -21,6 +22,7 @@ export const desktopState: {
   translationAbortControllers: Map<number, AbortController>
   summaryAbortControllers: Map<number, AbortController>
   visionLibrary: VisionLibrary | null
+  visionIndexCoordinator: VisionIndexCoordinator | null
   visionIndexQueue: VisionIndexQueue | null
   visionScanAbortControllers: Map<number, AbortController>
   visionAbortControllers: Map<number, AbortController>
@@ -41,6 +43,7 @@ export const desktopState: {
   translationAbortControllers: new Map(),
   summaryAbortControllers: new Map(),
   visionLibrary: null,
+  visionIndexCoordinator: null,
   visionIndexQueue: null,
   visionScanAbortControllers: new Map(),
   visionAbortControllers: new Map(),
