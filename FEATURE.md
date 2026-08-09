@@ -586,6 +586,7 @@
 - GitHub / Gitee 发布前会从合并后的三平台产物生成 `release-manifest.json`，记录每个安装包和更新元数据的大小与 SHA-256；Gitee 同步复用该清单并在上传前阻断文件集合或内容漂移。
 - GitHub Release 创建后、Gitee 同步后会通过只读 API 回读实际资产，流式下载并核对每个文件的大小、SHA-256 和 `release-manifest.json` 内容；两边分别上传不含凭据的校验报告，远端缺失、额外或漂移都会让发布任务失败。
 - 发布 job 会先校验 `v<package.json.version>` 与 tag 完全一致，再校验每个 `latest*.yml` 的版本和 `url` / `path` 引用都指向当前批次资产；artifact policy 只接收 `latest*.yml`，不会把 `builder-debug.yml` 等调试文件发布到 GitHub / Gitee。
+- 三个平台的构建 job 会在上传前执行平台产物契约：macOS 必须有 DMG / ZIP / PKG 与 `latest-mac.yml`，Windows 必须有 EXE 与 `latest.yml`，Linux 必须有 AppImage / DEB 与 `latest-linux.yml`；缺包、跨平台包泄漏或 metadata 命名错误会在合并 manifest 前阻断发布。
 
 ## 编辑器画布交互层级
 

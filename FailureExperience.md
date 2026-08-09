@@ -1158,3 +1158,9 @@
 - 现象：只要 workflow 被 tag 触发，旧流程就会继续打包和上传；tag 可能与 `package.json` 版本不一致，`latest*.yml` 也可能残留旧版本或引用不存在 / 不属于当前批次的安装包。与此同时，electron-builder 生成的 `builder-debug.yml` 会被宽泛的 `*.yml` glob 一起带入发布物。
 - 经验：发布版本必须在生成跨渠道 manifest 之前形成单一约束：tag 必须是 `v${package.json.version}`；所有 updater metadata 的版本必须一致，引用的 `url` / `path` 必须落在当前 artifact 集合；更新元数据只允许明确的 `latest*.yml` 命名，不能把任意 YAML 当作用户下载资产。
 - 处理：新增 `release:check-version`；publish job 在生成 manifest 前执行 tag / package / metadata 校验，artifact policy 与三平台 glob 收紧到 `latest*.yml`，并补充调试文件排除、版本不匹配、引用缺失的单测。
+
+## 2026-08-09：合并后的 manifest 不能证明每个平台都产出了安装包
+
+- 现象：三个 build job 的 artifact 会在 publish job 合并；只要总目录里仍有一个平台的文件，旧流程就可能生成 manifest 并创建 Release，无法发现 macOS 缺 PKG、Windows 缺 EXE 或 Linux 缺 DEB 等平台级缺包。
+- 经验：平台构建必须在自身 runner 上验证自己的输出契约，再进入跨平台合并：目标安装包扩展名、平台专属 `latest*.yml` 文件名和不允许出现的其他平台安装包都要明确列出；跨平台污染也应在上传前失败。
+- 处理：新增 `release:check-platform` 与 `check-platform-release-artifacts.mjs`，分别接入 macOS / Windows / Linux 上传步骤；单测覆盖三平台完整集合、缺少目标包、跨平台包泄漏、调试 YAML 排除和未知平台。
