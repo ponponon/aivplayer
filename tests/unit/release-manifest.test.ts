@@ -97,9 +97,10 @@ describe('release manifest', () => {
 
   it('runs all local release gates and removes its temporary fixture', async () => {
     const result = await runReleaseDryRun()
+    const packageVersion = JSON.parse(await readFile(join(projectRoot, 'package.json'), 'utf8')) as { version: string }
 
     expect(result.ok).toBe(true)
-    expect(result.tag).toBe('v0.4.0')
+    expect(result.tag).toBe(`v${packageVersion.version}`)
     expect(result.artifactCount).toBe(9)
     expect(result.platforms).toEqual({
       macos: { artifactCount: 4, packageCount: 3 },
