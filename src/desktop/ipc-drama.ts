@@ -13,6 +13,8 @@ import type {
 } from '../shared/drama-types'
 import { parseDramaChapters } from '../core/drama/drama-text'
 import { getDramaGenerationWorker, getDramaProviderSettings, getDramaStore, getDramaWorkflow, saveDramaProviderSettings, testDramaProvider } from './desktop-services'
+import { createDramaTaskCenterEvent } from '../core/tasks/task-center-adapters'
+import { sendTaskCenterEvent } from './task-center-events'
 
 function requireProjectId(projectId: unknown): string {
   if (typeof projectId !== 'string' || !projectId.trim()) throw new Error('短剧项目 ID 不能为空')
@@ -86,6 +88,9 @@ function normalizeGenerationTaskPatch(value: unknown): DramaGenerationTaskPatch 
   const patch = value as Partial<DramaGenerationTaskPatch>
   if (patch.status != null && !['queued', 'running', 'completed', 'failed', 'cancelled'].includes(patch.status)) throw new Error('生成任务状态无效')
   if (patch.progress != null && (typeof patch.progress !== 'number' || !Number.isFinite(patch.progress))) throw new Error('生成任务进度无效')
+  for (const field of ['estimatedCost', 'actualCost'] as const) {
+    if (patch[field] != null && (typeof patch[field] !== 'number' || !Number.isFinite(patch[field] as number))) throw new Error('生成任务成本无效')
+  }
   for (const field of ['message', 'resultPath', 'error'] as const) {
     if (patch[field] != null && typeof patch[field] !== 'string') throw new Error('生成任务字段必须是文本')
   }
@@ -104,6 +109,7 @@ function normalizeGraphTemplateInput(value: unknown): DramaGraphTemplateInput {
 
 function sendProgress(event: Electron.IpcMainInvokeEvent, progress: DramaProgress): void {
   if (!event.sender.isDestroyed()) event.sender.send(IPC_CHANNELS.DRAMA_PROGRESS, progress)
+  sendTaskCenterEvent(createDramaTaskCenterEvent(progress))
 }
 
 export function registerDramaIpc(): void {
