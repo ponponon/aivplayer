@@ -19,6 +19,11 @@ export const PLATFORM_CONTRACTS = {
   }
 }
 
+const ARCHITECTURE_TOKENS = {
+  x64: ['x64', 'amd64', 'x86_64'],
+  arm64: ['arm64', 'aarch64']
+}
+
 function readOptions(argv) {
   const options = {}
   for (let index = 0; index < argv.length; index += 1) {
@@ -56,6 +61,10 @@ function extensionOf(name) {
   return lowerName.slice(lowerName.lastIndexOf('.'))
 }
 
+function hasArchitectureToken(name, architecture) {
+  return ARCHITECTURE_TOKENS[architecture].some((token) => name.toLowerCase().includes(token))
+}
+
 async function listTopLevelReleaseArtifacts(directory) {
   const root = resolve(directory)
   const entries = await readdir(root, { withFileTypes: true })
@@ -89,7 +98,7 @@ export async function checkPlatformReleaseArtifacts(options = {}) {
   })
   const packageNames = names.filter((name) => requiredPackages.some((extension) => name.toLowerCase().endsWith(extension)))
   const wrongArchitecturePackages = architecture
-    ? packageNames.filter((name) => !name.toLowerCase().includes(architecture.toLowerCase()))
+    ? packageNames.filter((name) => !hasArchitectureToken(name, architecture))
     : []
   if (missingPackages.length > 0 || missingMetadata.length > 0 || unexpectedMetadata.length > 0 || unexpectedPackages.length > 0 || wrongArchitecturePackages.length > 0) {
     throw new Error([

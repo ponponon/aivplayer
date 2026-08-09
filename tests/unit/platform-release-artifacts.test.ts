@@ -63,6 +63,12 @@ describe('platform release artifact contract', () => {
     await expect(runCheck('linux', wrongArchitectureDirectory, undefined, 'arm64')).rejects.toThrow('wrong architecture packages')
   })
 
+  it('accepts common x64 package name aliases', async () => {
+    const artifactsDirectory = await createFixture(['AIVPlayer-0.4.0-x86_64.AppImage', 'aivplayer_0.4.0_amd64.deb', 'latest-linux.yml'])
+    const result = await runCheck('linux', artifactsDirectory, undefined, 'x64')
+    expect(result.stdout).toContain('Platform release artifacts verified: linux')
+  })
+
   it('writes a hashable evidence report without debug files', async () => {
     const artifactsDirectory = await createFixture(['AIVPlayer-0.4.0.dmg', 'AIVPlayer-0.4.0.zip', 'AIVPlayer-0.4.0.pkg', 'latest-mac.yml', 'builder-debug.yml'])
     const reportPath = join(artifactsDirectory, 'platform-release-report-macos.json')
