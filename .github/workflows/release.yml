@@ -73,6 +73,9 @@ jobs:
           test -n "$resource_dir"
           npm run release:check-packaged-resources -- --resource-dir "$resource_dir"
 
+      - name: Verify macOS release artifacts
+        run: npm run release:check-platform -- --platform macos --artifacts-dir release
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -157,6 +160,9 @@ jobs:
           $resourceDir = Get-ChildItem -Path release -Directory -Recurse -Filter resources | Select-Object -First 1
           if ($null -eq $resourceDir) { throw 'Packaged resources directory was not found.' }
           npm run release:check-packaged-resources -- --resource-dir $resourceDir.FullName
+
+      - name: Verify Windows release artifacts
+        run: npm run release:check-platform -- --platform windows --artifacts-dir release
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
@@ -249,6 +255,9 @@ jobs:
           test "$(readlink -f /usr/bin/aivcli)" = '/opt/AIVPlayer/aivcli'
           sudo apt-get remove -y aivplayer
           test ! -e /usr/bin/aivcli
+
+      - name: Verify Linux release artifacts
+        run: npm run release:check-platform -- --platform linux --artifacts-dir release
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
