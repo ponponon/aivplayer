@@ -584,6 +584,7 @@
 - 发布链路新增项目 MIT `LICENSE` 与直接运行时依赖清单；三平台打包前校验清单，Electron 安装包资源检查强制包含 `LICENSE` 和 `THIRD_PARTY_LICENSES.md`，GitHub / Gitee 继续复用同一批已校验产物。
 - 发布链路新增固定 revision 的 SigLIP2 视觉模型暂存；打包前生成 `runtime-metadata.json`，记录 whisper.cpp、FFmpeg、libheif、macOS `sips` fallback 和视觉模型文件的版本、构建特征与 SHA-256，安装包资源检查会阻断缺失元数据的产物。
 - GitHub / Gitee 发布前会从合并后的三平台产物生成 `release-manifest.json`，记录每个安装包和更新元数据的大小与 SHA-256；Gitee 同步复用该清单并在上传前阻断文件集合或内容漂移。
+- GitHub Release 创建后、Gitee 同步后会通过只读 API 回读实际资产，流式下载并核对每个文件的大小、SHA-256 和 `release-manifest.json` 内容；两边分别上传不含凭据的校验报告，远端缺失、额外或漂移都会让发布任务失败。
 
 ## 编辑器画布交互层级
 

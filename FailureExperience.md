@@ -1146,3 +1146,9 @@
 - 现象：原流程由 GitHub Release 使用一组 glob 上传产物，Gitee 脚本再按扩展名递归扫描；两边没有共享文件集合、大小和内容指纹，发布过程中如果产物被替换或漏传，单靠文件名无法发现。
 - 经验：多渠道发布必须先在合并后的唯一工作目录生成不可循环引用的 manifest，再让每个渠道复用并验证它；manifest 自身可以上传，但不能把自身哈希写入自身内容。
 - 处理：新增统一 artifact policy 和 `release-manifest.json`；发布 job 生成并校验清单，同时上传给 Gitee sync job；Gitee 上传前逐个比较文件集合、大小和 SHA-256，漂移时在任何 API 写操作前失败。
+
+## 2026-08-09：发布成功不能只代表上传请求成功
+
+- 现象：上传接口返回成功，只能证明服务端接受了请求，不能证明最终 Release 中的每个安装包、更新元数据和 manifest 都可下载，也不能发现 CDN / 服务端存储中的内容漂移。
+- 经验：发布后的验证必须走独立的只读链路：先用 GitHub / Gitee API 获取 tag 对应的实际资产，再对每个下载响应流式计算大小和 SHA-256；manifest 自身不把自身哈希写入清单，因此需要额外比较本地与远端 manifest 的内容。
+- 处理：新增 `release:verify-remote` 和 `verify-remote-release.mjs`；GitHub Release 创建后、Gitee 同步后分别执行回读校验，生成不含 token 的报告 artifact。脚本只发起 GET 请求，不创建、删除或上传 Release 资源；单测使用注入的 fetch seam 验证 GitHub、Gitee、远端篡改和无写操作边界。
