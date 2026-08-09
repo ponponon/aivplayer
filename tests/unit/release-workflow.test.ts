@@ -39,6 +39,16 @@ describe('release workflow source constraints', () => {
     expect(releaseWorkflow).toContain('--workflow-run-attempt "${{ github.run_attempt }}"')
   })
 
+  it('supports a verify-only workflow dispatch without remote release writes', () => {
+    expect(releaseWorkflow).toContain('verify_only:')
+    expect(releaseWorkflow).toContain('description: \'Build and validate all release artifacts without creating or syncing a release\'')
+    expect(releaseWorkflow).toContain('default: false')
+    expect(releaseWorkflow).toContain('type: boolean')
+    expect(releaseWorkflow.match(/github\.event_name != 'workflow_dispatch' \|\| inputs\.verify_only != true/g)).toHaveLength(4)
+    expect(releaseWorkflow.indexOf('release:check-evidence')).toBeLessThan(releaseWorkflow.indexOf('Create GitHub Release'))
+    expect(releaseWorkflow.indexOf('Create GitHub Release')).toBeLessThan(releaseWorkflow.indexOf('sync-gitee-release:'))
+  })
+
   it('stages platform runtimes before packaging', () => {
     expect(releaseWorkflow.match(/release:check-runtime/g)).toHaveLength(3)
     expect(releaseWorkflow.match(/release:prepare-vision-model/g)).toHaveLength(3)
