@@ -110,7 +110,7 @@ For subtitle translation, content summaries, or the AI Short-Drama Studio, confi
 - Search by text description, image, or a hybrid of text, visual, and filename signals.
 - Search results can show matching subtitle snippets and jump directly to the corresponding point in the video.
 - Optionally detect FFmpeg scene changes and index bounded scene-segment evidence; this is off by default so ordinary indexing and local imports do not decode each video twice.
-- Optionally generate fixed-vocabulary zero-shot entity labels with the local SigLIP2 model (people, vehicles, animals, indoor/outdoor, and more); no network or identity recognition, and off by default.
+- Optionally generate fixed-vocabulary zero-shot entity labels with the local SigLIP2 model (people, vehicles, animals, bags, cameras, computers, smartphones, indoor/outdoor, and more); no network, identity recognition, or bounding-box detection, and off by default.
 - Provides a local entity-label catalog for creating custom query labels, renaming, aliases, hiding, and merging labels; the catalog stays in the user data directory and is applied to the next entity index and search results.
 - Supports recursive directory scanning, incremental indexing, a background indexing queue, automatic playlist scanning, and index progress/phase-duration reporting.
 - The CLI can also scan, index, inspect status, and search, making it suitable for maintaining a personal video library in batches.
