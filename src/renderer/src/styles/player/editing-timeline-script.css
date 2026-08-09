@@ -90,6 +90,10 @@
   border-color: var(--accent);
   box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.2);
 }
+.editing-script-row.is-segment-selected {
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.42);
+}
 .editing-script-row.is-deleted {
   background: rgba(var(--overlay-rgb), 0.035);
   border-color: var(--border-soft);
