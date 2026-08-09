@@ -66,7 +66,7 @@
       closeWindow: 'Close window'
     },
     taskCenter: {
-      title: 'Task center', collapse: 'Collapse task center', expand: 'Expand task center', activeCount: (count: number) => `${count} active`, clearCompleted: 'Clear finished', statuses: { queued: 'Queued', running: 'Running', paused: 'Paused', completed: 'Completed', failed: 'Failed', cancelled: 'Cancelled' }
+      title: 'Task center', searchPlaceholder: 'Search task name, message, or current file', filterLabel: 'Filter status', filterAll: 'All statuses', resultCount: (visible: number, total: number) => `${visible} / ${total} shown`, noResults: 'No matching tasks', previousPage: 'Previous page', nextPage: 'Next page', page: (current: number, total: number) => `Page ${current} / ${total}`, collapse: 'Collapse task center', expand: 'Expand task center', activeCount: (count: number) => `${count} active`, clearCompleted: 'Clear finished', statuses: { queued: 'Queued', running: 'Running', paused: 'Paused', completed: 'Completed', failed: 'Failed', cancelled: 'Cancelled' }
     },
     aboutDialog: {
       kicker: 'Application info',
