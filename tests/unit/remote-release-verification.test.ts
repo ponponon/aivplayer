@@ -45,7 +45,7 @@ async function loadVerifier() {
   return import('../../scripts/verify-remote-release.mjs') as Promise<{ verifyRemoteRelease: (options: Record<string, unknown>) => Promise<{ artifacts: Array<{ ok: boolean }> }> }>
 }
 
-function createMockRemote(files: Map<string, Buffer>, mutateName?: string) {
+function createMockRemote(files: Map<string, Buffer>, mutateName?: string, assetQuery = '') {
   const requests: Array<{ method: string; url: string }> = []
   const fetchImpl = async (input: string | URL, init?: RequestInit): Promise<Response> => {
     const url = String(input)
@@ -53,7 +53,7 @@ function createMockRemote(files: Map<string, Buffer>, mutateName?: string) {
     requests.push({ method, url })
     const parsedUrl = new URL(url)
     const baseUrl = 'https://remote.test'
-    const assetUrl = (platform: string, name: string) => `${baseUrl}/${platform}/assets/${encodeURIComponent(name)}`
+    const assetUrl = (platform: string, name: string) => `${baseUrl}/${platform}/assets/${encodeURIComponent(name)}${assetQuery}`
     const names = [...files.keys()]
 
     if (url === `${baseUrl}/github/repos/ponponon/aivplayer/releases/tags/v0.4.0`) {
@@ -139,5 +139,42 @@ describe('remote release verification', () => {
     })).rejects.toThrow('Remote github release verification failed')
     const report = JSON.parse(await readFile(reportPath, 'utf8')) as { artifacts: Array<{ name: string; ok: boolean }> }
     expect(report.artifacts.find((artifact) => artifact.name === 'AIVPlayer-0.4.0.dmg')?.ok).toBe(false)
+  })
+
+  it('rejects every unexpected remote attachment, including non-publishable files', async () => {
+    const fixture = await createFixture()
+    fixture.files.set('builder-debug.yml', Buffer.from('debug output'))
+    const remote = createMockRemote(fixture.files)
+    const { verifyRemoteRelease } = await loadVerifier()
+
+    await expect(verifyRemoteRelease({
+      platform: 'github',
+      owner: 'ponponon',
+      repo: 'aivplayer',
+      tag: 'v0.4.0',
+      artifactsDir: fixture.artifactsDirectory,
+      githubApiBase: 'https://remote.test/github',
+      fetchImpl: remote.fetchImpl
+    })).rejects.toThrow('unexpected: builder-debug.yml')
+  })
+
+  it('redacts query credentials from successful remote reports', async () => {
+    const fixture = await createFixture()
+    const remote = createMockRemote(fixture.files, undefined, '?token=secret-value#download')
+    const { verifyRemoteRelease } = await loadVerifier()
+    const reportPath = join(fixture.artifactsDirectory, 'redacted-report.json')
+
+    const report = await verifyRemoteRelease({
+      platform: 'github',
+      owner: 'ponponon',
+      repo: 'aivplayer',
+      tag: 'v0.4.0',
+      artifactsDir: fixture.artifactsDirectory,
+      reportPath,
+      githubApiBase: 'https://remote.test/github',
+      fetchImpl: remote.fetchImpl
+    })
+    expect(JSON.stringify(report)).not.toContain('secret-value')
+    expect((JSON.parse(await readFile(reportPath, 'utf8')) as { artifacts: Array<{ url?: string }> }).artifacts.every((artifact) => !artifact.url?.includes('?') && !artifact.url?.includes('#'))).toBe(true)
   })
 })
