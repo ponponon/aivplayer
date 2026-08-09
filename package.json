@@ -19,6 +19,7 @@
     "release:build-whisper-macos": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/build-whisper-macos.ts",
     "release:prepare-runtime": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/prepare-asr-runtime.ts",
     "release:check-runtime": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/check-bundled-asr-runtime.ts",
+    "release:check-macos-ffmpeg": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/check-macos-ffmpeg-runtime.ts",
     "release:check-architecture": "node scripts/check-binary-architecture.mjs",
     "release:prepare-vision-model": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/prepare-vision-model.ts",
     "release:write-runtime-metadata": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/write-runtime-metadata.ts",

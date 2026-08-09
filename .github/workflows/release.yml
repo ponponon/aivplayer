@@ -66,6 +66,9 @@ jobs:
           npm run release:build-whisper-macos -- --tag "v${WHISPER_CPP_VERSION}"
           npm run release:check-runtime
 
+      - name: Verify macOS FFmpeg Mach-O runtime
+        run: npm run release:check-macos-ffmpeg -- --resource-dir "$GITHUB_WORKSPACE/resources/ffmpeg" --max-minos 12.0
+
       - name: Write runtime metadata
         run: npm run release:write-runtime-metadata -- --platform darwin --resource-dir "$GITHUB_WORKSPACE/resources" --whisper-version "$WHISPER_CPP_VERSION" --libheif-version "$LIBHEIF_VERSION" --libheif-encoder kvazaar
 

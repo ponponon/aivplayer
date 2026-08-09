@@ -14,6 +14,7 @@ const platformRelease = readFileSync(join(projectRoot, 'scripts/check-platform-r
 const packageFormats = readFileSync(join(projectRoot, 'scripts/check-release-package-formats.mjs'), 'utf8')
 const platformEvidence = readFileSync(join(projectRoot, 'scripts/check-platform-evidence.mjs'), 'utf8')
 const releaseDryRun = readFileSync(join(projectRoot, 'scripts/release-dry-run.mjs'), 'utf8')
+const macosFfmpegRuntime = readFileSync(join(projectRoot, 'scripts/check-macos-ffmpeg-runtime.ts'), 'utf8')
 
 describe('release workflow source constraints', () => {
   it('keeps platform builds separate from release publishing', () => {
@@ -67,6 +68,16 @@ describe('release workflow source constraints', () => {
     expect(releaseWorkflow).toContain('Start-Sleep -Seconds ([int][math]::Pow(2, $attempt))')
     expect(releaseWorkflow.match(/release:check-architecture/g)).toHaveLength(8)
     expect(packageJson).toContain('release:check-architecture')
+  })
+
+  it('gates macOS FFmpeg Mach-O deployment targets before packaging', () => {
+    expect(releaseWorkflow).toContain('release:check-macos-ffmpeg')
+    expect(releaseWorkflow).toContain('--resource-dir "$GITHUB_WORKSPACE/resources/ffmpeg" --max-minos 12.0')
+    expect(packageJson).toContain('release:check-macos-ffmpeg')
+    expect(macosFfmpegRuntime).toContain("commandRunner('file'")
+    expect(macosFfmpegRuntime).toContain("commandRunner('otool', ['-l'")
+    expect(macosFfmpegRuntime).toContain("commandRunner(binaryPath, ['-version']")
+    expect(macosFfmpegRuntime).toContain('maximum allowed is ${maxMinos}')
   })
 
   it('checks the license manifest before every platform package build', () => {
