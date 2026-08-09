@@ -662,6 +662,11 @@ export class VisionLibrary {
     await db.createTable(EVIDENCE_TABLE_NAME, [row], { schema: VISION_EVIDENCE_SCHEMA })
   }
 
+  /** Replaces only speaker evidence for one source while preserving other evidence types. */
+  async replaceSpeakerEvidence(videoPath: string, evidence: readonly VisionEvidence[]): Promise<void> {
+    await this.replaceEvidenceTypeRows(videoPath, 'speaker', evidence.map((item) => this.toEvidenceRow(item)))
+  }
+
   private async getAllFramePointers(): Promise<VisionFramePointer[]> {
     const table = await this.getTable()
     if (!table) return []

@@ -127,6 +127,8 @@ describe('vision library setup', () => {
     expect(source).toContain('preservedRows')
     expect(source).toContain("row.evidence_type !== 'subtitle' && row.evidence_type !== 'visual'")
     expect(source).toContain('async upsertEvidence(evidence: VisionEvidence)')
+    expect(source).toContain('async replaceSpeakerEvidence(videoPath: string, evidence: readonly VisionEvidence[])')
+    expect(source).toContain("this.replaceEvidenceTypeRows(videoPath, 'speaker'")
     expect(source).toContain('async listSources(limit?: number, offset?: number)')
     expect(source).toContain('clampSourceOffset')
     expect(source).toContain('.slice(sourceOffset, sourceOffset + sourceLimit)')
