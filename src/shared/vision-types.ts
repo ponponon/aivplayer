@@ -167,7 +167,7 @@ export type VisionSearchRequest = {
 export type VisionMatchSource = 'visual' | 'subtitle' | 'filename' | 'both'
 
 /** A searchable fact anchored to a source-media time range. */
-export type VisionEvidenceType = 'subtitle' | 'visual' | 'scene' | 'ocr' | 'entity'
+export type VisionEvidenceType = 'subtitle' | 'visual' | 'scene' | 'ocr' | 'entity' | 'speaker'
 
 export type VisionEvidence = {
   id: string
