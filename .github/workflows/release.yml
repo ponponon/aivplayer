@@ -236,8 +236,14 @@ jobs:
       - name: Install HEIF build dependencies
         shell: pwsh
         run: |
-          choco install ffmpeg -y --no-progress
           vcpkg install libde265:arm64-windows-static x265:arm64-windows-static libjpeg-turbo:arm64-windows-static tiff:arm64-windows-static
+          $ffmpegUrl = 'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n8.1-latest-winarm64-gpl-8.1.zip'
+          $ffmpegSha256 = 'c0f4b39a61b51c27b28792ce239fe0d97a02a6809514d687efd23d4f2ff05f3f'
+          $ffmpegArchive = Join-Path $env:RUNNER_TEMP 'ffmpeg-winarm64.zip'
+          $ffmpegRoot = Join-Path $env:RUNNER_TEMP 'ffmpeg-winarm64'
+          Invoke-WebRequest -Uri $ffmpegUrl -OutFile $ffmpegArchive
+          if ((Get-FileHash -Path $ffmpegArchive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $ffmpegSha256) { throw 'The downloaded Windows ARM64 FFmpeg checksum does not match.' }
+          Expand-Archive -Path $ffmpegArchive -DestinationPath $ffmpegRoot -Force
 
       - name: Build static HEIF runtime
         env:
@@ -259,12 +265,15 @@ jobs:
         run: |
           $source = Join-Path $env:RUNNER_TEMP "whisper.cpp"
           $build = Join-Path $env:RUNNER_TEMP "whisper-build"
+          $toolchain = Join-Path $source "cmake/arm64-windows-llvm.cmake"
           git clone --depth 1 --branch "v$env:WHISPER_CPP_VERSION" https://github.com/ggml-org/whisper.cpp.git $source
-          cmake -S $source -B $build -A ARM64 -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_EXAMPLES=ON -DCMAKE_BUILD_TYPE=Release
+          clang --version
+          ninja --version
+          cmake -S $source -B $build -G Ninja -DCMAKE_TOOLCHAIN_FILE=$toolchain -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_EXAMPLES=ON -DCMAKE_BUILD_TYPE=Release
           cmake --build $build --config Release --parallel
           $whisperBinary = Get-ChildItem -Path $build -Filter "whisper-cli.exe" -Recurse | Select-Object -First 1
           if ($null -eq $whisperBinary) { throw "whisper-cli.exe was not built." }
-          $ffmpegRoot = Join-Path $env:ChocolateyInstall 'lib\ffmpeg'
+          $ffmpegRoot = Join-Path $env:RUNNER_TEMP 'ffmpeg-winarm64'
           $ffmpegBinary = Get-ChildItem -Path $ffmpegRoot -Filter 'ffmpeg.exe' -File -Recurse | Select-Object -First 1
           if ($null -eq $ffmpegBinary) { throw "The actual ffmpeg.exe was not found under $ffmpegRoot" }
           $ffprobeBinary = Join-Path $ffmpegBinary.DirectoryName 'ffprobe.exe'

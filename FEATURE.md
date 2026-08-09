@@ -596,6 +596,7 @@
 - Release workflow 的 `workflow_dispatch` 新增 `verify_only` 模式：仍执行真实 macOS / Windows / Linux 构建、artifact 合并、evidence、版本和 manifest 门禁，但跳过 GitHub Release 创建、GitHub 远端回读和 Gitee 同步，适合真实 CI 发布前演练。
 - publish job 会把合并目录的 `merged-platform-evidence.json` 作为独立 workflow artifact 留存，包含实际验证过的文件名、大小和 SHA-256；它只用于审计，不进入 GitHub / Gitee Release。
 - 发布配置为 Windows 与 Linux 安装包启用架构文件名；后续正式版本将分别构建 x64 / arm64 原生 Electron、whisper.cpp、FFmpeg、libheif 和 LanceDB 运行时，Windows 合并双架构 `latest.yml`，Linux 使用 electron-updater 约定的 `latest-linux-arm64.yml`，并在发布前检查安装包与内置二进制的架构。
+- Windows ARM64 使用 LLVM 工具链构建 whisper.cpp，并下载带 SHA-256 校验的原生 ARM64 FFmpeg，避免把 x64 媒体运行时混入 ARM64 安装包。
 - 新增 `npm run release:check-push` 本地只读推送前审计：检查工作区干净、相对 `origin/main` 的 diff、commit message 格式、敏感模式和内部计划文件边界；命令不会执行 push 或 workflow 操作。
 
 ## 编辑器画布交互层级
