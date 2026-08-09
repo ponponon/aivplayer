@@ -26,6 +26,8 @@ export function VisionSpeakerDiarization({ copy, mediaPath, onSeek }: VisionSpea
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isRunning, setIsRunning] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [evidenceStatus, setEvidenceStatus] = useState<string | null>(null)
+  const [evidenceSaved, setEvidenceSaved] = useState<boolean | null>(null)
 
   const refreshStatus = (): void => {
     setIsRefreshing(true)
@@ -41,12 +43,16 @@ export function VisionSpeakerDiarization({ copy, mediaPath, onSeek }: VisionSpea
   useEffect(() => {
     setResult(null)
     setError(null)
+    setEvidenceStatus(null)
+    setEvidenceSaved(null)
   }, [mediaPath])
 
   const run = (): void => {
     if (!mediaPath || !status?.available || isRunning) return
     setError(null)
     setResult(null)
+    setEvidenceStatus(null)
+    setEvidenceSaved(null)
     setIsRunning(true)
     void window.aiv.runSpeakerDiarization({ mediaPath }).then((response) => {
       if (!response.success || !response.result) {
@@ -55,6 +61,12 @@ export function VisionSpeakerDiarization({ copy, mediaPath, onSeek }: VisionSpea
       }
       setStatus(response.status)
       setResult(response.result)
+      setEvidenceSaved(response.evidencePersisted)
+      setEvidenceStatus(response.evidencePersisted
+        ? copy.speakerEvidenceSaved(response.evidenceCount)
+        : response.evidenceMessage
+          ? copy.speakerEvidenceSaveFailed(response.evidenceMessage)
+          : null)
     }).catch((reason: unknown) => {
       setError(reason instanceof Error ? reason.message : String(reason))
     }).finally(() => setIsRunning(false))
@@ -77,6 +89,7 @@ export function VisionSpeakerDiarization({ copy, mediaPath, onSeek }: VisionSpea
     {result ? <>
       <div className="vision-speaker-summary" role="status">{copy.speakerCompleted(result.segments.length, getSpeakerCount(result), result.sampleRate)}</div>
       {result.segments.length > 0 ? <div className="vision-speaker-results">{result.segments.map((segment, index) => <button className="vision-speaker-segment" type="button" key={`${segment.startSeconds}-${segment.endSeconds}-${index}`} onClick={() => onSeek(segment.startSeconds)} title={copy.speakerSegment(segment.speakerId, formatTime(segment.startSeconds), formatTime(segment.endSeconds))}><span>{copy.speakerSegment(segment.speakerId, formatTime(segment.startSeconds), formatTime(segment.endSeconds))}</span><small>{formatTime(segment.startSeconds)}–{formatTime(segment.endSeconds)}</small></button>)}</div> : <p className="vision-speaker-empty">{copy.speakerNoSegments}</p>}
+      {evidenceStatus ? <small className={`vision-speaker-evidence-status${evidenceSaved ? ' is-saved' : ''}`}>{evidenceStatus}</small> : null}
     </> : null}
     {error ? <small className="vision-error">{error}</small> : null}
   </section>
