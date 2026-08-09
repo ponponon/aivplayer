@@ -2,7 +2,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { applyVisionEntityCatalogToResults, createDefaultVisionEntityCatalog, getVisionEntityCatalogSearchQueries, normalizeVisionEntityCatalog, updateVisionEntityCatalog, updateVisionEntityCatalogBatch } from '../../src/core/ai/vision-entity-catalog'
+import { applyVisionEntityCatalogToResults, createDefaultVisionEntityCatalog, createVisionEntityCatalogEntry, getVisionEntityCatalogSearchQueries, getVisionEntityLabelsFromCatalog, normalizeVisionEntityCatalog, updateVisionEntityCatalog, updateVisionEntityCatalogBatch } from '../../src/core/ai/vision-entity-catalog'
 import { VisionEntityCatalogStore } from '../../src/core/ai/vision-entity-catalog-store'
 import type { VisionSearchResult } from '../../src/shared/vision-types'
 
@@ -31,6 +31,18 @@ describe('vision entity catalog', () => {
     expect(renamed.entries.find((entry) => entry.labelId === 'person')).toMatchObject({ labelId: 'person', defaultName: '人物 / person', name: '演员', aliases: ['人像'] })
     expect(getVisionEntityCatalogSearchQueries('人像', renamed)).toEqual(['人物 / person'])
     expect(normalizeVisionEntityCatalog(renamed, 3).entries.find((entry) => entry.labelId === 'person')?.name).toBe('演员')
+  })
+
+  it('creates custom labels with bounded queries and exposes model-ready label definitions', () => {
+    const initial = createDefaultVisionEntityCatalog(1)
+    const custom = createVisionEntityCatalogEntry(initial, { name: '海边', query: 'a beach scene', aliases: ['海滩'] }, 2)
+    const entry = custom.entries.find((candidate) => candidate.kind === 'custom')
+
+    expect(entry).toMatchObject({ kind: 'custom', defaultName: '海边', name: '海边', query: 'a beach scene', aliases: ['海滩'], hidden: false })
+    expect(entry?.labelId).toMatch(/^custom-[a-f0-9]{12}$/)
+    expect(getVisionEntityLabelsFromCatalog(custom).find((label) => label.id === entry?.labelId)).toMatchObject({ query: 'a beach scene', displayName: '海边' })
+    expect(createVisionEntityCatalogEntry(custom, { name: '海边', query: 'another query' }, 3)).toEqual(custom)
+    expect(createVisionEntityCatalogEntry(custom, { name: '没有查询', query: ' ' }, 3)).toEqual(custom)
   })
 
   it('filters hidden labels and renders merged labels with the target name', () => {
@@ -86,12 +98,14 @@ describe('vision entity catalog', () => {
       const store = new VisionEntityCatalogStore(directory)
       store.update({ labelId: 'vehicle', name: '汽车', aliases: ['轿车'] })
       store.updateBatch({ labelIds: ['person', 'vehicle'], action: 'hide' })
+      store.create({ name: '海边', query: 'a beach scene', aliases: ['海滩'] })
       await store.flush()
 
       const restored = new VisionEntityCatalogStore(directory).get()
       expect(restored.updatedAt).toBeGreaterThan(0)
       expect(restored.entries.find((entry) => entry.labelId === 'vehicle')).toMatchObject({ name: '汽车', aliases: ['轿车'] })
       expect(restored.entries.find((entry) => entry.labelId === 'person')?.hidden).toBe(true)
+      expect(restored.entries.find((entry) => entry.kind === 'custom')).toMatchObject({ name: '海边', query: 'a beach scene' })
     } finally {
       await rm(directory, { recursive: true, force: true })
     }

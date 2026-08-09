@@ -3,7 +3,8 @@ import { mkdir, rename, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import type { VisionSearchResult } from '../../shared/vision-types'
 import type { VisionEntityCatalog, VisionEntityCatalogBatchPatch, VisionEntityCatalogPatch } from '../../shared/vision-entity-types'
-import { applyVisionEntityCatalogToResults, getVisionEntityCatalogSearchQueries, normalizeVisionEntityCatalog, updateVisionEntityCatalog, updateVisionEntityCatalogBatch } from './vision-entity-catalog'
+import { applyVisionEntityCatalogToResults, createVisionEntityCatalogEntry, getVisionEntityCatalogSearchQueries, getVisionEntityLabelsFromCatalog, normalizeVisionEntityCatalog, updateVisionEntityCatalog, updateVisionEntityCatalogBatch } from './vision-entity-catalog'
+import type { VisionEntityCatalogCreateInput } from '../../shared/vision-entity-types'
 
 export function getVisionEntityCatalogPath(userDataPath: string): string {
   return join(userDataPath, 'library', 'vision-entity-catalog.json')
@@ -34,6 +35,12 @@ export class VisionEntityCatalogStore {
     return this.get()
   }
 
+  create(input: VisionEntityCatalogCreateInput): VisionEntityCatalog {
+    this.catalog = createVisionEntityCatalogEntry(this.catalog, input)
+    this.persist()
+    return this.get()
+  }
+
   updateBatch(patch: VisionEntityCatalogBatchPatch): VisionEntityCatalog {
     this.catalog = updateVisionEntityCatalogBatch(this.catalog, patch)
     this.persist()
@@ -56,6 +63,10 @@ export class VisionEntityCatalogStore {
 
   getSearchQueries(query: string): string[] {
     return getVisionEntityCatalogSearchQueries(query, this.catalog)
+  }
+
+  getLabels(): Array<{ id: string; query: string; displayName: string }> {
+    return getVisionEntityLabelsFromCatalog(this.catalog)
   }
 
   async flush(): Promise<void> {

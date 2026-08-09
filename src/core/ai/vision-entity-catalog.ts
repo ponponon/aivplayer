@@ -1,10 +1,13 @@
+import { createHash } from 'node:crypto'
 import type { VisionSearchResult } from '../../shared/vision-types'
-import type { VisionEntityCatalog, VisionEntityCatalogBatchPatch, VisionEntityCatalogEntry, VisionEntityCatalogPatch } from '../../shared/vision-entity-types'
+import { VISION_ENTITY_CATALOG_SCHEMA_VERSION, type VisionEntityCatalog, type VisionEntityCatalogBatchPatch, type VisionEntityCatalogCreateInput, type VisionEntityCatalogEntry, type VisionEntityCatalogPatch } from '../../shared/vision-entity-types'
 import { DEFAULT_VISION_ENTITY_LABELS, getVisionEntityLabelIdForDisplayName } from './vision-entity-evidence'
 
 const MAX_NAME_LENGTH = 80
+const MAX_QUERY_LENGTH = 160
 const MAX_ALIAS_LENGTH = 60
 const MAX_ALIASES = 12
+const MAX_ENTRIES = 100
 
 function normalized(value: string): string {
   return value.trim().toLocaleLowerCase().replace(/[\p{P}\p{S}]+/gu, ' ').replace(/\s+/g, ' ')
@@ -41,15 +44,15 @@ function cloneCatalog(catalog: VisionEntityCatalog): VisionEntityCatalog {
   return { ...catalog, entries: catalog.entries.map(cloneEntry) }
 }
 
-function defaultEntry(labelId: string, defaultName: string): VisionEntityCatalogEntry {
-  return { labelId, defaultName, name: defaultName, aliases: [], hidden: false, mergedInto: null }
+function defaultEntry(labelId: string, defaultName: string, query: string, kind: VisionEntityCatalogEntry['kind'] = 'builtin'): VisionEntityCatalogEntry {
+  return { labelId, kind, defaultName, name: defaultName, query, aliases: [], hidden: false, mergedInto: null }
 }
 
 export function createDefaultVisionEntityCatalog(updatedAt = Date.now()): VisionEntityCatalog {
   return {
-    schemaVersion: 1,
+    schemaVersion: VISION_ENTITY_CATALOG_SCHEMA_VERSION,
     updatedAt,
-    entries: DEFAULT_VISION_ENTITY_LABELS.map((label) => defaultEntry(label.id, label.displayName))
+    entries: DEFAULT_VISION_ENTITY_LABELS.map((label) => defaultEntry(label.id, label.displayName, label.query))
   }
 }
 
@@ -72,21 +75,25 @@ export function normalizeVisionEntityCatalog(value: unknown, updatedAt = Date.no
     const raw = item as Partial<VisionEntityCatalogEntry>
     if (typeof raw.labelId !== 'string' || !raw.labelId.trim()) continue
     const labelId = raw.labelId.trim().slice(0, 80)
-    const fallback = defaults.get(labelId) ?? defaultEntry(labelId, safeString(raw.defaultName, labelId, MAX_NAME_LENGTH))
+    const fallback = defaults.get(labelId) ?? defaultEntry(labelId, safeString(raw.defaultName, labelId, MAX_NAME_LENGTH), safeString(raw.query, raw.defaultName ?? labelId, MAX_QUERY_LENGTH), 'custom')
     const name = safeString(raw.name, fallback.defaultName, MAX_NAME_LENGTH)
+    const kind = raw.kind === 'custom' || fallback.kind === 'custom' ? 'custom' : 'builtin'
+    const query = safeString(raw.query, fallback.query || fallback.defaultName, MAX_QUERY_LENGTH)
     entries.set(labelId, {
       labelId,
+      kind,
       defaultName: safeString(raw.defaultName, fallback.defaultName, MAX_NAME_LENGTH),
       name,
+      query,
       aliases: safeAliases(raw.aliases, name),
       hidden: raw.hidden === true,
       mergedInto: typeof raw.mergedInto === 'string' && raw.mergedInto.trim() ? raw.mergedInto.trim().slice(0, 80) : null
     })
   }
-  const normalizedEntries = [...entries.values()].slice(0, 100)
+  const normalizedEntries = [...entries.values()].slice(0, MAX_ENTRIES)
   const validIds = new Set(normalizedEntries.map((entry) => entry.labelId))
   const catalog: VisionEntityCatalog = {
-    schemaVersion: 1,
+    schemaVersion: VISION_ENTITY_CATALOG_SCHEMA_VERSION,
     updatedAt: Number.isFinite(persistedUpdatedAt) ? persistedUpdatedAt : Date.now(),
     entries: normalizedEntries.map((entry) => ({
       ...entry,
@@ -108,6 +115,42 @@ export function normalizeVisionEntityCatalog(value: unknown, updatedAt = Date.no
     }
   }
   return catalog
+}
+
+function hasNameConflict(catalog: VisionEntityCatalog, name: string): boolean {
+  const key = normalized(name)
+  return catalog.entries.some((entry) => [entry.name, entry.defaultName, ...entry.aliases].some((candidate) => normalized(candidate) === key))
+}
+
+function createCustomLabelId(catalog: VisionEntityCatalog, name: string, query: string): string {
+  const base = `custom-${createHash('sha1').update(`${normalized(name)}\0${normalized(query)}`).digest('hex').slice(0, 12)}`
+  let id = base
+  let suffix = 2
+  while (catalog.entries.some((entry) => entry.labelId === id)) id = `${base}-${suffix++}`
+  return id
+}
+
+export function createVisionEntityCatalogEntry(catalog: VisionEntityCatalog, input: VisionEntityCatalogCreateInput, updatedAt = Date.now()): VisionEntityCatalog {
+  const current = cloneCatalog(catalog)
+  if (!input || current.entries.length >= MAX_ENTRIES) return current
+  const name = safeString(input.name, '', MAX_NAME_LENGTH)
+  const query = safeString(input.query, '', MAX_QUERY_LENGTH)
+  if (!name || !query || hasNameConflict(current, name)) return current
+  current.entries.push({
+    labelId: createCustomLabelId(current, name, query),
+    kind: 'custom',
+    defaultName: name,
+    name,
+    query,
+    aliases: safeAliases(input.aliases, name),
+    hidden: false,
+    mergedInto: null
+  })
+  return normalizeVisionEntityCatalog({ entries: current.entries }, updatedAt)
+}
+
+export function getVisionEntityLabelsFromCatalog(catalog: VisionEntityCatalog): Array<{ id: string; query: string; displayName: string }> {
+  return catalog.entries.map((entry) => ({ id: entry.labelId, query: entry.query, displayName: entry.defaultName }))
 }
 
 export function resolveVisionEntityLabelId(catalog: VisionEntityCatalog, labelId: string): string | null {
