@@ -123,4 +123,24 @@ describe('drama store', () => {
     expect(store.getGenerationTask(project.id, secondImage.id)).toMatchObject({ status: 'queued', progress: 0 })
     expect(store.getGenerationTask(project.id, video.id)).toMatchObject({ status: 'queued', progress: 0 })
   })
+
+  it('persists reusable DAG templates and rejects invalid graph edges', () => {
+    const template = store.saveGraphTemplate(undefined, {
+      name: '角色一致性出图',
+      description: '从资产提示词生成角色图并回流时间线。',
+      nodes: [
+        { id: 'asset', type: 'asset-input', title: '角色资产', config: { assetType: 'character' } },
+        { id: 'image', type: 'generate-image', title: '生成角色图', config: { aspect: '9:16' } },
+        { id: 'output', type: 'timeline-output', title: '回流时间线', config: {} }
+      ],
+      edges: [{ from: 'asset', to: 'image' }, { from: 'image', to: 'output' }]
+    })
+
+    expect(store.getGraphTemplate(template.id)).toMatchObject({ name: '角色一致性出图', nodes: expect.arrayContaining([expect.objectContaining({ id: 'asset' })]), edges: expect.arrayContaining([{ from: 'asset', to: 'image' }]) })
+    expect(store.listGraphTemplates()).toHaveLength(1)
+    expect(() => store.saveGraphTemplate(undefined, { name: '循环', nodes: [{ id: 'a', type: 'prompt', title: 'A', config: {} }, { id: 'b', type: 'prompt', title: 'B', config: {} }], edges: [{ from: 'a', to: 'b' }, { from: 'b', to: 'a' }] })).toThrow('节点图不能包含循环')
+
+    store.deleteGraphTemplate(template.id)
+    expect(store.listGraphTemplates()).toHaveLength(0)
+  })
 })

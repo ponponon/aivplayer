@@ -13,6 +13,8 @@ import type {
   DramaGenerationTaskInput,
   DramaGenerationTaskPatch,
   DramaGenerationTaskStatus,
+  DramaGraphTemplate,
+  DramaGraphTemplateInput,
   DramaImportChapterInput,
   DramaPlan,
   DramaProject,
@@ -173,6 +175,15 @@ export class DramaStore {
         created_at INTEGER NOT NULL,
         started_at INTEGER,
         completed_at INTEGER
+      );
+      CREATE TABLE IF NOT EXISTS drama_graph_templates (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL UNIQUE,
+        description TEXT NOT NULL DEFAULT '',
+        nodes_json TEXT NOT NULL DEFAULT '[]',
+        edges_json TEXT NOT NULL DEFAULT '[]',
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
       );
       CREATE INDEX IF NOT EXISTS drama_chapters_project_index ON drama_chapters(project_id, chapter_index);
       CREATE INDEX IF NOT EXISTS drama_assets_project_type ON drama_assets(project_id, asset_type);
@@ -587,6 +598,40 @@ export class DramaStore {
     return changes
   }
 
+  listGraphTemplates(): DramaGraphTemplate[] {
+    const rows = this.database.prepare('SELECT * FROM drama_graph_templates ORDER BY name ASC').all() as SqliteRow[]
+    return rows.map((row) => this.toGraphTemplate(row)).filter((template): template is DramaGraphTemplate => template !== null)
+  }
+
+  getGraphTemplate(templateId: string): DramaGraphTemplate | null {
+    const row = this.database.prepare('SELECT * FROM drama_graph_templates WHERE id = ?').get(templateId) as SqliteRow | undefined
+    return row ? this.toGraphTemplate(row) : null
+  }
+
+  saveGraphTemplate(templateId: string | undefined, input: DramaGraphTemplateInput): DramaGraphTemplate {
+    const normalized = normalizeGraphTemplateInput(input)
+    const existing = templateId ? this.getGraphTemplate(templateId) : null
+    if (templateId && !existing) throw new Error(`节点图模板不存在：${templateId}`)
+    const now = Date.now()
+    const id = existing?.id ?? randomUUID()
+    this.database.prepare(`
+      INSERT INTO drama_graph_templates (id, name, description, nodes_json, edges_json, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        name = excluded.name,
+        description = excluded.description,
+        nodes_json = excluded.nodes_json,
+        edges_json = excluded.edges_json,
+        updated_at = excluded.updated_at
+    `).run(id, normalized.name, normalized.description, JSON.stringify(normalized.nodes), JSON.stringify(normalized.edges), existing?.createdAt ?? now, now)
+    return this.getGraphTemplate(id) as DramaGraphTemplate
+  }
+
+  deleteGraphTemplate(templateId: string): void {
+    const result = this.database.prepare('DELETE FROM drama_graph_templates WHERE id = ?').run(templateId)
+    if (Number(result.changes) === 0) throw new Error(`节点图模板不存在：${templateId}`)
+  }
+
   private requireProject(projectId: string): DramaProject {
     const project = this.getProject(projectId)
     if (!project) throw new Error(`短剧项目不存在：${projectId}`)
@@ -626,6 +671,21 @@ export class DramaStore {
       createdAt: numberValue(row, 'created_at'),
       startedAt: typeof row.started_at === 'number' ? row.started_at : undefined,
       completedAt: typeof row.completed_at === 'number' ? row.completed_at : undefined
+    }
+  }
+
+  private toGraphTemplate(row: SqliteRow): DramaGraphTemplate | null {
+    const nodes = parseGraphNodes(row.nodes_json)
+    const edges = parseGraphEdges(row.edges_json)
+    if (!nodes || !edges) return null
+    return {
+      id: stringValue(row, 'id'),
+      name: stringValue(row, 'name'),
+      description: stringValue(row, 'description'),
+      nodes,
+      edges,
+      createdAt: numberValue(row, 'created_at'),
+      updatedAt: numberValue(row, 'updated_at')
     }
   }
 
@@ -747,6 +807,81 @@ function normalizeGenerationTaskInput(input: DramaGenerationTaskInput): Required
 function normalizeProgress(value: number): number {
   if (!Number.isFinite(value)) throw new Error('生成任务进度无效')
   return Math.min(1, Math.max(0, value))
+}
+
+function isGraphNodeType(value: unknown): value is DramaGraphTemplate['nodes'][number]['type'] {
+  return value === 'asset-input' || value === 'prompt' || value === 'generate-image' || value === 'generate-video' || value === 'generate-audio' || value === 'timeline-output'
+}
+
+function normalizeGraphTemplateInput(input: DramaGraphTemplateInput): Omit<DramaGraphTemplate, 'id' | 'createdAt' | 'updatedAt'> {
+  if (!input || typeof input !== 'object') throw new Error('节点图模板参数无效')
+  const name = input.name.trim()
+  if (!name) throw new Error('节点图模板名称不能为空')
+  const nodes = (input.nodes ?? []).map((node) => {
+    if (!node || typeof node !== 'object' || typeof node.id !== 'string' || !node.id.trim() || !isGraphNodeType(node.type) || typeof node.title !== 'string') throw new Error('节点图包含无效节点')
+    const config: Record<string, string | number | boolean> = {}
+    for (const [key, value] of Object.entries(node.config ?? {})) {
+      if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') config[key] = value
+    }
+    return { id: node.id.trim(), type: node.type, title: node.title.trim() || node.id.trim(), config }
+  })
+  if (nodes.length > 64) throw new Error('节点图节点数不能超过 64 个')
+  const nodeIds = new Set<string>()
+  for (const node of nodes) {
+    if (nodeIds.has(node.id)) throw new Error(`节点图存在重复节点：${node.id}`)
+    nodeIds.add(node.id)
+  }
+  const edges = (input.edges ?? []).map((edge) => {
+    if (!edge || typeof edge !== 'object' || typeof edge.from !== 'string' || typeof edge.to !== 'string') throw new Error('节点图包含无效连线')
+    const from = edge.from.trim()
+    const to = edge.to.trim()
+    if (!from || !to || from === to || !nodeIds.has(from) || !nodeIds.has(to)) throw new Error('节点图连线必须连接现有的两个不同节点')
+    return { from, to }
+  })
+  if (edges.length > 128) throw new Error('节点图连线数不能超过 128 条')
+  const adjacency = new Map(nodes.map((node) => [node.id, [] as string[]]))
+  const indegree = new Map(nodes.map((node) => [node.id, 0]))
+  for (const edge of edges) {
+    const targets = adjacency.get(edge.from) as string[]
+    if (targets.includes(edge.to)) throw new Error('节点图存在重复连线')
+    targets.push(edge.to)
+    indegree.set(edge.to, (indegree.get(edge.to) ?? 0) + 1)
+  }
+  const queue = nodes.filter((node) => indegree.get(node.id) === 0).map((node) => node.id)
+  let visited = 0
+  while (queue.length > 0) {
+    const nodeId = queue.shift() as string
+    visited += 1
+    for (const target of adjacency.get(nodeId) ?? []) {
+      const next = (indegree.get(target) ?? 0) - 1
+      indegree.set(target, next)
+      if (next === 0) queue.push(target)
+    }
+  }
+  if (visited !== nodes.length) throw new Error('节点图不能包含循环')
+  return { name, description: input.description?.trim() ?? '', nodes, edges }
+}
+
+function parseGraphNodes(value: unknown): DramaGraphTemplate['nodes'] | null {
+  if (typeof value !== 'string') return null
+  try {
+    const parsed = JSON.parse(value) as unknown
+    if (!Array.isArray(parsed)) return null
+    return parsed as DramaGraphTemplate['nodes']
+  } catch {
+    return null
+  }
+}
+
+function parseGraphEdges(value: unknown): DramaGraphTemplate['edges'] | null {
+  if (typeof value !== 'string') return null
+  try {
+    const parsed = JSON.parse(value) as unknown
+    if (!Array.isArray(parsed)) return null
+    return parsed as DramaGraphTemplate['edges']
+  } catch {
+    return null
+  }
 }
 
 function normalizePositiveInteger(value: number | undefined, fallback: number): number {

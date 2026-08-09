@@ -156,6 +156,38 @@ export type DramaGenerationTaskPatch = {
   resultPath?: string | null
 }
 
+export type DramaGraphNodeType = 'asset-input' | 'prompt' | 'generate-image' | 'generate-video' | 'generate-audio' | 'timeline-output'
+export type DramaGraphNodeConfig = Record<string, string | number | boolean>
+
+export type DramaGraphNode = {
+  id: string
+  type: DramaGraphNodeType
+  title: string
+  config: DramaGraphNodeConfig
+}
+
+export type DramaGraphEdge = {
+  from: string
+  to: string
+}
+
+export type DramaGraphTemplate = {
+  id: string
+  name: string
+  description: string
+  nodes: DramaGraphNode[]
+  edges: DramaGraphEdge[]
+  createdAt: number
+  updatedAt: number
+}
+
+export type DramaGraphTemplateInput = {
+  name: string
+  description?: string
+  nodes?: DramaGraphNode[]
+  edges?: DramaGraphEdge[]
+}
+
 export type DramaCreateProjectInput = {
   title: string
   intro?: string
