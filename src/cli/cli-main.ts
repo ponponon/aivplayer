@@ -15,6 +15,7 @@ import { runDrama } from './cli-drama'
 import { EditingProjectFileError, inspectEditingProject, loadEditingProjectFile, searchEditingProjectCaptions } from './cli-edit'
 import { buildDeleteScriptProposal, EditingProposalError } from '../core/editing/edit-proposal'
 import { resolveEditingMcpProjectPath, runEditingMcpServer } from './editing-mcp'
+import { getEditingAgentBridgePaths, submitEditingAgentProposal } from '../core/editing/editing-agent-bridge'
 
 const FALLBACK_CLI_VERSION = '0.1.0'
 
@@ -89,7 +90,7 @@ function printHelp(): void {
   aivcli edit inspect <project.aivproj> [--json]
   aivcli edit captions <project.aivproj> [--query text] [--limit N] [--json]
   aivcli edit propose delete-script <project.aivproj> <segment-id...> [--json]
-  aivcli mcp serve <project.aivproj>
+  aivcli mcp serve <project.aivproj> [--desktop] [--bridge-manifest path]
   aivcli asr <video...> [--language auto] [--model id] [--format both|vtt|srt] [--output-dir dir] [--force]
   aivcli subtitle convert <input.vtt> [--output output.srt]
   aivcli subtitle translate <input.vtt> --to zh|en|ja|ko [--from auto] [--output-dir dir] [--force]
@@ -268,7 +269,15 @@ async function runMcp(parsed: ParsedCliArgs): Promise<number> {
   } catch (error) {
     throw new CliError(error instanceof Error ? error.message : String(error))
   }
-  await runEditingMcpServer({ projectPath, version: getVersion() })
+  const proposalSink = hasCliOption(parsed, 'desktop')
+    ? async (request: import('../shared/editing-agent').EditingAgentProposalRequest): Promise<import('../shared/editing-agent').EditingAgentProposalDecision> => {
+      const manifestPath = getCliOption(parsed, 'bridge-manifest')
+        ? resolve(getCliOption(parsed, 'bridge-manifest') as string)
+        : getEditingAgentBridgePaths(app.getPath('userData')).manifestPath
+      return submitEditingAgentProposal(manifestPath, request)
+    }
+    : undefined
+  await runEditingMcpServer({ projectPath, version: getVersion(), proposalSink })
   return 0
 }
 

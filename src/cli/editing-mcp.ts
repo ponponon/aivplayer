@@ -1,6 +1,8 @@
 import { createInterface } from 'node:readline'
+import { randomUUID } from 'node:crypto'
 import { extname, resolve } from 'node:path'
 import { buildDeleteScriptProposal, EditingProposalError } from '../core/editing/edit-proposal.ts'
+import type { EditingAgentProposalDecision, EditingAgentProposalRequest } from '../shared/editing-agent'
 import { inspectEditingProject, loadEditingProjectFile, searchEditingProjectCaptions } from './cli-edit.ts'
 
 const MCP_PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'] as const
@@ -23,9 +25,10 @@ export type EditingMcpResponse = {
   error?: { code: number; message: string; data?: unknown }
 }
 
-type EditingMcpServerOptions = {
+export type EditingMcpServerOptions = {
   projectPath: string
   version: string
+  proposalSink?: (request: EditingAgentProposalRequest) => Promise<EditingAgentProposalDecision>
 }
 
 type EditingMcpTool = {
@@ -58,7 +61,7 @@ const TOOLS: readonly EditingMcpTool[] = [
   {
     name: 'editing_project_propose_delete_script',
     title: '生成脚本删除 Proposal',
-    description: '只读生成脚本行删除 Proposal，展示源区间、保留区间、字幕影响和预计时长。不会应用 Proposal、写工程或删除媒体。',
+    description: '生成脚本行删除 Proposal，展示源区间、保留区间、字幕影响和预计时长；默认只读，桌面桥接模式下等待用户确认，但不会直接写工程或删除媒体。',
     inputSchema: {
       type: 'object',
       properties: {
@@ -132,9 +135,9 @@ async function loadPinnedProject(projectPath: string) {
   return loadEditingProjectFile(projectPath)
 }
 
-async function callTool(name: string, params: unknown, projectPath: string): Promise<{ content: [{ type: 'text'; text: string }] }> {
+async function callTool(name: string, params: unknown, options: EditingMcpServerOptions): Promise<{ content: [{ type: 'text'; text: string }] }> {
   const args = readToolArguments(params)
-  const loaded = await loadPinnedProject(projectPath)
+  const loaded = await loadPinnedProject(options.projectPath)
 
   if (name === 'editing_project_inspect') {
     if (Object.keys(args).length > 0) throw invalidParams('editing_project_inspect 不接受参数')
@@ -154,7 +157,10 @@ async function callTool(name: string, params: unknown, projectPath: string): Pro
       if (error instanceof EditingProposalError) throw new Error(`${error.code}：${error.message}`)
       throw error
     }
-    return toolText({ ok: true, projectPath: loaded.filePath, projectId: loaded.project.id, proposal })
+    const decision = options.proposalSink
+      ? await options.proposalSink({ requestId: randomUUID(), projectPath: loaded.filePath, proposal, createdAt: Date.now() })
+      : undefined
+    return toolText({ ok: true, projectPath: loaded.filePath, projectId: loaded.project.id, proposal, ...(decision ? { decision } : {}) })
   }
 
   throw invalidParams(`未知工具：${name}`)
@@ -181,7 +187,9 @@ export async function handleEditingMcpRequest(request: unknown, options: Editing
       protocolVersion: negotiateProtocolVersion(params.protocolVersion),
       capabilities: { tools: { listChanged: false } },
       serverInfo: { name: MCP_SERVER_NAME, version: options.version },
-      instructions: '本 MCP 只读取启动时固定的 .aivproj 工程并生成 Proposal；不会应用 Proposal、写文件、删除媒体或执行 shell。'
+      instructions: options.proposalSink
+        ? '本 MCP 只读取启动时固定的 .aivproj 工程并生成 Proposal；桌面桥接模式会把 Proposal 发送给已打开的 AIVPlayer，由用户确认后应用，不会直接写文件、删除媒体或执行 shell。'
+        : '本 MCP 只读取启动时固定的 .aivproj 工程并生成 Proposal；不会应用 Proposal、写文件、删除媒体或执行 shell。'
     })
   }
 
@@ -192,7 +200,7 @@ export async function handleEditingMcpRequest(request: unknown, options: Editing
     const params = isRecord(message.params) ? message.params : {}
     if (typeof params.name !== 'string') return errorResponse(id, -32602, 'tools/call 缺少工具名称')
     try {
-      return response(id, await callTool(params.name, params.arguments, options.projectPath))
+      return response(id, await callTool(params.name, params.arguments, options))
     } catch (error) {
       return response(id, { isError: true, ...toolText({ ok: false, error: error instanceof Error ? error.message : String(error) }) })
     }

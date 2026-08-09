@@ -86,4 +86,34 @@ describe('aivplayer editing MCP stdio contract', () => {
   it('rejects non-project MCP targets before starting the server', () => {
     expect(() => resolveEditingMcpProjectPath('/tmp/project.json')).toThrow('MCP 只接受 .aivproj 工程文件')
   })
+
+  it('forwards a desktop-mode Proposal to the confirmation bridge and returns its decision', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'aivplayer-mcp-bridge-'))
+    const projectPath = join(directory, 'project.aivproj')
+    try {
+      const project = createEditingProject(source, { projectId: 'project-mcp-bridge', clipId: 'clip-main', now: 123 })
+      const persisted = {
+        ...project,
+        videoClips: [{ ...project.videoClips[0]!, sourceStartSeconds: 0, sourceEndSeconds: 20 }],
+        scriptSegments: [{ id: 'script-bridge', sourceId: source.id, sourceStartSeconds: 3, sourceEndSeconds: 5, text: '删除这一段' }]
+      }
+      await writeFile(projectPath, serializeEditingProject(persisted), 'utf8')
+      let receivedProjectPath = ''
+      const decision = { outcome: 'applied' as const, message: '已由桌面端确认' }
+      const options = {
+        projectPath,
+        version: '0.5.0',
+        proposalSink: async (request: { projectPath: string }): Promise<typeof decision> => {
+          receivedProjectPath = request.projectPath
+          return decision
+        }
+      }
+
+      const response = await handleEditingMcpRequest({ jsonrpc: '2.0', id: 9, method: 'tools/call', params: { name: 'editing_project_propose_delete_script', arguments: { segmentIds: ['script-bridge'] } } }, options)
+      expect(receivedProjectPath).toBe(projectPath)
+      expect(toolPayload(response)).toMatchObject({ ok: true, decision })
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
 })

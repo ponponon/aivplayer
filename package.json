@@ -56,6 +56,7 @@
     "smoke:clip-export-dialog": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-clip-export-dialog.ts",
     "smoke:editing-script": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-editing-script.ts",
     "smoke:editing-mcp": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --experimental-loader=./scripts/resolve-ts-loader.mjs scripts/smoke-editing-mcp.ts",
+    "smoke:editing-agent-bridge": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-editing-agent-bridge.ts",
     "smoke:editing-caption-reload": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-editing-caption-reload.ts",
     "smoke:editing-orphan-translation": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-editing-orphan-translation.ts",
     "smoke:editing-translation-export": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-editing-translation-export.ts",
