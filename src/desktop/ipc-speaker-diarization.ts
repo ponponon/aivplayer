@@ -126,8 +126,11 @@ export function registerSpeakerDiarizationIpc(): void {
     return promise
   })
   ipcMain.handle(IPC_CHANNELS.SPEAKER_DIARIZATION_CATALOG_GET, () => getSpeakerDiarizationCatalogStore().get())
-  ipcMain.handle(IPC_CHANNELS.SPEAKER_DIARIZATION_CATALOG_UPDATE, (_event, value: unknown) => {
+  ipcMain.handle(IPC_CHANNELS.SPEAKER_DIARIZATION_CATALOG_UPDATE, async (_event, value: unknown) => {
     const patch = normalizeCatalogPatch(value)
-    return patch ? getSpeakerDiarizationCatalogStore().update(patch) : getSpeakerDiarizationCatalogStore().get()
+    const store = getSpeakerDiarizationCatalogStore()
+    const nextCatalog = patch ? store.update(patch) : store.get()
+    await store.flush()
+    return nextCatalog
   })
 }
