@@ -24,6 +24,7 @@ import { registerEvidenceTaskIpc } from './ipc-evidence-task'
 import { registerEvidenceDraftIpc } from './ipc-evidence-draft'
 import { registerPersonMatteIpc } from './ipc-person-matte'
 import { registerDramaIpc } from './ipc-drama'
+import { registerMediaImportInboxIpc, stopMediaImportInboxIpc } from './ipc-media-import-inbox'
 import { registerWebIpc, stopWebServer } from './ipc-web'
 import { registerAppUpdaterIpc, startAppUpdater, stopAppUpdater } from './app-updater'
 import { applyMacDockIcon, createWindow, focusMainWindow, queueIncomingMediaPaths } from './window-lifecycle'
@@ -80,6 +81,7 @@ function registerIpc(): void {
   registerUtilityIpc()
   registerWindowControlsIpc()
   registerVisionIpc()
+  registerMediaImportInboxIpc()
   registerEvidenceTaskIpc()
   registerEvidenceDraftIpc()
   registerPersonMatteIpc()
@@ -122,4 +124,4 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
 
-app.on('before-quit', () => { stopAppUpdater(); stopEditingCaptionWatcher(); void stopWebServer() })
+app.on('before-quit', () => { stopAppUpdater(); stopEditingCaptionWatcher(); stopMediaImportInboxIpc(); void stopWebServer() })
