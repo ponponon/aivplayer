@@ -83,8 +83,9 @@ describe('merged platform evidence', () => {
   it('rejects report overlap and unreported merged files', async () => {
     const artifactsDirectory = await createFixture()
     const windowsReportPath = join(artifactsDirectory, 'platform-release-report-windows.json')
-    const windowsReport = JSON.parse(await readFile(windowsReportPath, 'utf8')) as { artifacts: Array<Record<string, unknown>> }
+    const windowsReport = JSON.parse(await readFile(windowsReportPath, 'utf8')) as { artifactCount: number; artifacts: Array<Record<string, unknown>> }
     windowsReport.artifacts.push({ name: 'AIVPlayer-0.4.0.dmg', sizeBytes: 1, sha256: '0'.repeat(64) })
+    windowsReport.artifactCount = windowsReport.artifacts.length
     await writeFile(windowsReportPath, JSON.stringify(windowsReport))
     await expect(runCheck(artifactsDirectory)).rejects.toThrow('reports overlap on artifact: AIVPlayer-0.4.0.dmg')
 
