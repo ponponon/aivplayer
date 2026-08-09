@@ -594,6 +594,7 @@
 - 新增 `npm run release:dry-run` 本地发布演练：用小型格式签名 fixture 分别模拟 macOS / Windows / Linux Runner，执行平台契约、安装包格式、合并 evidence、版本、manifest 和哈希复核；演练不联网、不调用 GitHub / Gitee API，临时目录默认自动清理。
 - Release workflow 的 `workflow_dispatch` 新增 `verify_only` 模式：仍执行真实 macOS / Windows / Linux 构建、artifact 合并、evidence、版本和 manifest 门禁，但跳过 GitHub Release 创建、GitHub 远端回读和 Gitee 同步，适合真实 CI 发布前演练。
 - publish job 会把合并目录的 `merged-platform-evidence.json` 作为独立 workflow artifact 留存，包含实际验证过的文件名、大小和 SHA-256；它只用于审计，不进入 GitHub / Gitee Release。
+- 新增 `npm run release:check-push` 本地只读推送前审计：检查工作区干净、相对 `origin/main` 的 diff、commit message 格式、敏感模式和内部计划文件边界；命令不会执行 push 或 workflow 操作。
 
 ## 编辑器画布交互层级
 

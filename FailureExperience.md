@@ -1206,3 +1206,9 @@
 - 现象：publish job 重新计算了三平台文件哈希，但如果只打印成功消息，workflow 结束后仍缺少一份能和最终 manifest 对照的合并目录证据；单独保存 Runner report 也无法直接证明合并目录当时的实际状态。
 - 经验：合并校验应原子写出独立 JSON，记录最终目录实际文件的名称、大小和 SHA-256，并与安装包发布边界隔离；失败路径使用 `always()` 尝试保留已有报告，但不能因此放宽门禁。
 - 处理：`release:check-evidence` 新增 `--report-path`，publish job 上传 `release-evidence-merged`；报告不进入 `release-manifest.json` 或 GitHub / Gitee Release，单测覆盖成功报告内容、哈希格式和 workflow 上传步骤。
+
+## 2026-08-09：push 前审计必须先拒绝脏工作区
+
+- 现象：如果 push readiness 只检查提交内容而忽略当前工作区，未提交的内部计划、临时配置或敏感文件可能被开发者误以为已经纳入审计；在测试代码尚未提交时直接运行成功路径，也会错误地把脏工作区当成可推送状态。
+- 经验：推送前门必须先检查 `git status --porcelain`，再检查相对基准的 diff、提交格式和敏感模式；成功路径应在真正干净的工作区运行，单测不应通过放宽 guard 来绕过这一前置条件。
+- 处理：新增 `release:check-push`，固定拒绝脏工作区、禁止 `OPEN_SOURCE_INSPIRATION_PLAN.md` 进入变更范围，并保证脚本自身没有 `git push` / workflow 写操作；当前工作区清理并提交测试后再执行成功路径。
