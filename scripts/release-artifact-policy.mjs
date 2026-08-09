@@ -11,6 +11,7 @@ export function isReleaseArtifact(name) {
 export async function listReleaseArtifacts(directory, options = {}) {
   const root = resolve(directory)
   const includeManifest = options.includeManifest ?? true
+  const recursive = options.recursive ?? true
   const files = []
 
   async function walk(currentDirectory) {
@@ -18,7 +19,7 @@ export async function listReleaseArtifacts(directory, options = {}) {
     for (const entry of entries) {
       const filePath = join(currentDirectory, entry.name)
       if (entry.isDirectory()) {
-        await walk(filePath)
+        if (recursive) await walk(filePath)
         continue
       }
       if (!isReleaseArtifact(entry.name)) continue

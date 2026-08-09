@@ -87,7 +87,7 @@ async function copyUnique(sourcePath, outputDirectory, copiedNames) {
 async function copyPackages(sourceDirectories, outputDirectory) {
   const copiedNames = new Set()
   for (const directory of sourceDirectories) {
-    const files = await listReleaseArtifacts(directory, { includeManifest: false })
+    const files = await listReleaseArtifacts(directory, { includeManifest: false, recursive: false })
     for (const file of files) {
       if (isPackageArtifact(basename(file))) await copyUnique(file, outputDirectory, copiedNames)
     }

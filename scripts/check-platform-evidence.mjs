@@ -57,7 +57,7 @@ export async function checkPlatformEvidence(options = {}) {
     }
   }
 
-  const files = await listReleaseArtifacts(artifactsDirectory, { includeManifest: false })
+  const files = await listReleaseArtifacts(artifactsDirectory, { includeManifest: false, recursive: false })
   const filesByName = new Map()
   for (const file of files) {
     const name = basename(file)
