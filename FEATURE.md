@@ -90,6 +90,7 @@
 - 新增 AI 短剧文本工作室 P0：短剧项目、章节、章节事件、故事骨架、改编策略、分集剧本统一保存到用户数据目录的 SQLite；支持从 TXT / Markdown 文本识别中英文卷章并重复导入，事件提取、骨架、改编策略和剧本阶段会记录任务状态，已完成节点可自动跳过实现断点续跑；桌面端新增 AI 短剧工作室面板，可创建项目、导入小说并执行文本阶段，终端提供 `aivcli drama list/create/import/show/events generate/plan generate/script generate/run`，OpenAI-compatible 服务配置优先读取应用内安全配置，未配置时兼容 `AIVPLAYER_DRAMA_API_BASE_URL`、`AIVPLAYER_DRAMA_API_KEY`、`AIVPLAYER_DRAMA_MODEL` 环境变量。
 - AI 短剧 Provider 配置已接入短剧面板：支持保存 OpenAI-compatible 地址、模型、API Key、本地 Mock 模式和连接测试；API Key 沿用 Electron `safeStorage` 编码，GUI 与 `aivcli drama` 共用本地配置，未配置本地 Provider 时继续兼容环境变量；CLI 增加 `aivcli drama provider show/test`，只显示脱敏状态，不支持把 Key 放进命令行参数。
 - AI 短剧 P1 已增加资产与分镜文本链路：根据章节事件抽取角色、场景、道具资产，基于分集剧本生成结构化分镜大纲（镜头、时长、地点、角色、动作、对白、画面提示词、镜头提示词）；数据保存到 SQLite，支持强制重算和断点跳过，GUI/CLI 共用，尚未绑定具体图片或视频生成厂商。
+- AI 短剧资产库已支持持续维护：AI 再次提取按资产类型和名称合并，不删除人工资产并保留就绪状态；桌面端支持角色、场景、道具的新增、编辑、删除、搜索、分类过滤和草稿 / 就绪管理，视觉提示词可供后续生成任务复用。
 - 桌面安装包集成 `aivcli` 启动器：Windows NSIS 将启动器加入用户 PATH，macOS `.pkg` 在 `/usr/local/bin/aivcli` 安装命令，Linux `.deb` 在 `/usr/bin/aivcli` 安装命令；启动器只转发到 AIVPlayer 的 `--cli` 模式，不重复打包业务运行时。
 - M4 Agent 剪辑第一阶段新增 `aivcli edit inspect/captions` 只读查询：复用严格 `.aivproj` 解析器，输出稳定的素材、成片时间线、字幕统计和脚本行检索结果；包含已删除脚本行与译文命中信息，不写工程、媒体或字幕文件，为后续 Proposal 提供可复核输入。
 - M4 Agent 剪辑第二阶段新增 `aivcli edit propose delete-script`：基于工程 revision 生成确定性的 Proposal / Diff，展示删除源区间、原编辑时间线区间、保留区间、脚本行状态、字幕变化和预计时长；应用前会拒绝 stale 工程，CLI 仍只读生成方案，不写回 `.aivproj`。
