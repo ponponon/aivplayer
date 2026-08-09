@@ -8,6 +8,7 @@ const electronBuilder = readFileSync(join(projectRoot, 'electron-builder.yml'), 
 const giteeSync = readFileSync(join(projectRoot, 'scripts/sync-gitee-release.mjs'), 'utf8')
 const artifactPolicy = readFileSync(join(projectRoot, 'scripts/release-artifact-policy.mjs'), 'utf8')
 const remoteVerification = readFileSync(join(projectRoot, 'scripts/verify-remote-release.mjs'), 'utf8')
+const releaseVersion = readFileSync(join(projectRoot, 'scripts/check-release-version.mjs'), 'utf8')
 
 describe('release workflow source constraints', () => {
   it('keeps platform builds separate from release publishing', () => {
@@ -23,6 +24,7 @@ describe('release workflow source constraints', () => {
     expect(releaseWorkflow).toContain('tag_name: ${{ inputs.tag || github.ref_name }}')
     expect(releaseWorkflow).toContain('release:create-manifest')
     expect(releaseWorkflow).toContain('release:check-manifest')
+    expect(releaseWorkflow).toContain('release:check-version')
     expect(releaseWorkflow).toContain('artifacts/release-manifest.json')
     expect(releaseWorkflow).toContain('name: release-manifest')
   })
@@ -55,7 +57,9 @@ describe('release workflow source constraints', () => {
     expect(giteeSync).toContain('listReleaseArtifacts')
     expect(giteeSync).toContain('verifyReleaseManifest')
     expect(artifactPolicy).toContain("RELEASE_MANIFEST_NAME = 'release-manifest.json'")
-    expect(artifactPolicy).toContain("/\\.(?:dmg|zip|pkg|exe|AppImage|deb|yml|blockmap)$/i")
+    expect(artifactPolicy).toContain("/^latest(?:-[^/]+)?\\.yml$/i")
+    expect(releaseWorkflow).toContain('release/latest*.yml')
+    expect(releaseWorkflow).toContain('artifacts/**/latest*.yml')
     expect(giteeSync).toContain('const names = new Set(files.map((file) => basename(file)))')
     expect(giteeSync).toContain('RELEASE_TAG')
     expect(giteeSync).toContain('GITEE_TARGET_COMMITISH')
@@ -73,5 +77,12 @@ describe('release workflow source constraints', () => {
     expect(remoteVerification).toContain('redirect: \'follow\'')
     expect(remoteVerification).not.toContain("method: 'POST'")
     expect(remoteVerification).not.toContain("method: 'DELETE'")
+  })
+
+  it('keeps the release tag, package version and updater metadata tied together', () => {
+    expect(releaseVersion).toContain('tag/version mismatch')
+    expect(releaseVersion).toContain('Update metadata version mismatch')
+    expect(releaseVersion).toContain('references missing artifact')
+    expect(releaseVersion).toContain('No electron-updater latest*.yml metadata')
   })
 })

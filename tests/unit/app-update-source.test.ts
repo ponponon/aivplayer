@@ -26,9 +26,9 @@ describe('app update source constraints', () => {
 
     expect(builderSource).toContain('provider: github')
     expect(builderSource).toContain('repo: aivplayer')
-    expect(workflowSource).toContain('release/*.yml')
+    expect(workflowSource).toContain('release/latest*.yml')
     expect(workflowSource).toContain('release/*.blockmap')
-    expect(workflowSource).toContain('artifacts/**/*.yml')
+    expect(workflowSource).toContain('artifacts/**/latest*.yml')
     expect(workflowSource).toContain('artifacts/**/*.blockmap')
     expect(workflowSource).toContain('artifacts/release-manifest.json')
     expect(workflowSource).toContain("Join-Path $env:ChocolateyInstall 'lib\\ffmpeg'")
