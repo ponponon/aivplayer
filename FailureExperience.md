@@ -1200,3 +1200,9 @@
 - 现象：本地 dry-run 只能验证编排，无法证明 Windows / Linux Runner 的真实 electron-builder 产物；直接用 workflow_dispatch 触发原发布流程又会创建 GitHub Release，并可能继续同步 Gitee，增加误发布风险。
 - 经验：真实 CI preflight 应复用同一套构建和发布前门禁，但把 GitHub Release、远端回读和 Gitee sync 作为明确条件保护的写操作；不能为了演练复制另一套校验流程。
 - 处理：workflow_dispatch 新增布尔 `verify_only` 输入；该模式仍下载合并三平台 artifact 并执行 evidence、版本和 manifest 检查，只跳过 GitHub Release、GitHub 远端校验和整个 Gitee sync job。push tag 的既有发布行为保持不变。
+
+## 2026-08-09：合并 evidence 不能只存在于 publish 日志
+
+- 现象：publish job 重新计算了三平台文件哈希，但如果只打印成功消息，workflow 结束后仍缺少一份能和最终 manifest 对照的合并目录证据；单独保存 Runner report 也无法直接证明合并目录当时的实际状态。
+- 经验：合并校验应原子写出独立 JSON，记录最终目录实际文件的名称、大小和 SHA-256，并与安装包发布边界隔离；失败路径使用 `always()` 尝试保留已有报告，但不能因此放宽门禁。
+- 处理：`release:check-evidence` 新增 `--report-path`，publish job 上传 `release-evidence-merged`；报告不进入 `release-manifest.json` 或 GitHub / Gitee Release，单测覆盖成功报告内容、哈希格式和 workflow 上传步骤。
