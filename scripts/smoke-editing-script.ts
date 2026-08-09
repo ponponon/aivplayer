@@ -459,6 +459,9 @@ async function main(): Promise<void> {
     }
 
     await page.locator('[data-testid="editing-script-list"] .editing-script-action.is-danger').first().click()
+    await page.locator('[data-testid="editing-proposal-confirm"]').waitFor({ timeout: 10_000 })
+    await page.locator('[data-testid="editing-proposal-deletions"]').waitFor({ timeout: 10_000 })
+    await page.locator('[data-testid="editing-proposal-confirm"]').click()
     await page.waitForFunction(() => document.querySelectorAll('[data-testid="editing-script-list"] .editing-script-row.is-deleted').length === 1)
     const afterDelete = await page.evaluate(() => ({
       deleted: document.querySelectorAll('[data-testid="editing-script-list"] .editing-script-row.is-deleted').length,
