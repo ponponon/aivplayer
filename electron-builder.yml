@@ -408,7 +408,7 @@ pkg:
   scripts: pkg-scripts
 win:
   icon: brand/icon.ico
-  artifactName: '${productName} Setup ${version} ${arch}.${ext}'
+  artifactName: '${productName}-Setup-${version}-${arch}.${ext}'
   target:
     - nsis
 nsis:
