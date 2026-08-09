@@ -111,6 +111,7 @@
 @import './player/vision-library-tts-drafts.css';
 @import './player/vision-library-folder.css';
 @import './player/vision-library-search.css';
+@import './player/vision-speaker-diarization.css';
 @import './player/vision-library-results.css';
 @import './player/drama-panel.css';
 @import './player/drama-media-provider-settings.css';

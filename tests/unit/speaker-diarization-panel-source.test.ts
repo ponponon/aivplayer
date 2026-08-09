@@ -7,6 +7,7 @@ describe('speaker diarization vision panel', () => {
     const projectRoot = process.cwd()
     const componentSource = readFileSync(join(projectRoot, 'src/renderer/src/app/vision-speaker-diarization.tsx'), 'utf8')
     const panelSource = readFileSync(join(projectRoot, 'src/renderer/src/app/vision-panel.tsx'), 'utf8')
+    const playerStyles = readFileSync(join(projectRoot, 'src/renderer/src/styles/player.css'), 'utf8')
 
     expect(componentSource).toContain('getSpeakerDiarizationStatus')
     expect(componentSource).toContain('runSpeakerDiarization')
@@ -14,5 +15,6 @@ describe('speaker diarization vision panel', () => {
     expect(componentSource).toContain('onSeek(segment.startSeconds)')
     expect(panelSource).toContain('<VisionSpeakerDiarization')
     expect(panelSource).toContain('onSeek={app.seekTo}')
+    expect(playerStyles).toContain("@import './player/vision-speaker-diarization.css';")
   })
 })
