@@ -2,9 +2,10 @@ import { readdir } from 'node:fs/promises'
 import { basename, join, resolve } from 'node:path'
 
 export const RELEASE_MANIFEST_NAME = 'release-manifest.json'
+const UPDATE_METADATA_PATTERN = /^latest(?:-[^/]+)?\.yml$/i
 
 export function isReleaseArtifact(name) {
-  return name === RELEASE_MANIFEST_NAME || /\.(?:dmg|zip|pkg|exe|AppImage|deb|yml|blockmap)$/i.test(name)
+  return name === RELEASE_MANIFEST_NAME || /\.(?:dmg|zip|pkg|exe|AppImage|deb|blockmap)$/i.test(name) || UPDATE_METADATA_PATTERN.test(name)
 }
 
 export async function listReleaseArtifacts(directory, options = {}) {
