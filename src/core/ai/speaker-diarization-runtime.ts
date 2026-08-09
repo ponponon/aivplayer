@@ -1,4 +1,5 @@
 import { createRequire } from 'node:module'
+import { readFile } from 'node:fs/promises'
 import { delimiter as pathDelimiter, dirname } from 'node:path'
 import type {
   SpeakerDiarizationModelStatus,
@@ -30,7 +31,6 @@ type NativeSpeakerDiarization = {
 }
 
 type NativeSpeakerDiarizationModule = {
-  readWave: (filePath: string) => Wave
   OfflineSpeakerDiarization: new (config: NativeSpeakerDiarizationConfig) => NativeSpeakerDiarization
 }
 
@@ -50,6 +50,58 @@ export type SpeakerDiarizationRunOptions = {
 
 const require = createRequire(import.meta.url)
 const EXPECTED_SAMPLE_RATE = 16_000
+
+function readWaveText(bytes: Uint8Array, offset: number, length: number): string {
+  return String.fromCharCode(...bytes.subarray(offset, offset + length))
+}
+
+async function readPcmWaveFile(filePath: string): Promise<Wave> {
+  const file = await readFile(filePath)
+  const bytes = new Uint8Array(file.buffer, file.byteOffset, file.byteLength)
+  const view = new DataView(file.buffer, file.byteOffset, file.byteLength)
+  if (readWaveText(bytes, 0, 4) !== 'RIFF' || readWaveText(bytes, 8, 4) !== 'WAVE') {
+    throw new Error('说话人 Provider 只接受标准 RIFF/WAVE 音频')
+  }
+
+  let format: { audioFormat: number; channels: number; sampleRate: number; blockAlign: number; bitsPerSample: number } | null = null
+  let dataOffset = -1
+  let dataSize = 0
+  for (let offset = 12; offset + 8 <= bytes.length;) {
+    const chunkId = readWaveText(bytes, offset, 4)
+    const chunkSize = view.getUint32(offset + 4, true)
+    const chunkDataOffset = offset + 8
+    if (chunkDataOffset + chunkSize > bytes.length) throw new Error('说话人 Provider 读取到损坏的 WAV 分块')
+    if (chunkId === 'fmt ' && chunkSize >= 16) {
+      format = {
+        audioFormat: view.getUint16(chunkDataOffset, true),
+        channels: view.getUint16(chunkDataOffset + 2, true),
+        sampleRate: view.getUint32(chunkDataOffset + 4, true),
+        blockAlign: view.getUint16(chunkDataOffset + 12, true),
+        bitsPerSample: view.getUint16(chunkDataOffset + 14, true)
+      }
+    } else if (chunkId === 'data') {
+      dataOffset = chunkDataOffset
+      dataSize = chunkSize
+    }
+    offset = chunkDataOffset + chunkSize + (chunkSize % 2)
+  }
+
+  if (!format || dataOffset < 0 || format.audioFormat !== 1 || format.channels < 1 || format.bitsPerSample !== 16 || format.blockAlign !== format.channels * 2) {
+    throw new Error('说话人 Provider 需要 16-bit PCM WAV 音频')
+  }
+  if (dataSize < format.blockAlign || dataSize % format.blockAlign !== 0) throw new Error('说话人 Provider 读取到的 WAV 没有完整音频帧')
+
+  const frameCount = dataSize / format.blockAlign
+  const samples = new Float32Array(frameCount)
+  for (let frame = 0; frame < frameCount; frame += 1) {
+    let sum = 0
+    for (let channel = 0; channel < format.channels; channel += 1) {
+      sum += view.getInt16(dataOffset + frame * format.blockAlign + channel * 2, true) / 32768
+    }
+    samples[frame] = sum / format.channels
+  }
+  return { sampleRate: format.sampleRate, samples }
+}
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
@@ -73,8 +125,8 @@ function loadNativeModule(nativePackageId: string): unknown {
 
 function toNativeModule(value: unknown): NativeSpeakerDiarizationModule {
   const module = value as Partial<NativeSpeakerDiarizationModule> | null
-  if (typeof module?.readWave !== 'function' || typeof module?.OfflineSpeakerDiarization !== 'function') {
-    throw new Error('sherpa-onnx 原生模块缺少 readWave 或 OfflineSpeakerDiarization 接口')
+  if (typeof module?.OfflineSpeakerDiarization !== 'function') {
+    throw new Error('sherpa-onnx 原生模块缺少 OfflineSpeakerDiarization 接口')
   }
   return module as NativeSpeakerDiarizationModule
 }
@@ -111,7 +163,7 @@ export class SpeakerDiarizationRuntime {
     if (!status.available) throw new Error(status.message)
 
     const module = await this.getModule()
-    const wave = module.readWave(audioPath)
+    const wave = await readPcmWaveFile(audioPath)
     if (!Number.isFinite(wave.sampleRate) || wave.sampleRate !== EXPECTED_SAMPLE_RATE) {
       throw new Error(`说话人 Provider 需要 ${EXPECTED_SAMPLE_RATE} Hz 单声道 WAV，当前采样率为 ${wave.sampleRate} Hz`)
     }

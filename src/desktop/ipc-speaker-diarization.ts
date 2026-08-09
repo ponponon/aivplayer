@@ -60,6 +60,7 @@ export function registerSpeakerDiarizationIpc(): void {
         if (!ffmpegPath) return { success: false, message: '找不到 FFmpeg，无法执行说话人分段', status, result: emptyResult() }
         await execFileAsync(ffmpegPath, buildFfmpegAudioExtractArgs(normalized.mediaPath, audioPath), { maxBuffer: 4 * 1024 * 1024 })
         const runtime = new SpeakerDiarizationRuntime({ userDataPath: app.getPath('userData') })
+        await runtime.prepare()
         const result = await runtime.diarizeWaveFile(audioPath, normalized)
         return { success: true, message: '说话人分段完成', status: runtime.getStatus(), result }
       } catch (error) {

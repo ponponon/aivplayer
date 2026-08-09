@@ -25,6 +25,28 @@ describe('speaker diarization runtime', () => {
     await writeFile(paths.segmentationLicensePath, 'MIT')
   }
 
+  async function createWaveFixture(sampleRate: number): Promise<string> {
+    const filePath = join(tempDirectory, `fixture-${sampleRate}.wav`)
+    const sampleCount = sampleRate * 2
+    const dataSize = sampleCount * 2
+    const buffer = Buffer.alloc(44 + dataSize)
+    buffer.write('RIFF', 0)
+    buffer.writeUInt32LE(36 + dataSize, 4)
+    buffer.write('WAVE', 8)
+    buffer.write('fmt ', 12)
+    buffer.writeUInt32LE(16, 16)
+    buffer.writeUInt16LE(1, 20)
+    buffer.writeUInt16LE(1, 22)
+    buffer.writeUInt32LE(sampleRate, 24)
+    buffer.writeUInt32LE(sampleRate * 2, 28)
+    buffer.writeUInt16LE(2, 32)
+    buffer.writeUInt16LE(16, 34)
+    buffer.write('data', 36)
+    buffer.writeUInt32LE(dataSize, 40)
+    await writeFile(filePath, buffer)
+    return filePath
+  }
+
   it('does not load the native module when model files are missing', async () => {
     const loadModule = vi.fn()
     const runtime = new SpeakerDiarizationRuntime({ userDataPath: tempDirectory, loadModule })
@@ -44,18 +66,18 @@ describe('speaker diarization runtime', () => {
       this.sampleRate = 16000
       Object.assign(this, { process, config })
     })
+    const audioPath = await createWaveFixture(16000)
     const runtime = new SpeakerDiarizationRuntime({
       userDataPath: tempDirectory,
       platform: 'darwin',
       arch: 'arm64',
       loadModule: () => ({
-        readWave: () => ({ sampleRate: 16000, samples: new Float32Array(32000) }),
         OfflineSpeakerDiarization
       })
     })
 
     await runtime.prepare()
-    const result = await runtime.diarizeWaveFile('/tmp/example.wav', { numClusters: 2 })
+    const result = await runtime.diarizeWaveFile(audioPath, { numClusters: 2 })
 
     expect(result).toEqual({
       sampleRate: 16000,
@@ -78,17 +100,17 @@ describe('speaker diarization runtime', () => {
     const OfflineSpeakerDiarization = vi.fn(function (this: { sampleRate: number }) {
       this.sampleRate = 16000
     })
+    const audioPath = await createWaveFixture(48000)
     const runtime = new SpeakerDiarizationRuntime({
       userDataPath: tempDirectory,
       platform: 'darwin',
       arch: 'arm64',
       loadModule: () => ({
-        readWave: () => ({ sampleRate: 48000, samples: new Float32Array(32) }),
         OfflineSpeakerDiarization
       })
     })
 
-    await expect(runtime.diarizeWaveFile('/tmp/example.wav')).rejects.toThrow('需要 16000 Hz')
+    await expect(runtime.diarizeWaveFile(audioPath)).rejects.toThrow('需要 16000 Hz')
     expect(OfflineSpeakerDiarization).not.toHaveBeenCalled()
   })
 })
