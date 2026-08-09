@@ -156,6 +156,29 @@ aivcli edit propose delete-script ./project.aivproj segment-1 segment-2 --json
 
 桌面剪辑器删除脚本行时会先打开同一套 Proposal 预览，确认后才写入编辑历史和本地工程缓存；按住 Shift 可以多选脚本行并生成一次批量 Proposal。如果确认前工程已经变化，应用会被拒绝并要求重新生成方案。
 
+### 本机剪辑 MCP
+
+可以把固定工程以本机 stdio MCP 方式提供给 Agent；服务只暴露 `inspect`、`captions` 和 `propose delete-script` 三个只读工具，不监听网络端口，也不能应用 Proposal、写文件、删除媒体或执行 shell：
+
+```bash
+aivcli mcp serve ./project.aivproj
+```
+
+MCP 客户端配置示例：
+
+```json
+{
+  "mcpServers": {
+    "aivplayer-editing": {
+      "command": "aivcli",
+      "args": ["mcp", "serve", "/absolute/path/project.aivproj"]
+    }
+  }
+}
+```
+
+工程路径在服务启动时固定，Agent 不能通过工具参数切换到其他文件；真正应用仍必须回到桌面确认 Dialog，并经过工程 revision 校验。
+
 ### 视觉影视库
 
 ```bash

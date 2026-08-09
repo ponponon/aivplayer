@@ -93,6 +93,7 @@
 - M4 Agent 剪辑第二阶段新增 `aivcli edit propose delete-script`：基于工程 revision 生成确定性的 Proposal / Diff，展示删除源区间、原编辑时间线区间、保留区间、脚本行状态、字幕变化和预计时长；应用前会拒绝 stale 工程，CLI 仍只读生成方案，不写回 `.aivproj`。
 - M4 Agent 剪辑第三阶段把脚本行删除接入桌面确认链路：删除动作先展示 Proposal 的删除 / 保留源区间、脚本行、字幕影响和时长变化，确认后才通过工程 revision 校验写入现有撤销 / 重做历史和本地工程缓存，确认期间工程被修改会拒绝应用。
 - 脚本面板支持按住 Shift 多选未删除脚本行，一次生成包含多行影响的 Proposal；批量删除仍需人工确认，取消后不改变工程，确认后共用一次撤销 / 重做和本地工程保存。
+- M4 Agent 剪辑第四阶段新增本机 stdio MCP：启动时固定一个 `.aivproj` 工程，只提供 inspect、captions 和 propose delete-script 三个只读工具；不监听网络端口，不提供 apply、任意文件浏览、写文件、媒体删除或 shell 能力，Proposal 仍回到桌面确认链路执行。
 - LanceDB 的 Apache Arrow peer dependency 已显式声明为桌面运行时依赖，确保 electron-builder 生成的 macOS、Windows、Linux 安装包都把 `apache-arrow` 一起放入应用资源，Finder“打开方式”启动时不会因视觉影视库模块加载失败而崩溃。
 
 - 播放器 CSS 已按页面职责改为语义化文件名，保留稳定的加载顺序，并通过自动检查禁止新增 `part-数字.css`，降低多分支并行开发时的文件名冲突。
