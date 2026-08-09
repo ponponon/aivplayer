@@ -1,5 +1,5 @@
-import { readFile, stat } from 'node:fs/promises'
-import { basename, join, resolve } from 'node:path'
+import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
+import { basename, dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { PLATFORM_CONTRACTS } from './check-platform-release-artifacts.mjs'
 import { RELEASE_MANIFEST_NAME, listReleaseArtifacts } from './release-artifact-policy.mjs'
@@ -14,6 +14,7 @@ function readOptions(argv) {
     const value = argv[index + 1]
     if (!value || value.startsWith('--')) continue
     if (item === '--artifacts-dir') options.artifactsDir = value
+    else if (item === '--report-path') options.reportPath = value
     else continue
     index += 1
   }
@@ -77,19 +78,33 @@ export async function checkPlatformEvidence(options = {}) {
   const unexpected = sorted([...actualNames].filter((name) => !expectedNames.has(name) && name !== RELEASE_MANIFEST_NAME))
   if (missing.length > 0 || unexpected.length > 0) throw new Error(`Merged release evidence file set mismatch. Missing: ${missing.join(', ') || 'none'}; unexpected: ${unexpected.join(', ') || 'none'}`)
 
+  const artifacts = []
   for (const [name, expected] of expectedByName) {
     const filePath = filesByName.get(name)
     const fileStat = await stat(filePath)
     if (fileStat.size !== expected.sizeBytes) throw new Error(`Merged release evidence size changed: ${name}`)
     const actualHash = await sha256File(filePath)
     if (actualHash !== expected.sha256) throw new Error(`Merged release evidence SHA-256 changed: ${name}`)
+    artifacts.push({ name, sizeBytes: fileStat.size, sha256: actualHash })
   }
-  return {
+  const result = {
+    schemaVersion: 1,
+    kind: 'merged-platform-evidence',
     ok: true,
+    generatedAt: new Date().toISOString(),
     platforms: [...reportPaths.keys()],
     artifactCount: expectedByName.size,
-    reports: [...reportPaths.values()].map(({ reportPath }) => basename(reportPath))
+    reports: [...reportPaths.values()].map(({ reportPath }) => basename(reportPath)),
+    artifacts: artifacts.sort((left, right) => left.name.localeCompare(right.name))
   }
+  if (options.reportPath) {
+    const reportPath = resolve(options.reportPath)
+    await mkdir(dirname(reportPath), { recursive: true })
+    const temporaryPath = `${reportPath}.${process.pid}.tmp`
+    await writeFile(temporaryPath, `${JSON.stringify(result, null, 2)}\n`, 'utf8')
+    await rename(temporaryPath, reportPath)
+  }
+  return result
 }
 
 async function main() {
