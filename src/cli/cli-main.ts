@@ -14,6 +14,7 @@ import { BatchPlanError } from './cli-batch-plan'
 import { runDrama } from './cli-drama'
 import { EditingProjectFileError, inspectEditingProject, loadEditingProjectFile, searchEditingProjectCaptions } from './cli-edit'
 import { buildDeleteScriptProposal, EditingProposalError } from '../core/editing/edit-proposal'
+import { resolveEditingMcpProjectPath, runEditingMcpServer } from './editing-mcp'
 
 const FALLBACK_CLI_VERSION = '0.1.0'
 
@@ -88,6 +89,7 @@ function printHelp(): void {
   aivcli edit inspect <project.aivproj> [--json]
   aivcli edit captions <project.aivproj> [--query text] [--limit N] [--json]
   aivcli edit propose delete-script <project.aivproj> <segment-id...> [--json]
+  aivcli mcp serve <project.aivproj>
   aivcli asr <video...> [--language auto] [--model id] [--format both|vtt|srt] [--output-dir dir] [--force]
   aivcli subtitle convert <input.vtt> [--output output.srt]
   aivcli subtitle translate <input.vtt> --to zh|en|ja|ko [--from auto] [--output-dir dir] [--force]
@@ -255,6 +257,19 @@ async function runEdit(parsed: ParsedCliArgs): Promise<number> {
   }
 
   throw new CliError('目前只支持 edit inspect、edit captions 和 edit propose')
+}
+
+async function runMcp(parsed: ParsedCliArgs): Promise<number> {
+  if (parsed.positionals[0] !== 'serve') throw new CliError('目前只支持 mcp serve <project.aivproj>')
+  requirePositionals({ ...parsed, positionals: parsed.positionals.slice(1) }, 1, 'aivcli mcp serve <project.aivproj>')
+  let projectPath: string
+  try {
+    projectPath = resolveEditingMcpProjectPath(parsed.positionals[1] as string)
+  } catch (error) {
+    throw new CliError(error instanceof Error ? error.message : String(error))
+  }
+  await runEditingMcpServer({ projectPath, version: getVersion() })
+  return 0
 }
 
 async function runAsr(parsed: ParsedCliArgs): Promise<number> {
@@ -518,6 +533,7 @@ async function runCommand(parsed: ParsedCliArgs): Promise<number> {
     return runMediaInfo({ ...parsed, positionals: parsed.positionals.slice(1) })
   }
   if (parsed.command === 'edit') return runEdit(parsed)
+  if (parsed.command === 'mcp') return runMcp(parsed)
   if (parsed.command === 'asr') return runAsr(parsed)
   if (parsed.command === 'subtitle') return runSubtitle(parsed)
   if (parsed.command === 'batch') {
