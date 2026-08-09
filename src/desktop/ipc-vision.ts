@@ -21,6 +21,18 @@ async function listVisionSourcesWithMetadata(request: VisionLibrarySourceRequest
   return mergeVisionLibrarySourceMetadata(sources, inbox.listItems())
 }
 
+function mergeVisionSearchResults(resultGroups: readonly VisionSearchResult[][]): VisionSearchResult[] {
+  const results = new Map<string, VisionSearchResult>()
+  for (const group of resultGroups) {
+    for (const result of group) {
+      const key = `${result.videoPath}\0${result.evidenceId ?? result.id}`
+      const previous = results.get(key)
+      if (!previous || result.score > previous.score) results.set(key, result)
+    }
+  }
+  return [...results.values()].sort((left, right) => right.score - left.score)
+}
+
 function sendVisionProgress(sender: Electron.WebContents, progress: VisionIndexProgress): void {
   if (!sender.isDestroyed()) sender.send(IPC_CHANNELS.VISION_INDEX_PROGRESS, progress)
   sendTaskCenterEvent(createVisionTaskCenterEvent(progress))
@@ -45,18 +57,17 @@ export function registerVisionIpc(): void {
   ipcMain.handle(IPC_CHANNELS.VISION_INDEX_START, async (event, request: VisionIndexRequest) => {
     const senderId = event.sender.id
     getVisionIndexQueue().cancel()
+    getVisionIndexCoordinator().cancel()
     desktopState.visionAbortControllers.get(senderId)?.abort()
     const controller = new AbortController()
     desktopState.visionAbortControllers.set(senderId, controller)
     try {
-      return await getVisionLibrary().indexVideos(
-        normalizeMediaPaths(request),
-        request?.intervalSeconds,
-        controller.signal,
-        (progress) => {
-          if (!event.sender.isDestroyed()) event.sender.send(IPC_CHANNELS.VISION_INDEX_PROGRESS, progress)
-        }
-      )
+      const mediaPaths = normalizeMediaPaths(request)
+      const options = { includeSceneEvidence: request?.includeSceneEvidence === true, includeEntityEvidence: request?.includeEntityEvidence === true }
+      return await getVisionIndexCoordinator().run(mediaPaths, request?.intervalSeconds, controller.signal, (progress) => {
+        trackVisionIndexProgress(progress, mediaPaths, { intervalSeconds: request?.intervalSeconds, ...options })
+        sendVisionProgress(event.sender, progress)
+      }, options)
     } finally {
       if (desktopState.visionAbortControllers.get(senderId) === controller) desktopState.visionAbortControllers.delete(senderId)
     }
@@ -65,16 +76,19 @@ export function registerVisionIpc(): void {
   ipcMain.handle(IPC_CHANNELS.VISION_INDEX_AUTO_START, (event, request: VisionIndexRequest) => {
     const mediaPaths = normalizeMediaPaths(request)
     if (mediaPaths.length === 0) return false
+    const options = { includeSceneEvidence: request?.includeSceneEvidence === true, includeEntityEvidence: request?.includeEntityEvidence === true }
     getVisionIndexQueue().enqueue(mediaPaths, request?.intervalSeconds, (progress) => {
-      if (!event.sender.isDestroyed()) event.sender.send(IPC_CHANNELS.VISION_INDEX_PROGRESS, progress)
-    })
+      trackVisionIndexProgress(progress, mediaPaths, { intervalSeconds: request?.intervalSeconds, ...options })
+      sendVisionProgress(event.sender, progress)
+    }, options)
     return true
   })
 
   ipcMain.handle(IPC_CHANNELS.VISION_INDEX_CANCEL, (event) => {
     const queueCancelled = getVisionIndexQueue().cancel()
+    const coordinatorCancelled = getVisionIndexCoordinator().cancel()
     const controller = desktopState.visionAbortControllers.get(event.sender.id)
-    if (!controller) return queueCancelled
+    if (!controller) return queueCancelled || coordinatorCancelled
     controller.abort()
     return true
   })
@@ -146,12 +160,15 @@ export function registerVisionIpc(): void {
 
   ipcMain.handle(IPC_CHANNELS.VISION_SEARCH_TEXT, (_event, request: VisionSearchRequest) => {
     if (!request?.query?.trim()) return []
-    return getVisionLibrary().searchText(request.query, request.limit, request.mode)
+    const catalog = getVisionEntityCatalogStore()
+    const queries = [request.query, ...catalog.getSearchQueries(request.query)]
+    return Promise.all(queries.map((query) => getVisionLibrary().searchText(query, request.limit, request.mode)))
+      .then((groups) => catalog.applyResults(mergeVisionSearchResults(groups)))
   })
 
   ipcMain.handle(IPC_CHANNELS.VISION_SEARCH_IMAGE, (_event, request: VisionSearchRequest) => {
     if (!request?.imagePath?.trim()) return []
-    return getVisionLibrary().searchImage(request.imagePath, request.limit)
+    return getVisionLibrary().searchImage(request.imagePath, request.limit).then((results) => getVisionEntityCatalogStore().applyResults(results))
   })
 
   ipcMain.handle(IPC_CHANNELS.VISION_LIST_SOURCES, (_event, request: VisionLibrarySourceRequest = {}) => listVisionSourcesWithMetadata(request))
