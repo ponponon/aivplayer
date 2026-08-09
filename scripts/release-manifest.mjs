@@ -7,6 +7,52 @@ import { RELEASE_MANIFEST_NAME, listReleaseArtifacts } from './release-artifact-
 
 export const RELEASE_MANIFEST_SCHEMA_VERSION = 1
 
+const RELEASE_PROVENANCE_RULES = {
+  commit: /^[a-f0-9]{40}$/i,
+  repository: /^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}\/[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$/,
+  workflow: /^[A-Za-z0-9][A-Za-z0-9 ._()\-/:+]{0,199}$/,
+  workflowRunId: /^[0-9]{1,30}$/,
+  workflowRunAttempt: /^[0-9]{1,10}$/
+}
+
+const RELEASE_PROVENANCE_SOURCES = {
+  commit: 'GITHUB_SHA',
+  repository: 'GITHUB_REPOSITORY',
+  workflow: 'GITHUB_WORKFLOW',
+  workflowRunId: 'GITHUB_RUN_ID',
+  workflowRunAttempt: 'GITHUB_RUN_ATTEMPT'
+}
+
+function validateProvenanceField(field, value) {
+  const rule = RELEASE_PROVENANCE_RULES[field]
+  if (!rule || typeof value !== 'string' || !rule.test(value)) {
+    throw new Error(`Invalid release provenance field: ${field}`)
+  }
+}
+
+export function assertReleaseProvenanceShape(value) {
+  if (value === undefined) return value
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('Release manifest provenance must be a JSON object.')
+  }
+  for (const [field, fieldValue] of Object.entries(value)) {
+    if (!(field in RELEASE_PROVENANCE_RULES)) throw new Error(`Unknown release provenance field: ${field}`)
+    validateProvenanceField(field, fieldValue)
+  }
+  return value
+}
+
+function createReleaseProvenance(options) {
+  const provenance = {}
+  for (const [field, environmentName] of Object.entries(RELEASE_PROVENANCE_SOURCES)) {
+    const value = options[field] ?? process.env[environmentName]
+    if (value === undefined || value === '') continue
+    validateProvenanceField(field, value)
+    provenance[field] = value
+  }
+  return Object.keys(provenance).length > 0 ? provenance : undefined
+}
+
 export async function sha256File(filePath) {
   const hash = createHash('sha256')
   for await (const chunk of createReadStream(filePath)) hash.update(chunk)
@@ -47,6 +93,8 @@ export async function createReleaseManifest(options = {}) {
     generatedAt: options.generatedAt ?? new Date().toISOString(),
     artifacts: await buildArtifactEntries(files)
   }
+  const provenance = createReleaseProvenance(options)
+  if (provenance) manifest.provenance = provenance
   const manifestPath = options.manifestPath ?? join(artifactsDirectory, RELEASE_MANIFEST_NAME)
   await mkdir(resolve(manifestPath, '..'), { recursive: true })
   const temporaryPath = `${manifestPath}.${process.pid}.tmp`
@@ -59,6 +107,7 @@ export function assertManifestShape(value) {
   if (!value || typeof value !== 'object') throw new Error('Release manifest must be a JSON object.')
   if (value.schemaVersion !== RELEASE_MANIFEST_SCHEMA_VERSION) throw new Error(`Unsupported release manifest schema: ${String(value.schemaVersion)}`)
   if (typeof value.tag !== 'string' || !value.tag) throw new Error('Release manifest tag is missing.')
+  assertReleaseProvenanceShape(value.provenance)
   if (!Array.isArray(value.artifacts) || value.artifacts.length === 0) throw new Error('Release manifest has no artifacts.')
   const names = new Set()
   for (const artifact of value.artifacts) {
@@ -111,6 +160,11 @@ function readOptions(argv) {
     if (item === '--artifacts-dir') options.artifactsDir = value
     else if (item === '--manifest-path') options.manifestPath = value
     else if (item === '--tag') options.tag = value
+    else if (item === '--commit') options.commit = value
+    else if (item === '--repository') options.repository = value
+    else if (item === '--workflow') options.workflow = value
+    else if (item === '--workflow-run-id') options.workflowRunId = value
+    else if (item === '--workflow-run-attempt') options.workflowRunAttempt = value
     else continue
     index += 1
   }
