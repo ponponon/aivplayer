@@ -105,7 +105,7 @@ describe('drama store', () => {
 
   it('keeps image, video and audio generation queues independent and recoverable', () => {
     const project = store.createProject({ title: '生成队列' })
-    const image = store.createGenerationTask(project.id, { mediaType: 'image', targetId: 'asset-character', prompt: '角色正面肖像' })
+    const image = store.createGenerationTask(project.id, { mediaType: 'image', targetId: 'asset-character', prompt: '角色正面肖像', estimatedCost: 0.04 })
     const secondImage = store.createGenerationTask(project.id, { mediaType: 'image', prompt: '场景概念图' })
     const video = store.createGenerationTask(project.id, { mediaType: 'video', prompt: '雨夜车站推镜' })
     const audio = store.createGenerationTask(project.id, { mediaType: 'audio', prompt: '雨声氛围' })
@@ -116,8 +116,8 @@ describe('drama store', () => {
     expect(store.claimNextGenerationTask(project.id, 'image')).toBeNull()
     expect(store.claimNextGenerationTask(project.id, 'video')).toMatchObject({ id: video.id, status: 'running' })
 
-    const completed = store.updateGenerationTask(project.id, image.id, { status: 'completed', resultPath: '/tmp/character.png', message: '图片完成' })
-    expect(completed).toMatchObject({ status: 'completed', progress: 1, resultPath: '/tmp/character.png' })
+    const completed = store.updateGenerationTask(project.id, image.id, { status: 'completed', resultPath: '/tmp/character.png', message: '图片完成', actualCost: 0.0399999 })
+    expect(completed).toMatchObject({ status: 'completed', progress: 1, resultPath: '/tmp/character.png', estimatedCost: 0.04, actualCost: 0.04 })
     expect(store.cancelGenerationTask(project.id, audio.id)).toMatchObject({ status: 'cancelled' })
     expect(store.recoverGenerationTasks(project.id)).toBe(2)
     expect(store.getGenerationTask(project.id, secondImage.id)).toMatchObject({ status: 'queued', progress: 0 })
@@ -129,14 +129,14 @@ describe('drama store', () => {
       name: '角色一致性出图',
       description: '从资产提示词生成角色图并回流时间线。',
       nodes: [
-        { id: 'asset', type: 'asset-input', title: '角色资产', config: { assetType: 'character' } },
-        { id: 'image', type: 'generate-image', title: '生成角色图', config: { aspect: '9:16' } },
-        { id: 'output', type: 'timeline-output', title: '回流时间线', config: {} }
+        { id: 'asset', type: 'asset-input', title: '角色资产', input: 'asset', output: 'prompt', providerId: 'local', estimatedCost: 0, config: { assetType: 'character' } },
+        { id: 'image', type: 'generate-image', title: '生成角色图', input: 'prompt', output: 'media', providerId: 'image-provider', estimatedCost: 0.04, config: { aspect: '9:16' } },
+        { id: 'output', type: 'timeline-output', title: '回流时间线', input: 'media', output: 'timeline', providerId: 'local', estimatedCost: 0, config: {} }
       ],
       edges: [{ from: 'asset', to: 'image' }, { from: 'image', to: 'output' }]
     })
 
-    expect(store.getGraphTemplate(template.id)).toMatchObject({ name: '角色一致性出图', nodes: expect.arrayContaining([expect.objectContaining({ id: 'asset' })]), edges: expect.arrayContaining([{ from: 'asset', to: 'image' }]) })
+    expect(store.getGraphTemplate(template.id)).toMatchObject({ name: '角色一致性出图', nodes: expect.arrayContaining([expect.objectContaining({ id: 'asset', input: 'asset', output: 'prompt', providerId: 'local', estimatedCost: 0 }), expect.objectContaining({ id: 'image', providerId: 'image-provider', estimatedCost: 0.04 })]), edges: expect.arrayContaining([{ from: 'asset', to: 'image' }]) })
     expect(store.listGraphTemplates()).toHaveLength(1)
     expect(() => store.saveGraphTemplate(undefined, { name: '循环', nodes: [{ id: 'a', type: 'prompt', title: 'A', config: {} }, { id: 'b', type: 'prompt', title: 'B', config: {} }], edges: [{ from: 'a', to: 'b' }, { from: 'b', to: 'a' }] })).toThrow('节点图不能包含循环')
 

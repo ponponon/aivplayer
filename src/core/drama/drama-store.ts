@@ -170,9 +170,17 @@ export class DramaStore {
         status TEXT NOT NULL,
         progress REAL NOT NULL DEFAULT 0,
         message TEXT NOT NULL DEFAULT '',
+        provider_id TEXT NOT NULL DEFAULT 'unconfigured',
+        model TEXT,
+        parameters_json TEXT NOT NULL DEFAULT '{}',
+        attempt INTEGER NOT NULL DEFAULT 0,
+        max_attempts INTEGER NOT NULL DEFAULT 2,
+        estimated_cost REAL,
+        actual_cost REAL,
         error TEXT,
         result_path TEXT,
         created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL DEFAULT 0,
         started_at INTEGER,
         completed_at INTEGER
       );
@@ -191,6 +199,7 @@ export class DramaStore {
       CREATE INDEX IF NOT EXISTS drama_tasks_project_started ON drama_tasks(project_id, started_at DESC);
       CREATE INDEX IF NOT EXISTS drama_generation_tasks_project_queue ON drama_generation_tasks(project_id, media_type, status, created_at ASC);
     `)
+    this.ensureGenerationTaskColumns()
   }
 
   close(): void {
@@ -517,6 +526,7 @@ export class DramaStore {
   createGenerationTask(projectId: string, input: DramaGenerationTaskInput): DramaGenerationTask {
     this.requireProject(projectId)
     const normalized = normalizeGenerationTaskInput(input)
+    const now = Date.now()
     const task: DramaGenerationTask = {
       id: randomUUID(),
       projectId,
@@ -526,12 +536,19 @@ export class DramaStore {
       status: 'queued',
       progress: 0,
       message: normalized.message || '等待生成',
-      createdAt: Date.now()
+      providerId: normalized.providerId,
+      model: normalized.model,
+      parameters: normalized.parameters,
+      attempt: 0,
+      maxAttempts: normalized.maxAttempts,
+      estimatedCost: normalized.estimatedCost,
+      createdAt: now,
+      updatedAt: now
     }
     this.database.prepare(`
-      INSERT INTO drama_generation_tasks (id, project_id, media_type, target_id, prompt, status, progress, message, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(task.id, task.projectId, task.mediaType, task.targetId ?? null, task.prompt, task.status, task.progress, task.message, task.createdAt)
+      INSERT INTO drama_generation_tasks (id, project_id, media_type, target_id, prompt, status, progress, message, provider_id, model, parameters_json, attempt, max_attempts, estimated_cost, actual_cost, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(task.id, task.projectId, task.mediaType, task.targetId ?? null, task.prompt, task.status, task.progress, task.message, task.providerId, task.model ?? null, JSON.stringify(task.parameters), task.attempt, task.maxAttempts, task.estimatedCost ?? null, null, task.createdAt, task.updatedAt)
     this.touchProject(projectId)
     return task
   }
@@ -552,7 +569,7 @@ export class DramaStore {
         return null
       }
       const startedAt = Date.now()
-      this.database.prepare(`UPDATE drama_generation_tasks SET status = 'running', started_at = ?, message = ? WHERE id = ?`).run(startedAt, '生成中', stringValue(row, 'id'))
+      this.database.prepare(`UPDATE drama_generation_tasks SET status = 'running', attempt = attempt + 1, started_at = ?, updated_at = ?, message = ? WHERE id = ?`).run(startedAt, startedAt, '生成中', stringValue(row, 'id'))
       this.database.exec('COMMIT')
       return this.getGenerationTask(projectId, stringValue(row, 'id'))
     } catch (error) {
@@ -568,15 +585,27 @@ export class DramaStore {
     if (!isGenerationTaskStatus(nextStatus)) throw new Error('生成任务状态无效')
     const nextProgress = patch.progress == null ? current.progress : normalizeProgress(patch.progress)
     const nextMessage = patch.message ?? current.message
+    const nextProviderId = patch.providerId ?? current.providerId
+    const nextModel = patch.model === undefined ? current.model ?? null : patch.model
+    const nextParameters = patch.parameters ?? current.parameters
+    const nextAttempt = patch.attempt == null ? current.attempt : normalizeNonNegativeInteger(patch.attempt, '生成任务尝试次数')
+    const nextMaxAttempts = patch.maxAttempts == null ? current.maxAttempts : normalizePositiveInteger(patch.maxAttempts, current.maxAttempts)
+    const nextEstimatedCost = patch.estimatedCost === undefined
+      ? current.estimatedCost ?? null
+      : patch.estimatedCost === null ? null : normalizeCost(patch.estimatedCost, '生成任务预估成本')
+    const nextActualCost = patch.actualCost === undefined
+      ? current.actualCost ?? null
+      : patch.actualCost === null ? null : normalizeCost(patch.actualCost, '生成任务实际成本')
     const nextError = patch.error === undefined ? current.error ?? null : patch.error
     const nextResultPath = patch.resultPath === undefined ? current.resultPath ?? null : patch.resultPath
     const startedAt = nextStatus === 'running' ? current.startedAt ?? Date.now() : current.startedAt ?? null
     const completedAt = ['completed', 'failed', 'cancelled'].includes(nextStatus) ? current.completedAt ?? Date.now() : null
+    const updatedAt = Date.now()
     this.database.prepare(`
       UPDATE drama_generation_tasks
-      SET status = ?, progress = ?, message = ?, error = ?, result_path = ?, started_at = ?, completed_at = ?
+      SET status = ?, progress = ?, message = ?, provider_id = ?, model = ?, parameters_json = ?, attempt = ?, max_attempts = ?, estimated_cost = ?, actual_cost = ?, error = ?, result_path = ?, started_at = ?, completed_at = ?, updated_at = ?
       WHERE project_id = ? AND id = ?
-    `).run(nextStatus, nextStatus === 'completed' ? 1 : nextProgress, nextMessage, nextError, nextResultPath, startedAt, completedAt, projectId, taskId)
+    `).run(nextStatus, nextStatus === 'completed' ? 1 : nextProgress, nextMessage, nextProviderId, nextModel, JSON.stringify(nextParameters), nextAttempt, nextMaxAttempts, nextEstimatedCost, nextActualCost, nextError, nextResultPath, startedAt, completedAt, updatedAt, projectId, taskId)
     this.touchProject(projectId)
     return this.getGenerationTask(projectId, taskId) as DramaGenerationTask
   }
@@ -588,11 +617,17 @@ export class DramaStore {
     return this.updateGenerationTask(projectId, taskId, { status: 'cancelled', message: '已取消' })
   }
 
+  retryGenerationTask(projectId: string, taskId: string, message = '等待重试'): DramaGenerationTask | null {
+    const current = this.getGenerationTask(projectId, taskId)
+    if (!current || current.status !== 'failed' || current.attempt >= current.maxAttempts) return null
+    return this.updateGenerationTask(projectId, taskId, { status: 'queued', progress: 0, message, error: null })
+  }
+
   recoverGenerationTasks(projectId?: string): number {
     if (projectId) this.requireProject(projectId)
     const result = projectId == null
-      ? this.database.prepare("UPDATE drama_generation_tasks SET status = 'queued', progress = 0, message = '等待恢复', error = NULL, started_at = NULL, completed_at = NULL WHERE status = 'running'").run()
-      : this.database.prepare("UPDATE drama_generation_tasks SET status = 'queued', progress = 0, message = '等待恢复', error = NULL, started_at = NULL, completed_at = NULL WHERE project_id = ? AND status = 'running'").run(projectId)
+      ? this.database.prepare("UPDATE drama_generation_tasks SET status = 'queued', progress = 0, message = '等待恢复', error = NULL, started_at = NULL, completed_at = NULL, updated_at = ? WHERE status = 'running'").run(Date.now())
+      : this.database.prepare("UPDATE drama_generation_tasks SET status = 'queued', progress = 0, message = '等待恢复', error = NULL, started_at = NULL, completed_at = NULL, updated_at = ? WHERE project_id = ? AND status = 'running'").run(Date.now(), projectId)
     const changes = Number(result.changes)
     if (changes > 0 && projectId) this.touchProject(projectId)
     return changes
@@ -638,6 +673,24 @@ export class DramaStore {
     return project
   }
 
+  private ensureGenerationTaskColumns(): void {
+    const rows = this.database.prepare('PRAGMA table_info(drama_generation_tasks)').all() as Array<{ name?: unknown }>
+    const existing = new Set(rows.map((row) => typeof row.name === 'string' ? row.name : ''))
+    const columns: Array<[string, string]> = [
+      ['provider_id', "TEXT NOT NULL DEFAULT 'unconfigured'"],
+      ['model', 'TEXT'],
+      ['parameters_json', "TEXT NOT NULL DEFAULT '{}'"],
+      ['attempt', 'INTEGER NOT NULL DEFAULT 0'],
+      ['max_attempts', 'INTEGER NOT NULL DEFAULT 2'],
+      ['estimated_cost', 'REAL'],
+      ['actual_cost', 'REAL'],
+      ['updated_at', 'INTEGER NOT NULL DEFAULT 0']
+    ]
+    for (const [name, definition] of columns) {
+      if (!existing.has(name)) this.database.exec(`ALTER TABLE drama_generation_tasks ADD COLUMN ${name} ${definition}`)
+    }
+  }
+
   private touchProject(projectId: string): void {
     this.database.prepare('UPDATE drama_projects SET updated_at = ? WHERE id = ?').run(Date.now(), projectId)
   }
@@ -657,6 +710,8 @@ export class DramaStore {
   }
 
   private toGenerationTask(row: SqliteRow): DramaGenerationTask {
+    const createdAt = numberValue(row, 'created_at')
+    const storedUpdatedAt = numberValue(row, 'updated_at')
     return {
       id: stringValue(row, 'id'),
       projectId: stringValue(row, 'project_id'),
@@ -666,9 +721,17 @@ export class DramaStore {
       status: stringValue(row, 'status') as DramaGenerationTask['status'],
       progress: numberValue(row, 'progress'),
       message: stringValue(row, 'message'),
+      providerId: stringValue(row, 'provider_id', 'unconfigured'),
+      model: typeof row.model === 'string' ? row.model : undefined,
+      parameters: parseGenerationParameters(row.parameters_json),
+      attempt: numberValue(row, 'attempt'),
+      maxAttempts: numberValue(row, 'max_attempts', 2),
+      estimatedCost: optionalNumberValue(row, 'estimated_cost'),
+      actualCost: optionalNumberValue(row, 'actual_cost'),
       error: typeof row.error === 'string' ? row.error : undefined,
       resultPath: typeof row.result_path === 'string' ? row.result_path : undefined,
-      createdAt: numberValue(row, 'created_at'),
+      createdAt,
+      updatedAt: storedUpdatedAt || createdAt,
       startedAt: typeof row.started_at === 'number' ? row.started_at : undefined,
       completedAt: typeof row.completed_at === 'number' ? row.completed_at : undefined
     }
@@ -791,22 +854,62 @@ function isGenerationTaskStatus(value: unknown): value is DramaGenerationTaskSta
   return value === 'queued' || value === 'running' || value === 'completed' || value === 'failed' || value === 'cancelled'
 }
 
-function normalizeGenerationTaskInput(input: DramaGenerationTaskInput): Required<Pick<DramaGenerationTaskInput, 'mediaType' | 'prompt'>> & Pick<DramaGenerationTaskInput, 'targetId' | 'message'> {
+function normalizeGenerationTaskInput(input: DramaGenerationTaskInput): Required<Pick<DramaGenerationTaskInput, 'mediaType' | 'prompt' | 'providerId' | 'parameters' | 'maxAttempts'>> & Pick<DramaGenerationTaskInput, 'targetId' | 'message' | 'model' | 'estimatedCost'> {
   if (!input || typeof input !== 'object') throw new Error('生成任务参数无效')
   if (!isGenerationMediaType(input.mediaType)) throw new Error('生成任务媒体类型无效')
   const prompt = input.prompt.trim()
   if (!prompt) throw new Error('生成任务提示词不能为空')
+  const maxAttempts = input.maxAttempts == null ? 2 : normalizePositiveInteger(input.maxAttempts, 2)
+  if (maxAttempts > 5) throw new Error('生成任务最大尝试次数不能超过 5')
+  const parameters: Record<string, string | number | boolean> = {}
+  for (const [key, value] of Object.entries(input.parameters ?? {})) {
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') parameters[key] = value
+  }
   return {
     mediaType: input.mediaType,
     targetId: input.targetId?.trim() || undefined,
     prompt,
-    message: input.message?.trim() || undefined
+    message: input.message?.trim() || undefined,
+    providerId: input.providerId?.trim() || 'unconfigured',
+    model: input.model?.trim() || undefined,
+    parameters,
+    maxAttempts,
+    estimatedCost: input.estimatedCost == null ? undefined : normalizeCost(input.estimatedCost, '生成任务预估成本')
   }
+}
+
+function parseGenerationParameters(value: unknown): Record<string, string | number | boolean> {
+  if (typeof value !== 'string' || !value.trim()) return {}
+  try {
+    const parsed = JSON.parse(value) as unknown
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
+    const parameters: Record<string, string | number | boolean> = {}
+    for (const [key, item] of Object.entries(parsed)) {
+      if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') parameters[key] = item
+    }
+    return parameters
+  } catch {
+    return {}
+  }
+}
+
+function normalizeNonNegativeInteger(value: number, label: string): number {
+  if (!Number.isInteger(value) || value < 0) throw new Error(`${label}无效`)
+  return value
 }
 
 function normalizeProgress(value: number): number {
   if (!Number.isFinite(value)) throw new Error('生成任务进度无效')
   return Math.min(1, Math.max(0, value))
+}
+
+function normalizeCost(value: number, label: string): number {
+  if (!Number.isFinite(value) || value < 0 || value > 1_000_000) throw new Error(`${label}无效`)
+  return Math.round(value * 1_000_000) / 1_000_000
+}
+
+function optionalNumberValue(row: SqliteRow, key: string): number | undefined {
+  return typeof row[key] === 'number' && Number.isFinite(row[key] as number) ? row[key] as number : undefined
 }
 
 function isGraphNodeType(value: unknown): value is DramaGraphTemplate['nodes'][number]['type'] {
@@ -823,7 +926,11 @@ function normalizeGraphTemplateInput(input: DramaGraphTemplateInput): Omit<Drama
     for (const [key, value] of Object.entries(node.config ?? {})) {
       if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') config[key] = value
     }
-    return { id: node.id.trim(), type: node.type, title: node.title.trim() || node.id.trim(), config }
+    const input = typeof node.input === 'string' ? node.input.trim() || undefined : undefined
+    const output = typeof node.output === 'string' ? node.output.trim() || undefined : undefined
+    const providerId = typeof node.providerId === 'string' ? node.providerId.trim() || undefined : undefined
+    const estimatedCost = typeof node.estimatedCost === 'number' && Number.isFinite(node.estimatedCost) && node.estimatedCost >= 0 ? node.estimatedCost : undefined
+    return { id: node.id.trim(), type: node.type, title: node.title.trim() || node.id.trim(), input, output, providerId, estimatedCost, config }
   })
   if (nodes.length > 64) throw new Error('节点图节点数不能超过 64 个')
   const nodeIds = new Set<string>()

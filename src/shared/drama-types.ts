@@ -5,6 +5,23 @@ export type DramaAssetType = 'character' | 'location' | 'prop'
 export type DramaAssetStatus = 'draft' | 'ready'
 export type DramaGenerationMediaType = 'image' | 'video' | 'audio'
 export type DramaGenerationTaskStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled'
+export type DramaGenerationParameters = Record<string, string | number | boolean>
+
+export type DramaMediaProviderSettings = {
+  providerId: string | null
+  apiBaseUrl: string | null
+  model: string | null
+  costPerRequest: number | null
+  apiKeyConfigured: boolean
+}
+
+export type DramaMediaProviderSettingsInput = {
+  providerId?: string | null
+  apiBaseUrl?: string | null
+  model?: string | null
+  apiKey?: string | null
+  costPerRequest?: number | null
+}
 
 export type DramaProject = {
   id: string
@@ -134,9 +151,17 @@ export type DramaGenerationTask = {
   status: DramaGenerationTaskStatus
   progress: number
   message: string
+  providerId: string
+  model?: string
+  parameters: DramaGenerationParameters
+  attempt: number
+  maxAttempts: number
+  estimatedCost?: number
+  actualCost?: number
   error?: string
   resultPath?: string
   createdAt: number
+  updatedAt: number
   startedAt?: number
   completedAt?: number
 }
@@ -146,12 +171,24 @@ export type DramaGenerationTaskInput = {
   targetId?: string
   prompt: string
   message?: string
+  providerId?: string
+  model?: string
+  parameters?: DramaGenerationParameters
+  maxAttempts?: number
+  estimatedCost?: number
 }
 
 export type DramaGenerationTaskPatch = {
   status?: DramaGenerationTaskStatus
   progress?: number
   message?: string
+  providerId?: string
+  model?: string | null
+  parameters?: DramaGenerationParameters
+  attempt?: number
+  maxAttempts?: number
+  estimatedCost?: number | null
+  actualCost?: number | null
   error?: string | null
   resultPath?: string | null
 }
@@ -163,6 +200,10 @@ export type DramaGraphNode = {
   id: string
   type: DramaGraphNodeType
   title: string
+  input?: string
+  output?: string
+  providerId?: string
+  estimatedCost?: number
   config: DramaGraphNodeConfig
 }
 
@@ -242,6 +283,7 @@ export type DramaProviderSettings = {
   model: string | null
   useMock: boolean
   apiKeyConfigured: boolean
+  media: Record<DramaGenerationMediaType, DramaMediaProviderSettings>
 }
 
 export type DramaProviderSettingsInput = {
@@ -249,6 +291,7 @@ export type DramaProviderSettingsInput = {
   model?: string | null
   apiKey?: string | null
   useMock?: boolean
+  media?: Partial<Record<DramaGenerationMediaType, DramaMediaProviderSettingsInput>>
 }
 
 export type DramaProviderTestResult = {
