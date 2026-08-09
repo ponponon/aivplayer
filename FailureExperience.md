@@ -12,6 +12,8 @@
 - 主题模式虽然需要保留“浅色 / 深色 / 跟随系统”的精确选择，但一键切换属于高频操作，不能只藏在设置弹窗；标题栏工具组应提供可见的主题按钮，手动模式在浅色和深色之间切换，跟随系统模式按当前系统主题切换到另一种，设置页继续负责恢复三态选择。
 
 ## Release 工作流不能让隐式发布和可选 artifact 互相打架
+
+- Windows ARM64 的 FFmpeg 依赖不能下载 BtbN 的 `latest` 标签：该标签在自动构建发布窗口内会短暂没有目标资产，导致 `Invoke-WebRequest` 返回 404。发布工作流应固定到带时间戳的 `autobuild-*` 标签、固定资产名和 SHA-256，避免“最新标签”移动或发布竞态破坏整轮构建。
 - Ubuntu 24.04 GitHub Runner 的仓库不提供 `libkvazaar-dev`，不能把它作为 Linux 发布前置依赖；libheif 的 Linux CI 编译应使用 Runner 可用的 x265 开发包，并同步修改 encoder 参数，先在真实 Runner 上验证 apt 安装步骤。
 - Ubuntu 24 的新版 `jpeglib.h` 会让固定版本 libheif 的 `jpeg_write_icc_profile` 兼容声明在 C++ 编译阶段冲突；Linux CI 构建该固定源码时需要显式使用 `CXXFLAGS=-fpermissive`，不能只看 CMake configure 成功。
 - Ubuntu 的 `libx265-dev` 提供动态库时，不能继续给 libheif 传 `--static-link`；否则会在链接阶段报 attempted static link of dynamic object。Linux 包应依赖系统 FFmpeg/编解码运行库，macOS/Windows 再分别使用各自的静态或自包含方案。
