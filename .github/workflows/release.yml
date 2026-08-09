@@ -127,7 +127,18 @@ jobs:
       - name: Install HEIF build dependencies
         shell: pwsh
         run: |
-          choco install ffmpeg -y --no-progress
+          $ffmpegRoot = Join-Path $env:ChocolateyInstall 'lib'
+          $ffmpegReady = $false
+          for ($attempt = 1; $attempt -le 3; $attempt++) {
+            choco install ffmpeg -y --no-progress --force
+            $ffmpegCandidates = @(Get-ChildItem -Path $ffmpegRoot -Filter 'ffmpeg.exe' -File -Recurse -ErrorAction SilentlyContinue)
+            if ($ffmpegCandidates.Count -gt 0) {
+              $ffmpegReady = $true
+              break
+            }
+            if ($attempt -lt 3) { Start-Sleep -Seconds ([int][math]::Pow(2, $attempt)) }
+          }
+          if (!$ffmpegReady) { throw "The actual ffmpeg.exe was not installed under $ffmpegRoot after 3 attempts." }
           vcpkg install libde265:x64-windows-static x265:x64-windows-static libjpeg-turbo:x64-windows-static tiff:x64-windows-static
 
       - name: Build static HEIF runtime
@@ -155,7 +166,7 @@ jobs:
           cmake --build $build --config Release --parallel
           $whisperBinary = Get-ChildItem -Path $build -Filter "whisper-cli.exe" -Recurse | Select-Object -First 1
           if ($null -eq $whisperBinary) { throw "whisper-cli.exe was not built." }
-          $ffmpegRoot = Join-Path $env:ChocolateyInstall 'lib\ffmpeg'
+          $ffmpegRoot = Join-Path $env:ChocolateyInstall 'lib'
           $ffmpegBinary = Get-ChildItem -Path $ffmpegRoot -Filter 'ffmpeg.exe' -File -Recurse | Select-Object -First 1
           if ($null -eq $ffmpegBinary) { throw "The actual ffmpeg.exe was not found under $ffmpegRoot" }
           $ffprobeBinary = Join-Path $ffmpegBinary.DirectoryName 'ffprobe.exe'
