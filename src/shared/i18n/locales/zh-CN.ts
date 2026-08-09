@@ -451,6 +451,7 @@
       generationCancelled: '已取消',
       generationCancel: '取消任务',
       generationCancelConfirm: '确定取消这个生成任务吗？',
+      generationHandoff: '回流到时间线',
       generationQueuedMessage: '等待生成服务',
       generationEmpty: '还没有生成任务。',
       generationNoMatch: '没有匹配的生成任务。',

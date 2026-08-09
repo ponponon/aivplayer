@@ -451,6 +451,7 @@
       generationCancelled: 'Cancelled',
       generationCancel: 'Cancel task',
       generationCancelConfirm: 'Cancel this generation task?',
+      generationHandoff: 'Add to timeline',
       generationQueuedMessage: 'Waiting for a generation provider',
       generationEmpty: 'No generation tasks yet.',
       generationNoMatch: 'No matching generation tasks.',

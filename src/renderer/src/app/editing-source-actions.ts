@@ -95,6 +95,33 @@ export function createEditingSourceActions(model: AppModel, derived: AppDerived)
     insertEditingSourceClips(sourceIds, editedDurationSeconds(project.videoClips))
   }
 
+  const appendEditingSourcePath = async (filePath: string): Promise<void> => {
+    const project = model.editingProject
+    if (!project || model.isAddingEditingMedia || !filePath.trim()) return
+    model.setIsAddingEditingMedia(true)
+    try {
+      const file = await window.aiv.createMediaFile(filePath)
+      const metadata = await window.aiv.getMediaMetadata(file.path)
+      const source = createSource(file, metadata, project.sources.find((item) => item.path === file.path))
+      if (!source) throw new Error(derived.copy.editing.mediaAddFailed)
+      const insertClips = [{ id: createId('clip', 0), sourceId: source.id, sourceStartSeconds: 0, sourceEndSeconds: source.durationSeconds }]
+      const inserted = insertVideoClipsAtEdited(project.videoClips, insertClips, editedDurationSeconds(project.videoClips))
+      const nextProject = buildNextProject(model, project.sources.some((item) => item.id === source.id) ? project.sources : [...project.sources, source], inserted.clips)
+      if (!nextProject || inserted.insertedClipIds.length === 0) return
+      model.setEditingPast((past) => [...past, project])
+      model.setEditingFuture([])
+      model.setEditingProject(nextProject)
+      model.setEditingSourceFiles((current) => ({ ...current, [source.id]: file }))
+      model.setEditingSelectedClipId(inserted.insertedClipIds[0] ?? null)
+      saveEditingProject(nextProject)
+      model.setEditingProjectStatus({ success: true, message: derived.copy.editing.mediaAdded(1) })
+    } catch (error) {
+      model.setEditingProjectStatus({ success: false, message: `${derived.copy.editing.mediaAddFailed}：${error instanceof Error ? error.message : String(error)}` })
+    } finally {
+      model.setIsAddingEditingMedia(false)
+    }
+  }
+
   const replaceEditingClipSource = (sourceId: string, clipId: string): void => {
     const project = model.editingProject
     const source = project?.sources.find((item) => item.id === sourceId)
@@ -115,5 +142,5 @@ export function createEditingSourceActions(model: AppModel, derived: AppDerived)
     saveEditingProject(nextProject)
   }
 
-  return { addEditingSources, insertEditingSourceClip, appendEditingSourceClips, replaceEditingClipSource }
+  return { addEditingSources, insertEditingSourceClip, appendEditingSourceClips, appendEditingSourcePath, replaceEditingClipSource }
 }

@@ -9,12 +9,14 @@ describe('drama generation queue', () => {
       assets={[{ id: 'asset-1', projectId: 'project-1', assetType: 'character', name: '主角', description: '', visualPrompt: '', status: 'ready', createdAt: 1, updatedAt: 1 }]}
       tasks={[
         { id: 'image-task', projectId: 'project-1', mediaType: 'image', targetId: 'asset-1', prompt: '角色肖像', status: 'queued', progress: 0, message: '等待生成', createdAt: 1 },
-        { id: 'audio-task', projectId: 'project-1', mediaType: 'audio', prompt: '雨声', status: 'completed', progress: 1, message: '已完成', createdAt: 2 }
+        { id: 'audio-task', projectId: 'project-1', mediaType: 'audio', prompt: '雨声', status: 'completed', progress: 1, message: '已完成', resultPath: '/tmp/rain.wav', createdAt: 2 }
       ]}
       copy={zhCN.drama}
       busy={false}
       onCreate={() => undefined}
       onCancel={() => undefined}
+      canHandoff
+      onHandoff={() => undefined}
     />)
 
     expect(html).toContain('data-testid="drama-generation-queue"')
@@ -25,5 +27,6 @@ describe('drama generation queue', () => {
     expect(html.match(/role="tab"/gu)?.length).toBe(4)
     expect(html).toContain('取消任务')
     expect(html).toContain('已完成')
+    expect(html).toContain('回流到时间线')
   })
 })

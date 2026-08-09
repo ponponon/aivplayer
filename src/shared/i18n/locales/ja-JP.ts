@@ -451,6 +451,7 @@
       generationCancelled: 'キャンセル済み',
       generationCancel: 'タスクをキャンセル',
       generationCancelConfirm: 'この生成タスクをキャンセルしますか？',
+      generationHandoff: 'タイムラインへ追加',
       generationQueuedMessage: '生成プロバイダーを待機中',
       generationEmpty: '生成タスクはまだありません。',
       generationNoMatch: '一致する生成タスクがありません。',

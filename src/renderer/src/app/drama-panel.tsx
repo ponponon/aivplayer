@@ -171,6 +171,11 @@ export function DramaPanel(): React.ReactElement {
     void window.aiv.cancelDramaGenerationTask(selectedProjectId, task.id).then(() => refreshData()).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setBusy(false))
   }
 
+  const handoffGenerationTask = (task: DramaGenerationTask): void => {
+    if (!task.resultPath || !app.isEditingMode) return
+    void app.appendEditingSourcePath(task.resultPath)
+  }
+
   const saveGraphTemplate = (input: DramaGraphTemplateInput): void => {
     if (busy) return
     setBusy(true)
@@ -234,7 +239,7 @@ export function DramaPanel(): React.ReactElement {
       </div>
       {progress ? <div className="drama-progress" role="status">{progress}</div> : null}
       <DramaAssetLibrary assets={data.assets} copy={copy} busy={busy} onSave={saveAsset} onDelete={deleteAsset} />
-      <DramaGenerationQueue assets={data.assets} tasks={data.generationTasks} copy={copy} busy={busy} onCreate={createGenerationTask} onCancel={cancelGenerationTask} />
+      <DramaGenerationQueue assets={data.assets} tasks={data.generationTasks} copy={copy} busy={busy} onCreate={createGenerationTask} onCancel={cancelGenerationTask} canHandoff={app.isEditingMode} onHandoff={handoffGenerationTask} />
       <DramaGraphTemplateLibrary templates={data.graphTemplates} copy={copy} busy={busy} onSave={saveGraphTemplate} onDelete={deleteGraphTemplate} />
       {data.scripts[0] ? <article className="drama-script-preview"><strong>{data.scripts[0].title}</strong><p>{data.scripts[0].content}</p></article> : null}
       {data.storyboards[0] ? <article className="drama-script-preview"><strong>{copy.storyboardStage} · {data.storyboards[0].title}</strong><p>{data.storyboards[0].location} · {data.storyboards[0].characters.join('、')}\n{data.storyboards[0].action}\n{data.storyboards[0].dialogue}</p></article> : null}

@@ -451,6 +451,7 @@
       generationCancelled: '취소됨',
       generationCancel: '작업 취소',
       generationCancelConfirm: '이 생성 작업을 취소할까요?',
+      generationHandoff: '타임라인에 추가',
       generationQueuedMessage: '생성 Provider 대기 중',
       generationEmpty: '생성 작업이 아직 없습니다.',
       generationNoMatch: '일치하는 생성 작업이 없습니다.',

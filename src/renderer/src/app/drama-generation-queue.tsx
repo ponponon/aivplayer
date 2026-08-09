@@ -1,4 +1,4 @@
-import { AudioLines, Ban, Image, Plus, Search, Video } from 'lucide-react'
+import { ArrowDownToLine, AudioLines, Ban, Image, Plus, Search, Video } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { DramaAsset, DramaGenerationTask, DramaGenerationTaskInput, DramaGenerationTaskStatus, DramaGenerationMediaType } from '../../../shared/drama-types'
 import type { LocaleCopy } from '../../../shared/i18n'
@@ -12,9 +12,11 @@ type DramaGenerationQueueProps = {
   busy: boolean
   onCreate: (input: DramaGenerationTaskInput) => void
   onCancel: (task: DramaGenerationTask) => void
+  canHandoff: boolean
+  onHandoff: (task: DramaGenerationTask) => void
 }
 
-export function DramaGenerationQueue({ assets, tasks, copy, busy, onCreate, onCancel }: DramaGenerationQueueProps): React.ReactElement {
+export function DramaGenerationQueue({ assets, tasks, copy, busy, onCreate, onCancel, canHandoff, onHandoff }: DramaGenerationQueueProps): React.ReactElement {
   const [filter, setFilter] = useState<QueueFilter>('all')
   const [mediaType, setMediaType] = useState<DramaGenerationMediaType>('image')
   const [targetId, setTargetId] = useState('')
@@ -46,7 +48,7 @@ export function DramaGenerationQueue({ assets, tasks, copy, busy, onCreate, onCa
       <button className="drama-primary-action" type="button" onClick={enqueue} disabled={busy || !prompt.trim()}><Plus size={13} />{copy.generationEnqueue}</button>
     </div>
     <div className="drama-generation-toolbar"><div className="drama-generation-filters" role="tablist" aria-label={copy.generationQueueTitle}>{(['all', 'image', 'video', 'audio'] as const).map((value) => <button key={value} type="button" role="tab" aria-selected={filter === value} className={filter === value ? 'is-active' : ''} onClick={() => setFilter(value)}>{value === 'all' ? copy.generationMediaAll : mediaLabel(value)}</button>)}</div><label className="drama-generation-search"><Search size={12} aria-hidden="true" /><input value={query} onChange={(event) => setQuery(event.currentTarget.value)} placeholder={copy.assetSearchPlaceholder} aria-label={copy.assetSearchPlaceholder} /></label></div>
-    {visibleTasks.length > 0 ? <div className="drama-generation-list" data-testid="drama-generation-list">{visibleTasks.map((task) => <article className="drama-generation-task" key={task.id} data-testid={`drama-generation-task-${task.id}`}><div className="drama-generation-task-heading"><span>{mediaIcon(task.mediaType)}{mediaLabel(task.mediaType)}</span><strong className={`drama-generation-status ${task.status}`}>{statusLabel(task.status)}</strong></div><p>{task.prompt}</p><small>{task.message}{task.targetId ? ` · ${assets.find((asset) => asset.id === task.targetId)?.name ?? task.targetId}` : ''}</small>{task.status === 'queued' || task.status === 'running' ? <button className="drama-icon-button drama-generation-cancel" type="button" onClick={() => onCancel(task)} disabled={busy} title={copy.generationCancel} aria-label={`${copy.generationCancel}: ${task.prompt}`}><Ban size={13} /></button> : null}</article>)}</div> : <p className="drama-generation-empty">{tasks.length > 0 ? copy.generationNoMatch : copy.generationEmpty}</p>}
+    {visibleTasks.length > 0 ? <div className="drama-generation-list" data-testid="drama-generation-list">{visibleTasks.map((task) => <article className="drama-generation-task" key={task.id} data-testid={`drama-generation-task-${task.id}`}><div className="drama-generation-task-heading"><span>{mediaIcon(task.mediaType)}{mediaLabel(task.mediaType)}</span><strong className={`drama-generation-status ${task.status}`}>{statusLabel(task.status)}</strong></div><p>{task.prompt}</p><small>{task.message}{task.targetId ? ` · ${assets.find((asset) => asset.id === task.targetId)?.name ?? task.targetId}` : ''}</small><div className="drama-generation-task-actions">{task.resultPath && task.status === 'completed' && canHandoff ? <button className="drama-secondary-action" type="button" onClick={() => onHandoff(task)} disabled={busy}><ArrowDownToLine size={12} />{copy.generationHandoff}</button> : null}{task.status === 'queued' || task.status === 'running' ? <button className="drama-icon-button drama-generation-cancel" type="button" onClick={() => onCancel(task)} disabled={busy} title={copy.generationCancel} aria-label={`${copy.generationCancel}: ${task.prompt}`}><Ban size={13} /></button> : null}</div></article>)}</div> : <p className="drama-generation-empty">{tasks.length > 0 ? copy.generationNoMatch : copy.generationEmpty}</p>}
     <p className="drama-generation-hint">{copy.generationNotStarted}</p>
   </section>
 }
