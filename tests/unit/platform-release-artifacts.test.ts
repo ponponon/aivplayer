@@ -82,4 +82,11 @@ describe('platform release artifact contract', () => {
     ])
     expect(report.artifacts.every((artifact) => artifact.sizeBytes > 0 && /^[a-f0-9]{64}$/.test(artifact.sha256))).toBe(true)
   })
+
+  it('ignores nested unpacked runtime files outside the upload root', async () => {
+    const artifactsDirectory = await createFixture(['AIVPlayer Setup 0.4.0.exe', 'latest.yml'])
+    await writeFile(join(artifactsDirectory, 'nested', 'ffmpeg.exe'), 'unpacked runtime')
+    const result = await runCheck('windows', artifactsDirectory)
+    expect(result.stdout).toContain('Platform release artifacts verified: windows')
+  })
 })

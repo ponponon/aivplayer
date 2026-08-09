@@ -1,7 +1,7 @@
-import { mkdir, rename, stat, writeFile } from 'node:fs/promises'
-import { basename, dirname, resolve } from 'node:path'
+import { mkdir, readdir, rename, stat, writeFile } from 'node:fs/promises'
+import { basename, dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { listReleaseArtifacts } from './release-artifact-policy.mjs'
+import { isReleaseArtifact } from './release-artifact-policy.mjs'
 import { sha256File } from './release-manifest.mjs'
 
 export const PLATFORM_CONTRACTS = {
@@ -56,12 +56,21 @@ function extensionOf(name) {
   return lowerName.slice(lowerName.lastIndexOf('.'))
 }
 
+async function listTopLevelReleaseArtifacts(directory) {
+  const root = resolve(directory)
+  const entries = await readdir(root, { withFileTypes: true })
+  return entries
+    .filter((entry) => entry.isFile() && isReleaseArtifact(entry.name) && entry.name !== 'release-manifest.json')
+    .map((entry) => join(root, entry.name))
+    .sort((left, right) => left.localeCompare(right))
+}
+
 export async function checkPlatformReleaseArtifacts(options = {}) {
   const platform = options.platform ?? process.env.RELEASE_PLATFORM
   const architecture = options.architecture ?? process.env.RELEASE_ARCHITECTURE
   const contract = getPlatformContract(platform, architecture)
   const artifactsDirectory = resolve(options.artifactsDir ?? process.env.ARTIFACTS_DIR ?? 'release')
-  const files = await listReleaseArtifacts(artifactsDirectory, { includeManifest: false })
+  const files = await listTopLevelReleaseArtifacts(artifactsDirectory)
   if (files.length === 0) throw new Error(`No platform release artifacts found under ${artifactsDirectory}.`)
   const names = files.map((file) => basename(file))
   const duplicateNames = names.filter((name, index) => names.indexOf(name) !== index)
