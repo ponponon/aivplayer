@@ -21,6 +21,13 @@ export type SubtitleQaOptions = {
   maxLineWidthEm?: number
 }
 
+export const SUBTITLE_QA_REPAIRABLE_KINDS = ['overlap', 'too-short', 'too-long'] as const
+export type SubtitleQaRepairableKind = typeof SUBTITLE_QA_REPAIRABLE_KINDS[number]
+
+export function isSubtitleQaRepairableIssue(issue: SubtitleQaIssue): issue is SubtitleQaIssue & { kind: SubtitleQaRepairableKind } {
+  return (SUBTITLE_QA_REPAIRABLE_KINDS as readonly string[]).includes(issue.kind)
+}
+
 const DEFAULT_OPTIONS: Required<SubtitleQaOptions> = {
   minDurationSeconds: 0.4,
   maxDurationSeconds: 7,
@@ -102,4 +109,79 @@ export function analyzeSubtitleQa(captions: readonly EditingCaption[], options: 
   }
 
   return issues.sort((left, right) => left.startSeconds - right.startSeconds || left.severity.localeCompare(right.severity) || left.id.localeCompare(right.id))
+}
+
+type SubtitleQaRepairOptions = Pick<SubtitleQaOptions, 'minDurationSeconds' | 'maxDurationSeconds'>
+
+function safeDuration(value: number): number {
+  return Number.isFinite(value) && value >= 0 ? value : 0
+}
+
+function withoutSourceAnchor(caption: EditingCaption): Omit<EditingCaption, 'sourceId' | 'sourceStartSeconds' | 'sourceEndSeconds'> {
+  const { sourceId: _sourceId, sourceStartSeconds: _sourceStartSeconds, sourceEndSeconds: _sourceEndSeconds, ...unanchored } = caption
+  return unanchored
+}
+
+function trimCaptionEnd(caption: EditingCaption, endSeconds: number): EditingCaption {
+  const durationSeconds = Math.max(0, endSeconds - Math.max(0, caption.startSeconds))
+  const unanchored = withoutSourceAnchor(caption)
+  const words = caption.words?.flatMap((word) => {
+    const startSeconds = Math.max(0, word.startSeconds)
+    const end = Math.min(durationSeconds, word.endSeconds)
+    return end > startSeconds ? [{ ...word, startSeconds, endSeconds: end }] : []
+  })
+  return { ...unanchored, durationSeconds, ...(caption.words ? { words: words && words.length > 0 ? words : undefined } : {}) }
+}
+
+function nextCaptionStart(captions: readonly EditingCaption[], caption: EditingCaption): number {
+  return captions
+    .filter((candidate) => candidate.id !== caption.id && candidate.kind === caption.kind && candidate.startSeconds > caption.startSeconds + 0.001)
+    .map((candidate) => candidate.startSeconds)
+    .sort((left, right) => left - right)[0] ?? Number.POSITIVE_INFINITY
+}
+
+/** Applies only deterministic timing repairs; text, track identity and source media are never rewritten. */
+export function repairSubtitleQaIssues(
+  captions: readonly EditingCaption[],
+  issues: readonly SubtitleQaIssue[],
+  timelineDurationSeconds: number,
+  options: SubtitleQaRepairOptions = {}
+): EditingCaption[] {
+  const selected = issues.filter(isSubtitleQaRepairableIssue)
+  if (selected.length === 0) return [...captions]
+  const minDurationSeconds = Math.max(0.1, safeNumber(options.minDurationSeconds ?? DEFAULT_OPTIONS.minDurationSeconds, DEFAULT_OPTIONS.minDurationSeconds))
+  const maxDurationSeconds = Math.max(minDurationSeconds, safeNumber(options.maxDurationSeconds ?? DEFAULT_OPTIONS.maxDurationSeconds, DEFAULT_OPTIONS.maxDurationSeconds))
+  const timelineEndSeconds = Math.max(0, safeNumber(timelineDurationSeconds, 0))
+  let next = captions.map((caption) => ({ ...caption, ...(caption.words ? { words: caption.words.map((word) => ({ ...word })) } : {}) }))
+  const selectedByKind = (kind: SubtitleQaRepairableKind): SubtitleQaIssue[] => selected.filter((issue) => issue.kind === kind).sort((left, right) => left.startSeconds - right.startSeconds || left.id.localeCompare(right.id))
+
+  for (const issue of selectedByKind('too-long')) {
+    const index = next.findIndex((caption) => caption.id === issue.captionId)
+    const caption = index >= 0 ? next[index] : undefined
+    if (!caption || safeDuration(caption.durationSeconds) <= maxDurationSeconds) continue
+    next[index] = trimCaptionEnd(caption, caption.startSeconds + maxDurationSeconds)
+  }
+
+  for (const issue of selectedByKind('overlap')) {
+    const currentIndex = next.findIndex((caption) => caption.id === issue.captionId)
+    const relatedIndex = issue.relatedCaptionId ? next.findIndex((caption) => caption.id === issue.relatedCaptionId) : -1
+    const current = currentIndex >= 0 ? next[currentIndex] : undefined
+    const related = relatedIndex >= 0 ? next[relatedIndex] : undefined
+    if (!current || !related || related.kind !== current.kind) continue
+    const overlapEnd = Math.max(0, current.startSeconds)
+    if (related.startSeconds + safeDuration(related.durationSeconds) - overlapEnd <= 0.01) continue
+    next[relatedIndex] = trimCaptionEnd(related, overlapEnd)
+  }
+
+  for (const issue of selectedByKind('too-short')) {
+    const index = next.findIndex((caption) => caption.id === issue.captionId)
+    const caption = index >= 0 ? next[index] : undefined
+    if (!caption || safeDuration(caption.durationSeconds) >= minDurationSeconds) continue
+    const availableEnd = Math.min(timelineEndSeconds, nextCaptionStart(next, caption))
+    const targetEnd = Math.min(caption.startSeconds + minDurationSeconds, availableEnd)
+    if (targetEnd - caption.startSeconds <= safeDuration(caption.durationSeconds) + 0.001) continue
+    next[index] = trimCaptionEnd(caption, targetEnd)
+  }
+
+  return next
 }

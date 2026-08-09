@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { EditingCaption } from '../../src/shared/editing-types'
-import { analyzeSubtitleQa } from '../../src/shared/subtitle-qa'
+import { analyzeSubtitleQa, repairSubtitleQaIssues } from '../../src/shared/subtitle-qa'
 
 function caption(id: string, startSeconds: number, durationSeconds: number, text: string, kind: EditingCaption['kind'] = 'source'): EditingCaption {
   return { id, startSeconds, durationSeconds, text, kind }
@@ -69,5 +69,33 @@ describe('subtitle QA analyzer', () => {
 
     expect(analyzeSubtitleQa(source, { maxCharactersPerSecond: 3 })).toEqual([])
     expect(source).toEqual(before)
+  })
+
+  it('repairs selected timing issues without rewriting text or source anchors', () => {
+    const source: EditingCaption[] = [
+      { ...caption('short', 0, 0.2, '短句'), sourceId: 'source-1', sourceStartSeconds: 0, sourceEndSeconds: 0.2 },
+      caption('overlap-a', 2, 2, '前一句'),
+      caption('overlap-b', 3, 1, '后一句'),
+      caption('long', 5, 9, '长句')
+    ]
+    const issues = analyzeSubtitleQa(source, { minDurationSeconds: 0.4, maxDurationSeconds: 7 })
+    const repaired = repairSubtitleQaIssues(source, issues, 20, { minDurationSeconds: 0.4, maxDurationSeconds: 7 })
+
+    expect(repaired.find((item) => item.id === 'short')).toMatchObject({ durationSeconds: 0.4, text: '短句' })
+    expect(repaired.find((item) => item.id === 'short')).not.toHaveProperty('sourceId')
+    expect(repaired.find((item) => item.id === 'overlap-a')).toMatchObject({ startSeconds: 2, durationSeconds: 1 })
+    expect(repaired.find((item) => item.id === 'long')).toMatchObject({ startSeconds: 5, durationSeconds: 7 })
+    expect(repaired.find((item) => item.id === 'overlap-b')?.text).toBe('后一句')
+    expect(source[0]?.durationSeconds).toBe(0.2)
+  })
+
+  it('does not extend a short cue into the next cue and leaves text issues untouched', () => {
+    const source = [caption('short', 0, 0.2, '短句'), caption('next', 0.3, 1, '下一句'), caption('text', 2, 1, '你好 !!!')]
+    const issues = analyzeSubtitleQa(source, { minDurationSeconds: 0.4 })
+    const repaired = repairSubtitleQaIssues(source, issues, 5, { minDurationSeconds: 0.4 })
+
+    expect(repaired.find((item) => item.id === 'short')?.durationSeconds).toBe(0.3)
+    expect(repaired.find((item) => item.id === 'text')?.text).toBe('你好 !!!')
+    expect(repaired.find((item) => item.id === 'text')?.durationSeconds).toBe(1)
   })
 })
