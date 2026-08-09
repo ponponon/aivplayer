@@ -6,9 +6,13 @@ import { promisify } from 'node:util'
 import { Field, Float64, Schema, Utf8 } from 'apache-arrow'
 import { connect, Index, type Table, type VectorQuery } from '@lancedb/lancedb'
 import { isVideoFilePath } from '../media/file-opening'
+import { DEFAULT_MIN_SCENE_DURATION_SECONDS, DEFAULT_SCENE_DETECTION_THRESHOLD } from '../media/scene-detection'
+import { detectSceneCutTimestamps } from '../media/scene-detection-runtime'
 import { parseVtt } from './subtitle-writer.ts'
 import { resolveFfmpegPath, resolveFfprobePath } from './whisper-cpp-runtime'
 import { VisionEmbeddingRuntime } from './vision-model'
+import { DEFAULT_VISION_ENTITY_LABELS, createVisionEntityEvidence, getVisionEntityLabelIdForDisplayName, type VisionEntityLabel } from './vision-entity-evidence'
+import { createVisionSceneEvidence } from './vision-scene-evidence'
 import { calculateVisionLexicalMatch, combineVisionHybridScore, getVisionSearchResultKey } from './vision-search'
 import { createVisionEvidenceId, createVisionSourceFingerprint, createVisionSourceId } from './vision-evidence'
 import {
@@ -21,6 +25,7 @@ import {
   type VisionIndexProgress,
   type VisionIndexStage,
   type VisionIndexTimings,
+  type VisionIndexOptions,
   type VisionMatchSource,
   type VisionRuntimeStatus,
   type VisionSearchMode,
@@ -157,16 +162,14 @@ type VisionLibraryOptions = {
 
 type ProgressCallback = (progress: VisionIndexProgress) => void
 
-export type VisionIndexOptions = {
-  subtitlePaths?: ReadonlyMap<string, string>
-}
-
 type VisionTimingPhase = Exclude<keyof VisionIndexTimings, 'totalMs'>
 
 const VISION_TIMING_PHASE_BY_STAGE: Partial<Record<VisionIndexStage, VisionTimingPhase>> = {
   planning: 'planningMs',
   'loading-model': 'modelLoadingMs',
   frames: 'framesMs',
+  'scene-evidence': 'sceneEvidenceMs',
+  'entity-evidence': 'entityEvidenceMs',
   'vector-index': 'vectorIndexMs',
   'text-index': 'textIndexMs'
 }
@@ -211,6 +214,17 @@ function throwIfAborted(signal: AbortSignal): void {
     error.name = 'AbortError'
     throw error
   }
+}
+
+function dotProduct(left: readonly number[], right: readonly number[]): number {
+  const length = Math.min(left.length, right.length)
+  let total = 0
+  for (let index = 0; index < length; index += 1) {
+    const leftValue = Number(left[index])
+    const rightValue = Number(right[index])
+    if (Number.isFinite(leftValue) && Number.isFinite(rightValue)) total += leftValue * rightValue
+  }
+  return total
 }
 
 async function probeDuration(ffprobePath: string, videoPath: string): Promise<number> {
@@ -279,6 +293,7 @@ export class VisionLibrary {
   private searchDocumentMaintenancePromise: Promise<void> | null = null
   private vectorIndexMaintenancePromise: Promise<void> | null = null
   private searchDocumentsReady = false
+  private entityLabelEmbeddingsPromise: Promise<ReadonlyMap<string, number[]>> | null = null
 
   private readonly options: VisionLibraryOptions
 
@@ -576,9 +591,33 @@ export class VisionLibrary {
     await db.createTable(EVIDENCE_TABLE_NAME, nextRows, { schema: VISION_EVIDENCE_SCHEMA })
   }
 
-  /** Adds one derived evidence row without replacing subtitle or visual evidence for the source. */
-  async upsertEvidence(evidence: VisionEvidence): Promise<void> {
-    const row: VisionEvidenceRow = {
+  private async replaceSceneEvidenceRows(videoPath: string, rows: VisionEvidenceRow[]): Promise<void> {
+    await this.replaceEvidenceTypeRows(videoPath, 'scene', rows)
+  }
+
+  private async replaceEntityEvidenceRows(videoPath: string, rows: VisionEvidenceRow[]): Promise<void> {
+    await this.replaceEvidenceTypeRows(videoPath, 'entity', rows)
+  }
+
+  private async replaceEvidenceTypeRows(videoPath: string, evidenceType: VisionEvidenceType, rows: VisionEvidenceRow[]): Promise<void> {
+    const db = await this.getDatabase()
+    const existing = await this.getEvidenceTable()
+    const preservedRows = existing
+      ? (await existing.query().where(`video_path = '${escapeSqlString(videoPath)}'`).toArray() as unknown as VisionEvidenceRow[])
+        .filter((row) => row.evidence_type !== evidenceType)
+      : []
+    const nextRows = [...preservedRows, ...rows]
+    if (existing) await existing.delete(`video_path = '${escapeSqlString(videoPath)}'`)
+    if (nextRows.length === 0) return
+    if (existing) {
+      await existing.add(nextRows)
+      return
+    }
+    await db.createTable(EVIDENCE_TABLE_NAME, nextRows, { schema: VISION_EVIDENCE_SCHEMA })
+  }
+
+  private toEvidenceRow(evidence: VisionEvidence): VisionEvidenceRow {
+    return {
       id: evidence.id,
       source_id: evidence.sourceId,
       video_path: evidence.videoPath,
@@ -595,6 +634,11 @@ export class VisionLibrary {
       model_variant: evidence.modelVariant?.trim() || 'unknown',
       generated_at: evidence.generatedAt !== undefined && Number.isFinite(evidence.generatedAt) ? evidence.generatedAt : Date.now()
     }
+  }
+
+  /** Adds one derived evidence row without replacing subtitle or visual evidence for the source. */
+  async upsertEvidence(evidence: VisionEvidence): Promise<void> {
+    const row = this.toEvidenceRow(evidence)
     const db = await this.getDatabase()
     const existing = await this.getEvidenceTable()
     if (existing) {
@@ -744,6 +788,17 @@ export class VisionLibrary {
     return rows as unknown as VisionFramePointer[]
   }
 
+  private async getFrameRows(videoPath: string): Promise<VisionFrameRow[]> {
+    const table = await this.getTable()
+    if (!table) return []
+    const rows = await table.query()
+      .where(`video_path = '${escapeSqlString(videoPath)}'`)
+      .select(['id', 'video_path', 'file_name', 'timestamp_seconds', 'thumbnail_path', 'embedding', 'model_id', 'model_variant', 'file_size_bytes', 'file_mtime_ms'])
+      .limit(METADATA_SCAN_LIMIT)
+      .toArray()
+    return rows as unknown as VisionFrameRow[]
+  }
+
   private buildCaptionRows(videoPath: string, subtitle: SubtitleSnapshot, framePointers: VisionFramePointer[]): VisionCaptionRow[] {
     if (subtitle.segments.length === 0 || framePointers.length === 0) return []
     const fileName = basename(videoPath)
@@ -828,6 +883,77 @@ export class VisionLibrary {
       }
     })
     return [...subtitleRows, ...visualRows]
+  }
+
+  private async refreshSceneEvidence(
+    videoPath: string,
+    snapshot: VideoSourceSnapshot,
+    durationSeconds: number,
+    ffmpegPath: string,
+    framePointers: VisionFramePointer[],
+    signal: AbortSignal
+  ): Promise<number> {
+    throwIfAborted(signal)
+    const cuts = await detectSceneCutTimestamps(
+      ffmpegPath,
+      videoPath,
+      DEFAULT_SCENE_DETECTION_THRESHOLD,
+      DEFAULT_MIN_SCENE_DURATION_SECONDS,
+      signal
+    )
+    const sourceFingerprint = createVisionSourceFingerprint(videoPath, snapshot.sizeBytes, snapshot.mtimeMs)
+    const rows = createVisionSceneEvidence({
+      sourceId: createVisionSourceId(videoPath),
+      videoPath,
+      fileName: basename(videoPath),
+      sourceFingerprint,
+      durationSeconds,
+      cutTimestamps: cuts,
+      frames: framePointers.map((frame) => ({ id: frame.id, timestampSeconds: frame.timestamp_seconds, thumbnailPath: frame.thumbnail_path }))
+    }).map((evidence) => this.toEvidenceRow(evidence))
+    await this.replaceSceneEvidenceRows(videoPath, rows)
+    return rows.length
+  }
+
+  private async getEntityLabelEmbeddings(): Promise<ReadonlyMap<string, number[]>> {
+    this.entityLabelEmbeddingsPromise ??= (async () => {
+      await this.model.prepareTextModel()
+      const entries = await Promise.all(DEFAULT_VISION_ENTITY_LABELS.map(async (label) => [label.id, await this.model.getTextEmbedding(label.query)] as const))
+      return new Map(entries)
+    })().catch((error) => {
+      this.entityLabelEmbeddingsPromise = null
+      throw error
+    })
+    return this.entityLabelEmbeddingsPromise
+  }
+
+  private async refreshEntityEvidence(
+    videoPath: string,
+    snapshot: VideoSourceSnapshot,
+    intervalSeconds: number,
+    frameRows: VisionFrameRow[],
+    labelEmbeddings: ReadonlyMap<string, number[]>,
+    signal: AbortSignal
+  ): Promise<number> {
+    throwIfAborted(signal)
+    const labelsById = new Map<string, VisionEntityLabel>(DEFAULT_VISION_ENTITY_LABELS.map((label) => [label.id, label]))
+    const sourceFingerprint = createVisionSourceFingerprint(videoPath, snapshot.sizeBytes, snapshot.mtimeMs)
+    const rows = frameRows.flatMap((frame) => createVisionEntityEvidence({
+      sourceId: createVisionSourceId(videoPath),
+      videoPath,
+      fileName: frame.file_name,
+      sourceFingerprint,
+      frameId: frame.id,
+      thumbnailPath: frame.thumbnail_path,
+      timestampSeconds: frame.timestamp_seconds,
+      intervalSeconds,
+      scores: [...labelEmbeddings.entries()].flatMap(([labelId, embedding]) => {
+        const label = labelsById.get(labelId)
+        return label ? [{ label, similarity: dotProduct(frame.embedding, embedding) }] : []
+      })
+    })).map((evidence) => this.toEvidenceRow(evidence))
+    await this.replaceEntityEvidenceRows(videoPath, rows)
+    return rows.length
   }
 
   private createSourceRow(videoPath: string, snapshot: VideoSourceSnapshot, intervalSeconds: number, frameCount: number): VisionSourceRow {
@@ -917,9 +1043,16 @@ export class VisionLibrary {
     let skippedVideos = 0
     let captionOnlyVideos = 0
     const fullPlans: Array<{ path: string; snapshot: VideoSourceSnapshot }> = []
+    const plannedSnapshots = new Map<string, VideoSourceSnapshot>()
+    let sceneEvidenceProcessed = 0
+    let sceneEvidenceCount = 0
+    let entityEvidenceProcessed = 0
+    let entityEvidenceCount = 0
     const startedAtMs = Date.now()
-    const timings: VisionIndexTimings = { planningMs: 0, modelLoadingMs: 0, framesMs: 0, vectorIndexMs: 0, textIndexMs: 0, totalMs: 0 }
+    const timings: VisionIndexTimings = { planningMs: 0, modelLoadingMs: 0, framesMs: 0, sceneEvidenceMs: 0, entityEvidenceMs: 0, vectorIndexMs: 0, textIndexMs: 0, totalMs: 0 }
     let activeStage: VisionIndexStage | null = null
+    let activeVideoPath: string | undefined
+    let currentVideoIndex = 0
     let activeStageStartedAtMs = startedAtMs
     const settleActiveStage = (nowMs: number): void => {
       if (activeStage) {
@@ -953,7 +1086,10 @@ export class VisionLibrary {
       emitProgress({ status: 'indexing', stage: 'planning', totalVideos: paths.length, currentVideoIndex: 0, totalFrames, processedFrames, skippedVideos, captionOnlyVideos, message: '正在检查影视库变化…' })
       for (const videoPath of paths) {
         throwIfAborted(signal)
+        activeVideoPath = videoPath
+        currentVideoIndex = skippedVideos + captionOnlyVideos
         const snapshot = await this.getVideoSourceSnapshot(videoPath, options.subtitlePaths?.get(videoPath))
+        plannedSnapshots.set(videoPath, snapshot)
         const source = await this.getSourceRow(videoPath)
         if (source && this.isVideoSourceUnchanged(source, snapshot, interval)) {
           if (this.isSubtitleUnchanged(source, snapshot.subtitle)) {
@@ -969,10 +1105,14 @@ export class VisionLibrary {
         }
       }
 
-      const ffmpegPath = fullPlans.length > 0 ? await resolveFfmpegPath(this.options.resourcePath, this.options.env, undefined) : null
-      const ffprobePath = fullPlans.length > 0 ? await resolveFfprobePath(this.options.resourcePath, this.options.env, undefined) : null
-      if (fullPlans.length > 0 && (!ffmpegPath || !ffprobePath)) throw new Error('未找到 ffmpeg 或 ffprobe，无法进行视频抽帧')
-      if (fullPlans.length > 0 && !this.model.isAvailable()) throw new Error(this.model.getStatusMessage())
+      const includeSceneEvidence = options.includeSceneEvidence === true && paths.length > 0
+      const includeEntityEvidence = options.includeEntityEvidence === true && paths.length > 0
+      activeVideoPath = undefined
+      const needsMediaRuntime = fullPlans.length > 0 || (includeSceneEvidence && paths.length > 0)
+      const ffmpegPath = needsMediaRuntime ? await resolveFfmpegPath(this.options.resourcePath, this.options.env, undefined) : null
+      const ffprobePath = needsMediaRuntime ? await resolveFfprobePath(this.options.resourcePath, this.options.env, undefined) : null
+      if (needsMediaRuntime && (!ffmpegPath || !ffprobePath)) throw new Error('未找到 ffmpeg 或 ffprobe，无法处理视觉索引')
+      if ((fullPlans.length > 0 || includeEntityEvidence) && !this.model.isAvailable()) throw new Error(this.model.getStatusMessage())
 
       if (fullPlans.length > 0) {
         emitProgress({ status: 'loading', stage: 'loading-model', totalVideos: paths.length, currentVideoIndex: skippedVideos + captionOnlyVideos, totalFrames, processedFrames, skippedVideos, captionOnlyVideos, message: '正在加载 SigLIP2 模型…' })
@@ -981,7 +1121,8 @@ export class VisionLibrary {
       for (let index = 0; index < fullPlans.length; index += 1) {
         throwIfAborted(signal)
         const plan = fullPlans[index]
-        const currentVideoIndex = skippedVideos + captionOnlyVideos + index + 1
+        activeVideoPath = plan.path
+        currentVideoIndex = skippedVideos + captionOnlyVideos + index + 1
         emitProgress({ status: 'indexing', stage: 'frames', totalVideos: paths.length, currentVideoIndex, totalFrames, processedFrames, skippedVideos, captionOnlyVideos, currentVideoPath: plan.path, message: `正在处理 ${basename(plan.path)}` })
         const frameCount = await this.indexVideo(plan.path, plan.snapshot, interval, ffmpegPath as string, ffprobePath as string, signal, (videoProcessed, videoTotal) => {
           emitProgress({ status: 'indexing', stage: 'frames', totalVideos: paths.length, currentVideoIndex, totalFrames: totalFrames + videoTotal, processedFrames: processedFrames + videoProcessed, skippedVideos, captionOnlyVideos, currentVideoPath: plan.path, message: `正在处理 ${basename(plan.path)}` })
@@ -989,25 +1130,58 @@ export class VisionLibrary {
         processedFrames += frameCount
         totalFrames += frameCount
       }
+      if (includeSceneEvidence) {
+        const scenePlans = paths
+          .map((path) => ({ path, snapshot: plannedSnapshots.get(path) }))
+          .filter((plan): plan is { path: string; snapshot: VideoSourceSnapshot } => plan.snapshot !== undefined)
+        emitProgress({ status: 'indexing', stage: 'scene-evidence', totalVideos: paths.length, currentVideoIndex: paths.length, totalFrames, processedFrames, skippedVideos, captionOnlyVideos, sceneEvidenceTotal: scenePlans.length, sceneEvidenceProcessed, sceneEvidenceCount, message: '正在检测场景切换…' })
+        for (const plan of scenePlans) {
+          throwIfAborted(signal)
+          activeVideoPath = plan.path
+          const durationSeconds = await probeDuration(ffprobePath as string, plan.path)
+          const framePointers = await this.getFramePointers(plan.path)
+          sceneEvidenceCount += await this.refreshSceneEvidence(plan.path, plan.snapshot, durationSeconds, ffmpegPath as string, framePointers, signal)
+          sceneEvidenceProcessed += 1
+          emitProgress({ status: 'indexing', stage: 'scene-evidence', totalVideos: paths.length, currentVideoIndex: paths.length, totalFrames, processedFrames, skippedVideos, captionOnlyVideos, sceneEvidenceTotal: scenePlans.length, sceneEvidenceProcessed, sceneEvidenceCount, currentVideoPath: plan.path, message: `已完成场景检测：${basename(plan.path)}` })
+        }
+      }
+      if (includeEntityEvidence) {
+        const entityPlans = paths
+          .map((path) => ({ path, snapshot: plannedSnapshots.get(path) }))
+          .filter((plan): plan is { path: string; snapshot: VideoSourceSnapshot } => plan.snapshot !== undefined)
+        emitProgress({ status: 'indexing', stage: 'entity-evidence', totalVideos: paths.length, currentVideoIndex: paths.length, totalFrames, processedFrames, skippedVideos, captionOnlyVideos, entityEvidenceTotal: entityPlans.length, entityEvidenceProcessed, entityEvidenceCount, message: '正在分析画面实体标签…' })
+        const labelEmbeddings = await this.getEntityLabelEmbeddings()
+        for (const plan of entityPlans) {
+          throwIfAborted(signal)
+          activeVideoPath = plan.path
+          const frameRows = await this.getFrameRows(plan.path)
+          entityEvidenceCount += await this.refreshEntityEvidence(plan.path, plan.snapshot, interval, frameRows, labelEmbeddings, signal)
+          entityEvidenceProcessed += 1
+          emitProgress({ status: 'indexing', stage: 'entity-evidence', totalVideos: paths.length, currentVideoIndex: paths.length, totalFrames, processedFrames, skippedVideos, captionOnlyVideos, entityEvidenceTotal: entityPlans.length, entityEvidenceProcessed, entityEvidenceCount, currentVideoPath: plan.path, message: `已完成实体标签：${basename(plan.path)}` })
+        }
+      }
       if (fullPlans.length > 0) {
         throwIfAborted(signal)
+        activeVideoPath = undefined
         emitProgress({ status: 'indexing', stage: 'vector-index', totalVideos: paths.length, currentVideoIndex: paths.length, totalFrames, processedFrames, skippedVideos, captionOnlyVideos, message: '正在维护向量 ANN 索引…' })
         await this.ensureVectorIndex(true)
         throwIfAborted(signal)
       }
       if (fullPlans.length > 0 || captionOnlyVideos > 0) {
         throwIfAborted(signal)
+        activeVideoPath = undefined
         emitProgress({ status: 'indexing', stage: 'text-index', totalVideos: paths.length, currentVideoIndex: paths.length, totalFrames, processedFrames, skippedVideos, captionOnlyVideos, message: '正在维护全文索引…' })
         await this.maintainSearchFullTextIndex()
         throwIfAborted(signal)
       }
-      return emitProgress({ status: 'completed', stage: 'completed', totalVideos: paths.length, currentVideoIndex: paths.length, totalFrames, processedFrames, skippedVideos, captionOnlyVideos, message: `索引完成，共处理 ${processedFrames} 个视频帧，跳过 ${skippedVideos} 个未变化视频，更新 ${captionOnlyVideos} 个字幕索引` })
+      return emitProgress({ status: 'completed', stage: 'completed', totalVideos: paths.length, currentVideoIndex: paths.length, totalFrames, processedFrames, skippedVideos, captionOnlyVideos, ...(includeSceneEvidence ? { sceneEvidenceTotal: sceneEvidenceProcessed, sceneEvidenceProcessed, sceneEvidenceCount } : {}), ...(includeEntityEvidence ? { entityEvidenceTotal: entityEvidenceProcessed, entityEvidenceProcessed, entityEvidenceCount } : {}), message: `索引完成，共处理 ${processedFrames} 个视频帧，跳过 ${skippedVideos} 个未变化视频，更新 ${captionOnlyVideos} 个字幕索引${includeSceneEvidence ? `，生成 ${sceneEvidenceCount} 个场景证据` : ''}${includeEntityEvidence ? `，生成 ${entityEvidenceCount} 个实体证据` : ''}` })
     } catch (error) {
       if (isAbortError(error)) {
-        return emitProgress({ status: 'cancelled', stage: 'cancelled', totalVideos: paths.length, currentVideoIndex: 0, totalFrames, processedFrames, skippedVideos, captionOnlyVideos, message: '索引已取消' })
+        return emitProgress({ status: 'cancelled', stage: 'cancelled', totalVideos: paths.length, currentVideoIndex, totalFrames, processedFrames, skippedVideos, captionOnlyVideos, message: '索引已取消' })
       }
       const message = error instanceof Error ? error.message : String(error)
-      emitProgress({ status: 'error', stage: 'error', totalVideos: paths.length, currentVideoIndex: 0, totalFrames, processedFrames, skippedVideos, captionOnlyVideos, error: message, message })
+      const failedStage = activeStage && activeStage !== 'error' ? activeStage : undefined
+      emitProgress({ status: 'error', stage: 'error', totalVideos: paths.length, currentVideoIndex, totalFrames, processedFrames, skippedVideos, captionOnlyVideos, currentVideoPath: activeVideoPath, failedStage, error: message, message })
       throw error
     }
   }
@@ -1153,7 +1327,7 @@ export class VisionLibrary {
     if (!table) return null
     const candidates = new Map<string, LexicalSearchCandidate>()
     const rows = await table.query()
-      .select(['id', 'source_id', 'video_path', 'file_name', 'evidence_type', 'start_seconds', 'end_seconds', 'text', 'frame_id', 'thumbnail_path', 'confidence', 'source_fingerprint'])
+      .select(['id', 'source_id', 'video_path', 'file_name', 'evidence_type', 'start_seconds', 'end_seconds', 'text', 'frame_id', 'thumbnail_path', 'confidence', 'source_fingerprint', 'model_id', 'model_variant'])
       .limit(METADATA_SCAN_LIMIT)
       .toArray() as unknown as Array<Record<string, unknown>>
     for (const row of rows) {
@@ -1179,9 +1353,10 @@ export class VisionLibrary {
         endSeconds: Number(row.end_seconds),
         evidenceType,
         confidence: Number.isFinite(Number(row.confidence)) && Number(row.confidence) >= 0 ? Number(row.confidence) : undefined,
+        entityLabelId: evidenceType === 'entity' ? getVisionEntityLabelIdForDisplayName(String(row.text ?? '')) : undefined,
         sourceFingerprint: String(row.source_fingerprint ?? ''),
-        modelId: VISION_MODEL_ID,
-        modelVariant: VISION_MODEL_VARIANT
+        modelId: String(row.model_id ?? VISION_MODEL_ID),
+        modelVariant: String(row.model_variant ?? VISION_MODEL_VARIANT)
       }
       const resultKey = getVisionSearchResultKey(result)
       const existing = candidates.get(resultKey)
@@ -1263,6 +1438,7 @@ export class VisionLibrary {
         existing.result.startSeconds = candidate.result.startSeconds ?? existing.result.startSeconds
         existing.result.endSeconds = candidate.result.endSeconds ?? existing.result.endSeconds
         existing.result.evidenceType = candidate.result.evidenceType ?? existing.result.evidenceType
+        existing.result.entityLabelId = candidate.result.entityLabelId ?? existing.result.entityLabelId
         existing.result.sourceId = candidate.result.sourceId ?? existing.result.sourceId
         existing.result.sourceFingerprint = candidate.result.sourceFingerprint ?? existing.result.sourceFingerprint
       } else {
