@@ -2,6 +2,7 @@ import { writeFile, mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
+// @ts-expect-error JavaScript release utility is exercised through its exported test seam.
 import { checkBinaryArchitectures, detectBinaryArchitecture } from '../../scripts/check-binary-architecture.mjs'
 
 const temporaryDirectories: string[] = []
