@@ -24,6 +24,7 @@
     "release:create-manifest": "node scripts/release-manifest.mjs",
     "release:check-manifest": "node scripts/release-manifest.mjs --verify",
     "release:check-version": "node scripts/check-release-version.mjs",
+    "release:check-platform": "node scripts/check-platform-release-artifacts.mjs",
     "release:verify-remote": "node scripts/verify-remote-release.mjs",
     "release:check-packaged-resources": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/check-packaged-resources.ts",
     "release:prepare-heif-runtime": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/prepare-heif-runtime.ts",
