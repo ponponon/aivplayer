@@ -2,7 +2,7 @@ import { basename, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { listReleaseArtifacts } from './release-artifact-policy.mjs'
 
-const PLATFORM_CONTRACTS = {
+export const PLATFORM_CONTRACTS = {
   macos: {
     packages: ['.dmg', '.zip', '.pkg'],
     metadata: ['latest-mac.yml']
