@@ -109,6 +109,7 @@ import type { WebDesktopStateUpdate, WebRemoteCommandForDesktop, WebShareStartRe
 import type { MediaEvidenceCapabilities, MediaEvidenceDraft, MediaEvidenceDraftImportRequest, MediaEvidenceDraftImportResult, MediaEvidenceDraftSaveRequest, MediaEvidenceTask, MediaEvidenceTaskRequest } from '../shared/evidence-task-types'
 import type { VisionEntityCatalog, VisionEntityCatalogBatchPatch, VisionEntityCatalogPatch } from '../shared/vision-entity-types'
 import type { EditingAgentProposalDecision, EditingAgentProposalRequest } from '../shared/editing-agent'
+import type { MediaImportInboxDirectoriesChangedEvent, MediaImportInboxItem, MediaImportInboxMetadataUpdateRequest, MediaImportInboxPipelineProgress, MediaImportInboxScanRequest, MediaImportInboxScanResponse, MediaImportInboxScanProgress, MediaImportInboxTransitionRequest, MediaImportInboxWatchRequest, MediaImportInboxWatchStartResult } from '../shared/media-import-inbox'
 
 const editingAgentProposalListeners = new Set<(request: EditingAgentProposalRequest) => void>()
 const queuedEditingAgentProposals: EditingAgentProposalRequest[] = []
@@ -277,6 +278,34 @@ const api = {
   listMediaEvidenceDrafts: (): Promise<MediaEvidenceDraft[]> => ipcRenderer.invoke(IPC_CHANNELS.EVIDENCE_DRAFT_LIST),
   deleteMediaEvidenceDraft: (draftId: string): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.EVIDENCE_DRAFT_DELETE, draftId),
   importMediaEvidenceDraft: (request: MediaEvidenceDraftImportRequest): Promise<MediaEvidenceDraftImportResult> => ipcRenderer.invoke(IPC_CHANNELS.EVIDENCE_DRAFT_IMPORT, request),
+  listMediaImportInbox: (): Promise<MediaImportInboxItem[]> => ipcRenderer.invoke(IPC_CHANNELS.MEDIA_IMPORT_INBOX_LIST),
+  scanMediaImportInbox: (request: MediaImportInboxScanRequest): Promise<MediaImportInboxScanResponse> => ipcRenderer.invoke(IPC_CHANNELS.MEDIA_IMPORT_INBOX_SCAN_START, request),
+  cancelMediaImportInboxScan: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.MEDIA_IMPORT_INBOX_SCAN_CANCEL),
+  transitionMediaImportInbox: (request: MediaImportInboxTransitionRequest): Promise<MediaImportInboxItem | null> => ipcRenderer.invoke(IPC_CHANNELS.MEDIA_IMPORT_INBOX_TRANSITION, request),
+  transitionMediaImportInboxBatch: (request: { itemIds: string[]; action: 'queue' | 'ignore' | 'retry' | 'clear' }): Promise<MediaImportInboxItem[] | null> => ipcRenderer.invoke(IPC_CHANNELS.MEDIA_IMPORT_INBOX_BATCH_TRANSITION, request),
+  updateMediaImportInboxMetadata: (request: MediaImportInboxMetadataUpdateRequest): Promise<MediaImportInboxItem | null> => ipcRenderer.invoke(IPC_CHANNELS.MEDIA_IMPORT_INBOX_METADATA_UPDATE, request),
+  startMediaImportInboxWatch: (request: MediaImportInboxWatchRequest): Promise<MediaImportInboxWatchStartResult> => ipcRenderer.invoke(IPC_CHANNELS.MEDIA_IMPORT_INBOX_WATCH_START, request),
+  stopMediaImportInboxWatch: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.MEDIA_IMPORT_INBOX_WATCH_STOP),
+  onMediaImportInboxProgress: (callback: (progress: MediaImportInboxScanProgress) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, progress: MediaImportInboxScanProgress): void => callback(progress)
+    ipcRenderer.on(IPC_CHANNELS.MEDIA_IMPORT_INBOX_SCAN_PROGRESS, listener)
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.MEDIA_IMPORT_INBOX_SCAN_PROGRESS, listener)
+  },
+  onMediaImportInboxDirectoriesChanged: (callback: (event: MediaImportInboxDirectoriesChangedEvent) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, payload: MediaImportInboxDirectoriesChangedEvent): void => callback(payload)
+    ipcRenderer.on(IPC_CHANNELS.MEDIA_IMPORT_INBOX_DIRECTORIES_CHANGED, listener)
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.MEDIA_IMPORT_INBOX_DIRECTORIES_CHANGED, listener)
+  },
+  onMediaImportInboxItemChanged: (callback: (item: MediaImportInboxItem) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, item: MediaImportInboxItem): void => callback(item)
+    ipcRenderer.on(IPC_CHANNELS.MEDIA_IMPORT_INBOX_ITEM_CHANGED, listener)
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.MEDIA_IMPORT_INBOX_ITEM_CHANGED, listener)
+  },
+  onMediaImportInboxPipelineProgress: (callback: (progress: MediaImportInboxPipelineProgress) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, progress: MediaImportInboxPipelineProgress): void => callback(progress)
+    ipcRenderer.on(IPC_CHANNELS.MEDIA_IMPORT_INBOX_PIPELINE_PROGRESS, listener)
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.MEDIA_IMPORT_INBOX_PIPELINE_PROGRESS, listener)
+  },
   stopNativePlayer: (): Promise<NativePlaybackResult> => ipcRenderer.invoke(IPC_CHANNELS.STOP_NATIVE_PLAYER),
   minimizeWindow: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.WINDOW_MINIMIZE),
   toggleMaximizeWindow: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.WINDOW_TOGGLE_MAXIMIZE),
