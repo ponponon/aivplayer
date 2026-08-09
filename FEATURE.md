@@ -1,5 +1,7 @@
 # AIVPlayer 功能列表
 
+- README 已完成国际化：`README.md` 作为英文主文档，并提供 `README.zh-CN.md`、`README.ja-JP.md` 和 `README.ko-KR.md` 三份本地化版本；四份文档顶部互相提供语言切换入口。
+
 - 发布 CI 新增 macOS FFmpeg / FFprobe 运行时门禁：对 `resources/ffmpeg` 中的 Mach-O 可执行文件和 dylib 执行 `file`、`otool -l` 与 `-version` 检查，所有切片的 `minos` 必须不高于 macOS 12.0，避免把构建机 macOS 26.0 等过新的最低系统版本带进安装包。
 
 - 播放器新增 VLC 风格播放结束策略：可在控制条切换播放结束后停止 / 播放下一条、循环当前、循环播放列表和随机播放；策略写入应用设置，播放列表边界和单文件场景均有明确行为。
