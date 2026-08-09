@@ -12,6 +12,8 @@ import { VisionLibraryFolder } from './vision-library-folder'
 import { VisionOcrTask } from './vision-ocr-task'
 import { VisionTtsTask } from './vision-tts-task'
 import { VisionSearchResults } from './vision-search-results'
+import { useVisionImportInbox } from './use-vision-import-inbox'
+import { VisionImportInbox } from './vision-import-inbox'
 import { VisionLibrarySources } from './vision-library-sources'
 import { VisionEntityCatalog } from './vision-entity-catalog'
 import type { VisionEntityCatalog as VisionEntityCatalogState, VisionEntityCatalogBatchPatch, VisionEntityCatalogPatch } from '../../../shared/vision-entity-types'
@@ -53,6 +55,7 @@ export function VisionPanel(): React.ReactElement {
   const [error, setError] = useState<string | null>(null)
   const isIndexing = progress?.status === 'loading' || progress?.status === 'indexing'
   const folder = useVisionLibraryFolder(app, isIndexing, { onError: setError })
+  const importInbox = useVisionImportInbox(app)
   const isBusy = folder.isBusy
   const vectorIndexLabel = status?.vectorIndexType
     ? app.copy.vision.vectorIndex(status.vectorIndexType, status.vectorIndexDistanceType ?? '—', status.vectorIndexIndexedRows, status.vectorIndexUnindexedRows)
@@ -90,10 +93,14 @@ export function VisionPanel(): React.ReactElement {
         refreshSources()
       }
     })
+    const removeInboxPipelineListener = window.aiv.onMediaImportInboxPipelineProgress((next) => {
+      if (active && next.stage === 'vision' && (next.status === 'ready' || next.status === 'failed')) refreshSources()
+    })
     return () => {
       active = false
       window.clearInterval(statusTimer)
       removeProgressListener()
+      removeInboxPipelineListener()
     }
   }, [])
 
@@ -485,6 +492,7 @@ export function VisionPanel(): React.ReactElement {
       <div className="vision-model-status"><Database size={14} /><span>{status?.available ? app.copy.vision.model : app.copy.vision.unavailable}</span><small title={vectorIndexLabel}>{status?.indexedFrameCount ?? 0} · {vectorIndexLabel}</small></div>
       {!status?.available ? <small className="vision-error">{status?.message ?? app.copy.vision.unavailable}</small> : null}
       <VisionLibraryFolder copy={app.copy.vision} folderPath={folder.folderPath} savedFolders={folder.savedFolders} videoPaths={folder.videoPaths} includeSubfolders={folder.includeSubfolders} scanProgress={folder.scanProgress} batchScanProgress={folder.batchScanProgress} isBusy={isBusy} onChooseFolder={folder.chooseFolder} onScanFolder={folder.scanCurrentFolder} onScanAllFolders={folder.scanAllFolders} onIncludeSubfoldersChange={folder.setIncludeSubfolders} onStartIndex={startFolderIndex} onUseFolder={folder.useSavedFolder} onRemoveFolder={folder.removeSavedFolder} />
+      <VisionImportInbox copy={app.copy.vision} directories={importInbox.directories} items={importInbox.items} progress={importInbox.progress} pipelineProgress={importInbox.pipelineProgress} isBusy={importInbox.isBusy} error={importInbox.error} writeSidecars={importInbox.writeSidecars} onAddFolder={importInbox.addFolder} onRemoveFolder={importInbox.removeFolder} onScan={importInbox.scan} onQueue={importInbox.queueItem} onIgnore={importInbox.ignoreItem} onRetry={importInbox.retryItem} onBatchQueue={importInbox.batchQueue} onBatchIgnore={importInbox.batchIgnore} onBatchRetry={importInbox.batchRetry} onWriteSidecarsChange={importInbox.setWriteSidecars} onUpdateMetadata={importInbox.updateMetadata} />
       <VisionLibrarySources copy={app.copy.vision} sources={sources} thumbnailUrls={sourceThumbnailUrls} hasMoreSources={hasMoreSources} isLoadingMoreSources={isLoadingMoreSources} onLoadMore={loadMoreSources} onOpenSource={openSource} />
       <VisionEntityCatalog copy={app.copy.vision} catalog={entityCatalog} onUpdate={updateEntityCatalog} onBatchUpdate={updateEntityCatalogBatch} />
       <div className="vision-index-actions">
