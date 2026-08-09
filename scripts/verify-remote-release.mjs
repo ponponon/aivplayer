@@ -9,8 +9,7 @@ import {
   verifyReleaseManifest
 } from './release-manifest.mjs'
 import {
-  RELEASE_MANIFEST_NAME,
-  isReleaseArtifact
+  RELEASE_MANIFEST_NAME
 } from './release-artifact-policy.mjs'
 
 const DEFAULT_GITHUB_API_BASE = 'https://api.github.com'
@@ -38,7 +37,7 @@ function redactUrl(value) {
 
 async function fetchJson(fetchImpl, url, headers) {
   const response = await fetchImpl(url, { headers, redirect: 'follow' })
-  if (!response.ok) throw new Error(`Remote API request failed (${response.status}): ${url}`)
+  if (!response.ok) throw new Error(`Remote API request failed (${response.status}): ${redactUrl(url)}`)
   return response.json()
 }
 
@@ -55,7 +54,8 @@ function addAsset(assetMap, asset, fallbackUrl) {
   const url = typeof asset?.browser_download_url === 'string' && asset.browser_download_url
     ? asset.browser_download_url
     : fallbackUrl
-  if (!name || !url) return
+  if (!name) throw new Error('Remote release contains an asset without a name.')
+  if (!url) throw new Error(`Remote release asset has no download URL: ${name}`)
   if (assetMap.has(name)) throw new Error(`Remote release contains duplicate asset: ${name}`)
   assetMap.set(name, { name, url })
 }
@@ -133,7 +133,7 @@ async function readResponseBytes(response, { collect = false } = {}) {
 
 async function downloadAndHash(fetchImpl, url, headers, options = {}) {
   const response = await fetchImpl(url, { headers, redirect: 'follow' })
-  if (!response.ok) throw new Error(`Remote asset download failed (${response.status}): ${url}`)
+  if (!response.ok) throw new Error(`Remote asset download failed (${response.status}): ${redactUrl(url)}`)
   return readResponseBytes(response, options)
 }
 
@@ -160,7 +160,7 @@ function createExpectedAssets(manifest, manifestSizeBytes, manifestSha256) {
 
 function findUnexpectedAssets(remoteAssets, expectedNames) {
   return [...remoteAssets.keys()]
-    .filter((name) => isReleaseArtifact(name) && !expectedNames.has(name))
+    .filter((name) => !expectedNames.has(name))
     .sort()
 }
 
