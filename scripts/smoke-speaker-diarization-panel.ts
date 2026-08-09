@@ -67,10 +67,10 @@ async function runSmoke(): Promise<void> {
   await symlink(join(resolvedModelRoot, 'models'), modelLink, 'dir')
   await createSmokeMedia(smokeMediaPath)
 
-  let app: ElectronApplication | null = null
+  let application: ElectronApplication | null = null
   try {
     const session = await launchPlayer(userDataDirectory, smokeMediaPath)
-    app = session.app
+    application = session.app
     const { page } = session
 
     await page.getByRole('tab', { name: '影视库搜索' }).click()
@@ -98,6 +98,19 @@ async function runSmoke(): Promise<void> {
     const searchResults = await page.evaluate(() => window.aiv.searchVisionText({ query: 'speaker 1', limit: 24, mode: 'hybrid' }))
     const speakerEvidenceResult = searchResults.find((result) => result.evidenceType === 'speaker' && result.matchedText?.includes('Speaker 1'))
     if (!speakerEvidenceResult) throw new Error(`视觉搜索没有返回 speaker evidence：${JSON.stringify(searchResults)}`)
+    if (!speakerEvidenceResult.sourceFingerprint) throw new Error(`speaker evidence 缺少 sourceFingerprint：${JSON.stringify(speakerEvidenceResult)}`)
+
+    const firstLabelRow = page.locator('.vision-speaker-label-row').first()
+    await firstLabelRow.waitFor({ timeout: 10_000 })
+    await firstLabelRow.locator('input').nth(0).fill('Smoke 主持人')
+    await firstLabelRow.locator('input').nth(1).fill('主持人, host-smoke')
+    await firstLabelRow.locator('button.vision-secondary-action').click()
+    await page.locator('.vision-speaker-label-status').waitFor({ timeout: 10_000 })
+    const labelStatus = await page.locator('.vision-speaker-label-status').textContent()
+
+    const labeledSearchResults = await page.evaluate(() => window.aiv.searchVisionText({ query: 'host-smoke', limit: 24, mode: 'hybrid' }))
+    const labeledSearchResult = labeledSearchResults.find((result) => result.evidenceType === 'speaker' && result.matchedText === 'Smoke 主持人')
+    if (!labeledSearchResult) throw new Error(`说话人别名搜索没有返回本地标签：${JSON.stringify(labeledSearchResults)}`)
 
     await page.locator('video.video-surface').evaluate((video) => { (video as HTMLVideoElement).pause() })
     const firstSegment = await page.locator('.vision-speaker-segment').first().getAttribute('title')
@@ -108,11 +121,28 @@ async function runSmoke(): Promise<void> {
       duration: (video as HTMLVideoElement).duration
     }))
 
-    const rendererErrors = session.errors
-    if (rendererErrors.length > 0) throw new Error(`说话人面板 Smoke 出现渲染错误：\n${rendererErrors.join('\n')}`)
-    console.log(`Speaker diarization panel Smoke passed: ${JSON.stringify({ mediaPath: smokeMediaPath, elapsedMs: Date.now() - startedAt, segments, evidenceStatus, speakerEvidenceResult, firstSegment, playback })}`)
+    if (session.errors.length > 0) throw new Error(`说话人面板 Smoke 出现渲染错误：\n${session.errors.join('\n')}`)
+
+    await application.close()
+    application = null
+    const restoredSession = await launchPlayer(userDataDirectory, smokeMediaPath)
+    application = restoredSession.app
+    const restoredPage = restoredSession.page
+    await restoredPage.getByRole('tab', { name: '影视库搜索' }).click()
+    await restoredPage.locator('.vision-panel').waitFor({ timeout: 10_000 })
+    const restoredCatalog = await restoredPage.evaluate(() => window.aiv.getSpeakerDiarizationCatalog())
+    const restoredEntry = restoredCatalog.sources.find((source) => source.sourceFingerprint === speakerEvidenceResult.sourceFingerprint)?.entries.find((entry) => entry.speakerId === 0)
+    if (restoredEntry?.name !== 'Smoke 主持人' || !restoredEntry.aliases.includes('host-smoke')) {
+      throw new Error(`重启后说话人标签未恢复：${JSON.stringify(restoredCatalog)}`)
+    }
+    const restoredSearchResults = await restoredPage.evaluate(() => window.aiv.searchVisionText({ query: 'host-smoke', limit: 24, mode: 'hybrid' }))
+    const restoredSearchResult = restoredSearchResults.find((result) => result.evidenceType === 'speaker' && result.matchedText === 'Smoke 主持人')
+    if (!restoredSearchResult) throw new Error(`重启后别名搜索没有返回本地标签：${JSON.stringify(restoredSearchResults)}`)
+    if (restoredSession.errors.length > 0) throw new Error(`重启后的说话人面板 Smoke 出现渲染错误：\n${restoredSession.errors.join('\n')}`)
+
+    console.log(`Speaker diarization panel Smoke passed: ${JSON.stringify({ mediaPath: smokeMediaPath, elapsedMs: Date.now() - startedAt, segments, evidenceStatus, labelStatus, speakerEvidenceResult, labeledSearchResult, restoredEntry, restoredSearchResult, firstSegment, playback })}`)
   } finally {
-    if (app) await app.close().catch(() => undefined)
+    if (application) await application.close().catch(() => undefined)
     await rm(smokeDirectory, { recursive: true, force: true }).catch(() => undefined)
   }
 }
