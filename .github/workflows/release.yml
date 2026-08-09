@@ -248,8 +248,8 @@ jobs:
         shell: pwsh
         run: |
           vcpkg install libde265:arm64-windows-static x265:arm64-windows-static libjpeg-turbo:arm64-windows-static tiff:arm64-windows-static
-          $ffmpegUrl = 'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n8.1-latest-winarm64-gpl-8.1.zip'
-          $ffmpegSha256 = 'c0f4b39a61b51c27b28792ce239fe0d97a02a6809514d687efd23d4f2ff05f3f'
+          $ffmpegUrl = 'https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-08-09-13-03/ffmpeg-n8.1.2-34-g9b6c8969e0-winarm64-gpl-8.1.zip'
+          $ffmpegSha256 = 'ab350d5e1f77468c98dfe237064efba4004a7b059669fefd206c4a54dd23b211'
           $ffmpegArchive = Join-Path $env:RUNNER_TEMP 'ffmpeg-winarm64.zip'
           $ffmpegRoot = Join-Path $env:RUNNER_TEMP 'ffmpeg-winarm64'
           Invoke-WebRequest -Uri $ffmpegUrl -OutFile $ffmpegArchive
