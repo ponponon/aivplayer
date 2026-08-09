@@ -8,6 +8,7 @@ import { VisionIndexQueue } from '../core/ai/vision-index-queue'
 import { DramaStore } from '../core/drama/drama-store'
 import { DramaGenerationWorker } from '../core/drama/drama-generation-worker'
 import { ClipInboxStore } from '../core/ai/clip-inbox-store'
+import { VisionIndexFailureStore } from '../core/ai/vision-index-failure-store'
 
 export const desktopState: {
   mainWindow: BrowserWindow | null
@@ -27,6 +28,7 @@ export const desktopState: {
   dramaStore: DramaStore | null
   dramaGenerationWorker: DramaGenerationWorker | null
   clipInboxStore: ClipInboxStore | null
+  visionIndexFailureStore: VisionIndexFailureStore | null
 } = {
   mainWindow: null,
   asrRuntime: null,
@@ -44,5 +46,6 @@ export const desktopState: {
   batchSubtitleManager: null,
   dramaStore: null,
   dramaGenerationWorker: null,
-  clipInboxStore: null
+  clipInboxStore: null,
+  visionIndexFailureStore: null
 }

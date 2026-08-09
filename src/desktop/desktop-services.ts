@@ -10,6 +10,7 @@ import { createDramaMediaProviders, toPublicDramaMediaProviderSettings } from '.
 import { DramaStore } from '../core/drama/drama-store'
 import { DramaGenerationWorker } from '../core/drama/drama-generation-worker'
 import { ClipInboxStore } from '../core/ai/clip-inbox-store'
+import { VisionIndexFailureStore } from '../core/ai/vision-index-failure-store'
 import { DramaWorkflow } from '../core/drama/drama-workflow'
 import type { DramaProviderSettings, DramaProviderSettingsInput, DramaProviderTestResult } from '../shared/drama-types'
 import { saveAppSettings } from './desktop-settings'
@@ -18,6 +19,9 @@ import { desktopState } from './desktop-state'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type { BatchSubtitleJob } from '../shared/media-types'
 import type { DramaGenerationTask } from '../shared/drama-types'
+import type { VisionIndexFailureInput } from '../core/ai/vision-index-failure'
+import type { VisionIndexProgress } from '../shared/vision-types'
+import { visionIndexFailureFromProgress as getVisionIndexFailureInput } from '../core/ai/vision-index-failure'
 import { createDramaGenerationTaskCenterEvent } from '../core/tasks/task-center-adapters'
 import { sendTaskCenterEvent } from './task-center-events'
 
@@ -106,6 +110,24 @@ export function getDramaGenerationWorker(): DramaGenerationWorker {
 export function getClipInboxStore(): ClipInboxStore {
   if (!desktopState.clipInboxStore) desktopState.clipInboxStore = new ClipInboxStore(app.getPath('userData'))
   return desktopState.clipInboxStore
+}
+
+export function getVisionIndexFailureStore(): VisionIndexFailureStore {
+  if (!desktopState.visionIndexFailureStore) desktopState.visionIndexFailureStore = new VisionIndexFailureStore(app.getPath('userData'))
+  return desktopState.visionIndexFailureStore
+}
+
+export function trackVisionIndexProgress(
+  progress: VisionIndexProgress,
+  mediaPaths: readonly string[],
+  options: Pick<VisionIndexFailureInput, 'intervalSeconds' | 'includeSceneEvidence' | 'includeEntityEvidence'> = {}
+): void {
+  const store = getVisionIndexFailureStore()
+  const failure = getVisionIndexFailureInput(progress, options)
+  if (failure) store.recordFailure(failure)
+  if (progress.status === 'completed') {
+    for (const mediaPath of mediaPaths) store.clear(mediaPath)
+  }
 }
 
 export function getDramaWorkflow(): DramaWorkflow {
