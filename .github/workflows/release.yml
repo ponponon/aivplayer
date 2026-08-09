@@ -76,6 +76,9 @@ jobs:
       - name: Verify macOS release artifacts
         run: npm run release:check-platform -- --platform macos --artifacts-dir release
 
+      - name: Verify macOS package formats
+        run: npm run release:check-formats -- --platform macos --artifacts-dir release
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -163,6 +166,9 @@ jobs:
 
       - name: Verify Windows release artifacts
         run: npm run release:check-platform -- --platform windows --artifacts-dir release
+
+      - name: Verify Windows package formats
+        run: npm run release:check-formats -- --platform windows --artifacts-dir release
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
@@ -258,6 +264,9 @@ jobs:
 
       - name: Verify Linux release artifacts
         run: npm run release:check-platform -- --platform linux --artifacts-dir release
+
+      - name: Verify Linux package formats
+        run: npm run release:check-formats -- --platform linux --artifacts-dir release
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
