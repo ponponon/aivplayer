@@ -1248,3 +1248,9 @@
 - 现象：0.5.0 最近一次发布的五个平台构建均成功，但 publish job 的 `release:check-version` 报告 `latest.yml` 引用了 `AIVPlayer-Setup-0.5.0-x64.exe`，合并目录中不存在对应文件；因此 GitHub Release、远端回读和 Gitee sync 都被跳过，重复重试还会重新消耗整轮跨平台构建时间。
 - 经验：Windows 安装包的实际 artifact 文件名、`latest.yml` 的 `url/path` 和最终汇总目录必须从同一个命名契约生成；不能只在文件上传前检查扩展名，也不能让 metadata 引用一个经过连字符归一化但实际文件仍是空格命名的文件。
 - 处理：当前先保留版本校验作为发布门禁，不绕过错误创建 Release；后续修复应统一 electron-builder artifactName 与 updater metadata 引用，并在本地 assembly fixture、Windows Runner 和 `release:check-version` 三层同时验证空格 / 连字符命名一致性。
+
+## 2026-08-09：Windows artifactName 必须与 updater metadata 同源
+
+- 现象：上一轮五个平台构建全部成功，但 publish job 在版本门禁阶段发现 `latest.yml` 引用 `AIVPlayer-Setup-0.5.0-x64.exe`，实际汇总目录却是带空格的 `AIVPlayer Setup 0.5.0 x64.exe`，导致 Release 和 Gitee 同步被跳过。
+- 经验：Windows 安装包文件名不能只满足扩展名和架构检查；electron-builder 的 `artifactName` 必须直接采用 updater metadata 的 URL 命名语义，版本校验还要覆盖真实的连字符文件名。
+- 处理：将 Windows `artifactName` 改为 `${productName}-Setup-${version}-${arch}.${ext}`，补充 release workflow 配置断言和 `release:check-version` 连字符文件名回归测试；下一次先触发 verify-only，再正式创建 Release。

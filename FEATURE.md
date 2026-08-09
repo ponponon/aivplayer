@@ -606,6 +606,7 @@
 - 新增 `npm run release:check-push` 本地只读推送前审计：检查工作区干净、相对 `origin/main` 的 diff、commit message 格式、敏感模式和内部计划文件边界；命令不会执行 push 或 workflow 操作。
 - 发布汇总与合并 evidence 校验支持显式的根目录扫描边界；不会把平台安装包解包目录中的 `AIVPlayer.exe`、FFmpeg 等运行时文件误判为 Release 资产。
 - publish job 会把五份架构 Runner evidence 合并为三份平台报告：Windows 合并 x64 / arm64 的安装包与最终 `latest.yml` 哈希，Linux 合并两种架构与各自 `latest*.yml` 哈希，再由合并目录 evidence 门禁校验完整文件集合。
+- Windows 发布产物统一使用 `AIVPlayer-Setup-<version>-<arch>.exe` 命名，与 electron-updater 生成的 `latest.yml` 引用保持一致，避免版本门禁因空格 / 连字符差异阻断发版。
 
 ## 编辑器画布交互层级
 
