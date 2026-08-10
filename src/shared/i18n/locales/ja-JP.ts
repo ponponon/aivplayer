@@ -66,7 +66,7 @@
       closeWindow: 'ウィンドウを閉じる'
     },
     taskCenter: {
-      title: 'タスクセンター', searchPlaceholder: 'タスク名・メッセージ・ファイルを検索', filterLabel: 'ステータスで絞り込み', filterAll: 'すべてのステータス', resultCount: (visible: number, total: number) => `${visible} / ${total} 件を表示`, noResults: '一致するタスクはありません', previousPage: '前のページ', nextPage: '次のページ', page: (current: number, total: number) => `${current} / ${total} ページ`, collapse: 'タスクセンターを折りたたむ', expand: 'タスクセンターを展開', activeCount: (count: number) => `${count} 件実行中`, clearCompleted: '終了済みを消去', statuses: { queued: '待機中', running: '実行中', paused: '一時停止', completed: '完了', failed: '失敗', cancelled: 'キャンセル済み' }
+      title: 'タスクセンター', searchPlaceholder: 'タスク名・メッセージ・ファイルを検索', filterLabel: 'ステータスで絞り込み', filterAll: 'すべてのステータス', resultCount: (visible: number, total: number) => `${visible} / ${total} 件を表示`, noResults: '一致するタスクはありません', previousPage: '前のページ', nextPage: '次のページ', page: (current: number, total: number) => `${current} / ${total} ページ`, collapse: 'タスクセンターを折りたたむ', expand: 'タスクセンターを展開', activeCount: (count: number) => `${count} 件実行中`, clearCompleted: '終了済みを消去', cancelTask: 'タスクをキャンセル', statuses: { queued: '待機中', running: '実行中', paused: '一時停止', completed: '完了', failed: '失敗', cancelled: 'キャンセル済み' }
     },
     aboutDialog: {
       kicker: 'アプリ情報',

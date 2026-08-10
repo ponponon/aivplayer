@@ -28,6 +28,8 @@ describe('task center wiring', () => {
     expect(taskCenter).toContain('paginateTaskCenterEvents')
     expect(taskCenter).toContain('task-center-filters')
     expect(taskCenter).toContain('task-center-pagination')
+    expect(taskCenter).toContain('cancelVisionSearchResultsFullExport')
+    expect(taskCenter).toContain('task-center-cancel')
     const hook = readFileSync(join(projectRoot, 'src/renderer/src/app/use-task-center.ts'), 'utf8')
     expect(hook).toContain('getTaskCenterEvents')
     expect(hook).toContain('clearTaskCenterFinished')
