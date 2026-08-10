@@ -7,6 +7,7 @@ import type { VisionClipCollection, VisionClipCollectionExportFormat, VisionClip
 import { invertVisionClipSelections, mergeVisionCollectionSelections, normalizeVisionCollectionTags } from '../../../core/ai/clip-inbox-operations'
 import { createVisionClipSelections, normalizeVisionTimeRange } from '../../../core/ai/vision-evidence'
 import { getVisionSearchResultIds } from '../../../core/ai/vision-search-selection'
+import { getNextVisionSearchLimit, shouldLoadMoreVisionSearchResults, VISION_SEARCH_PAGE_SIZE } from '../../../core/ai/vision-search-pagination'
 import { createDefaultVisionSearchPreferences, parseVisionSearchPreferences, serializeVisionSearchPreferences, VISION_SEARCH_PREFERENCES_STORAGE_KEY, type VisionSearchPreferences } from '../../../core/ai/vision-search-preferences'
 import { useAppContext } from './app-context'
 import { useVisionLibraryFolder } from './use-vision-library-folder'
@@ -25,6 +26,10 @@ import type { VisionEntityCatalog as VisionEntityCatalogState, VisionEntityCatal
 
 const VISION_SOURCE_PAGE_SIZE = 100
 const VISION_EVIDENCE_TYPE_OPTIONS: readonly VisionEvidenceType[] = ['visual', 'subtitle', 'ocr', 'scene', 'entity', 'speaker']
+
+type VisionSearchContext =
+  | { kind: 'text'; query: string; mode: VisionSavedSearch['mode']; evidenceTypes: VisionEvidenceType[] }
+  | { kind: 'image'; imagePath: string; evidenceTypes: VisionEvidenceType[] }
 
 function readVisionSearchPreferences(): VisionSearchPreferences {
   if (typeof window === 'undefined') return createDefaultVisionSearchPreferences()
@@ -66,6 +71,10 @@ export function VisionPanel(): React.ReactElement {
   const [includeSceneEvidence, setIncludeSceneEvidence] = useState(false)
   const [includeEntityEvidence, setIncludeEntityEvidence] = useState(false)
   const [results, setResults] = useState<VisionSearchResult[]>([])
+  const [searchResultLimit, setSearchResultLimit] = useState(VISION_SEARCH_PAGE_SIZE)
+  const [hasMoreSearchResults, setHasMoreSearchResults] = useState(false)
+  const [isLoadingMoreSearchResults, setIsLoadingMoreSearchResults] = useState(false)
+  const [searchContext, setSearchContext] = useState<VisionSearchContext | null>(null)
   const [sources, setSources] = useState<VisionLibrarySource[]>([])
   const [hasMoreSources, setHasMoreSources] = useState(false)
   const [isLoadingMoreSources, setIsLoadingMoreSources] = useState(false)
@@ -315,15 +324,32 @@ export function VisionPanel(): React.ReactElement {
     else void window.aiv.cancelVisionIndex()
   }
 
+  const requestVisionSearch = (context: VisionSearchContext, limit: number): Promise<VisionSearchResult[]> => {
+    if (context.kind === 'text') {
+      return window.aiv.searchVisionText({ query: context.query, limit, mode: context.mode, ...(context.evidenceTypes.length > 0 ? { evidenceTypes: context.evidenceTypes } : {}) })
+    }
+    return window.aiv.searchVisionImage({ imagePath: context.imagePath, limit, ...(context.evidenceTypes.length > 0 ? { evidenceTypes: context.evidenceTypes } : {}) })
+  }
+
+  const applyVisionSearchResults = (nextResults: VisionSearchResult[], limit: number, context: VisionSearchContext, preserveSelection: boolean): void => {
+    setResults(nextResults)
+    setSearchResultLimit(limit)
+    setHasMoreSearchResults(shouldLoadMoreVisionSearchResults(nextResults.length, limit))
+    setSearchContext(context)
+    if (!preserveSelection) setSelectedResultIds(new Set())
+  }
+
   const executeTextSearch = (searchQuery: string, mode: VisionSavedSearch['mode'], filter = evidenceTypeFilter): void => {
     if (!searchQuery.trim() || isSearching) return
+    const context: VisionSearchContext = { kind: 'text', query: searchQuery, mode, evidenceTypes: [...filter] }
     setIsSearching(true)
     setError(null)
-    void window.aiv.searchVisionText({ query: searchQuery, limit: 24, mode, ...(filter.length > 0 ? { evidenceTypes: filter } : {}) }).then((nextResults) => {
-      setResults(nextResults)
-      setSelectedResultIds(new Set())
+    void requestVisionSearch(context, VISION_SEARCH_PAGE_SIZE).then((nextResults) => {
+      applyVisionSearchResults(nextResults, VISION_SEARCH_PAGE_SIZE, context, false)
     }).catch((reason: unknown) => {
       setResults([])
+      setSearchContext(null)
+      setHasMoreSearchResults(false)
       setSelectedResultIds(new Set())
       setError(reason instanceof Error ? reason.message : String(reason))
     }).finally(() => setIsSearching(false))
@@ -383,16 +409,29 @@ export function VisionPanel(): React.ReactElement {
 
   const runImageSearch = (): void => {
     if (!sampleImagePath || isSearching) return
+    const context: VisionSearchContext = { kind: 'image', imagePath: sampleImagePath, evidenceTypes: [...evidenceTypeFilter] }
     setIsSearching(true)
     setError(null)
-    void window.aiv.searchVisionImage({ imagePath: sampleImagePath, limit: 24, ...(evidenceTypeFilter.length > 0 ? { evidenceTypes: evidenceTypeFilter } : {}) }).then((nextResults) => {
-      setResults(nextResults)
-      setSelectedResultIds(new Set())
+    void requestVisionSearch(context, VISION_SEARCH_PAGE_SIZE).then((nextResults) => {
+      applyVisionSearchResults(nextResults, VISION_SEARCH_PAGE_SIZE, context, false)
     }).catch((reason: unknown) => {
       setResults([])
+      setSearchContext(null)
+      setHasMoreSearchResults(false)
       setSelectedResultIds(new Set())
       setError(reason instanceof Error ? reason.message : String(reason))
     }).finally(() => setIsSearching(false))
+  }
+
+  const loadMoreSearchResults = (): void => {
+    if (!searchContext || isSearching || isLoadingMoreSearchResults || !hasMoreSearchResults) return
+    const nextLimit = getNextVisionSearchLimit(searchResultLimit)
+    if (nextLimit <= searchResultLimit) return
+    setIsLoadingMoreSearchResults(true)
+    setError(null)
+    void requestVisionSearch(searchContext, nextLimit).then((nextResults) => {
+      applyVisionSearchResults(nextResults, nextLimit, searchContext, true)
+    }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setIsLoadingMoreSearchResults(false))
   }
 
   const changeEvidenceTypeFilter = (nextFilter: VisionEvidenceType[]): void => {
@@ -709,7 +748,7 @@ export function VisionPanel(): React.ReactElement {
     </section>
 
     {error ? <div className="vision-error vision-error-card" role="alert">{error}</div> : null}
-    <VisionSearchResults copy={app.copy.vision} results={results} thumbnailUrls={thumbnailUrls} onOpenResult={openResult} selectedIds={selectedResultIds} onToggleSelection={toggleResultSelection} onSelectAllResults={selectAllSearchResults} onClearResults={clearSearchResultSelection} sortMode={searchSortMode} onSortModeChange={changeSearchSortMode} />
+    <VisionSearchResults copy={app.copy.vision} results={results} thumbnailUrls={thumbnailUrls} onOpenResult={openResult} selectedIds={selectedResultIds} onToggleSelection={toggleResultSelection} onSelectAllResults={selectAllSearchResults} onClearResults={clearSearchResultSelection} hasMoreResults={hasMoreSearchResults} isLoadingMore={isLoadingMoreSearchResults} onLoadMoreResults={loadMoreSearchResults} sortMode={searchSortMode} onSortModeChange={changeSearchSortMode} />
     {collections.length > 0 ? <section className="vision-card vision-collections"><div className="vision-collections-heading"><strong>{app.copy.vision.savedCollections}</strong><Archive size={15} /></div>{collections.map((collection) => {
       const availability = collectionAvailability[collection.id]
       const isRepairing = repairingCollectionId === collection.id

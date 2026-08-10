@@ -460,6 +460,8 @@
       selectedResults: (count: number) => `${count} clips selected`,
       selectAllResults: 'Select all results',
       clearSelectedResults: 'Clear current selection',
+      loadMoreResults: 'Load more results',
+      loadingMoreResults: 'Loading more…',
       createProject: 'Create editing project',
       creatingProject: 'Creating editing project…',
       projectCreated: (title: string) => `Editing project created: ${title}`,

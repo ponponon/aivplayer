@@ -12,11 +12,14 @@ type VisionSearchResultsProps = {
   onToggleSelection: (result: VisionSearchResult) => void
   onSelectAllResults: () => void
   onClearResults: () => void
+  hasMoreResults: boolean
+  isLoadingMore: boolean
+  onLoadMoreResults: () => void
   sortMode: VisionSearchSortMode
   onSortModeChange: (sortMode: VisionSearchSortMode) => void
 }
 
-export function VisionSearchResults({ copy, results, thumbnailUrls, onOpenResult, selectedIds, onToggleSelection, onSelectAllResults, onClearResults, sortMode, onSortModeChange }: VisionSearchResultsProps): React.ReactElement {
+export function VisionSearchResults({ copy, results, thumbnailUrls, onOpenResult, selectedIds, onToggleSelection, onSelectAllResults, onClearResults, hasMoreResults, isLoadingMore, onLoadMoreResults, sortMode, onSortModeChange }: VisionSearchResultsProps): React.ReactElement {
   const sortedResults = sortVisionSearchResults(results, sortMode)
   return <section className="vision-results" aria-live="polite">
     <div className="vision-results-toolbar">
@@ -41,6 +44,7 @@ export function VisionSearchResults({ copy, results, thumbnailUrls, onOpenResult
         </button>
       </div>
     })}
+    {sortedResults.length > 0 && hasMoreResults ? <button className="vision-results-load-more" type="button" onClick={onLoadMoreResults} disabled={isLoadingMore}>{isLoadingMore ? copy.loadingMoreResults : copy.loadMoreResults}</button> : null}
   </section>
 }
 

@@ -460,6 +460,8 @@
       selectedResults: (count: number) => `${count}개 클립 선택됨`,
       selectAllResults: '현재 결과 모두 선택',
       clearSelectedResults: '현재 선택 지우기',
+      loadMoreResults: '결과 더 불러오기',
+      loadingMoreResults: '더 불러오는 중…',
       createProject: '편집 프로젝트 만들기',
       creatingProject: '편집 프로젝트를 만드는 중…',
       projectCreated: (title: string) => `편집 프로젝트를 만들었습니다: ${title}`,

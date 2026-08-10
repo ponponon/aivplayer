@@ -45,6 +45,28 @@
   opacity: 0.45;
 }
 
+.vision-results-load-more {
+  justify-self: center;
+  min-height: 25px;
+  padding: 0 10px;
+  color: var(--text-secondary);
+  background: rgba(var(--overlay-rgb), 0.04);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 9px;
+}
+
+.vision-results-load-more:hover:not(:disabled) {
+  color: var(--text-primary);
+  border-color: var(--accent);
+}
+
+.vision-results-load-more:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
 .vision-library-sources {
   display: grid;
   gap: 8px;

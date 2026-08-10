@@ -35,5 +35,7 @@ describe('vision saved search UI', () => {
     expect(styles).toContain('.vision-evidence-filter-option:has(input:checked)')
     expect(readFileSync(join(projectRoot, 'src/renderer/src/styles/player/vision-library-results.css'), 'utf8')).toContain('.vision-results-toolbar')
     expect(readFileSync(join(projectRoot, 'src/renderer/src/styles/player/vision-library-results.css'), 'utf8')).toContain('.vision-results-selection-action')
+    expect(readFileSync(join(projectRoot, 'src/renderer/src/styles/player/vision-library-results.css'), 'utf8')).toContain('.vision-results-load-more')
+    expect(readFileSync(join(projectRoot, 'src/renderer/src/app/vision-search-results.tsx'), 'utf8')).toContain('onLoadMoreResults')
   })
 })

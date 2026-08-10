@@ -61,6 +61,8 @@ describe('vision library setup', () => {
     expect(panel).toContain('selectAllSearchResults')
     expect(panel).toContain('clearSearchResultSelection')
     expect(panel).toContain('onSelectAllResults={selectAllSearchResults}')
+    expect(panel).toContain('loadMoreSearchResults')
+    expect(panel).toContain('hasMoreResults={hasMoreSearchResults}')
     expect(panel).toContain('createEditingProjectFromVisionResults')
     expect(panel).toContain('onToggleSelection')
     expect(panel).toContain('saveVisionClipCollection')
