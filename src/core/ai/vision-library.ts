@@ -678,10 +678,17 @@ export class VisionLibrary {
     const rows = await table.query()
       .select(['video_path', 'file_name', 'evidence_type', 'source_fingerprint', 'generated_at'])
       .limit(METADATA_SCAN_LIMIT)
-      .toArray() as unknown as VisionEvidenceSourceRow[]
+      .toArray() as unknown as Array<Record<string, unknown>>
+    const sourceRows: VisionEvidenceSourceRow[] = rows.map((row) => ({
+      videoPath: row.video_path,
+      fileName: row.file_name,
+      evidenceType: row.evidence_type,
+      sourceFingerprint: row.source_fingerprint,
+      generatedAt: row.generated_at
+    }))
     const sourceLimit = clampSourceLimit(limit)
     const sourceOffset = clampSourceOffset(offset)
-    return aggregateVisionEvidenceSources(rows, evidenceTypes).slice(sourceOffset, sourceOffset + sourceLimit)
+    return aggregateVisionEvidenceSources(sourceRows, evidenceTypes).slice(sourceOffset, sourceOffset + sourceLimit)
   }
 
   private async clearEvidenceTypes(videoPath: string, evidenceTypes: readonly VisionDerivedEvidenceType[]): Promise<VisionEvidenceCounts> {
