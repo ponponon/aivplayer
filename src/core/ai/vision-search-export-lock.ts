@@ -21,14 +21,20 @@ export type VisionSearchExportOutputLock = {
 
 export class VisionSearchExportOutputLockError extends Error {
   readonly code = 'VISION_SEARCH_EXPORT_OUTPUT_LOCKED'
+  readonly outputPath: string
+  readonly lockPath: string
+  readonly owner?: VisionSearchExportOutputLockMetadata
 
   constructor(
-    readonly outputPath: string,
-    readonly lockPath: string,
-    readonly owner?: VisionSearchExportOutputLockMetadata
+    outputPath: string,
+    lockPath: string,
+    owner?: VisionSearchExportOutputLockMetadata
   ) {
     super('视觉搜索导出输出路径已被占用')
     this.name = 'VisionSearchExportOutputLockError'
+    this.outputPath = outputPath
+    this.lockPath = lockPath
+    this.owner = owner
   }
 }
 
