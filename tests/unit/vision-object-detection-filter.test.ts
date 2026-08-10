@@ -1,0 +1,29 @@
+import { describe, expect, it } from 'vitest'
+import { filterVisionObjectDetectionCandidates } from '../../src/core/ai/vision-object-detection-filter'
+
+const detections = [
+  { label: 'Person', score: 0.92, box: { xmin: 1, ymin: 1, xmax: 20, ymax: 20 } },
+  { label: 'chair', score: 0.61, box: { xmin: 21, ymin: 1, xmax: 40, ymax: 20 } },
+  { label: 'PERSON backpack', score: 0.74, box: { xmin: 41, ymin: 1, xmax: 60, ymax: 20 } }
+] as const
+
+describe('vision object detection filter', () => {
+  it('matches labels case-insensitively while preserving result order', () => {
+    expect(filterVisionObjectDetectionCandidates(detections, { labelQuery: ' person ' }).map((item) => item.label)).toEqual(['Person', 'PERSON backpack'])
+  })
+
+  it('filters candidates below the minimum score', () => {
+    expect(filterVisionObjectDetectionCandidates(detections, { minimumScore: 0.75 }).map((item) => item.label)).toEqual(['Person'])
+  })
+
+  it('combines label and score filters without mutating the input', () => {
+    const original = [...detections]
+    expect(filterVisionObjectDetectionCandidates(detections, { labelQuery: 'person', minimumScore: 0.7 }).map((item) => item.label)).toEqual(['Person', 'PERSON backpack'])
+    expect(detections).toEqual(original)
+  })
+
+  it('clamps invalid score filters to the supported range', () => {
+    expect(filterVisionObjectDetectionCandidates(detections, { minimumScore: 2 })).toEqual([])
+    expect(filterVisionObjectDetectionCandidates(detections, { minimumScore: -1 })).toHaveLength(3)
+  })
+})
