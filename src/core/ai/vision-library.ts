@@ -313,7 +313,7 @@ export class VisionLibrary {
 
   constructor(options: VisionLibraryOptions) {
     this.options = options
-    this.model = new VisionEmbeddingRuntime(options.resourcePath)
+    this.model = new VisionEmbeddingRuntime(options.resourcePath, options.userDataPath)
     this.indexDirectory = getVisionIndexDirectory(options.userDataPath)
     this.thumbnailDirectory = join(this.indexDirectory, 'thumbnails')
     this.databaseDirectory = join(this.indexDirectory, 'lancedb')
@@ -383,6 +383,7 @@ export class VisionLibrary {
     void this.ensureVectorIndex(false).catch(() => undefined)
     return {
       available,
+      downloadable: true,
       modelId: VISION_MODEL_ID,
       modelVariant: VISION_MODEL_VARIANT,
       modelDirectory: this.model.paths.modelDirectory,

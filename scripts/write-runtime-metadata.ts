@@ -7,25 +7,13 @@ import { join, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
 import { getWhisperBinaryNames } from '../src/core/ai/whisper-binary.ts'
+import { VISION_MODEL_FILES, VISION_MODEL_ID, VISION_MODEL_REPOSITORY, VISION_MODEL_REVISION } from '../src/shared/vision-types.ts'
 
 const execFileAsync = promisify(execFile)
 
 export const RUNTIME_METADATA_FILE = 'runtime-metadata.json'
-export const VISION_MODEL_DIRECTORY = 'vision/siglip2-base-patch16-224-ONNX'
-export const VISION_MODEL_REPOSITORY = 'onnx-community/siglip2-base-patch16-224-ONNX'
-export const VISION_MODEL_REVISION = 'ba1f3b0843f24bc5417d38e19c37b287d719b2f4'
-
-export const VISION_MODEL_FILES = [
-  'config.json',
-  'preprocessor_config.json',
-  'quantize_config.json',
-  'special_tokens_map.json',
-  'tokenizer.json',
-  'tokenizer.model',
-  'tokenizer_config.json',
-  'onnx/text_model_uint8.onnx',
-  'onnx/vision_model_uint8.onnx'
-] as const
+export { VISION_MODEL_FILES, VISION_MODEL_REPOSITORY, VISION_MODEL_REVISION }
+export const VISION_MODEL_DIRECTORY = `vision/${VISION_MODEL_ID}`
 
 type RuntimeBinary = {
   path: string

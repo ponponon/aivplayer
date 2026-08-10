@@ -1,5 +1,18 @@
 export const VISION_MODEL_ID = 'siglip2-base-patch16-224-ONNX'
 export const VISION_MODEL_VARIANT = 'uint8'
+export const VISION_MODEL_REPOSITORY = 'onnx-community/siglip2-base-patch16-224-ONNX'
+export const VISION_MODEL_REVISION = 'ba1f3b0843f24bc5417d38e19c37b287d719b2f4'
+export const VISION_MODEL_FILES = [
+  'config.json',
+  'preprocessor_config.json',
+  'quantize_config.json',
+  'special_tokens_map.json',
+  'tokenizer.json',
+  'tokenizer.model',
+  'tokenizer_config.json',
+  'onnx/text_model_uint8.onnx',
+  'onnx/vision_model_uint8.onnx'
+] as const
 export const VISION_FRAME_INTERVAL_SECONDS = 3
 export const VISION_VECTOR_INDEX_TYPE = 'IVF_FLAT'
 export const VISION_VECTOR_DISTANCE_TYPE = 'dot'
@@ -22,6 +35,7 @@ export type VisionIndexTimings = {
 
 export type VisionRuntimeStatus = {
   available: boolean
+  downloadable: boolean
   modelId: string
   modelVariant: string
   modelDirectory: string
@@ -33,6 +47,24 @@ export type VisionRuntimeStatus = {
   vectorIndexIndexedRows: number
   vectorIndexUnindexedRows: number
   message: string
+}
+
+export type VisionModelDownloadStatus = 'cached' | 'downloading' | 'completed'
+
+export type VisionModelDownloadProgress = {
+  status: VisionModelDownloadStatus
+  relativePath: string
+  fileIndex: number
+  fileCount: number
+  receivedBytes: number
+  totalBytes: number | null
+  percent: number | null
+}
+
+export type VisionModelDownloadResult = {
+  success: boolean
+  message: string
+  status: VisionRuntimeStatus
 }
 
 export type VisionLibrarySourceRequest = {
