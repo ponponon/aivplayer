@@ -100,5 +100,13 @@ try {
   throw new Error(`Flatpak 检查失败：lancedb-cargo-sources.json 不是合法 JSON：${error instanceof Error ? error.message : String(error)}`)
 }
 assertCondition(Array.isArray(parsedLancedbCargoSources) && parsedLancedbCargoSources.length > 0, 'lancedb-cargo-sources.json 没有有效 source')
+const lancedbCargoConfig = parsedLancedbCargoSources.find((source) => (
+  source?.type === 'inline' && source?.dest === '.cargo' && source?.['dest-filename'] === 'config'
+))
+assertCondition(lancedbCargoConfig, 'LanceDB Cargo 离线配置必须写入 .cargo/config')
+assertCondition(
+  typeof lancedbCargoConfig.contents === 'string' && lancedbCargoConfig.contents.includes('replace-with = "vendored-sources"'),
+  'LanceDB Cargo 必须替换为 vendored source'
+)
 
 console.log(`Flatpak 静态检查通过：${id} v${version}，${parsedSources.length} 个 npm source，${parsedLancedbCargoSources.length} 个 Cargo source`)

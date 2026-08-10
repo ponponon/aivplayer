@@ -1429,3 +1429,9 @@
 - 现象：whisper.cpp 的 CMake 安装阶段已经把 `whisper-cli` 放到 `/app/bin/whisper-cli`，manifest 仍在 `post-install` 中复制不存在的 `build/bin/whisper-cli`，导致远程 builder 在源码编译成功后失败。
 - 经验：使用 `cmake-ninja` 的模块应以实际 `cmake --install` 结果为准；不能把旧版构建目录中的产物路径当成稳定接口重复安装。
 - 处理：删除重复的 `post-install` 复制命令，保留 wrapper 对 `/app/bin/whisper-cli` 的显式引用，并在静态检查中禁止重新引入旧路径。
+
+## 2026-08-10：Cargo 离线配置必须放在标准 .cargo 目录
+
+- 现象：LanceDB 的 Cargo 源码清单已经包含 `ahash` crate，但远程 builder 仍在离线解析时报告 `no matching package named ahash found`。
+- 经验：Cargo 只有在项目根目录的 `.cargo/config` 或 `.cargo/config.toml` 中才会读取 source replacement；把同名配置写到普通 `cargo/config` 不会启用 vendored source，构建会错误回退到 crates.io index。
+- 处理：将 Flatpak inline source 的目标目录改为 `.cargo`，并在静态检查中锁定 `replace-with = "vendored-sources"` 与 `.cargo/config` 路径。
