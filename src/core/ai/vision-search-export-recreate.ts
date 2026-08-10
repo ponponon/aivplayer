@@ -7,6 +7,13 @@ export function normalizeVisionSearchExportOutputPath(outputPath: string): strin
   return process.platform === 'win32' || process.platform === 'darwin' ? normalized.toLowerCase() : normalized
 }
 
+export function hasVisionSearchExportOutputPathConflict(sourceTask: { taskId: string; outputPath: string }, tasks: ReadonlyArray<{ taskId: string; outputPath: string; status: string }>): boolean {
+  const outputPath = normalizeVisionSearchExportOutputPath(sourceTask.outputPath)
+  return tasks.some((task) => task.taskId !== sourceTask.taskId
+    && (task.status === 'queued' || task.status === 'running')
+    && normalizeVisionSearchExportOutputPath(task.outputPath) === outputPath)
+}
+
 export function normalizeVisionSearchExportTaskIds(value: unknown): string[] {
   if (!Array.isArray(value)) return []
   const taskIds: string[] = []

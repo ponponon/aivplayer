@@ -19,7 +19,7 @@ import { getCurrentLocale } from './desktop-settings'
 import { getAppCopy } from '../shared/i18n'
 import { createVisionSearchExportTaskCenterEvent, createVisionTaskCenterEvent } from '../core/tasks/task-center-adapters'
 import { sendTaskCenterEvent } from './task-center-events'
-import type { VisionSearchExportBatchRecreateRequest, VisionSearchExportCancelRequest, VisionSearchExportProgress, VisionSearchExportRetryRequest } from '../shared/vision-search-export-types'
+import type { VisionSearchExportBatchRecreateRequest, VisionSearchExportBatchRecreateResult, VisionSearchExportCancelRequest, VisionSearchExportProgress, VisionSearchExportRetryRequest } from '../shared/vision-search-export-types'
 import { getVisionSearchRevisionBody, isVisionSearchRevisionUnavailableError, type VisionSearchCatalogSnapshot, type VisionSearchRevision } from '../shared/vision-search-revision'
 import { VISION_INDEX_FAILURE_MAX_RETRY_BATCH } from '../core/ai/vision-index-failure'
 import { mergeVisionLibrarySourceMetadata } from '../core/ai/vision-library-source-metadata'
@@ -30,7 +30,7 @@ import { normalizeVisionObjectDetectionFilterState } from '../core/ai/vision-obj
 import { normalizeVisionSimilarSearchRequest } from '../core/ai/vision-similar-search'
 import { VisionSearchCursorStore, VISION_SEARCH_SNAPSHOT_MAX_RESULTS } from '../core/ai/vision-search-cursor'
 import { createEmptyVisionEvidenceCounts, normalizeVisionEvidenceAuditStatuses, normalizeVisionEvidenceClearTargets, normalizeVisionDerivedEvidenceTypes } from '../core/ai/vision-evidence-sources'
-import { normalizeVisionSearchExportTaskIds } from '../core/ai/vision-search-export-recreate'
+import { hasVisionSearchExportOutputPathConflict, normalizeVisionSearchExportTaskIds } from '../core/ai/vision-search-export-recreate'
 
 const VISION_EVIDENCE_TYPES: readonly VisionEvidenceType[] = ['subtitle', 'visual', 'scene', 'ocr', 'entity', 'object', 'speaker']
 
@@ -243,6 +243,10 @@ function createRecreatedVisionSearchExportTask(sourceTask: VisionSearchExportTas
   })
 }
 
+function visionSearchExportHasOutputPathConflict(store: ReturnType<typeof getVisionSearchExportStore>, sourceTask: VisionSearchExportTaskRecord): boolean {
+  return hasVisionSearchExportOutputPathConflict(sourceTask, store.list())
+}
+
 export function resumeVisionSearchExports(): void {
   const store = getVisionSearchExportStore()
   for (const task of store.listRecoverable()) {
@@ -436,6 +440,7 @@ export function registerVisionIpc(): void {
     const store = getVisionSearchExportStore()
     const sourceTask = store.get(taskId)
     if (!sourceTask || (sourceTask.status !== 'failed' && sourceTask.status !== 'cancelled')) return false
+    if (visionSearchExportHasOutputPathConflict(store, sourceTask)) return false
     let searchRevision: VisionSearchRevision
     try {
       searchRevision = await getVisionSearchRevisionWithCatalogs()
@@ -447,27 +452,33 @@ export function registerVisionIpc(): void {
     return true
   })
 
-  ipcMain.handle(IPC_CHANNELS.VISION_SEARCH_FULL_EXPORT_BATCH_RECREATE, async (_event, request: VisionSearchExportBatchRecreateRequest): Promise<number> => {
+  ipcMain.handle(IPC_CHANNELS.VISION_SEARCH_FULL_EXPORT_BATCH_RECREATE, async (_event, request: VisionSearchExportBatchRecreateRequest): Promise<VisionSearchExportBatchRecreateResult> => {
+    const emptyResult: VisionSearchExportBatchRecreateResult = { createdCount: 0, skippedCount: 0, conflictCount: 0 }
     const taskIds = normalizeVisionSearchExportTaskIds(request?.taskIds)
-    if (taskIds.length === 0) return 0
+    if (taskIds.length === 0) return emptyResult
     const store = getVisionSearchExportStore()
     const sourceTasks = taskIds
       .map((taskId) => store.get(taskId))
       .filter((task): task is VisionSearchExportTaskRecord => Boolean(task && (task.status === 'failed' || task.status === 'cancelled') && !desktopState.visionSearchExportAbortControllers.has(task.taskId)))
-    if (sourceTasks.length === 0) return 0
+    if (sourceTasks.length === 0) return { ...emptyResult, skippedCount: taskIds.length }
     let searchRevision: VisionSearchRevision
     try {
       searchRevision = await getVisionSearchRevisionWithCatalogs()
     } catch {
-      return 0
+      return { ...emptyResult, skippedCount: sourceTasks.length }
     }
-    let createdCount = 0
+    const result: VisionSearchExportBatchRecreateResult = { ...emptyResult, skippedCount: taskIds.length - sourceTasks.length }
     for (const sourceTask of sourceTasks) {
+      if (visionSearchExportHasOutputPathConflict(store, sourceTask)) {
+        result.skippedCount += 1
+        result.conflictCount += 1
+        continue
+      }
       const task = createRecreatedVisionSearchExportTask(sourceTask, searchRevision)
-      startVisionSearchExportTask(task)
-      createdCount += 1
+      if (startVisionSearchExportTask(task)) result.createdCount += 1
+      else result.skippedCount += 1
     }
-    return createdCount
+    return result
   })
 
   ipcMain.handle(IPC_CHANNELS.VISION_SEARCH_RESULTS_EXPORT, async (_event, request: VisionSearchResultsExportRequest): Promise<VisionSearchResultsExportResult> => {

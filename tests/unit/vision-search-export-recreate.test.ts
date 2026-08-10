@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { resolve } from 'node:path'
-import { normalizeVisionSearchExportOutputPath, normalizeVisionSearchExportTaskIds, VISION_SEARCH_EXPORT_RECREATE_BATCH_MAX } from '../../src/core/ai/vision-search-export-recreate'
+import { hasVisionSearchExportOutputPathConflict, normalizeVisionSearchExportOutputPath, normalizeVisionSearchExportTaskIds, VISION_SEARCH_EXPORT_RECREATE_BATCH_MAX } from '../../src/core/ai/vision-search-export-recreate'
 
 describe('vision search export recreation', () => {
   it('normalizes, deduplicates, and bounds batch task IDs', () => {
@@ -27,5 +27,12 @@ describe('vision search export recreation', () => {
     const expected = resolve('/tmp/aivplayer-export/result.json')
     const normalized = normalizeVisionSearchExportOutputPath('/tmp/aivplayer-export/../aivplayer-export/result.json')
     expect(normalized).toBe(process.platform === 'win32' || process.platform === 'darwin' ? expected.toLowerCase() : expected)
+  })
+
+  it('only treats active tasks with the same normalized path as conflicts', () => {
+    const source = { taskId: 'source', outputPath: '/tmp/results/../results.json' }
+    expect(hasVisionSearchExportOutputPathConflict(source, [{ taskId: 'active', outputPath: '/tmp/results.json', status: 'running' }])).toBe(true)
+    expect(hasVisionSearchExportOutputPathConflict(source, [{ taskId: 'finished', outputPath: '/tmp/results.json', status: 'failed' }])).toBe(false)
+    expect(hasVisionSearchExportOutputPathConflict(source, [{ taskId: 'other', outputPath: '/tmp/other.json', status: 'running' }])).toBe(false)
   })
 })
