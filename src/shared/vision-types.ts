@@ -178,6 +178,7 @@ export type VisionSearchRequest = {
   imagePath?: string
   limit?: number
   mode?: VisionSearchMode
+  evidenceTypes?: VisionEvidenceType[]
 }
 
 export type VisionMatchSource = 'visual' | 'subtitle' | 'filename' | 'both'

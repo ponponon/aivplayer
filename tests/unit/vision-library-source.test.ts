@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { VISION_FRAME_INTERVAL_SECONDS, VISION_MODEL_ID, VISION_MODEL_VARIANT, VISION_VECTOR_DISTANCE_TYPE, VISION_VECTOR_INDEX_MIN_ROWS, VISION_VECTOR_INDEX_TYPE } from '../../src/shared/vision-types'
 import { getVisionModelPaths } from '../../src/core/ai/vision-model'
-import { calculateVisionLexicalMatch, combineVisionHybridScore, getVisionSearchResultKey } from '../../src/core/ai/vision-search'
+import { calculateVisionLexicalMatch, combineVisionHybridScore, filterVisionSearchResultsByEvidenceTypes, getVisionSearchResultKey } from '../../src/core/ai/vision-search'
 import { dotProduct } from '../../src/core/ai/vision-library'
 
 const projectRoot = process.cwd()
@@ -113,6 +113,13 @@ describe('vision library setup', () => {
   it('keeps OCR evidence rows distinct when they have no frame id', () => {
     expect(getVisionSearchResultKey({ id: 'ocr-a', evidenceId: 'ocr-a', frameId: '', evidenceType: 'ocr' })).toBe('ocr-a')
     expect(getVisionSearchResultKey({ id: 'frame-a', evidenceId: 'subtitle-a', frameId: 'frame-a', evidenceType: 'subtitle' })).toBe('frame-a')
+  })
+
+  it('filters evidence types without collapsing the result identity', () => {
+    const result = (id: string, evidenceType: 'subtitle' | 'ocr', score: number) => ({ id, videoPath: '/tmp/demo.mp4', fileName: 'demo.mp4', timestampSeconds: 0, thumbnailPath: '', score, evidenceType, modelId: 'test', modelVariant: 'test' })
+    const results = [result('subtitle-1', 'subtitle', 0.9), result('ocr-1', 'ocr', 0.8), result('ocr-2', 'ocr', 0.7)]
+    expect(filterVisionSearchResultsByEvidenceTypes(results, ['ocr'], 1).map((result) => result.id)).toEqual(['ocr-1'])
+    expect(filterVisionSearchResultsByEvidenceTypes(results, [], 1).map((result) => result.id)).toEqual(['subtitle-1', 'ocr-1', 'ocr-2'])
   })
 
   it('keeps the incremental manifest and caption tables in the library source', () => {

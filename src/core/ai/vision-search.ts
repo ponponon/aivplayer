@@ -1,4 +1,4 @@
-import type { VisionSearchResult } from '../../shared/vision-types'
+import type { VisionEvidenceType, VisionSearchResult } from '../../shared/vision-types'
 
 export type VisionLexicalMatch = {
   score: number
@@ -66,4 +66,14 @@ export function getVisionSearchResultKey(result: Pick<VisionSearchResult, 'evide
     return result.evidenceId || result.id
   }
   return result.frameId || result.evidenceId || result.id
+}
+
+export function filterVisionSearchResultsByEvidenceTypes(
+  results: readonly VisionSearchResult[],
+  evidenceTypes: readonly VisionEvidenceType[],
+  limit: number
+): VisionSearchResult[] {
+  if (evidenceTypes.length === 0) return [...results]
+  const allowed = new Set(evidenceTypes)
+  return results.filter((result) => result.evidenceType !== undefined && allowed.has(result.evidenceType)).slice(0, limit)
 }
