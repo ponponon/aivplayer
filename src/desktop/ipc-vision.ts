@@ -2,11 +2,11 @@ import { app, ipcMain } from 'electron'
 import { writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
-import type { VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionSearchRequest, VisionSearchResult } from '../shared/vision-types'
+import type { VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionSavedSearchInput, VisionSearchRequest, VisionSearchResult } from '../shared/vision-types'
 import type { VisionEntityCatalogBatchPatch, VisionEntityCatalogCreateInput, VisionEntityCatalogPatch } from '../shared/vision-entity-types'
 import { scanVisionDirectory, isVisionScanAbortError } from '../core/ai/vision-directory-scan'
 import { renderVisionClipCollectionExport } from '../core/ai/clip-inbox-export'
-import { getClipInboxStore, getMediaImportInboxStore, getSpeakerDiarizationCatalogStore, getVisionEntityCatalogStore, getVisionIndexCoordinator, getVisionIndexFailureStore, getVisionIndexQueue, getVisionLibrary, trackVisionIndexProgress } from './desktop-services'
+import { getClipInboxStore, getMediaImportInboxStore, getSpeakerDiarizationCatalogStore, getVisionEntityCatalogStore, getVisionIndexCoordinator, getVisionIndexFailureStore, getVisionIndexQueue, getVisionLibrary, getVisionSavedSearchStore, trackVisionIndexProgress } from './desktop-services'
 import { desktopState } from './desktop-state'
 import { promptForSavePath } from './media-dialogs'
 import { createVisionTaskCenterEvent } from '../core/tasks/task-center-adapters'
@@ -177,6 +177,13 @@ export function registerVisionIpc(): void {
       const entityCatalog = getVisionEntityCatalogStore()
       return getSpeakerDiarizationCatalogStore().applyResults(entityCatalog.applyResults(results))
     })
+  })
+
+  ipcMain.handle(IPC_CHANNELS.VISION_SAVED_SEARCH_LIST, () => getVisionSavedSearchStore().list())
+  ipcMain.handle(IPC_CHANNELS.VISION_SAVED_SEARCH_SAVE, (_event, input: VisionSavedSearchInput) => getVisionSavedSearchStore().save(input))
+  ipcMain.handle(IPC_CHANNELS.VISION_SAVED_SEARCH_DELETE, (_event, id: string) => {
+    if (typeof id !== 'string' || !id.trim()) return false
+    return getVisionSavedSearchStore().delete(id)
   })
 
   ipcMain.handle(IPC_CHANNELS.VISION_LIST_SOURCES, (_event, request: VisionLibrarySourceRequest = {}) => listVisionSourcesWithMetadata(request))

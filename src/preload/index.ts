@@ -117,6 +117,7 @@ import type { WebDesktopStateUpdate, WebRemoteCommandForDesktop, WebShareStartRe
 import type { MediaEvidenceCapabilities, MediaEvidenceDraft, MediaEvidenceDraftImportRequest, MediaEvidenceDraftImportResult, MediaEvidenceDraftSaveRequest, MediaEvidenceTask, MediaEvidenceTaskRequest } from '../shared/evidence-task-types'
 import type { VisionEntityCatalog, VisionEntityCatalogBatchPatch, VisionEntityCatalogCreateInput, VisionEntityCatalogPatch } from '../shared/vision-entity-types'
 import type { SpeakerDiarizationCatalog, SpeakerDiarizationCatalogPatch } from '../shared/speaker-diarization-catalog-types'
+import type { VisionSavedSearch, VisionSavedSearchInput } from '../shared/vision-types'
 import type { EditingAgentProposalDecision, EditingAgentProposalRequest } from '../shared/editing-agent'
 import type { MediaImportInboxDirectoriesChangedEvent, MediaImportInboxItem, MediaImportInboxMetadataUpdateRequest, MediaImportInboxPipelineProgress, MediaImportInboxScanRequest, MediaImportInboxScanResponse, MediaImportInboxScanProgress, MediaImportInboxTransitionRequest, MediaImportInboxWatchRequest, MediaImportInboxWatchStartResult } from '../shared/media-import-inbox'
 import type { TaskCenterEvent } from '../shared/task-center-types'
@@ -279,6 +280,9 @@ const api = {
   retryVisionIndexFailures: (request: VisionIndexFailureRetryBatchRequest): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.VISION_INDEX_FAILURE_BATCH_RETRY, request),
   searchVisionText: (request: VisionSearchRequest): Promise<VisionSearchResult[]> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SEARCH_TEXT, request),
   searchVisionImage: (request: VisionSearchRequest): Promise<VisionSearchResult[]> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SEARCH_IMAGE, request),
+  listVisionSavedSearches: (): Promise<VisionSavedSearch[]> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SAVED_SEARCH_LIST),
+  saveVisionSavedSearch: (input: VisionSavedSearchInput): Promise<VisionSavedSearch> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SAVED_SEARCH_SAVE, input),
+  deleteVisionSavedSearch: (id: string): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SAVED_SEARCH_DELETE, id),
   getVisionEntityCatalog: (): Promise<VisionEntityCatalog> => ipcRenderer.invoke(IPC_CHANNELS.VISION_ENTITY_CATALOG_GET),
   createVisionEntityCatalog: (input: VisionEntityCatalogCreateInput): Promise<VisionEntityCatalog> => ipcRenderer.invoke(IPC_CHANNELS.VISION_ENTITY_CATALOG_CREATE, input),
   updateVisionEntityCatalog: (patch: VisionEntityCatalogPatch): Promise<VisionEntityCatalog> => ipcRenderer.invoke(IPC_CHANNELS.VISION_ENTITY_CATALOG_UPDATE, patch),

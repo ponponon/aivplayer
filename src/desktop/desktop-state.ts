@@ -15,6 +15,7 @@ import { TaskCenterStore } from '../core/tasks/task-center-store'
 import { VisionEntityCatalogStore } from '../core/ai/vision-entity-catalog-store'
 import { SpeakerDiarizationCatalogStore } from '../core/ai/speaker-diarization-catalog-store'
 import { VisionIndexFailureStore } from '../core/ai/vision-index-failure-store'
+import { VisionSavedSearchStore } from '../core/ai/vision-saved-search-store'
 
 export const desktopState: {
   mainWindow: BrowserWindow | null
@@ -40,6 +41,7 @@ export const desktopState: {
   taskCenterStore: TaskCenterStore | null
   visionEntityCatalogStore: VisionEntityCatalogStore | null
   speakerDiarizationCatalogStore: SpeakerDiarizationCatalogStore | null
+  visionSavedSearchStore: VisionSavedSearchStore | null
   visionIndexFailureStore: VisionIndexFailureStore | null
 } = {
   mainWindow: null,
@@ -65,5 +67,6 @@ export const desktopState: {
   taskCenterStore: null,
   visionEntityCatalogStore: null,
   speakerDiarizationCatalogStore: null,
+  visionSavedSearchStore: null,
   visionIndexFailureStore: null
 }
