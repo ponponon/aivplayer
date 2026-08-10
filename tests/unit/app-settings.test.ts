@@ -66,6 +66,7 @@ describe('app settings', () => {
     settings.subtitles.targetLanguage = 'zh'
     settings.vision.libraryDirectories = [join(tempDirectory, 'library-one'), join(tempDirectory, 'library-two')]
     settings.vision.speakerModelDirectory = join(tempDirectory, 'speaker-model')
+    settings.vision.objectDetectionModelDirectory = join(tempDirectory, 'object-detection-model')
     settings.media.importInboxDirectories = [join(tempDirectory, 'inbox-one'), join(tempDirectory, 'inbox-two')]
     settings.media.importInboxWriteSidecars = false
     settings.playback.lastVolume = 0.42
@@ -161,6 +162,16 @@ describe('app settings', () => {
 
     await writeFile(join(tempDirectory, 'app-settings.json'), JSON.stringify({ vision: { libraryDirectories: [], speakerModelDirectory: 'relative-model' } }))
     await expect(readAppSettings(tempDirectory)).resolves.toMatchObject({ vision: { libraryDirectories: [], speakerModelDirectory: null } })
+  })
+
+  it('keeps the object detection model directory absolute and falls back for invalid values', async () => {
+    const settings = createDefaultAppSettings()
+    settings.vision.objectDetectionModelDirectory = join(tempDirectory, 'object-detection-model')
+    await writeAppSettings(tempDirectory, settings)
+    await expect(readAppSettings(tempDirectory)).resolves.toMatchObject({ vision: { objectDetectionModelDirectory: settings.vision.objectDetectionModelDirectory } })
+
+    await writeFile(join(tempDirectory, 'app-settings.json'), JSON.stringify({ vision: { libraryDirectories: [], objectDetectionModelDirectory: 'relative-model' } }))
+    await expect(readAppSettings(tempDirectory)).resolves.toMatchObject({ vision: { libraryDirectories: [], objectDetectionModelDirectory: null } })
   })
 
   it('enables video surface gestures when upgrading legacy settings', async () => {

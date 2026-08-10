@@ -558,11 +558,17 @@ function sanitizeVisionSettings(
   const speakerModelDirectory = typeof vision.speakerModelDirectory === 'string'
     ? vision.speakerModelDirectory.trim()
     : null
+  const objectDetectionModelDirectory = typeof vision.objectDetectionModelDirectory === 'string'
+    ? vision.objectDetectionModelDirectory.trim()
+    : null
   return {
     libraryDirectories: directories,
     speakerModelDirectory: speakerModelDirectory && speakerModelDirectory.length <= 4096 && isAbsolute(speakerModelDirectory)
       ? speakerModelDirectory
-      : defaults.speakerModelDirectory
+      : defaults.speakerModelDirectory,
+    objectDetectionModelDirectory: objectDetectionModelDirectory && objectDetectionModelDirectory.length <= 4096 && isAbsolute(objectDetectionModelDirectory)
+      ? objectDetectionModelDirectory
+      : defaults.objectDetectionModelDirectory
   }
 }
 

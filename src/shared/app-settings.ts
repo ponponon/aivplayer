@@ -92,6 +92,7 @@ export type AppSettings = {
   vision: {
     libraryDirectories: string[]
     speakerModelDirectory: string | null
+    objectDetectionModelDirectory: string | null
   }
   drama: {
     apiBaseUrl: string | null
@@ -262,7 +263,8 @@ export function createDefaultAppSettings(): AppSettings {
     },
     vision: {
       libraryDirectories: [],
-      speakerModelDirectory: null
+      speakerModelDirectory: null,
+      objectDetectionModelDirectory: null
     },
     drama: {
       apiBaseUrl: null,

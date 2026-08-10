@@ -25,6 +25,7 @@ import { registerEvidenceTaskIpc } from './ipc-evidence-task'
 import { registerEvidenceDraftIpc } from './ipc-evidence-draft'
 import { registerPersonMatteIpc } from './ipc-person-matte'
 import { registerSpeakerDiarizationIpc } from './ipc-speaker-diarization'
+import { registerVisionObjectDetectionIpc } from './ipc-vision-object-detection'
 import { registerDramaIpc } from './ipc-drama'
 import { registerMediaImportInboxIpc, stopMediaImportInboxIpc } from './ipc-media-import-inbox'
 import { registerWebIpc, stopWebServer } from './ipc-web'
@@ -90,6 +91,7 @@ function registerIpc(): void {
   registerEvidenceDraftIpc()
   registerPersonMatteIpc()
   registerSpeakerDiarizationIpc()
+  registerVisionObjectDetectionIpc()
   registerDramaIpc()
   registerWebIpc()
   registerTaskCenterIpc()

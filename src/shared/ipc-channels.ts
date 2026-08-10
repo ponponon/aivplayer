@@ -158,6 +158,7 @@ export const IPC_CHANNELS = {
   SPEAKER_DIARIZATION_BATCH_CLEAR_EVIDENCE: 'speaker-diarization:batch-clear-evidence',
   SPEAKER_DIARIZATION_CATALOG_GET: 'speaker-diarization:catalog-get',
   SPEAKER_DIARIZATION_CATALOG_UPDATE: 'speaker-diarization:catalog-update',
+  VISION_OBJECT_DETECTION_STATUS: 'vision-object-detection:status',
   DRAMA_LIST_PROJECTS: 'drama:list-projects',
   DRAMA_CREATE_PROJECT: 'drama:create-project',
   DRAMA_IMPORT_CHAPTERS: 'drama:import-chapters',
