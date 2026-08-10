@@ -1,7 +1,7 @@
 import { CheckSquare, Database, RefreshCw, Square, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { LocaleCopy } from '../../../shared/i18n'
-import { VISION_DERIVED_EVIDENCE_TYPES, type VisionDerivedEvidenceType, type VisionEvidenceSource } from '../../../shared/vision-types'
+import { VISION_DERIVED_EVIDENCE_TYPES, VISION_EVIDENCE_AUDIT_STATUSES, type VisionDerivedEvidenceType, type VisionEvidenceAuditStatus, type VisionEvidenceSourceAudit } from '../../../shared/vision-types'
 
 type VisionEvidenceSourcesProps = {
   copy: LocaleCopy['vision']
@@ -12,13 +12,14 @@ function formatGeneratedAt(timestamp: number): string {
   return new Date(timestamp).toLocaleString()
 }
 
-function sourceKey(source: VisionEvidenceSource): string {
+function sourceKey(source: VisionEvidenceSourceAudit): string {
   return `${source.videoPath}\0${source.sourceFingerprint}`
 }
 
 export function VisionEvidenceSources({ copy, kicker = 'VISION' }: VisionEvidenceSourcesProps): React.ReactElement {
-  const [sources, setSources] = useState<VisionEvidenceSource[]>([])
+  const [sources, setSources] = useState<VisionEvidenceSourceAudit[]>([])
   const [selectedTypes, setSelectedTypes] = useState<Record<string, VisionDerivedEvidenceType[]>>({})
+  const [auditStatusFilter, setAuditStatusFilter] = useState<VisionEvidenceAuditStatus | 'all'>('all')
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isClearing, setIsClearing] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
@@ -28,7 +29,11 @@ export function VisionEvidenceSources({ copy, kicker = 'VISION' }: VisionEvidenc
     setIsRefreshing(true)
     setError(null)
     try {
-      const nextSources = await window.aiv.listVisionEvidenceSources({ limit: 100, offset: 0 })
+      const nextSources = await window.aiv.auditVisionEvidenceSources({
+        limit: 100,
+        offset: 0,
+        auditStatuses: auditStatusFilter === 'all' ? undefined : [auditStatusFilter]
+      })
       setSources(nextSources)
       setSelectedTypes((current) => {
         const available = new Map(nextSources.map((source) => [sourceKey(source), new Set(VISION_DERIVED_EVIDENCE_TYPES.filter((type) => source.evidenceCounts[type] > 0))]))
@@ -41,11 +46,11 @@ export function VisionEvidenceSources({ copy, kicker = 'VISION' }: VisionEvidenc
     }
   }
 
-  useEffect(() => { void refresh() }, [])
+  useEffect(() => { void refresh() }, [auditStatusFilter])
 
-  const getSelectedTypes = (source: VisionEvidenceSource): Set<VisionDerivedEvidenceType> => new Set(selectedTypes[sourceKey(source)] ?? [])
+  const getSelectedTypes = (source: VisionEvidenceSourceAudit): Set<VisionDerivedEvidenceType> => new Set(selectedTypes[sourceKey(source)] ?? [])
 
-  const toggleType = (source: VisionEvidenceSource, evidenceType: VisionDerivedEvidenceType): void => {
+  const toggleType = (source: VisionEvidenceSourceAudit, evidenceType: VisionDerivedEvidenceType): void => {
     if (source.evidenceCounts[evidenceType] <= 0) return
     const key = sourceKey(source)
     setSelectedTypes((current) => {
@@ -59,7 +64,7 @@ export function VisionEvidenceSources({ copy, kicker = 'VISION' }: VisionEvidenc
     })
   }
 
-  const toggleSource = (source: VisionEvidenceSource): void => {
+  const toggleSource = (source: VisionEvidenceSourceAudit): void => {
     const key = sourceKey(source)
     const available = VISION_DERIVED_EVIDENCE_TYPES.filter((type) => source.evidenceCounts[type] > 0)
     setSelectedTypes((current) => {
@@ -113,6 +118,7 @@ export function VisionEvidenceSources({ copy, kicker = 'VISION' }: VisionEvidenc
     <div className="vision-heading"><div><span className="panel-kicker">{kicker}</span><h3>{copy.evidenceSourcesTitle}</h3></div><Database size={17} /></div>
     <p className="vision-evidence-sources-description vision-speaker-evidence-sources-description">{copy.evidenceSourcesDescription}</p>
     <div className="vision-evidence-sources-toolbar vision-speaker-evidence-sources-toolbar">
+      <label className="vision-evidence-audit-filter"><span>{copy.evidenceAuditFilterLabel}</span><select data-testid="vision-evidence-audit-filter" value={auditStatusFilter} onChange={(event) => setAuditStatusFilter(event.target.value as VisionEvidenceAuditStatus | 'all')} disabled={isRefreshing || isClearing}><option value="all">{copy.evidenceAuditAll}</option>{VISION_EVIDENCE_AUDIT_STATUSES.map((auditStatus) => <option key={auditStatus} value={auditStatus}>{copy.evidenceAuditStatusLabels[auditStatus]}</option>)}</select></label>
       <button className="vision-secondary-action" data-testid="vision-evidence-select-all" type="button" onClick={toggleAll} disabled={sources.length === 0 || isRefreshing || isClearing}>{allSelected ? <Square size={13} /> : <CheckSquare size={13} />}{allSelected ? copy.evidenceSourcesClearSelection : copy.evidenceSourcesSelectAll}</button>
       {selectedCount > 0 ? <><span>{copy.evidenceSourcesSelected(selectedCount)}</span><button className="vision-primary-action" data-testid="vision-speaker-clear-selected-evidence" data-evidence-testid="vision-evidence-clear-selected" type="button" onClick={() => void clearSelected()} disabled={isRefreshing || isClearing}><Trash2 size={12} />{isClearing ? copy.evidenceSourcesClearing : copy.evidenceSourcesClear}</button></> : null}
       <button className="vision-secondary-action" type="button" onClick={() => void refresh()} disabled={isRefreshing || isClearing}><RefreshCw size={12} />{isRefreshing ? copy.evidenceSourcesRefreshing : copy.evidenceSourcesRefresh}</button>
@@ -122,7 +128,7 @@ export function VisionEvidenceSources({ copy, kicker = 'VISION' }: VisionEvidenc
       const available = VISION_DERIVED_EVIDENCE_TYPES.filter((type) => source.evidenceCounts[type] > 0)
       const sourceSelected = available.length > 0 && available.every((type) => selected.has(type))
       return <article className="vision-evidence-source vision-speaker-evidence-source" key={sourceKey(source)}>
-        <div className="vision-evidence-source-copy vision-speaker-evidence-source-copy"><div className="vision-evidence-source-title vision-speaker-evidence-source-title"><input type="checkbox" checked={sourceSelected} onChange={() => toggleSource(source)} disabled={isRefreshing || isClearing} aria-label={source.fileName} /><strong title={source.videoPath}>{source.fileName}</strong></div><small title={source.videoPath}>{source.videoPath}</small><em>{copy.evidenceSourceMeta(available.reduce((count, type) => count + source.evidenceCounts[type], 0), formatGeneratedAt(source.generatedAt))}</em>
+        <div className="vision-evidence-source-copy vision-speaker-evidence-source-copy"><div className="vision-evidence-source-title vision-speaker-evidence-source-title"><input type="checkbox" checked={sourceSelected} onChange={() => toggleSource(source)} disabled={isRefreshing || isClearing} aria-label={source.fileName} /><strong title={source.videoPath}>{source.fileName}</strong><span className={`vision-evidence-source-audit-status is-${source.auditStatus}`} data-testid={`vision-evidence-audit-status-${source.auditStatus}`}>{copy.evidenceAuditStatusLabels[source.auditStatus]}</span></div><small title={source.videoPath}>{source.videoPath}</small><em>{copy.evidenceSourceMeta(available.reduce((count, type) => count + source.evidenceCounts[type], 0), formatGeneratedAt(source.generatedAt))}</em>
           <div className="vision-evidence-source-types">{available.map((evidenceType) => <label key={evidenceType}><input type="checkbox" checked={selected.has(evidenceType)} onChange={() => toggleType(source, evidenceType)} disabled={isRefreshing || isClearing} /><span>{copy.evidenceFilterOptions[evidenceType]} · {source.evidenceCounts[evidenceType]}</span></label>)}</div>
         </div>
       </article>

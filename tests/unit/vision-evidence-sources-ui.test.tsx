@@ -10,6 +10,8 @@ describe('vision evidence sources UI', () => {
     expect(html).toContain('视觉证据来源')
     expect(html).toContain('暂无可管理的派生视觉证据')
     expect(html).toContain('刷新来源')
+    expect(html).toContain('vision-evidence-audit-filter')
+    expect(html).toContain('来源状态')
   })
 
   it('keeps source management actions connected to the generic preload API', async () => {
@@ -21,6 +23,7 @@ describe('vision evidence sources UI', () => {
     const styles = await readFile(join(projectRoot, 'src/renderer/src/styles/player.css'), 'utf8')
     expect(panel).toContain('VisionEvidenceSources')
     expect(preload).toContain('listVisionEvidenceSources')
+    expect(preload).toContain('auditVisionEvidenceSources')
     expect(preload).toContain('clearVisionEvidenceBatch')
     expect(styles).toContain("@import './player/vision-evidence-sources.css';")
   })

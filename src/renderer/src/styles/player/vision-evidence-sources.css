@@ -22,6 +22,25 @@
   font-size: 9px;
 }
 
+.vision-evidence-audit-filter {
+  display: inline-flex;
+  min-height: 25px;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-muted);
+}
+
+.vision-evidence-audit-filter select {
+  max-width: 120px;
+  min-height: 25px;
+  padding: 0 5px;
+  color: var(--text-secondary);
+  background: rgba(var(--overlay-rgb), 0.05);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  font-size: 9px;
+}
+
 .vision-evidence-sources-toolbar .vision-primary-action,
 .vision-evidence-sources-toolbar .vision-secondary-action {
   min-height: 25px;
@@ -75,8 +94,35 @@
 }
 
 .vision-evidence-source-title strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--text-secondary);
   font-size: 10px;
+}
+
+.vision-evidence-source-audit-status {
+  flex: 0 0 auto;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  font-size: 8px;
+  line-height: 1;
+}
+
+.vision-evidence-source-audit-status.is-current {
+  color: var(--ok);
+  background: rgba(var(--ok-rgb), 0.12);
+}
+
+.vision-evidence-source-audit-status.is-changed {
+  color: var(--accent-strong);
+  background: rgba(var(--accent-rgb), 0.12);
+}
+
+.vision-evidence-source-audit-status.is-missing,
+.vision-evidence-source-audit-status.is-unavailable {
+  color: var(--danger);
+  background: rgba(var(--danger-rgb), 0.12);
 }
 
 .vision-evidence-source-copy small,
