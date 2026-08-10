@@ -1,4 +1,4 @@
-import type { VisionEvidenceType, VisionSearchResult } from '../../shared/vision-types'
+import type { VisionEvidenceType, VisionSearchResult, VisionSearchSortMode } from '../../shared/vision-types'
 
 export type VisionLexicalMatch = {
   score: number
@@ -76,4 +76,40 @@ export function filterVisionSearchResultsByEvidenceTypes(
   if (evidenceTypes.length === 0) return [...results]
   const allowed = new Set(evidenceTypes)
   return results.filter((result) => result.evidenceType !== undefined && allowed.has(result.evidenceType)).slice(0, limit)
+}
+
+function compareVisionSearchText(left: string, right: string): number {
+  return left.toLocaleLowerCase().localeCompare(right.toLocaleLowerCase()) || left.localeCompare(right)
+}
+
+function getVisionSearchTime(result: VisionSearchResult): number {
+  const seconds = result.startSeconds ?? result.timestampSeconds
+  return Number.isFinite(seconds) ? seconds : 0
+}
+
+/** Sorts search results without mutating the result collection returned by IPC. */
+export function sortVisionSearchResults(results: readonly VisionSearchResult[], mode: VisionSearchSortMode): VisionSearchResult[] {
+  return results
+    .map((result, index) => ({ result, index }))
+    .sort((left, right) => {
+      const a = left.result
+      const b = right.result
+      let comparison = 0
+      if (mode === 'source-time') {
+        comparison = compareVisionSearchText(a.videoPath, b.videoPath)
+        if (comparison === 0) comparison = getVisionSearchTime(a) - getVisionSearchTime(b)
+        if (comparison === 0) comparison = compareVisionSearchText(a.fileName, b.fileName)
+      } else if (mode === 'file-name') {
+        comparison = compareVisionSearchText(a.fileName, b.fileName)
+        if (comparison === 0) comparison = compareVisionSearchText(a.videoPath, b.videoPath)
+        if (comparison === 0) comparison = getVisionSearchTime(a) - getVisionSearchTime(b)
+      } else {
+        comparison = b.score - a.score
+        if (comparison === 0) comparison = compareVisionSearchText(a.fileName, b.fileName)
+        if (comparison === 0) comparison = getVisionSearchTime(a) - getVisionSearchTime(b)
+      }
+      if (comparison === 0) comparison = compareVisionSearchText(a.id, b.id)
+      return comparison || left.index - right.index
+    })
+    .map(({ result }) => result)
 }

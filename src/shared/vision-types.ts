@@ -159,6 +159,8 @@ export type VisionSearchMode = 'visual' | 'hybrid'
 
 export type VisionEvidenceType = 'subtitle' | 'visual' | 'scene' | 'ocr' | 'entity' | 'speaker'
 
+export type VisionSearchSortMode = 'relevance' | 'source-time' | 'file-name'
+
 export type VisionSavedSearch = {
   id: string
   name: string
