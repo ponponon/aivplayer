@@ -12,6 +12,7 @@
 - protobuf `v30.2` 已加入固定 SHA-512 的源码模块，远程 builder 会生成 `/app/bin/protoc` 供 LanceDB 的 Rust build script 使用；
 - Flatpak npm 构建已显式跳过 `onnxruntime-node` 的 CUDA 扩展下载，兼容新旧安装变量，使用 npm 包随附的 CPU 运行时，避免离线构建访问 NuGet；
 - Electron `v43.2.0` Linux x64 / ARM64 发行包已按架构作为固定 SHA-256 的 Flatpak 源下载并解压到独立目录，electron-builder 通过 `electronDist` 使用本地目录，避免构建阶段访问 GitHub；
+- Flatpak 使用独立的 `icon-512.png` 应用图标，保留桌面端原始 1024 图标不变，满足 Flatpak 导出器的最大图标尺寸限制；
 - FFmpeg `8.1.2` 已改为官方源码归档模块，固定 SHA-256，关闭 GPL/nonfree 和外部自动探测，静态安装 `/app/bin/ffmpeg` 与 `/app/bin/ffprobe`；
 - libheif `v1.23.1` 已接入固定源码模块，依赖 libde265 `v1.0.16`、libjpeg-turbo `3.1.2` 和 x265 `3.4`，关闭插件加载、宿主可选后端探测并安装 `heif-enc`、`heif-convert`；x265 的 GPL-2.0 许可证边界需要随最终 Flathub 审核材料复核。x265 另带一个只修复 CMake 4 兼容性的最小 patch；
 - LanceDB `v0.31.0` 已加入 Flathub manifest 的源码构建描述：固定 Git commit、Cargo.lock 最小修正和 Cargo 离线源码清单均作为 manifest 输入；本机不执行 Cargo 编译，实际 Linux x86_64 / arm64 编译由 Flathub builder 完成。

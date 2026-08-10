@@ -1453,3 +1453,9 @@
 - 现象：ONNX Runtime 已跳过 CUDA 下载，远程 builder 的 npm 安装和应用构建均成功；`electron-builder --linux --dir` 在准备 `linux-unpacked` 时仍通过 `@electron/get` 请求 `github.com` 下载 Electron Linux 包，Flatpak 沙箱因无网络报 `getaddrinfo EAI_AGAIN github.com`。
 - 经验：Flatpak 的源码下载阶段和模块 build 阶段是两个边界；允许 manifest 下载并校验固定源，不等于允许构建命令临时联网。Electron BaseApp 不会自动满足 electron-builder 的本地发行目录输入，必须显式提供固定版本的 Electron 包。
 - 处理：从 Electron 官方 v43.2.0 release 按架构固定 `electron-v43.2.0-linux-x64.zip` / `electron-v43.2.0-linux-arm64.zip` 和 SHA-256，作为 manifest archive source 解压到独立目录；Flatpak 专用 electron-builder 配置固定 `electronVersion` 并设置 `electronDist: ../electron-dist`，让远程构建直接使用对应架构的本地发行目录。
+
+## 2026-08-10：Flatpak 图标尺寸不能只看目录名称
+
+- 现象：远程 Flatpak 已完成所有源码模块、npm 安装、Vite 构建和 Electron 打包，导出 repo 时仍因 `512x512` 目录中的实际 PNG 是 `1024x1024`，被 `appstreamcli` 拒绝。
+- 经验：Flatpak 图标的目录名称不是尺寸声明，导出器会读取 PNG 实际像素尺寸并限制最大 512；共享桌面品牌图标可以保持高分辨率，但 Flatpak 应该使用单独的发布资源。
+- 处理：由原始品牌图标生成 `flatpak/icon-512.png`，manifest 改为安装该文件；静态检查读取 PNG header，锁定实际宽高不超过 512，避免再次把大图放入 Flatpak 导出目录。

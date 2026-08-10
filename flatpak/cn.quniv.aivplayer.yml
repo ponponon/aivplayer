@@ -200,4 +200,4 @@ modules:
       - install -Dm755 run.sh /app/bin/cn.quniv.aivplayer
       - install -Dm644 app/flatpak/cn.quniv.aivplayer.desktop /app/share/applications/cn.quniv.aivplayer.desktop
       - install -Dm644 app/flatpak/cn.quniv.aivplayer.metainfo.xml /app/share/metainfo/cn.quniv.aivplayer.metainfo.xml
-      - install -Dm644 app/brand/icon.png /app/share/icons/hicolor/512x512/apps/cn.quniv.aivplayer.png
+      - install -Dm644 app/flatpak/icon-512.png /app/share/icons/hicolor/512x512/apps/cn.quniv.aivplayer.png

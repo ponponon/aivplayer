@@ -708,6 +708,7 @@
 - Flatpak manifest 已加入 LanceDB `v0.31.0` 的源码构建描述、Cargo.lock 最小 patch 和 Cargo 离线源码清单；本机只生成并静态检查构建输入，实际 Cargo 编译交给 Flathub/Linux builder。
 - 新增 Flatpak 原生 npm 依赖审计命令 `npm run flatpak:audit-native`：从 `package-lock.json` 枚举 LanceDB、ONNX Runtime、Sharp/libvips 和 sherpa-onnx 的版本、平台条件、安装脚本和来源；默认只报告，`--strict` 可在源码重建方案完成后作为 Flathub 提交门禁。
 - Flatpak 应用模块按架构固定引入 Electron `v43.2.0` Linux x64 / ARM64 发行包，并通过独立 `electronDist` 目录交给 electron-builder，保证应用打包阶段不再请求 GitHub。
+- Flatpak 发布使用独立的 512×512 PNG 图标，不改变桌面端原始 1024×1024 品牌图标。
 - GitHub Actions 支持手动选择 Linux ARM64 构建，使用 `ubuntu-24.04-arm` 原生 Runner；CI 生成的本地 manifest 不进入仓库，正式 Flathub manifest 仍保持固定 release tag。
 - Flatpak GitHub Actions 会同步安装 `org.freedesktop.Sdk.Extension.rust-stable//25.08`，并在 workflow 自身变更时触发验证，确保 LanceDB Rust 源码模块与 manifest 的 SDK 输入一致。
 
