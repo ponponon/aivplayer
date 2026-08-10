@@ -1,4 +1,4 @@
-import { CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CircleAlert, Clock3, ListTodo, LoaderCircle, PauseCircle, RotateCcw, Search, X } from 'lucide-react'
+import { CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CircleAlert, Clock3, ListTodo, LoaderCircle, PauseCircle, RefreshCw, RotateCcw, Search, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { filterTaskCenterEvents, paginateTaskCenterEvents, type TaskCenterFilter } from '../../../core/tasks/task-center-model'
 import type { LocaleCopy } from '../../../shared/i18n'
@@ -25,12 +25,13 @@ function progressLabel(progress: number | null): string {
   return progress === null ? '' : `${Math.round(progress * 100)}%`
 }
 
-function TaskRow({ event, copy, onCancel, onRetry }: { event: TaskCenterEvent; copy: TaskCenterProps['copy']; onCancel: (event: TaskCenterEvent) => void; onRetry: (event: TaskCenterEvent) => void }): React.ReactElement {
+function TaskRow({ event, copy, onCancel, onRetry, onRecreate }: { event: TaskCenterEvent; copy: TaskCenterProps['copy']; onCancel: (event: TaskCenterEvent) => void; onRetry: (event: TaskCenterEvent) => void; onRecreate: (event: TaskCenterEvent) => void }): React.ReactElement {
   const progress = progressLabel(event.progress)
   const canCancel = event.kind === 'vision-export' && isTaskCenterActive(event.status)
   const canRetry = event.kind === 'vision-export' && (event.status === 'failed' || event.status === 'cancelled')
+  const canRecreate = canRetry
   return <li className={`task-center-item is-${event.status}`}>
-    <div className="task-center-item-heading"><span className="task-center-status-icon">{statusIcon(event.status)}</span><strong>{event.title}</strong><span className="task-center-status-label">{copy.statuses[event.status]}</span>{progress ? <span className="task-center-percent">{progress}</span> : null}{canCancel ? <button className="task-center-cancel" type="button" data-testid="task-center-cancel" aria-label={copy.cancelTask} title={copy.cancelTask} onClick={() => onCancel(event)}><X size={12} /></button> : null}{canRetry ? <button className="task-center-retry" type="button" data-testid="task-center-retry" aria-label={copy.retryTask} title={copy.retryTask} onClick={() => onRetry(event)}><RotateCcw size={12} /></button> : null}</div>
+    <div className="task-center-item-heading"><span className="task-center-status-icon">{statusIcon(event.status)}</span><strong>{event.title}</strong><span className="task-center-status-label">{copy.statuses[event.status]}</span>{progress ? <span className="task-center-percent">{progress}</span> : null}{canCancel ? <button className="task-center-cancel" type="button" data-testid="task-center-cancel" aria-label={copy.cancelTask} title={copy.cancelTask} onClick={() => onCancel(event)}><X size={12} /></button> : null}{canRetry ? <button className="task-center-retry" type="button" data-testid="task-center-retry" aria-label={copy.retryTask} title={copy.retryTask} onClick={() => onRetry(event)}><RotateCcw size={12} /></button> : null}{canRecreate ? <button className="task-center-retry task-center-recreate" type="button" data-testid="task-center-recreate" aria-label={copy.recreateTask} title={copy.recreateTask} onClick={() => onRecreate(event)}><RefreshCw size={12} /></button> : null}</div>
     <p>{event.message}</p>
     {event.current ? <small>{event.current}</small> : null}
     {event.progress !== null && isTaskCenterActive(event.status) ? <div className="task-center-progress"><span style={{ width: `${Math.round(event.progress * 100)}%` }} /></div> : null}
@@ -65,6 +66,11 @@ export function TaskCenter({ copy }: TaskCenterProps): React.ReactElement | null
     const taskId = event.id.startsWith('vision-export:') ? event.id.slice('vision-export:'.length) : event.id
     void window.aiv.retryVisionSearchResultsFullExport({ taskId })
   }
+  const recreateTask = (event: TaskCenterEvent): void => {
+    if (event.kind !== 'vision-export') return
+    const taskId = event.id.startsWith('vision-export:') ? event.id.slice('vision-export:'.length) : event.id
+    void window.aiv.recreateVisionSearchResultsFullExport({ taskId })
+  }
 
   return <aside className={`task-center${expanded ? ' is-expanded' : ' is-collapsed'}`} aria-label={copy.title}>
     <header className="task-center-header"><div className="task-center-title"><ListTodo size={15} /><strong>{copy.title}</strong>{activeCount > 0 ? <span>{copy.activeCount(activeCount)}</span> : null}</div><div className="task-center-header-actions"><button type="button" aria-label={expanded ? copy.collapse : copy.expand} title={expanded ? copy.collapse : copy.expand} onClick={() => setExpanded((current) => !current)}>{expanded ? <ChevronDown size={14} /> : <ChevronUp size={14} />}</button>{activeCount < events.length ? <button type="button" aria-label={copy.clearCompleted} title={copy.clearCompleted} onClick={clearFinished}><X size={14} /></button> : null}</div></header>
@@ -77,7 +83,7 @@ export function TaskCenter({ copy }: TaskCenterProps): React.ReactElement | null
         </select>
       </div>
       <div className="task-center-result-count">{copy.resultCount(filteredEvents.length, events.length)}</div>
-      <ol className="task-center-list">{visibleEvents.length > 0 ? visibleEvents.map((event) => <TaskRow key={event.id} event={event} copy={copy} onCancel={cancelTask} onRetry={retryTask} />) : <li className="task-center-empty">{copy.noResults}</li>}</ol>
+    <ol className="task-center-list">{visibleEvents.length > 0 ? visibleEvents.map((event) => <TaskRow key={event.id} event={event} copy={copy} onCancel={cancelTask} onRetry={retryTask} onRecreate={recreateTask} />) : <li className="task-center-empty">{copy.noResults}</li>}</ol>
       {page.pageCount > 1 ? <nav className="task-center-pagination" aria-label={copy.title}>
         <button type="button" aria-label={copy.previousPage} title={copy.previousPage} disabled={!page.hasPrevious} onClick={() => setPageIndex(page.pageIndex - 1)}><ChevronLeft size={13} /></button>
         <span>{copy.page(page.pageIndex + 1, page.pageCount)}</span>

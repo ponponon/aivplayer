@@ -66,7 +66,7 @@
       closeWindow: '창 닫기'
     },
     taskCenter: {
-      title: '작업 센터', searchPlaceholder: '작업 이름, 메시지 또는 현재 파일 검색', filterLabel: '상태 필터', filterAll: '모든 상태', resultCount: (visible: number, total: number) => `${visible} / ${total}개 표시`, noResults: '일치하는 작업이 없습니다', previousPage: '이전 페이지', nextPage: '다음 페이지', page: (current: number, total: number) => `${current} / ${total} 페이지`, collapse: '작업 센터 접기', expand: '작업 센터 펼치기', activeCount: (count: number) => `${count}개 실행 중`, clearCompleted: '종료된 작업 지우기', cancelTask: '작업 취소', retryTask: '작업 재시도', statuses: { queued: '대기 중', running: '실행 중', paused: '일시 중지', completed: '완료', failed: '실패', cancelled: '취소됨' }
+      title: '작업 센터', searchPlaceholder: '작업 이름, 메시지 또는 현재 파일 검색', filterLabel: '상태 필터', filterAll: '모든 상태', resultCount: (visible: number, total: number) => `${visible} / ${total}개 표시`, noResults: '일치하는 작업이 없습니다', previousPage: '이전 페이지', nextPage: '다음 페이지', page: (current: number, total: number) => `${current} / ${total} 페이지`, collapse: '작업 센터 접기', expand: '작업 센터 펼치기', activeCount: (count: number) => `${count}개 실행 중`, clearCompleted: '종료된 작업 지우기', cancelTask: '작업 취소', retryTask: '작업 재시도', recreateTask: '현재 인덱스로 새 작업 만들기', statuses: { queued: '대기 중', running: '실행 중', paused: '일시 중지', completed: '완료', failed: '실패', cancelled: '취소됨' }
     },
     aboutDialog: {
       kicker: '앱 정보',
