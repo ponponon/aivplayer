@@ -157,11 +157,14 @@ export type VisionIndexFailureRetryBatchRequest = {
 
 export type VisionSearchMode = 'visual' | 'hybrid'
 
+export type VisionEvidenceType = 'subtitle' | 'visual' | 'scene' | 'ocr' | 'entity' | 'speaker'
+
 export type VisionSavedSearch = {
   id: string
   name: string
   query: string
   mode: VisionSearchMode
+  evidenceTypes: VisionEvidenceType[]
   createdAt: number
   updatedAt: number
 }
@@ -171,6 +174,7 @@ export type VisionSavedSearchInput = {
   name: string
   query: string
   mode?: VisionSearchMode
+  evidenceTypes?: VisionEvidenceType[]
 }
 
 export type VisionSearchRequest = {
@@ -184,8 +188,6 @@ export type VisionSearchRequest = {
 export type VisionMatchSource = 'visual' | 'subtitle' | 'filename' | 'both'
 
 /** A searchable fact anchored to a source-media time range. */
-export type VisionEvidenceType = 'subtitle' | 'visual' | 'scene' | 'ocr' | 'entity' | 'speaker'
-
 export type VisionEvidence = {
   id: string
   sourceId: string

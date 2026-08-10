@@ -2,12 +2,13 @@ import { randomUUID } from 'node:crypto'
 import { mkdirSync, readFileSync } from 'node:fs'
 import { mkdir, rename, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
-import type { VisionSavedSearch, VisionSavedSearchInput, VisionSearchMode } from '../../shared/vision-types'
+import type { VisionEvidenceType, VisionSavedSearch, VisionSavedSearchInput, VisionSearchMode } from '../../shared/vision-types'
 
 const SCHEMA_VERSION = 1
 const MAX_SAVED_SEARCHES = 100
 const MAX_NAME_LENGTH = 80
 const MAX_QUERY_LENGTH = 400
+const EVIDENCE_TYPES: readonly VisionEvidenceType[] = ['subtitle', 'visual', 'scene', 'ocr', 'entity', 'speaker']
 
 type SavedSearchManifest = {
   schemaVersion: number
@@ -26,6 +27,12 @@ function normalizeText(value: unknown, maxLength: number): string {
   return typeof value === 'string' ? value.trim().slice(0, maxLength) : ''
 }
 
+function normalizeEvidenceTypes(value: unknown): VisionEvidenceType[] {
+  if (!Array.isArray(value)) return []
+  const selected = new Set(value.filter((item): item is VisionEvidenceType => typeof item === 'string' && EVIDENCE_TYPES.includes(item as VisionEvidenceType)))
+  return EVIDENCE_TYPES.filter((item) => selected.has(item))
+}
+
 function normalizeSavedSearch(value: unknown, fallbackTimestamp = Date.now()): VisionSavedSearch | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null
   const raw = value as Partial<VisionSavedSearch>
@@ -35,15 +42,15 @@ function normalizeSavedSearch(value: unknown, fallbackTimestamp = Date.now()): V
   if (!id || !name || !query) return null
   const createdAt = typeof raw.createdAt === 'number' && Number.isFinite(raw.createdAt) ? raw.createdAt : fallbackTimestamp
   const updatedAt = typeof raw.updatedAt === 'number' && Number.isFinite(raw.updatedAt) ? raw.updatedAt : createdAt
-  return { id, name, query, mode: normalizeMode(raw.mode), createdAt, updatedAt }
+  return { id, name, query, mode: normalizeMode(raw.mode), evidenceTypes: normalizeEvidenceTypes(raw.evidenceTypes), createdAt, updatedAt }
 }
 
 function cloneSavedSearch(search: VisionSavedSearch): VisionSavedSearch {
-  return { ...search }
+  return { ...search, evidenceTypes: [...search.evidenceTypes] }
 }
 
-function queryKey(search: Pick<VisionSavedSearch, 'query' | 'mode'>): string {
-  return `${search.mode}\0${search.query.toLocaleLowerCase()}`
+function queryKey(search: Pick<VisionSavedSearch, 'query' | 'mode' | 'evidenceTypes'>): string {
+  return `${search.mode}\0${search.query.toLocaleLowerCase()}\0${search.evidenceTypes.join(',')}`
 }
 
 function normalizeManifest(value: unknown): VisionSavedSearch[] {
@@ -88,8 +95,9 @@ export class VisionSavedSearchStore {
     const query = normalizeText(input?.query, MAX_QUERY_LENGTH)
     if (!name || !query) throw new Error('保存搜索需要名称和查询内容')
     const mode = normalizeMode(input?.mode)
+    const evidenceTypes = normalizeEvidenceTypes(input?.evidenceTypes)
     const existing = typeof input?.id === 'string' ? this.searches.find((item) => item.id === input.id?.trim()) : undefined
-    const duplicate = this.searches.find((item) => item.id !== existing?.id && queryKey(item) === queryKey({ query, mode }))
+    const duplicate = this.searches.find((item) => item.id !== existing?.id && queryKey(item) === queryKey({ query, mode, evidenceTypes }))
     if (duplicate) return cloneSavedSearch(duplicate)
     const now = Date.now()
     const next: VisionSavedSearch = {
@@ -97,6 +105,7 @@ export class VisionSavedSearchStore {
       name,
       query,
       mode,
+      evidenceTypes,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now
     }
