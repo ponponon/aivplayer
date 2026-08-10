@@ -706,6 +706,7 @@
 - Flatpak manifest 已加入官方 FFmpeg `8.1.2` 源码归档，固定 SHA-256，关闭 GPL/nonfree 与宿主依赖自动探测，并将 `ffmpeg` / `ffprobe` 安装到 `/app/bin`。
 - Flatpak manifest 已加入固定源码的 libheif `v1.23.1`、libde265 `v1.0.16`、libjpeg-turbo `3.1.2` 和 x265 `3.4` 模块，关闭 libheif 插件加载与宿主可选后端探测并安装 `heif-enc` / `heif-convert`；x265 GPL-2.0 许可证作为 Flathub 审核边界单独记录，并用最小 patch 兼容 CMake 4。
 - Flatpak manifest 已加入 LanceDB `v0.31.0` 的源码构建描述、Cargo.lock 最小 patch 和 Cargo 离线源码清单；本机只生成并静态检查构建输入，实际 Cargo 编译交给 Flathub/Linux builder。
+- Flatpak 启动 wrapper 会按 Linux 架构设置 `NAPI_RS_NATIVE_LIBRARY_PATH`，强制使用 Flatpak 内源码编译的 LanceDB NAPI 绑定，避免运行时回退到 npm 平台预编译包。
 - 新增 Flatpak 原生 npm 依赖审计命令 `npm run flatpak:audit-native`：从 `package-lock.json` 枚举 LanceDB、ONNX Runtime、Sharp/libvips 和 sherpa-onnx 的版本、平台条件、安装脚本和来源；默认只报告，`--strict` 可在源码重建方案完成后作为 Flathub 提交门禁。
 - Flatpak 应用模块按架构固定引入 Electron `v43.2.0` Linux x64 / ARM64 发行包，并通过独立 `electronDist` 目录交给 electron-builder，保证应用打包阶段不再请求 GitHub。
 - Flatpak 发布使用独立的 512×512 PNG 图标，不改变桌面端原始 1024×1024 品牌图标。

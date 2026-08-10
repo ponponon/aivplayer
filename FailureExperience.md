@@ -34,6 +34,12 @@
 - Flatpak 依赖若用 `flatpak install --user` 安装，后续 `flatpak run`、builder 和 lint 也必须显式带 `--user`；否则会从系统 Flatpak 目录查找 SDK，产生“已安装但找不到 runtime”的假失败。
 - GitHub runner 上使用 `org.flatpak.Builder` 容器调用 builder 时，用户 SDK 目录可能对容器内的 Flatpak 查找不可见；优先安装 Ubuntu 的 `flatpak-builder` CLI，在宿主机直接使用已安装的 SDK，减少嵌套 Flatpak 的目录隔离问题。
 
+## 2026-08-10：Flatpak 源码编译产物不能只安装不接线
+
+- 现象：manifest 已经在 Flatpak builder 内编译 LanceDB Rust NAPI addon 并安装到 `/app/lib/aivplayer`，但启动 wrapper 没有指定加载路径；NAPI-RS 仍可能回退到 npm 平台预编译包，导致“源码已编译”不等于“运行时使用源码产物”。
+- 经验：涉及原生模块时必须同时检查构建产物、安装路径和运行时加载入口，不能只看 builder 日志里的编译成功。
+- 处理：wrapper 按 `uname -m` 设置 `NAPI_RS_NATIVE_LIBRARY_PATH`，并把 x86_64 / ARM64 两条路径纳入静态检查。
+
 ## Electron 打包不能依赖自动安装的 peer dependency
 
 - `@lancedb/lancedb` 的运行时代码会直接 `require("apache-arrow")`，但它把 Apache Arrow 声明为 peer dependency。npm 在开发机上可能把这个 peer 自动安装到顶层 `node_modules`，造成开发态误以为依赖完整；electron-builder 只按应用的生产依赖收集资源时则可能把它漏出 `.app`，最终主进程在启动阶段报 `Cannot find module 'apache-arrow'`。

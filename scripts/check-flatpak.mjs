@@ -95,6 +95,8 @@ assertCondition(manifest.includes('https://github.com/lancedb/lancedb.git'), 'La
 assertCondition(manifest.includes('commit: 3f8d76817e6020ea344fba8a66c5de9ad8c82234'), 'LanceDB 必须固定 v0.31.0 commit')
 assertCondition(manifest.includes('cargo build --release --locked --offline -p lancedb-nodejs'), 'LanceDB 构建命令必须交给 Flatpak builder 执行')
 assertCondition(manifest.includes('lancedb-cargo-sources.json'), 'LanceDB 缺少 Cargo 源码清单')
+assertCondition(manifest.includes('NAPI_RS_NATIVE_LIBRARY_PATH=/app/lib/aivplayer/lancedb.linux-x64-gnu.node'), 'Flatpak x86_64 必须加载源码构建的 LanceDB NAPI 绑定')
+assertCondition(manifest.includes('NAPI_RS_NATIVE_LIBRARY_PATH=/app/lib/aivplayer/lancedb.linux-arm64-gnu.node'), 'Flatpak ARM64 必须加载源码构建的 LanceDB NAPI 绑定')
 assertCondition(manifest.includes('desktopName = "cn.quniv.aivplayer.desktop"'), '没有修正 Electron desktop 文件名')
 assertCondition(packageJson.scripts?.['flatpak:prepare-ci-manifest'], '缺少 Flatpak CI 本地源码 manifest 生成命令')
 assertCondition(packageJson.scripts?.['flatpak:audit-native'], '缺少 Flatpak 原生 npm 依赖审计命令')

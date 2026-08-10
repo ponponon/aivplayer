@@ -192,6 +192,12 @@ modules:
           - export AIVPLAYER_WHISPER_CPP_BIN=/app/bin/whisper-cli
           - export AIVPLAYER_FFMPEG_BIN=/app/bin/ffmpeg
           - export AIVPLAYER_FFPROBE_BIN=/app/bin/ffprobe
+          - |
+              case "$(uname -m)" in
+                x86_64) export NAPI_RS_NATIVE_LIBRARY_PATH=/app/lib/aivplayer/lancedb.linux-x64-gnu.node ;;
+                aarch64) export NAPI_RS_NATIVE_LIBRARY_PATH=/app/lib/aivplayer/lancedb.linux-arm64-gnu.node ;;
+                *) echo "不支持的 Linux 架构：$(uname -m)" >&2; exit 1 ;;
+              esac
           - exec zypak-wrapper /app/main/aivplayer "$@"
     build-commands:
       - cd app && npm install --offline
