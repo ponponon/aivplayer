@@ -31,6 +31,7 @@ import { normalizeVisionSimilarSearchRequest } from '../core/ai/vision-similar-s
 import { VisionSearchCursorStore, VISION_SEARCH_SNAPSHOT_MAX_RESULTS } from '../core/ai/vision-search-cursor'
 import { createEmptyVisionEvidenceCounts, normalizeVisionEvidenceAuditStatuses, normalizeVisionEvidenceClearTargets, normalizeVisionDerivedEvidenceTypes } from '../core/ai/vision-evidence-sources'
 import { hasVisionSearchExportOutputPathConflict, normalizeVisionSearchExportTaskIds } from '../core/ai/vision-search-export-recreate'
+import { acquireVisionSearchExportOutputLock, VisionSearchExportOutputLockError, withVisionSearchExportOutputLock } from '../core/ai/vision-search-export-lock'
 
 const VISION_EVIDENCE_TYPES: readonly VisionEvidenceType[] = ['subtitle', 'visual', 'scene', 'ocr', 'entity', 'object', 'speaker']
 
@@ -173,10 +174,12 @@ async function runVisionSearchFullExportTask(task: VisionSearchExportTaskRecord,
   const taskId = task.taskId
   const request = task.request
   const outputPath = task.outputPath
+  let outputLock: Awaited<ReturnType<typeof acquireVisionSearchExportOutputLock>> | null = null
   const emit = (progress: Omit<VisionSearchExportProgress, 'taskId' | 'format'>): void => {
     sendVisionSearchExportProgress({ ...progress, taskId, format: request.format, outputPath })
   }
   try {
+    outputLock = await acquireVisionSearchExportOutputLock(outputPath, taskId)
     const runningTask = store.update(taskId, { status: 'running', error: undefined }) ?? task
     emit({ status: 'running', stage: 'searching', resultCount: runningTask.resultCount, writtenCount: runningTask.writtenCount, message: copy.searchResultsFullExportSearching })
     const results = normalizeVisionSearchResultsForExport(await searchVisionFullResults(request, signal, task.searchRevision), VISION_SEARCH_FULL_EXPORT_MAX_RESULTS)
@@ -210,14 +213,17 @@ async function runVisionSearchFullExportTask(task: VisionSearchExportTaskRecord,
       store.update(taskId, { status: 'cancelled', error: undefined })
       emit({ status: 'cancelled', stage: 'cancelled', resultCount: persistedTask.resultCount, writtenCount: persistedTask.writtenCount, message: copy.searchResultsFullExportCancelled })
     } else {
-      const message = isVisionSearchRevisionUnavailableError(error)
-        ? copy.searchResultsFullExportRevisionUnavailable(error.tableName, error.version)
-        : error instanceof Error ? error.message : String(error)
+      const message = error instanceof VisionSearchExportOutputLockError
+        ? copy.searchResultsFullExportOutputLocked
+        : isVisionSearchRevisionUnavailableError(error)
+          ? copy.searchResultsFullExportRevisionUnavailable(error.tableName, error.version)
+          : error instanceof Error ? error.message : String(error)
       store.update(taskId, { status: 'failed', error: message })
       emit({ status: 'failed', stage: 'failed', resultCount: persistedTask.resultCount, writtenCount: persistedTask.writtenCount, message })
     }
     await store.flush()
   } finally {
+    await outputLock?.release().catch(() => undefined)
     if (desktopState.visionSearchExportAbortControllers.get(taskId) === controller) desktopState.visionSearchExportAbortControllers.delete(taskId)
   }
 }
@@ -243,7 +249,7 @@ function createRecreatedVisionSearchExportTask(sourceTask: VisionSearchExportTas
   })
 }
 
-function visionSearchExportHasOutputPathConflict(store: ReturnType<typeof getVisionSearchExportStore>, sourceTask: VisionSearchExportTaskRecord): boolean {
+function visionSearchExportHasOutputPathConflict(store: ReturnType<typeof getVisionSearchExportStore>, sourceTask: Pick<VisionSearchExportTaskRecord, 'taskId' | 'outputPath'>): boolean {
   return hasVisionSearchExportOutputPathConflict(sourceTask, store.list())
 }
 
@@ -413,6 +419,7 @@ export function registerVisionIpc(): void {
       return { success: false, message: error instanceof Error ? error.message : String(error) }
     }
     const store = getVisionSearchExportStore()
+    if (visionSearchExportHasOutputPathConflict(store, { taskId, outputPath })) return { success: false, message: copy.searchResultsFullExportOutputLocked }
     const task = store.create({ taskId, request, outputPath, partsDirectory: getVisionSearchExportPartsDirectory(app.getPath('userData'), taskId), searchRevision })
     startVisionSearchExportTask(task)
     return { success: true, message: copy.searchResultsFullExportQueued, taskId }
@@ -496,10 +503,10 @@ export function registerVisionIpc(): void {
     if (!filePath) return { success: false, canceled: true, message: copy.searchResultsExportCanceled }
     const outputPath = filePath.toLowerCase().endsWith(`.${extension}`) ? filePath : `${filePath}.${extension}`
     try {
-      await writeFile(outputPath, renderVisionSearchResultsExport(results, request.format), 'utf8')
+      await withVisionSearchExportOutputLock(outputPath, () => writeFile(outputPath, renderVisionSearchResultsExport(results, request.format), 'utf8'))
       return { success: true, filePath: outputPath, message: copy.searchResultsExported(results.length, outputPath) }
     } catch (error) {
-      return { success: false, message: error instanceof Error ? error.message : String(error) }
+      return { success: false, message: error instanceof VisionSearchExportOutputLockError ? copy.searchResultsExportOutputLocked : error instanceof Error ? error.message : String(error) }
     }
   })
 
