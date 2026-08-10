@@ -14,6 +14,8 @@ describe('speaker diarization IPC surface', () => {
     expect(desktopSource).toContain('SPEAKER_DIARIZATION_CLEAR_EVIDENCE')
     expect(desktopSource).toContain('SPEAKER_DIARIZATION_EVIDENCE_SOURCES')
     expect(desktopSource).toContain('SPEAKER_DIARIZATION_BATCH_CLEAR_EVIDENCE')
+    expect(desktopSource).toContain('speakerModelDirectory')
+    expect(desktopSource).toContain('modelDirectory: desktopState.currentAppSettings.vision.speakerModelDirectory')
     expect(desktopSource).toContain('buildFfmpegAudioExtractArgs')
     expect(desktopSource).toContain('createSpeakerDiarizationEvidence')
     expect(desktopSource).toContain('replaceSpeakerEvidence')

@@ -14,6 +14,7 @@ import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type { SpeakerDiarizationCatalogPatch } from '../shared/speaker-diarization-catalog-types'
 import type { SpeakerDiarizationEvidenceBatchClearRequest, SpeakerDiarizationEvidenceBatchClearResult, SpeakerDiarizationEvidenceClearResult, SpeakerDiarizationEvidenceSource, SpeakerDiarizationEvidenceSourceRequest, SpeakerDiarizationModelStatus, SpeakerDiarizationRunRequest, SpeakerDiarizationRunResult } from '../shared/speaker-diarization-types'
 import { getSpeakerDiarizationCatalogStore, getVisionLibrary, resolveResourcePath } from './desktop-services'
+import { desktopState } from './desktop-state'
 
 const execFileAsync = promisify(execFile)
 const runPromises = new Map<string, Promise<SpeakerDiarizationRunResult>>()
@@ -24,7 +25,7 @@ function emptyResult(): null {
 }
 
 function getCurrentSpeakerDiarizationStatus(): SpeakerDiarizationModelStatus {
-  return getSpeakerDiarizationModelStatus(app.getPath('userData'))
+  return getSpeakerDiarizationModelStatus(app.getPath('userData'), process.platform, process.arch, desktopState.currentAppSettings.vision.speakerModelDirectory)
 }
 
 function normalizeRequest(request: SpeakerDiarizationRunRequest): SpeakerDiarizationRunRequest | null {
@@ -82,7 +83,7 @@ export function registerSpeakerDiarizationIpc(): void {
         const ffmpegPath = await resolveFfmpegPath(resolveResourcePath(), process.env, undefined)
         if (!ffmpegPath) return { success: false, message: '找不到 FFmpeg，无法执行说话人分段', status, result: emptyResult(), evidencePersisted: false, evidenceCount: 0 }
         await execFileAsync(ffmpegPath, buildFfmpegAudioExtractArgs(normalized.mediaPath, audioPath), { maxBuffer: 4 * 1024 * 1024 })
-        const runtime = new SpeakerDiarizationRuntime({ userDataPath: app.getPath('userData') })
+        const runtime = new SpeakerDiarizationRuntime({ userDataPath: app.getPath('userData'), modelDirectory: desktopState.currentAppSettings.vision.speakerModelDirectory })
         await runtime.prepare()
         const result = await runtime.diarizeWaveFile(audioPath, normalized)
         let evidencePersisted = false
