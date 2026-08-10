@@ -2,7 +2,7 @@ import { app, ipcMain } from 'electron'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
-import type { VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionEvidenceBatchClearResult, VisionEvidenceSourceRequest, VisionEvidenceType, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionSavedSearchInput, VisionSearchRequest, VisionSearchResult } from '../shared/vision-types'
+import type { VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionEvidenceAuditRequest, VisionEvidenceBatchClearResult, VisionEvidenceSourceRequest, VisionEvidenceType, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionSavedSearchInput, VisionSearchRequest, VisionSearchResult } from '../shared/vision-types'
 import type { VisionEntityCatalogBatchPatch, VisionEntityCatalogCreateInput, VisionEntityCatalogPatch } from '../shared/vision-entity-types'
 import { scanVisionDirectory, isVisionScanAbortError } from '../core/ai/vision-directory-scan'
 import { renderVisionClipCollectionExport } from '../core/ai/clip-inbox-export'
@@ -17,7 +17,7 @@ import { VISION_INDEX_FAILURE_MAX_RETRY_BATCH } from '../core/ai/vision-index-fa
 import { mergeVisionLibrarySourceMetadata } from '../core/ai/vision-library-source-metadata'
 import { filterSpeakerDiarizationCatalogSearchResults } from '../core/ai/speaker-diarization-catalog'
 import { filterVisionSearchResultsByEvidenceTypes } from '../core/ai/vision-search'
-import { createEmptyVisionEvidenceCounts, normalizeVisionEvidenceClearTargets, normalizeVisionDerivedEvidenceTypes } from '../core/ai/vision-evidence-sources'
+import { createEmptyVisionEvidenceCounts, normalizeVisionEvidenceAuditStatuses, normalizeVisionEvidenceClearTargets, normalizeVisionDerivedEvidenceTypes } from '../core/ai/vision-evidence-sources'
 
 const VISION_EVIDENCE_TYPES: readonly VisionEvidenceType[] = ['subtitle', 'visual', 'scene', 'ocr', 'entity', 'speaker']
 
@@ -208,6 +208,13 @@ export function registerVisionIpc(): void {
     const limit = typeof value?.limit === 'number' && Number.isFinite(value.limit) ? value.limit : undefined
     const offset = typeof value?.offset === 'number' && Number.isFinite(value.offset) ? value.offset : undefined
     return getVisionLibrary().listEvidenceSources(limit, offset, evidenceTypes)
+  })
+  ipcMain.handle(IPC_CHANNELS.VISION_EVIDENCE_AUDIT, (_event, value: VisionEvidenceAuditRequest = {}) => {
+    const evidenceTypes = normalizeVisionDerivedEvidenceTypes(value?.evidenceTypes, true)
+    const auditStatuses = normalizeVisionEvidenceAuditStatuses(value?.auditStatuses, true)
+    const limit = typeof value?.limit === 'number' && Number.isFinite(value.limit) ? value.limit : undefined
+    const offset = typeof value?.offset === 'number' && Number.isFinite(value.offset) ? value.offset : undefined
+    return getVisionLibrary().auditEvidenceSources(limit, offset, evidenceTypes, auditStatuses)
   })
   ipcMain.handle(IPC_CHANNELS.VISION_EVIDENCE_BATCH_CLEAR, async (_event, value: unknown): Promise<VisionEvidenceBatchClearResult> => {
     const rawTargets = value && typeof value === 'object' && !Array.isArray(value) ? (value as { targets?: unknown }).targets : undefined
