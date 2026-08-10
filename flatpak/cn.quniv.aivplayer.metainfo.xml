@@ -9,6 +9,17 @@
     <p>AIVPlayer combines local video playback, subtitle workflows, image tools, and media search in one desktop application.</p>
     <p>It can generate subtitles with a local ASR engine, edit clips without changing the source media, and keep visual evidence in a local library. Optional translation and summary features use the service configured by the user.</p>
   </description>
+  <branding>
+    <color type="primary" scheme_preference="light">#e5b94f</color>
+    <color type="primary" scheme_preference="dark">#6f5520</color>
+  </branding>
+  <content_rating type="oars-1.1" />
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/ponponon/aivplayer/codex/flatpak-adapter/docs/assets/flatpak-screenshot.png</image>
+      <caption>Arrange clips, subtitles and visual evidence on the editing timeline</caption>
+    </screenshot>
+  </screenshots>
   <launchable type="desktop-id">cn.quniv.aivplayer.desktop</launchable>
   <developer id="cn.quniv">
     <name>ponponon</name>

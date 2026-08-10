@@ -53,6 +53,9 @@ assertCondition(manifest.includes('dest: electron-dist'), 'Electron 归档必须
 assertCondition(electronBuilderConfig.includes('electronVersion: 43.2.0'), 'electron-builder 必须固定 Electron 版本')
 assertCondition(electronBuilderConfig.includes('electronDist: ../electron-dist'), 'electron-builder 必须使用 Flatpak 本地 Electron 发行目录')
 assertCondition(manifest.includes('app/flatpak/icon-512.png'), 'Flatpak 必须使用独立的 512 图标')
+assertCondition(manifest.includes("NPM_CONFIG_AUDIT: 'false'"), 'Flatpak npm 构建不能触发 audit 网络请求')
+assertCondition(manifest.includes("NPM_CONFIG_FUND: 'false'"), 'Flatpak npm 构建不能触发 fund 网络请求')
+assertCondition(manifest.includes("NPM_CONFIG_UPDATE_NOTIFIER: 'false'"), 'Flatpak npm 构建不能触发 npm update 检查')
 assertCondition(
   flatpakIcon.length >= 24 && flatpakIcon.toString('ascii', 1, 4) === 'PNG' && flatpakIcon.readUInt32BE(16) <= 512 && flatpakIcon.readUInt32BE(20) <= 512,
   'Flatpak 图标必须是尺寸不超过 512 的 PNG'
@@ -97,7 +100,19 @@ assertCondition(packageJson.scripts?.['flatpak:prepare-ci-manifest'], '缺少 Fl
 assertCondition(packageJson.scripts?.['flatpak:audit-native'], '缺少 Flatpak 原生 npm 依赖审计命令')
 assertCondition(!manifest.includes('--filesystem=host'), '禁止使用 host 文件系统权限')
 assertCondition(!manifest.includes('resources/ffmpeg') && !manifest.includes('resources/whisper.cpp'), '不能把桌面端预编译运行时直接带进 Flatpak')
-assertCondition(manifest.includes(`tag: v${version}`), `manifest 源码 tag 必须与 package.json ${version} 一致`)
+const appSourceMatch = manifest.match(/url: https:\/\/github\.com\/ponponon\/aivplayer\.git\n\s+commit: ([0-9a-f]{40})\n\s+dest: app/)
+assertCondition(appSourceMatch, '应用源码必须固定到完整 commit，不能只跟踪可变 tag 或 branch')
+const appSourceCommit = appSourceMatch[1]
+const { execFileSync } = await import('node:child_process')
+for (const sourceFile of ['flatpak/cn.quniv.aivplayer.desktop', 'flatpak/cn.quniv.aivplayer.metainfo.xml', 'flatpak/icon-512.png', 'flatpak/electron-builder-flatpak.yml', 'flatpak/run.sh', 'docs/assets/flatpak-screenshot.png']) {
+  let present = true
+  try {
+    execFileSync('git', ['cat-file', '-e', `${appSourceCommit}:${sourceFile}`], { stdio: 'ignore' })
+  } catch {
+    present = false
+  }
+  assertCondition(present, `应用源码 commit ${appSourceCommit} 不包含 ${sourceFile}`)
+}
 
 assertCondition(desktop.includes(`Exec=${id} %U`), 'desktop 文件 Exec 必须指向 Flatpak command')
 assertCondition(desktop.includes(`Icon=${id}`), 'desktop 文件 Icon 必须使用 Flatpak ID')
@@ -105,6 +120,9 @@ assertCondition(desktop.includes('Type=Application'), 'desktop 文件缺少 Appl
 assertCondition(metainfo.includes(`<id>${id}</id>`), 'MetaInfo ID 不正确')
 assertCondition(metainfo.includes(`<launchable type="desktop-id">${id}.desktop</launchable>`), 'MetaInfo launchable 不正确')
 assertCondition(metainfo.includes('<project_license>MIT</project_license>'), 'MetaInfo 缺少项目许可证')
+assertCondition(metainfo.includes('<content_rating type="oars-1.1"'), 'MetaInfo 缺少 OARS 1.1 年龄评级')
+assertCondition(metainfo.includes('<screenshots>'), 'MetaInfo 必须提供至少一个截图')
+assertCondition(metainfo.includes('docs/assets/flatpak-screenshot.png'), 'MetaInfo 截图必须指向项目固定资源')
 assertCondition(metainfo.includes(`<release version="${version}"`), 'MetaInfo release 版本与 package.json 不一致')
 
 assertCondition(generatedSources.trim().length > 0, '缺少 generated-sources.json，请先运行 flatpak:generate-sources')

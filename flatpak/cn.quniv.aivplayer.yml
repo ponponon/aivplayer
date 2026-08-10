@@ -161,6 +161,9 @@ modules:
         ELECTRON_CACHE: /run/build/aivplayer/flatpak-node/electron-cache
         NPM_CONFIG_CACHE: /run/build/aivplayer/flatpak-node/npm-cache
         NPM_CONFIG_LOGLEVEL: info
+        NPM_CONFIG_AUDIT: 'false'
+        NPM_CONFIG_FUND: 'false'
+        NPM_CONFIG_UPDATE_NOTIFIER: 'false'
         ONNXRUNTIME_NODE_INSTALL: skip
         ONNXRUNTIME_NODE_INSTALL_CUDA: skip
         npm_config_nodedir: /usr/lib/sdk/node22
@@ -169,7 +172,7 @@ modules:
     sources:
       - type: git
         url: https://github.com/ponponon/aivplayer.git
-        tag: v0.5.0
+        commit: 351a036808480b0a83500a506c8063000e47938c
         dest: app
       - type: archive
         url: https://github.com/electron/electron/releases/download/v43.2.0/electron-v43.2.0-linux-x64.zip

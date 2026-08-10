@@ -1459,3 +1459,21 @@
 - 现象：远程 Flatpak 已完成所有源码模块、npm 安装、Vite 构建和 Electron 打包，导出 repo 时仍因 `512x512` 目录中的实际 PNG 是 `1024x1024`，被 `appstreamcli` 拒绝。
 - 经验：Flatpak 图标的目录名称不是尺寸声明，导出器会读取 PNG 实际像素尺寸并限制最大 512；共享桌面品牌图标可以保持高分辨率，但 Flatpak 应该使用单独的发布资源。
 - 处理：由原始品牌图标生成 `flatpak/icon-512.png`，manifest 改为安装该文件；静态检查读取 PNG header，锁定实际宽高不超过 512，避免再次把大图放入 Flatpak 导出目录。
+
+## 2026-08-10：Flatpak CI 不能用当前源码掩盖固定 source 的缺文件
+
+- 现象：CI 为了验证当前分支，会把 manifest 中的应用 git source 临时替换成本地 checkout，因此即使当前构建成功，也可能没有验证 Flathub 实际按固定 release tag 拉取的内容；本次 v0.5.0 tag 不包含后续加入的 Flatpak desktop、MetaInfo 和图标文件。
+- 经验：最终 manifest 的应用 source 必须固定到一个包含全部构建输入的完整 commit；CI 的本地 source 替换只能作为加速当前分支验证，不能让它绕过 source 可重建性检查。
+- 处理：把应用 source 固定到包含 Flatpak 元数据的完整 commit，CI 替换脚本同时支持 commit source，静态检查通过 `git cat-file` 确认该 commit 实际包含 desktop、MetaInfo、512 图标、Electron-builder 配置和启动 wrapper。
+
+## 2026-08-10：Flatpak 离线 npm 构建不能放任 CLI 自己探测网络
+
+- 现象：`npm install --offline` 主流程虽然能够完成，但 npm CLI 仍可能尝试请求 registry 查询更新或发送 audit / fund 请求；这类旁路请求会在 Flathub 无网络构建中留下竞态和误导性错误日志。
+- 经验：离线构建不仅要给安装命令加 `--offline`，还要关闭 npm 的 audit、fund 和 update notifier；环境变量应由 manifest 固定，不能依赖 runner 或 SDK 的默认配置。
+- 处理：在 Flatpak 应用模块加入 `NPM_CONFIG_AUDIT=false`、`NPM_CONFIG_FUND=false` 和 `NPM_CONFIG_UPDATE_NOTIFIER=false`，并在静态检查中锁定这三项。
+
+## 2026-08-10：Flatpak AppStream 不能只验证能 compose
+
+- 现象：AppStream 在导出阶段能够生成 catalog，并不代表 Flathub 的元数据检查已经满足；官方要求图形应用提供截图和 OARS 1.1 年龄评级，缺字段会在后续 lint / 审核阶段才暴露。
+- 经验：desktop、MetaInfo、图标和截图应作为同一发布输入审计；截图资源必须来自固定 tag 或 commit，不能依赖本地临时文件或可变 branch。
+- 处理：MetaInfo 加入品牌色、OARS 1.1、固定资源截图和英文 caption；静态检查锁定这些字段，后续将把截图 URL 从当前分支改为已提交的不可变 commit。

@@ -42,6 +42,6 @@ flatpak-builder build-dir flatpak/cn.quniv.aivplayer.yml \
 flatpak run cn.quniv.aivplayer
 ```
 
-GitHub Actions 的 `Flatpak build (x86_64)` 会在 Linux Runner 中安装 `org.flatpak.Builder`，生成当前 checkout 的本地源码 manifest，并执行实际构建、manifest lint、repo lint 和 bundle 生成；手动运行 workflow 时可勾选 ARM64 构建。这样 PR 不会误把固定的 `v0.5.0` release tag 当成待验证源码。
+应用源码在正式 manifest 中固定到包含 Flatpak 元数据的完整 commit，避免 release tag 漏掉后续加入的 desktop、MetaInfo 或图标文件。GitHub Actions 的 `Flatpak build (x86_64)` 会在 Linux Runner 中把该源码替换为当前 checkout 的本地目录，再执行实际构建、manifest lint、repo lint 和 bundle 生成；手动运行 workflow 时可勾选 ARM64 构建。这样 CI 验证的源码内容与最终可重建输入保持一致。
 
 Flathub 的提交仓库要求 manifest、desktop、MetaInfo 和图标位于提交仓库边界内；最终 PR 需要由项目维护者人工创建和回复审核意见，本项目不会自动创建 Flathub PR。

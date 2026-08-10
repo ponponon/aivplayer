@@ -699,7 +699,7 @@
 
 ## Flatpak Linux 构建验证入口
 
-- GitHub Actions 新增 Linux x86_64 Flatpak 构建、manifest/repo lint 和 bundle artifact 流程；构建前将源码入口临时替换为当前 checkout，避免 PR 错误地验证旧的 release tag。
+- GitHub Actions 新增 Linux x86_64 Flatpak 构建、manifest/repo lint 和 bundle artifact 流程；正式 manifest 固定包含 Flatpak 元数据的应用源码 commit，构建前临时替换为当前 checkout，确保 CI 与最终可重建输入一致。
 - 视觉模型支持用户数据目录优先：Flatpak 不需要把 SigLIP2 大模型塞进只读应用包；视觉面板可将固定 revision 的九个模型文件下载到 `userData/models/vision`，并保留旧版安装包模型目录作为兼容 fallback。
 - Flatpak manifest 已加入固定 commit 的 whisper.cpp `v1.9.1` 源码模块，并将 `whisper-cli` 安装到 `/app/bin`；启动 wrapper 显式设置路径，避免依赖宿主机或开发机上的 whisper.cpp。
 - Flatpak manifest 已加入 protobuf `v30.2` 固定 SHA-512 的源码模块，远程 builder 生成 `/app/bin/protoc`，供 LanceDB 的 Rust protobuf build script 使用。
@@ -709,7 +709,8 @@
 - 新增 Flatpak 原生 npm 依赖审计命令 `npm run flatpak:audit-native`：从 `package-lock.json` 枚举 LanceDB、ONNX Runtime、Sharp/libvips 和 sherpa-onnx 的版本、平台条件、安装脚本和来源；默认只报告，`--strict` 可在源码重建方案完成后作为 Flathub 提交门禁。
 - Flatpak 应用模块按架构固定引入 Electron `v43.2.0` Linux x64 / ARM64 发行包，并通过独立 `electronDist` 目录交给 electron-builder，保证应用打包阶段不再请求 GitHub。
 - Flatpak 发布使用独立的 512×512 PNG 图标，不改变桌面端原始 1024×1024 品牌图标。
-- GitHub Actions 支持手动选择 Linux ARM64 构建，使用 `ubuntu-24.04-arm` 原生 Runner；CI 生成的本地 manifest 不进入仓库，正式 Flathub manifest 仍保持固定 release tag。
+- Flatpak AppStream MetaInfo 补齐 OARS 1.1 年龄评级、品牌色和固定资源截图，避免构建完成后才发现商店元数据缺字段。
+- GitHub Actions 支持手动选择 Linux ARM64 构建，使用 `ubuntu-24.04-arm` 原生 Runner；CI 生成的本地 manifest 不进入仓库，正式 Flathub manifest 保持完整 commit 固定。
 - Flatpak GitHub Actions 会同步安装 `org.freedesktop.Sdk.Extension.rust-stable//25.08`，并在 workflow 自身变更时触发验证，确保 LanceDB Rust 源码模块与 manifest 的 SDK 输入一致。
 
 ## 视觉索引失败恢复

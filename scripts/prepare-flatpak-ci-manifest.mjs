@@ -10,7 +10,7 @@ if (!inputPath || !outputPath) {
 const input = resolve(inputPath)
 const output = resolve(outputPath)
 const text = await readFile(input, 'utf8')
-const sourcePattern = /      - type: git\n        url: https:\/\/github\.com\/ponponon\/aivplayer\.git\n        tag: v[^\n]+\n        dest: app/
+const sourcePattern = /      - type: git\n        url: https:\/\/github\.com\/ponponon\/aivplayer\.git\n        (?:tag: [^\n]+|commit: [0-9a-f]{40})\n        dest: app/
 
 if (!sourcePattern.test(text)) {
   throw new Error('没有找到可替换的 AIVPlayer git source')
