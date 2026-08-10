@@ -122,6 +122,68 @@ describe('vision evidence source persistence', () => {
     ]))
   })
 
+  it('searches the full object evidence table with label, category and score constraints', async () => {
+    const userDataPath = await mkdtemp(join(tmpdir(), 'aivplayer-object-search-'))
+    temporaryDirectories.push(userDataPath)
+    const library = new VisionLibrary({ userDataPath, resourcePath: join(process.cwd(), 'resources'), env: process.env })
+    await library.upsertEvidence({
+      id: 'object-person-high',
+      sourceId: 'source-search',
+      videoPath: '/media/search.mp4',
+      fileName: 'search.mp4',
+      evidenceType: 'object',
+      startSeconds: 3,
+      endSeconds: 6,
+      text: 'person',
+      frameId: 'frame-person-high',
+      thumbnailPath: '/thumb/person-high.jpg',
+      confidence: 0.9,
+      box: { xmin: 1, ymin: 2, xmax: 30, ymax: 40 },
+      sourceFingerprint: 'search-v1',
+      modelId: 'detector',
+      modelVariant: 'test',
+      generatedAt: 3
+    })
+    await library.upsertEvidence({
+      id: 'object-person-low',
+      sourceId: 'source-search',
+      videoPath: '/media/search.mp4',
+      fileName: 'search.mp4',
+      evidenceType: 'object',
+      startSeconds: 6,
+      endSeconds: 9,
+      text: 'person',
+      frameId: 'frame-person-low',
+      thumbnailPath: '/thumb/person-low.jpg',
+      confidence: 0.6,
+      sourceFingerprint: 'search-v1',
+      modelId: 'detector',
+      modelVariant: 'test',
+      generatedAt: 6
+    })
+    await library.upsertEvidence({
+      id: 'object-chair-high',
+      sourceId: 'source-search',
+      videoPath: '/media/search.mp4',
+      fileName: 'search.mp4',
+      evidenceType: 'object',
+      startSeconds: 9,
+      endSeconds: 12,
+      text: 'chair',
+      frameId: 'frame-chair-high',
+      thumbnailPath: '/thumb/chair-high.jpg',
+      confidence: 0.95,
+      sourceFingerprint: 'search-v1',
+      modelId: 'detector',
+      modelVariant: 'test',
+      generatedAt: 9
+    })
+
+    const results = await library.searchObjectEvidence('person', { labelQuery: 'person', minimumScore: 0.8, categoryLabels: ['PERSON'] }, 10)
+    expect(results).toHaveLength(1)
+    expect(results[0]).toMatchObject({ evidenceId: 'object-person-high', frameId: 'frame-person-high', evidenceType: 'object', confidence: 0.9, box: { xmin: 1, ymin: 2, xmax: 30, ymax: 40 } })
+  })
+
   it('runs the optional object evidence stage against existing thumbnails', async () => {
     const userDataPath = await mkdtemp(join(tmpdir(), 'aivplayer-object-index-'))
     temporaryDirectories.push(userDataPath)

@@ -1,9 +1,45 @@
-import type { VisionObjectDetection } from '../../shared/vision-object-detection-types'
+import type { VisionObjectDetection, VisionObjectDetectionFilterState } from '../../shared/vision-object-detection-types'
 
 export type VisionObjectDetectionFilter = {
   labelQuery?: string
   minimumScore?: number
   categoryLabels?: readonly string[]
+}
+
+const MAX_OBJECT_LABEL_QUERY_LENGTH = 200
+const MAX_OBJECT_CATEGORY_LABELS = 20
+const MAX_OBJECT_CATEGORY_LABEL_LENGTH = 120
+
+function normalizeText(value: unknown, maxLength: number): string {
+  return typeof value === 'string' ? value.trim().slice(0, maxLength) : ''
+}
+
+/** Normalizes a persisted or IPC-provided object filter and omits the default state. */
+export function normalizeVisionObjectDetectionFilterState(value: unknown): VisionObjectDetectionFilterState | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined
+  const raw = value as Partial<VisionObjectDetectionFilterState>
+  const labelQuery = normalizeText(raw.labelQuery, MAX_OBJECT_LABEL_QUERY_LENGTH)
+  const minimumScore = typeof raw.minimumScore === 'number' && Number.isFinite(raw.minimumScore)
+    ? Math.min(1, Math.max(0, raw.minimumScore))
+    : 0
+  const categoryLabels: string[] = []
+  const seen = new Set<string>()
+  if (Array.isArray(raw.categoryLabels)) {
+    for (const value of raw.categoryLabels) {
+      const label = normalizeText(value, MAX_OBJECT_CATEGORY_LABEL_LENGTH)
+      const normalizedLabel = label.toLocaleLowerCase()
+      if (!label || seen.has(normalizedLabel)) continue
+      seen.add(normalizedLabel)
+      categoryLabels.push(label)
+      if (categoryLabels.length >= MAX_OBJECT_CATEGORY_LABELS) break
+    }
+  }
+  if (!labelQuery && minimumScore === 0 && categoryLabels.length === 0) return undefined
+  return { labelQuery, minimumScore, categoryLabels }
+}
+
+export function isVisionObjectDetectionFilterActive(filter: VisionObjectDetectionFilter | undefined): boolean {
+  return Boolean(filter?.labelQuery?.trim() || (filter?.minimumScore ?? 0) > 0 || filter?.categoryLabels?.some((label) => label.trim()))
 }
 
 function normalizeMinimumScore(value: number | undefined): number {

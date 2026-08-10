@@ -16,6 +16,7 @@ import { DEFAULT_VISION_ENTITY_LABELS, createVisionEntityEvidence, getVisionEnti
 import { createVisionObjectDetectionEvidence } from './vision-object-detection-evidence'
 import { createVisionSceneEvidence } from './vision-scene-evidence'
 import { calculateVisionLexicalMatch, combineVisionHybridScore, getVisionSearchResultKey } from './vision-search'
+import { isVisionObjectDetectionFilterActive, normalizeVisionObjectDetectionFilterState } from './vision-object-detection-filter'
 import { isVisionSimilarSearchTarget, normalizeVisionSimilarSearchRequest } from './vision-similar-search'
 import { createVisionEvidenceId, createVisionSourceFingerprint, createVisionSourceId } from './vision-evidence'
 import {
@@ -44,7 +45,7 @@ import {
   type VisionEvidenceCounts,
   type VisionEvidenceAuditStatus
 } from '../../shared/vision-types'
-import type { VisionObjectDetectionBox } from '../../shared/vision-object-detection-types'
+import type { VisionObjectDetectionBox, VisionObjectDetectionFilterState } from '../../shared/vision-object-detection-types'
 import type { SpeakerDiarizationEvidenceBatchClearResult, SpeakerDiarizationEvidenceSource } from '../../shared/speaker-diarization-types'
 import { addVisionEvidenceCounts, aggregateVisionEvidenceSources, auditVisionEvidenceSource, createEmptyVisionEvidenceCounts, normalizeVisionDerivedEvidenceTypes, normalizeVisionEvidenceAuditStatuses, normalizeVisionEvidenceClearTargets, type VisionEvidenceSourceRow } from './vision-evidence-sources'
 
@@ -1773,6 +1774,90 @@ export class VisionLibrary {
     }
   }
 
+  private async listObjectEvidenceByFilter(filter: VisionObjectDetectionFilterState): Promise<VisionEvidenceRow[]> {
+    const table = await this.getEvidenceTable()
+    if (!table) return []
+    const labelQuery = filter.labelQuery.trim().toLocaleLowerCase()
+    const categoryLabels = new Set(filter.categoryLabels.map((label) => label.trim().toLocaleLowerCase()).filter(Boolean))
+    const rows = await table.query()
+      .select(['id', 'source_id', 'video_path', 'file_name', 'evidence_type', 'start_seconds', 'end_seconds', 'text', 'frame_id', 'thumbnail_path', 'confidence', 'box_xmin', 'box_ymin', 'box_xmax', 'box_ymax', 'source_fingerprint', 'model_id', 'model_variant', 'generated_at'])
+      .limit(METADATA_SCAN_LIMIT)
+      .toArray() as unknown as VisionEvidenceRow[]
+    return rows
+      .filter((row) => {
+        if (row.evidence_type !== 'object') return false
+        const label = row.text.trim().toLocaleLowerCase()
+        const confidence = typeof row.confidence === 'number' && Number.isFinite(row.confidence) ? row.confidence : 0
+        return (!labelQuery || label.includes(labelQuery))
+          && (categoryLabels.size === 0 || categoryLabels.has(label))
+          && confidence >= filter.minimumScore
+      })
+      .sort((left, right) => (right.confidence ?? 0) - (left.confidence ?? 0) || right.generated_at - left.generated_at)
+  }
+
+  private createObjectEvidenceSearchResult(row: VisionEvidenceRow, match: ReturnType<typeof calculateVisionLexicalMatch>): VisionSearchResult | null {
+    if (!match) return null
+    const evidenceId = row.id
+    const frameId = row.frame_id.trim() || undefined
+    return {
+      id: evidenceId,
+      videoPath: row.video_path,
+      fileName: row.file_name,
+      timestampSeconds: row.start_seconds,
+      thumbnailPath: row.thumbnail_path,
+      score: match.score,
+      lexicalScore: match.score,
+      matchedText: match.matchedText,
+      matchSource: match.source,
+      evidenceId,
+      frameId,
+      sourceId: row.source_id,
+      startSeconds: row.start_seconds,
+      endSeconds: row.end_seconds,
+      evidenceType: 'object',
+      confidence: row.confidence ?? undefined,
+      box: boxFromEvidenceRow(row),
+      sourceFingerprint: row.source_fingerprint,
+      modelId: row.model_id || VISION_MODEL_ID,
+      modelVariant: row.model_variant || VISION_MODEL_VARIANT
+    }
+  }
+
+  private searchObjectEvidenceRows(query: string, rows: readonly VisionEvidenceRow[], limit: number): VisionSearchResult[] {
+    return rows
+      .map((row) => this.createObjectEvidenceSearchResult(row, calculateVisionLexicalMatch(query, row.text, row.file_name)))
+      .filter((result): result is VisionSearchResult => result !== null)
+      .sort((left, right) => right.score - left.score || (right.confidence ?? 0) - (left.confidence ?? 0))
+      .slice(0, clampLimit(limit))
+  }
+
+  /** Searches all persisted object evidence rows with label, category and score constraints. */
+  async searchObjectEvidence(query: string, filter: VisionObjectDetectionFilterState, limit?: number): Promise<VisionSearchResult[]> {
+    const normalizedFilter = normalizeVisionObjectDetectionFilterState(filter)
+    if (!normalizedFilter) return []
+    const rows = await this.listObjectEvidenceByFilter(normalizedFilter)
+    return this.searchObjectEvidenceRows(query.trim(), rows, limit === undefined ? 24 : limit)
+  }
+
+  private filterResultsByObjectEvidence(results: readonly VisionSearchResult[], rows: readonly VisionEvidenceRow[]): VisionSearchResult[] {
+    const matchingEvidenceIds = new Set(rows.map((row) => row.id))
+    const matchingFrameIds = new Set(rows.map((row) => row.frame_id.trim()).filter(Boolean))
+    return results.filter((result) => {
+      if (result.evidenceType === 'object' && result.evidenceId && matchingEvidenceIds.has(result.evidenceId)) return true
+      return Boolean(result.frameId && matchingFrameIds.has(result.frameId))
+    })
+  }
+
+  private mergeObjectScopedResults(results: readonly VisionSearchResult[], directResults: readonly VisionSearchResult[], limit: number): VisionSearchResult[] {
+    const merged = new Map<string, VisionSearchResult>()
+    for (const result of [...results, ...directResults]) {
+      const key = `${result.videoPath}\0${getVisionSearchResultKey(result)}`
+      const previous = merged.get(key)
+      if (!previous || result.score > previous.score) merged.set(key, result)
+    }
+    return [...merged.values()].sort((left, right) => right.score - left.score).slice(0, clampLimit(limit))
+  }
+
   private async searchHybrid(embedding: number[], query: string, limit: number): Promise<VisionSearchResult[]> {
     const visualCandidates = await this.searchVisualCandidates(embedding, limit)
     const lexicalCandidates = await this.searchLexical(query, limit)
@@ -1825,7 +1910,7 @@ export class VisionLibrary {
       .slice(0, clampLimit(limit))
   }
 
-  async searchText(query: string, limit?: number, mode: VisionSearchMode = 'hybrid'): Promise<VisionSearchResult[]> {
+  private async searchTextBase(query: string, limit?: number, mode: VisionSearchMode = 'hybrid'): Promise<VisionSearchResult[]> {
     const normalizedQuery = query.trim()
     if (!normalizedQuery) return []
     const targetLimit = clampLimit(limit)
@@ -1846,10 +1931,28 @@ export class VisionLibrary {
     }
   }
 
-  async searchImage(imagePath: string, limit?: number): Promise<VisionSearchResult[]> {
+  async searchText(query: string, limit?: number, mode: VisionSearchMode = 'hybrid', objectDetectionFilter?: VisionObjectDetectionFilterState): Promise<VisionSearchResult[]> {
+    const normalizedFilter = normalizeVisionObjectDetectionFilterState(objectDetectionFilter)
+    if (!normalizedFilter || !isVisionObjectDetectionFilterActive(normalizedFilter)) return this.searchTextBase(query, limit, mode)
+    const targetLimit = clampLimit(limit)
+    const rows = await this.listObjectEvidenceByFilter(normalizedFilter)
+    if (rows.length === 0) return []
+    const expandedResults = await this.searchTextBase(query, Math.min(100, Math.max(targetLimit * 4, 50)), mode)
+    const scopedResults = this.filterResultsByObjectEvidence(expandedResults, rows)
+    const directResults = this.searchObjectEvidenceRows(query.trim(), rows, Math.min(100, Math.max(targetLimit * 4, 50)))
+    return this.mergeObjectScopedResults(scopedResults, directResults, targetLimit)
+  }
+
+  async searchImage(imagePath: string, limit?: number, objectDetectionFilter?: VisionObjectDetectionFilterState): Promise<VisionSearchResult[]> {
     const image = await stat(imagePath)
     if (!image.isFile()) throw new Error('以图搜图输入不是有效文件')
-    return this.search(await this.model.getImageEmbedding(imagePath), clampLimit(limit))
+    const normalizedFilter = normalizeVisionObjectDetectionFilterState(objectDetectionFilter)
+    const targetLimit = clampLimit(limit)
+    if (!normalizedFilter || !isVisionObjectDetectionFilterActive(normalizedFilter)) return this.search(await this.model.getImageEmbedding(imagePath), targetLimit)
+    const rows = await this.listObjectEvidenceByFilter(normalizedFilter)
+    if (rows.length === 0) return []
+    const expandedResults = await this.search(await this.model.getImageEmbedding(imagePath), Math.min(100, Math.max(targetLimit * 4, 50)))
+    return this.filterResultsByObjectEvidence(expandedResults, rows).slice(0, targetLimit)
   }
 
   async searchSimilar(request: VisionSimilarSearchRequest): Promise<VisionSearchResult[]> {

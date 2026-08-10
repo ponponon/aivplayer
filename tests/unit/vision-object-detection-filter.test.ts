@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { filterVisionObjectDetectionCandidates, toggleVisionObjectDetectionCategoryFilter } from '../../src/core/ai/vision-object-detection-filter'
+import { filterVisionObjectDetectionCandidates, normalizeVisionObjectDetectionFilterState, toggleVisionObjectDetectionCategoryFilter } from '../../src/core/ai/vision-object-detection-filter'
 
 const detections = [
   { label: 'Person', score: 0.92, box: { xmin: 1, ymin: 1, xmax: 20, ymax: 20 } },
@@ -36,5 +36,10 @@ describe('vision object detection filter', () => {
     expect(toggleVisionObjectDetectionCategoryFilter([], 'Person')).toEqual(['Person'])
     expect(toggleVisionObjectDetectionCategoryFilter(['Person'], ' person ')).toEqual([])
     expect(toggleVisionObjectDetectionCategoryFilter(['Person'], 'chair')).toEqual(['Person', 'chair'])
+  })
+
+  it('normalizes IPC filters and omits the default state', () => {
+    expect(normalizeVisionObjectDetectionFilterState({ labelQuery: '  person ', minimumScore: 2, categoryLabels: ['Person', 'person', ' chair '] })).toEqual({ labelQuery: 'person', minimumScore: 1, categoryLabels: ['Person', 'chair'] })
+    expect(normalizeVisionObjectDetectionFilterState({ labelQuery: '', minimumScore: 0, categoryLabels: [] })).toBeUndefined()
   })
 })

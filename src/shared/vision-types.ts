@@ -262,6 +262,7 @@ export type VisionSearchRequest = {
   limit?: number
   mode?: VisionSearchMode
   evidenceTypes?: VisionEvidenceType[]
+  objectDetectionFilter?: VisionObjectDetectionFilterState
 }
 
 export type VisionSimilarSearchRequest = {
