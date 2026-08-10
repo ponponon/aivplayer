@@ -420,6 +420,17 @@
   gap: 8px;
 }
 
+.vision-object-detection-preview {
+  display: flex;
+  justify-content: center;
+}
+
+.vision-object-detection-preview .vision-result-thumbnail {
+  width: min(100%, 320px);
+  height: 180px;
+  border-radius: var(--radius-sm);
+}
+
 .vision-object-detection-heading {
   display: flex;
   align-items: center;

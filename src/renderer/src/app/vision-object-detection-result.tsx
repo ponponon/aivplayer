@@ -1,10 +1,12 @@
 import { Boxes, X } from 'lucide-react'
 import type { LocaleCopy } from '../../../shared/i18n'
 import type { VisionObjectDetectionResult } from '../../../shared/vision-object-detection-types'
+import { VisionResultThumbnail } from './vision-result-thumbnail'
 
 type VisionObjectDetectionResultProps = {
   copy: LocaleCopy['vision']
   result: VisionObjectDetectionResult
+  thumbnailUrl?: string | null
   onClear: () => void
 }
 
@@ -17,13 +19,14 @@ function formatBox(result: VisionObjectDetectionResult['detections'][number]): s
   return `[${Math.round(xmin)}, ${Math.round(ymin)}]–[${Math.round(xmax)}, ${Math.round(ymax)}]`
 }
 
-export function VisionObjectDetectionResultView({ copy, result, onClear }: VisionObjectDetectionResultProps): React.ReactElement {
+export function VisionObjectDetectionResultView({ copy, result, thumbnailUrl, onClear }: VisionObjectDetectionResultProps): React.ReactElement {
   return (
     <section className="vision-card vision-object-detection-result" data-testid="vision-object-detection-result">
       <div className="vision-object-detection-heading">
         <div className="vision-collections-heading"><Boxes size={15} /><strong>{copy.objectDetectionTitle}</strong></div>
         <button className="vision-collection-delete" type="button" onClick={onClear} title={copy.objectDetectionClear} aria-label={copy.objectDetectionClear}><X size={14} /></button>
       </div>
+      {thumbnailUrl ? <div className="vision-object-detection-preview"><VisionResultThumbnail src={thumbnailUrl} alt="" boxes={result.detections.map((detection) => detection.box)} /></div> : null}
       <p className="vision-object-detection-summary">{copy.objectDetectionCount(result.detections.length)} · {copy.objectDetectionThreshold(formatScore(result.threshold))}</p>
       {result.detections.length === 0 ? <p className="vision-object-detection-empty">{copy.objectDetectionEmpty}</p> : (
         <ul className="vision-object-detection-list">

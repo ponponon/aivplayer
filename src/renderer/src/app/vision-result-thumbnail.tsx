@@ -6,13 +6,13 @@ type VisionResultThumbnailProps = {
   src: string
   alt: string
   box?: VisionObjectDetectionBox
+  boxes?: readonly VisionObjectDetectionBox[]
+  className?: string
 }
 
-export function VisionResultThumbnail({ src, alt, box }: VisionResultThumbnailProps): React.ReactElement {
+export function VisionResultThumbnail({ src, alt, box, boxes, className }: VisionResultThumbnailProps): React.ReactElement {
   const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null)
-  const projection = box && imageSize
-    ? projectVisionObjectDetectionBox(box, imageSize.width, imageSize.height)
-    : null
+  const boxesToRender = boxes ?? (box ? [box] : [])
 
   const handleLoad = (event: SyntheticEvent<HTMLImageElement>): void => {
     const { naturalWidth, naturalHeight } = event.currentTarget
@@ -20,18 +20,22 @@ export function VisionResultThumbnail({ src, alt, box }: VisionResultThumbnailPr
   }
 
   return (
-    <span className="vision-result-thumbnail">
+    <span className={`vision-result-thumbnail${className ? ` ${className}` : ''}`}>
       <img src={src} alt={alt} onLoad={handleLoad} />
-      {projection ? <span
-        className="vision-result-box"
-        aria-hidden="true"
-        style={{
-          left: `${projection.left}%`,
-          top: `${projection.top}%`,
-          width: `${projection.width}%`,
-          height: `${projection.height}%`
-        }}
-      /> : null}
+      {imageSize ? boxesToRender.map((nextBox, index) => {
+        const projection = projectVisionObjectDetectionBox(nextBox, imageSize.width, imageSize.height)
+        return projection ? <span
+          className="vision-result-box"
+          key={`${projection.left}-${projection.top}-${projection.width}-${projection.height}-${index}`}
+          aria-hidden="true"
+          style={{
+            left: `${projection.left}%`,
+            top: `${projection.top}%`,
+            width: `${projection.width}%`,
+            height: `${projection.height}%`
+          }}
+        /> : null
+      }) : null}
     </span>
   )
 }
