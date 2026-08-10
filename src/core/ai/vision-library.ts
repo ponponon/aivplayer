@@ -1339,7 +1339,7 @@ export class VisionLibrary {
     let entityEvidenceProcessed = 0
     let entityEvidenceCount = 0
     const startedAtMs = Date.now()
-    const timings: VisionIndexTimings = { planningMs: 0, modelLoadingMs: 0, framesMs: 0, sceneEvidenceMs: 0, entityEvidenceMs: 0, vectorIndexMs: 0, textIndexMs: 0, totalMs: 0 }
+    const timings: VisionIndexTimings = { planningMs: 0, modelLoadingMs: 0, framesMs: 0, sceneEvidenceMs: 0, entityEvidenceMs: 0, objectEvidenceMs: 0, vectorIndexMs: 0, textIndexMs: 0, totalMs: 0 }
     let activeStage: VisionIndexStage | null = null
     let activeVideoPath: string | undefined
     let currentVideoIndex = 0

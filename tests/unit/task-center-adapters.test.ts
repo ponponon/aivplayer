@@ -23,6 +23,7 @@ describe('task center adapters', () => {
     expect(createVisionTaskCenterEvent({ ...baseVision, status: 'completed', stage: 'completed', currentVideoIndex: 2, processedFrames: 10 }, 11)).toMatchObject({ kind: 'vision-index', status: 'completed', progress: 1 })
     expect(createVisionTaskCenterEvent({ ...baseVision, stage: 'scene-evidence', sceneEvidenceTotal: 4, sceneEvidenceProcessed: 2 }, 11)).toMatchObject({ kind: 'vision-index', status: 'running', progress: 0.5 })
     expect(createVisionTaskCenterEvent({ ...baseVision, stage: 'entity-evidence', entityEvidenceTotal: 4, entityEvidenceProcessed: 3 }, 11)).toMatchObject({ kind: 'vision-index', status: 'running', progress: 0.75 })
+    expect(createVisionTaskCenterEvent({ ...baseVision, stage: 'object-evidence', objectEvidenceTotal: 4, objectEvidenceProcessed: 1 }, 11)).toMatchObject({ kind: 'vision-index', status: 'running', progress: 0.25 })
     const inbox: MediaImportInboxPipelineProgress = { itemId: 'item-1', stage: 'vision', status: 'ready', progress: { ...baseVision, status: 'completed', stage: 'completed', processedFrames: 10 }, message: '视觉索引完成' }
     expect(createMediaImportTaskCenterEvent(inbox, { fileName: 'demo.mp4' }, 12)).toMatchObject({ id: 'media-import:item-1', status: 'completed', progress: 1, current: 'demo.mp4' })
     const job = { id: 'batch-1', status: 'paused', message: '已暂停', currentItemId: null, items: [], summary: { total: 0, queued: 0, processing: 0, completed: 0, failed: 0, cancelled: 0 } } as unknown as BatchSubtitleJob

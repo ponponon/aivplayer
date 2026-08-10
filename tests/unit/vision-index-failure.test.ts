@@ -35,11 +35,11 @@ describe('vision index failure recovery', () => {
     const directory = await mkdtemp(join(tmpdir(), 'aivplayer-vision-failure-'))
     try {
       const store = new VisionIndexFailureStore(directory)
-      store.recordFailure({ mediaPath: '/media/demo.mp4', error: '无法读取视频', intervalSeconds: 5, includeEntityEvidence: true, stage: 'frames' })
+      store.recordFailure({ mediaPath: '/media/demo.mp4', error: '无法读取视频', intervalSeconds: 5, includeEntityEvidence: true, includeObjectEvidence: true, stage: 'frames' })
       await store.flush()
 
       const restored = new VisionIndexFailureStore(directory)
-      expect(restored.list()[0]).toMatchObject({ mediaPath: '/media/demo.mp4', intervalSeconds: 5, includeEntityEvidence: true, stage: 'frames', retryCount: 0 })
+      expect(restored.list()[0]).toMatchObject({ mediaPath: '/media/demo.mp4', intervalSeconds: 5, includeEntityEvidence: true, includeObjectEvidence: true, stage: 'frames', retryCount: 0 })
       const retry = restored.beginRetry(restored.list()[0].id)
       expect(retry?.retryCount).toBe(1)
       restored.clear('/media/demo.mp4')

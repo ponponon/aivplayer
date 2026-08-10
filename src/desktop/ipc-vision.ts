@@ -20,7 +20,7 @@ import { filterVisionSearchResultsByEvidenceTypes } from '../core/ai/vision-sear
 import { normalizeVisionSimilarSearchRequest } from '../core/ai/vision-similar-search'
 import { createEmptyVisionEvidenceCounts, normalizeVisionEvidenceAuditStatuses, normalizeVisionEvidenceClearTargets, normalizeVisionDerivedEvidenceTypes } from '../core/ai/vision-evidence-sources'
 
-const VISION_EVIDENCE_TYPES: readonly VisionEvidenceType[] = ['subtitle', 'visual', 'scene', 'ocr', 'entity', 'speaker']
+const VISION_EVIDENCE_TYPES: readonly VisionEvidenceType[] = ['subtitle', 'visual', 'scene', 'ocr', 'entity', 'object', 'speaker']
 
 function normalizeVisionEvidenceTypes(value: unknown): VisionEvidenceType[] {
   if (!Array.isArray(value)) return []
@@ -81,7 +81,7 @@ export function registerVisionIpc(): void {
     desktopState.visionAbortControllers.set(senderId, controller)
     try {
       const mediaPaths = normalizeMediaPaths(request)
-      const options = { includeSceneEvidence: request?.includeSceneEvidence === true, includeEntityEvidence: request?.includeEntityEvidence === true }
+      const options = { includeSceneEvidence: request?.includeSceneEvidence === true, includeEntityEvidence: request?.includeEntityEvidence === true, includeObjectEvidence: request?.includeObjectEvidence === true }
       return await getVisionIndexCoordinator().run(mediaPaths, request?.intervalSeconds, controller.signal, (progress) => {
         trackVisionIndexProgress(progress, mediaPaths, { intervalSeconds: request?.intervalSeconds, ...options })
         sendVisionProgress(event.sender, progress)
@@ -94,7 +94,7 @@ export function registerVisionIpc(): void {
   ipcMain.handle(IPC_CHANNELS.VISION_INDEX_AUTO_START, (event, request: VisionIndexRequest) => {
     const mediaPaths = normalizeMediaPaths(request)
     if (mediaPaths.length === 0) return false
-    const options = { includeSceneEvidence: request?.includeSceneEvidence === true, includeEntityEvidence: request?.includeEntityEvidence === true }
+    const options = { includeSceneEvidence: request?.includeSceneEvidence === true, includeEntityEvidence: request?.includeEntityEvidence === true, includeObjectEvidence: request?.includeObjectEvidence === true }
     getVisionIndexQueue().enqueue(mediaPaths, request?.intervalSeconds, (progress) => {
       trackVisionIndexProgress(progress, mediaPaths, { intervalSeconds: request?.intervalSeconds, ...options })
       sendVisionProgress(event.sender, progress)
@@ -117,11 +117,11 @@ export function registerVisionIpc(): void {
     if (!request || typeof request.id !== 'string' || !request.id.trim()) return false
     const failure = getVisionIndexFailureStore().beginRetry(request.id.trim())
     if (!failure) return false
-    const options = { intervalSeconds: failure.intervalSeconds, includeSceneEvidence: failure.includeSceneEvidence, includeEntityEvidence: failure.includeEntityEvidence }
+    const options = { intervalSeconds: failure.intervalSeconds, includeSceneEvidence: failure.includeSceneEvidence, includeEntityEvidence: failure.includeEntityEvidence, includeObjectEvidence: failure.includeObjectEvidence }
     getVisionIndexQueue().enqueue([failure.mediaPath], failure.intervalSeconds, (progress) => {
       trackVisionIndexProgress(progress, [failure.mediaPath], options)
       sendVisionProgress(event.sender, progress)
-    }, { includeSceneEvidence: options.includeSceneEvidence, includeEntityEvidence: options.includeEntityEvidence })
+    }, { includeSceneEvidence: options.includeSceneEvidence, includeEntityEvidence: options.includeEntityEvidence, includeObjectEvidence: options.includeObjectEvidence })
     return true
   })
 
@@ -132,11 +132,11 @@ export function registerVisionIpc(): void {
     const failures = getVisionIndexFailureStore().beginRetryBatch(ids)
     if (!failures) return false
     for (const failure of failures) {
-      const options = { intervalSeconds: failure.intervalSeconds, includeSceneEvidence: failure.includeSceneEvidence, includeEntityEvidence: failure.includeEntityEvidence }
+      const options = { intervalSeconds: failure.intervalSeconds, includeSceneEvidence: failure.includeSceneEvidence, includeEntityEvidence: failure.includeEntityEvidence, includeObjectEvidence: failure.includeObjectEvidence }
       getVisionIndexQueue().enqueue([failure.mediaPath], failure.intervalSeconds, (progress) => {
         trackVisionIndexProgress(progress, [failure.mediaPath], options)
         sendVisionProgress(event.sender, progress)
-      }, { includeSceneEvidence: options.includeSceneEvidence, includeEntityEvidence: options.includeEntityEvidence })
+      }, { includeSceneEvidence: options.includeSceneEvidence, includeEntityEvidence: options.includeEntityEvidence, includeObjectEvidence: options.includeObjectEvidence })
     }
     return true
   })

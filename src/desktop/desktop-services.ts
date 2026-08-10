@@ -153,7 +153,7 @@ export function getVisionIndexFailureStore(): VisionIndexFailureStore {
 export function trackVisionIndexProgress(
   progress: VisionIndexProgress,
   mediaPaths: readonly string[],
-  options: Pick<VisionIndexFailureInput, 'intervalSeconds' | 'includeSceneEvidence' | 'includeEntityEvidence'> = {}
+  options: Pick<VisionIndexFailureInput, 'intervalSeconds' | 'includeSceneEvidence' | 'includeEntityEvidence' | 'includeObjectEvidence'> = {}
 ): void {
   const store = getVisionIndexFailureStore()
   const failure = getVisionIndexFailureInput(progress, options)

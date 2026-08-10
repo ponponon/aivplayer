@@ -9,7 +9,7 @@ export const VISION_VECTOR_INDEX_MIN_ROWS = 10_000
 
 export type VisionIndexStatus = 'idle' | 'loading' | 'indexing' | 'completed' | 'cancelled' | 'error'
 
-export type VisionIndexStage = 'planning' | 'loading-model' | 'frames' | 'scene-evidence' | 'entity-evidence' | 'vector-index' | 'text-index' | 'completed' | 'cancelled' | 'error'
+export type VisionIndexStage = 'planning' | 'loading-model' | 'frames' | 'scene-evidence' | 'entity-evidence' | 'object-evidence' | 'vector-index' | 'text-index' | 'completed' | 'cancelled' | 'error'
 
 export type VisionIndexTimings = {
   planningMs: number
@@ -17,6 +17,7 @@ export type VisionIndexTimings = {
   framesMs: number
   sceneEvidenceMs: number
   entityEvidenceMs: number
+  objectEvidenceMs: number
   vectorIndexMs: number
   textIndexMs: number
   totalMs: number
@@ -68,12 +69,14 @@ export type VisionIndexRequest = {
   intervalSeconds?: number
   includeSceneEvidence?: boolean
   includeEntityEvidence?: boolean
+  includeObjectEvidence?: boolean
 }
 
 export type VisionIndexOptions = {
   subtitlePaths?: ReadonlyMap<string, string>
   includeSceneEvidence?: boolean
   includeEntityEvidence?: boolean
+  includeObjectEvidence?: boolean
 }
 
 export type VisionDirectoryScanRequest = {
@@ -129,6 +132,9 @@ export type VisionIndexProgress = {
   entityEvidenceTotal?: number
   entityEvidenceProcessed?: number
   entityEvidenceCount?: number
+  objectEvidenceTotal?: number
+  objectEvidenceProcessed?: number
+  objectEvidenceCount?: number
   currentVideoPath?: string
   failedStage?: VisionIndexStage
   message?: string
@@ -146,6 +152,7 @@ export type VisionIndexFailureRecord = {
   intervalSeconds: number
   includeSceneEvidence: boolean
   includeEntityEvidence: boolean
+  includeObjectEvidence: boolean
   stage: VisionIndexStage
 }
 

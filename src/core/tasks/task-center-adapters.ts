@@ -86,6 +86,9 @@ function visionProgress(progress: VisionIndexProgress): number | null {
   if (progress.stage === 'entity-evidence' && (progress.entityEvidenceTotal ?? 0) > 0) {
     return safeProgress((progress.entityEvidenceProcessed ?? 0) / (progress.entityEvidenceTotal ?? 1))
   }
+  if (progress.stage === 'object-evidence' && (progress.objectEvidenceTotal ?? 0) > 0) {
+    return safeProgress((progress.objectEvidenceProcessed ?? 0) / (progress.objectEvidenceTotal ?? 1))
+  }
   if (progress.totalFrames > 0) return safeProgress(progress.processedFrames / progress.totalFrames)
   if (progress.totalVideos > 0) return safeProgress(progress.currentVideoIndex / progress.totalVideos)
   return null

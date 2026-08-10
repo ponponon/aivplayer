@@ -43,6 +43,7 @@ describe('task center wiring', () => {
     expect(services).toContain('createBatchSubtitleTaskCenterEvent')
     expect(services).toContain('createMediaImportTaskCenterEvent')
     expect(vision).toContain('createVisionTaskCenterEvent')
+    expect(vision).toContain('includeObjectEvidence')
     expect(asr).toContain('sendAsrTaskCenterEvent')
     expect(evidence).toContain('createEvidenceTaskCenterEvent')
     expect(drama).toContain('createDramaTaskCenterEvent')
