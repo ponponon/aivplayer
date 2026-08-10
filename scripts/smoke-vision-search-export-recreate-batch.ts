@@ -59,7 +59,7 @@ async function runSmoke(): Promise<void> {
       tasks: failedTaskIds.map((taskId, index) => ({
         taskId,
         request: { kind: 'image', request: { imagePath: join(userDataDirectory, `missing-image-${index}.png`) }, format: 'json' },
-        outputPath: index === 2 ? join(userDataDirectory, 'smoke-results-shared.json') : join(userDataDirectory, `smoke-results-${index}.json`),
+        outputPath: index >= 1 ? join(userDataDirectory, 'smoke-results-shared.json') : join(userDataDirectory, `smoke-results-${index}.json`),
         partsDirectory: join(userDataDirectory, 'vision-search-export-parts', taskId),
         chunkSize: 256,
         resultCount: 0,
