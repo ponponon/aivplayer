@@ -265,6 +265,20 @@ export type VisionSearchRequest = {
   objectDetectionFilter?: VisionObjectDetectionFilterState
 }
 
+export type VisionSearchResultsExportFormat = 'json' | 'csv'
+
+export type VisionSearchResultsExportRequest = {
+  results: VisionSearchResult[]
+  format: VisionSearchResultsExportFormat
+}
+
+export type VisionSearchResultsExportResult = {
+  success: boolean
+  message: string
+  filePath?: string
+  canceled?: boolean
+}
+
 export type VisionSimilarSearchRequest = {
   resultId?: string
   frameId?: string
