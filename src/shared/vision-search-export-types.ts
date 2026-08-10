@@ -26,3 +26,9 @@ export type VisionSearchExportRetryRequest = {
 export type VisionSearchExportBatchRecreateRequest = {
   taskIds: string[]
 }
+
+export type VisionSearchExportBatchRecreateResult = {
+  createdCount: number
+  skippedCount: number
+  conflictCount: number
+}

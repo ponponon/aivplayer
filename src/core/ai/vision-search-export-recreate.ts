@@ -1,4 +1,11 @@
+import { resolve } from 'node:path'
+
 export const VISION_SEARCH_EXPORT_RECREATE_BATCH_MAX = 8
+
+export function normalizeVisionSearchExportOutputPath(outputPath: string): string {
+  const normalized = resolve(outputPath.trim())
+  return process.platform === 'win32' || process.platform === 'darwin' ? normalized.toLowerCase() : normalized
+}
 
 export function normalizeVisionSearchExportTaskIds(value: unknown): string[] {
   if (!Array.isArray(value)) return []

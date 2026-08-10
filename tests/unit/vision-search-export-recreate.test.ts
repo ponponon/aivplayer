@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeVisionSearchExportTaskIds, VISION_SEARCH_EXPORT_RECREATE_BATCH_MAX } from '../../src/core/ai/vision-search-export-recreate'
+import { resolve } from 'node:path'
+import { normalizeVisionSearchExportOutputPath, normalizeVisionSearchExportTaskIds, VISION_SEARCH_EXPORT_RECREATE_BATCH_MAX } from '../../src/core/ai/vision-search-export-recreate'
 
 describe('vision search export recreation', () => {
   it('normalizes, deduplicates, and bounds batch task IDs', () => {
@@ -20,5 +21,11 @@ describe('vision search export recreation', () => {
   it('rejects non-array input', () => {
     expect(normalizeVisionSearchExportTaskIds(undefined)).toEqual([])
     expect(normalizeVisionSearchExportTaskIds({ taskIds: ['task-1'] })).toEqual([])
+  })
+
+  it('normalizes output paths before conflict checks', () => {
+    const expected = resolve('/tmp/aivplayer-export/result.json')
+    const normalized = normalizeVisionSearchExportOutputPath('/tmp/aivplayer-export/../aivplayer-export/result.json')
+    expect(normalized).toBe(process.platform === 'win32' || process.platform === 'darwin' ? expected.toLowerCase() : expected)
   })
 })
