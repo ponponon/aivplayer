@@ -49,6 +49,12 @@ describe('speaker diarization model contract', () => {
     expect(SPEAKER_DIARIZATION_MODEL_ID).toBe('sherpa-onnx-pyannote-3.0-3dspeaker-eres2net-zh-cn')
   })
 
+  it('uses an explicit absolute model directory when configured', () => {
+    const configuredDirectory = join(tempDirectory, 'models', 'speaker-custom')
+    expect(getSpeakerDiarizationModelDirectory(tempDirectory, configuredDirectory)).toBe(configuredDirectory)
+    expect(getSpeakerDiarizationModelDirectory(tempDirectory, 'relative-model')).toContain(join('models', 'speaker-diarization', 'sherpa-onnx', SPEAKER_DIARIZATION_MODEL_VERSION))
+  })
+
   it('reports missing model files and does not claim readiness', () => {
     const status = getSpeakerDiarizationModelStatus(tempDirectory, 'darwin', 'arm64')
 

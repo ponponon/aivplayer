@@ -545,17 +545,25 @@ function sanitizeVisionSettings(
   defaults: AppSettings['vision']
 ): AppSettings['vision'] {
   const vision = value ?? {}
-  if (!Array.isArray(vision.libraryDirectories)) return defaults
-
   const directories: string[] = []
-  for (const rawPath of vision.libraryDirectories) {
-    if (typeof rawPath !== 'string') continue
-    const directoryPath = rawPath.trim()
-    if (!directoryPath || directoryPath.length > 4096 || !isAbsolute(directoryPath) || directories.includes(directoryPath)) continue
-    directories.push(directoryPath)
-    if (directories.length >= 50) break
+  if (Array.isArray(vision.libraryDirectories)) {
+    for (const rawPath of vision.libraryDirectories) {
+      if (typeof rawPath !== 'string') continue
+      const directoryPath = rawPath.trim()
+      if (!directoryPath || directoryPath.length > 4096 || !isAbsolute(directoryPath) || directories.includes(directoryPath)) continue
+      directories.push(directoryPath)
+      if (directories.length >= 50) break
+    }
   }
-  return { libraryDirectories: directories }
+  const speakerModelDirectory = typeof vision.speakerModelDirectory === 'string'
+    ? vision.speakerModelDirectory.trim()
+    : null
+  return {
+    libraryDirectories: directories,
+    speakerModelDirectory: speakerModelDirectory && speakerModelDirectory.length <= 4096 && isAbsolute(speakerModelDirectory)
+      ? speakerModelDirectory
+      : defaults.speakerModelDirectory
+  }
 }
 
 function sanitizeDramaSettings(

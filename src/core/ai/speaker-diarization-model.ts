@@ -1,5 +1,5 @@
 import { existsSync, statSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { isAbsolute, join, resolve } from 'node:path'
 import type {
   SpeakerDiarizationModelFile,
   SpeakerDiarizationModelFileStatus,
@@ -81,7 +81,10 @@ export function getSpeakerDiarizationPlatformCapability(
   }
 }
 
-export function getSpeakerDiarizationModelDirectory(userDataPath: string): string {
+export function getSpeakerDiarizationModelDirectory(userDataPath: string, configuredModelDirectory?: string | null): string {
+  if (typeof configuredModelDirectory === 'string' && configuredModelDirectory.trim() && isAbsolute(configuredModelDirectory.trim())) {
+    return resolve(configuredModelDirectory.trim())
+  }
   return join(resolve(userDataPath), 'models', SPEAKER_DIARIZATION_MODEL_DIRECTORY, SPEAKER_DIARIZATION_PROVIDER_ID, SPEAKER_DIARIZATION_MODEL_VERSION)
 }
 
@@ -126,9 +129,10 @@ export function isSpeakerDiarizationModelAvailable(modelDirectory: string): bool
 export function getSpeakerDiarizationModelStatus(
   userDataPath: string,
   platform: NodeJS.Platform = process.platform,
-  arch: string = process.arch
+  arch: string = process.arch,
+  configuredModelDirectory?: string | null
 ): SpeakerDiarizationModelStatus {
-  const modelDirectory = getSpeakerDiarizationModelDirectory(userDataPath)
+  const modelDirectory = getSpeakerDiarizationModelDirectory(userDataPath, configuredModelDirectory)
   const files = getSpeakerDiarizationModelFileStatuses(modelDirectory)
   const missingFiles = files.filter((file) => !file.available).map((file) => file.relativePath)
   const modelFilesAvailable = missingFiles.length === 0

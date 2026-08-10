@@ -7,7 +7,7 @@ import type { PlaybackBookmark, PlaybackEndAction, PlaybackMediaProfile, Playbac
 import type { MediaStructureCorrection } from './media-base-types'
 import type { DramaGenerationMediaType } from './drama-types'
 
-export const APP_SETTINGS_SCHEMA_VERSION = 26
+export const APP_SETTINGS_SCHEMA_VERSION = 27
 
 export const SIDE_PANEL_WIDTH_MIN = 240
 export const SIDE_PANEL_WIDTH_MAX = 480
@@ -91,6 +91,7 @@ export type AppSettings = {
   }
   vision: {
     libraryDirectories: string[]
+    speakerModelDirectory: string | null
   }
   drama: {
     apiBaseUrl: string | null
@@ -260,7 +261,8 @@ export function createDefaultAppSettings(): AppSettings {
       openMode: 'cache-only'
     },
     vision: {
-      libraryDirectories: []
+      libraryDirectories: [],
+      speakerModelDirectory: null
     },
     drama: {
       apiBaseUrl: null,

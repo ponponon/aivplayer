@@ -36,6 +36,7 @@ type NativeSpeakerDiarizationModule = {
 
 export type SpeakerDiarizationRuntimeOptions = {
   userDataPath: string
+  modelDirectory?: string | null
   platform?: NodeJS.Platform
   arch?: string
   loadModule?: (nativePackageId: string) => Promise<unknown> | unknown
@@ -138,6 +139,7 @@ function clampPositive(value: number | undefined, fallback: number): number {
 /** Local-only sherpa-onnx runtime. It never downloads model or audio assets. */
 export class SpeakerDiarizationRuntime {
   private readonly userDataPath: string
+  private readonly modelDirectory?: string | null
   private readonly platform?: NodeJS.Platform
   private readonly arch?: string
   private readonly moduleLoader: (nativePackageId: string) => Promise<unknown> | unknown
@@ -145,13 +147,14 @@ export class SpeakerDiarizationRuntime {
 
   constructor(options: SpeakerDiarizationRuntimeOptions) {
     this.userDataPath = options.userDataPath
+    this.modelDirectory = options.modelDirectory
     this.platform = options.platform
     this.arch = options.arch
     this.moduleLoader = options.loadModule ?? loadNativeModule
   }
 
   getStatus(): SpeakerDiarizationModelStatus {
-    return getSpeakerDiarizationModelStatus(this.userDataPath, this.platform, this.arch)
+    return getSpeakerDiarizationModelStatus(this.userDataPath, this.platform, this.arch, this.modelDirectory)
   }
 
   async prepare(): Promise<void> {
