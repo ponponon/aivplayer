@@ -45,6 +45,10 @@ describe('vision full-library search', () => {
     expect(first.map((item) => item.id)).toEqual(second.map((item) => item.id))
     expect(first[0]?.id).toBe('ocr-000')
     expect(first.at(-1)?.id).toBe('ocr-119')
+
+    const controller = new AbortController()
+    controller.abort()
+    await expect(library.searchTextAll('person', 'hybrid', undefined, controller.signal)).rejects.toMatchObject({ name: 'AbortError' })
   })
 
   it('scans and deterministically sorts every visual frame when the query is visual', async () => {
