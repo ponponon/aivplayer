@@ -65,13 +65,13 @@ jobs:
           flatpak install --user --assumeyes flathub org.flatpak.Builder//stable org.freedesktop.Sdk//25.08 org.freedesktop.Sdk.Extension.node22//25.08 org.freedesktop.Sdk.Extension.rust-stable//25.08 org.electronjs.Electron2.BaseApp//25.08
       - name: Build Flatpak
         run: |
-          flatpak run --command=flatpak-builder org.flatpak.Builder \
+          flatpak run --user --command=flatpak-builder org.flatpak.Builder \
             --user --force-clean --disable-rofiles-fuse \
             --repo=repo flatpak-build flatpak/ci-manifest.yml
       - name: Lint manifest and repository
         run: |
-          flatpak run --command=flatpak-builder-lint org.flatpak.Builder manifest flatpak/ci-manifest.yml
-          flatpak run --command=flatpak-builder-lint org.flatpak.Builder repo repo
+          flatpak run --user --command=flatpak-builder-lint org.flatpak.Builder manifest flatpak/ci-manifest.yml
+          flatpak run --user --command=flatpak-builder-lint org.flatpak.Builder repo repo
       - name: Create bundle
         run: flatpak build-bundle repo AIVPlayer-x86_64.flatpak cn.quniv.aivplayer
       - name: Upload Flatpak bundle
@@ -102,13 +102,13 @@ jobs:
           flatpak install --user --assumeyes flathub org.flatpak.Builder//stable org.freedesktop.Sdk//25.08 org.freedesktop.Sdk.Extension.node22//25.08 org.freedesktop.Sdk.Extension.rust-stable//25.08 org.electronjs.Electron2.BaseApp//25.08
       - name: Build Flatpak
         run: |
-          flatpak run --command=flatpak-builder org.flatpak.Builder \
+          flatpak run --user --command=flatpak-builder org.flatpak.Builder \
             --user --force-clean --disable-rofiles-fuse \
             --repo=repo flatpak-build flatpak/ci-manifest.yml
       - name: Lint manifest and repository
         run: |
-          flatpak run --command=flatpak-builder-lint org.flatpak.Builder manifest flatpak/ci-manifest.yml
-          flatpak run --command=flatpak-builder-lint org.flatpak.Builder repo repo
+          flatpak run --user --command=flatpak-builder-lint org.flatpak.Builder manifest flatpak/ci-manifest.yml
+          flatpak run --user --command=flatpak-builder-lint org.flatpak.Builder repo repo
       - name: Create bundle
         run: flatpak build-bundle repo AIVPlayer-aarch64.flatpak cn.quniv.aivplayer
       - name: Upload Flatpak bundle

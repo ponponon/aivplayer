@@ -31,6 +31,7 @@
 - Flatpak 的 npm `optional` 平台包不能等同于“不会进入最终包”：`package-lock.json` 仍会把 LanceDB、ONNX Runtime、Sharp/libvips 和 sherpa-onnx 的预编译平台包或安装脚本记录进离线 source 清单。处理这类依赖时，必须先用 `npm run flatpak:audit-native` 按 lockfile 建立证据，再决定源码重建或在 Flatpak 版明确关闭能力；不能只按当前 macOS 安装结果判断 Linux Flathub 合规性。
 - Flathub 的源码构建应交给 Flathub/Linux 构建环境；本地 macOS 编译 LanceDB 只能是可选的排障手段，不能在未确认 Flatpak 功能边界前作为实施路线，更不能把本地构建产物带入 manifest。
 - GitHub runner 没有用户图形会话时，Flatpak workflow 不能依赖 `flatpak-builder --install-deps-from=flathub` 通过用户 D-Bus 安装 SDK；应先显式安装 runtime、BaseApp 和 SDK extensions，再让 builder 直接使用已安装依赖。
+- Flatpak 依赖若用 `flatpak install --user` 安装，后续 `flatpak run`、builder 和 lint 也必须显式带 `--user`；否则会从系统 Flatpak 目录查找 SDK，产生“已安装但找不到 runtime”的假失败。
 
 ## Electron 打包不能依赖自动安装的 peer dependency
 
