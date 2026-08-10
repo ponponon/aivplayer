@@ -2,7 +2,7 @@ import { app, ipcMain } from 'electron'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
-import type { VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionEvidenceAuditPage, VisionEvidenceAuditRequest, VisionEvidenceBatchClearResult, VisionEvidenceSourceRequest, VisionEvidenceType, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionSavedSearchInput, VisionSearchRequest, VisionSearchResult } from '../shared/vision-types'
+import type { VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionEvidenceAuditPage, VisionEvidenceAuditRequest, VisionEvidenceBatchClearResult, VisionEvidenceSourceRequest, VisionEvidenceType, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionSavedSearchInput, VisionSearchRequest, VisionSearchResult, VisionSimilarSearchRequest } from '../shared/vision-types'
 import type { VisionEntityCatalogBatchPatch, VisionEntityCatalogCreateInput, VisionEntityCatalogPatch } from '../shared/vision-entity-types'
 import { scanVisionDirectory, isVisionScanAbortError } from '../core/ai/vision-directory-scan'
 import { renderVisionClipCollectionExport } from '../core/ai/clip-inbox-export'
@@ -17,6 +17,7 @@ import { VISION_INDEX_FAILURE_MAX_RETRY_BATCH } from '../core/ai/vision-index-fa
 import { mergeVisionLibrarySourceMetadata } from '../core/ai/vision-library-source-metadata'
 import { filterSpeakerDiarizationCatalogSearchResults } from '../core/ai/speaker-diarization-catalog'
 import { filterVisionSearchResultsByEvidenceTypes } from '../core/ai/vision-search'
+import { normalizeVisionSimilarSearchRequest } from '../core/ai/vision-similar-search'
 import { createEmptyVisionEvidenceCounts, normalizeVisionEvidenceAuditStatuses, normalizeVisionEvidenceClearTargets, normalizeVisionDerivedEvidenceTypes } from '../core/ai/vision-evidence-sources'
 
 const VISION_EVIDENCE_TYPES: readonly VisionEvidenceType[] = ['subtitle', 'visual', 'scene', 'ocr', 'entity', 'speaker']
@@ -201,6 +202,14 @@ export function registerVisionIpc(): void {
       const enrichedResults = getSpeakerDiarizationCatalogStore().applyResults(entityCatalog.applyResults(results))
       return filterVisionSearchResultsByEvidenceTypes(enrichedResults, evidenceTypes, resultLimit)
     })
+  })
+
+  ipcMain.handle(IPC_CHANNELS.VISION_SEARCH_SIMILAR, async (_event, request: VisionSimilarSearchRequest) => {
+    const normalizedRequest = normalizeVisionSimilarSearchRequest(request)
+    if (!normalizedRequest) return []
+    const results = await getVisionLibrary().searchSimilar(normalizedRequest)
+    const entityCatalog = getVisionEntityCatalogStore()
+    return getSpeakerDiarizationCatalogStore().applyResults(entityCatalog.applyResults(results))
   })
 
   ipcMain.handle(IPC_CHANNELS.VISION_EVIDENCE_SOURCES, (_event, value: VisionEvidenceSourceRequest = {}) => {
