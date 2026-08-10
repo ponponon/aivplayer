@@ -458,6 +458,8 @@
       clickResult: 'この場面へ移動',
       selectResult: 'このクリップを選択',
       selectedResults: (count: number) => `${count} 件を選択中`,
+      selectAllResults: '現在の結果をすべて選択',
+      clearSelectedResults: '現在の選択を解除',
       createProject: '編集プロジェクトを作成',
       creatingProject: '編集プロジェクトを作成中…',
       projectCreated: (title: string) => `編集プロジェクトを作成しました：${title}`,

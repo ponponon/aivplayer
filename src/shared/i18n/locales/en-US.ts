@@ -458,6 +458,8 @@
       clickResult: 'Jump to this frame',
       selectResult: 'Select this clip',
       selectedResults: (count: number) => `${count} clips selected`,
+      selectAllResults: 'Select all results',
+      clearSelectedResults: 'Clear current selection',
       createProject: 'Create editing project',
       creatingProject: 'Creating editing project…',
       projectCreated: (title: string) => `Editing project created: ${title}`,

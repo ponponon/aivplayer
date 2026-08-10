@@ -6,6 +6,7 @@ import type { MediaEvidenceDraftImportResult } from '../../../shared/evidence-ta
 import type { VisionClipCollection, VisionClipCollectionExportFormat, VisionClipCollectionSortMode, VisionEvidenceType, VisionIndexFailureRecord, VisionLibrarySource, VisionSavedSearch, VisionSearchSortMode } from '../../../shared/vision-types'
 import { invertVisionClipSelections, mergeVisionCollectionSelections, normalizeVisionCollectionTags } from '../../../core/ai/clip-inbox-operations'
 import { createVisionClipSelections, normalizeVisionTimeRange } from '../../../core/ai/vision-evidence'
+import { getVisionSearchResultIds } from '../../../core/ai/vision-search-selection'
 import { createDefaultVisionSearchPreferences, parseVisionSearchPreferences, serializeVisionSearchPreferences, VISION_SEARCH_PREFERENCES_STORAGE_KEY, type VisionSearchPreferences } from '../../../core/ai/vision-search-preferences'
 import { useAppContext } from './app-context'
 import { useVisionLibraryFolder } from './use-vision-library-folder'
@@ -455,6 +456,15 @@ export function VisionPanel(): React.ReactElement {
     })
   }
 
+  const selectAllSearchResults = (): void => {
+    setSelectedResultIds((current) => new Set([...current, ...getVisionSearchResultIds(results)]))
+  }
+
+  const clearSearchResultSelection = (): void => {
+    const resultIds = new Set(getVisionSearchResultIds(results))
+    setSelectedResultIds((current) => new Set([...current].filter((id) => !resultIds.has(id))))
+  }
+
   const createProjectFromSelection = (): void => {
     const selectedResults = results.filter((result) => selectedResultIds.has(result.id))
     if (selectedResults.length === 0 || isCreatingProject) return
@@ -699,7 +709,7 @@ export function VisionPanel(): React.ReactElement {
     </section>
 
     {error ? <div className="vision-error vision-error-card" role="alert">{error}</div> : null}
-    <VisionSearchResults copy={app.copy.vision} results={results} thumbnailUrls={thumbnailUrls} onOpenResult={openResult} selectedIds={selectedResultIds} onToggleSelection={toggleResultSelection} sortMode={searchSortMode} onSortModeChange={changeSearchSortMode} />
+    <VisionSearchResults copy={app.copy.vision} results={results} thumbnailUrls={thumbnailUrls} onOpenResult={openResult} selectedIds={selectedResultIds} onToggleSelection={toggleResultSelection} onSelectAllResults={selectAllSearchResults} onClearResults={clearSearchResultSelection} sortMode={searchSortMode} onSortModeChange={changeSearchSortMode} />
     {collections.length > 0 ? <section className="vision-card vision-collections"><div className="vision-collections-heading"><strong>{app.copy.vision.savedCollections}</strong><Archive size={15} /></div>{collections.map((collection) => {
       const availability = collectionAvailability[collection.id]
       const isRepairing = repairingCollectionId === collection.id

@@ -10,11 +10,13 @@ type VisionSearchResultsProps = {
   onOpenResult: (result: VisionSearchResult) => void
   selectedIds: ReadonlySet<string>
   onToggleSelection: (result: VisionSearchResult) => void
+  onSelectAllResults: () => void
+  onClearResults: () => void
   sortMode: VisionSearchSortMode
   onSortModeChange: (sortMode: VisionSearchSortMode) => void
 }
 
-export function VisionSearchResults({ copy, results, thumbnailUrls, onOpenResult, selectedIds, onToggleSelection, sortMode, onSortModeChange }: VisionSearchResultsProps): React.ReactElement {
+export function VisionSearchResults({ copy, results, thumbnailUrls, onOpenResult, selectedIds, onToggleSelection, onSelectAllResults, onClearResults, sortMode, onSortModeChange }: VisionSearchResultsProps): React.ReactElement {
   const sortedResults = sortVisionSearchResults(results, sortMode)
   return <section className="vision-results" aria-live="polite">
     <div className="vision-results-toolbar">
@@ -24,6 +26,8 @@ export function VisionSearchResults({ copy, results, thumbnailUrls, onOpenResult
         <option value="source-time">{copy.searchSortSourceTime}</option>
         <option value="file-name">{copy.searchSortFileName}</option>
       </select>
+      <button className="vision-results-selection-action" type="button" onClick={onSelectAllResults} disabled={sortedResults.length === 0}>{copy.selectAllResults}</button>
+      <button className="vision-results-selection-action" type="button" onClick={onClearResults} disabled={selectedIds.size === 0}>{copy.clearSelectedResults}</button>
     </div>
     {sortedResults.length === 0 ? <div className="vision-empty">{copy.noResults}</div> : sortedResults.map((result) => {
       const selected = selectedIds.has(result.id)

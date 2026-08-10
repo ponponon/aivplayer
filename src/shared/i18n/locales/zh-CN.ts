@@ -458,6 +458,8 @@
       clickResult: '跳转到这个画面',
       selectResult: '选择这个选段',
       selectedResults: (count: number) => `已选择 ${count} 段`,
+      selectAllResults: '全选当前结果',
+      clearSelectedResults: '清空当前选择',
       createProject: '创建剪辑工程',
       creatingProject: '正在创建剪辑工程…',
       projectCreated: (title: string) => `已创建工程：${title}`,
