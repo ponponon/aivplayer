@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { createHash } from 'node:crypto'
-import { createAsrTaskCenterEvent, createBatchSubtitleTaskCenterEvent, createDramaGenerationTaskCenterEvent, createDramaTaskCenterEvent, createEvidenceTaskCenterEvent, createMediaImportTaskCenterEvent, createVisionTaskCenterEvent } from '../../src/core/tasks/task-center-adapters'
+import { createAsrTaskCenterEvent, createBatchSubtitleTaskCenterEvent, createDramaGenerationTaskCenterEvent, createDramaTaskCenterEvent, createEvidenceTaskCenterEvent, createMediaImportTaskCenterEvent, createVisionSearchExportTaskCenterEvent, createVisionTaskCenterEvent } from '../../src/core/tasks/task-center-adapters'
 import type { AsrJobProgress, BatchSubtitleJob } from '../../src/shared/media-types'
 import type { DramaGenerationTask, DramaProgress } from '../../src/shared/drama-types'
 import type { MediaEvidenceTask } from '../../src/shared/evidence-task-types'
 import type { MediaImportInboxPipelineProgress } from '../../src/shared/media-import-inbox'
 import type { VisionIndexProgress } from '../../src/shared/vision-types'
+import type { VisionSearchExportProgress } from '../../src/shared/vision-search-export-types'
 
 const baseVision: VisionIndexProgress = {
   status: 'indexing', stage: 'frames', totalVideos: 2, currentVideoIndex: 1, totalFrames: 10, processedFrames: 4, skippedVideos: 0, captionOnlyVideos: 0, currentVideoPath: '/media/demo.mp4', message: '正在抽帧'
@@ -37,5 +38,10 @@ describe('task center adapters', () => {
     expect(createDramaTaskCenterEvent(drama, 15)).toMatchObject({ kind: 'drama', status: 'completed', progress: 1 })
     const generation = { id: 'generation-1', mediaType: 'video', status: 'failed', progress: 0.25, message: '失败', error: 'provider error', updatedAt: 16, targetId: 'scene-1' } as unknown as DramaGenerationTask
     expect(createDramaGenerationTaskCenterEvent(generation)).toMatchObject({ kind: 'drama-generation', status: 'failed', message: 'provider error', progress: 0.25 })
+  })
+
+  it('maps full-library export progress without exposing the output path', () => {
+    const progress: VisionSearchExportProgress = { taskId: 'export-1', status: 'running', stage: 'writing', format: 'json', resultCount: 10, writtenCount: 4, message: '正在写入', outputPath: '/private/exports/results.json' }
+    expect(createVisionSearchExportTaskCenterEvent(progress, 17)).toMatchObject({ id: 'vision-export:export-1', kind: 'vision-export', status: 'running', progress: 0.4, current: 'results.json', updatedAt: 17 })
   })
 })

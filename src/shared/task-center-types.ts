@@ -1,4 +1,4 @@
-export type TaskCenterKind = 'asr' | 'batch-subtitle' | 'vision-index' | 'media-import' | 'evidence' | 'drama' | 'drama-generation'
+export type TaskCenterKind = 'asr' | 'batch-subtitle' | 'vision-index' | 'vision-export' | 'media-import' | 'evidence' | 'drama' | 'drama-generation'
 
 export type TaskCenterStatus = 'queued' | 'running' | 'paused' | 'completed' | 'failed' | 'cancelled'
 

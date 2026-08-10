@@ -5,6 +5,7 @@ import type { DramaGenerationTask, DramaProgress } from '../../shared/drama-type
 import type { MediaEvidenceTask } from '../../shared/evidence-task-types'
 import type { MediaImportInboxItem, MediaImportInboxPipelineProgress } from '../../shared/media-import-inbox'
 import type { VisionIndexProgress } from '../../shared/vision-types'
+import type { VisionSearchExportProgress } from '../../shared/vision-search-export-types'
 import type { TaskCenterEvent, TaskCenterStatus } from '../../shared/task-center-types'
 
 function safeProgress(value: number | null | undefined): number | null {
@@ -103,6 +104,34 @@ export function createVisionTaskCenterEvent(progress: VisionIndexProgress, now =
     message: progress.error || progress.message || '正在更新视觉索引',
     progress: visionProgress(progress),
     current: mediaName(progress.currentVideoPath),
+    updatedAt: now
+  }
+}
+
+function visionSearchExportStatus(status: VisionSearchExportProgress['status']): TaskCenterStatus {
+  if (status === 'queued') return 'queued'
+  if (status === 'running') return 'running'
+  if (status === 'completed') return 'completed'
+  if (status === 'cancelled') return 'cancelled'
+  return 'failed'
+}
+
+function visionSearchExportProgress(progress: VisionSearchExportProgress): number | null {
+  if (progress.status === 'queued') return 0
+  if (progress.stage === 'searching') return null
+  if (progress.resultCount <= 0) return progress.status === 'completed' ? 1 : 0
+  return safeProgress(progress.writtenCount / progress.resultCount)
+}
+
+export function createVisionSearchExportTaskCenterEvent(progress: VisionSearchExportProgress, now = Date.now()): TaskCenterEvent {
+  return {
+    id: `vision-export:${progress.taskId}`,
+    kind: 'vision-export',
+    status: visionSearchExportStatus(progress.status),
+    title: '视觉搜索导出',
+    message: progress.message,
+    progress: visionSearchExportProgress(progress),
+    current: mediaName(progress.outputPath),
     updatedAt: now
   }
 }
