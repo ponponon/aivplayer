@@ -12,6 +12,7 @@ describe('vision object detection result UI surface', () => {
 
     expect(panelSource).toContain('runVisionObjectDetection')
     expect(panelSource).toContain('objectDetectionThumbnailUrl')
+    expect(panelSource).toContain('objectDetectionFilter')
     expect(panelSource).toContain('VisionObjectDetectionResultView')
     expect(resultsSource).toContain('vision-object-detection-action')
     expect(resultsSource).toContain('onDetectObjects')
@@ -23,8 +24,7 @@ describe('vision object detection result UI surface', () => {
     expect(resultSource).toContain('filterVisionObjectDetectionCandidates')
     expect(resultSource).toContain('summarizeVisionObjectDetectionCandidates')
     expect(resultSource).toContain('toggleVisionObjectDetectionCategoryFilter')
-    expect(resultSource).toContain('selectedCategoryLabels')
-    expect(resultSource).toContain('categoryLabels: selectedCategoryLabels')
+    expect(resultSource).toContain('categoryLabels })')
     expect(resultSource).toContain('objectDetectionLabelFilter')
     expect(resultSource).toContain('objectDetectionMinimumScore')
     expect(resultSource).toContain('objectDetectionVisibleCount')

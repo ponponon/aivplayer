@@ -4,7 +4,8 @@ import type { VisionIndexProgress, VisionRuntimeStatus, VisionSearchResult } fro
 import type { AsrSubtitleResult } from '../../../shared/media-types'
 import type { MediaEvidenceDraftImportResult } from '../../../shared/evidence-task-types'
 import type { VisionClipCollection, VisionClipCollectionExportFormat, VisionClipCollectionSortMode, VisionEvidenceType, VisionIndexFailureRecord, VisionLibrarySource, VisionSavedSearch, VisionSearchSortMode } from '../../../shared/vision-types'
-import type { VisionObjectDetectionResult } from '../../../shared/vision-object-detection-types'
+import type { LocaleCopy } from '../../../shared/i18n'
+import type { VisionObjectDetectionFilterState, VisionObjectDetectionResult } from '../../../shared/vision-object-detection-types'
 import { invertVisionClipSelections, mergeVisionCollectionSelections, normalizeVisionCollectionTags } from '../../../core/ai/clip-inbox-operations'
 import { createVisionClipSelections, normalizeVisionTimeRange } from '../../../core/ai/vision-evidence'
 import { getVisionSearchResultIds } from '../../../core/ai/vision-search-selection'
@@ -68,6 +69,23 @@ function formatDuration(milliseconds: number): string {
   return `${seconds.toFixed(seconds < 10 ? 1 : 0)}s`
 }
 
+function createDefaultVisionObjectDetectionFilter(): VisionObjectDetectionFilterState {
+  return { labelQuery: '', minimumScore: 0, categoryLabels: [] }
+}
+
+function hasVisionObjectDetectionFilter(filter: VisionObjectDetectionFilterState): boolean {
+  return Boolean(filter.labelQuery.trim() || filter.minimumScore > 0 || filter.categoryLabels.length > 0)
+}
+
+function formatSavedSearchObjectFilter(filter: VisionSavedSearch['objectDetectionFilter'], copy: LocaleCopy['vision']): string {
+  if (!filter) return ''
+  const parts: string[] = []
+  if (filter.labelQuery) parts.push(`${copy.objectDetectionLabelFilter}: ${filter.labelQuery}`)
+  if (filter.categoryLabels.length > 0) parts.push(`${copy.objectDetectionCategories}: ${filter.categoryLabels.join(', ')}`)
+  if (filter.minimumScore > 0) parts.push(`${copy.objectDetectionMinimumScore}: ${Math.round(filter.minimumScore * 100)}%`)
+  return parts.join(' · ')
+}
+
 type CollectionAvailability = { missingPaths: number; availablePaths: number }
 
 export function VisionPanel(): React.ReactElement {
@@ -108,6 +126,7 @@ export function VisionPanel(): React.ReactElement {
   const [pendingResultSeek, setPendingResultSeek] = useState<{ videoPath: string; seconds: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [objectDetectionResult, setObjectDetectionResult] = useState<VisionObjectDetectionResult | null>(null)
+  const [objectDetectionFilter, setObjectDetectionFilter] = useState<VisionObjectDetectionFilterState>(createDefaultVisionObjectDetectionFilter)
   const [objectDetectionThumbnailUrl, setObjectDetectionThumbnailUrl] = useState<string | null>(null)
   const [isDetectingObjects, setIsDetectingObjects] = useState(false)
   const evidenceTypeFilter = searchPreferences.evidenceTypes
@@ -378,11 +397,12 @@ export function VisionPanel(): React.ReactElement {
     }).finally(() => setIsSearching(false))
   }
 
-  const runTextSearch = (): void => { executeTextSearch(query, 'hybrid') }
+  const runTextSearch = (): void => { setObjectDetectionFilter(createDefaultVisionObjectDetectionFilter()); executeTextSearch(query, 'hybrid') }
 
   const runSavedSearch = (savedSearch: VisionSavedSearch): void => {
     const filter = savedSearch.evidenceTypes ?? []
     setQuery(savedSearch.query)
+    setObjectDetectionFilter(savedSearch.objectDetectionFilter ? { ...savedSearch.objectDetectionFilter, categoryLabels: [...savedSearch.objectDetectionFilter.categoryLabels] } : createDefaultVisionObjectDetectionFilter())
     setSearchPreferences((current) => ({ ...current, evidenceTypes: filter }))
     executeTextSearch(savedSearch.query, savedSearch.mode, filter)
   }
@@ -391,7 +411,8 @@ export function VisionPanel(): React.ReactElement {
     const name = savedSearchName.trim()
     if (!name || !query.trim()) return
     setError(null)
-    void window.aiv.saveVisionSavedSearch({ name, query, mode: 'hybrid', evidenceTypes: evidenceTypeFilter }).then((savedSearch) => {
+    const input = { name, query, mode: 'hybrid' as const, evidenceTypes: evidenceTypeFilter, ...(hasVisionObjectDetectionFilter(objectDetectionFilter) ? { objectDetectionFilter: { ...objectDetectionFilter, categoryLabels: [...objectDetectionFilter.categoryLabels] } } : {}) }
+    void window.aiv.saveVisionSavedSearch(input).then((savedSearch) => {
       setSavedSearches((current) => [savedSearch, ...current.filter((item) => item.id !== savedSearch.id)])
       setSavedSearchName('')
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
@@ -819,7 +840,7 @@ export function VisionPanel(): React.ReactElement {
         {savedSearches.length > 0 ? <div className="vision-saved-search-list">{savedSearches.map((savedSearch) => <div className="vision-saved-search" key={savedSearch.id}>
           <button className="vision-saved-search-button" type="button" onClick={() => runSavedSearch(savedSearch)} disabled={isSearching}>
             <strong>{savedSearch.name}</strong>
-            <small>{savedSearch.query} · {formatEvidenceTypeFilter(savedSearch.evidenceTypes ?? [])}</small>
+            <small>{savedSearch.query} · {formatEvidenceTypeFilter(savedSearch.evidenceTypes ?? [])}{formatSavedSearchObjectFilter(savedSearch.objectDetectionFilter, app.copy.vision) ? ` · ${formatSavedSearchObjectFilter(savedSearch.objectDetectionFilter, app.copy.vision)}` : ''}</small>
           </button>
           <button className="vision-saved-search-delete" type="button" onClick={() => deleteSavedSearch(savedSearch)} title={app.copy.vision.deleteSavedSearch} aria-label={`${app.copy.vision.deleteSavedSearch}: ${savedSearch.name}`}><Trash2 size={14} /></button>
         </div>)}</div> : <small className="vision-saved-search-empty">{app.copy.vision.savedSearchEmpty}</small>}
@@ -834,7 +855,7 @@ export function VisionPanel(): React.ReactElement {
 
     {error ? <div className="vision-error vision-error-card" role="alert">{error}</div> : null}
     <VisionSearchResults copy={app.copy.vision} results={results} thumbnailUrls={thumbnailUrls} onOpenResult={openResult} onFindSimilar={findSimilarResult} onDetectObjects={detectObjects} isDetectingObjects={isDetectingObjects} isSimilarSearch={searchContext?.kind === 'similar'} onReturnToSearch={returnToSearchResults} selectedIds={selectedResultIds} onToggleSelection={toggleResultSelection} onSelectAllResults={selectAllSearchResults} onClearResults={clearSearchResultSelection} hasMoreResults={hasMoreSearchResults} isLoadingMore={isLoadingMoreSearchResults} onLoadMoreResults={loadMoreSearchResults} sortMode={searchSortMode} onSortModeChange={changeSearchSortMode} />
-    {objectDetectionResult ? <VisionObjectDetectionResultView copy={app.copy.vision} result={objectDetectionResult} thumbnailUrl={objectDetectionThumbnailUrl} onClear={() => { setObjectDetectionResult(null); setObjectDetectionThumbnailUrl(null) }} /> : null}
+    {objectDetectionResult ? <VisionObjectDetectionResultView copy={app.copy.vision} result={objectDetectionResult} thumbnailUrl={objectDetectionThumbnailUrl} filter={objectDetectionFilter} onFilterChange={setObjectDetectionFilter} onClear={() => { setObjectDetectionResult(null); setObjectDetectionThumbnailUrl(null) }} /> : null}
     {collections.length > 0 ? <section className="vision-card vision-collections"><div className="vision-collections-heading"><strong>{app.copy.vision.savedCollections}</strong><Archive size={15} /></div>{collections.map((collection) => {
       const availability = collectionAvailability[collection.id]
       const isRepairing = repairingCollectionId === collection.id

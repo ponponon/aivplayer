@@ -1,7 +1,7 @@
 import { Boxes, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { LocaleCopy } from '../../../shared/i18n'
-import type { VisionObjectDetectionResult } from '../../../shared/vision-object-detection-types'
+import type { VisionObjectDetectionFilterState, VisionObjectDetectionResult } from '../../../shared/vision-object-detection-types'
 import { filterVisionObjectDetectionCandidates, toggleVisionObjectDetectionCategoryFilter } from '../../../core/ai/vision-object-detection-filter'
 import { summarizeVisionObjectDetectionCandidates } from '../../../core/ai/vision-object-detection-summary'
 import { toggleVisionObjectDetectionSelection } from '../../../core/ai/vision-object-detection-selection'
@@ -11,6 +11,8 @@ type VisionObjectDetectionResultProps = {
   copy: LocaleCopy['vision']
   result: VisionObjectDetectionResult
   thumbnailUrl?: string | null
+  filter: VisionObjectDetectionFilterState
+  onFilterChange: (filter: VisionObjectDetectionFilterState) => void
   onClear: () => void
 }
 
@@ -23,15 +25,13 @@ function formatBox(result: VisionObjectDetectionResult['detections'][number]): s
   return `[${Math.round(xmin)}, ${Math.round(ymin)}]–[${Math.round(xmax)}, ${Math.round(ymax)}]`
 }
 
-export function VisionObjectDetectionResultView({ copy, result, thumbnailUrl, onClear }: VisionObjectDetectionResultProps): React.ReactElement {
+export function VisionObjectDetectionResultView({ copy, result, thumbnailUrl, filter, onFilterChange, onClear }: VisionObjectDetectionResultProps): React.ReactElement {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
-  const [labelQuery, setLabelQuery] = useState('')
-  const [minimumScore, setMinimumScore] = useState(0)
-  const [selectedCategoryLabels, setSelectedCategoryLabels] = useState<string[]>([])
+  const { labelQuery, minimumScore, categoryLabels } = filter
   const baseFilter = { labelQuery, minimumScore }
   const facetedDetections = filterVisionObjectDetectionCandidates(result.detections, baseFilter)
-  const visibleDetections = filterVisionObjectDetectionCandidates(result.detections, { ...baseFilter, categoryLabels: selectedCategoryLabels })
+  const visibleDetections = filterVisionObjectDetectionCandidates(result.detections, { ...baseFilter, categoryLabels })
   const categories = summarizeVisionObjectDetectionCandidates(facetedDetections)
   const safeSelectedIndex = selectedIndex !== null && selectedIndex < visibleDetections.length ? selectedIndex : null
   const highlightedIndex = hoveredIndex ?? safeSelectedIndex
@@ -39,7 +39,7 @@ export function VisionObjectDetectionResultView({ copy, result, thumbnailUrl, on
   useEffect(() => {
     setHoveredIndex(null)
     setSelectedIndex(null)
-  }, [labelQuery, minimumScore, selectedCategoryLabels])
+  }, [labelQuery, minimumScore, categoryLabels])
 
   return (
     <section className="vision-card vision-object-detection-result" data-testid="vision-object-detection-result">
@@ -52,11 +52,11 @@ export function VisionObjectDetectionResultView({ copy, result, thumbnailUrl, on
       <div className="vision-object-detection-filters">
         <label>
           <span>{copy.objectDetectionLabelFilter}</span>
-          <input type="search" value={labelQuery} onChange={(event) => setLabelQuery(event.target.value)} placeholder={copy.objectDetectionLabelFilterPlaceholder} aria-label={copy.objectDetectionLabelFilter} />
+          <input type="search" value={labelQuery} onChange={(event) => onFilterChange({ ...filter, labelQuery: event.target.value })} placeholder={copy.objectDetectionLabelFilterPlaceholder} aria-label={copy.objectDetectionLabelFilter} />
         </label>
         <label>
           <span>{copy.objectDetectionMinimumScore}</span>
-          <select value={minimumScore} onChange={(event) => setMinimumScore(Number(event.target.value))} aria-label={copy.objectDetectionMinimumScore}>
+          <select value={minimumScore} onChange={(event) => onFilterChange({ ...filter, minimumScore: Number(event.target.value) })} aria-label={copy.objectDetectionMinimumScore}>
             <option value={0}>{copy.objectDetectionAnyScore}</option>
             <option value={0.5}>{formatScore(0.5)}</option>
             <option value={0.75}>{formatScore(0.75)}</option>
@@ -68,14 +68,14 @@ export function VisionObjectDetectionResultView({ copy, result, thumbnailUrl, on
         <span className="vision-object-detection-categories-label">{copy.objectDetectionCategories}</span>
         <div className="vision-object-detection-category-list">
           {categories.map((category) => {
-            const isActive = selectedCategoryLabels.some((selectedLabel) => selectedLabel.toLocaleLowerCase() === category.label.toLocaleLowerCase())
+            const isActive = categoryLabels.some((selectedLabel) => selectedLabel.toLocaleLowerCase() === category.label.toLocaleLowerCase())
             return <button
               className={`vision-object-detection-category${isActive ? ' is-active' : ''}`}
               type="button"
               key={category.label.toLocaleLowerCase()}
               aria-pressed={isActive}
               title={category.label}
-              onClick={() => setSelectedCategoryLabels((current) => toggleVisionObjectDetectionCategoryFilter(current, category.label))}
+              onClick={() => onFilterChange({ ...filter, categoryLabels: toggleVisionObjectDetectionCategoryFilter(categoryLabels, category.label) })}
             >
               <span>{category.label}</span>
               <strong>{category.count}</strong>
