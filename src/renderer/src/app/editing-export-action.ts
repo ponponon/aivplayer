@@ -24,7 +24,7 @@ export async function exportEditingTimeline(model: AppModel, derived: AppDerived
   })
   if (clips.length === 0) return
   const configuredMode = requestedMode ?? model.appSettings.capture.clipExportMode
-  const exportKind = configuredMode === 'translation-subtitle' || configuredMode === 'translation-file' ? 'translation' : 'source'
+  const exportKind = configuredMode.startsWith('translation-') ? 'translation' : 'source'
   const exportCaptions = getEditingCaptionsForSubtitleExport(project, exportKind)
   const subtitleText = serializeEditingCaptionsToSrt(exportCaptions, exportKind)
   const hasProjectSubtitle = subtitleText.length > 0
