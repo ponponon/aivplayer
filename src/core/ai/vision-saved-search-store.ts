@@ -8,7 +8,7 @@ const SCHEMA_VERSION = 1
 const MAX_SAVED_SEARCHES = 100
 const MAX_NAME_LENGTH = 80
 const MAX_QUERY_LENGTH = 400
-const EVIDENCE_TYPES: readonly VisionEvidenceType[] = ['subtitle', 'visual', 'scene', 'ocr', 'entity', 'speaker']
+const EVIDENCE_TYPES: readonly VisionEvidenceType[] = ['subtitle', 'visual', 'scene', 'ocr', 'entity', 'object', 'speaker']
 
 type SavedSearchManifest = {
   schemaVersion: number

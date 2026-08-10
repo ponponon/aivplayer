@@ -9,10 +9,10 @@ function result(id: string, fileName: string, videoPath: string, timestampSecond
 
 describe('vision search preferences', () => {
   it('normalizes the sort mode and evidence types into a stable contract', () => {
-    expect(normalizeVisionSearchPreferences({ sortMode: 'file-name', evidenceTypes: ['speaker', 'ocr', 'ocr', 'invalid'] })).toEqual({
+    expect(normalizeVisionSearchPreferences({ sortMode: 'file-name', evidenceTypes: ['speaker', 'object', 'ocr', 'ocr', 'invalid'] })).toEqual({
       schemaVersion: 1,
       sortMode: 'file-name',
-      evidenceTypes: ['ocr', 'speaker']
+      evidenceTypes: ['ocr', 'object', 'speaker']
     })
     expect(parseVisionSearchPreferences('{invalid')).toEqual({ schemaVersion: 1, sortMode: 'relevance', evidenceTypes: [] })
     expect(parseVisionSearchPreferences(null).sortMode).toBe('relevance')

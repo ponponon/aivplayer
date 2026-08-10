@@ -3,7 +3,7 @@ import type { VisionEvidenceType, VisionSearchSortMode } from '../../shared/visi
 export const VISION_SEARCH_PREFERENCES_STORAGE_KEY = 'aivplayer.vision-search-preferences.v1'
 export const VISION_SEARCH_PREFERENCES_SCHEMA_VERSION = 1
 
-const VISION_EVIDENCE_TYPES: readonly VisionEvidenceType[] = ['visual', 'subtitle', 'ocr', 'scene', 'entity', 'speaker']
+const VISION_EVIDENCE_TYPES: readonly VisionEvidenceType[] = ['visual', 'subtitle', 'ocr', 'scene', 'entity', 'object', 'speaker']
 
 export type VisionSearchPreferences = {
   schemaVersion: typeof VISION_SEARCH_PREFERENCES_SCHEMA_VERSION

@@ -20,9 +20,9 @@ describe('vision saved search store', () => {
     expect(duplicate).toEqual(saved)
     const updated = first.save({ id: saved.id, name: '海边对话', query: '海边对话', mode: 'visual' })
     expect(updated).toMatchObject({ id: saved.id, name: '海边对话', query: '海边对话', mode: 'visual', evidenceTypes: [], createdAt: saved.createdAt })
-    const filtered = first.save({ name: '字幕海边对话', query: '海边对话', mode: 'hybrid', evidenceTypes: ['ocr', 'subtitle'] })
-    expect(filtered.evidenceTypes).toEqual(['subtitle', 'ocr'])
-    expect(first.save({ name: '相同筛选', query: '海边对话', mode: 'hybrid', evidenceTypes: ['subtitle', 'ocr'] })).toEqual(filtered)
+    const filtered = first.save({ name: '字幕海边对话', query: '海边对话', mode: 'hybrid', evidenceTypes: ['ocr', 'object', 'subtitle'] })
+    expect(filtered.evidenceTypes).toEqual(['subtitle', 'ocr', 'object'])
+    expect(first.save({ name: '相同筛选', query: '海边对话', mode: 'hybrid', evidenceTypes: ['subtitle', 'ocr', 'object'] })).toEqual(filtered)
     await first.flush()
 
     const second = new VisionSavedSearchStore(directory)
