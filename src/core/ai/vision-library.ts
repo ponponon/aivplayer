@@ -47,7 +47,7 @@ import {
   type VisionEvidenceAuditStatus
 } from '../../shared/vision-types'
 import type { VisionObjectDetectionBox, VisionObjectDetectionFilterState } from '../../shared/vision-object-detection-types'
-import { VISION_SEARCH_REVISION_SCHEMA_VERSION, type VisionSearchRevision, type VisionSearchTableName } from '../../shared/vision-search-revision'
+import { getVisionSearchRevisionBody, VISION_SEARCH_REVISION_SCHEMA_VERSION, type VisionSearchRevision, type VisionSearchTableName } from '../../shared/vision-search-revision'
 import type { SpeakerDiarizationEvidenceBatchClearResult, SpeakerDiarizationEvidenceSource } from '../../shared/speaker-diarization-types'
 import { addVisionEvidenceCounts, aggregateVisionEvidenceSources, auditVisionEvidenceSource, createEmptyVisionEvidenceCounts, normalizeVisionDerivedEvidenceTypes, normalizeVisionEvidenceAuditStatuses, normalizeVisionEvidenceClearTargets, type VisionEvidenceSourceRow } from './vision-evidence-sources'
 
@@ -403,7 +403,7 @@ export class VisionLibrary {
       }
       tables[name] = await (await db.openTable(name)).version()
     }
-    const revisionBody: Pick<VisionSearchRevision, 'schemaVersion' | 'tables'> = { schemaVersion: VISION_SEARCH_REVISION_SCHEMA_VERSION, tables }
+    const revisionBody = getVisionSearchRevisionBody({ schemaVersion: VISION_SEARCH_REVISION_SCHEMA_VERSION, tables })
     return {
       ...revisionBody,
       fingerprint: createHash('sha256').update(JSON.stringify(revisionBody)).digest('hex')

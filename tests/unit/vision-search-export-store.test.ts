@@ -4,9 +4,12 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { getVisionSearchExportPartsDirectory, getVisionSearchExportStorePath, VisionSearchExportStore } from '../../src/core/ai/vision-search-export-store'
+import { createDefaultSpeakerDiarizationCatalog } from '../../src/core/ai/speaker-diarization-catalog'
+import { createDefaultVisionEntityCatalog } from '../../src/core/ai/vision-entity-catalog'
+import { getVisionSearchRevisionBody } from '../../src/shared/vision-search-revision'
 
 function input(userDataPath: string) {
-  const revisionBody = {
+  const revisionBody = getVisionSearchRevisionBody({
     schemaVersion: 1 as const,
     tables: {
       video_frames: 1,
@@ -14,8 +17,12 @@ function input(userDataPath: string) {
       video_captions: null,
       video_search_documents: null,
       video_evidence: 2
+    },
+    catalogs: {
+      entity: createDefaultVisionEntityCatalog(1),
+      speaker: createDefaultSpeakerDiarizationCatalog(1)
     }
-  }
+  })
   return {
     taskId: 'export-1',
     request: { kind: 'text' as const, request: { query: 'person', mode: 'hybrid' as const }, format: 'json' as const },

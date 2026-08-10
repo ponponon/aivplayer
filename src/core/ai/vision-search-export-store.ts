@@ -3,7 +3,9 @@ import { mkdirSync, readFileSync } from 'node:fs'
 import { mkdir, rename, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import type { VisionSearchFullExportRequest } from '../../shared/vision-types'
-import { VISION_SEARCH_REVISION_SCHEMA_VERSION, type VisionSearchRevision, type VisionSearchTableName } from '../../shared/vision-search-revision'
+import { getVisionSearchRevisionBody, VISION_SEARCH_REVISION_SCHEMA_VERSION, type VisionSearchRevision, type VisionSearchTableName } from '../../shared/vision-search-revision'
+import { normalizeSpeakerDiarizationCatalog } from './speaker-diarization-catalog'
+import { normalizeVisionEntityCatalog } from './vision-entity-catalog'
 
 export const VISION_SEARCH_EXPORT_STORE_SCHEMA_VERSION = 1
 export const VISION_SEARCH_EXPORT_MAX_TASKS = 16
@@ -66,7 +68,17 @@ function normalizeSearchRevision(value: unknown): VisionSearchRevision | undefin
     if (version !== null && (!Number.isInteger(version) || Number(version) < 0)) return undefined
     tables[name] = version === null ? null : Number(version)
   }
-  const body = { schemaVersion: VISION_SEARCH_REVISION_SCHEMA_VERSION as typeof VISION_SEARCH_REVISION_SCHEMA_VERSION, tables }
+  let catalogs: VisionSearchRevision['catalogs']
+  if (raw.catalogs !== undefined) {
+    if (!raw.catalogs || typeof raw.catalogs !== 'object' || Array.isArray(raw.catalogs)) return undefined
+    const rawCatalogs = raw.catalogs as { entity?: unknown; speaker?: unknown }
+    if (!rawCatalogs.entity || typeof rawCatalogs.entity !== 'object' || Array.isArray(rawCatalogs.entity) || !rawCatalogs.speaker || typeof rawCatalogs.speaker !== 'object' || Array.isArray(rawCatalogs.speaker)) return undefined
+    catalogs = {
+      entity: normalizeVisionEntityCatalog(rawCatalogs.entity),
+      speaker: normalizeSpeakerDiarizationCatalog(rawCatalogs.speaker)
+    }
+  }
+  const body = getVisionSearchRevisionBody({ schemaVersion: VISION_SEARCH_REVISION_SCHEMA_VERSION as typeof VISION_SEARCH_REVISION_SCHEMA_VERSION, tables, catalogs })
   const fingerprint = createHash('sha256').update(JSON.stringify(body)).digest('hex')
   return raw.fingerprint === fingerprint ? { ...body, fingerprint } : undefined
 }
