@@ -157,6 +157,22 @@ export type VisionIndexFailureRetryBatchRequest = {
 
 export type VisionSearchMode = 'visual' | 'hybrid'
 
+export type VisionSavedSearch = {
+  id: string
+  name: string
+  query: string
+  mode: VisionSearchMode
+  createdAt: number
+  updatedAt: number
+}
+
+export type VisionSavedSearchInput = {
+  id?: string
+  name: string
+  query: string
+  mode?: VisionSearchMode
+}
+
 export type VisionSearchRequest = {
   query?: string
   imagePath?: string
