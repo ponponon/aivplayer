@@ -91,6 +91,8 @@ import type {
   VisionClipCollectionExportRequest,
   VisionClipCollectionExportResult,
   VisionRuntimeStatus,
+  VisionModelDownloadProgress,
+  VisionModelDownloadResult,
   VisionSearchRequest,
   VisionSearchResult,
   VisionLibrarySource,
@@ -259,6 +261,7 @@ const api = {
   getNativePlayerStatus: (): Promise<NativePlayerStatus> => ipcRenderer.invoke(IPC_CHANNELS.NATIVE_PLAYER_STATUS),
   getInitialMediaFiles: (): Promise<MediaFile[]> => ipcRenderer.invoke(IPC_CHANNELS.GET_INITIAL_MEDIA_FILES),
   getVisionStatus: (): Promise<VisionRuntimeStatus> => ipcRenderer.invoke(IPC_CHANNELS.VISION_STATUS),
+  downloadVisionModel: (): Promise<VisionModelDownloadResult> => ipcRenderer.invoke(IPC_CHANNELS.VISION_MODEL_DOWNLOAD),
   getPersonMatteModelStatus: (): Promise<PersonMatteModelStatus> => ipcRenderer.invoke(IPC_CHANNELS.PERSON_MATTE_STATUS),
   downloadPersonMatteModel: (): Promise<PersonMatteModelDownloadResult> => ipcRenderer.invoke(IPC_CHANNELS.PERSON_MATTE_DOWNLOAD),
   buildPersonMatteTrack: (request: PersonMatteTrackRequest): Promise<PersonMatteTrackResult> => ipcRenderer.invoke(IPC_CHANNELS.PERSON_MATTE_TRACK, request),
@@ -380,6 +383,11 @@ const api = {
     const listener = (_event: Electron.IpcRendererEvent, progress: VisionIndexProgress): void => callback(progress)
     ipcRenderer.on(IPC_CHANNELS.VISION_INDEX_PROGRESS, listener)
     return () => ipcRenderer.removeListener(IPC_CHANNELS.VISION_INDEX_PROGRESS, listener)
+  },
+  onVisionModelDownloadProgress: (callback: (progress: VisionModelDownloadProgress) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, progress: VisionModelDownloadProgress): void => callback(progress)
+    ipcRenderer.on(IPC_CHANNELS.VISION_MODEL_DOWNLOAD_PROGRESS, listener)
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.VISION_MODEL_DOWNLOAD_PROGRESS, listener)
   },
   onVisionDirectoryScanProgress: (callback: (progress: VisionDirectoryScanProgress) => void): (() => void) => {
     const listener = (_event: Electron.IpcRendererEvent, progress: VisionDirectoryScanProgress): void => callback(progress)

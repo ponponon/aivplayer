@@ -698,7 +698,7 @@
 ## Flatpak Linux 构建验证入口
 
 - GitHub Actions 新增 Linux x86_64 Flatpak 构建、manifest/repo lint 和 bundle artifact 流程；构建前将源码入口临时替换为当前 checkout，避免 PR 错误地验证旧的 release tag。
-- 视觉模型支持用户数据目录优先：Flatpak 不需要把 SigLIP2 大模型塞进只读应用包，后续下载入口会将固定 revision 的九个模型文件安装到 `userData/models/vision`，并保留旧版安装包模型目录作为兼容 fallback。
+- 视觉模型支持用户数据目录优先：Flatpak 不需要把 SigLIP2 大模型塞进只读应用包；视觉面板可将固定 revision 的九个模型文件下载到 `userData/models/vision`，并保留旧版安装包模型目录作为兼容 fallback。
 - GitHub Actions 支持手动选择 Linux ARM64 构建，使用 `ubuntu-24.04-arm` 原生 Runner；CI 生成的本地 manifest 不进入仓库，正式 Flathub manifest 仍保持固定 release tag。
 
 ## 视觉索引失败恢复
