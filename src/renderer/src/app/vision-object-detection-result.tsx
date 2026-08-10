@@ -1,7 +1,8 @@
 import { Boxes, X } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { LocaleCopy } from '../../../shared/i18n'
 import type { VisionObjectDetectionResult } from '../../../shared/vision-object-detection-types'
+import { filterVisionObjectDetectionCandidates } from '../../../core/ai/vision-object-detection-filter'
 import { toggleVisionObjectDetectionSelection } from '../../../core/ai/vision-object-detection-selection'
 import { VisionResultThumbnail } from './vision-result-thumbnail'
 
@@ -24,7 +25,16 @@ function formatBox(result: VisionObjectDetectionResult['detections'][number]): s
 export function VisionObjectDetectionResultView({ copy, result, thumbnailUrl, onClear }: VisionObjectDetectionResultProps): React.ReactElement {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
-  const highlightedIndex = hoveredIndex ?? selectedIndex
+  const [labelQuery, setLabelQuery] = useState('')
+  const [minimumScore, setMinimumScore] = useState(0)
+  const visibleDetections = filterVisionObjectDetectionCandidates(result.detections, { labelQuery, minimumScore })
+  const safeSelectedIndex = selectedIndex !== null && selectedIndex < visibleDetections.length ? selectedIndex : null
+  const highlightedIndex = hoveredIndex ?? safeSelectedIndex
+
+  useEffect(() => {
+    setHoveredIndex(null)
+    setSelectedIndex(null)
+  }, [labelQuery, minimumScore])
 
   return (
     <section className="vision-card vision-object-detection-result" data-testid="vision-object-detection-result">
@@ -33,10 +43,25 @@ export function VisionObjectDetectionResultView({ copy, result, thumbnailUrl, on
         <button className="vision-collection-delete" type="button" onClick={onClear} title={copy.objectDetectionClear} aria-label={copy.objectDetectionClear}><X size={14} /></button>
       </div>
       {thumbnailUrl ? <div className="vision-object-detection-preview"><VisionResultThumbnail src={thumbnailUrl} alt="" boxes={result.detections.map((detection) => detection.box)} highlightedBoxIndex={highlightedIndex} /></div> : null}
-      <p className="vision-object-detection-summary">{copy.objectDetectionCount(result.detections.length)} · {copy.objectDetectionThreshold(formatScore(result.threshold))}</p>
-      {result.detections.length === 0 ? <p className="vision-object-detection-empty">{copy.objectDetectionEmpty}</p> : (
+      <p className="vision-object-detection-summary">{copy.objectDetectionCount(result.detections.length)} · {copy.objectDetectionVisibleCount(visibleDetections.length, result.detections.length)} · {copy.objectDetectionThreshold(formatScore(result.threshold))}</p>
+      <div className="vision-object-detection-filters">
+        <label>
+          <span>{copy.objectDetectionLabelFilter}</span>
+          <input type="search" value={labelQuery} onChange={(event) => setLabelQuery(event.target.value)} placeholder={copy.objectDetectionLabelFilterPlaceholder} aria-label={copy.objectDetectionLabelFilter} />
+        </label>
+        <label>
+          <span>{copy.objectDetectionMinimumScore}</span>
+          <select value={minimumScore} onChange={(event) => setMinimumScore(Number(event.target.value))} aria-label={copy.objectDetectionMinimumScore}>
+            <option value={0}>{copy.objectDetectionAnyScore}</option>
+            <option value={0.5}>{formatScore(0.5)}</option>
+            <option value={0.75}>{formatScore(0.75)}</option>
+            <option value={0.9}>{formatScore(0.9)}</option>
+          </select>
+        </label>
+      </div>
+      {visibleDetections.length === 0 ? <p className="vision-object-detection-empty">{result.detections.length === 0 ? copy.objectDetectionEmpty : copy.objectDetectionNoMatches}</p> : (
         <ul className="vision-object-detection-list">
-          {result.detections.map((detection, index) => {
+          {visibleDetections.map((detection, index) => {
             const isSelected = selectedIndex === index
             return <li key={`${detection.label}-${index}`}>
               <button
@@ -44,7 +69,7 @@ export function VisionObjectDetectionResultView({ copy, result, thumbnailUrl, on
                 type="button"
                 aria-pressed={isSelected}
                 data-testid={`vision-object-detection-candidate-${index}`}
-                onClick={() => setSelectedIndex((current) => toggleVisionObjectDetectionSelection(current, index, result.detections.length))}
+                onClick={() => setSelectedIndex((current) => toggleVisionObjectDetectionSelection(current, index, visibleDetections.length))}
                 onMouseEnter={() => setHoveredIndex(index)}
                 onMouseLeave={() => setHoveredIndex(null)}
                 onFocus={() => setHoveredIndex(index)}
