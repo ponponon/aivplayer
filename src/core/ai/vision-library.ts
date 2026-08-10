@@ -14,6 +14,7 @@ import { VisionEmbeddingRuntime } from './vision-model'
 import { DEFAULT_VISION_ENTITY_LABELS, createVisionEntityEvidence, getVisionEntityLabelIdForDisplayName, type VisionEntityLabel } from './vision-entity-evidence'
 import { createVisionSceneEvidence } from './vision-scene-evidence'
 import { calculateVisionLexicalMatch, combineVisionHybridScore, getVisionSearchResultKey } from './vision-search'
+import { isVisionSimilarSearchTarget, normalizeVisionSimilarSearchRequest } from './vision-similar-search'
 import { createVisionEvidenceId, createVisionSourceFingerprint, createVisionSourceId } from './vision-evidence'
 import {
   VISION_FRAME_INTERVAL_SECONDS,
@@ -29,6 +30,7 @@ import {
   type VisionMatchSource,
   type VisionRuntimeStatus,
   type VisionSearchMode,
+  type VisionSimilarSearchRequest,
   type VisionLibrarySource,
   type VisionSearchResult,
   type VisionEvidence,
@@ -1391,18 +1393,19 @@ export class VisionLibrary {
     }
   }
 
-  private async search(embedding: number[], limit: number): Promise<VisionSearchResult[]> {
+  private async search(embedding: number[], limit: number, excludeRequest?: VisionSimilarSearchRequest): Promise<VisionSearchResult[]> {
     await this.ensureVectorIndex(false)
     const table = await this.getTable()
     if (!table) return []
+    const resultLimit = clampLimit(limit)
     const vectorQuery = table.search(embedding) as VectorQuery
     const rows = await vectorQuery
       .distanceType(VISION_VECTOR_DISTANCE_TYPE)
-      .limit(clampLimit(limit))
+      .limit(Math.min(100, resultLimit + (excludeRequest ? 1 : 0)))
       .select(['id', 'video_path', 'file_name', 'timestamp_seconds', 'thumbnail_path', 'model_id', 'model_variant', '_distance'])
       .toArray() as unknown as Array<Record<string, unknown>>
     const evidenceByFrame = await this.getVisualEvidenceByFrameIds(rows.map((item) => String(item.id)))
-    return rows.map((item) => {
+    const results: VisionSearchResult[] = rows.map((item) => {
       const frameId = String(item.id)
       const evidence = evidenceByFrame.get(frameId)
       const distance = Number(item._distance)
@@ -1428,6 +1431,7 @@ export class VisionLibrary {
         modelVariant: String(item.model_variant)
       }
     })
+    return results.filter((result) => !excludeRequest || !isVisionSimilarSearchTarget(result, excludeRequest)).slice(0, resultLimit)
   }
 
   private async getVisualEvidenceByFrameIds(frameIds: readonly string[]): Promise<Map<string, VisionEvidenceRow>> {
@@ -1693,6 +1697,14 @@ export class VisionLibrary {
     const image = await stat(imagePath)
     if (!image.isFile()) throw new Error('以图搜图输入不是有效文件')
     return this.search(await this.model.getImageEmbedding(imagePath), clampLimit(limit))
+  }
+
+  async searchSimilar(request: VisionSimilarSearchRequest): Promise<VisionSearchResult[]> {
+    const normalizedRequest = normalizeVisionSimilarSearchRequest(request)
+    if (!normalizedRequest?.thumbnailPath) return []
+    await this.readThumbnail(normalizedRequest.thumbnailPath)
+    const embedding = await this.model.getImageEmbedding(normalizedRequest.thumbnailPath)
+    return this.search(embedding, normalizedRequest.limit ?? 24, normalizedRequest)
   }
 
   async readThumbnail(thumbnailPath: string): Promise<string> {
