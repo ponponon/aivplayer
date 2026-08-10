@@ -265,6 +265,39 @@ export type VisionSearchRequest = {
   objectDetectionFilter?: VisionObjectDetectionFilterState
 }
 
+export type VisionSearchPageKind = 'text' | 'image' | 'similar'
+
+export type VisionSearchPageRequestBase = {
+  cursor?: string
+  offset?: number
+}
+
+export type VisionTextSearchPageRequest = VisionSearchPageRequestBase & {
+  kind: 'text'
+  request: VisionSearchRequest
+}
+
+export type VisionImageSearchPageRequest = VisionSearchPageRequestBase & {
+  kind: 'image'
+  request: VisionSearchRequest
+}
+
+export type VisionSimilarSearchPageRequest = VisionSearchPageRequestBase & {
+  kind: 'similar'
+  request: VisionSimilarSearchRequest
+}
+
+export type VisionSearchPageRequest = VisionTextSearchPageRequest | VisionImageSearchPageRequest | VisionSimilarSearchPageRequest
+
+export type VisionSearchResultPage = {
+  results: VisionSearchResult[]
+  total: number
+  offset: number
+  limit: number
+  hasMore: boolean
+  cursor?: string
+}
+
 export type VisionSearchResultsExportFormat = 'json' | 'csv'
 
 export type VisionSearchResultsExportRequest = {
