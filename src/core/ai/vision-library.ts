@@ -34,6 +34,7 @@ import {
   type VisionEvidence,
   type VisionEvidenceType
 } from '../../shared/vision-types'
+import type { SpeakerDiarizationEvidenceBatchClearResult, SpeakerDiarizationEvidenceSource } from '../../shared/speaker-diarization-types'
 
 const execFileAsync = promisify(execFile)
 const TABLE_NAME = 'video_frames'
@@ -670,6 +671,73 @@ export class VisionLibrary {
   /** Removes only speaker evidence for one source while preserving all other evidence types. */
   async clearSpeakerEvidence(videoPath: string): Promise<void> {
     await this.replaceEvidenceTypeRows(videoPath, 'speaker', [])
+  }
+
+  async listSpeakerEvidenceSources(limit?: number, offset?: number): Promise<SpeakerDiarizationEvidenceSource[]> {
+    const table = await this.getEvidenceTable()
+    if (!table) return []
+    const rows = await table.query()
+      .select(['video_path', 'file_name', 'evidence_type', 'source_fingerprint', 'generated_at'])
+      .limit(METADATA_SCAN_LIMIT)
+      .toArray() as unknown as Array<Record<string, unknown>>
+    const grouped = new Map<string, SpeakerDiarizationEvidenceSource>()
+    for (const row of rows) {
+      if (String(row.evidence_type) !== 'speaker') continue
+      const videoPath = String(row.video_path ?? '').trim()
+      if (!videoPath) continue
+      const sourceFingerprint = String(row.source_fingerprint ?? '').trim()
+      const key = `${videoPath}\0${sourceFingerprint}`
+      const generatedAt = Number(row.generated_at)
+      const current = grouped.get(key)
+      if (current) {
+        current.evidenceCount += 1
+        if (Number.isFinite(generatedAt)) current.generatedAt = Math.max(current.generatedAt, generatedAt)
+        continue
+      }
+      grouped.set(key, {
+        videoPath,
+        fileName: String(row.file_name ?? '').trim() || basename(videoPath),
+        sourceFingerprint,
+        evidenceCount: 1,
+        generatedAt: Number.isFinite(generatedAt) ? generatedAt : 0
+      })
+    }
+    const sourceLimit = clampSourceLimit(limit)
+    const sourceOffset = clampSourceOffset(offset)
+    return [...grouped.values()]
+      .sort((left, right) => right.generatedAt - left.generatedAt || left.fileName.localeCompare(right.fileName, undefined, { sensitivity: 'base', numeric: true }))
+      .slice(sourceOffset, sourceOffset + sourceLimit)
+  }
+
+  async clearSpeakerEvidenceBatch(videoPaths: readonly string[]): Promise<SpeakerDiarizationEvidenceBatchClearResult> {
+    const paths = [...new Set(videoPaths.filter((path): path is string => typeof path === 'string').map((path) => path.trim()).filter(Boolean))]
+    if (paths.length === 0) return { success: false, message: '说话人证据清理列表为空', clearedSources: 0, clearedEvidenceCount: 0 }
+    const table = await this.getEvidenceTable()
+    if (!table) return { success: true, message: '没有可清理的说话人证据', clearedSources: 0, clearedEvidenceCount: 0 }
+    const rows = await table.query()
+      .select(['video_path', 'evidence_type'])
+      .limit(METADATA_SCAN_LIMIT)
+      .toArray() as unknown as Array<Record<string, unknown>>
+    const countByPath = new Map(paths.map((path) => [path, 0]))
+    for (const row of rows) {
+      const path = String(row.video_path ?? '').trim()
+      if (String(row.evidence_type) === 'speaker' && countByPath.has(path)) countByPath.set(path, (countByPath.get(path) ?? 0) + 1)
+    }
+    let clearedSources = 0
+    let clearedEvidenceCount = 0
+    for (const path of paths) {
+      const evidenceCount = countByPath.get(path) ?? 0
+      if (evidenceCount === 0) continue
+      await this.clearSpeakerEvidence(path)
+      clearedSources += 1
+      clearedEvidenceCount += evidenceCount
+    }
+    return {
+      success: true,
+      message: clearedSources > 0 ? `已清理 ${clearedSources} 个视频的 ${clearedEvidenceCount} 条说话人证据` : '没有可清理的说话人证据',
+      clearedSources,
+      clearedEvidenceCount
+    }
   }
 
   private async getAllFramePointers(): Promise<VisionFramePointer[]> {

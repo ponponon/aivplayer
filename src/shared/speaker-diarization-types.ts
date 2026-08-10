@@ -78,3 +78,18 @@ export type SpeakerDiarizationEvidenceClearResult = {
   success: boolean
   message: string
 }
+
+export type SpeakerDiarizationEvidenceSource = {
+  videoPath: string
+  fileName: string
+  sourceFingerprint: string
+  evidenceCount: number
+  generatedAt: number
+}
+
+export type SpeakerDiarizationEvidenceBatchClearResult = {
+  success: boolean
+  message: string
+  clearedSources: number
+  clearedEvidenceCount: number
+}
