@@ -91,6 +91,7 @@ describe('editing timeline source contracts', () => {
     const preload = readSource('src/preload/index.ts')
     const settingsIpc = readSource('src/desktop/ipc-settings.ts')
     const bilingualCaptionSmoke = readSource('scripts/smoke-bilingual-caption-export.ts')
+    const subtitleFileSmoke = readSource('scripts/smoke-editing-subtitle-file.ts')
     const localeSources = ['zh-CN', 'en-US', 'ja-JP', 'ko-KR'].map((locale) => readSource(`src/shared/i18n/locales/${locale}.ts`))
 
     expect(stage).toContain("app.isEditingMode ? <EditingTimeline /> : <PlaybackControls />")
@@ -199,6 +200,8 @@ describe('editing timeline source contracts', () => {
     expect(projectRepairSmoke).toContain('repair-source.mp4')
     expect(projectRepairSmoke).toContain('consoleErrors')
     expect(packageJson).toContain('smoke:editing-project-repair')
+    expect(packageJson).toContain('smoke:editing-subtitle-file')
+    expect(subtitleFileSmoke).toContain('exportEditingSubtitleFile')
     expect(captionEffect).toContain('acceptEditingSubtitleReloadChange')
     expect(captionEffect).toContain('acceptEditingSubtitleReloadAddition')
     expect(captionEffect).toContain('removeEditingSubtitleReloadChange')
