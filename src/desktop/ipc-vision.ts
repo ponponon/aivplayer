@@ -17,6 +17,7 @@ import { VISION_INDEX_FAILURE_MAX_RETRY_BATCH } from '../core/ai/vision-index-fa
 import { mergeVisionLibrarySourceMetadata } from '../core/ai/vision-library-source-metadata'
 import { filterSpeakerDiarizationCatalogSearchResults } from '../core/ai/speaker-diarization-catalog'
 import { filterVisionSearchResultsByEvidenceTypes } from '../core/ai/vision-search'
+import { normalizeVisionObjectDetectionFilterState } from '../core/ai/vision-object-detection-filter'
 import { normalizeVisionSimilarSearchRequest } from '../core/ai/vision-similar-search'
 import { createEmptyVisionEvidenceCounts, normalizeVisionEvidenceAuditStatuses, normalizeVisionEvidenceClearTargets, normalizeVisionDerivedEvidenceTypes } from '../core/ai/vision-evidence-sources'
 
@@ -179,14 +180,15 @@ export function registerVisionIpc(): void {
   ipcMain.handle(IPC_CHANNELS.VISION_SEARCH_TEXT, async (_event, request: VisionSearchRequest) => {
     if (!request?.query?.trim()) return []
     const evidenceTypes = normalizeVisionEvidenceTypes(request.evidenceTypes)
+    const objectDetectionFilter = normalizeVisionObjectDetectionFilterState(request.objectDetectionFilter)
     const resultLimit = normalizeVisionSearchLimit(request.limit)
     const searchLimit = evidenceTypes.length > 0 ? Math.max(resultLimit, 100) : request.limit
     const entityCatalog = getVisionEntityCatalogStore()
     const speakerCatalog = getSpeakerDiarizationCatalogStore()
     const directQueries = [...new Set([request.query, ...entityCatalog.getSearchQueries(request.query)])]
     const speakerQueries = speakerCatalog.getSearchQueries(request.query)
-    const directGroups = await Promise.all(directQueries.map((query) => getVisionLibrary().searchText(query, searchLimit, request.mode)))
-    const speakerGroups = await Promise.all(speakerQueries.map((searchQuery) => getVisionLibrary().searchText(searchQuery.query, searchLimit, request.mode)))
+    const directGroups = await Promise.all(directQueries.map((query) => getVisionLibrary().searchText(query, searchLimit, request.mode, objectDetectionFilter)))
+    const speakerGroups = await Promise.all(speakerQueries.map((searchQuery) => getVisionLibrary().searchText(searchQuery.query, searchLimit, request.mode, objectDetectionFilter)))
     const scopedSpeakerGroups = speakerQueries.map((searchQuery, index) => filterSpeakerDiarizationCatalogSearchResults(speakerGroups[index] ?? [], searchQuery))
     const results = speakerCatalog.applyResults(entityCatalog.applyResults(mergeVisionSearchResults([...directGroups, ...scopedSpeakerGroups])))
     return filterVisionSearchResultsByEvidenceTypes(results, evidenceTypes, resultLimit)
@@ -195,9 +197,10 @@ export function registerVisionIpc(): void {
   ipcMain.handle(IPC_CHANNELS.VISION_SEARCH_IMAGE, (_event, request: VisionSearchRequest) => {
     if (!request?.imagePath?.trim()) return []
     const evidenceTypes = normalizeVisionEvidenceTypes(request.evidenceTypes)
+    const objectDetectionFilter = normalizeVisionObjectDetectionFilterState(request.objectDetectionFilter)
     const resultLimit = normalizeVisionSearchLimit(request.limit)
     const searchLimit = evidenceTypes.length > 0 ? Math.max(resultLimit, 100) : request.limit
-    return getVisionLibrary().searchImage(request.imagePath, searchLimit).then((results) => {
+    return getVisionLibrary().searchImage(request.imagePath, searchLimit, objectDetectionFilter).then((results) => {
       const entityCatalog = getVisionEntityCatalogStore()
       const enrichedResults = getSpeakerDiarizationCatalogStore().applyResults(entityCatalog.applyResults(results))
       return filterVisionSearchResultsByEvidenceTypes(enrichedResults, evidenceTypes, resultLimit)

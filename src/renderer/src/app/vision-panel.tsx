@@ -32,8 +32,8 @@ const VISION_SOURCE_PAGE_SIZE = 100
 const VISION_EVIDENCE_TYPE_OPTIONS: readonly VisionEvidenceType[] = ['visual', 'subtitle', 'ocr', 'scene', 'entity', 'object', 'speaker']
 
 type VisionSearchBaseContext =
-  | { kind: 'text'; query: string; mode: VisionSavedSearch['mode']; evidenceTypes: VisionEvidenceType[] }
-  | { kind: 'image'; imagePath: string; evidenceTypes: VisionEvidenceType[] }
+  | { kind: 'text'; query: string; mode: VisionSavedSearch['mode']; evidenceTypes: VisionEvidenceType[]; objectDetectionFilter?: VisionObjectDetectionFilterState }
+  | { kind: 'image'; imagePath: string; evidenceTypes: VisionEvidenceType[]; objectDetectionFilter?: VisionObjectDetectionFilterState }
 
 type VisionSearchContext = VisionSearchBaseContext | { kind: 'similar'; target: VisionSearchResult }
 
@@ -366,9 +366,9 @@ export function VisionPanel(): React.ReactElement {
       return window.aiv.searchVisionSimilar(createVisionSimilarSearchRequest(context.target, limit))
     }
     if (context.kind === 'text') {
-      return window.aiv.searchVisionText({ query: context.query, limit, mode: context.mode, ...(context.evidenceTypes.length > 0 ? { evidenceTypes: context.evidenceTypes } : {}) })
+      return window.aiv.searchVisionText({ query: context.query, limit, mode: context.mode, ...(context.evidenceTypes.length > 0 ? { evidenceTypes: context.evidenceTypes } : {}), ...(context.objectDetectionFilter ? { objectDetectionFilter: context.objectDetectionFilter } : {}) })
     }
-    return window.aiv.searchVisionImage({ imagePath: context.imagePath, limit, ...(context.evidenceTypes.length > 0 ? { evidenceTypes: context.evidenceTypes } : {}) })
+    return window.aiv.searchVisionImage({ imagePath: context.imagePath, limit, ...(context.evidenceTypes.length > 0 ? { evidenceTypes: context.evidenceTypes } : {}), ...(context.objectDetectionFilter ? { objectDetectionFilter: context.objectDetectionFilter } : {}) })
   }
 
   const applyVisionSearchResults = (nextResults: VisionSearchResult[], limit: number, context: VisionSearchContext, preserveSelection: boolean): void => {
@@ -380,9 +380,9 @@ export function VisionPanel(): React.ReactElement {
     if (!preserveSelection) setSelectedResultIds(new Set())
   }
 
-  const executeTextSearch = (searchQuery: string, mode: VisionSavedSearch['mode'], filter = evidenceTypeFilter): void => {
+  const executeTextSearch = (searchQuery: string, mode: VisionSavedSearch['mode'], filter = evidenceTypeFilter, objectFilter: VisionObjectDetectionFilterState | undefined = objectDetectionFilter): void => {
     if (!searchQuery.trim() || isSearching) return
-    const context: VisionSearchContext = { kind: 'text', query: searchQuery, mode, evidenceTypes: [...filter] }
+    const context: VisionSearchContext = { kind: 'text', query: searchQuery, mode, evidenceTypes: [...filter], ...(objectFilter && hasVisionObjectDetectionFilter(objectFilter) ? { objectDetectionFilter: { ...objectFilter, categoryLabels: [...objectFilter.categoryLabels] } } : {}) }
     setIsSearching(true)
     setError(null)
     void requestVisionSearch(context, VISION_SEARCH_PAGE_SIZE).then((nextResults) => {
@@ -397,14 +397,14 @@ export function VisionPanel(): React.ReactElement {
     }).finally(() => setIsSearching(false))
   }
 
-  const runTextSearch = (): void => { setObjectDetectionFilter(createDefaultVisionObjectDetectionFilter()); executeTextSearch(query, 'hybrid') }
+  const runTextSearch = (): void => { setObjectDetectionFilter(createDefaultVisionObjectDetectionFilter()); executeTextSearch(query, 'hybrid', evidenceTypeFilter, undefined) }
 
   const runSavedSearch = (savedSearch: VisionSavedSearch): void => {
     const filter = savedSearch.evidenceTypes ?? []
     setQuery(savedSearch.query)
     setObjectDetectionFilter(savedSearch.objectDetectionFilter ? { ...savedSearch.objectDetectionFilter, categoryLabels: [...savedSearch.objectDetectionFilter.categoryLabels] } : createDefaultVisionObjectDetectionFilter())
     setSearchPreferences((current) => ({ ...current, evidenceTypes: filter }))
-    executeTextSearch(savedSearch.query, savedSearch.mode, filter)
+    executeTextSearch(savedSearch.query, savedSearch.mode, filter, savedSearch.objectDetectionFilter)
   }
 
   const saveCurrentSearch = (): void => {
@@ -453,7 +453,7 @@ export function VisionPanel(): React.ReactElement {
 
   const runImageSearch = (): void => {
     if (!sampleImagePath || isSearching) return
-    const context: VisionSearchContext = { kind: 'image', imagePath: sampleImagePath, evidenceTypes: [...evidenceTypeFilter] }
+    const context: VisionSearchContext = { kind: 'image', imagePath: sampleImagePath, evidenceTypes: [...evidenceTypeFilter], ...(hasVisionObjectDetectionFilter(objectDetectionFilter) ? { objectDetectionFilter: { ...objectDetectionFilter, categoryLabels: [...objectDetectionFilter.categoryLabels] } } : {}) }
     setIsSearching(true)
     setError(null)
     void requestVisionSearch(context, VISION_SEARCH_PAGE_SIZE).then((nextResults) => {
