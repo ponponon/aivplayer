@@ -1,8 +1,10 @@
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { connect } from '@lancedb/lancedb'
 import { afterEach, describe, expect, it } from 'vitest'
 import { VisionLibrary } from '../../src/core/ai/vision-library'
+import { VISION_MODEL_ID, VISION_MODEL_VARIANT } from '../../src/shared/vision-types'
 
 describe('vision full-library search', () => {
   const temporaryDirectories: string[] = []
@@ -43,5 +45,23 @@ describe('vision full-library search', () => {
     expect(first.map((item) => item.id)).toEqual(second.map((item) => item.id))
     expect(first[0]?.id).toBe('ocr-000')
     expect(first.at(-1)?.id).toBe('ocr-119')
+  })
+
+  it('scans and deterministically sorts every visual frame when the query is visual', async () => {
+    const userDataPath = await mkdtemp(join(tmpdir(), 'aivplayer-full-visual-search-'))
+    temporaryDirectories.push(userDataPath)
+    const database = await connect(join(userDataPath, 'library', 'vision', 'lancedb'))
+    await database.createTable('video_frames', [
+      { id: 'frame-c', video_path: '/media/c.mp4', file_name: 'c.mp4', timestamp_seconds: 1, thumbnail_path: '/thumb/c.jpg', embedding: [1, 0], model_id: VISION_MODEL_ID, model_variant: VISION_MODEL_VARIANT, file_size_bytes: 1, file_mtime_ms: 1 },
+      { id: 'frame-b', video_path: '/media/b.mp4', file_name: 'b.mp4', timestamp_seconds: 1, thumbnail_path: '/thumb/b.jpg', embedding: [0.2, 0.98], model_id: VISION_MODEL_ID, model_variant: VISION_MODEL_VARIANT, file_size_bytes: 1, file_mtime_ms: 1 },
+      { id: 'frame-a', video_path: '/media/a.mp4', file_name: 'a.mp4', timestamp_seconds: 1, thumbnail_path: '/thumb/a.jpg', embedding: [1, 0], model_id: VISION_MODEL_ID, model_variant: VISION_MODEL_VARIANT, file_size_bytes: 1, file_mtime_ms: 1 }
+    ])
+    const library = new VisionLibrary({ userDataPath, resourcePath: join(process.cwd(), 'resources'), env: process.env })
+    const runtime = (library as unknown as { model: { getTextEmbedding: () => Promise<number[]> } }).model
+    runtime.getTextEmbedding = async () => [1, 0]
+
+    const results = await library.searchTextAll('unused query', 'visual')
+
+    expect(results.map((item) => item.id)).toEqual(['frame-a', 'frame-c', 'frame-b'])
   })
 })
