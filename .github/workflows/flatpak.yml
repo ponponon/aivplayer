@@ -1,0 +1,27 @@
+name: Flatpak
+
+on:
+  pull_request:
+    paths:
+      - 'flatpak/**'
+      - 'scripts/check-flatpak.mjs'
+      - 'package.json'
+      - 'package-lock.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  static-check:
+    name: Flatpak static check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check manifest and metadata
+        run: npm run flatpak:check
