@@ -44,6 +44,8 @@ export function TaskCenter({ copy }: TaskCenterProps): React.ReactElement | null
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<TaskCenterFilter>('all')
   const [pageIndex, setPageIndex] = useState(0)
+  const [recreateNotice, setRecreateNotice] = useState<string | null>(null)
+  const [isRecreating, setIsRecreating] = useState(false)
   const recreatableTaskIds = useMemo(() => events
     .filter((event) => event.kind === 'vision-export' && (event.status === 'failed' || event.status === 'cancelled'))
     .map((event) => event.id.startsWith('vision-export:') ? event.id.slice('vision-export:'.length) : event.id), [events])
@@ -74,13 +76,25 @@ export function TaskCenter({ copy }: TaskCenterProps): React.ReactElement | null
     const taskId = event.id.startsWith('vision-export:') ? event.id.slice('vision-export:'.length) : event.id
     void window.aiv.recreateVisionSearchResultsFullExport({ taskId })
   }
-  const recreateAllTasks = (): void => {
+  const recreateAllTasks = async (): Promise<void> => {
     if (recreatableTaskIds.length < 2) return
-    void window.aiv.recreateVisionSearchResultsFullExports({ taskIds: recreatableTaskIds })
+    setRecreateNotice(null)
+    setIsRecreating(true)
+    try {
+      const result = await window.aiv.recreateVisionSearchResultsFullExports({ taskIds: recreatableTaskIds })
+      setRecreateNotice(result.skippedCount > 0
+        ? copy.recreateBatchResult(result.createdCount, result.skippedCount, result.conflictCount)
+        : copy.recreateBatchDone(result.createdCount))
+    } catch {
+      setRecreateNotice(copy.recreateBatchFailed)
+    } finally {
+      setIsRecreating(false)
+    }
   }
 
   return <aside className={`task-center${expanded ? ' is-expanded' : ' is-collapsed'}`} aria-label={copy.title}>
-    <header className="task-center-header"><div className="task-center-title"><ListTodo size={15} /><strong>{copy.title}</strong>{activeCount > 0 ? <span>{copy.activeCount(activeCount)}</span> : null}</div><div className="task-center-header-actions">{recreatableTaskIds.length >= 2 ? <button type="button" data-testid="task-center-recreate-all" aria-label={copy.recreateAllTasks} title={copy.recreateAllTasks} onClick={recreateAllTasks}><RefreshCw size={14} /></button> : null}<button type="button" aria-label={expanded ? copy.collapse : copy.expand} title={expanded ? copy.collapse : copy.expand} onClick={() => setExpanded((current) => !current)}>{expanded ? <ChevronDown size={14} /> : <ChevronUp size={14} />}</button>{activeCount < events.length ? <button type="button" aria-label={copy.clearCompleted} title={copy.clearCompleted} onClick={clearFinished}><X size={14} /></button> : null}</div></header>
+    <header className="task-center-header"><div className="task-center-title"><ListTodo size={15} /><strong>{copy.title}</strong>{activeCount > 0 ? <span>{copy.activeCount(activeCount)}</span> : null}</div><div className="task-center-header-actions">{recreatableTaskIds.length >= 2 ? <button type="button" data-testid="task-center-recreate-all" aria-label={copy.recreateAllTasks} title={copy.recreateAllTasks} disabled={isRecreating} onClick={() => void recreateAllTasks()}><RefreshCw size={14} /></button> : null}<button type="button" aria-label={expanded ? copy.collapse : copy.expand} title={expanded ? copy.collapse : copy.expand} onClick={() => setExpanded((current) => !current)}>{expanded ? <ChevronDown size={14} /> : <ChevronUp size={14} />}</button>{activeCount < events.length ? <button type="button" aria-label={copy.clearCompleted} title={copy.clearCompleted} onClick={clearFinished}><X size={14} /></button> : null}</div></header>
+    {recreateNotice ? <div className="task-center-notice" role="status" aria-live="polite" data-testid="task-center-recreate-notice">{recreateNotice}</div> : null}
     {expanded ? <>
       <div className="task-center-filters">
         <label className="task-center-search"><Search size={12} /><input type="search" value={query} aria-label={copy.searchPlaceholder} placeholder={copy.searchPlaceholder} onChange={(event) => updateQuery(event.target.value)} /></label>

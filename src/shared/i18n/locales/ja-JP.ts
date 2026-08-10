@@ -66,7 +66,7 @@
       closeWindow: 'ウィンドウを閉じる'
     },
     taskCenter: {
-      title: 'タスクセンター', searchPlaceholder: 'タスク名・メッセージ・ファイルを検索', filterLabel: 'ステータスで絞り込み', filterAll: 'すべてのステータス', resultCount: (visible: number, total: number) => `${visible} / ${total} 件を表示`, noResults: '一致するタスクはありません', previousPage: '前のページ', nextPage: '次のページ', page: (current: number, total: number) => `${current} / ${total} ページ`, collapse: 'タスクセンターを折りたたむ', expand: 'タスクセンターを展開', activeCount: (count: number) => `${count} 件実行中`, clearCompleted: '終了済みを消去', cancelTask: 'タスクをキャンセル', retryTask: 'タスクを再試行', recreateTask: '現在のインデックスで新しいタスクを作成', recreateAllTasks: '現在のインデックスで失敗タスクを一括再作成', statuses: { queued: '待機中', running: '実行中', paused: '一時停止', completed: '完了', failed: '失敗', cancelled: 'キャンセル済み' }
+      title: 'タスクセンター', searchPlaceholder: 'タスク名・メッセージ・ファイルを検索', filterLabel: 'ステータスで絞り込み', filterAll: 'すべてのステータス', resultCount: (visible: number, total: number) => `${visible} / ${total} 件を表示`, noResults: '一致するタスクはありません', previousPage: '前のページ', nextPage: '次のページ', page: (current: number, total: number) => `${current} / ${total} ページ`, collapse: 'タスクセンターを折りたたむ', expand: 'タスクセンターを展開', activeCount: (count: number) => `${count} 件実行中`, clearCompleted: '終了済みを消去', cancelTask: 'タスクをキャンセル', retryTask: 'タスクを再試行', recreateTask: '現在のインデックスで新しいタスクを作成', recreateAllTasks: '現在のインデックスで失敗タスクを一括再作成', recreateBatchDone: (count: number) => `${count} 件の再作成タスクを作成しました`, recreateBatchResult: (created: number, skipped: number, conflicts: number) => `${created} 件を作成、${skipped} 件をスキップ（出力パス競合 ${conflicts} 件）`, recreateBatchFailed: '一括再作成に失敗しました。後でもう一度お試しください', statuses: { queued: '待機中', running: '実行中', paused: '一時停止', completed: '完了', failed: '失敗', cancelled: 'キャンセル済み' }
     },
     aboutDialog: {
       kicker: 'アプリ情報',

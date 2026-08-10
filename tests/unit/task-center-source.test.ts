@@ -37,6 +37,8 @@ describe('task center wiring', () => {
     expect(taskCenter).toContain('task-center-recreate')
     expect(taskCenter).toContain('task-center-recreate-all')
     expect(taskCenter).toContain('recreateAllTasks')
+    expect(taskCenter).toContain('recreateBatchResult')
+    expect(taskCenter).toContain('task-center-recreate-notice')
     const hook = readFileSync(join(projectRoot, 'src/renderer/src/app/use-task-center.ts'), 'utf8')
     expect(hook).toContain('getTaskCenterEvents')
     expect(hook).toContain('clearTaskCenterFinished')
