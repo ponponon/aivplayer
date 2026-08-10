@@ -159,6 +159,43 @@ export type VisionSearchMode = 'visual' | 'hybrid'
 
 export type VisionEvidenceType = 'subtitle' | 'visual' | 'scene' | 'ocr' | 'entity' | 'speaker'
 
+export const VISION_DERIVED_EVIDENCE_TYPES = ['ocr', 'scene', 'entity', 'speaker'] as const
+
+export type VisionDerivedEvidenceType = typeof VISION_DERIVED_EVIDENCE_TYPES[number]
+
+export type VisionEvidenceCounts = Record<VisionDerivedEvidenceType, number>
+
+export type VisionEvidenceSource = {
+  videoPath: string
+  fileName: string
+  sourceFingerprint: string
+  evidenceCounts: VisionEvidenceCounts
+  generatedAt: number
+}
+
+export type VisionEvidenceSourceRequest = {
+  limit?: number
+  offset?: number
+  evidenceTypes?: VisionDerivedEvidenceType[]
+}
+
+export type VisionEvidenceClearTarget = {
+  videoPath: string
+  evidenceTypes: VisionDerivedEvidenceType[]
+}
+
+export type VisionEvidenceBatchClearRequest = {
+  targets: VisionEvidenceClearTarget[]
+}
+
+export type VisionEvidenceBatchClearResult = {
+  success: boolean
+  message: string
+  clearedSources: number
+  clearedEvidenceCount: number
+  clearedByType: VisionEvidenceCounts
+}
+
 export type VisionSearchSortMode = 'relevance' | 'source-time' | 'file-name'
 
 export type VisionSavedSearch = {

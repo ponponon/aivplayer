@@ -32,9 +32,13 @@ import {
   type VisionLibrarySource,
   type VisionSearchResult,
   type VisionEvidence,
-  type VisionEvidenceType
+  type VisionEvidenceType,
+  type VisionDerivedEvidenceType,
+  type VisionEvidenceSource,
+  type VisionEvidenceCounts
 } from '../../shared/vision-types'
 import type { SpeakerDiarizationEvidenceBatchClearResult, SpeakerDiarizationEvidenceSource } from '../../shared/speaker-diarization-types'
+import { addVisionEvidenceCounts, aggregateVisionEvidenceSources, createEmptyVisionEvidenceCounts, normalizeVisionDerivedEvidenceTypes, normalizeVisionEvidenceClearTargets, type VisionEvidenceSourceRow } from './vision-evidence-sources'
 
 const execFileAsync = promisify(execFile)
 const TABLE_NAME = 'video_frames'
@@ -666,6 +670,60 @@ export class VisionLibrary {
   /** Replaces only speaker evidence for one source while preserving other evidence types. */
   async replaceSpeakerEvidence(videoPath: string, evidence: readonly VisionEvidence[]): Promise<void> {
     await this.replaceEvidenceTypeRows(videoPath, 'speaker', evidence.map((item) => this.toEvidenceRow(item)))
+  }
+
+  async listEvidenceSources(limit?: number, offset?: number, evidenceTypes?: readonly VisionDerivedEvidenceType[]): Promise<VisionEvidenceSource[]> {
+    const table = await this.getEvidenceTable()
+    if (!table) return []
+    const rows = await table.query()
+      .select(['video_path', 'file_name', 'evidence_type', 'source_fingerprint', 'generated_at'])
+      .limit(METADATA_SCAN_LIMIT)
+      .toArray() as unknown as VisionEvidenceSourceRow[]
+    const sourceLimit = clampSourceLimit(limit)
+    const sourceOffset = clampSourceOffset(offset)
+    return aggregateVisionEvidenceSources(rows, evidenceTypes).slice(sourceOffset, sourceOffset + sourceLimit)
+  }
+
+  private async clearEvidenceTypes(videoPath: string, evidenceTypes: readonly VisionDerivedEvidenceType[]): Promise<VisionEvidenceCounts> {
+    const counts = createEmptyVisionEvidenceCounts()
+    const selected = new Set(normalizeVisionDerivedEvidenceTypes(evidenceTypes))
+    if (!videoPath || selected.size === 0) return counts
+    const table = await this.getEvidenceTable()
+    if (!table) return counts
+    const rows = await table.query()
+      .where(`video_path = '${escapeSqlString(videoPath)}'`)
+      .limit(METADATA_SCAN_LIMIT)
+      .toArray() as unknown as VisionEvidenceRow[]
+    const preservedRows = rows.filter((row) => {
+      const evidenceType = typeof row.evidence_type === 'string' ? row.evidence_type as VisionDerivedEvidenceType : null
+      if (!evidenceType || !selected.has(evidenceType)) return true
+      counts[evidenceType] += 1
+      return false
+    })
+    const removedCount = Object.values(counts).reduce((total, count) => total + count, 0)
+    if (removedCount === 0) return counts
+    await table.delete(`video_path = '${escapeSqlString(videoPath)}'`)
+    if (preservedRows.length > 0) await table.add(preservedRows)
+    return counts
+  }
+
+  async clearEvidenceBatch(value: unknown): Promise<{ clearedSources: number; clearedEvidenceCount: number; clearedByType: VisionEvidenceCounts }> {
+    const targets = normalizeVisionEvidenceClearTargets(value)
+    const clearedByType = createEmptyVisionEvidenceCounts()
+    if (targets.length === 0) return { clearedSources: 0, clearedEvidenceCount: 0, clearedByType }
+    let clearedSources = 0
+    for (const target of targets) {
+      const counts = await this.clearEvidenceTypes(target.videoPath, target.evidenceTypes)
+      const clearedCount = Object.values(counts).reduce((total, count) => total + count, 0)
+      if (clearedCount === 0) continue
+      clearedSources += 1
+      addVisionEvidenceCounts(clearedByType, counts)
+    }
+    return {
+      clearedSources,
+      clearedEvidenceCount: Object.values(clearedByType).reduce((total, count) => total + count, 0),
+      clearedByType
+    }
   }
 
   /** Removes only speaker evidence for one source while preserving all other evidence types. */
