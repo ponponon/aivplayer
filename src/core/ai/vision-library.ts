@@ -42,6 +42,7 @@ import {
   type VisionEvidenceCounts,
   type VisionEvidenceAuditStatus
 } from '../../shared/vision-types'
+import type { VisionObjectDetectionBox } from '../../shared/vision-object-detection-types'
 import type { SpeakerDiarizationEvidenceBatchClearResult, SpeakerDiarizationEvidenceSource } from '../../shared/speaker-diarization-types'
 import { addVisionEvidenceCounts, aggregateVisionEvidenceSources, auditVisionEvidenceSource, createEmptyVisionEvidenceCounts, normalizeVisionDerivedEvidenceTypes, normalizeVisionEvidenceAuditStatuses, normalizeVisionEvidenceClearTargets, type VisionEvidenceSourceRow } from './vision-evidence-sources'
 
@@ -63,6 +64,10 @@ const VISION_EVIDENCE_SCHEMA = new Schema([
   new Field('frame_id', new Utf8(), false),
   new Field('thumbnail_path', new Utf8(), false),
   new Field('confidence', new Float64(), true),
+  new Field('box_xmin', new Float64(), true),
+  new Field('box_ymin', new Float64(), true),
+  new Field('box_xmax', new Float64(), true),
+  new Field('box_ymax', new Float64(), true),
   new Field('source_fingerprint', new Utf8(), false),
   new Field('model_id', new Utf8(), false),
   new Field('model_variant', new Utf8(), false),
@@ -145,6 +150,10 @@ type VisionEvidenceRow = {
   frame_id: string
   thumbnail_path: string
   confidence: number | null
+  box_xmin: number | null
+  box_ymin: number | null
+  box_xmax: number | null
+  box_ymax: number | null
   source_fingerprint: string
   model_id: string
   model_variant: string
@@ -217,6 +226,22 @@ function clampSourceOffset(value: number | undefined): number {
 
 function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError'
+}
+
+function nullableFiniteNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
+function boxFromEvidenceRow(row: { box_xmin?: unknown; box_ymin?: unknown; box_xmax?: unknown; box_ymax?: unknown }): VisionObjectDetectionBox | undefined {
+  const box = {
+    xmin: nullableFiniteNumber(row.box_xmin),
+    ymin: nullableFiniteNumber(row.box_ymin),
+    xmax: nullableFiniteNumber(row.box_xmax),
+    ymax: nullableFiniteNumber(row.box_ymax)
+  }
+  if (box.xmin === null || box.ymin === null || box.xmax === null || box.ymax === null) return undefined
+  if (box.xmin < 0 || box.ymin < 0 || box.xmax <= box.xmin || box.ymax <= box.ymin) return undefined
+  return { xmin: box.xmin, ymin: box.ymin, xmax: box.xmax, ymax: box.ymax }
 }
 
 function throwIfAborted(signal: AbortSignal): void {
@@ -314,6 +339,7 @@ export class VisionLibrary {
   private dbPromise: ReturnType<typeof connect> | null = null
   private searchDocumentMaintenancePromise: Promise<void> | null = null
   private vectorIndexMaintenancePromise: Promise<void> | null = null
+  private evidenceSchemaMigrationPromise: Promise<void> | null = null
   private searchDocumentsReady = false
   private entityLabelEmbeddingsPromise: Promise<ReadonlyMap<string, number[]>> | null = null
   private entityLabelEmbeddingsKey = ''
@@ -361,7 +387,48 @@ export class VisionLibrary {
     return this.getTableByName(SEARCH_DOCUMENT_TABLE_NAME)
   }
 
+  private async migrateEvidenceTableIfNeeded(): Promise<void> {
+    const db = await this.getDatabase()
+    const tableNames = await db.tableNames()
+    if (!tableNames.includes(EVIDENCE_TABLE_NAME)) return
+    const table = await db.openTable(EVIDENCE_TABLE_NAME)
+    const fields = new Set((await table.schema()).fields.map((field) => field.name))
+    const requiredFields = VISION_EVIDENCE_SCHEMA.fields.map((field) => field.name)
+    if (requiredFields.every((field) => fields.has(field))) return
+
+    const oldRows = await table.query().limit(METADATA_SCAN_LIMIT).toArray() as unknown as Array<Record<string, unknown>>
+    const rows: VisionEvidenceRow[] = oldRows.map((row) => ({
+      id: String(row.id ?? ''),
+      source_id: String(row.source_id ?? ''),
+      video_path: String(row.video_path ?? ''),
+      file_name: String(row.file_name ?? ''),
+      evidence_type: String(row.evidence_type ?? 'visual') as VisionEvidenceType,
+      start_seconds: Number(row.start_seconds ?? 0),
+      end_seconds: Number(row.end_seconds ?? 0),
+      text: String(row.text ?? ''),
+      frame_id: String(row.frame_id ?? ''),
+      thumbnail_path: String(row.thumbnail_path ?? ''),
+      confidence: nullableFiniteNumber(row.confidence),
+      box_xmin: nullableFiniteNumber(row.box_xmin),
+      box_ymin: nullableFiniteNumber(row.box_ymin),
+      box_xmax: nullableFiniteNumber(row.box_xmax),
+      box_ymax: nullableFiniteNumber(row.box_ymax),
+      source_fingerprint: String(row.source_fingerprint ?? ''),
+      model_id: String(row.model_id ?? 'unknown'),
+      model_variant: String(row.model_variant ?? 'unknown'),
+      generated_at: Number.isFinite(Number(row.generated_at)) ? Number(row.generated_at) : Date.now()
+    }))
+    await db.dropTable(EVIDENCE_TABLE_NAME)
+    await db.createTable(EVIDENCE_TABLE_NAME, rows, { schema: VISION_EVIDENCE_SCHEMA })
+  }
+
+  private async ensureEvidenceTableSchema(): Promise<void> {
+    this.evidenceSchemaMigrationPromise ??= this.migrateEvidenceTableIfNeeded().finally(() => { this.evidenceSchemaMigrationPromise = null })
+    return this.evidenceSchemaMigrationPromise
+  }
+
   private async getEvidenceTable(): Promise<Table | null> {
+    await this.ensureEvidenceTableSchema()
     return this.getTableByName(EVIDENCE_TABLE_NAME)
   }
 
@@ -652,6 +719,10 @@ export class VisionLibrary {
       frame_id: evidence.frameId?.trim() ?? '',
       thumbnail_path: evidence.thumbnailPath?.trim() ?? '',
       confidence: evidence.confidence !== undefined && Number.isFinite(evidence.confidence) ? evidence.confidence : null,
+      box_xmin: nullableFiniteNumber(evidence.box?.xmin),
+      box_ymin: nullableFiniteNumber(evidence.box?.ymin),
+      box_xmax: nullableFiniteNumber(evidence.box?.xmax),
+      box_ymax: nullableFiniteNumber(evidence.box?.ymax),
       source_fingerprint: evidence.sourceFingerprint?.trim() ?? '',
       model_id: evidence.modelId?.trim() || 'unknown',
       model_variant: evidence.modelVariant?.trim() || 'unknown',
@@ -675,6 +746,11 @@ export class VisionLibrary {
   /** Replaces only speaker evidence for one source while preserving other evidence types. */
   async replaceSpeakerEvidence(videoPath: string, evidence: readonly VisionEvidence[]): Promise<void> {
     await this.replaceEvidenceTypeRows(videoPath, 'speaker', evidence.map((item) => this.toEvidenceRow(item)))
+  }
+
+  /** Replaces only object detection evidence for one source while preserving other evidence types. */
+  async replaceObjectEvidenceRows(videoPath: string, evidence: readonly VisionEvidence[]): Promise<void> {
+    await this.replaceEvidenceTypeRows(videoPath, 'object', evidence.map((item) => this.toEvidenceRow(item)))
   }
 
   async listEvidenceSources(limit?: number, offset?: number, evidenceTypes?: readonly VisionDerivedEvidenceType[]): Promise<VisionEvidenceSource[]> {
@@ -1051,6 +1127,10 @@ export class VisionLibrary {
       frame_id: caption.frame_id,
       thumbnail_path: caption.thumbnail_path,
       confidence: null,
+      box_xmin: null,
+      box_ymin: null,
+      box_xmax: null,
+      box_ymax: null,
       source_fingerprint: sourceFingerprint,
       model_id: 'subtitle-parser',
       model_variant: 'v1',
@@ -1071,6 +1151,10 @@ export class VisionLibrary {
         frame_id: frame.id,
         thumbnail_path: frame.thumbnail_path,
         confidence: null,
+        box_xmin: null,
+        box_ymin: null,
+        box_xmax: null,
+        box_ymax: null,
         source_fingerprint: sourceFingerprint,
         model_id: VISION_MODEL_ID,
         model_variant: VISION_MODEL_VARIANT,
@@ -1426,6 +1510,7 @@ export class VisionLibrary {
         endSeconds: evidence?.end_seconds,
         evidenceType: evidence?.evidence_type ?? 'visual',
         confidence: evidence?.confidence ?? undefined,
+        box: evidence ? boxFromEvidenceRow(evidence) : undefined,
         sourceFingerprint: evidence?.source_fingerprint,
         modelId: String(item.model_id),
         modelVariant: String(item.model_variant)
@@ -1442,7 +1527,7 @@ export class VisionLibrary {
       if (!table) return result
       const wanted = new Set(frameIds)
       const rows = await table.query()
-        .select(['id', 'source_id', 'video_path', 'file_name', 'evidence_type', 'start_seconds', 'end_seconds', 'text', 'frame_id', 'thumbnail_path', 'confidence', 'source_fingerprint', 'model_id', 'model_variant', 'generated_at'])
+        .select(['id', 'source_id', 'video_path', 'file_name', 'evidence_type', 'start_seconds', 'end_seconds', 'text', 'frame_id', 'thumbnail_path', 'confidence', 'box_xmin', 'box_ymin', 'box_xmax', 'box_ymax', 'source_fingerprint', 'model_id', 'model_variant', 'generated_at'])
         .limit(METADATA_SCAN_LIMIT)
         .toArray() as unknown as VisionEvidenceRow[]
       for (const row of rows) {
@@ -1536,7 +1621,7 @@ export class VisionLibrary {
     if (!table) return null
     const candidates = new Map<string, LexicalSearchCandidate>()
     const rows = await table.query()
-      .select(['id', 'source_id', 'video_path', 'file_name', 'evidence_type', 'start_seconds', 'end_seconds', 'text', 'frame_id', 'thumbnail_path', 'confidence', 'source_fingerprint', 'model_id', 'model_variant'])
+      .select(['id', 'source_id', 'video_path', 'file_name', 'evidence_type', 'start_seconds', 'end_seconds', 'text', 'frame_id', 'thumbnail_path', 'confidence', 'box_xmin', 'box_ymin', 'box_xmax', 'box_ymax', 'source_fingerprint', 'model_id', 'model_variant'])
       .limit(METADATA_SCAN_LIMIT)
       .toArray() as unknown as Array<Record<string, unknown>>
     for (const row of rows) {
@@ -1562,6 +1647,7 @@ export class VisionLibrary {
         endSeconds: Number(row.end_seconds),
         evidenceType,
         confidence: Number.isFinite(Number(row.confidence)) && Number(row.confidence) >= 0 ? Number(row.confidence) : undefined,
+        box: boxFromEvidenceRow(row),
         entityLabelId: evidenceType === 'entity' ? getVisionEntityLabelIdForDisplayName(String(row.text ?? '')) : undefined,
         sourceFingerprint: String(row.source_fingerprint ?? ''),
         modelId: String(row.model_id ?? VISION_MODEL_ID),

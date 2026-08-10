@@ -29,6 +29,7 @@ describe('vision evidence source persistence', () => {
       sourceFingerprint: 'one-v1',
       modelId: 'test-model',
       modelVariant: 'test',
+      box: evidenceType === 'object' ? { xmin: 10, ymin: 20, xmax: 80, ymax: 90 } : undefined,
       generatedAt: Number(id.slice(-1))
     })
 
@@ -38,6 +39,7 @@ describe('vision evidence source persistence', () => {
       createEvidence('scene-3', 'scene'),
       createEvidence('entity-4', 'entity'),
       createEvidence('entity-5', 'entity'),
+      createEvidence('object-7', 'object'),
       createEvidence('speaker-6', 'speaker')
     ]) await library.upsertEvidence(evidence)
 
@@ -45,15 +47,15 @@ describe('vision evidence source persistence', () => {
       videoPath: '/media/one.mp4',
       fileName: 'one.mp4',
       sourceFingerprint: 'one-v1',
-      evidenceCounts: { ocr: 1, scene: 1, entity: 2, object: 0, speaker: 1 },
-      generatedAt: 6
+      evidenceCounts: { ocr: 1, scene: 1, entity: 2, object: 1, speaker: 1 },
+      generatedAt: 7
     }])
 
-    const cleared = await library.clearEvidenceBatch([{ videoPath: '/media/one.mp4', evidenceTypes: ['entity', 'speaker'] }])
+    const cleared = await library.clearEvidenceBatch([{ videoPath: '/media/one.mp4', evidenceTypes: ['entity', 'object', 'speaker'] }])
     expect(cleared).toEqual({
       clearedSources: 1,
-      clearedEvidenceCount: 3,
-      clearedByType: { ocr: 0, scene: 0, entity: 2, object: 0, speaker: 1 }
+      clearedEvidenceCount: 4,
+      clearedByType: { ocr: 0, scene: 0, entity: 2, object: 1, speaker: 1 }
     })
 
     const database = await connect(join(userDataPath, 'library', 'vision', 'lancedb'))
@@ -66,6 +68,57 @@ describe('vision evidence source persistence', () => {
       evidenceCounts: { ocr: 1, scene: 1, entity: 0, object: 0, speaker: 0 },
       generatedAt: 3
     }])
+  })
+
+  it('migrates an old evidence table before storing detection boxes', async () => {
+    const userDataPath = await mkdtemp(join(tmpdir(), 'aivplayer-evidence-migration-'))
+    temporaryDirectories.push(userDataPath)
+    const databasePath = join(userDataPath, 'library', 'vision', 'lancedb')
+    const database = await connect(databasePath)
+    await database.createTable('video_evidence', [{
+      id: 'visual-old',
+      source_id: 'source-old',
+      video_path: '/media/old.mp4',
+      file_name: 'old.mp4',
+      evidence_type: 'visual',
+      start_seconds: 0,
+      end_seconds: 1,
+      text: '',
+      frame_id: 'frame-old',
+      thumbnail_path: '/thumb/old.jpg',
+      confidence: 0,
+      source_fingerprint: 'old-v1',
+      model_id: 'test-model',
+      model_variant: 'test',
+      generated_at: 1
+    }])
+
+    const library = new VisionLibrary({ userDataPath, resourcePath: join(process.cwd(), 'resources'), env: process.env })
+    await library.upsertEvidence({
+      id: 'object-new',
+      sourceId: 'source-old',
+      videoPath: '/media/old.mp4',
+      fileName: 'old.mp4',
+      evidenceType: 'object',
+      startSeconds: 0,
+      endSeconds: 1,
+      text: 'person',
+      frameId: 'frame-old',
+      thumbnailPath: '/thumb/old.jpg',
+      confidence: 0.9,
+      box: { xmin: 10, ymin: 20, xmax: 80, ymax: 90 },
+      sourceFingerprint: 'old-v1',
+      modelId: 'detector',
+      modelVariant: 'v1',
+      generatedAt: 2
+    })
+
+    const migratedTable = await (await connect(databasePath)).openTable('video_evidence')
+    const rows = await migratedTable.query().select(['id', 'evidence_type', 'box_xmin', 'box_ymin', 'box_xmax', 'box_ymax']).toArray() as unknown as Array<Record<string, unknown>>
+    expect(rows).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'visual-old', evidence_type: 'visual', box_xmin: null, box_ymin: null, box_xmax: null, box_ymax: null }),
+      expect.objectContaining({ id: 'object-new', evidence_type: 'object', box_xmin: 10, box_ymin: 20, box_xmax: 80, box_ymax: 90 })
+    ]))
   })
 
   it('audits media changes and missing files without deleting evidence', async () => {
