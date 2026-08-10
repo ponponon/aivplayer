@@ -598,13 +598,13 @@
 - added cue 支持单条“加入工程”：source cue 会创建或合并对应脚本段和时间轴卡片，translation cue 只补充对应脚本译文；其他新增、修改和删除差异保持待处理，操作同样进入撤销 / 重做历史。
 - removed cue 支持单条“保留当前字幕”或“从工程移除”：保留会记录当前字幕对该新 revision 的处理结果，原文和译文 removed row 可以分别裁决；source cue 从工程移除时默认同步移除对应译文并将脚本段标记为 `deleted`，但如果译文 row 已单独保留，则保留译文 caption / `translationText`，只移除原文；translation cue 从工程移除只清除对应译文。所有已处理 row 都进入 revision resolution，重算 diff 时不会把已确认的删除误报为新增，决策进入撤销 / 重做历史，并兼容真实 loader 的 source-prefixed ID。
 - 孤立译文会由 `scriptSegment.deleted` 与 translation caption 的 loader ID 关系统一识别；时间轴显示四语言提示和虚线状态，仍允许调整时间，但当前 source-led 字幕导出不会包含孤立译文。
-- SRT、烧录 ASS 和时间线导出可用性判断共用 `getEditingCaptionsForSubtitleExport`，避免孤立译文只在某一种导出路径意外出现；编辑器同时支持视频加同名 SRT 的字幕导出，以及只生成 SRT 的原文 / 译文字幕文件导出。
+- SRT、VTT、烧录 ASS 和时间线导出可用性判断共用 `getEditingCaptionsForSubtitleExport`，避免孤立译文只在某一种导出路径意外出现；编辑器同时支持视频加同名 SRT 的字幕导出，以及只生成 SRT / VTT / ASS 的原文 / 译文字幕文件导出。
 - 新增 `npm run smoke:editing-orphan-translation`，真实 Electron reload 后验证 source caption 不补回、孤立 translation 保留、脚本继续 `deleted`，并检查状态提示、data attribute 与 `consoleErrors:[]`。
 - 恢复已删除脚本段时，原文字幕按恢复后的源时间重新物化；如果工程中已有孤立译文，则按兼容 loader ID 重新关联并保留用户已编辑的译文文本、时间和实体 ID，不再用脚本快照覆盖它。
 - 脚本面板会对仍有孤立译文的已删除行显示“恢复原文并重新关联译文”提示；恢复按钮提供稳定测试入口，恢复后孤立状态提示和虚线样式会自动消失。
 - 恢复、撤销、重做共用同一份编辑历史快照：撤销会回到孤立译文状态，重做会恢复原文并重新关联译文，用户调整后的译文时间保持不变。
 - 恢复脚本段会按源范围在编辑时间轴上的每个可见区间分别物化原文 / 新建译文字幕；同一素材被重复插入且区间不连续时，不会生成跨越中间画面的字幕块，删除动作也会识别这些片段。
-- 编辑器导出新增“仅译文字幕”模式：仍导出编辑后视频和同名 SRT，但 SRT 只包含活动译文轨；同时新增独立“原文字幕文件”和“译文字幕文件”模式，只按当前工程字幕时间线生成 SRT，不生成视频；孤立译文不会进入这些导出模式，基础剪辑窗口继续保持原有三种导出方式。
+- 编辑器导出新增“仅译文字幕”模式：仍导出编辑后视频和同名 SRT，但 SRT 只包含活动译文轨；同时新增独立“原文字幕文件”和“译文字幕文件”模式，可选择 SRT、VTT 或带当前样式 / karaoke 时间的 ASS，只按当前工程字幕时间线生成文件，不生成视频；孤立译文不会进入这些导出模式，基础剪辑窗口继续保持原有三种导出方式。
 - 多段字幕片段持久化 `editedRangeGroupId` / `editedRangeIndex`，重排时按自身片段索引映射到新编辑时间，不再让每个片段重复展开到全部可见区间；旧版派生 ID 也会按脚本段和数字后缀兼容恢复。
 - source / translation sidecar 重载按脚本片段族群比较，合法的 `segment` / `segment-1` 不会被误报为 removed；接受外部更新时会保留每个片段的成片位置、实体 ID 和片段关系，只同步文本、源锚点与词级数据。
 - sidecar 自动回灌按 script segment 关系去重，兼容真实 loader 的 source-prefixed / translation-prefixed ID，避免恢复后同时出现生成字幕和 loader 字幕；新增 `npm run smoke:editing-fragment-reload` 覆盖恢复、重排、重开、双轨刷新和控制台健康。
