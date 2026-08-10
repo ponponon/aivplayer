@@ -1423,3 +1423,9 @@
 - 现象：远程 Linux builder 构建 x265 时，补丁的修改内容能够部分应用，但由于补丁包含异常的 Git `index` 头并返回非零状态，`flatpak-builder` 将模块判定为失败。
 - 经验：给 Flatpak manifest 使用的补丁应是可由标准 `patch` 直接消费的 unified diff；不能把本地生成、缺少有效新文件对象哈希的 Git diff 原样当作构建补丁。
 - 处理：移除补丁中的 Git 元数据，只保留 `---` / `+++` 和完整上下文；提交前检查补丁格式，之后用远程 Linux CI 验证真实应用结果。
+
+## 2026-08-10：Flatpak CMake 安装后不能重复复制旧路径
+
+- 现象：whisper.cpp 的 CMake 安装阶段已经把 `whisper-cli` 放到 `/app/bin/whisper-cli`，manifest 仍在 `post-install` 中复制不存在的 `build/bin/whisper-cli`，导致远程 builder 在源码编译成功后失败。
+- 经验：使用 `cmake-ninja` 的模块应以实际 `cmake --install` 结果为准；不能把旧版构建目录中的产物路径当成稳定接口重复安装。
+- 处理：删除重复的 `post-install` 复制命令，保留 wrapper 对 `/app/bin/whisper-cli` 的显式引用，并在静态检查中禁止重新引入旧路径。

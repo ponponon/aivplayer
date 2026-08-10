@@ -106,8 +106,6 @@ modules:
       - -DWHISPER_BUILD_SERVER=OFF
       - -DWHISPER_CURL=OFF
       - -DWHISPER_SDL2=OFF
-    post-install:
-      - install -Dm755 build/bin/whisper-cli /app/bin/whisper-cli
     sources:
       - type: git
         url: https://github.com/ggml-org/whisper.cpp.git
