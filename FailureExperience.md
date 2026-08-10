@@ -32,6 +32,7 @@
 - Flathub 的源码构建应交给 Flathub/Linux 构建环境；本地 macOS 编译 LanceDB 只能是可选的排障手段，不能在未确认 Flatpak 功能边界前作为实施路线，更不能把本地构建产物带入 manifest。
 - GitHub runner 没有用户图形会话时，Flatpak workflow 不能依赖 `flatpak-builder --install-deps-from=flathub` 通过用户 D-Bus 安装 SDK；应先显式安装 runtime、BaseApp 和 SDK extensions，再让 builder 直接使用已安装依赖。
 - Flatpak 依赖若用 `flatpak install --user` 安装，后续 `flatpak run`、builder 和 lint 也必须显式带 `--user`；否则会从系统 Flatpak 目录查找 SDK，产生“已安装但找不到 runtime”的假失败。
+- GitHub runner 上使用 `org.flatpak.Builder` 容器调用 builder 时，用户 SDK 目录可能对容器内的 Flatpak 查找不可见；优先安装 Ubuntu 的 `flatpak-builder` CLI，在宿主机直接使用已安装的 SDK，减少嵌套 Flatpak 的目录隔离问题。
 
 ## Electron 打包不能依赖自动安装的 peer dependency
 

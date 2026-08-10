@@ -60,12 +60,12 @@ jobs:
       - name: Install Flatpak builder
         run: |
           sudo apt-get update
-          sudo apt-get install -y flatpak
+          sudo apt-get install -y flatpak flatpak-builder
           flatpak remote-add --if-not-exists --user flathub https://dl.flathub.org/repo/flathub.flatpakrepo
           flatpak install --user --assumeyes flathub org.flatpak.Builder//stable org.freedesktop.Sdk//25.08 org.freedesktop.Sdk.Extension.node22//25.08 org.freedesktop.Sdk.Extension.rust-stable//25.08 org.electronjs.Electron2.BaseApp//25.08
       - name: Build Flatpak
         run: |
-          flatpak run --user --command=flatpak-builder org.flatpak.Builder \
+          flatpak-builder \
             --user --force-clean --disable-rofiles-fuse \
             --repo=repo flatpak-build flatpak/ci-manifest.yml
       - name: Lint manifest and repository
@@ -97,12 +97,12 @@ jobs:
       - name: Install Flatpak builder
         run: |
           sudo apt-get update
-          sudo apt-get install -y flatpak
+          sudo apt-get install -y flatpak flatpak-builder
           flatpak remote-add --if-not-exists --user flathub https://dl.flathub.org/repo/flathub.flatpakrepo
           flatpak install --user --assumeyes flathub org.flatpak.Builder//stable org.freedesktop.Sdk//25.08 org.freedesktop.Sdk.Extension.node22//25.08 org.freedesktop.Sdk.Extension.rust-stable//25.08 org.electronjs.Electron2.BaseApp//25.08
       - name: Build Flatpak
         run: |
-          flatpak run --user --command=flatpak-builder org.flatpak.Builder \
+          flatpak-builder \
             --user --force-clean --disable-rofiles-fuse \
             --repo=repo flatpak-build flatpak/ci-manifest.yml
       - name: Lint manifest and repository
