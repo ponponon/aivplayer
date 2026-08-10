@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { applySpeakerDiarizationCatalogToResults, createDefaultSpeakerDiarizationCatalog, getDefaultSpeakerName, getSpeakerDiarizationCatalogSearchQueries, updateSpeakerDiarizationCatalog } from '../../src/core/ai/speaker-diarization-catalog'
+import { applySpeakerDiarizationCatalogToResults, createDefaultSpeakerDiarizationCatalog, filterSpeakerDiarizationCatalogSearchResults, getDefaultSpeakerName, getSpeakerDiarizationCatalogSearchQueries, updateSpeakerDiarizationCatalog } from '../../src/core/ai/speaker-diarization-catalog'
 import { getSpeakerDiarizationCatalogPath, SpeakerDiarizationCatalogStore } from '../../src/core/ai/speaker-diarization-catalog-store'
 import type { VisionSearchResult } from '../../src/shared/vision-types'
 
@@ -51,7 +51,33 @@ describe('speaker diarization catalog', () => {
     expect(getDefaultSpeakerName(0)).toBe('说话人 1 / Speaker 1')
     expect(applySpeakerDiarizationCatalogToResults([speakerResult()], catalog)[0]?.matchedText).toBe('张老师')
     expect(applySpeakerDiarizationCatalogToResults([speakerResult({ sourceFingerprint: 'missing' })], catalog)[0]?.matchedText).toBe('说话人 1 / Speaker 1')
-    expect(getSpeakerDiarizationCatalogSearchQueries('主讲人', catalog)).toEqual(['说话人 1 / Speaker 1'])
+    expect(getSpeakerDiarizationCatalogSearchQueries('主讲人', catalog)).toEqual([{
+      query: '说话人 1 / Speaker 1',
+      sourceFingerprints: ['demo:100:200'],
+      speakerIds: [0]
+    }])
+  })
+
+  it('keeps same labels isolated when speaker ids differ across sources', () => {
+    let catalog = createDefaultSpeakerDiarizationCatalog(1)
+    catalog = updateSpeakerDiarizationCatalog(catalog, { sourceFingerprint: 'source-a', videoPath: '/videos/a.mp4', fileName: 'a.mp4', speakerId: 0, name: '主持人' }, 2)
+    catalog = updateSpeakerDiarizationCatalog(catalog, { sourceFingerprint: 'source-b', videoPath: '/videos/b.mp4', fileName: 'b.mp4', speakerId: 1, name: '主持人' }, 3)
+
+    const queries = getSpeakerDiarizationCatalogSearchQueries('主持人', catalog)
+    expect(queries).toEqual([
+      { query: '说话人 1 / Speaker 1', sourceFingerprints: ['source-a'], speakerIds: [0] },
+      { query: '说话人 2 / Speaker 2', sourceFingerprints: ['source-b'], speakerIds: [1] }
+    ])
+    expect(filterSpeakerDiarizationCatalogSearchResults([
+      speakerResult({ sourceFingerprint: 'source-a', matchedText: '说话人 1 / Speaker 1' }),
+      speakerResult({ id: 'speaker-evidence-2', sourceFingerprint: 'source-a', matchedText: '说话人 2 / Speaker 2' }),
+      speakerResult({ id: 'speaker-evidence-3', sourceFingerprint: 'source-b', matchedText: '说话人 1 / Speaker 1' }),
+      speakerResult({ id: 'speaker-evidence-4', sourceFingerprint: 'source-b', matchedText: '说话人 2 / Speaker 2' })
+    ], queries[0]!)).toHaveLength(1)
+    expect(filterSpeakerDiarizationCatalogSearchResults([
+      speakerResult({ sourceFingerprint: 'source-a', matchedText: '说话人 1 / Speaker 1' }),
+      speakerResult({ id: 'speaker-evidence-2', sourceFingerprint: 'source-b', matchedText: '说话人 2 / Speaker 2' })
+    ], queries[1]!)).toHaveLength(1)
   })
 
   it('rejects duplicate labels within one source without changing the catalog', () => {

@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync } from 'node:fs'
 import { mkdir, rename, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import type { VisionSearchResult } from '../../shared/vision-types'
-import { applySpeakerDiarizationCatalogToResults, getSpeakerDiarizationCatalogSearchQueries, normalizeSpeakerDiarizationCatalog, updateSpeakerDiarizationCatalog } from './speaker-diarization-catalog'
+import { applySpeakerDiarizationCatalogToResults, getSpeakerDiarizationCatalogSearchQueries, normalizeSpeakerDiarizationCatalog, updateSpeakerDiarizationCatalog, type SpeakerDiarizationCatalogSearchQuery } from './speaker-diarization-catalog'
 import type { SpeakerDiarizationCatalog, SpeakerDiarizationCatalogPatch } from '../../shared/speaker-diarization-catalog-types'
 
 export function getSpeakerDiarizationCatalogPath(userDataPath: string): string {
@@ -42,7 +42,7 @@ export class SpeakerDiarizationCatalogStore {
     return applySpeakerDiarizationCatalogToResults(results, this.catalog)
   }
 
-  getSearchQueries(query: string): string[] {
+  getSearchQueries(query: string): SpeakerDiarizationCatalogSearchQuery[] {
     return getSpeakerDiarizationCatalogSearchQueries(query, this.catalog)
   }
 

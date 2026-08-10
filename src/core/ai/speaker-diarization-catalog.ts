@@ -13,6 +13,12 @@ const MAX_NAME_LENGTH = 80
 const MAX_ALIAS_LENGTH = 60
 const MAX_ALIASES = 12
 
+export type SpeakerDiarizationCatalogSearchQuery = {
+  query: string
+  sourceFingerprints: string[]
+  speakerIds: number[]
+}
+
 function normalized(value: string): string {
   return value.trim().toLocaleLowerCase().replace(/[\p{P}\p{S}]+/gu, ' ').replace(/\s+/g, ' ')
 }
@@ -150,19 +156,42 @@ function speakerIdFromEvidenceText(text: string): number | null {
   return Number.isInteger(displayId) && displayId > 0 ? displayId - 1 : null
 }
 
-export function getSpeakerDiarizationCatalogSearchQueries(query: string, catalog: SpeakerDiarizationCatalog): string[] {
+export function getSpeakerDiarizationCatalogSearchQueries(query: string, catalog: SpeakerDiarizationCatalog): SpeakerDiarizationCatalogSearchQuery[] {
   const key = normalized(query)
   if (!key) return []
-  const queries: string[] = []
+  const queries = new Map<string, SpeakerDiarizationCatalogSearchQuery>()
   for (const source of catalog.sources) {
     for (const entry of source.entries) {
       if ([entry.name, ...entry.aliases].some((candidate) => normalized(candidate) === key)) {
         const canonical = getDefaultSpeakerName(entry.speakerId)
-        if (!queries.includes(canonical)) queries.push(canonical)
+        const current = queries.get(canonical)
+        if (current) {
+          if (!current.sourceFingerprints.includes(source.sourceFingerprint)) current.sourceFingerprints.push(source.sourceFingerprint)
+          if (!current.speakerIds.includes(entry.speakerId)) current.speakerIds.push(entry.speakerId)
+        } else {
+          queries.set(canonical, {
+            query: canonical,
+            sourceFingerprints: [source.sourceFingerprint],
+            speakerIds: [entry.speakerId]
+          })
+        }
       }
     }
   }
-  return queries
+  return [...queries.values()]
+}
+
+export function filterSpeakerDiarizationCatalogSearchResults(
+  results: readonly VisionSearchResult[],
+  searchQuery: SpeakerDiarizationCatalogSearchQuery
+): VisionSearchResult[] {
+  const sourceFingerprints = new Set(searchQuery.sourceFingerprints)
+  const speakerIds = new Set(searchQuery.speakerIds)
+  return results.filter((result) => {
+    if (result.evidenceType !== 'speaker' || !result.sourceFingerprint || !sourceFingerprints.has(result.sourceFingerprint)) return false
+    const speakerId = result.matchedText ? speakerIdFromEvidenceText(result.matchedText) : null
+    return speakerId !== null && speakerIds.has(speakerId)
+  })
 }
 
 export function applySpeakerDiarizationCatalogToResults(results: readonly VisionSearchResult[], catalog: SpeakerDiarizationCatalog): VisionSearchResult[] {
