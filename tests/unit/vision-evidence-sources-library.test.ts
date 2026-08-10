@@ -5,7 +5,8 @@ import { connect } from '@lancedb/lancedb'
 import { afterEach, describe, expect, it } from 'vitest'
 import { VisionLibrary } from '../../src/core/ai/vision-library'
 import { createVisionSourceFingerprint } from '../../src/core/ai/vision-evidence'
-import type { VisionEvidence } from '../../src/shared/vision-types'
+import { VISION_MODEL_ID, VISION_MODEL_VARIANT, type VisionEvidence } from '../../src/shared/vision-types'
+import type { VisionObjectDetectionModelStatus, VisionObjectDetectionResult } from '../../src/shared/vision-object-detection-types'
 
 describe('vision evidence source persistence', () => {
   const temporaryDirectories: string[] = []
@@ -119,6 +120,79 @@ describe('vision evidence source persistence', () => {
       expect.objectContaining({ id: 'visual-old', evidence_type: 'visual', box_xmin: null, box_ymin: null, box_xmax: null, box_ymax: null }),
       expect.objectContaining({ id: 'object-new', evidence_type: 'object', box_xmin: 10, box_ymin: 20, box_xmax: 80, box_ymax: 90 })
     ]))
+  })
+
+  it('runs the optional object evidence stage against existing thumbnails', async () => {
+    const userDataPath = await mkdtemp(join(tmpdir(), 'aivplayer-object-index-'))
+    temporaryDirectories.push(userDataPath)
+    const videoPath = join(userDataPath, 'demo.mp4')
+    await writeFile(videoPath, 'indexed-video')
+    const videoStat = await stat(videoPath)
+    const database = await connect(join(userDataPath, 'library', 'vision', 'lancedb'))
+    await database.createTable('video_sources', [{
+      id: 'source-demo',
+      video_path: videoPath,
+      file_name: 'demo.mp4',
+      file_size_bytes: videoStat.size,
+      file_mtime_ms: videoStat.mtimeMs,
+      sample_interval_seconds: 3,
+      subtitle_path: '',
+      subtitle_size_bytes: 0,
+      subtitle_mtime_ms: 0,
+      frame_count: 1,
+      model_id: VISION_MODEL_ID,
+      model_variant: VISION_MODEL_VARIANT,
+      indexed_at_ms: 1
+    }])
+    await database.createTable('video_frames', [{
+      id: 'frame-demo',
+      video_path: videoPath,
+      file_name: 'demo.mp4',
+      timestamp_seconds: 1,
+      thumbnail_path: '/thumb/demo.jpg',
+      embedding: [0.1, 0.2],
+      model_id: VISION_MODEL_ID,
+      model_variant: VISION_MODEL_VARIANT,
+      file_size_bytes: videoStat.size,
+      file_mtime_ms: videoStat.mtimeMs
+    }])
+
+    const detectionResult: VisionObjectDetectionResult = {
+      providerId: 'transformers-object-detection',
+      modelId: 'detector-test',
+      modelVersion: 'test-v1',
+      imagePath: '/thumb/demo.jpg',
+      threshold: 0.5,
+      detections: [{ label: 'person', score: 0.9, box: { xmin: 1, ymin: 2, xmax: 30, ymax: 40 } }],
+      generatedAt: 123
+    }
+    let prepared = 0
+    const detectedImages: string[] = []
+    const library = new VisionLibrary({
+      userDataPath,
+      resourcePath: join(process.cwd(), 'resources'),
+      env: process.env,
+      objectDetectionRuntime: {
+        getStatus: () => ({ available: true, message: 'ready' } as VisionObjectDetectionModelStatus),
+        prepare: async () => { prepared += 1 },
+        detectImage: async (imagePath) => {
+          detectedImages.push(imagePath)
+          return detectionResult
+        }
+      }
+    })
+    const progressEvents: string[] = []
+    const progress = await library.indexVideos([videoPath], 3, new AbortController().signal, (value) => { progressEvents.push(value.stage) }, { includeObjectEvidence: true })
+
+    expect(prepared).toBe(1)
+    expect(detectedImages).toEqual(['/thumb/demo.jpg'])
+    expect(progress.status).toBe('completed')
+    expect(progress.objectEvidenceCount).toBe(1)
+    expect(progressEvents).toContain('object-evidence')
+    const resultDatabase = await connect(join(userDataPath, 'library', 'vision', 'lancedb'))
+    const resultTable = await resultDatabase.openTable('video_evidence')
+    const rows = await resultTable.query().select(['evidence_type', 'text', 'confidence', 'box_xmin', 'box_ymin', 'box_xmax', 'box_ymax']).toArray() as unknown as Array<Record<string, unknown>>
+    expect(rows).toEqual([expect.objectContaining({ evidence_type: 'object', text: 'person', confidence: 0.9, box_xmin: 1, box_ymin: 2, box_xmax: 30, box_ymax: 40 })])
   })
 
   it('audits media changes and missing files without deleting evidence', async () => {
