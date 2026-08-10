@@ -1,0 +1,55 @@
+id: cn.quniv.aivplayer
+runtime: org.freedesktop.Platform
+runtime-version: '25.08'
+sdk: org.freedesktop.Sdk
+base: org.electronjs.Electron2.BaseApp
+base-version: '25.08'
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.node22
+command: cn.quniv.aivplayer
+
+finish-args:
+  - --share=ipc
+  - --share=network
+  - --device=dri
+  - --socket=pulseaudio
+  - --socket=x11
+  - --filesystem=xdg-documents
+  - --filesystem=xdg-music
+  - --filesystem=xdg-pictures
+  - --filesystem=xdg-videos
+  - --env=ELECTRON_TRASH=gio
+
+modules:
+  - name: aivplayer
+    buildsystem: simple
+    build-options:
+      append-path: /usr/lib/sdk/node22/bin
+      env:
+        ELECTRON_CACHE: /run/build/aivplayer/flatpak-node/electron-cache
+        NPM_CONFIG_CACHE: /run/build/aivplayer/flatpak-node/npm-cache
+        NPM_CONFIG_LOGLEVEL: info
+        npm_config_nodedir: /usr/lib/sdk/node22
+        npm_config_offline: 'true'
+        XDG_CACHE_HOME: /run/build/aivplayer/flatpak-node/cache
+    sources:
+      - type: git
+        url: https://github.com/ponponon/aivplayer.git
+        tag: v0.5.0
+        dest: app
+      - generated-sources.json
+      - type: script
+        dest-filename: run.sh
+        commands:
+          - zypak-wrapper /app/main/aivplayer "$@"
+    build-commands:
+      - cd app && npm install --offline
+      - cd app && npm run build
+      - cd app && jq '.desktopName = "cn.quniv.aivplayer.desktop"' package.json > package.json.flatpak && mv package.json.flatpak package.json
+      - cd app && npx electron-builder --config flatpak/electron-builder-flatpak.yml --linux --dir --publish never
+      - install -d /app/main
+      - cp -a app/release/linux-unpacked/. /app/main/
+      - install -Dm755 run.sh /app/bin/cn.quniv.aivplayer
+      - install -Dm644 app/flatpak/cn.quniv.aivplayer.desktop /app/share/applications/cn.quniv.aivplayer.desktop
+      - install -Dm644 app/flatpak/cn.quniv.aivplayer.metainfo.xml /app/share/metainfo/cn.quniv.aivplayer.metainfo.xml
+      - install -Dm644 app/brand/icon.png /app/share/icons/hicolor/512x512/apps/cn.quniv.aivplayer.png
