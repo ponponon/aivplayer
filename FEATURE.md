@@ -695,6 +695,11 @@
 - 新增基于 `package-lock.json` 的离线 npm source 清单、`flatpak:generate-sources` 和 `flatpak:check`，并在 GitHub Actions 中对 manifest、桌面入口、Metainfo、版本 tag 和离线安装约束做静态检查。
 - 当前只完成可持续迭代的第一阶段骨架；提交 Flathub 前仍需把 FFmpeg / whisper.cpp / libheif 和原生 npm 依赖改为可审计的源代码构建，并把 SigLIP2 从随包只读模型改为用户数据目录中的可校验安装流程。
 
+## Flatpak Linux 构建验证入口
+
+- GitHub Actions 新增 Linux x86_64 Flatpak 构建、manifest/repo lint 和 bundle artifact 流程；构建前将源码入口临时替换为当前 checkout，避免 PR 错误地验证旧的 release tag。
+- GitHub Actions 支持手动选择 Linux ARM64 构建，使用 `ubuntu-24.04-arm` 原生 Runner；CI 生成的本地 manifest 不进入仓库，正式 Flathub manifest 仍保持固定 release tag。
+
 ## 视觉索引失败恢复
 
 - 视觉索引错误会按规范化媒体路径生成稳定 ID，记录失败视频、错误消息、失败阶段、抽帧间隔、场景 / 实体选项、失败时间和重试次数；取消任务不会生成失败记录。

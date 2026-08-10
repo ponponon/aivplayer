@@ -35,6 +35,7 @@ assertCondition(manifest.includes('- generated-sources.json'), 'manifest 没有�
 assertCondition(manifest.includes('npm install --offline'), 'Flatpak 构建不能依赖联网 npm install')
 assertCondition(manifest.includes('--publish never'), 'Flatpak 构建不能触发 electron-builder 发布')
 assertCondition(manifest.includes('desktopName = "cn.quniv.aivplayer.desktop"'), '没有修正 Electron desktop 文件名')
+assertCondition(packageJson.scripts?.['flatpak:prepare-ci-manifest'], '缺少 Flatpak CI 本地源码 manifest 生成命令')
 assertCondition(!manifest.includes('--filesystem=host'), '禁止使用 host 文件系统权限')
 assertCondition(!manifest.includes('resources/ffmpeg') && !manifest.includes('resources/whisper.cpp'), '不能把桌面端预编译运行时直接带进 Flatpak')
 assertCondition(manifest.includes(`tag: v${version}`), `manifest 源码 tag 必须与 package.json ${version} 一致`)

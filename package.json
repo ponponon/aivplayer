@@ -38,6 +38,7 @@
     "release:check-heif-runtime": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/check-heif-runtime.ts",
     "release:build-heif-source": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/build-heif-source.ts",
     "flatpak:generate-sources": "flatpak-node-generator npm package-lock.json -o flatpak/generated-sources.json --electron-node-headers --node-sdk-extension org.freedesktop.Sdk.Extension.node22//25.08",
+    "flatpak:prepare-ci-manifest": "node scripts/prepare-flatpak-ci-manifest.mjs",
     "flatpak:check": "node scripts/check-flatpak.mjs",
     "smoke:open-video": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-open-video.ts",
     "smoke:playback-segments": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-playback-segments.ts",
