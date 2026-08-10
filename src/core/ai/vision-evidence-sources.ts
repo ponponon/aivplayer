@@ -13,7 +13,7 @@ export function createEmptyVisionEvidenceCounts(): VisionEvidenceCounts {
 }
 
 export function normalizeVisionDerivedEvidenceTypes(value: unknown, fallbackToAll = false): VisionDerivedEvidenceType[] {
-  if (!Array.isArray(value)) return fallbackToAll ? [...VISION_DERIVED_EVIDENCE_TYPES] : []
+  if (!Array.isArray(value) || value.length === 0) return fallbackToAll ? [...VISION_DERIVED_EVIDENCE_TYPES] : []
   const selected = new Set(value.filter((item): item is VisionDerivedEvidenceType => typeof item === 'string' && VISION_DERIVED_EVIDENCE_TYPES.includes(item as VisionDerivedEvidenceType)))
   return VISION_DERIVED_EVIDENCE_TYPES.filter((item) => selected.has(item))
 }

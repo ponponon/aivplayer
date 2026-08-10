@@ -104,6 +104,8 @@ export const IPC_CHANNELS = {
   VISION_SCAN_DIRECTORY_PROGRESS: 'vision:scan-directory-progress',
   VISION_SEARCH_TEXT: 'vision:search-text',
   VISION_SEARCH_IMAGE: 'vision:search-image',
+  VISION_EVIDENCE_SOURCES: 'vision:evidence-sources',
+  VISION_EVIDENCE_BATCH_CLEAR: 'vision:evidence-batch-clear',
   VISION_SAVED_SEARCH_LIST: 'vision:saved-search-list',
   VISION_SAVED_SEARCH_SAVE: 'vision:saved-search-save',
   VISION_SAVED_SEARCH_DELETE: 'vision:saved-search-delete',

@@ -2,7 +2,7 @@ import { app, ipcMain } from 'electron'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
-import type { VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionEvidenceType, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionSavedSearchInput, VisionSearchRequest, VisionSearchResult } from '../shared/vision-types'
+import type { VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionEvidenceBatchClearResult, VisionEvidenceSourceRequest, VisionEvidenceType, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionSavedSearchInput, VisionSearchRequest, VisionSearchResult } from '../shared/vision-types'
 import type { VisionEntityCatalogBatchPatch, VisionEntityCatalogCreateInput, VisionEntityCatalogPatch } from '../shared/vision-entity-types'
 import { scanVisionDirectory, isVisionScanAbortError } from '../core/ai/vision-directory-scan'
 import { renderVisionClipCollectionExport } from '../core/ai/clip-inbox-export'
@@ -17,6 +17,7 @@ import { VISION_INDEX_FAILURE_MAX_RETRY_BATCH } from '../core/ai/vision-index-fa
 import { mergeVisionLibrarySourceMetadata } from '../core/ai/vision-library-source-metadata'
 import { filterSpeakerDiarizationCatalogSearchResults } from '../core/ai/speaker-diarization-catalog'
 import { filterVisionSearchResultsByEvidenceTypes } from '../core/ai/vision-search'
+import { createEmptyVisionEvidenceCounts, normalizeVisionEvidenceClearTargets, normalizeVisionDerivedEvidenceTypes } from '../core/ai/vision-evidence-sources'
 
 const VISION_EVIDENCE_TYPES: readonly VisionEvidenceType[] = ['subtitle', 'visual', 'scene', 'ocr', 'entity', 'speaker']
 
@@ -200,6 +201,26 @@ export function registerVisionIpc(): void {
       const enrichedResults = getSpeakerDiarizationCatalogStore().applyResults(entityCatalog.applyResults(results))
       return filterVisionSearchResultsByEvidenceTypes(enrichedResults, evidenceTypes, resultLimit)
     })
+  })
+
+  ipcMain.handle(IPC_CHANNELS.VISION_EVIDENCE_SOURCES, (_event, value: VisionEvidenceSourceRequest = {}) => {
+    const evidenceTypes = normalizeVisionDerivedEvidenceTypes(value?.evidenceTypes, true)
+    const limit = typeof value?.limit === 'number' && Number.isFinite(value.limit) ? value.limit : undefined
+    const offset = typeof value?.offset === 'number' && Number.isFinite(value.offset) ? value.offset : undefined
+    return getVisionLibrary().listEvidenceSources(limit, offset, evidenceTypes)
+  })
+  ipcMain.handle(IPC_CHANNELS.VISION_EVIDENCE_BATCH_CLEAR, async (_event, value: unknown): Promise<VisionEvidenceBatchClearResult> => {
+    const rawTargets = value && typeof value === 'object' && !Array.isArray(value) ? (value as { targets?: unknown }).targets : undefined
+    const targets = normalizeVisionEvidenceClearTargets(rawTargets)
+    const emptyCounts = createEmptyVisionEvidenceCounts()
+    if (targets.length === 0) return { success: false, message: '视觉证据清理列表为空', clearedSources: 0, clearedEvidenceCount: 0, clearedByType: emptyCounts }
+    if (targets.length > 500) return { success: false, message: '一次最多清理 500 个来源', clearedSources: 0, clearedEvidenceCount: 0, clearedByType: emptyCounts }
+    try {
+      const result = await getVisionLibrary().clearEvidenceBatch(targets)
+      return { success: true, message: result.clearedSources > 0 ? `已清理 ${result.clearedSources} 个来源、${result.clearedEvidenceCount} 条派生证据` : '没有可清理的派生证据', ...result }
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : String(error), clearedSources: 0, clearedEvidenceCount: 0, clearedByType: emptyCounts }
+    }
   })
 
   ipcMain.handle(IPC_CHANNELS.VISION_SAVED_SEARCH_LIST, () => getVisionSavedSearchStore().list())
