@@ -111,10 +111,12 @@ describe('vision full-library search', () => {
       ...revision,
       tables: { ...revision.tables, video_evidence: unavailableVersion }
     }
+    const runtime = (library as unknown as { model: { getTextEmbedding: () => Promise<number[]> } }).model
+    runtime.getTextEmbedding = async () => { throw new Error('offline test model') }
 
     let caught: unknown
     try {
-      await library.searchTextAll('person', 'lexical', undefined, undefined, unavailableRevision)
+      await library.searchTextAll('person', 'hybrid', undefined, undefined, unavailableRevision)
     } catch (error) {
       caught = error
     }
