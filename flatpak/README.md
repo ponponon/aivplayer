@@ -1,0 +1,36 @@
+# AIVPlayer Flatpak 适配说明
+
+这里保存 AIVPlayer 的 Flatpak 适配文件，目标是让应用可以按 Flathub 的“从源代码构建、构建阶段离线”规则重建。
+
+## 当前阶段
+
+这是第一阶段的构建骨架，不代表已经可以直接提交 Flathub。当前已完成：
+
+- 固定 Flatpak ID `cn.quniv.aivplayer`，与 Electron 的 `appId` 保持一致；
+- Electron BaseApp、Node.js SDK extension、X11/PulseAudio/GPU 和用户目录权限的初始声明；
+- Electron 启动 wrapper、desktop 文件、AppStream MetaInfo 和 Flatpak 专用 electron-builder 配置；
+- 从 `package-lock.json` 生成离线 npm 源的入口；当前仓库中的 `generated-sources.json` 是用于第一阶段静态接线的 stub 清单，来源完整性沿用 lockfile，但没有包含 Electron BaseApp 缓存等特殊扩展。
+
+## 仍需完成的 Flathub 阻塞项
+
+1. 将 FFmpeg、whisper.cpp 和 libheif 从当前发布 CI 的预编译暂存方式改为 Flatpak manifest 中的固定源码模块，或改用运行时已有且合规的依赖。
+2. 处理 `@lancedb/lancedb`、`onnxruntime-node`、`sharp` 和 `sherpa-onnx-node` 等原生 npm 依赖的 Linux 源码构建与架构边界，不能把开发机或其他平台的预编译二进制带入 Flathub。
+3. 把当前只读、随包提供的 SigLIP2 视觉模型改成用户数据目录中的可审计下载 / 安装流程；Flathub manifest 不应携带这类大模型二进制。
+4. 重新评估文件访问权限。当前实现支持用户选择任意媒体目录、递归扫描和导出，第一版使用 XDG 目录权限配合文件选择器；最终提交前需要在 Flatpak 沙箱中用真实文件选择、目录扫描和导出 Smoke 验证，并尽量收窄权限。
+5. 在 Linux Flatpak 构建机上运行 `flatpak-builder`、`flatpak-builder-lint` 和真实启动 Smoke。macOS 开发机没有 Flatpak 工具，不能用本地 TypeScript 构建代替这一步。
+
+`flatpak:generate-sources` 的正式结果必须在 Linux 构建环境重新生成并审查；本机代理下 Electron / esbuild 特殊源曾出现长时间不退出，因此不能把本机 stub 清单当成最终 Flathub 构建证据。
+
+## 本地准备命令
+
+在安装 `flatpak`、`flatpak-builder`、Flathub Freedesktop 25.08 runtime/SDK 和 `flatpak-node-generator` 后运行：
+
+```sh
+npm run flatpak:check
+npm run flatpak:generate-sources
+flatpak-builder build-dir flatpak/cn.quniv.aivplayer.yml \
+  --install-deps-from=flathub --force-clean --user --install
+flatpak run cn.quniv.aivplayer
+```
+
+Flathub 的提交仓库要求 manifest、desktop、MetaInfo 和图标位于提交仓库边界内；最终 PR 需要由项目维护者人工创建和回复审核意见，本项目不会自动创建 Flathub PR。

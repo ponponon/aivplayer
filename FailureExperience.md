@@ -1400,3 +1400,15 @@
 - 现象：短剧媒体生成 Smoke 初版点击了最后一个面板标签，实际打开的是“信息”而不是“短剧”；随后又把注册时的 `http-json` 当成最终 Provider ID，忽略了服务响应可以返回 `smoke-image` 等实际 Provider 标识。
 - 经验：Smoke 应根据真实 `PanelTabs` 顺序选择目标入口，并断言页面 / IPC 返回的最终状态；Provider 的注册配置、响应覆盖字段和任务持久化字段不能混为一谈。
 - 处理：Smoke 改为点击短剧固定标签，使用本机临时 HTTP fixture 跑三类任务，按媒体类型校验响应 Provider、成本、结果文件、任务中心终态和重启恢复；fixture 在 `finally` 中关闭并清理用户目录。
+
+## 2026-08-10：Electron Flatpak 不能直接复用桌面端预编译资源
+
+- 现象：electron-builder 的 macOS / Windows / Linux 发布配置引用了工作区中被忽略的预编译 FFmpeg、whisper.cpp、libheif 和 SigLIP2 资源；这些资源只存在于当前开发机，不能作为 Flathub 的可重建输入。
+- 经验：Flatpak 必须把 Electron BaseApp、Node SDK 扩展、离线 npm source、`--linux --dir --publish never` 和应用启动 wrapper 作为独立边界；原生运行时、原生 npm 依赖和大模型还要分别设计固定源码、构建命令、架构覆盖和许可证证据链。
+- 处理：新增第一阶段 manifest、桌面入口、Metainfo、Electron-builder Flatpak 配置、离线源清单和静态检查；当前明确不宣称已满足 Flathub 提交条件，待 Linux 构建环境具备后继续补齐原生模块与模型安装方案。
+
+## 2026-08-10：依赖源生成器遇到代理竞态时不能提交半成品
+
+- 现象：`flatpak-node-generator` 在本机代理环境下可以处理大部分 npm 包，但在 Electron / esbuild 特殊扩展阶段长期不退出，过程中不会写出完整 JSON；直接把中途状态当作成功会留下不可复现的 Flatpak 源清单。
+- 经验：外网下载前先检测代理；生成器必须以退出码和输出文件完整性为成功条件，不能只看进度条。遇到特殊包处理阻塞时，可以先用工具的 stub 模式生成基于锁文件完整性字段的第一阶段清单，但必须把 Electron BaseApp 缓存、平台二进制和真实构建验证记录为后续阻塞项。
+- 处理：当前提交只把 stub 清单用于 manifest 静态接线和持续检查，不把它当作最终 Flathub 构建证据；后续在 Linux `flatpak-builder` 环境中重新生成并验证完整源清单，确认 Electron、esbuild 和所有原生模块的架构选择后再提交 Flathub。

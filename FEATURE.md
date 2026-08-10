@@ -688,6 +688,13 @@
 - 旋转手柄保持在视频画布内部并位于图形内容之上，避免被视频帧裁切或被下方时间线截获；编辑模式字幕显示菜单提升到时间线之上，所有显示设置仍可直接操作。
 - 编辑器长 Smoke 在进入画布操作前显式关闭图形编辑表单，并覆盖移动、缩放、旋转及撤销；最终同时检查字幕显示菜单、导出链路和 Renderer 控制台无错误。
 
+## Flatpak 发布适配（第一阶段）
+
+- 新增 `cn.quniv.aivplayer` Flatpak manifest、Electron BaseApp 配置、`zypak-wrapper` 启动脚本、桌面入口和 AppStream Metainfo，版本与 `package.json` 保持一致。
+- 新增 Flatpak 专用 electron-builder 配置，仅打包应用代码、网页资源、许可证和第三方许可证清单，不复用 macOS 本机预编译的 FFmpeg、whisper.cpp、libheif 或视觉模型。
+- 新增基于 `package-lock.json` 的离线 npm source 清单、`flatpak:generate-sources` 和 `flatpak:check`，并在 GitHub Actions 中对 manifest、桌面入口、Metainfo、版本 tag 和离线安装约束做静态检查。
+- 当前只完成可持续迭代的第一阶段骨架；提交 Flathub 前仍需把 FFmpeg / whisper.cpp / libheif 和原生 npm 依赖改为可审计的源代码构建，并把 SigLIP2 从随包只读模型改为用户数据目录中的可校验安装流程。
+
 ## 视觉索引失败恢复
 
 - 视觉索引错误会按规范化媒体路径生成稳定 ID，记录失败视频、错误消息、失败阶段、抽帧间隔、场景 / 实体选项、失败时间和重试次数；取消任务不会生成失败记录。
