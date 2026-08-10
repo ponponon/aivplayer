@@ -10,6 +10,8 @@ type VisionSearchResultsProps = {
   thumbnailUrls: Record<string, string>
   onOpenResult: (result: VisionSearchResult) => void
   onFindSimilar: (result: VisionSearchResult) => void
+  onDetectObjects: (result: VisionSearchResult) => void
+  isDetectingObjects: boolean
   isSimilarSearch: boolean
   onReturnToSearch: () => void
   selectedIds: ReadonlySet<string>
@@ -23,7 +25,7 @@ type VisionSearchResultsProps = {
   onSortModeChange: (sortMode: VisionSearchSortMode) => void
 }
 
-export function VisionSearchResults({ copy, results, thumbnailUrls, onOpenResult, onFindSimilar, isSimilarSearch, onReturnToSearch, selectedIds, onToggleSelection, onSelectAllResults, onClearResults, hasMoreResults, isLoadingMore, onLoadMoreResults, sortMode, onSortModeChange }: VisionSearchResultsProps): React.ReactElement {
+export function VisionSearchResults({ copy, results, thumbnailUrls, onOpenResult, onFindSimilar, onDetectObjects, isDetectingObjects, isSimilarSearch, onReturnToSearch, selectedIds, onToggleSelection, onSelectAllResults, onClearResults, hasMoreResults, isLoadingMore, onLoadMoreResults, sortMode, onSortModeChange }: VisionSearchResultsProps): React.ReactElement {
   const sortedResults = sortVisionSearchResults(results, sortMode)
   const groupedResults = isSimilarSearch ? sortVisionSimilarSearchGroups(groupVisionSimilarSearchResults(results), sortMode) : []
   const renderResult = (result: VisionSearchResult): React.ReactElement => {
@@ -37,7 +39,10 @@ export function VisionSearchResults({ copy, results, thumbnailUrls, onOpenResult
           {thumbnailUrls[result.id] ? <img src={thumbnailUrls[result.id]} alt="" /> : <span className="vision-result-placeholder"><ScanSearch size={18} /></span>}
           <span className="vision-result-copy"><strong>{result.fileName}</strong><span>{result.evidenceType === 'ocr' ? `${copy.ocrResultLabel} · ` : ''}{formatEvidenceRange(result)} · {copy.score(result.score)}</span>{result.matchedText ? <span className="vision-result-match">{result.matchedText}</span> : null}</span>
         </button>
-        <button className="vision-result-similar-action" type="button" onClick={() => onFindSimilar(result)} title={copy.findSimilar}>{copy.findSimilar}</button>
+        <div className="vision-result-actions">
+          <button className="vision-result-similar-action" type="button" onClick={() => onFindSimilar(result)} title={copy.findSimilar}>{copy.findSimilar}</button>
+          <button className="vision-result-similar-action" type="button" data-testid="vision-object-detection-action" onClick={() => onDetectObjects(result)} disabled={isDetectingObjects || !result.thumbnailPath} title={copy.detectObjects}>{isDetectingObjects ? copy.detectingObjects : copy.detectObjects}</button>
+        </div>
       </div>
     </div>
   }

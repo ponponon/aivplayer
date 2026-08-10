@@ -308,6 +308,12 @@
   min-width: 0;
 }
 
+.vision-result-actions {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
 .vision-result:hover,
 .vision-result:focus-visible {
   color: var(--text-primary);
@@ -379,6 +385,63 @@
   border-color: var(--border-soft);
   background: rgba(var(--overlay-rgb), 0.05);
   outline: none;
+}
+
+.vision-result-similar-action:disabled {
+  color: var(--text-muted);
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.vision-object-detection-result {
+  display: grid;
+  gap: 8px;
+}
+
+.vision-object-detection-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.vision-object-detection-summary,
+.vision-object-detection-empty {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.vision-object-detection-list {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vision-object-detection-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  padding: 6px 8px;
+  color: var(--text-secondary);
+  background: rgba(var(--overlay-rgb), 0.045);
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+}
+
+.vision-object-detection-list li strong,
+.vision-object-detection-list li span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vision-object-detection-list li strong {
+  color: var(--text-primary);
 }
 
 .vision-empty {

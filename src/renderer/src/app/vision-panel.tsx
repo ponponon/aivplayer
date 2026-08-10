@@ -4,6 +4,7 @@ import type { VisionIndexProgress, VisionRuntimeStatus, VisionSearchResult } fro
 import type { AsrSubtitleResult } from '../../../shared/media-types'
 import type { MediaEvidenceDraftImportResult } from '../../../shared/evidence-task-types'
 import type { VisionClipCollection, VisionClipCollectionExportFormat, VisionClipCollectionSortMode, VisionEvidenceType, VisionIndexFailureRecord, VisionLibrarySource, VisionSavedSearch, VisionSearchSortMode } from '../../../shared/vision-types'
+import type { VisionObjectDetectionResult } from '../../../shared/vision-object-detection-types'
 import { invertVisionClipSelections, mergeVisionCollectionSelections, normalizeVisionCollectionTags } from '../../../core/ai/clip-inbox-operations'
 import { createVisionClipSelections, normalizeVisionTimeRange } from '../../../core/ai/vision-evidence'
 import { getVisionSearchResultIds } from '../../../core/ai/vision-search-selection'
@@ -16,6 +17,7 @@ import { VisionLibraryFolder } from './vision-library-folder'
 import { VisionOcrTask } from './vision-ocr-task'
 import { VisionTtsTask } from './vision-tts-task'
 import { VisionSearchResults } from './vision-search-results'
+import { VisionObjectDetectionResultView } from './vision-object-detection-result'
 import { useVisionImportInbox } from './use-vision-import-inbox'
 import { VisionImportInbox } from './vision-import-inbox'
 import { VisionLibrarySources } from './vision-library-sources'
@@ -104,6 +106,8 @@ export function VisionPanel(): React.ReactElement {
   const [repairingCollectionId, setRepairingCollectionId] = useState<string | null>(null)
   const [pendingResultSeek, setPendingResultSeek] = useState<{ videoPath: string; seconds: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [objectDetectionResult, setObjectDetectionResult] = useState<VisionObjectDetectionResult | null>(null)
+  const [isDetectingObjects, setIsDetectingObjects] = useState(false)
   const evidenceTypeFilter = searchPreferences.evidenceTypes
   const searchSortMode = searchPreferences.sortMode
   const isIndexing = progress?.status === 'loading' || progress?.status === 'indexing'
@@ -528,6 +532,22 @@ export function VisionPanel(): React.ReactElement {
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
   }
 
+  const detectObjects = (result: VisionSearchResult): void => {
+    if (!result.thumbnailPath || isDetectingObjects) return
+    setIsDetectingObjects(true)
+    setObjectDetectionResult(null)
+    setError(null)
+    void window.aiv.runVisionObjectDetection({ imagePath: result.thumbnailPath }).then((response) => {
+      if (!response.success || !response.result) {
+        setError(response.message)
+        return
+      }
+      setObjectDetectionResult(response.result)
+    }).catch((reason: unknown) => {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    }).finally(() => setIsDetectingObjects(false))
+  }
+
   const openSource = (source: VisionLibrarySource): void => {
     openResult({
       id: source.sourceId,
@@ -803,7 +823,8 @@ export function VisionPanel(): React.ReactElement {
     </section>
 
     {error ? <div className="vision-error vision-error-card" role="alert">{error}</div> : null}
-    <VisionSearchResults copy={app.copy.vision} results={results} thumbnailUrls={thumbnailUrls} onOpenResult={openResult} onFindSimilar={findSimilarResult} isSimilarSearch={searchContext?.kind === 'similar'} onReturnToSearch={returnToSearchResults} selectedIds={selectedResultIds} onToggleSelection={toggleResultSelection} onSelectAllResults={selectAllSearchResults} onClearResults={clearSearchResultSelection} hasMoreResults={hasMoreSearchResults} isLoadingMore={isLoadingMoreSearchResults} onLoadMoreResults={loadMoreSearchResults} sortMode={searchSortMode} onSortModeChange={changeSearchSortMode} />
+    <VisionSearchResults copy={app.copy.vision} results={results} thumbnailUrls={thumbnailUrls} onOpenResult={openResult} onFindSimilar={findSimilarResult} onDetectObjects={detectObjects} isDetectingObjects={isDetectingObjects} isSimilarSearch={searchContext?.kind === 'similar'} onReturnToSearch={returnToSearchResults} selectedIds={selectedResultIds} onToggleSelection={toggleResultSelection} onSelectAllResults={selectAllSearchResults} onClearResults={clearSearchResultSelection} hasMoreResults={hasMoreSearchResults} isLoadingMore={isLoadingMoreSearchResults} onLoadMoreResults={loadMoreSearchResults} sortMode={searchSortMode} onSortModeChange={changeSearchSortMode} />
+    {objectDetectionResult ? <VisionObjectDetectionResultView copy={app.copy.vision} result={objectDetectionResult} onClear={() => setObjectDetectionResult(null)} /> : null}
     {collections.length > 0 ? <section className="vision-card vision-collections"><div className="vision-collections-heading"><strong>{app.copy.vision.savedCollections}</strong><Archive size={15} /></div>{collections.map((collection) => {
       const availability = collectionAvailability[collection.id]
       const isRepairing = repairingCollectionId === collection.id
