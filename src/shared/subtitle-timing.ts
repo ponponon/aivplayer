@@ -134,6 +134,12 @@ export function joinSubtitleWords(words: SubtitleWordGroup): string {
   return result.trim()
 }
 
+/** Returns whether timed words still describe the visible subtitle text. */
+export function areSubtitleWordsCompatible(text: string, words: SubtitleWordGroup): boolean {
+  const normalize = (value: string): string => value.replace(/\s+/gu, '').trim()
+  return normalize(text) === normalize(joinSubtitleWords(words))
+}
+
 /** Estimates visual width in em units, matching the editor's CJK/Latin proportions. */
 export function estimateSubtitleWordEm(word: SubtitleWord): number {
   let width = 0
