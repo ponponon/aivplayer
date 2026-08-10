@@ -113,6 +113,7 @@
 @import './player/vision-library-search.css';
 @import './player/vision-speaker-diarization.css';
 @import './player/vision-speaker-evidence-sources.css';
+@import './player/vision-evidence-sources.css';
 @import './player/vision-library-results.css';
 @import './player/drama-panel.css';
 @import './player/drama-media-provider-settings.css';

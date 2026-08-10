@@ -20,8 +20,8 @@ describe('vision speaker evidence sources', () => {
     const panel = await readFile(join(projectRoot, 'src/renderer/src/app/vision-panel.tsx'), 'utf8')
     const preload = await readFile(join(projectRoot, 'src/preload/index.ts'), 'utf8')
 
-    expect(panel).toContain('VisionSpeakerEvidenceSources')
-    expect(panel).toContain('<VisionSpeakerEvidenceSources copy={app.copy.vision} />')
+    expect(panel).toContain('VisionEvidenceSources')
+    expect(panel).toContain('<VisionEvidenceSources copy={app.copy.vision} kicker={app.copy.panels.visionKicker} />')
     expect(preload).toContain('listSpeakerDiarizationEvidenceSources')
     expect(preload).toContain('clearSpeakerDiarizationEvidenceBatch')
   })

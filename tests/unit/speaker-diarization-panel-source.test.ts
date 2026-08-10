@@ -22,7 +22,7 @@ describe('speaker diarization vision panel', () => {
     expect(componentSource).toContain('vision-speaker-clear-evidence')
     expect(componentSource).toContain('speakerEvidenceCleared')
     expect(componentSource).toContain('vision-speaker-label-row')
-    expect(panelSource).toContain('VisionSpeakerEvidenceSources')
+    expect(panelSource).toContain('VisionEvidenceSources')
     expect(componentSource).toContain('speakerNamedSegment')
     expect(componentSource).toContain('onSeek(segment.startSeconds)')
     expect(panelSource).toContain('<VisionSpeakerDiarization')

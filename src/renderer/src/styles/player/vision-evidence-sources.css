@@ -1,0 +1,111 @@
+.vision-evidence-sources {
+  display: grid;
+  gap: 8px;
+}
+
+.vision-evidence-sources-description,
+.vision-evidence-sources-empty,
+.vision-evidence-sources-status {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.vision-evidence-sources-toolbar {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.vision-evidence-sources-toolbar .vision-primary-action,
+.vision-evidence-sources-toolbar .vision-secondary-action {
+  min-height: 25px;
+  padding: 0 7px;
+  font-size: 9px;
+}
+
+.vision-evidence-source-list {
+  display: grid;
+  max-height: 300px;
+  gap: 5px;
+  overflow: auto;
+}
+
+.vision-evidence-source {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  padding: 7px;
+  background: rgba(var(--overlay-rgb), 0.04);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+}
+
+.vision-evidence-source-copy {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 3px;
+}
+
+.vision-evidence-source-title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+}
+
+.vision-evidence-source-title input[type='checkbox'] {
+  flex: 0 0 auto;
+  accent-color: var(--accent);
+}
+
+.vision-evidence-source-title strong,
+.vision-evidence-source-copy small,
+.vision-evidence-source-copy em {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vision-evidence-source-title strong {
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+.vision-evidence-source-copy small,
+.vision-evidence-source-copy em {
+  color: var(--text-muted);
+  font-size: 9px;
+  font-style: normal;
+}
+
+.vision-evidence-source-types {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.vision-evidence-source-types label {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 5px;
+  color: var(--text-muted);
+  background: rgba(var(--overlay-rgb), 0.05);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  font-size: 9px;
+}
+
+.vision-evidence-source-types input {
+  margin: 0;
+  accent-color: var(--accent);
+}
