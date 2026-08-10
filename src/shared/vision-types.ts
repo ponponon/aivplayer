@@ -179,6 +179,15 @@ export type VisionSavedSearchInput = {
   evidenceTypes?: VisionEvidenceType[]
 }
 
+export type VisionSavedSearchFileResult = {
+  success: boolean
+  message: string
+  canceled?: boolean
+  filePath?: string
+  importedCount?: number
+  skippedCount?: number
+}
+
 export type VisionSearchRequest = {
   query?: string
   imagePath?: string

@@ -15,6 +15,11 @@ type SavedSearchManifest = {
   searches: VisionSavedSearch[]
 }
 
+export type VisionSavedSearchImportResult = {
+  importedCount: number
+  skippedCount: number
+}
+
 export function getVisionSavedSearchesPath(userDataPath: string): string {
   return join(userDataPath, 'library', 'vision-saved-searches.json')
 }
@@ -88,6 +93,39 @@ export class VisionSavedSearchStore {
 
   list(): VisionSavedSearch[] {
     return this.searches.map(cloneSavedSearch)
+  }
+
+  exportManifest(): SavedSearchManifest {
+    return { schemaVersion: SCHEMA_VERSION, searches: this.list() }
+  }
+
+  importManifest(value: unknown): VisionSavedSearchImportResult {
+    if (!value || typeof value !== 'object' || Array.isArray(value) || (value as Partial<SavedSearchManifest>).schemaVersion !== SCHEMA_VERSION || !Array.isArray((value as Partial<SavedSearchManifest>).searches)) {
+      throw new Error('搜索配置格式无效')
+    }
+    const imported = normalizeManifest(value)
+    const seenIds = new Set(this.searches.map((search) => search.id))
+    const seenQueries = new Set(this.searches.map(queryKey))
+    const next = [...this.searches]
+    let importedCount = 0
+    let skippedCount = 0
+    for (const search of imported) {
+      const key = queryKey(search)
+      if (seenQueries.has(key) || next.length >= MAX_SAVED_SEARCHES) {
+        skippedCount += 1
+        continue
+      }
+      const id = seenIds.has(search.id) ? randomUUID() : search.id
+      next.push({ ...search, id })
+      seenIds.add(id)
+      seenQueries.add(key)
+      importedCount += 1
+    }
+    if (importedCount > 0) {
+      this.searches = normalizeManifest({ schemaVersion: SCHEMA_VERSION, searches: next })
+      this.persist()
+    }
+    return { importedCount, skippedCount }
   }
 
   save(input: VisionSavedSearchInput): VisionSavedSearch {

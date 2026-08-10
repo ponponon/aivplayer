@@ -46,4 +46,26 @@ describe('vision saved search store', () => {
     expect(store.list()).toHaveLength(100)
     await store.flush()
   })
+
+  it('exports only portable search data and merges imported searches safely', async () => {
+    const sourceDirectory = await mkdtemp(join(tmpdir(), 'aivplayer-saved-search-'))
+    const targetDirectory = await mkdtemp(join(tmpdir(), 'aivplayer-saved-search-'))
+    temporaryDirectories.push(sourceDirectory, targetDirectory)
+    const source = new VisionSavedSearchStore(sourceDirectory)
+    source.save({ name: '海边字幕', query: '海边', mode: 'hybrid', evidenceTypes: ['subtitle'] })
+    source.save({ name: '夜景画面', query: '夜景', mode: 'visual' })
+
+    const manifest = source.exportManifest()
+    await source.flush()
+    expect(manifest.schemaVersion).toBe(1)
+    expect(JSON.stringify(manifest)).not.toContain('videoPath')
+
+    const target = new VisionSavedSearchStore(targetDirectory)
+    target.save({ name: '已有搜索', query: '海边', mode: 'hybrid', evidenceTypes: ['subtitle'] })
+    const result = target.importManifest(manifest)
+    expect(result).toEqual({ importedCount: 1, skippedCount: 1 })
+    expect(target.list().map((search) => search.name)).toEqual(['已有搜索', '夜景画面'])
+    await target.flush()
+    expect(() => target.importManifest({ schemaVersion: 2, searches: [] })).toThrow('格式无效')
+  })
 })
