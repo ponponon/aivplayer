@@ -145,6 +145,8 @@ export const IPC_CHANNELS = {
   SPEAKER_DIARIZATION_STATUS: 'speaker-diarization:status',
   SPEAKER_DIARIZATION_RUN: 'speaker-diarization:run',
   SPEAKER_DIARIZATION_CLEAR_EVIDENCE: 'speaker-diarization:clear-evidence',
+  SPEAKER_DIARIZATION_EVIDENCE_SOURCES: 'speaker-diarization:evidence-sources',
+  SPEAKER_DIARIZATION_BATCH_CLEAR_EVIDENCE: 'speaker-diarization:batch-clear-evidence',
   SPEAKER_DIARIZATION_CATALOG_GET: 'speaker-diarization:catalog-get',
   SPEAKER_DIARIZATION_CATALOG_UPDATE: 'speaker-diarization:catalog-update',
   DRAMA_LIST_PROJECTS: 'drama:list-projects',

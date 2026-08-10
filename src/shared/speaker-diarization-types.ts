@@ -87,6 +87,15 @@ export type SpeakerDiarizationEvidenceSource = {
   generatedAt: number
 }
 
+export type SpeakerDiarizationEvidenceSourceRequest = {
+  limit?: number
+  offset?: number
+}
+
+export type SpeakerDiarizationEvidenceBatchClearRequest = {
+  mediaPaths: string[]
+}
+
 export type SpeakerDiarizationEvidenceBatchClearResult = {
   success: boolean
   message: string

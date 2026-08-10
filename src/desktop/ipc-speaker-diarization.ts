@@ -12,11 +12,12 @@ import { createVisionSourceFingerprint, createVisionSourceId } from '../core/ai/
 import { resolveFfmpegPath } from '../core/ai/whisper-cpp-runtime'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type { SpeakerDiarizationCatalogPatch } from '../shared/speaker-diarization-catalog-types'
-import type { SpeakerDiarizationEvidenceClearResult, SpeakerDiarizationModelStatus, SpeakerDiarizationRunRequest, SpeakerDiarizationRunResult } from '../shared/speaker-diarization-types'
+import type { SpeakerDiarizationEvidenceBatchClearRequest, SpeakerDiarizationEvidenceBatchClearResult, SpeakerDiarizationEvidenceClearResult, SpeakerDiarizationEvidenceSource, SpeakerDiarizationEvidenceSourceRequest, SpeakerDiarizationModelStatus, SpeakerDiarizationRunRequest, SpeakerDiarizationRunResult } from '../shared/speaker-diarization-types'
 import { getSpeakerDiarizationCatalogStore, getVisionLibrary, resolveResourcePath } from './desktop-services'
 
 const execFileAsync = promisify(execFile)
 const runPromises = new Map<string, Promise<SpeakerDiarizationRunResult>>()
+const MAX_SPEAKER_EVIDENCE_BATCH = 500
 
 function emptyResult(): null {
   return null
@@ -133,6 +134,25 @@ export function registerSpeakerDiarizationIpc(): void {
       return { success: true, message: '当前视频的说话人证据已清理' }
     } catch (error) {
       return { success: false, message: getFailureMessage(error) }
+    }
+  })
+  ipcMain.handle(IPC_CHANNELS.SPEAKER_DIARIZATION_EVIDENCE_SOURCES, (_event, value: SpeakerDiarizationEvidenceSourceRequest = {}): Promise<SpeakerDiarizationEvidenceSource[]> => {
+    const limit = typeof value?.limit === 'number' && Number.isFinite(value.limit) ? value.limit : undefined
+    const offset = typeof value?.offset === 'number' && Number.isFinite(value.offset) ? value.offset : undefined
+    return getVisionLibrary().listSpeakerEvidenceSources(limit, offset)
+  })
+  ipcMain.handle(IPC_CHANNELS.SPEAKER_DIARIZATION_BATCH_CLEAR_EVIDENCE, async (_event, value: unknown): Promise<SpeakerDiarizationEvidenceBatchClearResult> => {
+    const request = value as Partial<SpeakerDiarizationEvidenceBatchClearRequest> | null
+    const mediaPaths = Array.isArray(request?.mediaPaths)
+      ? request.mediaPaths.filter((path): path is string => typeof path === 'string').map((path) => path.trim()).filter(Boolean)
+      : []
+    const uniqueMediaPaths = [...new Set(mediaPaths)]
+    if (uniqueMediaPaths.length === 0) return { success: false, message: '说话人证据清理列表为空', clearedSources: 0, clearedEvidenceCount: 0 }
+    if (uniqueMediaPaths.length > MAX_SPEAKER_EVIDENCE_BATCH) return { success: false, message: `一次最多清理 ${MAX_SPEAKER_EVIDENCE_BATCH} 个视频`, clearedSources: 0, clearedEvidenceCount: 0 }
+    try {
+      return await getVisionLibrary().clearSpeakerEvidenceBatch(uniqueMediaPaths)
+    } catch (error) {
+      return { success: false, message: getFailureMessage(error), clearedSources: 0, clearedEvidenceCount: 0 }
     }
   })
   ipcMain.handle(IPC_CHANNELS.SPEAKER_DIARIZATION_CATALOG_GET, () => getSpeakerDiarizationCatalogStore().get())
