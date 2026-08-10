@@ -74,6 +74,8 @@ describe('vision library setup', () => {
     expect(panel).toContain('getNextVisionSearchLimit(searchResultLimit)')
     expect(panel).toContain('objectDetectionFilter: context.objectDetectionFilter')
     expect(panel).toContain('savedSearch.objectDetectionFilter')
+    expect(panel).toContain('exportVisionSearchResults')
+    expect(panel).toContain('selectedResultIds.size > 0 ? results.filter')
     expect(panel).toContain('isSimilarSearch={searchContext?.kind === \'similar\'}')
     expect(panel).toContain('createEditingProjectFromVisionResults')
     expect(panel).toContain('onToggleSelection')
@@ -106,6 +108,8 @@ describe('vision library setup', () => {
     const resultView = readFileSync(join(projectRoot, 'src/renderer/src/app/vision-search-results.tsx'), 'utf8')
     expect(resultView).toContain('groupVisionSimilarSearchResults')
     expect(resultView).toContain('similarGroupMeta')
+    expect(resultView).toContain('onExportResults')
+    expect(resultView).toContain('exportSearchResultsJson')
   })
 
   it('keeps the reusable Clip Inbox Electron smoke wired into npm scripts', () => {

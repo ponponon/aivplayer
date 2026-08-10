@@ -1,6 +1,6 @@
 import { ScanSearch } from 'lucide-react'
 import type { LocaleCopy } from '../../../shared/i18n'
-import type { VisionSearchResult, VisionSearchSortMode } from '../../../shared/vision-types'
+import type { VisionSearchResult, VisionSearchResultsExportFormat, VisionSearchSortMode } from '../../../shared/vision-types'
 import { sortVisionSearchResults } from '../../../core/ai/vision-search'
 import { groupVisionSimilarSearchResults, sortVisionSimilarSearchGroups, type VisionSimilarSearchGroup } from '../../../core/ai/vision-similar-search-groups'
 import { VisionResultThumbnail } from './vision-result-thumbnail'
@@ -22,11 +22,12 @@ type VisionSearchResultsProps = {
   hasMoreResults: boolean
   isLoadingMore: boolean
   onLoadMoreResults: () => void
+  onExportResults: (format: VisionSearchResultsExportFormat) => void
   sortMode: VisionSearchSortMode
   onSortModeChange: (sortMode: VisionSearchSortMode) => void
 }
 
-export function VisionSearchResults({ copy, results, thumbnailUrls, onOpenResult, onFindSimilar, onDetectObjects, isDetectingObjects, isSimilarSearch, onReturnToSearch, selectedIds, onToggleSelection, onSelectAllResults, onClearResults, hasMoreResults, isLoadingMore, onLoadMoreResults, sortMode, onSortModeChange }: VisionSearchResultsProps): React.ReactElement {
+export function VisionSearchResults({ copy, results, thumbnailUrls, onOpenResult, onFindSimilar, onDetectObjects, isDetectingObjects, isSimilarSearch, onReturnToSearch, selectedIds, onToggleSelection, onSelectAllResults, onClearResults, hasMoreResults, isLoadingMore, onLoadMoreResults, onExportResults, sortMode, onSortModeChange }: VisionSearchResultsProps): React.ReactElement {
   const sortedResults = sortVisionSearchResults(results, sortMode)
   const groupedResults = isSimilarSearch ? sortVisionSimilarSearchGroups(groupVisionSimilarSearchResults(results), sortMode) : []
   const renderResult = (result: VisionSearchResult): React.ReactElement => {
@@ -70,6 +71,9 @@ export function VisionSearchResults({ copy, results, thumbnailUrls, onOpenResult
       </select>
       <button className="vision-results-selection-action" type="button" onClick={onSelectAllResults} disabled={sortedResults.length === 0}>{copy.selectAllResults}</button>
       <button className="vision-results-selection-action" type="button" onClick={onClearResults} disabled={selectedIds.size === 0}>{copy.clearSelectedResults}</button>
+      <span>{copy.exportSearchResults}</span>
+      <button className="vision-results-selection-action" type="button" onClick={() => onExportResults('json')} disabled={sortedResults.length === 0}>{copy.exportSearchResultsJson}</button>
+      <button className="vision-results-selection-action" type="button" onClick={() => onExportResults('csv')} disabled={sortedResults.length === 0}>{copy.exportSearchResultsCsv}</button>
     </div>
     {sortedResults.length === 0 ? <div className="vision-empty">{copy.noResults}</div> : isSimilarSearch ? groupedResults.map(renderGroup) : sortedResults.map(renderResult)}
     {sortedResults.length > 0 && hasMoreResults ? <button className="vision-results-load-more" type="button" onClick={onLoadMoreResults} disabled={isLoadingMore}>{isLoadingMore ? copy.loadingMoreResults : copy.loadMoreResults}</button> : null}

@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import type { VisionIndexProgress, VisionRuntimeStatus, VisionSearchResult } from '../../../shared/media-types'
 import type { AsrSubtitleResult } from '../../../shared/media-types'
 import type { MediaEvidenceDraftImportResult } from '../../../shared/evidence-task-types'
-import type { VisionClipCollection, VisionClipCollectionExportFormat, VisionClipCollectionSortMode, VisionEvidenceType, VisionIndexFailureRecord, VisionLibrarySource, VisionSavedSearch, VisionSearchSortMode } from '../../../shared/vision-types'
+import type { VisionClipCollection, VisionClipCollectionExportFormat, VisionClipCollectionSortMode, VisionEvidenceType, VisionIndexFailureRecord, VisionLibrarySource, VisionSavedSearch, VisionSearchResultsExportFormat, VisionSearchSortMode } from '../../../shared/vision-types'
 import type { LocaleCopy } from '../../../shared/i18n'
 import type { VisionObjectDetectionFilterState, VisionObjectDetectionResult } from '../../../shared/vision-object-detection-types'
 import { invertVisionClipSelections, mergeVisionCollectionSelections, normalizeVisionCollectionTags } from '../../../core/ai/clip-inbox-operations'
@@ -97,6 +97,7 @@ export function VisionPanel(): React.ReactElement {
   const [savedSearchName, setSavedSearchName] = useState('')
   const [savedSearches, setSavedSearches] = useState<VisionSavedSearch[]>([])
   const [savedSearchTransferStatus, setSavedSearchTransferStatus] = useState<string | null>(null)
+  const [searchExportStatus, setSearchExportStatus] = useState<string | null>(null)
   const [sampleImagePath, setSampleImagePath] = useState<string | null>(null)
   const [sampleImageName, setSampleImageName] = useState<string | null>(null)
   const [includeSceneEvidence, setIncludeSceneEvidence] = useState(false)
@@ -415,6 +416,21 @@ export function VisionPanel(): React.ReactElement {
     void window.aiv.saveVisionSavedSearch(input).then((savedSearch) => {
       setSavedSearches((current) => [savedSearch, ...current.filter((item) => item.id !== savedSearch.id)])
       setSavedSearchName('')
+    }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
+  }
+
+  const exportSearchResults = (format: VisionSearchResultsExportFormat): void => {
+    const exportResults = selectedResultIds.size > 0 ? results.filter((result) => selectedResultIds.has(result.id)) : results
+    if (exportResults.length === 0) return
+    setError(null)
+    setSearchExportStatus(null)
+    void window.aiv.exportVisionSearchResults({ results: exportResults, format }).then((result) => {
+      if (result.canceled) return
+      if (!result.success) {
+        setError(result.message)
+        return
+      }
+      setSearchExportStatus(result.message)
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
   }
 
@@ -854,7 +870,8 @@ export function VisionPanel(): React.ReactElement {
     </section>
 
     {error ? <div className="vision-error vision-error-card" role="alert">{error}</div> : null}
-    <VisionSearchResults copy={app.copy.vision} results={results} thumbnailUrls={thumbnailUrls} onOpenResult={openResult} onFindSimilar={findSimilarResult} onDetectObjects={detectObjects} isDetectingObjects={isDetectingObjects} isSimilarSearch={searchContext?.kind === 'similar'} onReturnToSearch={returnToSearchResults} selectedIds={selectedResultIds} onToggleSelection={toggleResultSelection} onSelectAllResults={selectAllSearchResults} onClearResults={clearSearchResultSelection} hasMoreResults={hasMoreSearchResults} isLoadingMore={isLoadingMoreSearchResults} onLoadMoreResults={loadMoreSearchResults} sortMode={searchSortMode} onSortModeChange={changeSearchSortMode} />
+    <VisionSearchResults copy={app.copy.vision} results={results} thumbnailUrls={thumbnailUrls} onOpenResult={openResult} onFindSimilar={findSimilarResult} onDetectObjects={detectObjects} isDetectingObjects={isDetectingObjects} isSimilarSearch={searchContext?.kind === 'similar'} onReturnToSearch={returnToSearchResults} selectedIds={selectedResultIds} onToggleSelection={toggleResultSelection} onSelectAllResults={selectAllSearchResults} onClearResults={clearSearchResultSelection} hasMoreResults={hasMoreSearchResults} isLoadingMore={isLoadingMoreSearchResults} onLoadMoreResults={loadMoreSearchResults} onExportResults={exportSearchResults} sortMode={searchSortMode} onSortModeChange={changeSearchSortMode} />
+    {searchExportStatus ? <small className="vision-saved-search-status vision-search-export-status" role="status">{searchExportStatus}</small> : null}
     {objectDetectionResult ? <VisionObjectDetectionResultView copy={app.copy.vision} result={objectDetectionResult} thumbnailUrl={objectDetectionThumbnailUrl} filter={objectDetectionFilter} onFilterChange={setObjectDetectionFilter} onClear={() => { setObjectDetectionResult(null); setObjectDetectionThumbnailUrl(null) }} /> : null}
     {collections.length > 0 ? <section className="vision-card vision-collections"><div className="vision-collections-heading"><strong>{app.copy.vision.savedCollections}</strong><Archive size={15} /></div>{collections.map((collection) => {
       const availability = collectionAvailability[collection.id]
