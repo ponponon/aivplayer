@@ -136,6 +136,7 @@ describe('vision library setup', () => {
     expect(preload).toContain('exportVisionSearchResultsFull')
     expect(preload).toContain('recreateVisionSearchResultsFullExport')
     expect(preload).toContain('recreateVisionSearchResultsFullExports')
+    expect(preload).toContain('VisionSearchExportBatchRecreateResult')
     expect(preload).toContain('cancelVisionSearchResultsFullExport')
     expect(preload).toContain('exportVisionSearchResults')
     const resultView = readFileSync(join(projectRoot, 'src/renderer/src/app/vision-search-results.tsx'), 'utf8')
