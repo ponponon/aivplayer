@@ -477,6 +477,7 @@
       searchResultsFullExportSearching: 'Searching the full library…',
       searchResultsFullExportWriting: (written: number, total: number) => `Writing full-library export: ${written} / ${total}`,
       searchResultsFullExportCancelled: 'Full-library export cancelled',
+      searchResultsFullExportRevisionUnavailable: (table: string, version: number) => `The indexed revision needed for this export was cleaned up (${table} v${version}). Search again and retry the export.`,
       findSimilar: 'Find similar shots',
       detectObjects: 'Detect objects',
       detectingObjects: 'Detecting…',

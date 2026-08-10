@@ -53,6 +53,8 @@ describe('vision library setup', () => {
     expect(source).toContain('resumeVisionSearchExports')
     expect(source).toContain('getVisionSearchExportStore')
     expect(source).toContain('getSearchRevision')
+    expect(source).toContain('isVisionSearchRevisionUnavailableError')
+    expect(source).toContain('searchResultsFullExportRevisionUnavailable')
     expect(source).toContain('getVisionSearchRevisionWithCatalogs')
     expect(source).toContain('VisionSearchCatalogSnapshot')
     expect(source).toContain('getVisionEntityCatalogSearchQueries')

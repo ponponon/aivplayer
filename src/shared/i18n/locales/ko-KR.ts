@@ -477,6 +477,7 @@
       searchResultsFullExportSearching: '전체 라이브러리를 검색하는 중…',
       searchResultsFullExportWriting: (written: number, total: number) => `전체 라이브러리 내보내기 작성 중: ${written} / ${total}`,
       searchResultsFullExportCancelled: '전체 라이브러리 내보내기를 취소했습니다',
+      searchResultsFullExportRevisionUnavailable: (table: string, version: number) => `내보내기에 필요한 기록 인덱스가 삭제되었습니다(${table} v${version}). 다시 검색한 후 내보내기를 재시도하세요.`,
       findSimilar: '비슷한 장면 찾기',
       detectObjects: '객체 감지',
       detectingObjects: '감지 중…',

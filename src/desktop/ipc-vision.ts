@@ -20,7 +20,7 @@ import { getAppCopy } from '../shared/i18n'
 import { createVisionSearchExportTaskCenterEvent, createVisionTaskCenterEvent } from '../core/tasks/task-center-adapters'
 import { sendTaskCenterEvent } from './task-center-events'
 import type { VisionSearchExportCancelRequest, VisionSearchExportProgress, VisionSearchExportRetryRequest } from '../shared/vision-search-export-types'
-import { getVisionSearchRevisionBody, type VisionSearchCatalogSnapshot, type VisionSearchRevision } from '../shared/vision-search-revision'
+import { getVisionSearchRevisionBody, isVisionSearchRevisionUnavailableError, type VisionSearchCatalogSnapshot, type VisionSearchRevision } from '../shared/vision-search-revision'
 import { VISION_INDEX_FAILURE_MAX_RETRY_BATCH } from '../core/ai/vision-index-failure'
 import { mergeVisionLibrarySourceMetadata } from '../core/ai/vision-library-source-metadata'
 import { applySpeakerDiarizationCatalogToResults, filterSpeakerDiarizationCatalogSearchResults, getSpeakerDiarizationCatalogSearchQueries } from '../core/ai/speaker-diarization-catalog'
@@ -209,7 +209,9 @@ async function runVisionSearchFullExportTask(task: VisionSearchExportTaskRecord,
       store.update(taskId, { status: 'cancelled', error: undefined })
       emit({ status: 'cancelled', stage: 'cancelled', resultCount: persistedTask.resultCount, writtenCount: persistedTask.writtenCount, message: copy.searchResultsFullExportCancelled })
     } else {
-      const message = error instanceof Error ? error.message : String(error)
+      const message = isVisionSearchRevisionUnavailableError(error)
+        ? copy.searchResultsFullExportRevisionUnavailable(error.tableName, error.version)
+        : error instanceof Error ? error.message : String(error)
       store.update(taskId, { status: 'failed', error: message })
       emit({ status: 'failed', stage: 'failed', resultCount: persistedTask.resultCount, writtenCount: persistedTask.writtenCount, message })
     }

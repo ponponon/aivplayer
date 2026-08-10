@@ -477,6 +477,7 @@
       searchResultsFullExportSearching: '正在查询全库结果…',
       searchResultsFullExportWriting: (written: number, total: number) => `正在写入全库导出：${written} / ${total}`,
       searchResultsFullExportCancelled: '全库导出已取消',
+      searchResultsFullExportRevisionUnavailable: (table: string, version: number) => `导出依赖的历史索引版本已被清理（${table} v${version}），请重新搜索后再导出。`,
       findSimilar: '查找相似镜头',
       detectObjects: '检测物体',
       detectingObjects: '检测中…',

@@ -477,6 +477,7 @@
       searchResultsFullExportSearching: 'ライブラリ全体を検索中…',
       searchResultsFullExportWriting: (written: number, total: number) => `ライブラリ全体のエクスポートを書き込み中：${written} / ${total}`,
       searchResultsFullExportCancelled: 'ライブラリ全体のエクスポートをキャンセルしました',
+      searchResultsFullExportRevisionUnavailable: (table: string, version: number) => `エクスポートに必要な履歴インデックスが削除されました（${table} v${version}）。検索し直してから再度エクスポートしてください。`,
       findSimilar: '似たショットを探す',
       detectObjects: '物体を検出',
       detectingObjects: '検出中…',
