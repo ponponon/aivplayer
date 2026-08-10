@@ -23,11 +23,13 @@ type VisionSearchResultsProps = {
   isLoadingMore: boolean
   onLoadMoreResults: () => void
   onExportResults: (format: VisionSearchResultsExportFormat) => void
+  onExportAllResults: (format: VisionSearchResultsExportFormat) => void
+  canExportAllResults: boolean
   sortMode: VisionSearchSortMode
   onSortModeChange: (sortMode: VisionSearchSortMode) => void
 }
 
-export function VisionSearchResults({ copy, results, thumbnailUrls, onOpenResult, onFindSimilar, onDetectObjects, isDetectingObjects, isSimilarSearch, onReturnToSearch, selectedIds, onToggleSelection, onSelectAllResults, onClearResults, hasMoreResults, isLoadingMore, onLoadMoreResults, onExportResults, sortMode, onSortModeChange }: VisionSearchResultsProps): React.ReactElement {
+export function VisionSearchResults({ copy, results, thumbnailUrls, onOpenResult, onFindSimilar, onDetectObjects, isDetectingObjects, isSimilarSearch, onReturnToSearch, selectedIds, onToggleSelection, onSelectAllResults, onClearResults, hasMoreResults, isLoadingMore, onLoadMoreResults, onExportResults, onExportAllResults, canExportAllResults, sortMode, onSortModeChange }: VisionSearchResultsProps): React.ReactElement {
   const sortedResults = sortVisionSearchResults(results, sortMode)
   const groupedResults = isSimilarSearch ? sortVisionSimilarSearchGroups(groupVisionSimilarSearchResults(results), sortMode) : []
   const renderResult = (result: VisionSearchResult): React.ReactElement => {
@@ -74,6 +76,9 @@ export function VisionSearchResults({ copy, results, thumbnailUrls, onOpenResult
       <span>{copy.exportSearchResults}</span>
       <button className="vision-results-selection-action" type="button" onClick={() => onExportResults('json')} disabled={sortedResults.length === 0}>{copy.exportSearchResultsJson}</button>
       <button className="vision-results-selection-action" type="button" onClick={() => onExportResults('csv')} disabled={sortedResults.length === 0}>{copy.exportSearchResultsCsv}</button>
+      <span>{copy.exportSearchResultsAll}</span>
+      <button className="vision-results-selection-action" type="button" onClick={() => onExportAllResults('json')} disabled={!canExportAllResults}>{copy.exportSearchResultsJson}</button>
+      <button className="vision-results-selection-action" type="button" onClick={() => onExportAllResults('csv')} disabled={!canExportAllResults}>{copy.exportSearchResultsCsv}</button>
     </div>
     {sortedResults.length === 0 ? <div className="vision-empty">{copy.noResults}</div> : isSimilarSearch ? groupedResults.map(renderGroup) : sortedResults.map(renderResult)}
     {sortedResults.length > 0 && hasMoreResults ? <button className="vision-results-load-more" type="button" onClick={onLoadMoreResults} disabled={isLoadingMore}>{isLoadingMore ? copy.loadingMoreResults : copy.loadMoreResults}</button> : null}

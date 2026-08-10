@@ -83,6 +83,7 @@ describe('vision library setup', () => {
     expect(panel).toContain('objectDetectionFilter: context.objectDetectionFilter')
     expect(panel).toContain('savedSearch.objectDetectionFilter')
     expect(panel).toContain('exportVisionSearchResults')
+    expect(panel).toContain('exportVisionSearchResultsFull')
     expect(panel).toContain('selectedResultIds.size > 0 ? results.filter')
     expect(panel).toContain('isSimilarSearch={searchContext?.kind === \'similar\'}')
     expect(panel).toContain('createEditingProjectFromVisionResults')
@@ -119,6 +120,8 @@ describe('vision library setup', () => {
     expect(resultView).toContain('groupVisionSimilarSearchResults')
     expect(resultView).toContain('similarGroupMeta')
     expect(resultView).toContain('onExportResults')
+    expect(resultView).toContain('onExportAllResults')
+    expect(resultView).toContain('exportSearchResultsAll')
     expect(resultView).toContain('exportSearchResultsJson')
   })
 
