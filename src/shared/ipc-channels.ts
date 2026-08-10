@@ -106,6 +106,7 @@ export const IPC_CHANNELS = {
   VISION_SEARCH_IMAGE: 'vision:search-image',
   VISION_SEARCH_SIMILAR: 'vision:search-similar',
   VISION_SEARCH_PAGE: 'vision:search-page',
+  VISION_SEARCH_FULL_EXPORT: 'vision:search-full-export',
   VISION_SEARCH_RESULTS_EXPORT: 'vision:search-results-export',
   VISION_EVIDENCE_SOURCES: 'vision:evidence-sources',
   VISION_EVIDENCE_AUDIT: 'vision:evidence-audit',

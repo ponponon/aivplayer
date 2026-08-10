@@ -6,6 +6,7 @@ export const VISION_FRAME_INTERVAL_SECONDS = 3
 export const VISION_VECTOR_INDEX_TYPE = 'IVF_FLAT'
 export const VISION_VECTOR_DISTANCE_TYPE = 'dot'
 export const VISION_VECTOR_INDEX_MIN_ROWS = 10_000
+export const VISION_SEARCH_FULL_EXPORT_MAX_RESULTS = 1_000_000
 
 export type VisionIndexStatus = 'idle' | 'loading' | 'indexing' | 'completed' | 'cancelled' | 'error'
 
@@ -299,6 +300,11 @@ export type VisionSearchResultPage = {
 }
 
 export type VisionSearchResultsExportFormat = 'json' | 'csv'
+
+export type VisionSearchFullExportRequest =
+  | { kind: 'text'; request: VisionSearchRequest; format: VisionSearchResultsExportFormat }
+  | { kind: 'image'; request: VisionSearchRequest; format: VisionSearchResultsExportFormat }
+  | { kind: 'similar'; request: VisionSimilarSearchRequest; format: VisionSearchResultsExportFormat }
 
 export type VisionSearchResultsExportRequest = {
   results: VisionSearchResult[]

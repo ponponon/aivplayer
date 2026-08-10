@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { VISION_FRAME_INTERVAL_SECONDS, VISION_MODEL_ID, VISION_MODEL_VARIANT, VISION_VECTOR_DISTANCE_TYPE, VISION_VECTOR_INDEX_MIN_ROWS, VISION_VECTOR_INDEX_TYPE } from '../../src/shared/vision-types'
+import { VISION_FRAME_INTERVAL_SECONDS, VISION_MODEL_ID, VISION_MODEL_VARIANT, VISION_SEARCH_FULL_EXPORT_MAX_RESULTS, VISION_VECTOR_DISTANCE_TYPE, VISION_VECTOR_INDEX_MIN_ROWS, VISION_VECTOR_INDEX_TYPE } from '../../src/shared/vision-types'
 import { getVisionModelPaths } from '../../src/core/ai/vision-model'
 import { calculateVisionLexicalMatch, combineVisionHybridScore, filterVisionSearchResultsByEvidenceTypes, getVisionSearchResultKey } from '../../src/core/ai/vision-search'
 import { dotProduct } from '../../src/core/ai/vision-library'
@@ -25,6 +25,7 @@ describe('vision library setup', () => {
     expect(VISION_VECTOR_DISTANCE_TYPE).toBe('dot')
     expect(VISION_VECTOR_INDEX_TYPE).toBe('IVF_FLAT')
     expect(VISION_VECTOR_INDEX_MIN_ROWS).toBe(10_000)
+    expect(VISION_SEARCH_FULL_EXPORT_MAX_RESULTS).toBe(1_000_000)
     expect(paths.combinedModelPath.endsWith('onnx/model_uint8.onnx')).toBe(true)
     expect(paths.textModelPath.endsWith('onnx/text_model_uint8.onnx')).toBe(true)
     expect(paths.visionModelPath.endsWith('onnx/vision_model_uint8.onnx')).toBe(true)
@@ -192,6 +193,11 @@ describe('vision library setup', () => {
     expect(source).toContain('getVisualEvidenceByFrameIds')
     expect(source).toContain('async searchSimilar(request: VisionSimilarSearchRequest)')
     expect(source).toContain('normalizeVisionSimilarSearchRequest')
+    expect(source).toContain('searchTextAll')
+    expect(source).toContain('searchImageAll')
+    expect(source).toContain('searchSimilarAll')
+    expect(source).toContain('searchHybridAll')
+    expect(source).toContain('VISION_SEARCH_FULL_EXPORT_MAX_RESULTS')
     expect(source).toContain('isVisionSimilarSearchTarget')
     expect(source).toContain('await this.readThumbnail(normalizedRequest.thumbnailPath)')
     expect(source).toContain("baseTokenizer: 'ngram'")

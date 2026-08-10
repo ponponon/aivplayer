@@ -23,6 +23,7 @@ import {
   VISION_FRAME_INTERVAL_SECONDS,
   VISION_MODEL_ID,
   VISION_MODEL_VARIANT,
+  VISION_SEARCH_FULL_EXPORT_MAX_RESULTS,
   VISION_VECTOR_DISTANCE_TYPE,
   VISION_VECTOR_INDEX_MIN_ROWS,
   VISION_VECTOR_INDEX_TYPE,
@@ -220,6 +221,10 @@ function escapeSqlString(value: string): string {
 function clampLimit(value: number | undefined): number {
   if (!Number.isFinite(value)) return 24
   return Math.min(100, Math.max(1, Math.floor(value as number)))
+}
+
+function fullSearchCandidateLimit(full: boolean, limit: number): number {
+  return full ? VISION_SEARCH_FULL_EXPORT_MAX_RESULTS : Math.min(100, Math.max(clampLimit(limit) * 4, 50))
 }
 
 function clampSourceLimit(value: number | undefined): number {
@@ -1587,6 +1592,48 @@ export class VisionLibrary {
     return results.filter((result) => !excludeRequest || !isVisionSimilarSearchTarget(result, excludeRequest)).slice(0, resultLimit)
   }
 
+  private async searchAll(embedding: number[], excludeRequest?: VisionSimilarSearchRequest): Promise<VisionSearchResult[]> {
+    await this.ensureVectorIndex(false)
+    const table = await this.getTable()
+    if (!table) return []
+    const rows = await table.query()
+      .select(['id', 'video_path', 'file_name', 'timestamp_seconds', 'thumbnail_path', 'embedding', 'model_id', 'model_variant'])
+      .limit(VISION_SEARCH_FULL_EXPORT_MAX_RESULTS)
+      .toArray() as unknown as Array<Record<string, unknown>>
+    const scoredRows = rows
+      .map((item) => ({ item, score: dotProduct(embedding, item.embedding) }))
+      .filter(({ score }) => Number.isFinite(score))
+      .sort((left, right) => right.score - left.score || String(left.item.id).localeCompare(String(right.item.id)))
+    const evidenceByFrame = await this.getVisualEvidenceByFrameIds(scoredRows.map(({ item }) => String(item.id)))
+    const results = scoredRows.map(({ item, score }) => {
+      const frameId = String(item.id)
+      const evidence = evidenceByFrame.get(frameId)
+      const normalizedScore = Math.max(0, Math.min(1, score))
+      return {
+        id: frameId,
+        videoPath: String(item.video_path),
+        fileName: String(item.file_name),
+        timestampSeconds: Number(item.timestamp_seconds),
+        thumbnailPath: String(item.thumbnail_path),
+        score: normalizedScore,
+        visualScore: normalizedScore,
+        matchSource: 'visual' as const,
+        evidenceId: evidence?.id,
+        frameId,
+        sourceId: evidence?.source_id,
+        startSeconds: evidence?.start_seconds,
+        endSeconds: evidence?.end_seconds,
+        evidenceType: evidence?.evidence_type ?? 'visual',
+        confidence: evidence?.confidence ?? undefined,
+        box: evidence ? boxFromEvidenceRow(evidence) : undefined,
+        sourceFingerprint: evidence?.source_fingerprint,
+        modelId: String(item.model_id),
+        modelVariant: String(item.model_variant)
+      }
+    })
+    return results.filter((result) => !excludeRequest || !isVisionSimilarSearchTarget(result, excludeRequest))
+  }
+
   private async getVisualEvidenceByFrameIds(frameIds: readonly string[]): Promise<Map<string, VisionEvidenceRow>> {
     const result = new Map<string, VisionEvidenceRow>()
     if (frameIds.length === 0) return result
@@ -1616,7 +1663,7 @@ export class VisionLibrary {
     }))
   }
 
-  private async searchLexicalByScan(query: string, limit: number): Promise<LexicalSearchCandidate[]> {
+  private async searchLexicalByScan(query: string, limit: number, full = false): Promise<LexicalSearchCandidate[]> {
     const candidates = new Map<string, LexicalSearchCandidate>()
     const captionTable = await this.getCaptionTable()
     if (captionTable) {
@@ -1681,10 +1728,10 @@ export class VisionLibrary {
 
     return [...candidates.values()]
       .sort((left, right) => right.lexicalScore - left.lexicalScore)
-      .slice(0, Math.min(100, Math.max(clampLimit(limit) * 4, 50)))
+      .slice(0, fullSearchCandidateLimit(full, limit))
   }
 
-  private async searchLexicalByEvidence(query: string, limit: number): Promise<LexicalSearchCandidate[] | null> {
+  private async searchLexicalByEvidence(query: string, limit: number, full = false): Promise<LexicalSearchCandidate[] | null> {
     const table = await this.getEvidenceTable()
     if (!table) return null
     const candidates = new Map<string, LexicalSearchCandidate>()
@@ -1727,12 +1774,12 @@ export class VisionLibrary {
     }
     return [...candidates.values()]
       .sort((left, right) => right.lexicalScore - left.lexicalScore)
-      .slice(0, Math.min(100, Math.max(clampLimit(limit) * 4, 50)))
+      .slice(0, fullSearchCandidateLimit(full, limit))
   }
 
-  private async searchLexical(query: string, limit: number): Promise<LexicalSearchCandidate[]> {
+  private async searchLexical(query: string, limit: number, full = false): Promise<LexicalSearchCandidate[]> {
     try {
-      const evidenceCandidates = await this.searchLexicalByEvidence(query, limit)
+      const evidenceCandidates = await this.searchLexicalByEvidence(query, limit, full)
       if (evidenceCandidates) return evidenceCandidates
     } catch {
       // Fall through to the legacy caption/FTS path for old or partially written indexes.
@@ -1743,7 +1790,7 @@ export class VisionLibrary {
       const rows = await table.query()
         .fullTextSearch(query, { columns: SEARCH_TEXT_COLUMN })
         .select(['id', 'video_path', 'file_name', 'frame_id', 'timestamp_seconds', 'thumbnail_path', 'caption_text', '_score'])
-        .limit(Math.min(100, Math.max(clampLimit(limit) * 4, 50)))
+        .limit(fullSearchCandidateLimit(full, limit))
         .toArray() as unknown as Array<Record<string, unknown>>
       const candidates: LexicalSearchCandidate[] = []
       for (const row of rows) {
@@ -1768,9 +1815,9 @@ export class VisionLibrary {
       }
       return candidates
         .sort((left, right) => right.lexicalScore - left.lexicalScore)
-        .slice(0, Math.min(100, Math.max(clampLimit(limit) * 4, 50)))
+        .slice(0, fullSearchCandidateLimit(full, limit))
     } catch {
-      return this.searchLexicalByScan(query, limit)
+      return this.searchLexicalByScan(query, limit, full)
     }
   }
 
@@ -1823,12 +1870,12 @@ export class VisionLibrary {
     }
   }
 
-  private searchObjectEvidenceRows(query: string, rows: readonly VisionEvidenceRow[], limit: number): VisionSearchResult[] {
+  private searchObjectEvidenceRows(query: string, rows: readonly VisionEvidenceRow[], limit: number, full = false): VisionSearchResult[] {
     return rows
       .map((row) => this.createObjectEvidenceSearchResult(row, calculateVisionLexicalMatch(query, row.text, row.file_name)))
       .filter((result): result is VisionSearchResult => result !== null)
       .sort((left, right) => right.score - left.score || (right.confidence ?? 0) - (left.confidence ?? 0))
-      .slice(0, clampLimit(limit))
+      .slice(0, full ? VISION_SEARCH_FULL_EXPORT_MAX_RESULTS : clampLimit(limit))
   }
 
   /** Searches all persisted object evidence rows with label, category and score constraints. */
@@ -1848,14 +1895,14 @@ export class VisionLibrary {
     })
   }
 
-  private mergeObjectScopedResults(results: readonly VisionSearchResult[], directResults: readonly VisionSearchResult[], limit: number): VisionSearchResult[] {
+  private mergeObjectScopedResults(results: readonly VisionSearchResult[], directResults: readonly VisionSearchResult[], limit: number, full = false): VisionSearchResult[] {
     const merged = new Map<string, VisionSearchResult>()
     for (const result of [...results, ...directResults]) {
       const key = `${result.videoPath}\0${getVisionSearchResultKey(result)}`
       const previous = merged.get(key)
       if (!previous || result.score > previous.score) merged.set(key, result)
     }
-    return [...merged.values()].sort((left, right) => right.score - left.score).slice(0, clampLimit(limit))
+    return [...merged.values()].sort((left, right) => right.score - left.score || left.id.localeCompare(right.id)).slice(0, full ? VISION_SEARCH_FULL_EXPORT_MAX_RESULTS : clampLimit(limit))
   }
 
   private async searchHybrid(embedding: number[], query: string, limit: number): Promise<VisionSearchResult[]> {
@@ -1910,6 +1957,57 @@ export class VisionLibrary {
       .slice(0, clampLimit(limit))
   }
 
+  private async searchHybridAll(embedding: number[], query: string): Promise<VisionSearchResult[]> {
+    const visualResults = await this.searchAll(embedding)
+    const visualCandidates = visualResults.map((result, index) => ({ result, visualRankScore: 1 - index / Math.max(1, visualResults.length) }))
+    const lexicalCandidates = await this.searchLexical(query, VISION_SEARCH_FULL_EXPORT_MAX_RESULTS, true)
+    const merged = new Map<string, { result: VisionSearchResult; visualRankScore: number; lexicalScore: number; matchSource: VisionMatchSource }>()
+    const mergeKey = (result: VisionSearchResult): string => `${result.videoPath}\0${getVisionSearchResultKey(result)}`
+
+    for (const candidate of visualCandidates) {
+      merged.set(mergeKey(candidate.result), {
+        result: candidate.result,
+        visualRankScore: candidate.visualRankScore,
+        lexicalScore: 0,
+        matchSource: 'visual'
+      })
+    }
+
+    for (const candidate of lexicalCandidates) {
+      const existing = merged.get(mergeKey(candidate.result))
+      if (existing) {
+        existing.lexicalScore = candidate.lexicalScore
+        existing.matchSource = 'both'
+        existing.result.matchedText = candidate.result.matchedText
+        existing.result.evidenceId = candidate.result.evidenceId ?? existing.result.evidenceId
+        if (candidate.result.evidenceType === 'subtitle') existing.result.timestampSeconds = candidate.result.timestampSeconds
+        existing.result.startSeconds = candidate.result.startSeconds ?? existing.result.startSeconds
+        existing.result.endSeconds = candidate.result.endSeconds ?? existing.result.endSeconds
+        existing.result.evidenceType = candidate.result.evidenceType ?? existing.result.evidenceType
+        existing.result.entityLabelId = candidate.result.entityLabelId ?? existing.result.entityLabelId
+        existing.result.sourceId = candidate.result.sourceId ?? existing.result.sourceId
+        existing.result.sourceFingerprint = candidate.result.sourceFingerprint ?? existing.result.sourceFingerprint
+      } else {
+        merged.set(mergeKey(candidate.result), {
+          result: candidate.result,
+          visualRankScore: 0,
+          lexicalScore: candidate.lexicalScore,
+          matchSource: candidate.matchSource
+        })
+      }
+    }
+
+    return [...merged.values()]
+      .map((candidate) => ({
+        ...candidate.result,
+        score: combineVisionHybridScore(candidate.visualRankScore, candidate.lexicalScore),
+        visualScore: candidate.result.visualScore,
+        lexicalScore: candidate.lexicalScore,
+        matchSource: candidate.matchSource
+      }))
+      .sort((left, right) => right.score - left.score || left.id.localeCompare(right.id))
+  }
+
   private async searchTextBase(query: string, limit?: number, mode: VisionSearchMode = 'hybrid'): Promise<VisionSearchResult[]> {
     const normalizedQuery = query.trim()
     if (!normalizedQuery) return []
@@ -1931,6 +2029,26 @@ export class VisionLibrary {
     }
   }
 
+  private async searchTextBaseAll(query: string, mode: VisionSearchMode = 'hybrid'): Promise<VisionSearchResult[]> {
+    const normalizedQuery = query.trim()
+    if (!normalizedQuery) return []
+    if (mode === 'visual') return this.searchAll(await this.model.getTextEmbedding(normalizedQuery))
+    try {
+      const embedding = await this.model.getTextEmbedding(normalizedQuery)
+      return await this.searchHybridAll(embedding, normalizedQuery)
+    } catch (error) {
+      const lexicalCandidates = await this.searchLexical(normalizedQuery, VISION_SEARCH_FULL_EXPORT_MAX_RESULTS, true)
+      if (lexicalCandidates.length === 0) throw error
+      return lexicalCandidates.map((candidate) => ({
+        ...candidate.result,
+        score: candidate.lexicalScore,
+        visualScore: 0,
+        lexicalScore: candidate.lexicalScore,
+        matchSource: candidate.matchSource
+      }))
+    }
+  }
+
   async searchText(query: string, limit?: number, mode: VisionSearchMode = 'hybrid', objectDetectionFilter?: VisionObjectDetectionFilterState): Promise<VisionSearchResult[]> {
     const normalizedFilter = normalizeVisionObjectDetectionFilterState(objectDetectionFilter)
     if (!normalizedFilter || !isVisionObjectDetectionFilterActive(normalizedFilter)) return this.searchTextBase(query, limit, mode)
@@ -1941,6 +2059,17 @@ export class VisionLibrary {
     const scopedResults = this.filterResultsByObjectEvidence(expandedResults, rows)
     const directResults = this.searchObjectEvidenceRows(query.trim(), rows, Math.min(100, Math.max(targetLimit * 4, 50)))
     return this.mergeObjectScopedResults(scopedResults, directResults, targetLimit)
+  }
+
+  async searchTextAll(query: string, mode: VisionSearchMode = 'hybrid', objectDetectionFilter?: VisionObjectDetectionFilterState): Promise<VisionSearchResult[]> {
+    const normalizedFilter = normalizeVisionObjectDetectionFilterState(objectDetectionFilter)
+    if (!normalizedFilter || !isVisionObjectDetectionFilterActive(normalizedFilter)) return this.searchTextBaseAll(query, mode)
+    const rows = await this.listObjectEvidenceByFilter(normalizedFilter)
+    if (rows.length === 0) return []
+    const expandedResults = await this.searchTextBaseAll(query, mode)
+    const scopedResults = this.filterResultsByObjectEvidence(expandedResults, rows)
+    const directResults = this.searchObjectEvidenceRows(query.trim(), rows, VISION_SEARCH_FULL_EXPORT_MAX_RESULTS, true)
+    return this.mergeObjectScopedResults(scopedResults, directResults, VISION_SEARCH_FULL_EXPORT_MAX_RESULTS, true)
   }
 
   async searchImage(imagePath: string, limit?: number, objectDetectionFilter?: VisionObjectDetectionFilterState): Promise<VisionSearchResult[]> {
@@ -1955,12 +2084,29 @@ export class VisionLibrary {
     return this.filterResultsByObjectEvidence(expandedResults, rows).slice(0, targetLimit)
   }
 
+  async searchImageAll(imagePath: string, objectDetectionFilter?: VisionObjectDetectionFilterState): Promise<VisionSearchResult[]> {
+    const image = await stat(imagePath)
+    if (!image.isFile()) throw new Error('以图搜图输入不是有效文件')
+    const normalizedFilter = normalizeVisionObjectDetectionFilterState(objectDetectionFilter)
+    const results = await this.searchAll(await this.model.getImageEmbedding(imagePath))
+    if (!normalizedFilter || !isVisionObjectDetectionFilterActive(normalizedFilter)) return results
+    const rows = await this.listObjectEvidenceByFilter(normalizedFilter)
+    return this.filterResultsByObjectEvidence(results, rows)
+  }
+
   async searchSimilar(request: VisionSimilarSearchRequest): Promise<VisionSearchResult[]> {
     const normalizedRequest = normalizeVisionSimilarSearchRequest(request)
     if (!normalizedRequest?.thumbnailPath) return []
     await this.readThumbnail(normalizedRequest.thumbnailPath)
     const embedding = await this.model.getImageEmbedding(normalizedRequest.thumbnailPath)
     return this.search(embedding, normalizedRequest.limit ?? 24, normalizedRequest)
+  }
+
+  async searchSimilarAll(request: VisionSimilarSearchRequest): Promise<VisionSearchResult[]> {
+    const normalizedRequest = normalizeVisionSimilarSearchRequest(request)
+    if (!normalizedRequest?.thumbnailPath) return []
+    await this.readThumbnail(normalizedRequest.thumbnailPath)
+    return this.searchAll(await this.model.getImageEmbedding(normalizedRequest.thumbnailPath), normalizedRequest)
   }
 
   async readThumbnail(thumbnailPath: string): Promise<string> {
