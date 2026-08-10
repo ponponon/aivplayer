@@ -1,5 +1,6 @@
 import { app, ipcMain } from 'electron'
-import { readFile, writeFile } from 'node:fs/promises'
+import { randomUUID } from 'node:crypto'
+import { readFile, rename, unlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type { VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionEvidenceAuditPage, VisionEvidenceAuditRequest, VisionEvidenceBatchClearResult, VisionEvidenceSourceRequest, VisionEvidenceType, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionSavedSearchInput, VisionSearchFullExportRequest, VisionSearchPageKind, VisionSearchPageRequest, VisionSearchRequest, VisionSearchResult, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchResultsExportRequest, VisionSearchResultsExportResult, VisionSimilarSearchRequest } from '../shared/vision-types'
@@ -7,14 +8,15 @@ import { VISION_SEARCH_FULL_EXPORT_MAX_RESULTS } from '../shared/vision-types'
 import type { VisionEntityCatalogBatchPatch, VisionEntityCatalogCreateInput, VisionEntityCatalogPatch } from '../shared/vision-entity-types'
 import { scanVisionDirectory, isVisionScanAbortError } from '../core/ai/vision-directory-scan'
 import { renderVisionClipCollectionExport } from '../core/ai/clip-inbox-export'
-import { renderVisionSearchResultsExport } from '../core/ai/vision-search-export'
+import { isVisionSearchExportAbortError, renderVisionSearchResultsExport, writeVisionSearchResultsExportInChunks } from '../core/ai/vision-search-export'
 import { getClipInboxStore, getMediaImportInboxStore, getSpeakerDiarizationCatalogStore, getVisionEntityCatalogStore, getVisionIndexCoordinator, getVisionIndexFailureStore, getVisionIndexQueue, getVisionLibrary, getVisionSavedSearchStore, trackVisionIndexProgress } from './desktop-services'
 import { desktopState } from './desktop-state'
 import { promptForOpenPath, promptForSavePath } from './media-dialogs'
 import { getCurrentLocale } from './desktop-settings'
 import { getAppCopy } from '../shared/i18n'
-import { createVisionTaskCenterEvent } from '../core/tasks/task-center-adapters'
+import { createVisionSearchExportTaskCenterEvent, createVisionTaskCenterEvent } from '../core/tasks/task-center-adapters'
 import { sendTaskCenterEvent } from './task-center-events'
+import type { VisionSearchExportCancelRequest, VisionSearchExportProgress } from '../shared/vision-search-export-types'
 import { VISION_INDEX_FAILURE_MAX_RETRY_BATCH } from '../core/ai/vision-index-failure'
 import { mergeVisionLibrarySourceMetadata } from '../core/ai/vision-library-source-metadata'
 import { filterSpeakerDiarizationCatalogSearchResults } from '../core/ai/speaker-diarization-catalog'
@@ -133,6 +135,59 @@ async function searchVisionFullResults(request: VisionSearchFullExportRequest): 
   if (request.kind === 'text') return searchVisionTextResults(request.request, true)
   if (request.kind === 'image') return searchVisionImageResults(request.request, true)
   return searchVisionSimilarResults(request.request, true)
+}
+
+function sendVisionSearchExportProgress(progress: VisionSearchExportProgress): void {
+  sendTaskCenterEvent(createVisionSearchExportTaskCenterEvent(progress))
+}
+
+async function removeTemporaryExportFile(filePath: string): Promise<void> {
+  await unlink(filePath).catch(() => undefined)
+}
+
+async function renameExportFileAtomically(temporaryPath: string, outputPath: string): Promise<void> {
+  try {
+    await rename(temporaryPath, outputPath)
+  } catch (error) {
+    const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : ''
+    if (code !== 'EEXIST' && code !== 'EPERM') throw error
+    await unlink(outputPath).catch(() => undefined)
+    await rename(temporaryPath, outputPath)
+  }
+}
+
+async function runVisionSearchFullExportTask(taskId: string, request: VisionSearchFullExportRequest, outputPath: string, controller: AbortController): Promise<void> {
+  const copy = getAppCopy(getCurrentLocale()).vision
+  const temporaryPath = `${outputPath}.${process.pid}.${taskId}.tmp`
+  const signal = controller.signal
+  const emit = (progress: Omit<VisionSearchExportProgress, 'taskId' | 'format'>): void => {
+    sendVisionSearchExportProgress({ ...progress, taskId, format: request.format, outputPath })
+  }
+  try {
+    emit({ status: 'running', stage: 'searching', resultCount: 0, writtenCount: 0, message: copy.searchResultsFullExportSearching })
+    const results = normalizeVisionSearchResultsForExport(await searchVisionFullResults(request), VISION_SEARCH_FULL_EXPORT_MAX_RESULTS)
+    if (signal.aborted) {
+      const error = new Error(copy.searchResultsFullExportCancelled)
+      error.name = 'AbortError'
+      throw error
+    }
+    if (results.length === 0) throw new Error('没有可导出的搜索结果')
+    emit({ status: 'running', stage: 'writing', resultCount: results.length, writtenCount: 0, message: copy.searchResultsFullExportWriting(0, results.length) })
+    await writeVisionSearchResultsExportInChunks(temporaryPath, results, request.format, signal, ({ writtenCount, totalCount }) => {
+      emit({ status: 'running', stage: 'writing', resultCount: totalCount, writtenCount, message: copy.searchResultsFullExportWriting(writtenCount, totalCount) })
+    })
+    await renameExportFileAtomically(temporaryPath, outputPath)
+    emit({ status: 'completed', stage: 'completed', resultCount: results.length, writtenCount: results.length, message: copy.searchResultsFullExported(results.length, outputPath) })
+  } catch (error) {
+    await removeTemporaryExportFile(temporaryPath)
+    if (isVisionSearchExportAbortError(error) || signal.aborted) {
+      emit({ status: 'cancelled', stage: 'cancelled', resultCount: 0, writtenCount: 0, message: copy.searchResultsFullExportCancelled })
+    } else {
+      emit({ status: 'failed', stage: 'failed', resultCount: 0, writtenCount: 0, message: error instanceof Error ? error.message : String(error) })
+    }
+  } finally {
+    if (desktopState.visionSearchExportAbortControllers.get(taskId) === controller) desktopState.visionSearchExportAbortControllers.delete(taskId)
+  }
 }
 
 async function searchVisionResultPage(request: VisionSearchPageRequest): Promise<VisionSearchResultPage> {
@@ -276,13 +331,6 @@ export function registerVisionIpc(): void {
   ipcMain.handle(IPC_CHANNELS.VISION_SEARCH_FULL_EXPORT, async (_event, request: VisionSearchFullExportRequest): Promise<VisionSearchResultsExportResult> => {
     if (!request || !isVisionSearchPageKind(request.kind) || !isVisionSearchResultsExportFormat(request.format) || !request.request || typeof request.request !== 'object') return { success: false, message: '导出参数无效' }
     const copy = getAppCopy(getCurrentLocale()).vision
-    let results: VisionSearchResult[]
-    try {
-      results = normalizeVisionSearchResultsForExport(await searchVisionFullResults(request), VISION_SEARCH_FULL_EXPORT_MAX_RESULTS)
-    } catch (error) {
-      return { success: false, message: error instanceof Error ? error.message : String(error) }
-    }
-    if (results.length === 0) return { success: false, message: '没有可导出的搜索结果' }
     const extension = request.format
     const defaultPath = join(app.getPath('documents'), `aivplayer-vision-results-full.${extension}`)
     const filePath = await promptForSavePath({
@@ -292,12 +340,21 @@ export function registerVisionIpc(): void {
     })
     if (!filePath) return { success: false, canceled: true, message: copy.searchResultsExportCanceled }
     const outputPath = filePath.toLowerCase().endsWith(`.${extension}`) ? filePath : `${filePath}.${extension}`
-    try {
-      await writeFile(outputPath, renderVisionSearchResultsExport(results, request.format), 'utf8')
-      return { success: true, filePath: outputPath, message: copy.searchResultsFullExported(results.length, outputPath) }
-    } catch (error) {
-      return { success: false, message: error instanceof Error ? error.message : String(error) }
-    }
+    const taskId = randomUUID()
+    const controller = new AbortController()
+    desktopState.visionSearchExportAbortControllers.set(taskId, controller)
+    sendVisionSearchExportProgress({ taskId, status: 'queued', stage: 'searching', format: request.format, resultCount: 0, writtenCount: 0, message: copy.searchResultsFullExportQueued, outputPath })
+    void runVisionSearchFullExportTask(taskId, request, outputPath, controller)
+    return { success: true, message: copy.searchResultsFullExportQueued, taskId }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.VISION_SEARCH_FULL_EXPORT_CANCEL, (_event, request: VisionSearchExportCancelRequest): boolean => {
+    const taskId = typeof request?.taskId === 'string' ? request.taskId.trim() : ''
+    if (!taskId) return false
+    const controller = desktopState.visionSearchExportAbortControllers.get(taskId)
+    if (!controller) return false
+    controller.abort()
+    return true
   })
 
   ipcMain.handle(IPC_CHANNELS.VISION_SEARCH_RESULTS_EXPORT, async (_event, request: VisionSearchResultsExportRequest): Promise<VisionSearchResultsExportResult> => {

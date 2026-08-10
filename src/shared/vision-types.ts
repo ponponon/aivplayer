@@ -316,6 +316,7 @@ export type VisionSearchResultsExportResult = {
   message: string
   filePath?: string
   canceled?: boolean
+  taskId?: string
 }
 
 export type VisionSimilarSearchRequest = {

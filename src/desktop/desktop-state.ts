@@ -31,6 +31,7 @@ export const desktopState: {
   visionIndexQueue: VisionIndexQueue | null
   visionScanAbortControllers: Map<number, AbortController>
   visionAbortControllers: Map<number, AbortController>
+  visionSearchExportAbortControllers: Map<string, AbortController>
   evidenceTaskAbortControllers: Map<number, AbortController>
   batchSubtitleManager: BatchSubtitleManager | null
   dramaStore: DramaStore | null
@@ -57,6 +58,7 @@ export const desktopState: {
   visionIndexQueue: null,
   visionScanAbortControllers: new Map(),
   visionAbortControllers: new Map(),
+  visionSearchExportAbortControllers: new Map(),
   evidenceTaskAbortControllers: new Map(),
   batchSubtitleManager: null,
   dramaStore: null,
