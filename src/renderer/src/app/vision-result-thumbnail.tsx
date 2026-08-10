@@ -7,10 +7,11 @@ type VisionResultThumbnailProps = {
   alt: string
   box?: VisionObjectDetectionBox
   boxes?: readonly VisionObjectDetectionBox[]
+  highlightedBoxIndex?: number | null
   className?: string
 }
 
-export function VisionResultThumbnail({ src, alt, box, boxes, className }: VisionResultThumbnailProps): React.ReactElement {
+export function VisionResultThumbnail({ src, alt, box, boxes, highlightedBoxIndex, className }: VisionResultThumbnailProps): React.ReactElement {
   const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null)
   const boxesToRender = boxes ?? (box ? [box] : [])
 
@@ -25,7 +26,7 @@ export function VisionResultThumbnail({ src, alt, box, boxes, className }: Visio
       {imageSize ? boxesToRender.map((nextBox, index) => {
         const projection = projectVisionObjectDetectionBox(nextBox, imageSize.width, imageSize.height)
         return projection ? <span
-          className="vision-result-box"
+          className={`vision-result-box${highlightedBoxIndex === index ? ' is-highlighted' : ''}`}
           key={`${projection.left}-${projection.top}-${projection.width}-${projection.height}-${index}`}
           aria-hidden="true"
           style={{
