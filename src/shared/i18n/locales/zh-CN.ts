@@ -975,6 +975,14 @@
           label: '仅译文字幕',
           description: '导出视频片段，并生成只包含当前译文轨的同名 SRT。'
         },
+        'subtitle-file': {
+          label: '原文字幕文件',
+          description: '只导出当前编辑后的原文 SRT，不生成视频。'
+        },
+        'translation-file': {
+          label: '译文字幕文件',
+          description: '只导出当前编辑后的译文 SRT，不生成视频。'
+        },
         'burn-subtitle': {
           label: '烧录字幕',
           description: '将字幕直接烧录进视频。'
@@ -1319,6 +1327,8 @@
       translationServiceEmptyResponse: '翻译接口返回了空结果。',
       clipExportSuccess: '片段导出完成。',
       clipExportWithSubtitleSuccess: '片段和外挂字幕导出完成。',
+      clipExportSubtitleFileSuccess: '编辑字幕文件导出完成。',
+      clipExportSubtitleFileRequires: '纯字幕文件模式需要使用字幕文件导出通道。',
       clipExportBurnedSuccess: '片段导出完成，字幕已烧录。',
       clipExportFailed: '片段导出失败',
       clipExportSubtitleMissing: '没有可用字幕，无法导出带字幕的片段。',

@@ -62,6 +62,7 @@ export const IPC_CHANNELS = {
   MEDIA_GET_FFMPEG_CAPABILITIES: 'media:get-ffmpeg-capabilities',
   MEDIA_CHOOSE_TIMELINE_EXPORT_PATH: 'media:choose-timeline-export-path',
   MEDIA_EXPORT_TIMELINE: 'media:export-timeline',
+  MEDIA_EXPORT_EDITING_SUBTITLE: 'media:export-editing-subtitle',
   IMAGE_SAVE: 'image:save',
   IMAGE_CONVERT_HEIC: 'image:convert-heic',
   LIVE_PHOTO_PROBE: 'live-photo:probe',

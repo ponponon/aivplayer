@@ -9,7 +9,7 @@ import { EditingExportSummary } from './editing-export-summary'
 import { FfmpegCapabilityStatus, useFfmpegCapabilities } from './ffmpeg-capability-status'
 import { useModalFocusTrap } from './use-modal-focus-trap'
 
-const EXPORT_MODES: TimelineExportMode[] = ['video', 'external-subtitle', 'translation-subtitle', 'burn-subtitle']
+const EXPORT_MODES: TimelineExportMode[] = ['video', 'external-subtitle', 'translation-subtitle', 'subtitle-file', 'translation-file', 'burn-subtitle']
 
 type EditingExportConfirmDialogProps = {
   copy: LocaleCopy
@@ -19,6 +19,7 @@ type EditingExportConfirmDialogProps = {
   canvasWidth?: number
   canvasHeight?: number
   hasSubtitle: boolean
+  hasEditableSubtitle: boolean
   hasTranslationSubtitle: boolean
   audit: EditingExportAudit
   initialMode: TimelineExportMode
@@ -39,7 +40,7 @@ function describeAuditIssue(issue: EditingExportAuditIssue, copy: LocaleCopy['ed
   }
 }
 
-export function EditingExportConfirmDialog({ copy, mediaPath, clips, durationSeconds, canvasWidth, canvasHeight, hasSubtitle, hasTranslationSubtitle, audit, initialMode, onClose, onConfirm }: EditingExportConfirmDialogProps): ReactElement {
+export function EditingExportConfirmDialog({ copy, mediaPath, clips, durationSeconds, canvasWidth, canvasHeight, hasSubtitle, hasEditableSubtitle, hasTranslationSubtitle, audit, initialMode, onClose, onConfirm }: EditingExportConfirmDialogProps): ReactElement {
   const dialogRef = useRef<HTMLElement | null>(null)
   const [selectedMode, setSelectedMode] = useState<TimelineExportMode>(initialMode)
   const defaultFileName = buildTimelineExportDefaultFileName(mediaPath, clips.length, durationSeconds, selectedMode)
@@ -47,7 +48,7 @@ export function EditingExportConfirmDialog({ copy, mediaPath, clips, durationSec
   const [outputDirectory, setOutputDirectory] = useState(() => getTimelineExportPathDirectory(mediaPath))
   const [outputFileName, setOutputFileName] = useState(defaultFileName)
   const [isChoosingOutputPath, setIsChoosingOutputPath] = useState(false)
-  const normalizedOutputFileName = normalizeTimelineExportFileName(outputFileName, defaultFileName)
+  const normalizedOutputFileName = normalizeTimelineExportFileName(outputFileName, defaultFileName, selectedMode)
   const outputVideoPath = joinTimelineExportPath(outputDirectory, normalizedOutputFileName)
   const burnInSelected = selectedMode === 'burn-subtitle'
   const { capabilities, isChecking } = useFfmpegCapabilities(burnInSelected)
@@ -60,9 +61,9 @@ export function EditingExportConfirmDialog({ copy, mediaPath, clips, durationSec
   }, [defaultFileName, outputFileName])
 
   useEffect(() => {
-    const selectedModeUnavailable = selectedMode === 'translation-subtitle' ? !hasTranslationSubtitle : !hasSubtitle && selectedMode !== 'video'
+    const selectedModeUnavailable = selectedMode === 'translation-subtitle' || selectedMode === 'translation-file' ? !hasTranslationSubtitle : selectedMode === 'subtitle-file' ? !hasEditableSubtitle : !hasSubtitle && selectedMode !== 'video'
     if (selectedModeUnavailable) setSelectedMode('video')
-  }, [hasSubtitle, hasTranslationSubtitle, selectedMode])
+  }, [hasEditableSubtitle, hasSubtitle, hasTranslationSubtitle, selectedMode])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
@@ -102,7 +103,7 @@ export function EditingExportConfirmDialog({ copy, mediaPath, clips, durationSec
         <div className="clip-export-mode-grid" role="group" aria-label={copy.clipExportDialog.modeTitle}>
           {EXPORT_MODES.map((mode) => {
             const option = copy.clipExportDialog.modeOptions[mode]
-            const disabled = mode === 'translation-subtitle' ? !hasTranslationSubtitle : !hasSubtitle && mode !== 'video'
+            const disabled = mode === 'translation-subtitle' || mode === 'translation-file' ? !hasTranslationSubtitle : mode === 'subtitle-file' ? !hasEditableSubtitle : !hasSubtitle && mode !== 'video'
             return <button key={mode} className={`clip-export-mode-option ${selectedMode === mode ? 'is-selected' : ''}`} type="button" onClick={() => { if (!disabled) setSelectedMode(mode) }} disabled={disabled} aria-pressed={selectedMode === mode}><span className="clip-export-mode-heading"><strong>{option.label}</strong></span><span className="clip-export-mode-description">{option.description}</span></button>
           })}
         </div>

@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
+import type { EditingSubtitleFileExportRequest, EditingSubtitleFileExportResult } from '../shared/editing-subtitle-export'
 import type { AppSettings } from '../shared/app-settings'
 import type { AppUpdateState } from '../shared/app-update-types'
 import type {
@@ -256,6 +257,8 @@ const api = {
     ipcRenderer.invoke(IPC_CHANNELS.MEDIA_CHOOSE_TIMELINE_EXPORT_PATH, request),
   exportMediaTimeline: (request: MediaTimelineExportRequest): Promise<MediaClipExportResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.MEDIA_EXPORT_TIMELINE, request),
+  exportEditingSubtitleFile: (request: EditingSubtitleFileExportRequest): Promise<EditingSubtitleFileExportResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MEDIA_EXPORT_EDITING_SUBTITLE, request),
   saveImage: (request: ImageSaveRequest): Promise<ImageSaveResult> => ipcRenderer.invoke(IPC_CHANNELS.IMAGE_SAVE, request),
   convertHeicToJpeg: (filePath: string): Promise<{ success: boolean; dataUrl?: string; error?: string }> => ipcRenderer.invoke(IPC_CHANNELS.IMAGE_CONVERT_HEIC, filePath),
   probeLivePhoto: (filePath: string): Promise<LivePhotoProbeResult | null> => ipcRenderer.invoke(IPC_CHANNELS.LIVE_PHOTO_PROBE, filePath),

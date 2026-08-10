@@ -975,6 +975,14 @@
           label: '翻訳字幕のみ',
           description: '現在の翻訳トラックだけを含む SRT と動画クリップを書き出します。'
         },
+        'subtitle-file': {
+          label: '原文字幕ファイル',
+          description: '編集済みの原文 SRT だけを書き出し、動画は生成しません。'
+        },
+        'translation-file': {
+          label: '翻訳字幕ファイル',
+          description: '編集済みの翻訳 SRT だけを書き出し、動画は生成しません。'
+        },
         'burn-subtitle': {
           label: '字幕を焼き込み',
           description: '字幕を動画に直接焼き込んで書き出します。'
@@ -1321,6 +1329,8 @@
       translationServiceEmptyResponse: '翻訳エンドポイントが空の結果を返しました。',
       clipExportSuccess: 'クリップの書き出しが完了しました。',
       clipExportWithSubtitleSuccess: 'クリップと外部字幕の書き出しが完了しました。',
+      clipExportSubtitleFileSuccess: '編集済み字幕ファイルの書き出しが完了しました。',
+      clipExportSubtitleFileRequires: '字幕ファイルモードは字幕ファイル書き出し経路を使用する必要があります。',
       clipExportBurnedSuccess: '字幕を焼き込んだクリップの書き出しが完了しました。',
       clipExportFailed: 'クリップの書き出しに失敗しました',
       clipExportSubtitleMissing: '使える字幕がないため、字幕付きクリップを書き出せません。',

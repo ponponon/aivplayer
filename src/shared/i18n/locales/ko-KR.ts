@@ -975,6 +975,14 @@
           label: '번역 자막만',
           description: '현재 번역 트랙만 포함한 SRT와 영상 클립을 내보냅니다.'
         },
+        'subtitle-file': {
+          label: '원문 자막 파일',
+          description: '편집된 원문 SRT만 내보내며 동영상은 만들지 않습니다.'
+        },
+        'translation-file': {
+          label: '번역 자막 파일',
+          description: '편집된 번역 SRT만 내보내며 동영상은 만들지 않습니다.'
+        },
         'burn-subtitle': {
           label: '자막 굽기',
           description: '자막을 영상에 직접 굽어서 내보냅니다.'
@@ -1321,6 +1329,8 @@
       translationServiceEmptyResponse: '번역 엔드포인트가 빈 결과를 반환했습니다.',
       clipExportSuccess: '클립 내보내기가 완료되었습니다.',
       clipExportWithSubtitleSuccess: '클립과 외부 자막 내보내기가 완료되었습니다.',
+      clipExportSubtitleFileSuccess: '편집된 자막 파일 내보내기가 완료되었습니다.',
+      clipExportSubtitleFileRequires: '자막 파일 모드는 자막 파일 내보내기 경로를 사용해야 합니다.',
       clipExportBurnedSuccess: '자막을 굽은 클립 내보내기가 완료되었습니다.',
       clipExportFailed: '클립 내보내기에 실패했습니다',
       clipExportSubtitleMissing: '사용할 수 있는 자막이 없어서 자막 포함 클립을 내보낼 수 없습니다.',

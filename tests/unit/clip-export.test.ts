@@ -60,10 +60,13 @@ describe('clip export helpers', () => {
     expect(buildTimelineExportDefaultVideoPath('/clips/demo.mp4', 2, 10.8, 'video')).toBe('/clips/demo-timeline-2clips-10s-video.mp4')
     expect(buildTimelineExportDefaultFileName('/clips/demo.mp4', 2, 10.8, 'burn-subtitle')).toBe('demo-timeline-2clips-10s-burn.mp4')
     expect(buildTimelineExportDefaultFileName('/clips/demo.mp4', 2, 10.8, 'translation-subtitle')).toBe('demo-timeline-2clips-10s-translation.mp4')
+    expect(buildTimelineExportDefaultFileName('/clips/demo.mp4', 2, 10.8, 'subtitle-file')).toBe('demo-timeline-2clips-10s-source.srt')
+    expect(buildTimelineExportDefaultFileName('/clips/demo.mp4', 2, 10.8, 'translation-file')).toBe('demo-timeline-2clips-10s-translation.srt')
     expect(getTimelineExportPathDirectory('/clips/demo.mp4')).toBe('/clips')
     expect(getTimelineExportPathBaseName('/clips/demo.mp4')).toBe('demo.mp4')
     expect(joinTimelineExportPath('/clips', 'edited.mp4')).toBe('/clips/edited.mp4')
     expect(normalizeTimelineExportFileName('用户剪辑/我的视频', 'fallback.mp4')).toBe('我的视频.mp4')
+    expect(normalizeTimelineExportFileName('用户剪辑/我的视频.mp4', 'fallback.srt', 'translation-file')).toBe('我的视频.srt')
     expect(buildTimelineConcatArgs('/tmp/segments.txt', '/clips/demo.mp4')).toEqual(expect.arrayContaining(['-f', 'concat', '-safe', '0', '/tmp/segments.txt', '/clips/demo.mp4']))
   })
 

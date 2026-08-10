@@ -975,6 +975,14 @@
           label: 'Translation subtitles',
           description: 'Export the video clip with an SRT containing only the current translation track.'
         },
+        'subtitle-file': {
+          label: 'Source subtitle file',
+          description: 'Export the edited source SRT only; no video is generated.'
+        },
+        'translation-file': {
+          label: 'Translation subtitle file',
+          description: 'Export the edited translation SRT only; no video is generated.'
+        },
         'burn-subtitle': {
           label: 'Burn subtitles',
           description: 'Render subtitles directly into the exported video.'
@@ -1321,6 +1329,8 @@
       translationServiceEmptyResponse: 'Translation endpoint returned an empty result.',
       clipExportSuccess: 'Clip export completed.',
       clipExportWithSubtitleSuccess: 'Clip and external subtitle export completed.',
+      clipExportSubtitleFileSuccess: 'Edited subtitle file export completed.',
+      clipExportSubtitleFileRequires: 'Subtitle-file modes must use the subtitle-file export channel.',
       clipExportBurnedSuccess: 'Clip export completed with burned subtitles.',
       clipExportFailed: 'Clip export failed',
       clipExportSubtitleMissing: 'No subtitles are available, so a subtitle-based clip cannot be exported.',
