@@ -1,6 +1,7 @@
 import { Check, FileText, Pencil, RotateCcw, Trash2, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { isEditingScriptFillerWord } from '../../../core/editing/script-operations'
+import { selectEditingScriptSegmentRange } from '../../../core/editing/script-selection'
 import type { EditingCaptionWord, EditingScriptSegment } from '../../../shared/editing-types'
 import { formatTime } from '../lib/time'
 
@@ -169,7 +170,7 @@ export function EditingScriptPanel({
   }
   const toggleSegmentSelection = (segment: EditingScriptSegment): void => {
     if (segment.deleted) return
-    setSelectedSegmentIds((current) => current.includes(segment.id) ? current.filter((id) => id !== segment.id) : [...current, segment.id])
+    setSelectedSegmentIds((current) => selectEditingScriptSegmentRange(segments, current, selectedSegmentId, segment.id))
   }
   const deleteSelectedSegments = (): void => {
     if (selectedSegmentIds.length === 0) return
