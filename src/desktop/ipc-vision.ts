@@ -2,10 +2,11 @@ import { app, ipcMain } from 'electron'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
-import type { VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionEvidenceAuditPage, VisionEvidenceAuditRequest, VisionEvidenceBatchClearResult, VisionEvidenceSourceRequest, VisionEvidenceType, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionSavedSearchInput, VisionSearchRequest, VisionSearchResult, VisionSimilarSearchRequest } from '../shared/vision-types'
+import type { VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionEvidenceAuditPage, VisionEvidenceAuditRequest, VisionEvidenceBatchClearResult, VisionEvidenceSourceRequest, VisionEvidenceType, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionSavedSearchInput, VisionSearchRequest, VisionSearchResult, VisionSearchResultsExportFormat, VisionSearchResultsExportRequest, VisionSearchResultsExportResult, VisionSimilarSearchRequest } from '../shared/vision-types'
 import type { VisionEntityCatalogBatchPatch, VisionEntityCatalogCreateInput, VisionEntityCatalogPatch } from '../shared/vision-entity-types'
 import { scanVisionDirectory, isVisionScanAbortError } from '../core/ai/vision-directory-scan'
 import { renderVisionClipCollectionExport } from '../core/ai/clip-inbox-export'
+import { renderVisionSearchResultsExport } from '../core/ai/vision-search-export'
 import { getClipInboxStore, getMediaImportInboxStore, getSpeakerDiarizationCatalogStore, getVisionEntityCatalogStore, getVisionIndexCoordinator, getVisionIndexFailureStore, getVisionIndexQueue, getVisionLibrary, getVisionSavedSearchStore, trackVisionIndexProgress } from './desktop-services'
 import { desktopState } from './desktop-state'
 import { promptForOpenPath, promptForSavePath } from './media-dialogs'
@@ -64,6 +65,15 @@ function normalizeMediaPaths(request: VisionIndexRequest): string[] {
 
 function isVisionClipCollectionExportFormat(value: unknown): value is VisionClipCollectionExportFormat {
   return value === 'json' || value === 'csv' || value === 'edl'
+}
+
+function isVisionSearchResultsExportFormat(value: unknown): value is VisionSearchResultsExportFormat {
+  return value === 'json' || value === 'csv'
+}
+
+function normalizeVisionSearchResultsForExport(value: unknown): VisionSearchResult[] {
+  if (!Array.isArray(value)) return []
+  return value.filter((item): item is VisionSearchResult => Boolean(item) && typeof item === 'object' && typeof (item as VisionSearchResult).id === 'string' && typeof (item as VisionSearchResult).videoPath === 'string' && typeof (item as VisionSearchResult).fileName === 'string' && typeof (item as VisionSearchResult).timestampSeconds === 'number' && typeof (item as VisionSearchResult).score === 'number' && typeof (item as VisionSearchResult).modelId === 'string' && typeof (item as VisionSearchResult).modelVariant === 'string').slice(0, 100)
 }
 
 function safeExportTitle(title: string): string {
@@ -205,6 +215,28 @@ export function registerVisionIpc(): void {
       const enrichedResults = getSpeakerDiarizationCatalogStore().applyResults(entityCatalog.applyResults(results))
       return filterVisionSearchResultsByEvidenceTypes(enrichedResults, evidenceTypes, resultLimit)
     })
+  })
+
+  ipcMain.handle(IPC_CHANNELS.VISION_SEARCH_RESULTS_EXPORT, async (_event, request: VisionSearchResultsExportRequest): Promise<VisionSearchResultsExportResult> => {
+    if (!request || !isVisionSearchResultsExportFormat(request.format)) return { success: false, message: '导出参数无效' }
+    const results = normalizeVisionSearchResultsForExport(request.results)
+    if (results.length === 0) return { success: false, message: '没有可导出的搜索结果' }
+    const copy = getAppCopy(getCurrentLocale()).vision
+    const extension = request.format
+    const defaultPath = join(app.getPath('documents'), `aivplayer-vision-results.${extension}`)
+    const filePath = await promptForSavePath({
+      title: copy.searchResultsExport,
+      defaultPath,
+      filters: [{ name: `${extension.toUpperCase()} files`, extensions: [extension] }]
+    })
+    if (!filePath) return { success: false, canceled: true, message: copy.searchResultsExportCanceled }
+    const outputPath = filePath.toLowerCase().endsWith(`.${extension}`) ? filePath : `${filePath}.${extension}`
+    try {
+      await writeFile(outputPath, renderVisionSearchResultsExport(results, request.format), 'utf8')
+      return { success: true, filePath: outputPath, message: copy.searchResultsExported(results.length, outputPath) }
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : String(error) }
+    }
   })
 
   ipcMain.handle(IPC_CHANNELS.VISION_SEARCH_SIMILAR, async (_event, request: VisionSimilarSearchRequest) => {
