@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { filterVisionObjectDetectionCandidates } from '../../src/core/ai/vision-object-detection-filter'
+import { filterVisionObjectDetectionCandidates, toggleVisionObjectDetectionCategoryFilter } from '../../src/core/ai/vision-object-detection-filter'
 
 const detections = [
   { label: 'Person', score: 0.92, box: { xmin: 1, ymin: 1, xmax: 20, ymax: 20 } },
@@ -25,5 +25,16 @@ describe('vision object detection filter', () => {
   it('clamps invalid score filters to the supported range', () => {
     expect(filterVisionObjectDetectionCandidates(detections, { minimumScore: 2 })).toEqual([])
     expect(filterVisionObjectDetectionCandidates(detections, { minimumScore: -1 })).toHaveLength(3)
+  })
+
+  it('combines exact category OR filtering with the text and score filters', () => {
+    expect(filterVisionObjectDetectionCandidates(detections, { categoryLabels: ['person', 'CHAIR'], minimumScore: 0.5 }).map((item) => item.label)).toEqual(['Person', 'chair'])
+    expect(filterVisionObjectDetectionCandidates(detections, { labelQuery: 'back', categoryLabels: ['person backpack'], minimumScore: 0.7 }).map((item) => item.label)).toEqual(['PERSON backpack'])
+  })
+
+  it('toggles category labels without duplicating case variants', () => {
+    expect(toggleVisionObjectDetectionCategoryFilter([], 'Person')).toEqual(['Person'])
+    expect(toggleVisionObjectDetectionCategoryFilter(['Person'], ' person ')).toEqual([])
+    expect(toggleVisionObjectDetectionCategoryFilter(['Person'], 'chair')).toEqual(['Person', 'chair'])
   })
 })
