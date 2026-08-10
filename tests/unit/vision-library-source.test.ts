@@ -43,6 +43,8 @@ describe('vision library setup', () => {
     expect(source).toContain('VISION_INDEX_CANCEL')
     expect(source).toContain('VISION_SEARCH_TEXT')
     expect(source).toContain('VISION_SEARCH_IMAGE')
+    expect(source).toContain('filterSpeakerDiarizationCatalogSearchResults')
+    expect(source).toContain('scopedSpeakerGroups')
     expect(source).toContain('VISION_ENTITY_CATALOG_GET')
     expect(source).toContain('VISION_ENTITY_CATALOG_UPDATE')
     expect(source).toContain('VISION_ENTITY_CATALOG_BATCH_UPDATE')

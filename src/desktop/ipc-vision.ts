@@ -13,6 +13,7 @@ import { createVisionTaskCenterEvent } from '../core/tasks/task-center-adapters'
 import { sendTaskCenterEvent } from './task-center-events'
 import { VISION_INDEX_FAILURE_MAX_RETRY_BATCH } from '../core/ai/vision-index-failure'
 import { mergeVisionLibrarySourceMetadata } from '../core/ai/vision-library-source-metadata'
+import { filterSpeakerDiarizationCatalogSearchResults } from '../core/ai/speaker-diarization-catalog'
 
 async function listVisionSourcesWithMetadata(request: VisionLibrarySourceRequest = {}): Promise<ReturnType<typeof mergeVisionLibrarySourceMetadata>> {
   const sources = await getVisionLibrary().listSources(request.limit, request.offset)
@@ -158,13 +159,16 @@ export function registerVisionIpc(): void {
     return true
   })
 
-  ipcMain.handle(IPC_CHANNELS.VISION_SEARCH_TEXT, (_event, request: VisionSearchRequest) => {
+  ipcMain.handle(IPC_CHANNELS.VISION_SEARCH_TEXT, async (_event, request: VisionSearchRequest) => {
     if (!request?.query?.trim()) return []
     const entityCatalog = getVisionEntityCatalogStore()
     const speakerCatalog = getSpeakerDiarizationCatalogStore()
-    const queries = [...new Set([request.query, ...entityCatalog.getSearchQueries(request.query), ...speakerCatalog.getSearchQueries(request.query)])]
-    return Promise.all(queries.map((query) => getVisionLibrary().searchText(query, request.limit, request.mode)))
-      .then((groups) => speakerCatalog.applyResults(entityCatalog.applyResults(mergeVisionSearchResults(groups))))
+    const directQueries = [...new Set([request.query, ...entityCatalog.getSearchQueries(request.query)])]
+    const speakerQueries = speakerCatalog.getSearchQueries(request.query)
+    const directGroups = await Promise.all(directQueries.map((query) => getVisionLibrary().searchText(query, request.limit, request.mode)))
+    const speakerGroups = await Promise.all(speakerQueries.map((searchQuery) => getVisionLibrary().searchText(searchQuery.query, request.limit, request.mode)))
+    const scopedSpeakerGroups = speakerQueries.map((searchQuery, index) => filterSpeakerDiarizationCatalogSearchResults(speakerGroups[index] ?? [], searchQuery))
+    return speakerCatalog.applyResults(entityCatalog.applyResults(mergeVisionSearchResults([...directGroups, ...scopedSpeakerGroups])))
   })
 
   ipcMain.handle(IPC_CHANNELS.VISION_SEARCH_IMAGE, (_event, request: VisionSearchRequest) => {
