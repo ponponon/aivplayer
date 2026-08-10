@@ -701,6 +701,7 @@
 - 视觉模型支持用户数据目录优先：Flatpak 不需要把 SigLIP2 大模型塞进只读应用包；视觉面板可将固定 revision 的九个模型文件下载到 `userData/models/vision`，并保留旧版安装包模型目录作为兼容 fallback。
 - Flatpak manifest 已加入固定 commit 的 whisper.cpp `v1.9.1` 源码模块，并将 `whisper-cli` 安装到 `/app/bin`；启动 wrapper 显式设置路径，避免依赖宿主机或开发机上的 whisper.cpp。
 - Flatpak manifest 已加入官方 FFmpeg `8.1.2` 源码归档，固定 SHA-256，关闭 GPL/nonfree 与宿主依赖自动探测，并将 `ffmpeg` / `ffprobe` 安装到 `/app/bin`。
+- Flatpak manifest 已加入固定源码的 libheif `v1.23.1`、libde265 `v1.0.16`、libjpeg-turbo `3.1.2` 和 x265 `3.4` 模块，关闭 libheif 插件加载与宿主可选后端探测并安装 `heif-enc` / `heif-convert`；x265 GPL-2.0 许可证作为 Flathub 审核边界单独记录，并用最小 patch 兼容 CMake 4。
 - GitHub Actions 支持手动选择 Linux ARM64 构建，使用 `ubuntu-24.04-arm` 原生 Runner；CI 生成的本地 manifest 不进入仓库，正式 Flathub manifest 仍保持固定 release tag。
 
 ## 视觉索引失败恢复
