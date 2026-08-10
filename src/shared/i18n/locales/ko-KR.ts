@@ -419,7 +419,7 @@
       hybridSearch: '혼합 검색',
       evidenceFilterLabel: '증거 유형',
       evidenceFilterAll: '모든 증거',
-      evidenceFilterOptions: { visual: '영상', subtitle: '자막', ocr: 'OCR', scene: '장면', entity: '엔티티', speaker: '화자' },
+      evidenceFilterOptions: { visual: '영상', subtitle: '자막', ocr: 'OCR', scene: '장면', entity: '엔티티', object: '객체', speaker: '화자' },
       searchSortLabel: '결과 정렬',
       searchSortRelevance: '관련도',
       searchSortSourceTime: '소스 시간',

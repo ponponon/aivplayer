@@ -45,7 +45,7 @@ describe('vision evidence source persistence', () => {
       videoPath: '/media/one.mp4',
       fileName: 'one.mp4',
       sourceFingerprint: 'one-v1',
-      evidenceCounts: { ocr: 1, scene: 1, entity: 2, speaker: 1 },
+      evidenceCounts: { ocr: 1, scene: 1, entity: 2, object: 0, speaker: 1 },
       generatedAt: 6
     }])
 
@@ -53,7 +53,7 @@ describe('vision evidence source persistence', () => {
     expect(cleared).toEqual({
       clearedSources: 1,
       clearedEvidenceCount: 3,
-      clearedByType: { ocr: 0, scene: 0, entity: 2, speaker: 1 }
+      clearedByType: { ocr: 0, scene: 0, entity: 2, object: 0, speaker: 1 }
     })
 
     const database = await connect(join(userDataPath, 'library', 'vision', 'lancedb'))
@@ -63,7 +63,7 @@ describe('vision evidence source persistence', () => {
       videoPath: '/media/one.mp4',
       fileName: 'one.mp4',
       sourceFingerprint: 'one-v1',
-      evidenceCounts: { ocr: 1, scene: 1, entity: 0, speaker: 0 },
+      evidenceCounts: { ocr: 1, scene: 1, entity: 0, object: 0, speaker: 0 },
       generatedAt: 3
     }])
   })

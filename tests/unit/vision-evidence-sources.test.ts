@@ -12,22 +12,22 @@ describe('vision evidence sources', () => {
     ])
 
     expect(sources).toEqual([
-      { videoPath: '/media/one.mp4', fileName: 'one.mp4', sourceFingerprint: 'one-old', evidenceCounts: { ocr: 0, scene: 0, entity: 0, speaker: 1 }, generatedAt: 50 },
-      { videoPath: '/media/one.mp4', fileName: 'one.mp4', sourceFingerprint: 'one-v1', evidenceCounts: { ocr: 1, scene: 0, entity: 0, speaker: 1 }, generatedAt: 40 },
-      { videoPath: '/media/two.mp4', fileName: 'two.mp4', sourceFingerprint: 'two-v1', evidenceCounts: { ocr: 0, scene: 0, entity: 1, speaker: 0 }, generatedAt: 20 }
+      { videoPath: '/media/one.mp4', fileName: 'one.mp4', sourceFingerprint: 'one-old', evidenceCounts: { ocr: 0, scene: 0, entity: 0, object: 0, speaker: 1 }, generatedAt: 50 },
+      { videoPath: '/media/one.mp4', fileName: 'one.mp4', sourceFingerprint: 'one-v1', evidenceCounts: { ocr: 1, scene: 0, entity: 0, object: 0, speaker: 1 }, generatedAt: 40 },
+      { videoPath: '/media/two.mp4', fileName: 'two.mp4', sourceFingerprint: 'two-v1', evidenceCounts: { ocr: 0, scene: 0, entity: 1, object: 0, speaker: 0 }, generatedAt: 20 }
     ])
     expect(aggregateVisionEvidenceSources(sources.flatMap((source) => Object.entries(source.evidenceCounts).flatMap(([evidenceType, count]) => Array.from({ length: count }, () => ({ videoPath: source.videoPath, fileName: source.fileName, evidenceType, sourceFingerprint: source.sourceFingerprint, generatedAt: source.generatedAt })))), ['ocr'])).toHaveLength(1)
   })
 
   it('normalizes clear targets and rejects base evidence types', () => {
     expect(normalizeVisionDerivedEvidenceTypes(['speaker', 'visual', 'speaker'])).toEqual(['speaker'])
-    expect(normalizeVisionDerivedEvidenceTypes(undefined, true)).toEqual(['ocr', 'scene', 'entity', 'speaker'])
+    expect(normalizeVisionDerivedEvidenceTypes(undefined, true)).toEqual(['ocr', 'scene', 'entity', 'object', 'speaker'])
     expect(normalizeVisionEvidenceClearTargets([
       { videoPath: ' /media/one.mp4 ', evidenceTypes: ['speaker', 'entity'] },
       { videoPath: '/media/one.mp4', evidenceTypes: ['ocr', 'visual'] },
       { videoPath: '', evidenceTypes: ['scene'] }
     ])).toEqual([{ videoPath: '/media/one.mp4', evidenceTypes: ['ocr', 'entity', 'speaker'] }])
-    expect(createEmptyVisionEvidenceCounts()).toEqual({ ocr: 0, scene: 0, entity: 0, speaker: 0 })
+    expect(createEmptyVisionEvidenceCounts()).toEqual({ ocr: 0, scene: 0, entity: 0, object: 0, speaker: 0 })
   })
 
   it('distinguishes current, changed, missing, and unavailable sources', () => {

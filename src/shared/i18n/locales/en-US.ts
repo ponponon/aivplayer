@@ -419,7 +419,7 @@
       hybridSearch: 'Hybrid search',
       evidenceFilterLabel: 'Evidence type',
       evidenceFilterAll: 'All evidence',
-      evidenceFilterOptions: { visual: 'Visual', subtitle: 'Subtitle', ocr: 'OCR', scene: 'Scene', entity: 'Entity', speaker: 'Speaker' },
+      evidenceFilterOptions: { visual: 'Visual', subtitle: 'Subtitle', ocr: 'OCR', scene: 'Scene', entity: 'Entity', object: 'Object', speaker: 'Speaker' },
       searchSortLabel: 'Sort results',
       searchSortRelevance: 'Relevance',
       searchSortSourceTime: 'Source time',

@@ -1,3 +1,5 @@
+import type { VisionObjectDetectionBox } from './vision-object-detection-types'
+
 export const VISION_MODEL_ID = 'siglip2-base-patch16-224-ONNX'
 export const VISION_MODEL_VARIANT = 'uint8'
 export const VISION_FRAME_INTERVAL_SECONDS = 3
@@ -157,9 +159,9 @@ export type VisionIndexFailureRetryBatchRequest = {
 
 export type VisionSearchMode = 'visual' | 'hybrid'
 
-export type VisionEvidenceType = 'subtitle' | 'visual' | 'scene' | 'ocr' | 'entity' | 'speaker'
+export type VisionEvidenceType = 'subtitle' | 'visual' | 'scene' | 'ocr' | 'entity' | 'object' | 'speaker'
 
-export const VISION_DERIVED_EVIDENCE_TYPES = ['ocr', 'scene', 'entity', 'speaker'] as const
+export const VISION_DERIVED_EVIDENCE_TYPES = ['ocr', 'scene', 'entity', 'object', 'speaker'] as const
 
 export type VisionDerivedEvidenceType = typeof VISION_DERIVED_EVIDENCE_TYPES[number]
 
@@ -277,6 +279,7 @@ export type VisionEvidence = {
   frameId?: string
   thumbnailPath?: string
   confidence?: number
+  box?: VisionObjectDetectionBox
   sourceFingerprint?: string
   modelId?: string
   modelVariant?: string
@@ -353,6 +356,7 @@ export type VisionSearchResult = {
   endSeconds?: number
   evidenceType?: VisionEvidenceType
   confidence?: number
+  box?: VisionObjectDetectionBox
   entityLabelId?: string
   sourceFingerprint?: string
   modelId: string

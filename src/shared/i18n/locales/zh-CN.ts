@@ -419,7 +419,7 @@
       hybridSearch: '混合搜索',
       evidenceFilterLabel: '证据类型',
       evidenceFilterAll: '全部证据',
-      evidenceFilterOptions: { visual: '画面', subtitle: '字幕', ocr: 'OCR', scene: '场景', entity: '实体', speaker: '说话人' },
+      evidenceFilterOptions: { visual: '画面', subtitle: '字幕', ocr: 'OCR', scene: '场景', entity: '实体', object: '物体', speaker: '说话人' },
       searchSortLabel: '结果排序',
       searchSortRelevance: '相关度',
       searchSortSourceTime: '源文件时间',

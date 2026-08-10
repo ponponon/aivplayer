@@ -419,7 +419,7 @@
       hybridSearch: 'ハイブリッド検索',
       evidenceFilterLabel: '証拠タイプ',
       evidenceFilterAll: 'すべての証拠',
-      evidenceFilterOptions: { visual: '映像', subtitle: '字幕', ocr: 'OCR', scene: 'シーン', entity: 'エンティティ', speaker: '話者' },
+      evidenceFilterOptions: { visual: '映像', subtitle: '字幕', ocr: 'OCR', scene: 'シーン', entity: 'エンティティ', object: '物体', speaker: '話者' },
       searchSortLabel: '結果の並べ替え',
       searchSortRelevance: '関連度',
       searchSortSourceTime: 'ソース時間',

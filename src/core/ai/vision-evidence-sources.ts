@@ -9,7 +9,7 @@ export type VisionEvidenceSourceRow = {
 }
 
 export function createEmptyVisionEvidenceCounts(): VisionEvidenceCounts {
-  return { ocr: 0, scene: 0, entity: 0, speaker: 0 }
+  return { ocr: 0, scene: 0, entity: 0, object: 0, speaker: 0 }
 }
 
 export function normalizeVisionDerivedEvidenceTypes(value: unknown, fallbackToAll = false): VisionDerivedEvidenceType[] {
