@@ -183,6 +183,28 @@
   border-color: var(--danger);
 }
 
+.task-center-retry {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  margin-left: auto;
+  padding: 0;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.task-center-retry:hover,
+.task-center-retry:focus-visible {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
 .task-center-item.is-running .task-center-status-icon,
 .task-center-item.is-queued .task-center-status-icon,
 .task-center-item.is-paused .task-center-status-icon { color: var(--accent); }

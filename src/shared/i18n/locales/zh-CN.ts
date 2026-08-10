@@ -66,7 +66,7 @@
       closeWindow: '关闭窗口'
     },
     taskCenter: {
-      title: '任务中心', searchPlaceholder: '搜索任务名称、消息或当前文件', filterLabel: '筛选状态', filterAll: '全部状态', resultCount: (visible: number, total: number) => `显示 ${visible} / ${total}`, noResults: '没有匹配的任务', previousPage: '上一页', nextPage: '下一页', page: (current: number, total: number) => `第 ${current} / ${total} 页`, collapse: '收起任务中心', expand: '展开任务中心', activeCount: (count: number) => `${count} 项进行中`, clearCompleted: '清除已结束', cancelTask: '取消任务', statuses: { queued: '排队中', running: '进行中', paused: '已暂停', completed: '已完成', failed: '失败', cancelled: '已取消' }
+      title: '任务中心', searchPlaceholder: '搜索任务名称、消息或当前文件', filterLabel: '筛选状态', filterAll: '全部状态', resultCount: (visible: number, total: number) => `显示 ${visible} / ${total}`, noResults: '没有匹配的任务', previousPage: '上一页', nextPage: '下一页', page: (current: number, total: number) => `第 ${current} / ${total} 页`, collapse: '收起任务中心', expand: '展开任务中心', activeCount: (count: number) => `${count} 项进行中`, clearCompleted: '清除已结束', cancelTask: '取消任务', retryTask: '重试任务', statuses: { queued: '排队中', running: '进行中', paused: '已暂停', completed: '已完成', failed: '失败', cancelled: '已取消' }
     },
     aboutDialog: {
       kicker: '应用信息',
