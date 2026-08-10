@@ -115,6 +115,7 @@ For subtitle translation, content summaries, or the AI Short-Drama Studio, confi
 - Supports recursive directory scanning, incremental indexing, a background indexing queue, automatic playlist scanning, and index progress/phase-duration reporting.
 - Loading more search results uses a short-lived local snapshot cursor, so repeated pages do not rerun the query against a changing index; snapshots are capped at 100 results and are not persisted or uploaded.
 - Export the current visual search window or selected results as JSON or CSV with source paths, exact time ranges, evidence types, match text, confidence, and object boxes; media files are never copied.
+- Export the full library for the active text, image, or similar-shot query as JSON or CSV; the full pass is locally recomputed with deterministic score/ID ordering and is capped at one million indexed results.
 - The CLI can also scan, index, inspect status, and search, making it suitable for maintaining a personal video library in batches.
 
 ### AI Short-Drama Studio
