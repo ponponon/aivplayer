@@ -667,6 +667,11 @@ export class VisionLibrary {
     await this.replaceEvidenceTypeRows(videoPath, 'speaker', evidence.map((item) => this.toEvidenceRow(item)))
   }
 
+  /** Removes only speaker evidence for one source while preserving all other evidence types. */
+  async clearSpeakerEvidence(videoPath: string): Promise<void> {
+    await this.replaceEvidenceTypeRows(videoPath, 'speaker', [])
+  }
+
   private async getAllFramePointers(): Promise<VisionFramePointer[]> {
     const table = await this.getTable()
     if (!table) return []
