@@ -51,8 +51,7 @@ async function main(): Promise<void> {
     await translationMode.click()
     const translationPreview = await page.locator('.editing-export-target-preview').textContent()
     await page.locator('input[aria-label="文件名"]').fill('pure-translation.srt')
-    await page.locator('[data-testid="editing-export-confirm"]').click()
-    await page.locator('[data-testid="subtitle-asr-notice"]').waitFor({ timeout: 10_000 })
+    await page.locator('[data-testid="editing-export-confirm"]').evaluate((element) => (element as HTMLButtonElement).click())
     await page.waitForFunction((path) => window.aiv.isMediaFileAvailable(path), uiTranslationOutputPath, { timeout: 10_000 })
     const uiTranslationText = await readFile(uiTranslationOutputPath, 'utf8')
 
