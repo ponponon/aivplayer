@@ -392,6 +392,7 @@ export class VisionLibrary {
   }
 
   async getSearchRevision(): Promise<VisionSearchRevision> {
+    await this.ensureEvidenceTableSchema()
     const db = await this.getDatabase()
     const tableNames = new Set(await db.tableNames())
     const tables = {} as Record<VisionSearchTableName, number | null>

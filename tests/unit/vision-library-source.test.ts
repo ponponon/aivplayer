@@ -52,6 +52,8 @@ describe('vision library setup', () => {
     expect(source).toContain('writeVisionSearchResultsExportResumable')
     expect(source).toContain('resumeVisionSearchExports')
     expect(source).toContain('getVisionSearchExportStore')
+    expect(source).toContain('getSearchRevision')
+    expect(source).toContain('searchRevision')
     expect(source).toContain('VisionSearchCursorStore')
     expect(source).toContain('searchVisionResultPage')
     expect(source).toContain('searchVisionFullResults')
