@@ -17,7 +17,7 @@
 
 ## 仍需完成的 Flathub 阻塞项
 
-1. 处理 `@lancedb/lancedb`、`onnxruntime-node`、`sharp` 和 `sherpa-onnx-node` 等原生 npm 依赖的 Linux 源码构建与架构边界。当前 lockfile 仍包含 LanceDB 的平台包、ONNX Runtime 的安装脚本、Sharp 的 `@img/sharp-*` 平台包和 sherpa-onnx 的平台包，不能把这些预编译二进制带入 Flathub；可用 `npm run flatpak:audit-native -- --strict` 将审计结果作为提交门禁。
+1. `@lancedb/lancedb`、`onnxruntime-node`、Sharp 的 libvips 平台包以及 sherpa-onnx 的平台包仍是原生依赖阻塞项；先确认 Flatpak 版的功能边界，再决定是否在 Flathub 构建环境中补充源码模块。可用 `npm run flatpak:audit-native -- --strict` 作为依赖审计门禁。
 2. 把当前只读、随包提供的 SigLIP2 视觉模型改成用户数据目录中的可审计下载 / 安装流程；Flathub manifest 不应携带这类大模型二进制。
 3. 重新评估文件访问权限。当前实现支持用户选择任意媒体目录、递归扫描和导出，第一版使用 XDG 目录权限配合文件选择器；最终提交前需要在 Flatpak 沙箱中用真实文件选择、目录扫描和导出 Smoke 验证，并尽量收窄权限。
 4. 在 Linux Flatpak 构建机上运行 `flatpak-builder`、`flatpak-builder-lint` 和真实启动 Smoke。macOS 开发机没有 Flatpak 工具，不能用本地 TypeScript 构建代替这一步。
