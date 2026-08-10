@@ -2,7 +2,7 @@ import type { ReactElement, RefObject } from 'react'; import { useState, useEffe
 import type { AppSettings } from '../../shared/app-settings'; import type { AppLocale } from '../../shared/localization'; import type { LocaleCopy } from '../../shared/i18n'
 import { SubtitleDisplayControls, getDefaultSubtitleDisplaySettings } from './app/subtitle-display-controls'; import { parseVtt, findActiveCue } from './subtitle-parser'; import type { SubtitleCue } from './subtitle-parser'
 import type { EditingCaption, EditingCaptionEffect, EditingCaptionLayout } from '../../shared/editing-types'; import type { EditingCanvasDimensions } from '../../core/editing/canvases'; import { getEditingCaptionLineLayout } from '../../core/editing/caption-layout'; import { SubtitleText } from './subtitle-text'
-import { attachSubtitleWords, createFallbackSubtitleWords, getSubtitleWordSidecarPath, parseWhisperSubtitleWords, type SubtitleWord } from '../../shared/subtitle-timing'; import { getEditingCaptionEffect } from '../../core/editing/caption-effects'
+import { areSubtitleWordsCompatible, attachSubtitleWords, createFallbackSubtitleWords, getSubtitleWordSidecarPath, parseWhisperSubtitleWords, type SubtitleWord } from '../../shared/subtitle-timing'; import { getEditingCaptionEffect } from '../../core/editing/caption-effects'
 type SubtitleOverlayProps = {
   subtitlePath: string | null
   subtitleRevision?: number
@@ -161,7 +161,11 @@ export function SubtitleOverlay({
   const translationText = activeEditingTranslationCue?.text ?? activeTranslationCue?.text ?? null
   const activeEffect = editingCaptions ? getEditingCaptionEffect(editingCaptionEffect) : 'none'
   const activeSourceWords = settings.emphasisMode === 'words' || activeEffect !== 'none'
-    ? activeEditingCue?.words ?? (activeEditingCue ? createFallbackSubtitleWords(activeEditingCue.text, 0, activeEditingCue.durationSeconds) : activeCue?.words)
+    ? activeEditingCue
+      ? activeEditingCue.words && areSubtitleWordsCompatible(activeEditingCue.text, activeEditingCue.words)
+        ? activeEditingCue.words
+        : createFallbackSubtitleWords(activeEditingCue.text, 0, activeEditingCue.durationSeconds)
+      : activeCue?.words
     : undefined
   const wordTime = activeEditingCue ? currentTime - activeEditingCue.startSeconds : currentTime
   const displayText = buildSubtitleDisplayText({
