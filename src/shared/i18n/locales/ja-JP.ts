@@ -478,7 +478,7 @@
       objectDetectionLabelFilterPlaceholder: '物体ラベルを入力',
       objectDetectionMinimumScore: '最低信頼度',
       objectDetectionAnyScore: '指定なし',
-      objectDetectionCategories: '物体カテゴリ',
+      objectDetectionCategories: '物体カテゴリ（複数選択可）',
       objectDetectionEmpty: 'しきい値を超える物体候補はありません。',
       objectDetectionNoMatches: '条件に一致する物体候補はありません。',
       returnToSearchResults: '検索結果に戻る',

@@ -478,7 +478,7 @@
       objectDetectionLabelFilterPlaceholder: '输入物体标签',
       objectDetectionMinimumScore: '最低置信度',
       objectDetectionAnyScore: '不限',
-      objectDetectionCategories: '物体类别',
+      objectDetectionCategories: '物体类别（可多选）',
       objectDetectionEmpty: '没有超过阈值的物体候选。',
       objectDetectionNoMatches: '没有符合筛选条件的物体候选。',
       returnToSearchResults: '返回当前搜索结果',

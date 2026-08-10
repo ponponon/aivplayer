@@ -2,7 +2,7 @@ import { Boxes, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { LocaleCopy } from '../../../shared/i18n'
 import type { VisionObjectDetectionResult } from '../../../shared/vision-object-detection-types'
-import { filterVisionObjectDetectionCandidates } from '../../../core/ai/vision-object-detection-filter'
+import { filterVisionObjectDetectionCandidates, toggleVisionObjectDetectionCategoryFilter } from '../../../core/ai/vision-object-detection-filter'
 import { summarizeVisionObjectDetectionCandidates } from '../../../core/ai/vision-object-detection-summary'
 import { toggleVisionObjectDetectionSelection } from '../../../core/ai/vision-object-detection-selection'
 import { VisionResultThumbnail } from './vision-result-thumbnail'
@@ -28,15 +28,18 @@ export function VisionObjectDetectionResultView({ copy, result, thumbnailUrl, on
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
   const [labelQuery, setLabelQuery] = useState('')
   const [minimumScore, setMinimumScore] = useState(0)
-  const visibleDetections = filterVisionObjectDetectionCandidates(result.detections, { labelQuery, minimumScore })
-  const categories = summarizeVisionObjectDetectionCandidates(visibleDetections)
+  const [selectedCategoryLabels, setSelectedCategoryLabels] = useState<string[]>([])
+  const baseFilter = { labelQuery, minimumScore }
+  const facetedDetections = filterVisionObjectDetectionCandidates(result.detections, baseFilter)
+  const visibleDetections = filterVisionObjectDetectionCandidates(result.detections, { ...baseFilter, categoryLabels: selectedCategoryLabels })
+  const categories = summarizeVisionObjectDetectionCandidates(facetedDetections)
   const safeSelectedIndex = selectedIndex !== null && selectedIndex < visibleDetections.length ? selectedIndex : null
   const highlightedIndex = hoveredIndex ?? safeSelectedIndex
 
   useEffect(() => {
     setHoveredIndex(null)
     setSelectedIndex(null)
-  }, [labelQuery, minimumScore])
+  }, [labelQuery, minimumScore, selectedCategoryLabels])
 
   return (
     <section className="vision-card vision-object-detection-result" data-testid="vision-object-detection-result">
@@ -44,7 +47,7 @@ export function VisionObjectDetectionResultView({ copy, result, thumbnailUrl, on
         <div className="vision-collections-heading"><Boxes size={15} /><strong>{copy.objectDetectionTitle}</strong></div>
         <button className="vision-collection-delete" type="button" onClick={onClear} title={copy.objectDetectionClear} aria-label={copy.objectDetectionClear}><X size={14} /></button>
       </div>
-      {thumbnailUrl ? <div className="vision-object-detection-preview"><VisionResultThumbnail src={thumbnailUrl} alt="" boxes={result.detections.map((detection) => detection.box)} highlightedBoxIndex={highlightedIndex} /></div> : null}
+      {thumbnailUrl ? <div className="vision-object-detection-preview"><VisionResultThumbnail src={thumbnailUrl} alt="" boxes={visibleDetections.map((detection) => detection.box)} highlightedBoxIndex={highlightedIndex} /></div> : null}
       <p className="vision-object-detection-summary">{copy.objectDetectionCount(result.detections.length)} · {copy.objectDetectionVisibleCount(visibleDetections.length, result.detections.length)} · {copy.objectDetectionThreshold(formatScore(result.threshold))}</p>
       <div className="vision-object-detection-filters">
         <label>
@@ -65,14 +68,14 @@ export function VisionObjectDetectionResultView({ copy, result, thumbnailUrl, on
         <span className="vision-object-detection-categories-label">{copy.objectDetectionCategories}</span>
         <div className="vision-object-detection-category-list">
           {categories.map((category) => {
-            const isActive = labelQuery.trim().toLocaleLowerCase() === category.label.toLocaleLowerCase()
+            const isActive = selectedCategoryLabels.some((selectedLabel) => selectedLabel.toLocaleLowerCase() === category.label.toLocaleLowerCase())
             return <button
               className={`vision-object-detection-category${isActive ? ' is-active' : ''}`}
               type="button"
               key={category.label.toLocaleLowerCase()}
               aria-pressed={isActive}
               title={category.label}
-              onClick={() => setLabelQuery(isActive ? '' : category.label)}
+              onClick={() => setSelectedCategoryLabels((current) => toggleVisionObjectDetectionCategoryFilter(current, category.label))}
             >
               <span>{category.label}</span>
               <strong>{category.count}</strong>
