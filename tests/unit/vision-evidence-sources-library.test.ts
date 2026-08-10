@@ -89,11 +89,54 @@ describe('vision evidence source persistence', () => {
       generatedAt: 1
     })
 
-    expect((await library.auditEvidenceSources())[0]).toMatchObject({ auditStatus: 'current', videoPath })
+    expect((await library.auditEvidenceSources()).sources[0]).toMatchObject({ auditStatus: 'current', videoPath })
     await appendFile(videoPath, '-changed')
-    expect((await library.auditEvidenceSources())[0]).toMatchObject({ auditStatus: 'changed', videoPath })
+    expect((await library.auditEvidenceSources()).sources[0]).toMatchObject({ auditStatus: 'changed', videoPath })
     await rm(videoPath)
-    expect((await library.auditEvidenceSources())[0]).toMatchObject({ auditStatus: 'missing', videoPath })
+    expect((await library.auditEvidenceSources()).sources[0]).toMatchObject({ auditStatus: 'missing', videoPath })
     expect(await library.listEvidenceSources()).toHaveLength(1)
+  })
+
+  it('continues auditing beyond one source page when a status filter is active', async () => {
+    const userDataPath = await mkdtemp(join(tmpdir(), 'aivplayer-evidence-audit-page-'))
+    temporaryDirectories.push(userDataPath)
+    const library = new VisionLibrary({ userDataPath, resourcePath: join(process.cwd(), 'resources'), env: process.env })
+    await library.upsertEvidence({
+      id: 'ocr-0',
+      sourceId: 'source-0',
+      videoPath: '/missing/0.mp4',
+      fileName: '0.mp4',
+      evidenceType: 'ocr',
+      startSeconds: 0,
+      endSeconds: 1,
+      sourceFingerprint: 'missing-0',
+      modelId: 'test-model',
+      modelVariant: 'test',
+      generatedAt: 500
+    })
+    const database = await connect(join(userDataPath, 'library', 'vision', 'lancedb'))
+    const table = await database.openTable('video_evidence')
+    await table.add(Array.from({ length: 500 }, (_, index) => ({
+      id: `ocr-${index + 1}`,
+      source_id: `source-${index + 1}`,
+      video_path: `/missing/${index + 1}.mp4`,
+      file_name: `${index + 1}.mp4`,
+      evidence_type: 'ocr',
+      start_seconds: 0,
+      end_seconds: 1,
+      text: '',
+      frame_id: '',
+      thumbnail_path: '',
+      confidence: null,
+      source_fingerprint: `missing-${index + 1}`,
+      model_id: 'test-model',
+      model_variant: 'test',
+      generated_at: 499 - index
+    })))
+
+    const page = await library.auditEvidenceSources(1, 500, undefined, ['missing'])
+    expect(page).toMatchObject({ offset: 500, limit: 1, hasMore: false })
+    expect(page.sources).toHaveLength(1)
+    expect(page.sources[0]).toMatchObject({ videoPath: '/missing/500.mp4', auditStatus: 'missing' })
   })
 })

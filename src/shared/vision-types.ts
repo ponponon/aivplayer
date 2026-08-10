@@ -182,6 +182,13 @@ export type VisionEvidenceSourceAudit = VisionEvidenceSource & {
   currentFingerprint?: string
 }
 
+export type VisionEvidenceAuditPage = {
+  sources: VisionEvidenceSourceAudit[]
+  offset: number
+  limit: number
+  hasMore: boolean
+}
+
 export type VisionEvidenceSourceRequest = {
   limit?: number
   offset?: number

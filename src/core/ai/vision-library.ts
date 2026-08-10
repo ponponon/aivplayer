@@ -36,6 +36,7 @@ import {
   type VisionDerivedEvidenceType,
   type VisionEvidenceSource,
   type VisionEvidenceSourceAudit,
+  type VisionEvidenceAuditPage,
   type VisionEvidenceCounts,
   type VisionEvidenceAuditStatus
 } from '../../shared/vision-types'
@@ -694,21 +695,37 @@ export class VisionLibrary {
   }
 
   /** Audits derived evidence sources without deleting or rewriting any data. */
-  async auditEvidenceSources(limit?: number, offset?: number, evidenceTypes?: readonly VisionDerivedEvidenceType[], auditStatuses?: readonly VisionEvidenceAuditStatus[]): Promise<VisionEvidenceSourceAudit[]> {
-    const sources = await this.listEvidenceSources(METADATA_SCAN_LIMIT, 0, evidenceTypes)
-    const audited = await Promise.all(sources.map(async (source) => {
-      try {
-        const snapshot = await stat(source.videoPath)
-        return auditVisionEvidenceSource(source, createVisionSourceFingerprint(source.videoPath, snapshot.size, snapshot.mtimeMs))
-      } catch (error) {
-        const code = error && typeof error === 'object' && 'code' in error && typeof error.code === 'string' ? error.code : ''
-        return auditVisionEvidenceSource(source, code === 'ENOENT' || code === 'ENOTDIR' ? null : undefined)
-      }
-    }))
+  async auditEvidenceSources(limit?: number, offset?: number, evidenceTypes?: readonly VisionDerivedEvidenceType[], auditStatuses?: readonly VisionEvidenceAuditStatus[]): Promise<VisionEvidenceAuditPage> {
     const selectedStatuses = new Set(normalizeVisionEvidenceAuditStatuses(auditStatuses, true))
     const sourceLimit = clampSourceLimit(limit)
     const sourceOffset = clampSourceOffset(offset)
-    return audited.filter((source) => selectedStatuses.has(source.auditStatus)).slice(sourceOffset, sourceOffset + sourceLimit)
+    const targetEnd = sourceOffset + sourceLimit
+    const scanPageLimit = 500
+    const matches: VisionEvidenceSourceAudit[] = []
+    let scanOffset = 0
+    let exhausted = false
+    while (!exhausted && matches.length <= targetEnd) {
+      const sources = await this.listEvidenceSources(scanPageLimit, scanOffset, evidenceTypes)
+      if (sources.length === 0) break
+      const audited = await Promise.all(sources.map(async (source) => {
+        try {
+          const snapshot = await stat(source.videoPath)
+          return auditVisionEvidenceSource(source, createVisionSourceFingerprint(source.videoPath, snapshot.size, snapshot.mtimeMs))
+        } catch (error) {
+          const code = error && typeof error === 'object' && 'code' in error && typeof error.code === 'string' ? error.code : ''
+          return auditVisionEvidenceSource(source, code === 'ENOENT' || code === 'ENOTDIR' ? null : undefined)
+        }
+      }))
+      matches.push(...audited.filter((source) => selectedStatuses.has(source.auditStatus)))
+      scanOffset += sources.length
+      exhausted = sources.length < scanPageLimit
+    }
+    return {
+      sources: matches.slice(sourceOffset, targetEnd),
+      offset: sourceOffset,
+      limit: sourceLimit,
+      hasMore: matches.length > targetEnd
+    }
   }
 
   private async clearEvidenceTypes(videoPath: string, evidenceTypes: readonly VisionDerivedEvidenceType[]): Promise<VisionEvidenceCounts> {
