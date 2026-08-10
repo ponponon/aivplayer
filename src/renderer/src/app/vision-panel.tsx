@@ -22,6 +22,7 @@ import { VisionSpeakerEvidenceSources } from './vision-speaker-evidence-sources'
 import type { VisionEntityCatalog as VisionEntityCatalogState, VisionEntityCatalogBatchPatch, VisionEntityCatalogCreateInput, VisionEntityCatalogPatch } from '../../../shared/vision-entity-types'
 
 const VISION_SOURCE_PAGE_SIZE = 100
+const VISION_EVIDENCE_TYPE_OPTIONS: readonly VisionEvidenceType[] = ['visual', 'subtitle', 'ocr', 'scene', 'entity', 'speaker']
 
 function formatDuration(milliseconds: number): string {
   if (milliseconds < 1000) return `${Math.max(1, Math.round(milliseconds))}ms`
@@ -36,7 +37,7 @@ export function VisionPanel(): React.ReactElement {
   const [status, setStatus] = useState<VisionRuntimeStatus | null>(null)
   const [progress, setProgress] = useState<VisionIndexProgress | null>(null)
   const [query, setQuery] = useState('')
-  const [evidenceTypeFilter, setEvidenceTypeFilter] = useState<VisionEvidenceType | 'all'>('all')
+  const [evidenceTypeFilter, setEvidenceTypeFilter] = useState<VisionEvidenceType[]>([])
   const [savedSearchName, setSavedSearchName] = useState('')
   const [savedSearches, setSavedSearches] = useState<VisionSavedSearch[]>([])
   const [sampleImagePath, setSampleImagePath] = useState<string | null>(null)
@@ -293,7 +294,7 @@ export function VisionPanel(): React.ReactElement {
     if (!searchQuery.trim() || isSearching) return
     setIsSearching(true)
     setError(null)
-    void window.aiv.searchVisionText({ query: searchQuery, limit: 24, mode, ...(filter === 'all' ? {} : { evidenceTypes: [filter] }) }).then((nextResults) => {
+    void window.aiv.searchVisionText({ query: searchQuery, limit: 24, mode, ...(filter.length > 0 ? { evidenceTypes: filter } : {}) }).then((nextResults) => {
       setResults(nextResults)
       setSelectedResultIds(new Set())
     }).catch((reason: unknown) => {
@@ -306,15 +307,17 @@ export function VisionPanel(): React.ReactElement {
   const runTextSearch = (): void => { executeTextSearch(query, 'hybrid') }
 
   const runSavedSearch = (savedSearch: VisionSavedSearch): void => {
+    const filter = savedSearch.evidenceTypes ?? []
     setQuery(savedSearch.query)
-    executeTextSearch(savedSearch.query, savedSearch.mode)
+    setEvidenceTypeFilter(filter)
+    executeTextSearch(savedSearch.query, savedSearch.mode, filter)
   }
 
   const saveCurrentSearch = (): void => {
     const name = savedSearchName.trim()
     if (!name || !query.trim()) return
     setError(null)
-    void window.aiv.saveVisionSavedSearch({ name, query, mode: 'hybrid' }).then((savedSearch) => {
+    void window.aiv.saveVisionSavedSearch({ name, query, mode: 'hybrid', evidenceTypes: evidenceTypeFilter }).then((savedSearch) => {
       setSavedSearches((current) => [savedSearch, ...current.filter((item) => item.id !== savedSearch.id)])
       setSavedSearchName('')
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
@@ -330,7 +333,7 @@ export function VisionPanel(): React.ReactElement {
     if (!sampleImagePath || isSearching) return
     setIsSearching(true)
     setError(null)
-    void window.aiv.searchVisionImage({ imagePath: sampleImagePath, limit: 24, ...(evidenceTypeFilter === 'all' ? {} : { evidenceTypes: [evidenceTypeFilter] }) }).then((nextResults) => {
+    void window.aiv.searchVisionImage({ imagePath: sampleImagePath, limit: 24, ...(evidenceTypeFilter.length > 0 ? { evidenceTypes: evidenceTypeFilter } : {}) }).then((nextResults) => {
       setResults(nextResults)
       setSelectedResultIds(new Set())
     }).catch((reason: unknown) => {
@@ -340,10 +343,23 @@ export function VisionPanel(): React.ReactElement {
     }).finally(() => setIsSearching(false))
   }
 
-  const changeEvidenceTypeFilter = (nextFilter: VisionEvidenceType | 'all'): void => {
+  const changeEvidenceTypeFilter = (nextFilter: VisionEvidenceType[]): void => {
     setEvidenceTypeFilter(nextFilter)
     if (query.trim() && !isSearching) executeTextSearch(query, 'hybrid', nextFilter)
   }
+
+  const toggleEvidenceTypeFilter = (evidenceType: VisionEvidenceType): void => {
+    const selected = new Set(evidenceTypeFilter)
+    if (selected.has(evidenceType)) selected.delete(evidenceType)
+    else selected.add(evidenceType)
+    changeEvidenceTypeFilter(VISION_EVIDENCE_TYPE_OPTIONS.filter((option) => selected.has(option)))
+  }
+
+  const clearEvidenceTypeFilter = (): void => { changeEvidenceTypeFilter([]) }
+
+  const formatEvidenceTypeFilter = (filter: readonly VisionEvidenceType[]): string => filter.length === 0
+    ? app.copy.vision.evidenceFilterAll
+    : filter.map((evidenceType) => app.copy.vision.evidenceFilterOptions[evidenceType]).join(' + ')
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
     const file = event.currentTarget.files?.[0]
@@ -592,18 +608,13 @@ export function VisionPanel(): React.ReactElement {
         <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={app.copy.vision.textPlaceholder} aria-label={app.copy.vision.textPlaceholder} />
         <button className="vision-search-button" type="submit" disabled={!query.trim() || isSearching}><Search size={15} />{app.copy.vision.hybridSearch}</button>
       </form>
-      <label className="vision-evidence-filter">
+      <div className="vision-evidence-filter" role="group" aria-label={app.copy.vision.evidenceFilterLabel}>
         <span>{app.copy.vision.evidenceFilterLabel}</span>
-        <select value={evidenceTypeFilter} onChange={(event) => changeEvidenceTypeFilter(event.currentTarget.value as VisionEvidenceType | 'all')} aria-label={app.copy.vision.evidenceFilterLabel}>
-          <option value="all">{app.copy.vision.evidenceFilterAll}</option>
-          <option value="visual">{app.copy.vision.evidenceFilterOptions.visual}</option>
-          <option value="subtitle">{app.copy.vision.evidenceFilterOptions.subtitle}</option>
-          <option value="ocr">{app.copy.vision.evidenceFilterOptions.ocr}</option>
-          <option value="scene">{app.copy.vision.evidenceFilterOptions.scene}</option>
-          <option value="entity">{app.copy.vision.evidenceFilterOptions.entity}</option>
-          <option value="speaker">{app.copy.vision.evidenceFilterOptions.speaker}</option>
-        </select>
-      </label>
+        <div className="vision-evidence-filter-options">
+          <label className="vision-evidence-filter-option"><input type="checkbox" checked={evidenceTypeFilter.length === 0} onChange={clearEvidenceTypeFilter} /><span>{app.copy.vision.evidenceFilterAll}</span></label>
+          {VISION_EVIDENCE_TYPE_OPTIONS.map((evidenceType) => <label className="vision-evidence-filter-option" key={evidenceType}><input type="checkbox" checked={evidenceTypeFilter.includes(evidenceType)} onChange={() => toggleEvidenceTypeFilter(evidenceType)} /><span>{app.copy.vision.evidenceFilterOptions[evidenceType]}</span></label>)}
+        </div>
+      </div>
       <div className="vision-saved-search-toolbar">
         <input className="vision-saved-search-name-input" value={savedSearchName} onChange={(event) => setSavedSearchName(event.target.value)} placeholder={app.copy.vision.savedSearchNamePlaceholder} aria-label={app.copy.vision.savedSearchNamePlaceholder} />
         <button className="vision-secondary-action" type="button" onClick={saveCurrentSearch} disabled={!query.trim() || !savedSearchName.trim()}>{app.copy.vision.saveSearch}</button>
@@ -613,7 +624,7 @@ export function VisionPanel(): React.ReactElement {
         <div className="vision-saved-search-list">{savedSearches.map((savedSearch) => <div className="vision-saved-search" key={savedSearch.id}>
           <button className="vision-saved-search-button" type="button" onClick={() => runSavedSearch(savedSearch)} disabled={isSearching}>
             <strong>{savedSearch.name}</strong>
-            <small>{savedSearch.query}</small>
+            <small>{savedSearch.query} · {formatEvidenceTypeFilter(savedSearch.evidenceTypes ?? [])}</small>
           </button>
           <button className="vision-saved-search-delete" type="button" onClick={() => deleteSavedSearch(savedSearch)} title={app.copy.vision.deleteSavedSearch} aria-label={`${app.copy.vision.deleteSavedSearch}: ${savedSearch.name}`}><Trash2 size={14} /></button>
         </div>)}</div>
