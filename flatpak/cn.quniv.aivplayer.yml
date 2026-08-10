@@ -6,6 +6,7 @@ base: org.electronjs.Electron2.BaseApp
 base-version: '25.08'
 sdk-extensions:
   - org.freedesktop.Sdk.Extension.node22
+  - org.freedesktop.Sdk.Extension.rust-stable
 command: cn.quniv.aivplayer
 
 finish-args:
@@ -112,6 +113,33 @@ modules:
         url: https://github.com/ggml-org/whisper.cpp.git
         tag: v1.9.1
         commit: f049fff95a089aa9969deb009cdd4892b3e74916
+
+  - name: lancedb-native
+    buildsystem: simple
+    build-options:
+      append-path: /usr/lib/sdk/rust-stable/bin
+      env:
+        CARGO_NET_OFFLINE: 'true'
+        CARGO_PROFILE_RELEASE_CODEGEN_UNITS: '16'
+        CARGO_PROFILE_RELEASE_LTO: thin
+    build-commands:
+      - cargo build --release --locked --offline -p lancedb-nodejs
+      - install -Dm644 LICENSE /app/share/licenses/cn.quniv.aivplayer/lancedb/LICENSE
+      - |
+          case "$(uname -m)" in
+            x86_64) native_file=lancedb.linux-x64-gnu.node ;;
+            aarch64) native_file=lancedb.linux-arm64-gnu.node ;;
+            *) echo "不支持的 Linux 架构：$(uname -m)" >&2; exit 1 ;;
+          esac
+          install -Dm755 target/release/liblancedb_nodejs.so "/app/lib/aivplayer/${native_file}"
+    sources:
+      - type: git
+        url: https://github.com/lancedb/lancedb.git
+        tag: v0.31.0
+        commit: 3f8d76817e6020ea344fba8a66c5de9ad8c82234
+      - type: patch
+        path: patches/lancedb-cargo-lock.patch
+      - lancedb-cargo-sources.json
 
   - name: aivplayer
     buildsystem: simple

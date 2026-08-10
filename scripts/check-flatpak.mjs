@@ -8,13 +8,15 @@ const manifestPath = join(flatpakDirectory, 'cn.quniv.aivplayer.yml')
 const desktopPath = join(flatpakDirectory, 'cn.quniv.aivplayer.desktop')
 const metainfoPath = join(flatpakDirectory, 'cn.quniv.aivplayer.metainfo.xml')
 const generatedSourcesPath = join(flatpakDirectory, 'generated-sources.json')
+const lancedbCargoSourcesPath = join(flatpakDirectory, 'lancedb-cargo-sources.json')
 
-const [packageText, manifest, desktop, metainfo, generatedSources] = await Promise.all([
+const [packageText, manifest, desktop, metainfo, generatedSources, lancedbCargoSources] = await Promise.all([
   readFile(join(root, 'package.json'), 'utf8'),
   readFile(manifestPath, 'utf8'),
   readFile(desktopPath, 'utf8'),
   readFile(metainfoPath, 'utf8'),
-  readFile(generatedSourcesPath, 'utf8').catch(() => '')
+  readFile(generatedSourcesPath, 'utf8').catch(() => ''),
+  readFile(lancedbCargoSourcesPath, 'utf8').catch(() => '')
 ])
 
 const packageJson = JSON.parse(packageText)
@@ -31,6 +33,7 @@ assertCondition(manifest.includes("runtime-version: '25.08'"), 'runtime 不是�
 assertCondition(manifest.includes(`base: org.electronjs.Electron2.BaseApp`), '没有声明 Electron BaseApp')
 assertCondition(manifest.includes(`base-version: '25.08'`), 'Electron BaseApp 版本与 runtime 不一致')
 assertCondition(manifest.includes('org.freedesktop.Sdk.Extension.node22'), '没有声明 Node.js SDK extension')
+assertCondition(manifest.includes('org.freedesktop.Sdk.Extension.rust-stable'), '没有声明 Rust SDK extension')
 assertCondition(manifest.includes('- generated-sources.json'), 'manifest 没有接入离线 npm 源清单')
 assertCondition(manifest.includes('npm install --offline'), 'Flatpak 构建不能依赖联网 npm install')
 assertCondition(manifest.includes('--publish never'), 'Flatpak 构建不能触发 electron-builder 发布')
@@ -60,6 +63,11 @@ assertCondition(manifest.includes('name: whisper-cpp'), 'Flatpak 必须从固定
 assertCondition(manifest.includes('https://github.com/ggml-org/whisper.cpp.git'), 'whisper.cpp 源码地址不正确')
 assertCondition(manifest.includes('commit: f049fff95a089aa9969deb009cdd4892b3e74916'), 'whisper.cpp 必须固定 commit')
 assertCondition(manifest.includes('install -Dm755 build/bin/whisper-cli /app/bin/whisper-cli'), 'Flatpak 没有安装 whisper-cli 运行时')
+assertCondition(manifest.includes('name: lancedb-native'), 'Flatpak 没有声明 LanceDB 源码构建模块')
+assertCondition(manifest.includes('https://github.com/lancedb/lancedb.git'), 'LanceDB 源码地址不正确')
+assertCondition(manifest.includes('commit: 3f8d76817e6020ea344fba8a66c5de9ad8c82234'), 'LanceDB 必须固定 v0.31.0 commit')
+assertCondition(manifest.includes('cargo build --release --locked --offline -p lancedb-nodejs'), 'LanceDB 构建命令必须交给 Flatpak builder 执行')
+assertCondition(manifest.includes('lancedb-cargo-sources.json'), 'LanceDB 缺少 Cargo 源码清单')
 assertCondition(manifest.includes('desktopName = "cn.quniv.aivplayer.desktop"'), '没有修正 Electron desktop 文件名')
 assertCondition(packageJson.scripts?.['flatpak:prepare-ci-manifest'], '缺少 Flatpak CI 本地源码 manifest 生成命令')
 assertCondition(packageJson.scripts?.['flatpak:audit-native'], '缺少 Flatpak 原生 npm 依赖审计命令')
@@ -76,6 +84,7 @@ assertCondition(metainfo.includes('<project_license>MIT</project_license>'), 'Me
 assertCondition(metainfo.includes(`<release version="${version}"`), 'MetaInfo release 版本与 package.json 不一致')
 
 assertCondition(generatedSources.trim().length > 0, '缺少 generated-sources.json，请先运行 flatpak:generate-sources')
+assertCondition(lancedbCargoSources.trim().length > 0, '缺少 lancedb-cargo-sources.json，请生成 Flathub 离线 Cargo 源清单')
 let parsedSources
 try {
   parsedSources = JSON.parse(generatedSources)
@@ -83,5 +92,12 @@ try {
   throw new Error(`Flatpak 检查失败：generated-sources.json 不是合法 JSON：${error instanceof Error ? error.message : String(error)}`)
 }
 assertCondition(Array.isArray(parsedSources) && parsedSources.length > 0, 'generated-sources.json 没有有效 source')
+let parsedLancedbCargoSources
+try {
+  parsedLancedbCargoSources = JSON.parse(lancedbCargoSources)
+} catch (error) {
+  throw new Error(`Flatpak 检查失败：lancedb-cargo-sources.json 不是合法 JSON：${error instanceof Error ? error.message : String(error)}`)
+}
+assertCondition(Array.isArray(parsedLancedbCargoSources) && parsedLancedbCargoSources.length > 0, 'lancedb-cargo-sources.json 没有有效 source')
 
-console.log(`Flatpak 静态检查通过：${id} v${version}，${parsedSources.length} 个离线 source`)
+console.log(`Flatpak 静态检查通过：${id} v${version}，${parsedSources.length} 个 npm source，${parsedLancedbCargoSources.length} 个 Cargo source`)
