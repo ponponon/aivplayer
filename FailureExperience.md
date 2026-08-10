@@ -30,6 +30,7 @@
 - Snapcraft 的 `pack` 失败后不能在同一个 `parts` / `stage` / `prime` 状态上直接重试；dump part 可能已经留下部分安装文件，下一次会把原本的根因放大成大量 `cp ... File exists`。每次重试前必须清理 Snapcraft 生成目录和旧 `.snap`，再从干净状态重新打包。
 - Flatpak 的 npm `optional` 平台包不能等同于“不会进入最终包”：`package-lock.json` 仍会把 LanceDB、ONNX Runtime、Sharp/libvips 和 sherpa-onnx 的预编译平台包或安装脚本记录进离线 source 清单。处理这类依赖时，必须先用 `npm run flatpak:audit-native` 按 lockfile 建立证据，再决定源码重建或在 Flatpak 版明确关闭能力；不能只按当前 macOS 安装结果判断 Linux Flathub 合规性。
 - Flathub 的源码构建应交给 Flathub/Linux 构建环境；本地 macOS 编译 LanceDB 只能是可选的排障手段，不能在未确认 Flatpak 功能边界前作为实施路线，更不能把本地构建产物带入 manifest。
+- GitHub runner 没有用户图形会话时，Flatpak workflow 不能依赖 `flatpak-builder --install-deps-from=flathub` 通过用户 D-Bus 安装 SDK；应先显式安装 runtime、BaseApp 和 SDK extensions，再让 builder 直接使用已安装依赖。
 
 ## Electron 打包不能依赖自动安装的 peer dependency
 
