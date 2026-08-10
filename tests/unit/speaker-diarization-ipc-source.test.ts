@@ -11,6 +11,7 @@ describe('speaker diarization IPC surface', () => {
 
     expect(desktopSource).toContain('SPEAKER_DIARIZATION_STATUS')
     expect(desktopSource).toContain('SPEAKER_DIARIZATION_RUN')
+    expect(desktopSource).toContain('SPEAKER_DIARIZATION_CLEAR_EVIDENCE')
     expect(desktopSource).toContain('buildFfmpegAudioExtractArgs')
     expect(desktopSource).toContain('createSpeakerDiarizationEvidence')
     expect(desktopSource).toContain('replaceSpeakerEvidence')
@@ -18,5 +19,6 @@ describe('speaker diarization IPC surface', () => {
     expect(indexSource).toContain('registerSpeakerDiarizationIpc')
     expect(preloadSource).toContain('getSpeakerDiarizationStatus')
     expect(preloadSource).toContain('runSpeakerDiarization')
+    expect(preloadSource).toContain('clearSpeakerDiarizationEvidence')
   })
 })

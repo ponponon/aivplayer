@@ -73,3 +73,8 @@ export type SpeakerDiarizationRunResult = {
   sourceFingerprint?: string
   evidenceMessage?: string
 }
+
+export type SpeakerDiarizationEvidenceClearResult = {
+  success: boolean
+  message: string
+}

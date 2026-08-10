@@ -102,6 +102,7 @@ import type {
   PersonMatteTrackRequest,
   PersonMatteTrackResult,
   SpeakerDiarizationModelStatus,
+  SpeakerDiarizationEvidenceClearResult,
   SpeakerDiarizationRunRequest,
   SpeakerDiarizationRunResult
 } from '../shared/media-types'
@@ -259,6 +260,7 @@ const api = {
   buildPersonMatteTrack: (request: PersonMatteTrackRequest): Promise<PersonMatteTrackResult> => ipcRenderer.invoke(IPC_CHANNELS.PERSON_MATTE_TRACK, request),
   getSpeakerDiarizationStatus: (): Promise<SpeakerDiarizationModelStatus> => ipcRenderer.invoke(IPC_CHANNELS.SPEAKER_DIARIZATION_STATUS),
   runSpeakerDiarization: (request: SpeakerDiarizationRunRequest): Promise<SpeakerDiarizationRunResult> => ipcRenderer.invoke(IPC_CHANNELS.SPEAKER_DIARIZATION_RUN, request),
+  clearSpeakerDiarizationEvidence: (mediaPath: string): Promise<SpeakerDiarizationEvidenceClearResult> => ipcRenderer.invoke(IPC_CHANNELS.SPEAKER_DIARIZATION_CLEAR_EVIDENCE, mediaPath),
   getSpeakerDiarizationCatalog: (): Promise<SpeakerDiarizationCatalog> => ipcRenderer.invoke(IPC_CHANNELS.SPEAKER_DIARIZATION_CATALOG_GET),
   updateSpeakerDiarizationCatalog: (patch: SpeakerDiarizationCatalogPatch): Promise<SpeakerDiarizationCatalog> => ipcRenderer.invoke(IPC_CHANNELS.SPEAKER_DIARIZATION_CATALOG_UPDATE, patch),
   startVisionIndex: (request: VisionIndexRequest): Promise<VisionIndexProgress> => ipcRenderer.invoke(IPC_CHANNELS.VISION_INDEX_START, request),

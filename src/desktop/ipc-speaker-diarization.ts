@@ -12,7 +12,7 @@ import { createVisionSourceFingerprint, createVisionSourceId } from '../core/ai/
 import { resolveFfmpegPath } from '../core/ai/whisper-cpp-runtime'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type { SpeakerDiarizationCatalogPatch } from '../shared/speaker-diarization-catalog-types'
-import type { SpeakerDiarizationModelStatus, SpeakerDiarizationRunRequest, SpeakerDiarizationRunResult } from '../shared/speaker-diarization-types'
+import type { SpeakerDiarizationEvidenceClearResult, SpeakerDiarizationModelStatus, SpeakerDiarizationRunRequest, SpeakerDiarizationRunResult } from '../shared/speaker-diarization-types'
 import { getSpeakerDiarizationCatalogStore, getVisionLibrary, resolveResourcePath } from './desktop-services'
 
 const execFileAsync = promisify(execFile)
@@ -124,6 +124,16 @@ export function registerSpeakerDiarizationIpc(): void {
     runPromises.set(key, promise)
     void promise.finally(() => runPromises.delete(key))
     return promise
+  })
+  ipcMain.handle(IPC_CHANNELS.SPEAKER_DIARIZATION_CLEAR_EVIDENCE, async (_event, value: unknown): Promise<SpeakerDiarizationEvidenceClearResult> => {
+    const mediaPath = typeof value === 'string' ? value.trim() : ''
+    if (!mediaPath) return { success: false, message: '说话人证据清理请求无效' }
+    try {
+      await getVisionLibrary().clearSpeakerEvidence(mediaPath)
+      return { success: true, message: '当前视频的说话人证据已清理' }
+    } catch (error) {
+      return { success: false, message: getFailureMessage(error) }
+    }
   })
   ipcMain.handle(IPC_CHANNELS.SPEAKER_DIARIZATION_CATALOG_GET, () => getSpeakerDiarizationCatalogStore().get())
   ipcMain.handle(IPC_CHANNELS.SPEAKER_DIARIZATION_CATALOG_UPDATE, async (_event, value: unknown) => {
