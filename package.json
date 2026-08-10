@@ -45,6 +45,7 @@
     "smoke:vision-similar-search": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-similar-search.ts",
     "smoke:vision-search-export-recreate": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-search-export-recreate.ts",
     "smoke:vision-search-export-recreate-batch": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-search-export-recreate-batch.ts",
+    "smoke:vision-search-output-lock": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-search-output-lock.ts",
     "smoke:drama-generation": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-drama-generation.ts",
     "smoke:speaker-diarization": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --experimental-loader=./scripts/resolve-ts-loader.mjs scripts/smoke-speaker-diarization.ts",
     "smoke:speaker-diarization:panel": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --experimental-loader=./scripts/resolve-ts-loader.mjs scripts/smoke-speaker-diarization-panel.ts",
