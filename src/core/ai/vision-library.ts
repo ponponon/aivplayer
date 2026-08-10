@@ -47,7 +47,7 @@ import {
   type VisionEvidenceAuditStatus
 } from '../../shared/vision-types'
 import type { VisionObjectDetectionBox, VisionObjectDetectionFilterState } from '../../shared/vision-object-detection-types'
-import { getVisionSearchRevisionBody, VISION_SEARCH_REVISION_SCHEMA_VERSION, type VisionSearchRevision, type VisionSearchTableName } from '../../shared/vision-search-revision'
+import { getVisionSearchRevisionBody, isVisionSearchRevisionUnavailableError, VisionSearchRevisionUnavailableError, VISION_SEARCH_REVISION_SCHEMA_VERSION, type VisionSearchRevision, type VisionSearchTableName } from '../../shared/vision-search-revision'
 import type { SpeakerDiarizationEvidenceBatchClearResult, SpeakerDiarizationEvidenceSource } from '../../shared/speaker-diarization-types'
 import { addVisionEvidenceCounts, aggregateVisionEvidenceSources, auditVisionEvidenceSource, createEmptyVisionEvidenceCounts, normalizeVisionDerivedEvidenceTypes, normalizeVisionEvidenceAuditStatuses, normalizeVisionEvidenceClearTargets, type VisionEvidenceSourceRow } from './vision-evidence-sources'
 
@@ -415,7 +415,16 @@ export class VisionLibrary {
     const tableNames = await db.tableNames()
     const pinnedVersion = revision && name in revision.tables ? revision.tables[name as VisionSearchTableName] : undefined
     if (pinnedVersion === null || (!revision && !tableNames.includes(name)) || (revision && pinnedVersion === undefined && !tableNames.includes(name))) return null
-    return db.openTable(name, undefined, pinnedVersion === undefined ? undefined : { version: pinnedVersion })
+    if (pinnedVersion === undefined) return db.openTable(name)
+    try {
+      const currentTable = await db.openTable(name)
+      const versions = await currentTable.listVersions()
+      if (!versions.some((entry) => entry.version === pinnedVersion)) throw new VisionSearchRevisionUnavailableError(name as VisionSearchTableName, pinnedVersion)
+      return await db.openTable(name, undefined, { version: pinnedVersion })
+    } catch (error) {
+      if (error instanceof VisionSearchRevisionUnavailableError) throw error
+      throw new VisionSearchRevisionUnavailableError(name as VisionSearchTableName, pinnedVersion)
+    }
   }
 
   private async getTable(revision?: VisionSearchRevision): Promise<Table | null> {
@@ -1825,6 +1834,7 @@ export class VisionLibrary {
       if (evidenceCandidates) return evidenceCandidates
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') throw error
+      if (isVisionSearchRevisionUnavailableError(error)) throw error
       // Fall through to the legacy caption/FTS path for old or partially written indexes.
     }
     try {
@@ -2084,6 +2094,7 @@ export class VisionLibrary {
       return await this.searchHybridAll(embedding, normalizedQuery, signal, revision)
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') throw error
+      if (isVisionSearchRevisionUnavailableError(error)) throw error
       const lexicalCandidates = await this.searchLexical(normalizedQuery, VISION_SEARCH_FULL_EXPORT_MAX_RESULTS, true, signal, revision)
       if (lexicalCandidates.length === 0) throw error
       return lexicalCandidates.map((candidate) => ({

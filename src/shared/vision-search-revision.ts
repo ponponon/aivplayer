@@ -17,6 +17,23 @@ export type VisionSearchRevision = {
   fingerprint: string
 }
 
+export class VisionSearchRevisionUnavailableError extends Error {
+  readonly tableName: VisionSearchTableName
+  readonly version: number
+
+  constructor(tableName: VisionSearchTableName, version: number) {
+    super(`Vision search revision is unavailable: ${tableName} v${version}`)
+    this.name = 'VisionSearchRevisionUnavailableError'
+    this.tableName = tableName
+    this.version = version
+  }
+}
+
+export function isVisionSearchRevisionUnavailableError(value: unknown): value is VisionSearchRevisionUnavailableError {
+  return value instanceof VisionSearchRevisionUnavailableError
+    || (value instanceof Error && value.name === 'VisionSearchRevisionUnavailableError' && typeof (value as Partial<VisionSearchRevisionUnavailableError>).tableName === 'string' && typeof (value as Partial<VisionSearchRevisionUnavailableError>).version === 'number')
+}
+
 export function getVisionSearchRevisionBody(revision: Pick<VisionSearchRevision, 'schemaVersion' | 'tables' | 'catalogs'>): Omit<VisionSearchRevision, 'fingerprint'> {
   return {
     schemaVersion: revision.schemaVersion,

@@ -5,6 +5,7 @@ import { connect } from '@lancedb/lancedb'
 import { afterEach, describe, expect, it } from 'vitest'
 import { VisionLibrary } from '../../src/core/ai/vision-library'
 import { VISION_MODEL_ID, VISION_MODEL_VARIANT } from '../../src/shared/vision-types'
+import { isVisionSearchRevisionUnavailableError } from '../../src/shared/vision-search-revision'
 
 describe('vision full-library search', () => {
   const temporaryDirectories: string[] = []
@@ -93,5 +94,34 @@ describe('vision full-library search', () => {
     expect(currentResults.map((item) => item.id)).toEqual(['ocr-v1', 'ocr-v2'])
     expect(pinnedResults.map((item) => item.id)).toEqual(['ocr-v1'])
     expect(revision.tables.video_evidence).toEqual(expect.any(Number))
+  })
+
+  it('reports the table and version when a pinned revision is unavailable', async () => {
+    const userDataPath = await mkdtemp(join(tmpdir(), 'aivplayer-full-search-unavailable-'))
+    temporaryDirectories.push(userDataPath)
+    const library = new VisionLibrary({ userDataPath, resourcePath: join(process.cwd(), 'resources'), env: process.env })
+    await library.upsertEvidence({
+      id: 'ocr-before-cleanup', sourceId: 'source-before-cleanup', videoPath: '/media/before-cleanup.mp4', fileName: 'before-cleanup.mp4', evidenceType: 'ocr',
+      startSeconds: 0, endSeconds: 1, text: 'person', frameId: 'frame-before-cleanup', thumbnailPath: '/thumb/before-cleanup.jpg',
+      sourceFingerprint: 'before-cleanup', modelId: 'test-model', modelVariant: 'test', generatedAt: 1
+    })
+    const revision = await library.getSearchRevision()
+    const unavailableVersion = (revision.tables.video_evidence ?? 0) + 999_999
+    const unavailableRevision = {
+      ...revision,
+      tables: { ...revision.tables, video_evidence: unavailableVersion }
+    }
+
+    let caught: unknown
+    try {
+      await library.searchTextAll('person', 'lexical', undefined, undefined, unavailableRevision)
+    } catch (error) {
+      caught = error
+    }
+    expect(isVisionSearchRevisionUnavailableError(caught)).toBe(true)
+    if (isVisionSearchRevisionUnavailableError(caught)) {
+      expect(caught.tableName).toBe('video_evidence')
+      expect(caught.version).toBe(unavailableVersion)
+    }
   })
 })
