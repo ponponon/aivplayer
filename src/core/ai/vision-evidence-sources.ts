@@ -1,4 +1,4 @@
-import { VISION_DERIVED_EVIDENCE_TYPES, type VisionDerivedEvidenceType, type VisionEvidenceClearTarget, type VisionEvidenceCounts, type VisionEvidenceSource } from '../../shared/vision-types'
+import { VISION_DERIVED_EVIDENCE_TYPES, VISION_EVIDENCE_AUDIT_STATUSES, type VisionDerivedEvidenceType, type VisionEvidenceAuditStatus, type VisionEvidenceClearTarget, type VisionEvidenceCounts, type VisionEvidenceSource, type VisionEvidenceSourceAudit } from '../../shared/vision-types'
 
 export type VisionEvidenceSourceRow = {
   videoPath: unknown
@@ -16,6 +16,24 @@ export function normalizeVisionDerivedEvidenceTypes(value: unknown, fallbackToAl
   if (!Array.isArray(value) || value.length === 0) return fallbackToAll ? [...VISION_DERIVED_EVIDENCE_TYPES] : []
   const selected = new Set(value.filter((item): item is VisionDerivedEvidenceType => typeof item === 'string' && VISION_DERIVED_EVIDENCE_TYPES.includes(item as VisionDerivedEvidenceType)))
   return VISION_DERIVED_EVIDENCE_TYPES.filter((item) => selected.has(item))
+}
+
+export function normalizeVisionEvidenceAuditStatuses(value: unknown, fallbackToAll = false): VisionEvidenceAuditStatus[] {
+  if (!Array.isArray(value) || value.length === 0) return fallbackToAll ? [...VISION_EVIDENCE_AUDIT_STATUSES] : []
+  const selected = new Set(value.filter((item): item is VisionEvidenceAuditStatus => typeof item === 'string' && VISION_EVIDENCE_AUDIT_STATUSES.includes(item as VisionEvidenceAuditStatus)))
+  return VISION_EVIDENCE_AUDIT_STATUSES.filter((item) => selected.has(item))
+}
+
+/**
+ * Compares a recorded source fingerprint with a fresh filesystem probe.
+ * `null` means the media path is missing; `undefined` means the probe failed
+ * for another reason and must not be treated as safe to clean up.
+ */
+export function auditVisionEvidenceSource(source: VisionEvidenceSource, currentFingerprint: string | null | undefined): VisionEvidenceSourceAudit {
+  if (currentFingerprint === null) return { ...source, auditStatus: 'missing' }
+  if (currentFingerprint === undefined) return { ...source, auditStatus: 'unavailable' }
+  if (currentFingerprint !== source.sourceFingerprint) return { ...source, auditStatus: 'changed', currentFingerprint }
+  return { ...source, auditStatus: 'current' }
 }
 
 export function normalizeVisionEvidenceClearTargets(value: unknown): VisionEvidenceClearTarget[] {

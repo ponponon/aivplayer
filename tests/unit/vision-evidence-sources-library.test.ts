@@ -1,9 +1,10 @@
-import { mkdtemp, rm } from 'node:fs/promises'
+import { appendFile, mkdtemp, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { connect } from '@lancedb/lancedb'
 import { afterEach, describe, expect, it } from 'vitest'
 import { VisionLibrary } from '../../src/core/ai/vision-library'
+import { createVisionSourceFingerprint } from '../../src/core/ai/vision-evidence'
 import type { VisionEvidence } from '../../src/shared/vision-types'
 
 describe('vision evidence source persistence', () => {
@@ -65,5 +66,34 @@ describe('vision evidence source persistence', () => {
       evidenceCounts: { ocr: 1, scene: 1, entity: 0, speaker: 0 },
       generatedAt: 3
     }])
+  })
+
+  it('audits media changes and missing files without deleting evidence', async () => {
+    const userDataPath = await mkdtemp(join(tmpdir(), 'aivplayer-evidence-audit-'))
+    temporaryDirectories.push(userDataPath)
+    const videoPath = join(userDataPath, 'one.mp4')
+    await writeFile(videoPath, 'initial-media')
+    const initialStat = await stat(videoPath)
+    const library = new VisionLibrary({ userDataPath, resourcePath: join(process.cwd(), 'resources'), env: process.env })
+    await library.upsertEvidence({
+      id: 'ocr-1',
+      sourceId: 'source-one',
+      videoPath,
+      fileName: 'one.mp4',
+      evidenceType: 'ocr',
+      startSeconds: 0,
+      endSeconds: 1,
+      sourceFingerprint: createVisionSourceFingerprint(videoPath, initialStat.size, initialStat.mtimeMs),
+      modelId: 'test-model',
+      modelVariant: 'test',
+      generatedAt: 1
+    })
+
+    expect((await library.auditEvidenceSources())[0]).toMatchObject({ auditStatus: 'current', videoPath })
+    await appendFile(videoPath, '-changed')
+    expect((await library.auditEvidenceSources())[0]).toMatchObject({ auditStatus: 'changed', videoPath })
+    await rm(videoPath)
+    expect((await library.auditEvidenceSources())[0]).toMatchObject({ auditStatus: 'missing', videoPath })
+    expect(await library.listEvidenceSources()).toHaveLength(1)
   })
 })

@@ -173,10 +173,23 @@ export type VisionEvidenceSource = {
   generatedAt: number
 }
 
+export const VISION_EVIDENCE_AUDIT_STATUSES = ['current', 'changed', 'missing', 'unavailable'] as const
+
+export type VisionEvidenceAuditStatus = typeof VISION_EVIDENCE_AUDIT_STATUSES[number]
+
+export type VisionEvidenceSourceAudit = VisionEvidenceSource & {
+  auditStatus: VisionEvidenceAuditStatus
+  currentFingerprint?: string
+}
+
 export type VisionEvidenceSourceRequest = {
   limit?: number
   offset?: number
   evidenceTypes?: VisionDerivedEvidenceType[]
+}
+
+export type VisionEvidenceAuditRequest = VisionEvidenceSourceRequest & {
+  auditStatuses?: VisionEvidenceAuditStatus[]
 }
 
 export type VisionEvidenceClearTarget = {

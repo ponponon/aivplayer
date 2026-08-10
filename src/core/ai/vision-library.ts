@@ -35,10 +35,12 @@ import {
   type VisionEvidenceType,
   type VisionDerivedEvidenceType,
   type VisionEvidenceSource,
-  type VisionEvidenceCounts
+  type VisionEvidenceSourceAudit,
+  type VisionEvidenceCounts,
+  type VisionEvidenceAuditStatus
 } from '../../shared/vision-types'
 import type { SpeakerDiarizationEvidenceBatchClearResult, SpeakerDiarizationEvidenceSource } from '../../shared/speaker-diarization-types'
-import { addVisionEvidenceCounts, aggregateVisionEvidenceSources, createEmptyVisionEvidenceCounts, normalizeVisionDerivedEvidenceTypes, normalizeVisionEvidenceClearTargets, type VisionEvidenceSourceRow } from './vision-evidence-sources'
+import { addVisionEvidenceCounts, aggregateVisionEvidenceSources, auditVisionEvidenceSource, createEmptyVisionEvidenceCounts, normalizeVisionDerivedEvidenceTypes, normalizeVisionEvidenceAuditStatuses, normalizeVisionEvidenceClearTargets, type VisionEvidenceSourceRow } from './vision-evidence-sources'
 
 const execFileAsync = promisify(execFile)
 const TABLE_NAME = 'video_frames'
@@ -689,6 +691,24 @@ export class VisionLibrary {
     const sourceLimit = clampSourceLimit(limit)
     const sourceOffset = clampSourceOffset(offset)
     return aggregateVisionEvidenceSources(sourceRows, evidenceTypes).slice(sourceOffset, sourceOffset + sourceLimit)
+  }
+
+  /** Audits derived evidence sources without deleting or rewriting any data. */
+  async auditEvidenceSources(limit?: number, offset?: number, evidenceTypes?: readonly VisionDerivedEvidenceType[], auditStatuses?: readonly VisionEvidenceAuditStatus[]): Promise<VisionEvidenceSourceAudit[]> {
+    const sources = await this.listEvidenceSources(METADATA_SCAN_LIMIT, 0, evidenceTypes)
+    const audited = await Promise.all(sources.map(async (source) => {
+      try {
+        const snapshot = await stat(source.videoPath)
+        return auditVisionEvidenceSource(source, createVisionSourceFingerprint(source.videoPath, snapshot.size, snapshot.mtimeMs))
+      } catch (error) {
+        const code = error && typeof error === 'object' && 'code' in error && typeof error.code === 'string' ? error.code : ''
+        return auditVisionEvidenceSource(source, code === 'ENOENT' || code === 'ENOTDIR' ? null : undefined)
+      }
+    }))
+    const selectedStatuses = new Set(normalizeVisionEvidenceAuditStatuses(auditStatuses, true))
+    const sourceLimit = clampSourceLimit(limit)
+    const sourceOffset = clampSourceOffset(offset)
+    return audited.filter((source) => selectedStatuses.has(source.auditStatus)).slice(sourceOffset, sourceOffset + sourceLimit)
   }
 
   private async clearEvidenceTypes(videoPath: string, evidenceTypes: readonly VisionDerivedEvidenceType[]): Promise<VisionEvidenceCounts> {

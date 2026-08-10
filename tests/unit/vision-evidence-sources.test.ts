@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { aggregateVisionEvidenceSources, createEmptyVisionEvidenceCounts, normalizeVisionDerivedEvidenceTypes, normalizeVisionEvidenceClearTargets } from '../../src/core/ai/vision-evidence-sources'
+import { aggregateVisionEvidenceSources, auditVisionEvidenceSource, createEmptyVisionEvidenceCounts, normalizeVisionDerivedEvidenceTypes, normalizeVisionEvidenceAuditStatuses, normalizeVisionEvidenceClearTargets } from '../../src/core/ai/vision-evidence-sources'
 
 describe('vision evidence sources', () => {
   it('aggregates derived evidence by source fingerprint and type', () => {
@@ -28,5 +28,15 @@ describe('vision evidence sources', () => {
       { videoPath: '', evidenceTypes: ['scene'] }
     ])).toEqual([{ videoPath: '/media/one.mp4', evidenceTypes: ['ocr', 'entity', 'speaker'] }])
     expect(createEmptyVisionEvidenceCounts()).toEqual({ ocr: 0, scene: 0, entity: 0, speaker: 0 })
+  })
+
+  it('distinguishes current, changed, missing, and unavailable sources', () => {
+    const source = aggregateVisionEvidenceSources([{ videoPath: '/media/one.mp4', fileName: 'one.mp4', evidenceType: 'ocr', sourceFingerprint: 'one-v1', generatedAt: 1 }])[0]
+    expect(auditVisionEvidenceSource(source, 'one-v1').auditStatus).toBe('current')
+    expect(auditVisionEvidenceSource(source, 'one-v2')).toMatchObject({ auditStatus: 'changed', currentFingerprint: 'one-v2' })
+    expect(auditVisionEvidenceSource(source, null).auditStatus).toBe('missing')
+    expect(auditVisionEvidenceSource(source, undefined).auditStatus).toBe('unavailable')
+    expect(normalizeVisionEvidenceAuditStatuses(['changed', 'unknown', 'changed'])).toEqual(['changed'])
+    expect(normalizeVisionEvidenceAuditStatuses(undefined, true)).toEqual(['current', 'changed', 'missing', 'unavailable'])
   })
 })
