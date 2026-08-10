@@ -1,4 +1,4 @@
-import { AudioLines, Play, RefreshCcw, Save } from 'lucide-react'
+import { AudioLines, Play, RefreshCcw, Save, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { SpeakerDiarizationModelStatus, SpeakerDiarizationResult } from '../../../shared/speaker-diarization-types'
 import type { SpeakerDiarizationCatalog } from '../../../shared/speaker-diarization-catalog-types'
@@ -39,6 +39,7 @@ export function VisionSpeakerDiarization({ copy, mediaPath, onSeek }: VisionSpea
   const [result, setResult] = useState<SpeakerDiarizationResult | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isRunning, setIsRunning] = useState(false)
+  const [isClearingEvidence, setIsClearingEvidence] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [evidenceStatus, setEvidenceStatus] = useState<string | null>(null)
   const [evidenceSaved, setEvidenceSaved] = useState<boolean | null>(null)
@@ -133,6 +134,22 @@ export function VisionSpeakerDiarization({ copy, mediaPath, onSeek }: VisionSpea
     }).finally(() => setSavingSpeakerId(null))
   }
 
+  const clearEvidence = (): void => {
+    if (!mediaPath || !evidenceSaved || isClearingEvidence) return
+    setError(null)
+    setIsClearingEvidence(true)
+    void window.aiv.clearSpeakerDiarizationEvidence(mediaPath).then((response) => {
+      if (!response.success) {
+        setError(response.message)
+        return
+      }
+      setEvidenceSaved(false)
+      setEvidenceStatus(copy.speakerEvidenceCleared)
+    }).catch((reason: unknown) => {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    }).finally(() => setIsClearingEvidence(false))
+  }
+
   const capabilityMessage = status === null
     ? copy.speakerChecking
     : status.available
@@ -144,8 +161,9 @@ export function VisionSpeakerDiarization({ copy, mediaPath, onSeek }: VisionSpea
     <p className="vision-speaker-description">{copy.speakerDescription}</p>
     <div className={`vision-speaker-capability${status?.available ? ' is-ready' : ''}`} role="status"><span>{capabilityMessage}</span><small>{mediaPath ? mediaPath.split(/[\\/]/).pop() : copy.speakerNoMedia}</small></div>
     <div className="vision-index-actions">
-      <button className="vision-primary-action" data-testid="vision-speaker-run" type="button" onClick={run} disabled={!mediaPath || !status?.available || isRunning}><Play size={14} />{isRunning ? copy.speakerRunning : copy.speakerRun}</button>
-      <button className="vision-secondary-action" data-testid="vision-speaker-refresh" type="button" onClick={refreshStatus} disabled={isRefreshing || isRunning}><RefreshCcw size={14} />{isRefreshing ? copy.speakerRefreshing : copy.speakerRefresh}</button>
+      <button className="vision-primary-action" data-testid="vision-speaker-run" type="button" onClick={run} disabled={!mediaPath || !status?.available || isRunning || isClearingEvidence}><Play size={14} />{isRunning ? copy.speakerRunning : copy.speakerRun}</button>
+      <button className="vision-secondary-action" data-testid="vision-speaker-refresh" type="button" onClick={refreshStatus} disabled={isRefreshing || isRunning || isClearingEvidence}><RefreshCcw size={14} />{isRefreshing ? copy.speakerRefreshing : copy.speakerRefresh}</button>
+      {evidenceSaved ? <button className="vision-secondary-action" data-testid="vision-speaker-clear-evidence" type="button" onClick={clearEvidence} disabled={isClearingEvidence || isRunning}><Trash2 size={13} />{isClearingEvidence ? copy.speakerClearingEvidence : copy.speakerClearEvidence}</button> : null}
     </div>
     {result ? <>
       <div className="vision-speaker-summary" role="status">{copy.speakerCompleted(result.segments.length, getSpeakerCount(result), result.sampleRate)}</div>
