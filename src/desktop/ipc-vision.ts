@@ -1,5 +1,5 @@
 import { app, ipcMain } from 'electron'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
@@ -20,10 +20,11 @@ import { getAppCopy } from '../shared/i18n'
 import { createVisionSearchExportTaskCenterEvent, createVisionTaskCenterEvent } from '../core/tasks/task-center-adapters'
 import { sendTaskCenterEvent } from './task-center-events'
 import type { VisionSearchExportCancelRequest, VisionSearchExportProgress, VisionSearchExportRetryRequest } from '../shared/vision-search-export-types'
-import type { VisionSearchRevision } from '../shared/vision-search-revision'
+import { getVisionSearchRevisionBody, type VisionSearchCatalogSnapshot, type VisionSearchRevision } from '../shared/vision-search-revision'
 import { VISION_INDEX_FAILURE_MAX_RETRY_BATCH } from '../core/ai/vision-index-failure'
 import { mergeVisionLibrarySourceMetadata } from '../core/ai/vision-library-source-metadata'
-import { filterSpeakerDiarizationCatalogSearchResults } from '../core/ai/speaker-diarization-catalog'
+import { applySpeakerDiarizationCatalogToResults, filterSpeakerDiarizationCatalogSearchResults, getSpeakerDiarizationCatalogSearchQueries } from '../core/ai/speaker-diarization-catalog'
+import { applyVisionEntityCatalogToResults, getVisionEntityCatalogSearchQueries } from '../core/ai/vision-entity-catalog'
 import { filterVisionSearchResultsByEvidenceTypes } from '../core/ai/vision-search'
 import { normalizeVisionObjectDetectionFilterState } from '../core/ai/vision-object-detection-filter'
 import { normalizeVisionSimilarSearchRequest } from '../core/ai/vision-similar-search'
@@ -61,6 +62,26 @@ function mergeVisionSearchResults(resultGroups: readonly VisionSearchResult[][])
     }
   }
   return [...results.values()].sort((left, right) => right.score - left.score)
+}
+
+function getVisionSearchCatalogSnapshot(revision?: VisionSearchRevision): VisionSearchCatalogSnapshot {
+  if (revision?.catalogs) return revision.catalogs
+  return {
+    entity: getVisionEntityCatalogStore().get(),
+    speaker: getSpeakerDiarizationCatalogStore().get()
+  }
+}
+
+async function getVisionSearchRevisionWithCatalogs(): Promise<VisionSearchRevision> {
+  const revision = await getVisionLibrary().getSearchRevision()
+  const body = getVisionSearchRevisionBody({
+    ...revision,
+    catalogs: getVisionSearchCatalogSnapshot()
+  })
+  return {
+    ...body,
+    fingerprint: createHash('sha256').update(JSON.stringify(body)).digest('hex')
+  }
 }
 
 function sendVisionProgress(sender: Electron.WebContents, progress: VisionIndexProgress): void {
@@ -104,14 +125,13 @@ async function searchVisionTextResults(request: VisionSearchRequest, full = fals
   const objectDetectionFilter = normalizeVisionObjectDetectionFilterState(request.objectDetectionFilter)
   const resultLimit = full ? VISION_SEARCH_FULL_EXPORT_MAX_RESULTS : normalizeVisionSearchLimit(request.limit)
   const searchLimit = full ? VISION_SEARCH_FULL_EXPORT_MAX_RESULTS : evidenceTypes.length > 0 ? Math.max(resultLimit, VISION_SEARCH_SNAPSHOT_MAX_RESULTS) : resultLimit
-  const entityCatalog = getVisionEntityCatalogStore()
-  const speakerCatalog = getSpeakerDiarizationCatalogStore()
-  const directQueries = [...new Set([request.query, ...entityCatalog.getSearchQueries(request.query)])]
-  const speakerQueries = speakerCatalog.getSearchQueries(request.query)
+  const catalogs = getVisionSearchCatalogSnapshot(revision)
+  const directQueries = [...new Set([request.query, ...getVisionEntityCatalogSearchQueries(request.query, catalogs.entity)])]
+  const speakerQueries = getSpeakerDiarizationCatalogSearchQueries(request.query, catalogs.speaker)
   const directGroups = await Promise.all(directQueries.map((query) => full ? getVisionLibrary().searchTextAll(query, request.mode, objectDetectionFilter, signal, revision) : getVisionLibrary().searchText(query, searchLimit, request.mode, objectDetectionFilter)))
   const speakerGroups = await Promise.all(speakerQueries.map((searchQuery) => full ? getVisionLibrary().searchTextAll(searchQuery.query, request.mode, objectDetectionFilter, signal, revision) : getVisionLibrary().searchText(searchQuery.query, searchLimit, request.mode, objectDetectionFilter)))
   const scopedSpeakerGroups = speakerQueries.map((searchQuery, index) => filterSpeakerDiarizationCatalogSearchResults(speakerGroups[index] ?? [], searchQuery))
-  const results = speakerCatalog.applyResults(entityCatalog.applyResults(mergeVisionSearchResults([...directGroups, ...scopedSpeakerGroups])))
+  const results = applySpeakerDiarizationCatalogToResults(applyVisionEntityCatalogToResults(mergeVisionSearchResults([...directGroups, ...scopedSpeakerGroups]), catalogs.entity), catalogs.speaker)
   return filterVisionSearchResultsByEvidenceTypes(results, evidenceTypes, resultLimit)
 }
 
@@ -122,8 +142,8 @@ async function searchVisionImageResults(request: VisionSearchRequest, full = fal
   const resultLimit = full ? VISION_SEARCH_FULL_EXPORT_MAX_RESULTS : normalizeVisionSearchLimit(request.limit)
   const searchLimit = full ? VISION_SEARCH_FULL_EXPORT_MAX_RESULTS : evidenceTypes.length > 0 ? Math.max(resultLimit, VISION_SEARCH_SNAPSHOT_MAX_RESULTS) : resultLimit
   const results = await (full ? getVisionLibrary().searchImageAll(request.imagePath, objectDetectionFilter, signal, revision) : getVisionLibrary().searchImage(request.imagePath, searchLimit, objectDetectionFilter))
-  const entityCatalog = getVisionEntityCatalogStore()
-  const enrichedResults = getSpeakerDiarizationCatalogStore().applyResults(entityCatalog.applyResults(results))
+  const catalogs = getVisionSearchCatalogSnapshot(revision)
+  const enrichedResults = applySpeakerDiarizationCatalogToResults(applyVisionEntityCatalogToResults(results, catalogs.entity), catalogs.speaker)
   return filterVisionSearchResultsByEvidenceTypes(enrichedResults, evidenceTypes, resultLimit)
 }
 
@@ -131,8 +151,8 @@ async function searchVisionSimilarResults(request: VisionSimilarSearchRequest, f
   const normalizedRequest = normalizeVisionSimilarSearchRequest(request)
   if (!normalizedRequest) return []
   const results = await (full ? getVisionLibrary().searchSimilarAll(normalizedRequest, signal, revision) : getVisionLibrary().searchSimilar(normalizedRequest))
-  const entityCatalog = getVisionEntityCatalogStore()
-  return getSpeakerDiarizationCatalogStore().applyResults(entityCatalog.applyResults(results))
+  const catalogs = getVisionSearchCatalogSnapshot(revision)
+  return applySpeakerDiarizationCatalogToResults(applyVisionEntityCatalogToResults(results, catalogs.entity), catalogs.speaker)
 }
 
 async function searchVisionFullResults(request: VisionSearchFullExportRequest, signal?: AbortSignal, revision?: VisionSearchRevision): Promise<VisionSearchResult[]> {
@@ -370,7 +390,7 @@ export function registerVisionIpc(): void {
     const taskId = randomUUID()
     let searchRevision: VisionSearchRevision
     try {
-      searchRevision = await getVisionLibrary().getSearchRevision()
+      searchRevision = await getVisionSearchRevisionWithCatalogs()
     } catch (error) {
       return { success: false, message: error instanceof Error ? error.message : String(error) }
     }
