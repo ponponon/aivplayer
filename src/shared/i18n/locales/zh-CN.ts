@@ -1027,6 +1027,10 @@
           modelLabel: '模型文件',
           modelReady: '已就绪',
           modelMissing: '未完整准备',
+          modelDirectoryLabel: '模型目录',
+          modelDirectoryDefault: '使用应用数据目录（默认）',
+          selectModelFolder: '选择模型目录',
+          clearModelFolder: '恢复默认目录',
           checking: '检测中…',
           refresh: '刷新状态',
           refreshing: '刷新中…'

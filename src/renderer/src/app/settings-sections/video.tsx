@@ -13,12 +13,26 @@ type SpeakerDiarizationCopy = {
   modelLabel: string
   modelReady: string
   modelMissing: string
+  modelDirectoryLabel: string
+  modelDirectoryDefault: string
+  selectModelFolder: string
+  clearModelFolder: string
   checking: string
   refresh: string
   refreshing: string
 }
 
-function SpeakerDiarizationStatusField({ copy }: { copy: SpeakerDiarizationCopy }): ReactElement {
+function SpeakerDiarizationStatusField({
+  copy,
+  modelDirectory,
+  onPickModelFolder,
+  onModelDirectoryChange
+}: {
+  copy: SpeakerDiarizationCopy
+  modelDirectory: string | null
+  onPickModelFolder: () => Promise<string | null>
+  onModelDirectoryChange: (pathValue: string | null) => void
+}): ReactElement {
   const [status, setStatus] = useState<SpeakerDiarizationModelStatus | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
 
@@ -35,7 +49,7 @@ function SpeakerDiarizationStatusField({ copy }: { copy: SpeakerDiarizationCopy 
 
   useEffect(() => {
     void refresh()
-  }, [refresh])
+  }, [modelDirectory, refresh])
 
   return (
     <div className="settings-speaker-status" data-testid="settings-speaker-diarization">
@@ -62,6 +76,17 @@ function SpeakerDiarizationStatusField({ copy }: { copy: SpeakerDiarizationCopy 
           <RefreshCcw size={14} />
           {isRefreshing ? copy.refreshing : copy.refresh}
         </button>
+      </div>
+      <div className="settings-speaker-model-directory">
+        <span className="settings-speaker-model-directory-label">{copy.modelDirectoryLabel}</span>
+        <SettingsFolderPicker
+          pathValue={modelDirectory}
+          fallback={copy.modelDirectoryDefault}
+          selectLabel={copy.selectModelFolder}
+          clearLabel={copy.clearModelFolder}
+          onPickFolder={onPickModelFolder}
+          onChange={onModelDirectoryChange}
+        />
       </div>
     </div>
   )
@@ -155,7 +180,17 @@ export function VideoSettingsSection(props: SettingsSectionProps): ReactElement 
       title={<span className="settings-field-title-with-icon"><AudioLines size={14} />{copy.settingsDialog.video.speakerDiarization.title}</span>}
       description={copy.settingsDialog.video.speakerDiarization.description}
     >
-      <SpeakerDiarizationStatusField copy={copy.settingsDialog.video.speakerDiarization} />
+      <SpeakerDiarizationStatusField
+        copy={copy.settingsDialog.video.speakerDiarization}
+        modelDirectory={settings.vision.speakerModelDirectory}
+        onPickModelFolder={() => window.aiv.openFolderPicker({
+          title: copy.settingsDialog.video.speakerDiarization.selectModelFolder,
+          defaultPath: settings.vision.speakerModelDirectory
+        })}
+        onModelDirectoryChange={(speakerModelDirectory) => {
+          patchSettingsSection('vision', { speakerModelDirectory })
+        }}
+      />
     </SettingsField>
   </section>
   )

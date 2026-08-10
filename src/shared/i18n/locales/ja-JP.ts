@@ -1027,6 +1027,10 @@
           modelLabel: 'モデルファイル',
           modelReady: '準備完了',
           modelMissing: '未準備',
+          modelDirectoryLabel: 'モデルディレクトリ',
+          modelDirectoryDefault: 'アプリデータディレクトリを使用（既定）',
+          selectModelFolder: 'モデルフォルダーを選択',
+          clearModelFolder: '既定のフォルダーに戻す',
           checking: '確認中…',
           refresh: '状態を更新',
           refreshing: '更新中…'

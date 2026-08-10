@@ -1027,6 +1027,10 @@
           modelLabel: 'Model files',
           modelReady: 'Ready',
           modelMissing: 'Incomplete',
+          modelDirectoryLabel: 'Model directory',
+          modelDirectoryDefault: 'Use the app data directory (default)',
+          selectModelFolder: 'Choose model folder',
+          clearModelFolder: 'Use default folder',
           checking: 'Checking…',
           refresh: 'Refresh status',
           refreshing: 'Refreshing…'

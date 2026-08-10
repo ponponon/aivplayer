@@ -1027,6 +1027,10 @@
           modelLabel: '모델 파일',
           modelReady: '준비됨',
           modelMissing: '미완료',
+          modelDirectoryLabel: '모델 디렉터리',
+          modelDirectoryDefault: '앱 데이터 디렉터리 사용 (기본값)',
+          selectModelFolder: '모델 폴더 선택',
+          clearModelFolder: '기본 폴더 사용',
           checking: '확인 중…',
           refresh: '상태 새로 고침',
           refreshing: '새로 고치는 중…'

@@ -12,13 +12,17 @@ describe('speaker diarization settings UI', () => {
     expect(videoSource).toContain('SettingsField')
     expect(videoSource).toContain('getSpeakerDiarizationStatus')
     expect(videoSource).toContain('settings-speaker-diarization-refresh')
+    expect(videoSource).toContain('SettingsFolderPicker')
+    expect(videoSource).toContain('speakerModelDirectory')
     expect(settingsCss).toContain('.settings-speaker-status')
+    expect(settingsCss).toContain('.settings-speaker-model-directory')
     expect(settingsCss).toContain('.settings-speaker-message.is-success')
 
     for (const locale of ['zh-CN', 'en-US', 'ja-JP', 'ko-KR']) {
       const source = readFileSync(join(projectRoot, `src/shared/i18n/locales/${locale}.ts`), 'utf8')
       expect(source).toContain('speakerDiarization: {')
       expect(source).toContain('modelMissing:')
+      expect(source).toContain('selectModelFolder:')
       expect(source).toContain('refreshing:')
     }
   })
