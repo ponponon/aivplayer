@@ -1,8 +1,8 @@
 import { app, ipcMain } from 'electron'
 import { dirname, join } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
-import { isTimelineSubtitleFileMode } from '../shared/clip-export'
-import { isEditingSubtitleExportKind, type EditingSubtitleFileExportRequest, type EditingSubtitleFileExportResult } from '../shared/editing-subtitle-export'
+import { getTimelineSubtitleFileFormat, getTimelineSubtitleFileKind, isTimelineSubtitleFileMode } from '../shared/clip-export'
+import { isEditingSubtitleExportFormat, isEditingSubtitleExportKind, type EditingSubtitleFileExportRequest, type EditingSubtitleFileExportResult } from '../shared/editing-subtitle-export'
 import type { MediaClipExportResult, MediaTimelineExportPathRequest, MediaTimelineExportPathResult, MediaTimelineExportRequest } from '../shared/media-types'
 import { getAppCopy } from '../shared/i18n'
 import { buildEditingSubtitleExportDefaultFileName, writeEditingSubtitleFile } from '../core/editing/subtitle-file-export'
@@ -24,16 +24,19 @@ export function registerTimelineExportIpc(): void {
   const chooseTimelineExportPath = async (request: MediaTimelineExportPathRequest): Promise<MediaTimelineExportPathResult> => {
     const copy = getAppCopy(getCurrentLocale())
     const durationSeconds = Math.max(0, Number.isFinite(request.durationSeconds) ? request.durationSeconds : 0)
-    const isSubtitleFile = isTimelineSubtitleFileMode(request.mode)
-    const defaultPath = isSubtitleFile
-      ? join(getTimelineExportPathDirectory(request.mediaPath), buildEditingSubtitleExportDefaultFileName(request.mediaPath, request.mode === 'translation-file' ? 'translation' : 'source'))
+    const subtitleMode = isTimelineSubtitleFileMode(request.mode) ? request.mode : null
+    const isSubtitleFile = subtitleMode !== null
+    const subtitleFormat = subtitleMode ? getTimelineSubtitleFileFormat(subtitleMode) : null
+    const defaultPath = subtitleMode
+      ? join(getTimelineExportPathDirectory(request.mediaPath), buildEditingSubtitleExportDefaultFileName(request.mediaPath, getTimelineSubtitleFileKind(subtitleMode), subtitleFormat ?? 'srt'))
       : buildTimelineExportDefaultVideoPath(request.mediaPath, request.clipCount, durationSeconds, request.mode)
     const suggestedPath = request.suggestedPath?.trim()
+    const extension = subtitleFormat ?? 'mp4'
     const selectedPath = await promptForSavePath({
       title: copy.runtimeDialog.clipExportSaveTitle,
-      defaultPath: isSubtitleFile && suggestedPath?.toLowerCase().endsWith('.srt') !== true ? defaultPath : suggestedPath || defaultPath,
+      defaultPath: isSubtitleFile && suggestedPath?.toLowerCase().endsWith(`.${extension}`) !== true ? defaultPath : suggestedPath || defaultPath,
       buttonLabel: copy.runtimeDialog.clipExportSaveConfirm,
-      filters: [isSubtitleFile ? { name: 'SRT subtitle', extensions: ['srt'] } : { name: 'MP4 video', extensions: ['mp4'] }]
+      filters: [isSubtitleFile ? { name: `${extension.toUpperCase()} subtitle`, extensions: [extension] } : { name: 'MP4 video', extensions: ['mp4'] }]
     })
     return selectedPath ? { success: true, message: '', filePath: selectedPath, canceled: false } : { success: false, message: '', canceled: true }
   }
@@ -47,14 +50,17 @@ export function registerTimelineExportIpc(): void {
 
   ipcMain.handle(IPC_CHANNELS.MEDIA_EXPORT_EDITING_SUBTITLE, async (_event, request: EditingSubtitleFileExportRequest): Promise<EditingSubtitleFileExportResult> => {
     const copy = getAppCopy(getCurrentLocale())
-    if (!request || typeof request.mediaPath !== 'string' || !request.mediaPath.trim() || !isEditingSubtitleExportKind(request.kind) || typeof request.subtitleText !== 'string') {
+    if (!request || typeof request.mediaPath !== 'string' || !request.mediaPath.trim() || !isEditingSubtitleExportKind(request.kind) || (request.format !== undefined && !isEditingSubtitleExportFormat(request.format)) || typeof request.subtitleText !== 'string') {
       return { success: false, message: copy.runtime.clipExportSubtitleMissing, canceled: false }
     }
-    const mode = request.kind === 'translation' ? 'translation-file' : 'subtitle-file'
+    const format = request.format ?? 'srt'
+    const mode = request.kind === 'translation'
+      ? format === 'vtt' ? 'translation-vtt' : format === 'ass' ? 'translation-ass' : 'translation-file'
+      : format === 'vtt' ? 'subtitle-vtt' : format === 'ass' ? 'subtitle-ass' : 'subtitle-file'
     const selectedSubtitlePath = request.outputSubtitlePath?.trim() || (await chooseTimelineExportPath({ mediaPath: request.mediaPath, clipCount: 0, durationSeconds: 0, mode })).filePath
     if (!selectedSubtitlePath) return { success: false, message: '', canceled: true }
     try {
-      const filePath = await writeEditingSubtitleFile(selectedSubtitlePath, request.subtitleText)
+      const filePath = await writeEditingSubtitleFile(selectedSubtitlePath, request.subtitleText, format)
       return { success: true, message: copy.runtime.clipExportSubtitleFileSuccess, filePath, canceled: false }
     } catch (error) {
       return { success: false, message: error instanceof Error ? error.message : String(error), canceled: false }

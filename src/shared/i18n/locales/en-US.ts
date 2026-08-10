@@ -983,6 +983,22 @@
           label: 'Translation subtitle file',
           description: 'Export the edited translation SRT only; no video is generated.'
         },
+        'subtitle-vtt': {
+          label: 'Source VTT file',
+          description: 'Export the edited source VTT only; no video is generated.'
+        },
+        'translation-vtt': {
+          label: 'Translation VTT file',
+          description: 'Export the edited translation VTT only; no video is generated.'
+        },
+        'subtitle-ass': {
+          label: 'Source ASS file',
+          description: 'Export a styled edited source ASS only; no video is generated.'
+        },
+        'translation-ass': {
+          label: 'Translation ASS file',
+          description: 'Export a styled edited translation ASS only; no video is generated.'
+        },
         'burn-subtitle': {
           label: 'Burn subtitles',
           description: 'Render subtitles directly into the exported video.'

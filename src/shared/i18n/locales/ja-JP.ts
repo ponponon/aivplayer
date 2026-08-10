@@ -983,6 +983,22 @@
           label: '翻訳字幕ファイル',
           description: '編集済みの翻訳 SRT だけを書き出し、動画は生成しません。'
         },
+        'subtitle-vtt': {
+          label: '原文 VTT ファイル',
+          description: '編集済みの原文 VTT だけを書き出し、動画は生成しません。'
+        },
+        'translation-vtt': {
+          label: '翻訳 VTT ファイル',
+          description: '編集済みの翻訳 VTT だけを書き出し、動画は生成しません。'
+        },
+        'subtitle-ass': {
+          label: '原文 ASS ファイル',
+          description: 'スタイル付きの原文 ASS だけを書き出し、動画は生成しません。'
+        },
+        'translation-ass': {
+          label: '翻訳 ASS ファイル',
+          description: 'スタイル付きの翻訳 ASS だけを書き出し、動画は生成しません。'
+        },
         'burn-subtitle': {
           label: '字幕を焼き込み',
           description: '字幕を動画に直接焼き込んで書き出します。'

@@ -1,8 +1,8 @@
-import { getEditingCaptionsForSubtitleExport, serializeEditingCaptionsToSrt } from '../../../core/editing/caption-serialization'
+import { getEditingCaptionsForSubtitleExport, serializeEditingCaptionsToSrt, serializeEditingCaptionsToVtt } from '../../../core/editing/caption-serialization'
 import { getEditingCanvasDimensions } from '../../../core/editing/canvases'
 import { getEditingCaptionLayout } from '../../../core/editing/caption-layout'
-import { buildAssSubtitleFromEditingCaptions } from '../../../core/media/subtitle-ass'
-import { isTimelineSubtitleFileMode, type TimelineExportMode } from '../../../shared/clip-export'
+import { buildAssSubtitle, buildAssSubtitleFromEditingCaptions } from '../../../core/media/subtitle-ass'
+import { getTimelineSubtitleFileFormat, isTimelineSubtitleFileMode, type TimelineExportMode } from '../../../shared/clip-export'
 import type { AppDerived } from './use-app-derived'
 import type { AppModel } from './app-types'
 
@@ -35,7 +35,13 @@ export async function exportEditingTimeline(model: AppModel, derived: AppDerived
     }
     model.setIsExportingClip(true)
     try {
-      const result = await window.aiv.exportEditingSubtitleFile({ mediaPath: primarySource.path, kind: exportKind, subtitleText, outputSubtitlePath: outputVideoPath })
+      const format = getTimelineSubtitleFileFormat(configuredMode)
+      const fileText = format === 'vtt'
+        ? serializeEditingCaptionsToVtt(exportCaptions, exportKind)
+        : format === 'ass'
+          ? buildAssSubtitle(subtitleText, { ...model.appSettings.subtitles, fontSizePx: captionLayout.fontSizePx, effect: project.captionEffect ?? 'none', playResX: canvas.width, playResY: canvas.height })
+          : subtitleText
+      const result = await window.aiv.exportEditingSubtitleFile({ mediaPath: primarySource.path, kind: exportKind, format, subtitleText: fileText, outputSubtitlePath: outputVideoPath })
       if (!result.canceled) model.setAsrNotice(result)
     } catch (error) {
       model.setAsrNotice({ success: false, message: `${derived.copy.runtime.clipExportFailed}：${error instanceof Error ? error.message : String(error)}` })

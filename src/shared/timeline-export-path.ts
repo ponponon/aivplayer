@@ -1,4 +1,4 @@
-import { isTimelineSubtitleFileMode, type TimelineExportMode } from './clip-export'
+import { getTimelineSubtitleFileFormat, isTimelineSubtitleFileMode, type TimelineExportMode } from './clip-export'
 
 function lastPathSeparator(filePath: string): number {
   return Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'))
@@ -24,12 +24,12 @@ export function sanitizeTimelineExportStem(filePath: string): string {
 }
 
 export function timelineExportModeSuffix(mode: TimelineExportMode): string {
-  return mode === 'external-subtitle' ? 'subs' : mode === 'translation-subtitle' || mode === 'translation-file' ? 'translation' : mode === 'subtitle-file' ? 'source' : mode === 'burn-subtitle' ? 'burn' : 'video'
+  return mode === 'external-subtitle' ? 'subs' : mode === 'translation-subtitle' || mode === 'translation-file' || mode === 'translation-vtt' || mode === 'translation-ass' ? 'translation' : mode === 'subtitle-file' || mode === 'subtitle-vtt' || mode === 'subtitle-ass' ? 'source' : mode === 'burn-subtitle' ? 'burn' : 'video'
 }
 
 export function buildTimelineExportDefaultFileName(mediaPath: string, clipCount: number, durationSeconds: number, mode: TimelineExportMode): string {
   const safeDuration = Math.max(0, Math.floor(durationSeconds))
-  const extension = isTimelineSubtitleFileMode(mode) ? '.srt' : '.mp4'
+  const extension = isTimelineSubtitleFileMode(mode) ? `.${getTimelineSubtitleFileFormat(mode)}` : '.mp4'
   return `${sanitizeTimelineExportStem(mediaPath)}-timeline-${Math.max(0, clipCount)}clips-${safeDuration}s-${timelineExportModeSuffix(mode)}${extension}`
 }
 
@@ -43,7 +43,7 @@ export function normalizeTimelineExportFileName(fileName: string, fallback: stri
   const baseName = getTimelineExportPathBaseName(fileName.trim())
   const withoutExtension = baseName.replace(/\.[^.]+$/, '')
   const normalized = withoutExtension.replace(/[<>:"|?*\u0000-\u001F]+/g, '-').replace(/^-+|-+$/g, '').trim()
-  const extension = isTimelineSubtitleFileMode(mode) ? '.srt' : '.mp4'
+  const extension = isTimelineSubtitleFileMode(mode) ? `.${getTimelineSubtitleFileFormat(mode)}` : '.mp4'
   const fallbackStem = fallback.replace(/\.[^.]+$/i, '')
   return `${normalized || fallbackStem || 'timeline'}${extension}`
 }

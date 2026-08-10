@@ -983,6 +983,22 @@
           label: '译文字幕文件',
           description: '只导出当前编辑后的译文 SRT，不生成视频。'
         },
+        'subtitle-vtt': {
+          label: '原文 VTT 文件',
+          description: '只导出当前编辑后的原文 VTT，不生成视频。'
+        },
+        'translation-vtt': {
+          label: '译文 VTT 文件',
+          description: '只导出当前编辑后的译文 VTT，不生成视频。'
+        },
+        'subtitle-ass': {
+          label: '原文 ASS 文件',
+          description: '只导出带样式的原文 ASS，不生成视频。'
+        },
+        'translation-ass': {
+          label: '译文 ASS 文件',
+          description: '只导出带样式的译文 ASS，不生成视频。'
+        },
         'burn-subtitle': {
           label: '烧录字幕',
           description: '将字幕直接烧录进视频。'

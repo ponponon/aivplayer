@@ -1,6 +1,6 @@
 import { Download, FolderOpen, X } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactElement } from 'react'
-import type { TimelineExportMode } from '../../../shared/clip-export'
+import { isTimelineSubtitleFileMode, type TimelineExportMode } from '../../../shared/clip-export'
 import type { EditingVideoClip } from '../../../shared/editing-types'
 import type { LocaleCopy } from '../../../shared/i18n'
 import type { EditingExportAudit, EditingExportAuditIssue } from '../../../core/editing/export-audit'
@@ -9,7 +9,7 @@ import { EditingExportSummary } from './editing-export-summary'
 import { FfmpegCapabilityStatus, useFfmpegCapabilities } from './ffmpeg-capability-status'
 import { useModalFocusTrap } from './use-modal-focus-trap'
 
-const EXPORT_MODES: TimelineExportMode[] = ['video', 'external-subtitle', 'translation-subtitle', 'subtitle-file', 'translation-file', 'burn-subtitle']
+const EXPORT_MODES: TimelineExportMode[] = ['video', 'external-subtitle', 'translation-subtitle', 'subtitle-file', 'translation-file', 'subtitle-vtt', 'translation-vtt', 'subtitle-ass', 'translation-ass', 'burn-subtitle']
 
 type EditingExportConfirmDialogProps = {
   copy: LocaleCopy
@@ -61,7 +61,7 @@ export function EditingExportConfirmDialog({ copy, mediaPath, clips, durationSec
   }, [defaultFileName, outputFileName])
 
   useEffect(() => {
-    const selectedModeUnavailable = selectedMode === 'translation-subtitle' || selectedMode === 'translation-file' ? !hasTranslationSubtitle : selectedMode === 'subtitle-file' ? !hasEditableSubtitle : !hasSubtitle && selectedMode !== 'video'
+    const selectedModeUnavailable = selectedMode === 'translation-subtitle' || (isTimelineSubtitleFileMode(selectedMode) && selectedMode.startsWith('translation-')) ? !hasTranslationSubtitle : isTimelineSubtitleFileMode(selectedMode) ? !hasEditableSubtitle : !hasSubtitle && selectedMode !== 'video'
     if (selectedModeUnavailable) setSelectedMode('video')
   }, [hasEditableSubtitle, hasSubtitle, hasTranslationSubtitle, selectedMode])
 
@@ -103,7 +103,7 @@ export function EditingExportConfirmDialog({ copy, mediaPath, clips, durationSec
         <div className="clip-export-mode-grid" role="group" aria-label={copy.clipExportDialog.modeTitle}>
           {EXPORT_MODES.map((mode) => {
             const option = copy.clipExportDialog.modeOptions[mode]
-            const disabled = mode === 'translation-subtitle' || mode === 'translation-file' ? !hasTranslationSubtitle : mode === 'subtitle-file' ? !hasEditableSubtitle : !hasSubtitle && mode !== 'video'
+            const disabled = mode === 'translation-subtitle' || (isTimelineSubtitleFileMode(mode) && mode.startsWith('translation-')) ? !hasTranslationSubtitle : isTimelineSubtitleFileMode(mode) ? !hasEditableSubtitle : !hasSubtitle && mode !== 'video'
             return <button key={mode} className={`clip-export-mode-option ${selectedMode === mode ? 'is-selected' : ''}`} type="button" onClick={() => { if (!disabled) setSelectedMode(mode) }} disabled={disabled} aria-pressed={selectedMode === mode}><span className="clip-export-mode-heading"><strong>{option.label}</strong></span><span className="clip-export-mode-description">{option.description}</span></button>
           })}
         </div>

@@ -983,6 +983,22 @@
           label: '번역 자막 파일',
           description: '편집된 번역 SRT만 내보내며 동영상은 만들지 않습니다.'
         },
+        'subtitle-vtt': {
+          label: '원문 VTT 파일',
+          description: '편집된 원문 VTT만 내보내며 동영상은 만들지 않습니다.'
+        },
+        'translation-vtt': {
+          label: '번역 VTT 파일',
+          description: '편집된 번역 VTT만 내보내며 동영상은 만들지 않습니다.'
+        },
+        'subtitle-ass': {
+          label: '원문 ASS 파일',
+          description: '스타일이 적용된 원문 ASS만 내보내며 동영상은 만들지 않습니다.'
+        },
+        'translation-ass': {
+          label: '번역 ASS 파일',
+          description: '스타일이 적용된 번역 ASS만 내보내며 동영상은 만들지 않습니다.'
+        },
         'burn-subtitle': {
           label: '자막 굽기',
           description: '자막을 영상에 직접 굽어서 내보냅니다.'
