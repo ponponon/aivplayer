@@ -20,6 +20,36 @@
   border-color: var(--accent);
 }
 
+.vision-evidence-filter {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.vision-evidence-filter span {
+  flex: 0 0 auto;
+}
+
+.vision-evidence-filter select {
+  min-width: 0;
+  min-height: 27px;
+  flex: 1;
+  padding: 0 6px;
+  color: var(--text-secondary);
+  background: rgba(var(--overlay-rgb), 0.06);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+}
+
+.vision-evidence-filter select:focus {
+  border-color: var(--accent);
+  outline: 0;
+}
+
 .vision-saved-search-toolbar {
   display: flex;
   min-width: 0;

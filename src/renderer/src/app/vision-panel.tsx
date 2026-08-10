@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import type { VisionIndexProgress, VisionRuntimeStatus, VisionSearchResult } from '../../../shared/media-types'
 import type { AsrSubtitleResult } from '../../../shared/media-types'
 import type { MediaEvidenceDraftImportResult } from '../../../shared/evidence-task-types'
-import type { VisionClipCollection, VisionClipCollectionExportFormat, VisionClipCollectionSortMode, VisionIndexFailureRecord, VisionLibrarySource, VisionSavedSearch } from '../../../shared/vision-types'
+import type { VisionClipCollection, VisionClipCollectionExportFormat, VisionClipCollectionSortMode, VisionEvidenceType, VisionIndexFailureRecord, VisionLibrarySource, VisionSavedSearch } from '../../../shared/vision-types'
 import { invertVisionClipSelections, mergeVisionCollectionSelections, normalizeVisionCollectionTags } from '../../../core/ai/clip-inbox-operations'
 import { createVisionClipSelections, normalizeVisionTimeRange } from '../../../core/ai/vision-evidence'
 import { useAppContext } from './app-context'
@@ -36,6 +36,7 @@ export function VisionPanel(): React.ReactElement {
   const [status, setStatus] = useState<VisionRuntimeStatus | null>(null)
   const [progress, setProgress] = useState<VisionIndexProgress | null>(null)
   const [query, setQuery] = useState('')
+  const [evidenceTypeFilter, setEvidenceTypeFilter] = useState<VisionEvidenceType | 'all'>('all')
   const [savedSearchName, setSavedSearchName] = useState('')
   const [savedSearches, setSavedSearches] = useState<VisionSavedSearch[]>([])
   const [sampleImagePath, setSampleImagePath] = useState<string | null>(null)
@@ -288,11 +289,11 @@ export function VisionPanel(): React.ReactElement {
     else void window.aiv.cancelVisionIndex()
   }
 
-  const executeTextSearch = (searchQuery: string, mode: VisionSavedSearch['mode']): void => {
+  const executeTextSearch = (searchQuery: string, mode: VisionSavedSearch['mode'], filter = evidenceTypeFilter): void => {
     if (!searchQuery.trim() || isSearching) return
     setIsSearching(true)
     setError(null)
-    void window.aiv.searchVisionText({ query: searchQuery, limit: 24, mode }).then((nextResults) => {
+    void window.aiv.searchVisionText({ query: searchQuery, limit: 24, mode, ...(filter === 'all' ? {} : { evidenceTypes: [filter] }) }).then((nextResults) => {
       setResults(nextResults)
       setSelectedResultIds(new Set())
     }).catch((reason: unknown) => {
@@ -329,7 +330,7 @@ export function VisionPanel(): React.ReactElement {
     if (!sampleImagePath || isSearching) return
     setIsSearching(true)
     setError(null)
-    void window.aiv.searchVisionImage({ imagePath: sampleImagePath, limit: 24 }).then((nextResults) => {
+    void window.aiv.searchVisionImage({ imagePath: sampleImagePath, limit: 24, ...(evidenceTypeFilter === 'all' ? {} : { evidenceTypes: [evidenceTypeFilter] }) }).then((nextResults) => {
       setResults(nextResults)
       setSelectedResultIds(new Set())
     }).catch((reason: unknown) => {
@@ -337,6 +338,11 @@ export function VisionPanel(): React.ReactElement {
       setSelectedResultIds(new Set())
       setError(reason instanceof Error ? reason.message : String(reason))
     }).finally(() => setIsSearching(false))
+  }
+
+  const changeEvidenceTypeFilter = (nextFilter: VisionEvidenceType | 'all'): void => {
+    setEvidenceTypeFilter(nextFilter)
+    if (query.trim() && !isSearching) executeTextSearch(query, 'hybrid', nextFilter)
   }
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
@@ -586,6 +592,18 @@ export function VisionPanel(): React.ReactElement {
         <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={app.copy.vision.textPlaceholder} aria-label={app.copy.vision.textPlaceholder} />
         <button className="vision-search-button" type="submit" disabled={!query.trim() || isSearching}><Search size={15} />{app.copy.vision.hybridSearch}</button>
       </form>
+      <label className="vision-evidence-filter">
+        <span>{app.copy.vision.evidenceFilterLabel}</span>
+        <select value={evidenceTypeFilter} onChange={(event) => changeEvidenceTypeFilter(event.currentTarget.value as VisionEvidenceType | 'all')} aria-label={app.copy.vision.evidenceFilterLabel}>
+          <option value="all">{app.copy.vision.evidenceFilterAll}</option>
+          <option value="visual">{app.copy.vision.evidenceFilterOptions.visual}</option>
+          <option value="subtitle">{app.copy.vision.evidenceFilterOptions.subtitle}</option>
+          <option value="ocr">{app.copy.vision.evidenceFilterOptions.ocr}</option>
+          <option value="scene">{app.copy.vision.evidenceFilterOptions.scene}</option>
+          <option value="entity">{app.copy.vision.evidenceFilterOptions.entity}</option>
+          <option value="speaker">{app.copy.vision.evidenceFilterOptions.speaker}</option>
+        </select>
+      </label>
       <div className="vision-saved-search-toolbar">
         <input className="vision-saved-search-name-input" value={savedSearchName} onChange={(event) => setSavedSearchName(event.target.value)} placeholder={app.copy.vision.savedSearchNamePlaceholder} aria-label={app.copy.vision.savedSearchNamePlaceholder} />
         <button className="vision-secondary-action" type="button" onClick={saveCurrentSearch} disabled={!query.trim() || !savedSearchName.trim()}>{app.copy.vision.saveSearch}</button>
