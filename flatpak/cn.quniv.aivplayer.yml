@@ -172,7 +172,7 @@ modules:
     sources:
       - type: git
         url: https://github.com/ponponon/aivplayer.git
-        commit: 351a036808480b0a83500a506c8063000e47938c
+        commit: 2d9b0806e661bb263a5fa1834a1a049ec7cd4b9d
         dest: app
       - type: archive
         url: https://github.com/electron/electron/releases/download/v43.2.0/electron-v43.2.0-linux-x64.zip
