@@ -1727,7 +1727,7 @@ export class VisionLibrary {
     }
 
     return [...candidates.values()]
-      .sort((left, right) => right.lexicalScore - left.lexicalScore)
+      .sort((left, right) => right.lexicalScore - left.lexicalScore || left.result.id.localeCompare(right.result.id))
       .slice(0, fullSearchCandidateLimit(full, limit))
   }
 
@@ -1773,7 +1773,7 @@ export class VisionLibrary {
       if (!existing || match.score > existing.lexicalScore) candidates.set(resultKey, { result, lexicalScore: match.score, matchSource: match.source })
     }
     return [...candidates.values()]
-      .sort((left, right) => right.lexicalScore - left.lexicalScore)
+      .sort((left, right) => right.lexicalScore - left.lexicalScore || left.result.id.localeCompare(right.result.id))
       .slice(0, fullSearchCandidateLimit(full, limit))
   }
 
@@ -1814,7 +1814,7 @@ export class VisionLibrary {
         candidates.push({ result, lexicalScore: match.score, matchSource: match.source })
       }
       return candidates
-        .sort((left, right) => right.lexicalScore - left.lexicalScore)
+        .sort((left, right) => right.lexicalScore - left.lexicalScore || left.result.id.localeCompare(right.result.id))
         .slice(0, fullSearchCandidateLimit(full, limit))
     } catch {
       return this.searchLexicalByScan(query, limit, full)
@@ -1874,7 +1874,7 @@ export class VisionLibrary {
     return rows
       .map((row) => this.createObjectEvidenceSearchResult(row, calculateVisionLexicalMatch(query, row.text, row.file_name)))
       .filter((result): result is VisionSearchResult => result !== null)
-      .sort((left, right) => right.score - left.score || (right.confidence ?? 0) - (left.confidence ?? 0))
+      .sort((left, right) => right.score - left.score || (right.confidence ?? 0) - (left.confidence ?? 0) || left.id.localeCompare(right.id))
       .slice(0, full ? VISION_SEARCH_FULL_EXPORT_MAX_RESULTS : clampLimit(limit))
   }
 
