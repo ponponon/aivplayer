@@ -6,6 +6,7 @@ on:
       - 'flatpak/**'
       - 'scripts/check-flatpak.mjs'
       - 'scripts/prepare-flatpak-ci-manifest.mjs'
+      - '.github/workflows/flatpak.yml'
       - 'package.json'
       - 'package-lock.json'
   push:
@@ -15,6 +16,7 @@ on:
       - 'flatpak/**'
       - 'scripts/check-flatpak.mjs'
       - 'scripts/prepare-flatpak-ci-manifest.mjs'
+      - '.github/workflows/flatpak.yml'
       - 'package.json'
       - 'package-lock.json'
   workflow_dispatch:
@@ -60,7 +62,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y flatpak
           flatpak remote-add --if-not-exists --user flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-          flatpak install --user --assumeyes flathub org.flatpak.Builder//stable org.freedesktop.Sdk//25.08 org.freedesktop.Sdk.Extension.node22//25.08 org.electronjs.Electron2.BaseApp//25.08
+          flatpak install --user --assumeyes flathub org.flatpak.Builder//stable org.freedesktop.Sdk//25.08 org.freedesktop.Sdk.Extension.node22//25.08 org.freedesktop.Sdk.Extension.rust-stable//25.08 org.electronjs.Electron2.BaseApp//25.08
       - name: Build Flatpak
         run: |
           flatpak run --command=flatpak-builder org.flatpak.Builder \
@@ -97,7 +99,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y flatpak
           flatpak remote-add --if-not-exists --user flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-          flatpak install --user --assumeyes flathub org.flatpak.Builder//stable org.freedesktop.Sdk//25.08 org.freedesktop.Sdk.Extension.node22//25.08 org.electronjs.Electron2.BaseApp//25.08
+          flatpak install --user --assumeyes flathub org.flatpak.Builder//stable org.freedesktop.Sdk//25.08 org.freedesktop.Sdk.Extension.node22//25.08 org.freedesktop.Sdk.Extension.rust-stable//25.08 org.electronjs.Electron2.BaseApp//25.08
       - name: Build Flatpak
         run: |
           flatpak run --command=flatpak-builder org.flatpak.Builder \
