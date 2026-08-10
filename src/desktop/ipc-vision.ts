@@ -94,7 +94,7 @@ function createEmptyVisionSearchResultPage(limit: number): VisionSearchResultPag
   return { results: [], total: 0, offset: 0, limit, hasMore: false }
 }
 
-async function searchVisionTextResults(request: VisionSearchRequest, full = false): Promise<VisionSearchResult[]> {
+async function searchVisionTextResults(request: VisionSearchRequest, full = false, signal?: AbortSignal): Promise<VisionSearchResult[]> {
   if (!request?.query?.trim()) return []
   const evidenceTypes = normalizeVisionEvidenceTypes(request.evidenceTypes)
   const objectDetectionFilter = normalizeVisionObjectDetectionFilterState(request.objectDetectionFilter)
@@ -104,37 +104,37 @@ async function searchVisionTextResults(request: VisionSearchRequest, full = fals
   const speakerCatalog = getSpeakerDiarizationCatalogStore()
   const directQueries = [...new Set([request.query, ...entityCatalog.getSearchQueries(request.query)])]
   const speakerQueries = speakerCatalog.getSearchQueries(request.query)
-  const directGroups = await Promise.all(directQueries.map((query) => full ? getVisionLibrary().searchTextAll(query, request.mode, objectDetectionFilter) : getVisionLibrary().searchText(query, searchLimit, request.mode, objectDetectionFilter)))
-  const speakerGroups = await Promise.all(speakerQueries.map((searchQuery) => full ? getVisionLibrary().searchTextAll(searchQuery.query, request.mode, objectDetectionFilter) : getVisionLibrary().searchText(searchQuery.query, searchLimit, request.mode, objectDetectionFilter)))
+  const directGroups = await Promise.all(directQueries.map((query) => full ? getVisionLibrary().searchTextAll(query, request.mode, objectDetectionFilter, signal) : getVisionLibrary().searchText(query, searchLimit, request.mode, objectDetectionFilter)))
+  const speakerGroups = await Promise.all(speakerQueries.map((searchQuery) => full ? getVisionLibrary().searchTextAll(searchQuery.query, request.mode, objectDetectionFilter, signal) : getVisionLibrary().searchText(searchQuery.query, searchLimit, request.mode, objectDetectionFilter)))
   const scopedSpeakerGroups = speakerQueries.map((searchQuery, index) => filterSpeakerDiarizationCatalogSearchResults(speakerGroups[index] ?? [], searchQuery))
   const results = speakerCatalog.applyResults(entityCatalog.applyResults(mergeVisionSearchResults([...directGroups, ...scopedSpeakerGroups])))
   return filterVisionSearchResultsByEvidenceTypes(results, evidenceTypes, resultLimit)
 }
 
-async function searchVisionImageResults(request: VisionSearchRequest, full = false): Promise<VisionSearchResult[]> {
+async function searchVisionImageResults(request: VisionSearchRequest, full = false, signal?: AbortSignal): Promise<VisionSearchResult[]> {
   if (!request?.imagePath?.trim()) return []
   const evidenceTypes = normalizeVisionEvidenceTypes(request.evidenceTypes)
   const objectDetectionFilter = normalizeVisionObjectDetectionFilterState(request.objectDetectionFilter)
   const resultLimit = full ? VISION_SEARCH_FULL_EXPORT_MAX_RESULTS : normalizeVisionSearchLimit(request.limit)
   const searchLimit = full ? VISION_SEARCH_FULL_EXPORT_MAX_RESULTS : evidenceTypes.length > 0 ? Math.max(resultLimit, VISION_SEARCH_SNAPSHOT_MAX_RESULTS) : resultLimit
-  const results = await (full ? getVisionLibrary().searchImageAll(request.imagePath, objectDetectionFilter) : getVisionLibrary().searchImage(request.imagePath, searchLimit, objectDetectionFilter))
+  const results = await (full ? getVisionLibrary().searchImageAll(request.imagePath, objectDetectionFilter, signal) : getVisionLibrary().searchImage(request.imagePath, searchLimit, objectDetectionFilter))
   const entityCatalog = getVisionEntityCatalogStore()
   const enrichedResults = getSpeakerDiarizationCatalogStore().applyResults(entityCatalog.applyResults(results))
   return filterVisionSearchResultsByEvidenceTypes(enrichedResults, evidenceTypes, resultLimit)
 }
 
-async function searchVisionSimilarResults(request: VisionSimilarSearchRequest, full = false): Promise<VisionSearchResult[]> {
+async function searchVisionSimilarResults(request: VisionSimilarSearchRequest, full = false, signal?: AbortSignal): Promise<VisionSearchResult[]> {
   const normalizedRequest = normalizeVisionSimilarSearchRequest(request)
   if (!normalizedRequest) return []
-  const results = await (full ? getVisionLibrary().searchSimilarAll(normalizedRequest) : getVisionLibrary().searchSimilar(normalizedRequest))
+  const results = await (full ? getVisionLibrary().searchSimilarAll(normalizedRequest, signal) : getVisionLibrary().searchSimilar(normalizedRequest))
   const entityCatalog = getVisionEntityCatalogStore()
   return getSpeakerDiarizationCatalogStore().applyResults(entityCatalog.applyResults(results))
 }
 
-async function searchVisionFullResults(request: VisionSearchFullExportRequest): Promise<VisionSearchResult[]> {
-  if (request.kind === 'text') return searchVisionTextResults(request.request, true)
-  if (request.kind === 'image') return searchVisionImageResults(request.request, true)
-  return searchVisionSimilarResults(request.request, true)
+async function searchVisionFullResults(request: VisionSearchFullExportRequest, signal?: AbortSignal): Promise<VisionSearchResult[]> {
+  if (request.kind === 'text') return searchVisionTextResults(request.request, true, signal)
+  if (request.kind === 'image') return searchVisionImageResults(request.request, true, signal)
+  return searchVisionSimilarResults(request.request, true, signal)
 }
 
 function sendVisionSearchExportProgress(progress: VisionSearchExportProgress): void {
@@ -165,7 +165,7 @@ async function runVisionSearchFullExportTask(taskId: string, request: VisionSear
   }
   try {
     emit({ status: 'running', stage: 'searching', resultCount: 0, writtenCount: 0, message: copy.searchResultsFullExportSearching })
-    const results = normalizeVisionSearchResultsForExport(await searchVisionFullResults(request), VISION_SEARCH_FULL_EXPORT_MAX_RESULTS)
+    const results = normalizeVisionSearchResultsForExport(await searchVisionFullResults(request, signal), VISION_SEARCH_FULL_EXPORT_MAX_RESULTS)
     if (signal.aborted) {
       const error = new Error(copy.searchResultsFullExportCancelled)
       error.name = 'AbortError'
