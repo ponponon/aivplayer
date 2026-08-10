@@ -2,7 +2,7 @@ import { app, ipcMain } from 'electron'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
-import type { VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionEvidenceAuditRequest, VisionEvidenceBatchClearResult, VisionEvidenceSourceRequest, VisionEvidenceType, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionSavedSearchInput, VisionSearchRequest, VisionSearchResult } from '../shared/vision-types'
+import type { VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionEvidenceAuditPage, VisionEvidenceAuditRequest, VisionEvidenceBatchClearResult, VisionEvidenceSourceRequest, VisionEvidenceType, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionSavedSearchInput, VisionSearchRequest, VisionSearchResult } from '../shared/vision-types'
 import type { VisionEntityCatalogBatchPatch, VisionEntityCatalogCreateInput, VisionEntityCatalogPatch } from '../shared/vision-entity-types'
 import { scanVisionDirectory, isVisionScanAbortError } from '../core/ai/vision-directory-scan'
 import { renderVisionClipCollectionExport } from '../core/ai/clip-inbox-export'
@@ -209,7 +209,7 @@ export function registerVisionIpc(): void {
     const offset = typeof value?.offset === 'number' && Number.isFinite(value.offset) ? value.offset : undefined
     return getVisionLibrary().listEvidenceSources(limit, offset, evidenceTypes)
   })
-  ipcMain.handle(IPC_CHANNELS.VISION_EVIDENCE_AUDIT, (_event, value: VisionEvidenceAuditRequest = {}) => {
+  ipcMain.handle(IPC_CHANNELS.VISION_EVIDENCE_AUDIT, (_event, value: VisionEvidenceAuditRequest = {}): Promise<VisionEvidenceAuditPage> => {
     const evidenceTypes = normalizeVisionDerivedEvidenceTypes(value?.evidenceTypes, true)
     const auditStatuses = normalizeVisionEvidenceAuditStatuses(value?.auditStatuses, true)
     const limit = typeof value?.limit === 'number' && Number.isFinite(value.limit) ? value.limit : undefined
