@@ -1,4 +1,4 @@
-import { Archive, Database, FilePlus, ImageUp, ScanSearch, Search, Square, Trash2 } from 'lucide-react'
+import { Archive, Database, Download, FilePlus, ImageUp, ScanSearch, Search, Square, Trash2, Upload } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { VisionIndexProgress, VisionRuntimeStatus, VisionSearchResult } from '../../../shared/media-types'
 import type { AsrSubtitleResult } from '../../../shared/media-types'
@@ -59,6 +59,7 @@ export function VisionPanel(): React.ReactElement {
   const [searchPreferences, setSearchPreferences] = useState<VisionSearchPreferences>(readVisionSearchPreferences)
   const [savedSearchName, setSavedSearchName] = useState('')
   const [savedSearches, setSavedSearches] = useState<VisionSavedSearch[]>([])
+  const [savedSearchTransferStatus, setSavedSearchTransferStatus] = useState<string | null>(null)
   const [sampleImagePath, setSampleImagePath] = useState<string | null>(null)
   const [sampleImageName, setSampleImageName] = useState<string | null>(null)
   const [includeSceneEvidence, setIncludeSceneEvidence] = useState(false)
@@ -349,6 +350,33 @@ export function VisionPanel(): React.ReactElement {
   const deleteSavedSearch = (savedSearch: VisionSavedSearch): void => {
     void window.aiv.deleteVisionSavedSearch(savedSearch.id).then((deleted) => {
       if (deleted) setSavedSearches((current) => current.filter((item) => item.id !== savedSearch.id))
+    }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
+  }
+
+  const exportSavedSearches = (): void => {
+    setError(null)
+    setSavedSearchTransferStatus(null)
+    void window.aiv.exportVisionSavedSearches().then((result) => {
+      if (result.canceled) return
+      if (!result.success) {
+        setError(result.message)
+        return
+      }
+      setSavedSearchTransferStatus(app.copy.vision.savedSearchExported)
+    }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
+  }
+
+  const importSavedSearches = (): void => {
+    setError(null)
+    setSavedSearchTransferStatus(null)
+    void window.aiv.importVisionSavedSearches().then((result) => {
+      if (result.canceled) return
+      if (!result.success) {
+        setError(result.message)
+        return
+      }
+      refreshSavedSearches()
+      setSavedSearchTransferStatus(app.copy.vision.savedSearchImported(result.importedCount ?? 0, result.skippedCount ?? 0))
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
   }
 
@@ -646,16 +674,23 @@ export function VisionPanel(): React.ReactElement {
         <input className="vision-saved-search-name-input" value={savedSearchName} onChange={(event) => setSavedSearchName(event.target.value)} placeholder={app.copy.vision.savedSearchNamePlaceholder} aria-label={app.copy.vision.savedSearchNamePlaceholder} />
         <button className="vision-secondary-action" type="button" onClick={saveCurrentSearch} disabled={!query.trim() || !savedSearchName.trim()}>{app.copy.vision.saveSearch}</button>
       </div>
-      {savedSearches.length > 0 ? <div className="vision-saved-searches" aria-label={app.copy.vision.savedSearches}>
-        <strong className="vision-saved-search-heading">{app.copy.vision.savedSearches}</strong>
-        <div className="vision-saved-search-list">{savedSearches.map((savedSearch) => <div className="vision-saved-search" key={savedSearch.id}>
+      <div className="vision-saved-searches" aria-label={app.copy.vision.savedSearches}>
+        <div className="vision-saved-search-heading-row">
+          <strong className="vision-saved-search-heading">{app.copy.vision.savedSearches}</strong>
+          <div className="vision-saved-search-actions">
+            <button className="vision-secondary-action" type="button" onClick={importSavedSearches}><Upload size={12} />{app.copy.vision.savedSearchImport}</button>
+            <button className="vision-secondary-action" type="button" onClick={exportSavedSearches} disabled={savedSearches.length === 0}><Download size={12} />{app.copy.vision.savedSearchExport}</button>
+          </div>
+        </div>
+        {savedSearches.length > 0 ? <div className="vision-saved-search-list">{savedSearches.map((savedSearch) => <div className="vision-saved-search" key={savedSearch.id}>
           <button className="vision-saved-search-button" type="button" onClick={() => runSavedSearch(savedSearch)} disabled={isSearching}>
             <strong>{savedSearch.name}</strong>
             <small>{savedSearch.query} · {formatEvidenceTypeFilter(savedSearch.evidenceTypes ?? [])}</small>
           </button>
           <button className="vision-saved-search-delete" type="button" onClick={() => deleteSavedSearch(savedSearch)} title={app.copy.vision.deleteSavedSearch} aria-label={`${app.copy.vision.deleteSavedSearch}: ${savedSearch.name}`}><Trash2 size={14} /></button>
-        </div>)}</div>
-      </div> : null}
+        </div>)}</div> : <small className="vision-saved-search-empty">{app.copy.vision.savedSearchEmpty}</small>}
+        {savedSearchTransferStatus ? <small className="vision-saved-search-status" role="status">{savedSearchTransferStatus}</small> : null}
+      </div>
       <div className="vision-image-search">
         <label className="vision-file-picker"><ImageUp size={15} /><span>{sampleImageName ?? app.copy.vision.chooseImage}</span><input type="file" accept="image/*" onChange={handleImageChange} /></label>
         <button className="vision-search-button" type="button" onClick={runImageSearch} disabled={!sampleImagePath || isSearching}><Search size={15} />{app.copy.vision.searchImage}</button>
