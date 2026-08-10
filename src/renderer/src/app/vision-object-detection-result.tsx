@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import type { LocaleCopy } from '../../../shared/i18n'
 import type { VisionObjectDetectionResult } from '../../../shared/vision-object-detection-types'
 import { filterVisionObjectDetectionCandidates } from '../../../core/ai/vision-object-detection-filter'
+import { summarizeVisionObjectDetectionCandidates } from '../../../core/ai/vision-object-detection-summary'
 import { toggleVisionObjectDetectionSelection } from '../../../core/ai/vision-object-detection-selection'
 import { VisionResultThumbnail } from './vision-result-thumbnail'
 
@@ -28,6 +29,7 @@ export function VisionObjectDetectionResultView({ copy, result, thumbnailUrl, on
   const [labelQuery, setLabelQuery] = useState('')
   const [minimumScore, setMinimumScore] = useState(0)
   const visibleDetections = filterVisionObjectDetectionCandidates(result.detections, { labelQuery, minimumScore })
+  const categories = summarizeVisionObjectDetectionCandidates(visibleDetections)
   const safeSelectedIndex = selectedIndex !== null && selectedIndex < visibleDetections.length ? selectedIndex : null
   const highlightedIndex = hoveredIndex ?? safeSelectedIndex
 
@@ -59,6 +61,25 @@ export function VisionObjectDetectionResultView({ copy, result, thumbnailUrl, on
           </select>
         </label>
       </div>
+      {categories.length > 0 ? <div className="vision-object-detection-categories">
+        <span className="vision-object-detection-categories-label">{copy.objectDetectionCategories}</span>
+        <div className="vision-object-detection-category-list">
+          {categories.map((category) => {
+            const isActive = labelQuery.trim().toLocaleLowerCase() === category.label.toLocaleLowerCase()
+            return <button
+              className={`vision-object-detection-category${isActive ? ' is-active' : ''}`}
+              type="button"
+              key={category.label.toLocaleLowerCase()}
+              aria-pressed={isActive}
+              title={category.label}
+              onClick={() => setLabelQuery(isActive ? '' : category.label)}
+            >
+              <span>{category.label}</span>
+              <strong>{category.count}</strong>
+            </button>
+          })}
+        </div>
+      </div> : null}
       {visibleDetections.length === 0 ? <p className="vision-object-detection-empty">{result.detections.length === 0 ? copy.objectDetectionEmpty : copy.objectDetectionNoMatches}</p> : (
         <ul className="vision-object-detection-list">
           {visibleDetections.map((detection, index) => {

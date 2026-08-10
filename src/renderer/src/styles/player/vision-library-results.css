@@ -485,6 +485,58 @@
   outline: none;
 }
 
+.vision-object-detection-categories {
+  display: grid;
+  gap: 4px;
+}
+
+.vision-object-detection-categories-label {
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.vision-object-detection-category-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.vision-object-detection-category {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 23px;
+  max-width: 100%;
+  padding: 0 7px;
+  color: var(--text-secondary);
+  background: rgba(var(--overlay-rgb), 0.04);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  font: inherit;
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.vision-object-detection-category span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vision-object-detection-category strong {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.vision-object-detection-category:hover,
+.vision-object-detection-category:focus-visible,
+.vision-object-detection-category.is-active {
+  color: var(--text-primary);
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.12);
+  outline: none;
+}
+
 .vision-object-detection-list {
   display: grid;
   gap: 5px;

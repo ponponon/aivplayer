@@ -478,6 +478,7 @@
       objectDetectionLabelFilterPlaceholder: 'Enter an object label',
       objectDetectionMinimumScore: 'Minimum score',
       objectDetectionAnyScore: 'Any score',
+      objectDetectionCategories: 'Object categories',
       objectDetectionEmpty: 'No object candidates passed the threshold.',
       objectDetectionNoMatches: 'No object candidates match these filters.',
       returnToSearchResults: 'Back to search results',

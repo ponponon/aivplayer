@@ -478,6 +478,7 @@
       objectDetectionLabelFilterPlaceholder: '객체 레이블 입력',
       objectDetectionMinimumScore: '최소 신뢰도',
       objectDetectionAnyScore: '제한 없음',
+      objectDetectionCategories: '객체 카테고리',
       objectDetectionEmpty: '임계값을 넘은 객체 후보가 없습니다.',
       objectDetectionNoMatches: '필터 조건에 맞는 객체 후보가 없습니다.',
       returnToSearchResults: '검색 결과로 돌아가기',
