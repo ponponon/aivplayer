@@ -1441,3 +1441,9 @@
 - 现象：LanceDB 的 Cargo 依赖和源码 vendor 已经完整，Rust 编译继续到 `lance-encoding` 时仍因找不到 `protoc` 失败。
 - 经验：Cargo 离线清单只覆盖 Rust crate，`prost-build` 等 build script 依赖的系统工具不会随 crate 自动提供；Flathub 构建环境不能假设宿主机装有 `protoc`。
 - 处理：新增固定 protobuf v30.2 源码模块，在远程 builder 中安装 `/app/bin/protoc`，并通过 `PROTOC` 环境变量显式注入 LanceDB 模块；不使用本地预编译工具或宿主机 apt 状态。
+
+## 2026-08-10：Flatpak npm 构建不能触发 ONNX Runtime CUDA 下载
+
+- 现象：远程 builder 已经完成 FFmpeg、媒体库、whisper.cpp、protobuf 和 LanceDB 编译，但最终离线 `npm install` 运行 `onnxruntime-node` 的 postinstall 时访问 `api.nuget.org`，因网络不可用失败。
+- 经验：`onnxruntime-node` 的 CPU 运行时文件随 npm 包提供，Linux x64 默认额外下载的是 CUDA 扩展；Flatpak 构建阶段必须明确禁止这类可选网络下载，且当前版与旧版使用的环境变量不同。
+- 处理：在 Flatpak 应用模块同时设置 `ONNXRUNTIME_NODE_INSTALL=skip` 和 `ONNXRUNTIME_NODE_INSTALL_CUDA=skip`，保留 CPU 推理能力并兼容新旧安装脚本；不在本地编译 ONNX Runtime，也不把宿主机或 NuGet 二进制偷偷带入构建。

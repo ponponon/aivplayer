@@ -161,6 +161,8 @@ modules:
         ELECTRON_CACHE: /run/build/aivplayer/flatpak-node/electron-cache
         NPM_CONFIG_CACHE: /run/build/aivplayer/flatpak-node/npm-cache
         NPM_CONFIG_LOGLEVEL: info
+        ONNXRUNTIME_NODE_INSTALL: skip
+        ONNXRUNTIME_NODE_INSTALL_CUDA: skip
         npm_config_nodedir: /usr/lib/sdk/node22
         npm_config_offline: 'true'
         XDG_CACHE_HOME: /run/build/aivplayer/flatpak-node/cache

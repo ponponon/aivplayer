@@ -22,6 +22,8 @@
 
 - macOS 原生运行时构建目标固定为 12.0：FFmpeg 及其 Homebrew 依赖从源码构建，whisper.cpp 和 libheif 的 CMake 构建显式设置 `CMAKE_OSX_DEPLOYMENT_TARGET`，避免 macOS 26 构建机把过高的最低系统版本带进发布包。
 
+- Flatpak 离线 npm 构建会显式跳过 ONNX Runtime 的 CUDA 扩展下载，同时兼容新旧 `onnxruntime-node` 安装变量；CPU 运行时继续使用 npm 包随附的文件，避免构建阶段访问 NuGet。
+
 - 发布 CI 新增 macOS FFmpeg / FFprobe 运行时门禁：对 `resources/ffmpeg` 中的 Mach-O 可执行文件和 dylib 执行 `file`、`otool -l` 与 `-version` 检查，所有切片的 `minos` 必须不高于 macOS 12.0，避免把构建机 macOS 26.0 等过新的最低系统版本带进安装包。
 
 - 播放器新增 VLC 风格播放结束策略：可在控制条切换播放结束后停止 / 播放下一条、循环当前、循环播放列表和随机播放；策略写入应用设置，播放列表边界和单文件场景均有明确行为。

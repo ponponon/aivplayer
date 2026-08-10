@@ -36,6 +36,8 @@ assertCondition(manifest.includes('org.freedesktop.Sdk.Extension.node22'), '没�
 assertCondition(manifest.includes('org.freedesktop.Sdk.Extension.rust-stable'), '没有声明 Rust SDK extension')
 assertCondition(manifest.includes('- generated-sources.json'), 'manifest 没有接入离线 npm 源清单')
 assertCondition(manifest.includes('npm install --offline'), 'Flatpak 构建不能依赖联网 npm install')
+assertCondition(manifest.includes('ONNXRUNTIME_NODE_INSTALL: skip'), 'Flatpak npm 构建必须跳过 ONNX Runtime CUDA 下载')
+assertCondition(manifest.includes('ONNXRUNTIME_NODE_INSTALL_CUDA: skip'), 'Flatpak npm 构建必须兼容旧版 ONNX Runtime CUDA 跳过变量')
 assertCondition(manifest.includes('--publish never'), 'Flatpak 构建不能触发 electron-builder 发布')
 assertCondition(manifest.includes('name: ffmpeg'), 'Flatpak 必须从固定源码构建 FFmpeg')
 assertCondition(manifest.includes('https://ffmpeg.org/releases/ffmpeg-8.1.2.tar.xz'), 'FFmpeg 源码归档地址不正确')
