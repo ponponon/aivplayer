@@ -578,7 +578,7 @@
       assetDeleteConfirm: (name: string) => `アセット「${name}」を削除しますか？`,
       assetManualHint: '保存したアセットのビジュアルプロンプトは、後続の画像・動画・音声タスクで再利用できます。',
       generationQueueTitle: '生成タスクキュー',
-      generationQueueDescription: '画像、動画、音声を別々にキューへ登録します。現在は将来のプロバイダー用ローカル契約を保存します。',
+      generationQueueDescription: '画像、動画、音声タスクを別々にキューへ登録します。設定した Provider は結果をローカルに保存し、進捗、コスト、再試行、キャンセル状態を表示します。',
       generationMediaAll: 'メディア種別',
       generationMediaImage: '画像',
       generationMediaVideo: '動画',

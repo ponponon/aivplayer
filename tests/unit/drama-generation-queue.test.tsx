@@ -31,5 +31,6 @@ describe('drama generation queue', () => {
     expect(html).toContain('取消任务')
     expect(html).toContain('已完成')
     expect(html).toContain('回流到时间线')
+    expect(html).toContain('已配置的 Provider 会保存本地结果')
   })
 })

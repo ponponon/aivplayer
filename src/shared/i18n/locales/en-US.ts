@@ -578,7 +578,7 @@
       assetDeleteConfirm: (name: string) => `Delete asset “${name}”?`,
       assetManualHint: 'Save an asset first, then pass its visual prompt to later image, video, and audio queues.',
       generationQueueTitle: 'Generation queue',
-      generationQueueDescription: 'Image, video, and audio tasks use separate queues. For now this stores a local task contract for a future provider.',
+      generationQueueDescription: 'Image, video, and audio tasks use separate queues. Configured Providers save results locally and expose progress, cost, retry, and cancellation states.',
       generationMediaAll: 'Media type',
       generationMediaImage: 'Image',
       generationMediaVideo: 'Video',

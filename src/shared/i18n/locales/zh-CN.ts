@@ -578,7 +578,7 @@
       assetDeleteConfirm: (name: string) => `确定删除资产“${name}”吗？`,
       assetManualHint: '先保存资产，再把视觉提示词交给后续图像、视频任务队列。',
       generationQueueTitle: '生成任务队列',
-      generationQueueDescription: '图像、视频和音频任务分开排队；现在先保存任务合同，后续再接入具体生成服务。',
+      generationQueueDescription: '图像、视频和音频任务分开排队；已配置的 Provider 会保存本地结果，并提供进度、成本、重试和取消状态。',
       generationMediaAll: '媒体类型',
       generationMediaImage: '图像',
       generationMediaVideo: '视频',

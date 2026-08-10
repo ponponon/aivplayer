@@ -578,7 +578,7 @@
       assetDeleteConfirm: (name: string) => `“${name}” 에셋을 삭제할까요?`,
       assetManualHint: '에셋을 저장한 뒤 비주얼 프롬프트를 후속 이미지·영상·오디오 작업에서 재사용할 수 있습니다.',
       generationQueueTitle: '생성 작업 대기열',
-      generationQueueDescription: '이미지, 영상, 오디오 작업을 별도 대기열로 관리합니다. 지금은 향후 Provider를 위한 로컬 작업 계약만 저장합니다.',
+      generationQueueDescription: '이미지, 영상, 오디오 작업을 별도 대기열로 관리합니다. 설정한 Provider는 결과를 로컬에 저장하고 진행률, 비용, 재시도, 취소 상태를 표시합니다.',
       generationMediaAll: '미디어 유형',
       generationMediaImage: '이미지',
       generationMediaVideo: '영상',
