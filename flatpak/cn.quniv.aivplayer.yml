@@ -21,6 +21,22 @@ finish-args:
   - --env=ELECTRON_TRASH=gio
 
 modules:
+  - name: ffmpeg
+    buildsystem: simple
+    build-commands:
+      - ./configure --prefix=/app --bindir=/app/bin --disable-debug --disable-doc --disable-ffplay --disable-network --disable-autodetect --disable-gpl --disable-nonfree --enable-static --disable-shared
+      - make -j${FLATPAK_BUILDER_N_JOBS}
+      - make install
+    cleanup:
+      - /include
+      - /lib/*.a
+      - /lib/pkgconfig
+      - /share/man
+    sources:
+      - type: archive
+        url: https://ffmpeg.org/releases/ffmpeg-8.1.2.tar.xz
+        sha256: 464beb5e7bf0c311e68b45ae2f04e9cc2af88851abb4082231742a74d97b524c
+
   - name: whisper-cpp
     buildsystem: cmake-ninja
     config-opts:
@@ -59,6 +75,8 @@ modules:
         commands:
           - export PATH="/app/bin:$PATH"
           - export AIVPLAYER_WHISPER_CPP_BIN=/app/bin/whisper-cli
+          - export AIVPLAYER_FFMPEG_BIN=/app/bin/ffmpeg
+          - export AIVPLAYER_FFPROBE_BIN=/app/bin/ffprobe
           - exec zypak-wrapper /app/main/aivplayer "$@"
     build-commands:
       - cd app && npm install --offline

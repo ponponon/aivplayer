@@ -9,12 +9,13 @@
 - 固定 Flatpak ID `cn.quniv.aivplayer`，与 Electron 的 `appId` 保持一致；
 - Electron BaseApp、Node.js SDK extension、X11/PulseAudio/GPU 和用户目录权限的初始声明；
 - whisper.cpp `v1.9.1` 已改为 Flatpak manifest 中的固定 Git commit 源码模块，安装到 `/app/bin/whisper-cli`，运行 wrapper 会显式指向该路径；
+- FFmpeg `8.1.2` 已改为官方源码归档模块，固定 SHA-256，关闭 GPL/nonfree 和外部自动探测，静态安装 `/app/bin/ffmpeg` 与 `/app/bin/ffprobe`；
 - Electron 启动 wrapper、desktop 文件、AppStream MetaInfo 和 Flatpak 专用 electron-builder 配置；
 - 从 `package-lock.json` 生成离线 npm 源的入口；当前仓库中的 `generated-sources.json` 是用于第一阶段静态接线的 stub 清单，来源完整性沿用 lockfile，但没有包含 Electron BaseApp 缓存等特殊扩展。
 
 ## 仍需完成的 Flathub 阻塞项
 
-1. 将 FFmpeg 和 libheif 从当前发布 CI 的预编译暂存方式改为 Flatpak manifest 中的固定源码模块，或改用运行时已有且合规的依赖；whisper.cpp 已完成这一阶段。
+1. 将 libheif 从当前发布 CI 的预编译暂存方式改为 Flatpak manifest 中的固定源码模块，或改用运行时已有且合规的依赖；whisper.cpp 与 FFmpeg 已完成这一阶段。
 2. 处理 `@lancedb/lancedb`、`onnxruntime-node`、`sharp` 和 `sherpa-onnx-node` 等原生 npm 依赖的 Linux 源码构建与架构边界，不能把开发机或其他平台的预编译二进制带入 Flathub。
 3. 把当前只读、随包提供的 SigLIP2 视觉模型改成用户数据目录中的可审计下载 / 安装流程；Flathub manifest 不应携带这类大模型二进制。
 4. 重新评估文件访问权限。当前实现支持用户选择任意媒体目录、递归扫描和导出，第一版使用 XDG 目录权限配合文件选择器；最终提交前需要在 Flatpak 沙箱中用真实文件选择、目录扫描和导出 Smoke 验证，并尽量收窄权限。
