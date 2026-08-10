@@ -2,7 +2,8 @@ import { app, ipcMain } from 'electron'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
-import type { VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionEvidenceAuditPage, VisionEvidenceAuditRequest, VisionEvidenceBatchClearResult, VisionEvidenceSourceRequest, VisionEvidenceType, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionSavedSearchInput, VisionSearchPageKind, VisionSearchPageRequest, VisionSearchRequest, VisionSearchResult, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchResultsExportRequest, VisionSearchResultsExportResult, VisionSimilarSearchRequest } from '../shared/vision-types'
+import type { VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionEvidenceAuditPage, VisionEvidenceAuditRequest, VisionEvidenceBatchClearResult, VisionEvidenceSourceRequest, VisionEvidenceType, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionSavedSearchInput, VisionSearchFullExportRequest, VisionSearchPageKind, VisionSearchPageRequest, VisionSearchRequest, VisionSearchResult, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchResultsExportRequest, VisionSearchResultsExportResult, VisionSimilarSearchRequest } from '../shared/vision-types'
+import { VISION_SEARCH_FULL_EXPORT_MAX_RESULTS } from '../shared/vision-types'
 import type { VisionEntityCatalogBatchPatch, VisionEntityCatalogCreateInput, VisionEntityCatalogPatch } from '../shared/vision-entity-types'
 import { scanVisionDirectory, isVisionScanAbortError } from '../core/ai/vision-directory-scan'
 import { renderVisionClipCollectionExport } from '../core/ai/clip-inbox-export'
@@ -74,9 +75,9 @@ function isVisionSearchResultsExportFormat(value: unknown): value is VisionSearc
   return value === 'json' || value === 'csv'
 }
 
-function normalizeVisionSearchResultsForExport(value: unknown): VisionSearchResult[] {
+function normalizeVisionSearchResultsForExport(value: unknown, maxResults = 100): VisionSearchResult[] {
   if (!Array.isArray(value)) return []
-  return value.filter((item): item is VisionSearchResult => Boolean(item) && typeof item === 'object' && typeof (item as VisionSearchResult).id === 'string' && typeof (item as VisionSearchResult).videoPath === 'string' && typeof (item as VisionSearchResult).fileName === 'string' && typeof (item as VisionSearchResult).timestampSeconds === 'number' && typeof (item as VisionSearchResult).score === 'number' && typeof (item as VisionSearchResult).modelId === 'string' && typeof (item as VisionSearchResult).modelVariant === 'string').slice(0, 100)
+  return value.filter((item): item is VisionSearchResult => Boolean(item) && typeof item === 'object' && typeof (item as VisionSearchResult).id === 'string' && typeof (item as VisionSearchResult).videoPath === 'string' && typeof (item as VisionSearchResult).fileName === 'string' && typeof (item as VisionSearchResult).timestampSeconds === 'number' && typeof (item as VisionSearchResult).score === 'number' && typeof (item as VisionSearchResult).modelId === 'string' && typeof (item as VisionSearchResult).modelVariant === 'string').slice(0, maxResults)
 }
 
 function isVisionSearchPageKind(value: unknown): value is VisionSearchPageKind {
@@ -91,41 +92,47 @@ function createEmptyVisionSearchResultPage(limit: number): VisionSearchResultPag
   return { results: [], total: 0, offset: 0, limit, hasMore: false }
 }
 
-async function searchVisionTextResults(request: VisionSearchRequest): Promise<VisionSearchResult[]> {
+async function searchVisionTextResults(request: VisionSearchRequest, full = false): Promise<VisionSearchResult[]> {
   if (!request?.query?.trim()) return []
   const evidenceTypes = normalizeVisionEvidenceTypes(request.evidenceTypes)
   const objectDetectionFilter = normalizeVisionObjectDetectionFilterState(request.objectDetectionFilter)
-  const resultLimit = normalizeVisionSearchLimit(request.limit)
-  const searchLimit = evidenceTypes.length > 0 ? Math.max(resultLimit, VISION_SEARCH_SNAPSHOT_MAX_RESULTS) : resultLimit
+  const resultLimit = full ? VISION_SEARCH_FULL_EXPORT_MAX_RESULTS : normalizeVisionSearchLimit(request.limit)
+  const searchLimit = full ? VISION_SEARCH_FULL_EXPORT_MAX_RESULTS : evidenceTypes.length > 0 ? Math.max(resultLimit, VISION_SEARCH_SNAPSHOT_MAX_RESULTS) : resultLimit
   const entityCatalog = getVisionEntityCatalogStore()
   const speakerCatalog = getSpeakerDiarizationCatalogStore()
   const directQueries = [...new Set([request.query, ...entityCatalog.getSearchQueries(request.query)])]
   const speakerQueries = speakerCatalog.getSearchQueries(request.query)
-  const directGroups = await Promise.all(directQueries.map((query) => getVisionLibrary().searchText(query, searchLimit, request.mode, objectDetectionFilter)))
-  const speakerGroups = await Promise.all(speakerQueries.map((searchQuery) => getVisionLibrary().searchText(searchQuery.query, searchLimit, request.mode, objectDetectionFilter)))
+  const directGroups = await Promise.all(directQueries.map((query) => full ? getVisionLibrary().searchTextAll(query, request.mode, objectDetectionFilter) : getVisionLibrary().searchText(query, searchLimit, request.mode, objectDetectionFilter)))
+  const speakerGroups = await Promise.all(speakerQueries.map((searchQuery) => full ? getVisionLibrary().searchTextAll(searchQuery.query, request.mode, objectDetectionFilter) : getVisionLibrary().searchText(searchQuery.query, searchLimit, request.mode, objectDetectionFilter)))
   const scopedSpeakerGroups = speakerQueries.map((searchQuery, index) => filterSpeakerDiarizationCatalogSearchResults(speakerGroups[index] ?? [], searchQuery))
   const results = speakerCatalog.applyResults(entityCatalog.applyResults(mergeVisionSearchResults([...directGroups, ...scopedSpeakerGroups])))
   return filterVisionSearchResultsByEvidenceTypes(results, evidenceTypes, resultLimit)
 }
 
-async function searchVisionImageResults(request: VisionSearchRequest): Promise<VisionSearchResult[]> {
+async function searchVisionImageResults(request: VisionSearchRequest, full = false): Promise<VisionSearchResult[]> {
   if (!request?.imagePath?.trim()) return []
   const evidenceTypes = normalizeVisionEvidenceTypes(request.evidenceTypes)
   const objectDetectionFilter = normalizeVisionObjectDetectionFilterState(request.objectDetectionFilter)
-  const resultLimit = normalizeVisionSearchLimit(request.limit)
-  const searchLimit = evidenceTypes.length > 0 ? Math.max(resultLimit, VISION_SEARCH_SNAPSHOT_MAX_RESULTS) : resultLimit
-  const results = await getVisionLibrary().searchImage(request.imagePath, searchLimit, objectDetectionFilter)
+  const resultLimit = full ? VISION_SEARCH_FULL_EXPORT_MAX_RESULTS : normalizeVisionSearchLimit(request.limit)
+  const searchLimit = full ? VISION_SEARCH_FULL_EXPORT_MAX_RESULTS : evidenceTypes.length > 0 ? Math.max(resultLimit, VISION_SEARCH_SNAPSHOT_MAX_RESULTS) : resultLimit
+  const results = await (full ? getVisionLibrary().searchImageAll(request.imagePath, objectDetectionFilter) : getVisionLibrary().searchImage(request.imagePath, searchLimit, objectDetectionFilter))
   const entityCatalog = getVisionEntityCatalogStore()
   const enrichedResults = getSpeakerDiarizationCatalogStore().applyResults(entityCatalog.applyResults(results))
   return filterVisionSearchResultsByEvidenceTypes(enrichedResults, evidenceTypes, resultLimit)
 }
 
-async function searchVisionSimilarResults(request: VisionSimilarSearchRequest): Promise<VisionSearchResult[]> {
+async function searchVisionSimilarResults(request: VisionSimilarSearchRequest, full = false): Promise<VisionSearchResult[]> {
   const normalizedRequest = normalizeVisionSimilarSearchRequest(request)
   if (!normalizedRequest) return []
-  const results = await getVisionLibrary().searchSimilar(normalizedRequest)
+  const results = await (full ? getVisionLibrary().searchSimilarAll(normalizedRequest) : getVisionLibrary().searchSimilar(normalizedRequest))
   const entityCatalog = getVisionEntityCatalogStore()
   return getSpeakerDiarizationCatalogStore().applyResults(entityCatalog.applyResults(results))
+}
+
+async function searchVisionFullResults(request: VisionSearchFullExportRequest): Promise<VisionSearchResult[]> {
+  if (request.kind === 'text') return searchVisionTextResults(request.request, true)
+  if (request.kind === 'image') return searchVisionImageResults(request.request, true)
+  return searchVisionSimilarResults(request.request, true)
 }
 
 async function searchVisionResultPage(request: VisionSearchPageRequest): Promise<VisionSearchResultPage> {
@@ -264,6 +271,33 @@ export function registerVisionIpc(): void {
     const limit = normalizeVisionSearchLimit(request?.request?.limit)
     if (!request || !isVisionSearchPageKind(request.kind) || !request.request || typeof request.request !== 'object') return createEmptyVisionSearchResultPage(limit)
     return searchVisionResultPage(request)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.VISION_SEARCH_FULL_EXPORT, async (_event, request: VisionSearchFullExportRequest): Promise<VisionSearchResultsExportResult> => {
+    if (!request || !isVisionSearchPageKind(request.kind) || !isVisionSearchResultsExportFormat(request.format) || !request.request || typeof request.request !== 'object') return { success: false, message: '导出参数无效' }
+    const copy = getAppCopy(getCurrentLocale()).vision
+    let results: VisionSearchResult[]
+    try {
+      results = normalizeVisionSearchResultsForExport(await searchVisionFullResults(request), VISION_SEARCH_FULL_EXPORT_MAX_RESULTS)
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : String(error) }
+    }
+    if (results.length === 0) return { success: false, message: '没有可导出的搜索结果' }
+    const extension = request.format
+    const defaultPath = join(app.getPath('documents'), `aivplayer-vision-results-full.${extension}`)
+    const filePath = await promptForSavePath({
+      title: copy.searchResultsFullExport,
+      defaultPath,
+      filters: [{ name: `${extension.toUpperCase()} files`, extensions: [extension] }]
+    })
+    if (!filePath) return { success: false, canceled: true, message: copy.searchResultsExportCanceled }
+    const outputPath = filePath.toLowerCase().endsWith(`.${extension}`) ? filePath : `${filePath}.${extension}`
+    try {
+      await writeFile(outputPath, renderVisionSearchResultsExport(results, request.format), 'utf8')
+      return { success: true, filePath: outputPath, message: copy.searchResultsFullExported(results.length, outputPath) }
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : String(error) }
+    }
   })
 
   ipcMain.handle(IPC_CHANNELS.VISION_SEARCH_RESULTS_EXPORT, async (_event, request: VisionSearchResultsExportRequest): Promise<VisionSearchResultsExportResult> => {
