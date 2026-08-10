@@ -1075,6 +1075,22 @@
           checking: '確認中…',
           refresh: '状態を更新',
           refreshing: '更新中…'
+        },
+        objectDetection: {
+          title: 'オプションの物体検出 Provider',
+          description: 'Transformers.js をローカルで使ってフレーム内の物体位置を検出します。互換性のある ONNX モデルと LICENSE の記録を別途用意する必要があり、顔認識や人物 ID のクラスタリングではありません。',
+          providerLabel: 'Provider',
+          platformLabel: 'プラットフォーム',
+          modelLabel: 'モデルと記録',
+          modelReady: '準備完了',
+          modelMissing: '未準備',
+          modelDirectoryLabel: 'モデルディレクトリ',
+          modelDirectoryDefault: 'アプリデータディレクトリを使用（既定）',
+          selectModelFolder: 'モデルフォルダーを選択',
+          clearModelFolder: '既定のフォルダーに戻す',
+          checking: '確認中…',
+          refresh: '状態を更新',
+          refreshing: '更新中…'
         }
       },
       gpuRestartTitle: '再起動が必要です',

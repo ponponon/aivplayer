@@ -1075,6 +1075,22 @@
           checking: '检测中…',
           refresh: '刷新状态',
           refreshing: '刷新中…'
+        },
+        objectDetection: {
+          title: '可选物体检测 Provider',
+          description: '使用 Transformers.js 在本机识别画面中的物体位置。需要用户自行准备兼容的 ONNX 模型和 LICENSE 收据，不等同于人脸识别或人物身份聚类。',
+          providerLabel: 'Provider',
+          platformLabel: '平台能力',
+          modelLabel: '模型文件与收据',
+          modelReady: '已就绪',
+          modelMissing: '未完整准备',
+          modelDirectoryLabel: '模型目录',
+          modelDirectoryDefault: '使用应用数据目录（默认）',
+          selectModelFolder: '选择模型目录',
+          clearModelFolder: '恢复默认目录',
+          checking: '检测中…',
+          refresh: '刷新状态',
+          refreshing: '刷新中…'
         }
       },
       gpuRestartTitle: '需要重启',

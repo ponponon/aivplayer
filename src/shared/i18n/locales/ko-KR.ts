@@ -1075,6 +1075,22 @@
           checking: '확인 중…',
           refresh: '상태 새로 고침',
           refreshing: '새로 고치는 중…'
+        },
+        objectDetection: {
+          title: '선택적 객체 감지 Provider',
+          description: 'Transformers.js를 로컬에서 사용해 프레임 안의 객체 위치를 찾습니다. 호환되는 ONNX 모델과 LICENSE 기록을 직접 준비해야 하며 얼굴 인식이나 인물 ID 클러스터링이 아닙니다.',
+          providerLabel: 'Provider',
+          platformLabel: '플랫폼 지원',
+          modelLabel: '모델 및 기록',
+          modelReady: '준비됨',
+          modelMissing: '미완료',
+          modelDirectoryLabel: '모델 디렉터리',
+          modelDirectoryDefault: '앱 데이터 디렉터리 사용 (기본값)',
+          selectModelFolder: '모델 폴더 선택',
+          clearModelFolder: '기본 폴더 사용',
+          checking: '확인 중…',
+          refresh: '상태 새로 고침',
+          refreshing: '새로 고치는 중…'
         }
       },
       gpuRestartTitle: '재시작 필요',

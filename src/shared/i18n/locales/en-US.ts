@@ -1075,6 +1075,22 @@
           checking: 'Checking…',
           refresh: 'Refresh status',
           refreshing: 'Refreshing…'
+        },
+        objectDetection: {
+          title: 'Optional object detection Provider',
+          description: 'Use Transformers.js locally to locate objects in frames. You must provide a compatible ONNX model and LICENSE receipt; this is not face recognition or identity clustering.',
+          providerLabel: 'Provider',
+          platformLabel: 'Platform capability',
+          modelLabel: 'Model files and receipt',
+          modelReady: 'Ready',
+          modelMissing: 'Incomplete',
+          modelDirectoryLabel: 'Model directory',
+          modelDirectoryDefault: 'Use the app data directory (default)',
+          selectModelFolder: 'Choose model folder',
+          clearModelFolder: 'Use default folder',
+          checking: 'Checking…',
+          refresh: 'Refresh status',
+          refreshing: 'Refreshing…'
         }
       },
       gpuRestartTitle: 'Restart Required',
