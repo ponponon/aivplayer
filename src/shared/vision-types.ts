@@ -253,6 +253,15 @@ export type VisionSearchRequest = {
   evidenceTypes?: VisionEvidenceType[]
 }
 
+export type VisionSimilarSearchRequest = {
+  resultId?: string
+  frameId?: string
+  videoPath: string
+  timestampSeconds: number
+  thumbnailPath?: string
+  limit?: number
+}
+
 export type VisionMatchSource = 'visual' | 'subtitle' | 'filename' | 'both'
 
 /** A searchable fact anchored to a source-media time range. */
