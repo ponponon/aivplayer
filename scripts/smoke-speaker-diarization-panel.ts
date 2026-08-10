@@ -153,9 +153,24 @@ async function runSmoke(): Promise<void> {
     const restoredSearchResults = await restoredPage.evaluate(() => window.aiv.searchVisionText({ query: 'host-smoke', limit: 24, mode: 'hybrid' }))
     const restoredSearchResult = restoredSearchResults.find((result) => result.evidenceType === 'speaker' && result.matchedText === 'Smoke 主持人')
     if (!restoredSearchResult) throw new Error(`重启后别名搜索没有返回本地标签：${JSON.stringify(restoredSearchResults)}`)
+
+    const restoredEvidenceSources = await restoredPage.evaluate(() => window.aiv.listSpeakerDiarizationEvidenceSources({ limit: 100, offset: 0 }))
+    const restoredSource = restoredEvidenceSources.find((source) => source.videoPath === smokeMediaPath)
+    if (!restoredSource || restoredSource.evidenceCount <= 0) {
+      throw new Error(`重启后说话人证据来源没有恢复：${JSON.stringify(restoredEvidenceSources)}`)
+    }
+    const sourceCard = restoredPage.locator('.vision-speaker-evidence-source').filter({ hasText: restoredSource.fileName }).first()
+    await sourceCard.waitFor({ timeout: 10_000 })
+    await sourceCard.locator('input[type="checkbox"]').check()
+    await restoredPage.locator('[data-testid="vision-speaker-clear-selected-evidence"]').click()
+    await restoredPage.locator('.vision-speaker-evidence-sources-empty').waitFor({ timeout: 10_000 })
+    const batchClearedSearchResults = await restoredPage.evaluate(() => window.aiv.searchVisionText({ query: 'speaker 1', limit: 24, mode: 'hybrid' }))
+    if (batchClearedSearchResults.some((result) => result.evidenceType === 'speaker')) {
+      throw new Error(`批量清理后视觉搜索仍返回 speaker evidence：${JSON.stringify(batchClearedSearchResults)}`)
+    }
     if (restoredSession.errors.length > 0) throw new Error(`重启后的说话人面板 Smoke 出现渲染错误：\n${restoredSession.errors.join('\n')}`)
 
-    console.log(`Speaker diarization panel Smoke passed: ${JSON.stringify({ mediaPath: smokeMediaPath, elapsedMs: Date.now() - startedAt, segments, evidenceStatus, labelStatus, clearEvidenceStatus, rerunEvidenceStatus, speakerEvidenceResult, labeledSearchResult, clearedSpeakerResultCount: clearedSearchResults.filter((result) => result.evidenceType === 'speaker').length, restoredEntry, restoredSearchResult, firstSegment, playback })}`)
+    console.log(`Speaker diarization panel Smoke passed: ${JSON.stringify({ mediaPath: smokeMediaPath, elapsedMs: Date.now() - startedAt, segments, evidenceStatus, labelStatus, clearEvidenceStatus, rerunEvidenceStatus, speakerEvidenceResult, labeledSearchResult, clearedSpeakerResultCount: clearedSearchResults.filter((result) => result.evidenceType === 'speaker').length, restoredEntry, restoredSearchResult, restoredSource, batchClearedSpeakerResultCount: batchClearedSearchResults.filter((result) => result.evidenceType === 'speaker').length, firstSegment, playback })}`)
   } finally {
     if (application) await application.close().catch(() => undefined)
     await rm(smokeDirectory, { recursive: true, force: true }).catch(() => undefined)
