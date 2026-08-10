@@ -1417,3 +1417,9 @@
 - 现象：`flatpak-node-generator` 在本机代理环境下可以处理大部分 npm 包，但在 Electron / esbuild 特殊扩展阶段长期不退出，过程中不会写出完整 JSON；直接把中途状态当作成功会留下不可复现的 Flatpak 源清单。
 - 经验：外网下载前先检测代理；生成器必须以退出码和输出文件完整性为成功条件，不能只看进度条。遇到特殊包处理阻塞时，可以先用工具的 stub 模式生成基于锁文件完整性字段的第一阶段清单，但必须把 Electron BaseApp 缓存、平台二进制和真实构建验证记录为后续阻塞项。
 - 处理：当前提交只把 stub 清单用于 manifest 静态接线和持续检查，不把它当作最终 Flathub 构建证据；后续在 Linux `flatpak-builder` 环境中重新生成并验证完整源清单，确认 Electron、esbuild 和所有原生模块的架构选择后再提交 Flathub。
+
+## 2026-08-10：Flatpak 补丁不能直接复用异常 Git diff
+
+- 现象：远程 Linux builder 构建 x265 时，补丁的修改内容能够部分应用，但由于补丁包含异常的 Git `index` 头并返回非零状态，`flatpak-builder` 将模块判定为失败。
+- 经验：给 Flatpak manifest 使用的补丁应是可由标准 `patch` 直接消费的 unified diff；不能把本地生成、缺少有效新文件对象哈希的 Git diff 原样当作构建补丁。
+- 处理：移除补丁中的 Git 元数据，只保留 `---` / `+++` 和完整上下文；提交前检查补丁格式，之后用远程 Linux CI 验证真实应用结果。
