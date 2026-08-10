@@ -464,6 +464,7 @@
       loadingMoreResults: 'さらに読み込み中…',
       findSimilar: '似たショットを探す',
       returnToSearchResults: '検索結果に戻る',
+      similarGroupMeta: (count: number, start: string, end: string) => `${count} 件の類似フレーム · ${start}–${end}`,
       createProject: '編集プロジェクトを作成',
       creatingProject: '編集プロジェクトを作成中…',
       projectCreated: (title: string) => `編集プロジェクトを作成しました：${title}`,

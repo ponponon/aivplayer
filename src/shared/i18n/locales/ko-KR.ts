@@ -464,6 +464,7 @@
       loadingMoreResults: '더 불러오는 중…',
       findSimilar: '비슷한 장면 찾기',
       returnToSearchResults: '검색 결과로 돌아가기',
+      similarGroupMeta: (count: number, start: string, end: string) => `${count}개 유사 프레임 · ${start}–${end}`,
       createProject: '편집 프로젝트 만들기',
       creatingProject: '편집 프로젝트를 만드는 중…',
       projectCreated: (title: string) => `편집 프로젝트를 만들었습니다: ${title}`,

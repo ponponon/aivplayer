@@ -464,6 +464,7 @@
       loadingMoreResults: '正在加载更多…',
       findSimilar: '查找相似镜头',
       returnToSearchResults: '返回当前搜索结果',
+      similarGroupMeta: (count: number, start: string, end: string) => `${count} 个相似帧 · ${start}–${end}`,
       createProject: '创建剪辑工程',
       creatingProject: '正在创建剪辑工程…',
       projectCreated: (title: string) => `已创建工程：${title}`,

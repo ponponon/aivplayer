@@ -464,6 +464,7 @@
       loadingMoreResults: 'Loading more…',
       findSimilar: 'Find similar shots',
       returnToSearchResults: 'Back to search results',
+      similarGroupMeta: (count: number, start: string, end: string) => `${count} similar frames · ${start}–${end}`,
       createProject: 'Create editing project',
       creatingProject: 'Creating editing project…',
       projectCreated: (title: string) => `Editing project created: ${title}`,
