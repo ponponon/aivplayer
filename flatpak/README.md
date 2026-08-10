@@ -13,10 +13,11 @@
 - libheif `v1.23.1` 已接入固定源码模块，依赖 libde265 `v1.0.16`、libjpeg-turbo `3.1.2` 和 x265 `3.4`，关闭插件加载、宿主可选后端探测并安装 `heif-enc`、`heif-convert`；x265 的 GPL-2.0 许可证边界需要随最终 Flathub 审核材料复核。x265 另带一个只修复 CMake 4 兼容性的最小 patch；
 - Electron 启动 wrapper、desktop 文件、AppStream MetaInfo 和 Flatpak 专用 electron-builder 配置；
 - 从 `package-lock.json` 生成离线 npm 源的入口；当前仓库中的 `generated-sources.json` 是用于第一阶段静态接线的 stub 清单，来源完整性沿用 lockfile，但没有包含 Electron BaseApp 缓存等特殊扩展。
+- 新增 `npm run flatpak:audit-native` 原生 npm 依赖审计，当前会明确列出 LanceDB、ONNX Runtime、Sharp/libvips 和 sherpa-onnx 的 62 个 lockfile 条目；它们仍是阻塞项，不把“平台包是 optional”误判为“已经符合 Flathub”。
 
 ## 仍需完成的 Flathub 阻塞项
 
-1. 处理 `@lancedb/lancedb`、`onnxruntime-node`、`sharp` 和 `sherpa-onnx-node` 等原生 npm 依赖的 Linux 源码构建与架构边界，不能把开发机或其他平台的预编译二进制带入 Flathub。
+1. 处理 `@lancedb/lancedb`、`onnxruntime-node`、`sharp` 和 `sherpa-onnx-node` 等原生 npm 依赖的 Linux 源码构建与架构边界。当前 lockfile 仍包含 LanceDB 的平台包、ONNX Runtime 的安装脚本、Sharp 的 `@img/sharp-*` 平台包和 sherpa-onnx 的平台包，不能把这些预编译二进制带入 Flathub；可用 `npm run flatpak:audit-native -- --strict` 将审计结果作为提交门禁。
 2. 把当前只读、随包提供的 SigLIP2 视觉模型改成用户数据目录中的可审计下载 / 安装流程；Flathub manifest 不应携带这类大模型二进制。
 3. 重新评估文件访问权限。当前实现支持用户选择任意媒体目录、递归扫描和导出，第一版使用 XDG 目录权限配合文件选择器；最终提交前需要在 Flatpak 沙箱中用真实文件选择、目录扫描和导出 Smoke 验证，并尽量收窄权限。
 4. 在 Linux Flatpak 构建机上运行 `flatpak-builder`、`flatpak-builder-lint` 和真实启动 Smoke。macOS 开发机没有 Flatpak 工具，不能用本地 TypeScript 构建代替这一步。

@@ -28,6 +28,7 @@
 - Snap 构建依赖 Snap Store、core22、snapcraft 和网络，单次 `snap install` 或 `snapcraft pack` 失败不能直接等同于配置错误；安装和打包要做有上限的指数退避重试，并且重试循环最后一次失败必须显式 `exit 1`，不能让最后一个 `sleep` 把失败步骤伪装成成功。
 - `publish-snap` 不能只依赖 `publish-release`，否则 `build-snap` 失败后 release 仍会成功、后置 job 再因找不到 artifact 产生第二个红色失败。汇总 release 必须等待真正会上传的 artifact，后置发布 job 也要直接依赖产物 job，确保失败原因只保留在最初失败点。
 - Snapcraft 的 `pack` 失败后不能在同一个 `parts` / `stage` / `prime` 状态上直接重试；dump part 可能已经留下部分安装文件，下一次会把原本的根因放大成大量 `cp ... File exists`。每次重试前必须清理 Snapcraft 生成目录和旧 `.snap`，再从干净状态重新打包。
+- Flatpak 的 npm `optional` 平台包不能等同于“不会进入最终包”：`package-lock.json` 仍会把 LanceDB、ONNX Runtime、Sharp/libvips 和 sherpa-onnx 的预编译平台包或安装脚本记录进离线 source 清单。处理这类依赖时，必须先用 `npm run flatpak:audit-native` 按 lockfile 建立证据，再决定源码重建或在 Flatpak 版明确关闭能力；不能只按当前 macOS 安装结果判断 Linux Flathub 合规性。
 
 ## Electron 打包不能依赖自动安装的 peer dependency
 

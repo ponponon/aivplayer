@@ -702,6 +702,7 @@
 - Flatpak manifest 已加入固定 commit 的 whisper.cpp `v1.9.1` 源码模块，并将 `whisper-cli` 安装到 `/app/bin`；启动 wrapper 显式设置路径，避免依赖宿主机或开发机上的 whisper.cpp。
 - Flatpak manifest 已加入官方 FFmpeg `8.1.2` 源码归档，固定 SHA-256，关闭 GPL/nonfree 与宿主依赖自动探测，并将 `ffmpeg` / `ffprobe` 安装到 `/app/bin`。
 - Flatpak manifest 已加入固定源码的 libheif `v1.23.1`、libde265 `v1.0.16`、libjpeg-turbo `3.1.2` 和 x265 `3.4` 模块，关闭 libheif 插件加载与宿主可选后端探测并安装 `heif-enc` / `heif-convert`；x265 GPL-2.0 许可证作为 Flathub 审核边界单独记录，并用最小 patch 兼容 CMake 4。
+- 新增 Flatpak 原生 npm 依赖审计命令 `npm run flatpak:audit-native`：从 `package-lock.json` 枚举 LanceDB、ONNX Runtime、Sharp/libvips 和 sherpa-onnx 的版本、平台条件、安装脚本和来源；默认只报告，`--strict` 可在源码重建方案完成后作为 Flathub 提交门禁。
 - GitHub Actions 支持手动选择 Linux ARM64 构建，使用 `ubuntu-24.04-arm` 原生 Runner；CI 生成的本地 manifest 不进入仓库，正式 Flathub manifest 仍保持固定 release tag。
 
 ## 视觉索引失败恢复
