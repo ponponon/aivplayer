@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -5,12 +6,23 @@ import { describe, expect, it } from 'vitest'
 import { getVisionSearchExportPartsDirectory, getVisionSearchExportStorePath, VisionSearchExportStore } from '../../src/core/ai/vision-search-export-store'
 
 function input(userDataPath: string) {
+  const revisionBody = {
+    schemaVersion: 1 as const,
+    tables: {
+      video_frames: 1,
+      video_sources: null,
+      video_captions: null,
+      video_search_documents: null,
+      video_evidence: 2
+    }
+  }
   return {
     taskId: 'export-1',
     request: { kind: 'text' as const, request: { query: 'person', mode: 'hybrid' as const }, format: 'json' as const },
     outputPath: join(userDataPath, 'results.json'),
     partsDirectory: getVisionSearchExportPartsDirectory(userDataPath, 'export-1'),
-    resultCount: 512
+    resultCount: 512,
+    searchRevision: { ...revisionBody, fingerprint: createHash('sha256').update(JSON.stringify(revisionBody)).digest('hex') }
   }
 }
 
@@ -24,7 +36,7 @@ describe('vision search export store', () => {
       await store.flush()
 
       const restored = new VisionSearchExportStore(userDataPath)
-      expect(restored.get('export-1')).toMatchObject({ writtenCount: 256, completedParts: { '0': 'a'.repeat(64) }, status: 'running' })
+      expect(restored.get('export-1')).toMatchObject({ writtenCount: 256, completedParts: { '0': 'a'.repeat(64) }, status: 'running', searchRevision: input(userDataPath).searchRevision })
       expect(JSON.parse(await readFile(getVisionSearchExportStorePath(userDataPath), 'utf8')).schemaVersion).toBe(1)
     } finally {
       await rm(userDataPath, { recursive: true, force: true })
