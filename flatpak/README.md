@@ -9,6 +9,7 @@
 - 固定 Flatpak ID `cn.quniv.aivplayer`，与 Electron 的 `appId` 保持一致；
 - Electron BaseApp、Node.js SDK extension、X11/PulseAudio/GPU 和用户目录权限的初始声明；
 - whisper.cpp `v1.9.1` 已改为 Flatpak manifest 中的固定 Git commit 源码模块，安装到 `/app/bin/whisper-cli`，运行 wrapper 会显式指向该路径；
+- protobuf `v30.2` 已加入固定 SHA-512 的源码模块，远程 builder 会生成 `/app/bin/protoc` 供 LanceDB 的 Rust build script 使用；
 - FFmpeg `8.1.2` 已改为官方源码归档模块，固定 SHA-256，关闭 GPL/nonfree 和外部自动探测，静态安装 `/app/bin/ffmpeg` 与 `/app/bin/ffprobe`；
 - libheif `v1.23.1` 已接入固定源码模块，依赖 libde265 `v1.0.16`、libjpeg-turbo `3.1.2` 和 x265 `3.4`，关闭插件加载、宿主可选后端探测并安装 `heif-enc`、`heif-convert`；x265 的 GPL-2.0 许可证边界需要随最终 Flathub 审核材料复核。x265 另带一个只修复 CMake 4 兼容性的最小 patch；
 - LanceDB `v0.31.0` 已加入 Flathub manifest 的源码构建描述：固定 Git commit、Cargo.lock 最小修正和 Cargo 离线源码清单均作为 manifest 输入；本机不执行 Cargo 编译，实际 Linux x86_64 / arm64 编译由 Flathub builder 完成。

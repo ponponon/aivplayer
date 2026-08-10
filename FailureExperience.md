@@ -1435,3 +1435,9 @@
 - 现象：LanceDB 的 Cargo 源码清单已经包含 `ahash` crate，但远程 builder 仍在离线解析时报告 `no matching package named ahash found`。
 - 经验：Cargo 只有在项目根目录的 `.cargo/config` 或 `.cargo/config.toml` 中才会读取 source replacement；把同名配置写到普通 `cargo/config` 不会启用 vendored source，构建会错误回退到 crates.io index。
 - 处理：将 Flatpak inline source 的目标目录改为 `.cargo`，并在静态检查中锁定 `replace-with = "vendored-sources"` 与 `.cargo/config` 路径。
+
+## 2026-08-10：Rust build script 的系统工具也必须进入 Flatpak manifest
+
+- 现象：LanceDB 的 Cargo 依赖和源码 vendor 已经完整，Rust 编译继续到 `lance-encoding` 时仍因找不到 `protoc` 失败。
+- 经验：Cargo 离线清单只覆盖 Rust crate，`prost-build` 等 build script 依赖的系统工具不会随 crate 自动提供；Flathub 构建环境不能假设宿主机装有 `protoc`。
+- 处理：新增固定 protobuf v30.2 源码模块，在远程 builder 中安装 `/app/bin/protoc`，并通过 `PROTOC` 环境变量显式注入 LanceDB 模块；不使用本地预编译工具或宿主机 apt 状态。
