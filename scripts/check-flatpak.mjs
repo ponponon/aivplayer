@@ -5,14 +5,16 @@ import { fileURLToPath } from 'node:url'
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const flatpakDirectory = join(root, 'flatpak')
 const manifestPath = join(flatpakDirectory, 'cn.quniv.aivplayer.yml')
+const electronBuilderConfigPath = join(flatpakDirectory, 'electron-builder-flatpak.yml')
 const desktopPath = join(flatpakDirectory, 'cn.quniv.aivplayer.desktop')
 const metainfoPath = join(flatpakDirectory, 'cn.quniv.aivplayer.metainfo.xml')
 const generatedSourcesPath = join(flatpakDirectory, 'generated-sources.json')
 const lancedbCargoSourcesPath = join(flatpakDirectory, 'lancedb-cargo-sources.json')
 
-const [packageText, manifest, desktop, metainfo, generatedSources, lancedbCargoSources] = await Promise.all([
+const [packageText, manifest, electronBuilderConfig, desktop, metainfo, generatedSources, lancedbCargoSources] = await Promise.all([
   readFile(join(root, 'package.json'), 'utf8'),
   readFile(manifestPath, 'utf8'),
+  readFile(electronBuilderConfigPath, 'utf8'),
   readFile(desktopPath, 'utf8'),
   readFile(metainfoPath, 'utf8'),
   readFile(generatedSourcesPath, 'utf8').catch(() => ''),
@@ -39,6 +41,15 @@ assertCondition(manifest.includes('npm install --offline'), 'Flatpak 构建不�
 assertCondition(manifest.includes('ONNXRUNTIME_NODE_INSTALL: skip'), 'Flatpak npm 构建必须跳过 ONNX Runtime CUDA 下载')
 assertCondition(manifest.includes('ONNXRUNTIME_NODE_INSTALL_CUDA: skip'), 'Flatpak npm 构建必须兼容旧版 ONNX Runtime CUDA 跳过变量')
 assertCondition(manifest.includes('--publish never'), 'Flatpak 构建不能触发 electron-builder 发布')
+assertCondition(manifest.includes('electron-v43.2.0-linux-x64.zip'), 'Flatpak 必须固定 Electron Linux x64 源码归档')
+assertCondition(manifest.includes('sha256: f77ca6ed67bbc68702b69b56ad499bca6ae090705ade7d04f0ac545e409dec68'), 'Electron Linux x64 归档必须固定 SHA-256')
+assertCondition(manifest.includes('only-arches: [x86_64]'), 'Electron x86_64 归档必须限制到对应架构')
+assertCondition(manifest.includes('electron-v43.2.0-linux-arm64.zip'), 'Flatpak 必须固定 Electron Linux ARM64 源码归档')
+assertCondition(manifest.includes('sha256: 50e1cdefbf8590e0d89b0276314a99c7b98e8eed732204c6f1a1c2a38376ed87'), 'Electron Linux ARM64 归档必须固定 SHA-256')
+assertCondition(manifest.includes('only-arches: [aarch64]'), 'Electron ARM64 归档必须限制到对应架构')
+assertCondition(manifest.includes('dest: electron-dist'), 'Electron 归档必须解压到独立的本地发行目录')
+assertCondition(electronBuilderConfig.includes('electronVersion: 43.2.0'), 'electron-builder 必须固定 Electron 版本')
+assertCondition(electronBuilderConfig.includes('electronDist: ../electron-dist'), 'electron-builder 必须使用 Flatpak 本地 Electron 发行目录')
 assertCondition(manifest.includes('name: ffmpeg'), 'Flatpak 必须从固定源码构建 FFmpeg')
 assertCondition(manifest.includes('https://ffmpeg.org/releases/ffmpeg-8.1.2.tar.xz'), 'FFmpeg 源码归档地址不正确')
 assertCondition(manifest.includes('sha256: 464beb5e7bf0c311e68b45ae2f04e9cc2af88851abb4082231742a74d97b524c'), 'FFmpeg 源码归档必须固定 SHA-256')

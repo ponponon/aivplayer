@@ -1,5 +1,7 @@
 appId: cn.quniv.aivplayer
 productName: AIVPlayer
+electronVersion: 43.2.0
+electronDist: ../electron-dist
 directories:
   output: release
 files:

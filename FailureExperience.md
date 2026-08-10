@@ -1447,3 +1447,9 @@
 - 现象：远程 builder 已经完成 FFmpeg、媒体库、whisper.cpp、protobuf 和 LanceDB 编译，但最终离线 `npm install` 运行 `onnxruntime-node` 的 postinstall 时访问 `api.nuget.org`，因网络不可用失败。
 - 经验：`onnxruntime-node` 的 CPU 运行时文件随 npm 包提供，Linux x64 默认额外下载的是 CUDA 扩展；Flatpak 构建阶段必须明确禁止这类可选网络下载，且当前版与旧版使用的环境变量不同。
 - 处理：在 Flatpak 应用模块同时设置 `ONNXRUNTIME_NODE_INSTALL=skip` 和 `ONNXRUNTIME_NODE_INSTALL_CUDA=skip`，保留 CPU 推理能力并兼容新旧安装脚本；不在本地编译 ONNX Runtime，也不把宿主机或 NuGet 二进制偷偷带入构建。
+
+## 2026-08-10：Electron 打包阶段不能依赖隐式 GitHub 下载
+
+- 现象：ONNX Runtime 已跳过 CUDA 下载，远程 builder 的 npm 安装和应用构建均成功；`electron-builder --linux --dir` 在准备 `linux-unpacked` 时仍通过 `@electron/get` 请求 `github.com` 下载 Electron Linux 包，Flatpak 沙箱因无网络报 `getaddrinfo EAI_AGAIN github.com`。
+- 经验：Flatpak 的源码下载阶段和模块 build 阶段是两个边界；允许 manifest 下载并校验固定源，不等于允许构建命令临时联网。Electron BaseApp 不会自动满足 electron-builder 的本地发行目录输入，必须显式提供固定版本的 Electron 包。
+- 处理：从 Electron 官方 v43.2.0 release 按架构固定 `electron-v43.2.0-linux-x64.zip` / `electron-v43.2.0-linux-arm64.zip` 和 SHA-256，作为 manifest archive source 解压到独立目录；Flatpak 专用 electron-builder 配置固定 `electronVersion` 并设置 `electronDist: ../electron-dist`，让远程构建直接使用对应架构的本地发行目录。
