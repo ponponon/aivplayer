@@ -462,6 +462,8 @@
       clearSelectedResults: 'Clear current selection',
       loadMoreResults: 'Load more results',
       loadingMoreResults: 'Loading more…',
+      findSimilar: 'Find similar shots',
+      returnToSearchResults: 'Back to search results',
       createProject: 'Create editing project',
       creatingProject: 'Creating editing project…',
       projectCreated: (title: string) => `Editing project created: ${title}`,

@@ -269,6 +269,13 @@
   color: var(--text-primary);
 }
 
+.vision-result-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  min-width: 0;
+}
+
 .vision-result:hover,
 .vision-result:focus-visible {
   color: var(--text-primary);
@@ -319,6 +326,27 @@
   color: var(--text-secondary);
   font-size: 10px;
   font-variant-numeric: normal;
+}
+
+.vision-result-similar-action {
+  min-height: 25px;
+  margin-right: 5px;
+  padding: 0 7px;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.vision-result-similar-action:hover,
+.vision-result-similar-action:focus-visible {
+  color: var(--text-primary);
+  border-color: var(--border-soft);
+  background: rgba(var(--overlay-rgb), 0.05);
+  outline: none;
 }
 
 .vision-empty {

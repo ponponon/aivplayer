@@ -462,6 +462,8 @@
       clearSelectedResults: '現在の選択を解除',
       loadMoreResults: '結果をさらに読み込む',
       loadingMoreResults: 'さらに読み込み中…',
+      findSimilar: '似たショットを探す',
+      returnToSearchResults: '検索結果に戻る',
       createProject: '編集プロジェクトを作成',
       creatingProject: '編集プロジェクトを作成中…',
       projectCreated: (title: string) => `編集プロジェクトを作成しました：${title}`,

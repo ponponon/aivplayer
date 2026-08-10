@@ -462,6 +462,8 @@
       clearSelectedResults: '清空当前选择',
       loadMoreResults: '加载更多结果',
       loadingMoreResults: '正在加载更多…',
+      findSimilar: '查找相似镜头',
+      returnToSearchResults: '返回当前搜索结果',
       createProject: '创建剪辑工程',
       creatingProject: '正在创建剪辑工程…',
       projectCreated: (title: string) => `已创建工程：${title}`,

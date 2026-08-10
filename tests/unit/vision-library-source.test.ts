@@ -63,6 +63,9 @@ describe('vision library setup', () => {
     expect(panel).toContain('onSelectAllResults={selectAllSearchResults}')
     expect(panel).toContain('loadMoreSearchResults')
     expect(panel).toContain('hasMoreResults={hasMoreSearchResults}')
+    expect(panel).toContain('onFindSimilar={findSimilarResult}')
+    expect(panel).toContain('onReturnToSearch={returnToSearchResults}')
+    expect(panel).toContain('createVisionSimilarSearchRequest')
     expect(panel).toContain('createEditingProjectFromVisionResults')
     expect(panel).toContain('onToggleSelection')
     expect(panel).toContain('saveVisionClipCollection')
@@ -89,6 +92,7 @@ describe('vision library setup', () => {
     expect(preload).toContain('updateVisionEntityCatalogBatch')
     expect(preload).toContain('createVisionEntityCatalog')
     expect(preload).toContain('retryVisionIndexFailures')
+    expect(preload).toContain('searchVisionSimilar')
   })
 
   it('keeps the reusable Clip Inbox Electron smoke wired into npm scripts', () => {

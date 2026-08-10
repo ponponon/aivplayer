@@ -8,6 +8,9 @@ type VisionSearchResultsProps = {
   results: VisionSearchResult[]
   thumbnailUrls: Record<string, string>
   onOpenResult: (result: VisionSearchResult) => void
+  onFindSimilar: (result: VisionSearchResult) => void
+  isSimilarSearch: boolean
+  onReturnToSearch: () => void
   selectedIds: ReadonlySet<string>
   onToggleSelection: (result: VisionSearchResult) => void
   onSelectAllResults: () => void
@@ -19,10 +22,11 @@ type VisionSearchResultsProps = {
   onSortModeChange: (sortMode: VisionSearchSortMode) => void
 }
 
-export function VisionSearchResults({ copy, results, thumbnailUrls, onOpenResult, selectedIds, onToggleSelection, onSelectAllResults, onClearResults, hasMoreResults, isLoadingMore, onLoadMoreResults, sortMode, onSortModeChange }: VisionSearchResultsProps): React.ReactElement {
+export function VisionSearchResults({ copy, results, thumbnailUrls, onOpenResult, onFindSimilar, isSimilarSearch, onReturnToSearch, selectedIds, onToggleSelection, onSelectAllResults, onClearResults, hasMoreResults, isLoadingMore, onLoadMoreResults, sortMode, onSortModeChange }: VisionSearchResultsProps): React.ReactElement {
   const sortedResults = sortVisionSearchResults(results, sortMode)
   return <section className="vision-results" aria-live="polite">
     <div className="vision-results-toolbar">
+      {isSimilarSearch ? <button className="vision-results-selection-action" type="button" onClick={onReturnToSearch}>{copy.returnToSearchResults}</button> : null}
       <span>{copy.searchSortLabel}</span>
       <select value={sortMode} aria-label={copy.searchSortLabel} onChange={(event) => onSortModeChange(event.target.value as VisionSearchSortMode)}>
         <option value="relevance">{copy.searchSortRelevance}</option>
@@ -38,10 +42,13 @@ export function VisionSearchResults({ copy, results, thumbnailUrls, onOpenResult
         <label className="vision-result-select" title={copy.selectResult}>
           <input type="checkbox" checked={selected} onChange={() => onToggleSelection(result)} aria-label={copy.selectResult} />
         </label>
-        <button className="vision-result" type="button" data-evidence-id={result.evidenceId ?? result.id} data-evidence-type={result.evidenceType ?? 'visual'} onClick={() => onOpenResult(result)} title={copy.clickResult}>
-          {thumbnailUrls[result.id] ? <img src={thumbnailUrls[result.id]} alt="" /> : <span className="vision-result-placeholder"><ScanSearch size={18} /></span>}
-          <span className="vision-result-copy"><strong>{result.fileName}</strong><span>{result.evidenceType === 'ocr' ? `${copy.ocrResultLabel} · ` : ''}{formatEvidenceRange(result)} · {copy.score(result.score)}</span>{result.matchedText ? <span className="vision-result-match">{result.matchedText}</span> : null}</span>
-        </button>
+        <div className="vision-result-content">
+          <button className="vision-result" type="button" data-evidence-id={result.evidenceId ?? result.id} data-evidence-type={result.evidenceType ?? 'visual'} onClick={() => onOpenResult(result)} title={copy.clickResult}>
+            {thumbnailUrls[result.id] ? <img src={thumbnailUrls[result.id]} alt="" /> : <span className="vision-result-placeholder"><ScanSearch size={18} /></span>}
+            <span className="vision-result-copy"><strong>{result.fileName}</strong><span>{result.evidenceType === 'ocr' ? `${copy.ocrResultLabel} · ` : ''}{formatEvidenceRange(result)} · {copy.score(result.score)}</span>{result.matchedText ? <span className="vision-result-match">{result.matchedText}</span> : null}</span>
+          </button>
+          <button className="vision-result-similar-action" type="button" onClick={() => onFindSimilar(result)} title={copy.findSimilar}>{copy.findSimilar}</button>
+        </div>
       </div>
     })}
     {sortedResults.length > 0 && hasMoreResults ? <button className="vision-results-load-more" type="button" onClick={onLoadMoreResults} disabled={isLoadingMore}>{isLoadingMore ? copy.loadingMoreResults : copy.loadMoreResults}</button> : null}
