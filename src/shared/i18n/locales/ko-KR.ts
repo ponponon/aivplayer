@@ -351,6 +351,8 @@
       evidenceSourcesClearing: '삭제 중…',
       evidenceSourcesRefresh: '소스 새로 고침',
       evidenceSourcesRefreshing: '새로 고치는 중…',
+      evidenceSourcesLoadMore: '소스 더 불러오기',
+      evidenceSourcesLoadingMore: '불러오는 중…',
       evidenceSourcesEmpty: '관리할 수 있는 파생 시각 증거가 없습니다.',
       evidenceSourcesCleared: (sources: number, evidence: number) => `${sources}개 소스에서 ${evidence}개 파생 증거를 삭제했습니다`,
       evidenceAuditFilterLabel: '소스 상태',

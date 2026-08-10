@@ -351,6 +351,8 @@
       evidenceSourcesClearing: '清理中…',
       evidenceSourcesRefresh: '刷新来源',
       evidenceSourcesRefreshing: '刷新中…',
+      evidenceSourcesLoadMore: '加载更多来源',
+      evidenceSourcesLoadingMore: '加载中…',
       evidenceSourcesEmpty: '暂无可管理的派生视觉证据。',
       evidenceSourcesCleared: (sources: number, evidence: number) => `已清理 ${sources} 个来源、${evidence} 条派生证据`,
       evidenceAuditFilterLabel: '来源状态',

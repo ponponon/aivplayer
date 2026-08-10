@@ -21,6 +21,8 @@ export function VisionEvidenceSources({ copy, kicker = 'VISION' }: VisionEvidenc
   const [selectedTypes, setSelectedTypes] = useState<Record<string, VisionDerivedEvidenceType[]>>({})
   const [auditStatusFilter, setAuditStatusFilter] = useState<VisionEvidenceAuditStatus | 'all'>('all')
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
   const [isClearing, setIsClearing] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -29,14 +31,15 @@ export function VisionEvidenceSources({ copy, kicker = 'VISION' }: VisionEvidenc
     setIsRefreshing(true)
     setError(null)
     try {
-      const nextSources = await window.aiv.auditVisionEvidenceSources({
+      const page = await window.aiv.auditVisionEvidenceSources({
         limit: 100,
         offset: 0,
         auditStatuses: auditStatusFilter === 'all' ? undefined : [auditStatusFilter]
       })
-      setSources(nextSources)
+      setSources(page.sources)
+      setHasMore(page.hasMore)
       setSelectedTypes((current) => {
-        const available = new Map(nextSources.map((source) => [sourceKey(source), new Set(VISION_DERIVED_EVIDENCE_TYPES.filter((type) => source.evidenceCounts[type] > 0))]))
+        const available = new Map(page.sources.map((source) => [sourceKey(source), new Set(VISION_DERIVED_EVIDENCE_TYPES.filter((type) => source.evidenceCounts[type] > 0))]))
         return Object.fromEntries(Object.entries(current).map(([key, types]) => [key, types.filter((type) => available.get(key)?.has(type))]).filter(([, types]) => types.length > 0))
       })
     } catch (reason) {
@@ -47,6 +50,25 @@ export function VisionEvidenceSources({ copy, kicker = 'VISION' }: VisionEvidenc
   }
 
   useEffect(() => { void refresh() }, [auditStatusFilter])
+
+  const loadMore = async (): Promise<void> => {
+    if (!hasMore || isRefreshing || isLoadingMore || isClearing) return
+    setIsLoadingMore(true)
+    setError(null)
+    try {
+      const page = await window.aiv.auditVisionEvidenceSources({
+        limit: 100,
+        offset: sources.length,
+        auditStatuses: auditStatusFilter === 'all' ? undefined : [auditStatusFilter]
+      })
+      setSources((current) => [...current, ...page.sources])
+      setHasMore(page.hasMore)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    } finally {
+      setIsLoadingMore(false)
+    }
+  }
 
   const getSelectedTypes = (source: VisionEvidenceSourceAudit): Set<VisionDerivedEvidenceType> => new Set(selectedTypes[sourceKey(source)] ?? [])
 
@@ -119,17 +141,18 @@ export function VisionEvidenceSources({ copy, kicker = 'VISION' }: VisionEvidenc
     <p className="vision-evidence-sources-description vision-speaker-evidence-sources-description">{copy.evidenceSourcesDescription}</p>
     <div className="vision-evidence-sources-toolbar vision-speaker-evidence-sources-toolbar">
       <label className="vision-evidence-audit-filter"><span>{copy.evidenceAuditFilterLabel}</span><select data-testid="vision-evidence-audit-filter" value={auditStatusFilter} onChange={(event) => setAuditStatusFilter(event.target.value as VisionEvidenceAuditStatus | 'all')} disabled={isRefreshing || isClearing}><option value="all">{copy.evidenceAuditAll}</option>{VISION_EVIDENCE_AUDIT_STATUSES.map((auditStatus) => <option key={auditStatus} value={auditStatus}>{copy.evidenceAuditStatusLabels[auditStatus]}</option>)}</select></label>
-      <button className="vision-secondary-action" data-testid="vision-evidence-select-all" type="button" onClick={toggleAll} disabled={sources.length === 0 || isRefreshing || isClearing}>{allSelected ? <Square size={13} /> : <CheckSquare size={13} />}{allSelected ? copy.evidenceSourcesClearSelection : copy.evidenceSourcesSelectAll}</button>
-      {selectedCount > 0 ? <><span>{copy.evidenceSourcesSelected(selectedCount)}</span><button className="vision-primary-action" data-testid="vision-speaker-clear-selected-evidence" data-evidence-testid="vision-evidence-clear-selected" type="button" onClick={() => void clearSelected()} disabled={isRefreshing || isClearing}><Trash2 size={12} />{isClearing ? copy.evidenceSourcesClearing : copy.evidenceSourcesClear}</button></> : null}
-      <button className="vision-secondary-action" type="button" onClick={() => void refresh()} disabled={isRefreshing || isClearing}><RefreshCw size={12} />{isRefreshing ? copy.evidenceSourcesRefreshing : copy.evidenceSourcesRefresh}</button>
+      <button className="vision-secondary-action" data-testid="vision-evidence-select-all" type="button" onClick={toggleAll} disabled={sources.length === 0 || isRefreshing || isLoadingMore || isClearing}>{allSelected ? <Square size={13} /> : <CheckSquare size={13} />}{allSelected ? copy.evidenceSourcesClearSelection : copy.evidenceSourcesSelectAll}</button>
+      {selectedCount > 0 ? <><span>{copy.evidenceSourcesSelected(selectedCount)}</span><button className="vision-primary-action" data-testid="vision-speaker-clear-selected-evidence" data-evidence-testid="vision-evidence-clear-selected" type="button" onClick={() => void clearSelected()} disabled={isRefreshing || isLoadingMore || isClearing}><Trash2 size={12} />{isClearing ? copy.evidenceSourcesClearing : copy.evidenceSourcesClear}</button></> : null}
+      <button className="vision-secondary-action" type="button" onClick={() => void refresh()} disabled={isRefreshing || isLoadingMore || isClearing}><RefreshCw size={12} />{isRefreshing ? copy.evidenceSourcesRefreshing : copy.evidenceSourcesRefresh}</button>
+      {hasMore ? <button className="vision-secondary-action" data-testid="vision-evidence-load-more" type="button" onClick={() => void loadMore()} disabled={isRefreshing || isLoadingMore || isClearing}>{isLoadingMore ? copy.evidenceSourcesLoadingMore : copy.evidenceSourcesLoadMore}</button> : null}
     </div>
     {sources.length > 0 ? <div className="vision-evidence-source-list vision-speaker-evidence-source-list">{sources.map((source) => {
       const selected = getSelectedTypes(source)
       const available = VISION_DERIVED_EVIDENCE_TYPES.filter((type) => source.evidenceCounts[type] > 0)
       const sourceSelected = available.length > 0 && available.every((type) => selected.has(type))
       return <article className="vision-evidence-source vision-speaker-evidence-source" key={sourceKey(source)}>
-        <div className="vision-evidence-source-copy vision-speaker-evidence-source-copy"><div className="vision-evidence-source-title vision-speaker-evidence-source-title"><input type="checkbox" checked={sourceSelected} onChange={() => toggleSource(source)} disabled={isRefreshing || isClearing} aria-label={source.fileName} /><strong title={source.videoPath}>{source.fileName}</strong><span className={`vision-evidence-source-audit-status is-${source.auditStatus}`} data-testid={`vision-evidence-audit-status-${source.auditStatus}`}>{copy.evidenceAuditStatusLabels[source.auditStatus]}</span></div><small title={source.videoPath}>{source.videoPath}</small><em>{copy.evidenceSourceMeta(available.reduce((count, type) => count + source.evidenceCounts[type], 0), formatGeneratedAt(source.generatedAt))}</em>
-          <div className="vision-evidence-source-types">{available.map((evidenceType) => <label key={evidenceType}><input type="checkbox" checked={selected.has(evidenceType)} onChange={() => toggleType(source, evidenceType)} disabled={isRefreshing || isClearing} /><span>{copy.evidenceFilterOptions[evidenceType]} · {source.evidenceCounts[evidenceType]}</span></label>)}</div>
+        <div className="vision-evidence-source-copy vision-speaker-evidence-source-copy"><div className="vision-evidence-source-title vision-speaker-evidence-source-title"><input type="checkbox" checked={sourceSelected} onChange={() => toggleSource(source)} disabled={isRefreshing || isLoadingMore || isClearing} aria-label={source.fileName} /><strong title={source.videoPath}>{source.fileName}</strong><span className={`vision-evidence-source-audit-status is-${source.auditStatus}`} data-testid={`vision-evidence-audit-status-${source.auditStatus}`}>{copy.evidenceAuditStatusLabels[source.auditStatus]}</span></div><small title={source.videoPath}>{source.videoPath}</small><em>{copy.evidenceSourceMeta(available.reduce((count, type) => count + source.evidenceCounts[type], 0), formatGeneratedAt(source.generatedAt))}</em>
+          <div className="vision-evidence-source-types">{available.map((evidenceType) => <label key={evidenceType}><input type="checkbox" checked={selected.has(evidenceType)} onChange={() => toggleType(source, evidenceType)} disabled={isRefreshing || isLoadingMore || isClearing} /><span>{copy.evidenceFilterOptions[evidenceType]} · {source.evidenceCounts[evidenceType]}</span></label>)}</div>
         </div>
       </article>
     })}</div> : <div className="vision-evidence-sources-empty vision-speaker-evidence-sources-empty">{copy.evidenceSourcesEmpty}</div>}

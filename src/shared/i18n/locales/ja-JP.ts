@@ -351,6 +351,8 @@
       evidenceSourcesClearing: '削除中…',
       evidenceSourcesRefresh: 'ソースを更新',
       evidenceSourcesRefreshing: '更新中…',
+      evidenceSourcesLoadMore: 'ソースをさらに読み込む',
+      evidenceSourcesLoadingMore: '読み込み中…',
       evidenceSourcesEmpty: '管理できる派生映像証拠はありません。',
       evidenceSourcesCleared: (sources: number, evidence: number) => `${sources} 件のソースから ${evidence} 件の派生証拠を削除しました`,
       evidenceAuditFilterLabel: 'ソース状態',

@@ -351,6 +351,8 @@
       evidenceSourcesClearing: 'Clearing…',
       evidenceSourcesRefresh: 'Refresh sources',
       evidenceSourcesRefreshing: 'Refreshing…',
+      evidenceSourcesLoadMore: 'Load more sources',
+      evidenceSourcesLoadingMore: 'Loading…',
       evidenceSourcesEmpty: 'No manageable derived visual evidence.',
       evidenceSourcesCleared: (sources: number, evidence: number) => `Cleared ${evidence} derived rows from ${sources} sources`,
       evidenceAuditFilterLabel: 'Source status',
