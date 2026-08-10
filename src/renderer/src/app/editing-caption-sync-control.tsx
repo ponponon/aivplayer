@@ -1,4 +1,5 @@
 import { ScanSearch } from 'lucide-react'
+import { useState } from 'react'
 import type { LocaleCopy } from '../../../shared/i18n'
 import type { EditingCaption } from '../../../shared/editing-types'
 import { formatTime } from '../lib/time'
@@ -7,17 +8,31 @@ type Props = {
   caption: EditingCaption | null
   currentTime: number
   durationSeconds: number
+  selectedCaptions: readonly EditingCaption[]
   copy: LocaleCopy['editing']
   onMove: (captionId: string, startSeconds: number) => void
   onResize: (captionId: string, startSeconds: number, endSeconds: number) => void
+  onSync: (captionIds: readonly string[], sourceStartSeconds: number, sourceEndSeconds: number, targetStartSeconds: number, targetEndSeconds: number) => void
 }
 
-export function EditingCaptionSyncControl({ caption, currentTime, durationSeconds, copy, onMove, onResize }: Props): React.ReactElement | null {
+export function EditingCaptionSyncControl({ caption, currentTime, durationSeconds, selectedCaptions, copy, onMove, onResize, onSync }: Props): React.ReactElement | null {
+  const [targetStartSeconds, setTargetStartSeconds] = useState<number | null>(null)
+  const [targetEndSeconds, setTargetEndSeconds] = useState<number | null>(null)
   if (!caption) return null
   const endSeconds = caption.startSeconds + caption.durationSeconds
   const canSetStart = currentTime < endSeconds - 0.1
   const canSetEnd = currentTime > caption.startSeconds + 0.1
   const nudge = (delta: number): void => onMove(caption.id, Math.min(Math.max(0, durationSeconds - caption.durationSeconds), Math.max(0, caption.startSeconds + delta)))
+  const orderedCaptions = [...selectedCaptions].sort((left, right) => left.startSeconds - right.startSeconds || left.id.localeCompare(right.id))
+  const sourceStartSeconds = orderedCaptions.length > 1 ? orderedCaptions[0].startSeconds : 0
+  const sourceEndSeconds = orderedCaptions.length > 1 ? Math.max(...orderedCaptions.map((item) => item.startSeconds + item.durationSeconds)) : 0
+  const canApplyMultiSync = orderedCaptions.length > 1 && targetStartSeconds !== null && targetEndSeconds !== null && targetEndSeconds > targetStartSeconds + 0.001
+  const applyMultiSync = (): void => {
+    if (!canApplyMultiSync || targetStartSeconds === null || targetEndSeconds === null) return
+    onSync(orderedCaptions.map((item) => item.id), sourceStartSeconds, sourceEndSeconds, targetStartSeconds, targetEndSeconds)
+    setTargetStartSeconds(null)
+    setTargetEndSeconds(null)
+  }
   return <details className="editing-caption-sync" data-testid="editing-caption-sync">
     <summary className="editing-caption-sync-summary"><ScanSearch size={14} aria-hidden="true" /><span>{copy.subtitleSyncTitle}</span><small>{formatTime(caption.startSeconds)}</small></summary>
     <div className="editing-caption-sync-panel">
@@ -29,6 +44,7 @@ export function EditingCaptionSyncControl({ caption, currentTime, durationSecond
         <button type="button" className="editing-tool-button" onClick={() => onResize(caption.id, currentTime, endSeconds)} disabled={!canSetStart} data-testid="editing-caption-sync-set-start">{copy.subtitleSyncSetStart}</button>
         <button type="button" className="editing-tool-button" onClick={() => onResize(caption.id, caption.startSeconds, currentTime)} disabled={!canSetEnd} data-testid="editing-caption-sync-set-end">{copy.subtitleSyncSetEnd}</button>
       </div>
+      {orderedCaptions.length > 1 ? <div className="editing-caption-sync-multi" data-testid="editing-caption-multi-sync"><strong>{copy.subtitleSyncMultiTitle}</strong><small>{copy.subtitleSyncSelected(orderedCaptions.length)} · {copy.subtitleSyncSourceRange(formatTime(sourceStartSeconds), formatTime(sourceEndSeconds))}</small><div className="editing-caption-sync-actions"><button type="button" className="editing-tool-button" onClick={() => setTargetStartSeconds(currentTime)} data-testid="editing-caption-sync-mark-start">{copy.subtitleSyncMarkStart}{targetStartSeconds === null ? '' : ` · ${formatTime(targetStartSeconds)}`}</button><button type="button" className="editing-tool-button" onClick={() => setTargetEndSeconds(currentTime)} data-testid="editing-caption-sync-mark-end">{copy.subtitleSyncMarkEnd}{targetEndSeconds === null ? '' : ` · ${formatTime(targetEndSeconds)}`}</button><button type="button" className="editing-tool-button editing-tool-button-accent" onClick={applyMultiSync} disabled={!canApplyMultiSync} data-testid="editing-caption-sync-apply-multi">{copy.subtitleSyncApply}</button></div>{targetStartSeconds !== null || targetEndSeconds !== null ? <small>{copy.subtitleSyncTargetRange(targetStartSeconds === null ? '—' : formatTime(targetStartSeconds), targetEndSeconds === null ? '—' : formatTime(targetEndSeconds))}</small> : null}</div> : null}
     </div>
   </details>
 }
