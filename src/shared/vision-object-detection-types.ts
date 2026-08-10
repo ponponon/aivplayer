@@ -40,3 +40,38 @@ export type VisionObjectDetectionModelStatus = {
   missingFiles: string[]
   message: string
 }
+
+export type VisionObjectDetectionBox = {
+  xmin: number
+  ymin: number
+  xmax: number
+  ymax: number
+}
+
+export type VisionObjectDetection = {
+  label: string
+  score: number
+  box: VisionObjectDetectionBox
+}
+
+export type VisionObjectDetectionResult = {
+  providerId: VisionObjectDetectionProviderId
+  modelId: string
+  modelVersion: string
+  imagePath: string
+  threshold: number
+  detections: VisionObjectDetection[]
+  generatedAt: number
+}
+
+export type VisionObjectDetectionRequest = {
+  imagePath: string
+  threshold?: number
+}
+
+export type VisionObjectDetectionResponse = {
+  success: boolean
+  message: string
+  status: VisionObjectDetectionModelStatus
+  result: VisionObjectDetectionResult | null
+}
