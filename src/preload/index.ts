@@ -128,7 +128,7 @@ import type { VisionEvidenceAuditPage, VisionEvidenceAuditRequest, VisionEvidenc
 import type { EditingAgentProposalDecision, EditingAgentProposalRequest } from '../shared/editing-agent'
 import type { MediaImportInboxDirectoriesChangedEvent, MediaImportInboxItem, MediaImportInboxMetadataUpdateRequest, MediaImportInboxPipelineProgress, MediaImportInboxScanRequest, MediaImportInboxScanResponse, MediaImportInboxScanProgress, MediaImportInboxTransitionRequest, MediaImportInboxWatchRequest, MediaImportInboxWatchStartResult } from '../shared/media-import-inbox'
 import type { TaskCenterEvent } from '../shared/task-center-types'
-import type { VisionSearchExportCancelRequest } from '../shared/vision-search-export-types'
+import type { VisionSearchExportCancelRequest, VisionSearchExportRetryRequest } from '../shared/vision-search-export-types'
 
 const editingAgentProposalListeners = new Set<(request: EditingAgentProposalRequest) => void>()
 const queuedEditingAgentProposals: EditingAgentProposalRequest[] = []
@@ -294,6 +294,7 @@ const api = {
   searchVisionPage: (request: VisionSearchPageRequest): Promise<VisionSearchResultPage> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SEARCH_PAGE, request),
   exportVisionSearchResultsFull: (request: VisionSearchFullExportRequest): Promise<VisionSearchResultsExportResult> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SEARCH_FULL_EXPORT, request),
   cancelVisionSearchResultsFullExport: (request: VisionSearchExportCancelRequest): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SEARCH_FULL_EXPORT_CANCEL, request),
+  retryVisionSearchResultsFullExport: (request: VisionSearchExportRetryRequest): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SEARCH_FULL_EXPORT_RETRY, request),
   exportVisionSearchResults: (request: VisionSearchResultsExportRequest): Promise<VisionSearchResultsExportResult> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SEARCH_RESULTS_EXPORT, request),
   listVisionEvidenceSources: (request: VisionEvidenceSourceRequest = {}): Promise<VisionEvidenceSource[]> => ipcRenderer.invoke(IPC_CHANNELS.VISION_EVIDENCE_SOURCES, request),
   auditVisionEvidenceSources: (request: VisionEvidenceAuditRequest = {}): Promise<VisionEvidenceAuditPage> => ipcRenderer.invoke(IPC_CHANNELS.VISION_EVIDENCE_AUDIT, request),

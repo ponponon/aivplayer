@@ -18,3 +18,7 @@ export type VisionSearchExportProgress = {
 export type VisionSearchExportCancelRequest = {
   taskId: string
 }
+
+export type VisionSearchExportRetryRequest = {
+  taskId: string
+}

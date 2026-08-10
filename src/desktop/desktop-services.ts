@@ -17,6 +17,7 @@ import { VisionSavedSearchStore } from '../core/ai/vision-saved-search-store'
 import { MediaImportInboxStore } from '../core/media/media-import-inbox'
 import { createDefaultMediaImportInboxProcessorDependencies, MediaImportInboxProcessor } from '../core/media/media-import-inbox-processor'
 import { VisionIndexFailureStore } from '../core/ai/vision-index-failure-store'
+import { VisionSearchExportStore } from '../core/ai/vision-search-export-store'
 import { DramaWorkflow } from '../core/drama/drama-workflow'
 import type { DramaProviderSettings, DramaProviderSettingsInput, DramaProviderTestResult } from '../shared/drama-types'
 import { saveAppSettings } from './desktop-settings'
@@ -149,6 +150,11 @@ export function getVisionSavedSearchStore(): VisionSavedSearchStore {
 export function getVisionIndexFailureStore(): VisionIndexFailureStore {
   if (!desktopState.visionIndexFailureStore) desktopState.visionIndexFailureStore = new VisionIndexFailureStore(app.getPath('userData'))
   return desktopState.visionIndexFailureStore
+}
+
+export function getVisionSearchExportStore(): VisionSearchExportStore {
+  if (!desktopState.visionSearchExportStore) desktopState.visionSearchExportStore = new VisionSearchExportStore(app.getPath('userData'))
+  return desktopState.visionSearchExportStore
 }
 
 export function trackVisionIndexProgress(

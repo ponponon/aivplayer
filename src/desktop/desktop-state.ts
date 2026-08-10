@@ -16,6 +16,7 @@ import { VisionEntityCatalogStore } from '../core/ai/vision-entity-catalog-store
 import { SpeakerDiarizationCatalogStore } from '../core/ai/speaker-diarization-catalog-store'
 import { VisionIndexFailureStore } from '../core/ai/vision-index-failure-store'
 import { VisionSavedSearchStore } from '../core/ai/vision-saved-search-store'
+import { VisionSearchExportStore } from '../core/ai/vision-search-export-store'
 
 export const desktopState: {
   mainWindow: BrowserWindow | null
@@ -44,6 +45,7 @@ export const desktopState: {
   speakerDiarizationCatalogStore: SpeakerDiarizationCatalogStore | null
   visionSavedSearchStore: VisionSavedSearchStore | null
   visionIndexFailureStore: VisionIndexFailureStore | null
+  visionSearchExportStore: VisionSearchExportStore | null
 } = {
   mainWindow: null,
   asrRuntime: null,
@@ -70,5 +72,6 @@ export const desktopState: {
   visionEntityCatalogStore: null,
   speakerDiarizationCatalogStore: null,
   visionSavedSearchStore: null,
-  visionIndexFailureStore: null
+  visionIndexFailureStore: null,
+  visionSearchExportStore: null
 }
