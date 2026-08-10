@@ -64,6 +64,12 @@ export type VisionObjectDetectionResult = {
   generatedAt: number
 }
 
+export type VisionObjectDetectionFilterState = {
+  labelQuery: string
+  minimumScore: number
+  categoryLabels: string[]
+}
+
 export type VisionObjectDetectionRequest = {
   imagePath: string
   threshold?: number

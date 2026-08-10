@@ -3,11 +3,15 @@ import { mkdirSync, readFileSync } from 'node:fs'
 import { mkdir, rename, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import type { VisionEvidenceType, VisionSavedSearch, VisionSavedSearchInput, VisionSearchMode } from '../../shared/vision-types'
+import type { VisionObjectDetectionFilterState } from '../../shared/vision-object-detection-types'
 
 const SCHEMA_VERSION = 1
 const MAX_SAVED_SEARCHES = 100
 const MAX_NAME_LENGTH = 80
 const MAX_QUERY_LENGTH = 400
+const MAX_OBJECT_LABEL_QUERY_LENGTH = 200
+const MAX_OBJECT_CATEGORY_LABELS = 20
+const MAX_OBJECT_CATEGORY_LABEL_LENGTH = 120
 const EVIDENCE_TYPES: readonly VisionEvidenceType[] = ['subtitle', 'visual', 'scene', 'ocr', 'entity', 'object', 'speaker']
 
 type SavedSearchManifest = {
@@ -38,6 +42,29 @@ function normalizeEvidenceTypes(value: unknown): VisionEvidenceType[] {
   return EVIDENCE_TYPES.filter((item) => selected.has(item))
 }
 
+function normalizeObjectDetectionFilter(value: unknown): VisionObjectDetectionFilterState | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined
+  const raw = value as Partial<VisionObjectDetectionFilterState>
+  const labelQuery = normalizeText(raw.labelQuery, MAX_OBJECT_LABEL_QUERY_LENGTH)
+  const minimumScore = typeof raw.minimumScore === 'number' && Number.isFinite(raw.minimumScore)
+    ? Math.min(1, Math.max(0, raw.minimumScore))
+    : 0
+  const categoryLabels: string[] = []
+  const seen = new Set<string>()
+  if (Array.isArray(raw.categoryLabels)) {
+    for (const value of raw.categoryLabels) {
+      if (typeof value !== 'string') continue
+      const label = value.trim().slice(0, MAX_OBJECT_CATEGORY_LABEL_LENGTH)
+      const key = label.toLocaleLowerCase()
+      if (!label || seen.has(key) || categoryLabels.length >= MAX_OBJECT_CATEGORY_LABELS) continue
+      seen.add(key)
+      categoryLabels.push(label)
+    }
+  }
+  if (!labelQuery && minimumScore === 0 && categoryLabels.length === 0) return undefined
+  return { labelQuery, minimumScore, categoryLabels }
+}
+
 function normalizeSavedSearch(value: unknown, fallbackTimestamp = Date.now()): VisionSavedSearch | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null
   const raw = value as Partial<VisionSavedSearch>
@@ -47,15 +74,16 @@ function normalizeSavedSearch(value: unknown, fallbackTimestamp = Date.now()): V
   if (!id || !name || !query) return null
   const createdAt = typeof raw.createdAt === 'number' && Number.isFinite(raw.createdAt) ? raw.createdAt : fallbackTimestamp
   const updatedAt = typeof raw.updatedAt === 'number' && Number.isFinite(raw.updatedAt) ? raw.updatedAt : createdAt
-  return { id, name, query, mode: normalizeMode(raw.mode), evidenceTypes: normalizeEvidenceTypes(raw.evidenceTypes), createdAt, updatedAt }
+  const objectDetectionFilter = normalizeObjectDetectionFilter(raw.objectDetectionFilter)
+  return { id, name, query, mode: normalizeMode(raw.mode), evidenceTypes: normalizeEvidenceTypes(raw.evidenceTypes), ...(objectDetectionFilter ? { objectDetectionFilter } : {}), createdAt, updatedAt }
 }
 
 function cloneSavedSearch(search: VisionSavedSearch): VisionSavedSearch {
-  return { ...search, evidenceTypes: [...search.evidenceTypes] }
+  return { ...search, evidenceTypes: [...search.evidenceTypes], ...(search.objectDetectionFilter ? { objectDetectionFilter: { ...search.objectDetectionFilter, categoryLabels: [...search.objectDetectionFilter.categoryLabels] } } : {}) }
 }
 
-function queryKey(search: Pick<VisionSavedSearch, 'query' | 'mode' | 'evidenceTypes'>): string {
-  return `${search.mode}\0${search.query.toLocaleLowerCase()}\0${search.evidenceTypes.join(',')}`
+function queryKey(search: Pick<VisionSavedSearch, 'query' | 'mode' | 'evidenceTypes' | 'objectDetectionFilter'>): string {
+  return `${search.mode}\0${search.query.toLocaleLowerCase()}\0${search.evidenceTypes.join(',')}\0${JSON.stringify(search.objectDetectionFilter ?? null)}`
 }
 
 function normalizeManifest(value: unknown): VisionSavedSearch[] {
@@ -134,8 +162,9 @@ export class VisionSavedSearchStore {
     if (!name || !query) throw new Error('保存搜索需要名称和查询内容')
     const mode = normalizeMode(input?.mode)
     const evidenceTypes = normalizeEvidenceTypes(input?.evidenceTypes)
+    const objectDetectionFilter = normalizeObjectDetectionFilter(input?.objectDetectionFilter)
     const existing = typeof input?.id === 'string' ? this.searches.find((item) => item.id === input.id?.trim()) : undefined
-    const duplicate = this.searches.find((item) => item.id !== existing?.id && queryKey(item) === queryKey({ query, mode, evidenceTypes }))
+    const duplicate = this.searches.find((item) => item.id !== existing?.id && queryKey(item) === queryKey({ query, mode, evidenceTypes, objectDetectionFilter }))
     if (duplicate) return cloneSavedSearch(duplicate)
     const now = Date.now()
     const next: VisionSavedSearch = {
@@ -144,6 +173,7 @@ export class VisionSavedSearchStore {
       query,
       mode,
       evidenceTypes,
+      ...(objectDetectionFilter ? { objectDetectionFilter } : {}),
       createdAt: existing?.createdAt ?? now,
       updatedAt: now
     }

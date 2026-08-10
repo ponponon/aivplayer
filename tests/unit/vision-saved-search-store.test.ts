@@ -20,9 +20,10 @@ describe('vision saved search store', () => {
     expect(duplicate).toEqual(saved)
     const updated = first.save({ id: saved.id, name: '海边对话', query: '海边对话', mode: 'visual' })
     expect(updated).toMatchObject({ id: saved.id, name: '海边对话', query: '海边对话', mode: 'visual', evidenceTypes: [], createdAt: saved.createdAt })
-    const filtered = first.save({ name: '字幕海边对话', query: '海边对话', mode: 'hybrid', evidenceTypes: ['ocr', 'object', 'subtitle'] })
+    const filtered = first.save({ name: '字幕海边对话', query: '海边对话', mode: 'hybrid', evidenceTypes: ['ocr', 'object', 'subtitle'], objectDetectionFilter: { labelQuery: 'person', minimumScore: 0.75, categoryLabels: ['Person', 'chair'] } })
     expect(filtered.evidenceTypes).toEqual(['subtitle', 'ocr', 'object'])
-    expect(first.save({ name: '相同筛选', query: '海边对话', mode: 'hybrid', evidenceTypes: ['subtitle', 'ocr', 'object'] })).toEqual(filtered)
+    expect(filtered.objectDetectionFilter).toEqual({ labelQuery: 'person', minimumScore: 0.75, categoryLabels: ['Person', 'chair'] })
+    expect(first.save({ name: '相同筛选', query: '海边对话', mode: 'hybrid', evidenceTypes: ['subtitle', 'ocr', 'object'], objectDetectionFilter: { labelQuery: 'person', minimumScore: 0.75, categoryLabels: ['Person', 'chair'] } })).toEqual(filtered)
     await first.flush()
 
     const second = new VisionSavedSearchStore(directory)
@@ -67,5 +68,24 @@ describe('vision saved search store', () => {
     expect(target.list().map((search) => search.name)).toEqual(['已有搜索', '夜景画面'])
     await target.flush()
     expect(() => target.importManifest({ schemaVersion: 2, searches: [] })).toThrow('格式无效')
+  })
+
+  it('normalizes object filters and keeps legacy searches compatible', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'aivplayer-saved-search-'))
+    temporaryDirectories.push(directory)
+    const store = new VisionSavedSearchStore(directory)
+    const imported = store.importManifest({
+      schemaVersion: 1,
+      searches: [
+        { id: 'legacy', name: '旧搜索', query: '海边', mode: 'hybrid', evidenceTypes: [] },
+        { id: 'object', name: '物体搜索', query: '画面', mode: 'hybrid', evidenceTypes: ['object'], objectDetectionFilter: { labelQuery: '  person ', minimumScore: 2, categoryLabels: ['Person', 'person', 'chair'] } }
+      ]
+    })
+    expect(imported).toEqual({ importedCount: 2, skippedCount: 0 })
+    expect(store.list()).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'legacy', query: '海边' }),
+      expect.objectContaining({ id: 'object', objectDetectionFilter: { labelQuery: 'person', minimumScore: 1, categoryLabels: ['Person', 'chair'] } })
+    ]))
+    await store.flush()
   })
 })

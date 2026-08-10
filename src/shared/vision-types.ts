@@ -1,4 +1,4 @@
-import type { VisionObjectDetectionBox } from './vision-object-detection-types'
+import type { VisionObjectDetectionBox, VisionObjectDetectionFilterState } from './vision-object-detection-types'
 
 export const VISION_MODEL_ID = 'siglip2-base-patch16-224-ONNX'
 export const VISION_MODEL_VARIANT = 'uint8'
@@ -233,6 +233,7 @@ export type VisionSavedSearch = {
   query: string
   mode: VisionSearchMode
   evidenceTypes: VisionEvidenceType[]
+  objectDetectionFilter?: VisionObjectDetectionFilterState
   createdAt: number
   updatedAt: number
 }
@@ -243,6 +244,7 @@ export type VisionSavedSearchInput = {
   query: string
   mode?: VisionSearchMode
   evidenceTypes?: VisionEvidenceType[]
+  objectDetectionFilter?: VisionObjectDetectionFilterState
 }
 
 export type VisionSavedSearchFileResult = {
