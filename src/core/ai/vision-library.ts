@@ -47,6 +47,7 @@ import {
   type VisionEvidenceAuditStatus
 } from '../../shared/vision-types'
 import type { VisionObjectDetectionBox, VisionObjectDetectionFilterState } from '../../shared/vision-object-detection-types'
+import { VISION_SEARCH_REVISION_SCHEMA_VERSION, type VisionSearchRevision, type VisionSearchTableName } from '../../shared/vision-search-revision'
 import type { SpeakerDiarizationEvidenceBatchClearResult, SpeakerDiarizationEvidenceSource } from '../../shared/speaker-diarization-types'
 import { addVisionEvidenceCounts, aggregateVisionEvidenceSources, auditVisionEvidenceSource, createEmptyVisionEvidenceCounts, normalizeVisionDerivedEvidenceTypes, normalizeVisionEvidenceAuditStatuses, normalizeVisionEvidenceClearTargets, type VisionEvidenceSourceRow } from './vision-evidence-sources'
 
@@ -84,6 +85,7 @@ const VECTOR_INDEX_MAX_PARTITIONS = 256
 const VECTOR_INDEX_OPTIMIZE_MIN_UNINDEXED_ROWS = 256
 const VECTOR_INDEX_OPTIMIZE_RATIO = 0.05
 const METADATA_SCAN_LIMIT = 1_000_000
+const VISION_SEARCH_TABLE_NAMES: readonly VisionSearchTableName[] = [TABLE_NAME, SOURCE_TABLE_NAME, CAPTION_TABLE_NAME, SEARCH_DOCUMENT_TABLE_NAME, EVIDENCE_TABLE_NAME]
 
 function throwIfVisionSearchAborted(signal?: AbortSignal): void {
   if (!signal?.aborted) return
@@ -389,27 +391,46 @@ export class VisionLibrary {
     return this.dbPromise
   }
 
-  private async getTableByName(name: string): Promise<Table | null> {
+  async getSearchRevision(): Promise<VisionSearchRevision> {
+    const db = await this.getDatabase()
+    const tableNames = new Set(await db.tableNames())
+    const tables = {} as Record<VisionSearchTableName, number | null>
+    for (const name of VISION_SEARCH_TABLE_NAMES) {
+      if (!tableNames.has(name)) {
+        tables[name] = null
+        continue
+      }
+      tables[name] = await (await db.openTable(name)).version()
+    }
+    const revisionBody: Pick<VisionSearchRevision, 'schemaVersion' | 'tables'> = { schemaVersion: VISION_SEARCH_REVISION_SCHEMA_VERSION, tables }
+    return {
+      ...revisionBody,
+      fingerprint: createHash('sha256').update(JSON.stringify(revisionBody)).digest('hex')
+    }
+  }
+
+  private async getTableByName(name: string, revision?: VisionSearchRevision): Promise<Table | null> {
     const db = await this.getDatabase()
     const tableNames = await db.tableNames()
-    if (!tableNames.includes(name)) return null
-    return db.openTable(name)
+    const pinnedVersion = revision && name in revision.tables ? revision.tables[name as VisionSearchTableName] : undefined
+    if (pinnedVersion === null || (!revision && !tableNames.includes(name)) || (revision && pinnedVersion === undefined && !tableNames.includes(name))) return null
+    return db.openTable(name, undefined, pinnedVersion === undefined ? undefined : { version: pinnedVersion })
   }
 
-  private async getTable(): Promise<Table | null> {
-    return this.getTableByName(TABLE_NAME)
+  private async getTable(revision?: VisionSearchRevision): Promise<Table | null> {
+    return this.getTableByName(TABLE_NAME, revision)
   }
 
-  private async getSourceTable(): Promise<Table | null> {
-    return this.getTableByName(SOURCE_TABLE_NAME)
+  private async getSourceTable(revision?: VisionSearchRevision): Promise<Table | null> {
+    return this.getTableByName(SOURCE_TABLE_NAME, revision)
   }
 
-  private async getCaptionTable(): Promise<Table | null> {
-    return this.getTableByName(CAPTION_TABLE_NAME)
+  private async getCaptionTable(revision?: VisionSearchRevision): Promise<Table | null> {
+    return this.getTableByName(CAPTION_TABLE_NAME, revision)
   }
 
-  private async getSearchDocumentTable(): Promise<Table | null> {
-    return this.getTableByName(SEARCH_DOCUMENT_TABLE_NAME)
+  private async getSearchDocumentTable(revision?: VisionSearchRevision): Promise<Table | null> {
+    return this.getTableByName(SEARCH_DOCUMENT_TABLE_NAME, revision)
   }
 
   private async migrateEvidenceTableIfNeeded(): Promise<void> {
@@ -452,7 +473,8 @@ export class VisionLibrary {
     return this.evidenceSchemaMigrationPromise
   }
 
-  private async getEvidenceTable(): Promise<Table | null> {
+  private async getEvidenceTable(revision?: VisionSearchRevision): Promise<Table | null> {
+    if (revision) return this.getTableByName(EVIDENCE_TABLE_NAME, revision)
     await this.ensureEvidenceTableSchema()
     return this.getTableByName(EVIDENCE_TABLE_NAME)
   }
@@ -945,8 +967,8 @@ export class VisionLibrary {
     }
   }
 
-  private async getAllFramePointers(): Promise<VisionFramePointer[]> {
-    const table = await this.getTable()
+  private async getAllFramePointers(revision?: VisionSearchRevision): Promise<VisionFramePointer[]> {
+    const table = await this.getTable(revision)
     if (!table) return []
     const rows = await table.query()
       .select(['id', 'video_path', 'file_name', 'timestamp_seconds', 'thumbnail_path'])
@@ -955,8 +977,8 @@ export class VisionLibrary {
     return rows as unknown as VisionFramePointer[]
   }
 
-  private async getAllCaptionRows(): Promise<VisionCaptionRow[]> {
-    const table = await this.getCaptionTable()
+  private async getAllCaptionRows(revision?: VisionSearchRevision): Promise<VisionCaptionRow[]> {
+    const table = await this.getCaptionTable(revision)
     if (!table) return []
     const rows = await table.query()
       .select(['id', 'video_path', 'file_name', 'frame_id', 'timestamp_seconds', 'thumbnail_path', 'start_seconds', 'end_seconds', 'text', 'subtitle_path', 'subtitle_size_bytes', 'subtitle_mtime_ms'])
@@ -1046,19 +1068,21 @@ export class VisionLibrary {
     return this.vectorIndexMaintenancePromise
   }
 
-  private async ensureSearchDocuments(): Promise<Table | null> {
-    if (this.searchDocumentsReady) return this.getSearchDocumentTable()
-    let table = await this.getSearchDocumentTable()
-    const framePointers = await this.getAllFramePointers()
+  private async ensureSearchDocuments(revision?: VisionSearchRevision): Promise<Table | null> {
+    if (!revision && this.searchDocumentsReady) return this.getSearchDocumentTable()
+    let table = await this.getSearchDocumentTable(revision)
+    const framePointers = await this.getAllFramePointers(revision)
     if (framePointers.length === 0) return null
-    if (!table) {
+    if (!table && !revision) {
       table = await this.rebuildSearchDocuments()
-    } else {
+    } else if (table && !revision) {
       const rows = await table.query().select(['id']).limit(METADATA_SCAN_LIMIT).toArray()
       if (rows.length < framePointers.length) table = await this.rebuildSearchDocuments()
     }
-    await this.maintainSearchFullTextIndex()
-    this.searchDocumentsReady = table !== null
+    if (!revision) {
+      await this.maintainSearchFullTextIndex()
+      this.searchDocumentsReady = table !== null
+    }
     return table
   }
 
@@ -1599,9 +1623,9 @@ export class VisionLibrary {
     return results.filter((result) => !excludeRequest || !isVisionSimilarSearchTarget(result, excludeRequest)).slice(0, resultLimit)
   }
 
-  private async searchAll(embedding: number[], excludeRequest?: VisionSimilarSearchRequest, signal?: AbortSignal): Promise<VisionSearchResult[]> {
-    await this.ensureVectorIndex(false)
-    const table = await this.getTable()
+  private async searchAll(embedding: number[], excludeRequest?: VisionSimilarSearchRequest, signal?: AbortSignal, revision?: VisionSearchRevision): Promise<VisionSearchResult[]> {
+    if (!revision) await this.ensureVectorIndex(false)
+    const table = await this.getTable(revision)
     if (!table) return []
     const rows = await table.query()
       .select(['id', 'video_path', 'file_name', 'timestamp_seconds', 'thumbnail_path', 'embedding', 'model_id', 'model_variant'])
@@ -1615,7 +1639,7 @@ export class VisionLibrary {
       })
       .filter(({ score }) => Number.isFinite(score))
       .sort((left, right) => right.score - left.score || String(left.item.id).localeCompare(String(right.item.id)))
-    const evidenceByFrame = await this.getVisualEvidenceByFrameIds(scoredRows.map(({ item }) => String(item.id)), signal)
+    const evidenceByFrame = await this.getVisualEvidenceByFrameIds(scoredRows.map(({ item }) => String(item.id)), signal, revision)
     const results = scoredRows.map(({ item, score }, index) => {
       if (index % 256 === 0) throwIfVisionSearchAborted(signal)
       const frameId = String(item.id)
@@ -1646,11 +1670,11 @@ export class VisionLibrary {
     return results.filter((result) => !excludeRequest || !isVisionSimilarSearchTarget(result, excludeRequest))
   }
 
-  private async getVisualEvidenceByFrameIds(frameIds: readonly string[], signal?: AbortSignal): Promise<Map<string, VisionEvidenceRow>> {
+  private async getVisualEvidenceByFrameIds(frameIds: readonly string[], signal?: AbortSignal, revision?: VisionSearchRevision): Promise<Map<string, VisionEvidenceRow>> {
     const result = new Map<string, VisionEvidenceRow>()
     if (frameIds.length === 0) return result
     try {
-      const table = await this.getEvidenceTable()
+      const table = await this.getEvidenceTable(revision)
       if (!table) return result
       const wanted = new Set(frameIds)
       const rows = await table.query()
@@ -1677,9 +1701,9 @@ export class VisionLibrary {
     }))
   }
 
-  private async searchLexicalByScan(query: string, limit: number, full = false, signal?: AbortSignal): Promise<LexicalSearchCandidate[]> {
+  private async searchLexicalByScan(query: string, limit: number, full = false, signal?: AbortSignal, revision?: VisionSearchRevision): Promise<LexicalSearchCandidate[]> {
     const candidates = new Map<string, LexicalSearchCandidate>()
-    const captionTable = await this.getCaptionTable()
+    const captionTable = await this.getCaptionTable(revision)
     if (captionTable) {
       const rows = await captionTable.query()
         .select(['id', 'video_path', 'file_name', 'frame_id', 'timestamp_seconds', 'thumbnail_path', 'start_seconds', 'end_seconds', 'text'])
@@ -1712,7 +1736,7 @@ export class VisionLibrary {
       }
     }
 
-    const frameTable = await this.getTable()
+    const frameTable = await this.getTable(revision)
     if (frameTable) {
       const rows = await frameTable.query()
         .select(['id', 'video_path', 'file_name', 'timestamp_seconds', 'thumbnail_path', 'model_id', 'model_variant'])
@@ -1747,8 +1771,8 @@ export class VisionLibrary {
       .slice(0, fullSearchCandidateLimit(full, limit))
   }
 
-  private async searchLexicalByEvidence(query: string, limit: number, full = false, signal?: AbortSignal): Promise<LexicalSearchCandidate[] | null> {
-    const table = await this.getEvidenceTable()
+  private async searchLexicalByEvidence(query: string, limit: number, full = false, signal?: AbortSignal, revision?: VisionSearchRevision): Promise<LexicalSearchCandidate[] | null> {
+    const table = await this.getEvidenceTable(revision)
     if (!table) return null
     const candidates = new Map<string, LexicalSearchCandidate>()
     const rows = await table.query()
@@ -1794,16 +1818,16 @@ export class VisionLibrary {
       .slice(0, fullSearchCandidateLimit(full, limit))
   }
 
-  private async searchLexical(query: string, limit: number, full = false, signal?: AbortSignal): Promise<LexicalSearchCandidate[]> {
+  private async searchLexical(query: string, limit: number, full = false, signal?: AbortSignal, revision?: VisionSearchRevision): Promise<LexicalSearchCandidate[]> {
     try {
-      const evidenceCandidates = await this.searchLexicalByEvidence(query, limit, full, signal)
+      const evidenceCandidates = await this.searchLexicalByEvidence(query, limit, full, signal, revision)
       if (evidenceCandidates) return evidenceCandidates
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') throw error
       // Fall through to the legacy caption/FTS path for old or partially written indexes.
     }
     try {
-      const table = await this.ensureSearchDocuments()
+      const table = await this.ensureSearchDocuments(revision)
       if (!table) return []
       const rows = await table.query()
         .fullTextSearch(query, { columns: SEARCH_TEXT_COLUMN })
@@ -1837,12 +1861,12 @@ export class VisionLibrary {
         .slice(0, fullSearchCandidateLimit(full, limit))
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') throw error
-      return this.searchLexicalByScan(query, limit, full, signal)
+      return this.searchLexicalByScan(query, limit, full, signal, revision)
     }
   }
 
-  private async listObjectEvidenceByFilter(filter: VisionObjectDetectionFilterState, signal?: AbortSignal): Promise<VisionEvidenceRow[]> {
-    const table = await this.getEvidenceTable()
+  private async listObjectEvidenceByFilter(filter: VisionObjectDetectionFilterState, signal?: AbortSignal, revision?: VisionSearchRevision): Promise<VisionEvidenceRow[]> {
+    const table = await this.getEvidenceTable(revision)
     if (!table) return []
     const labelQuery = filter.labelQuery.trim().toLocaleLowerCase()
     const categoryLabels = new Set(filter.categoryLabels.map((label) => label.trim().toLocaleLowerCase()).filter(Boolean))
@@ -1978,10 +2002,10 @@ export class VisionLibrary {
       .slice(0, clampLimit(limit))
   }
 
-  private async searchHybridAll(embedding: number[], query: string, signal?: AbortSignal): Promise<VisionSearchResult[]> {
-    const visualResults = await this.searchAll(embedding, undefined, signal)
+  private async searchHybridAll(embedding: number[], query: string, signal?: AbortSignal, revision?: VisionSearchRevision): Promise<VisionSearchResult[]> {
+    const visualResults = await this.searchAll(embedding, undefined, signal, revision)
     const visualCandidates = visualResults.map((result, index) => ({ result, visualRankScore: 1 - index / Math.max(1, visualResults.length) }))
-    const lexicalCandidates = await this.searchLexical(query, VISION_SEARCH_FULL_EXPORT_MAX_RESULTS, true, signal)
+    const lexicalCandidates = await this.searchLexical(query, VISION_SEARCH_FULL_EXPORT_MAX_RESULTS, true, signal, revision)
     const merged = new Map<string, { result: VisionSearchResult; visualRankScore: number; lexicalScore: number; matchSource: VisionMatchSource }>()
     const mergeKey = (result: VisionSearchResult): string => `${result.videoPath}\0${getVisionSearchResultKey(result)}`
 
@@ -2050,16 +2074,16 @@ export class VisionLibrary {
     }
   }
 
-  private async searchTextBaseAll(query: string, mode: VisionSearchMode = 'hybrid', signal?: AbortSignal): Promise<VisionSearchResult[]> {
+  private async searchTextBaseAll(query: string, mode: VisionSearchMode = 'hybrid', signal?: AbortSignal, revision?: VisionSearchRevision): Promise<VisionSearchResult[]> {
     const normalizedQuery = query.trim()
     if (!normalizedQuery) return []
-    if (mode === 'visual') return this.searchAll(await this.model.getTextEmbedding(normalizedQuery), undefined, signal)
+    if (mode === 'visual') return this.searchAll(await this.model.getTextEmbedding(normalizedQuery), undefined, signal, revision)
     try {
       const embedding = await this.model.getTextEmbedding(normalizedQuery)
-      return await this.searchHybridAll(embedding, normalizedQuery, signal)
+      return await this.searchHybridAll(embedding, normalizedQuery, signal, revision)
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') throw error
-      const lexicalCandidates = await this.searchLexical(normalizedQuery, VISION_SEARCH_FULL_EXPORT_MAX_RESULTS, true, signal)
+      const lexicalCandidates = await this.searchLexical(normalizedQuery, VISION_SEARCH_FULL_EXPORT_MAX_RESULTS, true, signal, revision)
       if (lexicalCandidates.length === 0) throw error
       return lexicalCandidates.map((candidate) => ({
         ...candidate.result,
@@ -2083,12 +2107,12 @@ export class VisionLibrary {
     return this.mergeObjectScopedResults(scopedResults, directResults, targetLimit)
   }
 
-  async searchTextAll(query: string, mode: VisionSearchMode = 'hybrid', objectDetectionFilter?: VisionObjectDetectionFilterState, signal?: AbortSignal): Promise<VisionSearchResult[]> {
+  async searchTextAll(query: string, mode: VisionSearchMode = 'hybrid', objectDetectionFilter?: VisionObjectDetectionFilterState, signal?: AbortSignal, revision?: VisionSearchRevision): Promise<VisionSearchResult[]> {
     const normalizedFilter = normalizeVisionObjectDetectionFilterState(objectDetectionFilter)
-    if (!normalizedFilter || !isVisionObjectDetectionFilterActive(normalizedFilter)) return this.searchTextBaseAll(query, mode, signal)
-    const rows = await this.listObjectEvidenceByFilter(normalizedFilter, signal)
+    if (!normalizedFilter || !isVisionObjectDetectionFilterActive(normalizedFilter)) return this.searchTextBaseAll(query, mode, signal, revision)
+    const rows = await this.listObjectEvidenceByFilter(normalizedFilter, signal, revision)
     if (rows.length === 0) return []
-    const expandedResults = await this.searchTextBaseAll(query, mode, signal)
+    const expandedResults = await this.searchTextBaseAll(query, mode, signal, revision)
     const scopedResults = this.filterResultsByObjectEvidence(expandedResults, rows)
     const directResults = this.searchObjectEvidenceRows(query.trim(), rows, VISION_SEARCH_FULL_EXPORT_MAX_RESULTS, true)
     return this.mergeObjectScopedResults(scopedResults, directResults, VISION_SEARCH_FULL_EXPORT_MAX_RESULTS, true)
@@ -2106,13 +2130,13 @@ export class VisionLibrary {
     return this.filterResultsByObjectEvidence(expandedResults, rows).slice(0, targetLimit)
   }
 
-  async searchImageAll(imagePath: string, objectDetectionFilter?: VisionObjectDetectionFilterState, signal?: AbortSignal): Promise<VisionSearchResult[]> {
+  async searchImageAll(imagePath: string, objectDetectionFilter?: VisionObjectDetectionFilterState, signal?: AbortSignal, revision?: VisionSearchRevision): Promise<VisionSearchResult[]> {
     const image = await stat(imagePath)
     if (!image.isFile()) throw new Error('以图搜图输入不是有效文件')
     const normalizedFilter = normalizeVisionObjectDetectionFilterState(objectDetectionFilter)
-    const results = await this.searchAll(await this.model.getImageEmbedding(imagePath), undefined, signal)
+    const results = await this.searchAll(await this.model.getImageEmbedding(imagePath), undefined, signal, revision)
     if (!normalizedFilter || !isVisionObjectDetectionFilterActive(normalizedFilter)) return results
-    const rows = await this.listObjectEvidenceByFilter(normalizedFilter, signal)
+    const rows = await this.listObjectEvidenceByFilter(normalizedFilter, signal, revision)
     return this.filterResultsByObjectEvidence(results, rows)
   }
 
@@ -2124,11 +2148,11 @@ export class VisionLibrary {
     return this.search(embedding, normalizedRequest.limit ?? 24, normalizedRequest)
   }
 
-  async searchSimilarAll(request: VisionSimilarSearchRequest, signal?: AbortSignal): Promise<VisionSearchResult[]> {
+  async searchSimilarAll(request: VisionSimilarSearchRequest, signal?: AbortSignal, revision?: VisionSearchRevision): Promise<VisionSearchResult[]> {
     const normalizedRequest = normalizeVisionSimilarSearchRequest(request)
     if (!normalizedRequest?.thumbnailPath) return []
     await this.readThumbnail(normalizedRequest.thumbnailPath)
-    return this.searchAll(await this.model.getImageEmbedding(normalizedRequest.thumbnailPath), normalizedRequest, signal)
+    return this.searchAll(await this.model.getImageEmbedding(normalizedRequest.thumbnailPath), normalizedRequest, signal, revision)
   }
 
   async readThumbnail(thumbnailPath: string): Promise<string> {

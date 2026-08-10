@@ -68,4 +68,30 @@ describe('vision full-library search', () => {
 
     expect(results.map((item) => item.id)).toEqual(['frame-a', 'frame-c', 'frame-b'])
   })
+
+  it('reads lexical results from a pinned LanceDB revision', async () => {
+    const userDataPath = await mkdtemp(join(tmpdir(), 'aivplayer-full-search-revision-'))
+    temporaryDirectories.push(userDataPath)
+    const library = new VisionLibrary({ userDataPath, resourcePath: join(process.cwd(), 'resources'), env: process.env })
+    await library.upsertEvidence({
+      id: 'ocr-v1', sourceId: 'source-v1', videoPath: '/media/v1.mp4', fileName: 'v1.mp4', evidenceType: 'ocr',
+      startSeconds: 0, endSeconds: 1, text: 'person', frameId: 'frame-v1', thumbnailPath: '/thumb/v1.jpg',
+      sourceFingerprint: 'v1', modelId: 'test-model', modelVariant: 'test', generatedAt: 1
+    })
+    const revision = await library.getSearchRevision()
+    await library.upsertEvidence({
+      id: 'ocr-v2', sourceId: 'source-v2', videoPath: '/media/v2.mp4', fileName: 'v2.mp4', evidenceType: 'ocr',
+      startSeconds: 0, endSeconds: 1, text: 'person', frameId: 'frame-v2', thumbnailPath: '/thumb/v2.jpg',
+      sourceFingerprint: 'v2', modelId: 'test-model', modelVariant: 'test', generatedAt: 2
+    })
+
+    const runtime = (library as unknown as { model: { getTextEmbedding: () => Promise<number[]> } }).model
+    runtime.getTextEmbedding = async () => { throw new Error('offline test model') }
+    const currentResults = await library.searchTextAll('person')
+    const pinnedResults = await library.searchTextAll('person', 'hybrid', undefined, undefined, revision)
+
+    expect(currentResults.map((item) => item.id)).toEqual(['ocr-v1', 'ocr-v2'])
+    expect(pinnedResults.map((item) => item.id)).toEqual(['ocr-v1'])
+    expect(revision.tables.video_evidence).toEqual(expect.any(Number))
+  })
 })
