@@ -107,6 +107,8 @@ export const IPC_CHANNELS = {
   VISION_SAVED_SEARCH_LIST: 'vision:saved-search-list',
   VISION_SAVED_SEARCH_SAVE: 'vision:saved-search-save',
   VISION_SAVED_SEARCH_DELETE: 'vision:saved-search-delete',
+  VISION_SAVED_SEARCH_EXPORT: 'vision:saved-search-export',
+  VISION_SAVED_SEARCH_IMPORT: 'vision:saved-search-import',
   VISION_ENTITY_CATALOG_GET: 'vision:entity-catalog-get',
   VISION_ENTITY_CATALOG_CREATE: 'vision:entity-catalog-create',
   VISION_ENTITY_CATALOG_UPDATE: 'vision:entity-catalog-update',

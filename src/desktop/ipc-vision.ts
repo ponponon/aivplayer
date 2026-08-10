@@ -1,5 +1,5 @@
 import { app, ipcMain } from 'electron'
-import { writeFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type { VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionEvidenceType, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionSavedSearchInput, VisionSearchRequest, VisionSearchResult } from '../shared/vision-types'
@@ -8,7 +8,9 @@ import { scanVisionDirectory, isVisionScanAbortError } from '../core/ai/vision-d
 import { renderVisionClipCollectionExport } from '../core/ai/clip-inbox-export'
 import { getClipInboxStore, getMediaImportInboxStore, getSpeakerDiarizationCatalogStore, getVisionEntityCatalogStore, getVisionIndexCoordinator, getVisionIndexFailureStore, getVisionIndexQueue, getVisionLibrary, getVisionSavedSearchStore, trackVisionIndexProgress } from './desktop-services'
 import { desktopState } from './desktop-state'
-import { promptForSavePath } from './media-dialogs'
+import { promptForOpenPath, promptForSavePath } from './media-dialogs'
+import { getCurrentLocale } from './desktop-settings'
+import { getAppCopy } from '../shared/i18n'
 import { createVisionTaskCenterEvent } from '../core/tasks/task-center-adapters'
 import { sendTaskCenterEvent } from './task-center-events'
 import { VISION_INDEX_FAILURE_MAX_RETRY_BATCH } from '../core/ai/vision-index-failure'
@@ -205,6 +207,39 @@ export function registerVisionIpc(): void {
   ipcMain.handle(IPC_CHANNELS.VISION_SAVED_SEARCH_DELETE, (_event, id: string) => {
     if (typeof id !== 'string' || !id.trim()) return false
     return getVisionSavedSearchStore().delete(id)
+  })
+  ipcMain.handle(IPC_CHANNELS.VISION_SAVED_SEARCH_EXPORT, async () => {
+    const copy = getAppCopy(getCurrentLocale()).vision
+    const defaultPath = join(app.getPath('documents'), 'aivplayer-vision-searches.json')
+    const filePath = await promptForSavePath({
+      title: copy.savedSearchExport,
+      defaultPath,
+      filters: [{ name: 'JSON files', extensions: ['json'] }]
+    })
+    if (!filePath) return { success: false, canceled: true, message: '' }
+    const outputPath = filePath.toLowerCase().endsWith('.json') ? filePath : `${filePath}.json`
+    try {
+      await writeFile(outputPath, `${JSON.stringify(getVisionSavedSearchStore().exportManifest(), null, 2)}\n`, 'utf8')
+      return { success: true, filePath: outputPath, message: '' }
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : String(error) }
+    }
+  })
+  ipcMain.handle(IPC_CHANNELS.VISION_SAVED_SEARCH_IMPORT, async () => {
+    const copy = getAppCopy(getCurrentLocale()).vision
+    const filePath = await promptForOpenPath({
+      title: copy.savedSearchImport,
+      filters: [{ name: 'JSON files', extensions: ['json'] }]
+    })
+    if (!filePath) return { success: false, canceled: true, message: '' }
+    try {
+      const manifest = JSON.parse(await readFile(filePath, 'utf8')) as unknown
+      const result = getVisionSavedSearchStore().importManifest(manifest)
+      await getVisionSavedSearchStore().flush()
+      return { success: true, filePath, importedCount: result.importedCount, skippedCount: result.skippedCount, message: '' }
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : String(error) }
+    }
   })
 
   ipcMain.handle(IPC_CHANNELS.VISION_LIST_SOURCES, (_event, request: VisionLibrarySourceRequest = {}) => listVisionSourcesWithMetadata(request))
