@@ -40,6 +40,12 @@
 - 经验：涉及原生模块时必须同时检查构建产物、安装路径和运行时加载入口，不能只看 builder 日志里的编译成功。
 - 处理：wrapper 按 `uname -m` 设置 `NAPI_RS_NATIVE_LIBRARY_PATH`，并把 x86_64 / ARM64 两条路径纳入静态检查。
 
+## 2026-08-10：固定源码 commit 的检查需要完整 Git 历史
+
+- 现象：本地 `flatpak:check` 能验证 manifest 固定的应用源码 commit 包含桌面入口、MetaInfo、图标和截图，但 GitHub Actions 默认 `actions/checkout` 只拉取深度为 1 的当前提交，远程静态检查因此误报源码 commit 缺少文件。
+- 经验：凡是用 `git cat-file <commit>:<path>` 验证可重建输入的 CI 检查，必须显式保证对象已被 checkout；不能把本地完整 clone 的结果当成 CI 默认行为。
+- 处理：Flatpak 静态检查 job 使用 `fetch-depth: 0`，让固定 commit 的内容校验与本地、远程语义一致。
+
 ## Electron 打包不能依赖自动安装的 peer dependency
 
 - `@lancedb/lancedb` 的运行时代码会直接 `require("apache-arrow")`，但它把 Apache Arrow 声明为 peer dependency。npm 在开发机上可能把这个 peer 自动安装到顶层 `node_modules`，造成开发态误以为依赖完整；electron-builder 只按应用的生产依赖收集资源时则可能把它漏出 `.app`，最终主进程在启动阶段报 `Cannot find module 'apache-arrow'`。
