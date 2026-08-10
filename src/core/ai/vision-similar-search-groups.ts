@@ -1,4 +1,5 @@
 import type { VisionSearchResult } from '../../shared/vision-types'
+import type { VisionSearchSortMode } from '../../shared/vision-types'
 
 export const VISION_SIMILAR_SHOT_GROUP_GAP_SECONDS = 6
 
@@ -70,4 +71,23 @@ export function groupVisionSimilarSearchResults(
   return groups
     .map((group) => ({ ...group, results: [...group.results].sort((left, right) => right.score - left.score || left.timestampSeconds - right.timestampSeconds) }))
     .sort(compareByRelevance)
+}
+
+export function sortVisionSimilarSearchGroups(
+  groups: readonly VisionSimilarSearchGroup[],
+  sortMode: VisionSearchSortMode
+): VisionSimilarSearchGroup[] {
+  const normalized = groups.map((group) => ({
+    ...group,
+    results: [...group.results].sort((left, right) => {
+      if (sortMode === 'source-time') return left.timestampSeconds - right.timestampSeconds || right.score - left.score
+      if (sortMode === 'file-name') return left.fileName.localeCompare(right.fileName) || left.timestampSeconds - right.timestampSeconds || right.score - left.score
+      return right.score - left.score || left.timestampSeconds - right.timestampSeconds
+    })
+  }))
+  return normalized.sort((left, right) => {
+    if (sortMode === 'source-time') return left.videoPath.localeCompare(right.videoPath) || left.startSeconds - right.startSeconds
+    if (sortMode === 'file-name') return left.fileName.localeCompare(right.fileName) || left.startSeconds - right.startSeconds
+    return (right.results[0]?.score ?? 0) - (left.results[0]?.score ?? 0) || left.startSeconds - right.startSeconds
+  })
 }

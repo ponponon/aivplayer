@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupVisionSimilarSearchResults, VISION_SIMILAR_SHOT_GROUP_GAP_SECONDS } from '../../src/core/ai/vision-similar-search-groups'
+import { groupVisionSimilarSearchResults, sortVisionSimilarSearchGroups, VISION_SIMILAR_SHOT_GROUP_GAP_SECONDS } from '../../src/core/ai/vision-similar-search-groups'
 import type { VisionSearchResult } from '../../src/shared/vision-types'
 
 function result(id: string, videoPath: string, timestampSeconds: number, score: number): VisionSearchResult {
@@ -50,5 +50,15 @@ describe('vision similar search groups', () => {
 
     expect(groups).toHaveLength(2)
     expect(groups.flatMap((group) => group.results.map((item) => item.id))).toEqual(['frame-1', 'frame-2'])
+  })
+
+  it('keeps the existing result sort choices meaningful for grouped results', () => {
+    const groups = groupVisionSimilarSearchResults([
+      result('frame-b', '/videos/b.mp4', 2, 0.8),
+      result('frame-a', '/videos/a.mp4', 5, 0.7)
+    ])
+
+    expect(sortVisionSimilarSearchGroups(groups, 'source-time').map((group) => group.videoPath)).toEqual(['/videos/a.mp4', '/videos/b.mp4'])
+    expect(sortVisionSimilarSearchGroups(groups, 'file-name').map((group) => group.fileName)).toEqual(['a.mp4', 'b.mp4'])
   })
 })
