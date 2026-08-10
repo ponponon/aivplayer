@@ -19,7 +19,7 @@ import { getCurrentLocale } from './desktop-settings'
 import { getAppCopy } from '../shared/i18n'
 import { createVisionSearchExportTaskCenterEvent, createVisionTaskCenterEvent } from '../core/tasks/task-center-adapters'
 import { sendTaskCenterEvent } from './task-center-events'
-import type { VisionSearchExportCancelRequest, VisionSearchExportProgress, VisionSearchExportRetryRequest } from '../shared/vision-search-export-types'
+import type { VisionSearchExportBatchRecreateRequest, VisionSearchExportCancelRequest, VisionSearchExportProgress, VisionSearchExportRetryRequest } from '../shared/vision-search-export-types'
 import { getVisionSearchRevisionBody, isVisionSearchRevisionUnavailableError, type VisionSearchCatalogSnapshot, type VisionSearchRevision } from '../shared/vision-search-revision'
 import { VISION_INDEX_FAILURE_MAX_RETRY_BATCH } from '../core/ai/vision-index-failure'
 import { mergeVisionLibrarySourceMetadata } from '../core/ai/vision-library-source-metadata'
@@ -30,6 +30,7 @@ import { normalizeVisionObjectDetectionFilterState } from '../core/ai/vision-obj
 import { normalizeVisionSimilarSearchRequest } from '../core/ai/vision-similar-search'
 import { VisionSearchCursorStore, VISION_SEARCH_SNAPSHOT_MAX_RESULTS } from '../core/ai/vision-search-cursor'
 import { createEmptyVisionEvidenceCounts, normalizeVisionEvidenceAuditStatuses, normalizeVisionEvidenceClearTargets, normalizeVisionDerivedEvidenceTypes } from '../core/ai/vision-evidence-sources'
+import { normalizeVisionSearchExportTaskIds } from '../core/ai/vision-search-export-recreate'
 
 const VISION_EVIDENCE_TYPES: readonly VisionEvidenceType[] = ['subtitle', 'visual', 'scene', 'ocr', 'entity', 'object', 'speaker']
 
@@ -231,6 +232,17 @@ function startVisionSearchExportTask(task: VisionSearchExportTaskRecord): boolea
   return true
 }
 
+function createRecreatedVisionSearchExportTask(sourceTask: VisionSearchExportTaskRecord, searchRevision: VisionSearchRevision): VisionSearchExportTaskRecord {
+  const recreatedTaskId = randomUUID()
+  return getVisionSearchExportStore().create({
+    taskId: recreatedTaskId,
+    request: sourceTask.request,
+    outputPath: sourceTask.outputPath,
+    partsDirectory: getVisionSearchExportPartsDirectory(app.getPath('userData'), recreatedTaskId),
+    searchRevision
+  })
+}
+
 export function resumeVisionSearchExports(): void {
   const store = getVisionSearchExportStore()
   for (const task of store.listRecoverable()) {
@@ -430,16 +442,32 @@ export function registerVisionIpc(): void {
     } catch {
       return false
     }
-    const recreatedTaskId = randomUUID()
-    const task = store.create({
-      taskId: recreatedTaskId,
-      request: sourceTask.request,
-      outputPath: sourceTask.outputPath,
-      partsDirectory: getVisionSearchExportPartsDirectory(app.getPath('userData'), recreatedTaskId),
-      searchRevision
-    })
+    const task = createRecreatedVisionSearchExportTask(sourceTask, searchRevision)
     startVisionSearchExportTask(task)
     return true
+  })
+
+  ipcMain.handle(IPC_CHANNELS.VISION_SEARCH_FULL_EXPORT_BATCH_RECREATE, async (_event, request: VisionSearchExportBatchRecreateRequest): Promise<number> => {
+    const taskIds = normalizeVisionSearchExportTaskIds(request?.taskIds)
+    if (taskIds.length === 0) return 0
+    const store = getVisionSearchExportStore()
+    const sourceTasks = taskIds
+      .map((taskId) => store.get(taskId))
+      .filter((task): task is VisionSearchExportTaskRecord => Boolean(task && (task.status === 'failed' || task.status === 'cancelled') && !desktopState.visionSearchExportAbortControllers.has(task.taskId)))
+    if (sourceTasks.length === 0) return 0
+    let searchRevision: VisionSearchRevision
+    try {
+      searchRevision = await getVisionSearchRevisionWithCatalogs()
+    } catch {
+      return 0
+    }
+    let createdCount = 0
+    for (const sourceTask of sourceTasks) {
+      const task = createRecreatedVisionSearchExportTask(sourceTask, searchRevision)
+      startVisionSearchExportTask(task)
+      createdCount += 1
+    }
+    return createdCount
   })
 
   ipcMain.handle(IPC_CHANNELS.VISION_SEARCH_RESULTS_EXPORT, async (_event, request: VisionSearchResultsExportRequest): Promise<VisionSearchResultsExportResult> => {

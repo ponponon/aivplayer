@@ -110,6 +110,7 @@ export const IPC_CHANNELS = {
   VISION_SEARCH_FULL_EXPORT_CANCEL: 'vision:search-full-export-cancel',
   VISION_SEARCH_FULL_EXPORT_RETRY: 'vision:search-full-export-retry',
   VISION_SEARCH_FULL_EXPORT_RECREATE: 'vision:search-full-export-recreate',
+  VISION_SEARCH_FULL_EXPORT_BATCH_RECREATE: 'vision:search-full-export-batch-recreate',
   VISION_SEARCH_RESULTS_EXPORT: 'vision:search-results-export',
   VISION_EVIDENCE_SOURCES: 'vision:evidence-sources',
   VISION_EVIDENCE_AUDIT: 'vision:evidence-audit',
