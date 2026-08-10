@@ -3,6 +3,7 @@ import type { LocaleCopy } from '../../../shared/i18n'
 import type { VisionSearchResult, VisionSearchSortMode } from '../../../shared/vision-types'
 import { sortVisionSearchResults } from '../../../core/ai/vision-search'
 import { groupVisionSimilarSearchResults, sortVisionSimilarSearchGroups, type VisionSimilarSearchGroup } from '../../../core/ai/vision-similar-search-groups'
+import { VisionResultThumbnail } from './vision-result-thumbnail'
 
 type VisionSearchResultsProps = {
   copy: LocaleCopy['vision']
@@ -36,7 +37,7 @@ export function VisionSearchResults({ copy, results, thumbnailUrls, onOpenResult
       </label>
       <div className="vision-result-content">
         <button className="vision-result" type="button" data-evidence-id={result.evidenceId ?? result.id} data-evidence-type={result.evidenceType ?? 'visual'} onClick={() => onOpenResult(result)} title={copy.clickResult}>
-          {thumbnailUrls[result.id] ? <img src={thumbnailUrls[result.id]} alt="" /> : <span className="vision-result-placeholder"><ScanSearch size={18} /></span>}
+          {thumbnailUrls[result.id] ? <VisionResultThumbnail src={thumbnailUrls[result.id]} alt="" box={result.evidenceType === 'object' ? result.box : undefined} /> : <span className="vision-result-placeholder"><ScanSearch size={18} /></span>}
           <span className="vision-result-copy"><strong>{result.fileName}</strong><span>{result.evidenceType === 'ocr' ? `${copy.ocrResultLabel} · ` : ''}{formatEvidenceRange(result)} · {copy.score(result.score)}</span>{result.matchedText ? <span className="vision-result-match">{result.matchedText}</span> : null}{result.evidenceType === 'object' && result.box ? <span className="vision-result-match">{copy.objectDetectionBox(formatObjectBox(result.box))}</span> : null}</span>
         </button>
         <div className="vision-result-actions">
