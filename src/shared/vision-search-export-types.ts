@@ -22,3 +22,7 @@ export type VisionSearchExportCancelRequest = {
 export type VisionSearchExportRetryRequest = {
   taskId: string
 }
+
+export type VisionSearchExportBatchRecreateRequest = {
+  taskIds: string[]
+}
