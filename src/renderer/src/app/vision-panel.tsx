@@ -28,7 +28,7 @@ import { VisionEvidenceSources } from './vision-evidence-sources'
 import type { VisionEntityCatalog as VisionEntityCatalogState, VisionEntityCatalogBatchPatch, VisionEntityCatalogCreateInput, VisionEntityCatalogPatch } from '../../../shared/vision-entity-types'
 
 const VISION_SOURCE_PAGE_SIZE = 100
-const VISION_EVIDENCE_TYPE_OPTIONS: readonly VisionEvidenceType[] = ['visual', 'subtitle', 'ocr', 'scene', 'entity', 'speaker']
+const VISION_EVIDENCE_TYPE_OPTIONS: readonly VisionEvidenceType[] = ['visual', 'subtitle', 'ocr', 'scene', 'entity', 'object', 'speaker']
 
 type VisionSearchBaseContext =
   | { kind: 'text'; query: string; mode: VisionSavedSearch['mode']; evidenceTypes: VisionEvidenceType[] }
@@ -83,6 +83,7 @@ export function VisionPanel(): React.ReactElement {
   const [sampleImageName, setSampleImageName] = useState<string | null>(null)
   const [includeSceneEvidence, setIncludeSceneEvidence] = useState(false)
   const [includeEntityEvidence, setIncludeEntityEvidence] = useState(false)
+  const [includeObjectEvidence, setIncludeObjectEvidence] = useState(false)
   const [results, setResults] = useState<VisionSearchResult[]>([])
   const [searchResultLimit, setSearchResultLimit] = useState(VISION_SEARCH_PAGE_SIZE)
   const [hasMoreSearchResults, setHasMoreSearchResults] = useState(false)
@@ -321,7 +322,7 @@ export function VisionPanel(): React.ReactElement {
     if (app.state.playlist.length === 0 || isBusy) return
     setError(null)
     setProgress(null)
-    void window.aiv.startVisionIndex({ mediaPaths: app.state.playlist.map((file) => file.path), intervalSeconds: 3, includeSceneEvidence, includeEntityEvidence }).catch((reason: unknown) => {
+    void window.aiv.startVisionIndex({ mediaPaths: app.state.playlist.map((file) => file.path), intervalSeconds: 3, includeSceneEvidence, includeEntityEvidence, includeObjectEvidence }).catch((reason: unknown) => {
       setError(reason instanceof Error ? reason.message : String(reason))
     })
   }
@@ -330,7 +331,7 @@ export function VisionPanel(): React.ReactElement {
     if (folder.videoPaths.length === 0 || isBusy) return
     setError(null)
     setProgress(null)
-    void window.aiv.startVisionIndex({ mediaPaths: folder.videoPaths, intervalSeconds: 3, includeSceneEvidence, includeEntityEvidence }).catch((reason: unknown) => {
+    void window.aiv.startVisionIndex({ mediaPaths: folder.videoPaths, intervalSeconds: 3, includeSceneEvidence, includeEntityEvidence, includeObjectEvidence }).catch((reason: unknown) => {
       setError(reason instanceof Error ? reason.message : String(reason))
     })
   }
@@ -729,6 +730,8 @@ export function VisionPanel(): React.ReactElement {
           ? app.copy.vision.sceneAnalyzing(progress.sceneEvidenceProcessed ?? 0, progress.sceneEvidenceTotal ?? 0)
         : progress?.stage === 'entity-evidence'
           ? app.copy.vision.entityAnalyzing(progress.entityEvidenceProcessed ?? 0, progress.entityEvidenceTotal ?? 0)
+        : progress?.stage === 'object-evidence'
+          ? app.copy.vision.objectAnalyzing(progress.objectEvidenceProcessed ?? 0, progress.objectEvidenceTotal ?? 0)
         : progress?.stage === 'vector-index'
           ? app.copy.vision.vectorIndexing
           : progress?.stage === 'text-index'
@@ -751,6 +754,7 @@ export function VisionPanel(): React.ReactElement {
       formatDuration(progress.timings.framesMs),
       formatDuration(progress.timings.sceneEvidenceMs),
       formatDuration(progress.timings.entityEvidenceMs),
+      formatDuration(progress.timings.objectEvidenceMs),
       formatDuration(progress.timings.vectorIndexMs),
       formatDuration(progress.timings.textIndexMs),
       formatDuration(progress.timings.totalMs)
@@ -771,6 +775,7 @@ export function VisionPanel(): React.ReactElement {
       <div className="vision-index-actions">
         <label className="vision-folder-option"><input type="checkbox" checked={includeSceneEvidence} disabled={isBusy} onChange={(event) => setIncludeSceneEvidence(event.target.checked)} /><span>{app.copy.vision.includeSceneEvidence}</span></label>
         <label className="vision-folder-option"><input type="checkbox" checked={includeEntityEvidence} disabled={isBusy} onChange={(event) => setIncludeEntityEvidence(event.target.checked)} /><span>{app.copy.vision.includeEntityEvidence}</span></label>
+        <label className="vision-folder-option"><input type="checkbox" checked={includeObjectEvidence} disabled={isBusy} onChange={(event) => setIncludeObjectEvidence(event.target.checked)} /><span>{app.copy.vision.includeObjectEvidence}</span></label>
         <button className="vision-primary-action" type="button" onClick={startIndex} disabled={isBusy || app.state.playlist.length === 0}><Database size={15} />{app.copy.vision.indexPlaylist}</button>
         {isBusy ? <button className="vision-secondary-action" type="button" onClick={cancelCurrentTask}><Square size={13} />{app.copy.vision.cancelIndex}</button> : null}
       </div>

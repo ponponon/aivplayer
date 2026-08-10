@@ -14,6 +14,7 @@ describe('vision object detection result UI surface', () => {
     expect(panelSource).toContain('VisionObjectDetectionResultView')
     expect(resultsSource).toContain('vision-object-detection-action')
     expect(resultsSource).toContain('onDetectObjects')
+    expect(resultsSource).toContain('objectDetectionBox')
     expect(resultSource).toContain('objectDetectionScore')
     expect(resultSource).toContain('objectDetectionBox')
     expect(styleSource).toContain('.vision-object-detection-result')

@@ -227,7 +227,9 @@ describe('vision library setup', () => {
     expect(panel).toContain('VISION_SOURCE_PAGE_SIZE')
     expect(panel).toContain('offset: sources.length')
     expect(panel).toContain('includeEntityEvidence')
+    expect(panel).toContain('includeObjectEvidence')
     expect(panel).toContain('entityAnalyzing')
+    expect(panel).toContain('objectAnalyzing')
   })
 
   it('keeps the import inbox batch orchestration wired end to end', () => {
