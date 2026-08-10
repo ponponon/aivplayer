@@ -44,7 +44,7 @@ export function VisionSearchResults({ copy, results, thumbnailUrls, onOpenResult
 
   const renderGroup = (group: VisionSimilarSearchGroup): React.ReactElement => {
     if (group.results.length === 1) return renderResult(group.results[0] as VisionSearchResult)
-    return <section className="vision-result-group" key={group.id}>
+    return <section className="vision-result-group" key={group.id} data-testid="vision-similar-group">
       <div className="vision-result-group-heading">
         <strong>{group.fileName}</strong>
         <span>{copy.similarGroupMeta(group.results.length, formatTimestamp(group.startSeconds), formatTimestamp(group.endSeconds))}</span>
@@ -55,7 +55,7 @@ export function VisionSearchResults({ copy, results, thumbnailUrls, onOpenResult
 
   return <section className="vision-results" aria-live="polite">
     <div className="vision-results-toolbar">
-      {isSimilarSearch ? <button className="vision-results-selection-action" type="button" onClick={onReturnToSearch}>{copy.returnToSearchResults}</button> : null}
+      {isSimilarSearch ? <button className="vision-results-selection-action" type="button" data-testid="vision-similar-return" onClick={onReturnToSearch}>{copy.returnToSearchResults}</button> : null}
       <span>{copy.searchSortLabel}</span>
       <select value={sortMode} aria-label={copy.searchSortLabel} onChange={(event) => onSortModeChange(event.target.value as VisionSearchSortMode)}>
         <option value="relevance">{copy.searchSortRelevance}</option>
