@@ -336,19 +336,22 @@ export function VisionPanel(): React.ReactElement {
     else void window.aiv.cancelVisionIndex()
   }
 
-  const requestVisionSearch = (context: VisionSearchBaseContext, limit: number): Promise<VisionSearchResult[]> => {
+  const requestVisionSearch = (context: VisionSearchContext, limit: number): Promise<VisionSearchResult[]> => {
+    if (context.kind === 'similar') {
+      return window.aiv.searchVisionSimilar(createVisionSimilarSearchRequest(context.target, limit))
+    }
     if (context.kind === 'text') {
       return window.aiv.searchVisionText({ query: context.query, limit, mode: context.mode, ...(context.evidenceTypes.length > 0 ? { evidenceTypes: context.evidenceTypes } : {}) })
     }
     return window.aiv.searchVisionImage({ imagePath: context.imagePath, limit, ...(context.evidenceTypes.length > 0 ? { evidenceTypes: context.evidenceTypes } : {}) })
   }
 
-  const applyVisionSearchResults = (nextResults: VisionSearchResult[], limit: number, context: VisionSearchBaseContext, preserveSelection: boolean): void => {
+  const applyVisionSearchResults = (nextResults: VisionSearchResult[], limit: number, context: VisionSearchContext, preserveSelection: boolean): void => {
     setResults(nextResults)
     setSearchResultLimit(limit)
     setHasMoreSearchResults(shouldLoadMoreVisionSearchResults(nextResults.length, limit))
     setSearchContext(context)
-    setSimilarSearchSnapshot(null)
+    if (context.kind !== 'similar') setSimilarSearchSnapshot(null)
     if (!preserveSelection) setSelectedResultIds(new Set())
   }
 
@@ -363,6 +366,7 @@ export function VisionPanel(): React.ReactElement {
       setResults([])
       setSearchContext(null)
       setHasMoreSearchResults(false)
+      setSimilarSearchSnapshot(null)
       setSelectedResultIds(new Set())
       setError(reason instanceof Error ? reason.message : String(reason))
     }).finally(() => setIsSearching(false))
@@ -431,13 +435,14 @@ export function VisionPanel(): React.ReactElement {
       setResults([])
       setSearchContext(null)
       setHasMoreSearchResults(false)
+      setSimilarSearchSnapshot(null)
       setSelectedResultIds(new Set())
       setError(reason instanceof Error ? reason.message : String(reason))
     }).finally(() => setIsSearching(false))
   }
 
   const loadMoreSearchResults = (): void => {
-    if (!searchContext || searchContext.kind === 'similar' || isSearching || isLoadingMoreSearchResults || !hasMoreSearchResults) return
+    if (!searchContext || isSearching || isLoadingMoreSearchResults || !hasMoreSearchResults) return
     const nextLimit = getNextVisionSearchLimit(searchResultLimit)
     if (nextLimit <= searchResultLimit) return
     setIsLoadingMoreSearchResults(true)
@@ -460,17 +465,15 @@ export function VisionPanel(): React.ReactElement {
     }
     setIsSearching(true)
     setError(null)
-    void window.aiv.searchVisionSimilar(createVisionSimilarSearchRequest(result, VISION_SEARCH_PAGE_SIZE)).then((nextResults) => {
-      setResults(nextResults)
-      setSearchResultLimit(VISION_SEARCH_PAGE_SIZE)
-      setHasMoreSearchResults(false)
-      setSearchContext({ kind: 'similar', target: result })
+    const context: VisionSearchContext = { kind: 'similar', target: result }
+    void requestVisionSearch(context, VISION_SEARCH_PAGE_SIZE).then((nextResults) => {
+      applyVisionSearchResults(nextResults, VISION_SEARCH_PAGE_SIZE, context, false)
       setSelectedResultIds(new Set())
     }).catch((reason: unknown) => {
       setResults([])
       setSearchResultLimit(VISION_SEARCH_PAGE_SIZE)
       setHasMoreSearchResults(false)
-      setSearchContext({ kind: 'similar', target: result })
+      setSearchContext(context)
       setSelectedResultIds(new Set())
       setError(reason instanceof Error ? reason.message : String(reason))
     }).finally(() => setIsSearching(false))

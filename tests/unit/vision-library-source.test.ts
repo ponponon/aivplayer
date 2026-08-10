@@ -66,6 +66,8 @@ describe('vision library setup', () => {
     expect(panel).toContain('onFindSimilar={findSimilarResult}')
     expect(panel).toContain('onReturnToSearch={returnToSearchResults}')
     expect(panel).toContain('createVisionSimilarSearchRequest')
+    expect(panel).toContain('searchVisionSimilar(createVisionSimilarSearchRequest(context.target, limit))')
+    expect(panel).toContain('getNextVisionSearchLimit(searchResultLimit)')
     expect(panel).toContain('isSimilarSearch={searchContext?.kind === \'similar\'}')
     expect(panel).toContain('createEditingProjectFromVisionResults')
     expect(panel).toContain('onToggleSelection')
