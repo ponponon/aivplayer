@@ -1,6 +1,7 @@
 import { ScanSearch } from 'lucide-react'
 import type { LocaleCopy } from '../../../shared/i18n'
-import type { VisionSearchResult } from '../../../shared/vision-types'
+import type { VisionSearchResult, VisionSearchSortMode } from '../../../shared/vision-types'
+import { sortVisionSearchResults } from '../../../core/ai/vision-search'
 
 type VisionSearchResultsProps = {
   copy: LocaleCopy['vision']
@@ -9,11 +10,22 @@ type VisionSearchResultsProps = {
   onOpenResult: (result: VisionSearchResult) => void
   selectedIds: ReadonlySet<string>
   onToggleSelection: (result: VisionSearchResult) => void
+  sortMode: VisionSearchSortMode
+  onSortModeChange: (sortMode: VisionSearchSortMode) => void
 }
 
-export function VisionSearchResults({ copy, results, thumbnailUrls, onOpenResult, selectedIds, onToggleSelection }: VisionSearchResultsProps): React.ReactElement {
+export function VisionSearchResults({ copy, results, thumbnailUrls, onOpenResult, selectedIds, onToggleSelection, sortMode, onSortModeChange }: VisionSearchResultsProps): React.ReactElement {
+  const sortedResults = sortVisionSearchResults(results, sortMode)
   return <section className="vision-results" aria-live="polite">
-    {results.length === 0 ? <div className="vision-empty">{copy.noResults}</div> : results.map((result) => {
+    <div className="vision-results-toolbar">
+      <span>{copy.searchSortLabel}</span>
+      <select value={sortMode} aria-label={copy.searchSortLabel} onChange={(event) => onSortModeChange(event.target.value as VisionSearchSortMode)}>
+        <option value="relevance">{copy.searchSortRelevance}</option>
+        <option value="source-time">{copy.searchSortSourceTime}</option>
+        <option value="file-name">{copy.searchSortFileName}</option>
+      </select>
+    </div>
+    {sortedResults.length === 0 ? <div className="vision-empty">{copy.noResults}</div> : sortedResults.map((result) => {
       const selected = selectedIds.has(result.id)
       return <div className={`vision-result-row ${selected ? 'is-selected' : ''}`} key={result.id}>
         <label className="vision-result-select" title={copy.selectResult}>

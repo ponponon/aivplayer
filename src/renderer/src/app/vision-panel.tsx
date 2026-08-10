@@ -3,9 +3,10 @@ import { useEffect, useState } from 'react'
 import type { VisionIndexProgress, VisionRuntimeStatus, VisionSearchResult } from '../../../shared/media-types'
 import type { AsrSubtitleResult } from '../../../shared/media-types'
 import type { MediaEvidenceDraftImportResult } from '../../../shared/evidence-task-types'
-import type { VisionClipCollection, VisionClipCollectionExportFormat, VisionClipCollectionSortMode, VisionEvidenceType, VisionIndexFailureRecord, VisionLibrarySource, VisionSavedSearch } from '../../../shared/vision-types'
+import type { VisionClipCollection, VisionClipCollectionExportFormat, VisionClipCollectionSortMode, VisionEvidenceType, VisionIndexFailureRecord, VisionLibrarySource, VisionSavedSearch, VisionSearchSortMode } from '../../../shared/vision-types'
 import { invertVisionClipSelections, mergeVisionCollectionSelections, normalizeVisionCollectionTags } from '../../../core/ai/clip-inbox-operations'
 import { createVisionClipSelections, normalizeVisionTimeRange } from '../../../core/ai/vision-evidence'
+import { createDefaultVisionSearchPreferences, parseVisionSearchPreferences, serializeVisionSearchPreferences, VISION_SEARCH_PREFERENCES_STORAGE_KEY, type VisionSearchPreferences } from '../../../core/ai/vision-search-preferences'
 import { useAppContext } from './app-context'
 import { useVisionLibraryFolder } from './use-vision-library-folder'
 import { VisionLibraryFolder } from './vision-library-folder'
@@ -24,6 +25,24 @@ import type { VisionEntityCatalog as VisionEntityCatalogState, VisionEntityCatal
 const VISION_SOURCE_PAGE_SIZE = 100
 const VISION_EVIDENCE_TYPE_OPTIONS: readonly VisionEvidenceType[] = ['visual', 'subtitle', 'ocr', 'scene', 'entity', 'speaker']
 
+function readVisionSearchPreferences(): VisionSearchPreferences {
+  if (typeof window === 'undefined') return createDefaultVisionSearchPreferences()
+  try {
+    return parseVisionSearchPreferences(window.localStorage.getItem(VISION_SEARCH_PREFERENCES_STORAGE_KEY))
+  } catch {
+    return createDefaultVisionSearchPreferences()
+  }
+}
+
+function writeVisionSearchPreferences(preferences: VisionSearchPreferences): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(VISION_SEARCH_PREFERENCES_STORAGE_KEY, serializeVisionSearchPreferences(preferences))
+  } catch {
+    // Renderer storage can be disabled or full; the in-memory preference remains authoritative.
+  }
+}
+
 function formatDuration(milliseconds: number): string {
   if (milliseconds < 1000) return `${Math.max(1, Math.round(milliseconds))}ms`
   const seconds = milliseconds / 1000
@@ -37,7 +56,7 @@ export function VisionPanel(): React.ReactElement {
   const [status, setStatus] = useState<VisionRuntimeStatus | null>(null)
   const [progress, setProgress] = useState<VisionIndexProgress | null>(null)
   const [query, setQuery] = useState('')
-  const [evidenceTypeFilter, setEvidenceTypeFilter] = useState<VisionEvidenceType[]>([])
+  const [searchPreferences, setSearchPreferences] = useState<VisionSearchPreferences>(readVisionSearchPreferences)
   const [savedSearchName, setSavedSearchName] = useState('')
   const [savedSearches, setSavedSearches] = useState<VisionSavedSearch[]>([])
   const [sampleImagePath, setSampleImagePath] = useState<string | null>(null)
@@ -62,6 +81,8 @@ export function VisionPanel(): React.ReactElement {
   const [repairingCollectionId, setRepairingCollectionId] = useState<string | null>(null)
   const [pendingResultSeek, setPendingResultSeek] = useState<{ videoPath: string; seconds: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const evidenceTypeFilter = searchPreferences.evidenceTypes
+  const searchSortMode = searchPreferences.sortMode
   const isIndexing = progress?.status === 'loading' || progress?.status === 'indexing'
   const folder = useVisionLibraryFolder(app, isIndexing, { onError: setError })
   const importInbox = useVisionImportInbox(app)
@@ -69,6 +90,8 @@ export function VisionPanel(): React.ReactElement {
   const vectorIndexLabel = status?.vectorIndexType
     ? app.copy.vision.vectorIndex(status.vectorIndexType, status.vectorIndexDistanceType ?? '—', status.vectorIndexIndexedRows, status.vectorIndexUnindexedRows)
     : app.copy.vision.exactVectorSearch
+
+  useEffect(() => { writeVisionSearchPreferences(searchPreferences) }, [searchPreferences])
 
   const refreshFailures = (): void => { void window.aiv.listVisionIndexFailures().then(setFailures).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))) }
   const refreshSavedSearches = (): void => { void window.aiv.listVisionSavedSearches().then(setSavedSearches).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))) }
@@ -309,7 +332,7 @@ export function VisionPanel(): React.ReactElement {
   const runSavedSearch = (savedSearch: VisionSavedSearch): void => {
     const filter = savedSearch.evidenceTypes ?? []
     setQuery(savedSearch.query)
-    setEvidenceTypeFilter(filter)
+    setSearchPreferences((current) => ({ ...current, evidenceTypes: filter }))
     executeTextSearch(savedSearch.query, savedSearch.mode, filter)
   }
 
@@ -344,7 +367,7 @@ export function VisionPanel(): React.ReactElement {
   }
 
   const changeEvidenceTypeFilter = (nextFilter: VisionEvidenceType[]): void => {
-    setEvidenceTypeFilter(nextFilter)
+    setSearchPreferences((current) => ({ ...current, evidenceTypes: nextFilter }))
     if (query.trim() && !isSearching) executeTextSearch(query, 'hybrid', nextFilter)
   }
 
@@ -356,6 +379,10 @@ export function VisionPanel(): React.ReactElement {
   }
 
   const clearEvidenceTypeFilter = (): void => { changeEvidenceTypeFilter([]) }
+
+  const changeSearchSortMode = (sortMode: VisionSearchSortMode): void => {
+    setSearchPreferences((current) => ({ ...current, sortMode }))
+  }
 
   const formatEvidenceTypeFilter = (filter: readonly VisionEvidenceType[]): string => filter.length === 0
     ? app.copy.vision.evidenceFilterAll
@@ -637,7 +664,7 @@ export function VisionPanel(): React.ReactElement {
     </section>
 
     {error ? <div className="vision-error vision-error-card" role="alert">{error}</div> : null}
-    <VisionSearchResults copy={app.copy.vision} results={results} thumbnailUrls={thumbnailUrls} onOpenResult={openResult} selectedIds={selectedResultIds} onToggleSelection={toggleResultSelection} />
+    <VisionSearchResults copy={app.copy.vision} results={results} thumbnailUrls={thumbnailUrls} onOpenResult={openResult} selectedIds={selectedResultIds} onToggleSelection={toggleResultSelection} sortMode={searchSortMode} onSortModeChange={changeSearchSortMode} />
     {collections.length > 0 ? <section className="vision-card vision-collections"><div className="vision-collections-heading"><strong>{app.copy.vision.savedCollections}</strong><Archive size={15} /></div>{collections.map((collection) => {
       const availability = collectionAvailability[collection.id]
       const isRepairing = repairingCollectionId === collection.id
