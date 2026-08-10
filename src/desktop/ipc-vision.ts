@@ -418,6 +418,30 @@ export function registerVisionIpc(): void {
     return task ? startVisionSearchExportTask(task) : false
   })
 
+  ipcMain.handle(IPC_CHANNELS.VISION_SEARCH_FULL_EXPORT_RECREATE, async (_event, request: VisionSearchExportRetryRequest): Promise<boolean> => {
+    const taskId = typeof request?.taskId === 'string' ? request.taskId.trim() : ''
+    if (!taskId || desktopState.visionSearchExportAbortControllers.has(taskId)) return false
+    const store = getVisionSearchExportStore()
+    const sourceTask = store.get(taskId)
+    if (!sourceTask || (sourceTask.status !== 'failed' && sourceTask.status !== 'cancelled')) return false
+    let searchRevision: VisionSearchRevision
+    try {
+      searchRevision = await getVisionSearchRevisionWithCatalogs()
+    } catch {
+      return false
+    }
+    const recreatedTaskId = randomUUID()
+    const task = store.create({
+      taskId: recreatedTaskId,
+      request: sourceTask.request,
+      outputPath: sourceTask.outputPath,
+      partsDirectory: getVisionSearchExportPartsDirectory(app.getPath('userData'), recreatedTaskId),
+      searchRevision
+    })
+    startVisionSearchExportTask(task)
+    return true
+  })
+
   ipcMain.handle(IPC_CHANNELS.VISION_SEARCH_RESULTS_EXPORT, async (_event, request: VisionSearchResultsExportRequest): Promise<VisionSearchResultsExportResult> => {
     if (!request || !isVisionSearchResultsExportFormat(request.format)) return { success: false, message: '导出参数无效' }
     const results = normalizeVisionSearchResultsForExport(request.results)

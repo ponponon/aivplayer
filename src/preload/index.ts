@@ -295,6 +295,7 @@ const api = {
   exportVisionSearchResultsFull: (request: VisionSearchFullExportRequest): Promise<VisionSearchResultsExportResult> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SEARCH_FULL_EXPORT, request),
   cancelVisionSearchResultsFullExport: (request: VisionSearchExportCancelRequest): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SEARCH_FULL_EXPORT_CANCEL, request),
   retryVisionSearchResultsFullExport: (request: VisionSearchExportRetryRequest): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SEARCH_FULL_EXPORT_RETRY, request),
+  recreateVisionSearchResultsFullExport: (request: VisionSearchExportRetryRequest): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SEARCH_FULL_EXPORT_RECREATE, request),
   exportVisionSearchResults: (request: VisionSearchResultsExportRequest): Promise<VisionSearchResultsExportResult> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SEARCH_RESULTS_EXPORT, request),
   listVisionEvidenceSources: (request: VisionEvidenceSourceRequest = {}): Promise<VisionEvidenceSource[]> => ipcRenderer.invoke(IPC_CHANNELS.VISION_EVIDENCE_SOURCES, request),
   auditVisionEvidenceSources: (request: VisionEvidenceAuditRequest = {}): Promise<VisionEvidenceAuditPage> => ipcRenderer.invoke(IPC_CHANNELS.VISION_EVIDENCE_AUDIT, request),
