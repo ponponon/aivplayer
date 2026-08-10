@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import type { VisionIndexProgress, VisionRuntimeStatus, VisionSearchResult } from '../../../shared/media-types'
 import type { AsrSubtitleResult } from '../../../shared/media-types'
 import type { MediaEvidenceDraftImportResult } from '../../../shared/evidence-task-types'
-import type { VisionClipCollection, VisionClipCollectionExportFormat, VisionClipCollectionSortMode, VisionIndexFailureRecord, VisionLibrarySource } from '../../../shared/vision-types'
+import type { VisionClipCollection, VisionClipCollectionExportFormat, VisionClipCollectionSortMode, VisionIndexFailureRecord, VisionLibrarySource, VisionSavedSearch } from '../../../shared/vision-types'
 import { invertVisionClipSelections, mergeVisionCollectionSelections, normalizeVisionCollectionTags } from '../../../core/ai/clip-inbox-operations'
 import { createVisionClipSelections, normalizeVisionTimeRange } from '../../../core/ai/vision-evidence'
 import { useAppContext } from './app-context'
@@ -36,6 +36,8 @@ export function VisionPanel(): React.ReactElement {
   const [status, setStatus] = useState<VisionRuntimeStatus | null>(null)
   const [progress, setProgress] = useState<VisionIndexProgress | null>(null)
   const [query, setQuery] = useState('')
+  const [savedSearchName, setSavedSearchName] = useState('')
+  const [savedSearches, setSavedSearches] = useState<VisionSavedSearch[]>([])
   const [sampleImagePath, setSampleImagePath] = useState<string | null>(null)
   const [sampleImageName, setSampleImageName] = useState<string | null>(null)
   const [includeSceneEvidence, setIncludeSceneEvidence] = useState(false)
@@ -67,6 +69,7 @@ export function VisionPanel(): React.ReactElement {
     : app.copy.vision.exactVectorSearch
 
   const refreshFailures = (): void => { void window.aiv.listVisionIndexFailures().then(setFailures).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))) }
+  const refreshSavedSearches = (): void => { void window.aiv.listVisionSavedSearches().then(setSavedSearches).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))) }
 
   useEffect(() => {
     let active = true
@@ -92,6 +95,7 @@ export function VisionPanel(): React.ReactElement {
     refreshSources()
     refreshEntityCatalog()
     refreshFailures()
+    refreshSavedSearches()
     const statusTimer = window.setInterval(refreshStatus, 5000)
     const removeProgressListener = window.aiv.onVisionIndexProgress((next) => {
       if (!active) return
@@ -284,11 +288,11 @@ export function VisionPanel(): React.ReactElement {
     else void window.aiv.cancelVisionIndex()
   }
 
-  const runTextSearch = (): void => {
-    if (!query.trim() || isSearching) return
+  const executeTextSearch = (searchQuery: string, mode: VisionSavedSearch['mode']): void => {
+    if (!searchQuery.trim() || isSearching) return
     setIsSearching(true)
     setError(null)
-    void window.aiv.searchVisionText({ query, limit: 24, mode: 'hybrid' }).then((nextResults) => {
+    void window.aiv.searchVisionText({ query: searchQuery, limit: 24, mode }).then((nextResults) => {
       setResults(nextResults)
       setSelectedResultIds(new Set())
     }).catch((reason: unknown) => {
@@ -296,6 +300,29 @@ export function VisionPanel(): React.ReactElement {
       setSelectedResultIds(new Set())
       setError(reason instanceof Error ? reason.message : String(reason))
     }).finally(() => setIsSearching(false))
+  }
+
+  const runTextSearch = (): void => { executeTextSearch(query, 'hybrid') }
+
+  const runSavedSearch = (savedSearch: VisionSavedSearch): void => {
+    setQuery(savedSearch.query)
+    executeTextSearch(savedSearch.query, savedSearch.mode)
+  }
+
+  const saveCurrentSearch = (): void => {
+    const name = savedSearchName.trim()
+    if (!name || !query.trim()) return
+    setError(null)
+    void window.aiv.saveVisionSavedSearch({ name, query, mode: 'hybrid' }).then((savedSearch) => {
+      setSavedSearches((current) => [savedSearch, ...current.filter((item) => item.id !== savedSearch.id)])
+      setSavedSearchName('')
+    }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
+  }
+
+  const deleteSavedSearch = (savedSearch: VisionSavedSearch): void => {
+    void window.aiv.deleteVisionSavedSearch(savedSearch.id).then((deleted) => {
+      if (deleted) setSavedSearches((current) => current.filter((item) => item.id !== savedSearch.id))
+    }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
   }
 
   const runImageSearch = (): void => {
@@ -559,6 +586,20 @@ export function VisionPanel(): React.ReactElement {
         <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={app.copy.vision.textPlaceholder} aria-label={app.copy.vision.textPlaceholder} />
         <button className="vision-search-button" type="submit" disabled={!query.trim() || isSearching}><Search size={15} />{app.copy.vision.hybridSearch}</button>
       </form>
+      <div className="vision-saved-search-toolbar">
+        <input className="vision-saved-search-name-input" value={savedSearchName} onChange={(event) => setSavedSearchName(event.target.value)} placeholder={app.copy.vision.savedSearchNamePlaceholder} aria-label={app.copy.vision.savedSearchNamePlaceholder} />
+        <button className="vision-secondary-action" type="button" onClick={saveCurrentSearch} disabled={!query.trim() || !savedSearchName.trim()}>{app.copy.vision.saveSearch}</button>
+      </div>
+      {savedSearches.length > 0 ? <div className="vision-saved-searches" aria-label={app.copy.vision.savedSearches}>
+        <strong className="vision-saved-search-heading">{app.copy.vision.savedSearches}</strong>
+        <div className="vision-saved-search-list">{savedSearches.map((savedSearch) => <div className="vision-saved-search" key={savedSearch.id}>
+          <button className="vision-saved-search-button" type="button" onClick={() => runSavedSearch(savedSearch)} disabled={isSearching}>
+            <strong>{savedSearch.name}</strong>
+            <small>{savedSearch.query}</small>
+          </button>
+          <button className="vision-saved-search-delete" type="button" onClick={() => deleteSavedSearch(savedSearch)} title={app.copy.vision.deleteSavedSearch} aria-label={`${app.copy.vision.deleteSavedSearch}: ${savedSearch.name}`}><Trash2 size={14} /></button>
+        </div>)}</div>
+      </div> : null}
       <div className="vision-image-search">
         <label className="vision-file-picker"><ImageUp size={15} /><span>{sampleImageName ?? app.copy.vision.chooseImage}</span><input type="file" accept="image/*" onChange={handleImageChange} /></label>
         <button className="vision-search-button" type="button" onClick={runImageSearch} disabled={!sampleImagePath || isSearching}><Search size={15} />{app.copy.vision.searchImage}</button>
