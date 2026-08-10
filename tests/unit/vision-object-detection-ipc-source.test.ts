@@ -10,9 +10,13 @@ describe('vision object detection IPC surface', () => {
     const preloadSource = readFileSync(join(projectRoot, 'src/preload/index.ts'), 'utf8')
 
     expect(desktopSource).toContain('VISION_OBJECT_DETECTION_STATUS')
+    expect(desktopSource).toContain('VISION_OBJECT_DETECTION_RUN')
     expect(desktopSource).toContain('objectDetectionModelDirectory')
     expect(desktopSource).toContain('getVisionObjectDetectionModelStatus')
+    expect(desktopSource).toContain('VisionObjectDetectionRuntime')
+    expect(desktopSource).toContain('detectImage')
     expect(indexSource).toContain('registerVisionObjectDetectionIpc')
     expect(preloadSource).toContain('getVisionObjectDetectionStatus')
+    expect(preloadSource).toContain('runVisionObjectDetection')
   })
 })

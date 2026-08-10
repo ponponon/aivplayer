@@ -118,7 +118,7 @@ import type { WebDesktopStateUpdate, WebRemoteCommandForDesktop, WebShareStartRe
 import type { MediaEvidenceCapabilities, MediaEvidenceDraft, MediaEvidenceDraftImportRequest, MediaEvidenceDraftImportResult, MediaEvidenceDraftSaveRequest, MediaEvidenceTask, MediaEvidenceTaskRequest } from '../shared/evidence-task-types'
 import type { VisionEntityCatalog, VisionEntityCatalogBatchPatch, VisionEntityCatalogCreateInput, VisionEntityCatalogPatch } from '../shared/vision-entity-types'
 import type { SpeakerDiarizationCatalog, SpeakerDiarizationCatalogPatch } from '../shared/speaker-diarization-catalog-types'
-import type { VisionObjectDetectionModelStatus } from '../shared/vision-object-detection-types'
+import type { VisionObjectDetectionModelStatus, VisionObjectDetectionRequest, VisionObjectDetectionResponse } from '../shared/vision-object-detection-types'
 import type { VisionEvidenceAuditPage, VisionEvidenceAuditRequest, VisionEvidenceBatchClearRequest, VisionEvidenceBatchClearResult, VisionEvidenceSource, VisionEvidenceSourceRequest, VisionSavedSearch, VisionSavedSearchFileResult, VisionSavedSearchInput } from '../shared/vision-types'
 import type { EditingAgentProposalDecision, EditingAgentProposalRequest } from '../shared/editing-agent'
 import type { MediaImportInboxDirectoriesChangedEvent, MediaImportInboxItem, MediaImportInboxMetadataUpdateRequest, MediaImportInboxPipelineProgress, MediaImportInboxScanRequest, MediaImportInboxScanResponse, MediaImportInboxScanProgress, MediaImportInboxTransitionRequest, MediaImportInboxWatchRequest, MediaImportInboxWatchStartResult } from '../shared/media-import-inbox'
@@ -267,6 +267,7 @@ const api = {
   buildPersonMatteTrack: (request: PersonMatteTrackRequest): Promise<PersonMatteTrackResult> => ipcRenderer.invoke(IPC_CHANNELS.PERSON_MATTE_TRACK, request),
   getSpeakerDiarizationStatus: (): Promise<SpeakerDiarizationModelStatus> => ipcRenderer.invoke(IPC_CHANNELS.SPEAKER_DIARIZATION_STATUS),
   getVisionObjectDetectionStatus: (): Promise<VisionObjectDetectionModelStatus> => ipcRenderer.invoke(IPC_CHANNELS.VISION_OBJECT_DETECTION_STATUS),
+  runVisionObjectDetection: (request: VisionObjectDetectionRequest): Promise<VisionObjectDetectionResponse> => ipcRenderer.invoke(IPC_CHANNELS.VISION_OBJECT_DETECTION_RUN, request),
   runSpeakerDiarization: (request: SpeakerDiarizationRunRequest): Promise<SpeakerDiarizationRunResult> => ipcRenderer.invoke(IPC_CHANNELS.SPEAKER_DIARIZATION_RUN, request),
   clearSpeakerDiarizationEvidence: (mediaPath: string): Promise<SpeakerDiarizationEvidenceClearResult> => ipcRenderer.invoke(IPC_CHANNELS.SPEAKER_DIARIZATION_CLEAR_EVIDENCE, mediaPath),
   listSpeakerDiarizationEvidenceSources: (request: SpeakerDiarizationEvidenceSourceRequest = {}): Promise<SpeakerDiarizationEvidenceSource[]> => ipcRenderer.invoke(IPC_CHANNELS.SPEAKER_DIARIZATION_EVIDENCE_SOURCES, request),
