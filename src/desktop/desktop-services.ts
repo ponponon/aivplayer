@@ -13,9 +13,11 @@ import { DramaGenerationWorker } from '../core/drama/drama-generation-worker'
 import { ClipInboxStore } from '../core/ai/clip-inbox-store'
 import { VisionEntityCatalogStore } from '../core/ai/vision-entity-catalog-store'
 import { SpeakerDiarizationCatalogStore } from '../core/ai/speaker-diarization-catalog-store'
+import { VisionSavedSearchStore } from '../core/ai/vision-saved-search-store'
 import { MediaImportInboxStore } from '../core/media/media-import-inbox'
 import { createDefaultMediaImportInboxProcessorDependencies, MediaImportInboxProcessor } from '../core/media/media-import-inbox-processor'
 import { VisionIndexFailureStore } from '../core/ai/vision-index-failure-store'
+import { VisionSearchExportStore } from '../core/ai/vision-search-export-store'
 import { DramaWorkflow } from '../core/drama/drama-workflow'
 import type { DramaProviderSettings, DramaProviderSettingsInput, DramaProviderTestResult } from '../shared/drama-types'
 import { saveAppSettings } from './desktop-settings'
@@ -64,7 +66,8 @@ export function getVisionLibrary(): VisionLibrary {
       userDataPath: app.getPath('userData'),
       resourcePath: resolveResourcePath(),
       env: process.env,
-      getEntityLabels: () => getVisionEntityCatalogStore().getLabels()
+      getEntityLabels: () => getVisionEntityCatalogStore().getLabels(),
+      objectDetectionModelDirectory: desktopState.currentAppSettings.vision.objectDetectionModelDirectory
     })
   }
   return desktopState.visionLibrary
@@ -139,15 +142,25 @@ export function getSpeakerDiarizationCatalogStore(): SpeakerDiarizationCatalogSt
   return desktopState.speakerDiarizationCatalogStore
 }
 
+export function getVisionSavedSearchStore(): VisionSavedSearchStore {
+  if (!desktopState.visionSavedSearchStore) desktopState.visionSavedSearchStore = new VisionSavedSearchStore(app.getPath('userData'))
+  return desktopState.visionSavedSearchStore
+}
+
 export function getVisionIndexFailureStore(): VisionIndexFailureStore {
   if (!desktopState.visionIndexFailureStore) desktopState.visionIndexFailureStore = new VisionIndexFailureStore(app.getPath('userData'))
   return desktopState.visionIndexFailureStore
 }
 
+export function getVisionSearchExportStore(): VisionSearchExportStore {
+  if (!desktopState.visionSearchExportStore) desktopState.visionSearchExportStore = new VisionSearchExportStore(app.getPath('userData'))
+  return desktopState.visionSearchExportStore
+}
+
 export function trackVisionIndexProgress(
   progress: VisionIndexProgress,
   mediaPaths: readonly string[],
-  options: Pick<VisionIndexFailureInput, 'intervalSeconds' | 'includeSceneEvidence' | 'includeEntityEvidence'> = {}
+  options: Pick<VisionIndexFailureInput, 'intervalSeconds' | 'includeSceneEvidence' | 'includeEntityEvidence' | 'includeObjectEvidence'> = {}
 ): void {
   const store = getVisionIndexFailureStore()
   const failure = getVisionIndexFailureInput(progress, options)

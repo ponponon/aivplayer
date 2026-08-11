@@ -60,6 +60,14 @@ describe('clip inbox store', () => {
     expect(store.listCollections()).toHaveLength(1)
   })
 
+  it('persists object detection as a clip evidence type', () => {
+    const saved = store.saveCollection({ title: '物体检测片段', selections: [selection({ evidenceTypes: ['object'], text: 'person' })] })
+    expect(saved.selections[0]?.evidenceTypes).toEqual(['object'])
+    store.close()
+    store = new ClipInboxStore(tempDirectory)
+    expect(store.getCollection(saved.id)?.selections[0]?.evidenceTypes).toEqual(['object'])
+  })
+
   it('persists tags and the requested sort mode', () => {
     const saved = store.saveCollection({
       title: '按时长排序',

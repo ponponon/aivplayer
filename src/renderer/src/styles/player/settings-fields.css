@@ -88,31 +88,37 @@
   word-break: break-word;
 }
 
-.settings-speaker-status {
+.settings-speaker-status,
+.settings-vision-object-detection-status {
   display: grid;
   gap: 10px;
   min-width: 0;
 }
 
-.settings-speaker-message {
+.settings-speaker-message,
+.settings-vision-object-detection-message {
   margin: 0;
 }
 
-.settings-speaker-message.is-success {
+.settings-speaker-message.is-success,
+.settings-vision-object-detection-message.is-success {
   color: var(--ok);
 }
 
-.settings-speaker-message.is-error {
+.settings-speaker-message.is-error,
+.settings-vision-object-detection-message.is-error {
   color: var(--danger);
 }
 
-.settings-speaker-model-directory {
+.settings-speaker-model-directory,
+.settings-vision-object-detection-model-directory {
   display: grid;
   gap: 5px;
   padding-top: 2px;
 }
 
-.settings-speaker-model-directory-label {
+.settings-speaker-model-directory-label,
+.settings-vision-object-detection-model-directory-label {
   color: var(--text-muted);
   font-size: 11px;
 }

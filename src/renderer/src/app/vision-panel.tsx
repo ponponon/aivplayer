@@ -1,32 +1,90 @@
-import { Archive, Database, Download, FilePlus, ImageUp, ScanSearch, Search, Square, Trash2 } from 'lucide-react'
+import { Archive, Database, Download, FilePlus, ImageUp, ScanSearch, Search, Square, Trash2, Upload } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { VisionIndexProgress, VisionRuntimeStatus, VisionSearchResult } from '../../../shared/media-types'
 import type { AsrSubtitleResult } from '../../../shared/media-types'
 import type { MediaEvidenceDraftImportResult } from '../../../shared/evidence-task-types'
-import type { VisionClipCollection, VisionClipCollectionExportFormat, VisionClipCollectionSortMode, VisionIndexFailureRecord, VisionLibrarySource, VisionModelDownloadProgress } from '../../../shared/vision-types'
+import type { VisionClipCollection, VisionClipCollectionExportFormat, VisionClipCollectionSortMode, VisionEvidenceType, VisionIndexFailureRecord, VisionLibrarySource, VisionModelDownloadProgress, VisionSavedSearch, VisionSearchFullExportRequest, VisionSearchPageRequest, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchSortMode } from '../../../shared/vision-types'
+import type { LocaleCopy } from '../../../shared/i18n'
+import type { VisionObjectDetectionFilterState, VisionObjectDetectionResult } from '../../../shared/vision-object-detection-types'
 import { invertVisionClipSelections, mergeVisionCollectionSelections, normalizeVisionCollectionTags } from '../../../core/ai/clip-inbox-operations'
 import { createVisionClipSelections, normalizeVisionTimeRange } from '../../../core/ai/vision-evidence'
+import { getVisionSearchResultIds } from '../../../core/ai/vision-search-selection'
+import { getNextVisionSearchLimit, shouldLoadMoreVisionSearchResults, VISION_SEARCH_PAGE_SIZE } from '../../../core/ai/vision-search-pagination'
+import { createVisionSimilarSearchRequest } from '../../../core/ai/vision-similar-search'
+import { createDefaultVisionSearchPreferences, parseVisionSearchPreferences, serializeVisionSearchPreferences, VISION_SEARCH_PREFERENCES_STORAGE_KEY, type VisionSearchPreferences } from '../../../core/ai/vision-search-preferences'
 import { useAppContext } from './app-context'
 import { useVisionLibraryFolder } from './use-vision-library-folder'
 import { VisionLibraryFolder } from './vision-library-folder'
 import { VisionOcrTask } from './vision-ocr-task'
 import { VisionTtsTask } from './vision-tts-task'
 import { VisionSearchResults } from './vision-search-results'
+import { VisionObjectDetectionResultView } from './vision-object-detection-result'
 import { useVisionImportInbox } from './use-vision-import-inbox'
 import { VisionImportInbox } from './vision-import-inbox'
 import { VisionLibrarySources } from './vision-library-sources'
 import { VisionEntityCatalog } from './vision-entity-catalog'
 import { VisionIndexFailures } from './vision-index-failures'
 import { VisionSpeakerDiarization } from './vision-speaker-diarization'
-import { VisionSpeakerEvidenceSources } from './vision-speaker-evidence-sources'
+import { VisionEvidenceSources } from './vision-evidence-sources'
 import type { VisionEntityCatalog as VisionEntityCatalogState, VisionEntityCatalogBatchPatch, VisionEntityCatalogCreateInput, VisionEntityCatalogPatch } from '../../../shared/vision-entity-types'
 
 const VISION_SOURCE_PAGE_SIZE = 100
+const VISION_EVIDENCE_TYPE_OPTIONS: readonly VisionEvidenceType[] = ['visual', 'subtitle', 'ocr', 'scene', 'entity', 'object', 'speaker']
+
+type VisionSearchBaseContext =
+  | { kind: 'text'; query: string; mode: VisionSavedSearch['mode']; evidenceTypes: VisionEvidenceType[]; objectDetectionFilter?: VisionObjectDetectionFilterState }
+  | { kind: 'image'; imagePath: string; evidenceTypes: VisionEvidenceType[]; objectDetectionFilter?: VisionObjectDetectionFilterState }
+
+type VisionSearchContext = VisionSearchBaseContext | { kind: 'similar'; target: VisionSearchResult }
+
+type VisionSearchSnapshot = {
+  results: VisionSearchResult[]
+  limit: number
+  hasMore: boolean
+  cursor: string | null
+  context: VisionSearchBaseContext | null
+  selectedIds: Set<string>
+}
+
+function readVisionSearchPreferences(): VisionSearchPreferences {
+  if (typeof window === 'undefined') return createDefaultVisionSearchPreferences()
+  try {
+    return parseVisionSearchPreferences(window.localStorage.getItem(VISION_SEARCH_PREFERENCES_STORAGE_KEY))
+  } catch {
+    return createDefaultVisionSearchPreferences()
+  }
+}
+
+function writeVisionSearchPreferences(preferences: VisionSearchPreferences): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(VISION_SEARCH_PREFERENCES_STORAGE_KEY, serializeVisionSearchPreferences(preferences))
+  } catch {
+    // Renderer storage can be disabled or full; the in-memory preference remains authoritative.
+  }
+}
 
 function formatDuration(milliseconds: number): string {
   if (milliseconds < 1000) return `${Math.max(1, Math.round(milliseconds))}ms`
   const seconds = milliseconds / 1000
   return `${seconds.toFixed(seconds < 10 ? 1 : 0)}s`
+}
+
+function createDefaultVisionObjectDetectionFilter(): VisionObjectDetectionFilterState {
+  return { labelQuery: '', minimumScore: 0, categoryLabels: [] }
+}
+
+function hasVisionObjectDetectionFilter(filter: VisionObjectDetectionFilterState): boolean {
+  return Boolean(filter.labelQuery.trim() || filter.minimumScore > 0 || filter.categoryLabels.length > 0)
+}
+
+function formatSavedSearchObjectFilter(filter: VisionSavedSearch['objectDetectionFilter'], copy: LocaleCopy['vision']): string {
+  if (!filter) return ''
+  const parts: string[] = []
+  if (filter.labelQuery) parts.push(`${copy.objectDetectionLabelFilter}: ${filter.labelQuery}`)
+  if (filter.categoryLabels.length > 0) parts.push(`${copy.objectDetectionCategories}: ${filter.categoryLabels.join(', ')}`)
+  if (filter.minimumScore > 0) parts.push(`${copy.objectDetectionMinimumScore}: ${Math.round(filter.minimumScore * 100)}%`)
+  return parts.join(' · ')
 }
 
 type CollectionAvailability = { missingPaths: number; availablePaths: number }
@@ -38,11 +96,23 @@ export function VisionPanel(): React.ReactElement {
   const [isDownloadingModel, setIsDownloadingModel] = useState(false)
   const [progress, setProgress] = useState<VisionIndexProgress | null>(null)
   const [query, setQuery] = useState('')
+  const [searchPreferences, setSearchPreferences] = useState<VisionSearchPreferences>(readVisionSearchPreferences)
+  const [savedSearchName, setSavedSearchName] = useState('')
+  const [savedSearches, setSavedSearches] = useState<VisionSavedSearch[]>([])
+  const [savedSearchTransferStatus, setSavedSearchTransferStatus] = useState<string | null>(null)
+  const [searchExportStatus, setSearchExportStatus] = useState<string | null>(null)
   const [sampleImagePath, setSampleImagePath] = useState<string | null>(null)
   const [sampleImageName, setSampleImageName] = useState<string | null>(null)
   const [includeSceneEvidence, setIncludeSceneEvidence] = useState(false)
   const [includeEntityEvidence, setIncludeEntityEvidence] = useState(false)
+  const [includeObjectEvidence, setIncludeObjectEvidence] = useState(false)
   const [results, setResults] = useState<VisionSearchResult[]>([])
+  const [searchResultLimit, setSearchResultLimit] = useState(VISION_SEARCH_PAGE_SIZE)
+  const [hasMoreSearchResults, setHasMoreSearchResults] = useState(false)
+  const [searchCursor, setSearchCursor] = useState<string | null>(null)
+  const [isLoadingMoreSearchResults, setIsLoadingMoreSearchResults] = useState(false)
+  const [searchContext, setSearchContext] = useState<VisionSearchContext | null>(null)
+  const [similarSearchSnapshot, setSimilarSearchSnapshot] = useState<VisionSearchSnapshot | null>(null)
   const [sources, setSources] = useState<VisionLibrarySource[]>([])
   const [hasMoreSources, setHasMoreSources] = useState(false)
   const [isLoadingMoreSources, setIsLoadingMoreSources] = useState(false)
@@ -60,6 +130,12 @@ export function VisionPanel(): React.ReactElement {
   const [repairingCollectionId, setRepairingCollectionId] = useState<string | null>(null)
   const [pendingResultSeek, setPendingResultSeek] = useState<{ videoPath: string; seconds: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [objectDetectionResult, setObjectDetectionResult] = useState<VisionObjectDetectionResult | null>(null)
+  const [objectDetectionFilter, setObjectDetectionFilter] = useState<VisionObjectDetectionFilterState>(createDefaultVisionObjectDetectionFilter)
+  const [objectDetectionThumbnailUrl, setObjectDetectionThumbnailUrl] = useState<string | null>(null)
+  const [isDetectingObjects, setIsDetectingObjects] = useState(false)
+  const evidenceTypeFilter = searchPreferences.evidenceTypes
+  const searchSortMode = searchPreferences.sortMode
   const isIndexing = progress?.status === 'loading' || progress?.status === 'indexing'
   const folder = useVisionLibraryFolder(app, isIndexing, { onError: setError })
   const importInbox = useVisionImportInbox(app)
@@ -68,7 +144,10 @@ export function VisionPanel(): React.ReactElement {
     ? app.copy.vision.vectorIndex(status.vectorIndexType, status.vectorIndexDistanceType ?? '—', status.vectorIndexIndexedRows, status.vectorIndexUnindexedRows)
     : app.copy.vision.exactVectorSearch
 
+  useEffect(() => { writeVisionSearchPreferences(searchPreferences) }, [searchPreferences])
+
   const refreshFailures = (): void => { void window.aiv.listVisionIndexFailures().then(setFailures).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))) }
+  const refreshSavedSearches = (): void => { void window.aiv.listVisionSavedSearches().then(setSavedSearches).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))) }
 
   useEffect(() => {
     let active = true
@@ -94,6 +173,7 @@ export function VisionPanel(): React.ReactElement {
     refreshSources()
     refreshEntityCatalog()
     refreshFailures()
+    refreshSavedSearches()
     const statusTimer = window.setInterval(refreshStatus, 5000)
     const removeProgressListener = window.aiv.onVisionIndexProgress((next) => {
       if (!active) return
@@ -287,7 +367,7 @@ export function VisionPanel(): React.ReactElement {
     if (app.state.playlist.length === 0 || isBusy) return
     setError(null)
     setProgress(null)
-    void window.aiv.startVisionIndex({ mediaPaths: app.state.playlist.map((file) => file.path), intervalSeconds: 3, includeSceneEvidence, includeEntityEvidence }).catch((reason: unknown) => {
+    void window.aiv.startVisionIndex({ mediaPaths: app.state.playlist.map((file) => file.path), intervalSeconds: 3, includeSceneEvidence, includeEntityEvidence, includeObjectEvidence }).catch((reason: unknown) => {
       setError(reason instanceof Error ? reason.message : String(reason))
     })
   }
@@ -296,7 +376,7 @@ export function VisionPanel(): React.ReactElement {
     if (folder.videoPaths.length === 0 || isBusy) return
     setError(null)
     setProgress(null)
-    void window.aiv.startVisionIndex({ mediaPaths: folder.videoPaths, intervalSeconds: 3, includeSceneEvidence, includeEntityEvidence }).catch((reason: unknown) => {
+    void window.aiv.startVisionIndex({ mediaPaths: folder.videoPaths, intervalSeconds: 3, includeSceneEvidence, includeEntityEvidence, includeObjectEvidence }).catch((reason: unknown) => {
       setError(reason instanceof Error ? reason.message : String(reason))
     })
   }
@@ -306,33 +386,226 @@ export function VisionPanel(): React.ReactElement {
     else void window.aiv.cancelVisionIndex()
   }
 
-  const runTextSearch = (): void => {
-    if (!query.trim() || isSearching) return
+  const requestVisionSearch = (context: VisionSearchContext, limit: number, cursor?: string): Promise<VisionSearchResultPage> => {
+    const pageOptions = cursor ? { cursor } : {}
+    if (context.kind === 'similar') {
+      const request: VisionSearchPageRequest = { kind: 'similar', request: createVisionSimilarSearchRequest(context.target, limit), ...pageOptions }
+      return window.aiv.searchVisionPage(request)
+    }
+    if (context.kind === 'text') {
+      const request: VisionSearchPageRequest = { kind: 'text', request: { query: context.query, limit, mode: context.mode, ...(context.evidenceTypes.length > 0 ? { evidenceTypes: context.evidenceTypes } : {}), ...(context.objectDetectionFilter ? { objectDetectionFilter: context.objectDetectionFilter } : {}) }, ...pageOptions }
+      return window.aiv.searchVisionPage(request)
+    }
+    const request: VisionSearchPageRequest = { kind: 'image', request: { imagePath: context.imagePath, limit, ...(context.evidenceTypes.length > 0 ? { evidenceTypes: context.evidenceTypes } : {}), ...(context.objectDetectionFilter ? { objectDetectionFilter: context.objectDetectionFilter } : {}) }, ...pageOptions }
+    return window.aiv.searchVisionPage(request)
+  }
+
+  const applyVisionSearchResults = (page: VisionSearchResultPage, context: VisionSearchContext, preserveSelection: boolean): void => {
+    setResults(page.results)
+    setSearchResultLimit(page.limit)
+    setHasMoreSearchResults(page.hasMore && shouldLoadMoreVisionSearchResults(page.results.length, page.limit))
+    setSearchCursor(page.cursor ?? null)
+    setSearchContext(context)
+    if (context.kind !== 'similar') setSimilarSearchSnapshot(null)
+    if (!preserveSelection) setSelectedResultIds(new Set())
+  }
+
+  const executeTextSearch = (searchQuery: string, mode: VisionSavedSearch['mode'], filter = evidenceTypeFilter, objectFilter: VisionObjectDetectionFilterState | undefined = objectDetectionFilter): void => {
+    if (!searchQuery.trim() || isSearching) return
+    const context: VisionSearchContext = { kind: 'text', query: searchQuery, mode, evidenceTypes: [...filter], ...(objectFilter && hasVisionObjectDetectionFilter(objectFilter) ? { objectDetectionFilter: { ...objectFilter, categoryLabels: [...objectFilter.categoryLabels] } } : {}) }
     setIsSearching(true)
     setError(null)
-    void window.aiv.searchVisionText({ query, limit: 24, mode: 'hybrid' }).then((nextResults) => {
-      setResults(nextResults)
-      setSelectedResultIds(new Set())
+    void requestVisionSearch(context, VISION_SEARCH_PAGE_SIZE).then((page) => {
+      applyVisionSearchResults(page, context, false)
     }).catch((reason: unknown) => {
       setResults([])
+      setSearchContext(null)
+      setSearchCursor(null)
+      setHasMoreSearchResults(false)
+      setSimilarSearchSnapshot(null)
       setSelectedResultIds(new Set())
       setError(reason instanceof Error ? reason.message : String(reason))
     }).finally(() => setIsSearching(false))
   }
 
+  const runTextSearch = (): void => { setObjectDetectionFilter(createDefaultVisionObjectDetectionFilter()); executeTextSearch(query, 'hybrid', evidenceTypeFilter, undefined) }
+
+  const runSavedSearch = (savedSearch: VisionSavedSearch): void => {
+    const filter = savedSearch.evidenceTypes ?? []
+    setQuery(savedSearch.query)
+    setObjectDetectionFilter(savedSearch.objectDetectionFilter ? { ...savedSearch.objectDetectionFilter, categoryLabels: [...savedSearch.objectDetectionFilter.categoryLabels] } : createDefaultVisionObjectDetectionFilter())
+    setSearchPreferences((current) => ({ ...current, evidenceTypes: filter }))
+    executeTextSearch(savedSearch.query, savedSearch.mode, filter, savedSearch.objectDetectionFilter)
+  }
+
+  const saveCurrentSearch = (): void => {
+    const name = savedSearchName.trim()
+    if (!name || !query.trim()) return
+    setError(null)
+    const input = { name, query, mode: 'hybrid' as const, evidenceTypes: evidenceTypeFilter, ...(hasVisionObjectDetectionFilter(objectDetectionFilter) ? { objectDetectionFilter: { ...objectDetectionFilter, categoryLabels: [...objectDetectionFilter.categoryLabels] } } : {}) }
+    void window.aiv.saveVisionSavedSearch(input).then((savedSearch) => {
+      setSavedSearches((current) => [savedSearch, ...current.filter((item) => item.id !== savedSearch.id)])
+      setSavedSearchName('')
+    }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
+  }
+
+  const exportSearchResults = (format: VisionSearchResultsExportFormat): void => {
+    const exportResults = selectedResultIds.size > 0 ? results.filter((result) => selectedResultIds.has(result.id)) : results
+    if (exportResults.length === 0) return
+    setError(null)
+    setSearchExportStatus(null)
+    void window.aiv.exportVisionSearchResults({ results: exportResults, format }).then((result) => {
+      if (result.canceled) return
+      if (!result.success) {
+        setError(result.message)
+        return
+      }
+      setSearchExportStatus(result.message)
+    }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
+  }
+
+  const exportAllSearchResults = (format: VisionSearchResultsExportFormat): void => {
+    if (!searchContext || isSearching) return
+    const request: VisionSearchFullExportRequest = searchContext.kind === 'similar'
+      ? { kind: 'similar', request: createVisionSimilarSearchRequest(searchContext.target, VISION_SEARCH_PAGE_SIZE), format }
+      : searchContext.kind === 'text'
+        ? { kind: 'text', request: { query: searchContext.query, mode: searchContext.mode, evidenceTypes: searchContext.evidenceTypes, ...(searchContext.objectDetectionFilter ? { objectDetectionFilter: searchContext.objectDetectionFilter } : {}) }, format }
+        : { kind: 'image', request: { imagePath: searchContext.imagePath, evidenceTypes: searchContext.evidenceTypes, ...(searchContext.objectDetectionFilter ? { objectDetectionFilter: searchContext.objectDetectionFilter } : {}) }, format }
+    setError(null)
+    setSearchExportStatus(null)
+    void window.aiv.exportVisionSearchResultsFull(request).then((result) => {
+      if (result.canceled) return
+      if (!result.success) {
+        setError(result.message)
+        return
+      }
+      setSearchExportStatus(result.message)
+    }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
+  }
+
+  const deleteSavedSearch = (savedSearch: VisionSavedSearch): void => {
+    void window.aiv.deleteVisionSavedSearch(savedSearch.id).then((deleted) => {
+      if (deleted) setSavedSearches((current) => current.filter((item) => item.id !== savedSearch.id))
+    }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
+  }
+
+  const exportSavedSearches = (): void => {
+    setError(null)
+    setSavedSearchTransferStatus(null)
+    void window.aiv.exportVisionSavedSearches().then((result) => {
+      if (result.canceled) return
+      if (!result.success) {
+        setError(result.message)
+        return
+      }
+      setSavedSearchTransferStatus(app.copy.vision.savedSearchExported)
+    }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
+  }
+
+  const importSavedSearches = (): void => {
+    setError(null)
+    setSavedSearchTransferStatus(null)
+    void window.aiv.importVisionSavedSearches().then((result) => {
+      if (result.canceled) return
+      if (!result.success) {
+        setError(result.message)
+        return
+      }
+      refreshSavedSearches()
+      setSavedSearchTransferStatus(app.copy.vision.savedSearchImported(result.importedCount ?? 0, result.skippedCount ?? 0))
+    }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
+  }
+
   const runImageSearch = (): void => {
     if (!sampleImagePath || isSearching) return
+    const context: VisionSearchContext = { kind: 'image', imagePath: sampleImagePath, evidenceTypes: [...evidenceTypeFilter], ...(hasVisionObjectDetectionFilter(objectDetectionFilter) ? { objectDetectionFilter: { ...objectDetectionFilter, categoryLabels: [...objectDetectionFilter.categoryLabels] } } : {}) }
     setIsSearching(true)
     setError(null)
-    void window.aiv.searchVisionImage({ imagePath: sampleImagePath, limit: 24 }).then((nextResults) => {
-      setResults(nextResults)
-      setSelectedResultIds(new Set())
+    void requestVisionSearch(context, VISION_SEARCH_PAGE_SIZE).then((page) => {
+      applyVisionSearchResults(page, context, false)
     }).catch((reason: unknown) => {
       setResults([])
+      setSearchContext(null)
+      setSearchCursor(null)
+      setHasMoreSearchResults(false)
+      setSimilarSearchSnapshot(null)
       setSelectedResultIds(new Set())
       setError(reason instanceof Error ? reason.message : String(reason))
     }).finally(() => setIsSearching(false))
   }
+
+  const loadMoreSearchResults = (): void => {
+    if (!searchContext || !searchCursor || isSearching || isLoadingMoreSearchResults || !hasMoreSearchResults) return
+    const nextLimit = getNextVisionSearchLimit(searchResultLimit)
+    if (nextLimit <= searchResultLimit) return
+    setIsLoadingMoreSearchResults(true)
+    setError(null)
+    void requestVisionSearch(searchContext, nextLimit, searchCursor).then((page) => {
+      applyVisionSearchResults(page, searchContext, true)
+    }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setIsLoadingMoreSearchResults(false))
+  }
+
+  const findSimilarResult = (result: VisionSearchResult): void => {
+    if (isSearching) return
+    if (!similarSearchSnapshot) {
+      setSimilarSearchSnapshot({
+        results: [...results],
+        limit: searchResultLimit,
+        hasMore: hasMoreSearchResults,
+        cursor: searchCursor,
+        context: searchContext?.kind === 'similar' ? null : searchContext,
+        selectedIds: new Set(selectedResultIds)
+      })
+    }
+    setIsSearching(true)
+    setError(null)
+    const context: VisionSearchContext = { kind: 'similar', target: result }
+    void requestVisionSearch(context, VISION_SEARCH_PAGE_SIZE).then((page) => {
+      applyVisionSearchResults(page, context, false)
+      setSelectedResultIds(new Set())
+    }).catch((reason: unknown) => {
+      setResults([])
+      setSearchResultLimit(VISION_SEARCH_PAGE_SIZE)
+      setSearchCursor(null)
+      setHasMoreSearchResults(false)
+      setSearchContext(context)
+      setSelectedResultIds(new Set())
+      setError(reason instanceof Error ? reason.message : String(reason))
+    }).finally(() => setIsSearching(false))
+  }
+
+  const returnToSearchResults = (): void => {
+    if (!similarSearchSnapshot) return
+    setResults(similarSearchSnapshot.results)
+    setSearchResultLimit(similarSearchSnapshot.limit)
+    setHasMoreSearchResults(similarSearchSnapshot.hasMore)
+    setSearchCursor(similarSearchSnapshot.cursor)
+    setSearchContext(similarSearchSnapshot.context)
+    setSelectedResultIds(new Set(similarSearchSnapshot.selectedIds))
+    setSimilarSearchSnapshot(null)
+  }
+
+  const changeEvidenceTypeFilter = (nextFilter: VisionEvidenceType[]): void => {
+    setSearchPreferences((current) => ({ ...current, evidenceTypes: nextFilter }))
+    if (query.trim() && !isSearching) executeTextSearch(query, 'hybrid', nextFilter)
+  }
+
+  const toggleEvidenceTypeFilter = (evidenceType: VisionEvidenceType): void => {
+    const selected = new Set(evidenceTypeFilter)
+    if (selected.has(evidenceType)) selected.delete(evidenceType)
+    else selected.add(evidenceType)
+    changeEvidenceTypeFilter(VISION_EVIDENCE_TYPE_OPTIONS.filter((option) => selected.has(option)))
+  }
+
+  const clearEvidenceTypeFilter = (): void => { changeEvidenceTypeFilter([]) }
+
+  const changeSearchSortMode = (sortMode: VisionSearchSortMode): void => {
+    setSearchPreferences((current) => ({ ...current, sortMode }))
+  }
+
+  const formatEvidenceTypeFilter = (filter: readonly VisionEvidenceType[]): string => filter.length === 0
+    ? app.copy.vision.evidenceFilterAll
+    : filter.map((evidenceType) => app.copy.vision.evidenceFilterOptions[evidenceType]).join(' + ')
 
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
     const file = event.currentTarget.files?.[0]
@@ -349,6 +622,26 @@ export function VisionPanel(): React.ReactElement {
       app.loadFiles(files)
       setPendingResultSeek({ videoPath: result.videoPath, seconds: result.timestampSeconds })
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
+  }
+
+  const detectObjects = (result: VisionSearchResult): void => {
+    if (!result.thumbnailPath || isDetectingObjects) return
+    setIsDetectingObjects(true)
+    setObjectDetectionResult(null)
+    setObjectDetectionThumbnailUrl(thumbnailUrls[result.id] ?? null)
+    setError(null)
+    if (!thumbnailUrls[result.id]) {
+      void window.aiv.readVisionThumbnail(result.thumbnailPath).then(setObjectDetectionThumbnailUrl).catch(() => undefined)
+    }
+    void window.aiv.runVisionObjectDetection({ imagePath: result.thumbnailPath }).then((response) => {
+      if (!response.success || !response.result) {
+        setError(response.message)
+        return
+      }
+      setObjectDetectionResult(response.result)
+    }).catch((reason: unknown) => {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    }).finally(() => setIsDetectingObjects(false))
   }
 
   const openSource = (source: VisionLibrarySource): void => {
@@ -371,6 +664,15 @@ export function VisionPanel(): React.ReactElement {
       else next.add(result.id)
       return next
     })
+  }
+
+  const selectAllSearchResults = (): void => {
+    setSelectedResultIds((current) => new Set([...current, ...getVisionSearchResultIds(results)]))
+  }
+
+  const clearSearchResultSelection = (): void => {
+    const resultIds = new Set(getVisionSearchResultIds(results))
+    setSelectedResultIds((current) => new Set([...current].filter((id) => !resultIds.has(id))))
   }
 
   const createProjectFromSelection = (): void => {
@@ -523,6 +825,8 @@ export function VisionPanel(): React.ReactElement {
           ? app.copy.vision.sceneAnalyzing(progress.sceneEvidenceProcessed ?? 0, progress.sceneEvidenceTotal ?? 0)
         : progress?.stage === 'entity-evidence'
           ? app.copy.vision.entityAnalyzing(progress.entityEvidenceProcessed ?? 0, progress.entityEvidenceTotal ?? 0)
+        : progress?.stage === 'object-evidence'
+          ? app.copy.vision.objectAnalyzing(progress.objectEvidenceProcessed ?? 0, progress.objectEvidenceTotal ?? 0)
         : progress?.stage === 'vector-index'
           ? app.copy.vision.vectorIndexing
           : progress?.stage === 'text-index'
@@ -545,6 +849,7 @@ export function VisionPanel(): React.ReactElement {
       formatDuration(progress.timings.framesMs),
       formatDuration(progress.timings.sceneEvidenceMs),
       formatDuration(progress.timings.entityEvidenceMs),
+      formatDuration(progress.timings.objectEvidenceMs),
       formatDuration(progress.timings.vectorIndexMs),
       formatDuration(progress.timings.textIndexMs),
       formatDuration(progress.timings.totalMs)
@@ -566,6 +871,7 @@ export function VisionPanel(): React.ReactElement {
       <div className="vision-index-actions">
         <label className="vision-folder-option"><input type="checkbox" checked={includeSceneEvidence} disabled={isBusy} onChange={(event) => setIncludeSceneEvidence(event.target.checked)} /><span>{app.copy.vision.includeSceneEvidence}</span></label>
         <label className="vision-folder-option"><input type="checkbox" checked={includeEntityEvidence} disabled={isBusy} onChange={(event) => setIncludeEntityEvidence(event.target.checked)} /><span>{app.copy.vision.includeEntityEvidence}</span></label>
+        <label className="vision-folder-option"><input type="checkbox" checked={includeObjectEvidence} disabled={isBusy} onChange={(event) => setIncludeObjectEvidence(event.target.checked)} /><span>{app.copy.vision.includeObjectEvidence}</span></label>
         <button className="vision-primary-action" type="button" onClick={startIndex} disabled={isBusy || app.state.playlist.length === 0}><Database size={15} />{app.copy.vision.indexPlaylist}</button>
         {isBusy ? <button className="vision-secondary-action" type="button" onClick={cancelCurrentTask}><Square size={13} />{app.copy.vision.cancelIndex}</button> : null}
       </div>
@@ -575,13 +881,41 @@ export function VisionPanel(): React.ReactElement {
     <VisionOcrTask copy={app.copy.vision} mediaPath={app.state.currentFile?.path ?? null} currentTime={app.state.currentTime} />
     <VisionTtsTask copy={app.copy.vision} mediaPath={app.state.currentFile?.path ?? null} currentTime={app.state.currentTime} onSubtitleImported={handleImportedSubtitle} />
     <VisionSpeakerDiarization copy={app.copy.vision} mediaPath={app.state.currentFile?.path ?? null} onSeek={app.seekTo} />
-    <VisionSpeakerEvidenceSources copy={app.copy.vision} />
+    <VisionEvidenceSources copy={app.copy.vision} kicker={app.copy.panels.visionKicker} />
 
     <section className="vision-card vision-search-card">
       <form className="vision-text-search" onSubmit={(event) => { event.preventDefault(); runTextSearch() }}>
         <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={app.copy.vision.textPlaceholder} aria-label={app.copy.vision.textPlaceholder} />
         <button className="vision-search-button" type="submit" disabled={!query.trim() || isSearching}><Search size={15} />{app.copy.vision.hybridSearch}</button>
       </form>
+      <div className="vision-evidence-filter" role="group" aria-label={app.copy.vision.evidenceFilterLabel}>
+        <span>{app.copy.vision.evidenceFilterLabel}</span>
+        <div className="vision-evidence-filter-options">
+          <label className="vision-evidence-filter-option"><input type="checkbox" checked={evidenceTypeFilter.length === 0} onChange={clearEvidenceTypeFilter} /><span>{app.copy.vision.evidenceFilterAll}</span></label>
+          {VISION_EVIDENCE_TYPE_OPTIONS.map((evidenceType) => <label className="vision-evidence-filter-option" key={evidenceType}><input type="checkbox" checked={evidenceTypeFilter.includes(evidenceType)} onChange={() => toggleEvidenceTypeFilter(evidenceType)} /><span>{app.copy.vision.evidenceFilterOptions[evidenceType]}</span></label>)}
+        </div>
+      </div>
+      <div className="vision-saved-search-toolbar">
+        <input className="vision-saved-search-name-input" value={savedSearchName} onChange={(event) => setSavedSearchName(event.target.value)} placeholder={app.copy.vision.savedSearchNamePlaceholder} aria-label={app.copy.vision.savedSearchNamePlaceholder} />
+        <button className="vision-secondary-action" type="button" onClick={saveCurrentSearch} disabled={!query.trim() || !savedSearchName.trim()}>{app.copy.vision.saveSearch}</button>
+      </div>
+      <div className="vision-saved-searches" aria-label={app.copy.vision.savedSearches}>
+        <div className="vision-saved-search-heading-row">
+          <strong className="vision-saved-search-heading">{app.copy.vision.savedSearches}</strong>
+          <div className="vision-saved-search-actions">
+            <button className="vision-secondary-action" type="button" onClick={importSavedSearches}><Upload size={12} />{app.copy.vision.savedSearchImport}</button>
+            <button className="vision-secondary-action" type="button" onClick={exportSavedSearches} disabled={savedSearches.length === 0}><Download size={12} />{app.copy.vision.savedSearchExport}</button>
+          </div>
+        </div>
+        {savedSearches.length > 0 ? <div className="vision-saved-search-list">{savedSearches.map((savedSearch) => <div className="vision-saved-search" key={savedSearch.id}>
+          <button className="vision-saved-search-button" type="button" onClick={() => runSavedSearch(savedSearch)} disabled={isSearching}>
+            <strong>{savedSearch.name}</strong>
+            <small>{savedSearch.query} · {formatEvidenceTypeFilter(savedSearch.evidenceTypes ?? [])}{formatSavedSearchObjectFilter(savedSearch.objectDetectionFilter, app.copy.vision) ? ` · ${formatSavedSearchObjectFilter(savedSearch.objectDetectionFilter, app.copy.vision)}` : ''}</small>
+          </button>
+          <button className="vision-saved-search-delete" type="button" onClick={() => deleteSavedSearch(savedSearch)} title={app.copy.vision.deleteSavedSearch} aria-label={`${app.copy.vision.deleteSavedSearch}: ${savedSearch.name}`}><Trash2 size={14} /></button>
+        </div>)}</div> : <small className="vision-saved-search-empty">{app.copy.vision.savedSearchEmpty}</small>}
+        {savedSearchTransferStatus ? <small className="vision-saved-search-status" role="status">{savedSearchTransferStatus}</small> : null}
+      </div>
       <div className="vision-image-search">
         <label className="vision-file-picker"><ImageUp size={15} /><span>{sampleImageName ?? app.copy.vision.chooseImage}</span><input type="file" accept="image/*" onChange={handleImageChange} /></label>
         <button className="vision-search-button" type="button" onClick={runImageSearch} disabled={!sampleImagePath || isSearching}><Search size={15} />{app.copy.vision.searchImage}</button>
@@ -590,7 +924,9 @@ export function VisionPanel(): React.ReactElement {
     </section>
 
     {error ? <div className="vision-error vision-error-card" role="alert">{error}</div> : null}
-    <VisionSearchResults copy={app.copy.vision} results={results} thumbnailUrls={thumbnailUrls} onOpenResult={openResult} selectedIds={selectedResultIds} onToggleSelection={toggleResultSelection} />
+    <VisionSearchResults copy={app.copy.vision} results={results} thumbnailUrls={thumbnailUrls} onOpenResult={openResult} onFindSimilar={findSimilarResult} onDetectObjects={detectObjects} isDetectingObjects={isDetectingObjects} isSimilarSearch={searchContext?.kind === 'similar'} onReturnToSearch={returnToSearchResults} selectedIds={selectedResultIds} onToggleSelection={toggleResultSelection} onSelectAllResults={selectAllSearchResults} onClearResults={clearSearchResultSelection} hasMoreResults={hasMoreSearchResults} isLoadingMore={isLoadingMoreSearchResults} onLoadMoreResults={loadMoreSearchResults} onExportResults={exportSearchResults} onExportAllResults={exportAllSearchResults} canExportAllResults={searchContext !== null && results.length > 0} sortMode={searchSortMode} onSortModeChange={changeSearchSortMode} />
+    {searchExportStatus ? <small className="vision-saved-search-status vision-search-export-status" role="status">{searchExportStatus}</small> : null}
+    {objectDetectionResult ? <VisionObjectDetectionResultView copy={app.copy.vision} result={objectDetectionResult} thumbnailUrl={objectDetectionThumbnailUrl} filter={objectDetectionFilter} onFilterChange={setObjectDetectionFilter} onClear={() => { setObjectDetectionResult(null); setObjectDetectionThumbnailUrl(null) }} /> : null}
     {collections.length > 0 ? <section className="vision-card vision-collections"><div className="vision-collections-heading"><strong>{app.copy.vision.savedCollections}</strong><Archive size={15} /></div>{collections.map((collection) => {
       const availability = collectionAvailability[collection.id]
       const isRepairing = repairingCollectionId === collection.id

@@ -1,5 +1,6 @@
 import { editedDurationSeconds } from '../../../core/editing/timeline-math'
 import { moveEditingCaption as moveCaption, resizeEditingCaption as resizeCaption } from '../../../core/editing/caption-operations'
+import { syncEditingCaptionsBetweenPoints } from '../../../core/editing/caption-sync-operations'
 import { repairSubtitleQaIssues } from '../../../shared/subtitle-qa'
 import type { SubtitleQaIssue } from '../../../shared/subtitle-qa'
 import type { AppModel } from './app-types'
@@ -41,6 +42,18 @@ export function createEditingCaptionActions(model: AppModel) {
     saveEditingProject(nextProject)
   }
 
+  const syncEditingCaptions = (captionIds: readonly string[], sourceStartSeconds: number, sourceEndSeconds: number, targetStartSeconds: number, targetEndSeconds: number): void => {
+    const project = model.editingProject
+    if (!project) return
+    const nextCaptions = syncEditingCaptionsBetweenPoints(project.captions, captionIds, sourceStartSeconds, sourceEndSeconds, targetStartSeconds, targetEndSeconds, editedDurationSeconds(project.videoClips))
+    if (nextCaptions.every((caption, index) => caption === project.captions[index])) return
+    const nextProject = { ...project, captions: nextCaptions, updatedAt: Date.now() }
+    model.setEditingPast((past) => [...past, project])
+    model.setEditingFuture([])
+    model.setEditingProject(nextProject)
+    saveEditingProject(nextProject)
+  }
+
   const repairEditingSubtitleQa = (issues: readonly SubtitleQaIssue[]): void => {
     const project = model.editingProject
     if (!project) return
@@ -53,5 +66,5 @@ export function createEditingCaptionActions(model: AppModel) {
     saveEditingProject(nextProject)
   }
 
-  return { selectEditingCaption, moveEditingCaption, resizeEditingCaption, repairEditingSubtitleQa }
+  return { selectEditingCaption, moveEditingCaption, resizeEditingCaption, syncEditingCaptions, repairEditingSubtitleQa }
 }

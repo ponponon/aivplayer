@@ -20,11 +20,12 @@ import { registerSilenceDetectionIpc } from './ipc-silence-detection'
 import { registerStructureAnalysisIpc } from './ipc-structure-analysis'
 import { registerUtilityIpc } from './ipc-utility'
 import { registerWindowControlsIpc } from './ipc-window-controls'
-import { registerVisionIpc } from './ipc-vision'
+import { registerVisionIpc, resumeVisionSearchExports } from './ipc-vision'
 import { registerEvidenceTaskIpc } from './ipc-evidence-task'
 import { registerEvidenceDraftIpc } from './ipc-evidence-draft'
 import { registerPersonMatteIpc } from './ipc-person-matte'
 import { registerSpeakerDiarizationIpc } from './ipc-speaker-diarization'
+import { registerVisionObjectDetectionIpc } from './ipc-vision-object-detection'
 import { registerDramaIpc } from './ipc-drama'
 import { registerMediaImportInboxIpc, stopMediaImportInboxIpc } from './ipc-media-import-inbox'
 import { registerWebIpc, stopWebServer } from './ipc-web'
@@ -90,6 +91,7 @@ function registerIpc(): void {
   registerEvidenceDraftIpc()
   registerPersonMatteIpc()
   registerSpeakerDiarizationIpc()
+  registerVisionObjectDetectionIpc()
   registerDramaIpc()
   registerWebIpc()
   registerTaskCenterIpc()
@@ -122,6 +124,7 @@ if (isCliInvocation) {
       const mainWindow = createWindow()
       mainWindow.webContents.once('did-finish-load', () => {
         void startEditingAgentBridge().catch((error) => console.error('[editing-agent-bridge] 启动失败', error))
+        resumeVisionSearchExports()
       })
       startAppUpdater(false)
       app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() })

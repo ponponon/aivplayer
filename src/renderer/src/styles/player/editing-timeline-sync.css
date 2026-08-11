@@ -10,3 +10,11 @@
 .editing-caption-sync-range small { color: var(--text-muted); font-size: 9px; }
 .editing-caption-sync-actions { display: flex; flex-wrap: wrap; gap: 5px; }
 .editing-caption-sync-actions .editing-tool-button { min-height: 28px; padding: 0 7px; font-size: 10px; }
+.editing-caption-sync-multi { display: grid; gap: 5px; padding-top: 7px; border-top: 1px solid var(--border-soft); }
+.editing-caption-sync-multi strong { color: var(--text-primary); font-size: 10px; }
+.editing-caption-sync-multi small { color: var(--text-muted); font-size: 9px; font-variant-numeric: tabular-nums; }
+.editing-caption-sync-candidate { display: grid; gap: 5px; padding-top: 7px; border-top: 1px solid var(--border-soft); }
+.editing-caption-sync-candidate strong { color: var(--text-primary); font-size: 10px; }
+.editing-caption-sync-candidate-details { display: grid; gap: 4px; padding: 6px; background: rgba(var(--accent-rgb), 0.06); border: 1px solid rgba(var(--accent-rgb), 0.18); border-radius: var(--radius-sm, 6px); }
+.editing-caption-sync-candidate-details small { color: var(--text-muted); font-size: 9px; font-variant-numeric: tabular-nums; }
+.editing-caption-sync-candidate-warning { color: var(--warning, #e8a23a) !important; }

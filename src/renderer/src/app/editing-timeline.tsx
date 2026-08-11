@@ -1,7 +1,7 @@
 import { ArrowRight, ChevronLeft, ChevronRight, Copy, Download, FilePlus2, FolderOpen, Grid3X3, Pause, Play, Plus, Redo2, RefreshCw, RotateCcw, Save, ScanSearch, Scissors, Trash2, Undo2, Volume2, X, ZoomIn, ZoomOut } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { EditingProjectStatus } from './app-types'
-import type { TimelineExportMode } from '../../../shared/clip-export'; import type { EditingThemeSettings } from '../../../core/editing/themes'
+import { isTimelineSubtitleFileMode, type TimelineExportMode } from '../../../shared/clip-export'; import type { EditingThemeSettings } from '../../../core/editing/themes'
 import { getEditingCanvasDimensions } from '../../../core/editing/canvases'
 import { getEditingCaptionsForSubtitleExport } from '../../../core/editing/caption-serialization'
 import { getEditingFramingOrientation } from '../../../core/editing/framing-orientation'
@@ -101,6 +101,7 @@ export function EditingTimeline(): React.ReactElement | null {
   const structureCopy = getEditingStructureCopy(app.appSettings.ui.locale)
   const subtitleQaIssues = analyzeSubtitleQa(project?.captions ?? [])
   const selectedCaption = project?.captions.find((caption) => caption.id === app.editingSelectedCaptionId) ?? null
+  const selectedCaptions = project?.captions.filter((caption) => selection.captionIds.has(caption.id)) ?? []
   const structureSource = project?.sources.find((source) => source.id === structureAnalysisSourceId) ?? null
   const structureSourceKey = structureSource ? getPlaybackMediaKey(structureSource) : null
   const ignoredStructureSegmentIds = new Set((structureSourceKey ? app.appSettings.playback.structureCorrectionsByFingerprint[structureSourceKey] ?? [] : []).filter((correction) => correction.action === 'ignore').map((correction) => correction.segmentId))
@@ -185,6 +186,7 @@ export function EditingTimeline(): React.ReactElement | null {
   const canSplit = Boolean(currentPoint && currentPoint.sourceSeconds > currentPoint.clip.sourceStartSeconds + 0.01 && currentPoint.sourceSeconds < currentPoint.clip.sourceEndSeconds - 0.01)
   const canExport = spans.length > 0
   const hasExportSubtitle = getEditingCaptionsForSubtitleExport(project, 'source').some((caption) => caption.text.trim().length > 0) || app.hasClipExportSubtitle
+  const hasEditableSubtitle = getEditingCaptionsForSubtitleExport(project, 'source').some((caption) => caption.text.trim().length > 0)
   const hasTranslationSubtitle = getEditingCaptionsForSubtitleExport(project, 'translation').some((caption) => caption.text.trim().length > 0)
   const currentTheme: EditingThemeSettings = { frameId: project.frameId ?? 'clean', captionEffect: project.captionEffect ?? 'none', subtitlePresetId: app.appSettings.subtitles.presetId, emphasisMode: app.appSettings.subtitles.emphasisMode, graphicStyle: selectedGraphic?.style ?? graphicDefaults.graphicStyle, graphicPosition: selectedGraphic?.position ?? graphicDefaults.graphicPosition }
   const applyEditingTheme = (theme: EditingThemeSettings): void => {
@@ -215,7 +217,7 @@ export function EditingTimeline(): React.ReactElement | null {
   const movableSelectionCount = selection.captionIds.size + selection.graphicIds.size + selection.videoBlockIds.size
   const confirmEditingExport = (mode: TimelineExportMode, outputVideoPath: string): void => {
     setIsExportConfirmOpen(false)
-    if (mode !== 'translation-subtitle') app.syncClipExportPreferences(app.appSettings.capture.clipExportLengthSeconds, mode)
+    if (mode !== 'translation-subtitle' && !isTimelineSubtitleFileMode(mode)) app.syncClipExportPreferences(app.appSettings.capture.clipExportLengthSeconds, mode)
     void app.exportEditingTimeline(mode, outputVideoPath)
   }
   return (
@@ -256,7 +258,7 @@ export function EditingTimeline(): React.ReactElement | null {
           <button className="editing-tool-button" type="button" onClick={() => void app.removeEditingSilence()} disabled={app.isDetectingEditingSilence || spans.length === 0} title={app.isDetectingEditingSilence ? silenceCopy.detecting : silenceCopy.title} aria-label={silenceCopy.title} data-testid="editing-remove-silence"><Volume2 size={15} /><span>{app.isDetectingEditingSilence ? silenceCopy.detectingShort : silenceCopy.label}</span></button>
           <EditingStructureAnalysis analysis={structureAnalysis} isAnalyzing={isAnalyzingStructure} copy={structureCopy} ignoredSegmentIds={ignoredStructureSegmentIds} onAnalyze={() => void analyzeStructure()} onSeek={seekStructureSegment} onIgnore={ignoreStructureSegment} onRestore={restoreStructureSegment} />
           <EditingSubtitleQa issues={subtitleQaIssues} copy={app.copy.editing} onSeek={app.seekEditingTime} onRepair={app.repairEditingSubtitleQa} />
-          <EditingCaptionSyncControl caption={selectedCaption} currentTime={currentTime} durationSeconds={durationSeconds} copy={app.copy.editing} onMove={app.moveEditingCaption} onResize={app.resizeEditingCaption} />
+          <EditingCaptionSyncControl caption={selectedCaption} currentTime={currentTime} durationSeconds={durationSeconds} selectedCaptions={selectedCaptions} copy={app.copy.editing} onMove={app.moveEditingCaption} onResize={app.resizeEditingCaption} onSync={app.syncEditingCaptions} />
           <button className="editing-tool-button editing-tool-button-danger" type="button" onClick={app.deleteEditingClip} disabled={spans.length <= 1} title={app.copy.editing.deleteClip} aria-label={app.copy.editing.deleteClip}><Trash2 size={15} /><span>{app.copy.editing.deleteShort}</span></button>
         </div>
         {selectionCount > 1 || movableSelectionCount > 0 ? <div className="editing-selection-toolbar" data-testid="editing-selection-toolbar" role="status" aria-live="polite">{selectionCount > 1 ? <span data-testid="editing-selection-count">{app.copy.editing.selectionCount(selectionCount)}</span> : null}{movableSelectionCount > 0 ? <><button className="editing-tool-button" type="button" onClick={duplicateTimelineSelection} title={app.copy.editing.duplicateSelection} aria-label={app.copy.editing.duplicateSelection} data-testid="editing-duplicate-selection"><Copy size={15} /><span>{app.copy.editing.duplicateSelection}</span></button>{selectionCount > 1 ? <><button className="editing-tool-button" type="button" onClick={() => app.moveEditingSelection(selectionPayload(), -0.1)} title={app.copy.editing.moveSelectionLeft} aria-label={app.copy.editing.moveSelectionLeft} data-testid="editing-selection-move-left"><ChevronLeft size={15} /><span>{app.copy.editing.moveSelectionLeft}</span></button><button className="editing-tool-button" type="button" onClick={() => app.moveEditingSelection(selectionPayload(), 0.1)} title={app.copy.editing.moveSelectionRight} aria-label={app.copy.editing.moveSelectionRight} data-testid="editing-selection-move-right"><ChevronRight size={15} /><span>{app.copy.editing.moveSelectionRight}</span></button></> : null}</> : null}{selectionCount > 1 ? <button className="editing-tool-button editing-tool-button-danger" type="button" onClick={deleteTimelineSelection} title={app.copy.editing.deleteSelection} aria-label={app.copy.editing.deleteSelection} data-testid="editing-delete-selection"><Trash2 size={15} /><span>{app.copy.editing.deleteSelection}</span></button> : null}</div> : null}
@@ -362,5 +364,5 @@ export function EditingTimeline(): React.ReactElement | null {
           {marquee ? <div className="editing-selection-marquee" aria-hidden="true" style={{ left: `${Math.min(marquee.startX, marquee.currentX) - (timelineContentRef.current?.getBoundingClientRect().left ?? 0)}px`, top: `${Math.min(marquee.startY, marquee.currentY) - (timelineContentRef.current?.getBoundingClientRect().top ?? 0)}px`, width: `${Math.abs(marquee.currentX - marquee.startX)}px`, height: `${Math.abs(marquee.currentY - marquee.startY)}px` }} /> : null}
         </div>
       </div>
-      {isExportConfirmOpen ? <EditingExportConfirmDialog copy={app.copy} mediaPath={project.sources[0]?.path ?? ''} clips={project.videoClips} durationSeconds={durationSeconds} canvasWidth={canvasDimensions.width} canvasHeight={canvasDimensions.height} hasSubtitle={hasExportSubtitle} hasTranslationSubtitle={hasTranslationSubtitle} audit={exportAudit} initialMode={hasExportSubtitle ? app.appSettings.capture.clipExportMode : hasTranslationSubtitle ? 'translation-subtitle' : 'video'} onClose={() => setIsExportConfirmOpen(false)} onConfirm={confirmEditingExport} /> : null}</section>
+      {isExportConfirmOpen ? <EditingExportConfirmDialog copy={app.copy} mediaPath={project.sources[0]?.path ?? ''} clips={project.videoClips} durationSeconds={durationSeconds} canvasWidth={canvasDimensions.width} canvasHeight={canvasDimensions.height} hasSubtitle={hasExportSubtitle} hasEditableSubtitle={hasEditableSubtitle} hasTranslationSubtitle={hasTranslationSubtitle} audit={exportAudit} initialMode={hasExportSubtitle ? app.appSettings.capture.clipExportMode : hasTranslationSubtitle ? 'translation-subtitle' : 'video'} onClose={() => setIsExportConfirmOpen(false)} onConfirm={confirmEditingExport} /> : null}</section>
   )}

@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
+import type { EditingSubtitleFileExportRequest, EditingSubtitleFileExportResult } from '../shared/editing-subtitle-export'
 import type { AppSettings } from '../shared/app-settings'
 import type { AppUpdateState } from '../shared/app-update-types'
 import type {
@@ -93,8 +94,14 @@ import type {
   VisionRuntimeStatus,
   VisionModelDownloadProgress,
   VisionModelDownloadResult,
+  VisionSearchFullExportRequest,
+  VisionSearchPageRequest,
+  VisionSearchResultPage,
   VisionSearchRequest,
   VisionSearchResult,
+  VisionSearchResultsExportRequest,
+  VisionSearchResultsExportResult,
+  VisionSimilarSearchRequest,
   VisionLibrarySource,
   VisionLibrarySourceRequest,
   PersonMatteModelDownloadProgress,
@@ -119,9 +126,12 @@ import type { WebDesktopStateUpdate, WebRemoteCommandForDesktop, WebShareStartRe
 import type { MediaEvidenceCapabilities, MediaEvidenceDraft, MediaEvidenceDraftImportRequest, MediaEvidenceDraftImportResult, MediaEvidenceDraftSaveRequest, MediaEvidenceTask, MediaEvidenceTaskRequest } from '../shared/evidence-task-types'
 import type { VisionEntityCatalog, VisionEntityCatalogBatchPatch, VisionEntityCatalogCreateInput, VisionEntityCatalogPatch } from '../shared/vision-entity-types'
 import type { SpeakerDiarizationCatalog, SpeakerDiarizationCatalogPatch } from '../shared/speaker-diarization-catalog-types'
+import type { VisionObjectDetectionModelStatus, VisionObjectDetectionRequest, VisionObjectDetectionResponse } from '../shared/vision-object-detection-types'
+import type { VisionEvidenceAuditPage, VisionEvidenceAuditRequest, VisionEvidenceBatchClearRequest, VisionEvidenceBatchClearResult, VisionEvidenceSource, VisionEvidenceSourceRequest, VisionSavedSearch, VisionSavedSearchFileResult, VisionSavedSearchInput } from '../shared/vision-types'
 import type { EditingAgentProposalDecision, EditingAgentProposalRequest } from '../shared/editing-agent'
 import type { MediaImportInboxDirectoriesChangedEvent, MediaImportInboxItem, MediaImportInboxMetadataUpdateRequest, MediaImportInboxPipelineProgress, MediaImportInboxScanRequest, MediaImportInboxScanResponse, MediaImportInboxScanProgress, MediaImportInboxTransitionRequest, MediaImportInboxWatchRequest, MediaImportInboxWatchStartResult } from '../shared/media-import-inbox'
 import type { TaskCenterEvent } from '../shared/task-center-types'
+import type { VisionSearchExportBatchRecreateRequest, VisionSearchExportBatchRecreateResult, VisionSearchExportCancelRequest, VisionSearchExportRetryRequest } from '../shared/vision-search-export-types'
 
 const editingAgentProposalListeners = new Set<(request: EditingAgentProposalRequest) => void>()
 const queuedEditingAgentProposals: EditingAgentProposalRequest[] = []
@@ -249,6 +259,8 @@ const api = {
     ipcRenderer.invoke(IPC_CHANNELS.MEDIA_CHOOSE_TIMELINE_EXPORT_PATH, request),
   exportMediaTimeline: (request: MediaTimelineExportRequest): Promise<MediaClipExportResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.MEDIA_EXPORT_TIMELINE, request),
+  exportEditingSubtitleFile: (request: EditingSubtitleFileExportRequest): Promise<EditingSubtitleFileExportResult> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MEDIA_EXPORT_EDITING_SUBTITLE, request),
   saveImage: (request: ImageSaveRequest): Promise<ImageSaveResult> => ipcRenderer.invoke(IPC_CHANNELS.IMAGE_SAVE, request),
   convertHeicToJpeg: (filePath: string): Promise<{ success: boolean; dataUrl?: string; error?: string }> => ipcRenderer.invoke(IPC_CHANNELS.IMAGE_CONVERT_HEIC, filePath),
   probeLivePhoto: (filePath: string): Promise<LivePhotoProbeResult | null> => ipcRenderer.invoke(IPC_CHANNELS.LIVE_PHOTO_PROBE, filePath),
@@ -266,6 +278,8 @@ const api = {
   downloadPersonMatteModel: (): Promise<PersonMatteModelDownloadResult> => ipcRenderer.invoke(IPC_CHANNELS.PERSON_MATTE_DOWNLOAD),
   buildPersonMatteTrack: (request: PersonMatteTrackRequest): Promise<PersonMatteTrackResult> => ipcRenderer.invoke(IPC_CHANNELS.PERSON_MATTE_TRACK, request),
   getSpeakerDiarizationStatus: (): Promise<SpeakerDiarizationModelStatus> => ipcRenderer.invoke(IPC_CHANNELS.SPEAKER_DIARIZATION_STATUS),
+  getVisionObjectDetectionStatus: (): Promise<VisionObjectDetectionModelStatus> => ipcRenderer.invoke(IPC_CHANNELS.VISION_OBJECT_DETECTION_STATUS),
+  runVisionObjectDetection: (request: VisionObjectDetectionRequest): Promise<VisionObjectDetectionResponse> => ipcRenderer.invoke(IPC_CHANNELS.VISION_OBJECT_DETECTION_RUN, request),
   runSpeakerDiarization: (request: SpeakerDiarizationRunRequest): Promise<SpeakerDiarizationRunResult> => ipcRenderer.invoke(IPC_CHANNELS.SPEAKER_DIARIZATION_RUN, request),
   clearSpeakerDiarizationEvidence: (mediaPath: string): Promise<SpeakerDiarizationEvidenceClearResult> => ipcRenderer.invoke(IPC_CHANNELS.SPEAKER_DIARIZATION_CLEAR_EVIDENCE, mediaPath),
   listSpeakerDiarizationEvidenceSources: (request: SpeakerDiarizationEvidenceSourceRequest = {}): Promise<SpeakerDiarizationEvidenceSource[]> => ipcRenderer.invoke(IPC_CHANNELS.SPEAKER_DIARIZATION_EVIDENCE_SOURCES, request),
@@ -282,6 +296,22 @@ const api = {
   retryVisionIndexFailures: (request: VisionIndexFailureRetryBatchRequest): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.VISION_INDEX_FAILURE_BATCH_RETRY, request),
   searchVisionText: (request: VisionSearchRequest): Promise<VisionSearchResult[]> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SEARCH_TEXT, request),
   searchVisionImage: (request: VisionSearchRequest): Promise<VisionSearchResult[]> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SEARCH_IMAGE, request),
+  searchVisionSimilar: (request: VisionSimilarSearchRequest): Promise<VisionSearchResult[]> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SEARCH_SIMILAR, request),
+  searchVisionPage: (request: VisionSearchPageRequest): Promise<VisionSearchResultPage> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SEARCH_PAGE, request),
+  exportVisionSearchResultsFull: (request: VisionSearchFullExportRequest): Promise<VisionSearchResultsExportResult> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SEARCH_FULL_EXPORT, request),
+  cancelVisionSearchResultsFullExport: (request: VisionSearchExportCancelRequest): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SEARCH_FULL_EXPORT_CANCEL, request),
+  retryVisionSearchResultsFullExport: (request: VisionSearchExportRetryRequest): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SEARCH_FULL_EXPORT_RETRY, request),
+  recreateVisionSearchResultsFullExport: (request: VisionSearchExportRetryRequest): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SEARCH_FULL_EXPORT_RECREATE, request),
+  recreateVisionSearchResultsFullExports: (request: VisionSearchExportBatchRecreateRequest): Promise<VisionSearchExportBatchRecreateResult> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SEARCH_FULL_EXPORT_BATCH_RECREATE, request),
+  exportVisionSearchResults: (request: VisionSearchResultsExportRequest): Promise<VisionSearchResultsExportResult> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SEARCH_RESULTS_EXPORT, request),
+  listVisionEvidenceSources: (request: VisionEvidenceSourceRequest = {}): Promise<VisionEvidenceSource[]> => ipcRenderer.invoke(IPC_CHANNELS.VISION_EVIDENCE_SOURCES, request),
+  auditVisionEvidenceSources: (request: VisionEvidenceAuditRequest = {}): Promise<VisionEvidenceAuditPage> => ipcRenderer.invoke(IPC_CHANNELS.VISION_EVIDENCE_AUDIT, request),
+  clearVisionEvidenceBatch: (request: VisionEvidenceBatchClearRequest): Promise<VisionEvidenceBatchClearResult> => ipcRenderer.invoke(IPC_CHANNELS.VISION_EVIDENCE_BATCH_CLEAR, request),
+  listVisionSavedSearches: (): Promise<VisionSavedSearch[]> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SAVED_SEARCH_LIST),
+  saveVisionSavedSearch: (input: VisionSavedSearchInput): Promise<VisionSavedSearch> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SAVED_SEARCH_SAVE, input),
+  deleteVisionSavedSearch: (id: string): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SAVED_SEARCH_DELETE, id),
+  exportVisionSavedSearches: (): Promise<VisionSavedSearchFileResult> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SAVED_SEARCH_EXPORT),
+  importVisionSavedSearches: (): Promise<VisionSavedSearchFileResult> => ipcRenderer.invoke(IPC_CHANNELS.VISION_SAVED_SEARCH_IMPORT),
   getVisionEntityCatalog: (): Promise<VisionEntityCatalog> => ipcRenderer.invoke(IPC_CHANNELS.VISION_ENTITY_CATALOG_GET),
   createVisionEntityCatalog: (input: VisionEntityCatalogCreateInput): Promise<VisionEntityCatalog> => ipcRenderer.invoke(IPC_CHANNELS.VISION_ENTITY_CATALOG_CREATE, input),
   updateVisionEntityCatalog: (patch: VisionEntityCatalogPatch): Promise<VisionEntityCatalog> => ipcRenderer.invoke(IPC_CHANNELS.VISION_ENTITY_CATALOG_UPDATE, patch),

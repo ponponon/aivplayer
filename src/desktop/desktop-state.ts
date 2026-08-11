@@ -15,6 +15,8 @@ import { TaskCenterStore } from '../core/tasks/task-center-store'
 import { VisionEntityCatalogStore } from '../core/ai/vision-entity-catalog-store'
 import { SpeakerDiarizationCatalogStore } from '../core/ai/speaker-diarization-catalog-store'
 import { VisionIndexFailureStore } from '../core/ai/vision-index-failure-store'
+import { VisionSavedSearchStore } from '../core/ai/vision-saved-search-store'
+import { VisionSearchExportStore } from '../core/ai/vision-search-export-store'
 
 export const desktopState: {
   mainWindow: BrowserWindow | null
@@ -30,6 +32,7 @@ export const desktopState: {
   visionIndexQueue: VisionIndexQueue | null
   visionScanAbortControllers: Map<number, AbortController>
   visionAbortControllers: Map<number, AbortController>
+  visionSearchExportAbortControllers: Map<string, AbortController>
   evidenceTaskAbortControllers: Map<number, AbortController>
   batchSubtitleManager: BatchSubtitleManager | null
   dramaStore: DramaStore | null
@@ -40,7 +43,9 @@ export const desktopState: {
   taskCenterStore: TaskCenterStore | null
   visionEntityCatalogStore: VisionEntityCatalogStore | null
   speakerDiarizationCatalogStore: SpeakerDiarizationCatalogStore | null
+  visionSavedSearchStore: VisionSavedSearchStore | null
   visionIndexFailureStore: VisionIndexFailureStore | null
+  visionSearchExportStore: VisionSearchExportStore | null
 } = {
   mainWindow: null,
   asrRuntime: null,
@@ -55,6 +60,7 @@ export const desktopState: {
   visionIndexQueue: null,
   visionScanAbortControllers: new Map(),
   visionAbortControllers: new Map(),
+  visionSearchExportAbortControllers: new Map(),
   evidenceTaskAbortControllers: new Map(),
   batchSubtitleManager: null,
   dramaStore: null,
@@ -65,5 +71,7 @@ export const desktopState: {
   taskCenterStore: null,
   visionEntityCatalogStore: null,
   speakerDiarizationCatalogStore: null,
-  visionIndexFailureStore: null
+  visionSavedSearchStore: null,
+  visionIndexFailureStore: null,
+  visionSearchExportStore: null
 }

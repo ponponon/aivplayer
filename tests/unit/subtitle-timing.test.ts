@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { attachSubtitleWords, chunkSubtitleWordsByWidth, createFallbackSubtitleWords, getSubtitleWordSidecarPath, joinSubtitleWords, parseWhisperSubtitleWords } from '../../src/shared/subtitle-timing'
+import { areSubtitleWordsCompatible, attachSubtitleWords, chunkSubtitleWordsByWidth, createFallbackSubtitleWords, getSubtitleWordSidecarPath, joinSubtitleWords, parseWhisperSubtitleWords } from '../../src/shared/subtitle-timing'
 
 describe('subtitle word timing', () => {
   it('reads whisper.cpp full JSON token timestamps and merges Latin tokens into words', () => {
@@ -61,5 +61,11 @@ describe('subtitle word timing', () => {
     const chunks = chunkSubtitleWordsByWidth(words, 5)
     expect(chunks.flat().map((word) => word.text)).toEqual(words.map((word) => word.text))
     expect(chunks.every((chunk) => chunk.length >= 1)).toBe(true)
+  })
+
+  it('detects when edited word timings no longer cover the visible text', () => {
+    const words = [{ startSeconds: 0, endSeconds: 0.5, text: '第一句' }]
+    expect(areSubtitleWordsCompatible('第一句', words)).toBe(true)
+    expect(areSubtitleWordsCompatible('第一句脚本', words)).toBe(false)
   })
 })

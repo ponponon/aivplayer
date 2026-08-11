@@ -12,7 +12,7 @@ type TaskCenterManifest = {
   events: TaskCenterEvent[]
 }
 
-const taskKinds: readonly TaskCenterKind[] = ['asr', 'batch-subtitle', 'vision-index', 'media-import', 'evidence', 'drama', 'drama-generation']
+const taskKinds: readonly TaskCenterKind[] = ['asr', 'batch-subtitle', 'vision-index', 'vision-export', 'media-import', 'evidence', 'drama', 'drama-generation']
 const taskStatuses: readonly TaskCenterStatus[] = ['queued', 'running', 'paused', 'completed', 'failed', 'cancelled']
 
 function isTaskKind(value: unknown): value is TaskCenterKind {

@@ -54,6 +54,7 @@ export function createVisionEvidenceId(input: {
   endSeconds: number
   text?: string
   sourceFingerprint?: string
+  identity?: string
 }): string {
   return `evidence-${stableHash([
     input.videoPath,
@@ -61,7 +62,8 @@ export function createVisionEvidenceId(input: {
     roundSeconds(input.startSeconds),
     roundSeconds(input.endSeconds),
     input.text?.trim() ?? '',
-    input.sourceFingerprint ?? ''
+    input.sourceFingerprint ?? '',
+    input.identity ?? ''
   ].join('\0'))}`
 }
 

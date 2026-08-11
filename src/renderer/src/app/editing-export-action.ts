@@ -1,8 +1,8 @@
-import { getEditingCaptionsForSubtitleExport, serializeEditingCaptionsToSrt } from '../../../core/editing/caption-serialization'
+import { getEditingCaptionsForSubtitleExport, serializeEditingCaptionsToSrt, serializeEditingCaptionsToVtt } from '../../../core/editing/caption-serialization'
 import { getEditingCanvasDimensions } from '../../../core/editing/canvases'
 import { getEditingCaptionLayout } from '../../../core/editing/caption-layout'
-import { buildAssSubtitleFromEditingCaptions } from '../../../core/media/subtitle-ass'
-import type { TimelineExportMode } from '../../../shared/clip-export'
+import { buildAssSubtitle, buildAssSubtitleFromEditingCaptions } from '../../../core/media/subtitle-ass'
+import { getTimelineSubtitleFileFormat, isTimelineSubtitleFileMode, type TimelineExportMode } from '../../../shared/clip-export'
 import type { AppDerived } from './use-app-derived'
 import type { AppModel } from './app-types'
 
@@ -24,10 +24,32 @@ export async function exportEditingTimeline(model: AppModel, derived: AppDerived
   })
   if (clips.length === 0) return
   const configuredMode = requestedMode ?? model.appSettings.capture.clipExportMode
-  const exportKind = configuredMode === 'translation-subtitle' ? 'translation' : 'source'
+  const exportKind = configuredMode.startsWith('translation-') ? 'translation' : 'source'
   const exportCaptions = getEditingCaptionsForSubtitleExport(project, exportKind)
   const subtitleText = serializeEditingCaptionsToSrt(exportCaptions, exportKind)
   const hasProjectSubtitle = subtitleText.length > 0
+  if (isTimelineSubtitleFileMode(configuredMode)) {
+    if (!hasProjectSubtitle) {
+      model.setAsrNotice({ success: false, message: derived.copy.runtime.clipExportSubtitleMissing })
+      return
+    }
+    model.setIsExportingClip(true)
+    try {
+      const format = getTimelineSubtitleFileFormat(configuredMode)
+      const fileText = format === 'vtt'
+        ? serializeEditingCaptionsToVtt(exportCaptions, exportKind)
+        : format === 'ass'
+          ? buildAssSubtitle(subtitleText, { ...model.appSettings.subtitles, fontSizePx: captionLayout.fontSizePx, effect: project.captionEffect ?? 'none', playResX: canvas.width, playResY: canvas.height })
+          : subtitleText
+      const result = await window.aiv.exportEditingSubtitleFile({ mediaPath: primarySource.path, kind: exportKind, format, subtitleText: fileText, outputSubtitlePath: outputVideoPath })
+      if (!result.canceled) model.setAsrNotice(result)
+    } catch (error) {
+      model.setAsrNotice({ success: false, message: `${derived.copy.runtime.clipExportFailed}：${error instanceof Error ? error.message : String(error)}` })
+    } finally {
+      model.setIsExportingClip(false)
+    }
+    return
+  }
   const hasRequestedSubtitle = configuredMode === 'translation-subtitle' ? hasProjectSubtitle : hasProjectSubtitle || derived.hasClipExportSubtitle
   const mode = hasRequestedSubtitle ? configuredMode : 'video'
   const subtitleAssText = hasProjectSubtitle && mode === 'burn-subtitle'

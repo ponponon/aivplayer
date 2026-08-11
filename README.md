@@ -113,6 +113,10 @@ For subtitle translation, content summaries, or the AI Short-Drama Studio, confi
 - Optionally generate fixed-vocabulary zero-shot entity labels with the local SigLIP2 model (people, vehicles, animals, bags, cameras, computers, smartphones, indoor/outdoor, and more); no network, identity recognition, or bounding-box detection, and off by default.
 - Provides a local entity-label catalog for creating custom query labels, renaming, aliases, hiding, and merging labels; the catalog stays in the user data directory and is applied to the next entity index and search results.
 - Supports recursive directory scanning, incremental indexing, a background indexing queue, automatic playlist scanning, and index progress/phase-duration reporting.
+- Loading more search results uses a short-lived local snapshot cursor, so repeated pages do not rerun the query against a changing index; snapshots are capped at 100 results and are not persisted or uploaded.
+- Export the current visual search window or selected results as JSON or CSV with source paths, exact time ranges, evidence types, match text, confidence, and object boxes; media files are never copied.
+- Export the full library for the active text, image, or similar-shot query as JSON or CSV; the full pass is locally recomputed with deterministic score/ID ordering and is capped at one million indexed results.
+- Full-library exports run in the background Task Center with search/write progress and cancellation; JSON/CSV is written in chunks to a temporary file and atomically finalized, so cancellation or failure does not leave a partial export.
 - The CLI can also scan, index, inspect status, and search, making it suitable for maintaining a personal video library in batches.
 
 ### AI Short-Drama Studio

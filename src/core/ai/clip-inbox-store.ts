@@ -7,7 +7,7 @@ import { normalizeVisionCollectionSortMode, normalizeVisionCollectionTags, sortV
 import type { VisionClipCollection, VisionClipCollectionInput, VisionClipSelection, VisionEvidenceType } from '../../shared/vision-types'
 
 type SqliteRow = Record<string, unknown>
-const EVIDENCE_TYPES: readonly VisionEvidenceType[] = ['subtitle', 'visual', 'scene', 'ocr', 'entity']
+const EVIDENCE_TYPES: readonly VisionEvidenceType[] = ['subtitle', 'visual', 'scene', 'ocr', 'entity', 'object']
 
 export function getClipInboxDatabasePath(userDataPath: string): string {
   return join(userDataPath, 'library', 'clip-inbox.sqlite')

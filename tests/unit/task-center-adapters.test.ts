@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { createHash } from 'node:crypto'
-import { createAsrTaskCenterEvent, createBatchSubtitleTaskCenterEvent, createDramaGenerationTaskCenterEvent, createDramaTaskCenterEvent, createEvidenceTaskCenterEvent, createMediaImportTaskCenterEvent, createVisionTaskCenterEvent } from '../../src/core/tasks/task-center-adapters'
+import { createAsrTaskCenterEvent, createBatchSubtitleTaskCenterEvent, createDramaGenerationTaskCenterEvent, createDramaTaskCenterEvent, createEvidenceTaskCenterEvent, createMediaImportTaskCenterEvent, createVisionSearchExportTaskCenterEvent, createVisionTaskCenterEvent } from '../../src/core/tasks/task-center-adapters'
 import type { AsrJobProgress, BatchSubtitleJob } from '../../src/shared/media-types'
 import type { DramaGenerationTask, DramaProgress } from '../../src/shared/drama-types'
 import type { MediaEvidenceTask } from '../../src/shared/evidence-task-types'
 import type { MediaImportInboxPipelineProgress } from '../../src/shared/media-import-inbox'
 import type { VisionIndexProgress } from '../../src/shared/vision-types'
+import type { VisionSearchExportProgress } from '../../src/shared/vision-search-export-types'
 
 const baseVision: VisionIndexProgress = {
   status: 'indexing', stage: 'frames', totalVideos: 2, currentVideoIndex: 1, totalFrames: 10, processedFrames: 4, skippedVideos: 0, captionOnlyVideos: 0, currentVideoPath: '/media/demo.mp4', message: '正在抽帧'
@@ -23,6 +24,7 @@ describe('task center adapters', () => {
     expect(createVisionTaskCenterEvent({ ...baseVision, status: 'completed', stage: 'completed', currentVideoIndex: 2, processedFrames: 10 }, 11)).toMatchObject({ kind: 'vision-index', status: 'completed', progress: 1 })
     expect(createVisionTaskCenterEvent({ ...baseVision, stage: 'scene-evidence', sceneEvidenceTotal: 4, sceneEvidenceProcessed: 2 }, 11)).toMatchObject({ kind: 'vision-index', status: 'running', progress: 0.5 })
     expect(createVisionTaskCenterEvent({ ...baseVision, stage: 'entity-evidence', entityEvidenceTotal: 4, entityEvidenceProcessed: 3 }, 11)).toMatchObject({ kind: 'vision-index', status: 'running', progress: 0.75 })
+    expect(createVisionTaskCenterEvent({ ...baseVision, stage: 'object-evidence', objectEvidenceTotal: 4, objectEvidenceProcessed: 1 }, 11)).toMatchObject({ kind: 'vision-index', status: 'running', progress: 0.25 })
     const inbox: MediaImportInboxPipelineProgress = { itemId: 'item-1', stage: 'vision', status: 'ready', progress: { ...baseVision, status: 'completed', stage: 'completed', processedFrames: 10 }, message: '视觉索引完成' }
     expect(createMediaImportTaskCenterEvent(inbox, { fileName: 'demo.mp4' }, 12)).toMatchObject({ id: 'media-import:item-1', status: 'completed', progress: 1, current: 'demo.mp4' })
     const job = { id: 'batch-1', status: 'paused', message: '已暂停', currentItemId: null, items: [], summary: { total: 0, queued: 0, processing: 0, completed: 0, failed: 0, cancelled: 0 } } as unknown as BatchSubtitleJob
@@ -36,5 +38,10 @@ describe('task center adapters', () => {
     expect(createDramaTaskCenterEvent(drama, 15)).toMatchObject({ kind: 'drama', status: 'completed', progress: 1 })
     const generation = { id: 'generation-1', mediaType: 'video', status: 'failed', progress: 0.25, message: '失败', error: 'provider error', updatedAt: 16, targetId: 'scene-1' } as unknown as DramaGenerationTask
     expect(createDramaGenerationTaskCenterEvent(generation)).toMatchObject({ kind: 'drama-generation', status: 'failed', message: 'provider error', progress: 0.25 })
+  })
+
+  it('maps full-library export progress without exposing the output path', () => {
+    const progress: VisionSearchExportProgress = { taskId: 'export-1', status: 'running', stage: 'writing', format: 'json', resultCount: 10, writtenCount: 4, message: '正在写入', outputPath: '/private/exports/results.json' }
+    expect(createVisionSearchExportTaskCenterEvent(progress, 17)).toMatchObject({ id: 'vision-export:export-1', kind: 'vision-export', status: 'running', progress: 0.4, current: 'results.json', updatedAt: 17 })
   })
 })

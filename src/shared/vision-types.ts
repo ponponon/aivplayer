@@ -1,3 +1,5 @@
+import type { VisionObjectDetectionBox, VisionObjectDetectionFilterState } from './vision-object-detection-types'
+
 export const VISION_MODEL_ID = 'siglip2-base-patch16-224-ONNX'
 export const VISION_MODEL_VARIANT = 'uint8'
 export const VISION_MODEL_REPOSITORY = 'onnx-community/siglip2-base-patch16-224-ONNX'
@@ -17,10 +19,11 @@ export const VISION_FRAME_INTERVAL_SECONDS = 3
 export const VISION_VECTOR_INDEX_TYPE = 'IVF_FLAT'
 export const VISION_VECTOR_DISTANCE_TYPE = 'dot'
 export const VISION_VECTOR_INDEX_MIN_ROWS = 10_000
+export const VISION_SEARCH_FULL_EXPORT_MAX_RESULTS = 1_000_000
 
 export type VisionIndexStatus = 'idle' | 'loading' | 'indexing' | 'completed' | 'cancelled' | 'error'
 
-export type VisionIndexStage = 'planning' | 'loading-model' | 'frames' | 'scene-evidence' | 'entity-evidence' | 'vector-index' | 'text-index' | 'completed' | 'cancelled' | 'error'
+export type VisionIndexStage = 'planning' | 'loading-model' | 'frames' | 'scene-evidence' | 'entity-evidence' | 'object-evidence' | 'vector-index' | 'text-index' | 'completed' | 'cancelled' | 'error'
 
 export type VisionIndexTimings = {
   planningMs: number
@@ -28,6 +31,7 @@ export type VisionIndexTimings = {
   framesMs: number
   sceneEvidenceMs: number
   entityEvidenceMs: number
+  objectEvidenceMs: number
   vectorIndexMs: number
   textIndexMs: number
   totalMs: number
@@ -98,12 +102,14 @@ export type VisionIndexRequest = {
   intervalSeconds?: number
   includeSceneEvidence?: boolean
   includeEntityEvidence?: boolean
+  includeObjectEvidence?: boolean
 }
 
 export type VisionIndexOptions = {
   subtitlePaths?: ReadonlyMap<string, string>
   includeSceneEvidence?: boolean
   includeEntityEvidence?: boolean
+  includeObjectEvidence?: boolean
 }
 
 export type VisionDirectoryScanRequest = {
@@ -159,6 +165,9 @@ export type VisionIndexProgress = {
   entityEvidenceTotal?: number
   entityEvidenceProcessed?: number
   entityEvidenceCount?: number
+  objectEvidenceTotal?: number
+  objectEvidenceProcessed?: number
+  objectEvidenceCount?: number
   currentVideoPath?: string
   failedStage?: VisionIndexStage
   message?: string
@@ -176,6 +185,7 @@ export type VisionIndexFailureRecord = {
   intervalSeconds: number
   includeSceneEvidence: boolean
   includeEntityEvidence: boolean
+  includeObjectEvidence: boolean
   stage: VisionIndexStage
 }
 
@@ -189,11 +199,74 @@ export type VisionIndexFailureRetryBatchRequest = {
 
 export type VisionSearchMode = 'visual' | 'hybrid'
 
+export type VisionEvidenceType = 'subtitle' | 'visual' | 'scene' | 'ocr' | 'entity' | 'object' | 'speaker'
+
+export const VISION_DERIVED_EVIDENCE_TYPES = ['ocr', 'scene', 'entity', 'object', 'speaker'] as const
+
+export type VisionDerivedEvidenceType = typeof VISION_DERIVED_EVIDENCE_TYPES[number]
+
+export type VisionEvidenceCounts = Record<VisionDerivedEvidenceType, number>
+
+export type VisionEvidenceSource = {
+  videoPath: string
+  fileName: string
+  sourceFingerprint: string
+  evidenceCounts: VisionEvidenceCounts
+  generatedAt: number
+}
+
+export const VISION_EVIDENCE_AUDIT_STATUSES = ['current', 'changed', 'missing', 'unavailable'] as const
+
+export type VisionEvidenceAuditStatus = typeof VISION_EVIDENCE_AUDIT_STATUSES[number]
+
+export type VisionEvidenceSourceAudit = VisionEvidenceSource & {
+  auditStatus: VisionEvidenceAuditStatus
+  currentFingerprint?: string
+}
+
+export type VisionEvidenceAuditPage = {
+  sources: VisionEvidenceSourceAudit[]
+  offset: number
+  limit: number
+  hasMore: boolean
+}
+
+export type VisionEvidenceSourceRequest = {
+  limit?: number
+  offset?: number
+  evidenceTypes?: VisionDerivedEvidenceType[]
+}
+
+export type VisionEvidenceAuditRequest = VisionEvidenceSourceRequest & {
+  auditStatuses?: VisionEvidenceAuditStatus[]
+}
+
+export type VisionEvidenceClearTarget = {
+  videoPath: string
+  evidenceTypes: VisionDerivedEvidenceType[]
+}
+
+export type VisionEvidenceBatchClearRequest = {
+  targets: VisionEvidenceClearTarget[]
+}
+
+export type VisionEvidenceBatchClearResult = {
+  success: boolean
+  message: string
+  clearedSources: number
+  clearedEvidenceCount: number
+  clearedByType: VisionEvidenceCounts
+}
+
+export type VisionSearchSortMode = 'relevance' | 'source-time' | 'file-name'
+
 export type VisionSavedSearch = {
   id: string
   name: string
   query: string
   mode: VisionSearchMode
+  evidenceTypes: VisionEvidenceType[]
+  objectDetectionFilter?: VisionObjectDetectionFilterState
   createdAt: number
   updatedAt: number
 }
@@ -203,6 +276,17 @@ export type VisionSavedSearchInput = {
   name: string
   query: string
   mode?: VisionSearchMode
+  evidenceTypes?: VisionEvidenceType[]
+  objectDetectionFilter?: VisionObjectDetectionFilterState
+}
+
+export type VisionSavedSearchFileResult = {
+  success: boolean
+  message: string
+  canceled?: boolean
+  filePath?: string
+  importedCount?: number
+  skippedCount?: number
 }
 
 export type VisionSearchRequest = {
@@ -210,13 +294,75 @@ export type VisionSearchRequest = {
   imagePath?: string
   limit?: number
   mode?: VisionSearchMode
+  evidenceTypes?: VisionEvidenceType[]
+  objectDetectionFilter?: VisionObjectDetectionFilterState
+}
+
+export type VisionSearchPageKind = 'text' | 'image' | 'similar'
+
+export type VisionSearchPageRequestBase = {
+  cursor?: string
+  offset?: number
+}
+
+export type VisionTextSearchPageRequest = VisionSearchPageRequestBase & {
+  kind: 'text'
+  request: VisionSearchRequest
+}
+
+export type VisionImageSearchPageRequest = VisionSearchPageRequestBase & {
+  kind: 'image'
+  request: VisionSearchRequest
+}
+
+export type VisionSimilarSearchPageRequest = VisionSearchPageRequestBase & {
+  kind: 'similar'
+  request: VisionSimilarSearchRequest
+}
+
+export type VisionSearchPageRequest = VisionTextSearchPageRequest | VisionImageSearchPageRequest | VisionSimilarSearchPageRequest
+
+export type VisionSearchResultPage = {
+  results: VisionSearchResult[]
+  total: number
+  offset: number
+  limit: number
+  hasMore: boolean
+  cursor?: string
+}
+
+export type VisionSearchResultsExportFormat = 'json' | 'csv'
+
+export type VisionSearchFullExportRequest =
+  | { kind: 'text'; request: VisionSearchRequest; format: VisionSearchResultsExportFormat }
+  | { kind: 'image'; request: VisionSearchRequest; format: VisionSearchResultsExportFormat }
+  | { kind: 'similar'; request: VisionSimilarSearchRequest; format: VisionSearchResultsExportFormat }
+
+export type VisionSearchResultsExportRequest = {
+  results: VisionSearchResult[]
+  format: VisionSearchResultsExportFormat
+}
+
+export type VisionSearchResultsExportResult = {
+  success: boolean
+  message: string
+  filePath?: string
+  canceled?: boolean
+  taskId?: string
+}
+
+export type VisionSimilarSearchRequest = {
+  resultId?: string
+  frameId?: string
+  videoPath: string
+  timestampSeconds: number
+  thumbnailPath?: string
+  limit?: number
 }
 
 export type VisionMatchSource = 'visual' | 'subtitle' | 'filename' | 'both'
 
 /** A searchable fact anchored to a source-media time range. */
-export type VisionEvidenceType = 'subtitle' | 'visual' | 'scene' | 'ocr' | 'entity' | 'speaker'
-
 export type VisionEvidence = {
   id: string
   sourceId: string
@@ -229,6 +375,7 @@ export type VisionEvidence = {
   frameId?: string
   thumbnailPath?: string
   confidence?: number
+  box?: VisionObjectDetectionBox
   sourceFingerprint?: string
   modelId?: string
   modelVariant?: string
@@ -305,6 +452,7 @@ export type VisionSearchResult = {
   endSeconds?: number
   evidenceType?: VisionEvidenceType
   confidence?: number
+  box?: VisionObjectDetectionBox
   entityLabelId?: string
   sourceFingerprint?: string
   modelId: string

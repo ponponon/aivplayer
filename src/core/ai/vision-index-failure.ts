@@ -14,6 +14,7 @@ export type VisionIndexFailureInput = {
   intervalSeconds?: number
   includeSceneEvidence?: boolean
   includeEntityEvidence?: boolean
+  includeObjectEvidence?: boolean
   stage?: VisionIndexStage
 }
 
@@ -28,6 +29,7 @@ const visionIndexStages: readonly VisionIndexStage[] = [
   'frames',
   'scene-evidence',
   'entity-evidence',
+  'object-evidence',
   'vector-index',
   'text-index',
   'completed',
@@ -78,6 +80,7 @@ export function normalizeVisionIndexFailure(value: unknown, now = Date.now()): V
     intervalSeconds: normalizeInterval(raw.intervalSeconds),
     includeSceneEvidence: raw.includeSceneEvidence === true,
     includeEntityEvidence: raw.includeEntityEvidence === true,
+    includeObjectEvidence: raw.includeObjectEvidence === true,
     stage: isVisionIndexStage(raw.stage) ? raw.stage : 'error'
   }
 }
@@ -115,6 +118,7 @@ export function recordVisionIndexFailure(
     intervalSeconds: input.intervalSeconds,
     includeSceneEvidence: input.includeSceneEvidence,
     includeEntityEvidence: input.includeEntityEvidence,
+    includeObjectEvidence: input.includeObjectEvidence,
     stage: input.stage
   }, now)
   if (!next) return [...records]
@@ -151,7 +155,7 @@ export function beginVisionIndexFailureRetryBatch(
 
 export function visionIndexFailureFromProgress(
   progress: VisionIndexProgress,
-  options: Pick<VisionIndexFailureInput, 'intervalSeconds' | 'includeSceneEvidence' | 'includeEntityEvidence'>,
+  options: Pick<VisionIndexFailureInput, 'intervalSeconds' | 'includeSceneEvidence' | 'includeEntityEvidence' | 'includeObjectEvidence'>,
   now = Date.now()
 ): VisionIndexFailureInput | null {
   if (progress.status !== 'error' || !progress.currentVideoPath) return null
@@ -162,6 +166,7 @@ export function visionIndexFailureFromProgress(
     intervalSeconds: options.intervalSeconds,
     includeSceneEvidence: options.includeSceneEvidence,
     includeEntityEvidence: options.includeEntityEvidence,
+    includeObjectEvidence: options.includeObjectEvidence,
     stage: progress.failedStage ?? 'error'
   }
 }
