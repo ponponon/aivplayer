@@ -67,7 +67,7 @@ jobs:
           flatpak install --user --assumeyes flathub org.flatpak.Builder//stable org.freedesktop.Sdk//25.08 org.freedesktop.Sdk.Extension.node22//25.08 org.freedesktop.Sdk.Extension.rust-stable//25.08 org.electronjs.Electron2.BaseApp//25.08
       - name: Build Flatpak
         run: |
-          flatpak-builder \
+          flatpak run --user org.flatpak.Builder \
             --user --force-clean --disable-rofiles-fuse \
             --compose-url-policy=full \
             --mirror-screenshots-url=https://dl.flathub.org/media \
@@ -106,7 +106,7 @@ jobs:
           flatpak install --user --assumeyes flathub org.flatpak.Builder//stable org.freedesktop.Sdk//25.08 org.freedesktop.Sdk.Extension.node22//25.08 org.freedesktop.Sdk.Extension.rust-stable//25.08 org.electronjs.Electron2.BaseApp//25.08
       - name: Build Flatpak
         run: |
-          flatpak-builder \
+          flatpak run --user org.flatpak.Builder \
             --user --force-clean --disable-rofiles-fuse \
             --compose-url-policy=full \
             --mirror-screenshots-url=https://dl.flathub.org/media \

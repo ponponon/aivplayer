@@ -1530,3 +1530,9 @@
 - 现象：macOS Homebrew、Windows Chocolatey、Linux apt 获取的是构建当天的 FFmpeg，既无法保证版本一致，也可能因上游 latest 标签或 feed 竞态产生不同二进制。
 - 经验：发布运行时必须把来源、版本、下载地址和 SHA-256 作为构建输入；平台预编译包可以固定不可变构建资产，macOS 则固定官方源码归档并在 Runner 上构建。
 - 处理：统一锁定 FFmpeg 8.1.2 输入；Windows x64/ARM64 与 Linux x64/ARM64 使用固定 BtbN 构建及校验和，macOS 使用官方 `ffmpeg-8.1.2.tar.xz` 及校验和，不再调用 Chocolatey / apt / Homebrew 的 FFmpeg 包；Linux deb 同时移除显式的系统 `ffmpeg` 依赖，避免安装包再拉取一份动态最新版。
+
+## 2026-08-11：Flathub 构建参数不能假设宿主 flatpak-builder 版本
+
+- 现象：按 Flathub 文档加入截图镜像参数后，GitHub Runner 的宿主 `flatpak-builder` 直接报 `Unknown option --compose-url-policy=full`，两个架构都在真正构建前退出。
+- 经验：Runner 的 apt 版 flatpak-builder 可能落后于 Flathub 文档要求；既然 workflow 已安装 `org.flatpak.Builder`，构建和 linter 必须统一使用这个持续更新的 Flathub Builder 容器。
+- 处理：Flatpak 构建改为 `flatpak run --user org.flatpak.Builder`，保留截图镜像参数，避免宿主工具版本差异再次阻断构建。
