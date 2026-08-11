@@ -8,7 +8,7 @@ import {
   SiglipTextModel,
   SiglipVisionModel
 } from '@huggingface/transformers'
-import { VISION_MODEL_ID, VISION_MODEL_VARIANT } from '../../shared/vision-types'
+import { VISION_MODEL_FILES, VISION_MODEL_ID, VISION_MODEL_VARIANT } from '../../shared/vision-types'
 
 type TensorLike = {
   data?: ArrayLike<number>
@@ -25,14 +25,32 @@ export type VisionModelPaths = {
   visionModelPath: string
 }
 
-export function getVisionModelPaths(resourcePath: string): VisionModelPaths {
-  const modelDirectory = join(resolve(resourcePath), 'vision', VISION_MODEL_ID)
+function createVisionModelPaths(modelDirectory: string): VisionModelPaths {
   return {
     modelDirectory,
     combinedModelPath: join(modelDirectory, 'onnx', 'model_uint8.onnx'),
     textModelPath: join(modelDirectory, 'onnx', 'text_model_uint8.onnx'),
     visionModelPath: join(modelDirectory, 'onnx', 'vision_model_uint8.onnx')
   }
+}
+
+export function getVisionModelPaths(resourcePath: string): VisionModelPaths {
+  return createVisionModelPaths(join(resolve(resourcePath), 'vision', VISION_MODEL_ID))
+}
+
+export function getVisionUserDataModelPaths(userDataPath: string): VisionModelPaths {
+  return createVisionModelPaths(join(resolve(userDataPath), 'models', 'vision', VISION_MODEL_ID))
+}
+
+export function isVisionModelPathsAvailable(paths: VisionModelPaths): boolean {
+  return VISION_MODEL_FILES.every((relativePath) => existsSync(join(paths.modelDirectory, relativePath)))
+}
+
+export function resolveVisionModelPaths(resourcePath: string, userDataPath?: string): VisionModelPaths {
+  const candidates = userDataPath
+    ? [getVisionUserDataModelPaths(userDataPath), getVisionModelPaths(resourcePath)]
+    : [getVisionModelPaths(resourcePath)]
+  return candidates.find(isVisionModelPathsAvailable) ?? candidates[0]!
 }
 
 function normalizeEmbedding(tensor: TensorLike | undefined): number[] {
@@ -55,11 +73,11 @@ export class VisionEmbeddingRuntime {
   private textModelPromise: ReturnType<typeof SiglipTextModel.from_pretrained> | null = null
   private visionModelPromise: ReturnType<typeof SiglipVisionModel.from_pretrained> | null = null
 
-  private readonly resourcePath: string
+  private readonly pathsValue: VisionModelPaths
 
-  constructor(resourcePath: string) {
-    this.resourcePath = resourcePath
-    const modelRoot = resolve(resourcePath, 'vision') + sep
+  constructor(resourcePath: string, userDataPath?: string) {
+    this.pathsValue = resolveVisionModelPaths(resourcePath, userDataPath)
+    const modelRoot = resolve(this.pathsValue.modelDirectory, '..') + sep
     env.localModelPath = modelRoot
     env.allowLocalModels = true
     env.allowRemoteModels = false
@@ -67,18 +85,17 @@ export class VisionEmbeddingRuntime {
   }
 
   get paths(): VisionModelPaths {
-    return getVisionModelPaths(this.resourcePath)
+    return this.pathsValue
   }
 
   isAvailable(): boolean {
-    const paths = this.paths
-    return existsSync(paths.textModelPath) && existsSync(paths.visionModelPath)
+    return isVisionModelPathsAvailable(this.paths)
   }
 
   getStatusMessage(): string {
     const paths = this.paths
-    if (!existsSync(paths.textModelPath) || !existsSync(paths.visionModelPath)) {
-      return `视觉模型文件不完整，需要 text_model_uint8.onnx 和 vision_model_uint8.onnx：${paths.modelDirectory}`
+    if (!this.isAvailable()) {
+      return `视觉模型文件不完整，需要 ${VISION_MODEL_FILES.join('、')}：${paths.modelDirectory}`
     }
     return `SigLIP2 ${VISION_MODEL_ID} 已就绪`
   }

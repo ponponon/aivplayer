@@ -24,6 +24,8 @@
 
 - macOS 原生运行时构建目标固定为 12.0：FFmpeg 及其 Homebrew 依赖从源码构建，whisper.cpp 和 libheif 的 CMake 构建显式设置 `CMAKE_OSX_DEPLOYMENT_TARGET`，避免 macOS 26 构建机把过高的最低系统版本带进发布包。
 
+- Flatpak 离线 npm 构建会显式跳过 ONNX Runtime 的 CUDA 扩展下载，同时兼容新旧 `onnxruntime-node` 安装变量；CPU 运行时继续使用 npm 包随附的文件，避免构建阶段访问 NuGet。
+
 - 发布 CI 新增 macOS FFmpeg / FFprobe 运行时门禁：对 `resources/ffmpeg` 中的 Mach-O 可执行文件和 dylib 执行 `file`、`otool -l` 与 `-version` 检查，所有切片的 `minos` 必须不高于 macOS 12.0，避免把构建机 macOS 26.0 等过新的最低系统版本带进安装包。
 
 - 播放器新增 VLC 风格播放结束策略：可在控制条切换播放结束后停止 / 播放下一条、循环当前、循环播放列表和随机播放；策略写入应用设置，播放列表边界和单文件场景均有明确行为。
@@ -705,6 +707,30 @@
 - 图形编辑器在同一图形发生画布移动、缩放或旋转后保持用户当前的编辑表单开合状态，不会因为状态持久化而再次遮挡画布。
 - 旋转手柄保持在视频画布内部并位于图形内容之上，避免被视频帧裁切或被下方时间线截获；编辑模式字幕显示菜单提升到时间线之上，所有显示设置仍可直接操作。
 - 编辑器长 Smoke 在进入画布操作前显式关闭图形编辑表单，并覆盖移动、缩放、旋转及撤销；最终同时检查字幕显示菜单、导出链路和 Renderer 控制台无错误。
+
+## Flatpak 发布适配（第一阶段）
+
+- 新增 `cn.quniv.aivplayer` Flatpak manifest、Electron BaseApp 配置、`zypak-wrapper` 启动脚本、桌面入口和 AppStream Metainfo，版本与 `package.json` 保持一致。
+- 新增 Flatpak 专用 electron-builder 配置，仅打包应用代码、网页资源、许可证和第三方许可证清单，不复用 macOS 本机预编译的 FFmpeg、whisper.cpp、libheif 或视觉模型。
+- 新增基于 `package-lock.json` 的离线 npm source 清单、`flatpak:generate-sources` 和 `flatpak:check`，并在 GitHub Actions 中对 manifest、桌面入口、Metainfo、版本 tag 和离线安装约束做静态检查。
+- 当前只完成可持续迭代的第一阶段骨架；提交 Flathub 前仍需把 FFmpeg / whisper.cpp / libheif 和原生 npm 依赖改为可审计的源代码构建，并把 SigLIP2 从随包只读模型改为用户数据目录中的可校验安装流程。
+
+## Flatpak Linux 构建验证入口
+
+- GitHub Actions 新增 Linux x86_64 Flatpak 构建、manifest/repo lint 和 bundle artifact 流程；正式 manifest 固定包含 Flatpak 元数据的应用源码 commit，构建前临时替换为当前 checkout，确保 CI 与最终可重建输入一致。
+- 视觉模型支持用户数据目录优先：Flatpak 不需要把 SigLIP2 大模型塞进只读应用包；视觉面板可将固定 revision 的九个模型文件下载到 `userData/models/vision`，并保留旧版安装包模型目录作为兼容 fallback。
+- Flatpak manifest 已加入固定 commit 的 whisper.cpp `v1.9.1` 源码模块，并将 `whisper-cli` 安装到 `/app/bin`；启动 wrapper 显式设置路径，避免依赖宿主机或开发机上的 whisper.cpp。
+- Flatpak manifest 已加入 protobuf `v30.2` 固定 SHA-512 的源码模块，远程 builder 生成 `/app/bin/protoc`，供 LanceDB 的 Rust protobuf build script 使用。
+- Flatpak manifest 已加入官方 FFmpeg `8.1.2` 源码归档，固定 SHA-256，关闭 GPL/nonfree 与宿主依赖自动探测，并将 `ffmpeg` / `ffprobe` 安装到 `/app/bin`。
+- Flatpak manifest 已加入固定源码的 libheif `v1.23.1`、libde265 `v1.0.16`、libjpeg-turbo `3.1.2` 和 x265 `3.4` 模块，关闭 libheif 插件加载与宿主可选后端探测并安装 `heif-enc` / `heif-convert`；x265 GPL-2.0 许可证作为 Flathub 审核边界单独记录，并用最小 patch 兼容 CMake 4。
+- Flatpak manifest 已加入 LanceDB `v0.31.0` 的源码构建描述、Cargo.lock 最小 patch 和 Cargo 离线源码清单；本机只生成并静态检查构建输入，实际 Cargo 编译交给 Flathub/Linux builder。
+- Flatpak 启动 wrapper 会按 Linux 架构设置 `NAPI_RS_NATIVE_LIBRARY_PATH`，强制使用 Flatpak 内源码编译的 LanceDB NAPI 绑定，避免运行时回退到 npm 平台预编译包。
+- 新增 Flatpak 原生 npm 依赖审计命令 `npm run flatpak:audit-native`：从 `package-lock.json` 枚举 LanceDB、ONNX Runtime、Sharp/libvips 和 sherpa-onnx 的版本、平台条件、安装脚本和来源；默认只报告，`--strict` 可在源码重建方案完成后作为 Flathub 提交门禁。
+- Flatpak 应用模块按架构固定引入 Electron `v43.2.0` Linux x64 / ARM64 发行包，并通过独立 `electronDist` 目录交给 electron-builder，保证应用打包阶段不再请求 GitHub。
+- Flatpak 发布使用独立的 512×512 PNG 图标，不改变桌面端原始 1024×1024 品牌图标。
+- Flatpak AppStream MetaInfo 补齐 OARS 1.1 年龄评级、品牌色和固定资源截图，避免构建完成后才发现商店元数据缺字段。
+- GitHub Actions 支持手动选择 Linux ARM64 构建，使用 `ubuntu-24.04-arm` 原生 Runner；CI 生成的本地 manifest 不进入仓库，正式 Flathub manifest 保持完整 commit 固定。
+- Flatpak GitHub Actions 会同步安装 `org.freedesktop.Sdk.Extension.rust-stable//25.08`，并在 workflow 自身变更时触发验证，确保 LanceDB Rust 源码模块与 manifest 的 SDK 输入一致。
 
 ## 视觉索引失败恢复
 

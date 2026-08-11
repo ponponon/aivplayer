@@ -1,0 +1,35 @@
+appId: cn.quniv.aivplayer
+productName: AIVPlayer
+electronVersion: 43.2.0
+electronDist: ../electron-dist
+directories:
+  output: release
+files:
+  - out/**
+  - package.json
+  # Keep the production bundle aligned with electron-builder.yml while not
+  # copying desktop-only prebuilt runtimes into the Flathub build.
+  - '!node_modules/@lancedb/lancedb/node_modules/@huggingface/**'
+  - '!node_modules/@lancedb/lancedb/node_modules/@img/**'
+  - '!node_modules/@lancedb/lancedb/node_modules/onnxruntime-*/**'
+  - '!node_modules/@lancedb/lancedb/node_modules/sharp/**'
+asarUnpack:
+  - "**/node_modules/sharp/**/*"
+  - "**/node_modules/@img/**/*"
+extraResources:
+  - from: LICENSE
+    to: LICENSE
+  - from: docs/THIRD_PARTY_LICENSES.md
+    to: THIRD_PARTY_LICENSES.md
+  - from: out/web
+    to: web
+    filter:
+      - '**/*'
+  - from: brand/icon.png
+    to: app-icon.png
+linux:
+  target:
+    - dir
+  executableName: aivplayer
+  category: AudioVideo
+  icon: brand/icon.png

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=AIVPlayer
+Comment=Local-first video workstation with subtitles and media tools
+Exec=cn.quniv.aivplayer %U
+Icon=cn.quniv.aivplayer
+Terminal=false
+Type=Application
+Categories=AudioVideo;Video;Player;
+MimeType=video/mp4;video/x-matroska;video/webm;video/quicktime;video/x-msvideo;video/x-flv;video/x-ms-wmv;video/mp2t;video/mpeg;
+StartupWMClass=aivplayer

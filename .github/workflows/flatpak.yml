@@ -1,0 +1,116 @@
+name: Flatpak
+
+on:
+  pull_request:
+    paths:
+      - 'flatpak/**'
+      - 'scripts/check-flatpak.mjs'
+      - 'scripts/prepare-flatpak-ci-manifest.mjs'
+      - '.github/workflows/flatpak.yml'
+      - 'package.json'
+      - 'package-lock.json'
+  push:
+    branches:
+      - main
+    paths:
+      - 'flatpak/**'
+      - 'scripts/check-flatpak.mjs'
+      - 'scripts/prepare-flatpak-ci-manifest.mjs'
+      - '.github/workflows/flatpak.yml'
+      - 'package.json'
+      - 'package-lock.json'
+  workflow_dispatch:
+    inputs:
+      build_arm64:
+        description: '同时构建 Linux ARM64 Flatpak'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  static-check:
+    name: Flatpak static check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check manifest and metadata
+        run: npm run flatpak:check
+
+  build-x86_64:
+    name: Flatpak build (x86_64)
+    runs-on: ubuntu-latest
+    needs: static-check
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Prepare local source manifest
+        run: npm run flatpak:prepare-ci-manifest -- flatpak/cn.quniv.aivplayer.yml flatpak/ci-manifest.yml
+      - name: Install Flatpak builder
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak
+          flatpak remote-add --if-not-exists --user flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak install --user --assumeyes flathub org.flatpak.Builder
+      - name: Build Flatpak
+        run: |
+          flatpak run --user --command=flathub-build org.flatpak.Builder flatpak/ci-manifest.yml
+      - name: Lint manifest and repository
+        run: |
+          flatpak run --user --command=flatpak-builder-lint org.flatpak.Builder manifest flatpak/cn.quniv.aivplayer.yml
+          flatpak run --user --command=flatpak-builder-lint org.flatpak.Builder repo repo
+      - name: Create bundle
+        run: flatpak build-bundle repo AIVPlayer-x86_64.flatpak cn.quniv.aivplayer
+      - name: Upload Flatpak bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: aivplayer-flatpak-x86_64
+          path: AIVPlayer-x86_64.flatpak
+
+  build-arm64:
+    name: Flatpak build (aarch64)
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_arm64 }}
+    runs-on: ubuntu-24.04-arm
+    needs: static-check
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Prepare local source manifest
+        run: npm run flatpak:prepare-ci-manifest -- flatpak/cn.quniv.aivplayer.yml flatpak/ci-manifest.yml
+      - name: Install Flatpak builder
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak
+          flatpak remote-add --if-not-exists --user flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak install --user --assumeyes flathub org.flatpak.Builder
+      - name: Build Flatpak
+        run: |
+          flatpak run --user --command=flathub-build org.flatpak.Builder flatpak/ci-manifest.yml
+      - name: Lint manifest and repository
+        run: |
+          flatpak run --user --command=flatpak-builder-lint org.flatpak.Builder manifest flatpak/cn.quniv.aivplayer.yml
+          flatpak run --user --command=flatpak-builder-lint org.flatpak.Builder repo repo
+      - name: Create bundle
+        run: flatpak build-bundle repo AIVPlayer-aarch64.flatpak cn.quniv.aivplayer
+      - name: Upload Flatpak bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: aivplayer-flatpak-aarch64
+          path: AIVPlayer-aarch64.flatpak

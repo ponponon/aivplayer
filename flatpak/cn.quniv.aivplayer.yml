@@ -1,0 +1,219 @@
+id: cn.quniv.aivplayer
+runtime: org.freedesktop.Platform
+runtime-version: '25.08'
+sdk: org.freedesktop.Sdk
+base: org.electronjs.Electron2.BaseApp
+base-version: '25.08'
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.node22
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: cn.quniv.aivplayer
+
+finish-args:
+  - --share=ipc
+  - --share=network
+  - --device=dri
+  - --socket=pulseaudio
+  - --socket=x11
+  - --filesystem=xdg-documents
+  - --filesystem=xdg-music
+  - --filesystem=xdg-pictures
+  - --filesystem=xdg-videos
+  - --env=ELECTRON_TRASH=gio
+
+modules:
+  - name: ffmpeg
+    buildsystem: simple
+    build-commands:
+      - ./configure --prefix=/app --bindir=/app/bin --disable-debug --disable-doc --disable-ffplay --disable-network --disable-autodetect --disable-gpl --disable-nonfree --enable-static --disable-shared
+      - make -j${FLATPAK_BUILDER_N_JOBS}
+      - make install
+    cleanup:
+      - /include
+      - /lib/*.a
+      - /lib/pkgconfig
+      - /share/man
+    sources:
+      - type: archive
+        url: https://ffmpeg.org/releases/ffmpeg-8.1.2.tar.xz
+        sha256: 464beb5e7bf0c311e68b45ae2f04e9cc2af88851abb4082231742a74d97b524c
+
+  - name: libde265
+    buildsystem: simple
+    build-commands:
+      - cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/app -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=OFF -DENABLE_SDL=OFF -DENABLE_DECODER=ON -DENABLE_ENCODER=OFF
+      - cmake --build build --parallel ${FLATPAK_BUILDER_N_JOBS}
+      - cmake --install build
+      - install -Dm644 COPYING /app/share/licenses/cn.quniv.aivplayer/libde265/COPYING
+    sources:
+      - type: git
+        url: https://github.com/strukturag/libde265.git
+        tag: v1.0.16
+        commit: 7ba65889d3d6d8a0d99b5360b028243ba843be3a
+
+  - name: libjpeg-turbo
+    buildsystem: simple
+    build-commands:
+      - cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/app -DENABLE_SHARED=OFF -DENABLE_STATIC=ON -DWITH_TURBOJPEG=OFF -DWITH_TOOLS=OFF -DWITH_TESTS=OFF
+      - cmake --build build --parallel ${FLATPAK_BUILDER_N_JOBS}
+      - cmake --install build
+      - install -Dm644 LICENSE.md /app/share/licenses/cn.quniv.aivplayer/libjpeg-turbo/LICENSE.md
+    sources:
+      - type: git
+        url: https://github.com/libjpeg-turbo/libjpeg-turbo.git
+        tag: 3.1.2
+        commit: 4e151a4ad91001b3aa8c2ece2205c15f487ce320
+
+  - name: x265
+    buildsystem: simple
+    build-commands:
+      - cmake -S source -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/app -DENABLE_SHARED=OFF -DENABLE_CLI=OFF -DENABLE_LIBNUMA=OFF -DENABLE_PIC=ON -DENABLE_ASSEMBLY=ON
+      - cmake --build build --parallel ${FLATPAK_BUILDER_N_JOBS}
+      - cmake --install build
+      - install -Dm644 COPYING /app/share/licenses/cn.quniv.aivplayer/x265/COPYING
+    sources:
+      - type: git
+        url: https://github.com/videolan/x265.git
+        tag: '3.4'
+        commit: 07295ba7ab551bb9c1580fdaee3200f1b45711b7
+      - type: patch
+        path: patches/x265-cmake-compat.patch
+
+  - name: libheif
+    buildsystem: simple
+    build-options:
+      env:
+        CXXFLAGS: -fpermissive
+        PKG_CONFIG_PATH: /app/lib/pkgconfig
+    build-commands:
+      - cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/app -DCMAKE_INSTALL_BINDIR=bin -DCMAKE_PREFIX_PATH=/app -DCMAKE_DISABLE_FIND_PACKAGE_TIFF=TRUE -DCMAKE_DISABLE_FIND_PACKAGE_PNG=TRUE -DCMAKE_DISABLE_FIND_PACKAGE_WEBP=TRUE -DCMAKE_DISABLE_FIND_PACKAGE_X264=TRUE -DCMAKE_DISABLE_FIND_PACKAGE_OpenH264=TRUE -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=OFF -DBUILD_DOCUMENTATION=OFF -DENABLE_PLUGIN_LOADING=OFF -DWITH_EXAMPLES=ON -DWITH_EXAMPLE_HEIF_THUMB=OFF -DWITH_EXAMPLE_HEIF_VIEW=OFF -DWITH_GDK_PIXBUF=OFF -DWITH_LIBDE265=ON -DWITH_LIBDE265_PLUGIN=OFF -DWITH_X265=ON -DWITH_X265_PLUGIN=OFF -DWITH_KVAZAAR=OFF -DWITH_KVAZAAR_PLUGIN=OFF -DWITH_X264=OFF -DWITH_X264_PLUGIN=OFF -DWITH_OpenH264_DECODER=OFF -DWITH_OpenH264_DECODER_PLUGIN=OFF -DWITH_JPEG_DECODER=ON -DWITH_JPEG_DECODER_PLUGIN=OFF -DWITH_JPEG_ENCODER=ON -DWITH_JPEG_ENCODER_PLUGIN=OFF -DWITH_AOM_DECODER=OFF -DWITH_AOM_ENCODER=OFF -DWITH_DAV1D=OFF -DWITH_RAV1E=OFF -DWITH_SvtEnc=OFF -DWITH_OPENJPEG_DECODER=OFF -DWITH_OPENJPEG_ENCODER=OFF -DWITH_OPENJPH_ENCODER=OFF -DWITH_FFMPEG_DECODER=OFF -DWITH_LIBSHARPYUV=OFF -DWITH_UNCOMPRESSED_CODEC=OFF -DWITH_WEBCODECS=OFF
+      - cmake --build build --parallel ${FLATPAK_BUILDER_N_JOBS} --target heif-info heif-dec heif-enc
+      - cmake --install build
+      - test -e /app/bin/heif-convert || ln -s heif-dec /app/bin/heif-convert
+      - install -Dm644 COPYING /app/share/licenses/cn.quniv.aivplayer/libheif/COPYING
+
+    sources:
+      - type: git
+        url: https://github.com/strukturag/libheif.git
+        tag: v1.23.1
+        commit: 2c4bbb54c2738d4a5efbbe3e5fa1d5d76bb88eb0
+
+  - name: whisper-cpp
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DWHISPER_BUILD_TESTS=OFF
+      - -DWHISPER_BUILD_EXAMPLES=ON
+      - -DWHISPER_BUILD_SERVER=OFF
+      - -DWHISPER_CURL=OFF
+      - -DWHISPER_SDL2=OFF
+    sources:
+      - type: git
+        url: https://github.com/ggml-org/whisper.cpp.git
+        tag: v1.9.1
+        commit: f049fff95a089aa9969deb009cdd4892b3e74916
+
+  - name: protobuf
+    buildsystem: cmake-ninja
+    config-opts:
+      - -Dprotobuf_BUILD_TESTS=OFF
+      - -Dprotobuf_BUILD_LIBUPB=OFF
+      - -Dprotobuf_BUILD_CONFORMANCE=OFF
+      - -Dprotobuf_BUILD_EXAMPLES=OFF
+      - -Dprotobuf_BUILD_SHARED_LIBS=OFF
+    sources:
+      - type: archive
+        url: https://github.com/protocolbuffers/protobuf/releases/download/v30.2/protobuf-30.2.tar.gz
+        sha512: 555d1b18d175eeaf17f3879f124d33080f490367840d35b34bfc4e4a5b383bf6a1d09f1570acb6af9c53ac4940a14572d46423b6e3dd0c712e7802c986fb6be6
+
+  - name: lancedb-native
+    buildsystem: simple
+    build-options:
+      append-path: /usr/lib/sdk/rust-stable/bin
+      env:
+        CARGO_NET_OFFLINE: 'true'
+        CARGO_PROFILE_RELEASE_CODEGEN_UNITS: '16'
+        CARGO_PROFILE_RELEASE_LTO: thin
+        PROTOC: /app/bin/protoc
+    build-commands:
+      - cargo build --release --locked --offline -p lancedb-nodejs
+      - install -Dm644 LICENSE /app/share/licenses/cn.quniv.aivplayer/lancedb/LICENSE
+      - |
+          case "$(uname -m)" in
+            x86_64) native_file=lancedb.linux-x64-gnu.node ;;
+            aarch64) native_file=lancedb.linux-arm64-gnu.node ;;
+            *) echo "不支持的 Linux 架构：$(uname -m)" >&2; exit 1 ;;
+          esac
+          install -Dm755 target/release/liblancedb_nodejs.so "/app/lib/aivplayer/${native_file}"
+    sources:
+      - type: git
+        url: https://github.com/lancedb/lancedb.git
+        tag: v0.31.0
+        commit: 3f8d76817e6020ea344fba8a66c5de9ad8c82234
+      - type: patch
+        path: patches/lancedb-cargo-lock.patch
+      - lancedb-cargo-sources.json
+
+  - name: aivplayer
+    buildsystem: simple
+    build-options:
+      append-path: /usr/lib/sdk/node22/bin
+      env:
+        ELECTRON_CACHE: /run/build/aivplayer/flatpak-node/electron-cache
+        NPM_CONFIG_CACHE: /run/build/aivplayer/flatpak-node/npm-cache
+        NPM_CONFIG_LOGLEVEL: info
+        NPM_CONFIG_AUDIT: 'false'
+        NPM_CONFIG_FUND: 'false'
+        NPM_CONFIG_UPDATE_NOTIFIER: 'false'
+        ONNXRUNTIME_NODE_INSTALL: skip
+        ONNXRUNTIME_NODE_INSTALL_CUDA: skip
+        npm_config_nodedir: /usr/lib/sdk/node22
+        npm_config_offline: 'true'
+        XDG_CACHE_HOME: /run/build/aivplayer/flatpak-node/cache
+    sources:
+      - type: git
+        url: https://github.com/ponponon/aivplayer.git
+        commit: 2d9b0806e661bb263a5fa1834a1a049ec7cd4b9d
+        dest: app
+      - type: archive
+        url: https://github.com/electron/electron/releases/download/v43.2.0/electron-v43.2.0-linux-x64.zip
+        sha256: f77ca6ed67bbc68702b69b56ad499bca6ae090705ade7d04f0ac545e409dec68
+        only-arches: [x86_64]
+        dest: electron-dist
+      - type: archive
+        url: https://github.com/electron/electron/releases/download/v43.2.0/electron-v43.2.0-linux-arm64.zip
+        sha256: 50e1cdefbf8590e0d89b0276314a99c7b98e8eed732204c6f1a1c2a38376ed87
+        only-arches: [aarch64]
+        dest: electron-dist
+      - generated-sources.json
+      - type: script
+        dest-filename: run.sh
+        commands:
+          - export PATH="/app/bin:$PATH"
+          - export AIVPLAYER_WHISPER_CPP_BIN=/app/bin/whisper-cli
+          - export AIVPLAYER_FFMPEG_BIN=/app/bin/ffmpeg
+          - export AIVPLAYER_FFPROBE_BIN=/app/bin/ffprobe
+          - |
+              case "$(uname -m)" in
+                x86_64) export NAPI_RS_NATIVE_LIBRARY_PATH=/app/lib/aivplayer/lancedb.linux-x64-gnu.node ;;
+                aarch64) export NAPI_RS_NATIVE_LIBRARY_PATH=/app/lib/aivplayer/lancedb.linux-arm64-gnu.node ;;
+                *) echo "不支持的 Linux 架构：$(uname -m)" >&2; exit 1 ;;
+              esac
+          - exec zypak-wrapper /app/main/aivplayer "$@"
+    build-commands:
+      - cd app && npm install --offline
+      - cd app && npm run build
+      - cd app && jq '.desktopName = "cn.quniv.aivplayer.desktop"' package.json > package.json.flatpak && mv package.json.flatpak package.json
+      - cd app && npx electron-builder --config flatpak/electron-builder-flatpak.yml --linux --dir --publish never
+      - |
+          set -eu
+          install -d /app/main
+          unpacked_dir=app/release/linux-unpacked
+          if [ ! -d "$unpacked_dir" ]; then
+            unpacked_dir=app/release/linux-arm64-unpacked
+          fi
+          test -d "$unpacked_dir"
+          cp -a "$unpacked_dir/." /app/main/
+      - install -Dm755 run.sh /app/bin/cn.quniv.aivplayer
+      - install -Dm644 app/flatpak/cn.quniv.aivplayer.desktop /app/share/applications/cn.quniv.aivplayer.desktop
+      - install -Dm644 app/flatpak/cn.quniv.aivplayer.metainfo.xml /app/share/metainfo/cn.quniv.aivplayer.metainfo.xml
+      - install -Dm644 app/flatpak/icon-512.png /app/share/icons/hicolor/512x512/apps/cn.quniv.aivplayer.png

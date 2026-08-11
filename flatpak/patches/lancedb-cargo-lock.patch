@@ -1,0 +1,26 @@
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -5328,6 +5328,6 @@
+ [[package]]
+ name = "lancedb"
+-version = "0.31.0-beta.6"
++version = "0.31.0"
+ dependencies = [
+  "ahash",
+  "anyhow",
+@@ -5413,6 +5413,6 @@
+ [[package]]
+ name = "lancedb-nodejs"
+-version = "0.31.0-beta.6"
++version = "0.31.0"
+ dependencies = [
+  "arrow-array",
+  "arrow-buffer",
+@@ -5438,6 +5438,6 @@
+ [[package]]
+ name = "lancedb-python"
+-version = "0.34.0-beta.6"
++version = "0.34.0"
+ dependencies = [
+  "arrow",
+  "async-trait",

@@ -305,6 +305,18 @@
   white-space: nowrap;
 }
 
+.vision-model-download {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.vision-model-download small {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
 .vision-index-actions {
   flex-wrap: wrap;
 }

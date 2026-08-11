@@ -22,6 +22,18 @@ permissions:
 env:
   LIBHEIF_VERSION: 1.23.1
   WHISPER_CPP_VERSION: 1.9.1
+  FFMPEG_VERSION: 8.1.2
+  FFMPEG_BUILD_REVISION: n8.1.2-34-g9b6c8969e0
+  FFMPEG_RELEASE_TAG: autobuild-2026-08-09-13-03
+  FFMPEG_SOURCE_SHA256: 464beb5e7bf0c311e68b45ae2f04e9cc2af88851abb4082231742a74d97b524c
+  FFMPEG_WIN64_URL: https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-08-09-13-03/ffmpeg-n8.1.2-34-g9b6c8969e0-win64-gpl-8.1.zip
+  FFMPEG_WIN64_SHA256: dee1b458ad8fa8556d0cc7287a1ec66664d0c2d6a1098d19cf0c465d9d8430bf
+  FFMPEG_WINARM64_URL: https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-08-09-13-03/ffmpeg-n8.1.2-34-g9b6c8969e0-winarm64-gpl-8.1.zip
+  FFMPEG_WINARM64_SHA256: ab350d5e1f77468c98dfe237064efba4004a7b059669fefd206c4a54dd23b211
+  FFMPEG_LINUX64_URL: https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-08-09-13-03/ffmpeg-n8.1.2-34-g9b6c8969e0-linux64-gpl-8.1.tar.xz
+  FFMPEG_LINUX64_SHA256: c7f279081aa3dd837ba23c05e4d02f5f3874c428d2f134e1bbbea9726f8d2e7e
+  FFMPEG_LINUXARM64_URL: https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-08-09-13-03/ffmpeg-n8.1.2-34-g9b6c8969e0-linuxarm64-gpl-8.1.tar.xz
+  FFMPEG_LINUXARM64_SHA256: bde27b02e0067a45e1d942d8b455f6668bb6ac08e2da680a1a8d7c8465a38cc0
 
 jobs:
   build-macos:
@@ -65,9 +77,40 @@ jobs:
           for formula in \
             libde265 kvazaar jpeg-turbo \
             dav1d lame mpg123 libvmaf libvpx openssl@3 opus \
-            sdl2-compat sdl3 svt-av1 x264 x265 ffmpeg; do
+            sdl2-compat sdl3 svt-av1 x264 x265; do
             build_from_source "$formula"
           done
+
+      - name: Build fixed FFmpeg runtime
+        shell: bash
+        run: |
+          archive="$RUNNER_TEMP/ffmpeg-${FFMPEG_VERSION}.tar.xz"
+          source_dir="$RUNNER_TEMP/ffmpeg-${FFMPEG_VERSION}"
+          install_dir="$RUNNER_TEMP/ffmpeg-install"
+          curl --fail --location --retry 3 --output "$archive" "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz"
+          echo "${FFMPEG_SOURCE_SHA256}  ${archive}" | shasum -a 256 -c -
+          rm -rf "$source_dir" "$install_dir"
+          tar -xJf "$archive" -C "$RUNNER_TEMP"
+          mkdir -p "$install_dir"
+          pushd "$source_dir"
+          ./configure \
+            --prefix="$install_dir" \
+            --bindir=bin \
+            --disable-debug \
+            --disable-doc \
+            --disable-ffplay \
+            --disable-network \
+            --disable-autodetect \
+            --enable-gpl \
+            --enable-version3 \
+            --enable-static \
+            --disable-shared
+          make -j"$(sysctl -n hw.ncpu)"
+          make install
+          popd
+          test -x "$install_dir/bin/ffmpeg"
+          test -x "$install_dir/bin/ffprobe"
+          echo "AIVPLAYER_STAGE_FFMPEG_BIN=$install_dir/bin/ffmpeg" >> "$GITHUB_ENV"
 
       - name: Build static HEIF runtime
         env:
@@ -86,7 +129,6 @@ jobs:
       - name: Build and stage ASR/media runtime
         shell: bash
         run: |
-          export AIVPLAYER_STAGE_FFMPEG_BIN="$(brew --prefix)/bin/ffmpeg"
           npm run release:build-whisper-macos -- --tag "v${WHISPER_CPP_VERSION}"
           npm run release:check-runtime
 
@@ -154,18 +196,12 @@ jobs:
       - name: Install HEIF build dependencies
         shell: pwsh
         run: |
-          $ffmpegRoot = Join-Path $env:ChocolateyInstall 'lib'
-          $ffmpegReady = $false
-          for ($attempt = 1; $attempt -le 3; $attempt++) {
-            choco install ffmpeg -y --no-progress --force
-            $ffmpegCandidates = @(Get-ChildItem -Path $ffmpegRoot -Filter 'ffmpeg.exe' -File -Recurse -ErrorAction SilentlyContinue)
-            if ($ffmpegCandidates.Count -gt 0) {
-              $ffmpegReady = $true
-              break
-            }
-            if ($attempt -lt 3) { Start-Sleep -Seconds ([int][math]::Pow(2, $attempt)) }
-          }
-          if (!$ffmpegReady) { throw "The actual ffmpeg.exe was not installed under $ffmpegRoot after 3 attempts." }
+          $ffmpegArchive = Join-Path $env:RUNNER_TEMP 'ffmpeg-win64.zip'
+          $ffmpegRoot = Join-Path $env:RUNNER_TEMP 'ffmpeg-win64'
+          Invoke-WebRequest -Uri $env:FFMPEG_WIN64_URL -OutFile $ffmpegArchive
+          if ((Get-FileHash -Path $ffmpegArchive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $env:FFMPEG_WIN64_SHA256) { throw 'The downloaded Windows x64 FFmpeg checksum does not match.' }
+          Remove-Item -Recurse -Force $ffmpegRoot -ErrorAction SilentlyContinue
+          Expand-Archive -Path $ffmpegArchive -DestinationPath $ffmpegRoot -Force
           vcpkg install libde265:x64-windows-static x265:x64-windows-static libjpeg-turbo:x64-windows-static tiff:x64-windows-static
 
       - name: Build static HEIF runtime
@@ -193,7 +229,7 @@ jobs:
           cmake --build $build --config Release --parallel
           $whisperBinary = Get-ChildItem -Path $build -Filter "whisper-cli.exe" -Recurse | Select-Object -First 1
           if ($null -eq $whisperBinary) { throw "whisper-cli.exe was not built." }
-          $ffmpegRoot = Join-Path $env:ChocolateyInstall 'lib'
+          $ffmpegRoot = Join-Path $env:RUNNER_TEMP 'ffmpeg-win64'
           $ffmpegBinary = Get-ChildItem -Path $ffmpegRoot -Filter 'ffmpeg.exe' -File -Recurse | Select-Object -First 1
           if ($null -eq $ffmpegBinary) { throw "The actual ffmpeg.exe was not found under $ffmpegRoot" }
           $ffprobeBinary = Join-Path $ffmpegBinary.DirectoryName 'ffprobe.exe'
@@ -275,8 +311,8 @@ jobs:
         shell: pwsh
         run: |
           vcpkg install libde265:arm64-windows-static x265:arm64-windows-static libjpeg-turbo:arm64-windows-static tiff:arm64-windows-static
-          $ffmpegUrl = 'https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-08-09-13-03/ffmpeg-n8.1.2-34-g9b6c8969e0-winarm64-gpl-8.1.zip'
-          $ffmpegSha256 = 'ab350d5e1f77468c98dfe237064efba4004a7b059669fefd206c4a54dd23b211'
+          $ffmpegUrl = $env:FFMPEG_WINARM64_URL
+          $ffmpegSha256 = $env:FFMPEG_WINARM64_SHA256
           $ffmpegArchive = Join-Path $env:RUNNER_TEMP 'ffmpeg-winarm64.zip'
           $ffmpegRoot = Join-Path $env:RUNNER_TEMP 'ffmpeg-winarm64'
           Invoke-WebRequest -Uri $ffmpegUrl -OutFile $ffmpegArchive
@@ -391,7 +427,23 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-0 libnotify4 libnss3 libxss1 libxtst6 xdg-utils libatspi2.0-0 libuuid1 libsecret-1-0 ffmpeg cmake ninja-build pkg-config libde265-dev libx265-dev libjpeg-dev zlib1g-dev
+          sudo apt-get install -y libgtk-3-0 libnotify4 libnss3 libxss1 libxtst6 xdg-utils libatspi2.0-0 libuuid1 libsecret-1-0 cmake ninja-build pkg-config libde265-dev libx265-dev libjpeg-dev zlib1g-dev
+
+      - name: Install fixed FFmpeg runtime
+        shell: bash
+        run: |
+          archive="$RUNNER_TEMP/ffmpeg-linux64.tar.xz"
+          root="$RUNNER_TEMP/ffmpeg-linux64"
+          curl --fail --location --retry 3 --output "$archive" "$FFMPEG_LINUX64_URL"
+          echo "${FFMPEG_LINUX64_SHA256}  ${archive}" | sha256sum -c -
+          rm -rf "$root"
+          mkdir -p "$root"
+          tar -xJf "$archive" -C "$root"
+          ffmpeg_dir="$(find "$root" -type d -name bin -print -quit)"
+          test -n "$ffmpeg_dir"
+          test -x "$ffmpeg_dir/ffmpeg"
+          test -x "$ffmpeg_dir/ffprobe"
+          echo "AIVPLAYER_FFMPEG_DIR=$ffmpeg_dir" >> "$GITHUB_ENV"
 
       - name: Build static HEIF runtime
         env:
@@ -416,7 +468,7 @@ jobs:
           git clone --depth 1 --branch "v${WHISPER_CPP_VERSION}" https://github.com/ggml-org/whisper.cpp.git "$source_dir"
           cmake -S "$source_dir" -B "$build_dir" -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_EXAMPLES=ON -DCMAKE_BUILD_TYPE=Release
           cmake --build "$build_dir" --parallel
-          npm run release:prepare-runtime -- --platform linux --whisper-dir "$build_dir/bin" --ffmpeg-dir /usr/bin
+          npm run release:prepare-runtime -- --platform linux --whisper-dir "$build_dir/bin" --ffmpeg-dir "$AIVPLAYER_FFMPEG_DIR"
           npm run release:check-runtime
 
       - name: Verify Linux x64 native binaries
@@ -508,7 +560,23 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-0 libnotify4 libnss3 libxss1 libxtst6 xdg-utils libatspi2.0-0 libuuid1 libsecret-1-0 ffmpeg cmake ninja-build pkg-config libde265-dev libx265-dev libjpeg-dev zlib1g-dev
+          sudo apt-get install -y libgtk-3-0 libnotify4 libnss3 libxss1 libxtst6 xdg-utils libatspi2.0-0 libuuid1 libsecret-1-0 cmake ninja-build pkg-config libde265-dev libx265-dev libjpeg-dev zlib1g-dev
+
+      - name: Install fixed FFmpeg runtime
+        shell: bash
+        run: |
+          archive="$RUNNER_TEMP/ffmpeg-linuxarm64.tar.xz"
+          root="$RUNNER_TEMP/ffmpeg-linuxarm64"
+          curl --fail --location --retry 3 --output "$archive" "$FFMPEG_LINUXARM64_URL"
+          echo "${FFMPEG_LINUXARM64_SHA256}  ${archive}" | sha256sum -c -
+          rm -rf "$root"
+          mkdir -p "$root"
+          tar -xJf "$archive" -C "$root"
+          ffmpeg_dir="$(find "$root" -type d -name bin -print -quit)"
+          test -n "$ffmpeg_dir"
+          test -x "$ffmpeg_dir/ffmpeg"
+          test -x "$ffmpeg_dir/ffprobe"
+          echo "AIVPLAYER_FFMPEG_DIR=$ffmpeg_dir" >> "$GITHUB_ENV"
 
       - name: Build static HEIF runtime
         env:
@@ -533,7 +601,7 @@ jobs:
           git clone --depth 1 --branch "v${WHISPER_CPP_VERSION}" https://github.com/ggml-org/whisper.cpp.git "$source_dir"
           cmake -S "$source_dir" -B "$build_dir" -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_EXAMPLES=ON -DCMAKE_BUILD_TYPE=Release
           cmake --build "$build_dir" --parallel
-          npm run release:prepare-runtime -- --platform linux --whisper-dir "$build_dir/bin" --ffmpeg-dir /usr/bin
+          npm run release:prepare-runtime -- --platform linux --whisper-dir "$build_dir/bin" --ffmpeg-dir "$AIVPLAYER_FFMPEG_DIR"
           npm run release:check-runtime
 
       - name: Verify Linux ARM64 native binaries

@@ -68,3 +68,6 @@ build/pkg-scripts/*
 
 # Internal product research; keep the detailed borrowing plan out of the public repository.
 OPEN_SOURCE_INSPIRATION_PLAN.md
+
+# Generated Flatpak CI manifest
+flatpak/ci-manifest.yml

@@ -28,6 +28,29 @@
 - Snap 构建依赖 Snap Store、core22、snapcraft 和网络，单次 `snap install` 或 `snapcraft pack` 失败不能直接等同于配置错误；安装和打包要做有上限的指数退避重试，并且重试循环最后一次失败必须显式 `exit 1`，不能让最后一个 `sleep` 把失败步骤伪装成成功。
 - `publish-snap` 不能只依赖 `publish-release`，否则 `build-snap` 失败后 release 仍会成功、后置 job 再因找不到 artifact 产生第二个红色失败。汇总 release 必须等待真正会上传的 artifact，后置发布 job 也要直接依赖产物 job，确保失败原因只保留在最初失败点。
 - Snapcraft 的 `pack` 失败后不能在同一个 `parts` / `stage` / `prime` 状态上直接重试；dump part 可能已经留下部分安装文件，下一次会把原本的根因放大成大量 `cp ... File exists`。每次重试前必须清理 Snapcraft 生成目录和旧 `.snap`，再从干净状态重新打包。
+- Flatpak 的 npm `optional` 平台包不能等同于“不会进入最终包”：`package-lock.json` 仍会把 LanceDB、ONNX Runtime、Sharp/libvips 和 sherpa-onnx 的预编译平台包或安装脚本记录进离线 source 清单。处理这类依赖时，必须先用 `npm run flatpak:audit-native` 按 lockfile 建立证据，再决定源码重建或在 Flatpak 版明确关闭能力；不能只按当前 macOS 安装结果判断 Linux Flathub 合规性。
+- Flathub 的源码构建应交给 Flathub/Linux 构建环境；本地 macOS 编译 LanceDB 只能是可选的排障手段，不能在未确认 Flatpak 功能边界前作为实施路线，更不能把本地构建产物带入 manifest。
+- GitHub runner 没有用户图形会话时，Flatpak workflow 不能依赖 `flatpak-builder --install-deps-from=flathub` 通过用户 D-Bus 安装 SDK；应先显式安装 runtime、BaseApp 和 SDK extensions，再让 builder 直接使用已安装依赖。
+- Flatpak 依赖若用 `flatpak install --user` 安装，后续 `flatpak run`、builder 和 lint 也必须显式带 `--user`；否则会从系统 Flatpak 目录查找 SDK，产生“已安装但找不到 runtime”的假失败。
+- GitHub runner 上使用 `org.flatpak.Builder` 容器调用 builder 时，用户 SDK 目录可能对容器内的 Flatpak 查找不可见；优先安装 Ubuntu 的 `flatpak-builder` CLI，在宿主机直接使用已安装的 SDK，减少嵌套 Flatpak 的目录隔离问题。
+
+## 2026-08-10：Flatpak 源码编译产物不能只安装不接线
+
+- 现象：manifest 已经在 Flatpak builder 内编译 LanceDB Rust NAPI addon 并安装到 `/app/lib/aivplayer`，但启动 wrapper 没有指定加载路径；NAPI-RS 仍可能回退到 npm 平台预编译包，导致“源码已编译”不等于“运行时使用源码产物”。
+- 经验：涉及原生模块时必须同时检查构建产物、安装路径和运行时加载入口，不能只看 builder 日志里的编译成功。
+- 处理：wrapper 按 `uname -m` 设置 `NAPI_RS_NATIVE_LIBRARY_PATH`，并把 x86_64 / ARM64 两条路径纳入静态检查。
+
+## 2026-08-10：固定源码 commit 的检查需要完整 Git 历史
+
+- 现象：本地 `flatpak:check` 能验证 manifest 固定的应用源码 commit 包含桌面入口、MetaInfo、图标和截图，但 GitHub Actions 默认 `actions/checkout` 只拉取深度为 1 的当前提交，远程静态检查因此误报源码 commit 缺少文件。
+- 经验：凡是用 `git cat-file <commit>:<path>` 验证可重建输入的 CI 检查，必须显式保证对象已被 checkout；不能把本地完整 clone 的结果当成 CI 默认行为。
+- 处理：Flatpak 静态检查 job 使用 `fetch-depth: 0`，让固定 commit 的内容校验与本地、远程语义一致。
+
+## 2026-08-11：Flatpak CI 临时 manifest 不能直接交给 Flathub linter
+
+- 现象：CI 为使用当前 checkout 构建，会生成 `flatpak/ci-manifest.yml`；Flatpak builder 能正常完成构建，但 Flathub linter 按文件名校验时把它识别为 `ci-manifest`，与应用 ID `cn.quniv.aivplayer` 不一致，触发不可豁免的 `appid-filename-mismatch`。
+- 经验：本地源码替换 manifest 只适合 builder 输入，最终 linter 必须检查正式命名的 manifest；构建输入和审核输入不能混用。
+- 处理：CI 继续使用 `ci-manifest.yml` 构建，但 lint 改为检查正式的 `flatpak/cn.quniv.aivplayer.yml`。
 
 ## Electron 打包不能依赖自动安装的 peer dependency
 
@@ -1401,6 +1424,77 @@
 - 经验：Smoke 应根据真实 `PanelTabs` 顺序选择目标入口，并断言页面 / IPC 返回的最终状态；Provider 的注册配置、响应覆盖字段和任务持久化字段不能混为一谈。
 - 处理：Smoke 改为点击短剧固定标签，使用本机临时 HTTP fixture 跑三类任务，按媒体类型校验响应 Provider、成本、结果文件、任务中心终态和重启恢复；fixture 在 `finally` 中关闭并清理用户目录。
 
+## 2026-08-10：Electron Flatpak 不能直接复用桌面端预编译资源
+
+- 现象：electron-builder 的 macOS / Windows / Linux 发布配置引用了工作区中被忽略的预编译 FFmpeg、whisper.cpp、libheif 和 SigLIP2 资源；这些资源只存在于当前开发机，不能作为 Flathub 的可重建输入。
+- 经验：Flatpak 必须把 Electron BaseApp、Node SDK 扩展、离线 npm source、`--linux --dir --publish never` 和应用启动 wrapper 作为独立边界；原生运行时、原生 npm 依赖和大模型还要分别设计固定源码、构建命令、架构覆盖和许可证证据链。
+- 处理：新增第一阶段 manifest、桌面入口、Metainfo、Electron-builder Flatpak 配置、离线源清单和静态检查；当前明确不宣称已满足 Flathub 提交条件，待 Linux 构建环境具备后继续补齐原生模块与模型安装方案。
+
+## 2026-08-10：依赖源生成器遇到代理竞态时不能提交半成品
+
+- 现象：`flatpak-node-generator` 在本机代理环境下可以处理大部分 npm 包，但在 Electron / esbuild 特殊扩展阶段长期不退出，过程中不会写出完整 JSON；直接把中途状态当作成功会留下不可复现的 Flatpak 源清单。
+- 经验：外网下载前先检测代理；生成器必须以退出码和输出文件完整性为成功条件，不能只看进度条。遇到特殊包处理阻塞时，可以先用工具的 stub 模式生成基于锁文件完整性字段的第一阶段清单，但必须把 Electron BaseApp 缓存、平台二进制和真实构建验证记录为后续阻塞项。
+- 处理：当前提交只把 stub 清单用于 manifest 静态接线和持续检查，不把它当作最终 Flathub 构建证据；后续在 Linux `flatpak-builder` 环境中重新生成并验证完整源清单，确认 Electron、esbuild 和所有原生模块的架构选择后再提交 Flathub。
+
+## 2026-08-10：Flatpak 补丁不能直接复用异常 Git diff
+
+- 现象：远程 Linux builder 构建 x265 时，补丁的修改内容能够部分应用，但由于补丁包含异常的 Git `index` 头并返回非零状态，`flatpak-builder` 将模块判定为失败。
+- 经验：给 Flatpak manifest 使用的补丁应是可由标准 `patch` 直接消费的 unified diff；不能把本地生成、缺少有效新文件对象哈希的 Git diff 原样当作构建补丁。
+- 处理：移除补丁中的 Git 元数据，只保留 `---` / `+++` 和完整上下文；提交前检查补丁格式，之后用远程 Linux CI 验证真实应用结果。
+
+## 2026-08-10：Flatpak CMake 安装后不能重复复制旧路径
+
+- 现象：whisper.cpp 的 CMake 安装阶段已经把 `whisper-cli` 放到 `/app/bin/whisper-cli`，manifest 仍在 `post-install` 中复制不存在的 `build/bin/whisper-cli`，导致远程 builder 在源码编译成功后失败。
+- 经验：使用 `cmake-ninja` 的模块应以实际 `cmake --install` 结果为准；不能把旧版构建目录中的产物路径当成稳定接口重复安装。
+- 处理：删除重复的 `post-install` 复制命令，保留 wrapper 对 `/app/bin/whisper-cli` 的显式引用，并在静态检查中禁止重新引入旧路径。
+
+## 2026-08-10：Cargo 离线配置必须放在标准 .cargo 目录
+
+- 现象：LanceDB 的 Cargo 源码清单已经包含 `ahash` crate，但远程 builder 仍在离线解析时报告 `no matching package named ahash found`。
+- 经验：Cargo 只有在项目根目录的 `.cargo/config` 或 `.cargo/config.toml` 中才会读取 source replacement；把同名配置写到普通 `cargo/config` 不会启用 vendored source，构建会错误回退到 crates.io index。
+- 处理：将 Flatpak inline source 的目标目录改为 `.cargo`，并在静态检查中锁定 `replace-with = "vendored-sources"` 与 `.cargo/config` 路径。
+
+## 2026-08-10：Rust build script 的系统工具也必须进入 Flatpak manifest
+
+- 现象：LanceDB 的 Cargo 依赖和源码 vendor 已经完整，Rust 编译继续到 `lance-encoding` 时仍因找不到 `protoc` 失败。
+- 经验：Cargo 离线清单只覆盖 Rust crate，`prost-build` 等 build script 依赖的系统工具不会随 crate 自动提供；Flathub 构建环境不能假设宿主机装有 `protoc`。
+- 处理：新增固定 protobuf v30.2 源码模块，在远程 builder 中安装 `/app/bin/protoc`，并通过 `PROTOC` 环境变量显式注入 LanceDB 模块；不使用本地预编译工具或宿主机 apt 状态。
+
+## 2026-08-10：Flatpak npm 构建不能触发 ONNX Runtime CUDA 下载
+
+- 现象：远程 builder 已经完成 FFmpeg、媒体库、whisper.cpp、protobuf 和 LanceDB 编译，但最终离线 `npm install` 运行 `onnxruntime-node` 的 postinstall 时访问 `api.nuget.org`，因网络不可用失败。
+- 经验：`onnxruntime-node` 的 CPU 运行时文件随 npm 包提供，Linux x64 默认额外下载的是 CUDA 扩展；Flatpak 构建阶段必须明确禁止这类可选网络下载，且当前版与旧版使用的环境变量不同。
+- 处理：在 Flatpak 应用模块同时设置 `ONNXRUNTIME_NODE_INSTALL=skip` 和 `ONNXRUNTIME_NODE_INSTALL_CUDA=skip`，保留 CPU 推理能力并兼容新旧安装脚本；不在本地编译 ONNX Runtime，也不把宿主机或 NuGet 二进制偷偷带入构建。
+
+## 2026-08-10：Electron 打包阶段不能依赖隐式 GitHub 下载
+
+- 现象：ONNX Runtime 已跳过 CUDA 下载，远程 builder 的 npm 安装和应用构建均成功；`electron-builder --linux --dir` 在准备 `linux-unpacked` 时仍通过 `@electron/get` 请求 `github.com` 下载 Electron Linux 包，Flatpak 沙箱因无网络报 `getaddrinfo EAI_AGAIN github.com`。
+- 经验：Flatpak 的源码下载阶段和模块 build 阶段是两个边界；允许 manifest 下载并校验固定源，不等于允许构建命令临时联网。Electron BaseApp 不会自动满足 electron-builder 的本地发行目录输入，必须显式提供固定版本的 Electron 包。
+- 处理：从 Electron 官方 v43.2.0 release 按架构固定 `electron-v43.2.0-linux-x64.zip` / `electron-v43.2.0-linux-arm64.zip` 和 SHA-256，作为 manifest archive source 解压到独立目录；Flatpak 专用 electron-builder 配置固定 `electronVersion` 并设置 `electronDist: ../electron-dist`，让远程构建直接使用对应架构的本地发行目录。
+
+## 2026-08-10：Flatpak 图标尺寸不能只看目录名称
+
+- 现象：远程 Flatpak 已完成所有源码模块、npm 安装、Vite 构建和 Electron 打包，导出 repo 时仍因 `512x512` 目录中的实际 PNG 是 `1024x1024`，被 `appstreamcli` 拒绝。
+- 经验：Flatpak 图标的目录名称不是尺寸声明，导出器会读取 PNG 实际像素尺寸并限制最大 512；共享桌面品牌图标可以保持高分辨率，但 Flatpak 应该使用单独的发布资源。
+- 处理：由原始品牌图标生成 `flatpak/icon-512.png`，manifest 改为安装该文件；静态检查读取 PNG header，锁定实际宽高不超过 512，避免再次把大图放入 Flatpak 导出目录。
+
+## 2026-08-10：Flatpak CI 不能用当前源码掩盖固定 source 的缺文件
+
+- 现象：CI 为了验证当前分支，会把 manifest 中的应用 git source 临时替换成本地 checkout，因此即使当前构建成功，也可能没有验证 Flathub 实际按固定 release tag 拉取的内容；本次 v0.5.0 tag 不包含后续加入的 Flatpak desktop、MetaInfo 和图标文件。
+- 经验：最终 manifest 的应用 source 必须固定到一个包含全部构建输入的完整 commit；CI 的本地 source 替换只能作为加速当前分支验证，不能让它绕过 source 可重建性检查。
+- 处理：把应用 source 固定到包含 Flatpak 元数据的完整 commit，CI 替换脚本同时支持 commit source，静态检查通过 `git cat-file` 确认该 commit 实际包含 desktop、MetaInfo、512 图标、Electron-builder 配置和启动 wrapper。
+
+## 2026-08-10：Flatpak 离线 npm 构建不能放任 CLI 自己探测网络
+
+- 现象：`npm install --offline` 主流程虽然能够完成，但 npm CLI 仍可能尝试请求 registry 查询更新或发送 audit / fund 请求；这类旁路请求会在 Flathub 无网络构建中留下竞态和误导性错误日志。
+- 经验：离线构建不仅要给安装命令加 `--offline`，还要关闭 npm 的 audit、fund 和 update notifier；环境变量应由 manifest 固定，不能依赖 runner 或 SDK 的默认配置。
+- 处理：在 Flatpak 应用模块加入 `NPM_CONFIG_AUDIT=false`、`NPM_CONFIG_FUND=false` 和 `NPM_CONFIG_UPDATE_NOTIFIER=false`，并在静态检查中锁定这三项。
+
+## 2026-08-10：Flatpak AppStream 不能只验证能 compose
+
+- 现象：AppStream 在导出阶段能够生成 catalog，并不代表 Flathub 的元数据检查已经满足；官方要求图形应用提供截图和 OARS 1.1 年龄评级，缺字段会在后续 lint / 审核阶段才暴露。
+- 经验：desktop、MetaInfo、图标和截图应作为同一发布输入审计；截图资源必须来自固定 tag 或 commit，不能依赖本地临时文件或可变 branch。
+- 处理：MetaInfo 加入品牌色、OARS 1.1、固定资源截图和英文 caption；静态检查锁定这些字段，后续将把截图 URL 从当前分支改为已提交的不可变 commit。
 ## 2026-08-10：shell 临时变量不能在同一命令右侧展开
 
 - 现象：用 `files="$(rg ...)" npx vitest ... $files` 试图动态传入测试文件时，shell 会在执行前展开右侧的 `$files`，导致变量为空，意外跑了全仓测试并混入与本模块无关的失败。
@@ -1418,3 +1512,33 @@
 - 现象：素材替换成功后，字幕候选异步审计会刷新工程状态栏；Smoke 等待“已替换为 second-source.mp4”或“素材时长不足”提示时可能超时，即使工程数据已经正确写入。
 - 经验：Smoke 对编辑动作应等待可重读的工程快照、文件产物或 DOM 状态；异步诊断提示只作为观测值，不能代替业务状态断言。窗口外的确认按钮也不应依赖 Playwright 滚动到可视区。
 - 处理：素材替换 Smoke 改为等待 localStorage 中的 clip / source 映射，并用字幕 source anchor 校验重映射；导出对话框取消改用 DOM click；长 Smoke 通过且 `consoleErrors:[]`。
+
+## 2026-08-11：Flatpak 双架构输出目录不能写死为 linux-unpacked
+
+- 现象：x86_64 构建完成，但 ARM64 在 Electron 打包后执行 `cp app/release/linux-unpacked/.` 失败；不同架构的 electron-builder 输出目录可能是 `linux-arm64-unpacked`。
+- 经验：Flatpak manifest 不能把 electron-builder 的架构输出目录当成跨架构稳定接口，复制前必须按候选目录探测并用 `test -d` 阻断缺失输入。
+- 处理：构建命令优先使用 `linux-unpacked`，不存在时回退到 `linux-arm64-unpacked`，然后再复制到 `/app/main`。
+
+## 2026-08-11：Flathub 截图必须在构建时生成 media OSTree ref
+
+- 现象：Flatpak 能完成构建和 AppStream compose，但 repo lint 报 `appstream-external-screenshot-url` 与 `appstream-screenshots-not-mirrored-in-ostree`；仅把截图 URL 固定到 Git commit 不能替代 Flathub media 镜像。
+- 经验：带远程截图的 Flathub 构建必须使用 `--compose-url-policy=full --mirror-screenshots-url=https://dl.flathub.org/media`，让 AppStream 下载截图并把对应 media ref 写入 OSTree；之后必须同时跑 repo lint。
+- 处理：x86_64 与 ARM64 Flatpak workflow 都加入截图镜像参数，保留固定 commit 截图 URL，避免通过放宽 linter 掩盖发布元数据缺失。
+
+## 2026-08-11：发布流水线不能从包管理器动态获取 FFmpeg
+
+- 现象：macOS Homebrew、Windows Chocolatey、Linux apt 获取的是构建当天的 FFmpeg，既无法保证版本一致，也可能因上游 latest 标签或 feed 竞态产生不同二进制。
+- 经验：发布运行时必须把来源、版本、下载地址和 SHA-256 作为构建输入；平台预编译包可以固定不可变构建资产，macOS 则固定官方源码归档并在 Runner 上构建。
+- 处理：统一锁定 FFmpeg 8.1.2 输入；Windows x64/ARM64 与 Linux x64/ARM64 使用固定 BtbN 构建及校验和，macOS 使用官方 `ffmpeg-8.1.2.tar.xz` 及校验和，不再调用 Chocolatey / apt / Homebrew 的 FFmpeg 包；Linux deb 同时移除显式的系统 `ffmpeg` 依赖，避免安装包再拉取一份动态最新版。
+
+## 2026-08-11：Flathub 构建参数不能假设宿主 flatpak-builder 版本
+
+- 现象：按 Flathub 文档加入截图镜像参数后，GitHub Runner 的宿主 `flatpak-builder` 直接报 `Unknown option --compose-url-policy=full`，两个架构都在真正构建前退出。
+- 经验：Runner 的 apt 版 flatpak-builder 可能落后于 Flathub 文档要求；既然 workflow 已安装 `org.flatpak.Builder`，构建和 linter 必须统一使用这个持续更新的 Flathub Builder 容器。
+- 处理：Flatpak 构建改为 `flatpak run --user org.flatpak.Builder`，保留截图镜像参数，避免宿主工具版本差异再次阻断构建。
+
+## 2026-08-11：Flatpak CI 应使用 Flathub Builder wrapper
+
+- 现象：CI 已经成功安装 `org.freedesktop.Sdk//25.08`，但直接启动 `org.flatpak.Builder` 仍报告 `Unable to find sdk org.freedesktop.Sdk version 25.08`；无论此前把依赖装到用户仓库还是系统仓库，都没有解决 SDK 查找范围不一致的问题。
+- 经验：Flathub 的 `org.flatpak.Builder` 不是应该直接调用的宿主命令；官方 `flathub-build` wrapper 会设置 `FLATPAK_USER_DIR`，启用 `--user`，并通过 `--install-deps-from=flathub` 统一安装 manifest 声明的 SDK、扩展和 BaseApp。
+- 处理：Flatpak CI 只安装用户级 `org.flatpak.Builder`，构建改为 `flatpak run --user --command=flathub-build org.flatpak.Builder flatpak/ci-manifest.yml`，linter 也固定从同一用户级 Builder 运行；不再手动混合系统 SDK 和 Builder 沙盒。
