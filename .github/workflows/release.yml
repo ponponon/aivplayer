@@ -628,6 +628,58 @@ jobs:
       - name: Verify release manifest
         run: npm run release:check-manifest -- --artifacts-dir artifacts/assembled --tag "${{ inputs.tag || github.ref_name }}"
 
+      - name: Upload Windows installers to MinIO
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.verify_only != true }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.MINIO_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.MINIO_SECRET_KEY }}
+          AWS_DEFAULT_REGION: us-east-1
+          AWS_S3_ADDRESSING_STYLE: path
+          MINIO_ENDPOINT: ${{ secrets.MINIO_ENDPOINT }}
+          MINIO_BUCKET: ${{ secrets.MINIO_BUCKET }}
+          MINIO_PUBLIC_BASE_URL: ${{ secrets.MINIO_PUBLIC_BASE_URL }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        shell: bash
+        run: |
+          if [[ -z "$AWS_ACCESS_KEY_ID" || -z "$AWS_SECRET_ACCESS_KEY" || -z "$MINIO_ENDPOINT" || -z "$MINIO_BUCKET" || -z "$MINIO_PUBLIC_BASE_URL" ]]; then
+            echo 'MinIO secrets are not configured; skipping MinIO upload.'
+            exit 0
+          fi
+
+          aws configure set default.s3.addressing_style path
+          version="${RELEASE_TAG#v}"
+          for architecture in x64 arm64; do
+            file="artifacts/assembled/AIVPlayer-Setup-${version}-${architecture}.exe"
+            if [[ ! -f "$file" ]]; then
+              echo "Windows ${architecture} installer is missing: $file" >&2
+              exit 1
+            fi
+
+            file_name="$(basename "$file")"
+            object_key="aivplayer/${RELEASE_TAG}/${file_name}"
+            aws s3 cp "$file" "s3://${MINIO_BUCKET}/${object_key}" \
+              --endpoint-url "$MINIO_ENDPOINT" \
+              --content-type application/octet-stream \
+              --content-disposition "attachment; filename=\"${file_name}\"" \
+              --cache-control 'public, max-age=31536000, immutable' \
+              --no-progress
+
+            url="${MINIO_PUBLIC_BASE_URL%/}/${object_key}"
+            http_code="$(curl --head --silent --show-error --output /dev/null --write-out '%{http_code}' --max-redirs 0 "$url")"
+            if [[ "$http_code" != '200' ]]; then
+              echo "MinIO package URL did not return HTTP 200: $url ($http_code)" >&2
+              exit 1
+            fi
+            echo "MinIO package URL: $url"
+          done
+
+          {
+            echo '### MinIO Windows 包地址'
+            echo
+            echo "- x64: ${MINIO_PUBLIC_BASE_URL%/}/aivplayer/${RELEASE_TAG}/AIVPlayer-Setup-${version}-x64.exe"
+            echo "- arm64: ${MINIO_PUBLIC_BASE_URL%/}/aivplayer/${RELEASE_TAG}/AIVPlayer-Setup-${version}-arm64.exe"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Share release manifest with Gitee sync
         uses: actions/upload-artifact@v7
         with:
