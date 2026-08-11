@@ -63,19 +63,19 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y flatpak flatpak-builder
-          flatpak remote-add --if-not-exists --user flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-          flatpak install --user --assumeyes flathub org.flatpak.Builder//stable org.freedesktop.Sdk//25.08 org.freedesktop.Sdk.Extension.node22//25.08 org.freedesktop.Sdk.Extension.rust-stable//25.08 org.electronjs.Electron2.BaseApp//25.08
+          sudo flatpak remote-add --if-not-exists --system flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          sudo flatpak install --system --assumeyes flathub org.flatpak.Builder//stable org.freedesktop.Sdk//25.08 org.freedesktop.Sdk.Extension.node22//25.08 org.freedesktop.Sdk.Extension.rust-stable//25.08 org.electronjs.Electron2.BaseApp//25.08
       - name: Build Flatpak
         run: |
-          flatpak run --user org.flatpak.Builder \
+          flatpak run org.flatpak.Builder \
             --user --force-clean --disable-rofiles-fuse \
             --compose-url-policy=full \
             --mirror-screenshots-url=https://dl.flathub.org/media \
             --repo=repo flatpak-build flatpak/ci-manifest.yml
       - name: Lint manifest and repository
         run: |
-          flatpak run --user --command=flatpak-builder-lint org.flatpak.Builder manifest flatpak/cn.quniv.aivplayer.yml
-          flatpak run --user --command=flatpak-builder-lint org.flatpak.Builder repo repo
+          flatpak run --command=flatpak-builder-lint org.flatpak.Builder manifest flatpak/cn.quniv.aivplayer.yml
+          flatpak run --command=flatpak-builder-lint org.flatpak.Builder repo repo
       - name: Create bundle
         run: flatpak build-bundle repo AIVPlayer-x86_64.flatpak cn.quniv.aivplayer
       - name: Upload Flatpak bundle
@@ -102,19 +102,19 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y flatpak flatpak-builder
-          flatpak remote-add --if-not-exists --user flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-          flatpak install --user --assumeyes flathub org.flatpak.Builder//stable org.freedesktop.Sdk//25.08 org.freedesktop.Sdk.Extension.node22//25.08 org.freedesktop.Sdk.Extension.rust-stable//25.08 org.electronjs.Electron2.BaseApp//25.08
+          sudo flatpak remote-add --if-not-exists --system flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          sudo flatpak install --system --assumeyes flathub org.flatpak.Builder//stable org.freedesktop.Sdk//25.08 org.freedesktop.Sdk.Extension.node22//25.08 org.freedesktop.Sdk.Extension.rust-stable//25.08 org.electronjs.Electron2.BaseApp//25.08
       - name: Build Flatpak
         run: |
-          flatpak run --user org.flatpak.Builder \
+          flatpak run org.flatpak.Builder \
             --user --force-clean --disable-rofiles-fuse \
             --compose-url-policy=full \
             --mirror-screenshots-url=https://dl.flathub.org/media \
             --repo=repo flatpak-build flatpak/ci-manifest.yml
       - name: Lint manifest and repository
         run: |
-          flatpak run --user --command=flatpak-builder-lint org.flatpak.Builder manifest flatpak/cn.quniv.aivplayer.yml
-          flatpak run --user --command=flatpak-builder-lint org.flatpak.Builder repo repo
+          flatpak run --command=flatpak-builder-lint org.flatpak.Builder manifest flatpak/cn.quniv.aivplayer.yml
+          flatpak run --command=flatpak-builder-lint org.flatpak.Builder repo repo
       - name: Create bundle
         run: flatpak build-bundle repo AIVPlayer-aarch64.flatpak cn.quniv.aivplayer
       - name: Upload Flatpak bundle

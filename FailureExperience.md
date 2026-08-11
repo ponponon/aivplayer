@@ -1536,3 +1536,9 @@
 - 现象：按 Flathub 文档加入截图镜像参数后，GitHub Runner 的宿主 `flatpak-builder` 直接报 `Unknown option --compose-url-policy=full`，两个架构都在真正构建前退出。
 - 经验：Runner 的 apt 版 flatpak-builder 可能落后于 Flathub 文档要求；既然 workflow 已安装 `org.flatpak.Builder`，构建和 linter 必须统一使用这个持续更新的 Flathub Builder 容器。
 - 处理：Flatpak 构建改为 `flatpak run --user org.flatpak.Builder`，保留截图镜像参数，避免宿主工具版本差异再次阻断构建。
+
+## 2026-08-11：Builder 沙盒不能直接读取用户级 SDK
+
+- 现象：CI 已经成功安装 `org.freedesktop.Sdk//25.08`，但随后以 Flatpak 沙盒启动 `org.flatpak.Builder` 仍报告 `Unable to find sdk org.freedesktop.Sdk version 25.08`。
+- 经验：Builder 应用的沙盒权限只保证访问系统 Flatpak 仓库；把 SDK、BaseApp 和 Builder 安装到用户仓库，不能假设它们在 Builder 沙盒中可见。
+- 处理：Flatpak CI 改为通过 `sudo flatpak install --system` 安装所有构建运行时，并以系统安装的 `org.flatpak.Builder` 执行构建和 linter；构建输出仍通过 Builder 的 `--user` 参数写入工作区用户仓库。
