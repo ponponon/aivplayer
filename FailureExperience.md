@@ -1529,4 +1529,4 @@
 
 - 现象：macOS Homebrew、Windows Chocolatey、Linux apt 获取的是构建当天的 FFmpeg，既无法保证版本一致，也可能因上游 latest 标签或 feed 竞态产生不同二进制。
 - 经验：发布运行时必须把来源、版本、下载地址和 SHA-256 作为构建输入；平台预编译包可以固定不可变构建资产，macOS 则固定官方源码归档并在 Runner 上构建。
-- 处理：统一锁定 FFmpeg 8.1.2 输入；Windows x64/ARM64 与 Linux x64/ARM64 使用固定 BtbN 构建及校验和，macOS 使用官方 `ffmpeg-8.1.2.tar.xz` 及校验和，不再调用 Chocolatey / apt / Homebrew 的 FFmpeg 包。
+- 处理：统一锁定 FFmpeg 8.1.2 输入；Windows x64/ARM64 与 Linux x64/ARM64 使用固定 BtbN 构建及校验和，macOS 使用官方 `ffmpeg-8.1.2.tar.xz` 及校验和，不再调用 Chocolatey / apt / Homebrew 的 FFmpeg 包；Linux deb 同时移除显式的系统 `ffmpeg` 依赖，避免安装包再拉取一份动态最新版。
