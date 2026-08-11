@@ -1541,4 +1541,4 @@
 
 - 现象：CI 已经成功安装 `org.freedesktop.Sdk//25.08`，但随后以 Flatpak 沙盒启动 `org.flatpak.Builder` 仍报告 `Unable to find sdk org.freedesktop.Sdk version 25.08`。
 - 经验：Builder 应用的沙盒权限只保证访问系统 Flatpak 仓库；把 SDK、BaseApp 和 Builder 安装到用户仓库，不能假设它们在 Builder 沙盒中可见。
-- 处理：Flatpak CI 改为通过 `sudo flatpak install --system` 安装所有构建运行时，并以系统安装的 `org.flatpak.Builder` 执行构建和 linter；构建输出仍通过 Builder 的 `--user` 参数写入工作区用户仓库。
+- 处理：Flatpak CI 改为通过 `sudo flatpak install --system` 安装所有构建运行时，并用 `flatpak run --system org.flatpak.Builder` 执行构建和 linter；不再给 Builder 传 `--user`，避免把 SDK 查找范围切换到用户仓库，构建输出直接写入工作区本地 repo。
