@@ -69,6 +69,8 @@ jobs:
         run: |
           flatpak-builder \
             --user --force-clean --disable-rofiles-fuse \
+            --compose-url-policy=full \
+            --mirror-screenshots-url=https://dl.flathub.org/media \
             --repo=repo flatpak-build flatpak/ci-manifest.yml
       - name: Lint manifest and repository
         run: |
@@ -106,6 +108,8 @@ jobs:
         run: |
           flatpak-builder \
             --user --force-clean --disable-rofiles-fuse \
+            --compose-url-policy=full \
+            --mirror-screenshots-url=https://dl.flathub.org/media \
             --repo=repo flatpak-build flatpak/ci-manifest.yml
       - name: Lint manifest and repository
         run: |

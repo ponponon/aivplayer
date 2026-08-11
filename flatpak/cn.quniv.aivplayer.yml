@@ -204,8 +204,15 @@ modules:
       - cd app && npm run build
       - cd app && jq '.desktopName = "cn.quniv.aivplayer.desktop"' package.json > package.json.flatpak && mv package.json.flatpak package.json
       - cd app && npx electron-builder --config flatpak/electron-builder-flatpak.yml --linux --dir --publish never
-      - install -d /app/main
-      - cp -a app/release/linux-unpacked/. /app/main/
+      - |
+          set -eu
+          install -d /app/main
+          unpacked_dir=app/release/linux-unpacked
+          if [ ! -d "$unpacked_dir" ]; then
+            unpacked_dir=app/release/linux-arm64-unpacked
+          fi
+          test -d "$unpacked_dir"
+          cp -a "$unpacked_dir/." /app/main/
       - install -Dm755 run.sh /app/bin/cn.quniv.aivplayer
       - install -Dm644 app/flatpak/cn.quniv.aivplayer.desktop /app/share/applications/cn.quniv.aivplayer.desktop
       - install -Dm644 app/flatpak/cn.quniv.aivplayer.metainfo.xml /app/share/metainfo/cn.quniv.aivplayer.metainfo.xml

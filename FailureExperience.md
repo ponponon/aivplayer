@@ -1512,3 +1512,21 @@
 - 现象：素材替换成功后，字幕候选异步审计会刷新工程状态栏；Smoke 等待“已替换为 second-source.mp4”或“素材时长不足”提示时可能超时，即使工程数据已经正确写入。
 - 经验：Smoke 对编辑动作应等待可重读的工程快照、文件产物或 DOM 状态；异步诊断提示只作为观测值，不能代替业务状态断言。窗口外的确认按钮也不应依赖 Playwright 滚动到可视区。
 - 处理：素材替换 Smoke 改为等待 localStorage 中的 clip / source 映射，并用字幕 source anchor 校验重映射；导出对话框取消改用 DOM click；长 Smoke 通过且 `consoleErrors:[]`。
+
+## 2026-08-11：Flatpak 双架构输出目录不能写死为 linux-unpacked
+
+- 现象：x86_64 构建完成，但 ARM64 在 Electron 打包后执行 `cp app/release/linux-unpacked/.` 失败；不同架构的 electron-builder 输出目录可能是 `linux-arm64-unpacked`。
+- 经验：Flatpak manifest 不能把 electron-builder 的架构输出目录当成跨架构稳定接口，复制前必须按候选目录探测并用 `test -d` 阻断缺失输入。
+- 处理：构建命令优先使用 `linux-unpacked`，不存在时回退到 `linux-arm64-unpacked`，然后再复制到 `/app/main`。
+
+## 2026-08-11：Flathub 截图必须在构建时生成 media OSTree ref
+
+- 现象：Flatpak 能完成构建和 AppStream compose，但 repo lint 报 `appstream-external-screenshot-url` 与 `appstream-screenshots-not-mirrored-in-ostree`；仅把截图 URL 固定到 Git commit 不能替代 Flathub media 镜像。
+- 经验：带远程截图的 Flathub 构建必须使用 `--compose-url-policy=full --mirror-screenshots-url=https://dl.flathub.org/media`，让 AppStream 下载截图并把对应 media ref 写入 OSTree；之后必须同时跑 repo lint。
+- 处理：x86_64 与 ARM64 Flatpak workflow 都加入截图镜像参数，保留固定 commit 截图 URL，避免通过放宽 linter 掩盖发布元数据缺失。
+
+## 2026-08-11：发布流水线不能从包管理器动态获取 FFmpeg
+
+- 现象：macOS Homebrew、Windows Chocolatey、Linux apt 获取的是构建当天的 FFmpeg，既无法保证版本一致，也可能因上游 latest 标签或 feed 竞态产生不同二进制。
+- 经验：发布运行时必须把来源、版本、下载地址和 SHA-256 作为构建输入；平台预编译包可以固定不可变构建资产，macOS 则固定官方源码归档并在 Runner 上构建。
+- 处理：统一锁定 FFmpeg 8.1.2 输入；Windows x64/ARM64 与 Linux x64/ARM64 使用固定 BtbN 构建及校验和，macOS 使用官方 `ffmpeg-8.1.2.tar.xz` 及校验和，不再调用 Chocolatey / apt / Homebrew 的 FFmpeg 包。
