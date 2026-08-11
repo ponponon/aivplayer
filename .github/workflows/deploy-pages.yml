@@ -34,11 +34,15 @@ jobs:
           node --check docs/script.js
           python3 - <<'PY'
           from html.parser import HTMLParser
+          from pathlib import Path
 
-          with open("docs/index.html", encoding="utf-8") as page:
-              HTMLParser().feed(page.read())
+          pages = sorted(Path("docs").rglob("*.html"))
+          for page_path in pages:
+              with page_path.open(encoding="utf-8") as page:
+                  HTMLParser().feed(page.read())
+              print(f"Validated {page_path}")
 
-          print("HTML validation passed")
+          print(f"HTML validation passed for {len(pages)} pages")
           PY
 
       - name: Deploy to Cloudflare Pages
