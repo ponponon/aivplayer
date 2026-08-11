@@ -72,7 +72,7 @@ jobs:
             --repo=repo flatpak-build flatpak/ci-manifest.yml
       - name: Lint manifest and repository
         run: |
-          flatpak run --user --command=flatpak-builder-lint org.flatpak.Builder manifest flatpak/ci-manifest.yml
+          flatpak run --user --command=flatpak-builder-lint org.flatpak.Builder manifest flatpak/cn.quniv.aivplayer.yml
           flatpak run --user --command=flatpak-builder-lint org.flatpak.Builder repo repo
       - name: Create bundle
         run: flatpak build-bundle repo AIVPlayer-x86_64.flatpak cn.quniv.aivplayer
@@ -109,7 +109,7 @@ jobs:
             --repo=repo flatpak-build flatpak/ci-manifest.yml
       - name: Lint manifest and repository
         run: |
-          flatpak run --user --command=flatpak-builder-lint org.flatpak.Builder manifest flatpak/ci-manifest.yml
+          flatpak run --user --command=flatpak-builder-lint org.flatpak.Builder manifest flatpak/cn.quniv.aivplayer.yml
           flatpak run --user --command=flatpak-builder-lint org.flatpak.Builder repo repo
       - name: Create bundle
         run: flatpak build-bundle repo AIVPlayer-aarch64.flatpak cn.quniv.aivplayer

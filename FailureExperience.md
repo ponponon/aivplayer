@@ -46,6 +46,12 @@
 - 经验：凡是用 `git cat-file <commit>:<path>` 验证可重建输入的 CI 检查，必须显式保证对象已被 checkout；不能把本地完整 clone 的结果当成 CI 默认行为。
 - 处理：Flatpak 静态检查 job 使用 `fetch-depth: 0`，让固定 commit 的内容校验与本地、远程语义一致。
 
+## 2026-08-11：Flatpak CI 临时 manifest 不能直接交给 Flathub linter
+
+- 现象：CI 为使用当前 checkout 构建，会生成 `flatpak/ci-manifest.yml`；Flatpak builder 能正常完成构建，但 Flathub linter 按文件名校验时把它识别为 `ci-manifest`，与应用 ID `cn.quniv.aivplayer` 不一致，触发不可豁免的 `appid-filename-mismatch`。
+- 经验：本地源码替换 manifest 只适合 builder 输入，最终 linter 必须检查正式命名的 manifest；构建输入和审核输入不能混用。
+- 处理：CI 继续使用 `ci-manifest.yml` 构建，但 lint 改为检查正式的 `flatpak/cn.quniv.aivplayer.yml`。
+
 ## Electron 打包不能依赖自动安装的 peer dependency
 
 - `@lancedb/lancedb` 的运行时代码会直接 `require("apache-arrow")`，但它把 Apache Arrow 声明为 peer dependency。npm 在开发机上可能把这个 peer 自动安装到顶层 `node_modules`，造成开发态误以为依赖完整；electron-builder 只按应用的生产依赖收集资源时则可能把它漏出 `.app`，最终主进程在启动阶段报 `Cannot find module 'apache-arrow'`。
