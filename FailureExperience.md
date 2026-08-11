@@ -1537,8 +1537,8 @@
 - 经验：Runner 的 apt 版 flatpak-builder 可能落后于 Flathub 文档要求；既然 workflow 已安装 `org.flatpak.Builder`，构建和 linter 必须统一使用这个持续更新的 Flathub Builder 容器。
 - 处理：Flatpak 构建改为 `flatpak run --user org.flatpak.Builder`，保留截图镜像参数，避免宿主工具版本差异再次阻断构建。
 
-## 2026-08-11：Builder 沙盒不能直接读取用户级 SDK
+## 2026-08-11：Flatpak CI 应使用 Flathub Builder wrapper
 
-- 现象：CI 已经成功安装 `org.freedesktop.Sdk//25.08`，但随后以 Flatpak 沙盒启动 `org.flatpak.Builder` 仍报告 `Unable to find sdk org.freedesktop.Sdk version 25.08`。
-- 经验：Builder 应用的沙盒权限只保证访问系统 Flatpak 仓库；把 SDK、BaseApp 和 Builder 安装到用户仓库，不能假设它们在 Builder 沙盒中可见。
-- 处理：Flatpak CI 改为通过 `sudo flatpak install --system` 安装所有构建运行时，并用 `flatpak run --system org.flatpak.Builder` 执行构建和 linter；不再给 Builder 传 `--user`，避免把 SDK 查找范围切换到用户仓库，构建输出直接写入工作区本地 repo。
+- 现象：CI 已经成功安装 `org.freedesktop.Sdk//25.08`，但直接启动 `org.flatpak.Builder` 仍报告 `Unable to find sdk org.freedesktop.Sdk version 25.08`；无论此前把依赖装到用户仓库还是系统仓库，都没有解决 SDK 查找范围不一致的问题。
+- 经验：Flathub 的 `org.flatpak.Builder` 不是应该直接调用的宿主命令；官方 `flathub-build` wrapper 会设置 `FLATPAK_USER_DIR`，启用 `--user`，并通过 `--install-deps-from=flathub` 统一安装 manifest 声明的 SDK、扩展和 BaseApp。
+- 处理：Flatpak CI 只安装用户级 `org.flatpak.Builder`，构建改为 `flatpak run --user --command=flathub-build org.flatpak.Builder flatpak/ci-manifest.yml`，linter 也固定从同一用户级 Builder 运行；不再手动混合系统 SDK 和 Builder 沙盒。
