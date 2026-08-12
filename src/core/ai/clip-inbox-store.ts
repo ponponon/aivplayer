@@ -172,6 +172,10 @@ export class ClipInboxStore {
     return this.getCollection(id) as VisionClipCollection
   }
 
+  importCollection(input: VisionClipCollectionInput): VisionClipCollection {
+    return this.saveCollection({ ...input, id: undefined })
+  }
+
   deleteCollection(collectionId: string): boolean {
     const result = this.database.prepare('DELETE FROM clip_collections WHERE id = ?').run(collectionId)
     return Number(result.changes) > 0

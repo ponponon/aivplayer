@@ -431,6 +431,14 @@ export type VisionClipCollectionExportResult = {
   canceled?: boolean
 }
 
+export type VisionClipCollectionImportResult = {
+  success: boolean
+  message: string
+  filePath?: string
+  canceled?: boolean
+  collection?: VisionClipCollection
+}
+
 export type VisionSearchResult = {
   id: string
   videoPath: string
