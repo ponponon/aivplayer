@@ -1621,3 +1621,15 @@
 - 现象：批量视觉导出重建 Smoke 只等待新任务写入 `searchRevision`，但任务此时可能仍处于 `running`；随后立即断言任务必须为 `failed`，在真实 Electron 的异步调度下产生偶发失败。
 - 经验：宿主 Smoke 的持久化字段写入不等于业务任务已经进入可断言终态。涉及后台任务时，等待条件必须同时覆盖任务数量、关键快照和终态状态，不能用中间态字段作为完成信号。
 - 处理：等待两个新建任务都具备 `searchRevision` 且 `status === 'failed'` 后再执行路径、原任务保留和冲突计数断言；修复后批量重建 Smoke 通过，功能代码无需修改。
+
+## 2026-08-13：Electron 对话框必须从宿主上下文注入
+
+- 现象：新增 Clip Inbox 导入 Smoke 时，尝试用 `page.evaluate` 解构 Electron `dialog`，TypeScript 报参数签名错误，且页面上下文无法可靠替换主进程的文件选择器。
+- 经验：Playwright 的页面上下文只负责 DOM；`dialog.showOpenDialog` / `showSaveDialog` 属于 Electron 主进程 API，Smoke 必须使用 `ElectronApplication.evaluate` 注入，并在导入按钮点击前完成替换。
+- 处理：把保存 / 打开对话框夹具统一改为 `app.evaluate(({ dialog }, path) => ...)`；UI 契约只断言用户可见按钮和状态刷新，不要求 Smoke 直接调用 preload API，避免测试绕过真实交互链路。
+
+## 2026-08-13：导入集合不能复用外部 ID
+
+- 现象：如果把 JSON 备份中的集合 ID 原样写回本地，重复导入会走更新路径覆盖已有集合，备份恢复也会破坏用户当前选段。
+- 经验：可迁移导入和本地编辑更新是两种不同语义；导入必须剥离外部主键，保留业务字段但由本地 Store 生成新 ID。
+- 处理：解析器返回不含 `id` 的 `VisionClipCollectionInput`，Store 通过独立 `importCollection` 入口强制新建；Smoke 覆盖删除原集合后导入并断言新 ID。
