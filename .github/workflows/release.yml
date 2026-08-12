@@ -40,8 +40,8 @@ jobs:
     runs-on: macos-latest
     env:
       MACOSX_DEPLOYMENT_TARGET: '12.0'
-      electron_config_cache: ${{ runner.temp }}/electron-cache
-      ELECTRON_BUILDER_CACHE: ${{ runner.temp }}/electron-builder-cache
+      electron_config_cache: ${{ github.workspace }}/.cache/electron
+      ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.cache/electron-builder
     steps:
       - uses: actions/checkout@v7
 
@@ -54,9 +54,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            ${{ runner.temp }}/electron-cache
-            ${{ runner.temp }}/electron-builder-cache
-          key: electron-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}
+            ${{ github.workspace }}/.cache/electron
+            ${{ github.workspace }}/.cache/electron-builder
+          key: electron-macos-arm64-${{ hashFiles('package-lock.json') }}
 
       - run: npm ci
 
@@ -171,8 +171,10 @@ jobs:
   build-windows:
     runs-on: windows-latest
     env:
-      electron_config_cache: ${{ runner.temp }}/electron-cache
-      ELECTRON_BUILDER_CACHE: ${{ runner.temp }}/electron-builder-cache
+      electron_config_cache: ${{ github.workspace }}/.cache/electron
+      ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.cache/electron-builder
+      VCPKG_BINARY_SOURCES: 'clear;files,C:/vcpkg/binary-cache,readwrite'
+      VCPKG_FEATURE_FLAGS: binarycaching
     steps:
       - uses: actions/checkout@v7
 
@@ -185,17 +187,17 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            ${{ runner.temp }}/electron-cache
-            ${{ runner.temp }}/electron-builder-cache
-          key: electron-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}
+            ${{ github.workspace }}/.cache/electron
+            ${{ github.workspace }}/.cache/electron-builder
+          key: electron-windows-x64-${{ hashFiles('package-lock.json') }}
 
-      - name: Restore vcpkg HEIF cache
+      - name: Restore vcpkg binary cache
         uses: actions/cache@v4
         with:
-          path: C:\vcpkg\installed
-          key: vcpkg-${{ runner.os }}-${{ runner.arch }}-libheif-${{ env.LIBHEIF_VERSION }}
+          path: C:/vcpkg/binary-cache
+          key: vcpkg-windows-x64-${{ hashFiles('.github/workflows/release.yml') }}
           restore-keys: |
-            vcpkg-${{ runner.os }}-${{ runner.arch }}-libheif-
+            vcpkg-windows-x64-
 
       - run: npm ci
 
@@ -330,8 +332,10 @@ jobs:
   build-windows-arm64:
     runs-on: windows-11-arm
     env:
-      electron_config_cache: ${{ runner.temp }}/electron-cache
-      ELECTRON_BUILDER_CACHE: ${{ runner.temp }}/electron-builder-cache
+      electron_config_cache: ${{ github.workspace }}/.cache/electron
+      ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.cache/electron-builder
+      VCPKG_BINARY_SOURCES: 'clear;files,C:/vcpkg/binary-cache,readwrite'
+      VCPKG_FEATURE_FLAGS: binarycaching
     steps:
       - uses: actions/checkout@v7
 
@@ -344,17 +348,17 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            ${{ runner.temp }}/electron-cache
-            ${{ runner.temp }}/electron-builder-cache
-          key: electron-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}
+            ${{ github.workspace }}/.cache/electron
+            ${{ github.workspace }}/.cache/electron-builder
+          key: electron-windows-arm64-${{ hashFiles('package-lock.json') }}
 
-      - name: Restore vcpkg HEIF cache
+      - name: Restore vcpkg binary cache
         uses: actions/cache@v4
         with:
-          path: C:\vcpkg\installed
-          key: vcpkg-${{ runner.os }}-${{ runner.arch }}-libheif-${{ env.LIBHEIF_VERSION }}
+          path: C:/vcpkg/binary-cache
+          key: vcpkg-windows-arm64-${{ hashFiles('.github/workflows/release.yml') }}
           restore-keys: |
-            vcpkg-${{ runner.os }}-${{ runner.arch }}-libheif-
+            vcpkg-windows-arm64-
 
       - run: npm ci
 
@@ -493,8 +497,8 @@ jobs:
   build-linux:
     runs-on: ubuntu-latest
     env:
-      electron_config_cache: ${{ runner.temp }}/electron-cache
-      ELECTRON_BUILDER_CACHE: ${{ runner.temp }}/electron-builder-cache
+      electron_config_cache: ${{ github.workspace }}/.cache/electron
+      ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.cache/electron-builder
     steps:
       - uses: actions/checkout@v7
 
@@ -507,9 +511,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            ${{ runner.temp }}/electron-cache
-            ${{ runner.temp }}/electron-builder-cache
-          key: electron-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}
+            ${{ github.workspace }}/.cache/electron
+            ${{ github.workspace }}/.cache/electron-builder
+          key: electron-linux-x64-${{ hashFiles('package-lock.json') }}
 
       - run: npm ci
 
@@ -637,8 +641,8 @@ jobs:
   build-linux-arm64:
     runs-on: ubuntu-24.04-arm
     env:
-      electron_config_cache: ${{ runner.temp }}/electron-cache
-      ELECTRON_BUILDER_CACHE: ${{ runner.temp }}/electron-builder-cache
+      electron_config_cache: ${{ github.workspace }}/.cache/electron
+      ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.cache/electron-builder
     steps:
       - uses: actions/checkout@v7
 
@@ -651,9 +655,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            ${{ runner.temp }}/electron-cache
-            ${{ runner.temp }}/electron-builder-cache
-          key: electron-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}
+            ${{ github.workspace }}/.cache/electron
+            ${{ github.workspace }}/.cache/electron-builder
+          key: electron-linux-arm64-${{ hashFiles('package-lock.json') }}
 
       - run: npm ci
 

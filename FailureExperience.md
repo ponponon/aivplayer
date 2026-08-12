@@ -1577,4 +1577,10 @@
 
 - 现象：v0.5.3 的 macOS ARM64 Runner 在安装 HEIF / media 依赖时被强制从源码编译 15 个 Homebrew formula，单个 `openssl@3` 就耗时约 7 分钟，随后 x265 的 ARM64 汇编链接因 Xcode 26 / macOS SDK 26 产生空对象文件而失败；libheif 实际配置只启用了 `libde265`、`kvazaar` 和 JPEG 后端，FFmpeg 也由固定源码归档独立构建。
 - 经验：发布流水线的依赖列表应按最终 CMake 配置和运行时用途收窄；不能因为部署目标需要固定，就把整个 FFmpeg 依赖图强制源码重编译。构建前应优先使用稳定的预编译包，并让真正的源码构建步骤自行接收 `MACOSX_DEPLOYMENT_TARGET`。
-- 处理：macOS 改为一次性安装 `cmake`、`ninja`、`pkg-config`、`libde265`、`kvazaar` 和 `jpeg-turbo`，移除 `HOMEBREW_BUILD_FROM_SOURCE`、CFLAGS/LDFLAGS 及无关 codec formula；同时缓存 Electron 下载和 Windows vcpkg 已安装的 HEIF 依赖，避免后续每次发布重复下载或编译。
+- 处理：macOS 改为一次性安装 `cmake`、`ninja`、`pkg-config`、`libde265`、`kvazaar` 和 `jpeg-turbo`，移除 `HOMEBREW_BUILD_FROM_SOURCE`、CFLAGS/LDFLAGS 及无关 codec formula；同时缓存 Electron 下载、固定 revision 的视觉模型和 Windows vcpkg binary cache，避免后续每次发布重复下载或编译。
+
+## 2026-08-13：vcpkg 缓存不能只按已安装目录粗略缓存
+
+- 现象：仅缓存 Windows `C:\\vcpkg\\installed` 目录无法覆盖 vcpkg 的 ABI、端口版本和编译器变化；视觉模型虽然每个 Runner 都会准备一份，但该步骤实测只有几十秒，不能把它误判成当前最长的编译瓶颈。
+- 经验：vcpkg 应使用带 ABI 指纹的 GitHub Actions binary cache，让缓存命中由端口、triplet 和工具链共同决定；架构无关的大模型可以按源码中的固定 revision 缓存，主要用于降低外网失败概率和重复带宽消耗。
+- 处理：Windows x64 / ARM64 设置 `VCPKG_BINARY_SOURCES=clear;files,C:/vcpkg/binary-cache,readwrite` 与 `VCPKG_FEATURE_FLAGS=binarycaching`，并用 `actions/cache` 持久化该 binary cache 目录；视觉模型下载因实测只有几十秒暂不单独缓存，避免恢复大文件缓存抵消收益。

@@ -102,10 +102,12 @@ describe('release workflow source constraints', () => {
 
   it('caches repeated Electron and Windows native dependency downloads', () => {
     expect(releaseWorkflow.match(/name: Restore Electron download cache/g)).toHaveLength(5)
-    expect(releaseWorkflow).toContain('electron_config_cache: ${{ runner.temp }}/electron-cache')
-    expect(releaseWorkflow).toContain('ELECTRON_BUILDER_CACHE: ${{ runner.temp }}/electron-builder-cache')
-    expect(releaseWorkflow.match(/name: Restore vcpkg HEIF cache/g)).toHaveLength(2)
-    expect(releaseWorkflow).toContain('path: C:\\vcpkg\\installed')
+    expect(releaseWorkflow).toContain('electron_config_cache: ${{ github.workspace }}/.cache/electron')
+    expect(releaseWorkflow).toContain('ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.cache/electron-builder')
+    expect(releaseWorkflow).toContain("VCPKG_BINARY_SOURCES: 'clear;files,C:/vcpkg/binary-cache,readwrite'")
+    expect(releaseWorkflow).toContain('VCPKG_FEATURE_FLAGS: binarycaching')
+    expect(releaseWorkflow.match(/name: Restore vcpkg binary cache/g)).toHaveLength(2)
+    expect(releaseWorkflow).toContain('path: C:/vcpkg/binary-cache')
   })
 
   it('checks the license manifest before every platform package build', () => {
