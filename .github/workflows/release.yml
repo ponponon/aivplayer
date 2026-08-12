@@ -34,6 +34,7 @@ env:
   FFMPEG_LINUX64_SHA256: c7f279081aa3dd837ba23c05e4d02f5f3874c428d2f134e1bbbea9726f8d2e7e
   FFMPEG_LINUXARM64_URL: https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-08-09-13-03/ffmpeg-n8.1.2-34-g9b6c8969e0-linuxarm64-gpl-8.1.tar.xz
   FFMPEG_LINUXARM64_SHA256: bde27b02e0067a45e1d942d8b455f6668bb6ac08e2da680a1a8d7c8465a38cc0
+  NATIVE_RUNTIME_CACHE_VERSION: v1
 
 jobs:
   build-macos:
@@ -58,6 +59,16 @@ jobs:
             ${{ github.workspace }}/.cache/electron-builder
           key: electron-macos-arm64-${{ hashFiles('package-lock.json') }}
 
+      - name: Restore macOS native runtime cache
+        id: restore-native-runtime-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            resources/ffmpeg
+            resources/heif
+            resources/whisper.cpp
+          key: native-runtime-macos-arm64-${{ env.NATIVE_RUNTIME_CACHE_VERSION }}-${{ env.FFMPEG_BUILD_REVISION }}-${{ env.LIBHEIF_VERSION }}-${{ env.WHISPER_CPP_VERSION }}-${{ hashFiles('scripts/build-heif-source.ts', 'scripts/prepare-heif-runtime.ts', 'scripts/build-whisper-macos.ts', 'scripts/prepare-asr-runtime.ts', 'scripts/macos-runtime-dependencies.ts', 'scripts/check-bundled-asr-runtime.ts', 'scripts/check-heif-runtime.ts', 'src/core/ai/whisper-binary.ts') }}
+
       - run: npm ci
 
       - name: Check license manifest
@@ -68,6 +79,7 @@ jobs:
 
       - name: Install HEIF and media runtime dependencies
         shell: bash
+        if: steps.restore-native-runtime-cache.outputs.cache-hit != 'true'
         run: |
           # libheif only uses these three codec libraries on macOS. FFmpeg is
           # built from its pinned source archive below, so installing its full
@@ -77,6 +89,7 @@ jobs:
 
       - name: Build fixed FFmpeg runtime
         shell: bash
+        if: steps.restore-native-runtime-cache.outputs.cache-hit != 'true'
         run: |
           archive="$RUNNER_TEMP/ffmpeg-${FFMPEG_VERSION}.tar.xz"
           source_dir="$RUNNER_TEMP/ffmpeg-${FFMPEG_VERSION}"
@@ -102,14 +115,21 @@ jobs:
           make -j"$(sysctl -n hw.ncpu)"
           make install
           popd
-          test -x "$install_dir/bin/ffmpeg"
-          test -x "$install_dir/bin/ffprobe"
+          for binary in "$install_dir/bin/ffmpeg" "$install_dir/bin/ffprobe"; do
+            if [[ ! -f "$binary" ]]; then
+              echo "FFmpeg binary was not installed: $binary"
+              find "$install_dir" -maxdepth 3 -type f -print
+              exit 1
+            fi
+            chmod +x "$binary"
+          done
           echo "AIVPLAYER_STAGE_FFMPEG_BIN=$install_dir/bin/ffmpeg" >> "$GITHUB_ENV"
 
       - name: Build static HEIF runtime
         env:
           AIVPLAYER_HEIF_ENCODER: kvazaar
         shell: bash
+        if: steps.restore-native-runtime-cache.outputs.cache-hit != 'true'
         run: |
           git clone --depth 1 --branch "v${LIBHEIF_VERSION}" https://github.com/strukturag/libheif.git "$RUNNER_TEMP/libheif"
           npm run release:build-heif-source -- \
@@ -122,9 +142,14 @@ jobs:
 
       - name: Build and stage ASR/media runtime
         shell: bash
+        if: steps.restore-native-runtime-cache.outputs.cache-hit != 'true'
         run: |
           npm run release:build-whisper-macos -- --tag "v${WHISPER_CPP_VERSION}"
           npm run release:check-runtime
+
+      - name: Verify cached macOS native runtimes
+        if: steps.restore-native-runtime-cache.outputs.cache-hit == 'true'
+        run: npm run release:check-runtime && npm run release:check-heif-runtime
 
       - name: Verify macOS FFmpeg Mach-O runtime
         run: npm run release:check-macos-ffmpeg -- --resource-dir "$GITHUB_WORKSPACE/resources/ffmpeg" --max-minos 12.0
@@ -191,13 +216,24 @@ jobs:
             ${{ github.workspace }}/.cache/electron-builder
           key: electron-windows-x64-${{ hashFiles('package-lock.json') }}
 
+      - name: Restore Windows x64 native runtime cache
+        id: restore-native-runtime-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            resources/ffmpeg
+            resources/heif
+            resources/whisper.cpp
+          key: native-runtime-windows-x64-${{ env.NATIVE_RUNTIME_CACHE_VERSION }}-${{ env.FFMPEG_BUILD_REVISION }}-${{ env.LIBHEIF_VERSION }}-${{ env.WHISPER_CPP_VERSION }}-${{ hashFiles('scripts/build-heif-source.ts', 'scripts/prepare-heif-runtime.ts', 'scripts/prepare-runtime.ts', 'scripts/prepare-asr-runtime.ts', 'scripts/check-bundled-asr-runtime.ts', 'scripts/check-heif-runtime.ts', 'src/core/ai/whisper-binary.ts') }}
+
       - name: Restore vcpkg binary cache
+        if: steps.restore-native-runtime-cache.outputs.cache-hit != 'true'
         uses: actions/cache@v4
         with:
           path: C:/vcpkg/binary-cache
-          key: vcpkg-windows-x64-${{ hashFiles('.github/workflows/release.yml') }}
+          key: vcpkg-windows-x64-v1-${{ env.LIBHEIF_VERSION }}
           restore-keys: |
-            vcpkg-windows-x64-
+            vcpkg-windows-x64-v1-
 
       - run: npm ci
 
@@ -210,10 +246,25 @@ jobs:
 
       - name: Install HEIF build dependencies
         shell: pwsh
+        if: steps.restore-native-runtime-cache.outputs.cache-hit != 'true'
         run: |
           $ffmpegArchive = Join-Path $env:RUNNER_TEMP 'ffmpeg-win64.zip'
           $ffmpegRoot = Join-Path $env:RUNNER_TEMP 'ffmpeg-win64'
-          Invoke-WebRequest -Uri $env:FFMPEG_WIN64_URL -OutFile $ffmpegArchive
+          function Download-WithRetry {
+            param([string]$Uri, [string]$OutputPath)
+            $partialPath = "$OutputPath.part"
+            for ($attempt = 1; $attempt -le 5; $attempt++) {
+              Remove-Item -Force -ErrorAction SilentlyContinue $partialPath
+              & curl.exe --fail --location --retry 3 --retry-all-errors --connect-timeout 30 --max-time 900 --output $partialPath $Uri
+              if ($LASTEXITCODE -eq 0 -and (Test-Path $partialPath)) {
+                Move-Item -Force $partialPath $OutputPath
+                return
+              }
+              if ($attempt -lt 5) { Start-Sleep -Seconds ([int][math]::Pow(2, $attempt)) }
+            }
+            throw "Failed to download $Uri after 5 attempts."
+          }
+          Download-WithRetry -Uri $env:FFMPEG_WIN64_URL -OutputPath $ffmpegArchive
           if ((Get-FileHash -Path $ffmpegArchive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $env:FFMPEG_WIN64_SHA256) { throw 'The downloaded Windows x64 FFmpeg checksum does not match.' }
           Remove-Item -Recurse -Force $ffmpegRoot -ErrorAction SilentlyContinue
           Expand-Archive -Path $ffmpegArchive -DestinationPath $ffmpegRoot -Force
@@ -223,6 +274,7 @@ jobs:
         env:
           AIVPLAYER_HEIF_ENCODER: x265
         shell: pwsh
+        if: steps.restore-native-runtime-cache.outputs.cache-hit != 'true'
         run: |
           $source = Join-Path $env:RUNNER_TEMP "libheif"
           $build = Join-Path $env:RUNNER_TEMP "libheif-build"
@@ -236,6 +288,7 @@ jobs:
 
       - name: Build and stage ASR/media runtime
         shell: pwsh
+        if: steps.restore-native-runtime-cache.outputs.cache-hit != 'true'
         run: |
           $source = Join-Path $env:RUNNER_TEMP "whisper.cpp"
           $build = Join-Path $env:RUNNER_TEMP "whisper-build"
@@ -252,6 +305,14 @@ jobs:
           $ffmpegDir = $ffmpegBinary.DirectoryName
           npm run release:prepare-runtime -- --platform win32 --whisper-bin $whisperBinary.FullName --ffmpeg-dir $ffmpegDir
           npm run release:check-runtime
+
+      - name: Verify cached Windows x64 native runtimes
+        if: steps.restore-native-runtime-cache.outputs.cache-hit == 'true'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          npm run release:check-runtime
+          npm run release:check-heif-runtime
 
       - name: Verify Windows x64 native binaries
         shell: pwsh
@@ -352,13 +413,24 @@ jobs:
             ${{ github.workspace }}/.cache/electron-builder
           key: electron-windows-arm64-${{ hashFiles('package-lock.json') }}
 
+      - name: Restore Windows ARM64 native runtime cache
+        id: restore-native-runtime-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            resources/ffmpeg
+            resources/heif
+            resources/whisper.cpp
+          key: native-runtime-windows-arm64-${{ env.NATIVE_RUNTIME_CACHE_VERSION }}-${{ env.FFMPEG_BUILD_REVISION }}-${{ env.LIBHEIF_VERSION }}-${{ env.WHISPER_CPP_VERSION }}-${{ hashFiles('scripts/build-heif-source.ts', 'scripts/prepare-heif-runtime.ts', 'scripts/prepare-runtime.ts', 'scripts/prepare-asr-runtime.ts', 'scripts/check-bundled-asr-runtime.ts', 'scripts/check-heif-runtime.ts', 'src/core/ai/whisper-binary.ts') }}
+
       - name: Restore vcpkg binary cache
+        if: steps.restore-native-runtime-cache.outputs.cache-hit != 'true'
         uses: actions/cache@v4
         with:
           path: C:/vcpkg/binary-cache
-          key: vcpkg-windows-arm64-${{ hashFiles('.github/workflows/release.yml') }}
+          key: vcpkg-windows-arm64-v1-${{ env.LIBHEIF_VERSION }}
           restore-keys: |
-            vcpkg-windows-arm64-
+            vcpkg-windows-arm64-v1-
 
       - run: npm ci
 
@@ -371,20 +443,36 @@ jobs:
 
       - name: Install HEIF build dependencies
         shell: pwsh
+        if: steps.restore-native-runtime-cache.outputs.cache-hit != 'true'
         run: |
-          vcpkg install libde265:arm64-windows-static x265:arm64-windows-static libjpeg-turbo:arm64-windows-static tiff:arm64-windows-static
           $ffmpegUrl = $env:FFMPEG_WINARM64_URL
           $ffmpegSha256 = $env:FFMPEG_WINARM64_SHA256
           $ffmpegArchive = Join-Path $env:RUNNER_TEMP 'ffmpeg-winarm64.zip'
           $ffmpegRoot = Join-Path $env:RUNNER_TEMP 'ffmpeg-winarm64'
-          Invoke-WebRequest -Uri $ffmpegUrl -OutFile $ffmpegArchive
+          function Download-WithRetry {
+            param([string]$Uri, [string]$OutputPath)
+            $partialPath = "$OutputPath.part"
+            for ($attempt = 1; $attempt -le 5; $attempt++) {
+              Remove-Item -Force -ErrorAction SilentlyContinue $partialPath
+              & curl.exe --fail --location --retry 3 --retry-all-errors --connect-timeout 30 --max-time 900 --output $partialPath $Uri
+              if ($LASTEXITCODE -eq 0 -and (Test-Path $partialPath)) {
+                Move-Item -Force $partialPath $OutputPath
+                return
+              }
+              if ($attempt -lt 5) { Start-Sleep -Seconds ([int][math]::Pow(2, $attempt)) }
+            }
+            throw "Failed to download $Uri after 5 attempts."
+          }
+          Download-WithRetry -Uri $ffmpegUrl -OutputPath $ffmpegArchive
           if ((Get-FileHash -Path $ffmpegArchive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $ffmpegSha256) { throw 'The downloaded Windows ARM64 FFmpeg checksum does not match.' }
           Expand-Archive -Path $ffmpegArchive -DestinationPath $ffmpegRoot -Force
+          vcpkg install libde265:arm64-windows-static x265:arm64-windows-static libjpeg-turbo:arm64-windows-static tiff:arm64-windows-static
 
       - name: Build static HEIF runtime
         env:
           AIVPLAYER_HEIF_ENCODER: x265
         shell: pwsh
+        if: steps.restore-native-runtime-cache.outputs.cache-hit != 'true'
         run: |
           $source = Join-Path $env:RUNNER_TEMP "libheif"
           $build = Join-Path $env:RUNNER_TEMP "libheif-build"
@@ -398,6 +486,7 @@ jobs:
 
       - name: Build and stage ARM64 ASR/media runtime
         shell: pwsh
+        if: steps.restore-native-runtime-cache.outputs.cache-hit != 'true'
         run: |
           $source = Join-Path $env:RUNNER_TEMP "whisper.cpp"
           $build = Join-Path $env:RUNNER_TEMP "whisper-build"
@@ -417,6 +506,14 @@ jobs:
           if (!(Test-Path $ffprobeBinary)) { throw "The matching ffprobe.exe was not found beside $($ffmpegBinary.FullName)" }
           npm run release:prepare-runtime -- --platform win32 --whisper-bin $whisperBinary.FullName --ffmpeg-dir $ffmpegBinary.DirectoryName
           npm run release:check-runtime
+
+      - name: Verify cached Windows ARM64 native runtimes
+        if: steps.restore-native-runtime-cache.outputs.cache-hit == 'true'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          npm run release:check-runtime
+          npm run release:check-heif-runtime
 
       - name: Verify Windows ARM64 native binaries
         shell: pwsh
@@ -515,6 +612,16 @@ jobs:
             ${{ github.workspace }}/.cache/electron-builder
           key: electron-linux-x64-${{ hashFiles('package-lock.json') }}
 
+      - name: Restore Linux x64 native runtime cache
+        id: restore-native-runtime-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            resources/ffmpeg
+            resources/heif
+            resources/whisper.cpp
+          key: native-runtime-linux-x64-${{ env.NATIVE_RUNTIME_CACHE_VERSION }}-${{ env.FFMPEG_BUILD_REVISION }}-${{ env.LIBHEIF_VERSION }}-${{ env.WHISPER_CPP_VERSION }}-${{ hashFiles('scripts/build-heif-source.ts', 'scripts/prepare-heif-runtime.ts', 'scripts/prepare-runtime.ts', 'scripts/prepare-asr-runtime.ts', 'scripts/check-bundled-asr-runtime.ts', 'scripts/check-heif-runtime.ts', 'src/core/ai/whisper-binary.ts') }}
+
       - run: npm ci
 
       - name: Check license manifest
@@ -530,6 +637,7 @@ jobs:
 
       - name: Install fixed FFmpeg runtime
         shell: bash
+        if: steps.restore-native-runtime-cache.outputs.cache-hit != 'true'
         run: |
           archive="$RUNNER_TEMP/ffmpeg-linux64.tar.xz"
           root="$RUNNER_TEMP/ffmpeg-linux64"
@@ -548,6 +656,7 @@ jobs:
         env:
           AIVPLAYER_HEIF_ENCODER: x265
         shell: bash
+        if: steps.restore-native-runtime-cache.outputs.cache-hit != 'true'
         run: |
           git clone --depth 1 --branch "v${LIBHEIF_VERSION}" https://github.com/strukturag/libheif.git "$RUNNER_TEMP/libheif"
           CXXFLAGS=-fpermissive npm run release:build-heif-source -- \
@@ -561,6 +670,7 @@ jobs:
 
       - name: Build and stage ASR/media runtime
         shell: bash
+        if: steps.restore-native-runtime-cache.outputs.cache-hit != 'true'
         run: |
           source_dir="$RUNNER_TEMP/whisper.cpp"
           build_dir="$RUNNER_TEMP/whisper-build"
@@ -569,6 +679,10 @@ jobs:
           cmake --build "$build_dir" --parallel
           npm run release:prepare-runtime -- --platform linux --whisper-dir "$build_dir/bin" --ffmpeg-dir "$AIVPLAYER_FFMPEG_DIR"
           npm run release:check-runtime
+
+      - name: Verify cached Linux x64 native runtimes
+        if: steps.restore-native-runtime-cache.outputs.cache-hit == 'true'
+        run: npm run release:check-runtime && npm run release:check-heif-runtime
 
       - name: Verify Linux x64 native binaries
         run: npm run release:check-architecture -- --architecture x64 --file "$GITHUB_WORKSPACE/resources/whisper.cpp/whisper-cli" --file "$GITHUB_WORKSPACE/resources/ffmpeg/ffmpeg" --file "$GITHUB_WORKSPACE/resources/ffmpeg/ffprobe" --file "$GITHUB_WORKSPACE/resources/heif/heif-enc" --file "$GITHUB_WORKSPACE/resources/heif/heif-convert"
@@ -659,6 +773,16 @@ jobs:
             ${{ github.workspace }}/.cache/electron-builder
           key: electron-linux-arm64-${{ hashFiles('package-lock.json') }}
 
+      - name: Restore Linux ARM64 native runtime cache
+        id: restore-native-runtime-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            resources/ffmpeg
+            resources/heif
+            resources/whisper.cpp
+          key: native-runtime-linux-arm64-${{ env.NATIVE_RUNTIME_CACHE_VERSION }}-${{ env.FFMPEG_BUILD_REVISION }}-${{ env.LIBHEIF_VERSION }}-${{ env.WHISPER_CPP_VERSION }}-${{ hashFiles('scripts/build-heif-source.ts', 'scripts/prepare-heif-runtime.ts', 'scripts/prepare-runtime.ts', 'scripts/prepare-asr-runtime.ts', 'scripts/check-bundled-asr-runtime.ts', 'scripts/check-heif-runtime.ts', 'src/core/ai/whisper-binary.ts') }}
+
       - run: npm ci
 
       - name: Check license manifest
@@ -674,6 +798,7 @@ jobs:
 
       - name: Install fixed FFmpeg runtime
         shell: bash
+        if: steps.restore-native-runtime-cache.outputs.cache-hit != 'true'
         run: |
           archive="$RUNNER_TEMP/ffmpeg-linuxarm64.tar.xz"
           root="$RUNNER_TEMP/ffmpeg-linuxarm64"
@@ -692,6 +817,7 @@ jobs:
         env:
           AIVPLAYER_HEIF_ENCODER: x265
         shell: bash
+        if: steps.restore-native-runtime-cache.outputs.cache-hit != 'true'
         run: |
           git clone --depth 1 --branch "v${LIBHEIF_VERSION}" https://github.com/strukturag/libheif.git "$RUNNER_TEMP/libheif"
           CXXFLAGS=-fpermissive npm run release:build-heif-source -- \
@@ -705,6 +831,7 @@ jobs:
 
       - name: Build and stage ARM64 ASR/media runtime
         shell: bash
+        if: steps.restore-native-runtime-cache.outputs.cache-hit != 'true'
         run: |
           source_dir="$RUNNER_TEMP/whisper.cpp"
           build_dir="$RUNNER_TEMP/whisper-build"
@@ -713,6 +840,10 @@ jobs:
           cmake --build "$build_dir" --parallel
           npm run release:prepare-runtime -- --platform linux --whisper-dir "$build_dir/bin" --ffmpeg-dir "$AIVPLAYER_FFMPEG_DIR"
           npm run release:check-runtime
+
+      - name: Verify cached Linux ARM64 native runtimes
+        if: steps.restore-native-runtime-cache.outputs.cache-hit == 'true'
+        run: npm run release:check-runtime && npm run release:check-heif-runtime
 
       - name: Verify Linux ARM64 native binaries
         run: npm run release:check-architecture -- --architecture arm64 --file "$GITHUB_WORKSPACE/resources/whisper.cpp/whisper-cli" --file "$GITHUB_WORKSPACE/resources/ffmpeg/ffmpeg" --file "$GITHUB_WORKSPACE/resources/ffmpeg/ffprobe" --file "$GITHUB_WORKSPACE/resources/heif/heif-enc" --file "$GITHUB_WORKSPACE/resources/heif/heif-convert"

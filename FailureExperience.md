@@ -1577,10 +1577,16 @@
 
 - 现象：v0.5.3 的 macOS ARM64 Runner 在安装 HEIF / media 依赖时被强制从源码编译 15 个 Homebrew formula，单个 `openssl@3` 就耗时约 7 分钟，随后 x265 的 ARM64 汇编链接因 Xcode 26 / macOS SDK 26 产生空对象文件而失败；libheif 实际配置只启用了 `libde265`、`kvazaar` 和 JPEG 后端，FFmpeg 也由固定源码归档独立构建。
 - 经验：发布流水线的依赖列表应按最终 CMake 配置和运行时用途收窄；不能因为部署目标需要固定，就把整个 FFmpeg 依赖图强制源码重编译。构建前应优先使用稳定的预编译包，并让真正的源码构建步骤自行接收 `MACOSX_DEPLOYMENT_TARGET`。
-- 处理：macOS 改为一次性安装 `cmake`、`ninja`、`pkg-config`、`libde265`、`kvazaar` 和 `jpeg-turbo`，移除 `HOMEBREW_BUILD_FROM_SOURCE`、CFLAGS/LDFLAGS 及无关 codec formula；同时缓存 Electron 下载、固定 revision 的视觉模型和 Windows vcpkg binary cache，避免后续每次发布重复下载或编译。
+- 处理：macOS 改为一次性安装 `cmake`、`ninja`、`pkg-config`、`libde265`、`kvazaar` 和 `jpeg-turbo`，移除 `HOMEBREW_BUILD_FROM_SOURCE`、CFLAGS/LDFLAGS 及无关 codec formula；同时缓存 Electron 下载、按平台和架构缓存可直接打包的原生运行时，并使用 Windows vcpkg binary cache，避免后续每次发布重复下载或编译。
 
 ## 2026-08-13：vcpkg 缓存不能只按已安装目录粗略缓存
 
 - 现象：仅缓存 Windows `C:\\vcpkg\\installed` 目录无法覆盖 vcpkg 的 ABI、端口版本和编译器变化；视觉模型虽然每个 Runner 都会准备一份，但该步骤实测只有几十秒，不能把它误判成当前最长的编译瓶颈。
 - 经验：vcpkg 应使用带 ABI 指纹的 GitHub Actions binary cache，让缓存命中由端口、triplet 和工具链共同决定；架构无关的大模型可以按源码中的固定 revision 缓存，主要用于降低外网失败概率和重复带宽消耗。
-- 处理：Windows x64 / ARM64 设置 `VCPKG_BINARY_SOURCES=clear;files,C:/vcpkg/binary-cache,readwrite` 与 `VCPKG_FEATURE_FLAGS=binarycaching`，并用 `actions/cache` 持久化该 binary cache 目录；视觉模型下载因实测只有几十秒暂不单独缓存，避免恢复大文件缓存抵消收益。
+- 处理：Windows x64 / ARM64 设置 `VCPKG_BINARY_SOURCES=clear;files,C:/vcpkg/binary-cache,readwrite` 与 `VCPKG_FEATURE_FLAGS=binarycaching`，并用稳定的显式版本 Key 持久化该 binary cache 目录；五个平台增加按 FFmpeg、libheif、whisper.cpp 版本和构建脚本指纹生成的 native runtime 成品缓存，视觉模型下载因实测只有几十秒暂不单独缓存，避免恢复大文件缓存抵消收益。
+
+## 2026-08-13：发布流水线需要缓存最终原生运行时，而不只是编译器中间产物
+
+- 现象：仅配置 Electron 下载缓存和 vcpkg binary cache，新的 Runner 仍然会重新执行 libheif、whisper.cpp 和 macOS FFmpeg 的源码构建；Windows 的 `Invoke-WebRequest` 还会因 `ResponseEnded` 让整个 Job 失败。
+- 经验：固定版本的发布运行时只要包含平台、架构、依赖版本和构建脚本指纹，就可以直接缓存最终的 `resources/ffmpeg`、`resources/heif`、`resources/whisper.cpp`；缓存命中后只需执行运行时校验，不应继续进入源码编译步骤。外部大文件下载要写入 `.part` 临时文件，成功后再移动，并校验 SHA-256。
+- 处理：五个平台增加隔离的 native runtime 成品缓存；Windows FFmpeg 改用 `curl.exe` 重试下载和校验，ARM64 先下载 FFmpeg、再执行 vcpkg，避免网络故障时先浪费原生依赖编译时间；macOS FFmpeg 安装后改为检查文件存在并补充执行权限，保留后续 Mach-O 部署目标校验。
