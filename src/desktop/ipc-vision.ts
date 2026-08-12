@@ -8,6 +8,7 @@ import { VISION_SEARCH_FULL_EXPORT_MAX_RESULTS } from '../shared/vision-types'
 import type { VisionEntityCatalogBatchPatch, VisionEntityCatalogCreateInput, VisionEntityCatalogPatch } from '../shared/vision-entity-types'
 import { scanVisionDirectory, isVisionScanAbortError } from '../core/ai/vision-directory-scan'
 import { renderVisionClipCollectionExport } from '../core/ai/clip-inbox-export'
+import { parseVisionClipCollectionImportText } from '../core/ai/clip-inbox-import'
 import { isVisionSearchExportAbortError, renderVisionSearchResultsExport } from '../core/ai/vision-search-export'
 import { writeVisionSearchResultsExportResumable } from '../core/ai/vision-search-export-resumable'
 import { getVisionSearchExportPartsDirectory } from '../core/ai/vision-search-export-store'
@@ -640,6 +641,21 @@ export function registerVisionIpc(): void {
       return { success: true, filePath: outputPath, message: `已导出 ${outputPath}` }
     } catch (error) {
       return { success: false, message: error instanceof Error ? error.message : String(error) }
+    }
+  })
+  ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_IMPORT, async () => {
+    const copy = getAppCopy(getCurrentLocale()).vision
+    const filePath = await promptForOpenPath({
+      title: copy.collectionImport,
+      filters: [{ name: 'AIVPlayer clip collection JSON', extensions: ['json'] }]
+    })
+    if (!filePath) return { success: false, canceled: true, message: copy.collectionImportCanceled }
+    try {
+      const input = parseVisionClipCollectionImportText(await readFile(filePath, 'utf8'))
+      const collection = getClipInboxStore().importCollection(input)
+      return { success: true, filePath, collection, message: copy.collectionImported(collection.title) }
+    } catch (error) {
+      return { success: false, filePath, message: error instanceof Error ? error.message : String(error) }
     }
   })
 }
