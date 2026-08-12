@@ -141,6 +141,7 @@ export function useVisionImportInbox(app: AppController) {
     batchQueue: (selectedItems: MediaImportInboxItem[]) => transitionBatch(selectedItems, 'queue'),
     batchIgnore: (selectedItems: MediaImportInboxItem[]) => transitionBatch(selectedItems, 'ignore'),
     batchRetry: (selectedItems: MediaImportInboxItem[]) => transitionBatch(selectedItems, 'retry'),
+    batchClear: (selectedItems: MediaImportInboxItem[]) => transitionBatch(selectedItems, 'clear'),
     updateMetadata: (item: MediaImportInboxItem, patch: MediaImportInboxMetadataPatch) => void updateMetadata(item, patch)
   }
 }

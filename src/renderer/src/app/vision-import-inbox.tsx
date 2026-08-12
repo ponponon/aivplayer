@@ -22,6 +22,7 @@ type VisionImportInboxProps = {
   onBatchQueue: (items: MediaImportInboxItem[]) => Promise<void>
   onBatchIgnore: (items: MediaImportInboxItem[]) => Promise<void>
   onBatchRetry: (items: MediaImportInboxItem[]) => Promise<void>
+  onBatchClear: (items: MediaImportInboxItem[]) => Promise<void>
   onWriteSidecarsChange: (value: boolean) => void
   onUpdateMetadata: (item: MediaImportInboxItem, patch: MediaImportInboxMetadataPatch) => void
 }
@@ -43,7 +44,7 @@ function canApplyBatch(items: MediaImportInboxItem[], action: MediaImportInboxBa
   return items.every((item) => item.status === 'discovered' || item.status === 'failed')
 }
 
-export function VisionImportInbox({ copy, directories, items, progress, pipelineProgress, isBusy, error, writeSidecars, onAddFolder, onRemoveFolder, onScan, onQueue, onIgnore, onRetry, onBatchQueue, onBatchIgnore, onBatchRetry, onWriteSidecarsChange, onUpdateMetadata }: VisionImportInboxProps): React.ReactElement {
+export function VisionImportInbox({ copy, directories, items, progress, pipelineProgress, isBusy, error, writeSidecars, onAddFolder, onRemoveFolder, onScan, onQueue, onIgnore, onRetry, onBatchQueue, onBatchIgnore, onBatchRetry, onBatchClear, onWriteSidecarsChange, onUpdateMetadata }: VisionImportInboxProps): React.ReactElement {
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<MediaImportInboxStatus | 'all'>('all')
   const [favoriteOnly, setFavoriteOnly] = useState(false)
@@ -87,7 +88,8 @@ export function VisionImportInbox({ copy, directories, items, progress, pipeline
     try {
       if (action === 'queue') await onBatchQueue(selectedItems)
       else if (action === 'ignore') await onBatchIgnore(selectedItems)
-      else await onBatchRetry(selectedItems)
+      else if (action === 'retry') await onBatchRetry(selectedItems)
+      else await onBatchClear(selectedItems)
       setSelectedItemIds(new Set())
     } catch {
       // The hook has already exposed the failure in the panel-level error area.
