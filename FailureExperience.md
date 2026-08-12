@@ -1560,4 +1560,4 @@
 
 - 现象：在 UTM Windows 11 中运行 `AIVPlayer-Setup-0.5.0-arm64.exe` 安装，完成后提示快捷方式指向的 `AIVPlayer.exe` 已经被更改或移动。检查事件查看器发现 Windows Defender 没有任何 1116/1117 拦截事件。检查安装目录发现 `locales`、`resources`、`chrome_100_percent.pak`、`vk_swiftshader_icd.json` 等均存在，但 `AIVPlayer.exe` 以及之后的所有 `.dll` (`d3dcompiler_47.dll`, `ffmpeg.dll` 等) 均未解压出来。
 - 经验：检查 `app-arm64.7z` 内部文件的压缩算法发现，按字母顺序排列在 `vk_swiftshader_icd.json` 之前的文件使用的都是通用 `LZMA2:20` 算法；而从 `AIVPlayer.exe` 及之后的二进制文件，7z 使用的是 `Method = ARM64 LZMA2:20`（7-Zip 的 ARM64 可执行文件 BCJ 滤镜）。electron-builder 嵌入的 32 位 `nsis7z.dll` 插件版本较旧（早于 7-Zip 23.00），无法识别 `ARM64` BCJ 滤镜，当解压流遇到 `AIVPlayer.exe` 时静默报错并中断解压，导致 `AIVPlayer.exe` 及后续所有 DLL 从未被解压落地。
-- 处理：在手动解压测试中可用现代 7-Zip（23+）直接解包 `app-arm64.7z`；生产构建中需要在 7z/NSIS 打包环节避免对 ARM64 二进制施加未被旧版 `nsis7z.dll` 支持的 ARM64 BCJ 滤镜，或更新 nsis7z 插件。
+- 处理：在 `electron-builder.yml` 的 `nsis` 配置项中设置 `useZip: true`，让 NSIS 内部 payload 改用通用的 zip 格式打包，避免对 ARM64 可执行文件添加不兼容的 7z ARM64 BCJ 滤镜，确保全平台 Windows 设备均可一键安装。手动修复测试中可使用现代 7-Zip（23+）直接解包应用。

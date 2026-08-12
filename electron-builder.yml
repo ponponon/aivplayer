@@ -418,6 +418,7 @@ nsis:
   createStartMenuShortcut: true
   shortcutName: AIVPlayer
   runAfterFinish: true
+  useZip: true
   include: build/installer.nsh
 linux:
   icon: brand/icon.png
