@@ -12,4 +12,12 @@ describe('vision clip collection import UI', () => {
     expect(panel).toContain('setCollections((current) => [result.collection!')
     expect(panel).toContain('savedCollectionEmpty')
   })
+
+  it('exposes one-click collection duplication and reports the new title', () => {
+    const panel = readFileSync(join(projectRoot, 'src/renderer/src/app/vision-panel.tsx'), 'utf8')
+    expect(panel).toContain('duplicateVisionClipCollection')
+    expect(panel).toContain('duplicateCollection')
+    expect(panel).toContain('collectionDuplicated(duplicate.title)')
+    expect(panel).toContain('duplicatingCollectionId')
+  })
 })
