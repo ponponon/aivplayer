@@ -1615,3 +1615,9 @@
 - 现象：macOS 的 FFmpeg、libheif 和 whisper.cpp 原本共用 `resources` 原生运行时缓存；只要其中任意构建脚本变化，整个缓存键就失效，固定 FFmpeg 即使源码和配置没有变化也会重新执行约 4 分钟的 `configure` / `make`。
 - 经验：多个相互独立的原生构建不能只依赖一个总成品缓存；应按稳定的源码版本、校验和、架构和构建配置拆分缓存。总缓存负责最终发布复用，子缓存负责避免无关变更触发重复编译。
 - 处理：macOS 增加独立的 `ffmpeg-install` Actions cache，命中后跳过源码解压和编译，只保留二进制存在性、权限和版本校验；如果修改 FFmpeg 配置，需要显式递增 `FFMPEG_MACOS_CACHE_VERSION`，避免复用不兼容产物。
+
+## 2026-08-13：Electron Smoke 不能只等待任务 revision 写入
+
+- 现象：批量视觉导出重建 Smoke 只等待新任务写入 `searchRevision`，但任务此时可能仍处于 `running`；随后立即断言任务必须为 `failed`，在真实 Electron 的异步调度下产生偶发失败。
+- 经验：宿主 Smoke 的持久化字段写入不等于业务任务已经进入可断言终态。涉及后台任务时，等待条件必须同时覆盖任务数量、关键快照和终态状态，不能用中间态字段作为完成信号。
+- 处理：等待两个新建任务都具备 `searchRevision` 且 `status === 'failed'` 后再执行路径、原任务保留和冲突计数断言；修复后批量重建 Smoke 通过，功能代码无需修改。
