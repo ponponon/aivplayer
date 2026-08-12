@@ -1555,3 +1555,9 @@
 - 现象：把 `https://github.com/.../releases/download/.../*.exe` 填入 Partner Center 后，微软提示“包 URL 重定向到另一个 URL”，拒绝继续保存包信息。
 - 经验：Microsoft Store 的 MSI/EXE 包 URL 必须是版本化 HTTPS 直链，不能依赖 GitHub/Gitee Release 的重定向下载地址；普通下载入口和商店包地址需要分开管理。
 - 处理：为 Windows x64 / arm64 安装包增加 Cloudflare R2 版本化上传流程；发布后用不跟随重定向的 HEAD 请求验证 HTTP 200，并在 R2 自定义域名配置完成前不把 URL 填入 Partner Center。
+
+## 2026-08-12：Windows 未签名 Electron 安装包会被 Windows Defender 误杀隔离
+
+- 现象：在 UTM Windows 11 中运行 `AIVPlayer-Setup-*-arm64.exe` 安装完成后，快捷方式提示“该快捷方式所指向的项目 'AIVPlayer.exe' 已经更改或移动”，检查 `AppData\Local\Programs\aivplayer` 目录发现只有 `locales`、`resources`、`aivcli.cmd` 等，唯独缺少 `AIVPlayer.exe` 主程序。
+- 经验：安装包解压本身没有任何缺失（解包 `app-arm64.7z` 证明 `AIVPlayer.exe` 完整存在），由于软件未进行 EV 代码签名且内置了大量 C++ 原生动态库及 AI 模型/命令行工具，Windows Defender（实时保护 / SmartScreen / 启发式扫描）在安装完成并首次启动时将其判定为未信任威胁，直接将 `AIVPlayer.exe` 隔离/删除，导致桌面快捷方式失效。同时 `AppData\Local\aivplayer-updater` 是 electron-updater 的更新缓存目录，软件主程序实际安装在 `AppData\Local\Programs\aivplayer`，`aivplayer-updater` 目录单独存在是完全正常的。
+- 处理：在测试与开发环境中，需要在 Windows 安全中心的“保护历史记录”中将 `AIVPlayer.exe` 还原并设为允许；或在 Defender 排除项中添加 `AppData\Local\Programs\aivplayer` 目录；生产环境则需要进行正式的代码签名或通过 Microsoft Store 渠道发布。
