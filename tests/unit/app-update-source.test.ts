@@ -14,6 +14,7 @@ describe('app update source constraints', () => {
     const updaterSource = readSource('src/desktop/app-updater.ts')
 
     expect(updaterSource).toContain("process.platform !== 'darwin'")
+    expect(updaterSource).toContain('!process.windowsStore')
     expect(updaterSource).toContain('autoUpdater.autoDownload = false')
     expect(updaterSource).toContain('autoUpdater.autoInstallOnAppQuit = false')
     expect(updaterSource).toContain('void autoUpdater.downloadUpdate()')
@@ -31,7 +32,7 @@ describe('app update source constraints', () => {
     expect(workflowSource).toContain('artifacts/assembled/latest*.yml')
     expect(workflowSource).toContain('artifacts/assembled/*.blockmap')
     expect(workflowSource).toContain('artifacts/assembled/release-manifest.json')
-    expect(workflowSource).toContain("Join-Path $env:ChocolateyInstall 'lib\\ffmpeg'")
+    expect(workflowSource).toContain('FFMPEG_WIN64_URL')
     expect(workflowSource).toContain("Get-ChildItem -Path $ffmpegRoot -Filter 'ffmpeg.exe'")
   })
 

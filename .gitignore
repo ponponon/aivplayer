@@ -12,6 +12,8 @@ out/
 *.snap
 *.exe
 *.msi
+*.appx
+*.msix
 *.blockmap
 
 # IDE
@@ -22,6 +24,7 @@ out/
 # Build
 build/
 release/
+release-msix/
 
 # Keep important files
 !package.json
@@ -71,3 +74,6 @@ OPEN_SOURCE_INSPIRATION_PLAN.md
 
 # Generated Flatpak CI manifest
 flatpak/ci-manifest.yml
+
+# Generated Microsoft Store builder configuration
+electron-builder-msix.generated.json

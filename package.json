@@ -34,6 +34,7 @@
     "release:check-push": "node scripts/check-release-push-readiness.mjs",
     "release:verify-remote": "node scripts/verify-remote-release.mjs",
     "release:check-packaged-resources": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/check-packaged-resources.ts",
+    "msix:generate-config": "node scripts/generate-msix-builder-config.mjs",
     "release:prepare-heif-runtime": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/prepare-heif-runtime.ts",
     "release:check-heif-runtime": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/check-heif-runtime.ts",
     "release:build-heif-source": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/build-heif-source.ts",
