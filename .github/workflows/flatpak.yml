@@ -58,7 +58,11 @@ jobs:
         with:
           node-version: 22
       - name: Prepare local source manifest
-        run: npm run flatpak:prepare-ci-manifest -- flatpak/cn.quniv.aivplayer.yml flatpak/ci-manifest.yml
+        run: |
+          rm -rf flatpak/ci-source
+          mkdir -p flatpak/ci-source
+          git archive --format=tar HEAD | tar -x -C flatpak/ci-source
+          npm run flatpak:prepare-ci-manifest -- flatpak/cn.quniv.aivplayer.yml flatpak/ci-manifest.yml
       - name: Install Flatpak builder
         run: |
           sudo apt-get update
@@ -110,7 +114,11 @@ jobs:
         with:
           node-version: 22
       - name: Prepare local source manifest
-        run: npm run flatpak:prepare-ci-manifest -- flatpak/cn.quniv.aivplayer.yml flatpak/ci-manifest.yml
+        run: |
+          rm -rf flatpak/ci-source
+          mkdir -p flatpak/ci-source
+          git archive --format=tar HEAD | tar -x -C flatpak/ci-source
+          npm run flatpak:prepare-ci-manifest -- flatpak/cn.quniv.aivplayer.yml flatpak/ci-manifest.yml
       - name: Install Flatpak builder
         run: |
           sudo apt-get update

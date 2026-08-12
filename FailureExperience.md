@@ -1544,6 +1544,12 @@
 - 现象：CI 已经成功安装 `org.freedesktop.Sdk//25.08`，但直接启动 `org.flatpak.Builder` 仍报告 `Unable to find sdk org.freedesktop.Sdk version 25.08`；无论此前把依赖装到用户仓库还是系统仓库，都没有解决 SDK 查找范围不一致的问题。
 - 经验：Flathub 的 `org.flatpak.Builder` 不是应该直接调用的宿主命令；官方 `flathub-build` wrapper 会设置 `FLATPAK_USER_DIR`，启用 `--user`，并通过 `--install-deps-from=flathub` 统一安装 manifest 声明的 SDK、扩展和 BaseApp。
 - 处理：Flatpak CI 只安装用户级 `org.flatpak.Builder`，构建改为 `flatpak run --user --command=flathub-build org.flatpak.Builder flatpak/ci-manifest.yml`，linter 也固定从同一用户级 Builder 运行；不再手动混合系统 SDK 和 Builder 沙盒。
+
+## 2026-08-12：Flatpak sandbox 不允许临时源码指向 manifest 目录外
+
+- 现象：CI 用临时 `type: dir` source 指向 manifest 目录外的 `..`，Flathub Builder 在 sandbox 模式下拒绝构建：`File ... not inside manifest directory`。
+- 经验：为当前分支验证源码时，临时源码也必须位于 manifest 目录内；不能用宿主 checkout 的相对路径绕过 Flatpak 的源码边界。
+- 处理：CI 先用 `git archive` 将当前 checkout 解包到 `flatpak/ci-source`，临时 manifest 固定引用目录内的 `ci-source`；正式 Flathub manifest 仍使用不可变的应用 Git commit。
 ## 2026-08-11：Microsoft Store 包 URL 不能使用 GitHub Release 重定向
 
 - 现象：把 `https://github.com/.../releases/download/.../*.exe` 填入 Partner Center 后，微软提示“包 URL 重定向到另一个 URL”，拒绝继续保存包信息。

@@ -1,5 +1,5 @@
 import { readFile, writeFile } from 'node:fs/promises'
-import { dirname, relative, resolve } from 'node:path'
+import { resolve } from 'node:path'
 
 const [inputPath, outputPath] = process.argv.slice(2)
 
@@ -16,11 +16,9 @@ if (!sourcePattern.test(text)) {
   throw new Error('没有找到可替换的 AIVPlayer git source')
 }
 
-const repositoryRoot = resolve(dirname(input), '..')
-const relativeRepositoryRoot = relative(dirname(output), repositoryRoot).replaceAll('\\', '/') || '.'
 const localSource = [
   '      - type: dir',
-  `        path: ${relativeRepositoryRoot}`,
+  '        path: ci-source',
   '        dest: app'
 ].join('\n')
 
