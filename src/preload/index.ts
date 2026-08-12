@@ -322,6 +322,7 @@ const api = {
   listVisionClipCollections: (): Promise<VisionClipCollection[]> => ipcRenderer.invoke(IPC_CHANNELS.VISION_CLIP_COLLECTION_LIST),
   saveVisionClipCollection: (input: VisionClipCollectionInput): Promise<VisionClipCollection> => ipcRenderer.invoke(IPC_CHANNELS.VISION_CLIP_COLLECTION_SAVE, input),
   deleteVisionClipCollection: (collectionId: string): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.VISION_CLIP_COLLECTION_DELETE, collectionId),
+  duplicateVisionClipCollection: (collectionId: string): Promise<VisionClipCollection | null> => ipcRenderer.invoke(IPC_CHANNELS.VISION_CLIP_COLLECTION_DUPLICATE, collectionId),
   exportVisionClipCollection: (request: VisionClipCollectionExportRequest): Promise<VisionClipCollectionExportResult> => ipcRenderer.invoke(IPC_CHANNELS.VISION_CLIP_COLLECTION_EXPORT, request),
   importVisionClipCollection: (): Promise<VisionClipCollectionImportResult> => ipcRenderer.invoke(IPC_CHANNELS.VISION_CLIP_COLLECTION_IMPORT),
   getMediaEvidenceCapabilities: (): Promise<MediaEvidenceCapabilities> => ipcRenderer.invoke(IPC_CHANNELS.EVIDENCE_TASK_CAPABILITIES),

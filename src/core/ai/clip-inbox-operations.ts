@@ -4,6 +4,11 @@ import type { VisionClipCollectionSortMode, VisionClipSelection } from '../../sh
 const MAX_COLLECTION_TAGS = 20
 const MAX_COLLECTION_TAG_LENGTH = 40
 
+export function duplicateVisionCollectionTitle(title: string): string {
+  const normalizedTitle = title.trim() || '未命名选段集合'
+  return `${normalizedTitle} · 副本`
+}
+
 export function normalizeVisionCollectionTags(value: unknown): string[] {
   const values = Array.isArray(value) ? value : typeof value === 'string' ? value.split(',') : []
   return [...new Set(values

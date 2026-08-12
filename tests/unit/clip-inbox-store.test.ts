@@ -92,4 +92,18 @@ describe('clip inbox store', () => {
     expect(store.deleteCollection(saved.id)).toBe(false)
     expect(store.listCollections()).toEqual([])
   })
+
+  it('duplicates a collection with a new id and independent content', () => {
+    const original = store.saveCollection({ title: '待复制', tags: ['旅行'], sortMode: 'duration-desc', selections: [selection()] })
+    const duplicate = store.duplicateCollection(original.id)
+
+    expect(duplicate).toMatchObject({ title: '待复制 · 副本', tags: ['旅行'], sortMode: 'duration-desc' })
+    expect(duplicate?.id).not.toBe(original.id)
+    expect(duplicate?.selections).toEqual(original.selections)
+
+    store.saveCollection({ id: duplicate!.id, title: '副本已修改', selections: [selection({ startSeconds: 5, endSeconds: 7 })] })
+    expect(store.getCollection(original.id)).toEqual(original)
+    expect(store.getCollection(duplicate!.id)?.title).toBe('副本已修改')
+    expect(store.duplicateCollection('not-found')).toBeNull()
+  })
 })

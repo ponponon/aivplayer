@@ -3,7 +3,7 @@ import { mkdirSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { mergeVisionClipSelections, normalizeVisionTimeRange } from './vision-evidence'
-import { normalizeVisionCollectionSortMode, normalizeVisionCollectionTags, sortVisionClipSelections } from './clip-inbox-operations'
+import { duplicateVisionCollectionTitle, normalizeVisionCollectionSortMode, normalizeVisionCollectionTags, sortVisionClipSelections } from './clip-inbox-operations'
 import type { VisionClipCollection, VisionClipCollectionInput, VisionClipSelection, VisionEvidenceType } from '../../shared/vision-types'
 
 type SqliteRow = Record<string, unknown>
@@ -174,6 +174,17 @@ export class ClipInboxStore {
 
   importCollection(input: VisionClipCollectionInput): VisionClipCollection {
     return this.saveCollection({ ...input, id: undefined })
+  }
+
+  duplicateCollection(collectionId: string): VisionClipCollection | null {
+    const collection = this.getCollection(collectionId)
+    if (!collection) return null
+    return this.importCollection({
+      title: duplicateVisionCollectionTitle(collection.title),
+      tags: collection.tags,
+      sortMode: collection.sortMode,
+      selections: collection.selections
+    })
   }
 
   deleteCollection(collectionId: string): boolean {

@@ -621,6 +621,10 @@ export function registerVisionIpc(): void {
     if (typeof collectionId !== 'string' || !collectionId.trim()) return false
     return getClipInboxStore().deleteCollection(collectionId.trim())
   })
+  ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_DUPLICATE, (_event, collectionId: string) => {
+    if (typeof collectionId !== 'string' || !collectionId.trim()) return null
+    return getClipInboxStore().duplicateCollection(collectionId.trim())
+  })
   ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_EXPORT, async (_event, request: VisionClipCollectionExportRequest) => {
     if (!request || typeof request.collectionId !== 'string' || !request.collectionId.trim() || !isVisionClipCollectionExportFormat(request.format)) {
       return { success: false, message: '导出参数无效' }
