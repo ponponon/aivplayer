@@ -137,7 +137,9 @@ jobs:
             --build-dir "$RUNNER_TEMP/libheif-build" \
             --install-dir "$RUNNER_TEMP/libheif-install" \
             --resource-dir "$GITHUB_WORKSPACE/resources" \
-            --encoder kvazaar
+            --encoder kvazaar \
+            --generator Ninja \
+            --jobs "$(sysctl -n hw.ncpu)"
           npm run release:check-heif-runtime
 
       - name: Build and stage ASR/media runtime
@@ -245,6 +247,15 @@ jobs:
           restore-keys: |
             vcpkg-downloads-windows-x64-v1-
 
+      - name: Restore Windows x64 FFmpeg archive cache
+        if: steps.restore-native-runtime-cache.outputs.cache-hit != 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ runner.temp }}/ffmpeg-win64.zip
+            ${{ runner.temp }}/ffmpeg-win64
+          key: ffmpeg-archive-windows-x64-v1-${{ env.FFMPEG_WIN64_SHA256 }}
+
       - run: npm ci
 
       - name: Check license manifest
@@ -254,13 +265,16 @@ jobs:
         shell: pwsh
         run: npm run release:prepare-vision-model -- --resource-dir "$env:GITHUB_WORKSPACE/resources"
 
-      - name: Install HEIF build dependencies
+      - name: Prepare fixed FFmpeg runtime
         shell: pwsh
         if: steps.restore-native-runtime-cache.outputs.cache-hit != 'true'
         run: |
           New-Item -ItemType Directory -Force -Path $env:VCPKG_DOWNLOADS | Out-Null
           $ffmpegArchive = Join-Path $env:RUNNER_TEMP 'ffmpeg-win64.zip'
           $ffmpegRoot = Join-Path $env:RUNNER_TEMP 'ffmpeg-win64'
+          $ffmpegBinary = Get-ChildItem -Path $ffmpegRoot -Filter 'ffmpeg.exe' -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+          $ffprobeReady = $null -ne $ffmpegBinary -and (Test-Path (Join-Path $ffmpegBinary.DirectoryName 'ffprobe.exe'))
+          $ffmpegReady = $null -ne $ffmpegBinary -and $ffprobeReady
           function Download-WithRetry {
             param([string]$Uri, [string]$OutputPath)
             $partialPath = "$OutputPath.part"
@@ -275,10 +289,23 @@ jobs:
             }
             throw "Failed to download $Uri after 5 attempts."
           }
-          Download-WithRetry -Uri $env:FFMPEG_WIN64_URL -OutputPath $ffmpegArchive
-          if ((Get-FileHash -Path $ffmpegArchive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $env:FFMPEG_WIN64_SHA256) { throw 'The downloaded Windows x64 FFmpeg checksum does not match.' }
-          Remove-Item -Recurse -Force $ffmpegRoot -ErrorAction SilentlyContinue
-          Expand-Archive -Path $ffmpegArchive -DestinationPath $ffmpegRoot -Force
+          if (-not $ffmpegReady) {
+            $archiveValid = $false
+            if (Test-Path $ffmpegArchive) {
+              $archiveValid = (Get-FileHash -Path $ffmpegArchive -Algorithm SHA256).Hash.ToLowerInvariant() -eq $env:FFMPEG_WIN64_SHA256
+            }
+            if (-not $archiveValid) {
+              Download-WithRetry -Uri $env:FFMPEG_WIN64_URL -OutputPath $ffmpegArchive
+            }
+            if ((Get-FileHash -Path $ffmpegArchive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $env:FFMPEG_WIN64_SHA256) { throw 'The downloaded Windows x64 FFmpeg checksum does not match.' }
+            Remove-Item -Recurse -Force $ffmpegRoot -ErrorAction SilentlyContinue
+            Expand-Archive -Path $ffmpegArchive -DestinationPath $ffmpegRoot -Force
+          }
+
+      - name: Install Windows x64 HEIF dependencies
+        shell: pwsh
+        if: steps.restore-native-runtime-cache.outputs.cache-hit != 'true'
+        run: |
           vcpkg install libde265:x64-windows-static x265:x64-windows-static libjpeg-turbo:x64-windows-static tiff:x64-windows-static
 
       - name: Build static HEIF runtime
@@ -294,7 +321,7 @@ jobs:
           $x265Library = Join-Path $env:VCPKG_INSTALLATION_ROOT "installed\x64-windows-static\lib\x265-static.lib"
           if (!(Test-Path $x265Library)) { throw "vcpkg x265 static library was not found: $x265Library" }
           git clone --depth 1 --branch "v$env:LIBHEIF_VERSION" https://github.com/strukturag/libheif.git $source
-          npm run release:build-heif-source -- --source-dir $source --build-dir $build --install-dir $install --resource-dir "$env:GITHUB_WORKSPACE/resources" --platform win32 --toolchain-file $toolchain --vcpkg-triplet x64-windows-static --encoder x265 --x265-library $x265Library
+          npm run release:build-heif-source -- --source-dir $source --build-dir $build --install-dir $install --resource-dir "$env:GITHUB_WORKSPACE/resources" --platform win32 --toolchain-file $toolchain --vcpkg-triplet x64-windows-static --encoder x265 --x265-library $x265Library --jobs ([Environment]::ProcessorCount)
           npm run release:check-heif-runtime
 
       - name: Build and stage ASR/media runtime
@@ -453,6 +480,15 @@ jobs:
           restore-keys: |
             vcpkg-downloads-windows-arm64-v1-
 
+      - name: Restore Windows ARM64 FFmpeg archive cache
+        if: steps.restore-native-runtime-cache.outputs.cache-hit != 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ runner.temp }}/ffmpeg-winarm64.zip
+            ${{ runner.temp }}/ffmpeg-winarm64
+          key: ffmpeg-archive-windows-arm64-v1-${{ env.FFMPEG_WINARM64_SHA256 }}
+
       - run: npm ci
 
       - name: Check license manifest
@@ -462,7 +498,7 @@ jobs:
         shell: pwsh
         run: npm run release:prepare-vision-model -- --resource-dir "$env:GITHUB_WORKSPACE/resources"
 
-      - name: Install HEIF build dependencies
+      - name: Prepare fixed FFmpeg runtime
         shell: pwsh
         if: steps.restore-native-runtime-cache.outputs.cache-hit != 'true'
         run: |
@@ -471,6 +507,9 @@ jobs:
           $ffmpegSha256 = $env:FFMPEG_WINARM64_SHA256
           $ffmpegArchive = Join-Path $env:RUNNER_TEMP 'ffmpeg-winarm64.zip'
           $ffmpegRoot = Join-Path $env:RUNNER_TEMP 'ffmpeg-winarm64'
+          $ffmpegBinary = Get-ChildItem -Path $ffmpegRoot -Filter 'ffmpeg.exe' -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+          $ffprobeReady = $null -ne $ffmpegBinary -and (Test-Path (Join-Path $ffmpegBinary.DirectoryName 'ffprobe.exe'))
+          $ffmpegReady = $null -ne $ffmpegBinary -and $ffprobeReady
           function Download-WithRetry {
             param([string]$Uri, [string]$OutputPath)
             $partialPath = "$OutputPath.part"
@@ -485,9 +524,22 @@ jobs:
             }
             throw "Failed to download $Uri after 5 attempts."
           }
-          Download-WithRetry -Uri $ffmpegUrl -OutputPath $ffmpegArchive
-          if ((Get-FileHash -Path $ffmpegArchive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $ffmpegSha256) { throw 'The downloaded Windows ARM64 FFmpeg checksum does not match.' }
-          Expand-Archive -Path $ffmpegArchive -DestinationPath $ffmpegRoot -Force
+          if (-not $ffmpegReady) {
+            $archiveValid = $false
+            if (Test-Path $ffmpegArchive) {
+              $archiveValid = (Get-FileHash -Path $ffmpegArchive -Algorithm SHA256).Hash.ToLowerInvariant() -eq $ffmpegSha256
+            }
+            if (-not $archiveValid) {
+              Download-WithRetry -Uri $ffmpegUrl -OutputPath $ffmpegArchive
+            }
+            if ((Get-FileHash -Path $ffmpegArchive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $ffmpegSha256) { throw 'The downloaded Windows ARM64 FFmpeg checksum does not match.' }
+            Expand-Archive -Path $ffmpegArchive -DestinationPath $ffmpegRoot -Force
+          }
+
+      - name: Install Windows ARM64 HEIF dependencies
+        shell: pwsh
+        if: steps.restore-native-runtime-cache.outputs.cache-hit != 'true'
+        run: |
           vcpkg install libde265:arm64-windows-static x265:arm64-windows-static libjpeg-turbo:arm64-windows-static tiff:arm64-windows-static
 
       - name: Build static HEIF runtime
@@ -503,7 +555,7 @@ jobs:
           $x265Library = Join-Path $env:VCPKG_INSTALLATION_ROOT "installed\arm64-windows-static\lib\x265-static.lib"
           if (!(Test-Path $x265Library)) { throw "vcpkg x265 static library was not found: $x265Library" }
           git clone --depth 1 --branch "v$env:LIBHEIF_VERSION" https://github.com/strukturag/libheif.git $source
-          npm run release:build-heif-source -- --source-dir $source --build-dir $build --install-dir $install --resource-dir "$env:GITHUB_WORKSPACE/resources" --platform win32 --toolchain-file $toolchain --vcpkg-triplet arm64-windows-static --encoder x265 --x265-library $x265Library
+          npm run release:build-heif-source -- --source-dir $source --build-dir $build --install-dir $install --resource-dir "$env:GITHUB_WORKSPACE/resources" --platform win32 --toolchain-file $toolchain --vcpkg-triplet arm64-windows-static --encoder x265 --x265-library $x265Library --jobs ([Environment]::ProcessorCount)
           npm run release:check-heif-runtime
 
       - name: Build and stage ARM64 ASR/media runtime

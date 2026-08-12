@@ -1592,6 +1592,18 @@
 - 处理：五个平台增加隔离的 native runtime 成品缓存；Windows FFmpeg 改用 `curl.exe` 重试下载和校验，ARM64 先下载 FFmpeg、再执行 vcpkg，避免网络故障时先浪费原生依赖编译时间；macOS FFmpeg 安装后改为检查文件存在并补充执行权限，保留后续 Mach-O 部署目标校验。
 - 追加修正：macOS FFmpeg 的 `--bindir` 必须使用安装目录的绝对路径；仅写 `--bindir=bin` 时，`make install` 日志看似成功，但产物不在预期目录，导致缓存无法生成。Linux FFmpeg 下载同样使用 `.part` 文件、`--retry-all-errors` 和 SHA-256 校验。
 
+## 2026-08-13：发布日志中的 HEIF 依赖安装步骤不能替代真实耗时分析
+
+- 现象：macOS 截图看起来像是 `Install HEIF and media runtime dependencies` 卡了很久，实际该步骤只安装了几秒；真正耗时的是后面的 `Build static HEIF runtime`。Windows 的 `Install HEIF build dependencies` 则把固定 FFmpeg 下载解压和 vcpkg 依赖准备混在一起，无法从步骤名判断瓶颈。
+- 经验：CI 优化必须按 Actions 的单步开始 / 结束时间和日志拆解下载、依赖安装、源码编译、打包，不能根据截图箭头或步骤名称直接归因。
+- 处理：macOS libheif 构建切换到 Ninja 并显式传入 CPU 并行度，只构建发布真正需要的 `heif-dec` / `heif-enc` 目标；Windows 将 FFmpeg 归档准备、vcpkg HEIF 依赖安装拆为独立步骤，并缓存固定 FFmpeg 归档，后续可分别观测和复用。
+
+## 2026-08-13：CMake `--parallel` 不带数值不能保证 Unix Runner 并行编译
+
+- 现象：发布脚本写了 `cmake --build ... --parallel`，但没有指定并行数；在 macOS 默认 Unix Makefiles 下不能把它当作明确的多核构建保证，libheif 冷构建因此可能长时间串行执行。
+- 经验：跨平台 CI 应显式选择 Ninja 或显式传递 `--parallel <jobs>`；目标数量也应只包含发布实际使用的工具，避免编译无用的开发目标。
+- 处理：`build-heif-source.ts` 默认使用 Node `availableParallelism()`，支持 `--jobs` / `--generator`，macOS 发布调用 Ninja 和 `sysctl -n hw.ncpu`，Windows 显式使用 Runner 的处理器数；保留 `heif-info` 目标以满足当前 libheif 安装脚本，同时不额外构建未被发布流程使用的测试和图形示例目标。
+
 ## 2026-08-13：vcpkg 二进制缓存不能覆盖首次源码下载失败
 
 - 现象：Windows ARM64 首次构建虽然已经启用 vcpkg binary cache，但仍需从上游下载 `libjpeg-turbo` 等端口源码；GitHub 临时返回 503 时，vcpkg 会在进入 CMake 编译前直接失败，尚未生成可复用的原生运行时缓存。

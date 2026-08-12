@@ -2,6 +2,7 @@ import { access, copyFile, mkdir } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { execFile } from 'node:child_process'
+import { availableParallelism } from 'node:os'
 import { promisify } from 'node:util'
 import { prepareHeifRuntime } from './prepare-heif-runtime.ts'
 
@@ -21,6 +22,8 @@ export type BuildHeifSourceOptions = {
   vcpkgTriplet?: string
   x265Library?: string
   staticLink?: boolean
+  generator?: string
+  jobs?: number
 }
 
 function readOptionsFromEnvironment(): Partial<BuildHeifSourceOptions> {
@@ -34,8 +37,16 @@ function readOptionsFromEnvironment(): Partial<BuildHeifSourceOptions> {
     toolchainFile: process.env.AIVPLAYER_CMAKE_TOOLCHAIN_FILE,
     vcpkgTriplet: process.env.AIVPLAYER_VCPKG_TRIPLET,
     x265Library: process.env.AIVPLAYER_X265_LIBRARY,
-    staticLink: process.env.AIVPLAYER_HEIF_STATIC_LINK === '1'
+    staticLink: process.env.AIVPLAYER_HEIF_STATIC_LINK === '1',
+    generator: process.env.AIVPLAYER_CMAKE_GENERATOR,
+    jobs: parsePositiveInteger(process.env.AIVPLAYER_HEIF_BUILD_JOBS)
   }
+}
+
+function parsePositiveInteger(value: string | undefined): number | undefined {
+  if (!value) return undefined
+  const parsed = Number.parseInt(value, 10)
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined
 }
 
 function readOptionsFromArgs(argv: string[]): Partial<BuildHeifSourceOptions> {
@@ -57,6 +68,8 @@ function readOptionsFromArgs(argv: string[]): Partial<BuildHeifSourceOptions> {
     else if (item === '--toolchain-file') options.toolchainFile = value
     else if (item === '--vcpkg-triplet') options.vcpkgTriplet = value
     else if (item === '--x265-library') options.x265Library = value
+    else if (item === '--generator') options.generator = value
+    else if (item === '--jobs') options.jobs = parsePositiveInteger(value)
     else continue
     index += 1
   }
@@ -77,7 +90,9 @@ function mergeOptions(...optionsList: Partial<BuildHeifSourceOptions>[]): BuildH
     toolchainFile: options.toolchainFile,
     vcpkgTriplet: options.vcpkgTriplet,
     x265Library: options.x265Library,
-    staticLink: options.staticLink ?? false
+    staticLink: options.staticLink ?? false,
+    generator: options.generator,
+    jobs: options.jobs
   }
 }
 
@@ -128,6 +143,7 @@ function getCmakeOptions(options: BuildHeifSourceOptions, installDirectory: stri
     '-DWITH_OpenH264_DECODER=OFF',
     '-DWITH_LIBSHARPYUV=OFF'
   ]
+  if (options.generator) cmakeOptions.unshift('-G', options.generator)
   if (options.toolchainFile) cmakeOptions.push(`-DCMAKE_TOOLCHAIN_FILE=${options.toolchainFile}`)
   if (options.vcpkgTriplet) cmakeOptions.push(`-DVCPKG_TARGET_TRIPLET=${options.vcpkgTriplet}`)
   if (options.x265Library) cmakeOptions.push(`-DX265_LIBRARY=${options.x265Library}`)
@@ -161,6 +177,7 @@ export async function buildHeifSource(options: BuildHeifSourceOptions): Promise<
   const platform = options.platform ?? process.platform
   const buildDirectory = options.buildDirectory ?? join(options.sourceDirectory, 'build-aivplayer')
   const installDirectory = options.installDirectory ?? join(buildDirectory, 'install')
+  const buildJobs = options.jobs ?? availableParallelism()
   await mkdir(buildDirectory, { recursive: true })
   await run('cmake', ['-S', options.sourceDirectory, '-B', buildDirectory, ...getCmakeOptions({ ...options, platform }, installDirectory)])
   await run('cmake', [
@@ -172,7 +189,8 @@ export async function buildHeifSource(options: BuildHeifSourceOptions): Promise<
     'heif-info',
     'heif-dec',
     'heif-enc',
-    '--parallel'
+    '--parallel',
+    String(buildJobs)
   ])
   await run('cmake', ['--install', buildDirectory, '--config', 'Release'])
   await ensureWindowsHeifConverter(installDirectory, platform)
