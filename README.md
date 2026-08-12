@@ -55,6 +55,12 @@ The product overview, feature demos, and download links are available at **[aivp
 - Subtitle translation, content summaries, and AI short-drama text generation require an OpenAI-compatible service. When enabled, the relevant text is sent to the provider you configure.
 - The visual media library uses a local SigLIP2 model and LanceDB for indexes; original videos and images are not uploaded.
 
+### Code signing policy
+
+The release signing process is documented in the [Code signing policy](CODE_SIGNING_POLICY.md).
+
+> Free code signing provided by [SignPath.io](https://signpath.io/), certificate by [SignPath Foundation](https://signpath.org/)
+
 ## Quick start
 
 ### 1. Download and install

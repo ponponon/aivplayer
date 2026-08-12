@@ -55,6 +55,12 @@ AIVPlayer 的产品介绍、功能演示和下载入口位于 **[aivplayer.pages
 - 字幕翻译、内容总结和 AI 短剧文本生成需要配置 OpenAI-compatible 服务；启用这些功能时，应用会把相应的文本内容发送给你配置的服务商。
 - 视觉影视库使用本地 SigLIP2 模型和 LanceDB 保存索引，不上传原始视频或图片。
 
+### 代码签名政策
+
+发布签名流程见 [Code signing policy](CODE_SIGNING_POLICY.md)。
+
+> Free code signing provided by [SignPath.io](https://signpath.io/), certificate by [SignPath Foundation](https://signpath.org/)
+
 ## 快速开始
 
 ### 1. 下载并安装
