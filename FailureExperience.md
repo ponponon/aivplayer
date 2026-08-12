@@ -1559,5 +1559,5 @@
 ## 2026-08-12：Windows 未签名 Electron 安装包会被 Windows Defender 误杀隔离
 
 - 现象：在 UTM Windows 11 中运行 `AIVPlayer-Setup-*-arm64.exe` 安装完成后，快捷方式提示“该快捷方式所指向的项目 'AIVPlayer.exe' 已经更改或移动”，检查 `AppData\Local\Programs\aivplayer` 目录发现只有 `locales`、`resources`、`aivcli.cmd` 等，唯独缺少 `AIVPlayer.exe` 主程序。
-- 经验：安装包解压本身没有任何缺失（解包 `app-arm64.7z` 证明 `AIVPlayer.exe` 完整存在），由于软件未进行 EV 代码签名且内置了大量 C++ 原生动态库及 AI 模型/命令行工具，Windows Defender（实时保护 / SmartScreen / 启发式扫描）在安装完成并首次启动时将其判定为未信任威胁，直接将 `AIVPlayer.exe` 隔离/删除，导致桌面快捷方式失效。同时 `AppData\Local\aivplayer-updater` 是 electron-updater 的更新缓存目录，软件主程序实际安装在 `AppData\Local\Programs\aivplayer`，`aivplayer-updater` 目录单独存在是完全正常的。
-- 处理：在测试与开发环境中，需要在 Windows 安全中心的“保护历史记录”中将 `AIVPlayer.exe` 还原并设为允许；或在 Defender 排除项中添加 `AppData\Local\Programs\aivplayer` 目录；生产环境则需要进行正式的代码签名或通过 Microsoft Store 渠道发布。
+- 经验：安装包解压本身没有任何缺失（解包 `app-arm64.7z` 证明 `AIVPlayer.exe` 完整存在）。由于软件未进行商业代码签名，在 Windows 11 中会被“应用和浏览器控制”下的 Smart App Control（智能应用控制）或 SmartScreen / PUA（阻止可能不需要的应用）机制判定为未知应用并静默拦截/清除 `AIVPlayer.exe`，因此“病毒和威胁防护”记录中可能不会出现标准病毒警报。同时 `AppData\Local\aivplayer-updater` 是 electron-updater 的更新缓存目录，软件主程序实际安装在 `AppData\Local\Programs\aivplayer`，该目录独立存在是完全正常的。
+- 处理：在测试与开发环境中，先在 Windows 安全中心“病毒和威胁防护”设置中将 `AppData\Local\Programs\aivplayer` 文件夹加入“排除项”，或在“应用和浏览器控制”中关闭 Smart App Control / 声誉保护拦截，再重新运行安装包即可；生产环境则需通过正式代码签名或 Microsoft Store 渠道发布。
