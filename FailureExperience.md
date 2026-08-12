@@ -1542,3 +1542,8 @@
 - 现象：CI 已经成功安装 `org.freedesktop.Sdk//25.08`，但直接启动 `org.flatpak.Builder` 仍报告 `Unable to find sdk org.freedesktop.Sdk version 25.08`；无论此前把依赖装到用户仓库还是系统仓库，都没有解决 SDK 查找范围不一致的问题。
 - 经验：Flathub 的 `org.flatpak.Builder` 不是应该直接调用的宿主命令；官方 `flathub-build` wrapper 会设置 `FLATPAK_USER_DIR`，启用 `--user`，并通过 `--install-deps-from=flathub` 统一安装 manifest 声明的 SDK、扩展和 BaseApp。
 - 处理：Flatpak CI 只安装用户级 `org.flatpak.Builder`，构建改为 `flatpak run --user --command=flathub-build org.flatpak.Builder flatpak/ci-manifest.yml`，linter 也固定从同一用户级 Builder 运行；不再手动混合系统 SDK 和 Builder 沙盒。
+## 2026-08-11：Microsoft Store 包 URL 不能使用 GitHub Release 重定向
+
+- 现象：把 `https://github.com/.../releases/download/.../*.exe` 填入 Partner Center 后，微软提示“包 URL 重定向到另一个 URL”，拒绝继续保存包信息。
+- 经验：Microsoft Store 的 MSI/EXE 包 URL 必须是版本化 HTTPS 直链，不能依赖 GitHub/Gitee Release 的重定向下载地址；普通下载入口和商店包地址需要分开管理。
+- 处理：为 Windows x64 / arm64 安装包增加 Cloudflare R2 版本化上传流程；发布后用不跟随重定向的 HEAD 请求验证 HTTP 200，并在 R2 自定义域名配置完成前不把 URL 填入 Partner Center。
