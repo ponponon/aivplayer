@@ -419,6 +419,7 @@ nsis:
   shortcutName: AIVPlayer
   runAfterFinish: true
   useZip: true
+  differentialPackage: false
   include: build/installer.nsh
 linux:
   icon: brand/icon.png

@@ -19,6 +19,11 @@ const buildWhisperMacos = readFileSync(join(projectRoot, 'scripts/build-whisper-
 const buildHeifSource = readFileSync(join(projectRoot, 'scripts/build-heif-source.ts'), 'utf8')
 
 describe('release workflow source constraints', () => {
+  it('uses ZIP payloads for the Windows NSIS installer without differential packaging', () => {
+    expect(electronBuilder).toContain('useZip: true')
+    expect(electronBuilder).toContain('differentialPackage: false')
+  })
+
   it('keeps platform builds separate from release publishing', () => {
     expect(releaseWorkflow).not.toContain('GH_TOKEN:')
     expect(releaseWorkflow.match(/npx electron-builder.*--publish never/g)).toHaveLength(5)

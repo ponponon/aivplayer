@@ -87,7 +87,7 @@ jobs:
           archive="$RUNNER_TEMP/ffmpeg-${FFMPEG_VERSION}.tar.xz"
           source_dir="$RUNNER_TEMP/ffmpeg-${FFMPEG_VERSION}"
           install_dir="$RUNNER_TEMP/ffmpeg-install"
-          curl --fail --location --retry 3 --output "$archive" "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz"
+          curl --fail --location --retry 5 --retry-all-errors --output "$archive" "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz"
           echo "${FFMPEG_SOURCE_SHA256}  ${archive}" | shasum -a 256 -c -
           rm -rf "$source_dir" "$install_dir"
           tar -xJf "$archive" -C "$RUNNER_TEMP"

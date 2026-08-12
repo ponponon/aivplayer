@@ -1560,4 +1560,9 @@
 
 - 现象：在 UTM Windows 11 中运行 `AIVPlayer-Setup-0.5.0-arm64.exe` 安装，完成后提示快捷方式指向的 `AIVPlayer.exe` 已经被更改或移动。检查事件查看器发现 Windows Defender 没有任何 1116/1117 拦截事件。检查安装目录发现 `locales`、`resources`、`chrome_100_percent.pak`、`vk_swiftshader_icd.json` 等均存在，但 `AIVPlayer.exe` 以及之后的所有 `.dll` (`d3dcompiler_47.dll`, `ffmpeg.dll` 等) 均未解压出来。
 - 经验：检查 `app-arm64.7z` 内部文件的压缩算法发现，按字母顺序排列在 `vk_swiftshader_icd.json` 之前的文件使用的都是通用 `LZMA2:20` 算法；而从 `AIVPlayer.exe` 及之后的二进制文件，7z 使用的是 `Method = ARM64 LZMA2:20`（7-Zip 的 ARM64 可执行文件 BCJ 滤镜）。electron-builder 嵌入的 32 位 `nsis7z.dll` 插件版本较旧（早于 7-Zip 23.00），无法识别 `ARM64` BCJ 滤镜，当解压流遇到 `AIVPlayer.exe` 时静默报错并中断解压，导致 `AIVPlayer.exe` 及后续所有 DLL 从未被解压落地。
-- 处理：在 `electron-builder.yml` 的 `nsis` 配置项中设置 `useZip: true`，让 NSIS 内部 payload 改用通用的 zip 格式打包，避免对 ARM64 可执行文件添加不兼容的 7z ARM64 BCJ 滤镜，确保全平台 Windows 设备均可一键安装。手动修复测试中可使用现代 7-Zip（23+）直接解包应用。
+- 处理：在 `electron-builder.yml` 的 `nsis` 配置项中同时设置 `useZip: true` 和 `differentialPackage: false`；electron-builder 26.15.3 只有在关闭差分包时才会实际生成 ZIP payload，随后 NSIS 走 `nsisunz` 解压路径，避免对 ARM64 可执行文件添加不兼容的 7z ARM64 BCJ 滤镜。手动修复测试中可使用现代 7-Zip（23+）直接解包应用。
+
+## 2026-08-12：macOS 发布构建下载 FFmpeg 源码时连接被重置
+
+- 现象：v0.5.1 发布流水线的 macOS 任务在下载 FFmpeg 官方源码时收到 `curl: (35) Recv failure: Connection reset by peer`，默认 `--retry 3` 没有重试，导致整个发布汇总任务被跳过。
+- 处理：下载固定版本源码时使用 `curl --retry 5 --retry-all-errors`，把连接重置等瞬时网络错误纳入重试范围；下载后继续使用 SHA-256 校验，避免把重试机制变成完整性校验的替代品。
