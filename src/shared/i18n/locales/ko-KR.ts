@@ -506,6 +506,7 @@
       collectionTagsPlaceholder: '태그 (쉼표로 구분)',
       saveCollection: '클립 컬렉션 저장',
       savedCollections: '저장된 클립 컬렉션',
+      savedCollectionEmpty: '저장된 클립 컬렉션이 아직 없습니다.',
       collectionImport: '클립 컬렉션 가져오기',
       collectionImportCanceled: '클립 컬렉션 가져오기를 취소했습니다',
       collectionImported: (title: string) => `클립 컬렉션을 가져왔습니다: ${title}`,

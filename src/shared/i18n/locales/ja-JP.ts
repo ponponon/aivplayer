@@ -506,6 +506,7 @@
       collectionTagsPlaceholder: 'タグ（カンマ区切り）',
       saveCollection: 'クリップコレクションを保存',
       savedCollections: '保存済みクリップコレクション',
+      savedCollectionEmpty: '保存済みのクリップコレクションはまだありません。',
       collectionImport: 'クリップコレクションをインポート',
       collectionImportCanceled: 'クリップコレクションのインポートをキャンセルしました',
       collectionImported: (title: string) => `クリップコレクションをインポートしました：${title}`,

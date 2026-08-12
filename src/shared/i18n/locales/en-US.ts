@@ -506,6 +506,7 @@
       collectionTagsPlaceholder: 'Tags (comma separated)',
       saveCollection: 'Save clip collection',
       savedCollections: 'Saved clip collections',
+      savedCollectionEmpty: 'No clip collections saved yet.',
       collectionImport: 'Import clip collection',
       collectionImportCanceled: 'Clip collection import cancelled',
       collectionImported: (title: string) => `Imported clip collection: ${title}`,

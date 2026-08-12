@@ -506,6 +506,7 @@
       collectionTagsPlaceholder: '标签（用逗号分隔）',
       saveCollection: '保存选段集合',
       savedCollections: '已保存的选段集合',
+      savedCollectionEmpty: '还没有保存的选段集合。',
       collectionImport: '导入选段集合',
       collectionImportCanceled: '已取消导入选段集合',
       collectionImported: (title: string) => `已导入选段集合：${title}`,
