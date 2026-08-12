@@ -46,6 +46,7 @@
     "smoke:playback-segments": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-playback-segments.ts",
     "smoke:structure-analysis": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-structure-analysis.ts",
     "smoke:vision-clip-inbox": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-inbox.ts",
+    "smoke:vision-library-pagination": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-library-pagination.ts",
     "smoke:vision-custom-entity": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-custom-entity.ts",
     "smoke:vision-similar-search": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-similar-search.ts",
     "smoke:vision-search-export-recreate": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-search-export-recreate.ts",
