@@ -1550,6 +1550,12 @@
 - 现象：CI 用临时 `type: dir` source 指向 manifest 目录外的 `..`，Flathub Builder 在 sandbox 模式下拒绝构建：`File ... not inside manifest directory`。
 - 经验：为当前分支验证源码时，临时源码也必须位于 manifest 目录内；不能用宿主 checkout 的相对路径绕过 Flatpak 的源码边界。
 - 处理：CI 先用 `git archive` 将当前 checkout 解包到 `flatpak/ci-source`，临时 manifest 固定引用目录内的 `ci-source`；正式 Flathub manifest 仍使用不可变的应用 Git commit。
+
+## 2026-08-13：Flatpak 截图镜像必须通过 Flathub Builder wrapper
+
+- 现象：Flatpak 应用本体已经构建并导出成功，但仓库 lint 报 `appstream-external-screenshot-url` 和 `appstream-screenshots-not-mirrored-in-ostree`。
+- 经验：截图镜像参数不能只记录在文档或历史配置里；必须由实际执行构建的 Builder 传入。Flathub 的 `flathub-build` wrapper 已固定包含 `--mirror-screenshots-url` 和 `--compose-url-policy`。
+- 处理：CI 构建统一调用 `flatpak run --user --command=flathub-build org.flatpak.Builder`，避免宿主 `flatpak-builder` 漏掉 Flathub 专用截图镜像参数。
 ## 2026-08-11：Microsoft Store 包 URL 不能使用 GitHub Release 重定向
 
 - 现象：把 `https://github.com/.../releases/download/.../*.exe` 填入 Partner Center 后，微软提示“包 URL 重定向到另一个 URL”，拒绝继续保存包信息。

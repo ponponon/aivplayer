@@ -78,17 +78,9 @@ jobs:
           dbus-run-session -- flatpak install --user --assumeyes --noninteractive flathub org.flatpak.Builder
       - name: Build Flatpak
         run: |
-          dbus-run-session -- flatpak-builder \
-            --verbose \
-            --force-clean \
-            --sandbox \
-            --keep-build-dirs \
-            --disable-rofiles-fuse \
-            --disable-updates \
-            --override-source-date-epoch 1321009871 \
-            --user \
-            --repo=repo \
-            builddir flatpak/ci-manifest.yml
+          dbus-run-session -- flatpak run --user \
+            --command=flathub-build \
+            org.flatpak.Builder flatpak/ci-manifest.yml
       - name: Lint manifest and repository
         run: |
           dbus-run-session -- flatpak run --user --command=flatpak-builder-lint org.flatpak.Builder manifest flatpak/cn.quniv.aivplayer.yml
@@ -134,17 +126,9 @@ jobs:
           dbus-run-session -- flatpak install --user --assumeyes --noninteractive flathub org.flatpak.Builder
       - name: Build Flatpak
         run: |
-          dbus-run-session -- flatpak-builder \
-            --verbose \
-            --force-clean \
-            --sandbox \
-            --keep-build-dirs \
-            --disable-rofiles-fuse \
-            --disable-updates \
-            --override-source-date-epoch 1321009871 \
-            --user \
-            --repo=repo \
-            builddir flatpak/ci-manifest.yml
+          dbus-run-session -- flatpak run --user \
+            --command=flathub-build \
+            org.flatpak.Builder flatpak/ci-manifest.yml
       - name: Lint manifest and repository
         run: |
           dbus-run-session -- flatpak run --user --command=flatpak-builder-lint org.flatpak.Builder manifest flatpak/cn.quniv.aivplayer.yml
