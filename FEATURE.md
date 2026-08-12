@@ -1,5 +1,7 @@
 # AIVPlayer 功能列表
 
+- Microsoft Store MSIX 发布链路已接入：Windows x64 / ARM64 发布作业在配置 Partner Center 身份变量后，会额外生成独立的 `.appx` Actions artifact；GitHub / Gitee 继续使用 NSIS `.exe`，商店版运行时检测 `process.windowsStore` 并关闭 `electron-updater`，由 Microsoft Store 管理更新。
+
 - Cloudflare Pages 新增公开隐私政策页：说明本地媒体与项目数据、用户主动配置的 AI 服务、模型下载、局域网 Web 播放和更新检查等数据流，并提供中英文内容供应用商店审核使用。
 
 - 说话人 Provider 已建立独立的模型契约：模型目录按版本隔离，状态检查同时核对分段模型、说话人向量模型和随附许可证文件，并明确识别各平台原生包能力；当前只完成能力诊断，尚未自动下载或打包模型。
