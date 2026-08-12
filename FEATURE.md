@@ -1,5 +1,7 @@
 # AIVPlayer 功能列表
 
+- Windows NSIS 安装包改为标准安装向导：双击后显示安装流程，允许选择安装目录，固定创建桌面和开始菜单快捷方式，并在安装完成后提供启动 AIVPlayer 的选项；后台自动更新仍继续使用静默安装流程。
+
 - Microsoft Store MSIX 发布链路已接入：Windows x64 / ARM64 发布作业在配置 Partner Center 身份变量后，会额外生成独立的 `.appx` Actions artifact；GitHub / Gitee 继续使用 NSIS `.exe`，商店版运行时检测 `process.windowsStore` 并关闭 `electron-updater`，由 Microsoft Store 管理更新。
 - 新增公开 Code signing policy：记录 SignPath Foundation 免费签名范围、项目角色、构建审核、隐私边界和发布流程，并接入 README 与产品下载页。
 
