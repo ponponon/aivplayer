@@ -1,6 +1,7 @@
 # AIVPlayer 功能列表
 
 - Microsoft Store MSIX 发布链路已接入：Windows x64 / ARM64 发布作业在配置 Partner Center 身份变量后，会额外生成独立的 `.appx` Actions artifact；GitHub / Gitee 继续使用 NSIS `.exe`，商店版运行时检测 `process.windowsStore` 并关闭 `electron-updater`，由 Microsoft Store 管理更新。
+- 新增公开 Code signing policy：记录 SignPath Foundation 免费签名范围、项目角色、构建审核、隐私边界和发布流程，并接入 README 与产品下载页。
 
 - Cloudflare Pages 新增公开隐私政策页：说明本地媒体与项目数据、用户主动配置的 AI 服务、模型下载、局域网 Web 播放和更新检查等数据流，并提供中英文内容供应用商店审核使用。
 
