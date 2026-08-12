@@ -95,6 +95,7 @@
     "smoke:editing-sidecar-paths": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-editing-sidecar-paths.ts",
     "smoke:editing-caption-watcher": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-editing-caption-watcher.ts",
     "smoke:editing-caption-two-point-sync": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-editing-caption-two-point-sync.ts",
+    "smoke:editing-caption-alignment-preview": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-editing-caption-alignment-preview.ts",
     "smoke:editing-project-repair": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-editing-project-repair.ts",
     "smoke:subtitle-qa": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-subtitle-qa.ts",
     "smoke:waveform": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-waveform.ts",
