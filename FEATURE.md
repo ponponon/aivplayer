@@ -1,5 +1,7 @@
 # AIVPlayer 功能列表
 
+- 发布流水线构建优化：macOS 只安装 libheif 实际使用的 `libde265`、`kvazaar` 和 `jpeg-turbo`，改用 Homebrew 预编译包，避免无关的 FFmpeg 全依赖源码编译和 x265 链接失败；五个平台共享 Electron 下载缓存，Windows x64 / ARM64 额外缓存 vcpkg 的 HEIF 依赖，减少重复发布等待时间。
+
 - Windows NSIS 安装包兼容性修复：`electron-builder.yml` 中同时设置 `useZip: true` 和 `differentialPackage: false`，确保 NSIS 内置负载实际使用通用 Zip 格式，解决 Windows ARM64 安装包中的 7z ARM64 BCJ 滤镜导致旧版 `nsis7z.dll` 静默解压失败的问题，确保全平台 Windows 设备均可正常安装。
 
 - Windows NSIS 安装包改为标准安装向导：双击后显示安装流程，允许选择安装目录，固定创建桌面和开始菜单快捷方式，并在安装完成后提供启动 AIVPlayer 的选项；后台自动更新仍继续使用静默安装流程。

@@ -1572,3 +1572,9 @@
 
 - 现象：v0.5.1 发布流水线的 macOS 任务在下载 FFmpeg 官方源码时收到 `curl: (35) Recv failure: Connection reset by peer`，默认 `--retry 3` 没有重试，导致整个发布汇总任务被跳过。
 - 处理：下载固定版本源码时使用 `curl --retry 5 --retry-all-errors`，把连接重置等瞬时网络错误纳入重试范围；下载后继续使用 SHA-256 校验，避免把重试机制变成完整性校验的替代品。
+
+## 2026-08-13：macOS 发布构建不能强制编译无关的 Homebrew 依赖
+
+- 现象：v0.5.3 的 macOS ARM64 Runner 在安装 HEIF / media 依赖时被强制从源码编译 15 个 Homebrew formula，单个 `openssl@3` 就耗时约 7 分钟，随后 x265 的 ARM64 汇编链接因 Xcode 26 / macOS SDK 26 产生空对象文件而失败；libheif 实际配置只启用了 `libde265`、`kvazaar` 和 JPEG 后端，FFmpeg 也由固定源码归档独立构建。
+- 经验：发布流水线的依赖列表应按最终 CMake 配置和运行时用途收窄；不能因为部署目标需要固定，就把整个 FFmpeg 依赖图强制源码重编译。构建前应优先使用稳定的预编译包，并让真正的源码构建步骤自行接收 `MACOSX_DEPLOYMENT_TARGET`。
+- 处理：macOS 改为一次性安装 `cmake`、`ninja`、`pkg-config`、`libde265`、`kvazaar` 和 `jpeg-turbo`，移除 `HOMEBREW_BUILD_FROM_SOURCE`、CFLAGS/LDFLAGS 及无关 codec formula；同时缓存 Electron 下载和 Windows vcpkg 已安装的 HEIF 依赖，避免后续每次发布重复下载或编译。

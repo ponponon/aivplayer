@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 const projectRoot = process.cwd()
 const releaseWorkflow = readFileSync(join(projectRoot, '.github/workflows/release.yml'), 'utf8')
+const macosWorkflow = releaseWorkflow.slice(releaseWorkflow.indexOf('  build-macos:'), releaseWorkflow.indexOf('  build-windows:'))
 const packageJson = readFileSync(join(projectRoot, 'package.json'), 'utf8')
 const electronBuilder = readFileSync(join(projectRoot, 'electron-builder.yml'), 'utf8')
 const giteeSync = readFileSync(join(projectRoot, 'scripts/sync-gitee-release.mjs'), 'utf8')
@@ -26,7 +27,7 @@ describe('release workflow source constraints', () => {
 
   it('keeps platform builds separate from release publishing', () => {
     expect(releaseWorkflow).not.toContain('GH_TOKEN:')
-    expect(releaseWorkflow.match(/npx electron-builder.*--publish never/g)).toHaveLength(5)
+    expect(releaseWorkflow.match(/run: npm run build && npx electron-builder.*--publish never/g)).toHaveLength(5)
     expect(releaseWorkflow).not.toContain('build-snap')
     expect(releaseWorkflow).not.toContain('publish-snap')
     expect(releaseWorkflow).not.toContain('SNAPCRAFT_STORE_CREDENTIALS')
@@ -52,7 +53,7 @@ describe('release workflow source constraints', () => {
     expect(releaseWorkflow).toContain('description: \'Build and validate all release artifacts without creating or syncing a release\'')
     expect(releaseWorkflow).toContain('default: false')
     expect(releaseWorkflow).toContain('type: boolean')
-    expect(releaseWorkflow.match(/github\.event_name != 'workflow_dispatch' \|\| inputs\.verify_only != true/g)).toHaveLength(4)
+    expect(releaseWorkflow.match(/github\.event_name != 'workflow_dispatch' \|\| inputs\.verify_only != true/g)).toHaveLength(5)
     expect(releaseWorkflow.indexOf('release:check-evidence')).toBeLessThan(releaseWorkflow.indexOf('Create GitHub Release'))
     expect(releaseWorkflow.indexOf('Create GitHub Release')).toBeLessThan(releaseWorkflow.indexOf('sync-gitee-release:'))
   })
@@ -71,10 +72,10 @@ describe('release workflow source constraints', () => {
     expect(releaseWorkflow).not.toContain('releases/download/latest/ffmpeg-n8.1-latest-winarm64-gpl-8.1.zip')
     expect(releaseWorkflow).toContain('ab350d5e1f77468c98dfe237064efba4004a7b059669fefd206c4a54dd23b211')
     expect(releaseWorkflow).toContain('The downloaded Windows ARM64 FFmpeg checksum does not match.')
-    expect(releaseWorkflow).toContain('for ($attempt = 1; $attempt -le 3; $attempt++)')
-    expect(releaseWorkflow).toContain('choco install ffmpeg -y --no-progress --force')
+    expect(releaseWorkflow).toContain('Invoke-WebRequest -Uri $env:FFMPEG_WIN64_URL -OutFile $ffmpegArchive')
+    expect(releaseWorkflow).toContain('Invoke-WebRequest -Uri $ffmpegUrl -OutFile $ffmpegArchive')
+    expect(releaseWorkflow).toContain('"$FFMPEG_LINUX64_URL"')
     expect(releaseWorkflow).toContain("Get-ChildItem -Path $ffmpegRoot -Filter 'ffmpeg.exe' -File -Recurse")
-    expect(releaseWorkflow).toContain('Start-Sleep -Seconds ([int][math]::Pow(2, $attempt))')
     expect(releaseWorkflow.match(/release:check-architecture/g)).toHaveLength(8)
     expect(packageJson).toContain('release:check-architecture')
   })
@@ -91,14 +92,20 @@ describe('release workflow source constraints', () => {
 
   it('builds macOS native runtimes with an explicit deployment target', () => {
     expect(releaseWorkflow).toContain("MACOSX_DEPLOYMENT_TARGET: '12.0'")
-    expect(releaseWorkflow).toContain("HOMEBREW_BUILD_FROM_SOURCE: '1'")
-    expect(releaseWorkflow).toContain("CFLAGS: '-mmacosx-version-min=12.0'")
-    expect(releaseWorkflow).toContain('build_from_source()')
-    expect(releaseWorkflow).toContain('libde265 kvazaar jpeg-turbo')
-    expect(releaseWorkflow).toContain('dav1d lame mpg123 libvmaf libvpx openssl@3 opus')
-    expect(releaseWorkflow).toContain('sdl2-compat sdl3 svt-av1 x264 x265 ffmpeg')
+    expect(macosWorkflow).toContain('brew install cmake ninja pkg-config libde265 kvazaar jpeg-turbo')
+    expect(macosWorkflow).not.toContain('HOMEBREW_BUILD_FROM_SOURCE')
+    expect(macosWorkflow).not.toContain('build_from_source')
+    expect(macosWorkflow).not.toMatch(/^\s+x265\s*$/m)
     expect(buildWhisperMacos).toContain('`-DCMAKE_OSX_DEPLOYMENT_TARGET=${deploymentTarget}`')
     expect(buildHeifSource).toContain('`-DCMAKE_OSX_DEPLOYMENT_TARGET=${deploymentTarget}`')
+  })
+
+  it('caches repeated Electron and Windows native dependency downloads', () => {
+    expect(releaseWorkflow.match(/name: Restore Electron download cache/g)).toHaveLength(5)
+    expect(releaseWorkflow).toContain('electron_config_cache: ${{ runner.temp }}/electron-cache')
+    expect(releaseWorkflow).toContain('ELECTRON_BUILDER_CACHE: ${{ runner.temp }}/electron-builder-cache')
+    expect(releaseWorkflow.match(/name: Restore vcpkg HEIF cache/g)).toHaveLength(2)
+    expect(releaseWorkflow).toContain('path: C:\\vcpkg\\installed')
   })
 
   it('checks the license manifest before every platform package build', () => {
