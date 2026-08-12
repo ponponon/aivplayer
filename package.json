@@ -51,6 +51,7 @@
     "smoke:task-center-history-pagination": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-task-center-history-pagination.ts",
     "smoke:subtitle-qa-repair": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-subtitle-qa-repair.ts",
     "smoke:task-center-clear-finished": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-task-center-clear-finished.ts",
+    "smoke:vision-index-failure-batch-retry": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-index-failure-batch-retry.ts",
     "smoke:vision-custom-entity": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-custom-entity.ts",
     "smoke:vision-similar-search": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-similar-search.ts",
     "smoke:vision-search-export-recreate": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-search-export-recreate.ts",
