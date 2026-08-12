@@ -199,6 +199,7 @@ jobs:
       electron_config_cache: ${{ github.workspace }}/.cache/electron
       ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.cache/electron-builder
       VCPKG_BINARY_SOURCES: 'clear;files,C:/vcpkg/binary-cache,readwrite'
+      VCPKG_DOWNLOADS: C:/vcpkg/downloads
       VCPKG_FEATURE_FLAGS: binarycaching
     steps:
       - uses: actions/checkout@v7
@@ -235,6 +236,15 @@ jobs:
           restore-keys: |
             vcpkg-windows-x64-v1-
 
+      - name: Restore vcpkg source download cache
+        if: steps.restore-native-runtime-cache.outputs.cache-hit != 'true'
+        uses: actions/cache@v4
+        with:
+          path: C:/vcpkg/downloads
+          key: vcpkg-downloads-windows-x64-v1-${{ env.LIBHEIF_VERSION }}
+          restore-keys: |
+            vcpkg-downloads-windows-x64-v1-
+
       - run: npm ci
 
       - name: Check license manifest
@@ -248,6 +258,7 @@ jobs:
         shell: pwsh
         if: steps.restore-native-runtime-cache.outputs.cache-hit != 'true'
         run: |
+          New-Item -ItemType Directory -Force -Path $env:VCPKG_DOWNLOADS | Out-Null
           $ffmpegArchive = Join-Path $env:RUNNER_TEMP 'ffmpeg-win64.zip'
           $ffmpegRoot = Join-Path $env:RUNNER_TEMP 'ffmpeg-win64'
           function Download-WithRetry {
@@ -396,6 +407,7 @@ jobs:
       electron_config_cache: ${{ github.workspace }}/.cache/electron
       ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.cache/electron-builder
       VCPKG_BINARY_SOURCES: 'clear;files,C:/vcpkg/binary-cache,readwrite'
+      VCPKG_DOWNLOADS: C:/vcpkg/downloads
       VCPKG_FEATURE_FLAGS: binarycaching
     steps:
       - uses: actions/checkout@v7
@@ -432,6 +444,15 @@ jobs:
           restore-keys: |
             vcpkg-windows-arm64-v1-
 
+      - name: Restore vcpkg source download cache
+        if: steps.restore-native-runtime-cache.outputs.cache-hit != 'true'
+        uses: actions/cache@v4
+        with:
+          path: C:/vcpkg/downloads
+          key: vcpkg-downloads-windows-arm64-v1-${{ env.LIBHEIF_VERSION }}
+          restore-keys: |
+            vcpkg-downloads-windows-arm64-v1-
+
       - run: npm ci
 
       - name: Check license manifest
@@ -445,6 +466,7 @@ jobs:
         shell: pwsh
         if: steps.restore-native-runtime-cache.outputs.cache-hit != 'true'
         run: |
+          New-Item -ItemType Directory -Force -Path $env:VCPKG_DOWNLOADS | Out-Null
           $ffmpegUrl = $env:FFMPEG_WINARM64_URL
           $ffmpegSha256 = $env:FFMPEG_WINARM64_SHA256
           $ffmpegArchive = Join-Path $env:RUNNER_TEMP 'ffmpeg-winarm64.zip'

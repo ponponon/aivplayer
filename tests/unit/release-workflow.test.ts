@@ -113,9 +113,12 @@ describe('release workflow source constraints', () => {
     expect(releaseWorkflow).toContain('electron_config_cache: ${{ github.workspace }}/.cache/electron')
     expect(releaseWorkflow).toContain('ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.cache/electron-builder')
     expect(releaseWorkflow).toContain("VCPKG_BINARY_SOURCES: 'clear;files,C:/vcpkg/binary-cache,readwrite'")
+    expect(releaseWorkflow).toContain('VCPKG_DOWNLOADS: C:/vcpkg/downloads')
     expect(releaseWorkflow).toContain('VCPKG_FEATURE_FLAGS: binarycaching')
     expect(releaseWorkflow.match(/name: Restore vcpkg binary cache/g)).toHaveLength(2)
+    expect(releaseWorkflow.match(/name: Restore vcpkg source download cache/g)).toHaveLength(2)
     expect(releaseWorkflow).toContain('path: C:/vcpkg/binary-cache')
+    expect(releaseWorkflow).toContain('path: C:/vcpkg/downloads')
   })
 
   it('checks the license manifest before every platform package build', () => {

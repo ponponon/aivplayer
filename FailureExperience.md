@@ -1591,3 +1591,9 @@
 - 经验：固定版本的发布运行时只要包含平台、架构、依赖版本和构建脚本指纹，就可以直接缓存最终的 `resources/ffmpeg`、`resources/heif`、`resources/whisper.cpp`；缓存命中后只需执行运行时校验，不应继续进入源码编译步骤。外部大文件下载要写入 `.part` 临时文件，成功后再移动，并校验 SHA-256。
 - 处理：五个平台增加隔离的 native runtime 成品缓存；Windows FFmpeg 改用 `curl.exe` 重试下载和校验，ARM64 先下载 FFmpeg、再执行 vcpkg，避免网络故障时先浪费原生依赖编译时间；macOS FFmpeg 安装后改为检查文件存在并补充执行权限，保留后续 Mach-O 部署目标校验。
 - 追加修正：macOS FFmpeg 的 `--bindir` 必须使用安装目录的绝对路径；仅写 `--bindir=bin` 时，`make install` 日志看似成功，但产物不在预期目录，导致缓存无法生成。Linux FFmpeg 下载同样使用 `.part` 文件、`--retry-all-errors` 和 SHA-256 校验。
+
+## 2026-08-13：vcpkg 二进制缓存不能覆盖首次源码下载失败
+
+- 现象：Windows ARM64 首次构建虽然已经启用 vcpkg binary cache，但仍需从上游下载 `libjpeg-turbo` 等端口源码；GitHub 临时返回 503 时，vcpkg 会在进入 CMake 编译前直接失败，尚未生成可复用的原生运行时缓存。
+- 经验：vcpkg 的已编译包缓存和端口源码下载缓存是两层不同的缓存，前者不能替代后者；源码归档应放到显式的 `VCPKG_DOWNLOADS` 目录，并按平台、架构和依赖版本持久化。
+- 处理：Windows x64 / ARM64 发布 Job 增加 `C:/vcpkg/downloads` 的 Actions cache，安装依赖前确保目录存在；后续遇到同一端口的瞬时网络错误时可直接复用已下载归档，再由 vcpkg 做校验和验证。
