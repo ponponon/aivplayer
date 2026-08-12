@@ -1590,3 +1590,4 @@
 - 现象：仅配置 Electron 下载缓存和 vcpkg binary cache，新的 Runner 仍然会重新执行 libheif、whisper.cpp 和 macOS FFmpeg 的源码构建；Windows 的 `Invoke-WebRequest` 还会因 `ResponseEnded` 让整个 Job 失败。
 - 经验：固定版本的发布运行时只要包含平台、架构、依赖版本和构建脚本指纹，就可以直接缓存最终的 `resources/ffmpeg`、`resources/heif`、`resources/whisper.cpp`；缓存命中后只需执行运行时校验，不应继续进入源码编译步骤。外部大文件下载要写入 `.part` 临时文件，成功后再移动，并校验 SHA-256。
 - 处理：五个平台增加隔离的 native runtime 成品缓存；Windows FFmpeg 改用 `curl.exe` 重试下载和校验，ARM64 先下载 FFmpeg、再执行 vcpkg，避免网络故障时先浪费原生依赖编译时间；macOS FFmpeg 安装后改为检查文件存在并补充执行权限，保留后续 Mach-O 部署目标校验。
+- 追加修正：macOS FFmpeg 的 `--bindir` 必须使用安装目录的绝对路径；仅写 `--bindir=bin` 时，`make install` 日志看似成功，但产物不在预期目录，导致缓存无法生成。Linux FFmpeg 下载同样使用 `.part` 文件、`--retry-all-errors` 和 SHA-256 校验。

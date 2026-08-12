@@ -78,6 +78,8 @@ describe('release workflow source constraints', () => {
     expect(releaseWorkflow).toContain('key: vcpkg-windows-arm64-v1-${{ env.LIBHEIF_VERSION }}')
     expect(releaseWorkflow).not.toContain("hashFiles('.github/workflows/release.yml')")
     expect(releaseWorkflow.match(/curl\.exe --fail --location --retry 3 --retry-all-errors/g)).toHaveLength(2)
+    expect(releaseWorkflow.match(/curl --fail --location --retry 5 --retry-all-errors --connect-timeout 30/g)).toHaveLength(2)
+    expect(releaseWorkflow).toContain('--bindir="$install_dir/bin"')
     expect(releaseWorkflow).not.toContain('Invoke-WebRequest -Uri $env:FFMPEG_WIN64_URL -OutFile $ffmpegArchive')
     expect(releaseWorkflow).not.toContain('Invoke-WebRequest -Uri $ffmpegUrl -OutFile $ffmpegArchive')
     expect(releaseWorkflow).toContain('"$FFMPEG_LINUX64_URL"')
