@@ -1609,3 +1609,9 @@
 - 现象：Windows ARM64 首次构建虽然已经启用 vcpkg binary cache，但仍需从上游下载 `libjpeg-turbo` 等端口源码；GitHub 临时返回 503 时，vcpkg 会在进入 CMake 编译前直接失败，尚未生成可复用的原生运行时缓存。
 - 经验：vcpkg 的已编译包缓存和端口源码下载缓存是两层不同的缓存，前者不能替代后者；源码归档应放到显式的 `VCPKG_DOWNLOADS` 目录，并按平台、架构和依赖版本持久化。
 - 处理：Windows x64 / ARM64 发布 Job 增加 `C:/vcpkg/downloads` 的 Actions cache，安装依赖前确保目录存在；后续遇到同一端口的瞬时网络错误时可直接复用已下载归档，再由 vcpkg 做校验和验证。
+
+## 2026-08-13：原生总缓存不能替代单个昂贵构建的独立缓存
+
+- 现象：macOS 的 FFmpeg、libheif 和 whisper.cpp 原本共用 `resources` 原生运行时缓存；只要其中任意构建脚本变化，整个缓存键就失效，固定 FFmpeg 即使源码和配置没有变化也会重新执行约 4 分钟的 `configure` / `make`。
+- 经验：多个相互独立的原生构建不能只依赖一个总成品缓存；应按稳定的源码版本、校验和、架构和构建配置拆分缓存。总缓存负责最终发布复用，子缓存负责避免无关变更触发重复编译。
+- 处理：macOS 增加独立的 `ffmpeg-install` Actions cache，命中后跳过源码解压和编译，只保留二进制存在性、权限和版本校验；如果修改 FFmpeg 配置，需要显式递增 `FFMPEG_MACOS_CACHE_VERSION`，避免复用不兼容产物。

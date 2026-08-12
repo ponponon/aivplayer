@@ -34,6 +34,7 @@ env:
   FFMPEG_LINUX64_SHA256: c7f279081aa3dd837ba23c05e4d02f5f3874c428d2f134e1bbbea9726f8d2e7e
   FFMPEG_LINUXARM64_URL: https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-08-09-13-03/ffmpeg-n8.1.2-34-g9b6c8969e0-linuxarm64-gpl-8.1.tar.xz
   FFMPEG_LINUXARM64_SHA256: bde27b02e0067a45e1d942d8b455f6668bb6ac08e2da680a1a8d7c8465a38cc0
+  FFMPEG_MACOS_CACHE_VERSION: v1
   NATIVE_RUNTIME_CACHE_VERSION: v1
 
 jobs:
@@ -87,6 +88,14 @@ jobs:
           # unrelated source formula such as x265.
           brew install cmake ninja pkg-config libde265 kvazaar jpeg-turbo
 
+      - name: Restore macOS FFmpeg build cache
+        id: restore-macos-ffmpeg-cache
+        uses: actions/cache@v4
+        if: steps.restore-native-runtime-cache.outputs.cache-hit != 'true'
+        with:
+          path: ${{ runner.temp }}/ffmpeg-install
+          key: ffmpeg-runtime-macos-${{ runner.arch }}-${{ env.FFMPEG_MACOS_CACHE_VERSION }}-${{ env.FFMPEG_VERSION }}-${{ env.FFMPEG_SOURCE_SHA256 }}
+
       - name: Build fixed FFmpeg runtime
         shell: bash
         if: steps.restore-native-runtime-cache.outputs.cache-hit != 'true'
@@ -94,27 +103,31 @@ jobs:
           archive="$RUNNER_TEMP/ffmpeg-${FFMPEG_VERSION}.tar.xz"
           source_dir="$RUNNER_TEMP/ffmpeg-${FFMPEG_VERSION}"
           install_dir="$RUNNER_TEMP/ffmpeg-install"
-          curl --fail --location --retry 5 --retry-all-errors --output "$archive" "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz"
-          echo "${FFMPEG_SOURCE_SHA256}  ${archive}" | shasum -a 256 -c -
-          rm -rf "$source_dir" "$install_dir"
-          tar -xJf "$archive" -C "$RUNNER_TEMP"
-          mkdir -p "$install_dir"
-          pushd "$source_dir"
-          ./configure \
-            --prefix="$install_dir" \
-            --bindir="$install_dir/bin" \
-            --disable-debug \
-            --disable-doc \
-            --disable-ffplay \
-            --disable-network \
-            --disable-autodetect \
-            --enable-gpl \
-            --enable-version3 \
-            --enable-static \
-            --disable-shared
-          make -j"$(sysctl -n hw.ncpu)"
-          make install
-          popd
+          if [[ -x "$install_dir/bin/ffmpeg" && -x "$install_dir/bin/ffprobe" ]]; then
+            echo "Using cached macOS FFmpeg runtime: $install_dir/bin"
+          else
+            curl --fail --location --retry 5 --retry-all-errors --output "$archive" "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz"
+            echo "${FFMPEG_SOURCE_SHA256}  ${archive}" | shasum -a 256 -c -
+            rm -rf "$source_dir" "$install_dir"
+            tar -xJf "$archive" -C "$RUNNER_TEMP"
+            mkdir -p "$install_dir"
+            pushd "$source_dir"
+            ./configure \
+              --prefix="$install_dir" \
+              --bindir="$install_dir/bin" \
+              --disable-debug \
+              --disable-doc \
+              --disable-ffplay \
+              --disable-network \
+              --disable-autodetect \
+              --enable-gpl \
+              --enable-version3 \
+              --enable-static \
+              --disable-shared
+            make -j"$(sysctl -n hw.ncpu)"
+            make install
+            popd
+          fi
           for binary in "$install_dir/bin/ffmpeg" "$install_dir/bin/ffprobe"; do
             if [[ ! -f "$binary" ]]; then
               echo "FFmpeg binary was not installed: $binary"
@@ -123,6 +136,8 @@ jobs:
             fi
             chmod +x "$binary"
           done
+          "$install_dir/bin/ffmpeg" -version | head -n 1
+          "$install_dir/bin/ffprobe" -version | head -n 1
           echo "AIVPLAYER_STAGE_FFMPEG_BIN=$install_dir/bin/ffmpeg" >> "$GITHUB_ENV"
 
       - name: Build static HEIF runtime

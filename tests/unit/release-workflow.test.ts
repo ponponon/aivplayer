@@ -111,6 +111,10 @@ describe('release workflow source constraints', () => {
   it('builds macOS native runtimes with an explicit deployment target', () => {
     expect(releaseWorkflow).toContain("MACOSX_DEPLOYMENT_TARGET: '12.0'")
     expect(macosWorkflow).toContain('brew install cmake ninja pkg-config libde265 kvazaar jpeg-turbo')
+    expect(macosWorkflow).toContain('name: Restore macOS FFmpeg build cache')
+    expect(macosWorkflow).toContain('path: ${{ runner.temp }}/ffmpeg-install')
+    expect(macosWorkflow).toContain('ffmpeg-runtime-macos-${{ runner.arch }}-${{ env.FFMPEG_MACOS_CACHE_VERSION }}')
+    expect(macosWorkflow).toContain('Using cached macOS FFmpeg runtime')
     expect(macosWorkflow).toContain('--generator Ninja')
     expect(macosWorkflow).toContain('--jobs "$(sysctl -n hw.ncpu)"')
     expect(macosWorkflow).not.toContain('HOMEBREW_BUILD_FROM_SOURCE')
