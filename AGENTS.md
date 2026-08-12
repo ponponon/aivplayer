@@ -101,3 +101,8 @@ github 发版要注意打上 tag，github releases 页面的东西也不要忘�
 - 创建：`git worktree add .worktrees/feature-a -b feature/a`。
 - `.worktrees/` 已加入 `.gitignore`，不要提交其中内容。
 - 完成后执行：`git worktree remove .worktrees/feature-a && git worktree prune`。
+
+
+---
+
+如果要修改 README.md ，记得把 README.zh-CN.md、README.ko-KR.md、README.ja-JP.md 同步修改一下
