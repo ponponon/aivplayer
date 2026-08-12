@@ -755,6 +755,7 @@
 
 - 全库 JSON / CSV 导出会在用户数据目录保存任务清单、分块目录和每个 part 的 SHA-256 检查点；每个 part 先原子写入，目标文件在完整校验后再原子替换。
 - 应用重启后自动恢复 `queued` / `running` 导出任务；失败或取消的任务保留已验证分块，任务中心提供重试入口，只重写缺失或校验不匹配的 part。
+- 真实 Electron Smoke 已覆盖隔离 userData 下的启动恢复与任务中心重试：`queued` / `running` 会恢复并进入可观察终态，失败任务重试不会替换原记录，已验证检查点文件保持不变，且 Renderer 无错误。
 - 新建导出任务会保存 `video_frames`、`video_sources`、`video_captions`、`video_search_documents` 和 `video_evidence` 的 LanceDB table version；恢复 / 重试会对这些表使用固定版本读取，索引更新后不会把旧任务悄悄变成另一份结果。
 - 固定版本只保证各相关表按任务 revision 读取，不改变 LanceDB 内部一次 `toArray()` 的读取粒度；查询仍受现有 100 万条安全上限约束，旧版本被清理时任务会明确失败而不是伪造成功。
 - 任务清单不把绝对输出路径发送到 Renderer，任务中心只展示文件名；重试复用原格式、查询请求、输出路径和分块目录，不创建第二套导出任务协议。
