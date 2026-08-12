@@ -55,6 +55,12 @@ AIVPlayer は Electron ベースのクロスプラットフォーム・デスク
 - 字幕翻訳、コンテンツ要約、AI ショートドラマのテキスト生成には OpenAI 互換サービスの設定が必要です。有効にした場合、該当するテキストが設定したプロバイダーへ送信されます。
 - ビジュアルメディアライブラリはローカルの SigLIP2 モデルと LanceDB にインデックスを保存します。元の動画や画像はアップロードされません。
 
+### コード署名ポリシー
+
+リリースの署名手順は [Code signing policy](CODE_SIGNING_POLICY.md) に記載しています。
+
+> Free code signing provided by [SignPath.io](https://signpath.io/), certificate by [SignPath Foundation](https://signpath.org/)
+
 ## クイックスタート
 
 ### 1. ダウンロードとインストール

@@ -55,6 +55,12 @@ AIVPlayer는 Electron 기반의 크로스 플랫폼 데스크톱 동영상 워�
 - 자막 번역, 콘텐츠 요약과 AI 숏드라마 텍스트 생성에는 OpenAI 호환 서비스 설정이 필요합니다. 기능을 켜면 관련 텍스트가 사용자가 설정한 제공업체로 전송됩니다.
 - 비주얼 미디어 라이브러리는 로컬 SigLIP2 모델과 LanceDB에 인덱스를 저장하며, 원본 동영상과 이미지는 업로드하지 않습니다.
 
+### 코드 서명 정책
+
+릴리스 서명 절차는 [Code signing policy](CODE_SIGNING_POLICY.md)에 설명되어 있습니다.
+
+> Free code signing provided by [SignPath.io](https://signpath.io/), certificate by [SignPath Foundation](https://signpath.org/)
+
 ## 빠른 시작
 
 ### 1. 다운로드 및 설치
