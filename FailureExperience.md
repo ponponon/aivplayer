@@ -1556,8 +1556,8 @@
 - 经验：Microsoft Store 的 MSI/EXE 包 URL 必须是版本化 HTTPS 直链，不能依赖 GitHub/Gitee Release 的重定向下载地址；普通下载入口和商店包地址需要分开管理。
 - 处理：为 Windows x64 / arm64 安装包增加 Cloudflare R2 版本化上传流程；发布后用不跟随重定向的 HEAD 请求验证 HTTP 200，并在 R2 自定义域名配置完成前不把 URL 填入 Partner Center。
 
-## 2026-08-12：Windows 未签名 Electron 安装包会被 Windows Defender 误杀隔离
+## 2026-08-12：Windows ARM64 NSIS 安装包因 nsis7z 不支持 7z ARM64 滤镜导致解压中断
 
-- 现象：在 UTM Windows 11 中运行 `AIVPlayer-Setup-*-arm64.exe` 安装完成后，快捷方式提示“该快捷方式所指向的项目 'AIVPlayer.exe' 已经更改或移动”，检查 `AppData\Local\Programs\aivplayer` 目录发现只有 `locales`、`resources`、`aivcli.cmd` 等，唯独缺少 `AIVPlayer.exe` 主程序。
-- 经验：安装包解压本身没有任何缺失（解包 `app-arm64.7z` 证明 `AIVPlayer.exe` 完整存在）。由于软件未进行商业代码签名，在 Windows 11 中会被“应用和浏览器控制”下的 Smart App Control（智能应用控制）或 SmartScreen / PUA（阻止可能不需要的应用）机制判定为未知应用并静默拦截/清除 `AIVPlayer.exe`，因此“病毒和威胁防护”记录中可能不会出现标准病毒警报。同时 `AppData\Local\aivplayer-updater` 是 electron-updater 的更新缓存目录，软件主程序实际安装在 `AppData\Local\Programs\aivplayer`，该目录独立存在是完全正常的。
-- 处理：在测试与开发环境中，先在 Windows 安全中心“病毒和威胁防护”设置中将 `AppData\Local\Programs\aivplayer` 文件夹加入“排除项”，或在“应用和浏览器控制”中关闭 Smart App Control / 声誉保护拦截，再重新运行安装包即可；生产环境则需通过正式代码签名或 Microsoft Store 渠道发布。
+- 现象：在 UTM Windows 11 中运行 `AIVPlayer-Setup-0.5.0-arm64.exe` 安装，完成后提示快捷方式指向的 `AIVPlayer.exe` 已经被更改或移动。检查事件查看器发现 Windows Defender 没有任何 1116/1117 拦截事件。检查安装目录发现 `locales`、`resources`、`chrome_100_percent.pak`、`vk_swiftshader_icd.json` 等均存在，但 `AIVPlayer.exe` 以及之后的所有 `.dll` (`d3dcompiler_47.dll`, `ffmpeg.dll` 等) 均未解压出来。
+- 经验：检查 `app-arm64.7z` 内部文件的压缩算法发现，按字母顺序排列在 `vk_swiftshader_icd.json` 之前的文件使用的都是通用 `LZMA2:20` 算法；而从 `AIVPlayer.exe` 及之后的二进制文件，7z 使用的是 `Method = ARM64 LZMA2:20`（7-Zip 的 ARM64 可执行文件 BCJ 滤镜）。electron-builder 嵌入的 32 位 `nsis7z.dll` 插件版本较旧（早于 7-Zip 23.00），无法识别 `ARM64` BCJ 滤镜，当解压流遇到 `AIVPlayer.exe` 时静默报错并中断解压，导致 `AIVPlayer.exe` 及后续所有 DLL 从未被解压落地。
+- 处理：在手动解压测试中可用现代 7-Zip（23+）直接解包 `app-arm64.7z`；生产构建中需要在 7z/NSIS 打包环节避免对 ARM64 二进制施加未被旧版 `nsis7z.dll` 支持的 ARM64 BCJ 滤镜，或更新 nsis7z 插件。
