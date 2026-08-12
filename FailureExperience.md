@@ -32,6 +32,7 @@
 - Flathub 的源码构建应交给 Flathub/Linux 构建环境；本地 macOS 编译 LanceDB 只能是可选的排障手段，不能在未确认 Flatpak 功能边界前作为实施路线，更不能把本地构建产物带入 manifest。
 - GitHub runner 没有用户图形会话时，Flatpak workflow 不能依赖 `flatpak-builder --install-deps-from=flathub` 通过用户 D-Bus 安装 SDK；应先显式安装 runtime、BaseApp 和 SDK extensions，再让 builder 直接使用已安装依赖。
 - 本项目的无头 CI 应由 `dbus-run-session` 包住 Flatpak 安装与构建命令，并使用 Runner 上的 `flatpak-builder` CLI；不要用 `xvfb` 伪造显示器，也不要在容器化 `org.flatpak.Builder` 内重复运行构建，以免用户 Flatpak 安装目录对 builder 不可见。
+- Flatpak 构建不能只依赖 `ffmpeg.org` 的源码归档下载；该站点在 GitHub Actions 上可能出现 TLS 超时。FFmpeg 仍固定同一版本时，优先使用官方 GitHub 仓库的固定 tag 与 commit，避免因源码站点瞬时不可达阻断构建。
 - Flatpak 依赖若用 `flatpak install --user` 安装，后续 `flatpak run`、builder 和 lint 也必须显式带 `--user`；否则会从系统 Flatpak 目录查找 SDK，产生“已安装但找不到 runtime”的假失败。
 - GitHub runner 上使用 `org.flatpak.Builder` 容器调用 builder 时，用户 SDK 目录可能对容器内的 Flatpak 查找不可见；优先安装 Ubuntu 的 `flatpak-builder` CLI，在宿主机直接使用已安装的 SDK，减少嵌套 Flatpak 的目录隔离问题。
 

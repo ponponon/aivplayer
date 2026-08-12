@@ -61,8 +61,9 @@ assertCondition(
   'Flatpak 图标必须是尺寸不超过 512 的 PNG'
 )
 assertCondition(manifest.includes('name: ffmpeg'), 'Flatpak 必须从固定源码构建 FFmpeg')
-assertCondition(manifest.includes('https://ffmpeg.org/releases/ffmpeg-8.1.2.tar.xz'), 'FFmpeg 源码归档地址不正确')
-assertCondition(manifest.includes('sha256: 464beb5e7bf0c311e68b45ae2f04e9cc2af88851abb4082231742a74d97b524c'), 'FFmpeg 源码归档必须固定 SHA-256')
+assertCondition(manifest.includes('https://github.com/FFmpeg/FFmpeg.git'), 'FFmpeg 官方源码地址不正确')
+assertCondition(manifest.includes('tag: n8.1.2'), 'FFmpeg 源码必须固定到 8.1.2 tag')
+assertCondition(manifest.includes('commit: 38b88335f99e76ed89ff3c93f877fdefce736c13'), 'FFmpeg 源码必须固定 commit')
 assertCondition(manifest.includes('--disable-gpl --disable-nonfree'), 'Flatpak FFmpeg 必须关闭 GPL 与 nonfree 构建')
 assertCondition(manifest.includes('--disable-autodetect'), 'Flatpak FFmpeg 不能隐式探测宿主依赖')
 assertCondition(manifest.includes('make install'), 'Flatpak 没有安装 FFmpeg 运行时')
