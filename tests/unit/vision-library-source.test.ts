@@ -155,12 +155,17 @@ describe('vision library setup', () => {
     const packageJson = JSON.parse(readFileSync(join(projectRoot, 'package.json'), 'utf8')) as { scripts?: Record<string, string> }
     const smoke = readFileSync(join(projectRoot, 'scripts/smoke-vision-clip-inbox.ts'), 'utf8')
     expect(packageJson.scripts?.['smoke:vision-clip-inbox']).toContain('smoke-vision-clip-inbox.ts')
+    expect(packageJson.scripts?.['smoke:vision-clip-collection-import']).toContain('smoke-vision-clip-collection-import.ts')
     expect(smoke).toContain('listVisionClipCollections')
     expect(smoke).toContain('editing-timeline')
     expect(smoke).toContain('persistedSelections')
     expect(smoke).toContain('persistedCollection.tags')
     expect(smoke).toContain('vision-collection-missing')
     expect(smoke).toContain('repairCollectionSources')
+    const importSmoke = readFileSync(join(projectRoot, 'scripts/smoke-vision-clip-collection-import.ts'), 'utf8')
+    expect(importSmoke).toContain('name: \'导入选段集合\'')
+    expect(importSmoke).toContain('导入选段集合')
+    expect(importSmoke).toContain('newCollectionId')
   })
 
   it('scores subtitle and filename matches for hybrid retrieval', () => {
