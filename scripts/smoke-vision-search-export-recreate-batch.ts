@@ -101,7 +101,10 @@ async function runSmoke(): Promise<void> {
     const noticeText = await notice.textContent()
     if (!noticeText?.includes('1')) throw new Error(`Expected one output path conflict in task center notice: ${noticeText}`)
 
-    const manifest = await waitForFileState<ExportManifest>(taskManifestPath, (value) => value.tasks.length >= 5 && value.tasks.filter((task) => !failedTaskIds.includes(task.taskId as typeof failedTaskIds[number]) && task.searchRevision !== undefined).length >= 2)
+    const manifest = await waitForFileState<ExportManifest>(taskManifestPath, (value) => {
+      const recreatedTasks = value.tasks.filter((task) => !failedTaskIds.includes(task.taskId as typeof failedTaskIds[number]) && task.searchRevision !== undefined)
+      return value.tasks.length >= 5 && recreatedTasks.length >= 2 && recreatedTasks.every((task) => task.status === 'failed')
+    })
     const recreated = manifest.tasks.filter((task) => !failedTaskIds.includes(task.taskId as typeof failedTaskIds[number]))
     if (recreated.length !== 2) throw new Error(`Batch recreated tasks were not persisted with one conflict skipped: ${JSON.stringify(manifest)}`)
     if (!failedTaskIds.every((taskId) => manifest.tasks.some((task) => task.taskId === taskId))) throw new Error(`Batch recreation removed an original task: ${JSON.stringify(manifest)}`)
