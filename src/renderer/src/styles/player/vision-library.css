@@ -317,6 +317,18 @@
   font-size: 10px;
 }
 
+.vision-model-download > div {
+  display: grid;
+  min-width: 0;
+  flex: 1 1 220px;
+  gap: 2px;
+}
+
+.vision-model-download strong {
+  color: var(--text-primary);
+  font-size: 11px;
+}
+
 .vision-index-actions {
   flex-wrap: wrap;
 }

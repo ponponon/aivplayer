@@ -399,6 +399,10 @@ export class VisionLibrary {
     return this.model.getPackStatus()
   }
 
+  isReadyForIndex(): boolean {
+    return this.model.isAvailable()
+  }
+
   private getLanceDb(): LanceDbModule {
     this.lanceDbModule ??= loadVisionPackModule<LanceDbModule>('@lancedb/lancedb', this.options.resourcePath, this.options.userDataPath)
     return this.lanceDbModule

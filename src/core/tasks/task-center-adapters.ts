@@ -144,7 +144,7 @@ function mediaImportProgress(progress: MediaImportInboxPipelineProgress): number
 
 function mediaImportStatus(progress: MediaImportInboxPipelineProgress): TaskCenterStatus {
   if (progress.status === 'failed') return 'failed'
-  if (progress.stage === 'vision' && progress.status === 'ready') return 'completed'
+  if (progress.stage === 'vision' && (progress.status === 'ready' || progress.status === 'skipped')) return 'completed'
   if (progress.status === 'pending') return 'queued'
   return 'running'
 }

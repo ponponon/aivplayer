@@ -104,4 +104,38 @@ describe('media import inbox processor', () => {
       await rm(directory, { recursive: true, force: true })
     }
   })
+
+  it('skips the optional visual stage when the runtime is not ready', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'aivplayer-media-inbox-processor-skip-'))
+    try {
+      const store = new MediaImportInboxStore(directory)
+      const [item] = store.reconcile([createFile(join(directory, 'movie.mp4'))], [directory], 100)
+      store.transition(item.id, 'queued', undefined, 110)
+      const progress: MediaImportInboxPipelineProgress[] = []
+      let visionCalled = false
+      const processor = new MediaImportInboxProcessor({
+        store,
+        getMediaMetadata: async () => metadata,
+        resolveSubtitle: async () => null,
+        runVisionIndex: async () => {
+          visionCalled = true
+          return completedProgress
+        },
+        canRunVisionIndex: () => false,
+        onProgress: (next) => progress.push(next),
+        now: () => 200
+      })
+
+      expect(processor.enqueue(item.id)).toBe(true)
+      await waitForIdle(processor)
+
+      const result = store.listItems()[0]
+      expect(result.status).toBe('ready')
+      expect(result.pipeline).toEqual({ metadata: 'ready', subtitle: 'skipped', vision: 'skipped' })
+      expect(visionCalled).toBe(false)
+      expect(progress.at(-1)).toMatchObject({ stage: 'vision', status: 'skipped', message: '视觉运行组件未准备好，已跳过视觉索引' })
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
 })

@@ -15,6 +15,13 @@ export type VisionPackStatus = {
   message: string
 }
 
+export function isVisionPackUnavailableMessage(value: unknown): boolean {
+  if (typeof value !== 'string') return false
+  const message = value.trim().toLowerCase()
+  return (message.includes('vision pack') || message.includes('视觉运行组件'))
+    && (message.includes('未安装') || message.includes('not installed') || message.includes('无法加载') || message.includes('cannot load'))
+}
+
 type VisionPackManifest = {
   id: string
   version: string

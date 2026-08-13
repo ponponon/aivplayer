@@ -1,5 +1,7 @@
 # AIVPlayer 功能列表
 
+- 视觉运行组件未安装时不再把自动索引标记为失败：普通播放和媒体导入继续完成，视觉面板提供 Vision Pack 与 SigLIP2 模型的按需下载引导，并过滤历史内部组件缺失错误。
+
 - 0.5.5 安装包瘦身：SigLIP2 模型改由 Cloudflare R2 统一存储并在视觉功能首次使用时下载；Transformers.js、LanceDB、Apache Arrow 及 ONNX/Sharp 原生依赖拆为按平台构建的 Vision Pack，主安装包只保留播放器、FFmpeg、HEIF 和 whisper.cpp；发布流水线生成平台体积报告并把 Vision Pack 上传到 R2，Vision Pack 与模型均按 SHA-256 / 固定 revision 校验。
 
 - 发布流水线构建优化：macOS 只安装 libheif 实际使用的 `libde265`、`kvazaar` 和 `jpeg-turbo`，改用 Homebrew 预编译包，避免无关的 FFmpeg 全依赖源码编译和 x265 链接失败；libheif 使用 Ninja 和明确的 CPU 并行度，macOS 额外缓存按 runner 架构和固定源码校验值隔离的 FFmpeg 编译产物，五个平台共享 Electron 下载缓存，五个平台按架构缓存可直接打包的 FFmpeg、libheif 和 whisper.cpp 原生运行时，Windows x64 / ARM64 额外使用 vcpkg binary cache、源码下载缓存和固定 FFmpeg 归档缓存，减少重复发布等待时间并降低上游源短暂不可用的影响。

@@ -196,7 +196,7 @@ export function getMediaImportInboxProcessor(): MediaImportInboxProcessor {
         trackVisionIndexProgress(progress, [mediaPath], { intervalSeconds: 3 })
         onProgress(progress)
       }),
-      mainWindowEvents
+      { ...mainWindowEvents, canRunVisionIndex: () => getVisionLibrary().isReadyForIndex() }
     )
     desktopState.mediaImportInboxProcessor = new MediaImportInboxProcessor(dependencies)
   }

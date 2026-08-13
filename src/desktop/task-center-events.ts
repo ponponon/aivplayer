@@ -4,6 +4,7 @@ import type { TaskCenterEvent } from '../shared/task-center-types'
 import type { AsrJobProgress } from '../shared/asr-types'
 import { createAsrTaskCenterEvent } from '../core/tasks/task-center-adapters'
 import { TaskCenterStore } from '../core/tasks/task-center-store'
+import { isVisionPackUnavailableMessage } from '../core/ai/vision-pack'
 import { desktopState } from './desktop-state'
 
 export function getTaskCenterStore(): TaskCenterStore {
@@ -12,6 +13,7 @@ export function getTaskCenterStore(): TaskCenterStore {
 }
 
 export function sendTaskCenterEvent(event: TaskCenterEvent): void {
+  if (event.kind === 'vision-index' && event.status === 'failed' && isVisionPackUnavailableMessage(event.message)) return
   getTaskCenterStore().record(event)
   const sender = desktopState.mainWindow?.webContents
   if (sender && !sender.isDestroyed()) sender.send(IPC_CHANNELS.TASK_CENTER_EVENT, event)

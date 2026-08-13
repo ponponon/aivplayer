@@ -3,6 +3,7 @@ import { mkdir, rename, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import type { TaskCenterEvent, TaskCenterKind, TaskCenterStatus } from '../../shared/task-center-types'
 import { isTaskCenterActive } from '../../shared/task-center-types'
+import { isVisionPackUnavailableMessage } from '../ai/vision-pack'
 
 export const TASK_CENTER_SCHEMA_VERSION = 1
 export const TASK_CENTER_MAX_EVENTS = 40
@@ -41,11 +42,15 @@ function normalizeEvent(value: unknown): TaskCenterEvent | null {
   }
 }
 
+function isIgnorableVisionSetupEvent(event: TaskCenterEvent): boolean {
+  return event.kind === 'vision-index' && event.status === 'failed' && isVisionPackUnavailableMessage(event.message)
+}
+
 function normalizeEvents(value: unknown): TaskCenterEvent[] {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return []
   const raw = value as Partial<TaskCenterManifest>
   if (raw.schemaVersion !== TASK_CENTER_SCHEMA_VERSION || !Array.isArray(raw.events)) return []
-  return raw.events.map(normalizeEvent).filter((event): event is TaskCenterEvent => event !== null).filter((event) => !isTaskCenterActive(event.status)).sort((left, right) => right.updatedAt - left.updatedAt).slice(0, TASK_CENTER_MAX_EVENTS)
+  return raw.events.map(normalizeEvent).filter((event): event is TaskCenterEvent => event !== null).filter((event) => !isTaskCenterActive(event.status) && !isIgnorableVisionSetupEvent(event)).sort((left, right) => right.updatedAt - left.updatedAt).slice(0, TASK_CENTER_MAX_EVENTS)
 }
 
 export function getTaskCenterStorePath(userDataPath: string): string {
@@ -79,7 +84,7 @@ export class TaskCenterStore {
   record(event: TaskCenterEvent): void {
     if (isTaskCenterActive(event.status)) return
     const normalized = normalizeEvent(event)
-    if (!normalized) return
+    if (!normalized || isIgnorableVisionSetupEvent(normalized)) return
     this.events = [...this.events.filter((item) => item.id !== normalized.id), normalized].sort((left, right) => right.updatedAt - left.updatedAt).slice(0, TASK_CENTER_MAX_EVENTS)
     this.enqueueWrite()
   }

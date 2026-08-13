@@ -327,6 +327,9 @@ export function registerVisionIpc(): void {
   })
 
   ipcMain.handle(IPC_CHANNELS.VISION_INDEX_START, async (event, request: VisionIndexRequest) => {
+    const status = await getVisionLibrary().getStatus()
+    if (!status.packAvailable) throw new Error('视觉搜索组件未安装，请先下载安装视觉运行组件')
+    if (!status.available) throw new Error(status.message || '视觉模型未就绪，请先下载视觉模型')
     const senderId = event.sender.id
     getVisionIndexQueue().cancel()
     getVisionIndexCoordinator().cancel()
@@ -346,6 +349,7 @@ export function registerVisionIpc(): void {
   })
 
   ipcMain.handle(IPC_CHANNELS.VISION_INDEX_AUTO_START, (event, request: VisionIndexRequest) => {
+    if (!getVisionLibrary().isReadyForIndex()) return false
     const mediaPaths = normalizeMediaPaths(request)
     if (mediaPaths.length === 0) return false
     const options = { includeSceneEvidence: request?.includeSceneEvidence === true, includeEntityEvidence: request?.includeEntityEvidence === true, includeObjectEvidence: request?.includeObjectEvidence === true }
@@ -368,6 +372,7 @@ export function registerVisionIpc(): void {
   ipcMain.handle(IPC_CHANNELS.VISION_INDEX_FAILURE_LIST, () => getVisionIndexFailureStore().list())
 
   ipcMain.handle(IPC_CHANNELS.VISION_INDEX_FAILURE_RETRY, (event, request: VisionIndexFailureRetryRequest) => {
+    if (!getVisionLibrary().isReadyForIndex()) return false
     if (!request || typeof request.id !== 'string' || !request.id.trim()) return false
     const failure = getVisionIndexFailureStore().beginRetry(request.id.trim())
     if (!failure) return false
@@ -380,6 +385,7 @@ export function registerVisionIpc(): void {
   })
 
   ipcMain.handle(IPC_CHANNELS.VISION_INDEX_FAILURE_BATCH_RETRY, (event, request: VisionIndexFailureRetryBatchRequest) => {
+    if (!getVisionLibrary().isReadyForIndex()) return false
     if (!request || !Array.isArray(request.ids)) return false
     const ids = request.ids.filter((id): id is string => typeof id === 'string').map((id) => id.trim()).filter(Boolean)
     if (ids.length === 0 || ids.length > VISION_INDEX_FAILURE_MAX_RETRY_BATCH || new Set(ids).size !== ids.length) return false
@@ -560,12 +566,14 @@ export function registerVisionIpc(): void {
   })
 
   ipcMain.handle(IPC_CHANNELS.VISION_EVIDENCE_SOURCES, (_event, value: VisionEvidenceSourceRequest = {}) => {
+    if (!getVisionLibrary().visionPackStatus.available) return []
     const evidenceTypes = normalizeVisionDerivedEvidenceTypes(value?.evidenceTypes, true)
     const limit = typeof value?.limit === 'number' && Number.isFinite(value.limit) ? value.limit : undefined
     const offset = typeof value?.offset === 'number' && Number.isFinite(value.offset) ? value.offset : undefined
     return getVisionLibrary().listEvidenceSources(limit, offset, evidenceTypes)
   })
-  ipcMain.handle(IPC_CHANNELS.VISION_EVIDENCE_AUDIT, (_event, value: VisionEvidenceAuditRequest = {}): Promise<VisionEvidenceAuditPage> => {
+  ipcMain.handle(IPC_CHANNELS.VISION_EVIDENCE_AUDIT, async (_event, value: VisionEvidenceAuditRequest = {}): Promise<VisionEvidenceAuditPage> => {
+    if (!getVisionLibrary().visionPackStatus.available) return { sources: [], offset: 0, limit: 0, hasMore: false }
     const evidenceTypes = normalizeVisionDerivedEvidenceTypes(value?.evidenceTypes, true)
     const auditStatuses = normalizeVisionEvidenceAuditStatuses(value?.auditStatuses, true)
     const limit = typeof value?.limit === 'number' && Number.isFinite(value.limit) ? value.limit : undefined
@@ -626,7 +634,10 @@ export function registerVisionIpc(): void {
     }
   })
 
-  ipcMain.handle(IPC_CHANNELS.VISION_LIST_SOURCES, (_event, request: VisionLibrarySourceRequest = {}) => listVisionSourcesWithMetadata(request))
+  ipcMain.handle(IPC_CHANNELS.VISION_LIST_SOURCES, (_event, request: VisionLibrarySourceRequest = {}) => {
+    if (!getVisionLibrary().visionPackStatus.available) return []
+    return listVisionSourcesWithMetadata(request)
+  })
 
   ipcMain.handle(IPC_CHANNELS.VISION_ENTITY_CATALOG_GET, () => getVisionEntityCatalogStore().get())
   ipcMain.handle(IPC_CHANNELS.VISION_ENTITY_CATALOG_CREATE, (_event, input: VisionEntityCatalogCreateInput) => getVisionEntityCatalogStore().create(input))

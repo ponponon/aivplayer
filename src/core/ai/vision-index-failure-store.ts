@@ -3,6 +3,7 @@ import { mkdir, rename, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import type { VisionIndexFailureRecord } from '../../shared/vision-types'
 import { beginVisionIndexFailureRetry, beginVisionIndexFailureRetryBatch, createVisionIndexFailureId, normalizeVisionIndexFailure, normalizeVisionIndexFailureManifest, recordVisionIndexFailure, VISION_INDEX_FAILURE_SCHEMA_VERSION, type VisionIndexFailureInput } from './vision-index-failure'
+import { isVisionPackUnavailableMessage } from './vision-pack'
 
 export function getVisionIndexFailureStorePath(userDataPath: string): string {
   return join(userDataPath, 'library', 'vision-index-failures.json')
@@ -17,7 +18,7 @@ export class VisionIndexFailureStore {
     this.manifestPath = getVisionIndexFailureStorePath(userDataPath)
     mkdirSync(dirname(this.manifestPath), { recursive: true })
     try {
-      this.records = normalizeVisionIndexFailureManifest(JSON.parse(readFileSync(this.manifestPath, 'utf8'))).records
+      this.records = normalizeVisionIndexFailureManifest(JSON.parse(readFileSync(this.manifestPath, 'utf8'))).records.filter((record) => !isVisionPackUnavailableMessage(record.error))
     } catch {
       this.records = []
     }
@@ -33,6 +34,7 @@ export class VisionIndexFailureStore {
   }
 
   recordFailure(input: VisionIndexFailureInput): VisionIndexFailureRecord | null {
+    if (isVisionPackUnavailableMessage(input.error)) return null
     const nextRecords = recordVisionIndexFailure(this.records, input)
     const record = nextRecords.find((candidate) => candidate.id === createVisionIndexFailureId(input.mediaPath))
     this.records = nextRecords

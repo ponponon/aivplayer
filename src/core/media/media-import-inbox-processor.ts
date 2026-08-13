@@ -18,6 +18,7 @@ export type MediaImportInboxProcessorDependencies = {
     signal: AbortSignal,
     onProgress: (progress: VisionIndexProgress) => void
   ) => Promise<VisionIndexProgress>
+  canRunVisionIndex?: () => boolean | Promise<boolean>
   onItemChanged?: (item: MediaImportInboxItem) => void
   onProgress?: (progress: MediaImportInboxPipelineProgress) => void
   now?: () => number
@@ -116,12 +117,19 @@ export class MediaImportInboxProcessor {
       if (subtitle?.status === 'ready') {
         await this.updateStage(itemId, activeStage, 'ready', `已发现 ${subtitle.cueCount} 条字幕`)
       } else if (subtitle?.status === 'invalid') {
-        await this.updateStage(itemId, activeStage, 'failed', '字幕 sidecar 无效，将继续建立视觉索引')
+        await this.updateStage(itemId, activeStage, 'failed', '字幕 sidecar 无效，将继续处理媒体')
       } else {
         await this.updateStage(itemId, activeStage, 'skipped', '未发现字幕 sidecar')
       }
 
       activeStage = 'vision'
+      if (this.dependencies.canRunVisionIndex && !(await this.dependencies.canRunVisionIndex())) {
+        await this.updateStage(itemId, activeStage, 'skipped', '视觉运行组件未准备好，已跳过视觉索引')
+        current = this.dependencies.store.transition(itemId, 'ready', undefined, this.now)
+        await this.dependencies.store.persist()
+        this.emitItem(current)
+        return
+      }
       await this.updateStage(itemId, activeStage, 'processing', '正在建立视觉索引和缩略图…')
       const result = await this.dependencies.runVisionIndex(current.path, controller.signal, (progress) => {
         this.dependencies.onProgress?.({ itemId, stage: 'vision', status: 'processing', progress, message: progress.message })
@@ -148,7 +156,7 @@ export function createDefaultMediaImportInboxProcessorDependencies(
   store: MediaImportInboxStore,
   resourcePath: string,
   runVisionIndex: MediaImportInboxProcessorDependencies['runVisionIndex'],
-  callbacks: Pick<MediaImportInboxProcessorDependencies, 'onItemChanged' | 'onProgress'> = {}
+  callbacks: Pick<MediaImportInboxProcessorDependencies, 'canRunVisionIndex' | 'onItemChanged' | 'onProgress'> = {}
 ): MediaImportInboxProcessorDependencies {
   return {
     store,

@@ -240,9 +240,28 @@ export function VisionPanel(): React.ReactElement {
       if (!result.success) throw new Error(result.message)
       window.location.reload()
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason))
+      setError(app.copy.vision.visionPackDownloadFailed(reason instanceof Error ? reason.message : String(reason)))
     } finally {
       setIsDownloadingPack(false)
+    }
+  }
+
+  const ensureVisionReady = async (): Promise<boolean> => {
+    try {
+      const nextStatus = await window.aiv.getVisionStatus()
+      setStatus(nextStatus)
+      if (!nextStatus.packAvailable) {
+        setError(app.copy.vision.visionPackRequired)
+        return false
+      }
+      if (!nextStatus.available) {
+        setError(app.copy.vision.visionModelRequired)
+        return false
+      }
+      return true
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+      return false
     }
   }
 
@@ -395,8 +414,9 @@ export function VisionPanel(): React.ReactElement {
     }
   }, [app.seekTo, app.state.currentFile?.path, app.videoRef, pendingResultSeek])
 
-  const startIndex = (): void => {
+  const startIndex = async (): Promise<void> => {
     if (app.state.playlist.length === 0 || isBusy) return
+    if (!(await ensureVisionReady())) return
     setError(null)
     setProgress(null)
     void window.aiv.startVisionIndex({ mediaPaths: app.state.playlist.map((file) => file.path), intervalSeconds: 3, includeSceneEvidence, includeEntityEvidence, includeObjectEvidence }).catch((reason: unknown) => {
@@ -404,8 +424,9 @@ export function VisionPanel(): React.ReactElement {
     })
   }
 
-  const startFolderIndex = (): void => {
+  const startFolderIndex = async (): Promise<void> => {
     if (folder.videoPaths.length === 0 || isBusy) return
+    if (!(await ensureVisionReady())) return
     setError(null)
     setProgress(null)
     void window.aiv.startVisionIndex({ mediaPaths: folder.videoPaths, intervalSeconds: 3, includeSceneEvidence, includeEntityEvidence, includeObjectEvidence }).catch((reason: unknown) => {
@@ -442,8 +463,9 @@ export function VisionPanel(): React.ReactElement {
     if (!preserveSelection) setSelectedResultIds(new Set())
   }
 
-  const executeTextSearch = (searchQuery: string, mode: VisionSavedSearch['mode'], filter = evidenceTypeFilter, objectFilter: VisionObjectDetectionFilterState | undefined = objectDetectionFilter): void => {
+  const executeTextSearch = async (searchQuery: string, mode: VisionSavedSearch['mode'], filter = evidenceTypeFilter, objectFilter: VisionObjectDetectionFilterState | undefined = objectDetectionFilter): Promise<void> => {
     if (!searchQuery.trim() || isSearching) return
+    if (!(await ensureVisionReady())) return
     const context: VisionSearchContext = { kind: 'text', query: searchQuery, mode, evidenceTypes: [...filter], ...(objectFilter && hasVisionObjectDetectionFilter(objectFilter) ? { objectDetectionFilter: { ...objectFilter, categoryLabels: [...objectFilter.categoryLabels] } } : {}) }
     setIsSearching(true)
     setError(null)
@@ -460,14 +482,14 @@ export function VisionPanel(): React.ReactElement {
     }).finally(() => setIsSearching(false))
   }
 
-  const runTextSearch = (): void => { setObjectDetectionFilter(createDefaultVisionObjectDetectionFilter()); executeTextSearch(query, 'hybrid', evidenceTypeFilter, undefined) }
+  const runTextSearch = (): void => { setObjectDetectionFilter(createDefaultVisionObjectDetectionFilter()); void executeTextSearch(query, 'hybrid', evidenceTypeFilter, undefined) }
 
   const runSavedSearch = (savedSearch: VisionSavedSearch): void => {
     const filter = savedSearch.evidenceTypes ?? []
     setQuery(savedSearch.query)
     setObjectDetectionFilter(savedSearch.objectDetectionFilter ? { ...savedSearch.objectDetectionFilter, categoryLabels: [...savedSearch.objectDetectionFilter.categoryLabels] } : createDefaultVisionObjectDetectionFilter())
     setSearchPreferences((current) => ({ ...current, evidenceTypes: filter }))
-    executeTextSearch(savedSearch.query, savedSearch.mode, filter, savedSearch.objectDetectionFilter)
+    void executeTextSearch(savedSearch.query, savedSearch.mode, filter, savedSearch.objectDetectionFilter)
   }
 
   const saveCurrentSearch = (): void => {
@@ -548,8 +570,9 @@ export function VisionPanel(): React.ReactElement {
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
   }
 
-  const runImageSearch = (): void => {
+  const runImageSearch = async (): Promise<void> => {
     if (!sampleImagePath || isSearching) return
+    if (!(await ensureVisionReady())) return
     const context: VisionSearchContext = { kind: 'image', imagePath: sampleImagePath, evidenceTypes: [...evidenceTypeFilter], ...(hasVisionObjectDetectionFilter(objectDetectionFilter) ? { objectDetectionFilter: { ...objectDetectionFilter, categoryLabels: [...objectDetectionFilter.categoryLabels] } } : {}) }
     setIsSearching(true)
     setError(null)
@@ -577,8 +600,9 @@ export function VisionPanel(): React.ReactElement {
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setIsLoadingMoreSearchResults(false))
   }
 
-  const findSimilarResult = (result: VisionSearchResult): void => {
+  const findSimilarResult = async (result: VisionSearchResult): Promise<void> => {
     if (isSearching) return
+    if (!(await ensureVisionReady())) return
     if (!similarSearchSnapshot) {
       setSimilarSearchSnapshot({
         results: [...results],
@@ -619,7 +643,7 @@ export function VisionPanel(): React.ReactElement {
 
   const changeEvidenceTypeFilter = (nextFilter: VisionEvidenceType[]): void => {
     setSearchPreferences((current) => ({ ...current, evidenceTypes: nextFilter }))
-    if (query.trim() && !isSearching) executeTextSearch(query, 'hybrid', nextFilter)
+    if (query.trim() && !isSearching) void executeTextSearch(query, 'hybrid', nextFilter)
   }
 
   const toggleEvidenceTypeFilter = (evidenceType: VisionEvidenceType): void => {
@@ -656,8 +680,9 @@ export function VisionPanel(): React.ReactElement {
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
   }
 
-  const detectObjects = (result: VisionSearchResult): void => {
+  const detectObjects = async (result: VisionSearchResult): Promise<void> => {
     if (!result.thumbnailPath || isDetectingObjects) return
+    if (!(await ensureVisionReady())) return
     setIsDetectingObjects(true)
     setObjectDetectionResult(null)
     setObjectDetectionThumbnailUrl(thumbnailUrls[result.id] ?? null)
@@ -966,9 +991,8 @@ export function VisionPanel(): React.ReactElement {
       <div className="vision-heading"><div><span className="panel-kicker">{app.copy.panels.visionKicker}</span><h2>{app.copy.panels.visionTitle}</h2></div><ScanSearch size={18} /></div>
       <p>{app.copy.vision.description}</p>
       <div className="vision-model-status"><Database size={14} /><span>{status?.available ? app.copy.vision.model : app.copy.vision.unavailable}</span><small title={vectorIndexLabel}>{status?.indexedFrameCount ?? 0} · {vectorIndexLabel}</small></div>
-      {status && !status.packAvailable ? <div className="vision-model-download"><small className="vision-error">{status.message}</small><button className="vision-primary-action" type="button" onClick={downloadVisionPack} disabled={isDownloadingPack}><Download size={14} />{isDownloadingPack ? app.copy.vision.downloadingVisionPack : `${app.copy.vision.downloadVisionPack}（${status.packVersion}）`}</button></div> : null}
-      {status?.packAvailable && !status.available ? <small className="vision-error">{status.message || app.copy.vision.unavailable}</small> : null}
-      {status?.packAvailable && !status.available && status.downloadable !== false ? <div className="vision-model-download"><button className="vision-primary-action" type="button" onClick={downloadVisionModel} disabled={isDownloadingModel}><Download size={14} />{isDownloadingModel ? app.copy.vision.downloadingModel : app.copy.vision.downloadModel}</button>{modelDownloadProgress?.status === 'downloading' ? <small>{app.copy.vision.modelDownloadProgress(modelDownloadProgress.relativePath, modelDownloadProgress.percent == null ? 0 : Math.round(modelDownloadProgress.percent * 100))}</small> : null}</div> : null}
+      {status && !status.packAvailable ? <div className="vision-model-download"><div><strong>{app.copy.vision.visionPackRequired}</strong><small>{app.copy.vision.visionPackDescription}</small></div><button className="vision-primary-action" type="button" onClick={downloadVisionPack} disabled={isDownloadingPack || status.packDownloadable === false}><Download size={14} />{isDownloadingPack ? app.copy.vision.downloadingVisionPack : `${app.copy.vision.downloadVisionPack}（${status.packVersion}）`}</button></div> : null}
+      {status?.packAvailable && !status.available ? <div className="vision-model-download"><div><strong>{app.copy.vision.visionModelRequired}</strong><small>{app.copy.vision.visionModelDescription}</small></div><button className="vision-primary-action" type="button" onClick={downloadVisionModel} disabled={isDownloadingModel || status.downloadable === false}><Download size={14} />{isDownloadingModel ? app.copy.vision.downloadingModel : app.copy.vision.downloadModel}</button>{modelDownloadProgress?.status === 'downloading' ? <small>{app.copy.vision.modelDownloadProgress(modelDownloadProgress.relativePath, modelDownloadProgress.percent == null ? 0 : Math.round(modelDownloadProgress.percent * 100))}</small> : null}</div> : null}
       <VisionLibraryFolder copy={app.copy.vision} folderPath={folder.folderPath} savedFolders={folder.savedFolders} videoPaths={folder.videoPaths} includeSubfolders={folder.includeSubfolders} scanProgress={folder.scanProgress} batchScanProgress={folder.batchScanProgress} isBusy={isBusy} onChooseFolder={folder.chooseFolder} onScanFolder={folder.scanCurrentFolder} onScanAllFolders={folder.scanAllFolders} onIncludeSubfoldersChange={folder.setIncludeSubfolders} onStartIndex={startFolderIndex} onUseFolder={folder.useSavedFolder} onRemoveFolder={folder.removeSavedFolder} />
       <VisionImportInbox copy={app.copy.vision} directories={importInbox.directories} items={importInbox.items} progress={importInbox.progress} pipelineProgress={importInbox.pipelineProgress} isBusy={importInbox.isBusy} error={importInbox.error} writeSidecars={importInbox.writeSidecars} onAddFolder={importInbox.addFolder} onRemoveFolder={importInbox.removeFolder} onScan={importInbox.scan} onQueue={importInbox.queueItem} onIgnore={importInbox.ignoreItem} onRetry={importInbox.retryItem} onBatchQueue={importInbox.batchQueue} onBatchIgnore={importInbox.batchIgnore} onBatchRetry={importInbox.batchRetry} onBatchClear={importInbox.batchClear} onWriteSidecarsChange={importInbox.setWriteSidecars} onUpdateMetadata={importInbox.updateMetadata} />
       <VisionLibrarySources copy={app.copy.vision} sources={sources} thumbnailUrls={sourceThumbnailUrls} hasMoreSources={hasMoreSources} isLoadingMoreSources={isLoadingMoreSources} onLoadMore={loadMoreSources} onOpenSource={openSource} />

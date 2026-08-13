@@ -49,4 +49,22 @@ describe('vision index failure recovery', () => {
       await rm(directory, { recursive: true, force: true })
     }
   })
+
+  it('does not persist a missing visual runtime as an index failure', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'aivplayer-vision-failure-setup-'))
+    try {
+      const store = new VisionIndexFailureStore(directory)
+      expect(store.recordFailure({
+        mediaPath: '/media/demo.mp4',
+        error: 'Vision Pack 0.5.5 未安装，无法加载 @lancedb/lancedb',
+        intervalSeconds: 5,
+        includeEntityEvidence: true,
+        includeObjectEvidence: true,
+        stage: 'loading-model'
+      })).toBeNull()
+      expect(store.list()).toEqual([])
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
 })

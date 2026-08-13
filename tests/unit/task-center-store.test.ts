@@ -30,4 +30,26 @@ describe('task center store', () => {
       rmSync(root, { recursive: true, force: true })
     }
   })
+
+  it('ignores visual runtime setup failures instead of showing them as completed tasks', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'aivplayer-task-center-vision-setup-'))
+    try {
+      const store = new TaskCenterStore(root)
+      store.record({
+        id: 'vision-index:missing-pack',
+        kind: 'vision-index',
+        status: 'failed',
+        title: '视觉索引',
+        message: 'Vision Pack 0.5.5 未安装，无法加载 @lancedb/lancedb',
+        progress: 0,
+        updatedAt: 10
+      })
+      await store.flush()
+
+      expect(store.list()).toEqual([])
+      expect(new TaskCenterStore(root).list()).toEqual([])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
 })
