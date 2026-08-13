@@ -157,6 +157,7 @@ describe('vision library setup', () => {
     expect(packageJson.scripts?.['smoke:vision-clip-inbox']).toContain('smoke-vision-clip-inbox.ts')
     expect(packageJson.scripts?.['smoke:vision-clip-collection-import']).toContain('smoke-vision-clip-collection-import.ts')
     expect(packageJson.scripts?.['smoke:vision-clip-collection-duplicate']).toContain('smoke-vision-clip-collection-duplicate.ts')
+    expect(packageJson.scripts?.['smoke:vision-clip-collection-batch-duplicate']).toContain('smoke-vision-clip-collection-batch-duplicate.ts')
     expect(smoke).toContain('listVisionClipCollections')
     expect(smoke).toContain('editing-timeline')
     expect(smoke).toContain('persistedSelections')
@@ -171,6 +172,10 @@ describe('vision library setup', () => {
     expect(duplicateSmoke).toContain("name: '复制集合'")
     expect(duplicateSmoke).toContain('duplicateId')
     expect(duplicateSmoke).toContain('independent: true')
+    const batchDuplicateSmoke = readFileSync(join(projectRoot, 'scripts/smoke-vision-clip-collection-batch-duplicate.ts'), 'utf8')
+    expect(batchDuplicateSmoke).toContain("name: '复制选中集合'")
+    expect(batchDuplicateSmoke).toContain('duplicateCount')
+    expect(batchDuplicateSmoke).toContain('independent: true')
   })
 
   it('scores subtitle and filename matches for hybrid retrieval', () => {
