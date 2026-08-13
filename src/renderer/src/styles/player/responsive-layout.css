@@ -12,14 +12,6 @@
     padding: 12px;
   }
 
-  .quick-subtitle-button {
-    width: min(100%, 420px);
-  }
-
-  .quick-subtitle-copy small {
-    display: none;
-  }
-
   .controls-row {
     display: flex;
     flex-direction: column;

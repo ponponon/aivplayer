@@ -1,5 +1,7 @@
 # AIVPlayer 功能列表
 
+- 播放控制区的“一键完整处理”入口精简为单独 Logo 按钮：保留点击、快捷键、无障碍标签和悬停提示，减少底部控制区的视觉占用。
+
 - 视觉运行组件未安装时不再把自动索引标记为失败：普通播放和媒体导入继续完成，视觉面板提供 Vision Pack 与 SigLIP2 模型的按需下载引导，并过滤历史内部组件缺失错误。
 
 - 0.5.5 安装包瘦身：SigLIP2 模型改由 Cloudflare R2 统一存储并在视觉功能首次使用时下载；Transformers.js、LanceDB、Apache Arrow 及 ONNX/Sharp 原生依赖拆为按平台构建的 Vision Pack，主安装包只保留播放器、FFmpeg、HEIF 和 whisper.cpp；发布流水线生成平台体积报告并把 Vision Pack 上传到 R2，Vision Pack 与模型均按 SHA-256 / 固定 revision 校验。
