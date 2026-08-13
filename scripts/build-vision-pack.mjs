@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs'
 import { basename, join, resolve, dirname } from 'node:path'
 const projectRoot = resolve(process.cwd())
 const outputDirectory = resolve(process.env.VISION_PACK_OUTPUT_DIR ?? 'resources/vision-pack')
+const platform = process.env.VISION_PACK_PLATFORM ?? process.platform
+const arch = process.env.VISION_PACK_ARCH ?? process.arch
 const packageNames = ['@huggingface/transformers', '@lancedb/lancedb', 'apache-arrow']
 const excludedPackages = new Set(['onnxruntime-web', '@types/node', '@types/command-line-args', '@types/command-line-usage'])
 
@@ -56,8 +58,6 @@ async function copyPackageTree(packageName, fromDirectory, copied = new Set()) {
 }
 
 async function prunePlatformFiles() {
-  const platform = process.platform
-  const arch = process.arch
   const onnxRoot = join(outputDirectory, 'node_modules', 'onnxruntime-node', 'bin')
   try {
     for (const napiDirectory of await readdir(onnxRoot, { withFileTypes: true })) {
@@ -91,7 +91,13 @@ async function prunePlatformFiles() {
         // Traverse non-package directories such as node_modules.
       }
       if (platformPackagePatterns.some((pattern) => pattern.test(packageName))) {
-        const isCurrent = packageName.includes(`-${platform}-`) || packageName.includes(`-${platform}-${arch}`) || (platform === 'darwin' && packageName.includes('-darwin-')) || (platform === 'linux' && packageName.includes('-linux-')) || (platform === 'win32' && packageName.includes('-win32-'))
+        const isCurrent = packageName.startsWith(`@img/sharp-${platform}-${arch}`)
+          || packageName.startsWith(`@img/sharp-libvips-${platform}-${arch}`)
+          || (platform === 'linux'
+            ? packageName === `@lancedb/lancedb-linux-${arch}-gnu`
+            : platform === 'win32'
+              ? packageName === `@lancedb/lancedb-win32-${arch}-msvc`
+              : packageName === `@lancedb/lancedb-${platform}-${arch}`)
         if (!isCurrent) {
           await rm(entryPath, { recursive: true, force: true })
           continue
@@ -133,8 +139,8 @@ async function main() {
   const manifest = {
     id: 'aivplayer-vision-pack',
     version: packageJson.version,
-    platform: process.platform,
-    arch: process.arch,
+    platform,
+    arch,
     entry: 'package.json',
     packages: packageNames
   }

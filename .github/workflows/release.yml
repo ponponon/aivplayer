@@ -1143,7 +1143,8 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           npm install --global wrangler@4.110.0
-          version="${GITHUB_REF_NAME#v}"
+          version="${{ inputs.tag || github.ref_name }}"
+          version="${version#v}"
           upload_pack() {
             local source_name="$1"
             local platform_key="$2"
