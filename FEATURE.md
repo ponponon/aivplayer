@@ -837,6 +837,6 @@
 - `video_evidence` 为旧表提供一次性兼容迁移：新增边界框字段使用可空坐标，不会丢弃原有字幕、画面、OCR、场景、实体或说话人证据；物体证据会带源指纹、模型版本、时间范围和检测置信度，可参与文字搜索、类型筛选、保存搜索和 Clip Inbox。
 - 当前没有内置模型，也不把帧级零样本标签包装成人物身份、人脸识别或跨视频身份聚类；模型缺失时会明确提示准备目录和 LICENSE 收据。
 
-## Windows 安装包 MinIO 分发
+## Windows 安装包发布
 
-- 发布工作流会按 tag 将 Windows x64 / arm64 安装包上传到独立的 `aivplayer-releases/aivplayer/<tag>/` 路径，并通过 `file.quniv.cn` 公开地址验证无重定向的 HTTP 200；未配置 MinIO 凭据时明确跳过上传，不影响 GitHub / Gitee 发布。
+- 发布工作流会按 tag 构建 Windows x64 / arm64 安装包，并将全部平台产物发布到 GitHub Release，再按同一份清单同步到 Gitee；当前不再向 MinIO 或 Cloudflare R2 上传额外副本。

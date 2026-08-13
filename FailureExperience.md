@@ -1640,6 +1640,12 @@
 - 经验：可迁移导入和本地编辑更新是两种不同语义；导入必须剥离外部主键，保留业务字段但由本地 Store 生成新 ID。
 - 处理：解析器返回不含 `id` 的 `VisionClipCollectionInput`，Store 通过独立 `importCollection` 入口强制新建；Smoke 覆盖删除原集合后导入并断言新 ID。
 
+## 2026-08-13：Release 发布前必须移除未启用的对象存储步骤
+
+- 现象：0.5.4 发布流水线在创建 GitHub Release 前卡在旧 MinIO 上传步骤；随后确认 Cloudflare Wrangler 单对象上传上限为 315MB，而 Windows 安装包可能超过 500MB，不能直接替换成 Wrangler 上传。
+- 经验：当对象存储方案尚未确定或凭据、分片策略尚未就绪时，普通 GitHub / Gitee Release 不应依赖对象存储步骤；未启用的上传逻辑必须从发布主链路移除，避免构建成功却无法进入 Release 创建。
+- 处理：发布工作流改为仅汇总并校验五个平台产物，创建 GitHub Release 后同步 Gitee；MinIO、Cloudflare R2 和其他对象存储暂不参与 0.5.4 发布。
+
 ## 2026-08-13：Electron Smoke 空状态选择器不能只匹配 CSS 类名
 
 - 现象：批量集合导出 / 导入 Smoke 在删除原集合后等待 `.vision-empty` 时，页面同时存在影视库、相似搜索结果和集合三个空状态节点，Playwright 严格模式拒绝从多个匹配项中选择一个。
