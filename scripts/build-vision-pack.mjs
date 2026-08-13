@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs'
 import { basename, join, resolve, dirname } from 'node:path'
 const projectRoot = resolve(process.cwd())
 const outputDirectory = resolve(process.env.VISION_PACK_OUTPUT_DIR ?? 'resources/vision-pack')
+const platform = process.env.VISION_PACK_PLATFORM ?? process.platform
+const arch = process.env.VISION_PACK_ARCH ?? process.arch
 const packageNames = ['@huggingface/transformers', '@lancedb/lancedb', 'apache-arrow']
 const excludedPackages = new Set(['onnxruntime-web', '@types/node', '@types/command-line-args', '@types/command-line-usage'])
 
@@ -56,8 +58,6 @@ async function copyPackageTree(packageName, fromDirectory, copied = new Set()) {
 }
 
 async function prunePlatformFiles() {
-  const platform = process.env.VISION_PACK_PLATFORM ?? process.platform
-  const arch = process.env.VISION_PACK_ARCH ?? process.arch
   const onnxRoot = join(outputDirectory, 'node_modules', 'onnxruntime-node', 'bin')
   try {
     for (const napiDirectory of await readdir(onnxRoot, { withFileTypes: true })) {
