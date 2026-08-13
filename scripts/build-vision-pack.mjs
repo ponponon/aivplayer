@@ -58,13 +58,17 @@ async function copyPackageTree(packageName, fromDirectory, copied = new Set()) {
 async function prunePlatformFiles() {
   const platform = process.platform
   const arch = process.arch
-  const onnxRoot = join(outputDirectory, 'node_modules', 'onnxruntime-node', 'bin', 'napi-v6')
+  const onnxRoot = join(outputDirectory, 'node_modules', 'onnxruntime-node', 'bin')
   try {
-    for (const entry of await readdir(onnxRoot)) {
-      if (entry !== platform) await rm(join(onnxRoot, entry), { recursive: true, force: true })
-    }
-    for (const entry of await readdir(join(onnxRoot, platform))) {
-      if (entry !== arch) await rm(join(onnxRoot, platform, entry), { recursive: true, force: true })
+    for (const napiDirectory of await readdir(onnxRoot, { withFileTypes: true })) {
+      if (!napiDirectory.isDirectory() || !/^napi-/u.test(napiDirectory.name)) continue
+      const napiRoot = join(onnxRoot, napiDirectory.name)
+      for (const entry of await readdir(napiRoot)) {
+        if (entry !== platform) await rm(join(napiRoot, entry), { recursive: true, force: true })
+      }
+      for (const entry of await readdir(join(napiRoot, platform))) {
+        if (entry !== arch) await rm(join(napiRoot, platform, entry), { recursive: true, force: true })
+      }
     }
   } catch {
     // A platform may not use onnxruntime-node in a test fixture.
