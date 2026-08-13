@@ -45,7 +45,6 @@ document will be updated before they receive signing responsibilities.
    represented as AIVPlayer source code or independently signed as AIVPlayer
    binaries.
 6. The signed artifact is published through the corresponding release page.
-   Gitee may mirror the same release artifact for users in mainland China.
 
 Signing credentials, tokens, and private keys must never be committed to the
 repository, release notes, or public issue discussions. CI secrets are stored

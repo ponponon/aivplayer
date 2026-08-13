@@ -10,8 +10,7 @@
 
 <p align="center">
   <a href="https://aivplayer.pages.dev/">제품 사이트</a> ·
-  <a href="https://github.com/ponponon/aivplayer/releases">GitHub 다운로드</a> ·
-  <a href="https://gitee.com/ponponon/aivplayer/releases">Gitee 다운로드</a>
+  <a href="https://github.com/ponponon/aivplayer/releases">GitHub 다운로드</a>
 </p>
 
 <p align="center">
@@ -46,7 +45,7 @@
 
 AIVPlayer는 Electron 기반의 크로스 플랫폼 데스크톱 동영상 워크스테이션입니다. 로컬 동영상 재생, 오프라인 ASR 자막, 자막 번역, AI 콘텐츠 요약, 비주얼 미디어 라이브러리, 이미지 처리, AI 숏드라마 텍스트 제작을 하나의 애플리케이션에 담았습니다.
 
-제품 소개, 기능 데모와 다운로드 링크는 **[aivplayer.pages.dev](https://aivplayer.pages.dev/)** 에서 확인할 수 있습니다. 데스크톱 설치 파일은 [GitHub Releases](https://github.com/ponponon/aivplayer/releases)에서 다운로드하세요. 중국 본토에서 GitHub 접속이 느리다면 [Gitee Releases](https://gitee.com/ponponon/aivplayer/releases)를 이용할 수 있습니다.
+제품 소개, 기능 데모와 다운로드 링크는 **[aivplayer.pages.dev](https://aivplayer.pages.dev/)** 에서 확인할 수 있습니다. 데스크톱 설치 파일은 [GitHub Releases](https://github.com/ponponon/aivplayer/releases)에서 다운로드하세요.
 
 ### 로컬 우선 구조와 AI 요청 범위
 
@@ -68,7 +67,6 @@ AIVPlayer는 Electron 기반의 크로스 플랫폼 데스크톱 동영상 워�
 [제품 사이트](https://aivplayer.pages.dev/)에서 기능을 확인하거나 아래 릴리스 페이지에서 플랫폼에 맞는 설치 파일을 다운로드하세요.
 
 - [GitHub Releases](https://github.com/ponponon/aivplayer/releases)
-- [Gitee Releases](https://gitee.com/ponponon/aivplayer/releases)
 
 macOS, Windows와 Linux를 지원합니다. 패키지 형식과 `aivcli` 명령 설치 방법은 [설치](#설치) 절을 참고하세요.
 
@@ -253,7 +251,7 @@ aivcli drama provider test
 
 ### 설치 파일 다운로드
 
-[GitHub Releases](https://github.com/ponponon/aivplayer/releases) 또는 [Gitee Releases](https://gitee.com/ponponon/aivplayer/releases)에서 플랫폼에 맞는 패키지를 다운로드하세요.
+[GitHub Releases](https://github.com/ponponon/aivplayer/releases)에서 플랫폼에 맞는 패키지를 다운로드하세요.
 
 | 플랫폼 | 패키지 |
 | --- | --- |
@@ -265,9 +263,9 @@ Windows NSIS, macOS `.pkg`와 Linux `.deb`는 `aivcli` 런처를 설치하고 �
 
 ### 자동 업데이트
 
-정식 Windows 및 Linux 설치 파일은 시작 후 백그라운드에서 GitHub Releases를 확인하고 현재 플랫폼에 맞는 새 버전을 자동으로 다운로드합니다. 다운로드가 끝나면 창 상단에 “다시 시작하고 업데이트” 버튼이 나타나며, 버튼을 눌러야 종료 및 설치가 진행됩니다. 현재 재생이나 편집을 강제로 중단하지 않습니다. macOS는 Apple Developer ID 서명과 공증이 아직 설정되지 않아 자동 업데이트를 제공하지 않으며 GitHub 또는 Gitee에서 수동으로 다운로드해야 합니다. 개발 모드와 `aivcli`는 자동 업데이트에 참여하지 않습니다.
+정식 Windows 및 Linux 설치 파일은 시작 후 백그라운드에서 GitHub Releases를 확인하고 현재 플랫폼에 맞는 새 버전을 자동으로 다운로드합니다. 다운로드가 끝나면 창 상단에 “다시 시작하고 업데이트” 버튼이 나타나며, 버튼을 눌러야 종료 및 설치가 진행됩니다. 현재 재생이나 편집을 강제로 중단하지 않습니다. macOS는 Apple Developer ID 서명과 공증이 아직 설정되지 않아 자동 업데이트를 제공하지 않으며 GitHub에서 수동으로 다운로드해야 합니다. 개발 모드와 `aivcli`는 자동 업데이트에 참여하지 않습니다.
 
-자동 업데이트에는 릴리스 페이지의 `latest*.yml` 메타데이터와 해당 설치 / 업데이트 패키지가 필요하므로 릴리스 과정에서 모두 업로드해야 합니다. GitHub Release가 성공하면 `GITEE_TOKEN`이 설정된 CI가 동일한 설치 파일과 업데이트 메타데이터를 Gitee에 동기화합니다. Secret이 없으면 Gitee는 수동 다운로드 미러로 사용할 수 있지만 자동 동기화는 되지 않습니다.
+자동 업데이트에는 GitHub 릴리스 페이지의 `latest*.yml` 메타데이터와 해당 설치 / 업데이트 패키지가 필요하므로 릴리스 과정에서 모두 업로드해야 합니다.
 
 ### 소스에서 빌드
 

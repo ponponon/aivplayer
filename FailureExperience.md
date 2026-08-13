@@ -1186,17 +1186,17 @@
 - 经验：任何被忽略但被 `extraResources` 引用的资源，都必须有固定来源、revision、原子暂存脚本和打包前检查；只在本机验证一次不能证明 CI 能重建。
 - 处理：新增 `release:prepare-vision-model`，固定 `onnx-community/siglip2-base-patch16-224-ONNX` revision；`release:write-runtime-metadata` 记录九个随包模型文件及运行时二进制的哈希，`release:check-packaged-resources` 强制要求元数据随安装包存在。
 
-## 2026-08-09：GitHub 和 Gitee 不能各自重新扫描发布物
+## 2026-08-09：发布渠道不能各自重新扫描发布物
 
-- 现象：原流程由 GitHub Release 使用一组 glob 上传产物，Gitee 脚本再按扩展名递归扫描；两边没有共享文件集合、大小和内容指纹，发布过程中如果产物被替换或漏传，单靠文件名无法发现。
+- 现象：原流程由 GitHub Release 使用一组 glob 上传产物，镜像脚本再按扩展名递归扫描；两边没有共享文件集合、大小和内容指纹，发布过程中如果产物被替换或漏传，单靠文件名无法发现。
 - 经验：多渠道发布必须先在合并后的唯一工作目录生成不可循环引用的 manifest，再让每个渠道复用并验证它；manifest 自身可以上传，但不能把自身哈希写入自身内容。
-- 处理：新增统一 artifact policy 和 `release-manifest.json`；发布 job 生成并校验清单，同时上传给 Gitee sync job；Gitee 上传前逐个比较文件集合、大小和 SHA-256，漂移时在任何 API 写操作前失败。
+- 处理：新增统一 artifact policy 和 `release-manifest.json`；发布 job 生成并校验清单，渠道上传前逐个比较文件集合、大小和 SHA-256，漂移时在任何 API 写操作前失败。
 
 ## 2026-08-09：发布成功不能只代表上传请求成功
 
 - 现象：上传接口返回成功，只能证明服务端接受了请求，不能证明最终 Release 中的每个安装包、更新元数据和 manifest 都可下载，也不能发现 CDN / 服务端存储中的内容漂移。
-- 经验：发布后的验证必须走独立的只读链路：先用 GitHub / Gitee API 获取 tag 对应的实际资产，再对每个下载响应流式计算大小和 SHA-256；manifest 自身不把自身哈希写入清单，因此需要额外比较本地与远端 manifest 的内容。
-- 处理：新增 `release:verify-remote` 和 `verify-remote-release.mjs`；GitHub Release 创建后、Gitee 同步后分别执行回读校验，生成不含 token 的报告 artifact。脚本只发起 GET 请求，不创建、删除或上传 Release 资源；单测使用注入的 fetch seam 验证 GitHub、Gitee、远端篡改和无写操作边界。
+- 经验：发布后的验证必须走独立的只读链路：先用 GitHub API 获取 tag 对应的实际资产，再对每个下载响应流式计算大小和 SHA-256；manifest 自身不把自身哈希写入清单，因此需要额外比较本地与远端 manifest 的内容。
+- 处理：新增 `release:verify-remote` 和 `verify-remote-release.mjs`；GitHub Release 创建后执行回读校验，生成不含 token 的报告 artifact。脚本只发起 GET 请求，不创建、删除或上传 Release 资源；单测使用注入的 fetch seam 验证 GitHub、远端篡改和无写操作边界。
 
 ## 2026-08-09：Release tag 和更新元数据必须先锁定版本
 
@@ -1220,7 +1220,7 @@
 
 - 现象：平台检查只把文件数量和成功消息打印到 CI 日志；日志滚动、job 结束或多人复核时，无法快速确认某个平台实际上传了哪些文件、大小是否异常、哈希是否与最终 manifest 一致。
 - 经验：每个 Runner 应在上传前写出独立、无凭据的证据报告，至少包含平台契约、文件名、大小和 SHA-256；报告要和发布资产分开保存，避免把审计 JSON 意外上传到 Release 或被 updater 当成安装包。
-- 处理：扩展 `release:check-platform` 支持 `--report-path`，三平台分别上传 `release-evidence-macos/windows/linux` workflow artifact；报告文件名不符合 release artifact policy，不进入 GitHub / Gitee 发布物和 manifest，但可在 Actions 中下载复核。
+- 处理：扩展 `release:check-platform` 支持 `--report-path`，三平台分别上传 `release-evidence-macos/windows/linux` workflow artifact；报告文件名不符合 release artifact policy，不进入 GitHub 发布物和 manifest，但可在 Actions 中下载复核。
 
 ## 2026-08-09：保存 evidence 报告后还必须校验合并目录
 
@@ -1242,15 +1242,15 @@
 
 ## 2026-08-09：真实三平台验证需要独立于发布写操作
 
-- 现象：本地 dry-run 只能验证编排，无法证明 Windows / Linux Runner 的真实 electron-builder 产物；直接用 workflow_dispatch 触发原发布流程又会创建 GitHub Release，并可能继续同步 Gitee，增加误发布风险。
-- 经验：真实 CI preflight 应复用同一套构建和发布前门禁，但把 GitHub Release、远端回读和 Gitee sync 作为明确条件保护的写操作；不能为了演练复制另一套校验流程。
-- 处理：workflow_dispatch 新增布尔 `verify_only` 输入；该模式仍下载合并三平台 artifact 并执行 evidence、版本和 manifest 检查，只跳过 GitHub Release、GitHub 远端校验和整个 Gitee sync job。push tag 的既有发布行为保持不变。
+- 现象：本地 dry-run 只能验证编排，无法证明 Windows / Linux Runner 的真实 electron-builder 产物；直接用 workflow_dispatch 触发原发布流程又会创建 GitHub Release，增加误发布风险。
+- 经验：真实 CI preflight 应复用同一套构建和发布前门禁，但把 GitHub Release 和远端回读作为明确条件保护的写操作；不能为了演练复制另一套校验流程。
+- 处理：workflow_dispatch 新增布尔 `verify_only` 输入；该模式仍下载合并三平台 artifact 并执行 evidence、版本和 manifest 检查，只跳过 GitHub Release 创建和 GitHub 远端校验。push tag 的既有发布行为保持不变。
 
 ## 2026-08-09：合并 evidence 不能只存在于 publish 日志
 
 - 现象：publish job 重新计算了三平台文件哈希，但如果只打印成功消息，workflow 结束后仍缺少一份能和最终 manifest 对照的合并目录证据；单独保存 Runner report 也无法直接证明合并目录当时的实际状态。
 - 经验：合并校验应原子写出独立 JSON，记录最终目录实际文件的名称、大小和 SHA-256，并与安装包发布边界隔离；失败路径使用 `always()` 尝试保留已有报告，但不能因此放宽门禁。
-- 处理：`release:check-evidence` 新增 `--report-path`，publish job 上传 `release-evidence-merged`；报告不进入 `release-manifest.json` 或 GitHub / Gitee Release，单测覆盖成功报告内容、哈希格式和 workflow 上传步骤。
+- 处理：`release:check-evidence` 新增 `--report-path`，publish job 上传 `release-evidence-merged`；报告不进入 `release-manifest.json` 或 GitHub Release，单测覆盖成功报告内容、哈希格式和 workflow 上传步骤。
 
 ## 2026-08-09：目录 watcher 单测不能依赖宿主文件监听额度
 
@@ -1290,13 +1290,13 @@
 
 ## 2026-08-09：Windows updater metadata 与安装包文件名必须同源
 
-- 现象：0.5.0 最近一次发布的五个平台构建均成功，但 publish job 的 `release:check-version` 报告 `latest.yml` 引用了 `AIVPlayer-Setup-0.5.0-x64.exe`，合并目录中不存在对应文件；因此 GitHub Release、远端回读和 Gitee sync 都被跳过，重复重试还会重新消耗整轮跨平台构建时间。
+- 现象：0.5.0 最近一次发布的五个平台构建均成功，但 publish job 的 `release:check-version` 报告 `latest.yml` 引用了 `AIVPlayer-Setup-0.5.0-x64.exe`，合并目录中不存在对应文件；因此 GitHub Release 和远端回读都被跳过，重复重试还会重新消耗整轮跨平台构建时间。
 - 经验：Windows 安装包的实际 artifact 文件名、`latest.yml` 的 `url/path` 和最终汇总目录必须从同一个命名契约生成；不能只在文件上传前检查扩展名，也不能让 metadata 引用一个经过连字符归一化但实际文件仍是空格命名的文件。
 - 处理：当前先保留版本校验作为发布门禁，不绕过错误创建 Release；后续修复应统一 electron-builder artifactName 与 updater metadata 引用，并在本地 assembly fixture、Windows Runner 和 `release:check-version` 三层同时验证空格 / 连字符命名一致性。
 
 ## 2026-08-09：Windows artifactName 必须与 updater metadata 同源
 
-- 现象：上一轮五个平台构建全部成功，但 publish job 在版本门禁阶段发现 `latest.yml` 引用 `AIVPlayer-Setup-0.5.0-x64.exe`，实际汇总目录却是带空格的 `AIVPlayer Setup 0.5.0 x64.exe`，导致 Release 和 Gitee 同步被跳过。
+- 现象：上一轮五个平台构建全部成功，但 publish job 在版本门禁阶段发现 `latest.yml` 引用 `AIVPlayer-Setup-0.5.0-x64.exe`，实际汇总目录却是带空格的 `AIVPlayer Setup 0.5.0 x64.exe`，导致 GitHub Release 被跳过。
 - 经验：Windows 安装包文件名不能只满足扩展名和架构检查；electron-builder 的 `artifactName` 必须直接采用 updater metadata 的 URL 命名语义，版本校验还要覆盖真实的连字符文件名。
 - 处理：将 Windows `artifactName` 改为 `${productName}-Setup-${version}-${arch}.${ext}`，补充 release workflow 配置断言和 `release:check-version` 连字符文件名回归测试；下一次先触发 verify-only，再正式创建 Release。
 
@@ -1565,7 +1565,7 @@
 ## 2026-08-11：Microsoft Store 包 URL 不能使用 GitHub Release 重定向
 
 - 现象：把 `https://github.com/.../releases/download/.../*.exe` 填入 Partner Center 后，微软提示“包 URL 重定向到另一个 URL”，拒绝继续保存包信息。
-- 经验：Microsoft Store 的 MSI/EXE 包 URL 必须是版本化 HTTPS 直链，不能依赖 GitHub/Gitee Release 的重定向下载地址；普通下载入口和商店包地址需要分开管理。
+- 经验：Microsoft Store 的 MSI/EXE 包 URL 必须是版本化 HTTPS 直链，不能依赖 GitHub Release 的重定向下载地址；普通下载入口和商店包地址需要分开管理。
 - 处理：为 Windows x64 / arm64 安装包增加 Cloudflare R2 版本化上传流程；发布后用不跟随重定向的 HEAD 请求验证 HTTP 200，并在 R2 自定义域名配置完成前不把 URL 填入 Partner Center。
 
 ## 2026-08-12：Windows ARM64 NSIS 安装包因 nsis7z 不支持 7z ARM64 滤镜导致解压中断
@@ -1643,8 +1643,14 @@
 ## 2026-08-13：Release 发布前必须移除未启用的对象存储步骤
 
 - 现象：0.5.4 发布流水线在创建 GitHub Release 前卡在旧 MinIO 上传步骤；随后确认 Cloudflare Wrangler 单对象上传上限为 315MB，而 Windows 安装包可能超过 500MB，不能直接替换成 Wrangler 上传。
-- 经验：当对象存储方案尚未确定或凭据、分片策略尚未就绪时，普通 GitHub / Gitee Release 不应依赖对象存储步骤；未启用的上传逻辑必须从发布主链路移除，避免构建成功却无法进入 Release 创建。
-- 处理：发布工作流改为仅汇总并校验五个平台产物，创建 GitHub Release 后同步 Gitee；MinIO、Cloudflare R2 和其他对象存储暂不参与 0.5.4 发布。
+- 经验：当对象存储方案尚未确定或凭据、分片策略尚未就绪时，普通 GitHub Release 不应依赖对象存储步骤；未启用的上传逻辑必须从发布主链路移除，避免构建成功却无法进入 Release 创建。
+- 处理：发布工作流改为仅汇总并校验五个平台产物，创建 GitHub Release；MinIO、Cloudflare R2 和其他对象存储暂不参与 0.5.4 发布。
+
+## 2026-08-13：发布渠道下线必须同步清理全部旧镜像依赖
+
+- 现象：旧镜像 token 未配置时 job 仍以 success 结束，容易把“跳过同步”误判成“同步成功”；镜像逻辑还残留在工作流、脚本、远端校验、测试、README 和 Pages 页面。
+- 经验：发布渠道下线不能只删除一个 job，必须用全仓库检索清理凭据、API 分支、脚本、测试、文档和下载入口；可选渠道跳过不能作为发布成功证据。
+- 处理：移除旧镜像同步 job、同步脚本和远端校验分支，发布流程只保留 GitHub Release；未来大陆下载入口单独接入 Cloudflare R2。
 
 ## 2026-08-13：Electron Smoke 空状态选择器不能只匹配 CSS 类名
 

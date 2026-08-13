@@ -36,16 +36,10 @@ describe('app update source constraints', () => {
     expect(workflowSource).toContain("Get-ChildItem -Path $ffmpegRoot -Filter 'ffmpeg.exe'")
   })
 
-  it('keeps Gitee mirroring optional and replaces only same-named assets', () => {
+  it('keeps GitHub release metadata as the only update source', () => {
     const workflowSource = readSource('.github/workflows/release.yml')
-    const syncSource = readSource('scripts/sync-gitee-release.mjs')
 
-    expect(workflowSource).toContain('GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}')
-    expect(workflowSource).toContain('node scripts/sync-gitee-release.mjs')
-    expect(syncSource).toContain("if (!token) {")
-    expect(syncSource).toContain('if (!names.has(attachment.name)) continue')
-    expect(syncSource).toContain('verifyReleaseManifest')
-    expect(syncSource).toContain("form.append('file'")
+    expect(workflowSource).toContain('Verify GitHub remote assets')
   })
 
   it('repairs the Windows libheif compatibility executable after CMake install', () => {

@@ -45,7 +45,7 @@ describe('release manifest', () => {
     await runManifest(artifactsDirectory, '--tag', 'v0.4.0', '--verify')
   })
 
-  it('blocks changed and unexpected artifacts before Gitee upload', async () => {
+  it('blocks changed and unexpected artifacts before release upload', async () => {
     const artifactsDirectory = await mkdtemp(join(tmpdir(), 'aivplayer-release-manifest-drift-'))
     temporaryDirectories.push(artifactsDirectory)
     await writeFile(join(artifactsDirectory, 'AIVPlayer-0.4.0.AppImage'), 'original package')

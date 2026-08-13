@@ -10,8 +10,7 @@
 
 <p align="center">
   <a href="https://aivplayer.pages.dev/">製品サイト</a> ·
-  <a href="https://github.com/ponponon/aivplayer/releases">GitHub からダウンロード</a> ·
-  <a href="https://gitee.com/ponponon/aivplayer/releases">Gitee からダウンロード</a>
+  <a href="https://github.com/ponponon/aivplayer/releases">GitHub からダウンロード</a>
 </p>
 
 <p align="center">
@@ -46,7 +45,7 @@
 
 AIVPlayer は Electron ベースのクロスプラットフォーム・デスクトップ動画ワークステーションです。ローカル動画再生、オフライン ASR 字幕、字幕翻訳、AI コンテンツ要約、ビジュアルメディアライブラリ、画像処理、AI ショートドラマのテキスト制作を一つのアプリにまとめています。
 
-製品紹介、機能デモ、ダウンロードリンクは **[aivplayer.pages.dev](https://aivplayer.pages.dev/)** にあります。デスクトップ版は [GitHub Releases](https://github.com/ponponon/aivplayer/releases) からダウンロードできます。中国本土から GitHub へのアクセスが遅い場合は、[Gitee Releases](https://gitee.com/ponponon/aivplayer/releases) を利用してください。
+製品紹介、機能デモ、ダウンロードリンクは **[aivplayer.pages.dev](https://aivplayer.pages.dev/)** にあります。デスクトップ版は [GitHub Releases](https://github.com/ponponon/aivplayer/releases) からダウンロードできます。
 
 ### ローカルファーストと AI リクエストの境界
 
@@ -68,7 +67,6 @@ AIVPlayer は Electron ベースのクロスプラットフォーム・デスク
 [製品サイト](https://aivplayer.pages.dev/) で機能を確認するか、以下のリリースページからプラットフォームに合ったインストーラーをダウンロードしてください。
 
 - [GitHub Releases](https://github.com/ponponon/aivplayer/releases)
-- [Gitee Releases](https://gitee.com/ponponon/aivplayer/releases)
 
 macOS、Windows、Linux に対応しています。パッケージ形式と `aivcli` コマンドのインストール方法は[インストール](#インストール)を参照してください。
 
@@ -253,7 +251,7 @@ aivcli drama provider test
 
 ### インストーラーのダウンロード
 
-[GitHub Releases](https://github.com/ponponon/aivplayer/releases) または [Gitee Releases](https://gitee.com/ponponon/aivplayer/releases) からプラットフォームに合ったパッケージをダウンロードしてください。
+[GitHub Releases](https://github.com/ponponon/aivplayer/releases) からプラットフォームに合ったパッケージをダウンロードしてください。
 
 | プラットフォーム | パッケージ |
 | --- | --- |
@@ -265,9 +263,9 @@ Windows NSIS、macOS `.pkg`、Linux `.deb` は `aivcli` ランチャーをイン
 
 ### 自動更新
 
-正式版の Windows / Linux インストーラーは起動後に GitHub Releases をバックグラウンドで確認し、現在のプラットフォーム向けの新バージョンを自動ダウンロードします。ダウンロード完了後、ウィンドウ上部に「再起動して更新」ボタンが表示されます。クリックするまで終了・インストールは行われず、再生や編集中の作業を強制中断しません。macOS は Apple Developer ID の署名と公証が未設定のため、現在自動更新を有効にしていません。GitHub または Gitee から手動でダウンロードしてください。開発モードと `aivcli` は自動更新の対象外です。
+正式版の Windows / Linux インストーラーは起動後に GitHub Releases をバックグラウンドで確認し、現在のプラットフォーム向けの新バージョンを自動ダウンロードします。ダウンロード完了後、ウィンドウ上部に「再起動して更新」ボタンが表示されます。クリックするまで終了・インストールは行われず、再生や編集中の作業を強制中断しません。macOS は Apple Developer ID の署名と公証が未設定のため、現在自動更新を有効にしていません。GitHub から手動でダウンロードしてください。開発モードと `aivcli` は自動更新の対象外です。
 
-自動更新にはリリースページの `latest*.yml` メタデータと対応するインストーラー / 更新パッケージが必要です。そのためリリース処理ではこれらをすべてアップロードしてください。GitHub Release 成功後、`GITEE_TOKEN` が設定された CI は同じインストーラーと更新メタデータを Gitee へ同期します。Secret がない場合、Gitee は手動ダウンロード用ミラーとして利用できますが、自動同期は行われません。
+自動更新には GitHub リリースページの `latest*.yml` メタデータと対応するインストーラー / 更新パッケージが必要です。そのためリリース処理ではこれらをすべてアップロードしてください。
 
 ### ソースからビルド
 

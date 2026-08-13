@@ -52,5 +52,4 @@
 - [ ] 记录 libheif 使用的 codec / plugin 及其许可证；不要只记录 libheif 主库。
 - [ ] 记录模型文件的来源、版本 / revision 和模型卡许可证。
 - [ ] `npm run release:write-runtime-metadata` 通过，并检查安装包内 `runtime-metadata.json` 的二进制 / 模型哈希与构建工作区一致。
-- [ ] 发布前生成并校验 `release-manifest.json`，GitHub / Gitee 使用同一份安装包、更新元数据和 SHA-256 清单。
-- [ ] GitHub 与 Gitee 发布使用同一批已审计的安装包和更新元数据。
+- [ ] 发布前生成并校验 `release-manifest.json`，GitHub Release 使用已审计的安装包、更新元数据和 SHA-256 清单。

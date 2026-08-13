@@ -7,7 +7,6 @@ const releaseWorkflow = readFileSync(join(projectRoot, '.github/workflows/releas
 const macosWorkflow = releaseWorkflow.slice(releaseWorkflow.indexOf('  build-macos:'), releaseWorkflow.indexOf('  build-windows:'))
 const packageJson = readFileSync(join(projectRoot, 'package.json'), 'utf8')
 const electronBuilder = readFileSync(join(projectRoot, 'electron-builder.yml'), 'utf8')
-const giteeSync = readFileSync(join(projectRoot, 'scripts/sync-gitee-release.mjs'), 'utf8')
 const artifactPolicy = readFileSync(join(projectRoot, 'scripts/release-artifact-policy.mjs'), 'utf8')
 const remoteVerification = readFileSync(join(projectRoot, 'scripts/verify-remote-release.mjs'), 'utf8')
 const releaseVersion = readFileSync(join(projectRoot, 'scripts/check-release-version.mjs'), 'utf8')
@@ -40,7 +39,6 @@ describe('release workflow source constraints', () => {
     expect(releaseWorkflow).toContain('release:check-manifest')
     expect(releaseWorkflow).toContain('release:check-version')
     expect(releaseWorkflow).toContain('artifacts/assembled/release-manifest.json')
-    expect(releaseWorkflow).toContain('name: release-manifest')
     expect(releaseWorkflow).toContain('--commit "${{ github.sha }}"')
     expect(releaseWorkflow).toContain('--repository "${{ github.repository }}"')
     expect(releaseWorkflow).toContain('--workflow "${{ github.workflow }}"')
@@ -51,17 +49,15 @@ describe('release workflow source constraints', () => {
   it('publishes release assets without object-storage uploads', () => {
     expect(releaseWorkflow).not.toMatch(/MinIO|MINIO|Cloudflare R2|R2/i)
     expect(releaseWorkflow).toContain('name: Create GitHub Release')
-    expect(releaseWorkflow).toContain('node scripts/sync-gitee-release.mjs')
   })
 
   it('supports a verify-only workflow dispatch without remote release writes', () => {
     expect(releaseWorkflow).toContain('verify_only:')
-    expect(releaseWorkflow).toContain('description: \'Build and validate all release artifacts without creating or syncing a release\'')
+    expect(releaseWorkflow).toContain('description: \'Build and validate all release artifacts without creating a release\'')
     expect(releaseWorkflow).toContain('default: false')
     expect(releaseWorkflow).toContain('type: boolean')
-    expect(releaseWorkflow.match(/github\.event_name != 'workflow_dispatch' \|\| inputs\.verify_only != true/g)).toHaveLength(4)
+    expect(releaseWorkflow.match(/github\.event_name != 'workflow_dispatch' \|\| inputs\.verify_only != true/g)).toHaveLength(3)
     expect(releaseWorkflow.indexOf('release:check-evidence')).toBeLessThan(releaseWorkflow.indexOf('Create GitHub Release'))
-    expect(releaseWorkflow.indexOf('Create GitHub Release')).toBeLessThan(releaseWorkflow.indexOf('sync-gitee-release:'))
   })
 
   it('stages platform runtimes before packaging', () => {
@@ -160,26 +156,17 @@ describe('release workflow source constraints', () => {
     expect(releaseWorkflow.match(/find release -type f -iname 'aivplayer'/g)).toHaveLength(2)
   })
 
-  it('keeps Gitee artifact selection aligned with GitHub releases', () => {
-    expect(releaseWorkflow).toContain('node scripts/sync-gitee-release.mjs')
-    expect(giteeSync).toContain('listReleaseArtifacts')
-    expect(giteeSync).toContain('verifyReleaseManifest')
+  it('keeps GitHub artifact selection aligned with the release manifest', () => {
     expect(artifactPolicy).toContain("RELEASE_MANIFEST_NAME = 'release-manifest.json'")
     expect(artifactPolicy).toContain("/^latest(?:-[^/]+)?\\.yml$/i")
     expect(releaseWorkflow).toContain('release/latest*.yml')
     expect(releaseWorkflow).toContain('artifacts/assembled/latest*.yml')
-    expect(giteeSync).toContain('const names = new Set(files.map((file) => basename(file)))')
-    expect(giteeSync).toContain('RELEASE_TAG')
-    expect(giteeSync).toContain('GITEE_TARGET_COMMITISH')
   })
 
-  it('reads back both remote releases after publishing without write APIs', () => {
+  it('reads back the GitHub release after publishing without write APIs', () => {
     expect(releaseWorkflow).toContain('name: Verify GitHub remote assets')
     expect(releaseWorkflow).toContain('--platform github')
-    expect(releaseWorkflow).toContain('name: Verify Gitee remote assets')
-    expect(releaseWorkflow).toContain('--platform gitee')
     expect(releaseWorkflow).toContain('remote-verification-github')
-    expect(releaseWorkflow).toContain('remote-verification-gitee')
     expect(remoteVerification).toContain('sha256File')
     expect(remoteVerification).toContain('Readable.fromWeb')
     expect(remoteVerification).toContain('redirect: \'follow\'')
@@ -243,7 +230,6 @@ describe('release workflow source constraints', () => {
 
   it('keeps the local release dry-run offline and separate from remote publishing', () => {
     expect(packageJson).toContain('"release:dry-run"')
-    expect(releaseDryRun).not.toContain('sync-gitee-release')
     expect(releaseDryRun).not.toContain('verify-remote-release')
     expect(releaseDryRun).not.toContain('fetch(')
     expect(releaseDryRun).toContain('checkPlatformEvidence')

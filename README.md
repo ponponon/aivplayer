@@ -10,8 +10,7 @@
 
 <p align="center">
   <a href="https://aivplayer.pages.dev/">Product site</a> ·
-  <a href="https://github.com/ponponon/aivplayer/releases">Download from GitHub</a> ·
-  <a href="https://gitee.com/ponponon/aivplayer/releases">Download from Gitee</a>
+  <a href="https://github.com/ponponon/aivplayer/releases">Download from GitHub</a>
 </p>
 
 <p align="center">
@@ -46,7 +45,7 @@
 
 AIVPlayer is a cross-platform Electron desktop video workstation. It brings local video playback, offline ASR subtitles, subtitle translation, AI content summaries, visual media libraries, image processing, and AI short-drama text creation into one application.
 
-The product overview, feature demos, and download links are available at **[aivplayer.pages.dev](https://aivplayer.pages.dev/)**. Download desktop installers from [GitHub Releases](https://github.com/ponponon/aivplayer/releases), or use [Gitee Releases](https://gitee.com/ponponon/aivplayer/releases) when GitHub access is slow in mainland China.
+The product overview, feature demos, and download links are available at **[aivplayer.pages.dev](https://aivplayer.pages.dev/)**. Download desktop installers from [GitHub Releases](https://github.com/ponponon/aivplayer/releases).
 
 ### Local-first architecture and AI request boundaries
 
@@ -68,7 +67,6 @@ The release signing process is documented in the [Code signing policy](CODE_SIGN
 Visit the [product site](https://aivplayer.pages.dev/) for an overview, or download an installer for your platform from:
 
 - [GitHub Releases](https://github.com/ponponon/aivplayer/releases)
-- [Gitee Releases](https://gitee.com/ponponon/aivplayer/releases)
 
 macOS, Windows, and Linux are supported. See [Installation](#installation) for package formats and how to install the `aivcli` command.
 
@@ -257,7 +255,7 @@ Run `aivcli --help`, `aivcli batch --help`, or `aivcli drama --help` for all opt
 
 ### Download installers
 
-Download a package for your platform from [GitHub Releases](https://github.com/ponponon/aivplayer/releases) or [Gitee Releases](https://gitee.com/ponponon/aivplayer/releases):
+Download a package for your platform from [GitHub Releases](https://github.com/ponponon/aivplayer/releases):
 
 | Platform | Package |
 | --- | --- |
@@ -269,9 +267,9 @@ Windows NSIS, macOS `.pkg`, and Linux `.deb` install the `aivcli` launcher and a
 
 ### Automatic updates
 
-After launch, official Windows and Linux installers check GitHub Releases in the background and download a new version for the current platform. When the download finishes, a “Restart and update” button appears at the top of the window; installation only begins after clicking it and does not forcibly interrupt playback or editing. macOS does not currently enable automatic updates because Apple Developer ID signing and notarization are not configured, so updates must be downloaded manually from GitHub or Gitee. Development mode and `aivcli` do not participate in automatic updates.
+After launch, official Windows and Linux installers check GitHub Releases in the background and download a new version for the current platform. When the download finishes, a “Restart and update” button appears at the top of the window; installation only begins after clicking it and does not forcibly interrupt playback or editing. macOS does not currently enable automatic updates because Apple Developer ID signing and notarization are not configured, so updates must be downloaded manually from GitHub. Development mode and `aivcli` do not participate in automatic updates.
 
-Automatic updates depend on the `latest*.yml` metadata and corresponding installer/update packages on the release page, so the release process must upload all of them. After a GitHub Release succeeds, CI with `GITEE_TOKEN` synchronizes the same installers and update metadata to Gitee. Without that Secret, Gitee remains a manual download mirror but is not synchronized automatically.
+Automatic updates depend on the `latest*.yml` metadata and corresponding installer/update packages on the GitHub release page, so the release process must upload all of them.
 
 ### Build from source
 

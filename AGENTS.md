@@ -51,8 +51,6 @@ type(scope) : subject
 
 github 发版要注意打上 tag，github releases 页面的东西也不要忘了
 
-对了 gitee 也要，因为还要走 gitee 的 releases 让国内用户有良好的下载速度
-
 打包出来的 windows、macos、linux 的，要上传可被用户下载
 
 要保证流程的一致性，别出现纰漏
@@ -91,8 +89,8 @@ github 发版要注意打上 tag，github releases 页面的东西也不要忘�
 涉及以下操作时，禁止仅在默认沙盒中执行，必须使用宿主权限：
 - test-proxy.sh、代理端口检测
 - gh auth/status/api/run/release
-- git push、git tag、GitHub/Gitee Release
-- 访问 macOS Keychain、npm/GitHub/Gitee/Cloudflare
+- git push、git tag、GitHub Release
+- 访问 macOS Keychain、npm/GitHub/Cloudflare
 - npm install 或其他需要下载外部资源的命令
 
 ## Git Worktree 规范

@@ -61,19 +61,9 @@ function createMockRemote(files: Map<string, Buffer>, mutateName?: string, asset
         assets: names.map((name) => ({ name, browser_download_url: assetUrl('github', name) }))
       }), { headers: { 'Content-Type': 'application/json' } })
     }
-    if (url === `${baseUrl}/gitee/repos/ponponon/aivplayer/releases/tags/v0.4.0`) {
-      return new Response(JSON.stringify({ id: 42 }), { headers: { 'Content-Type': 'application/json' } })
-    }
-    if (parsedUrl.pathname === '/gitee/repos/ponponon/aivplayer/releases/42/attach_files') {
-      return new Response(JSON.stringify(names.map((name, index) => ({
-        id: index + 1,
-        name,
-        browser_download_url: assetUrl('gitee', name)
-      }))), { headers: { 'Content-Type': 'application/json' } })
-    }
-    const assetMatch = parsedUrl.pathname.match(/^\/(github|gitee)\/assets\/(.+)$/)
+    const assetMatch = parsedUrl.pathname.match(/^\/github\/assets\/(.+)$/)
     if (assetMatch) {
-      const name = decodeURIComponent(assetMatch[2])
+      const name = decodeURIComponent(assetMatch[1])
       const content = name === mutateName ? Buffer.from('tampered package') : files.get(name)
       return content
         ? new Response(content.toString('utf8'))
@@ -103,23 +93,6 @@ describe('remote release verification', () => {
     expect(report.artifacts.every((artifact) => artifact.ok)).toBe(true)
     expect(remote.requests.every((request) => request.method === 'GET')).toBe(true)
     expect(JSON.parse(await readFile(reportPath, 'utf8')).platform).toBe('github')
-  })
-
-  it('verifies Gitee release attachment URLs without using a write endpoint', async () => {
-    const fixture = await createFixture()
-    const remote = createMockRemote(fixture.files)
-    const { verifyRemoteRelease } = await loadVerifier()
-    await verifyRemoteRelease({
-      platform: 'gitee',
-      owner: 'ponponon',
-      repo: 'aivplayer',
-      tag: 'v0.4.0',
-      artifactsDir: fixture.artifactsDirectory,
-      giteeApiBase: 'https://remote.test/gitee',
-      fetchImpl: remote.fetchImpl
-    })
-    expect(remote.requests.some((request) => request.url.includes('/releases/42/attach_files?'))).toBe(true)
-    expect(remote.requests.every((request) => request.method === 'GET')).toBe(true)
   })
 
   it('writes a failed report when a remote asset changes', async () => {

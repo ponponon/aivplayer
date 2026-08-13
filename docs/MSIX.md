@@ -2,7 +2,7 @@
 
 AIVPlayer 保留两条 Windows 分发链路：
 
-- GitHub / Gitee：继续发布 NSIS `.exe`，用于普通下载和 `electron-updater` 自动更新。
+- GitHub Release：继续发布 NSIS `.exe`，用于普通下载和 `electron-updater` 自动更新。
 - Microsoft Store：额外生成 `.appx`，提交到 Partner Center；商店安装实例不使用 `electron-updater`，更新由 Microsoft Store 管理。
 
 ## 为什么不需要购买代码签名证书
@@ -48,7 +48,7 @@ npm run build
 npx electron-builder --config electron-builder-msix.generated.json --win --x64 --publish never
 ```
 
-ARM64 将 `--x64` 换成 `--arm64`。产物位于 `release-msix/`，不会混入 `release/`，也不会被 GitHub/Gitee 的普通安装包清单收录。
+ARM64 将 `--x64` 换成 `--arm64`。产物位于 `release-msix/`，不会混入 `release/`，也不会被 GitHub Release 的普通安装包清单收录。
 
 ## 提交 Partner Center
 
@@ -64,5 +64,5 @@ ARM64 将 `--x64` 换成 `--arm64`。产物位于 `release-msix/`，不会混入
 `src/desktop/app-updater.ts` 会在 `process.windowsStore` 为真时关闭 `electron-updater`。因此：
 
 - 从 Microsoft Store 安装的版本由 Store 负责更新和回滚。
-- 从 GitHub / Gitee 下载的 NSIS `.exe` 仍按原有逻辑检查 GitHub Release 更新。
+- 从 GitHub 下载的 NSIS `.exe` 仍按原有逻辑检查 GitHub Release 更新。
 - 同一台机器上不要把 Store 版和普通 `.exe` 版混用为同一套更新来源。

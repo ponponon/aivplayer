@@ -13,7 +13,6 @@ import {
 } from './release-artifact-policy.mjs'
 
 const DEFAULT_GITHUB_API_BASE = 'https://api.github.com'
-const DEFAULT_GITEE_API_BASE = 'https://gitee.com/api/v5'
 const MAX_CONTROL_FILE_BYTES = 4 * 1024 * 1024
 
 function trimTrailingSlash(value) {
@@ -74,38 +73,6 @@ async function resolveGithubAssets({ fetchImpl, owner, repo, tag, apiBase, token
   )
   const assets = new Map()
   for (const asset of normalizeAssetList(release)) addAsset(assets, asset, '')
-  return assets
-}
-
-async function resolveGiteeAssets({ fetchImpl, owner, repo, tag, apiBase, token }) {
-  const base = trimTrailingSlash(apiBase)
-  const encodedOwner = encodeURIComponent(owner)
-  const encodedRepo = encodeURIComponent(repo)
-  const encodedTag = encodeURIComponent(tag)
-  const headers = authHeaders(token)
-  const release = await fetchJson(
-    fetchImpl,
-    `${base}/repos/${encodedOwner}/${encodedRepo}/releases/tags/${encodedTag}`,
-    headers
-  )
-  if (!release?.id) throw new Error(`Gitee release id is missing for tag ${tag}.`)
-
-  const assets = new Map()
-  const perPage = 100
-  for (let page = 1; page <= 10; page += 1) {
-    const attachments = normalizeAssetList(await fetchJson(
-      fetchImpl,
-      `${base}/repos/${encodedOwner}/${encodedRepo}/releases/${encodeURIComponent(String(release.id))}/attach_files?page=${page}&per_page=${perPage}`,
-      headers
-    ))
-    for (const attachment of attachments) {
-      const fallbackUrl = attachment?.id
-        ? `${base}/repos/${encodedOwner}/${encodedRepo}/releases/${encodeURIComponent(String(release.id))}/attach_files/${encodeURIComponent(String(attachment.id))}/download`
-        : ''
-      addAsset(assets, attachment, fallbackUrl)
-    }
-    if (attachments.length < perPage) break
-  }
   return assets
 }
 
@@ -175,7 +142,7 @@ async function writeReport(reportPath, report) {
 
 export async function verifyRemoteRelease(options = {}) {
   const platform = options.platform
-  if (platform !== 'github' && platform !== 'gitee') throw new Error(`Unsupported remote platform: ${String(platform)}`)
+  if (platform !== 'github') throw new Error(`Unsupported remote platform: ${String(platform)}`)
   const owner = options.owner
   const repo = options.repo
   const tag = options.tag
@@ -190,23 +157,14 @@ export async function verifyRemoteRelease(options = {}) {
   const expectedByName = new Map(expectedAssets.map((asset) => [asset.name, asset]))
   const token = options.token
   const fetchImpl = options.fetchImpl ?? fetch
-  const remoteAssets = platform === 'github'
-    ? await resolveGithubAssets({
-      fetchImpl,
-      owner,
-      repo,
-      tag,
-      apiBase: options.githubApiBase ?? DEFAULT_GITHUB_API_BASE,
-      token
-    })
-    : await resolveGiteeAssets({
-      fetchImpl,
-      owner,
-      repo,
-      tag,
-      apiBase: options.giteeApiBase ?? DEFAULT_GITEE_API_BASE,
-      token
-    })
+  const remoteAssets = await resolveGithubAssets({
+    fetchImpl,
+    owner,
+    repo,
+    tag,
+    apiBase: options.githubApiBase ?? DEFAULT_GITHUB_API_BASE,
+    token
+  })
 
   const expectedNames = new Set(expectedByName.keys())
   const missingNames = [...expectedNames].filter((name) => !remoteAssets.has(name)).sort()
@@ -283,7 +241,6 @@ function readOptions(argv) {
     else if (item === '--manifest-path') options.manifestPath = value
     else if (item === '--token') options.token = value
     else if (item === '--github-api-base') options.githubApiBase = value
-    else if (item === '--gitee-api-base') options.giteeApiBase = value
     else if (item === '--report-path') options.reportPath = value
     else continue
     index += 1

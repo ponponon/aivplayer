@@ -11,7 +11,7 @@ on:
         required: true
         type: string
       verify_only:
-        description: 'Build and validate all release artifacts without creating or syncing a release'
+        description: 'Build and validate all release artifacts without creating a release'
         required: false
         default: false
         type: boolean
@@ -1032,13 +1032,6 @@ jobs:
       - name: Verify release manifest
         run: npm run release:check-manifest -- --artifacts-dir artifacts/assembled --tag "${{ inputs.tag || github.ref_name }}"
 
-      - name: Share release manifest with Gitee sync
-        uses: actions/upload-artifact@v7
-        with:
-          name: release-manifest
-          path: artifacts/assembled/release-manifest.json
-          if-no-files-found: error
-
       - name: Create GitHub Release
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.verify_only != true }}
         uses: softprops/action-gh-release@v2
@@ -1071,56 +1064,4 @@ jobs:
         with:
           name: remote-verification-github
           path: artifacts/assembled/github-remote-verification.json
-          if-no-files-found: error
-
-  sync-gitee-release:
-    needs: [publish-release]
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.verify_only != true }}
-    runs-on: ubuntu-latest
-    env:
-      GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
-      GITEE_OWNER: ponponon
-      GITEE_REPO: aivplayer
-      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
-      GITEE_TARGET_COMMITISH: main
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-
-      - name: Skip Gitee sync when no token is configured
-        if: ${{ env.GITEE_TOKEN == '' }}
-        run: echo "GITEE_TOKEN is not configured; skipping Gitee release sync."
-
-      - name: Download release artifacts
-        if: ${{ env.GITEE_TOKEN != '' }}
-        uses: actions/download-artifact@v8
-        with:
-          path: artifacts
-          merge-multiple: false
-
-      - name: Assemble architecture-aware Gitee artifacts
-        if: ${{ env.GITEE_TOKEN != '' }}
-        run: npm run release:assemble-artifacts -- --input-dir artifacts --output-dir artifacts/assembled
-
-      - name: Sync release to Gitee
-        if: ${{ env.GITEE_TOKEN != '' }}
-        env:
-          ARTIFACTS_DIR: artifacts/assembled
-        run: node scripts/sync-gitee-release.mjs
-
-      - name: Verify Gitee remote assets
-        if: ${{ env.GITEE_TOKEN != '' }}
-        env:
-          RELEASE_TOKEN: ${{ env.GITEE_TOKEN }}
-        run: npm run release:verify-remote -- --platform gitee --owner "$GITEE_OWNER" --repo "$GITEE_REPO" --artifacts-dir artifacts/assembled --manifest-path artifacts/assembled/release-manifest.json --tag "$RELEASE_TAG" --report-path artifacts/assembled/gitee-remote-verification.json
-
-      - name: Share Gitee remote verification report
-        if: ${{ env.GITEE_TOKEN != '' }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: remote-verification-gitee
-          path: artifacts/assembled/gitee-remote-verification.json
           if-no-files-found: error

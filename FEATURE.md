@@ -6,7 +6,7 @@
 
 - Windows NSIS 安装包改为标准安装向导：双击后显示安装流程，允许选择安装目录，固定创建桌面和开始菜单快捷方式，并在安装完成后提供启动 AIVPlayer 的选项；后台自动更新仍继续使用静默安装流程。
 
-- Microsoft Store MSIX 发布链路已接入：Windows x64 / ARM64 发布作业在配置 Partner Center 身份变量后，会额外生成独立的 `.appx` Actions artifact；GitHub / Gitee 继续使用 NSIS `.exe`，商店版运行时检测 `process.windowsStore` 并关闭 `electron-updater`，由 Microsoft Store 管理更新。
+- Microsoft Store MSIX 发布链路已接入：Windows x64 / ARM64 发布作业在配置 Partner Center 身份变量后，会额外生成独立的 `.appx` Actions artifact；GitHub Release 继续使用 NSIS `.exe`，商店版运行时检测 `process.windowsStore` 并关闭 `electron-updater`，由 Microsoft Store 管理更新。
 - 新增公开 Code signing policy：记录 SignPath Foundation 免费签名范围、项目角色、构建审核、隐私边界和发布流程，并接入 README 与产品下载页。
 
 - Cloudflare Pages 新增公开隐私政策页：说明本地媒体与项目数据、用户主动配置的 AI 服务、模型下载、局域网 Web 播放和更新检查等数据流，并提供中英文内容供应用商店审核使用。
@@ -504,7 +504,7 @@
 - 更新过程通过 IPC 同步 `checking`、`downloading`、`downloaded`、`installing` 和错误状态，顶栏展示后台下载进度。
 - 更新下载完成后只提供“重启并更新”操作，调用安装器完成替换，不在播放或编辑过程中强制退出应用。
 - 设置页新增“关于”分组，集中显示版本、许可证和项目地址；用户可以手动检查更新，查看最新状态或下载进度，并在下载完成后从设置页重启更新。macOS、开发模式和 CLI 会明确显示当前运行模式不支持应用内更新。
-- electron-builder 配置 GitHub 发布源，Release 工作流会上传 `latest*.yml` 和 `.blockmap` 元数据；GitHub Release 成功后，配置 `GITEE_TOKEN` 时会由独立脚本把同一批安装包和元数据同步到 Gitee，未配置凭据时不会阻断 GitHub 发布。
+- electron-builder 配置 GitHub 发布源，Release 工作流会上传 `latest*.yml` 和 `.blockmap` 元数据；GitHub Release 成功后，Windows/Linux 安装包可按当前平台自动更新。
 
 ## 应用图标
 - 已配置 AIVPlayer 自定义应用图标，macOS 开发态 Dock 和正式安装包都不再使用 Electron 默认图标。
@@ -665,20 +665,20 @@
 - 候选详情提供“恢复候选详情默认”入口，仅将当前工程的外层和分组状态恢复为关闭并持久化默认值；其他工程偏好保持不变，不修改 `EditingProject`、`.aivproj`、字幕或 revision。
 - 候选详情提供“恢复所有候选详情默认”入口；操作前显示本地化确认提示，确认后清空全部工程的独立候选详情 UI 偏好，并将当前外层 / 分组同步关闭；取消确认不会改变任何工程偏好，也不修改工程数据、字幕或 revision。
 - 候选审计状态带有明确来源标记；候选从多份有效旁车恢复为无歧义或无有效字幕时，重建字幕版本清单会清除过期候选详情，但会保留项目保存等其他来源的状态提示；真实 Electron Smoke 覆盖文件移走、清单重建、状态清除和文件恢复。
-- 发布链路新增项目 MIT `LICENSE` 与直接运行时依赖清单；三平台打包前校验清单，Electron 安装包资源检查强制包含 `LICENSE` 和 `THIRD_PARTY_LICENSES.md`，GitHub / Gitee 继续复用同一批已校验产物。
+- 发布链路新增项目 MIT `LICENSE` 与直接运行时依赖清单；三平台打包前校验清单，Electron 安装包资源检查强制包含 `LICENSE` 和 `THIRD_PARTY_LICENSES.md`，GitHub Release 继续复用同一批已校验产物。
 - 发布链路新增固定 revision 的 SigLIP2 视觉模型暂存；打包前生成 `runtime-metadata.json`，记录 whisper.cpp、FFmpeg、libheif、macOS `sips` fallback 和视觉模型文件的版本、构建特征与 SHA-256，安装包资源检查会阻断缺失元数据的产物。
-- GitHub / Gitee 发布前会从合并后的三平台产物生成 `release-manifest.json`，记录每个安装包和更新元数据的大小与 SHA-256；Gitee 同步复用该清单并在上传前阻断文件集合或内容漂移。
-- GitHub Release 创建后、Gitee 同步后会通过只读 API 回读实际资产，流式下载并核对每个文件的大小、SHA-256 和 `release-manifest.json` 内容；两边分别上传不含凭据的校验报告，远端缺失、额外或漂移都会让发布任务失败。
+- GitHub Release 发布前会从合并后的三平台产物生成 `release-manifest.json`，记录每个安装包和更新元数据的大小与 SHA-256。
+- GitHub Release 创建后会通过只读 API 回读实际资产，流式下载并核对每个文件的大小、SHA-256 和 `release-manifest.json` 内容；远端缺失、额外或漂移都会让发布任务失败。
 - 远端回读会拒绝所有不在本地 manifest 中的附件（包括调试 YAML 等非发布文件），并对成功报告及异常下载消息中的 URL 查询参数和 fragment 做脱敏，避免把远端凭据写入审计报告。
-- 发布 job 会先校验 `v<package.json.version>` 与 tag 完全一致，再校验每个 `latest*.yml` 的版本和 `url` / `path` 引用都指向当前批次资产；artifact policy 只接收 `latest*.yml`，不会把 `builder-debug.yml` 等调试文件发布到 GitHub / Gitee。
+- 发布 job 会先校验 `v<package.json.version>` 与 tag 完全一致，再校验每个 `latest*.yml` 的版本和 `url` / `path` 引用都指向当前批次资产；artifact policy 只接收 `latest*.yml`，不会把 `builder-debug.yml` 等调试文件发布到 GitHub Release。
 - 三个平台的构建 job 会在上传前执行平台产物契约：macOS 必须有 DMG / ZIP / PKG 与 `latest-mac.yml`，Windows 的 x64 / arm64 安装包会合并到包含两种架构文件的 `latest.yml`，Linux 则分别提供 `latest-linux.yml` 与 `latest-linux-arm64.yml`；缺包、跨平台包泄漏或 metadata 命名错误会在合并 manifest 前阻断发布。
 - 构建上传前还会读取安装包格式边界：DMG 校验 UDIF `koly` trailer，ZIP / PKG 校验对应容器头，Windows EXE 校验 PE `MZ`，Linux AppImage 校验 ELF、DEB 校验 ar 头；空文件或伪装文件不会仅凭文件名进入发布批次。
-- 每个构建 Runner 在上传前生成独立的 `platform-release-report-*.json` evidence artifact，记录平台契约、资产文件名、大小和 SHA-256；Windows 双架构更新元数据会在汇总 job 中合并，Linux arm64 保留标准的 `latest-linux-arm64.yml`，报告参与 workflow 证据留存但不会进入 GitHub / Gitee Release。
+- 每个构建 Runner 在上传前生成独立的 `platform-release-report-*.json` evidence artifact，记录平台契约、资产文件名、大小和 SHA-256；Windows 双架构更新元数据会在汇总 job 中合并，Linux arm64 保留标准的 `latest-linux-arm64.yml`，报告参与 workflow 证据留存但不会进入 GitHub Release。
 - publish job 下载五组平台构建产物后，会先组装唯一文件集合、合并 Windows 更新元数据，再逐项核对三平台契约、文件集合、大小和 SHA-256，最后执行版本门禁和 `release-manifest.json` 生成；任一架构构建缺失、报告重叠、漂移或合并目录出现未报告资产都会阻断发布。
 - 发布清单会记录受控的 CI provenance（提交 SHA、仓库、workflow、运行 ID 和尝试次数）；只允许 GitHub Actions 提供的非敏感标识进入 `release-manifest.json`，不写入 token、URL 查询凭据或本机绝对路径。
-- 新增 `npm run release:dry-run` 本地发布演练：用小型格式签名 fixture 分别模拟 macOS / Windows / Linux Runner，执行平台契约、安装包格式、合并 evidence、版本、manifest 和哈希复核；演练不联网、不调用 GitHub / Gitee API，临时目录默认自动清理。
-- Release workflow 的 `workflow_dispatch` 新增 `verify_only` 模式：仍执行真实 macOS / Windows / Linux 构建、artifact 合并、evidence、版本和 manifest 门禁，但跳过 GitHub Release 创建、GitHub 远端回读和 Gitee 同步，适合真实 CI 发布前演练。
-- publish job 会把合并目录的 `merged-platform-evidence.json` 作为独立 workflow artifact 留存，包含实际验证过的文件名、大小和 SHA-256；它只用于审计，不进入 GitHub / Gitee Release。
+- 新增 `npm run release:dry-run` 本地发布演练：用小型格式签名 fixture 分别模拟 macOS / Windows / Linux Runner，执行平台契约、安装包格式、合并 evidence、版本、manifest 和哈希复核；演练不联网、不调用 GitHub API，临时目录默认自动清理。
+- Release workflow 的 `workflow_dispatch` 新增 `verify_only` 模式：仍执行真实 macOS / Windows / Linux 构建、artifact 合并、evidence、版本和 manifest 门禁，但跳过 GitHub Release 创建和 GitHub 远端回读，适合真实 CI 发布前演练。
+- publish job 会把合并目录的 `merged-platform-evidence.json` 作为独立 workflow artifact 留存，包含实际验证过的文件名、大小和 SHA-256；它只用于审计，不进入 GitHub Release。
 - 发布配置为 Windows 与 Linux 安装包启用架构文件名；后续正式版本将分别构建 x64 / arm64 原生 Electron、whisper.cpp、FFmpeg、libheif 和 LanceDB 运行时，Windows 合并双架构 `latest.yml`，Linux 使用 electron-updater 约定的 `latest-linux-arm64.yml`，并在发布前检查安装包与内置二进制的架构。
 - Windows ARM64 使用 LLVM 工具链构建 whisper.cpp，并下载带 SHA-256 校验的原生 ARM64 FFmpeg，避免把 x64 媒体运行时混入 ARM64 安装包。
 - Windows x64 发布前会对 Chocolatey FFmpeg 安装执行最多三次指数退避，并以实际可携带二进制存在作为成功条件，避免网络 504 或包布局变化把 shim / 空安装误带入安装包。
@@ -839,4 +839,5 @@
 
 ## Windows 安装包发布
 
-- 发布工作流会按 tag 构建 Windows x64 / arm64 安装包，并将全部平台产物发布到 GitHub Release，再按同一份清单同步到 Gitee；当前不再向 MinIO 或 Cloudflare R2 上传额外副本。
+- 发布工作流会按 tag 构建 Windows x64 / arm64 安装包，并将全部平台产物发布到 GitHub Release；当前不再向 MinIO 或 Cloudflare R2 上传额外副本，未来大陆下载入口计划使用 R2。
+- 发布渠道已移除旧镜像：工作流、远端校验、脚本、测试和公开下载页面只保留 GitHub Release；未来大陆用户下载入口计划迁移到 Cloudflare R2。

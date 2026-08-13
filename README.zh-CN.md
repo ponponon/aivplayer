@@ -10,8 +10,7 @@
 
 <p align="center">
   <a href="https://aivplayer.pages.dev/">产品主页</a> ·
-  <a href="https://github.com/ponponon/aivplayer/releases">GitHub 下载</a> ·
-  <a href="https://gitee.com/ponponon/aivplayer/releases">Gitee 下载（国内）</a>
+  <a href="https://github.com/ponponon/aivplayer/releases">GitHub 下载</a>
 </p>
 
 <p align="center">
@@ -46,7 +45,7 @@
 
 AIVPlayer 是一款基于 Electron 的跨平台桌面视频工作台。它把本地视频播放、离线 ASR 字幕、字幕翻译、AI 内容总结、视觉影视库、图片处理和 AI 短剧文本创作放在同一个应用里。
 
-AIVPlayer 的产品介绍、功能演示和下载入口位于 **[aivplayer.pages.dev](https://aivplayer.pages.dev/)**。需要下载桌面安装包时，可以直接访问 [GitHub Releases](https://github.com/ponponon/aivplayer/releases)；在中国大陆访问 GitHub 较慢时，也可以访问 [Gitee Releases](https://gitee.com/ponponon/aivplayer/releases)。
+AIVPlayer 的产品介绍、功能演示和下载入口位于 **[aivplayer.pages.dev](https://aivplayer.pages.dev/)**。需要下载桌面安装包时，可以直接访问 [GitHub Releases](https://github.com/ponponon/aivplayer/releases)。
 
 ### 本地优先与 AI 请求边界
 
@@ -68,7 +67,6 @@ AIVPlayer 的产品介绍、功能演示和下载入口位于 **[aivplayer.pages
 从 [产品主页](https://aivplayer.pages.dev/) 了解功能，或从下面的发布页下载对应平台的安装包：
 
 - [GitHub Releases](https://github.com/ponponon/aivplayer/releases)
-- [Gitee Releases（国内）](https://gitee.com/ponponon/aivplayer/releases)
 
 支持 macOS、Windows 和 Linux。安装包格式与 `aivcli` 命令的安装方式见[安装](#安装)章节。
 
@@ -254,7 +252,7 @@ aivcli drama provider test
 
 ### 下载安装包
 
-从 [GitHub Releases](https://github.com/ponponon/aivplayer/releases) 或 [Gitee Releases](https://gitee.com/ponponon/aivplayer/releases) 下载对应平台的安装包：
+从 [GitHub Releases](https://github.com/ponponon/aivplayer/releases) 下载对应平台的安装包：
 
 | 平台 | 安装包 |
 | --- | --- |
@@ -266,9 +264,9 @@ Windows NSIS、macOS `.pkg` 和 Linux `.deb` 会安装 `aivcli` 启动器并加�
 
 ### 自动更新
 
-Windows 和 Linux 正式安装包启动后会在后台检查 GitHub Releases，并自动下载适配当前平台的新版本；下载完成后，窗口顶部会出现“重启并更新”按钮，点击后才会退出并安装，不会强制中断当前播放或编辑。macOS 当前因为尚未配置 Apple Developer ID 签名和公证，暂不启用自动更新，需要从 GitHub 或 Gitee 手动下载安装。开发模式和 `aivcli` 不参与自动更新。
+Windows 和 Linux 正式安装包启动后会在后台检查 GitHub Releases，并自动下载适配当前平台的新版本；下载完成后，窗口顶部会出现“重启并更新”按钮，点击后才会退出并安装，不会强制中断当前播放或编辑。macOS 当前因为尚未配置 Apple Developer ID 签名和公证，暂不启用自动更新，需要从 GitHub 手动下载安装。开发模式和 `aivcli` 不参与自动更新。
 
-自动更新依赖发布页中的 `latest*.yml` 元数据和对应的安装包 / 更新包，因此发布流程必须完整上传这些文件。GitHub Release 发布成功后，配置了 `GITEE_TOKEN` 的 CI 会把同一批安装包和更新元数据同步到 Gitee；如果仓库没有配置该 Secret，Gitee 仍可作为手动下载镜像，但不会自动同步。
+自动更新依赖 GitHub 发布页中的 `latest*.yml` 元数据和对应的安装包 / 更新包，因此发布流程必须完整上传这些文件。
 
 ### 从源码构建
 
