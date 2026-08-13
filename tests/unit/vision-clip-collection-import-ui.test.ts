@@ -9,7 +9,7 @@ describe('vision clip collection import UI', () => {
     const panel = readFileSync(join(projectRoot, 'src/renderer/src/app/vision-panel.tsx'), 'utf8')
     expect(panel).toContain('importVisionClipCollection')
     expect(panel).toContain('collectionImport')
-    expect(panel).toContain('setCollections((current) => [result.collection!')
+    expect(panel).toContain('const importedCollections = result.collections ?? (result.collection ? [result.collection] : [])')
     expect(panel).toContain('savedCollectionEmpty')
   })
 
@@ -28,5 +28,13 @@ describe('vision clip collection import UI', () => {
     expect(panel).toContain('duplicateVisionClipCollections')
     expect(panel).toContain('duplicateSelectedCollections')
     expect(panel).toContain('selectedCollections(selectedCollectionIds.size)')
+  })
+
+  it('exposes batch JSON export with a busy guard', () => {
+    const panel = readFileSync(join(projectRoot, 'src/renderer/src/app/vision-panel.tsx'), 'utf8')
+    expect(panel).toContain('exportVisionClipCollections')
+    expect(panel).toContain('exportSelectedCollections')
+    expect(panel).toContain('isExportingCollections')
+    expect(panel).toContain('finally(() => setIsExportingCollections(false))')
   })
 })
