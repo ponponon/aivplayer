@@ -22,6 +22,10 @@ function renderJson(collection: VisionClipCollection): string {
   return `${JSON.stringify({ exportVersion: 1, collection }, null, 2)}\n`
 }
 
+function renderBatchJson(collections: readonly VisionClipCollection[]): string {
+  return `${JSON.stringify({ exportVersion: 2, collections }, null, 2)}\n`
+}
+
 function renderCsv(collection: VisionClipCollection): string {
   const header = ['index', 'source_id', 'video_path', 'file_name', 'start_seconds', 'end_seconds', 'duration_seconds', 'fingerprint', 'text', 'evidence_types']
   const rows = collection.selections.map((selection, index) => [
@@ -62,4 +66,8 @@ export function renderVisionClipCollectionExport(collection: VisionClipCollectio
   if (format === 'csv') return renderCsv(collection)
   if (format === 'edl') return renderEdl(collection, frameRate)
   return renderJson(collection)
+}
+
+export function renderVisionClipCollectionsExport(collections: readonly VisionClipCollection[]): string {
+  return renderBatchJson(collections)
 }

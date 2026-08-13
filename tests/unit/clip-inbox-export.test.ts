@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderVisionClipCollectionExport } from '../../src/core/ai/clip-inbox-export'
+import { renderVisionClipCollectionExport, renderVisionClipCollectionsExport } from '../../src/core/ai/clip-inbox-export'
 import type { VisionClipCollection } from '../../src/shared/vision-types'
 
 const collection: VisionClipCollection = {
@@ -27,6 +27,11 @@ describe('clip inbox export', () => {
   it('renders versioned JSON', () => {
     const output = renderVisionClipCollectionExport(collection, 'json')
     expect(JSON.parse(output)).toMatchObject({ exportVersion: 1, collection: { title: collection.title, tags: ['海边'] } })
+  })
+
+  it('renders a versioned multi-collection JSON export', () => {
+    const output = renderVisionClipCollectionsExport([collection, { ...collection, id: 'collection-2', title: '第二组' }])
+    expect(JSON.parse(output)).toMatchObject({ exportVersion: 2, collections: [{ id: 'collection-1' }, { id: 'collection-2', title: '第二组' }] })
   })
 
   it('escapes CSV fields', () => {

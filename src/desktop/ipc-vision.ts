@@ -3,12 +3,13 @@ import { createHash, randomUUID } from 'node:crypto'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
-import type { VisionClipCollectionBatchDuplicateRequest, VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionEvidenceAuditPage, VisionEvidenceAuditRequest, VisionEvidenceBatchClearResult, VisionEvidenceSourceRequest, VisionEvidenceType, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionModelDownloadResult, VisionSavedSearchInput, VisionSearchFullExportRequest, VisionSearchPageKind, VisionSearchPageRequest, VisionSearchRequest, VisionSearchResult, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchResultsExportRequest, VisionSearchResultsExportResult, VisionSimilarSearchRequest } from '../shared/vision-types'
+import type { VisionClipCollectionBatchDuplicateRequest, VisionClipCollectionBatchExportRequest, VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionEvidenceAuditPage, VisionEvidenceAuditRequest, VisionEvidenceBatchClearResult, VisionEvidenceSourceRequest, VisionEvidenceType, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionModelDownloadResult, VisionSavedSearchInput, VisionSearchFullExportRequest, VisionSearchPageKind, VisionSearchPageRequest, VisionSearchRequest, VisionSearchResult, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchResultsExportRequest, VisionSearchResultsExportResult, VisionSimilarSearchRequest } from '../shared/vision-types'
 import { VISION_SEARCH_FULL_EXPORT_MAX_RESULTS } from '../shared/vision-types'
 import type { VisionEntityCatalogBatchPatch, VisionEntityCatalogCreateInput, VisionEntityCatalogPatch } from '../shared/vision-entity-types'
 import { scanVisionDirectory, isVisionScanAbortError } from '../core/ai/vision-directory-scan'
-import { renderVisionClipCollectionExport } from '../core/ai/clip-inbox-export'
-import { parseVisionClipCollectionImportText } from '../core/ai/clip-inbox-import'
+import { renderVisionClipCollectionExport, renderVisionClipCollectionsExport } from '../core/ai/clip-inbox-export'
+import { parseVisionClipCollectionImportText, parseVisionClipCollectionsImport } from '../core/ai/clip-inbox-import'
+import { normalizeVisionClipCollectionIds } from '../core/ai/clip-inbox-operations'
 import { isVisionSearchExportAbortError, renderVisionSearchResultsExport } from '../core/ai/vision-search-export'
 import { writeVisionSearchResultsExportResumable } from '../core/ai/vision-search-export-resumable'
 import { getVisionSearchExportPartsDirectory } from '../core/ai/vision-search-export-store'
@@ -651,6 +652,27 @@ export function registerVisionIpc(): void {
       return { success: false, message: error instanceof Error ? error.message : String(error) }
     }
   })
+  ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_BATCH_EXPORT, async (_event, request: VisionClipCollectionBatchExportRequest) => {
+    const collectionIds = normalizeVisionClipCollectionIds(request?.collectionIds)
+    if (collectionIds.length === 0) return { success: false, message: '没有选择要导出的选段集合' }
+    const collections = collectionIds.map((collectionId) => getClipInboxStore().getCollection(collectionId)).filter((collection): collection is NonNullable<typeof collection> => collection !== null)
+    const skippedCount = collectionIds.length - collections.length
+    if (collections.length === 0) return { success: false, message: '选中的选段集合均不存在', skippedCount }
+    const defaultPath = join(app.getPath('documents'), 'aivplayer-clip-collections.json')
+    const filePath = await promptForSavePath({
+      title: '导出选中的选段集合',
+      defaultPath,
+      filters: [{ name: 'AIVPlayer clip collections JSON', extensions: ['json'] }]
+    })
+    if (!filePath) return { success: false, canceled: true, message: '已取消导出', exportedCount: 0, skippedCount }
+    const outputPath = filePath.toLowerCase().endsWith('.json') ? filePath : `${filePath}.json`
+    try {
+      await writeFile(outputPath, renderVisionClipCollectionsExport(collections), 'utf8')
+      return { success: true, filePath: outputPath, message: `已导出 ${collections.length} 个选段集合`, exportedCount: collections.length, skippedCount }
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : String(error), exportedCount: 0, skippedCount }
+    }
+  })
   ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_IMPORT, async () => {
     const copy = getAppCopy(getCurrentLocale()).vision
     const filePath = await promptForOpenPath({
@@ -659,9 +681,15 @@ export function registerVisionIpc(): void {
     })
     if (!filePath) return { success: false, canceled: true, message: copy.collectionImportCanceled }
     try {
-      const input = parseVisionClipCollectionImportText(await readFile(filePath, 'utf8'))
+      const text = await readFile(filePath, 'utf8')
+      const parsed = JSON.parse(text) as unknown
+      if (parsed && typeof parsed === 'object' && 'exportVersion' in parsed && parsed.exportVersion === 2) {
+        const collections = parseVisionClipCollectionsImport(parsed).map((input) => getClipInboxStore().importCollection(input))
+        return { success: true, filePath, collections, message: copy.collectionsImported(collections.length) }
+      }
+       const input = parseVisionClipCollectionImportText(text)
       const collection = getClipInboxStore().importCollection(input)
-      return { success: true, filePath, collection, message: copy.collectionImported(collection.title) }
+      return { success: true, filePath, collection, collections: [collection], message: copy.collectionImported(collection.title) }
     } catch (error) {
       return { success: false, filePath, message: error instanceof Error ? error.message : String(error) }
     }

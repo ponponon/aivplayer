@@ -424,11 +424,24 @@ export type VisionClipCollectionExportRequest = {
   format: VisionClipCollectionExportFormat
 }
 
+export type VisionClipCollectionBatchExportRequest = {
+  collectionIds: string[]
+}
+
 export type VisionClipCollectionExportResult = {
   success: boolean
   message: string
   filePath?: string
   canceled?: boolean
+}
+
+export type VisionClipCollectionBatchExportResult = {
+  success: boolean
+  message: string
+  filePath?: string
+  canceled?: boolean
+  exportedCount?: number
+  skippedCount?: number
 }
 
 export type VisionClipCollectionImportResult = {
@@ -437,6 +450,7 @@ export type VisionClipCollectionImportResult = {
   filePath?: string
   canceled?: boolean
   collection?: VisionClipCollection
+  collections?: VisionClipCollection[]
 }
 
 export type VisionClipCollectionBatchDuplicateRequest = {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseVisionClipCollectionImport, parseVisionClipCollectionImportText } from '../../src/core/ai/clip-inbox-import'
+import { parseVisionClipCollectionImport, parseVisionClipCollectionImportText, parseVisionClipCollectionsImport } from '../../src/core/ai/clip-inbox-import'
 
 const selection = {
   sourceId: 'source-demo',
@@ -30,5 +30,18 @@ describe('clip inbox import', () => {
     expect(() => parseVisionClipCollectionImport({ exportVersion: 2, collection: { title: 'x', selections: [selection] } })).toThrow('版本')
     expect(() => parseVisionClipCollectionImport({ exportVersion: 1, collection: { title: 'x', selections: [] } })).toThrow('数量')
     expect(() => parseVisionClipCollectionImport({ exportVersion: 1, collection: { title: 'x', selections: [{ ...selection, startSeconds: 3, endSeconds: 3 }] } })).toThrow('为空')
+  })
+
+  it('parses version two multi-collection exports without preserving ids', () => {
+    const inputs = parseVisionClipCollectionsImport({ exportVersion: 2, collections: [
+      { id: 'old-1', title: '第一组', selections: [{ ...selection, startSeconds: 1, endSeconds: 2 }] },
+      { id: 'old-2', title: '第二组', selections: [{ ...selection, startSeconds: 3, endSeconds: 4 }] }
+    ] })
+    expect(inputs.map((input) => input.title)).toEqual(['第一组', '第二组'])
+    expect(inputs.every((input) => !('id' in input))).toBe(true)
+  })
+
+  it('reports the failing collection index for malformed batch exports', () => {
+    expect(() => parseVisionClipCollectionsImport({ exportVersion: 2, collections: [{ title: '正常', selections: [selection] }, { title: '空集合', selections: [] }] })).toThrow('第 2 个集合')
   })
 })
