@@ -94,13 +94,6 @@ export function useVisionLibraryFolder(app: AppController, isIndexing: boolean, 
         }
       }
       setVideoPaths([...allFiles])
-      if (!cancelled && allFiles.size > 0) {
-        try {
-          await window.aiv.enqueueVisionIndex({ mediaPaths: [...allFiles], intervalSeconds: 3 })
-        } catch (reason: unknown) {
-          options.onError(formatError(reason))
-        }
-      }
       setBatchScanProgress({ ...batch, status: cancelled ? 'cancelled' : 'completed', discoveredVideos: allFiles.size })
       batchContextRef.current = null
       setIsScanning(false)

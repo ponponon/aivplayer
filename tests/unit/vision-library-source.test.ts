@@ -84,6 +84,15 @@ describe('vision library setup', () => {
     expect(source).toContain('VISION_SCAN_DIRECTORY_CANCEL')
   })
 
+  it('keeps visual indexing behind an explicit user action', () => {
+    const appEffects = readFileSync(join(projectRoot, 'src/renderer/src/app/use-app-effects.ts'), 'utf8')
+    const folder = readFileSync(join(projectRoot, 'src/renderer/src/app/use-vision-library-folder.ts'), 'utf8')
+    const folderView = readFileSync(join(projectRoot, 'src/renderer/src/app/vision-library-folder.tsx'), 'utf8')
+    expect(appEffects).not.toContain('useVisionIndexEffect')
+    expect(folder).not.toContain('enqueueVisionIndex')
+    expect(folderView).toContain('onStartIndex')
+  })
+
   it('keeps the search-to-editing-project path visible in the renderer source', () => {
     const panel = readFileSync(join(projectRoot, 'src/renderer/src/app/vision-panel.tsx'), 'utf8')
     const actions = readFileSync(join(projectRoot, 'src/renderer/src/app/use-editing-actions.ts'), 'utf8')
