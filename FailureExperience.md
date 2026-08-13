@@ -10,6 +10,12 @@
 - Renderer 的 `window.location.reload()` 不会重新初始化 Electron 主进程，也不会重新应用 command-line switch；涉及启动参数的设置必须先等待落盘，再通过主进程 `app.relaunch()` 重启。
 - `electron-vite dev` 会在 Electron 子进程退出时让 dev server 一起退出；开发环境不能直接用 `app.relaunch()`，否则新 Electron 进程会失去 Renderer dev server 而黑屏。需要由外层 supervisor 根据专用退出码重启整个 dev server。
 
+## 2026-08-13：Electron Smoke 重载后必须重新进入目标面板
+
+- 现象：复制集合 Smoke 在保存集合后调用 `page.reload()`，随后直接等待 `.vision-panel`，但应用重载会回到默认播放页，导致等待视觉面板超时；这不是复制 IPC 或数据持久化失败。
+- 经验：Electron Smoke 中 `page.reload()` 只证明应用重新启动，不能假设 Renderer 会恢复上一次的面板路由；重载后必须重新执行目标入口点击，并再次等待目标面板。
+- 处理：在复制集合 Smoke 的重载路径中重新点击“影视库搜索”标签，再执行集合按钮交互；修正后的真实 Smoke 已验证新旧集合 ID、继承数据和副本独立修改。
+
 ## UI 操作按钮不能允许文案在 flex 中被压缩换行
 - 设置页底部操作区同时放置说明文字和操作按钮时，按钮组必须保持不可压缩，按钮文案必须 `white-space: nowrap`；否则另一个 `width: 100%` 的按钮会挤压相邻按钮，中文标签会被断成两行。
 - 窄屏适配应让按钮组整体换行，而不是让单个按钮内部换行；共享的次要按钮和 ASR 操作按钮需要统一遵循这个规则，避免同一问题在缓存、引导和面板操作中重复出现。
