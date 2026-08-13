@@ -551,6 +551,8 @@
       unavailable: 'Vision model is not ready',
       downloadModel: 'Download vision model',
       downloadingModel: 'Downloading vision model…',
+      downloadVisionPack: 'Download vision runtime',
+      downloadingVisionPack: 'Downloading vision runtime…',
       modelDownloadProgress: (file: string, percent: number) => `Downloading ${file} · ${percent}%`,
       modelDownloadCompleted: 'Vision model downloaded and ready',
       modelDownloadFailed: (message: string) => `Vision model download failed: ${message}`,

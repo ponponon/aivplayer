@@ -1,0 +1,16 @@
+{
+  "id": "siglip2-base-patch16-224-ONNX",
+  "repository": "onnx-community/siglip2-base-patch16-224-ONNX",
+  "revision": "ba1f3b0843f24bc5417d38e19c37b287d719b2f4",
+  "files": [
+    { "relativePath": "config.json", "sha256": "e43a9f7692d3819886a82cb2097048258d444f123c67d37ec825f9345b019cf2", "sizeBytes": 435 },
+    { "relativePath": "preprocessor_config.json", "sha256": "9b36b57ebaf20f09bf4c22100ccc21877ea6bfe5aead0c00c59f8af8ccefacfc", "sizeBytes": 394 },
+    { "relativePath": "quantize_config.json", "sha256": "9b60b5877b9a1687b5cddbc06124a974cb7536af9dbf5295279bf73c3823170c", "sizeBytes": 310 },
+    { "relativePath": "special_tokens_map.json", "sha256": "baec30ea10906f16adb8c18af7a34023002c1746542612b8b41c9f09e1351351", "sizeBytes": 636 },
+    { "relativePath": "tokenizer.json", "sha256": "cb9140fae3ac5122c972d37adf83e1248471a38147ad76f8215c8872c6fd8322", "sizeBytes": 34363039 },
+    { "relativePath": "tokenizer.model", "sha256": "61a7b147390c64585d6c3543dd6fc636906c9af3865a5548f27f31aee1d4c8e2", "sizeBytes": 4241003 },
+    { "relativePath": "tokenizer_config.json", "sha256": "7c3a247599e741bceba1a3fe0285aea88d1044dc1fad2caa1e48cdd9fd25f630", "sizeBytes": 47240 },
+    { "relativePath": "onnx/text_model_uint8.onnx", "sha256": "07c4ce795c05b533774a0ca2dc9b73771ecb835e85ffbc025066e3a851d9b242", "sizeBytes": 283438275 },
+    { "relativePath": "onnx/vision_model_uint8.onnx", "sha256": "5f2b401c1a4fc095702a5d45348e17ad46c4f87064085365b43c6e8eaa5c0070", "sizeBytes": 94553333 }
+  ]
+}

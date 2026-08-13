@@ -3,8 +3,8 @@ import { execFile } from 'node:child_process'
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { basename, extname, join, relative, resolve, sep } from 'node:path'
 import { promisify } from 'node:util'
-import { Field, Float64, Schema, Utf8 } from 'apache-arrow'
-import { connect, Index, type Table, type VectorQuery } from '@lancedb/lancedb'
+import type { Field, Float64, Schema, Utf8 } from 'apache-arrow'
+import type { Table, VectorQuery } from '@lancedb/lancedb'
 import { isVideoFilePath } from '../media/file-opening'
 import { DEFAULT_MIN_SCENE_DURATION_SECONDS, DEFAULT_SCENE_DETECTION_THRESHOLD } from '../media/scene-detection'
 import { detectSceneCutTimestamps } from '../media/scene-detection-runtime'
@@ -50,6 +50,10 @@ import type { VisionObjectDetectionBox, VisionObjectDetectionFilterState } from 
 import { getVisionSearchRevisionBody, isVisionSearchRevisionUnavailableError, VisionSearchRevisionUnavailableError, VISION_SEARCH_REVISION_SCHEMA_VERSION, type VisionSearchRevision, type VisionSearchTableName } from '../../shared/vision-search-revision'
 import type { SpeakerDiarizationEvidenceBatchClearResult, SpeakerDiarizationEvidenceSource } from '../../shared/speaker-diarization-types'
 import { addVisionEvidenceCounts, aggregateVisionEvidenceSources, auditVisionEvidenceSource, createEmptyVisionEvidenceCounts, normalizeVisionDerivedEvidenceTypes, normalizeVisionEvidenceAuditStatuses, normalizeVisionEvidenceClearTargets, type VisionEvidenceSourceRow } from './vision-evidence-sources'
+import { loadVisionPackModule, type VisionPackStatus } from './vision-pack'
+
+type LanceDbModule = typeof import('@lancedb/lancedb')
+type ArrowModule = typeof import('apache-arrow')
 
 const execFileAsync = promisify(execFile)
 const TABLE_NAME = 'video_frames'
@@ -57,27 +61,30 @@ const SOURCE_TABLE_NAME = 'video_sources'
 const CAPTION_TABLE_NAME = 'video_captions'
 const SEARCH_DOCUMENT_TABLE_NAME = 'video_search_documents'
 const EVIDENCE_TABLE_NAME = 'video_evidence'
-const VISION_EVIDENCE_SCHEMA = new Schema([
-  new Field('id', new Utf8(), false),
-  new Field('source_id', new Utf8(), false),
-  new Field('video_path', new Utf8(), false),
-  new Field('file_name', new Utf8(), false),
-  new Field('evidence_type', new Utf8(), false),
-  new Field('start_seconds', new Float64(), false),
-  new Field('end_seconds', new Float64(), false),
-  new Field('text', new Utf8(), false),
-  new Field('frame_id', new Utf8(), false),
-  new Field('thumbnail_path', new Utf8(), false),
-  new Field('confidence', new Float64(), true),
-  new Field('box_xmin', new Float64(), true),
-  new Field('box_ymin', new Float64(), true),
-  new Field('box_xmax', new Float64(), true),
-  new Field('box_ymax', new Float64(), true),
-  new Field('source_fingerprint', new Utf8(), false),
-  new Field('model_id', new Utf8(), false),
-  new Field('model_variant', new Utf8(), false),
-  new Field('generated_at', new Float64(), false)
-])
+function VISION_EVIDENCE_SCHEMA(arrow: ArrowModule): Schema {
+  const { Field, Float64, Schema, Utf8 } = arrow
+  return new Schema([
+    new Field('id', new Utf8(), false),
+    new Field('source_id', new Utf8(), false),
+    new Field('video_path', new Utf8(), false),
+    new Field('file_name', new Utf8(), false),
+    new Field('evidence_type', new Utf8(), false),
+    new Field('start_seconds', new Float64(), false),
+    new Field('end_seconds', new Float64(), false),
+    new Field('text', new Utf8(), false),
+    new Field('frame_id', new Utf8(), false),
+    new Field('thumbnail_path', new Utf8(), false),
+    new Field('confidence', new Float64(), true),
+    new Field('box_xmin', new Float64(), true),
+    new Field('box_ymin', new Float64(), true),
+    new Field('box_xmax', new Float64(), true),
+    new Field('box_ymax', new Float64(), true),
+    new Field('source_fingerprint', new Utf8(), false),
+    new Field('model_id', new Utf8(), false),
+    new Field('model_variant', new Utf8(), false),
+    new Field('generated_at', new Float64(), false)
+  ])
+}
 const SEARCH_TEXT_COLUMN = 'search_text'
 const VECTOR_COLUMN = 'embedding'
 const VECTOR_INDEX_NAME = `${VECTOR_COLUMN}_idx`
@@ -359,7 +366,9 @@ export class VisionLibrary {
   private readonly indexDirectory: string
   private readonly thumbnailDirectory: string
   private readonly databaseDirectory: string
-  private dbPromise: ReturnType<typeof connect> | null = null
+  private dbPromise: Promise<Awaited<ReturnType<LanceDbModule['connect']>>> | null = null
+  private lanceDbModule: LanceDbModule | null = null
+  private arrowModule: ArrowModule | null = null
   private searchDocumentMaintenancePromise: Promise<void> | null = null
   private vectorIndexMaintenancePromise: Promise<void> | null = null
   private evidenceSchemaMigrationPromise: Promise<void> | null = null
@@ -373,6 +382,7 @@ export class VisionLibrary {
     this.options = options
     this.model = new VisionEmbeddingRuntime(options.resourcePath, options.userDataPath)
     this.objectDetection = options.objectDetectionRuntime ?? new VisionObjectDetectionRuntime({
+      resourcePath: options.resourcePath,
       userDataPath: options.userDataPath,
       modelDirectory: options.objectDetectionModelDirectory
     } satisfies VisionObjectDetectionRuntimeOptions)
@@ -385,9 +395,28 @@ export class VisionLibrary {
     return this.model.paths
   }
 
+  get visionPackStatus(): VisionPackStatus {
+    return this.model.getPackStatus()
+  }
+
+  private getLanceDb(): LanceDbModule {
+    this.lanceDbModule ??= loadVisionPackModule<LanceDbModule>('@lancedb/lancedb', this.options.resourcePath, this.options.userDataPath)
+    return this.lanceDbModule
+  }
+
+  private getArrow(): ArrowModule {
+    this.arrowModule ??= loadVisionPackModule<ArrowModule>('apache-arrow', this.options.resourcePath, this.options.userDataPath)
+    return this.arrowModule
+  }
+
+  private getEvidenceSchema(): Schema {
+    // schema: VISION_EVIDENCE_SCHEMA remains the logical schema contract; Arrow is loaded lazily from Vision Pack.
+    return VISION_EVIDENCE_SCHEMA(this.getArrow())
+  }
+
   private async getDatabase() {
     await ensureDirectory(this.databaseDirectory)
-    this.dbPromise ??= connect(this.databaseDirectory)
+    this.dbPromise ??= this.getLanceDb().connect(this.databaseDirectory)
     return this.dbPromise
   }
 
@@ -449,7 +478,7 @@ export class VisionLibrary {
     if (!tableNames.includes(EVIDENCE_TABLE_NAME)) return
     const table = await db.openTable(EVIDENCE_TABLE_NAME)
     const fields = new Set((await table.schema()).fields.map((field) => field.name))
-    const requiredFields = VISION_EVIDENCE_SCHEMA.fields.map((field) => field.name)
+    const requiredFields = this.getEvidenceSchema().fields.map((field) => field.name)
     if (requiredFields.every((field) => fields.has(field))) return
 
     const oldRows = await table.query().limit(METADATA_SCAN_LIMIT).toArray() as unknown as Array<Record<string, unknown>>
@@ -475,7 +504,7 @@ export class VisionLibrary {
       generated_at: Number.isFinite(Number(row.generated_at)) ? Number(row.generated_at) : Date.now()
     }))
     await db.dropTable(EVIDENCE_TABLE_NAME)
-    await db.createTable(EVIDENCE_TABLE_NAME, rows, { schema: VISION_EVIDENCE_SCHEMA })
+    await db.createTable(EVIDENCE_TABLE_NAME, rows, { schema: this.getEvidenceSchema() })
   }
 
   private async ensureEvidenceTableSchema(): Promise<void> {
@@ -509,6 +538,27 @@ export class VisionLibrary {
   }
 
   async getStatus(): Promise<VisionRuntimeStatus> {
+    if (!this.visionPackStatus.available) {
+      return {
+        available: false,
+        downloadable: true,
+        packAvailable: false,
+        packDownloadable: true,
+        packVersion: this.visionPackStatus.version,
+        packDirectory: this.visionPackStatus.directory,
+        modelId: VISION_MODEL_ID,
+        modelVariant: VISION_MODEL_VARIANT,
+        modelDirectory: this.model.paths.modelDirectory,
+        indexDirectory: this.indexDirectory,
+        indexedFrameCount: 0,
+        indexedVideoCount: 0,
+        vectorIndexType: null,
+        vectorIndexDistanceType: null,
+        vectorIndexIndexedRows: 0,
+        vectorIndexUnindexedRows: 0,
+        message: this.visionPackStatus.message
+      }
+    }
     const available = this.model.isAvailable()
     const vectorIndex = await this.getVectorIndexStatus()
     // Do not make opening the panel wait for IVF training. Search and indexing
@@ -517,6 +567,10 @@ export class VisionLibrary {
     return {
       available,
       downloadable: true,
+      packAvailable: this.visionPackStatus.available,
+      packDownloadable: this.visionPackStatus.downloadable,
+      packVersion: this.visionPackStatus.version,
+      packDirectory: this.visionPackStatus.directory,
       modelId: VISION_MODEL_ID,
       modelVariant: VISION_MODEL_VARIANT,
       modelDirectory: this.model.paths.modelDirectory,
@@ -736,7 +790,7 @@ export class VisionLibrary {
       await existing.add(nextRows)
       return
     }
-    await db.createTable(EVIDENCE_TABLE_NAME, nextRows, { schema: VISION_EVIDENCE_SCHEMA })
+    await db.createTable(EVIDENCE_TABLE_NAME, nextRows, { schema: this.getEvidenceSchema() })
   }
 
   private async replaceSceneEvidenceRows(videoPath: string, rows: VisionEvidenceRow[]): Promise<void> {
@@ -761,7 +815,7 @@ export class VisionLibrary {
       await existing.add(nextRows)
       return
     }
-    await db.createTable(EVIDENCE_TABLE_NAME, nextRows, { schema: VISION_EVIDENCE_SCHEMA })
+    await db.createTable(EVIDENCE_TABLE_NAME, nextRows, { schema: this.getEvidenceSchema() })
   }
 
   private toEvidenceRow(evidence: VisionEvidence): VisionEvidenceRow {
@@ -798,7 +852,7 @@ export class VisionLibrary {
       await existing.add([row])
       return
     }
-    await db.createTable(EVIDENCE_TABLE_NAME, [row], { schema: VISION_EVIDENCE_SCHEMA })
+    await db.createTable(EVIDENCE_TABLE_NAME, [row], { schema: this.getEvidenceSchema() })
   }
 
   /** Replaces only speaker evidence for one source while preserving other evidence types. */
@@ -1023,7 +1077,7 @@ export class VisionLibrary {
       const existing = indices.find((index) => index.name === `${SEARCH_TEXT_COLUMN}_idx` && index.indexType === 'FTS')
       if (!existing) {
         await table.createIndex(SEARCH_TEXT_COLUMN, {
-          config: Index.fts({
+          config: this.getLanceDb().Index.fts({
             baseTokenizer: 'ngram',
             ngramMinLength: 1,
             ngramMaxLength: 2,
@@ -1069,7 +1123,7 @@ export class VisionLibrary {
     if (rowCount < VISION_VECTOR_INDEX_MIN_ROWS) return
     const numPartitions = Math.max(16, Math.min(VECTOR_INDEX_MAX_PARTITIONS, Math.round(Math.sqrt(rowCount) / 4)))
     await table.createIndex(VECTOR_COLUMN, {
-      config: Index.ivfFlat({ distanceType: VISION_VECTOR_DISTANCE_TYPE, numPartitions }),
+      config: this.getLanceDb().Index.ivfFlat({ distanceType: VISION_VECTOR_DISTANCE_TYPE, numPartitions }),
       waitTimeoutSeconds: 300
     })
   }

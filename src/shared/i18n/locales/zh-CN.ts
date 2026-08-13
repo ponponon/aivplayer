@@ -551,6 +551,8 @@
       unavailable: '视觉模型未就绪',
       downloadModel: '下载视觉模型',
       downloadingModel: '正在下载视觉模型…',
+      downloadVisionPack: '下载视觉运行组件',
+      downloadingVisionPack: '正在下载视觉运行组件…',
       modelDownloadProgress: (file: string, percent: number) => `正在下载 ${file} · ${percent}%`,
       modelDownloadCompleted: '视觉模型已下载并就绪',
       modelDownloadFailed: (message: string) => `视觉模型下载失败：${message}`,

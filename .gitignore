@@ -43,6 +43,7 @@ resources/cli/*
 !resources/heif/
 resources/heif/*
 !resources/heif/.gitkeep
+!resources/vision-model-manifest.json
 
 !build/
 build/*

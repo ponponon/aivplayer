@@ -1,14 +1,9 @@
 import { existsSync } from 'node:fs'
 import { join, resolve, sep } from 'node:path'
-import {
-  AutoProcessor,
-  AutoTokenizer,
-  env,
-  RawImage,
-  SiglipTextModel,
-  SiglipVisionModel
-} from '@huggingface/transformers'
 import { VISION_MODEL_FILES, VISION_MODEL_ID, VISION_MODEL_VARIANT } from '../../shared/vision-types'
+import { getVisionPackStatus, loadVisionPackModule, type VisionPackStatus } from './vision-pack'
+
+type TransformersModule = typeof import('@huggingface/transformers')
 
 type TensorLike = {
   data?: ArrayLike<number>
@@ -68,20 +63,20 @@ function getPoolerOutput(output: unknown): TensorLike {
 }
 
 export class VisionEmbeddingRuntime {
-  private tokenizerPromise: ReturnType<typeof AutoTokenizer.from_pretrained> | null = null
-  private processorPromise: ReturnType<typeof AutoProcessor.from_pretrained> | null = null
-  private textModelPromise: ReturnType<typeof SiglipTextModel.from_pretrained> | null = null
-  private visionModelPromise: ReturnType<typeof SiglipVisionModel.from_pretrained> | null = null
+  private tokenizerPromise: Promise<any> | null = null
+  private processorPromise: Promise<any> | null = null
+  private textModelPromise: Promise<any> | null = null
+  private visionModelPromise: Promise<any> | null = null
 
   private readonly pathsValue: VisionModelPaths
+  private readonly resourcePath: string
+  private readonly userDataPath?: string
+  private transformersModule: TransformersModule | null = null
 
   constructor(resourcePath: string, userDataPath?: string) {
+    this.resourcePath = resourcePath
+    this.userDataPath = userDataPath
     this.pathsValue = resolveVisionModelPaths(resourcePath, userDataPath)
-    const modelRoot = resolve(this.pathsValue.modelDirectory, '..') + sep
-    env.localModelPath = modelRoot
-    env.allowLocalModels = true
-    env.allowRemoteModels = false
-    env.logLevel = 50
   }
 
   get paths(): VisionModelPaths {
@@ -89,12 +84,17 @@ export class VisionEmbeddingRuntime {
   }
 
   isAvailable(): boolean {
-    return isVisionModelPathsAvailable(this.paths)
+    return this.getPackStatus().available && isVisionModelPathsAvailable(this.paths)
+  }
+
+  getPackStatus(): VisionPackStatus {
+    return getVisionPackStatus(this.resourcePath, this.userDataPath ?? resolve('.'))
   }
 
   getStatusMessage(): string {
     const paths = this.paths
-    if (!this.isAvailable()) {
+    if (!this.getPackStatus().available) return this.getPackStatus().message
+    if (!isVisionModelPathsAvailable(paths)) {
       return `视觉模型文件不完整，需要 ${VISION_MODEL_FILES.join('、')}：${paths.modelDirectory}`
     }
     return `SigLIP2 ${VISION_MODEL_ID} 已就绪`
@@ -111,23 +111,39 @@ export class VisionEmbeddingRuntime {
   }
 
   private getTokenizer() {
+    const { AutoTokenizer } = this.getTransformers()
     this.tokenizerPromise ??= AutoTokenizer.from_pretrained(VISION_MODEL_ID)
     return this.tokenizerPromise
   }
 
   private getProcessor() {
+    const { AutoProcessor } = this.getTransformers()
     this.processorPromise ??= AutoProcessor.from_pretrained(VISION_MODEL_ID)
     return this.processorPromise
   }
 
   private getTextModel() {
+    const { SiglipTextModel } = this.getTransformers()
     this.textModelPromise ??= SiglipTextModel.from_pretrained(VISION_MODEL_ID, { dtype: VISION_MODEL_VARIANT, device: 'cpu' })
     return this.textModelPromise
   }
 
   private getVisionModel() {
+    const { SiglipVisionModel } = this.getTransformers()
     this.visionModelPromise ??= SiglipVisionModel.from_pretrained(VISION_MODEL_ID, { dtype: VISION_MODEL_VARIANT, device: 'cpu' })
     return this.visionModelPromise
+  }
+
+  private getTransformers(): TransformersModule {
+    if (this.transformersModule) return this.transformersModule
+    const module = loadVisionPackModule<TransformersModule>('@huggingface/transformers', this.resourcePath, this.userDataPath ?? resolve('.'))
+    const modelRoot = resolve(this.pathsValue.modelDirectory, '..') + sep
+    module.env.localModelPath = modelRoot
+    module.env.allowLocalModels = true
+    module.env.allowRemoteModels = false
+    module.env.logLevel = 50
+    this.transformersModule = module
+    return module
   }
 
   async getTextEmbedding(query: string): Promise<number[]> {
@@ -140,6 +156,7 @@ export class VisionEmbeddingRuntime {
 
   async getImageEmbedding(imagePath: string): Promise<number[]> {
     if (!this.isAvailable()) throw new Error(this.getStatusMessage())
+    const { RawImage } = this.getTransformers()
     const image = await RawImage.read(imagePath)
     const processor = await this.getProcessor()
     const inputs = await processor(image)

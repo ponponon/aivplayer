@@ -104,3 +104,8 @@ github 发版要注意打上 tag，github releases 页面的东西也不要忘�
 ---
 
 如果要修改 README.md ，记得把 README.zh-CN.md、README.ko-KR.md、README.ja-JP.md 同步修改一下
+
+
+----
+
+如果要发布新的版本，注意阅读 docs/RELEASE.md 的要求

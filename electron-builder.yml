@@ -22,6 +22,13 @@ files:
   - '!node_modules/@lancedb/lancedb/node_modules/@img/**'
   - '!node_modules/@lancedb/lancedb/node_modules/onnxruntime-*/**'
   - '!node_modules/@lancedb/lancedb/node_modules/sharp/**'
+  # The visual search runtime is shipped as a platform-specific Vision Pack.
+  - '!node_modules/@huggingface/**'
+  - '!node_modules/@lancedb/**'
+  - '!node_modules/apache-arrow/**'
+  - '!node_modules/onnxruntime-*/**'
+  - '!node_modules/sharp/**'
+  - '!node_modules/@img/**'
 asarUnpack:
   - "**/node_modules/sharp/**/*"
   - "**/node_modules/@img/**/*"
@@ -32,6 +39,8 @@ extraResources:
     to: THIRD_PARTY_LICENSES.md
   - from: resources/runtime-metadata.json
     to: runtime-metadata.json
+  - from: resources/vision-model-manifest.json
+    to: vision-model-manifest.json
   - from: out/web
     to: web
     filter:
@@ -50,18 +59,6 @@ extraResources:
     to: heif
     filter:
       - '**/*'
-  - from: resources/vision/siglip2-base-patch16-224-ONNX
-    to: vision/siglip2-base-patch16-224-ONNX
-    filter:
-      - config.json
-      - preprocessor_config.json
-      - quantize_config.json
-      - special_tokens_map.json
-      - tokenizer.json
-      - tokenizer.model
-      - tokenizer_config.json
-      - onnx/text_model_uint8.onnx
-      - onnx/vision_model_uint8.onnx
 fileAssociations:
   - ext: mp4
     name: MPEG-4 video

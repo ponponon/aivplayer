@@ -2,7 +2,7 @@
 
 本文档记录当前项目的正式发布流程，目标是让任何维护者都能按同一套步骤发布新版本。
 
-当前发布入口只有 GitHub Release。发布工作流不向 MinIO、Cloudflare R2 或其他对象存储上传副本；未来如果接入 R2，应作为独立的下载分发链路设计，不要直接替换或绕过现有的发布校验。
+当前发布入口仍是 GitHub Release；视觉模型和平台特定 Vision Pack 由发布工作流同步到 Cloudflare R2，作为应用运行期下载资源。R2 资源不替代 GitHub Release 的安装包校验，也不进入正式安装包资产清单。
 
 ## 一、发布链路总览
 
@@ -25,7 +25,9 @@
       ├─ Linux x64 构建
       └─ Linux arm64 构建
       ↓
-    汇总安装包与更新元数据
+    汇总安装包、更新元数据与 Vision Pack
+      ↓
+    上传 Vision Pack 到 Cloudflare R2
       ↓
     版本、格式、架构、资源、证据和 SHA-256 校验
       ↓
@@ -140,7 +142,7 @@
 | `build-linux` | Linux x64 安装包 |
 | `build-linux-arm64` | Linux arm64 安装包 |
 
-每个平台在打包前会准备并检查运行时资源，包括视觉模型、FFmpeg、HEIF 和 whisper.cpp；同时检查二进制架构、打包后资源、安装包格式和平台产物契约。构建 job 只上传 workflow artifact，不直接创建 GitHub Release。
+每个平台在打包前会准备并检查 FFmpeg、HEIF 和 whisper.cpp，并单独构建只含当前平台原生依赖的 Vision Pack；SigLIP2 模型不再进入安装包，而是使用固定 revision 从 R2 下载。流水线同时检查二进制架构、打包后资源、安装包格式、体积报告和平台产物契约。构建 job 只上传 workflow artifact，不直接创建 GitHub Release。
 
 ### 2. `publish-release` 汇总和门禁
 
@@ -154,8 +156,9 @@
 6. 检查 `latest*.yml` 的版本、`url` / `path` 引用和实际文件名。
 7. 生成并校验 `release-manifest.json`，记录资产大小与 SHA-256。
 8. 创建 GitHub Release 并上传正式资产。
-9. 通过 GitHub API 回读 Release 资产，重新下载并校验大小、SHA-256 和 manifest 内容。
-10. 保存不含凭据的远端校验报告作为 workflow artifact。
+9. 把五个平台的 Vision Pack 及 manifest 上传到 R2，并使用固定版本 / 平台 / 架构路径。
+10. 通过 GitHub API 回读 Release 资产，重新下载并校验大小、SHA-256 和 manifest 内容。
+11. 保存不含凭据的远端校验报告作为 workflow artifact。
 
 任何一个门禁失败，后续发布步骤都不应被视为成功。特别是“跳过了某个可选步骤”不能等同于“远端同步成功”。
 
@@ -170,6 +173,13 @@
 - 发布审计清单：`release-manifest.json`。
 
 平台 evidence 报告和合并 evidence 报告只作为 Actions artifact 保存，不应出现在 Release 下载资产中。
+
+### 4. R2 视觉资源路径
+
+- SigLIP2：`https://releases.quniv.cn/aivplayer/models/siglip2/<revision>/<file>`。
+- Vision Pack：`https://releases.quniv.cn/aivplayer/vision-pack/<version>/<platform>-<arch>/`。
+- Vision Pack 下载前校验远程 manifest，下载后校验归档 SHA-256，并使用临时目录原子替换到用户数据目录。
+- 0.5.5 仍将 FFmpeg、HEIF 和 whisper.cpp 内置；后续如需继续瘦身，可单独评估它们的按需下载。
 
 ## 五、正式发布后的检查
 
@@ -252,6 +262,7 @@ GitHub Actions 的 `workflow_dispatch` 支持 `verify_only` 输入。使用方�
 - [ ] README、更新说明和 Pages 页面已按需同步。
 - [ ] `npm run typecheck` 通过。
 - [ ] `npm run release:dry-run` 通过。
+- [ ] `npm run release:report-package-size -- --directory release` 已生成体积报告。
 - [ ] `npm test` 通过，宿主相关测试已在正确环境复核。
 - [ ] `git diff --check` 通过。
 - [ ] 没有敏感信息、签名文件或大体积安装包进入 Git 提交。

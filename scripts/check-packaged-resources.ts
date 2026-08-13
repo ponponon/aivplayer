@@ -70,16 +70,18 @@ export async function checkPackagedResources(options: {
     join(resourcePath, 'ffmpeg', getFfprobeName(platform)),
     join(resourcePath, 'LICENSE'),
     join(resourcePath, 'THIRD_PARTY_LICENSES.md'),
+    join(resourcePath, 'vision-model-manifest.json'),
     join(resourcePath, 'runtime-metadata.json')
   ]
-  const [webIndexExists, webAssetsExist, ffmpegExists, ffprobeExists, licenseExists, thirdPartyLicenseExists, runtimeMetadataExists] = await Promise.all([
+  const [webIndexExists, webAssetsExist, ffmpegExists, ffprobeExists, licenseExists, thirdPartyLicenseExists, visionModelManifestExists, runtimeMetadataExists] = await Promise.all([
     fileExists(checked[0]!, 'win32'),
     hasWebAssets(join(resourcePath, 'web')),
     fileExists(checked[2]!, platform),
     fileExists(checked[3]!, platform),
     fileExists(checked[4]!, 'win32'),
     fileExists(checked[5]!, 'win32'),
-    hasValidRuntimeMetadata(checked[6]!)
+    fileExists(checked[6]!, 'win32'),
+    hasValidRuntimeMetadata(checked[7]!)
   ])
   const missing = [
     ...(webIndexExists ? [] : [checked[0]!]),
@@ -88,7 +90,8 @@ export async function checkPackagedResources(options: {
     ...(ffprobeExists ? [] : [checked[3]!]),
     ...(licenseExists ? [] : [checked[4]!]),
     ...(thirdPartyLicenseExists ? [] : [checked[5]!]),
-    ...(runtimeMetadataExists ? [] : [checked[6]!])
+    ...(visionModelManifestExists ? [] : [checked[6]!]),
+    ...(runtimeMetadataExists ? [] : [checked[7]!])
   ]
   const ok = missing.length === 0
   return {

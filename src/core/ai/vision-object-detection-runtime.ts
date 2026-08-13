@@ -1,6 +1,7 @@
 import { isAbsolute } from 'node:path'
 import { VISION_OBJECT_DETECTION_MODEL_ID, VISION_OBJECT_DETECTION_MODEL_VERSION, VISION_OBJECT_DETECTION_PROVIDER_ID, getVisionObjectDetectionModelPaths, getVisionObjectDetectionModelStatus, type VisionObjectDetectionModelPaths } from './vision-object-detection-model'
 import type { VisionObjectDetection, VisionObjectDetectionBox, VisionObjectDetectionModelStatus, VisionObjectDetectionResult } from '../../shared/vision-object-detection-types'
+import { loadVisionPackModule } from './vision-pack'
 
 export const DEFAULT_VISION_OBJECT_DETECTION_THRESHOLD = 0.5
 
@@ -23,6 +24,7 @@ export type VisionObjectDetectionPipelineBundle = {
 }
 
 export type VisionObjectDetectionRuntimeOptions = {
+  resourcePath?: string
   userDataPath: string
   modelDirectory?: string | null
   platform?: NodeJS.Platform
@@ -61,15 +63,6 @@ export function normalizeVisionObjectDetections(value: unknown): VisionObjectDet
     if (!label || score === null || !box) return []
     return [{ label, score, box }]
   })
-}
-
-async function loadDefaultPipeline(paths: VisionObjectDetectionModelPaths): Promise<VisionObjectDetectionPipelineBundle> {
-  const { pipeline, RawImage } = await import('@huggingface/transformers')
-  const detector = await pipeline('object-detection', paths.modelDirectory, { local_files_only: true, device: 'cpu' })
-  return {
-    detector: detector as unknown as VisionObjectDetectionPipeline,
-    readImage: (imagePath) => RawImage.read(imagePath)
-  }
 }
 
 /** Local-only object detection runtime. It never downloads model files implicitly. */
@@ -116,7 +109,13 @@ export class VisionObjectDetectionRuntime {
     if (this.pipelinePromise) return this.pipelinePromise
     const status = this.getStatus()
     if (!status.available) return Promise.reject(new Error(status.message))
-    const loadPipeline = this.options.loadPipeline ?? loadDefaultPipeline
+    const loadPipeline = this.options.loadPipeline ?? ((modelPaths: VisionObjectDetectionModelPaths) => {
+      const { pipeline, RawImage } = loadVisionPackModule<typeof import('@huggingface/transformers')>('@huggingface/transformers', this.options.resourcePath ?? '.', this.options.userDataPath)
+      return pipeline('object-detection', modelPaths.modelDirectory, { local_files_only: true, device: 'cpu' }).then((detector) => ({
+        detector: detector as unknown as VisionObjectDetectionPipeline,
+        readImage: (imagePath: string) => RawImage.read(imagePath)
+      }))
+    })
     const paths = getVisionObjectDetectionModelPaths(status.modelDirectory)
     this.pipelinePromise = loadPipeline(paths)
     this.pipelinePromise.catch(() => { this.pipelinePromise = null })

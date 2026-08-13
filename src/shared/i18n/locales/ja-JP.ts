@@ -551,6 +551,8 @@
       unavailable: 'ビジュアルモデルの準備ができていません',
       downloadModel: 'ビジュアルモデルをダウンロード',
       downloadingModel: 'ビジュアルモデルをダウンロード中…',
+      downloadVisionPack: 'ビジュアル実行コンポーネントをダウンロード',
+      downloadingVisionPack: 'ビジュアル実行コンポーネントをダウンロード中…',
       modelDownloadProgress: (file: string, percent: number) => `${file} をダウンロード中 · ${percent}%`,
       modelDownloadCompleted: 'ビジュアルモデルの準備が完了しました',
       modelDownloadFailed: (message: string) => `ビジュアルモデルのダウンロードに失敗：${message}`,

@@ -72,7 +72,7 @@ describe('writeRuntimeMetadata', () => {
     await expect(writeRuntimeMetadata({ resourcePath, platform: 'linux', applicationVersion: '0.4.0' })).rejects.toThrow('--enable-nonfree')
   })
 
-  it('requires all packaged vision model files', async () => {
+  it('requires all vision model files or a matching remote manifest', async () => {
     const resourcePath = await createFixture()
     await rm(join(resourcePath, 'vision', 'siglip2-base-patch16-224-ONNX', 'onnx', 'vision_model_uint8.onnx'))
 

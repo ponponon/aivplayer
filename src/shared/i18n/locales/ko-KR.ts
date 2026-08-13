@@ -551,6 +551,8 @@
       unavailable: '시각 모델이 준비되지 않았습니다',
       downloadModel: '시각 모델 다운로드',
       downloadingModel: '시각 모델 다운로드 중…',
+      downloadVisionPack: '시각 실행 구성 요소 다운로드',
+      downloadingVisionPack: '시각 실행 구성 요소 다운로드 중…',
       modelDownloadProgress: (file: string, percent: number) => `${file} 다운로드 중 · ${percent}%`,
       modelDownloadCompleted: '시각 모델을 다운로드했습니다',
       modelDownloadFailed: (message: string) => `시각 모델 다운로드 실패: ${message}`,

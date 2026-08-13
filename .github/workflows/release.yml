@@ -75,8 +75,16 @@ jobs:
       - name: Check license manifest
         run: npm run check:licenses
 
-      - name: Stage vision model
-        run: npm run release:prepare-vision-model -- --resource-dir "$GITHUB_WORKSPACE/resources"
+      - name: Build platform-specific Vision Pack
+        run: npm run release:build-vision-pack
+        env:
+          VISION_PACK_OUTPUT_DIR: ${{ runner.temp }}/aivplayer-vision-pack
+
+      - name: Archive Vision Pack
+        run: npm run release:create-vision-pack
+        env:
+          VISION_PACK_OUTPUT_DIR: ${{ runner.temp }}/aivplayer-vision-pack
+          VISION_PACK_ARCHIVE_DIR: ${{ runner.temp }}/aivplayer-vision-pack-archive
 
       - name: Install HEIF and media runtime dependencies
         shell: bash
@@ -172,10 +180,13 @@ jobs:
         run: npm run release:check-macos-ffmpeg -- --resource-dir "$GITHUB_WORKSPACE/resources/ffmpeg" --max-minos 12.0
 
       - name: Write runtime metadata
-        run: npm run release:write-runtime-metadata -- --platform darwin --resource-dir "$GITHUB_WORKSPACE/resources" --whisper-version "$WHISPER_CPP_VERSION" --libheif-version "$LIBHEIF_VERSION" --libheif-encoder kvazaar
+        run: npm run release:write-runtime-metadata -- --platform darwin --resource-dir "$GITHUB_WORKSPACE/resources" --whisper-version "$WHISPER_CPP_VERSION" --libheif-version "$LIBHEIF_VERSION" --libheif-encoder kvazaar --remote-vision-model
 
       - name: Build & Package
         run: npm run build && npx electron-builder --publish never
+
+      - name: Report package size
+        run: npm run release:report-package-size -- --directory release --output release/package-size-report-macos.json
 
       - name: Verify packaged Web and FFmpeg resources
         shell: bash
@@ -195,7 +206,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: release-evidence-macos
-          path: release/platform-release-report-macos.json
+          path: |
+            release/platform-release-report-macos.json
+            release/package-size-report-macos.json
           if-no-files-found: ignore
 
       - name: Upload artifacts
@@ -208,6 +221,13 @@ jobs:
             release/*.pkg
             release/latest*.yml
             release/*.blockmap
+          if-no-files-found: error
+
+      - name: Upload macOS Vision Pack
+        uses: actions/upload-artifact@v7
+        with:
+          name: vision-pack-macos
+          path: ${{ runner.temp }}/aivplayer-vision-pack-archive/*
           if-no-files-found: error
 
   build-windows:
@@ -276,9 +296,16 @@ jobs:
       - name: Check license manifest
         run: npm run check:licenses
 
-      - name: Stage vision model
-        shell: pwsh
-        run: npm run release:prepare-vision-model -- --resource-dir "$env:GITHUB_WORKSPACE/resources"
+      - name: Build platform-specific Vision Pack
+        run: npm run release:build-vision-pack
+        env:
+          VISION_PACK_OUTPUT_DIR: ${{ runner.temp }}/aivplayer-vision-pack
+
+      - name: Archive Vision Pack
+        run: npm run release:create-vision-pack
+        env:
+          VISION_PACK_OUTPUT_DIR: ${{ runner.temp }}/aivplayer-vision-pack
+          VISION_PACK_ARCHIVE_DIR: ${{ runner.temp }}/aivplayer-vision-pack-archive
 
       - name: Prepare fixed FFmpeg runtime
         shell: pwsh
@@ -374,10 +401,14 @@ jobs:
 
       - name: Write runtime metadata
         shell: pwsh
-        run: npm run release:write-runtime-metadata -- --platform win32 --resource-dir "$env:GITHUB_WORKSPACE/resources" --whisper-version "$env:WHISPER_CPP_VERSION" --libheif-version "$env:LIBHEIF_VERSION" --libheif-encoder x265
+        run: npm run release:write-runtime-metadata -- --platform win32 --resource-dir "$env:GITHUB_WORKSPACE/resources" --whisper-version "$env:WHISPER_CPP_VERSION" --libheif-version "$env:LIBHEIF_VERSION" --libheif-encoder x265 --remote-vision-model
 
       - name: Build & Package
         run: npm run build && npx electron-builder --publish never
+
+      - name: Report package size
+        shell: pwsh
+        run: npm run release:report-package-size -- --directory release --output release/package-size-report-windows.json
 
       - name: Generate Microsoft Store MSIX config
         if: ${{ vars.MSIX_IDENTITY_NAME != '' && vars.MSIX_PUBLISHER != '' && vars.MSIX_PUBLISHER_DISPLAY_NAME != '' }}
@@ -422,7 +453,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: release-evidence-windows
-          path: release/platform-release-report-windows.json
+          path: |
+            release/platform-release-report-windows.json
+            release/package-size-report-windows.json
           if-no-files-found: ignore
 
       - name: Upload artifacts
@@ -433,6 +466,13 @@ jobs:
             release/*.exe
             release/latest*.yml
             release/*.blockmap
+          if-no-files-found: error
+
+      - name: Upload Windows x64 Vision Pack
+        uses: actions/upload-artifact@v7
+        with:
+          name: vision-pack-windows-x64
+          path: ${{ runner.temp }}/aivplayer-vision-pack-archive/*
           if-no-files-found: error
 
       - name: Upload Windows x64 MSIX
@@ -509,9 +549,16 @@ jobs:
       - name: Check license manifest
         run: npm run check:licenses
 
-      - name: Stage vision model
-        shell: pwsh
-        run: npm run release:prepare-vision-model -- --resource-dir "$env:GITHUB_WORKSPACE/resources"
+      - name: Build platform-specific Vision Pack
+        run: npm run release:build-vision-pack
+        env:
+          VISION_PACK_OUTPUT_DIR: ${{ runner.temp }}/aivplayer-vision-pack
+
+      - name: Archive Vision Pack
+        run: npm run release:create-vision-pack
+        env:
+          VISION_PACK_OUTPUT_DIR: ${{ runner.temp }}/aivplayer-vision-pack
+          VISION_PACK_ARCHIVE_DIR: ${{ runner.temp }}/aivplayer-vision-pack-archive
 
       - name: Prepare fixed FFmpeg runtime
         shell: pwsh
@@ -611,10 +658,14 @@ jobs:
 
       - name: Write runtime metadata
         shell: pwsh
-        run: npm run release:write-runtime-metadata -- --platform win32 --resource-dir "$env:GITHUB_WORKSPACE/resources" --whisper-version "$env:WHISPER_CPP_VERSION" --libheif-version "$env:LIBHEIF_VERSION" --libheif-encoder x265
+        run: npm run release:write-runtime-metadata -- --platform win32 --resource-dir "$env:GITHUB_WORKSPACE/resources" --whisper-version "$env:WHISPER_CPP_VERSION" --libheif-version "$env:LIBHEIF_VERSION" --libheif-encoder x265 --remote-vision-model
 
       - name: Build & Package ARM64
         run: npm run build && npx electron-builder --win --arm64 --publish never
+
+      - name: Report package size
+        shell: pwsh
+        run: npm run release:report-package-size -- --directory release --output release/package-size-report-windows-arm64.json
 
       - name: Generate Microsoft Store MSIX config
         if: ${{ vars.MSIX_IDENTITY_NAME != '' && vars.MSIX_PUBLISHER != '' && vars.MSIX_PUBLISHER_DISPLAY_NAME != '' }}
@@ -659,7 +710,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: release-evidence-windows-arm64
-          path: release/platform-release-report-windows-arm64.json
+          path: |
+            release/platform-release-report-windows-arm64.json
+            release/package-size-report-windows-arm64.json
           if-no-files-found: ignore
 
       - name: Upload Windows ARM64 artifacts
@@ -670,6 +723,13 @@ jobs:
             release/*.exe
             release/latest*.yml
             release/*.blockmap
+          if-no-files-found: error
+
+      - name: Upload Windows ARM64 Vision Pack
+        uses: actions/upload-artifact@v7
+        with:
+          name: vision-pack-windows-arm64
+          path: ${{ runner.temp }}/aivplayer-vision-pack-archive/*
           if-no-files-found: error
 
       - name: Upload Windows ARM64 MSIX
@@ -716,8 +776,16 @@ jobs:
       - name: Check license manifest
         run: npm run check:licenses
 
-      - name: Stage vision model
-        run: npm run release:prepare-vision-model -- --resource-dir "$GITHUB_WORKSPACE/resources"
+      - name: Build platform-specific Vision Pack
+        run: npm run release:build-vision-pack
+        env:
+          VISION_PACK_OUTPUT_DIR: ${{ runner.temp }}/aivplayer-vision-pack
+
+      - name: Archive Vision Pack
+        run: npm run release:create-vision-pack
+        env:
+          VISION_PACK_OUTPUT_DIR: ${{ runner.temp }}/aivplayer-vision-pack
+          VISION_PACK_ARCHIVE_DIR: ${{ runner.temp }}/aivplayer-vision-pack-archive
 
       - name: Install system dependencies
         run: |
@@ -780,10 +848,13 @@ jobs:
         run: npm run release:check-architecture -- --architecture x64 --file "$GITHUB_WORKSPACE/resources/whisper.cpp/whisper-cli" --file "$GITHUB_WORKSPACE/resources/ffmpeg/ffmpeg" --file "$GITHUB_WORKSPACE/resources/ffmpeg/ffprobe" --file "$GITHUB_WORKSPACE/resources/heif/heif-enc" --file "$GITHUB_WORKSPACE/resources/heif/heif-convert"
 
       - name: Write runtime metadata
-        run: npm run release:write-runtime-metadata -- --platform linux --resource-dir "$GITHUB_WORKSPACE/resources" --whisper-version "$WHISPER_CPP_VERSION" --libheif-version "$LIBHEIF_VERSION" --libheif-encoder x265
+        run: npm run release:write-runtime-metadata -- --platform linux --resource-dir "$GITHUB_WORKSPACE/resources" --whisper-version "$WHISPER_CPP_VERSION" --libheif-version "$LIBHEIF_VERSION" --libheif-encoder x265 --remote-vision-model
 
       - name: Build & Package
         run: npm run build && npx electron-builder --publish never
+
+      - name: Report package size
+        run: npm run release:report-package-size -- --directory release --output release/package-size-report-linux.json
 
       - name: Verify packaged Web and FFmpeg resources
         shell: bash
@@ -830,7 +901,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: release-evidence-linux
-          path: release/platform-release-report-linux.json
+          path: |
+            release/platform-release-report-linux.json
+            release/package-size-report-linux.json
           if-no-files-found: ignore
 
       - name: Upload artifacts
@@ -842,6 +915,13 @@ jobs:
             release/*.deb
             release/latest*.yml
             release/*.blockmap
+          if-no-files-found: error
+
+      - name: Upload Linux x64 Vision Pack
+        uses: actions/upload-artifact@v7
+        with:
+          name: vision-pack-linux-x64
+          path: ${{ runner.temp }}/aivplayer-vision-pack-archive/*
           if-no-files-found: error
 
   build-linux-arm64:
@@ -880,8 +960,16 @@ jobs:
       - name: Check license manifest
         run: npm run check:licenses
 
-      - name: Stage vision model
-        run: npm run release:prepare-vision-model -- --resource-dir "$GITHUB_WORKSPACE/resources"
+      - name: Build platform-specific Vision Pack
+        run: npm run release:build-vision-pack
+        env:
+          VISION_PACK_OUTPUT_DIR: ${{ runner.temp }}/aivplayer-vision-pack
+
+      - name: Archive Vision Pack
+        run: npm run release:create-vision-pack
+        env:
+          VISION_PACK_OUTPUT_DIR: ${{ runner.temp }}/aivplayer-vision-pack
+          VISION_PACK_ARCHIVE_DIR: ${{ runner.temp }}/aivplayer-vision-pack-archive
 
       - name: Install system dependencies
         run: |
@@ -944,10 +1032,13 @@ jobs:
         run: npm run release:check-architecture -- --architecture arm64 --file "$GITHUB_WORKSPACE/resources/whisper.cpp/whisper-cli" --file "$GITHUB_WORKSPACE/resources/ffmpeg/ffmpeg" --file "$GITHUB_WORKSPACE/resources/ffmpeg/ffprobe" --file "$GITHUB_WORKSPACE/resources/heif/heif-enc" --file "$GITHUB_WORKSPACE/resources/heif/heif-convert"
 
       - name: Write runtime metadata
-        run: npm run release:write-runtime-metadata -- --platform linux --resource-dir "$GITHUB_WORKSPACE/resources" --whisper-version "$WHISPER_CPP_VERSION" --libheif-version "$LIBHEIF_VERSION" --libheif-encoder x265
+        run: npm run release:write-runtime-metadata -- --platform linux --resource-dir "$GITHUB_WORKSPACE/resources" --whisper-version "$WHISPER_CPP_VERSION" --libheif-version "$LIBHEIF_VERSION" --libheif-encoder x265 --remote-vision-model
 
       - name: Build & Package ARM64
         run: npm run build && npx electron-builder --linux --arm64 --publish never
+
+      - name: Report package size
+        run: npm run release:report-package-size -- --directory release --output release/package-size-report-linux-arm64.json
 
       - name: Verify packaged Web and FFmpeg resources
         shell: bash
@@ -974,7 +1065,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: release-evidence-linux-arm64
-          path: release/platform-release-report-linux-arm64.json
+          path: |
+            release/platform-release-report-linux-arm64.json
+            release/package-size-report-linux-arm64.json
           if-no-files-found: ignore
 
       - name: Upload Linux ARM64 artifacts
@@ -988,11 +1081,22 @@ jobs:
             release/*.blockmap
           if-no-files-found: error
 
+      - name: Upload Linux ARM64 Vision Pack
+        uses: actions/upload-artifact@v7
+        with:
+          name: vision-pack-linux-arm64
+          path: ${{ runner.temp }}/aivplayer-vision-pack-archive/*
+          if-no-files-found: error
+
   publish-release:
     needs: [build-macos, build-windows, build-windows-arm64, build-linux, build-linux-arm64]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
 
       - name: Download all artifacts
         uses: actions/download-artifact@v8
@@ -1031,6 +1135,30 @@ jobs:
 
       - name: Verify release manifest
         run: npm run release:check-manifest -- --artifacts-dir artifacts/assembled --tag "${{ inputs.tag || github.ref_name }}"
+
+      - name: Upload platform-specific Vision Packs to R2
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.verify_only != true }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          npm install --global wrangler@4.110.0
+          version="${GITHUB_REF_NAME#v}"
+          upload_pack() {
+            local source_name="$1"
+            local platform_key="$2"
+            local archive="artifacts/${source_name}/vision-pack.tar.gz"
+            local manifest="artifacts/${source_name}/manifest.json"
+            test -f "$archive"
+            test -f "$manifest"
+            wrangler r2 object put "aivplayer-releases/aivplayer/vision-pack/$version/$platform_key/vision-pack.tar.gz" --remote --file "$archive" --force --cache-control 'public, max-age=31536000, immutable' --content-type 'application/gzip'
+            wrangler r2 object put "aivplayer-releases/aivplayer/vision-pack/$version/$platform_key/manifest.json" --remote --file "$manifest" --force --cache-control 'public, max-age=31536000, immutable' --content-type 'application/json'
+          }
+          upload_pack vision-pack-macos darwin-arm64
+          upload_pack vision-pack-windows-x64 win32-x64
+          upload_pack vision-pack-windows-arm64 win32-arm64
+          upload_pack vision-pack-linux-x64 linux-x64
+          upload_pack vision-pack-linux-arm64 linux-arm64
 
       - name: Create GitHub Release
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.verify_only != true }}

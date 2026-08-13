@@ -21,6 +21,7 @@ async function createResourceFixture(): Promise<string> {
   await writeFile(join(directory, 'ffmpeg', 'ffprobe'), 'ffprobe')
   await writeFile(join(directory, 'LICENSE'), 'MIT License')
   await writeFile(join(directory, 'THIRD_PARTY_LICENSES.md'), '# licenses')
+  await writeFile(join(directory, 'vision-model-manifest.json'), '{}')
   await writeFile(join(directory, 'runtime-metadata.json'), JSON.stringify({
     schemaVersion: 1,
     applicationVersion: '0.4.0',

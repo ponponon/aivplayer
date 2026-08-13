@@ -94,6 +94,7 @@ export function VisionPanel(): React.ReactElement {
   const [status, setStatus] = useState<VisionRuntimeStatus | null>(null)
   const [modelDownloadProgress, setModelDownloadProgress] = useState<VisionModelDownloadProgress | null>(null)
   const [isDownloadingModel, setIsDownloadingModel] = useState(false)
+  const [isDownloadingPack, setIsDownloadingPack] = useState(false)
   const [progress, setProgress] = useState<VisionIndexProgress | null>(null)
   const [query, setQuery] = useState('')
   const [searchPreferences, setSearchPreferences] = useState<VisionSearchPreferences>(readVisionSearchPreferences)
@@ -226,6 +227,22 @@ export function VisionPanel(): React.ReactElement {
       setError(app.copy.vision.modelDownloadFailed(reason instanceof Error ? reason.message : String(reason)))
     } finally {
       setIsDownloadingModel(false)
+    }
+  }
+
+  const downloadVisionPack = async (): Promise<void> => {
+    if (isDownloadingPack) return
+    setError(null)
+    setIsDownloadingPack(true)
+    try {
+      const result = await window.aiv.downloadVisionPack()
+      setStatus(result.status)
+      if (!result.success) throw new Error(result.message)
+      window.location.reload()
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    } finally {
+      setIsDownloadingPack(false)
     }
   }
 
@@ -949,8 +966,9 @@ export function VisionPanel(): React.ReactElement {
       <div className="vision-heading"><div><span className="panel-kicker">{app.copy.panels.visionKicker}</span><h2>{app.copy.panels.visionTitle}</h2></div><ScanSearch size={18} /></div>
       <p>{app.copy.vision.description}</p>
       <div className="vision-model-status"><Database size={14} /><span>{status?.available ? app.copy.vision.model : app.copy.vision.unavailable}</span><small title={vectorIndexLabel}>{status?.indexedFrameCount ?? 0} · {vectorIndexLabel}</small></div>
-      {!status?.available ? <small className="vision-error">{status?.message ?? app.copy.vision.unavailable}</small> : null}
-      {!status?.available && status?.downloadable !== false ? <div className="vision-model-download"><button className="vision-primary-action" type="button" onClick={downloadVisionModel} disabled={isDownloadingModel}><Download size={14} />{isDownloadingModel ? app.copy.vision.downloadingModel : app.copy.vision.downloadModel}</button>{modelDownloadProgress?.status === 'downloading' ? <small>{app.copy.vision.modelDownloadProgress(modelDownloadProgress.relativePath, modelDownloadProgress.percent == null ? 0 : Math.round(modelDownloadProgress.percent * 100))}</small> : null}</div> : null}
+      {status && !status.packAvailable ? <div className="vision-model-download"><small className="vision-error">{status.message}</small><button className="vision-primary-action" type="button" onClick={downloadVisionPack} disabled={isDownloadingPack}><Download size={14} />{isDownloadingPack ? app.copy.vision.downloadingVisionPack : `${app.copy.vision.downloadVisionPack}（${status.packVersion}）`}</button></div> : null}
+      {status?.packAvailable && !status.available ? <small className="vision-error">{status.message || app.copy.vision.unavailable}</small> : null}
+      {status?.packAvailable && !status.available && status.downloadable !== false ? <div className="vision-model-download"><button className="vision-primary-action" type="button" onClick={downloadVisionModel} disabled={isDownloadingModel}><Download size={14} />{isDownloadingModel ? app.copy.vision.downloadingModel : app.copy.vision.downloadModel}</button>{modelDownloadProgress?.status === 'downloading' ? <small>{app.copy.vision.modelDownloadProgress(modelDownloadProgress.relativePath, modelDownloadProgress.percent == null ? 0 : Math.round(modelDownloadProgress.percent * 100))}</small> : null}</div> : null}
       <VisionLibraryFolder copy={app.copy.vision} folderPath={folder.folderPath} savedFolders={folder.savedFolders} videoPaths={folder.videoPaths} includeSubfolders={folder.includeSubfolders} scanProgress={folder.scanProgress} batchScanProgress={folder.batchScanProgress} isBusy={isBusy} onChooseFolder={folder.chooseFolder} onScanFolder={folder.scanCurrentFolder} onScanAllFolders={folder.scanAllFolders} onIncludeSubfoldersChange={folder.setIncludeSubfolders} onStartIndex={startFolderIndex} onUseFolder={folder.useSavedFolder} onRemoveFolder={folder.removeSavedFolder} />
       <VisionImportInbox copy={app.copy.vision} directories={importInbox.directories} items={importInbox.items} progress={importInbox.progress} pipelineProgress={importInbox.pipelineProgress} isBusy={importInbox.isBusy} error={importInbox.error} writeSidecars={importInbox.writeSidecars} onAddFolder={importInbox.addFolder} onRemoveFolder={importInbox.removeFolder} onScan={importInbox.scan} onQueue={importInbox.queueItem} onIgnore={importInbox.ignoreItem} onRetry={importInbox.retryItem} onBatchQueue={importInbox.batchQueue} onBatchIgnore={importInbox.batchIgnore} onBatchRetry={importInbox.batchRetry} onBatchClear={importInbox.batchClear} onWriteSidecarsChange={importInbox.setWriteSidecars} onUpdateMetadata={importInbox.updateMetadata} />
       <VisionLibrarySources copy={app.copy.vision} sources={sources} thumbnailUrls={sourceThumbnailUrls} hasMoreSources={hasMoreSources} isLoadingMoreSources={isLoadingMoreSources} onLoadMore={loadMoreSources} onOpenSource={openSource} />

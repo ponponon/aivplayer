@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
-import type { VisionClipCollectionBatchDuplicateRequest, VisionClipCollectionBatchExportRequest, VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionEvidenceAuditPage, VisionEvidenceAuditRequest, VisionEvidenceBatchClearResult, VisionEvidenceSourceRequest, VisionEvidenceType, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionModelDownloadResult, VisionSavedSearchInput, VisionSearchFullExportRequest, VisionSearchPageKind, VisionSearchPageRequest, VisionSearchRequest, VisionSearchResult, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchResultsExportRequest, VisionSearchResultsExportResult, VisionSimilarSearchRequest } from '../shared/vision-types'
+import type { VisionClipCollectionBatchDuplicateRequest, VisionClipCollectionBatchExportRequest, VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionEvidenceAuditPage, VisionEvidenceAuditRequest, VisionEvidenceBatchClearResult, VisionEvidenceSourceRequest, VisionEvidenceType, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionModelDownloadResult, VisionPackDownloadResult, VisionSavedSearchInput, VisionSearchFullExportRequest, VisionSearchPageKind, VisionSearchPageRequest, VisionSearchRequest, VisionSearchResult, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchResultsExportRequest, VisionSearchResultsExportResult, VisionSimilarSearchRequest } from '../shared/vision-types'
 import { VISION_SEARCH_FULL_EXPORT_MAX_RESULTS } from '../shared/vision-types'
 import type { VisionEntityCatalogBatchPatch, VisionEntityCatalogCreateInput, VisionEntityCatalogPatch } from '../shared/vision-entity-types'
 import { scanVisionDirectory, isVisionScanAbortError } from '../core/ai/vision-directory-scan'
@@ -27,6 +27,7 @@ import { VISION_INDEX_FAILURE_MAX_RETRY_BATCH } from '../core/ai/vision-index-fa
 import { mergeVisionLibrarySourceMetadata } from '../core/ai/vision-library-source-metadata'
 import { applySpeakerDiarizationCatalogToResults, filterSpeakerDiarizationCatalogSearchResults, getSpeakerDiarizationCatalogSearchQueries } from '../core/ai/speaker-diarization-catalog'
 import { downloadVisionModel } from '../core/ai/vision-model-downloader'
+import { downloadVisionPack } from '../core/ai/vision-pack-downloader'
 import { applyVisionEntityCatalogToResults, getVisionEntityCatalogSearchQueries } from '../core/ai/vision-entity-catalog'
 import { filterVisionSearchResultsByEvidenceTypes } from '../core/ai/vision-search'
 import { normalizeVisionObjectDetectionFilterState } from '../core/ai/vision-object-detection-filter'
@@ -51,6 +52,7 @@ function normalizeVisionSearchLimit(value: number | undefined): number {
 const visionSearchCursorStore = new VisionSearchCursorStore()
 
 let visionModelDownloadPromise: Promise<VisionModelDownloadResult> | null = null
+let visionPackDownloadPromise: Promise<VisionPackDownloadResult> | null = null
 
 async function listVisionSourcesWithMetadata(request: VisionLibrarySourceRequest = {}): Promise<ReturnType<typeof mergeVisionLibrarySourceMetadata>> {
   const sources = await getVisionLibrary().listSources(request.limit, request.offset)
@@ -285,6 +287,22 @@ function safeExportTitle(title: string): string {
 
 export function registerVisionIpc(): void {
   ipcMain.handle(IPC_CHANNELS.VISION_STATUS, () => getVisionLibrary().getStatus())
+  ipcMain.handle(IPC_CHANNELS.VISION_PACK_DOWNLOAD, async (): Promise<VisionPackDownloadResult> => {
+    if (visionPackDownloadPromise) return visionPackDownloadPromise
+    visionPackDownloadPromise = (async () => {
+      try {
+        await downloadVisionPack({ userDataPath: app.getPath('userData') })
+        const status = await getVisionLibrary().getStatus()
+        return { success: status.packAvailable, message: status.packAvailable ? '视觉运行组件下载完成' : status.message, status }
+      } catch (error) {
+        const status = await getVisionLibrary().getStatus()
+        return { success: false, message: error instanceof Error ? error.message : String(error), status }
+      } finally {
+        visionPackDownloadPromise = null
+      }
+    })()
+    return visionPackDownloadPromise
+  })
   ipcMain.handle(IPC_CHANNELS.VISION_MODEL_DOWNLOAD, async (event): Promise<VisionModelDownloadResult> => {
     if (visionModelDownloadPromise) return visionModelDownloadPromise
     const sender = event.sender

@@ -1,7 +1,7 @@
 {
   "name": "aivplayer",
   "productName": "AIVPlayer",
-  "version": "0.5.4",
+  "version": "0.5.5",
   "description": "A modern cross-platform desktop video player with local ASR subtitle generation.",
   "main": "out/main/index.js",
   "scripts": {
@@ -22,6 +22,10 @@
     "release:check-macos-ffmpeg": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/check-macos-ffmpeg-runtime.ts",
     "release:check-architecture": "node scripts/check-binary-architecture.mjs",
     "release:prepare-vision-model": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/prepare-vision-model.ts",
+    "release:build-vision-pack": "node scripts/build-vision-pack.mjs",
+    "release:create-vision-pack": "node scripts/create-vision-pack-archive.mjs",
+    "release:upload-vision-assets": "node scripts/upload-vision-assets.mjs",
+    "release:report-package-size": "node scripts/package-size-report.mjs",
     "release:write-runtime-metadata": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/write-runtime-metadata.ts",
     "release:create-manifest": "node scripts/release-manifest.mjs",
     "release:check-manifest": "node scripts/release-manifest.mjs --verify",

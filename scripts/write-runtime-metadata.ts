@@ -7,7 +7,7 @@ import { join, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
 import { getWhisperBinaryNames } from '../src/core/ai/whisper-binary.ts'
-import { VISION_MODEL_FILES, VISION_MODEL_ID, VISION_MODEL_REPOSITORY, VISION_MODEL_REVISION } from '../src/shared/vision-types.ts'
+import { VISION_MODEL_BASE_URL, VISION_MODEL_FILES, VISION_MODEL_ID, VISION_MODEL_REPOSITORY, VISION_MODEL_REVISION } from '../src/shared/vision-types.ts'
 
 const execFileAsync = promisify(execFile)
 
@@ -66,6 +66,8 @@ export type RuntimeMetadata = {
       repository: string
       revision: string
       license: 'Apache-2.0'
+      bundled: boolean
+      downloadBaseUrl: string
       files: Array<RuntimeBinary & { relativePath: string }>
     }
   }
@@ -80,6 +82,7 @@ export type WriteRuntimeMetadataOptions = {
   libheifVersion?: string
   libheifEncoder?: string
   visionModelRevision?: string
+  remoteVisionModel?: boolean
   ffmpegPath?: string
   ffprobePath?: string
   whisperPath?: string
@@ -160,18 +163,60 @@ async function writeJsonAtomically(filePath: string, value: unknown): Promise<vo
   await rename(temporaryPath, filePath)
 }
 
-async function getVisionModelMetadata(resourcePath: string, revision: string): Promise<RuntimeMetadata['components']['siglip2']> {
+async function getVisionModelMetadata(resourcePath: string, revision: string, remoteVisionModel = false): Promise<RuntimeMetadata['components']['siglip2']> {
   const modelDirectory = join(resourcePath, VISION_MODEL_DIRECTORY)
-  const files = await Promise.all(VISION_MODEL_FILES.map(async (relativePath) => {
+  const localFiles = await Promise.all(VISION_MODEL_FILES.map(async (relativePath) => {
     const filePath = join(modelDirectory, relativePath)
-    const binary = await getRuntimeBinary(filePath, relative(resourcePath, filePath))
-    return { ...binary, relativePath }
+    try {
+      return { relativePath, binary: await getRuntimeBinary(filePath, relative(resourcePath, filePath)) }
+    } catch {
+      return null
+    }
   }))
+  const downloadBaseUrl = VISION_MODEL_BASE_URL.replace(VISION_MODEL_REVISION, revision)
+  if (!remoteVisionModel && localFiles.every((item) => item !== null)) {
+    return {
+      source: `https://huggingface.co/${VISION_MODEL_REPOSITORY}/tree/${revision}`,
+      repository: VISION_MODEL_REPOSITORY,
+      revision,
+      license: 'Apache-2.0',
+      bundled: true,
+      downloadBaseUrl,
+      files: localFiles.map(({ relativePath, binary }) => ({ ...binary, relativePath }))
+    }
+  }
+
+  const manifestPath = join(resourcePath, 'vision-model-manifest.json')
+  let manifest: { revision?: unknown; files?: unknown } | null = null
+  try {
+    manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as { revision?: unknown; files?: unknown }
+  } catch {
+    // A local model or a committed remote manifest is required for release metadata.
+  }
+  if (manifest?.revision !== revision || !Array.isArray(manifest.files)) {
+    const missing = localFiles.flatMap((item, index) => item === null ? [VISION_MODEL_FILES[index]!] : [])
+    throw new Error(`Vision model files are missing and no matching remote manifest is available: ${missing.join(', ')} (${manifestPath})`)
+  }
+  const manifestFiles = manifest.files as Array<{ relativePath?: unknown; sha256?: unknown; sizeBytes?: unknown }>
+  const files = VISION_MODEL_FILES.map((relativePath) => {
+    const item = manifestFiles.find((candidate) => candidate.relativePath === relativePath)
+    if (!item || typeof item.sha256 !== 'string' || !/^[a-f0-9]{64}$/u.test(item.sha256) || typeof item.sizeBytes !== 'number' || item.sizeBytes <= 0) {
+      throw new Error(`Remote vision model manifest is missing or invalid: ${relativePath}`)
+    }
+    return {
+      path: `${downloadBaseUrl}/${relativePath}`,
+      sha256: item.sha256,
+      sizeBytes: item.sizeBytes,
+      relativePath
+    }
+  })
   return {
     source: `https://huggingface.co/${VISION_MODEL_REPOSITORY}/tree/${revision}`,
     repository: VISION_MODEL_REPOSITORY,
     revision,
     license: 'Apache-2.0',
+    bundled: false,
+    downloadBaseUrl,
     files
   }
 }
@@ -194,7 +239,7 @@ export async function writeRuntimeMetadata(options: WriteRuntimeMetadataOptions 
     getRuntimeBinary(ffmpegPath, relative(resourcePath, ffmpegPath)),
     getRuntimeBinary(ffprobePath, relative(resourcePath, ffprobePath)),
     getRuntimeBinary(whisperPath, relative(resourcePath, whisperPath)),
-    getVisionModelMetadata(resourcePath, options.visionModelRevision ?? process.env.VISION_MODEL_REVISION ?? VISION_MODEL_REVISION)
+    getVisionModelMetadata(resourcePath, options.visionModelRevision ?? process.env.VISION_MODEL_REVISION ?? VISION_MODEL_REVISION, options.remoteVisionModel === true)
   ])
 
   const whisperVersion = getEnvironmentVersion('WHISPER_CPP_VERSION', options.whisperVersion, 'unknown')
@@ -271,6 +316,10 @@ function readOptions(argv: string[]): WriteRuntimeMetadataOptions {
   for (let index = 0; index < argv.length; index += 1) {
     const item = argv[index]
     const value = argv[index + 1]
+    if (item === '--remote-vision-model') {
+      options.remoteVisionModel = true
+      continue
+    }
     if (!value || value.startsWith('--')) continue
     if (item === '--resource-dir') options.resourcePath = value
     else if (item === '--platform') options.platform = value as NodeJS.Platform

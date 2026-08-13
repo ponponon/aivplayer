@@ -46,8 +46,10 @@ describe('release workflow source constraints', () => {
     expect(releaseWorkflow).toContain('--workflow-run-attempt "${{ github.run_attempt }}"')
   })
 
-  it('publishes release assets without object-storage uploads', () => {
-    expect(releaseWorkflow).not.toMatch(/MinIO|MINIO|Cloudflare R2|R2/i)
+  it('publishes Vision Packs to R2 before creating the release', () => {
+    expect(releaseWorkflow).toContain('Upload platform-specific Vision Packs to R2')
+    expect(releaseWorkflow).toContain('CLOUDFLARE_API_TOKEN')
+    expect(releaseWorkflow).toContain('aivplayer-releases/aivplayer/vision-pack/$version')
     expect(releaseWorkflow).toContain('name: Create GitHub Release')
   })
 
@@ -56,13 +58,15 @@ describe('release workflow source constraints', () => {
     expect(releaseWorkflow).toContain('description: \'Build and validate all release artifacts without creating a release\'')
     expect(releaseWorkflow).toContain('default: false')
     expect(releaseWorkflow).toContain('type: boolean')
-    expect(releaseWorkflow.match(/github\.event_name != 'workflow_dispatch' \|\| inputs\.verify_only != true/g)).toHaveLength(3)
+    expect(releaseWorkflow.match(/github\.event_name != 'workflow_dispatch' \|\| inputs\.verify_only != true/g)).toHaveLength(4)
     expect(releaseWorkflow.indexOf('release:check-evidence')).toBeLessThan(releaseWorkflow.indexOf('Create GitHub Release'))
   })
 
   it('stages platform runtimes before packaging', () => {
     expect(releaseWorkflow.match(/release:check-runtime/g)).toHaveLength(10)
-    expect(releaseWorkflow.match(/release:prepare-vision-model/g)).toHaveLength(5)
+    expect(releaseWorkflow.match(/release:build-vision-pack/g)).toHaveLength(5)
+    expect(releaseWorkflow.match(/release:report-package-size/g)).toHaveLength(5)
+    expect(releaseWorkflow).not.toContain('release:prepare-vision-model -- --resource-dir')
     expect(releaseWorkflow.match(/release:write-runtime-metadata/g)).toHaveLength(5)
     expect(releaseWorkflow).toContain('release:build-whisper-macos')
     expect(releaseWorkflow).toContain('release:prepare-runtime -- --platform win32')
@@ -144,7 +148,8 @@ describe('release workflow source constraints', () => {
     expect(electronBuilder).toContain('from: LICENSE')
     expect(electronBuilder).toContain('from: docs/THIRD_PARTY_LICENSES.md')
     expect(electronBuilder).toContain('from: resources/runtime-metadata.json')
-    expect(electronBuilder).toContain('resources/vision/siglip2-base-patch16-224-ONNX')
+    expect(electronBuilder).toContain("!node_modules/@huggingface/**")
+    expect(electronBuilder).not.toContain('resources/vision/siglip2-base-patch16-224-ONNX')
     expect(electronBuilder).toContain("artifactName: '${productName}-Setup-${version}-${arch}.${ext}'")
     expect(electronBuilder).not.toContain("artifactName: '${productName} Setup ${version} ${arch}.${ext}'")
     expect(electronBuilder).toContain("artifactName: '${name}-${version}-${arch}.${ext}'")

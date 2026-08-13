@@ -5,6 +5,7 @@ import { VisionObjectDetectionRuntime } from '../core/ai/vision-object-detection
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type { VisionObjectDetectionModelStatus, VisionObjectDetectionRequest, VisionObjectDetectionResponse } from '../shared/vision-object-detection-types'
 import { desktopState } from './desktop-state'
+import { resolveResourcePath } from './desktop-services'
 
 function getCurrentVisionObjectDetectionStatus(): VisionObjectDetectionModelStatus {
   return getVisionObjectDetectionModelStatus(
@@ -39,6 +40,7 @@ export function registerVisionObjectDetectionIpc(): void {
     if (!status.available) return { success: false, message: status.message, status, result: null }
     try {
       const runtime = new VisionObjectDetectionRuntime({
+        resourcePath: resolveResourcePath(),
         userDataPath: app.getPath('userData'),
         modelDirectory: desktopState.currentAppSettings.vision.objectDetectionModelDirectory,
         platform: process.platform,

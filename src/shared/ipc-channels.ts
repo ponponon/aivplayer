@@ -93,6 +93,7 @@ export const IPC_CHANNELS = {
   GET_INITIAL_MEDIA_FILES: 'media:get-initial-files',
   MEDIA_FILES_OPENED: 'media:files-opened',
   VISION_STATUS: 'vision:status',
+  VISION_PACK_DOWNLOAD: 'vision:pack-download',
   VISION_MODEL_DOWNLOAD: 'vision:model-download',
   VISION_MODEL_DOWNLOAD_PROGRESS: 'vision:model-download-progress',
   VISION_INDEX_START: 'vision:index-start',

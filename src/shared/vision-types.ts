@@ -4,6 +4,7 @@ export const VISION_MODEL_ID = 'siglip2-base-patch16-224-ONNX'
 export const VISION_MODEL_VARIANT = 'uint8'
 export const VISION_MODEL_REPOSITORY = 'onnx-community/siglip2-base-patch16-224-ONNX'
 export const VISION_MODEL_REVISION = 'ba1f3b0843f24bc5417d38e19c37b287d719b2f4'
+export const VISION_MODEL_BASE_URL = `https://releases.quniv.cn/aivplayer/models/siglip2/${VISION_MODEL_REVISION}`
 export const VISION_MODEL_FILES = [
   'config.json',
   'preprocessor_config.json',
@@ -40,6 +41,10 @@ export type VisionIndexTimings = {
 export type VisionRuntimeStatus = {
   available: boolean
   downloadable: boolean
+  packAvailable: boolean
+  packDownloadable: boolean
+  packVersion: string
+  packDirectory: string
   modelId: string
   modelVariant: string
   modelDirectory: string
@@ -66,6 +71,12 @@ export type VisionModelDownloadProgress = {
 }
 
 export type VisionModelDownloadResult = {
+  success: boolean
+  message: string
+  status: VisionRuntimeStatus
+}
+
+export type VisionPackDownloadResult = {
   success: boolean
   message: string
   status: VisionRuntimeStatus

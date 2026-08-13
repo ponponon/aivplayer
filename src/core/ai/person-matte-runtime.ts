@@ -1,5 +1,6 @@
 import type { RawImage } from '@huggingface/transformers'
 import { getPersonMatteModelStatus, resolvePersonMatteModelPaths, type PersonMatteModelPaths, type PersonMatteModelStatus } from './person-matte-model'
+import { loadVisionPackModule } from './vision-pack'
 
 type BackgroundRemovalPipeline = (image: RawImage) => Promise<RawImage>
 
@@ -32,7 +33,7 @@ export class PersonMatteRuntime {
   }
 
   async removeBackground(imagePath: string): Promise<RawImage> {
-    const { RawImage } = await import('@huggingface/transformers')
+    const { RawImage } = this.getTransformers()
     return (await this.getPipeline())(await RawImage.read(imagePath))
   }
 
@@ -48,11 +49,15 @@ export class PersonMatteRuntime {
     if (!status.available) return Promise.reject(new Error(status.message))
 
     this.pipelinePromise = (async () => {
-      const { pipeline } = await import('@huggingface/transformers')
+      const { pipeline } = this.getTransformers()
       const segmenter = await pipeline('background-removal', this.modelPaths.modelDirectory, { local_files_only: true, device: 'cpu' })
       return segmenter as unknown as BackgroundRemovalPipeline
     })()
     this.pipelinePromise.catch(() => { this.pipelinePromise = null })
     return this.pipelinePromise
+  }
+
+  private getTransformers(): typeof import('@huggingface/transformers') {
+    return loadVisionPackModule<typeof import('@huggingface/transformers')>('@huggingface/transformers', this.resourcePath, this.userDataPath ?? '.')
   }
 }
