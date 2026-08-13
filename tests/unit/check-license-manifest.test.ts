@@ -11,11 +11,11 @@ describe('license manifest', () => {
       '@huggingface/transformers',
       '@lancedb/lancedb',
       'apache-arrow',
+      'electron-updater',
       'lucide-react',
       'qrcode',
       'react',
       'react-dom',
-      'electron-updater',
       'electron'
     ])
   })
