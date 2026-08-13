@@ -291,6 +291,7 @@ describe('vision library setup', () => {
   it('keeps the indexed library browse surface wired to source thumbnails', () => {
     const panel = readFileSync(join(projectRoot, 'src/renderer/src/app/vision-panel.tsx'), 'utf8')
     const sources = readFileSync(join(projectRoot, 'src/renderer/src/app/vision-library-sources.tsx'), 'utf8')
+    const styles = readFileSync(join(projectRoot, 'src/renderer/src/styles/player/vision-library-results.css'), 'utf8')
     const ipc = readFileSync(join(projectRoot, 'src/desktop/ipc-vision.ts'), 'utf8')
     const preload = readFileSync(join(projectRoot, 'src/preload/index.ts'), 'utf8')
     expect(panel).toContain('VisionLibrarySources')
@@ -303,6 +304,9 @@ describe('vision library setup', () => {
     expect(sources).toContain('hasMoreSources')
     expect(sources).toContain('onLoadMore')
     expect(sources).toContain('libraryLoadMore')
+    expect(styles).toContain('grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr));')
+    expect(styles).toContain('padding: 6px 10px 6px 6px;')
+    expect(styles).toContain('.vision-library-source > svg')
     expect(ipc).toContain('VISION_LIST_SOURCES')
     expect(ipc).toContain('listVisionSourcesWithMetadata')
     expect(ipc).toContain('refreshSidecars')
