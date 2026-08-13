@@ -1,4 +1,4 @@
-import { Archive, Copy, Database, Download, FilePlus, ImageUp, ScanSearch, Search, Square, Trash2, Upload } from 'lucide-react'
+import { Archive, CheckSquare, Copy, Database, Download, FilePlus, ImageUp, ScanSearch, Search, Square, Trash2, Upload } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { VisionIndexProgress, VisionRuntimeStatus, VisionSearchResult } from '../../../shared/media-types'
 import type { AsrSubtitleResult } from '../../../shared/media-types'
@@ -122,6 +122,7 @@ export function VisionPanel(): React.ReactElement {
   const [collectionTitle, setCollectionTitle] = useState('')
   const [collectionTags, setCollectionTags] = useState('')
   const [collections, setCollections] = useState<VisionClipCollection[]>([])
+  const [selectedCollectionIds, setSelectedCollectionIds] = useState<Set<string>>(new Set())
   const [collectionTransferStatus, setCollectionTransferStatus] = useState<string | null>(null)
   const [collectionAvailability, setCollectionAvailability] = useState<Record<string, CollectionAvailability>>({})
   const [thumbnailUrls, setThumbnailUrls] = useState<Record<string, string>>({})
@@ -130,6 +131,7 @@ export function VisionPanel(): React.ReactElement {
   const [isCreatingProject, setIsCreatingProject] = useState(false)
   const [repairingCollectionId, setRepairingCollectionId] = useState<string | null>(null)
   const [duplicatingCollectionId, setDuplicatingCollectionId] = useState<string | null>(null)
+  const [isDuplicatingCollections, setIsDuplicatingCollections] = useState(false)
   const [pendingResultSeek, setPendingResultSeek] = useState<{ videoPath: string; seconds: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [objectDetectionResult, setObjectDetectionResult] = useState<VisionObjectDetectionResult | null>(null)
@@ -142,6 +144,8 @@ export function VisionPanel(): React.ReactElement {
   const folder = useVisionLibraryFolder(app, isIndexing, { onError: setError })
   const importInbox = useVisionImportInbox(app)
   const isBusy = folder.isBusy
+  const allCollectionsSelected = collections.length > 0 && collections.every((collection) => selectedCollectionIds.has(collection.id))
+  const isCollectionBatchBusy = isDuplicatingCollections || duplicatingCollectionId !== null
   const vectorIndexLabel = status?.vectorIndexType
     ? app.copy.vision.vectorIndex(status.vectorIndexType, status.vectorIndexDistanceType ?? '—', status.vectorIndexIndexedRows, status.vectorIndexUnindexedRows)
     : app.copy.vision.exactVectorSearch
@@ -199,6 +203,14 @@ export function VisionPanel(): React.ReactElement {
       removeInboxPipelineListener()
     }
   }, [])
+
+  useEffect(() => {
+    setSelectedCollectionIds((current) => {
+      const availableIds = new Set(collections.map((collection) => collection.id))
+      const next = new Set([...current].filter((id) => availableIds.has(id)))
+      return next.size === current.size ? current : next
+    })
+  }, [collections])
 
   const downloadVisionModel = async (): Promise<void> => {
     if (isDownloadingModel) return
@@ -790,6 +802,35 @@ export function VisionPanel(): React.ReactElement {
     }
   }
 
+  const toggleCollectionSelection = (collectionId: string): void => {
+    setSelectedCollectionIds((current) => {
+      const next = new Set(current)
+      if (next.has(collectionId)) next.delete(collectionId)
+      else next.add(collectionId)
+      return next
+    })
+  }
+
+  const toggleAllCollectionSelection = (): void => {
+    setSelectedCollectionIds(allCollectionsSelected ? new Set() : new Set(collections.map((collection) => collection.id)))
+  }
+
+  const duplicateSelectedCollections = async (): Promise<void> => {
+    if (isCollectionBatchBusy || selectedCollectionIds.size === 0) return
+    setIsDuplicatingCollections(true)
+    setError(null)
+    try {
+      const result = await window.aiv.duplicateVisionClipCollections({ collectionIds: [...selectedCollectionIds] })
+      setCollections((current) => [...result.collections, ...current.filter((item) => !result.collections.some((duplicate) => duplicate.id === item.id))])
+      setSelectedCollectionIds(new Set())
+      setCollectionTransferStatus(app.copy.vision.collectionsDuplicated(result.collections.length, result.skippedCount))
+    } catch (reason: unknown) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    } finally {
+      setIsDuplicatingCollections(false)
+    }
+  }
+
   const repairCollection = async (collection: VisionClipCollection): Promise<void> => {
     if (repairingCollectionId) return
     setRepairingCollectionId(collection.id)
@@ -962,10 +1003,10 @@ export function VisionPanel(): React.ReactElement {
     <VisionSearchResults copy={app.copy.vision} results={results} thumbnailUrls={thumbnailUrls} onOpenResult={openResult} onFindSimilar={findSimilarResult} onDetectObjects={detectObjects} isDetectingObjects={isDetectingObjects} isSimilarSearch={searchContext?.kind === 'similar'} onReturnToSearch={returnToSearchResults} selectedIds={selectedResultIds} onToggleSelection={toggleResultSelection} onSelectAllResults={selectAllSearchResults} onClearResults={clearSearchResultSelection} hasMoreResults={hasMoreSearchResults} isLoadingMore={isLoadingMoreSearchResults} onLoadMoreResults={loadMoreSearchResults} onExportResults={exportSearchResults} onExportAllResults={exportAllSearchResults} canExportAllResults={searchContext !== null && results.length > 0} sortMode={searchSortMode} onSortModeChange={changeSearchSortMode} />
     {searchExportStatus ? <small className="vision-saved-search-status vision-search-export-status" role="status">{searchExportStatus}</small> : null}
     {objectDetectionResult ? <VisionObjectDetectionResultView copy={app.copy.vision} result={objectDetectionResult} thumbnailUrl={objectDetectionThumbnailUrl} filter={objectDetectionFilter} onFilterChange={setObjectDetectionFilter} onClear={() => { setObjectDetectionResult(null); setObjectDetectionThumbnailUrl(null) }} /> : null}
-    <section className="vision-card vision-collections"><div className="vision-collections-heading"><strong>{app.copy.vision.savedCollections}</strong><div className="vision-collection-transfer-actions"><button className="vision-secondary-action" type="button" onClick={importCollection}><Upload size={12} />{app.copy.vision.collectionImport}</button><Archive size={15} /></div></div>{collections.length > 0 ? collections.map((collection) => {
+    <section className="vision-card vision-collections"><div className="vision-collections-heading"><strong>{app.copy.vision.savedCollections}</strong><div className="vision-collection-transfer-actions">{collections.length > 0 ? <button className="vision-secondary-action" type="button" onClick={toggleAllCollectionSelection} disabled={isCollectionBatchBusy}>{allCollectionsSelected ? <Square size={12} /> : <CheckSquare size={12} />}{allCollectionsSelected ? app.copy.vision.collectionClearSelection : app.copy.vision.collectionSelectAll}</button> : null}<button className="vision-secondary-action" type="button" onClick={importCollection} disabled={isCollectionBatchBusy}><Upload size={12} />{app.copy.vision.collectionImport}</button><Archive size={15} /></div></div>{selectedCollectionIds.size > 0 ? <div className="vision-collection-batch-actions"><span>{app.copy.vision.selectedCollections(selectedCollectionIds.size)}</span><button className="vision-primary-action" type="button" onClick={() => void duplicateSelectedCollections()} disabled={isCollectionBatchBusy}><Copy size={13} />{app.copy.vision.duplicateSelectedCollections}</button></div> : null}{collections.length > 0 ? collections.map((collection) => {
       const availability = collectionAvailability[collection.id]
       const isRepairing = repairingCollectionId === collection.id
-      return <article className="vision-collection" key={collection.id}><div className="vision-collection-copy"><strong>{collection.title}</strong><span>{app.copy.vision.selectedResults(collection.selections.length)} · {collection.sortMode === 'duration-desc' ? app.copy.vision.collectionSortDuration : collection.sortMode === 'file-name' ? app.copy.vision.collectionSortFileName : app.copy.vision.collectionSortSourceTime}</span>{collection.tags.length > 0 ? <small>{collection.tags.join(' · ')}</small> : null}{availability?.missingPaths ? <small className="vision-collection-missing">{app.copy.vision.collectionMissingSources(availability.missingPaths)}</small> : null}</div><div className="vision-collection-actions"><select className="vision-collection-sort" value={collection.sortMode} aria-label={app.copy.vision.collectionSortLabel} onChange={(event) => sortCollection(collection, event.target.value as VisionClipCollectionSortMode)}><option value="source-time">{app.copy.vision.collectionSortSourceTime}</option><option value="duration-desc">{app.copy.vision.collectionSortDuration}</option><option value="file-name">{app.copy.vision.collectionSortFileName}</option></select>{availability?.missingPaths ? <button className="vision-secondary-action" type="button" onClick={() => void repairCollection(collection)} disabled={isRepairing}>{isRepairing ? app.copy.vision.repairingCollectionSources : app.copy.vision.repairCollectionSources}</button> : null}<button className="vision-secondary-action" type="button" onClick={() => mergeCollection(collection)}>{app.copy.vision.collectionMerge}</button><button className="vision-secondary-action" type="button" onClick={() => invertCollection(collection)}>{app.copy.vision.collectionInvert}</button><button className="vision-secondary-action" type="button" onClick={() => exportCollection(collection, 'json')}>{app.copy.vision.exportJson}</button><button className="vision-secondary-action" type="button" onClick={() => exportCollection(collection, 'csv')}>{app.copy.vision.exportCsv}</button><button className="vision-secondary-action" type="button" onClick={() => exportCollection(collection, 'edl')}>{app.copy.vision.exportEdl}</button><button className="vision-secondary-action" type="button" onClick={() => void duplicateCollection(collection)} disabled={duplicatingCollectionId !== null} title={app.copy.vision.duplicateCollection}><Copy size={13} />{app.copy.vision.duplicateCollection}</button><button className="vision-primary-action" type="button" onClick={() => createProjectFromCollection(collection)} title={app.copy.vision.openCollection}><FilePlus size={13} />{app.copy.vision.openCollection}</button><button className="vision-collection-delete" type="button" onClick={() => deleteCollection(collection)} title={app.copy.vision.deleteCollection} aria-label={app.copy.vision.deleteCollection}><Trash2 size={14} /></button></div></article>
+      return <article className="vision-collection" key={collection.id}><div className="vision-collection-heading"><input type="checkbox" checked={selectedCollectionIds.has(collection.id)} onChange={() => toggleCollectionSelection(collection.id)} disabled={isCollectionBatchBusy} aria-label={app.copy.vision.selectCollection(collection.title)} /><div className="vision-collection-copy"><strong>{collection.title}</strong><span>{app.copy.vision.selectedResults(collection.selections.length)} · {collection.sortMode === 'duration-desc' ? app.copy.vision.collectionSortDuration : collection.sortMode === 'file-name' ? app.copy.vision.collectionSortFileName : app.copy.vision.collectionSortSourceTime}</span>{collection.tags.length > 0 ? <small>{collection.tags.join(' · ')}</small> : null}{availability?.missingPaths ? <small className="vision-collection-missing">{app.copy.vision.collectionMissingSources(availability.missingPaths)}</small> : null}</div></div><div className="vision-collection-actions"><select className="vision-collection-sort" value={collection.sortMode} aria-label={app.copy.vision.collectionSortLabel} onChange={(event) => sortCollection(collection, event.target.value as VisionClipCollectionSortMode)}><option value="source-time">{app.copy.vision.collectionSortSourceTime}</option><option value="duration-desc">{app.copy.vision.collectionSortDuration}</option><option value="file-name">{app.copy.vision.collectionSortFileName}</option></select>{availability?.missingPaths ? <button className="vision-secondary-action" type="button" onClick={() => void repairCollection(collection)} disabled={isRepairing}>{isRepairing ? app.copy.vision.repairingCollectionSources : app.copy.vision.repairCollectionSources}</button> : null}<button className="vision-secondary-action" type="button" onClick={() => mergeCollection(collection)}>{app.copy.vision.collectionMerge}</button><button className="vision-secondary-action" type="button" onClick={() => invertCollection(collection)}>{app.copy.vision.collectionInvert}</button><button className="vision-secondary-action" type="button" onClick={() => exportCollection(collection, 'json')}>{app.copy.vision.exportJson}</button><button className="vision-secondary-action" type="button" onClick={() => exportCollection(collection, 'csv')}>{app.copy.vision.exportCsv}</button><button className="vision-secondary-action" type="button" onClick={() => exportCollection(collection, 'edl')}>{app.copy.vision.exportEdl}</button><button className="vision-secondary-action" type="button" onClick={() => void duplicateCollection(collection)} disabled={isCollectionBatchBusy} title={app.copy.vision.duplicateCollection}><Copy size={13} />{app.copy.vision.duplicateCollection}</button><button className="vision-primary-action" type="button" onClick={() => createProjectFromCollection(collection)} title={app.copy.vision.openCollection}><FilePlus size={13} />{app.copy.vision.openCollection}</button><button className="vision-collection-delete" type="button" onClick={() => deleteCollection(collection)} title={app.copy.vision.deleteCollection} aria-label={app.copy.vision.deleteCollection}><Trash2 size={14} /></button></div></article>
     }) : <div className="vision-empty">{app.copy.vision.savedCollectionEmpty}</div>}{collectionTransferStatus ? <small className="vision-saved-search-status" role="status">{collectionTransferStatus}</small> : null}</section>
   </div>
 }

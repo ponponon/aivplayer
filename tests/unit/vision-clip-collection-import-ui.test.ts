@@ -20,4 +20,13 @@ describe('vision clip collection import UI', () => {
     expect(panel).toContain('collectionDuplicated(duplicate.title)')
     expect(panel).toContain('duplicatingCollectionId')
   })
+
+  it('exposes batch collection selection and one request for selected copies', () => {
+    const panel = readFileSync(join(projectRoot, 'src/renderer/src/app/vision-panel.tsx'), 'utf8')
+    expect(panel).toContain('selectedCollectionIds')
+    expect(panel).toContain('toggleAllCollectionSelection')
+    expect(panel).toContain('duplicateVisionClipCollections')
+    expect(panel).toContain('duplicateSelectedCollections')
+    expect(panel).toContain('selectedCollections(selectedCollectionIds.size)')
+  })
 })

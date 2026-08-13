@@ -616,6 +616,20 @@
   font-size: 11px;
 }
 
+.vision-collection-transfer-actions,
+.vision-collection-batch-actions,
+.vision-collection-heading {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.vision-collection-batch-actions {
+  flex-wrap: wrap;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
 .vision-collection {
   align-items: flex-start;
   flex-wrap: wrap;
@@ -623,6 +637,18 @@
   background: rgba(var(--overlay-rgb), 0.04);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);
+}
+
+.vision-collection-heading {
+  align-items: flex-start;
+  flex: 1;
+  min-width: 0;
+}
+
+.vision-collection-heading > input {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  accent-color: var(--accent);
 }
 
 .vision-collection-copy {
