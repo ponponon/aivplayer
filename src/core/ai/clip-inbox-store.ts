@@ -3,7 +3,7 @@ import { mkdirSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { mergeVisionClipSelections, normalizeVisionTimeRange } from './vision-evidence'
-import { duplicateVisionCollectionTitle, normalizeVisionCollectionSortMode, normalizeVisionCollectionTags, sortVisionClipSelections } from './clip-inbox-operations'
+import { duplicateVisionCollectionTitle, normalizeVisionClipCollectionIds, normalizeVisionCollectionSortMode, normalizeVisionCollectionTags, sortVisionClipSelections } from './clip-inbox-operations'
 import type { VisionClipCollection, VisionClipCollectionInput, VisionClipSelection, VisionEvidenceType } from '../../shared/vision-types'
 
 type SqliteRow = Record<string, unknown>
@@ -185,6 +185,12 @@ export class ClipInboxStore {
       sortMode: collection.sortMode,
       selections: collection.selections
     })
+  }
+
+  duplicateCollections(collectionIds: readonly string[]): { collections: VisionClipCollection[]; skippedCount: number } {
+    const normalizedIds = normalizeVisionClipCollectionIds(collectionIds)
+    const collections = normalizedIds.map((collectionId) => this.duplicateCollection(collectionId)).filter((collection): collection is VisionClipCollection => collection !== null)
+    return { collections, skippedCount: normalizedIds.length - collections.length }
   }
 
   deleteCollection(collectionId: string): boolean {

@@ -3,10 +3,19 @@ import type { VisionClipCollectionSortMode, VisionClipSelection } from '../../sh
 
 const MAX_COLLECTION_TAGS = 20
 const MAX_COLLECTION_TAG_LENGTH = 40
+export const MAX_CLIP_COLLECTION_BATCH_DUPLICATES = 20
 
 export function duplicateVisionCollectionTitle(title: string): string {
   const normalizedTitle = title.trim() || '未命名选段集合'
   return `${normalizedTitle} · 副本`
+}
+
+export function normalizeVisionClipCollectionIds(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return [...new Set(value
+    .filter((id): id is string => typeof id === 'string')
+    .map((id) => id.trim())
+    .filter(Boolean))].slice(0, MAX_CLIP_COLLECTION_BATCH_DUPLICATES)
 }
 
 export function normalizeVisionCollectionTags(value: unknown): string[] {

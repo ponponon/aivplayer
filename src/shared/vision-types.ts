@@ -439,6 +439,15 @@ export type VisionClipCollectionImportResult = {
   collection?: VisionClipCollection
 }
 
+export type VisionClipCollectionBatchDuplicateRequest = {
+  collectionIds: string[]
+}
+
+export type VisionClipCollectionBatchDuplicateResult = {
+  collections: VisionClipCollection[]
+  skippedCount: number
+}
+
 export type VisionSearchResult = {
   id: string
   videoPath: string

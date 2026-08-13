@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { duplicateVisionCollectionTitle, invertVisionClipSelections, normalizeVisionCollectionTags, sortVisionClipSelections } from '../../src/core/ai/clip-inbox-operations'
+import { duplicateVisionCollectionTitle, invertVisionClipSelections, normalizeVisionClipCollectionIds, normalizeVisionCollectionTags, sortVisionClipSelections } from '../../src/core/ai/clip-inbox-operations'
 import type { VisionClipSelection } from '../../src/shared/vision-types'
 
 const selection = (patch: Partial<VisionClipSelection> = {}): VisionClipSelection => ({
@@ -21,6 +21,11 @@ describe('clip inbox operations', () => {
   it('adds a copy suffix to a collection title', () => {
     expect(duplicateVisionCollectionTitle('旅行片段')).toBe('旅行片段 · 副本')
     expect(duplicateVisionCollectionTitle('  ')).toBe('未命名选段集合 · 副本')
+  })
+
+  it('normalizes and caps batch collection ids', () => {
+    expect(normalizeVisionClipCollectionIds([' first ', 'first', '', 'second', 3, ' third '])).toEqual(['first', 'second', 'third'])
+    expect(normalizeVisionClipCollectionIds(Array.from({ length: 25 }, (_, index) => `collection-${index}`))).toHaveLength(20)
   })
   it('normalizes tags and removes duplicates', () => {
     expect(normalizeVisionCollectionTags(['  海边 ', '海边', '', '旅行', 'a'.repeat(60)])).toEqual(['海边', '旅行', 'a'.repeat(40)])

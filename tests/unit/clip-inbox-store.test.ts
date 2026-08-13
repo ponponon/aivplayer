@@ -106,4 +106,16 @@ describe('clip inbox store', () => {
     expect(store.getCollection(duplicate!.id)?.title).toBe('副本已修改')
     expect(store.duplicateCollection('not-found')).toBeNull()
   })
+
+  it('duplicates several collections and reports missing ids', () => {
+    const first = store.saveCollection({ title: '批量一', selections: [selection({ startSeconds: 1, endSeconds: 2 })] })
+    const second = store.saveCollection({ title: '批量二', selections: [selection({ startSeconds: 3, endSeconds: 4 })] })
+
+    const result = store.duplicateCollections([first.id, ` ${second.id} `, first.id, 'missing'])
+
+    expect(result.collections.map((collection) => collection.title)).toEqual(['批量一 · 副本', '批量二 · 副本'])
+    expect(result.collections.map((collection) => collection.id)).not.toContain(first.id)
+    expect(result.skippedCount).toBe(1)
+    expect(store.listCollections()).toHaveLength(4)
+  })
 })
