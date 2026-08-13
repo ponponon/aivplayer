@@ -60,7 +60,7 @@ for sending text to an AI provider configured by the user.
 
 The complete application privacy policy is available at
 <https://aivplayer.pages.dev/privacy/> and in the repository at
-[`docs/privacy/index.html`](docs/privacy/index.html).
+[`docs/site/privacy/index.html`](docs/site/privacy/index.html).
 
 The installer provides an uninstall path. Changes to system integration, such
 as installing the `aivcli` launcher, are documented as part of the installation

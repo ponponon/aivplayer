@@ -10,8 +10,8 @@ const smokeOutputDirectory = await mkdtemp(join(tmpdir(), 'aivplayer-smoke-image
 const screenshotPath = join(tmpdir(), `aivplayer-smoke-image-editor-${Date.now()}.png`)
 const inputImagePaths = [join(smokeInputDirectory, 'smoke-photo-a.png'), join(smokeInputDirectory, 'smoke-photo-b.png')]
 const portraitSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="800"><rect width="400" height="800" fill="#283746"/><circle cx="200" cy="220" r="120" fill="#e8c16d"/><text x="70" y="520" fill="white" font-family="Arial" font-size="46">PORTRAIT</text></svg>'
-await copyFile(join(process.cwd(), 'docs/assets/icon.png'), inputImagePaths[0])
-await copyFile(join(process.cwd(), 'docs/assets/icon.png'), inputImagePaths[1])
+await copyFile(join(process.cwd(), 'docs/site/assets/icon.png'), inputImagePaths[0])
+await copyFile(join(process.cwd(), 'docs/site/assets/icon.png'), inputImagePaths[1])
 
 const app = await electron.launch({ args: [`--user-data-dir=${smokeUserDataDirectory}`, 'out/main/index.js'], env: { ...process.env, HOME: smokeHomeDirectory, AIVPLAYER_SMOKE_IMAGE_OUTPUT_DIRECTORY: smokeOutputDirectory } })
 try {

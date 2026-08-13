@@ -42,7 +42,7 @@ type(scope) : subject
 
 ---
 
-这个项目的页面已经部署到了 cloudflare pages，对应的代码是 docs/index.html ，对应的网页是 https://aivplayer.pages.dev/
+这个项目的页面已经部署到了 cloudflare pages，对应的代码是 docs/site/index.html ，对应的网页是 https://aivplayer.pages.dev/
 后面如果有一些更新是希望用户可以知道的，则可以加到 cloudflare pages 页面，方便用户可以知道
 
 ---

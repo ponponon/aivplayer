@@ -365,7 +365,9 @@ aivplayer/
 ├── resources/           # whisper.cpp, ffmpeg, and other runtime resources
 ├── scripts/             # Build, diagnostics, and smoke tools
 ├── tests/               # Unit and integration tests
-└── docs/                # Cloudflare Pages product site
+└── docs/
+    ├── site/            # Cloudflare Pages product site
+    └── ...              # Release and project documentation
 ```
 
 ### Technology stack

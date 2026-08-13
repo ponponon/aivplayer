@@ -361,7 +361,9 @@ aivplayer/
 ├── resources/           # whisper.cpp、ffmpeg などのランタイムリソース
 ├── scripts/             # ビルド、診断、smoke ツール
 ├── tests/               # 単体テストと統合テスト
-└── docs/                # Cloudflare Pages 製品サイト
+└── docs/
+    ├── site/            # Cloudflare Pages 製品サイト
+    └── ...              # リリースおよびプロジェクト文書
 ```
 
 ### 技術スタック

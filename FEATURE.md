@@ -115,7 +115,7 @@
 - 剪辑字幕新增 Pireel 风格双语字幕独立布局：原文和译文可分别调整位置、最大宽度和字号，旧工程继续使用原文布局默认值，预览与 ASS 烧录共用同一套布局数据。
 - 时间线导出现在会先打开确认面板，允许选择无字幕、外置字幕或烧录字幕模式；确认后才启动 FFmpeg，并沿用现有导出模式偏好和字幕可用性校验。
 - 时间线导出确认面板会预览默认文件名和保存目录，支持直接修改 `.mp4` 文件名，或通过系统保存对话框切换完整输出位置；确认后的目标路径会直接传给 FFmpeg，不会重复弹出保存框。
-- GitHub Actions 已接入 Cloudflare Pages 自动发布：`main` 分支的 `docs/` 变化会先执行静态站点校验，再使用 GitHub Actions Secret 中的 Cloudflare API Token 通过 Wrangler 发布到现有 Pages 项目；Account ID 使用 GitHub Actions Variable 保存，不进入仓库文件。
+- GitHub Actions 已接入 Cloudflare Pages 自动发布：公开站点集中在 `docs/site/`，只有 `main` 分支的站点文件变化会先执行静态站点校验，再使用 GitHub Actions Secret 中的 Cloudflare API Token 通过 Wrangler 发布到现有 Pages 项目；发布手册、许可证和内部计划等 `docs/` 文档不会触发或进入 Pages 部署，Account ID 使用 GitHub Actions Variable 保存，不进入仓库文件。
 - GitHub Actions 已接入自动发布工作流：推送 `v*` 标签时自动构建 macOS、Windows、Linux 安装包，创建 GitHub Release 并上传全部产物；也可以通过 workflow dispatch 输入 Release tag 手动重跑，tag 会真正传递给 Release action。桌面平台构建显式关闭 electron-builder 的隐式发布，避免构建阶段意外触发重复发布。
 - 三个平台的发布工作流在 electron-builder 完成后会检查安装包资源目录，确认 Web `index.html`、Web 静态资源、平台对应的 FFmpeg 和 FFprobe 都已进入最终产物，避免出现“安装包生成成功但局域网 Web 或转码不可用”的漏包。
 - 发布资源检查脚本支持显式传入 `--platform darwin|win32|linux`，可以在任意一台开发机上复核其他平台的安装包目录结构。

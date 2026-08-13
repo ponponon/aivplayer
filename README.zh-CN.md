@@ -362,7 +362,9 @@ aivplayer/
 ├── resources/           # whisper.cpp、ffmpeg 等运行时资源
 ├── scripts/             # 构建、诊断和 smoke 工具
 ├── tests/               # 单元测试和集成测试
-└── docs/                # Cloudflare Pages 产品主页
+└── docs/
+    ├── site/            # Cloudflare Pages 产品主页
+    └── ...              # 发布与项目文档
 ```
 
 ### 技术栈
