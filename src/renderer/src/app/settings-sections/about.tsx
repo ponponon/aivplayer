@@ -1,6 +1,7 @@
-import { Check, Download, Info, RefreshCw, RotateCcw } from 'lucide-react'
+import { Check, Download, ExternalLink, Info, RefreshCw, RotateCcw } from 'lucide-react'
 import type { ReactElement } from 'react'
 import type { AppUpdateState } from '../../../../shared/app-update-types'
+import { OFFICIAL_WEBSITE_URL } from '../../../../shared/app-links'
 import type { LocaleCopy } from '../../../../shared/i18n'
 import { SettingsField } from '../settings-controls'
 import type { SettingsTabId } from '../settings-dialog-model'
@@ -64,6 +65,20 @@ export function AboutSettingsSection({ copy, activeSectionId, updateState, onChe
 
       <SettingsField wide title={copy.settingsDialog.about.projectLabel}>
         <div className="settings-about-value settings-about-project">{copy.aboutDialog.website}</div>
+      </SettingsField>
+
+      <SettingsField wide title={copy.settingsDialog.about.officialWebsiteLabel}>
+        <div className="settings-about-project-row">
+          <div className="settings-about-value settings-about-project">{copy.settingsDialog.about.officialWebsite}</div>
+          <button
+            className="settings-secondary-button settings-about-website-button"
+            type="button"
+            onClick={() => { void window.aiv.openExternalUrl(OFFICIAL_WEBSITE_URL) }}
+          >
+            <ExternalLink size={14} />
+            {copy.settingsDialog.about.openOfficialWebsite}
+          </button>
+        </div>
       </SettingsField>
 
       <SettingsField

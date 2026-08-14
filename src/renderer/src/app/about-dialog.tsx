@@ -1,5 +1,6 @@
-import { CircleQuestionMark, X } from 'lucide-react'
+import { CircleQuestionMark, ExternalLink, X } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactElement } from 'react'
+import { OFFICIAL_WEBSITE_URL } from '../../../shared/app-links'
 import type { LocaleCopy } from '../../../shared/i18n'
 import { useModalFocusTrap } from './use-modal-focus-trap'
 
@@ -52,7 +53,13 @@ export function AboutDialog({ copy, onClose }: AboutDialogProps): ReactElement {
           <div className="about-dialog-meta-wide"><span>{copy.aboutDialog.websiteLabel}</span><strong>{copy.aboutDialog.website}</strong></div>
         </div>
         <div className="about-dialog-footer">
-          <span>{copy.aboutDialog.footer}</span>
+          <div className="about-dialog-footer-actions">
+            <span>{copy.aboutDialog.footer}</span>
+            <button className="settings-secondary-button" type="button" onClick={() => { void window.aiv.openExternalUrl(OFFICIAL_WEBSITE_URL) }}>
+              <ExternalLink size={14} />
+              {copy.aboutDialog.openOfficialWebsite}
+            </button>
+          </div>
           <button className="settings-secondary-button" type="button" onClick={onClose}>{copy.aboutDialog.close}</button>
         </div>
       </section>

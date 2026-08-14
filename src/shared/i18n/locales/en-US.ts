@@ -77,6 +77,7 @@
       license: 'MIT License',
       websiteLabel: 'Project',
       website: 'github.com/ponponon/aivplayer',
+      openOfficialWebsite: 'Visit official website',
       footer: 'Thanks for using AIVPlayer.',
       close: 'Close'
     },
@@ -1088,6 +1089,9 @@
         versionLabel: 'Version',
         licenseLabel: 'License',
         projectLabel: 'Project website',
+        officialWebsiteLabel: 'Official website',
+        officialWebsite: 'aivplayer.pages.dev',
+        openOfficialWebsite: 'Visit official website',
         updateTitle: 'App updates',
         updateDescription: 'Check for a new version manually and restart the app after the download completes.',
         checkForUpdates: 'Check for updates',

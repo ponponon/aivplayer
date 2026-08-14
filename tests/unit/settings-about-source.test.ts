@@ -19,6 +19,7 @@ describe('settings about and update controls', () => {
     const overlaySource = readSource('src/renderer/src/app/app-overlays.tsx')
     const controllerSource = readSource('src/renderer/src/app/use-app-controller.ts')
     const cssSource = readSource('src/renderer/src/styles/player/settings-about.css')
+    const linksSource = readSource('src/shared/app-links.ts')
 
     expect(sectionSource).toContain('copy.aboutDialog.license')
     expect(sectionSource).toContain('updateState.currentVersion')
@@ -26,6 +27,9 @@ describe('settings about and update controls', () => {
     expect(sectionSource).toContain('copy.update.restartAction')
     expect(sectionSource).toContain('onCheckForUpdate')
     expect(sectionSource).toContain('onInstallUpdate')
+    expect(sectionSource).toContain('OFFICIAL_WEBSITE_URL')
+    expect(sectionSource).toContain('openOfficialWebsite')
+    expect(linksSource).toContain("https://aivplayer.pages.dev/")
     expect(sectionSource).toContain("activeSectionId === 'about' ? '' : 'is-hidden'")
     expect(sectionSource).toContain("aria-hidden={activeSectionId !== 'about'}")
     expect(overlaySource).toContain('appUpdateState={app.appUpdateState}')
@@ -51,6 +55,8 @@ describe('settings about and update controls', () => {
       expect(source).toContain('about:')
       expect(source).toContain('checkForUpdates:')
       expect(source).toContain('updateDisabled:')
+      expect(source).toContain('officialWebsiteLabel:')
+      expect(source).toContain('openOfficialWebsite:')
     }
   })
 })

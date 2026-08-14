@@ -22,6 +22,8 @@ describe('cross-platform about dialog', () => {
     expect(dialogSource).toContain('useModalFocusTrap(true')
     expect(dialogSource).toContain('role="dialog"')
     expect(dialogSource).toContain('aria-labelledby="about-dialog-title"')
+    expect(dialogSource).toContain('OFFICIAL_WEBSITE_URL')
+    expect(dialogSource).toContain('openOfficialWebsite')
     expect(overlaySource).toContain('<AboutDialog copy={app.copy}')
     expect(playerCssSource).toContain("@import './player/about-dialog.css';")
     expect(aboutCssSource).toContain('.about-dialog {')

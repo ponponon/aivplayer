@@ -98,6 +98,14 @@
   line-height: 1.5;
 }
 
+.about-dialog-footer-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-width: 0;
+}
+
 @media (max-width: 520px) {
   .about-dialog-meta {
     grid-template-columns: 1fr;
@@ -105,5 +113,10 @@
 
   .about-dialog-meta-wide {
     grid-column: auto;
+  }
+
+  .about-dialog-footer-actions {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

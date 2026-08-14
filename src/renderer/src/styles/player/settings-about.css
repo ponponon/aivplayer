@@ -20,6 +20,23 @@
   word-break: break-word;
 }
 
+.settings-about-project-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.settings-about-project-row .settings-about-value {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.settings-about-website-button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
 .settings-about-update {
   display: grid;
   gap: 10px;
@@ -72,4 +89,15 @@
 
 .settings-about-update-actions .asr-action-button {
   width: auto;
+}
+
+@media (max-width: 680px) {
+  .settings-about-project-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .settings-about-website-button {
+    justify-content: center;
+  }
 }

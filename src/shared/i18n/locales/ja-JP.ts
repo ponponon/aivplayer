@@ -77,6 +77,7 @@
       license: 'MIT License',
       websiteLabel: 'プロジェクト',
       website: 'github.com/ponponon/aivplayer',
+      openOfficialWebsite: '公式サイトを開く',
       footer: 'AIVPlayer をご利用いただきありがとうございます。',
       close: '閉じる'
     },
@@ -1088,6 +1089,9 @@
         versionLabel: 'バージョン',
         licenseLabel: 'ライセンス',
         projectLabel: 'プロジェクトサイト',
+        officialWebsiteLabel: '公式サイト',
+        officialWebsite: 'aivplayer.pages.dev',
+        openOfficialWebsite: '公式サイトを開く',
         updateTitle: 'アプリの更新',
         updateDescription: '新しいバージョンを手動で確認し、ダウンロード後に再起動して更新できます。',
         checkForUpdates: '更新を確認',

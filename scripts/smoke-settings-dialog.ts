@@ -226,10 +226,12 @@ async function main(): Promise<void> {
     const aboutPanelState = await page.evaluate(() => {
       const panel = document.querySelector('#settings-section-about') as HTMLElement | null
       const checkButton = panel?.querySelector('.settings-about-update-actions .settings-secondary-button') as HTMLButtonElement | null
+      const officialWebsiteButton = panel?.querySelector('.settings-about-website-button') as HTMLButtonElement | null
       return {
         display: panel ? window.getComputedStyle(panel).display : 'missing',
         version: panel?.querySelector('.settings-about-value')?.textContent?.trim() ?? 'missing',
         checkButton: checkButton ? 'present' : 'missing',
+        officialWebsiteButton: officialWebsiteButton ? 'present' : 'missing',
         checkDisabled: checkButton?.disabled ?? true
       }
     })
@@ -289,7 +291,8 @@ async function main(): Promise<void> {
       shortcutPanelState.ariaHidden !== 'false' ||
       aboutPanelState.display !== 'grid' ||
       aboutPanelState.version === 'missing' ||
-      aboutPanelState.checkButton !== 'present'
+      aboutPanelState.checkButton !== 'present' ||
+      aboutPanelState.officialWebsiteButton !== 'present'
     ) {
       process.exitCode = 1
     }

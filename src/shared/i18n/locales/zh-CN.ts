@@ -77,6 +77,7 @@
       license: 'MIT License',
       websiteLabel: '项目地址',
       website: 'github.com/ponponon/aivplayer',
+      openOfficialWebsite: '访问官方网站',
       footer: '感谢使用 AIVPlayer。',
       close: '关闭'
     },
@@ -1088,6 +1089,9 @@
         versionLabel: '版本',
         licenseLabel: '许可证',
         projectLabel: '项目地址',
+        officialWebsiteLabel: '官方网站',
+        officialWebsite: 'aivplayer.pages.dev',
+        openOfficialWebsite: '访问官方网站',
         updateTitle: '应用更新',
         updateDescription: '手动检查新版本；下载完成后可以重启应用更新。',
         checkForUpdates: '检查更新',
