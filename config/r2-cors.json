@@ -1,0 +1,18 @@
+{
+  "rules": [
+    {
+      "allowed": {
+        "origins": [
+          "https://aivplayer.pages.dev",
+          "http://localhost:3000",
+          "http://localhost:4173",
+          "http://127.0.0.1:3000",
+          "http://127.0.0.1:4173"
+        ],
+        "methods": ["GET", "HEAD"]
+      },
+      "expose": ["Content-Length", "Content-Type", "ETag"],
+      "maxAgeSeconds": 300
+    }
+  ]
+}

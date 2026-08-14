@@ -10,6 +10,11 @@ const syncWorkflow = readFileSync(join(projectRoot, '.github/workflows/sync-down
 const siteHtml = readFileSync(join(projectRoot, 'docs/site/index.html'), 'utf8')
 const siteScript = readFileSync(join(projectRoot, 'docs/site/script.js'), 'utf8')
 const siteStyles = readFileSync(join(projectRoot, 'docs/site/styles.css'), 'utf8')
+const r2Cors = JSON.parse(readFileSync(join(projectRoot, 'config/r2-cors.json'), 'utf8')) as {
+  rules: Array<{
+    allowed: { origins: string[]; methods: string[] }
+  }>
+}
 
 describe('release download selection', () => {
   it('selects one installer for every real platform and architecture', () => {
@@ -112,5 +117,14 @@ describe('download publishing integration', () => {
     expect(uploader).not.toContain('@aws-sdk/client-s3')
     expect(uploader).not.toContain('CLOUDFLARE_R2_ACCESS_KEY_ID')
     expect(uploader).not.toContain('CLOUDFLARE_R2_SECRET_ACCESS_KEY')
+  })
+
+  it('keeps the public download manifest readable from Pages without write access', () => {
+    const rule = r2Cors.rules[0]
+
+    expect(rule.allowed.origins).toContain('https://aivplayer.pages.dev')
+    expect(rule.allowed.methods).toEqual(['GET', 'HEAD'])
+    expect(JSON.stringify(r2Cors)).not.toContain('PUT')
+    expect(JSON.stringify(r2Cors)).not.toContain('DELETE')
   })
 })

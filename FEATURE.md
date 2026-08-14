@@ -1,5 +1,7 @@
 # AIVPlayer 功能列表
 
+- 官网下载清单的 R2 自定义域名已配置只读 CORS，允许 Cloudflare Pages 和本地预览读取 `download-manifest.json`；避免浏览器跨域拦截后误触发 GitHub 回退链接。
+
 - 发布同步使用 `CLOUDFLARE_API_TOKEN` 通过 R2 REST API 上传当前版和上一版安装包；超过 300 MiB 的资产会在上传前明确阻止，两个版本全部成功并生成清单后，才清理更老的 R2 安装包对象。
 
 - 官网下载区同时提供当前版本自动下载、上一版本历史下载和平台 / 架构手动选择；历史版本优先使用短期 R2 清单，清单不可用时回退到已验证的 GitHub Release 直链。

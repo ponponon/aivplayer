@@ -1,3 +1,9 @@
+## 2026-08-14：R2 下载清单缺少 CORS 会让按钮误回退到 GitHub
+- 现象：官网的“下载推荐版本”按钮看起来正常，但点击后仍然跳转到 GitHub Release 资产，而不是 `releases.quniv.cn` 的 R2 下载地址。
+- 原因：页面初始 HTML 为了容错保留了 GitHub href；页面脚本启动后会 fetch R2 的 `download-manifest.json` 并替换 href。R2 自定义域名没有返回 `Access-Control-Allow-Origin` 时，浏览器会拦截这次 fetch，`loadDownloadManifest()` 捕获异常后继续使用内置的 GitHub 回退清单，因此最终按钮仍指向 GitHub。
+- 经验：检查 R2 对象是否能被 `curl` 访问不够，必须带真实站点的 `Origin` 请求头验证 CORS 响应，并在浏览器中确认按钮最终 href。R2 CORS 只允许 `GET` / `HEAD` 和官网、本地预览源，不要为了解决读取问题开放写入或删除权限。
+- 处理：为 `aivplayer-releases` 配置 `config/r2-cors.json`，通过 Wrangler 应用只读策略；验证 `https://releases.quniv.cn/aivplayer/releases/download-manifest.json` 返回 `access-control-allow-origin: https://aivplayer.pages.dev`，并增加配置回归测试。
+
 ## 2026-08-14：影视库卡片右侧操作列不能贴边或溢出
 - 现象：影视库素材卡片左侧缩略图和内容正常，但右侧播放图标贴近边界，窄侧栏或滚动容器下看起来像没有右边距，部分宽度下还可能被裁切。
 - 原因：来源卡片和网格只声明了 `min-width: 0`，没有把卡片宽度明确限制在滚动容器的可用宽度内；网格列的固定最小宽度和右侧操作列也没有为窄侧栏预留稳定空间。
