@@ -18,7 +18,7 @@ describe('app update source constraints', () => {
     expect(updaterSource).toContain('autoUpdater.autoDownload = false')
     expect(updaterSource).toContain('autoUpdater.autoInstallOnAppQuit = false')
     expect(updaterSource).toContain('void autoUpdater.downloadUpdate()')
-    expect(updaterSource).toContain('autoUpdater.quitAndInstall(false, true)')
+    expect(updaterSource).toContain('autoUpdater.quitAndInstall(true, true)')
   })
 
   it('publishes update metadata required by electron-updater', () => {

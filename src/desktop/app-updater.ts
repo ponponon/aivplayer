@@ -115,7 +115,9 @@ function installAppUpdate(): void {
   if (state.status !== 'downloaded') throw new Error('更新尚未下载完成')
   setState({ status: 'installing', version: state.version, error: undefined, progress: undefined })
   try {
-    autoUpdater.quitAndInstall(false, true)
+    // Windows NSIS updates should behave like a restart: run the downloaded
+    // installer silently, then launch the updated application.
+    autoUpdater.quitAndInstall(true, true)
   } catch (error) {
     setError(error)
     throw error

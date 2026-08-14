@@ -1758,3 +1758,10 @@
 - 现象：官网回退清单仍把 v0.5.4 当作上一版本，实际发布策略已经调整为把当前代码作为 v0.5.6 发布，并保留 v0.5.5。
 - 经验：R2 的 retention 是“当前正式版本 + 上一个正式版本”，不能把固定旧版本写死在官网回退清单；发布新版本时版本号、fallback、manifest 和 R2 同步参数必须一起更新。
 - 处理：本次发布准备统一为 v0.5.6 / v0.5.5，正式 Release workflow 发布后由清单驱动两版 R2 直链，更早版本继续通过 GitHub Releases 获取。
+
+## 2026-08-14：Windows 自动更新不能把静默参数写反
+
+- 现象：AIVPlayer 下载更新后点击“重启并更新”，Windows 弹出完整的 NSIS 安装向导，要求用户重新选择安装范围并点击“下一步”。
+- 原因：`electron-updater.quitAndInstall()` 的第一个参数是 `isSilent`；调用 `quitAndInstall(false, true)` 会明确要求以非静默模式启动安装器。`electron-builder` 的 `oneClick: false` 只决定用户手动双击安装包时是否显示向导，不能替代自动更新的静默参数。
+- 经验：Windows 自动更新要区分“安装器仍会执行文件替换”和“用户是否看到安装流程”两个语义；希望实现类似 VS Code 的重启体验时，必须传入 `quitAndInstall(true, true)`，让 NSIS 收到 `/S` 并在完成后强制启动新版本。
+- 处理：将自动更新改为静默安装并自动重启，同时把源码回归测试从 `false, true` 固定为 `true, true`；后续验证应覆盖已下载更新、应用退出、静默替换和新版本重新启动。
