@@ -1,3 +1,9 @@
+## 2026-08-14：不能用普通 UA 字符串判断真实 CPU 架构
+- 现象：Windows ARM 设备点击官网推荐下载后拿到 `AIVPlayer-Setup-0.5.6-x64.exe`，用户实际需要 ARM64 安装包。
+- 原因：旧逻辑在 `navigator.userAgentData` 架构字段不可用时，把 `navigator.userAgent` 中的 `x86` / `x64` 文本当成设备架构。浏览器可能运行在 x86 模拟层，普通 UA 只能说明浏览器暴露的兼容信息，不能证明物理 CPU 架构。
+- 经验：优先异步请求 UA-CH 高熵 `architecture` 和 `bitness`；不要从普通 UA 推断 ARM。即使 UA-CH 也被浏览器限制、缺失或报告的是模拟层架构，网页没有 API 可以穿透兼容层确认真实 CPU，因此必须保留手动选择，并且不应在架构未知时静默下载某个安装包。
+- 处理：下载推荐改为等待 `getHighEntropyValues(['architecture', 'bitness'])`，只在得到明确 ARM / x64 提示时生成直接下载链接；无法确认时按钮改为跳转手动平台 / 架构选择区，并显示原因。
+
 ## 2026-08-14：R2 下载清单缺少 CORS 会让按钮误回退到 GitHub
 - 现象：官网的“下载推荐版本”按钮看起来正常，但点击后仍然跳转到 GitHub Release 资产，而不是 `releases.quniv.cn` 的 R2 下载地址。
 - 原因：页面初始 HTML 为了容错保留了 GitHub href；页面脚本启动后会 fetch R2 的 `download-manifest.json` 并替换 href。R2 自定义域名没有返回 `Access-Control-Allow-Origin` 时，浏览器会拦截这次 fetch，`loadDownloadManifest()` 捕获异常后继续使用内置的 GitHub 回退清单，因此最终按钮仍指向 GitHub。
