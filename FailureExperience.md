@@ -1675,7 +1675,7 @@
 
 - 现象：项目根目录存在 `.worktrees/` 时，`npm test` 会把 worktree 中的同一批测试再次扫描执行，造成测试重复、资源竞争和超时，且失败日志容易误判为代码回归。
 - 经验：测试入口必须明确限定正式测试目录，不能依赖测试框架从包含构建目录、缓存目录或嵌套 worktree 的仓库根目录自动发现文件。
-- 处理：将 `npm test` 固定为 `vitest run tests`，让完整测试只执行主工作树的 `tests/`，需要临时验证其他目录时再显式传入路径。
+- 处理：将 `npm test` 固定为 `vitest run --dir tests --exclude .worktrees/**`，让完整测试只执行主工作树的 `tests/`；仅传入 `tests` 路径不足以阻止 Vitest 继续扫描嵌套 worktree。
 
 ## 2026-08-13：Cloudflare Pages workflow 不能监听整个 docs 目录
 
@@ -1734,3 +1734,9 @@
 - 原因：发布脚本用 Cloudflare REST API 单次 PUT 上传安装包，适合小对象管理，不适合接近 1 GB 的桌面安装包；同步 workflow 之前也从未运行过，所以 R2 没有最新两个版本的对象和清单。
 - 经验：下载页的 R2 分发必须以公开清单和对象实际存在为完成条件；大文件发布使用 R2 S3 multipart，并区分 Cloudflare 管理 API token 与 R2 S3 的 Access Key / Secret Access Key。
 - 处理：发布脚本对大于 100 MiB 的安装包改用 64 MiB 分片、最多 4 路并行的 multipart 上传，失败自动 abort；workflow 增加 R2 S3 凭据入口，所有两个版本资产成功后才写清单和清理旧对象。
+
+## 2026-08-14：官网保留版本必须跟正式发布版本对齐
+
+- 现象：官网回退清单仍把 v0.5.4 当作上一版本，实际发布策略已经调整为把当前代码作为 v0.5.6 发布，并保留 v0.5.5。
+- 经验：R2 的 retention 是“当前正式版本 + 上一个正式版本”，不能把固定旧版本写死在官网回退清单；发布新版本时版本号、fallback、manifest 和 R2 同步参数必须一起更新。
+- 处理：本次发布准备统一为 v0.5.6 / v0.5.5，正式 Release workflow 发布后由清单驱动两版 R2 直链，更早版本继续通过 GitHub Releases 获取。

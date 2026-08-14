@@ -72,7 +72,7 @@ describe('download publishing integration', () => {
 
   it('provides a manual bootstrap path for already-published releases', () => {
     expect(syncWorkflow).toContain('workflow_dispatch:')
-    expect(syncWorkflow).toContain("default: v0.5.5")
+    expect(syncWorkflow).toContain("default: v0.5.6")
     expect(syncWorkflow).toContain('npm run release:publish-downloads')
     expect(syncWorkflow).toContain('CLOUDFLARE_API_TOKEN')
     expect(syncWorkflow).toContain('CLOUDFLARE_R2_ACCESS_KEY_ID')
@@ -97,7 +97,9 @@ describe('download publishing integration', () => {
     expect(siteScript).toContain('DOWNLOAD_MANIFEST_URL')
     expect(siteScript).toContain('detectDownloadTarget')
     expect(siteScript).toContain('FALLBACK_DOWNLOAD_MANIFEST')
-    expect(siteScript).toContain("version: '0.5.4'")
+    expect(siteScript).toContain("version: '0.5.6'")
+    expect(siteScript).toContain("version: '0.5.5'")
+    expect(siteScript).not.toContain("version: '0.5.4'")
     expect(siteScript).toContain('selectedHistoryVersion')
     expect(siteScript).toContain("wireDownloadSelect('history')")
   })

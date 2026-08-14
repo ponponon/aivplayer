@@ -1,7 +1,7 @@
 {
   "name": "aivplayer",
   "productName": "AIVPlayer",
-  "version": "0.5.5",
+  "version": "0.5.6",
   "description": "A modern cross-platform desktop video player with local ASR subtitle generation.",
   "main": "out/main/index.js",
   "scripts": {
@@ -13,7 +13,7 @@
     "typecheck": "tsc --noEmit",
     "check:licenses": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/check-license-manifest.ts",
     "check:file-limits": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/check-file-limits.ts",
-    "test": "vitest run tests",
+    "test": "vitest run --dir tests --exclude '.worktrees/**'",
     "doctor:backend": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/doctor-backend.ts",
     "doctor:asr": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/doctor-asr-runtime.ts",
     "release:build-whisper-macos": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/build-whisper-macos.ts",
