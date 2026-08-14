@@ -1732,8 +1732,14 @@
 
 - 现象：R2 清单不存在时，官网回退到 GitHub 直链，最终浏览器看到 `release-assets.githubusercontent.com` 的临时签名地址；手动同步 v0.5.5 / v0.5.4 时，v0.5.4 的 919 MB AppImage 上传返回 HTTP 413。
 - 原因：发布脚本用 Cloudflare REST API 单次 PUT 上传安装包，适合小对象管理，不适合接近 1 GB 的桌面安装包；同步 workflow 之前也从未运行过，所以 R2 没有最新两个版本的对象和清单。
-- 经验：下载页的 R2 分发必须以公开清单和对象实际存在为完成条件；大文件发布使用 R2 S3 multipart，并区分 Cloudflare 管理 API token 与 R2 S3 的 Access Key / Secret Access Key。
-- 处理：发布脚本对大于 100 MiB 的安装包改用 64 MiB 分片、最多 4 路并行的 multipart 上传，失败自动 abort；workflow 增加 R2 S3 凭据入口，所有两个版本资产成功后才写清单和清理旧对象。
+- 经验：下载页的 R2 分发必须以公开清单和对象实际存在为完成条件；如果发布范围只包含小于 REST 上限的当前版和上一版，不应为了跳过的超大旧版本引入另一套凭据。
+- 处理：发布脚本统一使用 `CLOUDFLARE_API_TOKEN` 的 REST PUT；超过 300 MB 的安装包在上传前明确失败，workflow 不再读取 R2 S3 凭据，所有两个版本资产成功后才写清单和清理旧对象。
+
+## 2026-08-14：不要为跳过的旧版本引入 R2 S3 凭据
+
+- 现象：为了处理不再纳入保留窗口的 v0.5.4 超大 AppImage，引入了 `CLOUDFLARE_R2_ACCESS_KEY_ID` 和 `CLOUDFLARE_R2_SECRET_ACCESS_KEY`，使正式发布依赖第二套 Secret。
+- 经验：发布策略已经明确只保留 v0.5.6 和 v0.5.5 时，上传实现应按这两个版本的实际资产约束设计；不要让被放弃的旧版本扩大权限面和配置面。
+- 处理：删除 S3 multipart 依赖和两个 Secret，恢复为 Cloudflare API Token REST 上传；对超过 300 MB 的未来资产提前报错，要求另行决定分发方案。
 
 ## 2026-08-14：官网保留版本必须跟正式发布版本对齐
 

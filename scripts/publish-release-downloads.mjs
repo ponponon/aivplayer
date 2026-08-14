@@ -5,13 +5,6 @@ import { basename, join, resolve } from 'node:path'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import { pathToFileURL } from 'node:url'
-import {
-  AbortMultipartUploadCommand,
-  CompleteMultipartUploadCommand,
-  CreateMultipartUploadCommand,
-  S3Client,
-  UploadPartCommand
-} from '@aws-sdk/client-s3'
 import { listReleaseArtifacts } from './release-artifact-policy.mjs'
 
 export const DOWNLOAD_MANIFEST_SCHEMA_VERSION = 1
@@ -21,9 +14,7 @@ export const DEFAULT_R2_PUBLIC_BASE_URL = 'https://releases.quniv.cn/aivplayer/r
 
 const CLOUDFLARE_API_BASE_URL = 'https://api.cloudflare.com/client/v4'
 const GITHUB_API_BASE_URL = 'https://api.github.com'
-const R2_MULTIPART_THRESHOLD_BYTES = 100 * 1024 * 1024
-const R2_MULTIPART_PART_SIZE_BYTES = 64 * 1024 * 1024
-const R2_MULTIPART_MAX_WORKERS = 4
+const R2_REST_MAX_UPLOAD_BYTES = 300 * 1000 * 1000
 const INSTALLER_EXTENSIONS = new Set(['.dmg', '.pkg', '.zip', '.exe', '.appimage', '.deb'])
 const FORMAT_PRIORITY = {
   darwin: { '.dmg': 0, '.pkg': 1, '.zip': 2 },
@@ -223,16 +214,8 @@ async function deleteR2Object({ accountId, bucket, key, token }) {
 async function uploadR2File({ accountId, bucket, key, filePath, token, cacheControl, contentDisposition }) {
   const fileStat = await stat(filePath)
   const extension = getFileExtension(key) || (key.endsWith('.json') ? '.json' : '')
-  if (fileStat.size >= R2_MULTIPART_THRESHOLD_BYTES) {
-    return uploadR2Multipart({
-      accountId,
-      bucket,
-      key,
-      filePath,
-      cacheControl,
-      contentDisposition,
-      contentType: CONTENT_TYPES[extension] ?? 'application/octet-stream'
-    })
+  if (fileStat.size > R2_REST_MAX_UPLOAD_BYTES) {
+    throw new Error(`Cloudflare R2 REST upload limit is 300 MB; ${key} is ${(fileStat.size / 1000 / 1000).toFixed(1)} MB. Reduce the release asset size or use another distribution path.`)
   }
   const response = await fetch(getR2ObjectUrl({ accountId, bucket, key }), {
     method: 'PUT',
@@ -247,70 +230,6 @@ async function uploadR2File({ accountId, bucket, key, filePath, token, cacheCont
     duplex: 'half'
   })
   await readJsonResponse(response, `Cloudflare R2 upload ${key}`)
-}
-
-function createR2S3Client(accountId) {
-  const accessKeyId = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID
-  const secretAccessKey = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY
-  if (!accessKeyId || !secretAccessKey) {
-    throw new Error('Large R2 uploads require CLOUDFLARE_R2_ACCESS_KEY_ID and CLOUDFLARE_R2_SECRET_ACCESS_KEY GitHub secrets.')
-  }
-  return new S3Client({
-    region: 'auto',
-    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
-    credentials: { accessKeyId, secretAccessKey },
-    maxAttempts: 3
-  })
-}
-
-async function uploadR2Multipart({ accountId, bucket, key, filePath, cacheControl, contentDisposition, contentType }) {
-  const client = createR2S3Client(accountId)
-  const fileStat = await stat(filePath)
-  const partCount = Math.ceil(fileStat.size / R2_MULTIPART_PART_SIZE_BYTES)
-  const multipart = await client.send(new CreateMultipartUploadCommand({
-    Bucket: bucket,
-    Key: key,
-    CacheControl: cacheControl,
-    ContentDisposition: contentDisposition,
-    ContentType: contentType
-  }))
-  if (!multipart.UploadId) throw new Error(`Cloudflare R2 multipart upload did not return an upload ID for ${key}.`)
-
-  const uploadedParts = []
-  let nextPartIndex = 0
-  const uploadPart = async () => {
-    while (nextPartIndex < partCount) {
-      const partIndex = nextPartIndex
-      nextPartIndex += 1
-      const start = partIndex * R2_MULTIPART_PART_SIZE_BYTES
-      const end = Math.min(start + R2_MULTIPART_PART_SIZE_BYTES, fileStat.size)
-      const result = await client.send(new UploadPartCommand({
-        Bucket: bucket,
-        Key: key,
-        UploadId: multipart.UploadId,
-        PartNumber: partIndex + 1,
-        Body: createReadStream(filePath, { start, end: end - 1 }),
-        ContentLength: end - start
-      }))
-      if (!result.ETag) throw new Error(`Cloudflare R2 multipart upload returned no ETag for ${key} part ${partIndex + 1}.`)
-      uploadedParts[partIndex] = { ETag: result.ETag, PartNumber: partIndex + 1 }
-      console.log(`Uploaded R2 multipart part ${partIndex + 1}/${partCount}: ${key}`)
-    }
-  }
-
-  try {
-    await Promise.all(Array.from({ length: Math.min(R2_MULTIPART_MAX_WORKERS, partCount) }, () => uploadPart()))
-    await client.send(new CompleteMultipartUploadCommand({
-      Bucket: bucket,
-      Key: key,
-      UploadId: multipart.UploadId,
-      MultipartUpload: { Parts: uploadedParts }
-    }))
-    console.log(`Completed R2 multipart upload: ${key}`)
-  } catch (error) {
-    await client.send(new AbortMultipartUploadCommand({ Bucket: bucket, Key: key, UploadId: multipart.UploadId })).catch(() => {})
-    throw error
-  }
 }
 
 async function uploadR2Json({ accountId, bucket, key, value, token, cacheControl }) {

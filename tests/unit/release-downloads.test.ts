@@ -65,8 +65,8 @@ describe('download publishing integration', () => {
     expect(releaseWorkflow).toContain('npm run release:publish-downloads')
     expect(releaseWorkflow.indexOf('Verify GitHub remote assets')).toBeLessThan(releaseWorkflow.indexOf('Publish desktop downloads to R2'))
     expect(releaseWorkflow).toContain('CLOUDFLARE_API_TOKEN')
-    expect(releaseWorkflow).toContain('CLOUDFLARE_R2_ACCESS_KEY_ID')
-    expect(releaseWorkflow).toContain('CLOUDFLARE_R2_SECRET_ACCESS_KEY')
+    expect(releaseWorkflow).not.toContain('CLOUDFLARE_R2_ACCESS_KEY_ID')
+    expect(releaseWorkflow).not.toContain('CLOUDFLARE_R2_SECRET_ACCESS_KEY')
     expect(releaseWorkflow).toContain('GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}')
   })
 
@@ -75,8 +75,8 @@ describe('download publishing integration', () => {
     expect(syncWorkflow).toContain("default: v0.5.6")
     expect(syncWorkflow).toContain('npm run release:publish-downloads')
     expect(syncWorkflow).toContain('CLOUDFLARE_API_TOKEN')
-    expect(syncWorkflow).toContain('CLOUDFLARE_R2_ACCESS_KEY_ID')
-    expect(syncWorkflow).toContain('CLOUDFLARE_R2_SECRET_ACCESS_KEY')
+    expect(syncWorkflow).not.toContain('CLOUDFLARE_R2_ACCESS_KEY_ID')
+    expect(syncWorkflow).not.toContain('CLOUDFLARE_R2_SECRET_ACCESS_KEY')
   })
 
   it('keeps the public page centered on one automatic download path', () => {
@@ -104,8 +104,13 @@ describe('download publishing integration', () => {
     expect(siteScript).toContain("wireDownloadSelect('history')")
   })
 
-  it('uses R2 multipart upload for large installer assets', () => {
-    expect(readFileSync(join(projectRoot, 'scripts/publish-release-downloads.mjs'), 'utf8')).toContain('CreateMultipartUploadCommand')
-    expect(readFileSync(join(projectRoot, 'scripts/publish-release-downloads.mjs'), 'utf8')).toContain('R2_MULTIPART_THRESHOLD_BYTES')
+  it('uses the Cloudflare API token for R2 REST uploads without S3 credentials', () => {
+    const uploader = readFileSync(join(projectRoot, 'scripts/publish-release-downloads.mjs'), 'utf8')
+    expect(uploader).toContain('CLOUDFLARE_API_BASE_URL')
+    expect(uploader).toContain('CLOUDFLARE_API_TOKEN')
+    expect(uploader).toContain('R2_REST_MAX_UPLOAD_BYTES')
+    expect(uploader).not.toContain('@aws-sdk/client-s3')
+    expect(uploader).not.toContain('CLOUDFLARE_R2_ACCESS_KEY_ID')
+    expect(uploader).not.toContain('CLOUDFLARE_R2_SECRET_ACCESS_KEY')
   })
 })
