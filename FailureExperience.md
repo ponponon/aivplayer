@@ -1727,3 +1727,10 @@
 - 现象：页面只有当前版本自动推荐和手动平台 / 架构选择，历史版本被压缩成“查看全部版本”文字链接，无法直接下载上一版本。
 - 经验：下载页的三条用户意图必须同时可见：当前版本、历史版本、指定平台 / 架构；历史版本应从 manifest 的第二个 release 生成直接下载，而更老版本再跳 GitHub。
 - 处理：新增独立历史版本下载面板和版本 listbox，补齐 v0.5.4 回退清单及多语言文案，并保留 GitHub Releases 作为更老版本入口。
+
+## 2026-08-14：R2 大安装包不能使用 Cloudflare REST API 单次上传
+
+- 现象：R2 清单不存在时，官网回退到 GitHub 直链，最终浏览器看到 `release-assets.githubusercontent.com` 的临时签名地址；手动同步 v0.5.5 / v0.5.4 时，v0.5.4 的 919 MB AppImage 上传返回 HTTP 413。
+- 原因：发布脚本用 Cloudflare REST API 单次 PUT 上传安装包，适合小对象管理，不适合接近 1 GB 的桌面安装包；同步 workflow 之前也从未运行过，所以 R2 没有最新两个版本的对象和清单。
+- 经验：下载页的 R2 分发必须以公开清单和对象实际存在为完成条件；大文件发布使用 R2 S3 multipart，并区分 Cloudflare 管理 API token 与 R2 S3 的 Access Key / Secret Access Key。
+- 处理：发布脚本对大于 100 MiB 的安装包改用 64 MiB 分片、最多 4 路并行的 multipart 上传，失败自动 abort；workflow 增加 R2 S3 凭据入口，所有两个版本资产成功后才写清单和清理旧对象。

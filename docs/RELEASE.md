@@ -191,7 +191,7 @@
 - 发布工作流使用 `scripts/publish-release-downloads.mjs`；首次启用时，在 `Sync AIVPlayer Downloads` workflow 手动填入已发布 tag（默认 `v0.5.5`），即可把现有版本补齐到 R2。
 - 官网不会把浏览器暴露的 `MacIntel` 直接当成真实 x64 架构；当 macOS 架构信息不可用时，会从当前平台清单中选择可用安装包。若未来补充 x64 资产，重新生成 Release 清单后即可在手动选择器中出现该选项。
 
-该同步脚本使用同一个 `CLOUDFLARE_API_TOKEN` 完成 Pages 发布、R2 安装包上传和旧对象清理。现有两条 Actions 链路共用令牌时，权限一次性配置为：账号级别 `Pages Read`、`Pages Write`、`Workers R2 Storage Write`（控制台有时显示为 R2 Storage 的 Edit）以及 `User → Memberships → Read`（供 Wrangler 读取账号成员关系）。仅授予某个 R2 bucket 的 Bucket Item 权限不足以满足当前 Wrangler 的账号校验和清理接口。`CLOUDFLARE_ACCOUNT_ID` 继续放在 Actions Variables 中，不要写入仓库。
+该同步脚本使用 `CLOUDFLARE_API_TOKEN` 完成 Pages 发布、R2 小对象上传和旧对象清理；超过单请求限制的安装包使用 R2 S3 兼容 multipart 上传。现有两条 Actions 链路共用管理令牌时，权限一次性配置为：账号级别 `Pages Read`、`Pages Write`、`Workers R2 Storage Write`（控制台有时显示为 R2 Storage 的 Edit）以及 `User → Memberships → Read`（供 Wrangler 读取账号成员关系）。仅授予某个 R2 bucket 的 Bucket Item 权限不足以满足当前 Wrangler 的账号校验和清理接口。另需在 Cloudflare R2 → Manage R2 API Tokens 创建一个 R2 专用 API token，授予 `Object Read & Write` 并限制到 `aivplayer-releases` bucket，将生成的 `Access Key ID` 和 `Secret Access Key` 分别保存为 GitHub Secrets `CLOUDFLARE_R2_ACCESS_KEY_ID`、`CLOUDFLARE_R2_SECRET_ACCESS_KEY`；它们不是 `CLOUDFLARE_API_TOKEN` 的附加权限。`CLOUDFLARE_ACCOUNT_ID` 继续放在 Actions Variables 中，不要写入仓库。
 
 - 0.5.5 仍将 FFmpeg、HEIF 和 whisper.cpp 内置；后续如需继续瘦身，可单独评估它们的按需下载。
 
