@@ -189,7 +189,7 @@
 - 安装包路径按版本隔离，例如：`https://releases.quniv.cn/aivplayer/releases/0.5.5/<asset>`。
 - R2 只保留清单中的最新两个正式版本；更早版本和 R2 中不存在的平台资产统一跳转 GitHub Releases。
 - 发布工作流使用 `scripts/publish-release-downloads.mjs`；首次启用时，在 `Sync AIVPlayer Downloads` workflow 手动填入已发布 tag（默认 `v0.5.5`），即可把现有版本补齐到 R2。
-- 官网自动推荐不会把 macOS Intel 映射到当前不存在的安装包；如果未来补充 x64 资产，只需重新生成 Release 清单即可出现该选项。
+- 官网不会把浏览器暴露的 `MacIntel` 直接当成真实 x64 架构；当 macOS 架构信息不可用时，会从当前平台清单中选择可用安装包。若未来补充 x64 资产，重新生成 Release 清单后即可在手动选择器中出现该选项。
 
 该同步脚本使用同一个 `CLOUDFLARE_API_TOKEN` 完成 Pages 发布、R2 安装包上传和旧对象清理。现有两条 Actions 链路共用令牌时，权限一次性配置为：账号级别 `Pages Read`、`Pages Write`、`Workers R2 Storage Write`（控制台有时显示为 R2 Storage 的 Edit）以及 `User → Memberships → Read`（供 Wrangler 读取账号成员关系）。仅授予某个 R2 bucket 的 Bucket Item 权限不足以满足当前 Wrangler 的账号校验和清理接口。`CLOUDFLARE_ACCOUNT_ID` 继续放在 Actions Variables 中，不要写入仓库。
 

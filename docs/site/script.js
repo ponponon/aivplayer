@@ -5,7 +5,8 @@ const GITHUB_RELEASE_DOWNLOAD_BASE = 'https://github.com/ponponon/aivplayer/rele
 
 const platformCopyKeys = { darwin: 'macos', win32: 'windows', linux: 'linux' }
 const platformIconSvgs = {
-  darwin: '<path d="M15.2 6.7c.7-.9 1.2-2 1.1-3.2-1.1.1-2.3.8-3 1.6-.7.8-1.2 1.9-1.1 3 1.2.1 2.3-.6 3-1.4ZM19.9 16.1c-.5 1.1-1.1 2-1.9 3-.9 1-1.8 1.5-2.7 1.5-.6 0-1.4-.2-2.4-.6-1-.4-1.8-.6-2.5-.6-.8 0-1.6.2-2.6.6-.9.4-1.6.6-2.2.6-1 0-2-.5-2.9-1.6C1.1 16.9.3 14.6.3 12.1c0-2.4.7-4.5 2.1-6.1C3.8 4.4 5.5 3.6 7.5 3.6c.7 0 1.6.2 2.6.6 1 .4 1.7.6 2.1.6.3 0 1.1-.2 2.3-.7 1-.4 1.8-.6 2.5-.5 1.9.2 3.3 1.1 4.3 2.6-1.7 1-2.5 2.4-2.5 4.3 0 1.4.5 2.5 1.6 3.5.5.4 1 .7 1.5.9-.1.4-.1.8-.2 1.2Z" />',
+  // Apple mark from Simple Icons (CC0): https://github.com/simple-icons/simple-icons/blob/develop/icons/apple.svg
+  darwin: '<path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701" />',
   win32: '<path d="M3 5.2 10.8 4v7.2H3V5.2Zm9.2-1.4L21 2.5v8.7h-8.8V3.8ZM3 12.8h7.8V20L3 18.8v-6Zm9.2 0H21v8.7l-8.8-1.3v-7.4Z" />',
   linux: '<path d="M12 3.2c-2.5 0-4 2-4 4.9v2.4c0 1.1-.9 2-1.5 3.1-.6 1.1-.2 2.3.9 2.8.9.4 2.2.2 3.1-.2.8.6 2 .6 2.8 0 .9.4 2.2.6 3.1.2 1.1-.5 1.5-1.7.9-2.8-.6-1.1-1.5-2-1.5-3.1V8.1c0-2.9-1.3-4.9-3.8-4.9Z" /><path d="M9 9.2h.1M15 9.2h.1" /><path d="M9.2 13.3c1.7.8 4 .8 5.6 0" />'
 }
@@ -142,8 +143,12 @@ function renderLocale(locale) {
 function detectDownloadTarget() {
   const platformHint = [navigator.userAgentData?.platform, navigator.platform, navigator.userAgent].filter(Boolean).join(' ').toLowerCase()
   const platform = platformHint.includes('win') ? 'win32' : platformHint.includes('mac') || platformHint.includes('darwin') ? 'darwin' : platformHint.includes('linux') ? 'linux' : null
-  const architectureHint = [navigator.userAgentData?.architecture, navigator.platform, navigator.userAgent].filter(Boolean).join(' ').toLowerCase()
-  const architecture = /arm64|aarch64|armv8/.test(architectureHint) ? 'arm64' : /x86_64|amd64|x64|intel|win64|macintel/.test(architectureHint) ? 'x64' : null
+  const architectureHint = [navigator.userAgentData?.architecture, navigator.userAgent].filter(Boolean).join(' ').toLowerCase()
+  const architecture = /arm64|aarch64|armv8|(^|\W)arm(\W|$)/.test(architectureHint)
+    ? 'arm64'
+    : platform === 'darwin'
+      ? navigator.userAgentData?.architecture && /x86_64|amd64|x64|x86/.test(navigator.userAgentData.architecture.toLowerCase()) ? 'x64' : null
+      : /x86_64|amd64|x64|x86|win64/.test(architectureHint) ? 'x64' : null
   return { platform, architecture }
 }
 
@@ -266,7 +271,7 @@ function renderDownloadControls(locale) {
   }
   if (recommendedMeta) {
     const targetLabel = recommended.architecture ? getArchitectureLabel(locale, recommended.architecture) : ''
-    const detectedLabel = detectedDownloadTarget.platform ? `${getValue(locale, 'download.detected')} ${targetLabel}` : targetLabel
+    const detectedLabel = detectedDownloadTarget.architecture ? `${getValue(locale, 'download.detected')} ${targetLabel}` : targetLabel
     recommendedMeta.textContent = recommended.asset
       ? `${detectedLabel} · ${getValue(locale, 'download.release')} ${versionLabel}`
       : `${detectedLabel} · ${getValue(locale, 'download.unavailable')}`
