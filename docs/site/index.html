@@ -164,7 +164,7 @@
                     <div class="download-recommendation-copy">
                         <p class="download-kicker" data-i18n="download.recommendedLabel">Recommended for this computer</p>
                         <div class="download-recommendation-row">
-                            <span class="download-platform-mark" id="download-recommended-icon" aria-hidden="true">⌘</span>
+                            <span class="download-platform-mark" id="download-recommended-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M15.2 6.7c.7-.9 1.2-2 1.1-3.2-1.1.1-2.3.8-3 1.6-.7.8-1.2 1.9-1.1 3 1.2.1 2.3-.6 3-1.4ZM19.9 16.1c-.5 1.1-1.1 2-1.9 3-.9 1-1.8 1.5-2.7 1.5-.6 0-1.4-.2-2.4-.6-1-.4-1.8-.6-2.5-.6-.8 0-1.6.2-2.6.6-.9.4-1.6.6-2.2.6-1 0-2-.5-2.9-1.6C1.1 16.9.3 14.6.3 12.1c0-2.4.7-4.5 2.1-6.1C3.8 4.4 5.5 3.6 7.5 3.6c.7 0 1.6.2 2.6.6 1 .4 1.7.6 2.1.6.3 0 1.1-.2 2.3-.7 1-.4 1.8-.6 2.5-.5 1.9.2 3.3 1.1 4.3 2.6-1.7 1-2.5 2.4-2.5 4.3 0 1.4.5 2.5 1.6 3.5.5.4 1 .7 1.5.9-.1.4-.1.8-.2 1.2Z" /></svg></span>
                             <div>
                                 <h3 id="download-recommended-title">macOS</h3>
                                 <p id="download-recommended-meta">Apple silicon · v0.5.5</p>
@@ -183,14 +183,26 @@
                 <div class="download-manual-body">
                     <p data-i18n="download.manualBody">Use this when you are downloading for another computer or need a specific architecture.</p>
                     <div class="download-select-grid">
-                        <label>
-                            <span data-i18n="download.platformLabel">Platform</span>
-                            <select id="download-platform-select" aria-label="Platform"></select>
-                        </label>
-                        <label>
-                            <span data-i18n="download.architectureLabel">Architecture</span>
-                            <select id="download-architecture-select" aria-label="Architecture"></select>
-                        </label>
+                        <div class="download-select-field">
+                            <span class="download-select-label" id="download-platform-label" data-i18n="download.platformLabel">Platform</span>
+                            <div class="download-select" data-download-select="platform">
+                                <button class="download-select-trigger" id="download-platform-select" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="download-platform-menu" aria-labelledby="download-platform-label">
+                                    <span class="download-select-value" data-select-value></span>
+                                    <svg class="download-select-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+                                </button>
+                                <div class="download-select-menu" id="download-platform-menu" role="listbox" aria-labelledby="download-platform-label" hidden></div>
+                            </div>
+                        </div>
+                        <div class="download-select-field">
+                            <span class="download-select-label" id="download-architecture-label" data-i18n="download.architectureLabel">Architecture</span>
+                            <div class="download-select" data-download-select="architecture">
+                                <button class="download-select-trigger" id="download-architecture-select" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="download-architecture-menu" aria-labelledby="download-architecture-label">
+                                    <span class="download-select-value" data-select-value></span>
+                                    <svg class="download-select-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+                                </button>
+                                <div class="download-select-menu" id="download-architecture-menu" role="listbox" aria-labelledby="download-architecture-label" hidden></div>
+                            </div>
+                        </div>
                         <a class="button button-secondary" id="download-manual-link" href="https://github.com/ponponon/aivplayer/releases" target="_blank" rel="noreferrer"><span data-i18n="download.downloadSelected">Download selected build</span><span aria-hidden="true">↓</span></a>
                     </div>
                     <div class="download-history-row">

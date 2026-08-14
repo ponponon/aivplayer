@@ -9,6 +9,7 @@ const releaseWorkflow = readFileSync(join(projectRoot, '.github/workflows/releas
 const syncWorkflow = readFileSync(join(projectRoot, '.github/workflows/sync-downloads.yml'), 'utf8')
 const siteHtml = readFileSync(join(projectRoot, 'docs/site/index.html'), 'utf8')
 const siteScript = readFileSync(join(projectRoot, 'docs/site/script.js'), 'utf8')
+const siteStyles = readFileSync(join(projectRoot, 'docs/site/styles.css'), 'utf8')
 
 describe('release download selection', () => {
   it('selects one installer for every real platform and architecture', () => {
@@ -79,6 +80,11 @@ describe('download publishing integration', () => {
     expect(siteHtml).toContain('id="download-manual"')
     expect(siteHtml).toContain('id="download-platform-select"')
     expect(siteHtml).toContain('id="download-architecture-select"')
+    expect(siteHtml).toContain('role="listbox"')
+    expect(siteHtml).not.toContain('<select id="download-platform-select"')
+    expect(siteScript).toContain('wireDownloadSelect')
+    expect(siteScript).toContain('platformIconSvgs')
+    expect(siteStyles).toContain('.download-select-menu')
     expect(siteScript).toContain('DOWNLOAD_MANIFEST_URL')
     expect(siteScript).toContain('detectDownloadTarget')
     expect(siteScript).toContain('FALLBACK_DOWNLOAD_MANIFEST')

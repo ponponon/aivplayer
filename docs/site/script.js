@@ -3,8 +3,24 @@ const DOWNLOAD_MANIFEST_URL = 'https://releases.quniv.cn/aivplayer/releases/down
 const GITHUB_RELEASES_URL = 'https://github.com/ponponon/aivplayer/releases'
 const GITHUB_RELEASE_DOWNLOAD_BASE = 'https://github.com/ponponon/aivplayer/releases/download'
 
-const platformIcons = { darwin: '⌘', win32: '⊞', linux: '◈' }
 const platformCopyKeys = { darwin: 'macos', win32: 'windows', linux: 'linux' }
+const platformIconSvgs = {
+  darwin: '<path d="M15.2 6.7c.7-.9 1.2-2 1.1-3.2-1.1.1-2.3.8-3 1.6-.7.8-1.2 1.9-1.1 3 1.2.1 2.3-.6 3-1.4ZM19.9 16.1c-.5 1.1-1.1 2-1.9 3-.9 1-1.8 1.5-2.7 1.5-.6 0-1.4-.2-2.4-.6-1-.4-1.8-.6-2.5-.6-.8 0-1.6.2-2.6.6-.9.4-1.6.6-2.2.6-1 0-2-.5-2.9-1.6C1.1 16.9.3 14.6.3 12.1c0-2.4.7-4.5 2.1-6.1C3.8 4.4 5.5 3.6 7.5 3.6c.7 0 1.6.2 2.6.6 1 .4 1.7.6 2.1.6.3 0 1.1-.2 2.3-.7 1-.4 1.8-.6 2.5-.5 1.9.2 3.3 1.1 4.3 2.6-1.7 1-2.5 2.4-2.5 4.3 0 1.4.5 2.5 1.6 3.5.5.4 1 .7 1.5.9-.1.4-.1.8-.2 1.2Z" />',
+  win32: '<path d="M3 5.2 10.8 4v7.2H3V5.2Zm9.2-1.4L21 2.5v8.7h-8.8V3.8ZM3 12.8h7.8V20L3 18.8v-6Zm9.2 0H21v8.7l-8.8-1.3v-7.4Z" />',
+  linux: '<path d="M12 3.2c-2.5 0-4 2-4 4.9v2.4c0 1.1-.9 2-1.5 3.1-.6 1.1-.2 2.3.9 2.8.9.4 2.2.2 3.1-.2.8.6 2 .6 2.8 0 .9.4 2.2.6 3.1.2 1.1-.5 1.5-1.7.9-2.8-.6-1.1-1.5-2-1.5-3.1V8.1c0-2.9-1.3-4.9-3.8-4.9Z" /><path d="M9 9.2h.1M15 9.2h.1" /><path d="M9.2 13.3c1.7.8 4 .8 5.6 0" />'
+}
+const architectureIconSvg = '<rect x="7" y="7" width="10" height="10" rx="2" /><path d="M9 1v4M15 1v4M9 19v4M15 19v4M1 9h4M1 15h4M19 9h4M19 15h4" />'
+
+function createDownloadIcon(svg, className = 'download-option-icon') {
+  const icon = document.createElement('span')
+  icon.className = className
+  icon.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${svg}</svg>`
+  return icon
+}
+
+function createPlatformIcon(platform, className = 'download-option-icon') {
+  return createDownloadIcon(platformIconSvgs[platform] ?? architectureIconSvg, className)
+}
 
 function createGithubAssetUrl(version, fileName) {
   return `${GITHUB_RELEASE_DOWNLOAD_BASE}/v${version}/${encodeURIComponent(fileName)}`
@@ -174,38 +190,64 @@ function pickDownloadTarget(preferred = detectedDownloadTarget, release = getCur
   }
 }
 
-function setSelectOptions(select, values, locale, currentValue) {
-  if (!select) return
-  select.replaceChildren(...values.map((value) => {
-    const option = document.createElement('option')
-    option.value = value
-    option.textContent = value === 'darwin' || value === 'win32' || value === 'linux'
-      ? getPlatformLabel(locale, value)
-      : getArchitectureLabel(locale, value)
+function getDownloadSelect(type) {
+  const trigger = document.getElementById(`download-${type}-select`)
+  const menu = document.getElementById(`download-${type}-menu`)
+  return trigger && menu ? { trigger, menu } : null
+}
+
+function renderDownloadSelectValue(type, value, locale) {
+  const select = getDownloadSelect(type)
+  const valueElement = select?.trigger.querySelector('[data-select-value]')
+  if (!valueElement) return
+  valueElement.replaceChildren()
+  if (type === 'platform' && value) valueElement.append(createPlatformIcon(value, 'download-select-value-icon'))
+  if (type === 'architecture' && value) valueElement.append(createDownloadIcon(architectureIconSvg, 'download-select-value-icon'))
+  const label = document.createElement('span')
+  label.textContent = value
+    ? type === 'platform' ? getPlatformLabel(locale, value) : getArchitectureLabel(locale, value)
+    : '—'
+  valueElement.append(label)
+  select.trigger.dataset.value = value ?? ''
+}
+
+function setSelectOptions(type, values, locale, currentValue) {
+  const select = getDownloadSelect(type)
+  if (!select) return null
+  const selectedValue = values.includes(currentValue) ? currentValue : values[0] ?? null
+  select.menu.replaceChildren(...values.map((value) => {
+    const option = document.createElement('button')
+    option.type = 'button'
+    option.className = 'download-select-option'
+    option.dataset.value = value
+    option.setAttribute('role', 'option')
+    option.setAttribute('aria-selected', String(value === selectedValue))
+    option.tabIndex = -1
+    option.append(type === 'platform' ? createPlatformIcon(value) : createDownloadIcon(architectureIconSvg))
+    const label = document.createElement('span')
+    label.textContent = type === 'platform' ? getPlatformLabel(locale, value) : getArchitectureLabel(locale, value)
+    option.append(label)
     return option
   }))
-  if (values.includes(currentValue)) select.value = currentValue
+  renderDownloadSelectValue(type, selectedValue, locale)
+  return selectedValue
 }
 
 function updateArchitectureSelect(locale, platform, currentArchitecture) {
-  const architectureSelect = document.getElementById('download-architecture-select')
   const architectures = getArchitectureOptions(platform)
-  setSelectOptions(architectureSelect, architectures, locale, currentArchitecture)
-  return architectureSelect?.value ?? architectures[0] ?? null
+  return setSelectOptions('architecture', architectures, locale, currentArchitecture)
 }
 
 function renderDownloadControls(locale) {
   const release = getCurrentDownloadRelease()
-  const platformSelect = document.getElementById('download-platform-select')
-  const architectureSelect = document.getElementById('download-architecture-select')
-  if (!platformSelect || !architectureSelect) return
+  if (!getDownloadSelect('platform') || !getDownloadSelect('architecture')) return
 
   const recommended = pickDownloadTarget(detectedDownloadTarget, release)
   const manualPlatform = selectedDownloadTarget.platform ?? recommended.platform
   const platforms = getPlatformOptions(release)
-  setSelectOptions(platformSelect, platforms, locale, manualPlatform)
-  const manualArchitecture = updateArchitectureSelect(locale, platformSelect.value, selectedDownloadTarget.architecture ?? recommended.architecture)
-  selectedDownloadTarget = { platform: platformSelect.value, architecture: manualArchitecture }
+  const platform = setSelectOptions('platform', platforms, locale, manualPlatform)
+  const manualArchitecture = updateArchitectureSelect(locale, platform, selectedDownloadTarget.architecture ?? recommended.architecture)
+  selectedDownloadTarget = { platform, architecture: manualArchitecture }
 
   const recommendedTitle = document.getElementById('download-recommended-title')
   const recommendedMeta = document.getElementById('download-recommended-meta')
@@ -219,7 +261,9 @@ function renderDownloadControls(locale) {
 
   const versionLabel = `v${release.version}`
   if (recommendedTitle) recommendedTitle.textContent = recommended.platform ? getPlatformLabel(locale, recommended.platform) : 'AIVPlayer'
-  if (recommendedIcon) recommendedIcon.textContent = platformIcons[recommended.platform] ?? '↓'
+  if (recommendedIcon) {
+    recommendedIcon.replaceChildren(recommended.platform ? createPlatformIcon(recommended.platform, 'download-recommended-icon') : createDownloadIcon(architectureIconSvg, 'download-recommended-icon'))
+  }
   if (recommendedMeta) {
     const targetLabel = recommended.architecture ? getArchitectureLabel(locale, recommended.architecture) : ''
     const detectedLabel = detectedDownloadTarget.platform ? `${getValue(locale, 'download.detected')} ${targetLabel}` : targetLabel
@@ -241,6 +285,86 @@ function renderDownloadControls(locale) {
   if (retentionValues) retentionValues.textContent = (activeDownloadManifest.releases ?? []).slice(0, 2).map((item) => `v${item.version}`).join(' · ')
   if (status) status.textContent = getValue(locale, 'download.status')
   if (historyLink) historyLink.href = GITHUB_RELEASES_URL
+}
+
+function closeDownloadSelects(exceptType = null) {
+  document.querySelectorAll('.download-select').forEach((select) => {
+    if (select.dataset.downloadSelect === exceptType) return
+    const trigger = select.querySelector('.download-select-trigger')
+    const menu = select.querySelector('.download-select-menu')
+    trigger?.setAttribute('aria-expanded', 'false')
+    if (menu) menu.hidden = true
+  })
+}
+
+function openDownloadSelect(type, focusSelected = false) {
+  const select = getDownloadSelect(type)
+  if (!select) return
+  const isOpen = select.trigger.getAttribute('aria-expanded') === 'true'
+  closeDownloadSelects(isOpen ? null : type)
+  select.trigger.setAttribute('aria-expanded', String(!isOpen))
+  select.menu.hidden = isOpen
+  if (!isOpen && focusSelected) {
+    const selected = select.menu.querySelector('[aria-selected="true"]') ?? select.menu.querySelector('[role="option"]')
+    selected?.focus()
+  }
+}
+
+function chooseDownloadOption(type, value) {
+  closeDownloadSelects()
+  if (type === 'platform') {
+    selectedDownloadTarget = { platform: value, architecture: null }
+    const locale = detectLocale()
+    selectedDownloadTarget.architecture = updateArchitectureSelect(locale, value, null)
+    renderDownloadControls(locale)
+  } else {
+    selectedDownloadTarget.architecture = value
+    renderDownloadControls(detectLocale())
+  }
+}
+
+function moveDownloadOption(type, direction) {
+  const select = getDownloadSelect(type)
+  const options = [...(select?.menu.querySelectorAll('[role="option"]') ?? [])]
+  const currentIndex = options.indexOf(document.activeElement)
+  if (!options.length) return
+  const nextIndex = currentIndex < 0 ? 0 : (currentIndex + direction + options.length) % options.length
+  options[nextIndex].focus()
+}
+
+function wireDownloadSelect(type) {
+  const select = getDownloadSelect(type)
+  if (!select) return
+  select.trigger.addEventListener('click', () => openDownloadSelect(type))
+  select.trigger.addEventListener('keydown', (event) => {
+    if (['Enter', ' ', 'ArrowDown', 'ArrowUp'].includes(event.key)) {
+      event.preventDefault()
+      openDownloadSelect(type, true)
+    } else if (event.key === 'Escape') {
+      closeDownloadSelects()
+    }
+  })
+  select.menu.addEventListener('click', (event) => {
+    const option = event.target instanceof Element ? event.target.closest('[role="option"]') : null
+    if (option) chooseDownloadOption(type, option.dataset.value)
+  })
+  select.menu.addEventListener('keydown', (event) => {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      moveDownloadOption(type, 1)
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      moveDownloadOption(type, -1)
+    } else if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      const option = document.activeElement.closest?.('[role="option"]')
+      if (option) chooseDownloadOption(type, option.dataset.value)
+    } else if (event.key === 'Escape') {
+      event.preventDefault()
+      closeDownloadSelects()
+      select.trigger.focus()
+    }
+  })
 }
 
 function isDownloadManifest(value) {
@@ -280,17 +404,10 @@ document.addEventListener('DOMContentLoaded', () => {
     renderLocale(value === 'auto' ? detectLocale() : value)
   })
 
-  const platformSelect = document.getElementById('download-platform-select')
-  const architectureSelect = document.getElementById('download-architecture-select')
-  platformSelect?.addEventListener('change', (event) => {
-    selectedDownloadTarget = { platform: event.target.value, architecture: null }
-    const locale = detectLocale()
-    selectedDownloadTarget.architecture = updateArchitectureSelect(locale, event.target.value, null)
-    renderDownloadControls(locale)
-  })
-  architectureSelect?.addEventListener('change', (event) => {
-    selectedDownloadTarget.architecture = event.target.value
-    renderDownloadControls(detectLocale())
+  wireDownloadSelect('platform')
+  wireDownloadSelect('architecture')
+  document.addEventListener('click', (event) => {
+    if (!(event.target instanceof Element) || !event.target.closest('.download-select')) closeDownloadSelects()
   })
 
   const menu = document.getElementById('mobile-menu')

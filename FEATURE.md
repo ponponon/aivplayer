@@ -1,5 +1,7 @@
 # AIVPlayer 功能列表
 
+- 官网下载手动选择器升级为品牌化可访问组件：使用平台 SVG 图标、自定义下拉菜单、键盘导航、焦点状态和移动端布局，避免暴露浏览器原生列表。
+
 - 官网下载区改为单一自动推荐入口：根据用户的操作系统与架构从发布清单选择最佳安装包，同时保留手动平台 / 架构选择；R2 只保留最新版本和上一版本的安装包，稳定清单放在 `aivplayer/releases/download-manifest.json`，更早版本继续从 GitHub Releases 下载。
 
 - Cloudflare Pages 官网完成四语国际化：支持简体中文、English、日本語和한국어，按已保存选择、浏览器首选语言自动匹配并允许手动切换；官网界面预览使用真实 Electron 截图，上传到 Cloudflare R2 的 `aivplayer/site/screenshots/` 并通过 `releases.quniv.cn` 引用，不进入 Git。
