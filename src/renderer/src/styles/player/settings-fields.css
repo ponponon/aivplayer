@@ -155,10 +155,52 @@
   cursor: pointer;
 }
 
-.setting-choice input,
+.settings-toggle-wide {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
 .setting-toggle input {
+  appearance: none;
+  width: 36px;
+  height: 20px;
+  margin: 1px 0 0;
+  background: rgba(var(--overlay-rgb), 0.16);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.setting-choice input {
   margin-top: 3px;
   accent-color: var(--accent);
+}
+
+.setting-toggle input::after {
+  display: block;
+  width: 14px;
+  height: 14px;
+  margin: 2px;
+  background: var(--text-muted);
+  border-radius: 50%;
+  content: '';
+  transition: transform 160ms ease, background 160ms ease;
+}
+
+.setting-toggle input:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.setting-toggle input:checked::after {
+  background: var(--accent-ink);
+  transform: translateX(16px);
+}
+
+.setting-toggle input:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.22);
 }
 
 .setting-choice strong,

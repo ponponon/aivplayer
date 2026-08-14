@@ -6,6 +6,7 @@ import type { AppLocale } from '../shared/localization'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import { desktopState } from './desktop-state'
 import { promptForMediaFiles } from './media-dialogs'
+import { updateAppUpdaterPreference } from './app-updater'
 
 export function getCurrentLocale(): AppLocale {
   return desktopState.currentAppSettings.ui.locale
@@ -17,6 +18,7 @@ export async function loadAppSettings(): Promise<void> {
 
 export async function saveAppSettings(settings: Parameters<typeof writeAppSettings>[1]): Promise<typeof desktopState.currentAppSettings> {
   desktopState.currentAppSettings = await writeAppSettings(app.getPath('userData'), settings, app.getPath('videos'))
+  updateAppUpdaterPreference(desktopState.currentAppSettings.ui.autoUpdate)
   installApplicationMenu()
   return desktopState.currentAppSettings
 }

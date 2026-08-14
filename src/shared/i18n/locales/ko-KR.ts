@@ -1108,6 +1108,8 @@
         selectFolderDialogTitle: '기본 미디어 폴더 선택',
         selectFolder: '폴더 선택',
         clearFolder: '지우기',
+        autoUpdate: '자동 업데이트',
+        autoUpdateDescription: '새 버전을 자동으로 확인하고 백그라운드에서 다운로드합니다. 꺼도 정보 탭에서 수동으로 확인할 수 있습니다.',
         autoLoadDirectoryFiles: '같은 폴더의 미디어 파일 자동 로드',
         autoLoadDirectoryFilesDescription: '하나의 비디오를 열면 같은 폴더의 형제 파일도 재생 목록에 추가합니다.'
       },

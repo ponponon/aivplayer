@@ -45,6 +45,17 @@ export function GeneralSettingsSection(props: SettingsSectionProps): ReactElemen
       <span>{copy.settingsDialog.general.title}</span>
     </div>
 
+    <div className="settings-toggle-wide">
+      <SettingsToggle
+        title={copy.settingsDialog.general.autoUpdate}
+        description={copy.settingsDialog.general.autoUpdateDescription}
+        checked={settings.ui.autoUpdate}
+        onChange={(autoUpdate) => {
+          patchSettingsSection('ui', { autoUpdate })
+        }}
+      />
+    </div>
+
     <SettingsField title={copy.settingsDialog.general.language}>
       <SettingsSelect
         value={settings.ui.locale}

@@ -93,6 +93,29 @@ async function main(): Promise<void> {
     dialogHeightByTab.general = await readDialogHeight()
     aboutVisibilityByTab.general = await readAboutDisplay()
 
+    const autoUpdateToggle = page.locator('#settings-section-general .setting-toggle').first().locator('input')
+    const autoUpdateInitiallyEnabled = await autoUpdateToggle.isChecked()
+    await autoUpdateToggle.uncheck()
+    await page.waitForTimeout(350)
+    const autoUpdateDisabled = await page.evaluate(async () => (await window.aiv.getAppSettings()).ui.autoUpdate)
+    await autoUpdateToggle.check()
+    await page.waitForTimeout(350)
+    const autoUpdateReenabled = await page.evaluate(async () => (await window.aiv.getAppSettings()).ui.autoUpdate)
+    const autoUpdateToggleStyles = await page.evaluate(() => {
+      const input = document.querySelector('#settings-section-general .setting-toggle input') as HTMLInputElement | null
+      if (!input) return null
+      const style = window.getComputedStyle(input)
+      return {
+        width: style.width,
+        height: style.height,
+        borderRadius: style.borderRadius,
+        appearance: style.appearance,
+        backgroundColor: style.backgroundColor
+      }
+    })
+    const generalScreenshotPath = join(smokeHomeDirectory, 'aivplayer-smoke-settings-general.png')
+    await page.screenshot({ path: generalScreenshotPath, fullPage: false })
+
     await page.locator('[data-settings-tab="interface"]').click()
     await page.waitForTimeout(500)
     dialogHeightByTab.interface = await readDialogHeight()
@@ -217,6 +240,7 @@ async function main(): Promise<void> {
     await page.screenshot({ path: shortcutScreenshotPath, fullPage: false })
 
     console.log(`Settings number styles: ${JSON.stringify(numberStyles)}`)
+    console.log(`Automatic update toggle: ${JSON.stringify({ autoUpdateInitiallyEnabled, autoUpdateDisabled, autoUpdateReenabled, styles: autoUpdateToggleStyles })}`)
     console.log(`Quick theme toggle state: ${JSON.stringify(quickToggleThemeState)}`)
     console.log(`Light theme state: ${JSON.stringify(lightThemeState)}`)
     console.log(`Settings dialog heights: ${JSON.stringify(dialogHeightByTab)}`)
@@ -227,11 +251,19 @@ async function main(): Promise<void> {
     console.log(`TTS settings state: ${JSON.stringify({ ...ttsSettingsState, initialTtsStatus, ttsStatusAfterCheck })}`)
     console.log(`Shortcut panel: ${JSON.stringify({ shortcutCount, ...shortcutPanelState })}`)
     console.log(`About settings panel: ${JSON.stringify(aboutPanelState)}`)
+    console.log(`General settings screenshot: ${generalScreenshotPath}`)
     console.log(`Settings dialog screenshot: ${screenshotPath}`)
     console.log(`Shortcut settings screenshot: ${shortcutScreenshotPath}`)
 
     if (
       numberStyles.length === 0 ||
+      autoUpdateInitiallyEnabled !== true ||
+      autoUpdateDisabled !== false ||
+      autoUpdateReenabled !== true ||
+      !autoUpdateToggleStyles ||
+      autoUpdateToggleStyles.width !== '36px' ||
+      autoUpdateToggleStyles.height !== '20px' ||
+      autoUpdateToggleStyles.borderRadius === '0px' ||
       numberStyles.some((style) => style.textAlign !== 'right') ||
       quickToggleThemeState.documentTheme !== 'light' ||
       quickToggleThemeState.appTheme !== 'light' ||

@@ -130,7 +130,8 @@ describe('app settings', () => {
         lastSettingsSectionId: 'general',
         locale: 'zh-CN',
         theme: 'dark',
-        sidePanelWidth: 280
+        sidePanelWidth: 280,
+        autoUpdate: true
       },
       capture: {
         saveDirectoryPath: null,
@@ -190,7 +191,7 @@ describe('app settings', () => {
     )
 
     await expect(readAppSettings(tempDirectory)).resolves.toMatchObject({
-      schemaVersion: 27,
+      schemaVersion: 28,
       playback: {
         singleClickPause: true
       }

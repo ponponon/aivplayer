@@ -1108,6 +1108,8 @@
         selectFolderDialogTitle: '既定のメディアフォルダを選択',
         selectFolder: 'フォルダを選択',
         clearFolder: 'クリア',
+        autoUpdate: '自動更新',
+        autoUpdateDescription: '新しいバージョンを自動で確認してバックグラウンドでダウンロードします。オフにしても「概要」から手動で確認できます。',
         autoLoadDirectoryFiles: '同じフォルダのメディアを自動読み込み',
         autoLoadDirectoryFilesDescription: '1 本の動画を開いたとき、同じフォルダの兄弟ファイルもプレイリストに追加します。'
       },

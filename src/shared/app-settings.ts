@@ -7,7 +7,7 @@ import type { PlaybackBookmark, PlaybackEndAction, PlaybackMediaProfile, Playbac
 import type { MediaStructureCorrection } from './media-base-types'
 import type { DramaGenerationMediaType } from './drama-types'
 
-export const APP_SETTINGS_SCHEMA_VERSION = 27
+export const APP_SETTINGS_SCHEMA_VERSION = 28
 
 export const SIDE_PANEL_WIDTH_MIN = 240
 export const SIDE_PANEL_WIDTH_MAX = 480
@@ -35,6 +35,7 @@ export type AppSettings = {
     defaultPanelMode: AppPanelModePreference
     lastSettingsSectionId: AppSettingsSectionId
     sidePanelWidth: number
+    autoUpdate: boolean
   }
   media: {
     defaultOpenDirectoryPath: string | null
@@ -206,7 +207,8 @@ export function createDefaultAppSettings(): AppSettings {
       theme: 'dark',
       defaultPanelMode: 'playlist',
       lastSettingsSectionId: 'general',
-      sidePanelWidth: SIDE_PANEL_WIDTH_DEFAULT
+      sidePanelWidth: SIDE_PANEL_WIDTH_DEFAULT,
+      autoUpdate: true
     },
     media: {
       defaultOpenDirectoryPath: null,

@@ -3,10 +3,10 @@ import pkg from 'electron-updater'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import { createInitialAppUpdateState, type AppUpdateState } from '../shared/app-update-types'
 
-const { autoUpdater } = pkg
 const UPDATE_CHECK_INTERVAL_MS = 10 * 60 * 1000
 
-let enabled = false
+let updaterAvailable = false
+let automaticUpdatesEnabled = false
 let state = createInitialAppUpdateState()
 let checkPromise: Promise<AppUpdateState> | null = null
 let updateTimer: NodeJS.Timeout | null = null
@@ -25,19 +25,29 @@ export function registerAppUpdaterIpc(): void {
   ipcMain.handle(IPC_CHANNELS.APP_UPDATE_INSTALL, () => installAppUpdate())
 }
 
-export function startAppUpdater(isCliInvocation: boolean): void {
-  enabled = app.isPackaged && process.platform !== 'darwin' && !process.windowsStore && !isCliInvocation && process.env.AIVPLAYER_DISABLE_AUTO_UPDATE !== '1'
-  state = enabled
+export function startAppUpdater(isCliInvocation: boolean, autoUpdatePreference = true): void {
+  updaterAvailable = app.isPackaged && process.platform !== 'darwin' && !process.windowsStore && !isCliInvocation && process.env.AIVPLAYER_DISABLE_AUTO_UPDATE !== '1'
+  automaticUpdatesEnabled = updaterAvailable && autoUpdatePreference
+  state = updaterAvailable
     ? createInitialAppUpdateState(app.getVersion())
     : { ...createInitialAppUpdateState(app.getVersion()), status: 'disabled' }
   publishState()
-  if (!enabled) return
+  if (!updaterAvailable) return
 
   configureAutoUpdater()
-  void checkForAppUpdate()
-  updateTimer = setInterval(() => { void checkForAppUpdate() }, UPDATE_CHECK_INTERVAL_MS)
-  updateTimer.unref()
+  if (automaticUpdatesEnabled) startAutomaticUpdateChecks()
   app.once('will-quit', stopAppUpdater)
+}
+
+export function updateAppUpdaterPreference(autoUpdatePreference: boolean): void {
+  automaticUpdatesEnabled = updaterAvailable && autoUpdatePreference
+  if (!updaterAvailable) return
+
+  if (automaticUpdatesEnabled) {
+    startAutomaticUpdateChecks()
+  } else {
+    stopAppUpdater()
+  }
 }
 
 export function stopAppUpdater(): void {
@@ -50,6 +60,7 @@ export function stopAppUpdater(): void {
 function configureAutoUpdater(): void {
   if (listenersRegistered) return
   listenersRegistered = true
+  const autoUpdater = pkg.autoUpdater
   autoUpdater.logger = silentLogger
   autoUpdater.channel = 'latest'
   autoUpdater.allowPrerelease = false
@@ -88,12 +99,19 @@ function configureAutoUpdater(): void {
   })
 }
 
+function startAutomaticUpdateChecks(): void {
+  if (!updaterAvailable || !automaticUpdatesEnabled || updateTimer) return
+  void checkForAppUpdate()
+  updateTimer = setInterval(() => { void checkForAppUpdate() }, UPDATE_CHECK_INTERVAL_MS)
+  updateTimer.unref()
+}
+
 async function checkForAppUpdate(): Promise<AppUpdateState> {
-  if (!enabled) return state
+  if (!updaterAvailable) return state
   if (state.status === 'checking' || state.status === 'downloading' || state.status === 'downloaded' || state.status === 'installing') return state
   if (checkPromise) return checkPromise
 
-  checkPromise = autoUpdater.checkForUpdates()
+  checkPromise = pkg.autoUpdater.checkForUpdates()
     .then((result) => {
       if (!result?.isUpdateAvailable && state.status === 'checking') {
         setState({ status: 'up-to-date', version: undefined, error: undefined, progress: undefined })
@@ -111,13 +129,13 @@ async function checkForAppUpdate(): Promise<AppUpdateState> {
 }
 
 function installAppUpdate(): void {
-  if (!enabled) throw new Error('应用更新在当前运行模式下不可用')
+  if (!updaterAvailable) throw new Error('应用更新在当前运行模式下不可用')
   if (state.status !== 'downloaded') throw new Error('更新尚未下载完成')
   setState({ status: 'installing', version: state.version, error: undefined, progress: undefined })
   try {
     // Windows NSIS updates should behave like a restart: run the downloaded
     // installer silently, then launch the updated application.
-    autoUpdater.quitAndInstall(true, true)
+    pkg.autoUpdater.quitAndInstall(true, true)
   } catch (error) {
     setError(error)
     throw error

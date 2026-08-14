@@ -70,6 +70,22 @@ describe('settings UI source constraints', () => {
     expect(countMatches(settingsDialogSource, /className="settings-number/g)).toBe(0)
   })
 
+  it('exposes the persisted automatic update toggle in General settings', () => {
+    const generalSource = readSource('src/renderer/src/app/settings-sections/general.tsx')
+    const controlsSource = readSource('src/renderer/src/app/settings-controls.tsx')
+    const sharedSettingsSource = readSource('src/shared/app-settings.ts')
+    const localeSource = readSource('src/shared/i18n/locales/zh-CN.ts')
+
+    expect(generalSource).toContain('copy.settingsDialog.general.autoUpdate')
+    expect(generalSource).toContain('settings-toggle-wide')
+    expect(generalSource).toContain('settings.ui.autoUpdate')
+    expect(generalSource).toContain("patchSettingsSection('ui', { autoUpdate })")
+    expect(controlsSource).toContain('function SettingsToggle')
+    expect(sharedSettingsSource).toContain('autoUpdate: boolean')
+    expect(sharedSettingsSource).toContain('autoUpdate: true')
+    expect(localeSource).toContain("autoUpdate: '自动更新'")
+  })
+
   it('routes settings section writes through one shared patch helper', () => {
     const settingsDialogSource = readSource('src/renderer/src/app/settings-dialog.tsx')
     const sharedSettingsSource = readSource('src/shared/app-settings.ts')

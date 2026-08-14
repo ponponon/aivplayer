@@ -1108,6 +1108,8 @@
         selectFolderDialogTitle: 'Choose default media folder',
         selectFolder: 'Choose folder',
         clearFolder: 'Clear',
+        autoUpdate: 'Automatic updates',
+        autoUpdateDescription: 'Check for and download new versions in the background. You can still check manually in About when disabled.',
         autoLoadDirectoryFiles: 'Auto-load media files in the same folder',
         autoLoadDirectoryFilesDescription: 'When you open one video, also add siblings from the same folder.'
       },

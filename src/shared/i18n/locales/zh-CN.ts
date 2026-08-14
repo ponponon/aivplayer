@@ -1108,6 +1108,8 @@
         selectFolderDialogTitle: '选择媒体默认文件夹',
         selectFolder: '选择文件夹',
         clearFolder: '清除',
+        autoUpdate: '自动更新',
+        autoUpdateDescription: '发现新版本时自动检查并在后台下载；关闭后仍可在“关于”中手动检查。',
         autoLoadDirectoryFiles: '自动加载同目录媒体文件',
         autoLoadDirectoryFilesDescription: '打开一个媒体文件时，顺手把同目录下的其他视频也加进播放列表。'
       },

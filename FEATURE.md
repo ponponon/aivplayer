@@ -527,6 +527,7 @@
 - Windows/Linux 正式安装包通过 `electron-updater` 在主进程后台检查 GitHub Releases，并按当前平台下载新版本；macOS 因未配置 Apple Developer ID 签名和公证暂不启用自动更新，开发模式和 `aivcli` 也不触发更新检查。
 - 更新过程通过 IPC 同步 `checking`、`downloading`、`downloaded`、`installing` 和错误状态，顶栏展示后台下载进度。
 - 更新下载完成后只提供“重启并更新”操作，调用安装器完成替换，不在播放或编辑过程中强制退出应用。
+- 通用设置新增“自动更新”开关，默认保持开启；关闭后停止启动检查、定时检查和后台下载，但“关于”页仍可由用户手动检查并下载更新。
 - 设置页新增“关于”分组，集中显示版本、许可证和项目地址；用户可以手动检查更新，查看最新状态或下载进度，并在下载完成后从设置页重启更新。macOS、开发模式和 CLI 会明确显示当前运行模式不支持应用内更新。
 - electron-builder 配置 GitHub 发布源，Release 工作流会上传 `latest*.yml` 和 `.blockmap` 元数据；GitHub Release 成功后，Windows/Linux 安装包可按当前平台自动更新。
 

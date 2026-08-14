@@ -225,7 +225,8 @@ function sanitizeUiSettings(
     theme: isThemePreference(ui.theme) ? ui.theme : defaults.theme,
     defaultPanelMode: isPanelModePreference(ui.defaultPanelMode) ? ui.defaultPanelMode : defaults.defaultPanelMode,
     lastSettingsSectionId: normalizeSettingsSectionId(ui.lastSettingsSectionId, defaults.lastSettingsSectionId),
-    sidePanelWidth: normalizeSidePanelWidth(ui.sidePanelWidth, defaults.sidePanelWidth)
+    sidePanelWidth: normalizeSidePanelWidth(ui.sidePanelWidth, defaults.sidePanelWidth),
+    autoUpdate: typeof ui.autoUpdate === 'boolean' ? ui.autoUpdate : defaults.autoUpdate
   }
 }
 

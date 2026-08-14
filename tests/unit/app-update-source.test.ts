@@ -15,6 +15,9 @@ describe('app update source constraints', () => {
 
     expect(updaterSource).toContain("process.platform !== 'darwin'")
     expect(updaterSource).toContain('!process.windowsStore')
+    expect(updaterSource).toContain('autoUpdatePreference')
+    expect(updaterSource).toContain('updateAppUpdaterPreference')
+    expect(updaterSource).toContain('startAutomaticUpdateChecks')
     expect(updaterSource).toContain('autoUpdater.autoDownload = false')
     expect(updaterSource).toContain('autoUpdater.autoInstallOnAppQuit = false')
     expect(updaterSource).toContain('void autoUpdater.downloadUpdate()')
