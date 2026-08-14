@@ -1,5 +1,7 @@
 # AIVPlayer 功能列表
 
+- 官网下载区改为单一自动推荐入口：根据用户的操作系统与架构从发布清单选择最佳安装包，同时保留手动平台 / 架构选择；R2 只保留最新版本和上一版本的安装包，稳定清单放在 `aivplayer/releases/download-manifest.json`，更早版本继续从 GitHub Releases 下载。
+
 - Cloudflare Pages 官网完成四语国际化：支持简体中文、English、日本語和한국어，按已保存选择、浏览器首选语言自动匹配并允许手动切换；官网界面预览使用真实 Electron 截图，上传到 Cloudflare R2 的 `aivplayer/site/screenshots/` 并通过 `releases.quniv.cn` 引用，不进入 Git。
 
 - 视觉索引改为完全手动触发：打开视频、启动应用、保存影视库目录或扫描全部目录都不会自动消耗 SigLIP2 / FFmpeg 算力，用户需明确点击“批量建立影视库”或收件箱的“加入索引队列”后才开始处理。

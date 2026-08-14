@@ -2,7 +2,7 @@
 
 本文档记录当前项目的正式发布流程，目标是让任何维护者都能按同一套步骤发布新版本。
 
-当前发布入口仍是 GitHub Release；视觉模型和平台特定 Vision Pack 由发布工作流同步到 Cloudflare R2，作为应用运行期下载资源。R2 资源不替代 GitHub Release 的安装包校验，也不进入正式安装包资产清单。
+当前发布入口仍是 GitHub Release；视觉模型、平台特定 Vision Pack 和官网最近两个版本的安装包由发布工作流同步到 Cloudflare R2。GitHub Release 是完整历史版本的权威来源，R2 只承担官网的低延迟下载入口，不替代 GitHub Release 的安装包校验，也不进入正式安装包资产清单。
 
 ## 一、发布链路总览
 
@@ -34,6 +34,8 @@
     创建 GitHub Release
       ↓
     通过 GitHub API 回读并校验远端资产
+      ↓
+    将当前版和上一版安装包同步到 R2，删除更早下载对象并更新稳定清单
 
 正式发布工作流位于 `.github/workflows/release.yml`，由以下事件触发：
 
@@ -158,7 +160,8 @@
 8. 创建 GitHub Release 并上传正式资产。
 9. 把五个平台的 Vision Pack 及 manifest 上传到 R2，并使用固定版本 / 平台 / 架构路径。
 10. 通过 GitHub API 回读 Release 资产，重新下载并校验大小、SHA-256 和 manifest 内容。
-11. 保存不含凭据的远端校验报告作为 workflow artifact。
+11. 将当前版和上一版安装包写入 R2 的 `aivplayer/releases/<version>/`，更新 `download-manifest.json`，并删除更早版本的安装包对象。
+12. 保存不含凭据的远端校验报告作为 workflow artifact。
 
 任何一个门禁失败，后续发布步骤都不应被视为成功。特别是“跳过了某个可选步骤”不能等同于“远端同步成功”。
 
@@ -179,6 +182,17 @@
 - SigLIP2：`https://releases.quniv.cn/aivplayer/models/siglip2/<revision>/<file>`。
 - Vision Pack：`https://releases.quniv.cn/aivplayer/vision-pack/<version>/<platform>-<arch>/`。
 - Vision Pack 下载前校验远程 manifest，下载后校验归档 SHA-256，并使用临时目录原子替换到用户数据目录。
+
+### 5. 官网桌面下载路径
+
+- 官网读取稳定清单：`https://releases.quniv.cn/aivplayer/releases/download-manifest.json`。
+- 安装包路径按版本隔离，例如：`https://releases.quniv.cn/aivplayer/releases/0.5.5/<asset>`。
+- R2 只保留清单中的最新两个正式版本；更早版本和 R2 中不存在的平台资产统一跳转 GitHub Releases。
+- 发布工作流使用 `scripts/publish-release-downloads.mjs`；首次启用时，在 `Sync AIVPlayer Downloads` workflow 手动填入已发布 tag（默认 `v0.5.5`），即可把现有版本补齐到 R2。
+- 官网自动推荐不会把 macOS Intel 映射到当前不存在的安装包；如果未来补充 x64 资产，只需重新生成 Release 清单即可出现该选项。
+
+该同步脚本使用同一个 `CLOUDFLARE_API_TOKEN` 完成 Pages 发布、R2 安装包上传和旧对象清理。现有两条 Actions 链路共用令牌时，权限一次性配置为：账号级别 `Pages Read`、`Pages Write`、`Workers R2 Storage Write`（控制台有时显示为 R2 Storage 的 Edit）以及 `User → Memberships → Read`（供 Wrangler 读取账号成员关系）。仅授予某个 R2 bucket 的 Bucket Item 权限不足以满足当前 Wrangler 的账号校验和清理接口。`CLOUDFLARE_ACCOUNT_ID` 继续放在 Actions Variables 中，不要写入仓库。
+
 - 0.5.5 仍将 FFmpeg、HEIF 和 whisper.cpp 内置；后续如需继续瘦身，可单独评估它们的按需下载。
 
 ## 五、正式发布后的检查
@@ -272,6 +286,7 @@ GitHub Actions 的 `workflow_dispatch` 支持 `verify_only` 输入。使用方�
 - [ ] `v<version>` tag 指向正确提交并已推送。
 - [ ] 五个平台构建和 `publish-release` 全部成功。
 - [ ] GitHub Release 资产、tag、更新元数据和远端回读校验均正常。
+- [ ] R2 稳定下载清单只包含当前版和上一版，旧版本对象已清理，历史版本链接仍指向 GitHub Releases。
 
 ## 九、相关文件和命令索引
 
@@ -287,5 +302,6 @@ GitHub Actions 的 `workflow_dispatch` 支持 `verify_only` 输入。使用方�
 | 本地发布演练 | `scripts/release-dry-run.mjs` / `npm run release:dry-run` |
 | push 前审计 | `scripts/check-release-push-readiness.mjs` / `npm run release:check-push` |
 | GitHub 远端校验 | `scripts/verify-remote-release.mjs` / `npm run release:verify-remote` |
+| 官网下载同步 | `scripts/publish-release-downloads.mjs` / `npm run release:publish-downloads` |
 
 如果修改了发布工作流、产物命名、平台构建矩阵或下载分发方式，必须同步更新本文档，并至少重新执行本地 dry-run、相关单测和 TypeScript 检查。

@@ -58,7 +58,7 @@ describe('release workflow source constraints', () => {
     expect(releaseWorkflow).toContain('description: \'Build and validate all release artifacts without creating a release\'')
     expect(releaseWorkflow).toContain('default: false')
     expect(releaseWorkflow).toContain('type: boolean')
-    expect(releaseWorkflow.match(/github\.event_name != 'workflow_dispatch' \|\| inputs\.verify_only != true/g)).toHaveLength(4)
+    expect(releaseWorkflow.match(/github\.event_name != 'workflow_dispatch' \|\| inputs\.verify_only != true/g)).toHaveLength(5)
     expect(releaseWorkflow.indexOf('release:check-evidence')).toBeLessThan(releaseWorkflow.indexOf('Create GitHub Release'))
   })
 

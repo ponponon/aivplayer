@@ -1187,6 +1187,14 @@ jobs:
           RELEASE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run release:verify-remote -- --platform github --owner "${{ github.repository_owner }}" --repo "${{ github.event.repository.name }}" --artifacts-dir artifacts/assembled --manifest-path artifacts/assembled/release-manifest.json --tag "${{ inputs.tag || github.ref_name }}" --report-path artifacts/assembled/github-remote-verification.json
 
+      - name: Publish desktop downloads to R2
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.verify_only != true }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run release:publish-downloads -- --artifacts-dir artifacts/assembled --tag "${{ inputs.tag || github.ref_name }}" --repository "${{ github.repository }}"
+
       - name: Share GitHub remote verification report
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.verify_only != true }}
         uses: actions/upload-artifact@v7
