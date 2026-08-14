@@ -77,6 +77,8 @@ describe('download publishing integration', () => {
 
   it('keeps the public page centered on one automatic download path', () => {
     expect(siteHtml).toContain('id="download-recommended-link"')
+    expect(siteHtml).toContain('id="download-history-panel"')
+    expect(siteHtml).toContain('id="download-history-download-link"')
     expect(siteHtml).toContain('id="download-manual"')
     expect(siteHtml).toContain('id="download-platform-select"')
     expect(siteHtml).toContain('id="download-architecture-select"')
@@ -91,5 +93,8 @@ describe('download publishing integration', () => {
     expect(siteScript).toContain('DOWNLOAD_MANIFEST_URL')
     expect(siteScript).toContain('detectDownloadTarget')
     expect(siteScript).toContain('FALLBACK_DOWNLOAD_MANIFEST')
+    expect(siteScript).toContain("version: '0.5.4'")
+    expect(siteScript).toContain('selectedHistoryVersion')
+    expect(siteScript).toContain("wireDownloadSelect('history')")
   })
 })

@@ -157,7 +157,7 @@
         <section class="section shell download-section" id="download">
             <div class="download-heading">
                 <div><p class="eyebrow" data-i18n="download.eyebrow">READY WHEN YOU ARE</p><h2 data-i18n="download.title">Start with the right build.</h2></div>
-                <p data-i18n="download.lede">One download is recommended for this computer. If you need another architecture, open the manual selector below.</p>
+                <p data-i18n="download.lede">The current release is recommended automatically. The previous release has its own download, and you can choose a platform and architecture manually below.</p>
             </div>
             <div class="download-console" id="download-console">
                 <div class="download-recommendation">
@@ -178,6 +178,30 @@
                     <span class="download-retention"><span data-i18n="download.retentionLabel">Fast downloads</span><span id="download-retention-values">v0.5.5 · v0.5.4</span></span>
                 </div>
             </div>
+            <section class="download-history-panel" id="download-history-panel" aria-labelledby="download-history-title">
+                <div class="download-history-heading">
+                    <div>
+                        <p class="download-kicker" data-i18n="download.historyKicker">HISTORY</p>
+                        <h3 id="download-history-title" data-i18n="download.historyTitle">Download an earlier version.</h3>
+                        <p data-i18n="download.historyBody">The previous release is available as a direct download. Older releases remain on GitHub.</p>
+                    </div>
+                    <a class="text-link" id="download-all-releases-link" href="https://github.com/ponponon/aivplayer/releases" target="_blank" rel="noreferrer"><span data-i18n="download.archiveLink">View all releases</span><span aria-hidden="true">→</span></a>
+                </div>
+                <div class="download-history-controls">
+                    <div class="download-select-field">
+                        <span class="download-select-label" id="download-history-label" data-i18n="download.historyVersionLabel">Version</span>
+                        <div class="download-select" data-download-select="history">
+                            <button class="download-select-trigger" id="download-history-select" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="download-history-menu" aria-labelledby="download-history-label">
+                                <span class="download-select-value" data-select-value></span>
+                                <svg class="download-select-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+                            </button>
+                            <div class="download-select-menu" id="download-history-menu" role="listbox" aria-labelledby="download-history-label" hidden></div>
+                        </div>
+                    </div>
+                    <p class="download-history-meta" id="download-history-meta"></p>
+                    <a class="button button-secondary" id="download-history-download-link" href="https://github.com/ponponon/aivplayer/releases" target="_blank" rel="noreferrer"><span data-i18n="download.downloadHistory">Download historical version</span><span aria-hidden="true">↓</span></a>
+                </div>
+            </section>
             <details class="download-manual" id="download-manual">
                 <summary><span data-i18n="download.manualTitle">Choose a platform and architecture manually</span><span class="summary-arrow" aria-hidden="true">↘</span></summary>
                 <div class="download-manual-body">
@@ -207,7 +231,7 @@
                     </div>
                     <div class="download-history-row">
                         <span data-i18n="download.archiveBody">Older versions stay available on GitHub Releases.</span>
-                        <a class="text-link" id="download-history-link" href="https://github.com/ponponon/aivplayer/releases" target="_blank" rel="noreferrer"><span data-i18n="download.archiveLink">View all releases</span><span aria-hidden="true">→</span></a>
+                        <a class="text-link" id="download-all-releases-link-manual" href="https://github.com/ponponon/aivplayer/releases" target="_blank" rel="noreferrer"><span data-i18n="download.archiveLink">View all releases</span><span aria-hidden="true">→</span></a>
                     </div>
                 </div>
             </details>
