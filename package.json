@@ -64,6 +64,7 @@
     "smoke:vision-clip-collection-tag-rename": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-collection-tag-rename.ts",
     "smoke:vision-clip-collection-tag-metadata": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-collection-tag-metadata.ts",
     "smoke:vision-clip-collection-tag-undo": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-collection-tag-undo.ts",
+    "smoke:vision-clip-collection-tag-hierarchy": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-collection-tag-hierarchy.ts",
     "smoke:vision-clip-collection-batch-tag-undo": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-collection-batch-tag-undo.ts",
     "smoke:vision-clip-collection-batch-export": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-collection-batch-export.ts",
     "smoke:vision-library-pagination": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-library-pagination.ts",
