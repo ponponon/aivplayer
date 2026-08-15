@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
-import type { VisionClipCollectionBatchDuplicateRequest, VisionClipCollectionBatchExportRequest, VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionEvidenceAuditPage, VisionEvidenceAuditRequest, VisionEvidenceBatchClearResult, VisionEvidenceSourceRequest, VisionEvidenceType, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionModelDownloadResult, VisionPackDownloadResult, VisionSavedSearchInput, VisionSearchFullExportRequest, VisionSearchPageKind, VisionSearchPageRequest, VisionSearchRequest, VisionSearchResult, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchResultsExportRequest, VisionSearchResultsExportResult, VisionSimilarSearchRequest } from '../shared/vision-types'
+import type { VisionClipCollectionBatchDeleteRequest, VisionClipCollectionBatchDuplicateRequest, VisionClipCollectionBatchExportRequest, VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionEvidenceAuditPage, VisionEvidenceAuditRequest, VisionEvidenceBatchClearResult, VisionEvidenceSourceRequest, VisionEvidenceType, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionModelDownloadResult, VisionPackDownloadResult, VisionSavedSearchInput, VisionSearchFullExportRequest, VisionSearchPageKind, VisionSearchPageRequest, VisionSearchRequest, VisionSearchResult, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchResultsExportRequest, VisionSearchResultsExportResult, VisionSimilarSearchRequest } from '../shared/vision-types'
 import { VISION_SEARCH_FULL_EXPORT_MAX_RESULTS } from '../shared/vision-types'
 import type { VisionEntityCatalogBatchPatch, VisionEntityCatalogCreateInput, VisionEntityCatalogPatch } from '../shared/vision-entity-types'
 import { scanVisionDirectory, isVisionScanAbortError } from '../core/ai/vision-directory-scan'
@@ -650,6 +650,10 @@ export function registerVisionIpc(): void {
   ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_DELETE, (_event, collectionId: string) => {
     if (typeof collectionId !== 'string' || !collectionId.trim()) return false
     return getClipInboxStore().deleteCollection(collectionId.trim())
+  })
+  ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_BATCH_DELETE, (_event, request: VisionClipCollectionBatchDeleteRequest) => {
+    if (!request || !Array.isArray(request.collectionIds)) return { deletedIds: [], deletedCount: 0, skippedCount: 0 }
+    return getClipInboxStore().deleteCollections(request.collectionIds)
   })
   ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_DUPLICATE, (_event, collectionId: string) => {
     if (typeof collectionId !== 'string' || !collectionId.trim()) return null

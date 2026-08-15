@@ -93,6 +93,19 @@ describe('clip inbox store', () => {
     expect(store.listCollections()).toEqual([])
   })
 
+  it('deletes several collections in one transaction and reports missing ids', () => {
+    const first = store.saveCollection({ title: '批量待删一', selections: [selection({ startSeconds: 1, endSeconds: 2 })] })
+    const second = store.saveCollection({ title: '批量待删二', selections: [selection({ startSeconds: 3, endSeconds: 4 })] })
+    const third = store.saveCollection({ title: '批量保留', selections: [selection({ startSeconds: 5, endSeconds: 6 })] })
+
+    const result = store.deleteCollections([` ${first.id} `, second.id, first.id, 'missing'])
+
+    expect(result).toEqual({ deletedIds: [first.id, second.id], deletedCount: 2, skippedCount: 1 })
+    expect(store.listCollections().map((collection) => collection.id)).toEqual([third.id])
+    expect(store.getCollection(first.id)).toBeNull()
+    expect(store.getCollection(second.id)).toBeNull()
+  })
+
   it('duplicates a collection with a new id and independent content', () => {
     const original = store.saveCollection({ title: '待复制', tags: ['旅行'], sortMode: 'duration-desc', selections: [selection()] })
     const duplicate = store.duplicateCollection(original.id)

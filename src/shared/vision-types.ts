@@ -435,6 +435,16 @@ export type VisionClipCollectionExportRequest = {
   format: VisionClipCollectionExportFormat
 }
 
+export type VisionClipCollectionBatchDeleteRequest = {
+  collectionIds: string[]
+}
+
+export type VisionClipCollectionBatchDeleteResult = {
+  deletedIds: string[]
+  deletedCount: number
+  skippedCount: number
+}
+
 export type VisionClipCollectionBatchExportRequest = {
   collectionIds: string[]
 }

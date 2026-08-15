@@ -4,7 +4,7 @@ import { dirname, join, resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { mergeVisionClipSelections, normalizeVisionTimeRange } from './vision-evidence'
 import { duplicateVisionCollectionTitle, normalizeVisionClipCollectionIds, normalizeVisionCollectionSortMode, normalizeVisionCollectionTags, sortVisionClipSelections } from './clip-inbox-operations'
-import type { VisionClipCollection, VisionClipCollectionInput, VisionClipSelection, VisionEvidenceType } from '../../shared/vision-types'
+import type { VisionClipCollection, VisionClipCollectionBatchDeleteResult, VisionClipCollectionInput, VisionClipSelection, VisionEvidenceType } from '../../shared/vision-types'
 
 type SqliteRow = Record<string, unknown>
 const EVIDENCE_TYPES: readonly VisionEvidenceType[] = ['subtitle', 'visual', 'scene', 'ocr', 'entity', 'object']
@@ -191,6 +191,27 @@ export class ClipInboxStore {
     const normalizedIds = normalizeVisionClipCollectionIds(collectionIds)
     const collections = normalizedIds.map((collectionId) => this.duplicateCollection(collectionId)).filter((collection): collection is VisionClipCollection => collection !== null)
     return { collections, skippedCount: normalizedIds.length - collections.length }
+  }
+
+  deleteCollections(collectionIds: readonly string[]): VisionClipCollectionBatchDeleteResult {
+    const normalizedIds = normalizeVisionClipCollectionIds(collectionIds)
+    if (normalizedIds.length === 0) return { deletedIds: [], deletedCount: 0, skippedCount: 0 }
+    const placeholders = normalizedIds.map(() => '?').join(', ')
+    this.database.exec('BEGIN')
+    try {
+      const rows = this.database.prepare(`SELECT id FROM clip_collections WHERE id IN (${placeholders})`).all(...normalizedIds) as SqliteRow[]
+      const existingIds = new Set(rows.map((row) => stringValue(row, 'id')).filter(Boolean))
+      const deletedIds = normalizedIds.filter((collectionId) => existingIds.has(collectionId))
+      if (deletedIds.length > 0) {
+        const deletePlaceholders = deletedIds.map(() => '?').join(', ')
+        this.database.prepare(`DELETE FROM clip_collections WHERE id IN (${deletePlaceholders})`).run(...deletedIds)
+      }
+      this.database.exec('COMMIT')
+      return { deletedIds, deletedCount: deletedIds.length, skippedCount: normalizedIds.length - deletedIds.length }
+    } catch (error) {
+      this.database.exec('ROLLBACK')
+      throw error
+    }
   }
 
   deleteCollection(collectionId: string): boolean {
