@@ -745,6 +745,21 @@
   font-size: 11px;
 }
 
+.vision-collection-tag-manager-heading-copy {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 2px;
+}
+
+.vision-collection-tag-manager-transfer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-left: auto;
+}
+
 .vision-collection-tag-manager-heading small,
 .vision-collection-tag-manager-selection,
 .vision-collection-tag-manager-empty {

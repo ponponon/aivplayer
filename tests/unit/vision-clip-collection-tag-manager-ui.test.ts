@@ -45,6 +45,16 @@ describe('vision clip collection tag manager UI wiring', () => {
     expect(panel).toContain('isFavorite: collectionTagFavorite')
   })
 
+  it('exposes versioned tag metadata import and export actions', () => {
+    expect(panel).toContain('exportCollectionTagMetadata')
+    expect(panel).toContain('importCollectionTagMetadata')
+    expect(panel).toContain('exportVisionClipCollectionTagMetadata')
+    expect(panel).toContain('importVisionClipCollectionTagMetadata')
+    expect(panel).toContain('collectionTagManagerMetadataExport')
+    expect(panel).toContain('collectionTagManagerMetadataImport')
+    expect(styles).toContain('.vision-collection-tag-manager-transfer-actions')
+  })
+
   it('shows multi-level paths and filters parent candidates that would create cycles', () => {
     expect(panel).toContain('getVisionCollectionTagPath')
     expect(panel).toContain("path.join(' / ')")

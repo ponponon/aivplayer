@@ -161,6 +161,8 @@ export function VisionPanel(): React.ReactElement {
   const [collectionTagNote, setCollectionTagNote] = useState('')
   const [collectionTagFavorite, setCollectionTagFavorite] = useState(false)
   const [isSavingCollectionTagMetadata, setIsSavingCollectionTagMetadata] = useState(false)
+  const [isTransferringCollectionTagMetadata, setIsTransferringCollectionTagMetadata] = useState(false)
+  const [collectionTagTransferStatus, setCollectionTagTransferStatus] = useState<string | null>(null)
   const [lastCollectionTagOperation, setLastCollectionTagOperation] = useState<VisionClipCollectionTagOperationHistory | null>(null)
   const [isUndoingCollectionTagOperation, setIsUndoingCollectionTagOperation] = useState(false)
   const [editingCollectionId, setEditingCollectionId] = useState<string | null>(null)
@@ -222,7 +224,7 @@ export function VisionPanel(): React.ReactElement {
   const renameSuffix = normalizeVisionClipCollectionRenamePart(collectionRenameSuffix)
   const hasRenameRule = Boolean(renamePrefix || renameSuffix)
   const renamePreviewCollections = selectedCollectionsForRename.map((collection) => ({ ...collection, title: renameVisionClipCollectionTitle(collection.title, renamePrefix, renameSuffix) }))
-  const isCollectionBatchBusy = isDuplicatingCollections || isExportingCollections || isDeletingCollections || isRenamingCollections || isUpdatingCollectionTags || isCleaningCollectionTag || isRenamingCollectionTag || isSavingCollectionTagMetadata || isUndoingCollectionTagOperation || isSavingCollectionTitle || isSavingCollectionTags || editingCollectionId !== null || editingCollectionTagsId !== null || duplicatingCollectionId !== null
+  const isCollectionBatchBusy = isDuplicatingCollections || isExportingCollections || isDeletingCollections || isRenamingCollections || isUpdatingCollectionTags || isCleaningCollectionTag || isRenamingCollectionTag || isSavingCollectionTagMetadata || isTransferringCollectionTagMetadata || isUndoingCollectionTagOperation || isSavingCollectionTitle || isSavingCollectionTags || editingCollectionId !== null || editingCollectionTagsId !== null || duplicatingCollectionId !== null
   const vectorIndexLabel = status?.vectorIndexType
     ? app.copy.vision.vectorIndex(status.vectorIndexType, status.vectorIndexDistanceType ?? '—', status.vectorIndexIndexedRows, status.vectorIndexUnindexedRows)
     : app.copy.vision.exactVectorSearch
@@ -1184,6 +1186,38 @@ export function VisionPanel(): React.ReactElement {
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setIsSavingCollectionTagMetadata(false))
   }
 
+  const exportCollectionTagMetadata = (): void => {
+    if (isCollectionBatchBusy || collectionTagMetadata.length === 0) return
+    setError(null)
+    setCollectionTagTransferStatus(null)
+    setIsTransferringCollectionTagMetadata(true)
+    void window.aiv.exportVisionClipCollectionTagMetadata().then((result) => {
+      if (result.canceled) return
+      if (!result.success) {
+        setError(result.message)
+        return
+      }
+      setCollectionTagTransferStatus(result.message || app.copy.vision.collectionTagManagerMetadataExported(result.exportedCount ?? 0))
+    }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setIsTransferringCollectionTagMetadata(false))
+  }
+
+  const importCollectionTagMetadata = (): void => {
+    if (isCollectionBatchBusy) return
+    setError(null)
+    setCollectionTagTransferStatus(null)
+    setIsTransferringCollectionTagMetadata(true)
+    void window.aiv.importVisionClipCollectionTagMetadata().then((result) => {
+      if (result.canceled) return
+      if (!result.success) {
+        setError(result.message)
+        return
+      }
+      refreshCollectionTagMetadata()
+      refreshCollectionTagOperation()
+      setCollectionTagTransferStatus(result.message || app.copy.vision.collectionTagManagerMetadataImported(result.importedCount ?? 0, result.skippedCount ?? 0))
+    }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setIsTransferringCollectionTagMetadata(false))
+  }
+
   const undoCollectionTagOperation = (): void => {
     if (isCollectionBatchBusy || !lastCollectionTagOperation) return
     setIsUndoingCollectionTagOperation(true)
@@ -1376,7 +1410,8 @@ export function VisionPanel(): React.ReactElement {
     {searchExportStatus ? <small className="vision-saved-search-status vision-search-export-status" role="status">{searchExportStatus}</small> : null}
     {objectDetectionResult ? <VisionObjectDetectionResultView copy={app.copy.vision} result={objectDetectionResult} thumbnailUrl={objectDetectionThumbnailUrl} filter={objectDetectionFilter} onFilterChange={setObjectDetectionFilter} onClear={() => { setObjectDetectionResult(null); setObjectDetectionThumbnailUrl(null) }} /> : null}
     {collections.length > 0 ? <div className="vision-card vision-collection-tag-manager">
-      <div className="vision-collection-tag-manager-heading"><strong>{app.copy.vision.collectionTagManagerTitle}</strong><small>{app.copy.vision.collectionTagManagerDescription}</small></div>
+      <div className="vision-collection-tag-manager-heading"><div className="vision-collection-tag-manager-heading-copy"><strong>{app.copy.vision.collectionTagManagerTitle}</strong><small>{app.copy.vision.collectionTagManagerDescription}</small></div><div className="vision-collection-tag-manager-transfer-actions"><button className="vision-secondary-action" type="button" onClick={importCollectionTagMetadata} disabled={isCollectionBatchBusy}><Upload size={12} />{app.copy.vision.collectionTagManagerMetadataImport}</button><button className="vision-secondary-action" type="button" onClick={exportCollectionTagMetadata} disabled={isCollectionBatchBusy || collectionTagMetadata.length === 0}><Download size={12} />{app.copy.vision.collectionTagManagerMetadataExport}</button></div></div>
+      {collectionTagTransferStatus ? <small className="vision-saved-search-status" role="status">{collectionTagTransferStatus}</small> : null}
       {collectionTagStats.length > 0 ? <>
         <div className="vision-collection-tag-manager-filter">
           <input value={collectionTagFilterQuery} onChange={(event) => setCollectionTagFilterQuery(event.target.value)} placeholder={app.copy.vision.collectionTagManagerFilterPlaceholder} aria-label={app.copy.vision.collectionTagManagerFilterPlaceholder} disabled={isCollectionBatchBusy} />
