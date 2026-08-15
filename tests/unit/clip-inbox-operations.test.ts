@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyVisionCollectionTags, duplicateVisionCollectionTitle, invertVisionClipSelections, normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTag, normalizeVisionCollectionTags, normalizeVisionCollectionTagsMode, renameVisionClipCollectionTitle, sortVisionClipSelections } from '../../src/core/ai/clip-inbox-operations'
+import { applyVisionCollectionTags, duplicateVisionCollectionTitle, invertVisionClipSelections, normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTag, normalizeVisionCollectionTags, normalizeVisionCollectionTagsMode, renameVisionCollectionTag, renameVisionClipCollectionTitle, sortVisionClipSelections } from '../../src/core/ai/clip-inbox-operations'
 import type { VisionClipSelection } from '../../src/shared/vision-types'
 
 const selection = (patch: Partial<VisionClipSelection> = {}): VisionClipSelection => ({
@@ -46,6 +46,9 @@ describe('clip inbox operations', () => {
     expect(applyVisionCollectionTags(['海边', '采访'], ['海边'], 'remove')).toEqual(['采访'])
     expect(normalizeVisionCollectionTag(' 海边 ')).toBe('海边')
     expect(normalizeVisionCollectionTag('海边,采访')).toBe('')
+    expect(renameVisionCollectionTag(['海边', '采访'], '海边', '访谈')).toEqual(['访谈', '采访'])
+    expect(renameVisionCollectionTag(['海边', '访谈'], '海边', '访谈')).toEqual(['访谈'])
+    expect(renameVisionCollectionTag(['海边'], '海边', '海边')).toEqual(['海边'])
   })
 
   it('sorts by duration and file name', () => {

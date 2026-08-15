@@ -485,6 +485,20 @@ export type VisionClipCollectionTagCleanupResult = {
   updatedCount: number
 }
 
+export type VisionClipCollectionTagRenameRequest = {
+  fromTag: string
+  toTag: string
+}
+
+export type VisionClipCollectionTagRenameResult = {
+  success: boolean
+  message: string
+  fromTag: string
+  toTag: string
+  collections: VisionClipCollection[]
+  updatedCount: number
+}
+
 export type VisionClipCollectionBatchExportRequest = {
   collectionIds: string[]
 }

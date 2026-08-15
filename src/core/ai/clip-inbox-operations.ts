@@ -44,6 +44,14 @@ export function normalizeVisionCollectionTag(value: unknown): string {
   return tags.length === 1 ? tags[0] ?? '' : ''
 }
 
+export function renameVisionCollectionTag(currentTags: unknown, fromTag: unknown, toTag: unknown): string[] {
+  const normalizedFromTag = normalizeVisionCollectionTag(fromTag)
+  const normalizedToTag = normalizeVisionCollectionTag(toTag)
+  const normalizedCurrentTags = normalizeVisionCollectionTags(currentTags)
+  if (!normalizedFromTag || !normalizedToTag || normalizedFromTag === normalizedToTag) return normalizedCurrentTags
+  return normalizeVisionCollectionTags(normalizedCurrentTags.map((tag) => tag === normalizedFromTag ? normalizedToTag : tag))
+}
+
 export function normalizeVisionCollectionTagsMode(value: unknown): VisionClipCollectionBatchTagsMode {
   return value === 'add' || value === 'remove' ? value : 'replace'
 }

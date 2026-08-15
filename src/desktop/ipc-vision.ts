@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
-import type { VisionClipCollectionBatchDeleteRequest, VisionClipCollectionBatchDuplicateRequest, VisionClipCollectionBatchExportRequest, VisionClipCollectionBatchRenameRequest, VisionClipCollectionBatchTagsRequest, VisionClipCollectionTagCleanupRequest, VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionEvidenceAuditPage, VisionEvidenceAuditRequest, VisionEvidenceBatchClearResult, VisionEvidenceSourceRequest, VisionEvidenceType, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionModelDownloadResult, VisionPackDownloadResult, VisionSavedSearchInput, VisionSearchFullExportRequest, VisionSearchPageKind, VisionSearchPageRequest, VisionSearchRequest, VisionSearchResult, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchResultsExportRequest, VisionSearchResultsExportResult, VisionSimilarSearchRequest } from '../shared/vision-types'
+import type { VisionClipCollectionBatchDeleteRequest, VisionClipCollectionBatchDuplicateRequest, VisionClipCollectionBatchExportRequest, VisionClipCollectionBatchRenameRequest, VisionClipCollectionBatchTagsRequest, VisionClipCollectionTagCleanupRequest, VisionClipCollectionTagRenameRequest, VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionEvidenceAuditPage, VisionEvidenceAuditRequest, VisionEvidenceBatchClearResult, VisionEvidenceSourceRequest, VisionEvidenceType, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionModelDownloadResult, VisionPackDownloadResult, VisionSavedSearchInput, VisionSearchFullExportRequest, VisionSearchPageKind, VisionSearchPageRequest, VisionSearchRequest, VisionSearchResult, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchResultsExportRequest, VisionSearchResultsExportResult, VisionSimilarSearchRequest } from '../shared/vision-types'
 import { VISION_SEARCH_FULL_EXPORT_MAX_RESULTS } from '../shared/vision-types'
 import type { VisionEntityCatalogBatchPatch, VisionEntityCatalogCreateInput, VisionEntityCatalogPatch } from '../shared/vision-entity-types'
 import { scanVisionDirectory, isVisionScanAbortError } from '../core/ai/vision-directory-scan'
@@ -693,6 +693,21 @@ export function registerVisionIpc(): void {
       return { success: true, message: copy.collectionTagManagerUpdated(result.tag, result.collections.length), ...result, updatedCount: result.collections.length }
     } catch (error) {
       return { success: false, message: error instanceof Error ? error.message : String(error), tag, collections: [], updatedCount: 0 }
+    }
+  })
+  ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_TAG_RENAME, (_event, request: VisionClipCollectionTagRenameRequest) => {
+    const copy = getAppCopy(getCurrentLocale()).vision
+    const fromTag = normalizeVisionCollectionTag(request?.fromTag)
+    const toTag = normalizeVisionCollectionTag(request?.toTag)
+    if (!fromTag) return { success: false, message: copy.collectionTagManagerRenameSelectionRequired, fromTag: '', toTag, collections: [], updatedCount: 0 }
+    if (!toTag) return { success: false, message: copy.collectionTagManagerRenameTargetRequired, fromTag, toTag: '', collections: [], updatedCount: 0 }
+    if (fromTag === toTag) return { success: false, message: copy.collectionTagManagerRenameSameTag, fromTag, toTag, collections: [], updatedCount: 0 }
+    try {
+      const result = getClipInboxStore().renameTagAcrossCollections(fromTag, toTag)
+      if (result.collections.length === 0) return { success: false, message: copy.collectionTagManagerRenameUnavailable(fromTag), ...result, updatedCount: 0 }
+      return { success: true, message: copy.collectionTagManagerRenamed(result.fromTag, result.toTag, result.collections.length), ...result, updatedCount: result.collections.length }
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : String(error), fromTag, toTag, collections: [], updatedCount: 0 }
     }
   })
   ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_DUPLICATE, (_event, collectionId: string) => {

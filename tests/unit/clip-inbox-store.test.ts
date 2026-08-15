@@ -157,6 +157,21 @@ describe('clip inbox store', () => {
     expect(store.removeTagFromAllCollections('不存在').collections).toEqual([])
   })
 
+  it('renames one tag across every matching collection and merges duplicates', () => {
+    const first = store.saveCollection({ title: '迁移标签一', tags: ['海边', '采访'], sortMode: 'duration-desc', selections: [selection({ evidenceIds: ['rename-one'] })] })
+    const second = store.saveCollection({ title: '迁移标签二', tags: ['海边', '访谈'], selections: [selection({ startSeconds: 4, endSeconds: 6, evidenceIds: ['rename-two'] })] })
+    const untouched = store.saveCollection({ title: '迁移标签三', tags: ['室内'], selections: [selection({ startSeconds: 7, endSeconds: 9, evidenceIds: ['rename-three'] })] })
+
+    const result = store.renameTagAcrossCollections(' 海边 ', ' 访谈 ')
+    expect(result).toMatchObject({ fromTag: '海边', toTag: '访谈' })
+    expect(result.collections.map((collection) => collection.id)).toEqual([first.id, second.id])
+    expect(result.collections[0]).toMatchObject({ tags: ['访谈', '采访'], title: first.title, sortMode: first.sortMode, selections: first.selections })
+    expect(result.collections[1]?.tags).toEqual(['访谈'])
+    expect(store.getCollection(untouched.id)?.tags).toEqual(['室内'])
+    expect(store.renameTagAcrossCollections('不存在', '新标签').collections).toEqual([])
+    expect(store.renameTagAcrossCollections('海边', '海边').collections).toEqual([])
+  })
+
   it('duplicates a collection with a new id and independent content', () => {
     const original = store.saveCollection({ title: '待复制', tags: ['旅行'], sortMode: 'duration-desc', selections: [selection()] })
     const duplicate = store.duplicateCollection(original.id)
