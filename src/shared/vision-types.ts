@@ -499,6 +499,27 @@ export type VisionClipCollectionTagRenameResult = {
   updatedCount: number
 }
 
+export type VisionClipCollectionTagMetadata = {
+  tag: string
+  parentTag: string
+  color: string
+  textColor: string
+  updatedAt: number
+}
+
+export type VisionClipCollectionTagMetadataUpdateRequest = {
+  tag: string
+  parentTag?: string | null
+  color?: string | null
+  textColor?: string | null
+}
+
+export type VisionClipCollectionTagMetadataUpdateResult = {
+  success: boolean
+  message: string
+  metadata: VisionClipCollectionTagMetadata | null
+}
+
 export type VisionClipCollectionBatchExportRequest = {
   collectionIds: string[]
 }

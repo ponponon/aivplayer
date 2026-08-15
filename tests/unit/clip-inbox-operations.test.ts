@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyVisionCollectionTags, duplicateVisionCollectionTitle, invertVisionClipSelections, normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTag, normalizeVisionCollectionTags, normalizeVisionCollectionTagsMode, renameVisionCollectionTag, renameVisionClipCollectionTitle, sortVisionClipSelections } from '../../src/core/ai/clip-inbox-operations'
+import { applyVisionCollectionTags, duplicateVisionCollectionTitle, invertVisionClipSelections, normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTag, normalizeVisionCollectionTagColor, normalizeVisionCollectionTags, normalizeVisionCollectionTagsMode, renameVisionCollectionTag, renameVisionClipCollectionTitle, sortVisionClipSelections } from '../../src/core/ai/clip-inbox-operations'
 import type { VisionClipSelection } from '../../src/shared/vision-types'
 
 const selection = (patch: Partial<VisionClipSelection> = {}): VisionClipSelection => ({
@@ -49,6 +49,8 @@ describe('clip inbox operations', () => {
     expect(renameVisionCollectionTag(['海边', '采访'], '海边', '访谈')).toEqual(['访谈', '采访'])
     expect(renameVisionCollectionTag(['海边', '访谈'], '海边', '访谈')).toEqual(['访谈'])
     expect(renameVisionCollectionTag(['海边'], '海边', '海边')).toEqual(['海边'])
+    expect(normalizeVisionCollectionTagColor(' #AABBcc ')).toBe('#aabbcc')
+    expect(normalizeVisionCollectionTagColor('rgba(0,0,0,.5)')).toBe('')
   })
 
   it('sorts by duration and file name', () => {

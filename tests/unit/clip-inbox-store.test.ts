@@ -172,6 +172,36 @@ describe('clip inbox store', () => {
     expect(store.renameTagAcrossCollections('海边', '海边').collections).toEqual([])
   })
 
+  it('persists tag metadata and migrates it with a renamed tag', () => {
+    const source = store.saveCollection({ title: '样式标签源', tags: ['海边', '采访'], selections: [selection()] })
+    const target = store.saveCollection({ title: '样式标签目标', tags: ['访谈'], selections: [selection({ startSeconds: 4, endSeconds: 6 })] })
+    const sourceMetadata = store.saveTagMetadata({ tag: '海边', parentTag: '采访', color: '#AABBCC', textColor: '#101010' })
+    const targetMetadata = store.saveTagMetadata({ tag: '访谈', color: '#112233' })
+
+    expect(sourceMetadata).toMatchObject({ tag: '海边', parentTag: '采访', color: '#aabbcc', textColor: '#101010' })
+    expect(targetMetadata).toMatchObject({ tag: '访谈', color: '#112233', textColor: '' })
+    const renamed = store.renameTagAcrossCollections('海边', '访谈')
+    expect(renamed.collections.map((collection) => collection.id)).toEqual([source.id])
+    expect(store.getTagMetadata('海边')).toBeNull()
+    expect(store.getTagMetadata('访谈')).toMatchObject({ tag: '访谈', color: '#112233', textColor: '#101010' })
+
+    store.close()
+    store = new ClipInboxStore(tempDirectory)
+    expect(store.listTagMetadata()).toEqual([expect.objectContaining({ tag: '访谈', color: '#112233', textColor: '#101010' })])
+    expect(store.getCollection(target.id)?.tags).toEqual(['访谈'])
+  })
+
+  it('cleans tag metadata and releases child parent references', () => {
+    const parent = store.saveCollection({ title: '父标签', tags: ['父'], selections: [selection()] })
+    store.saveCollection({ title: '子标签', tags: ['子'], selections: [selection({ startSeconds: 4, endSeconds: 6 })] })
+    store.saveTagMetadata({ tag: parent.tags[0]!, color: '#123456' })
+    store.saveTagMetadata({ tag: '子', parentTag: '父', color: '#654321' })
+
+    store.removeTagFromAllCollections('父')
+    expect(store.getTagMetadata('父')).toBeNull()
+    expect(store.getTagMetadata('子')).toMatchObject({ tag: '子', parentTag: '' })
+  })
+
   it('duplicates a collection with a new id and independent content', () => {
     const original = store.saveCollection({ title: '待复制', tags: ['旅行'], sortMode: 'duration-desc', selections: [selection()] })
     const duplicate = store.duplicateCollection(original.id)

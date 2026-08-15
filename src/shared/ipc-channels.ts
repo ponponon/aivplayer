@@ -138,6 +138,8 @@ export const IPC_CHANNELS = {
   VISION_CLIP_COLLECTION_BATCH_TAGS: 'vision:clip-collection-batch-tags',
   VISION_CLIP_COLLECTION_TAG_CLEANUP: 'vision:clip-collection-tag-cleanup',
   VISION_CLIP_COLLECTION_TAG_RENAME: 'vision:clip-collection-tag-rename',
+  VISION_CLIP_COLLECTION_TAG_METADATA_LIST: 'vision:clip-collection-tag-metadata-list',
+  VISION_CLIP_COLLECTION_TAG_METADATA_UPDATE: 'vision:clip-collection-tag-metadata-update',
   VISION_CLIP_COLLECTION_DUPLICATE: 'vision:clip-collection-duplicate',
   VISION_CLIP_COLLECTION_BATCH_DUPLICATE: 'vision:clip-collection-batch-duplicate',
   VISION_CLIP_COLLECTION_EXPORT: 'vision:clip-collection-export',

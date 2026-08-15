@@ -44,6 +44,12 @@ export function normalizeVisionCollectionTag(value: unknown): string {
   return tags.length === 1 ? tags[0] ?? '' : ''
 }
 
+export function normalizeVisionCollectionTagColor(value: unknown): string {
+  if (typeof value !== 'string') return ''
+  const color = value.trim().toLowerCase()
+  return /^#[0-9a-f]{6}$/.test(color) ? color : ''
+}
+
 export function renameVisionCollectionTag(currentTags: unknown, fromTag: unknown, toTag: unknown): string[] {
   const normalizedFromTag = normalizeVisionCollectionTag(fromTag)
   const normalizedToTag = normalizeVisionCollectionTag(toTag)
