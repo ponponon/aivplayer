@@ -118,6 +118,22 @@ describe('clip inbox store', () => {
     expect(store.getCollection(first.id)?.updatedAt).toBeGreaterThanOrEqual(first.updatedAt)
   })
 
+  it('updates tags for several collections atomically and preserves collection data', () => {
+    const first = store.saveCollection({ title: '标签一', tags: ['旧标签'], sortMode: 'duration-desc', selections: [selection({ startSeconds: 1, endSeconds: 2 })] })
+    const second = store.saveCollection({ title: '标签二', tags: ['保留'], selections: [selection({ startSeconds: 3, endSeconds: 4 })] })
+    const result = store.updateCollectionsTags([first.id, ` ${second.id} `, first.id, 'missing'], [' 海边 ', '海边', '精选'])
+
+    expect(result.collections.map((collection) => collection.id)).toEqual([first.id, second.id])
+    expect(result.collections.map((collection) => collection.tags)).toEqual([['海边', '精选'], ['海边', '精选']])
+    expect(result.collections[0]).toMatchObject({ title: '标签一', sortMode: 'duration-desc', selections: first.selections })
+    expect(result.collections[1]).toMatchObject({ title: '标签二', selections: second.selections })
+    expect(result.skippedCount).toBe(1)
+
+    const cleared = store.updateCollectionsTags([first.id], [])
+    expect(cleared.collections[0]?.tags).toEqual([])
+    expect(store.getCollection(second.id)?.tags).toEqual(['海边', '精选'])
+  })
+
   it('duplicates a collection with a new id and independent content', () => {
     const original = store.saveCollection({ title: '待复制', tags: ['旅行'], sortMode: 'duration-desc', selections: [selection()] })
     const duplicate = store.duplicateCollection(original.id)

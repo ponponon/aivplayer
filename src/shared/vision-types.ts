@@ -458,6 +458,18 @@ export type VisionClipCollectionBatchRenameResult = {
   skippedCount: number
 }
 
+export type VisionClipCollectionBatchTagsRequest = {
+  collectionIds: string[]
+  tags?: string[]
+}
+
+export type VisionClipCollectionBatchTagsResult = {
+  success: boolean
+  message: string
+  collections: VisionClipCollection[]
+  skippedCount: number
+}
+
 export type VisionClipCollectionBatchExportRequest = {
   collectionIds: string[]
 }

@@ -3,13 +3,13 @@ import { createHash, randomUUID } from 'node:crypto'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
-import type { VisionClipCollectionBatchDeleteRequest, VisionClipCollectionBatchDuplicateRequest, VisionClipCollectionBatchExportRequest, VisionClipCollectionBatchRenameRequest, VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionEvidenceAuditPage, VisionEvidenceAuditRequest, VisionEvidenceBatchClearResult, VisionEvidenceSourceRequest, VisionEvidenceType, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionModelDownloadResult, VisionPackDownloadResult, VisionSavedSearchInput, VisionSearchFullExportRequest, VisionSearchPageKind, VisionSearchPageRequest, VisionSearchRequest, VisionSearchResult, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchResultsExportRequest, VisionSearchResultsExportResult, VisionSimilarSearchRequest } from '../shared/vision-types'
+import type { VisionClipCollectionBatchDeleteRequest, VisionClipCollectionBatchDuplicateRequest, VisionClipCollectionBatchExportRequest, VisionClipCollectionBatchRenameRequest, VisionClipCollectionBatchTagsRequest, VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionEvidenceAuditPage, VisionEvidenceAuditRequest, VisionEvidenceBatchClearResult, VisionEvidenceSourceRequest, VisionEvidenceType, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionModelDownloadResult, VisionPackDownloadResult, VisionSavedSearchInput, VisionSearchFullExportRequest, VisionSearchPageKind, VisionSearchPageRequest, VisionSearchRequest, VisionSearchResult, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchResultsExportRequest, VisionSearchResultsExportResult, VisionSimilarSearchRequest } from '../shared/vision-types'
 import { VISION_SEARCH_FULL_EXPORT_MAX_RESULTS } from '../shared/vision-types'
 import type { VisionEntityCatalogBatchPatch, VisionEntityCatalogCreateInput, VisionEntityCatalogPatch } from '../shared/vision-entity-types'
 import { scanVisionDirectory, isVisionScanAbortError } from '../core/ai/vision-directory-scan'
 import { renderVisionClipCollectionExport, renderVisionClipCollectionsExport } from '../core/ai/clip-inbox-export'
 import { parseVisionClipCollectionImportText, parseVisionClipCollectionsImport } from '../core/ai/clip-inbox-import'
-import { normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart } from '../core/ai/clip-inbox-operations'
+import { normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTags } from '../core/ai/clip-inbox-operations'
 import { isVisionSearchExportAbortError, renderVisionSearchResultsExport } from '../core/ai/vision-search-export'
 import { writeVisionSearchResultsExportResumable } from '../core/ai/vision-search-export-resumable'
 import { getVisionSearchExportPartsDirectory } from '../core/ai/vision-search-export-store'
@@ -665,6 +665,19 @@ export function registerVisionIpc(): void {
       const result = getClipInboxStore().renameCollections(collectionIds, prefix, suffix)
       if (result.collections.length === 0) return { success: false, message: '选中的选段集合均不存在', collections: [], skippedCount: result.skippedCount }
       return { success: true, message: `已重命名 ${result.collections.length} 个选段集合${result.skippedCount > 0 ? `，跳过 ${result.skippedCount} 个` : ''}`, ...result }
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : String(error), collections: [], skippedCount: 0 }
+    }
+  })
+  ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_BATCH_TAGS, (_event, request: VisionClipCollectionBatchTagsRequest) => {
+    const copy = getAppCopy(getCurrentLocale()).vision
+    const collectionIds = normalizeVisionClipCollectionIds(request?.collectionIds)
+    const tags = normalizeVisionCollectionTags(request?.tags)
+    if (collectionIds.length === 0) return { success: false, message: copy.collectionTagsBatchSelectionRequired, collections: [], skippedCount: 0 }
+    try {
+      const result = getClipInboxStore().updateCollectionsTags(collectionIds, tags)
+      if (result.collections.length === 0) return { success: false, message: copy.collectionTagsBatchUnavailable, collections: [], skippedCount: result.skippedCount }
+      return { success: true, message: copy.collectionsTagsUpdated(result.collections.length, result.skippedCount), ...result }
     } catch (error) {
       return { success: false, message: error instanceof Error ? error.message : String(error), collections: [], skippedCount: 0 }
     }
