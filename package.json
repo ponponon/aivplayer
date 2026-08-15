@@ -56,6 +56,7 @@
     "smoke:vision-clip-collection-batch-duplicate": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-collection-batch-duplicate.ts",
     "smoke:vision-clip-collection-batch-delete": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-collection-batch-delete.ts",
     "smoke:vision-clip-collection-batch-rename": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-collection-batch-rename.ts",
+    "smoke:vision-clip-collection-inline-rename": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-collection-inline-rename.ts",
     "smoke:vision-clip-collection-batch-export": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-collection-batch-export.ts",
     "smoke:vision-library-pagination": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-library-pagination.ts",
     "smoke:vision-library-filter-sort": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-library-filter-sort.ts",
