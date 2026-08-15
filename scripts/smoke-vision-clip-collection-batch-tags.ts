@@ -95,7 +95,8 @@ async function runSmoke(): Promise<void> {
     if (updated.length !== 2 || updated.some((collection) => JSON.stringify(collection.tags) !== JSON.stringify(['海边', '采访'])) || !untouched || JSON.stringify(untouched.tags) !== JSON.stringify(['保留标签'])) {
       throw new Error(`Batch tag persistence mismatch: ${JSON.stringify(persisted)}`)
     }
-    if (updated[0]?.sortMode !== originals[0]?.sortMode || updated[0]?.selections[0]?.evidenceIds[0] !== originals[0]?.selections[0]?.evidenceIds[0]) throw new Error('Batch tag update should preserve sort mode and evidence metadata')
+    const firstUpdated = persisted.find((collection) => collection.id === originals[0]?.id)
+    if (firstUpdated?.sortMode !== originals[0]?.sortMode || firstUpdated?.selections[0]?.evidenceIds[0] !== originals[0]?.selections[0]?.evidenceIds[0]) throw new Error('Batch tag update should preserve sort mode and evidence metadata')
 
     await page.reload({ waitUntil: 'domcontentloaded' })
     await openVisionPanel(page)
