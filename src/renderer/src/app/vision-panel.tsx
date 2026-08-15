@@ -147,6 +147,8 @@ export function VisionPanel(): React.ReactElement {
   const [collectionBatchTagsMode, setCollectionBatchTagsMode] = useState<VisionClipCollectionBatchTagsMode>('replace')
   const [isUpdatingCollectionTags, setIsUpdatingCollectionTags] = useState(false)
   const [collectionTagToManage, setCollectionTagToManage] = useState('')
+  const [collectionTagFilterQuery, setCollectionTagFilterQuery] = useState('')
+  const [collectionTagFavoritesOnly, setCollectionTagFavoritesOnly] = useState(false)
   const [isCleaningCollectionTag, setIsCleaningCollectionTag] = useState(false)
   const [collectionTagRenameTarget, setCollectionTagRenameTarget] = useState('')
   const [isRenamingCollectionTag, setIsRenamingCollectionTag] = useState(false)
@@ -186,6 +188,13 @@ export function VisionPanel(): React.ReactElement {
     return counts
   }, new Map<string, number>())].map(([tag, count]) => ({ tag, count })).sort((left, right) => left.tag.localeCompare(right.tag, undefined, { sensitivity: 'base' }))
   const collectionTagMetadataByTag = new Map(collectionTagMetadata.map((metadata) => [metadata.tag, metadata]))
+  const collectionTagFilterQueryLower = collectionTagFilterQuery.trim().toLocaleLowerCase()
+  const visibleCollectionTagStats = collectionTagStats.filter((item) => {
+    const matchesQuery = !collectionTagFilterQueryLower || item.tag.toLocaleLowerCase().includes(collectionTagFilterQueryLower)
+    const matchesFavorite = !collectionTagFavoritesOnly || collectionTagMetadataByTag.get(item.tag)?.isFavorite === true
+    return matchesQuery && matchesFavorite
+  })
+  const hasCollectionTagFilter = Boolean(collectionTagFilterQuery.trim() || collectionTagFavoritesOnly)
   const managedCollectionTag = collectionTagStats.some((item) => item.tag === collectionTagToManage) ? collectionTagToManage : collectionTagStats[0]?.tag ?? ''
   const managedCollectionTagMetadata = collectionTagMetadataByTag.get(managedCollectionTag)
   const collectionTagParentOptions = collectionTagStats.filter((item) => item.tag !== managedCollectionTag && !wouldCreateVisionCollectionTagParentCycle(managedCollectionTag, item.tag, collectionTagMetadata))
@@ -1359,9 +1368,14 @@ export function VisionPanel(): React.ReactElement {
     {collections.length > 0 ? <div className="vision-card vision-collection-tag-manager">
       <div className="vision-collection-tag-manager-heading"><strong>{app.copy.vision.collectionTagManagerTitle}</strong><small>{app.copy.vision.collectionTagManagerDescription}</small></div>
       {collectionTagStats.length > 0 ? <>
-        <div className="vision-collection-tag-manager-list" role="list" aria-label={app.copy.vision.collectionTagManagerSelectLabel}>
-          {collectionTagStats.map((item) => { const metadata = collectionTagMetadataByTag.get(item.tag); const path = getVisionCollectionTagPath(item.tag, collectionTagMetadata); return <button className={`vision-collection-tag-manager-item${managedCollectionTag === item.tag ? ' is-active' : ''}`} key={item.tag} type="button" onClick={() => setCollectionTagToManage(item.tag)} aria-label={app.copy.vision.collectionTagManagerSelectTag(item.tag, item.count)} aria-pressed={managedCollectionTag === item.tag} style={{ backgroundColor: metadata?.color || undefined, color: metadata?.textColor || undefined }}><span>{path.join(' / ')}</span><small>{item.count}</small></button> })}
+        <div className="vision-collection-tag-manager-filter">
+          <input value={collectionTagFilterQuery} onChange={(event) => setCollectionTagFilterQuery(event.target.value)} placeholder={app.copy.vision.collectionTagManagerFilterPlaceholder} aria-label={app.copy.vision.collectionTagManagerFilterPlaceholder} disabled={isCollectionBatchBusy} />
+          <label><input type="checkbox" checked={collectionTagFavoritesOnly} onChange={(event) => setCollectionTagFavoritesOnly(event.currentTarget.checked)} aria-label={app.copy.vision.collectionTagManagerFavoritesOnly} disabled={isCollectionBatchBusy} /><span>{app.copy.vision.collectionTagManagerFavoritesOnly}</span></label>
+          {hasCollectionTagFilter ? <button className="vision-secondary-action" type="button" onClick={() => { setCollectionTagFilterQuery(''); setCollectionTagFavoritesOnly(false) }} disabled={isCollectionBatchBusy}>{app.copy.vision.collectionTagManagerFilterClear}</button> : null}
         </div>
+        {visibleCollectionTagStats.length > 0 ? <div className="vision-collection-tag-manager-list" role="list" aria-label={app.copy.vision.collectionTagManagerSelectLabel}>
+          {visibleCollectionTagStats.map((item) => { const metadata = collectionTagMetadataByTag.get(item.tag); const path = getVisionCollectionTagPath(item.tag, collectionTagMetadata); return <button className={`vision-collection-tag-manager-item${managedCollectionTag === item.tag ? ' is-active' : ''}`} key={item.tag} type="button" onClick={() => setCollectionTagToManage(item.tag)} aria-label={app.copy.vision.collectionTagManagerSelectTag(item.tag, item.count)} aria-pressed={managedCollectionTag === item.tag} style={{ backgroundColor: metadata?.color || undefined, color: metadata?.textColor || undefined }}><span>{path.join(' / ')}</span><small>{item.count}</small></button> })}
+        </div> : <div className="vision-collection-tag-manager-empty">{app.copy.vision.collectionTagManagerFilterEmpty}</div>}
         <div className="vision-collection-tag-manager-controls">
           <span className="vision-collection-tag-manager-selection" role="status">{managedCollectionTag ? app.copy.vision.collectionTagManagerSelectTag(managedCollectionTag, collectionTagStats.find((item) => item.tag === managedCollectionTag)?.count ?? 0) : app.copy.vision.collectionTagManagerSelectionRequired}</span>
           <input className="vision-collection-tag-manager-input" value={collectionTagRenameTarget} maxLength={40} onChange={(event) => setCollectionTagRenameTarget(event.target.value)} placeholder={app.copy.vision.collectionTagManagerRenameInputPlaceholder} aria-label={app.copy.vision.collectionTagManagerRenameInputPlaceholder} disabled={isCollectionBatchBusy} />

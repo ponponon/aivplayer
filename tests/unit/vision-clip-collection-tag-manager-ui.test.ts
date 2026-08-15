@@ -52,6 +52,16 @@ describe('vision clip collection tag manager UI wiring', () => {
     expect(panel).toContain('collectionTagParentOptions')
   })
 
+  it('filters tag buttons by query and favorite state without changing collection data', () => {
+    expect(panel).toContain('collectionTagFilterQuery')
+    expect(panel).toContain('collectionTagFavoritesOnly')
+    expect(panel).toContain('visibleCollectionTagStats')
+    expect(panel).toContain('collectionTagManagerFilterPlaceholder')
+    expect(panel).toContain('collectionTagManagerFavoritesOnly')
+    expect(panel).toContain('collectionTagManagerFilterClear')
+    expect(panel).toContain('collectionTagManagerFilterEmpty')
+  })
+
   it('exposes the latest tag operation for undo', () => {
     expect(panel).toContain('lastCollectionTagOperation')
     expect(panel).toContain('window.aiv.getVisionClipCollectionTagOperationHistory')
@@ -75,6 +85,7 @@ describe('vision clip collection tag manager UI wiring', () => {
     expect(styles).toContain('text-overflow: ellipsis')
     expect(styles).toContain('.vision-collection-tag-manager-note textarea')
     expect(styles).toContain('.vision-collection-tag-manager-favorite')
+    expect(styles).toContain('.vision-collection-tag-manager-filter')
     expect(styles).toContain('.vision-collection-tag-manager-metadata')
     expect(styles).toContain(".vision-collection-tag-manager-metadata-controls input[type='color']")
     expect(styles).toContain('.vision-collection-tag-manager-undo')
