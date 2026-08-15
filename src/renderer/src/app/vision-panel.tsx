@@ -142,6 +142,9 @@ export function VisionPanel(): React.ReactElement {
   const [editingCollectionId, setEditingCollectionId] = useState<string | null>(null)
   const [editingCollectionTitle, setEditingCollectionTitle] = useState('')
   const [isSavingCollectionTitle, setIsSavingCollectionTitle] = useState(false)
+  const [editingCollectionTagsId, setEditingCollectionTagsId] = useState<string | null>(null)
+  const [editingCollectionTags, setEditingCollectionTags] = useState('')
+  const [isSavingCollectionTags, setIsSavingCollectionTags] = useState(false)
   const [pendingResultSeek, setPendingResultSeek] = useState<{ videoPath: string; seconds: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [objectDetectionResult, setObjectDetectionResult] = useState<VisionObjectDetectionResult | null>(null)
@@ -160,7 +163,7 @@ export function VisionPanel(): React.ReactElement {
   const renameSuffix = normalizeVisionClipCollectionRenamePart(collectionRenameSuffix)
   const hasRenameRule = Boolean(renamePrefix || renameSuffix)
   const renamePreviewCollections = selectedCollectionsForRename.map((collection) => ({ ...collection, title: renameVisionClipCollectionTitle(collection.title, renamePrefix, renameSuffix) }))
-  const isCollectionBatchBusy = isDuplicatingCollections || isExportingCollections || isDeletingCollections || isRenamingCollections || isSavingCollectionTitle || editingCollectionId !== null || duplicatingCollectionId !== null
+  const isCollectionBatchBusy = isDuplicatingCollections || isExportingCollections || isDeletingCollections || isRenamingCollections || isSavingCollectionTitle || isSavingCollectionTags || editingCollectionId !== null || editingCollectionTagsId !== null || duplicatingCollectionId !== null
   const vectorIndexLabel = status?.vectorIndexType
     ? app.copy.vision.vectorIndex(status.vectorIndexType, status.vectorIndexDistanceType ?? '—', status.vectorIndexIndexedRows, status.vectorIndexUnindexedRows)
     : app.copy.vision.exactVectorSearch
@@ -849,6 +852,50 @@ export function VisionPanel(): React.ReactElement {
     }
   }
 
+  const beginCollectionTagsEdit = (collection: VisionClipCollection): void => {
+    if (isCollectionBatchBusy) return
+    setError(null)
+    setCollectionTransferStatus(null)
+    setEditingCollectionTagsId(collection.id)
+    setEditingCollectionTags(collection.tags.join(', '))
+  }
+
+  const cancelCollectionTagsEdit = (): void => {
+    setEditingCollectionTagsId(null)
+    setEditingCollectionTags('')
+    setError(null)
+  }
+
+  const saveCollectionTags = async (collection: VisionClipCollection): Promise<void> => {
+    if (isSavingCollectionTags) return
+    const tags = normalizeVisionCollectionTags(editingCollectionTags)
+    if (JSON.stringify(tags) === JSON.stringify(collection.tags)) {
+      cancelCollectionTagsEdit()
+      return
+    }
+    setError(null)
+    setIsSavingCollectionTags(true)
+    try {
+      const updated = await updateCollection(collection, { tags })
+      if (!updated) return
+      setCollectionTransferStatus(app.copy.vision.collectionTagsUpdated(updated.title))
+      setEditingCollectionTagsId(null)
+      setEditingCollectionTags('')
+    } finally {
+      setIsSavingCollectionTags(false)
+    }
+  }
+
+  const handleCollectionTagsKeyDown = (event: KeyboardEvent<HTMLInputElement>, collection: VisionClipCollection): void => {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      cancelCollectionTagsEdit()
+    } else if (event.key === 'Enter') {
+      event.preventDefault()
+      void saveCollectionTags(collection)
+    }
+  }
+
   const mergeCollection = (collection: VisionClipCollection): void => {
     updateCollection(collection, { selections: mergeVisionCollectionSelections(collection.selections) })
   }
@@ -1156,7 +1203,8 @@ export function VisionPanel(): React.ReactElement {
       const availability = collectionAvailability[collection.id]
       const isRepairing = repairingCollectionId === collection.id
       const isEditingTitle = editingCollectionId === collection.id
-      return <article className="vision-collection" key={collection.id}><div className="vision-collection-heading"><input type="checkbox" checked={selectedCollectionIds.has(collection.id)} onChange={() => toggleCollectionSelection(collection.id)} disabled={isCollectionBatchBusy} aria-label={app.copy.vision.selectCollection(collection.title)} /><div className="vision-collection-copy"><div className="vision-collection-title-row">{isEditingTitle ? <div className="vision-collection-title-edit"><input className="vision-collection-inline-title-input" value={editingCollectionTitle} maxLength={200} autoFocus onChange={(event) => setEditingCollectionTitle(event.target.value)} onKeyDown={(event) => handleCollectionTitleKeyDown(event, collection)} aria-label={app.copy.vision.collectionTitleEditLabel} /><button className="vision-collection-inline-action" type="button" onClick={() => void saveCollectionTitle(collection)} disabled={isSavingCollectionTitle} title={app.copy.vision.saveCollectionTitle} aria-label={app.copy.vision.saveCollectionTitle}><Check size={13} /></button><button className="vision-collection-inline-action" type="button" onClick={cancelCollectionTitleEdit} disabled={isSavingCollectionTitle} title={app.copy.vision.cancelCollectionTitle} aria-label={app.copy.vision.cancelCollectionTitle}><X size={13} /></button></div> : <><strong>{collection.title}</strong><button className="vision-collection-inline-action" type="button" onClick={() => beginCollectionTitleEdit(collection)} disabled={isCollectionBatchBusy} title={app.copy.vision.editCollectionTitle} aria-label={`${app.copy.vision.editCollectionTitle}: ${collection.title}`}><Pencil size={12} /></button></>}</div><span>{app.copy.vision.selectedResults(collection.selections.length)} · {collection.sortMode === 'duration-desc' ? app.copy.vision.collectionSortDuration : collection.sortMode === 'file-name' ? app.copy.vision.collectionSortFileName : app.copy.vision.collectionSortSourceTime}</span>{collection.tags.length > 0 ? <small>{collection.tags.join(' · ')}</small> : null}{availability?.missingPaths ? <small className="vision-collection-missing">{app.copy.vision.collectionMissingSources(availability.missingPaths)}</small> : null}</div></div><div className="vision-collection-actions"><select className="vision-collection-sort" value={collection.sortMode} aria-label={app.copy.vision.collectionSortLabel} onChange={(event) => sortCollection(collection, event.target.value as VisionClipCollectionSortMode)} disabled={isEditingTitle || isSavingCollectionTitle}><option value="source-time">{app.copy.vision.collectionSortSourceTime}</option><option value="duration-desc">{app.copy.vision.collectionSortDuration}</option><option value="file-name">{app.copy.vision.collectionSortFileName}</option></select>{availability?.missingPaths ? <button className="vision-secondary-action" type="button" onClick={() => void repairCollection(collection)} disabled={isRepairing || isEditingTitle}>{isRepairing ? app.copy.vision.repairingCollectionSources : app.copy.vision.repairCollectionSources}</button> : null}<button className="vision-secondary-action" type="button" onClick={() => mergeCollection(collection)} disabled={isEditingTitle}>{app.copy.vision.collectionMerge}</button><button className="vision-secondary-action" type="button" onClick={() => invertCollection(collection)} disabled={isEditingTitle}>{app.copy.vision.collectionInvert}</button><button className="vision-secondary-action" type="button" onClick={() => exportCollection(collection, 'json')} disabled={isEditingTitle}>{app.copy.vision.exportJson}</button><button className="vision-secondary-action" type="button" onClick={() => exportCollection(collection, 'csv')} disabled={isEditingTitle}>{app.copy.vision.exportCsv}</button><button className="vision-secondary-action" type="button" onClick={() => exportCollection(collection, 'edl')} disabled={isEditingTitle}>{app.copy.vision.exportEdl}</button><button className="vision-secondary-action" type="button" onClick={() => void duplicateCollection(collection)} disabled={isCollectionBatchBusy || isEditingTitle} title={app.copy.vision.duplicateCollection}><Copy size={13} />{app.copy.vision.duplicateCollection}</button><button className="vision-primary-action" type="button" onClick={() => createProjectFromCollection(collection)} disabled={isEditingTitle} title={app.copy.vision.openCollection}><FilePlus size={13} />{app.copy.vision.openCollection}</button><button className="vision-collection-delete" type="button" onClick={() => deleteCollection(collection)} disabled={isEditingTitle} title={app.copy.vision.deleteCollection} aria-label={app.copy.vision.deleteCollection}><Trash2 size={14} /></button></div></article>
+      const isEditingTags = editingCollectionTagsId === collection.id
+      return <article className="vision-collection" key={collection.id}><div className="vision-collection-heading"><input type="checkbox" checked={selectedCollectionIds.has(collection.id)} onChange={() => toggleCollectionSelection(collection.id)} disabled={isCollectionBatchBusy} aria-label={app.copy.vision.selectCollection(collection.title)} /><div className="vision-collection-copy"><div className="vision-collection-title-row">{isEditingTitle ? <div className="vision-collection-title-edit"><input className="vision-collection-inline-title-input" value={editingCollectionTitle} maxLength={200} autoFocus onChange={(event) => setEditingCollectionTitle(event.target.value)} onKeyDown={(event) => handleCollectionTitleKeyDown(event, collection)} aria-label={app.copy.vision.collectionTitleEditLabel} /><button className="vision-collection-inline-action" type="button" onClick={() => void saveCollectionTitle(collection)} disabled={isSavingCollectionTitle} title={app.copy.vision.saveCollectionTitle} aria-label={app.copy.vision.saveCollectionTitle}><Check size={13} /></button><button className="vision-collection-inline-action" type="button" onClick={cancelCollectionTitleEdit} disabled={isSavingCollectionTitle} title={app.copy.vision.cancelCollectionTitle} aria-label={app.copy.vision.cancelCollectionTitle}><X size={13} /></button></div> : <><strong>{collection.title}</strong><button className="vision-collection-inline-action" type="button" onClick={() => beginCollectionTitleEdit(collection)} disabled={isCollectionBatchBusy} title={app.copy.vision.editCollectionTitle} aria-label={`${app.copy.vision.editCollectionTitle}: ${collection.title}`}><Pencil size={12} /></button></>}</div><span>{app.copy.vision.selectedResults(collection.selections.length)} · {collection.sortMode === 'duration-desc' ? app.copy.vision.collectionSortDuration : collection.sortMode === 'file-name' ? app.copy.vision.collectionSortFileName : app.copy.vision.collectionSortSourceTime}</span>{isEditingTags ? <div className="vision-collection-tags-edit"><input className="vision-collection-inline-tags-input" value={editingCollectionTags} maxLength={800} autoFocus onChange={(event) => setEditingCollectionTags(event.target.value)} onKeyDown={(event) => handleCollectionTagsKeyDown(event, collection)} placeholder={app.copy.vision.collectionTagsPlaceholder} aria-label={app.copy.vision.collectionTagsEditLabel} /><button className="vision-collection-inline-action" type="button" onClick={() => void saveCollectionTags(collection)} disabled={isSavingCollectionTags} title={app.copy.vision.saveCollectionTags} aria-label={app.copy.vision.saveCollectionTags}><Check size={13} /></button><button className="vision-collection-inline-action" type="button" onClick={cancelCollectionTagsEdit} disabled={isSavingCollectionTags} title={app.copy.vision.cancelCollectionTags} aria-label={app.copy.vision.cancelCollectionTags}><X size={13} /></button></div> : <div className="vision-collection-tags-row"><small className={collection.tags.length > 0 ? undefined : 'vision-collection-tags-empty'}>{collection.tags.length > 0 ? collection.tags.join(' · ') : app.copy.vision.collectionTagsEmpty}</small><button className="vision-collection-inline-action" type="button" onClick={() => beginCollectionTagsEdit(collection)} disabled={isCollectionBatchBusy} title={app.copy.vision.editCollectionTags} aria-label={`${app.copy.vision.editCollectionTags}: ${collection.title}`}><Pencil size={11} /></button></div>}{availability?.missingPaths ? <small className="vision-collection-missing">{app.copy.vision.collectionMissingSources(availability.missingPaths)}</small> : null}</div></div><div className="vision-collection-actions"><select className="vision-collection-sort" value={collection.sortMode} aria-label={app.copy.vision.collectionSortLabel} onChange={(event) => sortCollection(collection, event.target.value as VisionClipCollectionSortMode)} disabled={isEditingTitle || isEditingTags || isSavingCollectionTitle || isSavingCollectionTags}><option value="source-time">{app.copy.vision.collectionSortSourceTime}</option><option value="duration-desc">{app.copy.vision.collectionSortDuration}</option><option value="file-name">{app.copy.vision.collectionSortFileName}</option></select>{availability?.missingPaths ? <button className="vision-secondary-action" type="button" onClick={() => void repairCollection(collection)} disabled={isRepairing || isEditingTitle || isEditingTags}>{isRepairing ? app.copy.vision.repairingCollectionSources : app.copy.vision.repairCollectionSources}</button> : null}<button className="vision-secondary-action" type="button" onClick={() => mergeCollection(collection)} disabled={isEditingTitle || isEditingTags}>{app.copy.vision.collectionMerge}</button><button className="vision-secondary-action" type="button" onClick={() => invertCollection(collection)} disabled={isEditingTitle || isEditingTags}>{app.copy.vision.collectionInvert}</button><button className="vision-secondary-action" type="button" onClick={() => exportCollection(collection, 'json')} disabled={isEditingTitle || isEditingTags}>{app.copy.vision.exportJson}</button><button className="vision-secondary-action" type="button" onClick={() => exportCollection(collection, 'csv')} disabled={isEditingTitle || isEditingTags}>{app.copy.vision.exportCsv}</button><button className="vision-secondary-action" type="button" onClick={() => exportCollection(collection, 'edl')} disabled={isEditingTitle || isEditingTags}>{app.copy.vision.exportEdl}</button><button className="vision-secondary-action" type="button" onClick={() => void duplicateCollection(collection)} disabled={isCollectionBatchBusy || isEditingTitle || isEditingTags} title={app.copy.vision.duplicateCollection}><Copy size={13} />{app.copy.vision.duplicateCollection}</button><button className="vision-primary-action" type="button" onClick={() => createProjectFromCollection(collection)} disabled={isEditingTitle || isEditingTags} title={app.copy.vision.openCollection}><FilePlus size={13} />{app.copy.vision.openCollection}</button><button className="vision-collection-delete" type="button" onClick={() => deleteCollection(collection)} disabled={isEditingTitle || isEditingTags} title={app.copy.vision.deleteCollection} aria-label={app.copy.vision.deleteCollection}><Trash2 size={14} /></button></div></article>
     }) : <div className="vision-empty">{app.copy.vision.savedCollectionEmpty}</div>}{collectionTransferStatus ? <small className="vision-saved-search-status" role="status">{collectionTransferStatus}</small> : null}</section>
   </div>
 }

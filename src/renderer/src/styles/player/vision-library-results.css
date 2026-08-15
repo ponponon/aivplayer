@@ -760,6 +760,37 @@
   outline: 0;
 }
 
+.vision-collection-tags-row,
+.vision-collection-tags-edit {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 3px;
+}
+
+.vision-collection-tags-row small {
+  flex: 1;
+  min-width: 0;
+}
+
+.vision-collection-tags-empty {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.vision-collection-inline-tags-input {
+  min-width: 0;
+  flex: 1;
+  min-height: 25px;
+  padding: 0 6px;
+  color: var(--text-primary);
+  background: rgba(var(--overlay-rgb), 0.08);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  outline: 0;
+}
+
 .vision-collection-inline-action {
   display: grid;
   place-items: center;
