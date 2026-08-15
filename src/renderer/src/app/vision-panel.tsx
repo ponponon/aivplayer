@@ -195,7 +195,7 @@ export function VisionPanel(): React.ReactElement {
     return matchesQuery && matchesFavorite
   })
   const hasCollectionTagFilter = Boolean(collectionTagFilterQuery.trim() || collectionTagFavoritesOnly)
-  const managedCollectionTag = collectionTagStats.some((item) => item.tag === collectionTagToManage) ? collectionTagToManage : collectionTagStats[0]?.tag ?? ''
+  const managedCollectionTag = visibleCollectionTagStats.some((item) => item.tag === collectionTagToManage) ? collectionTagToManage : visibleCollectionTagStats[0]?.tag ?? ''
   const managedCollectionTagMetadata = collectionTagMetadataByTag.get(managedCollectionTag)
   const collectionTagParentOptions = collectionTagStats.filter((item) => item.tag !== managedCollectionTag && !wouldCreateVisionCollectionTagParentCycle(managedCollectionTag, item.tag, collectionTagMetadata))
   const normalizedCollectionTagRenameTarget = normalizeVisionCollectionTag(collectionTagRenameTarget)

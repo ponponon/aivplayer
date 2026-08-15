@@ -60,6 +60,7 @@ describe('vision clip collection tag manager UI wiring', () => {
     expect(panel).toContain('collectionTagManagerFavoritesOnly')
     expect(panel).toContain('collectionTagManagerFilterClear')
     expect(panel).toContain('collectionTagManagerFilterEmpty')
+    expect(panel).toContain('visibleCollectionTagStats.some((item) => item.tag === collectionTagToManage)')
   })
 
   it('exposes the latest tag operation for undo', () => {
