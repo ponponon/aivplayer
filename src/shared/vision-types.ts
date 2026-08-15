@@ -520,7 +520,7 @@ export type VisionClipCollectionTagMetadataUpdateResult = {
   metadata: VisionClipCollectionTagMetadata | null
 }
 
-export type VisionClipCollectionTagOperationType = 'cleanup' | 'rename' | 'metadata'
+export type VisionClipCollectionTagOperationType = 'cleanup' | 'rename' | 'metadata' | 'batch'
 
 export type VisionClipCollectionTagOperationHistory = {
   id: string

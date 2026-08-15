@@ -559,7 +559,7 @@
       collectionTagManagerMetadataTextColorLabel: '文字色',
       collectionTagManagerMetadataSave: 'スタイルを保存',
       collectionTagManagerUndo: '直前のタグ操作を取り消す',
-      collectionTagManagerUndoDescription: '直前のクリーンアップ、名前変更、スタイル変更を取り消します。',
+      collectionTagManagerUndoDescription: '直前のクリーンアップ、名前変更、スタイル変更、一括タグ変更を取り消します。',
       collectionTagManagerUndoUnavailable: '取り消せるタグ操作はありません',
       collectionTagManagerUndoSuccess: '直前のタグ操作を取り消しました',
       savedCollections: '保存済みクリップコレクション',

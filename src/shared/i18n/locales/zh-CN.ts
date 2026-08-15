@@ -559,7 +559,7 @@
       collectionTagManagerMetadataTextColorLabel: '文字色',
       collectionTagManagerMetadataSave: '保存样式',
       collectionTagManagerUndo: '撤销上次标签操作',
-      collectionTagManagerUndoDescription: '可撤销最近一次清理、重命名或样式保存。',
+      collectionTagManagerUndoDescription: '可撤销最近一次清理、重命名、样式保存或批量标签操作。',
       collectionTagManagerUndoUnavailable: '没有可撤销的标签操作',
       collectionTagManagerUndoSuccess: '已撤销上次标签操作',
       savedCollections: '已保存的选段集合',

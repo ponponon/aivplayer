@@ -559,7 +559,7 @@
       collectionTagManagerMetadataTextColorLabel: '텍스트 색상',
       collectionTagManagerMetadataSave: '스타일 저장',
       collectionTagManagerUndo: '최근 태그 작업 실행 취소',
-      collectionTagManagerUndoDescription: '최근 정리, 이름 변경 또는 스타일 변경을 실행 취소합니다.',
+      collectionTagManagerUndoDescription: '최근 정리, 이름 변경, 스타일 또는 일괄 태그 변경을 실행 취소합니다.',
       collectionTagManagerUndoUnavailable: '실행 취소할 태그 작업이 없습니다',
       collectionTagManagerUndoSuccess: '최근 태그 작업을 실행 취소했습니다',
       savedCollections: '저장된 클립 컬렉션',

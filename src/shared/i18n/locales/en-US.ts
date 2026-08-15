@@ -559,7 +559,7 @@
       collectionTagManagerMetadataTextColorLabel: 'Text color',
       collectionTagManagerMetadataSave: 'Save style',
       collectionTagManagerUndo: 'Undo last tag operation',
-      collectionTagManagerUndoDescription: 'Undo the most recent cleanup, rename, or style change.',
+      collectionTagManagerUndoDescription: 'Undo the most recent cleanup, rename, style, or batch tag change.',
       collectionTagManagerUndoUnavailable: 'No tag operation to undo',
       collectionTagManagerUndoSuccess: 'Undid the last tag operation',
       savedCollections: 'Saved clip collections',

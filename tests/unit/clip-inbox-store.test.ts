@@ -134,6 +134,22 @@ describe('clip inbox store', () => {
     expect(store.getCollection(second.id)?.tags).toEqual(['海边', '精选'])
   })
 
+  it('records and undoes batch tag changes without touching unselected collections', () => {
+    const first = store.saveCollection({ title: '批量撤销一', tags: ['旧标签'], selections: [selection()] })
+    const second = store.saveCollection({ title: '批量撤销二', tags: ['保留'], selections: [selection({ startSeconds: 3, endSeconds: 4 })] })
+    const untouched = store.saveCollection({ title: '批量撤销三', tags: ['不变'], selections: [selection({ startSeconds: 5, endSeconds: 7 })] })
+
+    const updated = store.updateCollectionsTags([first.id, second.id], ['批量标签'], 'add')
+    expect(updated.collections.map((collection) => collection.tags)).toEqual([['旧标签', '批量标签'], ['保留', '批量标签']])
+    expect(store.getLastTagOperation()).toMatchObject({ type: 'batch' })
+
+    const undone = store.undoLastTagOperation()
+    expect(undone).toMatchObject({ success: true, operation: expect.objectContaining({ type: 'batch' }) })
+    expect(store.getCollection(first.id)?.tags).toEqual(['旧标签'])
+    expect(store.getCollection(second.id)?.tags).toEqual(['保留'])
+    expect(store.getCollection(untouched.id)?.tags).toEqual(['不变'])
+  })
+
   it('appends and removes tags without changing other collection fields', () => {
     const saved = store.saveCollection({ title: '标签模式', tags: ['海边', '采访'], sortMode: 'file-name', selections: [selection({ evidenceIds: ['mode-evidence'] })] })
     const added = store.updateCollectionsTags([saved.id], ['旅行', '海边'], 'add').collections[0]

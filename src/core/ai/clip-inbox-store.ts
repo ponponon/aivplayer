@@ -8,7 +8,7 @@ import type { VisionClipCollection, VisionClipCollectionBatchDeleteResult, Visio
 
 type SqliteRow = Record<string, unknown>
 const EVIDENCE_TYPES: readonly VisionEvidenceType[] = ['subtitle', 'visual', 'scene', 'ocr', 'entity', 'object']
-const TAG_OPERATION_TYPES: readonly VisionClipCollectionTagOperationType[] = ['cleanup', 'rename', 'metadata']
+const TAG_OPERATION_TYPES: readonly VisionClipCollectionTagOperationType[] = ['cleanup', 'rename', 'metadata', 'batch']
 
 type TagOperationSnapshot = {
   collectionTags: Array<{ id: string; tags: string[]; updatedAt: number }>
@@ -342,14 +342,16 @@ export class ClipInboxStore {
     const placeholders = normalizedIds.map(() => '?').join(', ')
     this.database.exec('BEGIN')
     try {
-      const rows = this.database.prepare(`SELECT id, tags_json FROM clip_collections WHERE id IN (${placeholders})`).all(...normalizedIds) as SqliteRow[]
+      const rows = this.database.prepare(`SELECT id, tags_json, updated_at FROM clip_collections WHERE id IN (${placeholders})`).all(...normalizedIds) as SqliteRow[]
       const existingIds = new Set(rows.map((row) => stringValue(row, 'id')).filter(Boolean))
       const currentTagsById = new Map(rows.map((row) => [stringValue(row, 'id'), normalizeVisionCollectionTags(parseJsonArray(row.tags_json))]))
+      const snapshot = this.createTagOperationSnapshot(rows)
       const now = Date.now()
       const update = this.database.prepare('UPDATE clip_collections SET tags_json = ?, updated_at = ? WHERE id = ?')
       for (const id of normalizedIds) {
         if (existingIds.has(id)) update.run(JSON.stringify(applyVisionCollectionTags(currentTagsById.get(id) ?? [], normalizedTags, normalizedMode)), now, id)
       }
+      if (existingIds.size > 0) this.recordTagOperation('batch', snapshot, now)
       this.database.exec('COMMIT')
       const collections = normalizedIds.filter((id) => existingIds.has(id)).map((id) => this.getCollection(id)).filter((collection): collection is VisionClipCollection => collection !== null)
       return { collections, skippedCount: normalizedIds.length - collections.length }

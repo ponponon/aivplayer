@@ -49,5 +49,6 @@ describe('vision clip collection batch tags wiring', () => {
     expect(store).toContain('saveTagMetadata(input: VisionClipCollectionTagMetadataUpdateRequest)')
     expect(store).toContain('clip_tag_operation_history')
     expect(store).toContain('undoLastTagOperation()')
+    expect(store).toContain("recordTagOperation('batch'")
   })
 })
