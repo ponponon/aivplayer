@@ -468,7 +468,7 @@ export class ClipInboxStore {
       .map((item) => ({ ...item, parentTag: availableTags.has(item.parentTag) && item.parentTag !== item.tag ? item.parentTag : '' }))
     const existingByTag = new Map(this.listTagMetadata().map((item) => [item.tag, item]))
     const projectedMetadata = [
-      ...existingByTag.values().filter((item) => !importable.some((candidate) => candidate.tag === item.tag)),
+      ...[...existingByTag.values()].filter((item) => !importable.some((candidate) => candidate.tag === item.tag)),
       ...importable
     ]
     for (const item of importable) {
