@@ -877,6 +877,10 @@
 - 排序只改变 Renderer 视图，不写入 SQLite，不改变集合 `tags_json`、标签清理 / 重命名 / 批量操作和详情数据。
 - 真实 Electron Smoke 已验证三种排序、收藏优先首项、使用次数首项、名称顺序、集合数据不变和 Renderer 无错误，截图输出到 `/private/tmp/aivplayer-collection-tag-sort.png`。
 - 当前边界：排序只在当前面板会话生效，不提供排序偏好持久化、按备注内容排序或跨设备共享。
+- 标签管理器支持将颜色、文字色、父标签、备注和收藏状态导出为版本化 JSON，也可以从 JSON 恢复到当前已存在的标签。
+- 导入只写入标签元数据，不携带媒体、不改写集合 `tags_json`；文件中不存在于当前集合的标签会安全跳过，父标签环路会拒绝整次导入。
+- 导入作为一次元数据操作写入现有撤销历史；真实 Electron Smoke 已验证导出版本、导入恢复、跳过未使用标签、集合标签不变和 Renderer 无错误，截图输出到 `/private/tmp/aivplayer-collection-tag-metadata-transfer.png`。
+- 当前边界：只支持本机 AIVPlayer 版本化 JSON，不提供媒体迁移、跨设备自动同步、字段级冲突合并或导入文件远程共享。
 
 ## 字幕视觉锚点候选预览
 
