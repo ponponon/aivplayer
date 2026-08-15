@@ -1765,3 +1765,9 @@
 - 原因：`electron-updater.quitAndInstall()` 的第一个参数是 `isSilent`；调用 `quitAndInstall(false, true)` 会明确要求以非静默模式启动安装器。`electron-builder` 的 `oneClick: false` 只决定用户手动双击安装包时是否显示向导，不能替代自动更新的静默参数。
 - 经验：Windows 自动更新要区分“安装器仍会执行文件替换”和“用户是否看到安装流程”两个语义；希望实现类似 VS Code 的重启体验时，必须传入 `quitAndInstall(true, true)`，让 NSIS 收到 `/S` 并在完成后强制启动新版本。
 - 处理：将自动更新改为静默安装并自动重启，同时把源码回归测试从 `false, true` 固定为 `true, true`；后续验证应覆盖已下载更新、应用退出、静默替换和新版本重新启动。
+
+## 2026-08-15：Electron Smoke 原生确认框必须与点击并行等待
+
+- 现象：批量删除 Smoke 先等待删除按钮 `click()` 完成，再等待 `dialog` 事件；原生 `window.confirm` 出现后，Playwright 点击 Promise 会一直等待对话框处理，脚本最终超时。
+- 经验：会阻塞页面动作的 Electron 原生对话框不能在点击完成后再处理；必须先注册对话框监听，让点击和 accept / dismiss 并行执行。
+- 处理：将确认框处理改为 `page.waitForEvent('dialog')` 与按钮点击放入 `Promise.all`，并分别验证取消和确认路径，Smoke 随后通过。
