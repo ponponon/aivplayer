@@ -802,6 +802,38 @@
   font-size: 9px;
 }
 
+.vision-collection-tag-manager-favorite {
+  cursor: pointer;
+}
+
+.vision-collection-tag-manager-favorite input {
+  accent-color: var(--accent);
+}
+
+.vision-collection-tag-manager-note {
+  display: grid;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.vision-collection-tag-manager-note textarea {
+  min-height: 44px;
+  padding: 6px 8px;
+  resize: vertical;
+  color: var(--text-primary);
+  background: rgba(var(--overlay-rgb), 0.06);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  line-height: 1.45;
+}
+
+.vision-collection-tag-manager-note textarea:focus {
+  border-color: var(--accent);
+  outline: 0;
+}
+
 .vision-collection-tag-manager-metadata-controls select {
   min-width: 100px;
   min-height: 26px;

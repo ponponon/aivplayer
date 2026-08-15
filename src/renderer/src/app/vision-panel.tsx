@@ -154,6 +154,8 @@ export function VisionPanel(): React.ReactElement {
   const [collectionTagParent, setCollectionTagParent] = useState('')
   const [collectionTagColor, setCollectionTagColor] = useState(DEFAULT_COLLECTION_TAG_COLOR)
   const [collectionTagTextColor, setCollectionTagTextColor] = useState(DEFAULT_COLLECTION_TAG_TEXT_COLOR)
+  const [collectionTagNote, setCollectionTagNote] = useState('')
+  const [collectionTagFavorite, setCollectionTagFavorite] = useState(false)
   const [isSavingCollectionTagMetadata, setIsSavingCollectionTagMetadata] = useState(false)
   const [lastCollectionTagOperation, setLastCollectionTagOperation] = useState<VisionClipCollectionTagOperationHistory | null>(null)
   const [isUndoingCollectionTagOperation, setIsUndoingCollectionTagOperation] = useState(false)
@@ -217,7 +219,9 @@ export function VisionPanel(): React.ReactElement {
     setCollectionTagParent(managedCollectionTagMetadata?.parentTag ?? '')
     setCollectionTagColor(managedCollectionTagMetadata?.color || DEFAULT_COLLECTION_TAG_COLOR)
     setCollectionTagTextColor(managedCollectionTagMetadata?.textColor || DEFAULT_COLLECTION_TAG_TEXT_COLOR)
-  }, [managedCollectionTag, managedCollectionTagMetadata?.color, managedCollectionTagMetadata?.parentTag, managedCollectionTagMetadata?.textColor])
+    setCollectionTagNote(managedCollectionTagMetadata?.note ?? '')
+    setCollectionTagFavorite(managedCollectionTagMetadata?.isFavorite ?? false)
+  }, [managedCollectionTag, managedCollectionTagMetadata?.color, managedCollectionTagMetadata?.isFavorite, managedCollectionTagMetadata?.note, managedCollectionTagMetadata?.parentTag, managedCollectionTagMetadata?.textColor])
 
   useEffect(() => {
     let active = true
@@ -1150,7 +1154,7 @@ export function VisionPanel(): React.ReactElement {
     if (isCollectionBatchBusy || !managedCollectionTag) return
     setIsSavingCollectionTagMetadata(true)
     setError(null)
-    void window.aiv.updateVisionClipCollectionTagMetadata({ tag: managedCollectionTag, parentTag: collectionTagParent, color: collectionTagColor, textColor: collectionTagTextColor }).then((result) => {
+    void window.aiv.updateVisionClipCollectionTagMetadata({ tag: managedCollectionTag, parentTag: collectionTagParent, color: collectionTagColor, textColor: collectionTagTextColor, note: collectionTagNote, isFavorite: collectionTagFavorite }).then((result) => {
       if (!result.success || !result.metadata) {
         setError(result.message)
         return
@@ -1370,8 +1374,10 @@ export function VisionPanel(): React.ReactElement {
             <label><span>{app.copy.vision.collectionTagManagerMetadataParentLabel}</span><select value={collectionTagParent} onChange={(event) => setCollectionTagParent(event.target.value)} aria-label={app.copy.vision.collectionTagManagerMetadataParentLabel} disabled={isCollectionBatchBusy}><option value="">{app.copy.vision.collectionTagManagerMetadataParentNone}</option>{collectionTagParentOptions.map((item) => <option key={item.tag} value={item.tag}>{item.tag}</option>)}</select></label>
             <label><span>{app.copy.vision.collectionTagManagerMetadataColorLabel}</span><input type="color" value={collectionTagColor} onChange={(event) => setCollectionTagColor(event.currentTarget.value)} aria-label={app.copy.vision.collectionTagManagerMetadataColorLabel} disabled={isCollectionBatchBusy} /></label>
             <label><span>{app.copy.vision.collectionTagManagerMetadataTextColorLabel}</span><input type="color" value={collectionTagTextColor} onChange={(event) => setCollectionTagTextColor(event.currentTarget.value)} aria-label={app.copy.vision.collectionTagManagerMetadataTextColorLabel} disabled={isCollectionBatchBusy} /></label>
+            <label className="vision-collection-tag-manager-favorite"><input type="checkbox" checked={collectionTagFavorite} onChange={(event) => setCollectionTagFavorite(event.currentTarget.checked)} aria-label={app.copy.vision.collectionTagManagerMetadataFavoriteLabel} disabled={isCollectionBatchBusy} /><span>{app.copy.vision.collectionTagManagerMetadataFavoriteLabel}</span></label>
             <button className="vision-secondary-action" type="button" onClick={saveCollectionTagMetadata} disabled={isCollectionBatchBusy || !managedCollectionTag}><Tags size={13} />{app.copy.vision.collectionTagManagerMetadataSave}</button>
           </div>
+          <label className="vision-collection-tag-manager-note"><span>{app.copy.vision.collectionTagManagerMetadataNoteLabel}</span><textarea value={collectionTagNote} maxLength={240} onChange={(event) => setCollectionTagNote(event.target.value)} placeholder={app.copy.vision.collectionTagManagerMetadataNotePlaceholder} aria-label={app.copy.vision.collectionTagManagerMetadataNoteLabel} disabled={isCollectionBatchBusy} /></label>
         </div>
         {lastCollectionTagOperation ? <div className="vision-collection-tag-manager-undo"><small>{app.copy.vision.collectionTagManagerUndoDescription}</small><button className="vision-secondary-action" type="button" onClick={undoCollectionTagOperation} disabled={isCollectionBatchBusy}><Undo2 size={13} />{app.copy.vision.collectionTagManagerUndo}</button></div> : null}
       </> : <div className="vision-collection-tag-manager-empty">{app.copy.vision.collectionTagManagerEmpty}</div>}

@@ -35,6 +35,16 @@ describe('vision clip collection tag manager UI wiring', () => {
     expect(panel).toContain('saveCollectionTagMetadata')
   })
 
+  it('edits tag notes and favorite state', () => {
+    expect(panel).toContain('collectionTagNote')
+    expect(panel).toContain('collectionTagFavorite')
+    expect(panel).toContain('collectionTagManagerMetadataNoteLabel')
+    expect(panel).toContain('collectionTagManagerMetadataFavoriteLabel')
+    expect(panel).toContain('maxLength={240}')
+    expect(panel).toContain('note: collectionTagNote')
+    expect(panel).toContain('isFavorite: collectionTagFavorite')
+  })
+
   it('shows multi-level paths and filters parent candidates that would create cycles', () => {
     expect(panel).toContain('getVisionCollectionTagPath')
     expect(panel).toContain("path.join(' / ')")
@@ -63,6 +73,8 @@ describe('vision clip collection tag manager UI wiring', () => {
     expect(styles).toContain('.vision-collection-tag-manager-input')
     expect(styles).toContain('.vision-collection-tag-manager-item span')
     expect(styles).toContain('text-overflow: ellipsis')
+    expect(styles).toContain('.vision-collection-tag-manager-note textarea')
+    expect(styles).toContain('.vision-collection-tag-manager-favorite')
     expect(styles).toContain('.vision-collection-tag-manager-metadata')
     expect(styles).toContain(".vision-collection-tag-manager-metadata-controls input[type='color']")
     expect(styles).toContain('.vision-collection-tag-manager-undo')
