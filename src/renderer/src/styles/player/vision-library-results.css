@@ -629,6 +629,46 @@
   font-size: 11px;
 }
 
+.vision-collection-filter-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.vision-collection-filter-input,
+.vision-collection-filter-tag {
+  min-height: 30px;
+  padding: 0 8px;
+  color: var(--text-primary);
+  background: rgba(var(--overlay-rgb), 0.06);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+}
+
+.vision-collection-filter-input {
+  min-width: 160px;
+  flex: 1 1 180px;
+}
+
+.vision-collection-filter-tag {
+  min-width: 120px;
+  flex: 0 1 180px;
+}
+
+.vision-collection-filter-input:focus,
+.vision-collection-filter-tag:focus {
+  border-color: var(--accent);
+  outline: 0;
+}
+
+.vision-collection-filter-summary {
+  color: var(--text-muted);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
 .vision-collection-transfer-actions,
 .vision-collection-batch-actions,
 .vision-collection-heading {
