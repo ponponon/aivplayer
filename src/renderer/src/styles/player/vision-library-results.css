@@ -752,6 +752,23 @@
   font-size: 10px;
 }
 
+.vision-collection-tag-manager-input {
+  min-width: 160px;
+  flex: 1 1 200px;
+  min-height: 30px;
+  padding: 0 8px;
+  color: var(--text-primary);
+  background: rgba(var(--overlay-rgb), 0.06);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+}
+
+.vision-collection-tag-manager-input:focus {
+  border-color: var(--accent);
+  outline: 0;
+}
+
 .vision-collection-tag-manager-list {
   display: flex;
   flex-wrap: wrap;

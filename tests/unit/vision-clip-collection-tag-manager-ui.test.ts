@@ -16,11 +16,23 @@ describe('vision clip collection tag manager UI wiring', () => {
     expect(panel).toContain('collectionTagManagerConfirm')
   })
 
+  it('supports global tag rename and keeps target input bounded', () => {
+    expect(panel).toContain('collectionTagRenameTarget')
+    expect(panel).toContain('normalizedCollectionTagRenameTarget')
+    expect(panel).toContain('canRenameCollectionTag')
+    expect(panel).toContain('renameCollectionTag')
+    expect(panel).toContain('window.aiv.renameVisionClipCollectionTag({ fromTag, toTag })')
+    expect(panel).toContain('collectionTagManagerRenameConfirm')
+    expect(panel).toContain('collectionTagManagerRenameInputPlaceholder')
+  })
+
   it('keeps tag management accessible and responsive', () => {
     expect(panel).toContain('role="list"')
     expect(panel).toContain('aria-pressed={managedCollectionTag === item.tag}')
     expect(panel).toContain('vision-collection-tag-manager-item')
+    expect(panel).toContain('vision-collection-tag-manager-input')
     expect(styles).toContain('.vision-collection-tag-manager')
+    expect(styles).toContain('.vision-collection-tag-manager-input')
     expect(styles).toContain('flex-wrap: wrap')
     expect(styles).toContain(':focus-visible')
   })

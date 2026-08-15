@@ -7,7 +7,7 @@ import type { MediaEvidenceDraftImportResult } from '../../../shared/evidence-ta
 import type { VisionClipCollection, VisionClipCollectionBatchTagsMode, VisionClipCollectionExportFormat, VisionClipCollectionSortMode, VisionEvidenceType, VisionIndexFailureRecord, VisionLibrarySource, VisionModelDownloadProgress, VisionSavedSearch, VisionSearchFullExportRequest, VisionSearchPageRequest, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchSortMode } from '../../../shared/vision-types'
 import type { LocaleCopy } from '../../../shared/i18n'
 import type { VisionObjectDetectionFilterState, VisionObjectDetectionResult } from '../../../shared/vision-object-detection-types'
-import { invertVisionClipSelections, mergeVisionCollectionSelections, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTags, renameVisionClipCollectionTitle } from '../../../core/ai/clip-inbox-operations'
+import { invertVisionClipSelections, mergeVisionCollectionSelections, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTag, normalizeVisionCollectionTags, renameVisionClipCollectionTitle } from '../../../core/ai/clip-inbox-operations'
 import { createVisionClipSelections, normalizeVisionTimeRange } from '../../../core/ai/vision-evidence'
 import { getVisionSearchResultIds } from '../../../core/ai/vision-search-selection'
 import { getNextVisionSearchLimit, shouldLoadMoreVisionSearchResults, VISION_SEARCH_PAGE_SIZE } from '../../../core/ai/vision-search-pagination'
@@ -146,6 +146,8 @@ export function VisionPanel(): React.ReactElement {
   const [isUpdatingCollectionTags, setIsUpdatingCollectionTags] = useState(false)
   const [collectionTagToManage, setCollectionTagToManage] = useState('')
   const [isCleaningCollectionTag, setIsCleaningCollectionTag] = useState(false)
+  const [collectionTagRenameTarget, setCollectionTagRenameTarget] = useState('')
+  const [isRenamingCollectionTag, setIsRenamingCollectionTag] = useState(false)
   const [editingCollectionId, setEditingCollectionId] = useState<string | null>(null)
   const [editingCollectionTitle, setEditingCollectionTitle] = useState('')
   const [isSavingCollectionTitle, setIsSavingCollectionTitle] = useState(false)
@@ -173,6 +175,8 @@ export function VisionPanel(): React.ReactElement {
     return counts
   }, new Map<string, number>())].map(([tag, count]) => ({ tag, count })).sort((left, right) => left.tag.localeCompare(right.tag, undefined, { sensitivity: 'base' }))
   const managedCollectionTag = collectionTagStats.some((item) => item.tag === collectionTagToManage) ? collectionTagToManage : collectionTagStats[0]?.tag ?? ''
+  const normalizedCollectionTagRenameTarget = normalizeVisionCollectionTag(collectionTagRenameTarget)
+  const canRenameCollectionTag = Boolean(managedCollectionTag && normalizedCollectionTagRenameTarget && managedCollectionTag !== normalizedCollectionTagRenameTarget)
   const visibleCollections = collections.filter((collection) => {
     const matchesQuery = !collectionFilterQueryLower || [collection.title, ...collection.tags].some((value) => value.toLocaleLowerCase().includes(collectionFilterQueryLower))
     const matchesTag = !collectionFilterTag || collection.tags.includes(collectionFilterTag)
@@ -185,7 +189,7 @@ export function VisionPanel(): React.ReactElement {
   const renameSuffix = normalizeVisionClipCollectionRenamePart(collectionRenameSuffix)
   const hasRenameRule = Boolean(renamePrefix || renameSuffix)
   const renamePreviewCollections = selectedCollectionsForRename.map((collection) => ({ ...collection, title: renameVisionClipCollectionTitle(collection.title, renamePrefix, renameSuffix) }))
-  const isCollectionBatchBusy = isDuplicatingCollections || isExportingCollections || isDeletingCollections || isRenamingCollections || isUpdatingCollectionTags || isCleaningCollectionTag || isSavingCollectionTitle || isSavingCollectionTags || editingCollectionId !== null || editingCollectionTagsId !== null || duplicatingCollectionId !== null
+  const isCollectionBatchBusy = isDuplicatingCollections || isExportingCollections || isDeletingCollections || isRenamingCollections || isUpdatingCollectionTags || isCleaningCollectionTag || isRenamingCollectionTag || isSavingCollectionTitle || isSavingCollectionTags || editingCollectionId !== null || editingCollectionTagsId !== null || duplicatingCollectionId !== null
   const vectorIndexLabel = status?.vectorIndexType
     ? app.copy.vision.vectorIndex(status.vectorIndexType, status.vectorIndexDistanceType ?? '—', status.vectorIndexIndexedRows, status.vectorIndexUnindexedRows)
     : app.copy.vision.exactVectorSearch
@@ -1093,6 +1097,28 @@ export function VisionPanel(): React.ReactElement {
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setIsCleaningCollectionTag(false))
   }
 
+  const renameCollectionTag = (): void => {
+    if (isCollectionBatchBusy || !canRenameCollectionTag) return
+    const fromTag = managedCollectionTag
+    const toTag = normalizedCollectionTagRenameTarget
+    const selectedStat = collectionTagStats.find((item) => item.tag === fromTag)
+    if (!selectedStat || !window.confirm(app.copy.vision.collectionTagManagerRenameConfirm(fromTag, toTag, selectedStat.count))) return
+    setIsRenamingCollectionTag(true)
+    setError(null)
+    void window.aiv.renameVisionClipCollectionTag({ fromTag, toTag }).then((result) => {
+      if (!result.success) {
+        setError(result.message)
+        return
+      }
+      const updatedById = new Map(result.collections.map((collection) => [collection.id, collection]))
+      setCollections((current) => current.map((collection) => updatedById.get(collection.id) ?? collection))
+      setCollectionTagToManage(toTag)
+      setCollectionTagRenameTarget('')
+      if (collectionFilterTag === fromTag) setCollectionFilterTag(toTag)
+      setCollectionTransferStatus(result.message)
+    }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setIsRenamingCollectionTag(false))
+  }
+
   const repairCollection = async (collection: VisionClipCollection): Promise<void> => {
     if (repairingCollectionId) return
     setRepairingCollectionId(collection.id)
@@ -1273,6 +1299,8 @@ export function VisionPanel(): React.ReactElement {
         </div>
         <div className="vision-collection-tag-manager-controls">
           <span className="vision-collection-tag-manager-selection" role="status">{managedCollectionTag ? app.copy.vision.collectionTagManagerSelectTag(managedCollectionTag, collectionTagStats.find((item) => item.tag === managedCollectionTag)?.count ?? 0) : app.copy.vision.collectionTagManagerSelectionRequired}</span>
+          <input className="vision-collection-tag-manager-input" value={collectionTagRenameTarget} maxLength={40} onChange={(event) => setCollectionTagRenameTarget(event.target.value)} placeholder={app.copy.vision.collectionTagManagerRenameInputPlaceholder} aria-label={app.copy.vision.collectionTagManagerRenameInputPlaceholder} disabled={isCollectionBatchBusy} />
+          <button className="vision-secondary-action" type="button" onClick={renameCollectionTag} disabled={isCollectionBatchBusy || !canRenameCollectionTag}><Tags size={13} />{app.copy.vision.collectionTagManagerRename}</button>
           <button className="vision-secondary-action vision-collection-batch-delete" type="button" onClick={cleanupCollectionTag} disabled={isCollectionBatchBusy || !managedCollectionTag}><Tags size={13} />{app.copy.vision.collectionTagManagerCleanup}</button>
         </div>
       </> : <div className="vision-collection-tag-manager-empty">{app.copy.vision.collectionTagManagerEmpty}</div>}
