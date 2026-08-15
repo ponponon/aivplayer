@@ -37,4 +37,13 @@ describe('vision clip collection import UI', () => {
     expect(panel).toContain('isExportingCollections')
     expect(panel).toContain('finally(() => setIsExportingCollections(false))')
   })
+
+  it('exposes confirmed batch collection deletion with one preload request', () => {
+    const panel = readFileSync(join(projectRoot, 'src/renderer/src/app/vision-panel.tsx'), 'utf8')
+    expect(panel).toContain('deleteVisionClipCollections')
+    expect(panel).toContain('collectionsDeleteConfirm')
+    expect(panel).toContain('deleteSelectedCollections')
+    expect(panel).toContain('isDeletingCollections')
+    expect(panel).toContain('vision-collection-batch-delete')
+  })
 })

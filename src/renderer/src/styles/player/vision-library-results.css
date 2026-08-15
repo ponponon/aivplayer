@@ -643,6 +643,18 @@
   font-size: 10px;
 }
 
+.vision-collection-batch-delete {
+  color: var(--danger, #ef8a8a);
+  background: rgba(var(--danger-rgb, 239, 138, 138), 0.06);
+  border-color: rgba(var(--danger-rgb, 239, 138, 138), 0.24);
+}
+
+.vision-collection-batch-delete:hover:not(:disabled) {
+  color: var(--danger, #ef8a8a);
+  background: rgba(var(--danger-rgb, 239, 138, 138), 0.14);
+  border-color: rgba(var(--danger-rgb, 239, 138, 138), 0.42);
+}
+
 .vision-collection {
   align-items: flex-start;
   flex-wrap: wrap;
