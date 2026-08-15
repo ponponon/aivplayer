@@ -46,4 +46,14 @@ describe('vision clip collection import UI', () => {
     expect(panel).toContain('isDeletingCollections')
     expect(panel).toContain('vision-collection-batch-delete')
   })
+
+  it('exposes batch rename inputs, preview and one preload request', () => {
+    const panel = readFileSync(join(projectRoot, 'src/renderer/src/app/vision-panel.tsx'), 'utf8')
+    expect(panel).toContain('renameVisionClipCollections')
+    expect(panel).toContain('collectionRenamePrefix')
+    expect(panel).toContain('collectionRenameSuffix')
+    expect(panel).toContain('renamePreviewCollections')
+    expect(panel).toContain('collectionsRenameConfirm')
+    expect(panel).toContain('isRenamingCollections')
+  })
 })
