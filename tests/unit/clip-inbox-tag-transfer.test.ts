@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createVisionClipCollectionTagMetadataImportPreview, filterVisionClipCollectionTagMetadataImport, parseVisionClipCollectionTagMetadataImport, parseVisionClipCollectionTagMetadataImportText, renderVisionClipCollectionTagMetadataExport } from '../../src/core/ai/clip-inbox-tag-transfer'
+import type { VisionClipCollectionTagMetadata } from '../../src/shared/vision-types'
 
 describe('clip inbox tag metadata transfer', () => {
   const metadata = [{ tag: ' 海边 ', parentTag: '项目', color: '#AABBCC', textColor: '#101010', note: '镜头备注\r\n第二行', isFavorite: true, updatedAt: 123 }] as const
@@ -37,7 +38,7 @@ describe('clip inbox tag metadata transfer', () => {
   })
 
   it('filters local-preserving and skipped decisions while keeping overwrite and undecided entries', () => {
-    const entries = metadata.concat({ tag: '采访', parentTag: '', color: '', textColor: '', note: '', isFavorite: false, updatedAt: 0 })
+    const entries: VisionClipCollectionTagMetadata[] = [...metadata, { tag: '采访', parentTag: '', color: '', textColor: '', note: '', isFavorite: false, updatedAt: 0 }]
     expect(filterVisionClipCollectionTagMetadataImport(entries, { ' 海边 ': 'overwrite', 采访: 'keep-local' })).toHaveLength(1)
     expect(filterVisionClipCollectionTagMetadataImport(entries, { ' 海边 ': 'skip', 采访: 'overwrite' })).toMatchObject([{ tag: '采访' }])
   })

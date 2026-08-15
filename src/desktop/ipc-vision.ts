@@ -3,12 +3,12 @@ import { createHash, randomUUID } from 'node:crypto'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
-import type { VisionClipCollectionBatchDeleteRequest, VisionClipCollectionBatchDuplicateRequest, VisionClipCollectionBatchExportRequest, VisionClipCollectionBatchRenameRequest, VisionClipCollectionBatchTagsRequest, VisionClipCollectionTagCleanupRequest, VisionClipCollectionTagMetadataUpdateRequest, VisionClipCollectionTagRenameRequest, VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionEvidenceAuditPage, VisionEvidenceAuditRequest, VisionEvidenceBatchClearResult, VisionEvidenceSourceRequest, VisionEvidenceType, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionModelDownloadResult, VisionPackDownloadResult, VisionSavedSearchInput, VisionSearchFullExportRequest, VisionSearchPageKind, VisionSearchPageRequest, VisionSearchRequest, VisionSearchResult, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchResultsExportRequest, VisionSearchResultsExportResult, VisionSimilarSearchRequest } from '../shared/vision-types'
+import type { VisionClipCollectionBatchDeleteRequest, VisionClipCollectionBatchDuplicateRequest, VisionClipCollectionBatchExportRequest, VisionClipCollectionBatchRenameRequest, VisionClipCollectionBatchTagsRequest, VisionClipCollectionTagCleanupRequest, VisionClipCollectionTagMetadataImportApplyRequest, VisionClipCollectionTagMetadataUpdateRequest, VisionClipCollectionTagRenameRequest, VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionEvidenceAuditPage, VisionEvidenceAuditRequest, VisionEvidenceBatchClearResult, VisionEvidenceSourceRequest, VisionEvidenceType, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionModelDownloadResult, VisionPackDownloadResult, VisionSavedSearchInput, VisionSearchFullExportRequest, VisionSearchPageKind, VisionSearchPageRequest, VisionSearchRequest, VisionSearchResult, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchResultsExportRequest, VisionSearchResultsExportResult, VisionSimilarSearchRequest } from '../shared/vision-types'
 import { VISION_SEARCH_FULL_EXPORT_MAX_RESULTS } from '../shared/vision-types'
 import type { VisionEntityCatalogBatchPatch, VisionEntityCatalogCreateInput, VisionEntityCatalogPatch } from '../shared/vision-entity-types'
 import { scanVisionDirectory, isVisionScanAbortError } from '../core/ai/vision-directory-scan'
 import { renderVisionClipCollectionExport, renderVisionClipCollectionsExport } from '../core/ai/clip-inbox-export'
-import { parseVisionClipCollectionTagMetadataImportText, renderVisionClipCollectionTagMetadataExport } from '../core/ai/clip-inbox-tag-transfer'
+import { createVisionClipCollectionTagMetadataImportPreview, filterVisionClipCollectionTagMetadataImport, parseVisionClipCollectionTagMetadataImport, parseVisionClipCollectionTagMetadataImportText, renderVisionClipCollectionTagMetadataExport } from '../core/ai/clip-inbox-tag-transfer'
 import { parseVisionClipCollectionImportText, parseVisionClipCollectionsImport } from '../core/ai/clip-inbox-import'
 import { normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTag, normalizeVisionCollectionTagColor, normalizeVisionCollectionTags, normalizeVisionCollectionTagsMode, wouldCreateVisionCollectionTagParentCycle } from '../core/ai/clip-inbox-operations'
 import { isVisionSearchExportAbortError, renderVisionSearchResultsExport } from '../core/ai/vision-search-export'
@@ -766,10 +766,29 @@ export function registerVisionIpc(): void {
     if (!filePath) return { success: false, canceled: true, message: '' }
     try {
       const metadata = parseVisionClipCollectionTagMetadataImportText(await readFile(filePath, 'utf8'))
-      const result = getClipInboxStore().importTagMetadata(metadata)
-      return { success: true, filePath, importedCount: result.importedCount, skippedCount: result.skippedCount, message: copy.collectionTagManagerMetadataImported(result.importedCount, result.skippedCount) }
+      const store = getClipInboxStore()
+      const usedTags = new Set(store.listCollections().flatMap((collection) => collection.tags))
+      const preview = createVisionClipCollectionTagMetadataImportPreview(metadata, store.listTagMetadata(), usedTags)
+      const conflictCount = preview.filter((item) => item.state === 'conflict').length
+      const newCount = preview.filter((item) => item.state === 'new').length
+      const unusedCount = preview.filter((item) => item.state === 'unused').length
+      return { success: true, filePath, metadata, preview, message: copy.collectionTagManagerMetadataImportPreviewDescription(conflictCount, newCount, unusedCount) }
     } catch (error) {
-      return { success: false, filePath, message: error instanceof Error ? error.message : String(error), importedCount: 0, skippedCount: 0 }
+      return { success: false, filePath, message: error instanceof Error ? error.message : String(error) }
+    }
+  })
+  ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_TAG_METADATA_IMPORT_APPLY, (_event, request: VisionClipCollectionTagMetadataImportApplyRequest) => {
+    const copy = getAppCopy(getCurrentLocale()).vision
+    try {
+      const metadata = parseVisionClipCollectionTagMetadataImport({ exportVersion: 1, metadata: request?.metadata })
+      const decisions = request?.decisions ?? {}
+      const selected = filterVisionClipCollectionTagMetadataImport(metadata, decisions)
+      const result = getClipInboxStore().importTagMetadata(selected)
+      const decisionSkipped = metadata.filter((item) => decisions[item.tag] === 'keep-local' || decisions[item.tag] === 'skip').length
+      const skippedCount = result.skippedCount + decisionSkipped
+      return { success: true, importedCount: result.importedCount, skippedCount, message: copy.collectionTagManagerMetadataImported(result.importedCount, skippedCount) }
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : String(error), importedCount: 0, skippedCount: 0 }
     }
   })
   ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_DUPLICATE, (_event, collectionId: string) => {

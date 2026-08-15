@@ -142,6 +142,7 @@ export const IPC_CHANNELS = {
   VISION_CLIP_COLLECTION_TAG_METADATA_UPDATE: 'vision:clip-collection-tag-metadata-update',
   VISION_CLIP_COLLECTION_TAG_METADATA_EXPORT: 'vision:clip-collection-tag-metadata-export',
   VISION_CLIP_COLLECTION_TAG_METADATA_IMPORT: 'vision:clip-collection-tag-metadata-import',
+  VISION_CLIP_COLLECTION_TAG_METADATA_IMPORT_APPLY: 'vision:clip-collection-tag-metadata-import-apply',
   VISION_CLIP_COLLECTION_TAG_OPERATION_HISTORY: 'vision:clip-collection-tag-operation-history',
   VISION_CLIP_COLLECTION_TAG_OPERATION_UNDO: 'vision:clip-collection-tag-operation-undo',
   VISION_CLIP_COLLECTION_DUPLICATE: 'vision:clip-collection-duplicate',
