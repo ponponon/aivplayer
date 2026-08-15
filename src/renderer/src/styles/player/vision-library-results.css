@@ -760,6 +760,85 @@
   margin-left: 0;
 }
 
+.vision-collection-tag-manager-import-preview {
+  display: grid;
+  gap: 7px;
+  padding: 8px;
+  background: rgba(var(--accent-rgb), 0.06);
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
+  border-radius: var(--radius-sm);
+}
+
+.vision-collection-tag-manager-import-preview-heading,
+.vision-collection-tag-manager-import-conflict,
+.vision-collection-tag-manager-import-preview-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.vision-collection-tag-manager-import-preview-heading {
+  justify-content: space-between;
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+.vision-collection-tag-manager-import-preview-heading small,
+.vision-collection-tag-manager-import-preview-empty {
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.vision-collection-tag-manager-import-conflicts {
+  display: grid;
+  gap: 4px;
+}
+
+.vision-collection-tag-manager-import-conflict {
+  justify-content: space-between;
+  min-width: 0;
+  padding: 5px 6px;
+  color: var(--text-primary);
+  background: rgba(var(--overlay-rgb), 0.05);
+  border-radius: 4px;
+  font-size: 10px;
+}
+
+.vision-collection-tag-manager-import-conflict > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vision-collection-tag-manager-import-conflict label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.vision-collection-tag-manager-import-conflict select {
+  min-height: 25px;
+  padding: 0 6px;
+  color: var(--text-primary);
+  background: rgba(var(--overlay-rgb), 0.06);
+  border: 1px solid var(--border-soft);
+  border-radius: 4px;
+  font-size: 9px;
+}
+
+.vision-collection-tag-manager-import-conflict select:focus {
+  border-color: var(--accent);
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.vision-collection-tag-manager-import-preview-actions {
+  justify-content: flex-end;
+}
+
 .vision-collection-tag-manager-heading small,
 .vision-collection-tag-manager-selection,
 .vision-collection-tag-manager-empty {

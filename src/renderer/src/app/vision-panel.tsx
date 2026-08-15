@@ -4,7 +4,7 @@ import type { KeyboardEvent } from 'react'
 import type { VisionIndexProgress, VisionRuntimeStatus, VisionSearchResult } from '../../../shared/media-types'
 import type { AsrSubtitleResult } from '../../../shared/media-types'
 import type { MediaEvidenceDraftImportResult } from '../../../shared/evidence-task-types'
-import type { VisionClipCollection, VisionClipCollectionBatchTagsMode, VisionClipCollectionExportFormat, VisionClipCollectionSortMode, VisionClipCollectionTagMetadata, VisionClipCollectionTagOperationHistory, VisionEvidenceType, VisionIndexFailureRecord, VisionLibrarySource, VisionModelDownloadProgress, VisionSavedSearch, VisionSearchFullExportRequest, VisionSearchPageRequest, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchSortMode } from '../../../shared/vision-types'
+import type { VisionClipCollection, VisionClipCollectionBatchTagsMode, VisionClipCollectionExportFormat, VisionClipCollectionSortMode, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataImportDecision, VisionClipCollectionTagMetadataImportPreviewResult, VisionClipCollectionTagOperationHistory, VisionEvidenceType, VisionIndexFailureRecord, VisionLibrarySource, VisionModelDownloadProgress, VisionSavedSearch, VisionSearchFullExportRequest, VisionSearchPageRequest, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchSortMode } from '../../../shared/vision-types'
 import type { LocaleCopy } from '../../../shared/i18n'
 import type { VisionObjectDetectionFilterState, VisionObjectDetectionResult } from '../../../shared/vision-object-detection-types'
 import { getVisionCollectionTagPath, invertVisionClipSelections, mergeVisionCollectionSelections, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTag, normalizeVisionCollectionTags, renameVisionClipCollectionTitle, wouldCreateVisionCollectionTagParentCycle } from '../../../core/ai/clip-inbox-operations'
@@ -163,6 +163,8 @@ export function VisionPanel(): React.ReactElement {
   const [isSavingCollectionTagMetadata, setIsSavingCollectionTagMetadata] = useState(false)
   const [isTransferringCollectionTagMetadata, setIsTransferringCollectionTagMetadata] = useState(false)
   const [collectionTagTransferStatus, setCollectionTagTransferStatus] = useState<string | null>(null)
+  const [collectionTagImportPreview, setCollectionTagImportPreview] = useState<VisionClipCollectionTagMetadataImportPreviewResult | null>(null)
+  const [collectionTagImportDecisions, setCollectionTagImportDecisions] = useState<Record<string, VisionClipCollectionTagMetadataImportDecision>>({})
   const [lastCollectionTagOperation, setLastCollectionTagOperation] = useState<VisionClipCollectionTagOperationHistory | null>(null)
   const [isUndoingCollectionTagOperation, setIsUndoingCollectionTagOperation] = useState(false)
   const [editingCollectionId, setEditingCollectionId] = useState<string | null>(null)
@@ -225,6 +227,8 @@ export function VisionPanel(): React.ReactElement {
   const hasRenameRule = Boolean(renamePrefix || renameSuffix)
   const renamePreviewCollections = selectedCollectionsForRename.map((collection) => ({ ...collection, title: renameVisionClipCollectionTitle(collection.title, renamePrefix, renameSuffix) }))
   const isCollectionBatchBusy = isDuplicatingCollections || isExportingCollections || isDeletingCollections || isRenamingCollections || isUpdatingCollectionTags || isCleaningCollectionTag || isRenamingCollectionTag || isSavingCollectionTagMetadata || isTransferringCollectionTagMetadata || isUndoingCollectionTagOperation || isSavingCollectionTitle || isSavingCollectionTags || editingCollectionId !== null || editingCollectionTagsId !== null || duplicatingCollectionId !== null
+  const collectionTagImportPreviewItems = collectionTagImportPreview?.preview ?? []
+  const collectionTagImportConflicts = collectionTagImportPreviewItems.filter((item) => item.state === 'conflict')
   const vectorIndexLabel = status?.vectorIndexType
     ? app.copy.vision.vectorIndex(status.vectorIndexType, status.vectorIndexDistanceType ?? '—', status.vectorIndexIndexedRows, status.vectorIndexUnindexedRows)
     : app.copy.vision.exactVectorSearch
@@ -1202,7 +1206,7 @@ export function VisionPanel(): React.ReactElement {
   }
 
   const importCollectionTagMetadata = (): void => {
-    if (isCollectionBatchBusy) return
+    if (isCollectionBatchBusy || collectionTagImportPreview !== null) return
     setError(null)
     setCollectionTagTransferStatus(null)
     setIsTransferringCollectionTagMetadata(true)
@@ -1212,10 +1216,38 @@ export function VisionPanel(): React.ReactElement {
         setError(result.message)
         return
       }
+      const defaultDecisions: Record<string, VisionClipCollectionTagMetadataImportDecision> = {}
+      for (const item of result.preview ?? []) {
+        if (item.state === 'conflict') defaultDecisions[item.tag] = 'keep-local'
+      }
+      setCollectionTagImportDecisions(defaultDecisions)
+      setCollectionTagImportPreview(result)
+      setCollectionTagTransferStatus(result.message)
+    }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setIsTransferringCollectionTagMetadata(false))
+  }
+
+  const applyCollectionTagMetadataImport = (): void => {
+    if (!collectionTagImportPreview?.metadata || isTransferringCollectionTagMetadata) return
+    setError(null)
+    setIsTransferringCollectionTagMetadata(true)
+    void window.aiv.applyVisionClipCollectionTagMetadata({ metadata: collectionTagImportPreview.metadata, decisions: collectionTagImportDecisions }).then((result) => {
+      if (!result.success) {
+        setError(result.message)
+        return
+      }
+      setCollectionTagImportPreview(null)
+      setCollectionTagImportDecisions({})
       refreshCollectionTagMetadata()
       refreshCollectionTagOperation()
       setCollectionTagTransferStatus(result.message || app.copy.vision.collectionTagManagerMetadataImported(result.importedCount ?? 0, result.skippedCount ?? 0))
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setIsTransferringCollectionTagMetadata(false))
+  }
+
+  const cancelCollectionTagMetadataImport = (): void => {
+    if (isTransferringCollectionTagMetadata) return
+    setCollectionTagImportPreview(null)
+    setCollectionTagImportDecisions({})
+    setCollectionTagTransferStatus(null)
   }
 
   const undoCollectionTagOperation = (): void => {
@@ -1410,8 +1442,15 @@ export function VisionPanel(): React.ReactElement {
     {searchExportStatus ? <small className="vision-saved-search-status vision-search-export-status" role="status">{searchExportStatus}</small> : null}
     {objectDetectionResult ? <VisionObjectDetectionResultView copy={app.copy.vision} result={objectDetectionResult} thumbnailUrl={objectDetectionThumbnailUrl} filter={objectDetectionFilter} onFilterChange={setObjectDetectionFilter} onClear={() => { setObjectDetectionResult(null); setObjectDetectionThumbnailUrl(null) }} /> : null}
     {collections.length > 0 ? <div className="vision-card vision-collection-tag-manager">
-      <div className="vision-collection-tag-manager-heading"><div className="vision-collection-tag-manager-heading-copy"><strong>{app.copy.vision.collectionTagManagerTitle}</strong><small>{app.copy.vision.collectionTagManagerDescription}</small></div><div className="vision-collection-tag-manager-transfer-actions"><button className="vision-secondary-action" type="button" onClick={importCollectionTagMetadata} disabled={isCollectionBatchBusy}><Upload size={12} />{app.copy.vision.collectionTagManagerMetadataImport}</button><button className="vision-secondary-action" type="button" onClick={exportCollectionTagMetadata} disabled={isCollectionBatchBusy || collectionTagMetadata.length === 0}><Download size={12} />{app.copy.vision.collectionTagManagerMetadataExport}</button></div></div>
+      <div className="vision-collection-tag-manager-heading"><div className="vision-collection-tag-manager-heading-copy"><strong>{app.copy.vision.collectionTagManagerTitle}</strong><small>{app.copy.vision.collectionTagManagerDescription}</small></div><div className="vision-collection-tag-manager-transfer-actions"><button className="vision-secondary-action" type="button" onClick={importCollectionTagMetadata} disabled={isCollectionBatchBusy || collectionTagImportPreview !== null}><Upload size={12} />{app.copy.vision.collectionTagManagerMetadataImport}</button><button className="vision-secondary-action" type="button" onClick={exportCollectionTagMetadata} disabled={isCollectionBatchBusy || collectionTagImportPreview !== null || collectionTagMetadata.length === 0}><Download size={12} />{app.copy.vision.collectionTagManagerMetadataExport}</button></div></div>
       {collectionTagTransferStatus ? <small className="vision-saved-search-status" role="status">{collectionTagTransferStatus}</small> : null}
+      {collectionTagImportPreview ? <div className="vision-collection-tag-manager-import-preview" role="dialog" aria-label={app.copy.vision.collectionTagManagerMetadataImportPreviewTitle}>
+        <div className="vision-collection-tag-manager-import-preview-heading"><strong>{app.copy.vision.collectionTagManagerMetadataImportPreviewTitle}</strong><small>{app.copy.vision.collectionTagManagerMetadataImportPreviewDescription(collectionTagImportConflicts.length, collectionTagImportPreviewItems.filter((item) => item.state === 'new').length, collectionTagImportPreviewItems.filter((item) => item.state === 'unused').length)}</small></div>
+        {collectionTagImportConflicts.length > 0 ? <div className="vision-collection-tag-manager-import-conflicts" role="list" aria-label={app.copy.vision.collectionTagManagerMetadataImportDecisionLabel}>
+          {collectionTagImportConflicts.map((item) => <div className="vision-collection-tag-manager-import-conflict" key={item.tag} role="listitem"><span>{item.tag}</span><label><span>{app.copy.vision.collectionTagManagerMetadataImportDecisionLabel}</span><select value={collectionTagImportDecisions[item.tag] ?? 'keep-local'} aria-label={`${app.copy.vision.collectionTagManagerMetadataImportDecisionLabel}: ${item.tag}`} onChange={(event) => setCollectionTagImportDecisions((current) => ({ ...current, [item.tag]: event.target.value as VisionClipCollectionTagMetadataImportDecision }))} disabled={isTransferringCollectionTagMetadata}><option value="overwrite">{app.copy.vision.collectionTagManagerMetadataImportOverwrite}</option><option value="keep-local">{app.copy.vision.collectionTagManagerMetadataImportKeepLocal}</option><option value="skip">{app.copy.vision.collectionTagManagerMetadataImportSkip}</option></select></label></div>)}
+        </div> : <small className="vision-collection-tag-manager-import-preview-empty">{app.copy.vision.collectionTagManagerMetadataImportPreviewNoConflicts}</small>}
+        <div className="vision-collection-tag-manager-import-preview-actions"><button className="vision-primary-action" type="button" onClick={applyCollectionTagMetadataImport} disabled={isTransferringCollectionTagMetadata}><Check size={12} />{app.copy.vision.collectionTagManagerMetadataImportApply}</button><button className="vision-secondary-action" type="button" onClick={cancelCollectionTagMetadataImport} disabled={isTransferringCollectionTagMetadata}><X size={12} />{app.copy.vision.collectionTagManagerMetadataImportCancel}</button></div>
+      </div> : null}
       {collectionTagStats.length > 0 ? <>
         <div className="vision-collection-tag-manager-filter">
           <input value={collectionTagFilterQuery} onChange={(event) => setCollectionTagFilterQuery(event.target.value)} placeholder={app.copy.vision.collectionTagManagerFilterPlaceholder} aria-label={app.copy.vision.collectionTagManagerFilterPlaceholder} disabled={isCollectionBatchBusy} />
