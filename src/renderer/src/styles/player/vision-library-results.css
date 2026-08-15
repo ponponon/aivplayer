@@ -727,6 +727,64 @@
   gap: 3px;
 }
 
+.vision-collection-title-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+}
+
+.vision-collection-title-row > strong {
+  flex: 1;
+  min-width: 0;
+}
+
+.vision-collection-title-edit {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 3px;
+}
+
+.vision-collection-inline-title-input {
+  min-width: 0;
+  flex: 1;
+  min-height: 25px;
+  padding: 0 6px;
+  color: var(--text-primary);
+  background: rgba(var(--overlay-rgb), 0.08);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  outline: 0;
+}
+
+.vision-collection-inline-action {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  padding: 0;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.vision-collection-inline-action:hover:not(:disabled) {
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.1);
+  border-color: rgba(var(--accent-rgb), 0.3);
+}
+
+.vision-collection-inline-action:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
 .vision-collection-copy strong,
 .vision-collection-copy span {
   overflow: hidden;
