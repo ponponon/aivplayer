@@ -727,6 +727,76 @@
   outline: 0;
 }
 
+.vision-collection-tag-manager {
+  display: grid;
+  gap: 8px;
+}
+
+.vision-collection-tag-manager-heading,
+.vision-collection-tag-manager-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.vision-collection-tag-manager-heading {
+  color: var(--text-primary);
+  font-size: 11px;
+}
+
+.vision-collection-tag-manager-heading small,
+.vision-collection-tag-manager-selection,
+.vision-collection-tag-manager-empty {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.vision-collection-tag-manager-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.vision-collection-tag-manager-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 0 8px;
+  color: var(--text-secondary);
+  background: rgba(var(--overlay-rgb), 0.06);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.vision-collection-tag-manager-item small {
+  min-width: 16px;
+  padding: 1px 4px;
+  color: var(--text-muted);
+  background: rgba(var(--overlay-rgb), 0.1);
+  border-radius: 999px;
+  text-align: center;
+}
+
+.vision-collection-tag-manager-item:hover,
+.vision-collection-tag-manager-item.is-active {
+  color: var(--text-primary);
+  background: rgba(var(--accent-rgb), 0.12);
+  border-color: var(--accent);
+}
+
+.vision-collection-tag-manager-item:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.vision-collection-tag-manager-empty {
+  padding: 4px 0;
+}
+
 .vision-collection-transfer-actions,
 .vision-collection-batch-actions,
 .vision-collection-heading {
