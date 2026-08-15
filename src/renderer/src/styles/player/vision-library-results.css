@@ -704,7 +704,25 @@
   font-size: 10px;
 }
 
-.vision-collection-batch-tags-input:focus {
+.vision-collection-batch-tags-mode {
+  min-width: 96px;
+  min-height: 30px;
+  padding: 0 7px;
+  color: var(--text-primary);
+  background: rgba(var(--overlay-rgb), 0.06);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+}
+
+.vision-collection-batch-tags-hint {
+  flex: 1 1 100%;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.vision-collection-batch-tags-input:focus,
+.vision-collection-batch-tags-mode:focus {
   border-color: var(--accent);
   outline: 0;
 }
