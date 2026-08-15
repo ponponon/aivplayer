@@ -1,10 +1,10 @@
-import { Archive, Check, CheckSquare, Copy, Database, Download, FilePlus, ImageUp, Pencil, ScanSearch, Search, Square, Tags, Trash2, Upload, X } from 'lucide-react'
+import { Archive, Check, CheckSquare, Copy, Database, Download, FilePlus, ImageUp, Pencil, ScanSearch, Search, Square, Tags, Trash2, Undo2, Upload, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import type { VisionIndexProgress, VisionRuntimeStatus, VisionSearchResult } from '../../../shared/media-types'
 import type { AsrSubtitleResult } from '../../../shared/media-types'
 import type { MediaEvidenceDraftImportResult } from '../../../shared/evidence-task-types'
-import type { VisionClipCollection, VisionClipCollectionBatchTagsMode, VisionClipCollectionExportFormat, VisionClipCollectionSortMode, VisionClipCollectionTagMetadata, VisionEvidenceType, VisionIndexFailureRecord, VisionLibrarySource, VisionModelDownloadProgress, VisionSavedSearch, VisionSearchFullExportRequest, VisionSearchPageRequest, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchSortMode } from '../../../shared/vision-types'
+import type { VisionClipCollection, VisionClipCollectionBatchTagsMode, VisionClipCollectionExportFormat, VisionClipCollectionSortMode, VisionClipCollectionTagMetadata, VisionClipCollectionTagOperationHistory, VisionEvidenceType, VisionIndexFailureRecord, VisionLibrarySource, VisionModelDownloadProgress, VisionSavedSearch, VisionSearchFullExportRequest, VisionSearchPageRequest, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchSortMode } from '../../../shared/vision-types'
 import type { LocaleCopy } from '../../../shared/i18n'
 import type { VisionObjectDetectionFilterState, VisionObjectDetectionResult } from '../../../shared/vision-object-detection-types'
 import { invertVisionClipSelections, mergeVisionCollectionSelections, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTag, normalizeVisionCollectionTags, renameVisionClipCollectionTitle } from '../../../core/ai/clip-inbox-operations'
@@ -155,6 +155,8 @@ export function VisionPanel(): React.ReactElement {
   const [collectionTagColor, setCollectionTagColor] = useState(DEFAULT_COLLECTION_TAG_COLOR)
   const [collectionTagTextColor, setCollectionTagTextColor] = useState(DEFAULT_COLLECTION_TAG_TEXT_COLOR)
   const [isSavingCollectionTagMetadata, setIsSavingCollectionTagMetadata] = useState(false)
+  const [lastCollectionTagOperation, setLastCollectionTagOperation] = useState<VisionClipCollectionTagOperationHistory | null>(null)
+  const [isUndoingCollectionTagOperation, setIsUndoingCollectionTagOperation] = useState(false)
   const [editingCollectionId, setEditingCollectionId] = useState<string | null>(null)
   const [editingCollectionTitle, setEditingCollectionTitle] = useState('')
   const [isSavingCollectionTitle, setIsSavingCollectionTitle] = useState(false)
@@ -198,7 +200,7 @@ export function VisionPanel(): React.ReactElement {
   const renameSuffix = normalizeVisionClipCollectionRenamePart(collectionRenameSuffix)
   const hasRenameRule = Boolean(renamePrefix || renameSuffix)
   const renamePreviewCollections = selectedCollectionsForRename.map((collection) => ({ ...collection, title: renameVisionClipCollectionTitle(collection.title, renamePrefix, renameSuffix) }))
-  const isCollectionBatchBusy = isDuplicatingCollections || isExportingCollections || isDeletingCollections || isRenamingCollections || isUpdatingCollectionTags || isCleaningCollectionTag || isRenamingCollectionTag || isSavingCollectionTagMetadata || isSavingCollectionTitle || isSavingCollectionTags || editingCollectionId !== null || editingCollectionTagsId !== null || duplicatingCollectionId !== null
+  const isCollectionBatchBusy = isDuplicatingCollections || isExportingCollections || isDeletingCollections || isRenamingCollections || isUpdatingCollectionTags || isCleaningCollectionTag || isRenamingCollectionTag || isSavingCollectionTagMetadata || isUndoingCollectionTagOperation || isSavingCollectionTitle || isSavingCollectionTags || editingCollectionId !== null || editingCollectionTagsId !== null || duplicatingCollectionId !== null
   const vectorIndexLabel = status?.vectorIndexType
     ? app.copy.vision.vectorIndex(status.vectorIndexType, status.vectorIndexDistanceType ?? '—', status.vectorIndexIndexedRows, status.vectorIndexUnindexedRows)
     : app.copy.vision.exactVectorSearch
@@ -208,6 +210,7 @@ export function VisionPanel(): React.ReactElement {
   const refreshFailures = (): void => { void window.aiv.listVisionIndexFailures().then(setFailures).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))) }
   const refreshSavedSearches = (): void => { void window.aiv.listVisionSavedSearches().then(setSavedSearches).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))) }
   const refreshCollectionTagMetadata = (): void => { void window.aiv.listVisionClipCollectionTagMetadata().then(setCollectionTagMetadata).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))) }
+  const refreshCollectionTagOperation = (): void => { void window.aiv.getVisionClipCollectionTagOperationHistory().then(setLastCollectionTagOperation).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))) }
 
   useEffect(() => {
     setCollectionTagParent(managedCollectionTagMetadata?.parentTag ?? '')
@@ -241,6 +244,7 @@ export function VisionPanel(): React.ReactElement {
     refreshFailures()
     refreshSavedSearches()
     refreshCollectionTagMetadata()
+    refreshCollectionTagOperation()
     const statusTimer = window.setInterval(refreshStatus, 5000)
     const removeProgressListener = window.aiv.onVisionIndexProgress((next) => {
       if (!active) return
@@ -1111,6 +1115,7 @@ export function VisionPanel(): React.ReactElement {
       setCollectionTagToManage('')
       if (collectionFilterTag === tag) setCollectionFilterTag('')
       refreshCollectionTagMetadata()
+      refreshCollectionTagOperation()
       setCollectionTransferStatus(result.message)
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setIsCleaningCollectionTag(false))
   }
@@ -1134,6 +1139,7 @@ export function VisionPanel(): React.ReactElement {
       setCollectionTagRenameTarget('')
       if (collectionFilterTag === fromTag) setCollectionFilterTag(toTag)
       refreshCollectionTagMetadata()
+      refreshCollectionTagOperation()
       setCollectionTransferStatus(result.message)
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setIsRenamingCollectionTag(false))
   }
@@ -1148,8 +1154,28 @@ export function VisionPanel(): React.ReactElement {
         return
       }
       setCollectionTagMetadata((current) => [...current.filter((metadata) => metadata.tag !== result.metadata?.tag), result.metadata as VisionClipCollectionTagMetadata])
+      refreshCollectionTagOperation()
       setCollectionTransferStatus(result.message)
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setIsSavingCollectionTagMetadata(false))
+  }
+
+  const undoCollectionTagOperation = (): void => {
+    if (isCollectionBatchBusy || !lastCollectionTagOperation) return
+    setIsUndoingCollectionTagOperation(true)
+    setError(null)
+    void window.aiv.undoVisionClipCollectionTagOperation().then((result) => {
+      if (!result.success) {
+        setError(result.message)
+        return
+      }
+      const updatedById = new Map(result.collections.map((collection) => [collection.id, collection]))
+      setCollections((current) => current.map((collection) => updatedById.get(collection.id) ?? collection))
+      setCollectionTagMetadata(result.metadata)
+      setCollectionTagToManage('')
+      setCollectionTagRenameTarget('')
+      refreshCollectionTagOperation()
+      setCollectionTransferStatus(result.message)
+    }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setIsUndoingCollectionTagOperation(false))
   }
 
   const repairCollection = async (collection: VisionClipCollection): Promise<void> => {
@@ -1345,6 +1371,7 @@ export function VisionPanel(): React.ReactElement {
             <button className="vision-secondary-action" type="button" onClick={saveCollectionTagMetadata} disabled={isCollectionBatchBusy || !managedCollectionTag}><Tags size={13} />{app.copy.vision.collectionTagManagerMetadataSave}</button>
           </div>
         </div>
+        {lastCollectionTagOperation ? <div className="vision-collection-tag-manager-undo"><small>{app.copy.vision.collectionTagManagerUndoDescription}</small><button className="vision-secondary-action" type="button" onClick={undoCollectionTagOperation} disabled={isCollectionBatchBusy}><Undo2 size={13} />{app.copy.vision.collectionTagManagerUndo}</button></div> : null}
       </> : <div className="vision-collection-tag-manager-empty">{app.copy.vision.collectionTagManagerEmpty}</div>}
     </div> : null}
     {selectedCollectionIds.size > 0 ? <div className="vision-card vision-collection-batch-tags-actions"><div className="vision-collection-batch-tags-heading"><strong>{app.copy.vision.selectedCollections(selectedCollectionIds.size)}</strong><small>{app.copy.vision.collectionTagsBatchPlaceholder}</small></div><div className="vision-collection-batch-tags-controls"><select className="vision-collection-batch-tags-mode" value={collectionBatchTagsMode} onChange={(event) => setCollectionBatchTagsMode(event.target.value as VisionClipCollectionBatchTagsMode)} aria-label={app.copy.vision.collectionTagsBatchModeAriaLabel} disabled={isCollectionBatchBusy}><option value="replace">{app.copy.vision.collectionTagsBatchModeLabel.replace}</option><option value="add">{app.copy.vision.collectionTagsBatchModeLabel.add}</option><option value="remove">{app.copy.vision.collectionTagsBatchModeLabel.remove}</option></select><input className="vision-collection-batch-tags-input" value={collectionBatchTags} maxLength={800} onChange={(event) => setCollectionBatchTags(event.target.value)} placeholder={app.copy.vision.collectionTagsBatchInputPlaceholder} aria-label={app.copy.vision.collectionTagsBatchInputPlaceholder} disabled={isCollectionBatchBusy} /><button className="vision-primary-action" type="button" onClick={updateSelectedCollectionsTags} disabled={isCollectionBatchBusy || !canUpdateCollectionTags}><Tags size={13} />{app.copy.vision.updateSelectedCollectionTags}</button>{!canUpdateCollectionTags ? <small className="vision-collection-batch-tags-hint">{app.copy.vision.collectionTagsBatchNeedInput}</small> : null}</div></div> : null}

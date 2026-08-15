@@ -830,6 +830,21 @@
   outline-offset: 1px;
 }
 
+.vision-collection-tag-manager-undo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.vision-collection-tag-manager-undo small {
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
 .vision-collection-tag-manager-list {
   display: flex;
   flex-wrap: wrap;

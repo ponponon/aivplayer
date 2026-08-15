@@ -35,16 +35,26 @@ describe('vision clip collection tag manager UI wiring', () => {
     expect(panel).toContain('saveCollectionTagMetadata')
   })
 
+  it('exposes the latest tag operation for undo', () => {
+    expect(panel).toContain('lastCollectionTagOperation')
+    expect(panel).toContain('window.aiv.getVisionClipCollectionTagOperationHistory')
+    expect(panel).toContain('window.aiv.undoVisionClipCollectionTagOperation')
+    expect(panel).toContain('undoCollectionTagOperation')
+    expect(panel).toContain('collectionTagManagerUndoDescription')
+  })
+
   it('keeps tag management accessible and responsive', () => {
     expect(panel).toContain('role="list"')
     expect(panel).toContain('aria-pressed={managedCollectionTag === item.tag}')
     expect(panel).toContain('vision-collection-tag-manager-item')
     expect(panel).toContain('vision-collection-tag-manager-input')
     expect(panel).toContain('vision-collection-tag-manager-metadata')
+    expect(panel).toContain('vision-collection-tag-manager-undo')
     expect(styles).toContain('.vision-collection-tag-manager')
     expect(styles).toContain('.vision-collection-tag-manager-input')
     expect(styles).toContain('.vision-collection-tag-manager-metadata')
     expect(styles).toContain(".vision-collection-tag-manager-metadata-controls input[type='color']")
+    expect(styles).toContain('.vision-collection-tag-manager-undo')
     expect(styles).toContain('flex-wrap: wrap')
     expect(styles).toContain(':focus-visible')
   })
