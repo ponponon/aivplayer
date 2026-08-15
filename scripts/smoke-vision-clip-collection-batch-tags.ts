@@ -83,7 +83,7 @@ async function runSmoke(): Promise<void> {
       await page.getByRole('checkbox', { name: `选择集合：${title}`, exact: true }).check()
     }
 
-    const tagInput = page.getByRole('textbox', { name: '批量标签（逗号分隔，留空清空）', exact: true })
+    const tagInput = page.getByRole('textbox', { name: '输入标签（用逗号分隔）', exact: true })
     await tagInput.fill('海边, 采访, 海边,   ')
     const confirmationMessage = await acceptTagConfirmation(page)
     if (!confirmationMessage.includes('2') || !confirmationMessage.includes('海边 · 采访')) throw new Error(`Batch tag confirmation mismatch: ${confirmationMessage}`)
