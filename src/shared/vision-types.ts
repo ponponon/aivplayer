@@ -524,6 +524,16 @@ export type VisionClipCollectionTagMetadataUpdateResult = {
   metadata: VisionClipCollectionTagMetadata | null
 }
 
+export type VisionClipCollectionTagMetadataTransferResult = {
+  success: boolean
+  message: string
+  canceled?: boolean
+  filePath?: string
+  exportedCount?: number
+  importedCount?: number
+  skippedCount?: number
+}
+
 export type VisionClipCollectionTagOperationType = 'cleanup' | 'rename' | 'metadata' | 'batch'
 
 export type VisionClipCollectionTagOperationHistory = {

@@ -8,6 +8,7 @@ import { VISION_SEARCH_FULL_EXPORT_MAX_RESULTS } from '../shared/vision-types'
 import type { VisionEntityCatalogBatchPatch, VisionEntityCatalogCreateInput, VisionEntityCatalogPatch } from '../shared/vision-entity-types'
 import { scanVisionDirectory, isVisionScanAbortError } from '../core/ai/vision-directory-scan'
 import { renderVisionClipCollectionExport, renderVisionClipCollectionsExport } from '../core/ai/clip-inbox-export'
+import { parseVisionClipCollectionTagMetadataImportText, renderVisionClipCollectionTagMetadataExport } from '../core/ai/clip-inbox-tag-transfer'
 import { parseVisionClipCollectionImportText, parseVisionClipCollectionsImport } from '../core/ai/clip-inbox-import'
 import { normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTag, normalizeVisionCollectionTagColor, normalizeVisionCollectionTags, normalizeVisionCollectionTagsMode, wouldCreateVisionCollectionTagParentCycle } from '../core/ai/clip-inbox-operations'
 import { isVisionSearchExportAbortError, renderVisionSearchResultsExport } from '../core/ai/vision-search-export'
@@ -735,6 +736,40 @@ export function registerVisionIpc(): void {
       return { success: true, message: copy.collectionTagManagerMetadataUpdated(tag), metadata }
     } catch (error) {
       return { success: false, message: error instanceof Error ? error.message : String(error), metadata: null }
+    }
+  })
+  ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_TAG_METADATA_EXPORT, async () => {
+    const copy = getAppCopy(getCurrentLocale()).vision
+    const metadata = getClipInboxStore().listTagMetadata()
+    if (metadata.length === 0) return { success: false, message: copy.collectionTagManagerMetadataExportEmpty, exportedCount: 0 }
+    const defaultPath = join(app.getPath('documents'), 'aivplayer-clip-tag-metadata.json')
+    const filePath = await promptForSavePath({
+      title: copy.collectionTagManagerMetadataExport,
+      defaultPath,
+      filters: [{ name: 'AIVPlayer tag metadata JSON', extensions: ['json'] }]
+    })
+    if (!filePath) return { success: false, canceled: true, message: '' }
+    const outputPath = filePath.toLowerCase().endsWith('.json') ? filePath : `${filePath}.json`
+    try {
+      await writeFile(outputPath, renderVisionClipCollectionTagMetadataExport(metadata), 'utf8')
+      return { success: true, filePath: outputPath, exportedCount: metadata.length, message: copy.collectionTagManagerMetadataExported(metadata.length) }
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : String(error), exportedCount: 0 }
+    }
+  })
+  ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_TAG_METADATA_IMPORT, async () => {
+    const copy = getAppCopy(getCurrentLocale()).vision
+    const filePath = await promptForOpenPath({
+      title: copy.collectionTagManagerMetadataImport,
+      filters: [{ name: 'AIVPlayer tag metadata JSON', extensions: ['json'] }]
+    })
+    if (!filePath) return { success: false, canceled: true, message: '' }
+    try {
+      const metadata = parseVisionClipCollectionTagMetadataImportText(await readFile(filePath, 'utf8'))
+      const result = getClipInboxStore().importTagMetadata(metadata)
+      return { success: true, filePath, importedCount: result.importedCount, skippedCount: result.skippedCount, message: copy.collectionTagManagerMetadataImported(result.importedCount, result.skippedCount) }
+    } catch (error) {
+      return { success: false, filePath, message: error instanceof Error ? error.message : String(error), importedCount: 0, skippedCount: 0 }
     }
   })
   ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_DUPLICATE, (_event, collectionId: string) => {
