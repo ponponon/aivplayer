@@ -1,5 +1,5 @@
 import { normalizeVisionCollectionTag, normalizeVisionCollectionTagColor, normalizeVisionCollectionTagFavorite, normalizeVisionCollectionTagNote } from './clip-inbox-operations'
-import type { VisionClipCollectionTagMetadata } from '../../shared/vision-types'
+import type { VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataImportDecision, VisionClipCollectionTagMetadataImportPreviewItem } from '../../shared/vision-types'
 
 export const VISION_CLIP_COLLECTION_TAG_METADATA_EXPORT_VERSION = 1
 const MAX_TAG_METADATA_TRANSFER_ITEMS = 5000
@@ -59,4 +59,39 @@ export function parseVisionClipCollectionTagMetadataImportText(text: string): Vi
     if (error instanceof SyntaxError) throw new Error('标签元数据导入文件不是有效的 JSON')
     throw error
   }
+}
+
+function sameMetadata(left: VisionClipCollectionTagMetadata, right: VisionClipCollectionTagMetadata): boolean {
+  return left.tag === right.tag
+    && left.parentTag === right.parentTag
+    && left.color === right.color
+    && left.textColor === right.textColor
+    && left.note === right.note
+    && left.isFavorite === right.isFavorite
+}
+
+export function createVisionClipCollectionTagMetadataImportPreview(
+  incoming: readonly VisionClipCollectionTagMetadata[],
+  current: readonly VisionClipCollectionTagMetadata[],
+  usedTags: ReadonlySet<string>
+): VisionClipCollectionTagMetadataImportPreviewItem[] {
+  const currentByTag = new Map(current.map((item) => [item.tag, item]))
+  return incoming.map((item) => {
+    const currentMetadata = currentByTag.get(item.tag) ?? null
+    const state = !usedTags.has(item.tag)
+      ? 'unused'
+      : currentMetadata === null
+        ? 'new'
+        : sameMetadata(item, currentMetadata)
+          ? 'unchanged'
+          : 'conflict'
+    return { tag: item.tag, incoming: item, current: currentMetadata, state }
+  })
+}
+
+export function filterVisionClipCollectionTagMetadataImport(
+  metadata: readonly VisionClipCollectionTagMetadata[],
+  decisions: Readonly<Record<string, VisionClipCollectionTagMetadataImportDecision>> = {}
+): VisionClipCollectionTagMetadata[] {
+  return metadata.filter((item) => decisions[item.tag] !== 'keep-local' && decisions[item.tag] !== 'skip')
 }

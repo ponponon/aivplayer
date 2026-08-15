@@ -534,6 +534,31 @@ export type VisionClipCollectionTagMetadataTransferResult = {
   skippedCount?: number
 }
 
+export type VisionClipCollectionTagMetadataImportDecision = 'overwrite' | 'keep-local' | 'skip'
+
+export type VisionClipCollectionTagMetadataImportPreviewState = 'new' | 'unchanged' | 'conflict' | 'unused'
+
+export type VisionClipCollectionTagMetadataImportPreviewItem = {
+  tag: string
+  incoming: VisionClipCollectionTagMetadata
+  current: VisionClipCollectionTagMetadata | null
+  state: VisionClipCollectionTagMetadataImportPreviewState
+}
+
+export type VisionClipCollectionTagMetadataImportPreviewResult = {
+  success: boolean
+  message: string
+  canceled?: boolean
+  filePath?: string
+  metadata?: VisionClipCollectionTagMetadata[]
+  preview?: VisionClipCollectionTagMetadataImportPreviewItem[]
+}
+
+export type VisionClipCollectionTagMetadataImportApplyRequest = {
+  metadata: VisionClipCollectionTagMetadata[]
+  decisions?: Record<string, VisionClipCollectionTagMetadataImportDecision>
+}
+
 export type VisionClipCollectionTagOperationType = 'cleanup' | 'rename' | 'metadata' | 'batch'
 
 export type VisionClipCollectionTagOperationHistory = {
