@@ -669,6 +669,46 @@
   white-space: nowrap;
 }
 
+.vision-collection-batch-tags-actions {
+  display: grid;
+  gap: 7px;
+}
+
+.vision-collection-batch-tags-heading,
+.vision-collection-batch-tags-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.vision-collection-batch-tags-heading {
+  color: var(--text-primary);
+  font-size: 11px;
+}
+
+.vision-collection-batch-tags-heading small {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.vision-collection-batch-tags-input {
+  min-width: 180px;
+  flex: 1 1 220px;
+  min-height: 30px;
+  padding: 0 8px;
+  color: var(--text-primary);
+  background: rgba(var(--overlay-rgb), 0.06);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+}
+
+.vision-collection-batch-tags-input:focus {
+  border-color: var(--accent);
+  outline: 0;
+}
+
 .vision-collection-transfer-actions,
 .vision-collection-batch-actions,
 .vision-collection-heading {

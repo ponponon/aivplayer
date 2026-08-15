@@ -1,4 +1,4 @@
-import { Archive, Check, CheckSquare, Copy, Database, Download, FilePlus, ImageUp, Pencil, ScanSearch, Search, Square, Trash2, Upload, X } from 'lucide-react'
+import { Archive, Check, CheckSquare, Copy, Database, Download, FilePlus, ImageUp, Pencil, ScanSearch, Search, Square, Tags, Trash2, Upload, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import type { VisionIndexProgress, VisionRuntimeStatus, VisionSearchResult } from '../../../shared/media-types'
@@ -141,6 +141,8 @@ export function VisionPanel(): React.ReactElement {
   const [collectionRenamePrefix, setCollectionRenamePrefix] = useState('')
   const [collectionRenameSuffix, setCollectionRenameSuffix] = useState('')
   const [isRenamingCollections, setIsRenamingCollections] = useState(false)
+  const [collectionBatchTags, setCollectionBatchTags] = useState('')
+  const [isUpdatingCollectionTags, setIsUpdatingCollectionTags] = useState(false)
   const [editingCollectionId, setEditingCollectionId] = useState<string | null>(null)
   const [editingCollectionTitle, setEditingCollectionTitle] = useState('')
   const [isSavingCollectionTitle, setIsSavingCollectionTitle] = useState(false)
@@ -173,7 +175,7 @@ export function VisionPanel(): React.ReactElement {
   const renameSuffix = normalizeVisionClipCollectionRenamePart(collectionRenameSuffix)
   const hasRenameRule = Boolean(renamePrefix || renameSuffix)
   const renamePreviewCollections = selectedCollectionsForRename.map((collection) => ({ ...collection, title: renameVisionClipCollectionTitle(collection.title, renamePrefix, renameSuffix) }))
-  const isCollectionBatchBusy = isDuplicatingCollections || isExportingCollections || isDeletingCollections || isRenamingCollections || isSavingCollectionTitle || isSavingCollectionTags || editingCollectionId !== null || editingCollectionTagsId !== null || duplicatingCollectionId !== null
+  const isCollectionBatchBusy = isDuplicatingCollections || isExportingCollections || isDeletingCollections || isRenamingCollections || isUpdatingCollectionTags || isSavingCollectionTitle || isSavingCollectionTags || editingCollectionId !== null || editingCollectionTagsId !== null || duplicatingCollectionId !== null
   const vectorIndexLabel = status?.vectorIndexType
     ? app.copy.vision.vectorIndex(status.vectorIndexType, status.vectorIndexDistanceType ?? '—', status.vectorIndexIndexedRows, status.vectorIndexUnindexedRows)
     : app.copy.vision.exactVectorSearch
@@ -1037,6 +1039,27 @@ export function VisionPanel(): React.ReactElement {
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setIsRenamingCollections(false))
   }
 
+  const updateSelectedCollectionsTags = (): void => {
+    if (isCollectionBatchBusy || selectedCollectionIds.size === 0) return
+    const collectionIds = [...selectedCollectionIds]
+    const tags = normalizeVisionCollectionTags(collectionBatchTags)
+    const tagLabel = tags.length > 0 ? tags.join(' · ') : app.copy.vision.collectionTagsBatchEmpty
+    if (!window.confirm(app.copy.vision.collectionsTagsConfirm(collectionIds.length, tagLabel))) return
+    setIsUpdatingCollectionTags(true)
+    setError(null)
+    void window.aiv.updateVisionClipCollectionsTags({ collectionIds, tags }).then((result) => {
+      if (!result.success) {
+        setError(result.message)
+        return
+      }
+      const updatedById = new Map(result.collections.map((collection) => [collection.id, collection]))
+      setCollections((current) => current.map((collection) => updatedById.get(collection.id) ?? collection))
+      setSelectedCollectionIds(new Set())
+      setCollectionBatchTags('')
+      setCollectionTransferStatus(result.message || app.copy.vision.collectionsTagsUpdated(result.collections.length, result.skippedCount))
+    }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setIsUpdatingCollectionTags(false))
+  }
+
   const repairCollection = async (collection: VisionClipCollection): Promise<void> => {
     if (repairingCollectionId) return
     setRepairingCollectionId(collection.id)
@@ -1209,6 +1232,7 @@ export function VisionPanel(): React.ReactElement {
     <VisionSearchResults copy={app.copy.vision} results={results} thumbnailUrls={thumbnailUrls} onOpenResult={openResult} onFindSimilar={findSimilarResult} onDetectObjects={detectObjects} isDetectingObjects={isDetectingObjects} isSimilarSearch={searchContext?.kind === 'similar'} onReturnToSearch={returnToSearchResults} selectedIds={selectedResultIds} onToggleSelection={toggleResultSelection} onSelectAllResults={selectAllSearchResults} onClearResults={clearSearchResultSelection} hasMoreResults={hasMoreSearchResults} isLoadingMore={isLoadingMoreSearchResults} onLoadMoreResults={loadMoreSearchResults} onExportResults={exportSearchResults} onExportAllResults={exportAllSearchResults} canExportAllResults={searchContext !== null && results.length > 0} sortMode={searchSortMode} onSortModeChange={changeSearchSortMode} />
     {searchExportStatus ? <small className="vision-saved-search-status vision-search-export-status" role="status">{searchExportStatus}</small> : null}
     {objectDetectionResult ? <VisionObjectDetectionResultView copy={app.copy.vision} result={objectDetectionResult} thumbnailUrl={objectDetectionThumbnailUrl} filter={objectDetectionFilter} onFilterChange={setObjectDetectionFilter} onClear={() => { setObjectDetectionResult(null); setObjectDetectionThumbnailUrl(null) }} /> : null}
+    {selectedCollectionIds.size > 0 ? <div className="vision-card vision-collection-batch-tags-actions"><div className="vision-collection-batch-tags-heading"><strong>{app.copy.vision.selectedCollections(selectedCollectionIds.size)}</strong><small>{app.copy.vision.collectionTagsBatchPlaceholder}</small></div><div className="vision-collection-batch-tags-controls"><input className="vision-collection-batch-tags-input" value={collectionBatchTags} maxLength={800} onChange={(event) => setCollectionBatchTags(event.target.value)} placeholder={app.copy.vision.collectionTagsBatchPlaceholder} aria-label={app.copy.vision.collectionTagsBatchPlaceholder} disabled={isCollectionBatchBusy} /><button className="vision-primary-action" type="button" onClick={updateSelectedCollectionsTags} disabled={isCollectionBatchBusy}><Tags size={13} />{app.copy.vision.updateSelectedCollectionTags}</button></div></div> : null}
     <section className="vision-card vision-collections"><div className="vision-collections-heading"><strong>{app.copy.vision.savedCollections}</strong><div className="vision-collection-transfer-actions">{collections.length > 0 ? <button className="vision-secondary-action" type="button" onClick={toggleAllCollectionSelection} disabled={isCollectionBatchBusy}>{allCollectionsSelected ? <Square size={12} /> : <CheckSquare size={12} />}{allCollectionsSelected ? app.copy.vision.collectionClearSelection : app.copy.vision.collectionSelectAll}</button> : null}<button className="vision-secondary-action" type="button" onClick={importCollection} disabled={isCollectionBatchBusy}><Upload size={12} />{app.copy.vision.collectionImport}</button><Archive size={15} /></div></div>{collections.length > 0 ? <div className="vision-collection-filter-bar"><input className="vision-collection-filter-input" value={collectionFilterQuery} onChange={(event) => setCollectionFilterQuery(event.target.value)} placeholder={app.copy.vision.collectionFilterPlaceholder} aria-label={app.copy.vision.collectionFilterPlaceholder} disabled={isCollectionBatchBusy} /><select className="vision-collection-filter-tag" value={collectionFilterTag} onChange={(event) => setCollectionFilterTag(event.target.value)} aria-label={app.copy.vision.collectionFilterTagLabel} disabled={isCollectionBatchBusy}><option value="">{app.copy.vision.collectionFilterTagAll}</option>{collectionFilterTags.map((tag) => <option key={tag} value={tag}>{tag}</option>)}</select>{hasCollectionFilter ? <button className="vision-secondary-action" type="button" onClick={() => { setCollectionFilterQuery(''); setCollectionFilterTag('') }} disabled={isCollectionBatchBusy}>{app.copy.vision.collectionFilterClear}</button> : null}<span className="vision-collection-filter-summary" role="status">{app.copy.vision.collectionFilterSummary(visibleCollections.length, collections.length)}</span></div> : null}{selectedCollectionIds.size > 0 ? <div className="vision-collection-batch-actions"><span>{app.copy.vision.selectedCollections(selectedCollectionIds.size)}</span><input className="vision-collection-rename-input" value={collectionRenamePrefix} maxLength={40} onChange={(event) => setCollectionRenamePrefix(event.target.value)} placeholder={app.copy.vision.collectionRenamePrefixPlaceholder} aria-label={app.copy.vision.collectionRenamePrefixPlaceholder} disabled={isCollectionBatchBusy} /><input className="vision-collection-rename-input" value={collectionRenameSuffix} maxLength={40} onChange={(event) => setCollectionRenameSuffix(event.target.value)} placeholder={app.copy.vision.collectionRenameSuffixPlaceholder} aria-label={app.copy.vision.collectionRenameSuffixPlaceholder} disabled={isCollectionBatchBusy} />{hasRenameRule ? <div className="vision-collection-rename-preview" role="status"><span>{app.copy.vision.collectionRenamePreview}</span>{renamePreviewCollections.slice(0, 3).map((collection) => <small key={collection.id}>{collection.title}</small>)}{renamePreviewCollections.length > 3 ? <small>{app.copy.vision.collectionRenamePreviewMore(renamePreviewCollections.length - 3)}</small> : null}</div> : null}<button className="vision-secondary-action" type="button" onClick={renameSelectedCollections} disabled={isCollectionBatchBusy || !hasRenameRule}>{app.copy.vision.renameSelectedCollections}</button><button className="vision-primary-action" type="button" onClick={() => void duplicateSelectedCollections()} disabled={isCollectionBatchBusy}><Copy size={13} />{app.copy.vision.duplicateSelectedCollections}</button><button className="vision-secondary-action" type="button" onClick={exportSelectedCollections} disabled={isCollectionBatchBusy}><Download size={12} />{app.copy.vision.exportSelectedCollections}</button><button className="vision-secondary-action vision-collection-batch-delete" type="button" onClick={deleteSelectedCollections} disabled={isCollectionBatchBusy}><Trash2 size={13} />{app.copy.vision.deleteSelectedCollections}</button></div> : null}{collections.length > 0 ? (visibleCollections.length > 0 ? visibleCollections.map((collection) => {
       const availability = collectionAvailability[collection.id]
       const isRepairing = repairingCollectionId === collection.id
