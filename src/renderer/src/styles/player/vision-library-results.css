@@ -748,7 +748,7 @@
 .vision-collection-tag-manager-heading-copy {
   display: grid;
   min-width: 0;
-  flex: 1;
+  flex: 1 1 100%;
   gap: 2px;
 }
 
@@ -757,7 +757,7 @@
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 4px;
-  margin-left: auto;
+  margin-left: 0;
 }
 
 .vision-collection-tag-manager-heading small,
