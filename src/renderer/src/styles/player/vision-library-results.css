@@ -878,6 +878,13 @@
   cursor: pointer;
 }
 
+.vision-collection-tag-manager-item span {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .vision-collection-tag-manager-item small {
   min-width: 16px;
   padding: 1px 4px;

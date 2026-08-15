@@ -35,6 +35,13 @@ describe('vision clip collection tag manager UI wiring', () => {
     expect(panel).toContain('saveCollectionTagMetadata')
   })
 
+  it('shows multi-level paths and filters parent candidates that would create cycles', () => {
+    expect(panel).toContain('getVisionCollectionTagPath')
+    expect(panel).toContain("path.join(' / ')")
+    expect(panel).toContain('wouldCreateVisionCollectionTagParentCycle')
+    expect(panel).toContain('collectionTagParentOptions')
+  })
+
   it('exposes the latest tag operation for undo', () => {
     expect(panel).toContain('lastCollectionTagOperation')
     expect(panel).toContain('window.aiv.getVisionClipCollectionTagOperationHistory')
@@ -54,6 +61,8 @@ describe('vision clip collection tag manager UI wiring', () => {
     expect(panel).toContain('vision-collection-tag-manager-undo')
     expect(styles).toContain('.vision-collection-tag-manager')
     expect(styles).toContain('.vision-collection-tag-manager-input')
+    expect(styles).toContain('.vision-collection-tag-manager-item span')
+    expect(styles).toContain('text-overflow: ellipsis')
     expect(styles).toContain('.vision-collection-tag-manager-metadata')
     expect(styles).toContain(".vision-collection-tag-manager-metadata-controls input[type='color']")
     expect(styles).toContain('.vision-collection-tag-manager-undo')
