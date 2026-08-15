@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyVisionCollectionTags, duplicateVisionCollectionTitle, getVisionCollectionTagPath, invertVisionClipSelections, normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTag, normalizeVisionCollectionTagColor, normalizeVisionCollectionTags, normalizeVisionCollectionTagsMode, renameVisionCollectionTag, renameVisionClipCollectionTitle, sortVisionClipSelections, wouldCreateVisionCollectionTagParentCycle } from '../../src/core/ai/clip-inbox-operations'
+import { applyVisionCollectionTags, duplicateVisionCollectionTitle, getVisionCollectionTagPath, invertVisionClipSelections, normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTag, normalizeVisionCollectionTagColor, normalizeVisionCollectionTagFavorite, normalizeVisionCollectionTagNote, normalizeVisionCollectionTags, normalizeVisionCollectionTagsMode, renameVisionCollectionTag, renameVisionClipCollectionTitle, sortVisionClipSelections, wouldCreateVisionCollectionTagParentCycle } from '../../src/core/ai/clip-inbox-operations'
 import type { VisionClipSelection } from '../../src/shared/vision-types'
 
 const selection = (patch: Partial<VisionClipSelection> = {}): VisionClipSelection => ({
@@ -51,13 +51,17 @@ describe('clip inbox operations', () => {
     expect(renameVisionCollectionTag(['海边'], '海边', '海边')).toEqual(['海边'])
     expect(normalizeVisionCollectionTagColor(' #AABBcc ')).toBe('#aabbcc')
     expect(normalizeVisionCollectionTagColor('rgba(0,0,0,.5)')).toBe('')
+    expect(normalizeVisionCollectionTagNote('  重点\r\n说明  ')).toBe('重点\n说明')
+    expect(normalizeVisionCollectionTagNote('x'.repeat(300))).toHaveLength(240)
+    expect(normalizeVisionCollectionTagFavorite(1)).toBe(true)
+    expect(normalizeVisionCollectionTagFavorite('true')).toBe(false)
   })
 
   it('builds parent paths and rejects cyclic parent assignments', () => {
     const metadata = [
-      { tag: '项目', parentTag: '', color: '', textColor: '', updatedAt: 1 },
-      { tag: '访谈', parentTag: '项目', color: '', textColor: '', updatedAt: 2 },
-      { tag: '海边', parentTag: '访谈', color: '', textColor: '', updatedAt: 3 }
+      { tag: '项目', parentTag: '', color: '', textColor: '', note: '', isFavorite: false, updatedAt: 1 },
+      { tag: '访谈', parentTag: '项目', color: '', textColor: '', note: '', isFavorite: false, updatedAt: 2 },
+      { tag: '海边', parentTag: '访谈', color: '', textColor: '', note: '', isFavorite: false, updatedAt: 3 }
     ]
     expect(wouldCreateVisionCollectionTagParentCycle('项目', '海边', metadata)).toBe(true)
     expect(wouldCreateVisionCollectionTagParentCycle('海边', '项目', metadata)).toBe(false)

@@ -3,7 +3,7 @@ import { mkdirSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { mergeVisionClipSelections, normalizeVisionTimeRange } from './vision-evidence'
-import { applyVisionCollectionTags, duplicateVisionCollectionTitle, normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionSortMode, normalizeVisionCollectionTag, normalizeVisionCollectionTagColor, normalizeVisionCollectionTags, normalizeVisionCollectionTagsMode, renameVisionCollectionTag, renameVisionClipCollectionTitle, sortVisionClipSelections, wouldCreateVisionCollectionTagParentCycle } from './clip-inbox-operations'
+import { applyVisionCollectionTags, duplicateVisionCollectionTitle, normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionSortMode, normalizeVisionCollectionTag, normalizeVisionCollectionTagColor, normalizeVisionCollectionTagFavorite, normalizeVisionCollectionTagNote, normalizeVisionCollectionTags, normalizeVisionCollectionTagsMode, renameVisionCollectionTag, renameVisionClipCollectionTitle, sortVisionClipSelections, wouldCreateVisionCollectionTagParentCycle } from './clip-inbox-operations'
 import type { VisionClipCollection, VisionClipCollectionBatchDeleteResult, VisionClipCollectionBatchRenameResult, VisionClipCollectionBatchTagsResult, VisionClipCollectionInput, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataUpdateRequest, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationType, VisionClipCollectionTagUndoResult, VisionClipSelection, VisionEvidenceType } from '../../shared/vision-types'
 
 type SqliteRow = Record<string, unknown>
@@ -127,6 +127,8 @@ export class ClipInboxStore {
         parent_tag TEXT NOT NULL DEFAULT '',
         color TEXT NOT NULL DEFAULT '',
         text_color TEXT NOT NULL DEFAULT '',
+        note TEXT NOT NULL DEFAULT '',
+        is_favorite INTEGER NOT NULL DEFAULT 0,
         updated_at INTEGER NOT NULL
       );
       CREATE TABLE IF NOT EXISTS clip_tag_operation_history (
@@ -140,6 +142,8 @@ export class ClipInboxStore {
     `)
     this.ensureCollectionColumn('tags_json', "TEXT NOT NULL DEFAULT '[]'")
     this.ensureCollectionColumn('sort_mode', "TEXT NOT NULL DEFAULT 'source-time'")
+    this.ensureTagMetadataColumn('note', "TEXT NOT NULL DEFAULT ''")
+    this.ensureTagMetadataColumn('is_favorite', 'INTEGER NOT NULL DEFAULT 0')
   }
 
   close(): void {
@@ -152,24 +156,24 @@ export class ClipInboxStore {
   }
 
   listTagMetadata(): VisionClipCollectionTagMetadata[] {
-    const rows = this.database.prepare('SELECT tag, parent_tag, color, text_color, updated_at FROM clip_tag_metadata ORDER BY tag COLLATE NOCASE ASC').all() as SqliteRow[]
+    const rows = this.database.prepare('SELECT tag, parent_tag, color, text_color, note, is_favorite, updated_at FROM clip_tag_metadata ORDER BY tag COLLATE NOCASE ASC').all() as SqliteRow[]
     return rows.map((row) => this.readTagMetadata(row)).filter((metadata): metadata is VisionClipCollectionTagMetadata => metadata !== null)
   }
 
   getTagMetadata(tag: unknown): VisionClipCollectionTagMetadata | null {
     const normalizedTag = normalizeVisionCollectionTag(tag)
     if (!normalizedTag) return null
-    const row = this.database.prepare('SELECT tag, parent_tag, color, text_color, updated_at FROM clip_tag_metadata WHERE tag = ?').get(normalizedTag) as SqliteRow | undefined
+    const row = this.database.prepare('SELECT tag, parent_tag, color, text_color, note, is_favorite, updated_at FROM clip_tag_metadata WHERE tag = ?').get(normalizedTag) as SqliteRow | undefined
     return row ? this.readTagMetadata(row) : null
   }
 
   getLastTagOperation(): VisionClipCollectionTagOperationHistory | null {
-    const row = this.database.prepare('SELECT id, operation_type, created_at FROM clip_tag_operation_history WHERE undone_at IS NULL ORDER BY created_at DESC, id DESC LIMIT 1').get() as SqliteRow | undefined
+    const row = this.database.prepare('SELECT id, operation_type, created_at FROM clip_tag_operation_history WHERE undone_at IS NULL ORDER BY rowid DESC LIMIT 1').get() as SqliteRow | undefined
     return row ? this.readTagOperationHistory(row) : null
   }
 
   undoLastTagOperation(): VisionClipCollectionTagUndoResult {
-    const row = this.database.prepare('SELECT id, operation_type, snapshot_json, created_at FROM clip_tag_operation_history WHERE undone_at IS NULL ORDER BY created_at DESC, id DESC LIMIT 1').get() as SqliteRow | undefined
+    const row = this.database.prepare('SELECT id, operation_type, snapshot_json, created_at FROM clip_tag_operation_history WHERE undone_at IS NULL ORDER BY rowid DESC LIMIT 1').get() as SqliteRow | undefined
     if (!row) return { success: false, message: '没有可撤销的标签操作', operation: null, collections: [], metadata: [] }
     const operation = this.readTagOperationHistory(row)
     const snapshot = this.parseTagOperationSnapshot(row.snapshot_json)
@@ -184,8 +188,8 @@ export class ClipInboxStore {
         const placeholders = metadataTags.map(() => '?').join(', ')
         this.database.prepare(`DELETE FROM clip_tag_metadata WHERE tag IN (${placeholders})`).run(...metadataTags)
       }
-      const insertMetadata = this.database.prepare('INSERT INTO clip_tag_metadata (tag, parent_tag, color, text_color, updated_at) VALUES (?, ?, ?, ?, ?)')
-      for (const metadata of snapshot.metadata) insertMetadata.run(metadata.tag, metadata.parentTag, metadata.color, metadata.textColor, metadata.updatedAt)
+      const insertMetadata = this.database.prepare('INSERT INTO clip_tag_metadata (tag, parent_tag, color, text_color, note, is_favorite, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      for (const metadata of snapshot.metadata) insertMetadata.run(metadata.tag, metadata.parentTag, metadata.color, metadata.textColor, metadata.note, metadata.isFavorite ? 1 : 0, metadata.updatedAt)
       this.database.prepare('UPDATE clip_tag_operation_history SET undone_at = ? WHERE id = ?').run(now, operation.id)
       this.database.exec('COMMIT')
       const collections = snapshot.collectionTags.map((item) => this.getCollection(item.id)).filter((collection): collection is VisionClipCollection => collection !== null)
@@ -206,14 +210,16 @@ export class ClipInboxStore {
     if (wouldCreateVisionCollectionTagParentCycle(tag, parentTag, this.listTagMetadata())) throw new Error('标签父级关系不能形成环路')
     const color = input?.color === undefined ? existing?.color ?? '' : normalizeVisionCollectionTagColor(input.color)
     const textColor = input?.textColor === undefined ? existing?.textColor ?? '' : normalizeVisionCollectionTagColor(input.textColor)
+    const note = input?.note === undefined ? existing?.note ?? '' : normalizeVisionCollectionTagNote(input.note)
+    const isFavorite = input?.isFavorite === undefined || input?.isFavorite === null ? existing?.isFavorite ?? false : normalizeVisionCollectionTagFavorite(input.isFavorite)
     const now = Date.now()
     const snapshot: TagOperationSnapshot = { collectionTags: [], metadataTags: [tag], metadata: existing ? [existing] : [] }
     this.database.exec('BEGIN')
     try {
       this.database.prepare(`
-        INSERT INTO clip_tag_metadata (tag, parent_tag, color, text_color, updated_at) VALUES (?, ?, ?, ?, ?)
-        ON CONFLICT(tag) DO UPDATE SET parent_tag = excluded.parent_tag, color = excluded.color, text_color = excluded.text_color, updated_at = excluded.updated_at
-      `).run(tag, parentTag, color, textColor, now)
+        INSERT INTO clip_tag_metadata (tag, parent_tag, color, text_color, note, is_favorite, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(tag) DO UPDATE SET parent_tag = excluded.parent_tag, color = excluded.color, text_color = excluded.text_color, note = excluded.note, is_favorite = excluded.is_favorite, updated_at = excluded.updated_at
+      `).run(tag, parentTag, color, textColor, note, isFavorite ? 1 : 0, now)
       this.recordTagOperation('metadata', snapshot, now)
       this.database.exec('COMMIT')
     } catch (error) {
@@ -417,11 +423,14 @@ export class ClipInboxStore {
           now,
           normalizedToTag
         )
+        this.database.prepare('UPDATE clip_tag_metadata SET note = ?, is_favorite = ?, updated_at = ? WHERE tag = ?').run(targetMetadata.note || oldMetadata.note, targetMetadata.isFavorite || oldMetadata.isFavorite ? 1 : 0, now, normalizedToTag)
         this.database.prepare('DELETE FROM clip_tag_metadata WHERE tag = ?').run(normalizedFromTag)
       } else if (oldMetadata) {
-        this.database.prepare('UPDATE clip_tag_metadata SET tag = ?, parent_tag = ?, updated_at = ? WHERE tag = ?').run(
+        this.database.prepare('UPDATE clip_tag_metadata SET tag = ?, parent_tag = ?, note = ?, is_favorite = ?, updated_at = ? WHERE tag = ?').run(
           normalizedToTag,
           oldMetadata.parentTag === normalizedFromTag ? '' : oldMetadata.parentTag,
+          oldMetadata.note,
+          oldMetadata.isFavorite ? 1 : 0,
           now,
           normalizedFromTag
         )
@@ -467,6 +476,8 @@ export class ClipInboxStore {
       parentTag: normalizeVisionCollectionTag(row.parent_tag),
       color: normalizeVisionCollectionTagColor(row.color),
       textColor: normalizeVisionCollectionTagColor(row.text_color),
+      note: normalizeVisionCollectionTagNote(row.note),
+      isFavorite: normalizeVisionCollectionTagFavorite(row.is_favorite),
       updatedAt: numberValue(row, 'updated_at')
     }
   }
@@ -482,7 +493,7 @@ export class ClipInboxStore {
 
   private recordTagOperation(type: VisionClipCollectionTagOperationType, snapshot: TagOperationSnapshot, createdAt: number): void {
     this.database.prepare('INSERT INTO clip_tag_operation_history (id, operation_type, snapshot_json, created_at) VALUES (?, ?, ?, ?)').run(randomUUID(), type, JSON.stringify(snapshot), createdAt)
-    this.database.exec('DELETE FROM clip_tag_operation_history WHERE id NOT IN (SELECT id FROM clip_tag_operation_history ORDER BY created_at DESC, id DESC LIMIT 20)')
+    this.database.exec('DELETE FROM clip_tag_operation_history WHERE id NOT IN (SELECT id FROM clip_tag_operation_history ORDER BY rowid DESC LIMIT 20)')
   }
 
   private parseTagOperationSnapshot(value: unknown): TagOperationSnapshot | null {
@@ -496,7 +507,7 @@ export class ClipInboxStore {
         const candidate = item as Partial<VisionClipCollectionTagMetadata>
         const tag = normalizeVisionCollectionTag(candidate.tag)
         if (!tag || typeof candidate.updatedAt !== 'number') return null
-        return { tag, parentTag: normalizeVisionCollectionTag(candidate.parentTag), color: normalizeVisionCollectionTagColor(candidate.color), textColor: normalizeVisionCollectionTagColor(candidate.textColor), updatedAt: candidate.updatedAt }
+        return { tag, parentTag: normalizeVisionCollectionTag(candidate.parentTag), color: normalizeVisionCollectionTagColor(candidate.color), textColor: normalizeVisionCollectionTagColor(candidate.textColor), note: normalizeVisionCollectionTagNote(candidate.note), isFavorite: normalizeVisionCollectionTagFavorite(candidate.isFavorite), updatedAt: candidate.updatedAt }
       }).filter((item): item is VisionClipCollectionTagMetadata => item !== null)
       const metadataTags = parsed.metadataTags.filter((tag): tag is string => typeof tag === 'string' && Boolean(normalizeVisionCollectionTag(tag))).map((tag) => normalizeVisionCollectionTag(tag))
       return { collectionTags, metadataTags, metadata }
@@ -516,5 +527,11 @@ export class ClipInboxStore {
     const columns = this.database.prepare('PRAGMA table_info(clip_collections)').all() as SqliteRow[]
     if (columns.some((column) => stringValue(column, 'name') === name)) return
     this.database.exec(`ALTER TABLE clip_collections ADD COLUMN ${name} ${definition}`)
+  }
+
+  private ensureTagMetadataColumn(name: 'note' | 'is_favorite', definition: string): void {
+    const columns = this.database.prepare('PRAGMA table_info(clip_tag_metadata)').all() as SqliteRow[]
+    if (columns.some((column) => stringValue(column, 'name') === name)) return
+    this.database.exec(`ALTER TABLE clip_tag_metadata ADD COLUMN ${name} ${definition}`)
   }
 }

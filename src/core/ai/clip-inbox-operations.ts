@@ -3,6 +3,7 @@ import type { VisionClipCollectionBatchTagsMode, VisionClipCollectionSortMode, V
 
 const MAX_COLLECTION_TAGS = 20
 const MAX_COLLECTION_TAG_LENGTH = 40
+export const MAX_VISION_COLLECTION_TAG_NOTE_LENGTH = 240
 export const MAX_CLIP_COLLECTION_BATCH_DUPLICATES = 20
 export const MAX_CLIP_COLLECTION_RENAME_PART_LENGTH = 40
 const MAX_CLIP_COLLECTION_TITLE_LENGTH = 200
@@ -48,6 +49,15 @@ export function normalizeVisionCollectionTagColor(value: unknown): string {
   if (typeof value !== 'string') return ''
   const color = value.trim().toLowerCase()
   return /^#[0-9a-f]{6}$/.test(color) ? color : ''
+}
+
+export function normalizeVisionCollectionTagNote(value: unknown): string {
+  if (typeof value !== 'string') return ''
+  return value.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim().slice(0, MAX_VISION_COLLECTION_TAG_NOTE_LENGTH)
+}
+
+export function normalizeVisionCollectionTagFavorite(value: unknown): boolean {
+  return value === true || value === 1 || value === '1'
 }
 
 export function wouldCreateVisionCollectionTagParentCycle(tag: unknown, parentTag: unknown, metadata: readonly VisionClipCollectionTagMetadata[]): boolean {

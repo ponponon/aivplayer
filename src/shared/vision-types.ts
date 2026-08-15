@@ -504,6 +504,8 @@ export type VisionClipCollectionTagMetadata = {
   parentTag: string
   color: string
   textColor: string
+  note: string
+  isFavorite: boolean
   updatedAt: number
 }
 
@@ -512,6 +514,8 @@ export type VisionClipCollectionTagMetadataUpdateRequest = {
   parentTag?: string | null
   color?: string | null
   textColor?: string | null
+  note?: string | null
+  isFavorite?: boolean | null
 }
 
 export type VisionClipCollectionTagMetadataUpdateResult = {

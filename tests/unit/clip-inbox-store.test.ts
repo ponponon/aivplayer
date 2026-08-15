@@ -191,19 +191,19 @@ describe('clip inbox store', () => {
   it('persists tag metadata and migrates it with a renamed tag', () => {
     const source = store.saveCollection({ title: '样式标签源', tags: ['海边', '采访'], selections: [selection()] })
     const target = store.saveCollection({ title: '样式标签目标', tags: ['访谈'], selections: [selection({ startSeconds: 4, endSeconds: 6 })] })
-    const sourceMetadata = store.saveTagMetadata({ tag: '海边', parentTag: '采访', color: '#AABBCC', textColor: '#101010' })
-    const targetMetadata = store.saveTagMetadata({ tag: '访谈', color: '#112233' })
+    const sourceMetadata = store.saveTagMetadata({ tag: '海边', parentTag: '采访', color: '#AABBCC', textColor: '#101010', note: '源标签重点', isFavorite: true })
+    const targetMetadata = store.saveTagMetadata({ tag: '访谈', color: '#112233', note: '目标标签说明' })
 
-    expect(sourceMetadata).toMatchObject({ tag: '海边', parentTag: '采访', color: '#aabbcc', textColor: '#101010' })
-    expect(targetMetadata).toMatchObject({ tag: '访谈', color: '#112233', textColor: '' })
+    expect(sourceMetadata).toMatchObject({ tag: '海边', parentTag: '采访', color: '#aabbcc', textColor: '#101010', note: '源标签重点', isFavorite: true })
+    expect(targetMetadata).toMatchObject({ tag: '访谈', color: '#112233', textColor: '', note: '目标标签说明', isFavorite: false })
     const renamed = store.renameTagAcrossCollections('海边', '访谈')
     expect(renamed.collections.map((collection) => collection.id)).toEqual([source.id])
     expect(store.getTagMetadata('海边')).toBeNull()
-    expect(store.getTagMetadata('访谈')).toMatchObject({ tag: '访谈', color: '#112233', textColor: '#101010' })
+    expect(store.getTagMetadata('访谈')).toMatchObject({ tag: '访谈', color: '#112233', textColor: '#101010', note: '目标标签说明', isFavorite: true })
 
     store.close()
     store = new ClipInboxStore(tempDirectory)
-    expect(store.listTagMetadata()).toEqual([expect.objectContaining({ tag: '访谈', color: '#112233', textColor: '#101010' })])
+    expect(store.listTagMetadata()).toEqual([expect.objectContaining({ tag: '访谈', color: '#112233', textColor: '#101010', note: '目标标签说明', isFavorite: true })])
     expect(store.getCollection(target.id)?.tags).toEqual(['访谈'])
   })
 
