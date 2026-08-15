@@ -4,10 +4,17 @@ import { dirname, join, resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { mergeVisionClipSelections, normalizeVisionTimeRange } from './vision-evidence'
 import { applyVisionCollectionTags, duplicateVisionCollectionTitle, normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionSortMode, normalizeVisionCollectionTag, normalizeVisionCollectionTagColor, normalizeVisionCollectionTags, normalizeVisionCollectionTagsMode, renameVisionCollectionTag, renameVisionClipCollectionTitle, sortVisionClipSelections } from './clip-inbox-operations'
-import type { VisionClipCollection, VisionClipCollectionBatchDeleteResult, VisionClipCollectionBatchRenameResult, VisionClipCollectionBatchTagsResult, VisionClipCollectionInput, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataUpdateRequest, VisionClipSelection, VisionEvidenceType } from '../../shared/vision-types'
+import type { VisionClipCollection, VisionClipCollectionBatchDeleteResult, VisionClipCollectionBatchRenameResult, VisionClipCollectionBatchTagsResult, VisionClipCollectionInput, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataUpdateRequest, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationType, VisionClipCollectionTagUndoResult, VisionClipSelection, VisionEvidenceType } from '../../shared/vision-types'
 
 type SqliteRow = Record<string, unknown>
 const EVIDENCE_TYPES: readonly VisionEvidenceType[] = ['subtitle', 'visual', 'scene', 'ocr', 'entity', 'object']
+const TAG_OPERATION_TYPES: readonly VisionClipCollectionTagOperationType[] = ['cleanup', 'rename', 'metadata']
+
+type TagOperationSnapshot = {
+  collectionTags: Array<{ id: string; tags: string[]; updatedAt: number }>
+  metadataTags: string[]
+  metadata: VisionClipCollectionTagMetadata[]
+}
 
 export function getClipInboxDatabasePath(userDataPath: string): string {
   return join(userDataPath, 'library', 'clip-inbox.sqlite')
@@ -122,6 +129,14 @@ export class ClipInboxStore {
         text_color TEXT NOT NULL DEFAULT '',
         updated_at INTEGER NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS clip_tag_operation_history (
+        id TEXT PRIMARY KEY,
+        operation_type TEXT NOT NULL,
+        snapshot_json TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        undone_at INTEGER
+      );
+      CREATE INDEX IF NOT EXISTS clip_tag_operation_history_latest ON clip_tag_operation_history(undone_at, created_at DESC);
     `)
     this.ensureCollectionColumn('tags_json', "TEXT NOT NULL DEFAULT '[]'")
     this.ensureCollectionColumn('sort_mode', "TEXT NOT NULL DEFAULT 'source-time'")
@@ -148,6 +163,39 @@ export class ClipInboxStore {
     return row ? this.readTagMetadata(row) : null
   }
 
+  getLastTagOperation(): VisionClipCollectionTagOperationHistory | null {
+    const row = this.database.prepare('SELECT id, operation_type, created_at FROM clip_tag_operation_history WHERE undone_at IS NULL ORDER BY created_at DESC, id DESC LIMIT 1').get() as SqliteRow | undefined
+    return row ? this.readTagOperationHistory(row) : null
+  }
+
+  undoLastTagOperation(): VisionClipCollectionTagUndoResult {
+    const row = this.database.prepare('SELECT id, operation_type, snapshot_json, created_at FROM clip_tag_operation_history WHERE undone_at IS NULL ORDER BY created_at DESC, id DESC LIMIT 1').get() as SqliteRow | undefined
+    if (!row) return { success: false, message: '没有可撤销的标签操作', operation: null, collections: [], metadata: [] }
+    const operation = this.readTagOperationHistory(row)
+    const snapshot = this.parseTagOperationSnapshot(row.snapshot_json)
+    if (!operation || !snapshot) return { success: false, message: '标签操作记录已损坏', operation: null, collections: [], metadata: [] }
+    const now = Date.now()
+    this.database.exec('BEGIN')
+    try {
+      const updateCollection = this.database.prepare('UPDATE clip_collections SET tags_json = ?, updated_at = ? WHERE id = ?')
+      for (const collection of snapshot.collectionTags) updateCollection.run(JSON.stringify(collection.tags), collection.updatedAt, collection.id)
+      const metadataTags = snapshot.metadataTags
+      if (metadataTags.length > 0) {
+        const placeholders = metadataTags.map(() => '?').join(', ')
+        this.database.prepare(`DELETE FROM clip_tag_metadata WHERE tag IN (${placeholders})`).run(...metadataTags)
+      }
+      const insertMetadata = this.database.prepare('INSERT INTO clip_tag_metadata (tag, parent_tag, color, text_color, updated_at) VALUES (?, ?, ?, ?, ?)')
+      for (const metadata of snapshot.metadata) insertMetadata.run(metadata.tag, metadata.parentTag, metadata.color, metadata.textColor, metadata.updatedAt)
+      this.database.prepare('UPDATE clip_tag_operation_history SET undone_at = ? WHERE id = ?').run(now, operation.id)
+      this.database.exec('COMMIT')
+      const collections = snapshot.collectionTags.map((item) => this.getCollection(item.id)).filter((collection): collection is VisionClipCollection => collection !== null)
+      return { success: true, message: '已撤销上次标签操作', operation, collections, metadata: this.listTagMetadata() }
+    } catch (error) {
+      this.database.exec('ROLLBACK')
+      throw error
+    }
+  }
+
   saveTagMetadata(input: VisionClipCollectionTagMetadataUpdateRequest): VisionClipCollectionTagMetadata {
     const tag = normalizeVisionCollectionTag(input?.tag)
     if (!tag) throw new Error('标签名称无效')
@@ -158,10 +206,19 @@ export class ClipInboxStore {
     const color = input?.color === undefined ? existing?.color ?? '' : normalizeVisionCollectionTagColor(input.color)
     const textColor = input?.textColor === undefined ? existing?.textColor ?? '' : normalizeVisionCollectionTagColor(input.textColor)
     const now = Date.now()
-    this.database.prepare(`
-      INSERT INTO clip_tag_metadata (tag, parent_tag, color, text_color, updated_at) VALUES (?, ?, ?, ?, ?)
-      ON CONFLICT(tag) DO UPDATE SET parent_tag = excluded.parent_tag, color = excluded.color, text_color = excluded.text_color, updated_at = excluded.updated_at
-    `).run(tag, parentTag, color, textColor, now)
+    const snapshot: TagOperationSnapshot = { collectionTags: [], metadataTags: [tag], metadata: existing ? [existing] : [] }
+    this.database.exec('BEGIN')
+    try {
+      this.database.prepare(`
+        INSERT INTO clip_tag_metadata (tag, parent_tag, color, text_color, updated_at) VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(tag) DO UPDATE SET parent_tag = excluded.parent_tag, color = excluded.color, text_color = excluded.text_color, updated_at = excluded.updated_at
+      `).run(tag, parentTag, color, textColor, now)
+      this.recordTagOperation('metadata', snapshot, now)
+      this.database.exec('COMMIT')
+    } catch (error) {
+      this.database.exec('ROLLBACK')
+      throw error
+    }
     return this.getTagMetadata(tag) as VisionClipCollectionTagMetadata
   }
 
@@ -305,9 +362,10 @@ export class ClipInboxStore {
   removeTagFromAllCollections(tag: unknown): { tag: string; collections: VisionClipCollection[] } {
     const normalizedTag = normalizeVisionCollectionTag(tag)
     if (!normalizedTag) return { tag: '', collections: [] }
-    const rows = this.database.prepare('SELECT id, tags_json FROM clip_collections').all() as SqliteRow[]
+    const rows = this.database.prepare('SELECT id, tags_json, updated_at FROM clip_collections').all() as SqliteRow[]
     const matchingRows = rows.filter((row) => normalizeVisionCollectionTags(parseJsonArray(row.tags_json)).includes(normalizedTag))
     if (matchingRows.length === 0) return { tag: normalizedTag, collections: [] }
+    const snapshot = this.createTagOperationSnapshot(matchingRows, [normalizedTag])
     this.database.exec('BEGIN')
     try {
       const now = Date.now()
@@ -319,6 +377,7 @@ export class ClipInboxStore {
       }
       this.database.prepare('DELETE FROM clip_tag_metadata WHERE tag = ?').run(normalizedTag)
       this.database.prepare('UPDATE clip_tag_metadata SET parent_tag = \'\', updated_at = ? WHERE parent_tag = ?').run(now, normalizedTag)
+      this.recordTagOperation('cleanup', snapshot, now)
       this.database.exec('COMMIT')
       const collections = matchingRows.map((row) => this.getCollection(stringValue(row, 'id'))).filter((collection): collection is VisionClipCollection => collection !== null)
       return { tag: normalizedTag, collections }
@@ -332,9 +391,10 @@ export class ClipInboxStore {
     const normalizedFromTag = normalizeVisionCollectionTag(fromTag)
     const normalizedToTag = normalizeVisionCollectionTag(toTag)
     if (!normalizedFromTag || !normalizedToTag || normalizedFromTag === normalizedToTag) return { fromTag: normalizedFromTag, toTag: normalizedToTag, collections: [] }
-    const rows = this.database.prepare('SELECT id, tags_json FROM clip_collections').all() as SqliteRow[]
+    const rows = this.database.prepare('SELECT id, tags_json, updated_at FROM clip_collections').all() as SqliteRow[]
     const matchingRows = rows.filter((row) => normalizeVisionCollectionTags(parseJsonArray(row.tags_json)).includes(normalizedFromTag))
     if (matchingRows.length === 0) return { fromTag: normalizedFromTag, toTag: normalizedToTag, collections: [] }
+    const snapshot = this.createTagOperationSnapshot(matchingRows, [normalizedFromTag, normalizedToTag])
     this.database.exec('BEGIN')
     try {
       const now = Date.now()
@@ -364,6 +424,7 @@ export class ClipInboxStore {
         )
       }
       this.database.prepare('UPDATE clip_tag_metadata SET parent_tag = ?, updated_at = ? WHERE parent_tag = ? AND tag <> ?').run(normalizedToTag, now, normalizedFromTag, normalizedToTag)
+      this.recordTagOperation('rename', snapshot, now)
       this.database.exec('COMMIT')
       const collections = matchingRows.map((row) => this.getCollection(stringValue(row, 'id'))).filter((collection): collection is VisionClipCollection => collection !== null)
       return { fromTag: normalizedFromTag, toTag: normalizedToTag, collections }
@@ -405,6 +466,47 @@ export class ClipInboxStore {
       textColor: normalizeVisionCollectionTagColor(row.text_color),
       updatedAt: numberValue(row, 'updated_at')
     }
+  }
+
+  private createTagOperationSnapshot(rows: readonly SqliteRow[], additionalMetadataTags: readonly string[] = []): TagOperationSnapshot {
+    const metadata = this.listTagMetadata()
+    return {
+      collectionTags: rows.map((row) => ({ id: stringValue(row, 'id'), tags: normalizeVisionCollectionTags(parseJsonArray(row.tags_json)), updatedAt: numberValue(row, 'updated_at') })).filter((item) => Boolean(item.id)),
+      metadataTags: [...new Set([...metadata.map((item) => item.tag), ...additionalMetadataTags.map((tag) => normalizeVisionCollectionTag(tag)).filter(Boolean)])],
+      metadata
+    }
+  }
+
+  private recordTagOperation(type: VisionClipCollectionTagOperationType, snapshot: TagOperationSnapshot, createdAt: number): void {
+    this.database.prepare('INSERT INTO clip_tag_operation_history (id, operation_type, snapshot_json, created_at) VALUES (?, ?, ?, ?)').run(randomUUID(), type, JSON.stringify(snapshot), createdAt)
+    this.database.exec('DELETE FROM clip_tag_operation_history WHERE id NOT IN (SELECT id FROM clip_tag_operation_history ORDER BY created_at DESC, id DESC LIMIT 20)')
+  }
+
+  private parseTagOperationSnapshot(value: unknown): TagOperationSnapshot | null {
+    if (typeof value !== 'string' || !value.trim()) return null
+    try {
+      const parsed = JSON.parse(value) as Partial<TagOperationSnapshot>
+      if (!Array.isArray(parsed.collectionTags) || !Array.isArray(parsed.metadataTags) || !Array.isArray(parsed.metadata)) return null
+      const collectionTags = parsed.collectionTags.filter((item): item is TagOperationSnapshot['collectionTags'][number] => Boolean(item && typeof item === 'object' && typeof item.id === 'string' && Array.isArray(item.tags) && typeof item.updatedAt === 'number')).map((item) => ({ id: item.id, tags: normalizeVisionCollectionTags(item.tags), updatedAt: item.updatedAt }))
+      const metadata = parsed.metadata.map((item) => {
+        if (!item || typeof item !== 'object') return null
+        const candidate = item as Partial<VisionClipCollectionTagMetadata>
+        const tag = normalizeVisionCollectionTag(candidate.tag)
+        if (!tag || typeof candidate.updatedAt !== 'number') return null
+        return { tag, parentTag: normalizeVisionCollectionTag(candidate.parentTag), color: normalizeVisionCollectionTagColor(candidate.color), textColor: normalizeVisionCollectionTagColor(candidate.textColor), updatedAt: candidate.updatedAt }
+      }).filter((item): item is VisionClipCollectionTagMetadata => item !== null)
+      const metadataTags = parsed.metadataTags.filter((tag): tag is string => typeof tag === 'string' && Boolean(normalizeVisionCollectionTag(tag))).map((tag) => normalizeVisionCollectionTag(tag))
+      return { collectionTags, metadataTags, metadata }
+    } catch {
+      return null
+    }
+  }
+
+  private readTagOperationHistory(row: SqliteRow): VisionClipCollectionTagOperationHistory | null {
+    const id = stringValue(row, 'id')
+    const type = stringValue(row, 'operation_type')
+    if (!id || !TAG_OPERATION_TYPES.includes(type as VisionClipCollectionTagOperationType)) return null
+    return { id, type: type as VisionClipCollectionTagOperationType, createdAt: numberValue(row, 'created_at') }
   }
 
   private ensureCollectionColumn(name: 'tags_json' | 'sort_mode', definition: string): void {

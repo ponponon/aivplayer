@@ -202,6 +202,43 @@ describe('clip inbox store', () => {
     expect(store.getTagMetadata('子')).toMatchObject({ tag: '子', parentTag: '' })
   })
 
+  it('undoes cleanup and restores tags plus metadata from a SQLite snapshot', () => {
+    const parent = store.saveCollection({ title: '撤销父标签', tags: ['父'], selections: [selection()] })
+    const child = store.saveCollection({ title: '撤销子标签', tags: ['子'], selections: [selection({ startSeconds: 4, endSeconds: 6 })] })
+    store.saveTagMetadata({ tag: '父', color: '#123456' })
+    store.saveTagMetadata({ tag: '子', parentTag: '父', color: '#654321' })
+
+    store.removeTagFromAllCollections('父')
+    expect(store.getLastTagOperation()).toMatchObject({ type: 'cleanup' })
+    const undone = store.undoLastTagOperation()
+
+    expect(undone).toMatchObject({ success: true, operation: expect.objectContaining({ type: 'cleanup' }) })
+    expect(store.getCollection(parent.id)?.tags).toEqual(['父'])
+    expect(store.getCollection(child.id)?.tags).toEqual(['子'])
+    expect(store.getTagMetadata('父')).toMatchObject({ color: '#123456' })
+    expect(store.getTagMetadata('子')).toMatchObject({ parentTag: '父', color: '#654321' })
+    expect(store.getLastTagOperation()).toMatchObject({ type: 'metadata' })
+  })
+
+  it('undoes tag rename and metadata updates in reverse chronological order', () => {
+    const source = store.saveCollection({ title: '撤销重命名', tags: ['海边'], selections: [selection()] })
+    store.saveTagMetadata({ tag: '海边', color: '#aabbcc' })
+    store.renameTagAcrossCollections('海边', '访谈')
+    expect(store.getLastTagOperation()).toMatchObject({ type: 'rename' })
+
+    const renamedUndo = store.undoLastTagOperation()
+    expect(renamedUndo.success).toBe(true)
+    expect(store.getCollection(source.id)?.tags).toEqual(['海边'])
+    expect(store.getTagMetadata('海边')).toMatchObject({ color: '#aabbcc' })
+    expect(store.getTagMetadata('访谈')).toBeNull()
+
+    const metadata = store.saveTagMetadata({ tag: '海边', color: '#112233' })
+    expect(metadata.color).toBe('#112233')
+    expect(store.getLastTagOperation()).toMatchObject({ type: 'metadata' })
+    expect(store.undoLastTagOperation().success).toBe(true)
+    expect(store.getTagMetadata('海边')).toMatchObject({ color: '#aabbcc' })
+  })
+
   it('duplicates a collection with a new id and independent content', () => {
     const original = store.saveCollection({ title: '待复制', tags: ['旅行'], sortMode: 'duration-desc', selections: [selection()] })
     const duplicate = store.duplicateCollection(original.id)

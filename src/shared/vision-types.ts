@@ -520,6 +520,22 @@ export type VisionClipCollectionTagMetadataUpdateResult = {
   metadata: VisionClipCollectionTagMetadata | null
 }
 
+export type VisionClipCollectionTagOperationType = 'cleanup' | 'rename' | 'metadata'
+
+export type VisionClipCollectionTagOperationHistory = {
+  id: string
+  type: VisionClipCollectionTagOperationType
+  createdAt: number
+}
+
+export type VisionClipCollectionTagUndoResult = {
+  success: boolean
+  message: string
+  operation: VisionClipCollectionTagOperationHistory | null
+  collections: VisionClipCollection[]
+  metadata: VisionClipCollectionTagMetadata[]
+}
+
 export type VisionClipCollectionBatchExportRequest = {
   collectionIds: string[]
 }
