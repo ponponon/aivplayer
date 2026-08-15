@@ -3,13 +3,13 @@ import { createHash, randomUUID } from 'node:crypto'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
-import type { VisionClipCollectionBatchDeleteRequest, VisionClipCollectionBatchDuplicateRequest, VisionClipCollectionBatchExportRequest, VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionEvidenceAuditPage, VisionEvidenceAuditRequest, VisionEvidenceBatchClearResult, VisionEvidenceSourceRequest, VisionEvidenceType, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionModelDownloadResult, VisionPackDownloadResult, VisionSavedSearchInput, VisionSearchFullExportRequest, VisionSearchPageKind, VisionSearchPageRequest, VisionSearchRequest, VisionSearchResult, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchResultsExportRequest, VisionSearchResultsExportResult, VisionSimilarSearchRequest } from '../shared/vision-types'
+import type { VisionClipCollectionBatchDeleteRequest, VisionClipCollectionBatchDuplicateRequest, VisionClipCollectionBatchExportRequest, VisionClipCollectionBatchRenameRequest, VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionEvidenceAuditPage, VisionEvidenceAuditRequest, VisionEvidenceBatchClearResult, VisionEvidenceSourceRequest, VisionEvidenceType, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionModelDownloadResult, VisionPackDownloadResult, VisionSavedSearchInput, VisionSearchFullExportRequest, VisionSearchPageKind, VisionSearchPageRequest, VisionSearchRequest, VisionSearchResult, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchResultsExportRequest, VisionSearchResultsExportResult, VisionSimilarSearchRequest } from '../shared/vision-types'
 import { VISION_SEARCH_FULL_EXPORT_MAX_RESULTS } from '../shared/vision-types'
 import type { VisionEntityCatalogBatchPatch, VisionEntityCatalogCreateInput, VisionEntityCatalogPatch } from '../shared/vision-entity-types'
 import { scanVisionDirectory, isVisionScanAbortError } from '../core/ai/vision-directory-scan'
 import { renderVisionClipCollectionExport, renderVisionClipCollectionsExport } from '../core/ai/clip-inbox-export'
 import { parseVisionClipCollectionImportText, parseVisionClipCollectionsImport } from '../core/ai/clip-inbox-import'
-import { normalizeVisionClipCollectionIds } from '../core/ai/clip-inbox-operations'
+import { normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart } from '../core/ai/clip-inbox-operations'
 import { isVisionSearchExportAbortError, renderVisionSearchResultsExport } from '../core/ai/vision-search-export'
 import { writeVisionSearchResultsExportResumable } from '../core/ai/vision-search-export-resumable'
 import { getVisionSearchExportPartsDirectory } from '../core/ai/vision-search-export-store'
@@ -654,6 +654,20 @@ export function registerVisionIpc(): void {
   ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_BATCH_DELETE, (_event, request: VisionClipCollectionBatchDeleteRequest) => {
     if (!request || !Array.isArray(request.collectionIds)) return { deletedIds: [], deletedCount: 0, skippedCount: 0 }
     return getClipInboxStore().deleteCollections(request.collectionIds)
+  })
+  ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_BATCH_RENAME, (_event, request: VisionClipCollectionBatchRenameRequest) => {
+    const collectionIds = normalizeVisionClipCollectionIds(request?.collectionIds)
+    const prefix = normalizeVisionClipCollectionRenamePart(request?.prefix)
+    const suffix = normalizeVisionClipCollectionRenamePart(request?.suffix)
+    if (collectionIds.length === 0) return { success: false, message: '没有选择要重命名的选段集合', collections: [], skippedCount: 0 }
+    if (!prefix && !suffix) return { success: false, message: '批量重命名规则不能为空', collections: [], skippedCount: 0 }
+    try {
+      const result = getClipInboxStore().renameCollections(collectionIds, prefix, suffix)
+      if (result.collections.length === 0) return { success: false, message: '选中的选段集合均不存在', collections: [], skippedCount: result.skippedCount }
+      return { success: true, message: `已重命名 ${result.collections.length} 个选段集合${result.skippedCount > 0 ? `，跳过 ${result.skippedCount} 个` : ''}`, ...result }
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : String(error), collections: [], skippedCount: 0 }
+    }
   })
   ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_DUPLICATE, (_event, collectionId: string) => {
     if (typeof collectionId !== 'string' || !collectionId.trim()) return null

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { duplicateVisionCollectionTitle, invertVisionClipSelections, normalizeVisionClipCollectionIds, normalizeVisionCollectionTags, sortVisionClipSelections } from '../../src/core/ai/clip-inbox-operations'
+import { duplicateVisionCollectionTitle, invertVisionClipSelections, normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTags, renameVisionClipCollectionTitle, sortVisionClipSelections } from '../../src/core/ai/clip-inbox-operations'
 import type { VisionClipSelection } from '../../src/shared/vision-types'
 
 const selection = (patch: Partial<VisionClipSelection> = {}): VisionClipSelection => ({
@@ -26,6 +26,13 @@ describe('clip inbox operations', () => {
   it('normalizes and caps batch collection ids', () => {
     expect(normalizeVisionClipCollectionIds([' first ', 'first', '', 'second', 3, ' third '])).toEqual(['first', 'second', 'third'])
     expect(normalizeVisionClipCollectionIds(Array.from({ length: 25 }, (_, index) => `collection-${index}`))).toHaveLength(20)
+  })
+
+  it('builds bounded collection titles from prefix and suffix rules', () => {
+    expect(normalizeVisionClipCollectionRenamePart('  项目- '.repeat(20))).toHaveLength(40)
+    expect(renameVisionClipCollectionTitle('  海边片段  ', '旅行 · ', ' · 精选')).toBe('旅行 · 海边片段 · 精选')
+    expect(renameVisionClipCollectionTitle('标题', '前缀', '后缀'.repeat(100))).toHaveLength(44)
+    expect(renameVisionClipCollectionTitle('标题', '  ', undefined)).toBe('标题')
   })
   it('normalizes tags and removes duplicates', () => {
     expect(normalizeVisionCollectionTags(['  海边 ', '海边', '', '旅行', 'a'.repeat(60)])).toEqual(['海边', '旅行', 'a'.repeat(40)])

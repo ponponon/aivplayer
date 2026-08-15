@@ -3,8 +3,8 @@ import { mkdirSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { mergeVisionClipSelections, normalizeVisionTimeRange } from './vision-evidence'
-import { duplicateVisionCollectionTitle, normalizeVisionClipCollectionIds, normalizeVisionCollectionSortMode, normalizeVisionCollectionTags, sortVisionClipSelections } from './clip-inbox-operations'
-import type { VisionClipCollection, VisionClipCollectionBatchDeleteResult, VisionClipCollectionInput, VisionClipSelection, VisionEvidenceType } from '../../shared/vision-types'
+import { duplicateVisionCollectionTitle, normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionSortMode, normalizeVisionCollectionTags, renameVisionClipCollectionTitle, sortVisionClipSelections } from './clip-inbox-operations'
+import type { VisionClipCollection, VisionClipCollectionBatchDeleteResult, VisionClipCollectionBatchRenameResult, VisionClipCollectionInput, VisionClipSelection, VisionEvidenceType } from '../../shared/vision-types'
 
 type SqliteRow = Record<string, unknown>
 const EVIDENCE_TYPES: readonly VisionEvidenceType[] = ['subtitle', 'visual', 'scene', 'ocr', 'entity', 'object']
@@ -208,6 +208,33 @@ export class ClipInboxStore {
       }
       this.database.exec('COMMIT')
       return { deletedIds, deletedCount: deletedIds.length, skippedCount: normalizedIds.length - deletedIds.length }
+    } catch (error) {
+      this.database.exec('ROLLBACK')
+      throw error
+    }
+  }
+
+  renameCollections(collectionIds: readonly string[], prefix: unknown, suffix: unknown): Pick<VisionClipCollectionBatchRenameResult, 'collections' | 'skippedCount'> {
+    const normalizedIds = normalizeVisionClipCollectionIds(collectionIds)
+    const normalizedPrefix = normalizeVisionClipCollectionRenamePart(prefix)
+    const normalizedSuffix = normalizeVisionClipCollectionRenamePart(suffix)
+    if (!normalizedPrefix && !normalizedSuffix) throw new Error('批量重命名规则不能为空')
+    if (normalizedIds.length === 0) return { collections: [], skippedCount: 0 }
+    const placeholders = normalizedIds.map(() => '?').join(', ')
+    this.database.exec('BEGIN')
+    try {
+      const rows = this.database.prepare(`SELECT id, title FROM clip_collections WHERE id IN (${placeholders})`).all(...normalizedIds) as SqliteRow[]
+      const existingIds = new Set(rows.map((row) => stringValue(row, 'id')).filter(Boolean))
+      const now = Date.now()
+      const update = this.database.prepare('UPDATE clip_collections SET title = ?, updated_at = ? WHERE id = ?')
+      for (const row of rows) {
+        const id = stringValue(row, 'id')
+        if (!id) continue
+        update.run(renameVisionClipCollectionTitle(stringValue(row, 'title'), normalizedPrefix, normalizedSuffix), now, id)
+      }
+      this.database.exec('COMMIT')
+      const collections = normalizedIds.filter((id) => existingIds.has(id)).map((id) => this.getCollection(id)).filter((collection): collection is VisionClipCollection => collection !== null)
+      return { collections, skippedCount: normalizedIds.length - collections.length }
     } catch (error) {
       this.database.exec('ROLLBACK')
       throw error

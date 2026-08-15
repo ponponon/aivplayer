@@ -106,6 +106,18 @@ describe('clip inbox store', () => {
     expect(store.getCollection(second.id)).toBeNull()
   })
 
+  it('renames several collections atomically and preserves collection data', () => {
+    const first = store.saveCollection({ title: '旅行一', tags: ['旅行'], sortMode: 'duration-desc', selections: [selection({ startSeconds: 1, endSeconds: 2 })] })
+    const second = store.saveCollection({ title: '旅行二', selections: [selection({ startSeconds: 3, endSeconds: 4 })] })
+    const result = store.renameCollections([first.id, ` ${second.id} `, 'missing'], '2026 · ', ' · 精选')
+
+    expect(result.collections.map((collection) => collection.title)).toEqual(['2026 · 旅行一 · 精选', '2026 · 旅行二 · 精选'])
+    expect(result.collections.map((collection) => collection.id)).toEqual([first.id, second.id])
+    expect(result.collections[0]).toMatchObject({ tags: ['旅行'], sortMode: 'duration-desc', selections: first.selections })
+    expect(result.skippedCount).toBe(1)
+    expect(store.getCollection(first.id)?.updatedAt).toBeGreaterThanOrEqual(first.updatedAt)
+  })
+
   it('duplicates a collection with a new id and independent content', () => {
     const original = store.saveCollection({ title: '待复制', tags: ['旅行'], sortMode: 'duration-desc', selections: [selection()] })
     const duplicate = store.duplicateCollection(original.id)

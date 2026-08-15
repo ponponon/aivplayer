@@ -4,10 +4,23 @@ import type { VisionClipCollectionSortMode, VisionClipSelection } from '../../sh
 const MAX_COLLECTION_TAGS = 20
 const MAX_COLLECTION_TAG_LENGTH = 40
 export const MAX_CLIP_COLLECTION_BATCH_DUPLICATES = 20
+export const MAX_CLIP_COLLECTION_RENAME_PART_LENGTH = 40
+const MAX_CLIP_COLLECTION_TITLE_LENGTH = 200
 
 export function duplicateVisionCollectionTitle(title: string): string {
   const normalizedTitle = title.trim() || '未命名选段集合'
   return `${normalizedTitle} · 副本`
+}
+
+export function normalizeVisionClipCollectionRenamePart(value: unknown): string {
+  if (typeof value !== 'string' || !value.trim()) return ''
+  return value.slice(0, MAX_CLIP_COLLECTION_RENAME_PART_LENGTH)
+}
+
+export function renameVisionClipCollectionTitle(title: string, prefix: unknown, suffix: unknown): string {
+  const normalizedTitle = title.trim() || '未命名选段集合'
+  const renamedTitle = `${normalizeVisionClipCollectionRenamePart(prefix)}${normalizedTitle}${normalizeVisionClipCollectionRenamePart(suffix)}`.trim()
+  return (renamedTitle || normalizedTitle).slice(0, MAX_CLIP_COLLECTION_TITLE_LENGTH)
 }
 
 export function normalizeVisionClipCollectionIds(value: unknown): string[] {
