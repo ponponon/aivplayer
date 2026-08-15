@@ -87,7 +87,7 @@ async function runSmoke(): Promise<void> {
     await tagInput.fill('海边, 采访, 海边,   ')
     const confirmationMessage = await acceptTagConfirmation(page)
     if (!confirmationMessage.includes('2') || !confirmationMessage.includes('海边 · 采访')) throw new Error(`Batch tag confirmation mismatch: ${confirmationMessage}`)
-    await page.getByRole('status').filter({ hasText: '已更新 2 个集合的标签' }).waitFor({ timeout: 10_000 })
+    await page.getByRole('status').filter({ hasText: '已替换标签 2 个集合的标签' }).waitFor({ timeout: 10_000 })
 
     let persisted = await page.evaluate(() => window.aiv.listVisionClipCollections())
     const updated = persisted.filter((collection) => collection.id === originals[0]?.id || collection.id === originals[1]?.id)
@@ -103,26 +103,51 @@ async function runSmoke(): Promise<void> {
     for (const title of titles.slice(0, 2)) {
       await page.getByRole('checkbox', { name: `选择集合：${title}`, exact: true }).check()
     }
-    await page.getByRole('textbox', { name: '批量标签（逗号分隔，留空清空）', exact: true }).fill('   ')
+    await page.getByRole('combobox', { name: '标签批量操作', exact: true }).selectOption({ label: '追加标签' })
+    await page.getByRole('textbox', { name: '输入标签（用逗号分隔）', exact: true }).fill('旅行, 海边')
     await acceptTagConfirmation(page)
-    await page.getByRole('status').filter({ hasText: '已更新 2 个集合的标签' }).waitFor({ timeout: 10_000 })
+    await page.getByRole('status').filter({ hasText: '已追加标签 2 个集合的标签' }).waitFor({ timeout: 10_000 })
+    persisted = await page.evaluate(() => window.aiv.listVisionClipCollections())
+    if (persisted.filter((collection) => collection.id === originals[0]?.id || collection.id === originals[1]?.id).some((collection) => JSON.stringify(collection.tags) !== JSON.stringify(['海边', '采访', '旅行']))) throw new Error(`Batch tag append mismatch: ${JSON.stringify(persisted)}`)
+
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await openVisionPanel(page)
+    for (const title of titles.slice(0, 2)) {
+      await page.getByRole('checkbox', { name: `选择集合：${title}`, exact: true }).check()
+    }
+    await page.getByRole('textbox', { name: '输入标签（用逗号分隔）', exact: true }).fill('   ')
+    await acceptTagConfirmation(page)
+    await page.getByRole('status').filter({ hasText: '已替换标签 2 个集合的标签' }).waitFor({ timeout: 10_000 })
     if (await page.getByText('未设置标签', { exact: true }).count() !== 2) throw new Error('Blank batch tag input should clear the selected collections tags')
     persisted = await page.evaluate(() => window.aiv.listVisionClipCollections())
     if (persisted.find((collection) => collection.id === originals[0]?.id)?.tags.length !== 0 || persisted.find((collection) => collection.id === originals[1]?.id)?.tags.length !== 0 || JSON.stringify(persisted.find((collection) => collection.id === originals[2]?.id)?.tags) !== JSON.stringify(['保留标签'])) throw new Error(`Batch tag clearing mismatch: ${JSON.stringify(persisted)}`)
 
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await openVisionPanel(page)
     await page.getByRole('checkbox', { name: `选择集合：${titles[2]}`, exact: true }).check()
-    await page.getByRole('textbox', { name: '批量标签（逗号分隔，留空清空）', exact: true }).fill('不应保存')
-    const cancelMessage = await dismissTagConfirmation(page)
-    if (!cancelMessage.includes('不应保存') || !(await page.getByRole('checkbox', { name: `选择集合：${titles[2]}`, exact: true }).isChecked())) throw new Error('Cancelling batch tag confirmation should preserve selection and draft input')
+    await page.getByRole('combobox', { name: '标签批量操作', exact: true }).selectOption({ label: '移除标签' })
+    await page.getByRole('textbox', { name: '输入标签（用逗号分隔）', exact: true }).fill('保留标签')
+    await acceptTagConfirmation(page)
+    await page.getByRole('status').filter({ hasText: '已移除标签 1 个集合的标签' }).waitFor({ timeout: 10_000 })
     persisted = await page.evaluate(() => window.aiv.listVisionClipCollections())
-    if (JSON.stringify(persisted.find((collection) => collection.id === originals[2]?.id)?.tags) !== JSON.stringify(['保留标签'])) throw new Error('Cancelling batch tag confirmation should not mutate tags')
+    if (persisted.find((collection) => collection.id === originals[2]?.id)?.tags.length !== 0) throw new Error(`Batch tag remove mismatch: ${JSON.stringify(persisted)}`)
+
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await openVisionPanel(page)
+    await page.getByRole('checkbox', { name: `选择集合：${titles[0]}`, exact: true }).check()
+    await page.getByRole('combobox', { name: '标签批量操作', exact: true }).selectOption({ label: '追加标签' })
+    await page.getByRole('textbox', { name: '输入标签（用逗号分隔）', exact: true }).fill('不应保存')
+    const cancelMessage = await dismissTagConfirmation(page)
+    if (!cancelMessage.includes('不应保存') || !(await page.getByRole('checkbox', { name: `选择集合：${titles[0]}`, exact: true }).isChecked()) || await page.getByRole('textbox', { name: '输入标签（用逗号分隔）', exact: true }).inputValue() !== '不应保存') throw new Error('Cancelling batch tag confirmation should preserve selection and draft input')
+    persisted = await page.evaluate(() => window.aiv.listVisionClipCollections())
+    if (persisted.find((collection) => collection.id === originals[0]?.id)?.tags.length !== 0) throw new Error('Cancelling batch tag confirmation should not mutate tags')
 
     if (screenshotPath) {
       await page.locator('.vision-collection-batch-tags-actions').scrollIntoViewIfNeeded()
       await page.screenshot({ path: screenshotPath, fullPage: false })
     }
     if (session.errors.length > 0) throw new Error(`Renderer errors during clip collection batch tags smoke:\n${session.errors.join('\n')}`)
-    console.log(`AIVPlayer Smoke Vision Clip Collection Batch Tags passed: ${JSON.stringify({ originalCount: originals.length, updatedCount: 2, normalized: true, cleared: true, cancelled: true, metadataPreserved: true, screenshotPath: screenshotPath ?? null })}`)
+    console.log(`AIVPlayer Smoke Vision Clip Collection Batch Tags passed: ${JSON.stringify({ originalCount: originals.length, updatedCount: 2, normalized: true, appended: true, cleared: true, removed: true, cancelled: true, metadataPreserved: true, screenshotPath: screenshotPath ?? null })}`)
   } finally {
     if (app) await app.close().catch(() => undefined)
     await rm(userDataDirectory, { recursive: true, force: true }).catch(() => undefined)
