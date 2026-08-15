@@ -143,6 +143,20 @@ describe('clip inbox store', () => {
     expect(removed?.tags).toEqual(['海边', '旅行'])
   })
 
+  it('cleans one tag from every matching collection in one transaction', () => {
+    const first = store.saveCollection({ title: '清理标签一', tags: ['海边', '采访'], selections: [selection({ evidenceIds: ['cleanup-one'] })] })
+    const second = store.saveCollection({ title: '清理标签二', tags: ['海边'], selections: [selection({ startSeconds: 4, endSeconds: 6, evidenceIds: ['cleanup-two'] })] })
+    const untouched = store.saveCollection({ title: '清理标签三', tags: ['室内'], selections: [selection({ startSeconds: 7, endSeconds: 9, evidenceIds: ['cleanup-three'] })] })
+
+    const result = store.removeTagFromAllCollections(' 海边 ')
+    expect(result.tag).toBe('海边')
+    expect(result.collections.map((collection) => collection.id)).toEqual([first.id, second.id])
+    expect(result.collections[0]).toMatchObject({ tags: ['采访'], title: first.title, sortMode: first.sortMode, selections: first.selections })
+    expect(result.collections[1]?.tags).toEqual([])
+    expect(store.getCollection(untouched.id)?.tags).toEqual(['室内'])
+    expect(store.removeTagFromAllCollections('不存在').collections).toEqual([])
+  })
+
   it('duplicates a collection with a new id and independent content', () => {
     const original = store.saveCollection({ title: '待复制', tags: ['旅行'], sortMode: 'duration-desc', selections: [selection()] })
     const duplicate = store.duplicateCollection(original.id)

@@ -473,6 +473,18 @@ export type VisionClipCollectionBatchTagsResult = {
   skippedCount: number
 }
 
+export type VisionClipCollectionTagCleanupRequest = {
+  tag: string
+}
+
+export type VisionClipCollectionTagCleanupResult = {
+  success: boolean
+  message: string
+  tag: string
+  collections: VisionClipCollection[]
+  updatedCount: number
+}
+
 export type VisionClipCollectionBatchExportRequest = {
   collectionIds: string[]
 }

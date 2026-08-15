@@ -39,6 +39,11 @@ export function normalizeVisionCollectionTags(value: unknown): string[] {
     .filter(Boolean))].slice(0, MAX_COLLECTION_TAGS)
 }
 
+export function normalizeVisionCollectionTag(value: unknown): string {
+  const tags = normalizeVisionCollectionTags(value)
+  return tags.length === 1 ? tags[0] ?? '' : ''
+}
+
 export function normalizeVisionCollectionTagsMode(value: unknown): VisionClipCollectionBatchTagsMode {
   return value === 'add' || value === 'remove' ? value : 'replace'
 }

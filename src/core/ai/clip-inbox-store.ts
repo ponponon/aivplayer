@@ -3,7 +3,7 @@ import { mkdirSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { mergeVisionClipSelections, normalizeVisionTimeRange } from './vision-evidence'
-import { applyVisionCollectionTags, duplicateVisionCollectionTitle, normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionSortMode, normalizeVisionCollectionTags, normalizeVisionCollectionTagsMode, renameVisionClipCollectionTitle, sortVisionClipSelections } from './clip-inbox-operations'
+import { applyVisionCollectionTags, duplicateVisionCollectionTitle, normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionSortMode, normalizeVisionCollectionTag, normalizeVisionCollectionTags, normalizeVisionCollectionTagsMode, renameVisionClipCollectionTitle, sortVisionClipSelections } from './clip-inbox-operations'
 import type { VisionClipCollection, VisionClipCollectionBatchDeleteResult, VisionClipCollectionBatchRenameResult, VisionClipCollectionBatchTagsResult, VisionClipCollectionInput, VisionClipSelection, VisionEvidenceType } from '../../shared/vision-types'
 
 type SqliteRow = Record<string, unknown>
@@ -260,6 +260,30 @@ export class ClipInboxStore {
       this.database.exec('COMMIT')
       const collections = normalizedIds.filter((id) => existingIds.has(id)).map((id) => this.getCollection(id)).filter((collection): collection is VisionClipCollection => collection !== null)
       return { collections, skippedCount: normalizedIds.length - collections.length }
+    } catch (error) {
+      this.database.exec('ROLLBACK')
+      throw error
+    }
+  }
+
+  removeTagFromAllCollections(tag: unknown): { tag: string; collections: VisionClipCollection[] } {
+    const normalizedTag = normalizeVisionCollectionTag(tag)
+    if (!normalizedTag) return { tag: '', collections: [] }
+    const rows = this.database.prepare('SELECT id, tags_json FROM clip_collections').all() as SqliteRow[]
+    const matchingRows = rows.filter((row) => normalizeVisionCollectionTags(parseJsonArray(row.tags_json)).includes(normalizedTag))
+    if (matchingRows.length === 0) return { tag: normalizedTag, collections: [] }
+    this.database.exec('BEGIN')
+    try {
+      const now = Date.now()
+      const update = this.database.prepare('UPDATE clip_collections SET tags_json = ?, updated_at = ? WHERE id = ?')
+      for (const row of matchingRows) {
+        const id = stringValue(row, 'id')
+        const tags = normalizeVisionCollectionTags(parseJsonArray(row.tags_json)).filter((currentTag) => currentTag !== normalizedTag)
+        if (id) update.run(JSON.stringify(tags), now, id)
+      }
+      this.database.exec('COMMIT')
+      const collections = matchingRows.map((row) => this.getCollection(stringValue(row, 'id'))).filter((collection): collection is VisionClipCollection => collection !== null)
+      return { tag: normalizedTag, collections }
     } catch (error) {
       this.database.exec('ROLLBACK')
       throw error
