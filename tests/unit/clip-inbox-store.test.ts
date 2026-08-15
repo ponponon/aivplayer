@@ -207,6 +207,40 @@ describe('clip inbox store', () => {
     expect(store.getCollection(target.id)?.tags).toEqual(['访谈'])
   })
 
+  it('imports tag metadata only for existing tags and makes it undoable', () => {
+    const source = store.saveCollection({ title: '导入元数据源', tags: ['海边', '项目'], selections: [selection()] })
+    store.saveCollection({ title: '导入元数据采访', tags: ['采访'], selections: [selection({ startSeconds: 4, endSeconds: 6 })] })
+    store.saveTagMetadata({ tag: '海边', color: '#000000', note: '旧备注' })
+
+    const result = store.importTagMetadata([
+      { tag: '海边', parentTag: '项目', color: '#AABBCC', textColor: '#101010', note: '新备注', isFavorite: true, updatedAt: 0 },
+      { tag: '采访', parentTag: '', color: '', textColor: '', note: '采访备注', isFavorite: false, updatedAt: 0 },
+      { tag: '不存在', parentTag: '', color: '', textColor: '', note: '跳过', isFavorite: true, updatedAt: 0 }
+    ])
+
+    expect(result).toMatchObject({ importedCount: 2, skippedCount: 1 })
+    expect(store.getTagMetadata('海边')).toMatchObject({ parentTag: '项目', color: '#aabbcc', textColor: '#101010', note: '新备注', isFavorite: true })
+    expect(store.getTagMetadata('采访')).toMatchObject({ note: '采访备注' })
+    expect(store.getTagMetadata('不存在')).toBeNull()
+    expect(store.getCollection(source.id)?.tags).toEqual(['海边', '项目'])
+    expect(store.getLastTagOperation()).toMatchObject({ type: 'metadata' })
+
+    expect(store.undoLastTagOperation().success).toBe(true)
+    expect(store.getTagMetadata('海边')).toMatchObject({ color: '#000000', note: '旧备注' })
+    expect(store.getTagMetadata('采访')).toBeNull()
+  })
+
+  it('rejects imported parent metadata that creates a cycle', () => {
+    store.saveCollection({ title: '导入环路项目', tags: ['项目'], selections: [selection()] })
+    store.saveCollection({ title: '导入环路海边', tags: ['海边'], selections: [selection({ startSeconds: 4, endSeconds: 6 })] })
+
+    expect(() => store.importTagMetadata([
+      { tag: '项目', parentTag: '海边', color: '', textColor: '', note: '', isFavorite: false, updatedAt: 0 },
+      { tag: '海边', parentTag: '项目', color: '', textColor: '', note: '', isFavorite: false, updatedAt: 0 }
+    ])).toThrow('环路')
+    expect(store.listTagMetadata()).toEqual([])
+  })
+
   it('rejects a tag parent assignment that closes a hierarchy cycle', () => {
     store.saveCollection({ title: '层级项目', tags: ['项目'], selections: [selection()] })
     store.saveCollection({ title: '层级访谈', tags: ['访谈'], selections: [selection({ startSeconds: 4, endSeconds: 6 })] })

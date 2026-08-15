@@ -446,6 +446,57 @@ export class ClipInboxStore {
     }
   }
 
+  importTagMetadata(metadata: readonly VisionClipCollectionTagMetadata[]): { importedCount: number; skippedCount: number; metadata: VisionClipCollectionTagMetadata[] } {
+    const availableTags = new Set(this.listCollections().flatMap((collection) => collection.tags))
+    const normalizedMetadata = metadata.map((item) => ({
+      tag: normalizeVisionCollectionTag(item.tag),
+      parentTag: normalizeVisionCollectionTag(item.parentTag),
+      color: normalizeVisionCollectionTagColor(item.color),
+      textColor: normalizeVisionCollectionTagColor(item.textColor),
+      note: normalizeVisionCollectionTagNote(item.note),
+      isFavorite: normalizeVisionCollectionTagFavorite(item.isFavorite),
+      updatedAt: item.updatedAt
+    }))
+    const seenTags = new Set<string>()
+    for (const item of normalizedMetadata) {
+      if (!item.tag) throw new Error('导入标签元数据包含无效标签')
+      if (seenTags.has(item.tag)) throw new Error(`导入标签元数据包含重复标签：${item.tag}`)
+      seenTags.add(item.tag)
+    }
+    const importable = normalizedMetadata
+      .filter((item) => availableTags.has(item.tag))
+      .map((item) => ({ ...item, parentTag: availableTags.has(item.parentTag) && item.parentTag !== item.tag ? item.parentTag : '' }))
+    const existingByTag = new Map(this.listTagMetadata().map((item) => [item.tag, item]))
+    const projectedMetadata = [
+      ...existingByTag.values().filter((item) => !importable.some((candidate) => candidate.tag === item.tag)),
+      ...importable
+    ]
+    for (const item of importable) {
+      if (wouldCreateVisionCollectionTagParentCycle(item.tag, item.parentTag, projectedMetadata)) throw new Error(`导入标签元数据包含父标签环路：${item.tag}`)
+    }
+    if (importable.length === 0) return { importedCount: 0, skippedCount: normalizedMetadata.length, metadata: this.listTagMetadata() }
+    const snapshot: TagOperationSnapshot = {
+      collectionTags: [],
+      metadataTags: importable.map((item) => item.tag),
+      metadata: importable.map((item) => existingByTag.get(item.tag)).filter((item): item is VisionClipCollectionTagMetadata => item !== undefined)
+    }
+    const now = Date.now()
+    this.database.exec('BEGIN')
+    try {
+      const upsert = this.database.prepare(`
+        INSERT INTO clip_tag_metadata (tag, parent_tag, color, text_color, note, is_favorite, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(tag) DO UPDATE SET parent_tag = excluded.parent_tag, color = excluded.color, text_color = excluded.text_color, note = excluded.note, is_favorite = excluded.is_favorite, updated_at = excluded.updated_at
+      `)
+      for (const item of importable) upsert.run(item.tag, item.parentTag, item.color, item.textColor, item.note, item.isFavorite ? 1 : 0, now)
+      this.recordTagOperation('metadata', snapshot, now)
+      this.database.exec('COMMIT')
+    } catch (error) {
+      this.database.exec('ROLLBACK')
+      throw error
+    }
+    return { importedCount: importable.length, skippedCount: normalizedMetadata.length - importable.length, metadata: this.listTagMetadata() }
+  }
+
   deleteCollection(collectionId: string): boolean {
     const result = this.database.prepare('DELETE FROM clip_collections WHERE id = ?').run(collectionId)
     return Number(result.changes) > 0
