@@ -769,6 +769,67 @@
   outline: 0;
 }
 
+.vision-collection-tag-manager-metadata {
+  display: grid;
+  gap: 6px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.vision-collection-tag-manager-metadata-heading,
+.vision-collection-tag-manager-metadata-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.vision-collection-tag-manager-metadata-heading {
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+.vision-collection-tag-manager-metadata-heading small {
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.vision-collection-tag-manager-metadata-controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.vision-collection-tag-manager-metadata-controls select {
+  min-width: 100px;
+  min-height: 26px;
+  padding: 0 6px;
+  color: var(--text-primary);
+  background: rgba(var(--overlay-rgb), 0.06);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  font-size: 9px;
+}
+
+.vision-collection-tag-manager-metadata-controls input[type='color'] {
+  width: 28px;
+  height: 20px;
+  padding: 1px;
+  border: 1px solid var(--border-soft);
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.vision-collection-tag-manager-metadata-controls select:focus,
+.vision-collection-tag-manager-metadata-controls input[type='color']:focus-visible {
+  border-color: var(--accent);
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+
 .vision-collection-tag-manager-list {
   display: flex;
   flex-wrap: wrap;

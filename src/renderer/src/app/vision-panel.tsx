@@ -4,7 +4,7 @@ import type { KeyboardEvent } from 'react'
 import type { VisionIndexProgress, VisionRuntimeStatus, VisionSearchResult } from '../../../shared/media-types'
 import type { AsrSubtitleResult } from '../../../shared/media-types'
 import type { MediaEvidenceDraftImportResult } from '../../../shared/evidence-task-types'
-import type { VisionClipCollection, VisionClipCollectionBatchTagsMode, VisionClipCollectionExportFormat, VisionClipCollectionSortMode, VisionEvidenceType, VisionIndexFailureRecord, VisionLibrarySource, VisionModelDownloadProgress, VisionSavedSearch, VisionSearchFullExportRequest, VisionSearchPageRequest, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchSortMode } from '../../../shared/vision-types'
+import type { VisionClipCollection, VisionClipCollectionBatchTagsMode, VisionClipCollectionExportFormat, VisionClipCollectionSortMode, VisionClipCollectionTagMetadata, VisionEvidenceType, VisionIndexFailureRecord, VisionLibrarySource, VisionModelDownloadProgress, VisionSavedSearch, VisionSearchFullExportRequest, VisionSearchPageRequest, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchSortMode } from '../../../shared/vision-types'
 import type { LocaleCopy } from '../../../shared/i18n'
 import type { VisionObjectDetectionFilterState, VisionObjectDetectionResult } from '../../../shared/vision-object-detection-types'
 import { invertVisionClipSelections, mergeVisionCollectionSelections, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTag, normalizeVisionCollectionTags, renameVisionClipCollectionTitle } from '../../../core/ai/clip-inbox-operations'
@@ -30,6 +30,8 @@ import { VisionEvidenceSources } from './vision-evidence-sources'
 import type { VisionEntityCatalog as VisionEntityCatalogState, VisionEntityCatalogBatchPatch, VisionEntityCatalogCreateInput, VisionEntityCatalogPatch } from '../../../shared/vision-entity-types'
 
 const VISION_SOURCE_PAGE_SIZE = 100
+const DEFAULT_COLLECTION_TAG_COLOR = '#4f5d75'
+const DEFAULT_COLLECTION_TAG_TEXT_COLOR = '#f4f1e6'
 const VISION_EVIDENCE_TYPE_OPTIONS: readonly VisionEvidenceType[] = ['visual', 'subtitle', 'ocr', 'scene', 'entity', 'object', 'speaker']
 
 type VisionSearchBaseContext =
@@ -148,6 +150,11 @@ export function VisionPanel(): React.ReactElement {
   const [isCleaningCollectionTag, setIsCleaningCollectionTag] = useState(false)
   const [collectionTagRenameTarget, setCollectionTagRenameTarget] = useState('')
   const [isRenamingCollectionTag, setIsRenamingCollectionTag] = useState(false)
+  const [collectionTagMetadata, setCollectionTagMetadata] = useState<VisionClipCollectionTagMetadata[]>([])
+  const [collectionTagParent, setCollectionTagParent] = useState('')
+  const [collectionTagColor, setCollectionTagColor] = useState(DEFAULT_COLLECTION_TAG_COLOR)
+  const [collectionTagTextColor, setCollectionTagTextColor] = useState(DEFAULT_COLLECTION_TAG_TEXT_COLOR)
+  const [isSavingCollectionTagMetadata, setIsSavingCollectionTagMetadata] = useState(false)
   const [editingCollectionId, setEditingCollectionId] = useState<string | null>(null)
   const [editingCollectionTitle, setEditingCollectionTitle] = useState('')
   const [isSavingCollectionTitle, setIsSavingCollectionTitle] = useState(false)
@@ -174,7 +181,9 @@ export function VisionPanel(): React.ReactElement {
     for (const tag of collection.tags) counts.set(tag, (counts.get(tag) ?? 0) + 1)
     return counts
   }, new Map<string, number>())].map(([tag, count]) => ({ tag, count })).sort((left, right) => left.tag.localeCompare(right.tag, undefined, { sensitivity: 'base' }))
+  const collectionTagMetadataByTag = new Map(collectionTagMetadata.map((metadata) => [metadata.tag, metadata]))
   const managedCollectionTag = collectionTagStats.some((item) => item.tag === collectionTagToManage) ? collectionTagToManage : collectionTagStats[0]?.tag ?? ''
+  const managedCollectionTagMetadata = collectionTagMetadataByTag.get(managedCollectionTag)
   const normalizedCollectionTagRenameTarget = normalizeVisionCollectionTag(collectionTagRenameTarget)
   const canRenameCollectionTag = Boolean(managedCollectionTag && normalizedCollectionTagRenameTarget && managedCollectionTag !== normalizedCollectionTagRenameTarget)
   const visibleCollections = collections.filter((collection) => {
@@ -189,7 +198,7 @@ export function VisionPanel(): React.ReactElement {
   const renameSuffix = normalizeVisionClipCollectionRenamePart(collectionRenameSuffix)
   const hasRenameRule = Boolean(renamePrefix || renameSuffix)
   const renamePreviewCollections = selectedCollectionsForRename.map((collection) => ({ ...collection, title: renameVisionClipCollectionTitle(collection.title, renamePrefix, renameSuffix) }))
-  const isCollectionBatchBusy = isDuplicatingCollections || isExportingCollections || isDeletingCollections || isRenamingCollections || isUpdatingCollectionTags || isCleaningCollectionTag || isRenamingCollectionTag || isSavingCollectionTitle || isSavingCollectionTags || editingCollectionId !== null || editingCollectionTagsId !== null || duplicatingCollectionId !== null
+  const isCollectionBatchBusy = isDuplicatingCollections || isExportingCollections || isDeletingCollections || isRenamingCollections || isUpdatingCollectionTags || isCleaningCollectionTag || isRenamingCollectionTag || isSavingCollectionTagMetadata || isSavingCollectionTitle || isSavingCollectionTags || editingCollectionId !== null || editingCollectionTagsId !== null || duplicatingCollectionId !== null
   const vectorIndexLabel = status?.vectorIndexType
     ? app.copy.vision.vectorIndex(status.vectorIndexType, status.vectorIndexDistanceType ?? '—', status.vectorIndexIndexedRows, status.vectorIndexUnindexedRows)
     : app.copy.vision.exactVectorSearch
@@ -198,6 +207,13 @@ export function VisionPanel(): React.ReactElement {
 
   const refreshFailures = (): void => { void window.aiv.listVisionIndexFailures().then(setFailures).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))) }
   const refreshSavedSearches = (): void => { void window.aiv.listVisionSavedSearches().then(setSavedSearches).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))) }
+  const refreshCollectionTagMetadata = (): void => { void window.aiv.listVisionClipCollectionTagMetadata().then(setCollectionTagMetadata).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))) }
+
+  useEffect(() => {
+    setCollectionTagParent(managedCollectionTagMetadata?.parentTag ?? '')
+    setCollectionTagColor(managedCollectionTagMetadata?.color || DEFAULT_COLLECTION_TAG_COLOR)
+    setCollectionTagTextColor(managedCollectionTagMetadata?.textColor || DEFAULT_COLLECTION_TAG_TEXT_COLOR)
+  }, [managedCollectionTag, managedCollectionTagMetadata?.color, managedCollectionTagMetadata?.parentTag, managedCollectionTagMetadata?.textColor])
 
   useEffect(() => {
     let active = true
@@ -224,6 +240,7 @@ export function VisionPanel(): React.ReactElement {
     refreshEntityCatalog()
     refreshFailures()
     refreshSavedSearches()
+    refreshCollectionTagMetadata()
     const statusTimer = window.setInterval(refreshStatus, 5000)
     const removeProgressListener = window.aiv.onVisionIndexProgress((next) => {
       if (!active) return
@@ -1093,6 +1110,7 @@ export function VisionPanel(): React.ReactElement {
       setCollections((current) => current.map((collection) => updatedById.get(collection.id) ?? collection))
       setCollectionTagToManage('')
       if (collectionFilterTag === tag) setCollectionFilterTag('')
+      refreshCollectionTagMetadata()
       setCollectionTransferStatus(result.message)
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setIsCleaningCollectionTag(false))
   }
@@ -1115,8 +1133,23 @@ export function VisionPanel(): React.ReactElement {
       setCollectionTagToManage(toTag)
       setCollectionTagRenameTarget('')
       if (collectionFilterTag === fromTag) setCollectionFilterTag(toTag)
+      refreshCollectionTagMetadata()
       setCollectionTransferStatus(result.message)
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setIsRenamingCollectionTag(false))
+  }
+
+  const saveCollectionTagMetadata = (): void => {
+    if (isCollectionBatchBusy || !managedCollectionTag) return
+    setIsSavingCollectionTagMetadata(true)
+    setError(null)
+    void window.aiv.updateVisionClipCollectionTagMetadata({ tag: managedCollectionTag, parentTag: collectionTagParent, color: collectionTagColor, textColor: collectionTagTextColor }).then((result) => {
+      if (!result.success || !result.metadata) {
+        setError(result.message)
+        return
+      }
+      setCollectionTagMetadata((current) => [...current.filter((metadata) => metadata.tag !== result.metadata?.tag), result.metadata as VisionClipCollectionTagMetadata])
+      setCollectionTransferStatus(result.message)
+    }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setIsSavingCollectionTagMetadata(false))
   }
 
   const repairCollection = async (collection: VisionClipCollection): Promise<void> => {
@@ -1295,13 +1328,22 @@ export function VisionPanel(): React.ReactElement {
       <div className="vision-collection-tag-manager-heading"><strong>{app.copy.vision.collectionTagManagerTitle}</strong><small>{app.copy.vision.collectionTagManagerDescription}</small></div>
       {collectionTagStats.length > 0 ? <>
         <div className="vision-collection-tag-manager-list" role="list" aria-label={app.copy.vision.collectionTagManagerSelectLabel}>
-          {collectionTagStats.map((item) => <button className={`vision-collection-tag-manager-item${managedCollectionTag === item.tag ? ' is-active' : ''}`} key={item.tag} type="button" onClick={() => setCollectionTagToManage(item.tag)} aria-label={app.copy.vision.collectionTagManagerSelectTag(item.tag, item.count)} aria-pressed={managedCollectionTag === item.tag}><span>{item.tag}</span><small>{item.count}</small></button>)}
+          {collectionTagStats.map((item) => { const metadata = collectionTagMetadataByTag.get(item.tag); return <button className={`vision-collection-tag-manager-item${managedCollectionTag === item.tag ? ' is-active' : ''}`} key={item.tag} type="button" onClick={() => setCollectionTagToManage(item.tag)} aria-label={app.copy.vision.collectionTagManagerSelectTag(item.tag, item.count)} aria-pressed={managedCollectionTag === item.tag} style={{ backgroundColor: metadata?.color || undefined, color: metadata?.textColor || undefined }}><span>{metadata?.parentTag ? `↳ ${item.tag}` : item.tag}</span><small>{item.count}</small></button> })}
         </div>
         <div className="vision-collection-tag-manager-controls">
           <span className="vision-collection-tag-manager-selection" role="status">{managedCollectionTag ? app.copy.vision.collectionTagManagerSelectTag(managedCollectionTag, collectionTagStats.find((item) => item.tag === managedCollectionTag)?.count ?? 0) : app.copy.vision.collectionTagManagerSelectionRequired}</span>
           <input className="vision-collection-tag-manager-input" value={collectionTagRenameTarget} maxLength={40} onChange={(event) => setCollectionTagRenameTarget(event.target.value)} placeholder={app.copy.vision.collectionTagManagerRenameInputPlaceholder} aria-label={app.copy.vision.collectionTagManagerRenameInputPlaceholder} disabled={isCollectionBatchBusy} />
           <button className="vision-secondary-action" type="button" onClick={renameCollectionTag} disabled={isCollectionBatchBusy || !canRenameCollectionTag}><Tags size={13} />{app.copy.vision.collectionTagManagerRename}</button>
           <button className="vision-secondary-action vision-collection-batch-delete" type="button" onClick={cleanupCollectionTag} disabled={isCollectionBatchBusy || !managedCollectionTag}><Tags size={13} />{app.copy.vision.collectionTagManagerCleanup}</button>
+        </div>
+        <div className="vision-collection-tag-manager-metadata">
+          <div className="vision-collection-tag-manager-metadata-heading"><strong>{app.copy.vision.collectionTagManagerMetadataTitle}</strong><small>{app.copy.vision.collectionTagManagerMetadataDescription}</small></div>
+          <div className="vision-collection-tag-manager-metadata-controls">
+            <label><span>{app.copy.vision.collectionTagManagerMetadataParentLabel}</span><select value={collectionTagParent} onChange={(event) => setCollectionTagParent(event.target.value)} aria-label={app.copy.vision.collectionTagManagerMetadataParentLabel} disabled={isCollectionBatchBusy}><option value="">{app.copy.vision.collectionTagManagerMetadataParentNone}</option>{collectionTagStats.filter((item) => item.tag !== managedCollectionTag).map((item) => <option key={item.tag} value={item.tag}>{item.tag}</option>)}</select></label>
+            <label><span>{app.copy.vision.collectionTagManagerMetadataColorLabel}</span><input type="color" value={collectionTagColor} onChange={(event) => setCollectionTagColor(event.currentTarget.value)} aria-label={app.copy.vision.collectionTagManagerMetadataColorLabel} disabled={isCollectionBatchBusy} /></label>
+            <label><span>{app.copy.vision.collectionTagManagerMetadataTextColorLabel}</span><input type="color" value={collectionTagTextColor} onChange={(event) => setCollectionTagTextColor(event.currentTarget.value)} aria-label={app.copy.vision.collectionTagManagerMetadataTextColorLabel} disabled={isCollectionBatchBusy} /></label>
+            <button className="vision-secondary-action" type="button" onClick={saveCollectionTagMetadata} disabled={isCollectionBatchBusy || !managedCollectionTag}><Tags size={13} />{app.copy.vision.collectionTagManagerMetadataSave}</button>
+          </div>
         </div>
       </> : <div className="vision-collection-tag-manager-empty">{app.copy.vision.collectionTagManagerEmpty}</div>}
     </div> : null}
