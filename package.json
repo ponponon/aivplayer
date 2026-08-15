@@ -66,6 +66,7 @@
     "smoke:vision-clip-collection-tag-undo": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-collection-tag-undo.ts",
     "smoke:vision-clip-collection-tag-hierarchy": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-collection-tag-hierarchy.ts",
     "smoke:vision-clip-collection-tag-notes": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-collection-tag-notes.ts",
+    "smoke:vision-clip-collection-tag-metadata-transfer": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-collection-tag-metadata-transfer.ts",
     "smoke:vision-clip-collection-tag-filter": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-collection-tag-filter.ts",
     "smoke:vision-clip-collection-tag-sort": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-collection-tag-sort.ts",
     "smoke:vision-clip-collection-tag-note-search": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-collection-tag-note-search.ts",
