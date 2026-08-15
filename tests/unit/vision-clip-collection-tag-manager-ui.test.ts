@@ -41,6 +41,8 @@ describe('vision clip collection tag manager UI wiring', () => {
     expect(panel).toContain('window.aiv.undoVisionClipCollectionTagOperation')
     expect(panel).toContain('undoCollectionTagOperation')
     expect(panel).toContain('collectionTagManagerUndoDescription')
+    expect(panel).toContain('refreshCollectionTagOperation()')
+    expect(panel).toContain('vision-collection-tag-undo-only')
   })
 
   it('keeps tag management accessible and responsive', () => {
@@ -55,6 +57,7 @@ describe('vision clip collection tag manager UI wiring', () => {
     expect(styles).toContain('.vision-collection-tag-manager-metadata')
     expect(styles).toContain(".vision-collection-tag-manager-metadata-controls input[type='color']")
     expect(styles).toContain('.vision-collection-tag-manager-undo')
+    expect(styles).toContain('.vision-collection-tag-undo-only')
     expect(styles).toContain('flex-wrap: wrap')
     expect(styles).toContain(':focus-visible')
   })

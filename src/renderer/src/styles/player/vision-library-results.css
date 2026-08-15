@@ -845,6 +845,19 @@
   font-size: 9px;
 }
 
+.vision-collection-tag-undo-only {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.vision-collection-tag-undo-only small {
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
 .vision-collection-tag-manager-list {
   display: flex;
   flex-wrap: wrap;
