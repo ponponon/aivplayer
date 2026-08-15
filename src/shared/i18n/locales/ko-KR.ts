@@ -549,6 +549,7 @@
       collectionTagManagerRenamed: (fromTag: string, toTag: string, count: number) => `${count}개 컬렉션의 “${fromTag}” 태그를 “${toTag}”(으)로 변경했습니다`,
       collectionTagManagerMetadataTagRequired: '태그 이름이 올바르지 않습니다',
       collectionTagManagerMetadataSelfParent: '태그는 자기 자신의 상위 태그가 될 수 없습니다',
+      collectionTagManagerMetadataCycle: '상위 태그 관계에 순환을 만들 수 없습니다',
       collectionTagManagerMetadataColorInvalid: '색상은 6자리 16진수 값이어야 합니다',
       collectionTagManagerMetadataUpdated: (tag: string) => `“${tag}” 태그 스타일 설정을 저장했습니다`,
       collectionTagManagerMetadataTitle: '태그 스타일 및 계층',

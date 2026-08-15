@@ -549,6 +549,7 @@
       collectionTagManagerRenamed: (fromTag: string, toTag: string, count: number) => `${count} 件のコレクションのタグ「${fromTag}」を「${toTag}」に変更しました`,
       collectionTagManagerMetadataTagRequired: 'タグ名が無効です',
       collectionTagManagerMetadataSelfParent: 'タグを自分自身の親にはできません',
+      collectionTagManagerMetadataCycle: '親タグの関係に循環を作成できません',
       collectionTagManagerMetadataColorInvalid: '色は6桁の16進数で指定してください',
       collectionTagManagerMetadataUpdated: (tag: string) => `タグ「${tag}」のスタイル設定を保存しました`,
       collectionTagManagerMetadataTitle: 'タグのスタイルと階層',

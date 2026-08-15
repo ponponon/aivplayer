@@ -207,6 +207,18 @@ describe('clip inbox store', () => {
     expect(store.getCollection(target.id)?.tags).toEqual(['访谈'])
   })
 
+  it('rejects a tag parent assignment that closes a hierarchy cycle', () => {
+    store.saveCollection({ title: '层级项目', tags: ['项目'], selections: [selection()] })
+    store.saveCollection({ title: '层级访谈', tags: ['访谈'], selections: [selection({ startSeconds: 4, endSeconds: 6 })] })
+    store.saveCollection({ title: '层级海边', tags: ['海边'], selections: [selection({ startSeconds: 7, endSeconds: 9 })] })
+    store.saveTagMetadata({ tag: '项目' })
+    store.saveTagMetadata({ tag: '访谈', parentTag: '项目' })
+    store.saveTagMetadata({ tag: '海边', parentTag: '访谈' })
+
+    expect(() => store.saveTagMetadata({ tag: '项目', parentTag: '海边' })).toThrow('环路')
+    expect(store.getTagMetadata('项目')).toMatchObject({ parentTag: '' })
+  })
+
   it('cleans tag metadata and releases child parent references', () => {
     const parent = store.saveCollection({ title: '父标签', tags: ['父'], selections: [selection()] })
     store.saveCollection({ title: '子标签', tags: ['子'], selections: [selection({ startSeconds: 4, endSeconds: 6 })] })

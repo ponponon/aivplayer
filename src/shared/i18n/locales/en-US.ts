@@ -549,6 +549,7 @@
       collectionTagManagerRenamed: (fromTag: string, toTag: string, count: number) => `Renamed “${fromTag}” to “${toTag}” in ${count} collection${count === 1 ? '' : 's'}`,
       collectionTagManagerMetadataTagRequired: 'The tag name is invalid',
       collectionTagManagerMetadataSelfParent: 'A tag cannot be its own parent',
+      collectionTagManagerMetadataCycle: 'Parent tag relationships cannot form a cycle',
       collectionTagManagerMetadataColorInvalid: 'Colors must be six-digit hexadecimal values',
       collectionTagManagerMetadataUpdated: (tag: string) => `Saved style settings for “${tag}”`,
       collectionTagManagerMetadataTitle: 'Tag style and hierarchy',

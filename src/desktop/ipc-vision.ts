@@ -9,7 +9,7 @@ import type { VisionEntityCatalogBatchPatch, VisionEntityCatalogCreateInput, Vis
 import { scanVisionDirectory, isVisionScanAbortError } from '../core/ai/vision-directory-scan'
 import { renderVisionClipCollectionExport, renderVisionClipCollectionsExport } from '../core/ai/clip-inbox-export'
 import { parseVisionClipCollectionImportText, parseVisionClipCollectionsImport } from '../core/ai/clip-inbox-import'
-import { normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTag, normalizeVisionCollectionTagColor, normalizeVisionCollectionTags, normalizeVisionCollectionTagsMode } from '../core/ai/clip-inbox-operations'
+import { normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTag, normalizeVisionCollectionTagColor, normalizeVisionCollectionTags, normalizeVisionCollectionTagsMode, wouldCreateVisionCollectionTagParentCycle } from '../core/ai/clip-inbox-operations'
 import { isVisionSearchExportAbortError, renderVisionSearchResultsExport } from '../core/ai/vision-search-export'
 import { writeVisionSearchResultsExportResumable } from '../core/ai/vision-search-export-resumable'
 import { getVisionSearchExportPartsDirectory } from '../core/ai/vision-search-export-store'
@@ -727,6 +727,7 @@ export function registerVisionIpc(): void {
     const tag = normalizeVisionCollectionTag(request?.tag)
     if (!tag) return { success: false, message: copy.collectionTagManagerMetadataTagRequired, metadata: null }
     if (request?.parentTag !== undefined && normalizeVisionCollectionTag(request.parentTag) === tag) return { success: false, message: copy.collectionTagManagerMetadataSelfParent, metadata: null }
+    if (request?.parentTag !== undefined && wouldCreateVisionCollectionTagParentCycle(tag, request.parentTag, getClipInboxStore().listTagMetadata())) return { success: false, message: copy.collectionTagManagerMetadataCycle, metadata: null }
     if (request?.color !== undefined && typeof request.color === 'string' && request.color.trim() && !normalizeVisionCollectionTagColor(request.color)) return { success: false, message: copy.collectionTagManagerMetadataColorInvalid, metadata: null }
     if (request?.textColor !== undefined && typeof request.textColor === 'string' && request.textColor.trim() && !normalizeVisionCollectionTagColor(request.textColor)) return { success: false, message: copy.collectionTagManagerMetadataColorInvalid, metadata: null }
     try {

@@ -1,5 +1,5 @@
 import { mergeVisionClipSelections, normalizeVisionTimeRange } from './vision-evidence'
-import type { VisionClipCollectionBatchTagsMode, VisionClipCollectionSortMode, VisionClipSelection } from '../../shared/vision-types'
+import type { VisionClipCollectionBatchTagsMode, VisionClipCollectionSortMode, VisionClipCollectionTagMetadata, VisionClipSelection } from '../../shared/vision-types'
 
 const MAX_COLLECTION_TAGS = 20
 const MAX_COLLECTION_TAG_LENGTH = 40
@@ -48,6 +48,36 @@ export function normalizeVisionCollectionTagColor(value: unknown): string {
   if (typeof value !== 'string') return ''
   const color = value.trim().toLowerCase()
   return /^#[0-9a-f]{6}$/.test(color) ? color : ''
+}
+
+export function wouldCreateVisionCollectionTagParentCycle(tag: unknown, parentTag: unknown, metadata: readonly VisionClipCollectionTagMetadata[]): boolean {
+  const normalizedTag = normalizeVisionCollectionTag(tag)
+  const normalizedParentTag = normalizeVisionCollectionTag(parentTag)
+  if (!normalizedTag || !normalizedParentTag) return false
+  const parents = new Map(metadata.map((item) => [normalizeVisionCollectionTag(item.tag), normalizeVisionCollectionTag(item.parentTag)]))
+  const visited = new Set<string>()
+  let current = normalizedParentTag
+  while (current) {
+    if (current === normalizedTag || visited.has(current)) return true
+    visited.add(current)
+    current = parents.get(current) ?? ''
+  }
+  return false
+}
+
+export function getVisionCollectionTagPath(tag: unknown, metadata: readonly VisionClipCollectionTagMetadata[]): string[] {
+  const normalizedTag = normalizeVisionCollectionTag(tag)
+  if (!normalizedTag) return []
+  const parents = new Map(metadata.map((item) => [normalizeVisionCollectionTag(item.tag), normalizeVisionCollectionTag(item.parentTag)]))
+  const path: string[] = []
+  const visited = new Set<string>()
+  let current = normalizedTag
+  while (current && !visited.has(current)) {
+    path.unshift(current)
+    visited.add(current)
+    current = parents.get(current) ?? ''
+  }
+  return path
 }
 
 export function renameVisionCollectionTag(currentTags: unknown, fromTag: unknown, toTag: unknown): string[] {

@@ -3,7 +3,7 @@ import { mkdirSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { mergeVisionClipSelections, normalizeVisionTimeRange } from './vision-evidence'
-import { applyVisionCollectionTags, duplicateVisionCollectionTitle, normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionSortMode, normalizeVisionCollectionTag, normalizeVisionCollectionTagColor, normalizeVisionCollectionTags, normalizeVisionCollectionTagsMode, renameVisionCollectionTag, renameVisionClipCollectionTitle, sortVisionClipSelections } from './clip-inbox-operations'
+import { applyVisionCollectionTags, duplicateVisionCollectionTitle, normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionSortMode, normalizeVisionCollectionTag, normalizeVisionCollectionTagColor, normalizeVisionCollectionTags, normalizeVisionCollectionTagsMode, renameVisionCollectionTag, renameVisionClipCollectionTitle, sortVisionClipSelections, wouldCreateVisionCollectionTagParentCycle } from './clip-inbox-operations'
 import type { VisionClipCollection, VisionClipCollectionBatchDeleteResult, VisionClipCollectionBatchRenameResult, VisionClipCollectionBatchTagsResult, VisionClipCollectionInput, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataUpdateRequest, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationType, VisionClipCollectionTagUndoResult, VisionClipSelection, VisionEvidenceType } from '../../shared/vision-types'
 
 type SqliteRow = Record<string, unknown>
@@ -203,6 +203,7 @@ export class ClipInboxStore {
     const existing = this.getTagMetadata(tag)
     const parentTag = input?.parentTag === undefined ? existing?.parentTag ?? '' : normalizeVisionCollectionTag(input.parentTag)
     if (parentTag === tag) throw new Error('标签不能作为自己的父标签')
+    if (wouldCreateVisionCollectionTagParentCycle(tag, parentTag, this.listTagMetadata())) throw new Error('标签父级关系不能形成环路')
     const color = input?.color === undefined ? existing?.color ?? '' : normalizeVisionCollectionTagColor(input.color)
     const textColor = input?.textColor === undefined ? existing?.textColor ?? '' : normalizeVisionCollectionTagColor(input.textColor)
     const now = Date.now()

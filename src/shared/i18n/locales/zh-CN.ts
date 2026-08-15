@@ -549,6 +549,7 @@
       collectionTagManagerRenamed: (fromTag: string, toTag: string, count: number) => `已将 ${count} 个集合中的标签“${fromTag}”重命名为“${toTag}”`,
       collectionTagManagerMetadataTagRequired: '标签名称无效',
       collectionTagManagerMetadataSelfParent: '标签不能作为自己的父标签',
+      collectionTagManagerMetadataCycle: '父标签关系不能形成环路',
       collectionTagManagerMetadataColorInvalid: '颜色必须是六位十六进制颜色值',
       collectionTagManagerMetadataUpdated: (tag: string) => `已保存标签“${tag}”的样式设置`,
       collectionTagManagerMetadataTitle: '标签样式与层级',
