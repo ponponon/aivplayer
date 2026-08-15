@@ -933,6 +933,21 @@
   accent-color: var(--accent);
 }
 
+.vision-collection-tag-manager-filter label select {
+  min-height: 26px;
+  padding: 0 6px;
+  color: var(--text-primary);
+  background: rgba(var(--overlay-rgb), 0.06);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  font-size: 9px;
+}
+
+.vision-collection-tag-manager-filter label select:focus {
+  border-color: var(--accent);
+  outline: 0;
+}
+
 .vision-collection-tag-manager-item {
   display: inline-flex;
   align-items: center;

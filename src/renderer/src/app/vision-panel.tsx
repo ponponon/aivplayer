@@ -32,6 +32,7 @@ import type { VisionEntityCatalog as VisionEntityCatalogState, VisionEntityCatal
 const VISION_SOURCE_PAGE_SIZE = 100
 const DEFAULT_COLLECTION_TAG_COLOR = '#4f5d75'
 const DEFAULT_COLLECTION_TAG_TEXT_COLOR = '#f4f1e6'
+type CollectionTagSortMode = 'name' | 'usage-desc' | 'favorite-first'
 const VISION_EVIDENCE_TYPE_OPTIONS: readonly VisionEvidenceType[] = ['visual', 'subtitle', 'ocr', 'scene', 'entity', 'object', 'speaker']
 
 type VisionSearchBaseContext =
@@ -149,6 +150,7 @@ export function VisionPanel(): React.ReactElement {
   const [collectionTagToManage, setCollectionTagToManage] = useState('')
   const [collectionTagFilterQuery, setCollectionTagFilterQuery] = useState('')
   const [collectionTagFavoritesOnly, setCollectionTagFavoritesOnly] = useState(false)
+  const [collectionTagSortMode, setCollectionTagSortMode] = useState<CollectionTagSortMode>('name')
   const [isCleaningCollectionTag, setIsCleaningCollectionTag] = useState(false)
   const [collectionTagRenameTarget, setCollectionTagRenameTarget] = useState('')
   const [isRenamingCollectionTag, setIsRenamingCollectionTag] = useState(false)
@@ -189,10 +191,17 @@ export function VisionPanel(): React.ReactElement {
   }, new Map<string, number>())].map(([tag, count]) => ({ tag, count })).sort((left, right) => left.tag.localeCompare(right.tag, undefined, { sensitivity: 'base' }))
   const collectionTagMetadataByTag = new Map(collectionTagMetadata.map((metadata) => [metadata.tag, metadata]))
   const collectionTagFilterQueryLower = collectionTagFilterQuery.trim().toLocaleLowerCase()
-  const visibleCollectionTagStats = collectionTagStats.filter((item) => {
+  const visibleCollectionTagStats = [...collectionTagStats].filter((item) => {
     const matchesQuery = !collectionTagFilterQueryLower || item.tag.toLocaleLowerCase().includes(collectionTagFilterQueryLower)
     const matchesFavorite = !collectionTagFavoritesOnly || collectionTagMetadataByTag.get(item.tag)?.isFavorite === true
     return matchesQuery && matchesFavorite
+  }).sort((left, right) => {
+    if (collectionTagSortMode === 'usage-desc' && left.count !== right.count) return right.count - left.count
+    if (collectionTagSortMode === 'favorite-first') {
+      const favoriteDifference = Number(collectionTagMetadataByTag.get(right.tag)?.isFavorite === true) - Number(collectionTagMetadataByTag.get(left.tag)?.isFavorite === true)
+      if (favoriteDifference !== 0) return favoriteDifference
+    }
+    return left.tag.localeCompare(right.tag, undefined, { sensitivity: 'base' })
   })
   const hasCollectionTagFilter = Boolean(collectionTagFilterQuery.trim() || collectionTagFavoritesOnly)
   const managedCollectionTag = visibleCollectionTagStats.some((item) => item.tag === collectionTagToManage) ? collectionTagToManage : visibleCollectionTagStats[0]?.tag ?? ''
@@ -1371,6 +1380,7 @@ export function VisionPanel(): React.ReactElement {
         <div className="vision-collection-tag-manager-filter">
           <input value={collectionTagFilterQuery} onChange={(event) => setCollectionTagFilterQuery(event.target.value)} placeholder={app.copy.vision.collectionTagManagerFilterPlaceholder} aria-label={app.copy.vision.collectionTagManagerFilterPlaceholder} disabled={isCollectionBatchBusy} />
           <label><input type="checkbox" checked={collectionTagFavoritesOnly} onChange={(event) => setCollectionTagFavoritesOnly(event.currentTarget.checked)} aria-label={app.copy.vision.collectionTagManagerFavoritesOnly} disabled={isCollectionBatchBusy} /><span>{app.copy.vision.collectionTagManagerFavoritesOnly}</span></label>
+          <label><span>{app.copy.vision.collectionTagManagerSortLabel}</span><select value={collectionTagSortMode} onChange={(event) => setCollectionTagSortMode(event.target.value as CollectionTagSortMode)} aria-label={app.copy.vision.collectionTagManagerSortLabel} disabled={isCollectionBatchBusy}><option value="name">{app.copy.vision.collectionTagManagerSortName}</option><option value="usage-desc">{app.copy.vision.collectionTagManagerSortUsage}</option><option value="favorite-first">{app.copy.vision.collectionTagManagerSortFavorite}</option></select></label>
           {hasCollectionTagFilter ? <button className="vision-secondary-action" type="button" onClick={() => { setCollectionTagFilterQuery(''); setCollectionTagFavoritesOnly(false) }} disabled={isCollectionBatchBusy}>{app.copy.vision.collectionTagManagerFilterClear}</button> : null}
         </div>
         {visibleCollectionTagStats.length > 0 ? <div className="vision-collection-tag-manager-list" role="list" aria-label={app.copy.vision.collectionTagManagerSelectLabel}>
