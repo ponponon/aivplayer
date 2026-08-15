@@ -533,7 +533,7 @@
       collectionTagManagerDescription: 'タグの使用状況を確認し、該当するすべてのコレクションから削除します',
       collectionTagManagerSelectLabel: '管理するタグを選択',
       collectionTagManagerSelectTag: (tag: string, count: number) => `${tag} · ${count} 件のコレクション`,
-      collectionTagManagerFilterPlaceholder: 'タグを検索',
+      collectionTagManagerFilterPlaceholder: 'タグまたはメモを検索',
       collectionTagManagerFavoritesOnly: 'お気に入りのみ',
       collectionTagManagerFilterClear: '絞り込みを解除',
       collectionTagManagerFilterEmpty: '条件に一致するタグはありません。',

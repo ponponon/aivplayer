@@ -60,6 +60,7 @@ describe('vision clip collection tag manager UI wiring', () => {
     expect(panel).toContain("value=\"usage-desc\"")
     expect(panel).toContain("value=\"favorite-first\"")
     expect(panel).toContain('collectionTagManagerFilterPlaceholder')
+    expect(panel).toContain('metadata?.note.toLocaleLowerCase().includes(collectionTagFilterQueryLower)')
     expect(panel).toContain('collectionTagManagerFavoritesOnly')
     expect(panel).toContain('collectionTagManagerFilterClear')
     expect(panel).toContain('collectionTagManagerFilterEmpty')

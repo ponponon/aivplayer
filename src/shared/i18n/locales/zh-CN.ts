@@ -533,7 +533,7 @@
       collectionTagManagerDescription: '集中查看标签使用情况，可从所有集合中清理标签',
       collectionTagManagerSelectLabel: '选择要管理的标签',
       collectionTagManagerSelectTag: (tag: string, count: number) => `${tag} · ${count} 个集合`,
-      collectionTagManagerFilterPlaceholder: '搜索标签',
+      collectionTagManagerFilterPlaceholder: '搜索标签或备注',
       collectionTagManagerFavoritesOnly: '仅看收藏',
       collectionTagManagerFilterClear: '清除筛选',
       collectionTagManagerFilterEmpty: '没有符合筛选条件的标签。',

@@ -533,7 +533,7 @@
       collectionTagManagerDescription: '태그 사용량을 확인하고 일치하는 모든 컬렉션에서 태그를 정리합니다',
       collectionTagManagerSelectLabel: '관리할 태그 선택',
       collectionTagManagerSelectTag: (tag: string, count: number) => `${tag} · ${count}개 컬렉션`,
-      collectionTagManagerFilterPlaceholder: '태그 검색',
+      collectionTagManagerFilterPlaceholder: '태그 또는 메모 검색',
       collectionTagManagerFavoritesOnly: '즐겨찾기만 보기',
       collectionTagManagerFilterClear: '필터 지우기',
       collectionTagManagerFilterEmpty: '필터와 일치하는 태그가 없습니다.',

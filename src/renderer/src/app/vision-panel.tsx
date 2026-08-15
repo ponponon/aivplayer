@@ -192,8 +192,9 @@ export function VisionPanel(): React.ReactElement {
   const collectionTagMetadataByTag = new Map(collectionTagMetadata.map((metadata) => [metadata.tag, metadata]))
   const collectionTagFilterQueryLower = collectionTagFilterQuery.trim().toLocaleLowerCase()
   const visibleCollectionTagStats = [...collectionTagStats].filter((item) => {
-    const matchesQuery = !collectionTagFilterQueryLower || item.tag.toLocaleLowerCase().includes(collectionTagFilterQueryLower)
-    const matchesFavorite = !collectionTagFavoritesOnly || collectionTagMetadataByTag.get(item.tag)?.isFavorite === true
+    const metadata = collectionTagMetadataByTag.get(item.tag)
+    const matchesQuery = !collectionTagFilterQueryLower || item.tag.toLocaleLowerCase().includes(collectionTagFilterQueryLower) || metadata?.note.toLocaleLowerCase().includes(collectionTagFilterQueryLower)
+    const matchesFavorite = !collectionTagFavoritesOnly || metadata?.isFavorite === true
     return matchesQuery && matchesFavorite
   }).sort((left, right) => {
     if (collectionTagSortMode === 'usage-desc' && left.count !== right.count) return right.count - left.count

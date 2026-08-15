@@ -533,7 +533,7 @@
       collectionTagManagerDescription: 'Review tag usage and remove a tag from every matching collection',
       collectionTagManagerSelectLabel: 'Select a tag to manage',
       collectionTagManagerSelectTag: (tag: string, count: number) => `${tag} · ${count} collection${count === 1 ? '' : 's'}`,
-      collectionTagManagerFilterPlaceholder: 'Search tags',
+      collectionTagManagerFilterPlaceholder: 'Search tags or notes',
       collectionTagManagerFavoritesOnly: 'Favorites only',
       collectionTagManagerFilterClear: 'Clear filters',
       collectionTagManagerFilterEmpty: 'No tags match the filters.',
