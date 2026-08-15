@@ -134,6 +134,15 @@ describe('clip inbox store', () => {
     expect(store.getCollection(second.id)?.tags).toEqual(['海边', '精选'])
   })
 
+  it('appends and removes tags without changing other collection fields', () => {
+    const saved = store.saveCollection({ title: '标签模式', tags: ['海边', '采访'], sortMode: 'file-name', selections: [selection({ evidenceIds: ['mode-evidence'] })] })
+    const added = store.updateCollectionsTags([saved.id], ['旅行', '海边'], 'add').collections[0]
+    expect(added?.tags).toEqual(['海边', '采访', '旅行'])
+    expect(added).toMatchObject({ title: saved.title, sortMode: saved.sortMode, selections: saved.selections })
+    const removed = store.updateCollectionsTags([saved.id], ['采访', '不存在'], 'remove').collections[0]
+    expect(removed?.tags).toEqual(['海边', '旅行'])
+  })
+
   it('duplicates a collection with a new id and independent content', () => {
     const original = store.saveCollection({ title: '待复制', tags: ['旅行'], sortMode: 'duration-desc', selections: [selection()] })
     const duplicate = store.duplicateCollection(original.id)

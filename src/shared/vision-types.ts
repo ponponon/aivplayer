@@ -461,7 +461,10 @@ export type VisionClipCollectionBatchRenameResult = {
 export type VisionClipCollectionBatchTagsRequest = {
   collectionIds: string[]
   tags?: string[]
+  mode?: VisionClipCollectionBatchTagsMode
 }
+
+export type VisionClipCollectionBatchTagsMode = 'replace' | 'add' | 'remove'
 
 export type VisionClipCollectionBatchTagsResult = {
   success: boolean

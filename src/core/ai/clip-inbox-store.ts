@@ -3,7 +3,7 @@ import { mkdirSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { mergeVisionClipSelections, normalizeVisionTimeRange } from './vision-evidence'
-import { duplicateVisionCollectionTitle, normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionSortMode, normalizeVisionCollectionTags, renameVisionClipCollectionTitle, sortVisionClipSelections } from './clip-inbox-operations'
+import { applyVisionCollectionTags, duplicateVisionCollectionTitle, normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionSortMode, normalizeVisionCollectionTags, normalizeVisionCollectionTagsMode, renameVisionClipCollectionTitle, sortVisionClipSelections } from './clip-inbox-operations'
 import type { VisionClipCollection, VisionClipCollectionBatchDeleteResult, VisionClipCollectionBatchRenameResult, VisionClipCollectionBatchTagsResult, VisionClipCollectionInput, VisionClipSelection, VisionEvidenceType } from '../../shared/vision-types'
 
 type SqliteRow = Record<string, unknown>
@@ -241,19 +241,21 @@ export class ClipInboxStore {
     }
   }
 
-  updateCollectionsTags(collectionIds: readonly string[], tags: unknown): Pick<VisionClipCollectionBatchTagsResult, 'collections' | 'skippedCount'> {
+  updateCollectionsTags(collectionIds: readonly string[], tags: unknown, mode: unknown = 'replace'): Pick<VisionClipCollectionBatchTagsResult, 'collections' | 'skippedCount'> {
     const normalizedIds = normalizeVisionClipCollectionIds(collectionIds)
     const normalizedTags = normalizeVisionCollectionTags(tags)
+    const normalizedMode = normalizeVisionCollectionTagsMode(mode)
     if (normalizedIds.length === 0) return { collections: [], skippedCount: 0 }
     const placeholders = normalizedIds.map(() => '?').join(', ')
     this.database.exec('BEGIN')
     try {
-      const rows = this.database.prepare(`SELECT id FROM clip_collections WHERE id IN (${placeholders})`).all(...normalizedIds) as SqliteRow[]
+      const rows = this.database.prepare(`SELECT id, tags_json FROM clip_collections WHERE id IN (${placeholders})`).all(...normalizedIds) as SqliteRow[]
       const existingIds = new Set(rows.map((row) => stringValue(row, 'id')).filter(Boolean))
+      const currentTagsById = new Map(rows.map((row) => [stringValue(row, 'id'), normalizeVisionCollectionTags(parseJsonArray(row.tags_json))]))
       const now = Date.now()
       const update = this.database.prepare('UPDATE clip_collections SET tags_json = ?, updated_at = ? WHERE id = ?')
       for (const id of normalizedIds) {
-        if (existingIds.has(id)) update.run(JSON.stringify(normalizedTags), now, id)
+        if (existingIds.has(id)) update.run(JSON.stringify(applyVisionCollectionTags(currentTagsById.get(id) ?? [], normalizedTags, normalizedMode)), now, id)
       }
       this.database.exec('COMMIT')
       const collections = normalizedIds.filter((id) => existingIds.has(id)).map((id) => this.getCollection(id)).filter((collection): collection is VisionClipCollection => collection !== null)

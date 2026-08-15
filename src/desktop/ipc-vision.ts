@@ -9,7 +9,7 @@ import type { VisionEntityCatalogBatchPatch, VisionEntityCatalogCreateInput, Vis
 import { scanVisionDirectory, isVisionScanAbortError } from '../core/ai/vision-directory-scan'
 import { renderVisionClipCollectionExport, renderVisionClipCollectionsExport } from '../core/ai/clip-inbox-export'
 import { parseVisionClipCollectionImportText, parseVisionClipCollectionsImport } from '../core/ai/clip-inbox-import'
-import { normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTags } from '../core/ai/clip-inbox-operations'
+import { normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTags, normalizeVisionCollectionTagsMode } from '../core/ai/clip-inbox-operations'
 import { isVisionSearchExportAbortError, renderVisionSearchResultsExport } from '../core/ai/vision-search-export'
 import { writeVisionSearchResultsExportResumable } from '../core/ai/vision-search-export-resumable'
 import { getVisionSearchExportPartsDirectory } from '../core/ai/vision-search-export-store'
@@ -673,11 +673,12 @@ export function registerVisionIpc(): void {
     const copy = getAppCopy(getCurrentLocale()).vision
     const collectionIds = normalizeVisionClipCollectionIds(request?.collectionIds)
     const tags = normalizeVisionCollectionTags(request?.tags)
+    const mode = normalizeVisionCollectionTagsMode(request?.mode)
     if (collectionIds.length === 0) return { success: false, message: copy.collectionTagsBatchSelectionRequired, collections: [], skippedCount: 0 }
     try {
-      const result = getClipInboxStore().updateCollectionsTags(collectionIds, tags)
+      const result = getClipInboxStore().updateCollectionsTags(collectionIds, tags, mode)
       if (result.collections.length === 0) return { success: false, message: copy.collectionTagsBatchUnavailable, collections: [], skippedCount: result.skippedCount }
-      return { success: true, message: copy.collectionsTagsUpdated(result.collections.length, result.skippedCount), ...result }
+      return { success: true, message: copy.collectionsTagsUpdated(result.collections.length, result.skippedCount, copy.collectionTagsBatchModeLabel[mode]), ...result }
     } catch (error) {
       return { success: false, message: error instanceof Error ? error.message : String(error), collections: [], skippedCount: 0 }
     }

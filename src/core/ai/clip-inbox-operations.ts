@@ -1,5 +1,5 @@
 import { mergeVisionClipSelections, normalizeVisionTimeRange } from './vision-evidence'
-import type { VisionClipCollectionSortMode, VisionClipSelection } from '../../shared/vision-types'
+import type { VisionClipCollectionBatchTagsMode, VisionClipCollectionSortMode, VisionClipSelection } from '../../shared/vision-types'
 
 const MAX_COLLECTION_TAGS = 20
 const MAX_COLLECTION_TAG_LENGTH = 40
@@ -37,6 +37,20 @@ export function normalizeVisionCollectionTags(value: unknown): string[] {
     .filter((tag): tag is string => typeof tag === 'string')
     .map((tag) => tag.trim().slice(0, MAX_COLLECTION_TAG_LENGTH))
     .filter(Boolean))].slice(0, MAX_COLLECTION_TAGS)
+}
+
+export function normalizeVisionCollectionTagsMode(value: unknown): VisionClipCollectionBatchTagsMode {
+  return value === 'add' || value === 'remove' ? value : 'replace'
+}
+
+export function applyVisionCollectionTags(currentTags: unknown, incomingTags: unknown, mode: unknown = 'replace'): string[] {
+  const normalizedCurrentTags = normalizeVisionCollectionTags(currentTags)
+  const normalizedIncomingTags = normalizeVisionCollectionTags(incomingTags)
+  const normalizedMode = normalizeVisionCollectionTagsMode(mode)
+  if (normalizedMode === 'replace') return normalizedIncomingTags
+  if (normalizedMode === 'add') return normalizeVisionCollectionTags([...normalizedCurrentTags, ...normalizedIncomingTags])
+  const tagsToRemove = new Set(normalizedIncomingTags)
+  return normalizedCurrentTags.filter((tag) => !tagsToRemove.has(tag))
 }
 
 export function normalizeVisionCollectionSortMode(value: unknown): VisionClipCollectionSortMode {
