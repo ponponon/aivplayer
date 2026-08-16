@@ -1,4 +1,4 @@
-import { Archive, Check, CheckSquare, ChevronDown, ChevronUp, Copy, Database, Download, FilePlus, ImageUp, Pencil, ScanSearch, Search, Square, Tags, Trash2, Undo2, Upload, X } from 'lucide-react'
+import { Archive, Check, CheckSquare, ChevronDown, ChevronRight, ChevronUp, Copy, Database, Download, FilePlus, ImageUp, Pencil, ScanSearch, Search, Square, Tags, Trash2, Undo2, Upload, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import type { VisionIndexProgress, VisionRuntimeStatus, VisionSearchResult } from '../../../shared/media-types'
@@ -8,6 +8,7 @@ import type { VisionClipCollection, VisionClipCollectionBatchTagsMode, VisionCli
 import type { LocaleCopy } from '../../../shared/i18n'
 import type { VisionObjectDetectionFilterState, VisionObjectDetectionResult } from '../../../shared/vision-object-detection-types'
 import { getVisionCollectionTagPath, invertVisionClipSelections, mergeVisionCollectionSelections, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTag, normalizeVisionCollectionTags, renameVisionClipCollectionTitle, wouldCreateVisionCollectionTagParentCycle } from '../../../core/ai/clip-inbox-operations'
+import { hasVisionCollectionTagChildren, isVisionCollectionTagHiddenByCollapsedAncestor } from '../../../core/ai/clip-inbox-tag-tree'
 import { createVisionClipSelections, normalizeVisionTimeRange } from '../../../core/ai/vision-evidence'
 import { getVisionSearchResultIds } from '../../../core/ai/vision-search-selection'
 import { getNextVisionSearchLimit, shouldLoadMoreVisionSearchResults, VISION_SEARCH_PAGE_SIZE } from '../../../core/ai/vision-search-pagination'
@@ -168,6 +169,7 @@ export function VisionPanel(): React.ReactElement {
   const [collectionTagToManage, setCollectionTagToManage] = useState('')
   const [collectionTagFilterQuery, setCollectionTagFilterQuery] = useState('')
   const [collectionTagFavoritesOnly, setCollectionTagFavoritesOnly] = useState(false)
+  const [collapsedCollectionTags, setCollapsedCollectionTags] = useState<Set<string>>(new Set())
   const [collectionTagSortMode, setCollectionTagSortMode] = useState<VisionClipCollectionTagSortMode>(() => readVisionClipCollectionTagOrderPreferences().sortMode)
   const [collectionTagOrder, setCollectionTagOrder] = useState<string[]>(() => readVisionClipCollectionTagOrderPreferences().order)
   const [isCleaningCollectionTag, setIsCleaningCollectionTag] = useState(false)
@@ -217,11 +219,13 @@ export function VisionPanel(): React.ReactElement {
   const collectionTagOrderIndex = new Map(collectionTagOrder.map((tag, index) => [tag, index]))
   const collectionTagMetadataByTag = new Map(collectionTagMetadata.map((metadata) => [metadata.tag, metadata]))
   const collectionTagFilterQueryLower = collectionTagFilterQuery.trim().toLocaleLowerCase()
+  const hasCollectionTagFilter = Boolean(collectionTagFilterQuery.trim() || collectionTagFavoritesOnly)
   const visibleCollectionTagStats = [...collectionTagStats].filter((item) => {
     const metadata = collectionTagMetadataByTag.get(item.tag)
     const matchesQuery = !collectionTagFilterQueryLower || item.tag.toLocaleLowerCase().includes(collectionTagFilterQueryLower) || metadata?.note.toLocaleLowerCase().includes(collectionTagFilterQueryLower)
     const matchesFavorite = !collectionTagFavoritesOnly || metadata?.isFavorite === true
-    return matchesQuery && matchesFavorite
+    const hiddenByCollapsedAncestor = !hasCollectionTagFilter && isVisionCollectionTagHiddenByCollapsedAncestor(item.tag, collectionTagMetadata, collapsedCollectionTags)
+    return matchesQuery && matchesFavorite && !hiddenByCollapsedAncestor
   }).sort((left, right) => {
     if (collectionTagSortMode === 'custom') {
       const leftIndex = collectionTagOrderIndex.get(left.tag) ?? Number.MAX_SAFE_INTEGER
@@ -235,7 +239,6 @@ export function VisionPanel(): React.ReactElement {
     }
     return left.tag.localeCompare(right.tag, undefined, { sensitivity: 'base' })
   })
-  const hasCollectionTagFilter = Boolean(collectionTagFilterQuery.trim() || collectionTagFavoritesOnly)
   const managedCollectionTag = visibleCollectionTagStats.some((item) => item.tag === collectionTagToManage) ? collectionTagToManage : visibleCollectionTagStats[0]?.tag ?? ''
   const managedCollectionTagMetadata = collectionTagMetadataByTag.get(managedCollectionTag)
   const managedCollectionTagOrderIndex = collectionTagOrder.indexOf(managedCollectionTag)
@@ -1222,6 +1225,16 @@ export function VisionPanel(): React.ReactElement {
     setCollectionTagTransferStatus(app.copy.vision.collectionTagManagerOrderMoved(managedCollectionTag, direction))
   }
 
+  const toggleCollectionTagCollapsed = (tag: string): void => {
+    if (isCollectionBatchBusy) return
+    setCollapsedCollectionTags((current) => {
+      const next = new Set(current)
+      if (next.has(tag)) next.delete(tag)
+      else next.add(tag)
+      return next
+    })
+  }
+
   const saveCollectionTagMetadata = (): void => {
     if (isCollectionBatchBusy || !managedCollectionTag) return
     setIsSavingCollectionTagMetadata(true)
@@ -1506,7 +1519,10 @@ export function VisionPanel(): React.ReactElement {
           {hasCollectionTagFilter ? <button className="vision-secondary-action" type="button" onClick={() => { setCollectionTagFilterQuery(''); setCollectionTagFavoritesOnly(false) }} disabled={isCollectionBatchBusy}>{app.copy.vision.collectionTagManagerFilterClear}</button> : null}
         </div>
         {visibleCollectionTagStats.length > 0 ? <div className="vision-collection-tag-manager-list" role="list" aria-label={app.copy.vision.collectionTagManagerSelectLabel}>
-          {visibleCollectionTagStats.map((item) => { const metadata = collectionTagMetadataByTag.get(item.tag); const path = getVisionCollectionTagPath(item.tag, collectionTagMetadata); return <button className={`vision-collection-tag-manager-item${managedCollectionTag === item.tag ? ' is-active' : ''}`} key={item.tag} type="button" onClick={() => setCollectionTagToManage(item.tag)} aria-label={app.copy.vision.collectionTagManagerSelectTag(item.tag, item.count)} aria-pressed={managedCollectionTag === item.tag} style={{ backgroundColor: metadata?.color || undefined, color: metadata?.textColor || undefined }}><span>{path.join(' / ')}</span><small>{item.count}</small></button> })}
+          {visibleCollectionTagStats.map((item) => { const metadata = collectionTagMetadataByTag.get(item.tag); const path = getVisionCollectionTagPath(item.tag, collectionTagMetadata); const hasChildren = hasVisionCollectionTagChildren(item.tag, collectionTagMetadata); const isCollapsed = collapsedCollectionTags.has(item.tag); return <div className="vision-collection-tag-manager-item-row" key={item.tag} role="listitem">
+            {hasChildren ? <button className="vision-collection-tag-manager-collapse" type="button" onClick={() => toggleCollectionTagCollapsed(item.tag)} disabled={isCollectionBatchBusy} aria-label={`${isCollapsed ? app.copy.vision.collectionTagManagerExpandChildren : app.copy.vision.collectionTagManagerCollapseChildren}: ${item.tag}`} aria-expanded={!isCollapsed} title={isCollapsed ? app.copy.vision.collectionTagManagerExpandChildren : app.copy.vision.collectionTagManagerCollapseChildren}>{isCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}</button> : <span className="vision-collection-tag-manager-collapse-placeholder" aria-hidden="true" />}
+            <button className={`vision-collection-tag-manager-item${managedCollectionTag === item.tag ? ' is-active' : ''}`} type="button" onClick={() => setCollectionTagToManage(item.tag)} aria-label={app.copy.vision.collectionTagManagerSelectTag(item.tag, item.count)} aria-pressed={managedCollectionTag === item.tag} style={{ backgroundColor: metadata?.color || undefined, color: metadata?.textColor || undefined }}><span>{path.join(' / ')}</span><small>{item.count}</small></button>
+          </div> })}
         </div> : <div className="vision-collection-tag-manager-empty">{app.copy.vision.collectionTagManagerFilterEmpty}</div>}
         <div className="vision-collection-tag-manager-controls">
           <span className="vision-collection-tag-manager-selection" role="status">{managedCollectionTag ? app.copy.vision.collectionTagManagerSelectTag(managedCollectionTag, collectionTagStats.find((item) => item.tag === managedCollectionTag)?.count ?? 0) : app.copy.vision.collectionTagManagerSelectionRequired}</span>

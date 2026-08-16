@@ -559,6 +559,8 @@
       collectionTagManagerMoveUp: '上移标签',
       collectionTagManagerMoveDown: '下移标签',
       collectionTagManagerOrderMoved: (tag: string, direction: 'up' | 'down') => `已将标签“${tag}”${direction === 'up' ? '上移' : '下移'}`,
+      collectionTagManagerCollapseChildren: '收起子标签',
+      collectionTagManagerExpandChildren: '展开子标签',
       collectionTagManagerCleanup: '清理标签',
       collectionTagManagerEmpty: '还没有集合标签。',
       collectionTagManagerConfirm: (tag: string, count: number) => `确定从 ${count} 个集合中清理标签“${tag}”吗？`,

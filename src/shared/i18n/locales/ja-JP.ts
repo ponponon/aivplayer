@@ -559,6 +559,8 @@
       collectionTagManagerMoveUp: '上へ移動',
       collectionTagManagerMoveDown: '下へ移動',
       collectionTagManagerOrderMoved: (tag: string, direction: 'up' | 'down') => `タグ「${tag}」を${direction === 'up' ? '上' : '下'}へ移動しました`,
+      collectionTagManagerCollapseChildren: '子タグを折りたたむ',
+      collectionTagManagerExpandChildren: '子タグを展開',
       collectionTagManagerCleanup: 'タグを整理',
       collectionTagManagerEmpty: 'コレクションタグはまだありません。',
       collectionTagManagerConfirm: (tag: string, count: number) => `${count} 件のコレクションからタグ「${tag}」を削除しますか？`,

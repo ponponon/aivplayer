@@ -559,6 +559,8 @@
       collectionTagManagerMoveUp: '위로 이동',
       collectionTagManagerMoveDown: '아래로 이동',
       collectionTagManagerOrderMoved: (tag: string, direction: 'up' | 'down') => `“${tag}” 태그를 ${direction === 'up' ? '위' : '아래'}로 이동했습니다`,
+      collectionTagManagerCollapseChildren: '하위 태그 접기',
+      collectionTagManagerExpandChildren: '하위 태그 펼치기',
       collectionTagManagerCleanup: '태그 정리',
       collectionTagManagerEmpty: '컬렉션 태그가 아직 없습니다.',
       collectionTagManagerConfirm: (tag: string, count: number) => `${count}개 컬렉션에서 “${tag}” 태그를 삭제할까요?`,

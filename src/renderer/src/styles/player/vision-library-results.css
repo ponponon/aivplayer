@@ -990,6 +990,38 @@
   gap: 5px;
 }
 
+.vision-collection-tag-manager-item-row {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 2px;
+  min-width: 0;
+}
+
+.vision-collection-tag-manager-collapse,
+.vision-collection-tag-manager-collapse-placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  min-width: 20px;
+  color: var(--text-muted);
+  background: rgba(var(--overlay-rgb), 0.04);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+}
+
+.vision-collection-tag-manager-collapse {
+  padding: 0;
+  cursor: pointer;
+}
+
+.vision-collection-tag-manager-collapse:hover,
+.vision-collection-tag-manager-collapse:focus-visible {
+  color: var(--text-primary);
+  border-color: var(--accent);
+  outline: 0;
+}
+
 .vision-collection-tag-manager-filter {
   display: flex;
   align-items: center;

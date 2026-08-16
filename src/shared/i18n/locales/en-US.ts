@@ -559,6 +559,8 @@
       collectionTagManagerMoveUp: 'Move up',
       collectionTagManagerMoveDown: 'Move down',
       collectionTagManagerOrderMoved: (tag: string, direction: 'up' | 'down') => `Moved “${tag}” ${direction === 'up' ? 'up' : 'down'}`,
+      collectionTagManagerCollapseChildren: 'Collapse child tags',
+      collectionTagManagerExpandChildren: 'Expand child tags',
       collectionTagManagerCleanup: 'Clean up tag',
       collectionTagManagerEmpty: 'No collection tags yet.',
       collectionTagManagerConfirm: (tag: string, count: number) => `Remove “${tag}” from ${count} matching collection${count === 1 ? '' : 's'}?`,
