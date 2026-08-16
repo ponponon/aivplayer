@@ -90,6 +90,18 @@ async function runSmoke(): Promise<void> {
     await page.getByRole('status').filter({ hasText: '显示 3 / 3 个集合' }).waitFor({ timeout: 10_000 })
     if (await page.locator('.vision-collection').count() !== 3) throw new Error('Clearing collection filters should restore all collections')
 
+    const selectedCollectionSummary = page.locator('.vision-collection-batch-tags-actions strong')
+    await page.getByRole('button', { name: '全选集合', exact: true }).click()
+    await selectedCollectionSummary.filter({ hasText: '已选择 3 个集合' }).waitFor({ timeout: 10_000 })
+    await queryInput.fill('海边')
+    await page.getByRole('status').filter({ hasText: '显示 2 / 3 个集合' }).waitFor({ timeout: 10_000 })
+    await page.getByRole('button', { name: '清空可见选择', exact: true }).click()
+    await selectedCollectionSummary.filter({ hasText: '已选择 1 个集合' }).waitFor({ timeout: 10_000 })
+    await page.getByRole('button', { name: '全选可见集合', exact: true }).click()
+    await selectedCollectionSummary.filter({ hasText: '已选择 3 个集合' }).waitFor({ timeout: 10_000 })
+    await page.getByRole('button', { name: '清除筛选', exact: true }).click()
+    await selectedCollectionSummary.filter({ hasText: '已选择 3 个集合' }).waitFor({ timeout: 10_000 })
+
     await queryInput.fill('不存在的集合')
     await page.getByText('没有符合筛选条件的选段集合。', { exact: true }).waitFor({ timeout: 10_000 })
     if (await page.locator('.vision-collection').count() !== 0) throw new Error('Non-matching collection filter should hide every collection row')
@@ -115,7 +127,7 @@ async function runSmoke(): Promise<void> {
     const sessionOnly = await page.locator('.vision-collection').count() === 3
     if (!sessionOnly) throw new Error('Collection filters should be session-only and reset after reload')
     if (session.errors.length > 0) throw new Error(`Renderer errors during clip collection filter smoke:\n${session.errors.join('\n')}`)
-    console.log(`AIVPlayer Smoke Vision Clip Collection Filter passed: ${JSON.stringify({ originalCount: originals.length, queryMatches: 2, tagMatches: 2, hierarchyTagMatches: 2, multiTagAnyMatches: 2, multiTagAllMatches: 1, emptyState: true, dataUnchanged, sessionOnly, screenshotPath: screenshotPath ?? null })}`)
+    console.log(`AIVPlayer Smoke Vision Clip Collection Filter passed: ${JSON.stringify({ originalCount: originals.length, queryMatches: 2, tagMatches: 2, hierarchyTagMatches: 2, multiTagAnyMatches: 2, multiTagAllMatches: 1, visibleSelectionPreserved: true, emptyState: true, dataUnchanged, sessionOnly, screenshotPath: screenshotPath ?? null })}`)
   } finally {
     if (app) await app.close().catch(() => undefined)
     await rm(userDataDirectory, { recursive: true, force: true }).catch(() => undefined)
