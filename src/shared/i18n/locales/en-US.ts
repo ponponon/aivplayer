@@ -537,7 +537,7 @@
       collectionTagManagerMetadataImport: 'Import tag catalog',
       collectionTagManagerMetadataExportEmpty: 'No tag metadata to export',
       collectionTagManagerMetadataExported: (count: number) => `Exported metadata for ${count} tag${count === 1 ? '' : 's'}`,
-      collectionTagManagerMetadataImported: (imported: number, skipped: number) => `Imported ${imported} tag metadata entr${imported === 1 ? 'y' : 'ies'}${skipped > 0 ? `, skipped ${skipped} unused tag${skipped === 1 ? '' : 's'}` : ''}`,
+      collectionTagManagerMetadataImported: (imported: number, skipped: number) => `Imported ${imported} tag metadata entr${imported === 1 ? 'y' : 'ies'}${skipped > 0 ? `, skipped ${skipped} tag${skipped === 1 ? '' : 's'}` : ''}`,
       collectionTagManagerMetadataImportPreviewTitle: 'Import tag catalog preview',
       collectionTagManagerMetadataImportPreviewDescription: (conflicts: number, newCount: number, unused: number) => `${conflicts} conflict${conflicts === 1 ? '' : 's'}, ${newCount} new, ${unused} unused`,
       collectionTagManagerMetadataImportPreviewNoConflicts: 'There are no conflicts to choose.',

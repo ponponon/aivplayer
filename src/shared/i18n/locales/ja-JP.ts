@@ -537,7 +537,7 @@
       collectionTagManagerMetadataImport: 'タグカタログをインポート',
       collectionTagManagerMetadataExportEmpty: 'エクスポートできるタグメタデータはありません',
       collectionTagManagerMetadataExported: (count: number) => `${count} 件のタグメタデータをエクスポートしました`,
-      collectionTagManagerMetadataImported: (imported: number, skipped: number) => `${imported} 件のタグメタデータをインポートしました${skipped > 0 ? `、未使用の ${skipped} 件をスキップ` : ''}`,
+      collectionTagManagerMetadataImported: (imported: number, skipped: number) => `${imported} 件のタグメタデータをインポートしました${skipped > 0 ? `、${skipped} 件をスキップ` : ''}`,
       collectionTagManagerMetadataImportPreviewTitle: 'タグカタログのインポートプレビュー',
       collectionTagManagerMetadataImportPreviewDescription: (conflicts: number, newCount: number, unused: number) => `競合 ${conflicts} 件、新規 ${newCount} 件、未使用 ${unused} 件`,
       collectionTagManagerMetadataImportPreviewNoConflicts: '選択が必要な競合はありません。',

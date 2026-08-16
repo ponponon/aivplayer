@@ -537,7 +537,7 @@
       collectionTagManagerMetadataImport: '태그 카탈로그 가져오기',
       collectionTagManagerMetadataExportEmpty: '내보낼 태그 메타데이터가 없습니다',
       collectionTagManagerMetadataExported: (count: number) => `${count}개 태그 메타데이터를 내보냈습니다`,
-      collectionTagManagerMetadataImported: (imported: number, skipped: number) => `${imported}개 태그 메타데이터를 가져왔습니다${skipped > 0 ? `, 사용하지 않는 태그 ${skipped}개를 건너뛰었습니다` : ''}`,
+      collectionTagManagerMetadataImported: (imported: number, skipped: number) => `${imported}개 태그 메타데이터를 가져왔습니다${skipped > 0 ? `, 태그 ${skipped}개를 건너뛰었습니다` : ''}`,
       collectionTagManagerMetadataImportPreviewTitle: '태그 카탈로그 가져오기 미리보기',
       collectionTagManagerMetadataImportPreviewDescription: (conflicts: number, newCount: number, unused: number) => `충돌 ${conflicts}개, 새 항목 ${newCount}개, 미사용 ${unused}개`,
       collectionTagManagerMetadataImportPreviewNoConflicts: '선택할 충돌 항목이 없습니다.',
