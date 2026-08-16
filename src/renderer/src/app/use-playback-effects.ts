@@ -5,7 +5,7 @@ import { getPlayFailureMessage } from './app-helpers'
 import { resolvePlaybackStartTime } from './playback-progress'
 import { getPlaybackMediaKey } from '../../../shared/playback-memory'
 
-export function usePlaybackEffects(model: AppModel, derived: AppDerived, revealControlDeck: () => void, clearControlDeckHideTimer: () => void, setPlaybackError: (message: string) => void): void {
+export function usePlaybackEffects(model: AppModel, derived: AppDerived, revealControlDeck: () => void, clearControlDeckHideTimer: () => void, setPlaybackError: (message: string) => void, syncPlaybackState: (video?: HTMLVideoElement | null) => void): void {
   useEffect(() => {
     revealControlDeck()
     return clearControlDeckHideTimer
@@ -33,13 +33,14 @@ export function usePlaybackEffects(model: AppModel, derived: AppDerived, revealC
     video.muted = model.appSettings.playback.rememberVolume ? profile?.muted ?? model.state.muted : model.state.muted
     model.lastSavedProgressRef.current = { path: model.state.currentFile.path, time: startTime }
     const timer = window.setTimeout(() => {
-      void video.play().catch((error: unknown) => {
+      void video.play().then(() => syncPlaybackState(video)).catch((error: unknown) => {
+        syncPlaybackState(video)
         const message = getPlayFailureMessage(derived.copy, error)
         if (message) setPlaybackError(message)
       })
     }, 0)
     return () => window.clearTimeout(timer)
-  }, [model.state.currentFile?.id, model.state.autoPlayRequestId])
+  }, [model.state.currentFile?.id, model.state.autoPlayRequestId, syncPlaybackState])
 
   useEffect(() => {
     const video = model.videoRef.current

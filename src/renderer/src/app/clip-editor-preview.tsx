@@ -2,6 +2,7 @@ import { Pause, Play } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactElement } from 'react'
 import type { LocaleCopy } from '../../../shared/i18n'
 import { formatClipTime, type ClipSelection } from './clip-editor'
+import { syncBooleanPlayingState } from './playback-state'
 
 type ClipEditorPreviewProps = {
   copy: LocaleCopy
@@ -18,10 +19,15 @@ export function ClipEditorPreview(props: ClipEditorPreviewProps): ReactElement {
   const videoRef = useRef<HTMLVideoElement | null>(null)
 
   useEffect(() => {
+    setIsPlaying(false)
+  }, [mediaUrl])
+
+  useEffect(() => {
     const video = videoRef.current
     if (!video) return
     if (video.currentTime < selection.startSeconds || video.currentTime > selection.endSeconds) {
       if (!video.paused) video.pause()
+      syncBooleanPlayingState(setIsPlaying, video)
       video.currentTime = selection.startSeconds
       setPreviewTimeSeconds(selection.startSeconds)
     }
@@ -32,19 +38,21 @@ export function ClipEditorPreview(props: ClipEditorPreviewProps): ReactElement {
     if (!video || !canPreview) return
     if (!video.paused) {
       video.pause()
+      syncBooleanPlayingState(setIsPlaying, video)
       return
     }
     if (video.currentTime < selection.startSeconds || video.currentTime >= selection.endSeconds) {
       video.currentTime = selection.startSeconds
       setPreviewTimeSeconds(selection.startSeconds)
     }
-    void video.play().catch(() => setIsPlaying(false))
+    void video.play().then(() => syncBooleanPlayingState(setIsPlaying, video)).catch(() => syncBooleanPlayingState(setIsPlaying, video))
   }
 
   return (
     <section className="clip-editor-preview-panel" aria-label={copy.clipExportDialog.preview}>
       <div className="clip-editor-preview-frame media-preview-frame">
         <video
+          key={mediaUrl || 'empty-preview-media'}
           ref={videoRef}
           className="clip-editor-preview-video media-preview-content"
           src={mediaUrl}
@@ -55,10 +63,11 @@ export function ClipEditorPreview(props: ClipEditorPreviewProps): ReactElement {
             event.currentTarget.currentTime = selection.startSeconds
             setPreviewTimeSeconds(selection.startSeconds)
           }}
-          onPlay={() => setIsPlaying(true)}
-          onPause={() => setIsPlaying(false)}
+          onPlay={(event) => syncBooleanPlayingState(setIsPlaying, event.currentTarget)}
+          onPause={(event) => syncBooleanPlayingState(setIsPlaying, event.currentTarget)}
           onTimeUpdate={(event) => {
             const video = event.currentTarget
+            syncBooleanPlayingState(setIsPlaying, video)
             if (video.currentTime >= selection.endSeconds - 0.02) {
               video.pause()
               video.currentTime = selection.endSeconds

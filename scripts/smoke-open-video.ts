@@ -126,6 +126,8 @@ async function main(): Promise<void> {
     await page.waitForTimeout(5_000)
 
     const statusText = await page.locator('.status-banner').textContent({ timeout: 10_000 }).catch(() => null)
+    const playbackButton = page.locator('.transport-group button.primary')
+    const playingButtonTitle = await playbackButton.getAttribute('title')
     const videoCountAfterPlay = await page.locator('video.video-surface').count()
     const videoState =
       videoCountAfterPlay > 0
@@ -160,9 +162,11 @@ async function main(): Promise<void> {
     await videoLocator.press('Space')
     await page.waitForTimeout(250)
     const pausedBySpace = await videoLocator.evaluate((video) => (video as HTMLVideoElement).paused)
+    const pausedButtonTitle = await playbackButton.getAttribute('title')
     await videoLocator.press('Space')
     await page.waitForTimeout(250)
     const resumedBySpace = await videoLocator.evaluate((video) => (video as HTMLVideoElement).paused)
+    const resumedButtonTitle = await playbackButton.getAttribute('title')
     const stopResult = await page.evaluate(() => window.aiv.stopNativePlayer())
 
     console.log('AIVPlayer Smoke Open Video')
@@ -170,6 +174,7 @@ async function main(): Promise<void> {
     console.log(`Video src: ${videoSrc}`)
     console.log(`Status banner: ${statusText ?? 'not shown'}`)
     console.log(`Video state: ${JSON.stringify(videoState)}`)
+    console.log(`Playback UI sync: ${JSON.stringify({ playingButtonTitle, pausedButtonTitle, resumedButtonTitle })}`)
     console.log(`Space shortcut: ${JSON.stringify({ pausedBySpace, resumedBySpace })}`)
     console.log(`Stop native player: ${stopResult.message}`)
 
@@ -191,6 +196,10 @@ async function main(): Promise<void> {
     }
 
     if (!pausedBySpace || resumedBySpace) {
+      process.exitCode = 1
+    }
+
+    if (!playingButtonTitle?.includes(copy.controls.pause) || !pausedButtonTitle?.includes(copy.controls.play) || !resumedButtonTitle?.includes(copy.controls.pause)) {
       process.exitCode = 1
     }
 

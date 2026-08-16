@@ -17,6 +17,7 @@ export function useAppEffects(model: AppModel, derived: AppDerived, actions: {
   revealControlDeck: () => void
   clearControlDeckHideTimer: () => void
   setPlaybackError: (message: string) => void
+  syncPlaybackState: (video?: HTMLVideoElement | null) => void
   seekBy: (seconds: number) => void
   togglePlay: () => Promise<void>
   togglePanelMode: (panel: 'playlist' | 'asr' | 'batch' | 'info') => void
@@ -33,7 +34,7 @@ export function useAppEffects(model: AppModel, derived: AppDerived, actions: {
   useElapsedTimeEffects(model)
   useMediaMetadataEffect(model)
   useAsrCheckpointEffect(model)
-  usePlaybackEffects(model, derived, actions.revealControlDeck, actions.clearControlDeckHideTimer, actions.setPlaybackError)
+  usePlaybackEffects(model, derived, actions.revealControlDeck, actions.clearControlDeckHideTimer, actions.setPlaybackError, actions.syncPlaybackState)
   useSubtitleCacheEffects(model, derived, patchDisplay)
   useKeyboardShortcuts(model, actions)
   useWindowEffects(model)

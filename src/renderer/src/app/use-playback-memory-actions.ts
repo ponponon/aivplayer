@@ -108,6 +108,7 @@ export function usePlaybackMemoryActions(model: AppModel, patchSection: AppSetti
   }
   const loadFiles = (files: MediaFile[]): void => {
     if (files.length === 0) return
+    model.videoRef.current?.pause()
     resetSubtitleState(); model.playbackEndedRef.current = false
     const playlist = mergePlaylist(model.state.playlist, files)
     const currentFile = getPlaylistFileByPath(playlist, files[0])
@@ -122,6 +123,7 @@ export function usePlaybackMemoryActions(model: AppModel, patchSection: AppSetti
   const openFiles = async (): Promise<void> => loadFiles(await window.aiv.openMediaFiles())
   const createMediaFilesFromPaths = async (paths: string[]): Promise<MediaFile[]> => Promise.all(paths.map((path) => window.aiv.createMediaFile(path)))
   const selectFile = (file: MediaFile): void => {
+    model.videoRef.current?.pause()
     resetSubtitleState(); model.playbackEndedRef.current = false
     recordPlaybackHistory(file)
     const initial = getInitialPlaybackState(file)

@@ -1,4 +1,4 @@
-import type { MouseEvent as ReactMouseEvent, SyntheticEvent } from 'react'
+import { useCallback, type MouseEvent as ReactMouseEvent, type SyntheticEvent } from 'react'
 import type { AppSettingsSectionPatcher } from '../../../shared/app-settings'
 import type { PanelMode } from './player-state'
 import type { AppDerived } from './use-app-derived'
@@ -7,6 +7,7 @@ import type { PlaybackMemoryActions } from './use-playback-actions'
 import { clamp } from '../lib/time'
 import { VIDEO_SINGLE_CLICK_DELAY_MS, getMediaErrorMessage, getPlayFailureMessage } from './app-helpers'
 import { getNextRepeatMode, getPlaybackEndedIndex } from '../../../shared/playback-policy'
+import { syncPlayerPlayingState } from './playback-state'
 
 export function usePlaybackControls(model: AppModel, derived: AppDerived, memory: PlaybackMemoryActions, patchSection: AppSettingsSectionPatcher) {
   const clearControlDeckHideTimer = (): void => { if (model.controlDeckHideTimerRef.current != null) window.clearTimeout(model.controlDeckHideTimerRef.current); model.controlDeckHideTimerRef.current = null }
@@ -19,11 +20,12 @@ export function usePlaybackControls(model: AppModel, derived: AppDerived, memory
   const openPanelMode = (panelMode: Exclude<PanelMode, 'none'>): void => model.setState((current) => ({ ...current, panelMode }))
   const setPlaybackError = (message: string): void => model.setState((current) => ({ ...current, error: message }))
   const clearPlaybackError = (): void => model.setState((current) => current.error ? { ...current, error: null } : current)
+  const syncPlaybackState = useCallback((video = model.videoRef.current): void => syncPlayerPlayingState(model.setState, video), [model.setState])
   const togglePlay = async (): Promise<void> => {
     revealControlDeck(); const video = model.videoRef.current
     if (!video || !model.state.currentFile) return
-    if (!video.paused) { video.pause(); return }
-    try { await video.play() } catch (error) { const message = getPlayFailureMessage(derived.copy, error); if (message) setPlaybackError(message) }
+    if (!video.paused) { video.pause(); syncPlaybackState(video); return }
+    try { await video.play(); syncPlaybackState(video) } catch (error) { syncPlaybackState(video); const message = getPlayFailureMessage(derived.copy, error); if (message) setPlaybackError(message) }
   }
   const seekBy = (seconds: number): void => { revealControlDeck(); const video = model.videoRef.current; if (video) video.currentTime = clamp(video.currentTime + seconds, 0, video.duration || 0) }
   const stopPlayback = (): void => {
@@ -66,14 +68,20 @@ export function usePlaybackControls(model: AppModel, derived: AppDerived, memory
       repeatMode: model.appSettings.playback.repeatMode,
       order: model.appSettings.playback.order
     })
-    model.setState((current) => ({ ...current, isPlaying: false, currentTime: 0 }))
-    if (nextIndex == null) return
+    const video = model.videoRef.current
+    if (nextIndex == null) {
+      syncPlaybackState(video)
+      model.setState((current) => ({ ...current, currentTime: 0 }))
+      return
+    }
     if (nextIndex === currentIndex) {
-      const video = model.videoRef.current
       model.playbackEndedRef.current = false
       if (video) {
         video.currentTime = 0
-        void video.play().catch((error) => {
+        const playPromise = video.play()
+        syncPlaybackState(video)
+        void playPromise.then(() => syncPlaybackState(video)).catch((error) => {
+          syncPlaybackState(video)
           const message = getPlayFailureMessage(derived.copy, error)
           if (message) setPlaybackError(message)
         })
@@ -100,5 +108,5 @@ export function usePlaybackControls(model: AppModel, derived: AppDerived, memory
       memory.persistPlaybackProgress(nextTime, true)
     }
   }
-  return { clearControlDeckHideTimer, revealControlDeck, togglePanelMode, openPanelMode, setPlaybackError, clearPlaybackError, togglePlay, seekBy, seekTo, stopPlayback, playAdjacent, cycleRepeatMode, togglePlaybackOrder, togglePlaybackEndAction, handlePlaybackEnded, toggleMute, toggleFullscreen, handleVideoClick, handleVideoDoubleClick, handleMediaError }
+  return { clearControlDeckHideTimer, revealControlDeck, syncPlaybackState, togglePanelMode, openPanelMode, setPlaybackError, clearPlaybackError, togglePlay, seekBy, seekTo, stopPlayback, playAdjacent, cycleRepeatMode, togglePlaybackOrder, togglePlaybackEndAction, handlePlaybackEnded, toggleMute, toggleFullscreen, handleVideoClick, handleVideoDoubleClick, handleMediaError }
 }

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { editedTimeToSource, getVideoClipSpans, sourceTimeToEdited } from '../../../core/editing/timeline-math'
 import { getEditingClipVolume, isEditingClipMuted } from '../../../core/editing/audio-operations'
 import type { AppModel } from './app-types'
+import { syncPlayerPlayingState } from './playback-state'
 
 const EDITING_TIME_EPSILON_SECONDS = 0.001
 
@@ -42,7 +43,8 @@ export function useEditingPlaybackEffect(model: AppModel): void {
           }
           video.pause()
           model.setEditingCurrentTime(active.editedEndSeconds)
-          model.setState((current) => ({ ...current, currentTime: active.clip.sourceEndSeconds, isPlaying: false }))
+          syncPlayerPlayingState(model.setState, video)
+          model.setState((current) => ({ ...current, currentTime: active.clip.sourceEndSeconds }))
           return
         }
         const editedTime = sourceTimeToEdited(project.videoClips, sourceId, sourceTime)
@@ -63,7 +65,7 @@ export function useEditingPlaybackEffect(model: AppModel): void {
       syncEditingPlayback()
       if (isPlayingRef.current || model.editingResumePlaybackRef.current) {
         model.editingResumePlaybackRef.current = false
-        void video.play().catch(() => {})
+        void video.play().then(() => syncPlayerPlayingState(model.setState, video)).catch(() => syncPlayerPlayingState(model.setState, video))
       }
     }
     video.addEventListener('timeupdate', syncEditingPlayback)
