@@ -8,7 +8,7 @@ import type { VisionClipCollection, VisionClipCollectionBatchTagsMode, VisionCli
 import type { LocaleCopy } from '../../../shared/i18n'
 import type { VisionObjectDetectionFilterState, VisionObjectDetectionResult } from '../../../shared/vision-object-detection-types'
 import { getVisionCollectionTagPath, invertVisionClipSelections, mergeVisionCollectionSelections, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTag, normalizeVisionCollectionTags, renameVisionClipCollectionTitle, wouldCreateVisionCollectionTagParentCycle } from '../../../core/ai/clip-inbox-operations'
-import { hasVisionCollectionTagChildren, isVisionCollectionTagHiddenByCollapsedAncestor } from '../../../core/ai/clip-inbox-tag-tree'
+import { hasVisionCollectionTagChildren, isVisionCollectionTagHiddenByCollapsedAncestor, mergeVisionClipCollectionTagCollapsePreferences, parseVisionClipCollectionTagCollapsePreferences, serializeVisionClipCollectionTagCollapsePreferences, VISION_CLIP_COLLECTION_TAG_COLLAPSE_PREFERENCES_STORAGE_KEY } from '../../../core/ai/clip-inbox-tag-tree'
 import { createVisionClipSelections, normalizeVisionTimeRange } from '../../../core/ai/vision-evidence'
 import { getVisionSearchResultIds } from '../../../core/ai/vision-search-selection'
 import { getNextVisionSearchLimit, shouldLoadMoreVisionSearchResults, VISION_SEARCH_PAGE_SIZE } from '../../../core/ai/vision-search-pagination'
@@ -84,6 +84,24 @@ function writeVisionClipCollectionTagOrderPreferences(order: string[], sortMode:
     window.localStorage.setItem(VISION_CLIP_COLLECTION_TAG_ORDER_PREFERENCES_STORAGE_KEY, serializeVisionClipCollectionTagOrderPreferences({ schemaVersion: 1, order, sortMode }))
   } catch {
     // Renderer storage can be disabled or full; the in-memory order remains authoritative.
+  }
+}
+
+function readVisionClipCollectionTagCollapsePreferences() {
+  if (typeof window === 'undefined') return parseVisionClipCollectionTagCollapsePreferences(null)
+  try {
+    return parseVisionClipCollectionTagCollapsePreferences(window.localStorage.getItem(VISION_CLIP_COLLECTION_TAG_COLLAPSE_PREFERENCES_STORAGE_KEY))
+  } catch {
+    return parseVisionClipCollectionTagCollapsePreferences(null)
+  }
+}
+
+function writeVisionClipCollectionTagCollapsePreferences(collapsedTags: string[]): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(VISION_CLIP_COLLECTION_TAG_COLLAPSE_PREFERENCES_STORAGE_KEY, serializeVisionClipCollectionTagCollapsePreferences({ schemaVersion: 1, collapsedTags }))
+  } catch {
+    // Renderer storage can be disabled or full; the in-memory preference remains authoritative.
   }
 }
 
@@ -169,7 +187,7 @@ export function VisionPanel(): React.ReactElement {
   const [collectionTagToManage, setCollectionTagToManage] = useState('')
   const [collectionTagFilterQuery, setCollectionTagFilterQuery] = useState('')
   const [collectionTagFavoritesOnly, setCollectionTagFavoritesOnly] = useState(false)
-  const [collapsedCollectionTags, setCollapsedCollectionTags] = useState<Set<string>>(new Set())
+  const [collapsedCollectionTags, setCollapsedCollectionTags] = useState<Set<string>>(() => new Set(readVisionClipCollectionTagCollapsePreferences().collapsedTags))
   const [collectionTagSortMode, setCollectionTagSortMode] = useState<VisionClipCollectionTagSortMode>(() => readVisionClipCollectionTagOrderPreferences().sortMode)
   const [collectionTagOrder, setCollectionTagOrder] = useState<string[]>(() => readVisionClipCollectionTagOrderPreferences().order)
   const [isCleaningCollectionTag, setIsCleaningCollectionTag] = useState(false)
@@ -217,6 +235,7 @@ export function VisionPanel(): React.ReactElement {
   const collectionTagNames = collectionTagStats.map((item) => item.tag)
   const collectionTagNamesKey = collectionTagNames.join('\\u001f')
   const collectionTagOrderIndex = new Map(collectionTagOrder.map((tag, index) => [tag, index]))
+  const collapsedCollectionTagsKey = [...collapsedCollectionTags].sort().join('\u001f')
   const collectionTagMetadataByTag = new Map(collectionTagMetadata.map((metadata) => [metadata.tag, metadata]))
   const collectionTagFilterQueryLower = collectionTagFilterQuery.trim().toLocaleLowerCase()
   const hasCollectionTagFilter = Boolean(collectionTagFilterQuery.trim() || collectionTagFavoritesOnly)
@@ -276,6 +295,17 @@ export function VisionPanel(): React.ReactElement {
     if (collectionTagNames.length === 0) return
     writeVisionClipCollectionTagOrderPreferences(collectionTagOrder, collectionTagSortMode)
   }, [collectionTagNamesKey, collectionTagOrder, collectionTagSortMode])
+  useEffect(() => {
+    if (collectionTagNames.length === 0) return
+    setCollapsedCollectionTags((current) => {
+      const next = mergeVisionClipCollectionTagCollapsePreferences(current, collectionTagNames)
+      return JSON.stringify(next) === JSON.stringify([...current]) ? current : new Set(next)
+    })
+  }, [collectionTagNamesKey])
+  useEffect(() => {
+    if (collectionTagNames.length === 0) return
+    writeVisionClipCollectionTagCollapsePreferences([...collapsedCollectionTags])
+  }, [collectionTagNamesKey, collapsedCollectionTagsKey])
 
   const refreshFailures = (): void => { void window.aiv.listVisionIndexFailures().then(setFailures).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))) }
   const refreshSavedSearches = (): void => { void window.aiv.listVisionSavedSearches().then(setSavedSearches).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))) }
