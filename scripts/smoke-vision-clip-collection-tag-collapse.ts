@@ -84,6 +84,14 @@ async function runSmoke(): Promise<void> {
     if (await tagButtonCount(page) !== 1 || await page.getByRole('button', { name: '海边 · 1 个集合', exact: true }).count() !== 1) throw new Error('Tag search should reveal a matching descendant even when its ancestor is collapsed')
     await page.getByRole('button', { name: '清除筛选', exact: true }).click()
     if (await tagButtonCount(page) !== 4 || (await query.inputValue()) !== '') throw new Error('Clearing the filter should restore the collapsed hierarchy')
+    await page.waitForFunction(() => {
+      const raw = window.localStorage.getItem('aivplayer.vision-clip-collection-tag-collapse.v1')
+      return raw?.includes('访谈') === true
+    })
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await openVisionPanel(page)
+    await page.getByRole('button', { name: '展开子标签: 访谈', exact: true }).waitFor({ timeout: 10_000 })
+    if (await tagButtonCount(page) !== 4 || await page.getByRole('button', { name: '海边 · 1 个集合', exact: true }).count() !== 0) throw new Error('Collapsed hierarchy should persist after reload without hiding the parent')
 
     const storedCollections = await page.evaluate(() => window.aiv.listVisionClipCollections())
     const originalTagShape = originals.map((collection) => ({ id: collection.id, tags: collection.tags })).sort((left, right) => left.id.localeCompare(right.id))
@@ -94,7 +102,7 @@ async function runSmoke(): Promise<void> {
       await page.screenshot({ path: screenshotPath, fullPage: false })
     }
     if (session.errors.length > 0) throw new Error(`Renderer errors during clip collection tag collapse smoke:\n${session.errors.join('\n')}`)
-    console.log(`AIVPlayer Smoke Vision Clip Collection Tag Collapse passed: ${JSON.stringify({ originalCount: originals.length, parentCollapsed: true, intermediateCollapsed: true, searchRevealsDescendant: true, dataUnchanged: true, screenshotPath: screenshotPath ?? null })}`)
+    console.log(`AIVPlayer Smoke Vision Clip Collection Tag Collapse passed: ${JSON.stringify({ originalCount: originals.length, parentCollapsed: true, intermediateCollapsed: true, searchRevealsDescendant: true, persistedCollapse: true, dataUnchanged: true, screenshotPath: screenshotPath ?? null })}`)
   } finally {
     if (app) await app.close().catch(() => undefined)
     await rm(userDataDirectory, { recursive: true, force: true }).catch(() => undefined)

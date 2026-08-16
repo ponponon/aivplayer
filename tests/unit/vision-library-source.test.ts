@@ -281,6 +281,7 @@ describe('vision library setup', () => {
     expect(tagCollapseSmoke).toContain('parentCollapsed: true')
     expect(tagCollapseSmoke).toContain('intermediateCollapsed: true')
     expect(tagCollapseSmoke).toContain('searchRevealsDescendant: true')
+    expect(tagCollapseSmoke).toContain('persistedCollapse: true')
     expect(tagCollapseSmoke).toContain('dataUnchanged: true')
     const tagNoteSearchSmoke = readFileSync(join(projectRoot, 'scripts/smoke-vision-clip-collection-tag-note-search.ts'), 'utf8')
     expect(packageJson.scripts?.['smoke:vision-clip-collection-tag-note-search']).toContain('smoke-vision-clip-collection-tag-note-search.ts')
