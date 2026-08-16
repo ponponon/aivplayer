@@ -420,6 +420,8 @@ export type VisionClipCollection = {
 
 export type VisionClipCollectionSortMode = 'source-time' | 'duration-desc' | 'file-name'
 
+export type VisionClipCollectionTagSortMode = 'name' | 'usage-desc' | 'favorite-first' | 'custom'
+
 export type VisionClipCollectionInput = {
   id?: string
   title: string
