@@ -263,12 +263,16 @@ export function VisionPanel(): React.ReactElement {
 
   useEffect(() => { writeVisionSearchPreferences(searchPreferences) }, [searchPreferences])
   useEffect(() => {
+    if (collectionTagNames.length === 0) return
     setCollectionTagOrder((current) => {
       const next = mergeVisionClipCollectionTagOrder(current, collectionTagNames)
       return JSON.stringify(next) === JSON.stringify(current) ? current : next
     })
   }, [collectionTagNamesKey])
-  useEffect(() => { writeVisionClipCollectionTagOrderPreferences(collectionTagOrder, collectionTagSortMode) }, [collectionTagOrder, collectionTagSortMode])
+  useEffect(() => {
+    if (collectionTagNames.length === 0) return
+    writeVisionClipCollectionTagOrderPreferences(collectionTagOrder, collectionTagSortMode)
+  }, [collectionTagNamesKey, collectionTagOrder, collectionTagSortMode])
 
   const refreshFailures = (): void => { void window.aiv.listVisionIndexFailures().then(setFailures).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))) }
   const refreshSavedSearches = (): void => { void window.aiv.listVisionSavedSearches().then(setSavedSearches).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))) }
