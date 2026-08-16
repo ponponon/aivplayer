@@ -11,6 +11,8 @@ describe('vision clip collection filter UI wiring', () => {
     expect(panel).toContain('collectionFilterQueryLower')
     expect(panel).toContain('collectionFilterTag')
     expect(panel).toContain('collectionFilterTags')
+    expect(panel).toContain('isVisionCollectionTagDescendantOrSelf')
+    expect(panel).toContain('getVisionCollectionTagPath(tag, collectionTagMetadata)')
     expect(panel).toContain('visibleCollections')
     expect(panel).toContain('collection.title, ...collection.tags')
     expect(panel).toContain('setCollectionFilterQuery(\'\')')
