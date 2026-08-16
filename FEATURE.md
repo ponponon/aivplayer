@@ -890,6 +890,10 @@
 - 折叠状态保存到版本化 Renderer localStorage 偏好，不写入 SQLite；当搜索或收藏筛选生效时，为避免把匹配结果藏在折叠树下，会展示符合条件的后代标签。
 - 真实 Electron Smoke 已验证父级折叠、中间层折叠、筛选穿透折叠层级、清除筛选、重载后折叠偏好恢复、集合标签数据不变和 Renderer 无错误，截图输出到 `/private/tmp/aivplayer-collection-tag-collapse-persisted.png`。
 - 当前边界：不提供拖拽树编辑、批量展开 / 收起、跨设备同步或云端树视图；localStorage 失效时仅保持当前会话状态。
+- 标签筛选器会按父标签路径展示选项；选择父标签时同时匹配带有该父标签及任意后代标签的集合，文本搜索仍与标签条件保持 AND 关系。
+- 层级标签筛选只读取既有标签元数据，不会自动给集合写入父标签或改变集合 `tags_json`；筛选条件只在当前面板会话生效。
+- 真实 Electron Smoke 已验证文本搜索、直接标签筛选、父标签包含后代筛选、无匹配空态、集合标签数据不变和 Renderer 无错误，截图输出到 `/private/tmp/aivplayer-collection-filter-hierarchy.png`。
+- 当前边界：不提供层级筛选多选、隐式标签继承写入、筛选条件持久化或云端标签视图。
 
 ## 字幕视觉锚点候选预览
 
