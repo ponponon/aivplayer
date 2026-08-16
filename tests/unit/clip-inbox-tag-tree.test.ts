@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { VisionClipCollectionTagMetadata } from '../../src/shared/vision-types'
-import { getVisionCollectionTagChildren, hasVisionCollectionTagChildren, isVisionCollectionTagDescendantOrSelf, isVisionCollectionTagHiddenByCollapsedAncestor, mergeVisionClipCollectionTagCollapsePreferences, normalizeVisionClipCollectionTagCollapsePreferences, parseVisionClipCollectionTagCollapsePreferences, serializeVisionClipCollectionTagCollapsePreferences } from '../../src/core/ai/clip-inbox-tag-tree'
+import { getVisionCollectionTagChildren, hasVisionCollectionTagChildren, isVisionCollectionTagDescendantOrSelf, isVisionCollectionTagHiddenByCollapsedAncestor, matchesVisionCollectionTagFilter, mergeVisionClipCollectionTagCollapsePreferences, normalizeVisionClipCollectionTagCollapsePreferences, parseVisionClipCollectionTagCollapsePreferences, serializeVisionClipCollectionTagCollapsePreferences } from '../../src/core/ai/clip-inbox-tag-tree'
 
 function metadata(tag: string, parentTag = ''): VisionClipCollectionTagMetadata {
   return { tag, parentTag, color: '', textColor: '', note: '', isFavorite: false, updatedAt: 0 }
@@ -17,6 +17,11 @@ describe('clip inbox tag tree', () => {
     expect(isVisionCollectionTagDescendantOrSelf('采访', '项目', tree)).toBe(true)
     expect(isVisionCollectionTagDescendantOrSelf('采访', '采访', tree)).toBe(true)
     expect(isVisionCollectionTagDescendantOrSelf('项目', '采访', tree)).toBe(false)
+    expect(matchesVisionCollectionTagFilter(['采访'], ['项目'], tree, 'any')).toBe(true)
+    expect(matchesVisionCollectionTagFilter(['采访', '音频'], ['项目', '音频'], tree, 'all')).toBe(true)
+    expect(matchesVisionCollectionTagFilter(['采访'], ['项目', '音频'], tree, 'all')).toBe(false)
+    expect(matchesVisionCollectionTagFilter(['孤立'], ['项目', '孤立'], tree, 'any')).toBe(true)
+    expect(matchesVisionCollectionTagFilter(['孤立'], [], tree, 'all')).toBe(true)
   })
 
   it('hides descendants under a collapsed ancestor but keeps siblings visible', () => {

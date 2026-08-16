@@ -4,6 +4,8 @@ import { normalizeVisionCollectionTag } from './clip-inbox-operations'
 export const VISION_CLIP_COLLECTION_TAG_COLLAPSE_PREFERENCES_STORAGE_KEY = 'aivplayer.vision-clip-collection-tag-collapse.v1'
 export const VISION_CLIP_COLLECTION_TAG_COLLAPSE_PREFERENCES_SCHEMA_VERSION = 1
 
+export type VisionCollectionTagFilterMode = 'any' | 'all'
+
 export type VisionClipCollectionTagCollapsePreferences = {
   schemaVersion: 1
   collapsedTags: string[]
@@ -71,6 +73,19 @@ export function isVisionCollectionTagDescendantOrSelf(tag: unknown, ancestorTag:
     current = parents.get(current) ?? ''
   }
   return false
+}
+
+/** Matches a collection against one or more tags while preserving hierarchy semantics. */
+export function matchesVisionCollectionTagFilter(
+  collectionTags: readonly unknown[],
+  selectedTags: readonly unknown[],
+  metadata: readonly VisionClipCollectionTagMetadata[],
+  mode: VisionCollectionTagFilterMode,
+): boolean {
+  const normalizedSelectedTags = [...new Set(selectedTags.map((tag) => normalizeVisionCollectionTag(tag)).filter(Boolean))]
+  if (normalizedSelectedTags.length === 0) return true
+  const matchesTag = (selectedTag: string): boolean => collectionTags.some((tag) => isVisionCollectionTagDescendantOrSelf(tag, selectedTag, metadata))
+  return mode === 'all' ? normalizedSelectedTags.every(matchesTag) : normalizedSelectedTags.some(matchesTag)
 }
 
 /** Reports whether a tag is hidden by a collapsed parent somewhere above it. */
