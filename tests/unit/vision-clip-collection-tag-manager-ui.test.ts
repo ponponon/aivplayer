@@ -84,6 +84,13 @@ describe('vision clip collection tag manager UI wiring', () => {
     expect(panel).toContain('collectionTagManagerFilterClear')
     expect(panel).toContain('collectionTagManagerFilterEmpty')
     expect(panel).toContain('visibleCollectionTagStats.some((item) => item.tag === collectionTagToManage)')
+    expect(panel).toContain('collectionTagOrder')
+    expect(panel).toContain('mergeVisionClipCollectionTagOrder')
+    expect(panel).toContain('moveVisionClipCollectionTagOrder')
+    expect(panel).toContain('collectionTagManagerSortCustom')
+    expect(panel).toContain('collectionTagManagerMoveUp')
+    expect(panel).toContain('collectionTagManagerMoveDown')
+    expect(panel).toContain('VISION_CLIP_COLLECTION_TAG_ORDER_PREFERENCES_STORAGE_KEY')
   })
 
   it('exposes the latest tag operation for undo', () => {

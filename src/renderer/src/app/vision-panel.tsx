@@ -1,10 +1,10 @@
-import { Archive, Check, CheckSquare, Copy, Database, Download, FilePlus, ImageUp, Pencil, ScanSearch, Search, Square, Tags, Trash2, Undo2, Upload, X } from 'lucide-react'
+import { Archive, Check, CheckSquare, ChevronDown, ChevronUp, Copy, Database, Download, FilePlus, ImageUp, Pencil, ScanSearch, Search, Square, Tags, Trash2, Undo2, Upload, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import type { VisionIndexProgress, VisionRuntimeStatus, VisionSearchResult } from '../../../shared/media-types'
 import type { AsrSubtitleResult } from '../../../shared/media-types'
 import type { MediaEvidenceDraftImportResult } from '../../../shared/evidence-task-types'
-import type { VisionClipCollection, VisionClipCollectionBatchTagsMode, VisionClipCollectionExportFormat, VisionClipCollectionSortMode, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataImportDecision, VisionClipCollectionTagMetadataImportPreviewResult, VisionClipCollectionTagOperationHistory, VisionEvidenceType, VisionIndexFailureRecord, VisionLibrarySource, VisionModelDownloadProgress, VisionSavedSearch, VisionSearchFullExportRequest, VisionSearchPageRequest, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchSortMode } from '../../../shared/vision-types'
+import type { VisionClipCollection, VisionClipCollectionBatchTagsMode, VisionClipCollectionExportFormat, VisionClipCollectionSortMode, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataImportDecision, VisionClipCollectionTagMetadataImportPreviewResult, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagSortMode, VisionEvidenceType, VisionIndexFailureRecord, VisionLibrarySource, VisionModelDownloadProgress, VisionSavedSearch, VisionSearchFullExportRequest, VisionSearchPageRequest, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchSortMode } from '../../../shared/vision-types'
 import type { LocaleCopy } from '../../../shared/i18n'
 import type { VisionObjectDetectionFilterState, VisionObjectDetectionResult } from '../../../shared/vision-object-detection-types'
 import { getVisionCollectionTagPath, invertVisionClipSelections, mergeVisionCollectionSelections, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTag, normalizeVisionCollectionTags, renameVisionClipCollectionTitle, wouldCreateVisionCollectionTagParentCycle } from '../../../core/ai/clip-inbox-operations'
@@ -13,6 +13,7 @@ import { getVisionSearchResultIds } from '../../../core/ai/vision-search-selecti
 import { getNextVisionSearchLimit, shouldLoadMoreVisionSearchResults, VISION_SEARCH_PAGE_SIZE } from '../../../core/ai/vision-search-pagination'
 import { createVisionSimilarSearchRequest } from '../../../core/ai/vision-similar-search'
 import { createDefaultVisionSearchPreferences, parseVisionSearchPreferences, serializeVisionSearchPreferences, VISION_SEARCH_PREFERENCES_STORAGE_KEY, type VisionSearchPreferences } from '../../../core/ai/vision-search-preferences'
+import { mergeVisionClipCollectionTagOrder, moveVisionClipCollectionTagOrder, parseVisionClipCollectionTagOrderPreferences, serializeVisionClipCollectionTagOrderPreferences, VISION_CLIP_COLLECTION_TAG_ORDER_PREFERENCES_STORAGE_KEY } from '../../../core/ai/clip-inbox-tag-order'
 import { useAppContext } from './app-context'
 import { useVisionLibraryFolder } from './use-vision-library-folder'
 import { VisionLibraryFolder } from './vision-library-folder'
@@ -32,7 +33,6 @@ import type { VisionEntityCatalog as VisionEntityCatalogState, VisionEntityCatal
 const VISION_SOURCE_PAGE_SIZE = 100
 const DEFAULT_COLLECTION_TAG_COLOR = '#4f5d75'
 const DEFAULT_COLLECTION_TAG_TEXT_COLOR = '#f4f1e6'
-type CollectionTagSortMode = 'name' | 'usage-desc' | 'favorite-first'
 const VISION_EVIDENCE_TYPE_OPTIONS: readonly VisionEvidenceType[] = ['visual', 'subtitle', 'ocr', 'scene', 'entity', 'object', 'speaker']
 
 type VisionSearchBaseContext =
@@ -65,6 +65,24 @@ function writeVisionSearchPreferences(preferences: VisionSearchPreferences): voi
     window.localStorage.setItem(VISION_SEARCH_PREFERENCES_STORAGE_KEY, serializeVisionSearchPreferences(preferences))
   } catch {
     // Renderer storage can be disabled or full; the in-memory preference remains authoritative.
+  }
+}
+
+function readVisionClipCollectionTagOrderPreferences() {
+  if (typeof window === 'undefined') return parseVisionClipCollectionTagOrderPreferences(null)
+  try {
+    return parseVisionClipCollectionTagOrderPreferences(window.localStorage.getItem(VISION_CLIP_COLLECTION_TAG_ORDER_PREFERENCES_STORAGE_KEY))
+  } catch {
+    return parseVisionClipCollectionTagOrderPreferences(null)
+  }
+}
+
+function writeVisionClipCollectionTagOrderPreferences(order: string[], sortMode: VisionClipCollectionTagSortMode): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(VISION_CLIP_COLLECTION_TAG_ORDER_PREFERENCES_STORAGE_KEY, serializeVisionClipCollectionTagOrderPreferences({ schemaVersion: 1, order, sortMode }))
+  } catch {
+    // Renderer storage can be disabled or full; the in-memory order remains authoritative.
   }
 }
 
@@ -150,7 +168,8 @@ export function VisionPanel(): React.ReactElement {
   const [collectionTagToManage, setCollectionTagToManage] = useState('')
   const [collectionTagFilterQuery, setCollectionTagFilterQuery] = useState('')
   const [collectionTagFavoritesOnly, setCollectionTagFavoritesOnly] = useState(false)
-  const [collectionTagSortMode, setCollectionTagSortMode] = useState<CollectionTagSortMode>('name')
+  const [collectionTagSortMode, setCollectionTagSortMode] = useState<VisionClipCollectionTagSortMode>(() => readVisionClipCollectionTagOrderPreferences().sortMode)
+  const [collectionTagOrder, setCollectionTagOrder] = useState<string[]>(() => readVisionClipCollectionTagOrderPreferences().order)
   const [isCleaningCollectionTag, setIsCleaningCollectionTag] = useState(false)
   const [collectionTagRenameTarget, setCollectionTagRenameTarget] = useState('')
   const [isRenamingCollectionTag, setIsRenamingCollectionTag] = useState(false)
@@ -193,6 +212,9 @@ export function VisionPanel(): React.ReactElement {
     for (const tag of collection.tags) counts.set(tag, (counts.get(tag) ?? 0) + 1)
     return counts
   }, new Map<string, number>())].map(([tag, count]) => ({ tag, count })).sort((left, right) => left.tag.localeCompare(right.tag, undefined, { sensitivity: 'base' }))
+  const collectionTagNames = collectionTagStats.map((item) => item.tag)
+  const collectionTagNamesKey = collectionTagNames.join('\\u001f')
+  const collectionTagOrderIndex = new Map(collectionTagOrder.map((tag, index) => [tag, index]))
   const collectionTagMetadataByTag = new Map(collectionTagMetadata.map((metadata) => [metadata.tag, metadata]))
   const collectionTagFilterQueryLower = collectionTagFilterQuery.trim().toLocaleLowerCase()
   const visibleCollectionTagStats = [...collectionTagStats].filter((item) => {
@@ -201,6 +223,11 @@ export function VisionPanel(): React.ReactElement {
     const matchesFavorite = !collectionTagFavoritesOnly || metadata?.isFavorite === true
     return matchesQuery && matchesFavorite
   }).sort((left, right) => {
+    if (collectionTagSortMode === 'custom') {
+      const leftIndex = collectionTagOrderIndex.get(left.tag) ?? Number.MAX_SAFE_INTEGER
+      const rightIndex = collectionTagOrderIndex.get(right.tag) ?? Number.MAX_SAFE_INTEGER
+      if (leftIndex !== rightIndex) return leftIndex - rightIndex
+    }
     if (collectionTagSortMode === 'usage-desc' && left.count !== right.count) return right.count - left.count
     if (collectionTagSortMode === 'favorite-first') {
       const favoriteDifference = Number(collectionTagMetadataByTag.get(right.tag)?.isFavorite === true) - Number(collectionTagMetadataByTag.get(left.tag)?.isFavorite === true)
@@ -211,6 +238,7 @@ export function VisionPanel(): React.ReactElement {
   const hasCollectionTagFilter = Boolean(collectionTagFilterQuery.trim() || collectionTagFavoritesOnly)
   const managedCollectionTag = visibleCollectionTagStats.some((item) => item.tag === collectionTagToManage) ? collectionTagToManage : visibleCollectionTagStats[0]?.tag ?? ''
   const managedCollectionTagMetadata = collectionTagMetadataByTag.get(managedCollectionTag)
+  const managedCollectionTagOrderIndex = collectionTagOrder.indexOf(managedCollectionTag)
   const collectionTagParentOptions = collectionTagStats.filter((item) => item.tag !== managedCollectionTag && !wouldCreateVisionCollectionTagParentCycle(managedCollectionTag, item.tag, collectionTagMetadata))
   const normalizedCollectionTagRenameTarget = normalizeVisionCollectionTag(collectionTagRenameTarget)
   const canRenameCollectionTag = Boolean(managedCollectionTag && normalizedCollectionTagRenameTarget && managedCollectionTag !== normalizedCollectionTagRenameTarget)
@@ -234,6 +262,13 @@ export function VisionPanel(): React.ReactElement {
     : app.copy.vision.exactVectorSearch
 
   useEffect(() => { writeVisionSearchPreferences(searchPreferences) }, [searchPreferences])
+  useEffect(() => {
+    setCollectionTagOrder((current) => {
+      const next = mergeVisionClipCollectionTagOrder(current, collectionTagNames)
+      return JSON.stringify(next) === JSON.stringify(current) ? current : next
+    })
+  }, [collectionTagNamesKey])
+  useEffect(() => { writeVisionClipCollectionTagOrderPreferences(collectionTagOrder, collectionTagSortMode) }, [collectionTagOrder, collectionTagSortMode])
 
   const refreshFailures = (): void => { void window.aiv.listVisionIndexFailures().then(setFailures).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))) }
   const refreshSavedSearches = (): void => { void window.aiv.listVisionSavedSearches().then(setSavedSearches).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))) }
@@ -1175,6 +1210,14 @@ export function VisionPanel(): React.ReactElement {
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setIsRenamingCollectionTag(false))
   }
 
+  const moveManagedCollectionTag = (direction: 'up' | 'down'): void => {
+    if (isCollectionBatchBusy || collectionTagSortMode !== 'custom' || !managedCollectionTag) return
+    const next = moveVisionClipCollectionTagOrder(collectionTagOrder, managedCollectionTag, direction)
+    if (JSON.stringify(next) === JSON.stringify(collectionTagOrder)) return
+    setCollectionTagOrder(next)
+    setCollectionTagTransferStatus(app.copy.vision.collectionTagManagerOrderMoved(managedCollectionTag, direction))
+  }
+
   const saveCollectionTagMetadata = (): void => {
     if (isCollectionBatchBusy || !managedCollectionTag) return
     setIsSavingCollectionTagMetadata(true)
@@ -1455,7 +1498,7 @@ export function VisionPanel(): React.ReactElement {
         <div className="vision-collection-tag-manager-filter">
           <input value={collectionTagFilterQuery} onChange={(event) => setCollectionTagFilterQuery(event.target.value)} placeholder={app.copy.vision.collectionTagManagerFilterPlaceholder} aria-label={app.copy.vision.collectionTagManagerFilterPlaceholder} disabled={isCollectionBatchBusy} />
           <label><input type="checkbox" checked={collectionTagFavoritesOnly} onChange={(event) => setCollectionTagFavoritesOnly(event.currentTarget.checked)} aria-label={app.copy.vision.collectionTagManagerFavoritesOnly} disabled={isCollectionBatchBusy} /><span>{app.copy.vision.collectionTagManagerFavoritesOnly}</span></label>
-          <label><span>{app.copy.vision.collectionTagManagerSortLabel}</span><select value={collectionTagSortMode} onChange={(event) => setCollectionTagSortMode(event.target.value as CollectionTagSortMode)} aria-label={app.copy.vision.collectionTagManagerSortLabel} disabled={isCollectionBatchBusy}><option value="name">{app.copy.vision.collectionTagManagerSortName}</option><option value="usage-desc">{app.copy.vision.collectionTagManagerSortUsage}</option><option value="favorite-first">{app.copy.vision.collectionTagManagerSortFavorite}</option></select></label>
+          <label><span>{app.copy.vision.collectionTagManagerSortLabel}</span><select value={collectionTagSortMode} onChange={(event) => setCollectionTagSortMode(event.target.value as VisionClipCollectionTagSortMode)} aria-label={app.copy.vision.collectionTagManagerSortLabel} disabled={isCollectionBatchBusy}><option value="name">{app.copy.vision.collectionTagManagerSortName}</option><option value="usage-desc">{app.copy.vision.collectionTagManagerSortUsage}</option><option value="favorite-first">{app.copy.vision.collectionTagManagerSortFavorite}</option><option value="custom">{app.copy.vision.collectionTagManagerSortCustom}</option></select></label>
           {hasCollectionTagFilter ? <button className="vision-secondary-action" type="button" onClick={() => { setCollectionTagFilterQuery(''); setCollectionTagFavoritesOnly(false) }} disabled={isCollectionBatchBusy}>{app.copy.vision.collectionTagManagerFilterClear}</button> : null}
         </div>
         {visibleCollectionTagStats.length > 0 ? <div className="vision-collection-tag-manager-list" role="list" aria-label={app.copy.vision.collectionTagManagerSelectLabel}>
@@ -1466,6 +1509,7 @@ export function VisionPanel(): React.ReactElement {
           <input className="vision-collection-tag-manager-input" value={collectionTagRenameTarget} maxLength={40} onChange={(event) => setCollectionTagRenameTarget(event.target.value)} placeholder={app.copy.vision.collectionTagManagerRenameInputPlaceholder} aria-label={app.copy.vision.collectionTagManagerRenameInputPlaceholder} disabled={isCollectionBatchBusy} />
           <button className="vision-secondary-action" type="button" onClick={renameCollectionTag} disabled={isCollectionBatchBusy || !canRenameCollectionTag}><Tags size={13} />{app.copy.vision.collectionTagManagerRename}</button>
           <button className="vision-secondary-action vision-collection-batch-delete" type="button" onClick={cleanupCollectionTag} disabled={isCollectionBatchBusy || !managedCollectionTag}><Tags size={13} />{app.copy.vision.collectionTagManagerCleanup}</button>
+          {collectionTagSortMode === 'custom' && managedCollectionTag ? <><button className="vision-secondary-action" type="button" onClick={() => moveManagedCollectionTag('up')} disabled={isCollectionBatchBusy || managedCollectionTagOrderIndex <= 0} aria-label={`${app.copy.vision.collectionTagManagerMoveUp}: ${managedCollectionTag}`}><ChevronUp size={13} />{app.copy.vision.collectionTagManagerMoveUp}</button><button className="vision-secondary-action" type="button" onClick={() => moveManagedCollectionTag('down')} disabled={isCollectionBatchBusy || managedCollectionTagOrderIndex < 0 || managedCollectionTagOrderIndex >= collectionTagOrder.length - 1} aria-label={`${app.copy.vision.collectionTagManagerMoveDown}: ${managedCollectionTag}`}><ChevronDown size={13} />{app.copy.vision.collectionTagManagerMoveDown}</button></> : null}
         </div>
         <div className="vision-collection-tag-manager-metadata">
           <div className="vision-collection-tag-manager-metadata-heading"><strong>{app.copy.vision.collectionTagManagerMetadataTitle}</strong><small>{app.copy.vision.collectionTagManagerMetadataDescription}</small></div>
