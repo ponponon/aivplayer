@@ -72,7 +72,7 @@ async function runSmoke(): Promise<void> {
 
     const collapseProject = page.getByRole('button', { name: '收起子标签: 项目', exact: true })
     await collapseProject.click()
-    if ((await collapseProject.getAttribute('aria-expanded')) !== 'false') throw new Error('Parent collapse button should expose aria-expanded=false')
+    if ((await page.getByRole('button', { name: '展开子标签: 项目', exact: true }).getAttribute('aria-expanded')) !== 'false') throw new Error('Parent collapse button should expose aria-expanded=false')
     if (await tagButtonCount(page) !== 2 || await page.getByRole('button', { name: '海边 · 1 个集合', exact: true }).count() !== 0 || await page.getByRole('button', { name: '独立 · 1 个集合', exact: true }).count() !== 1) throw new Error('Collapsing a parent should hide all descendants but keep unrelated roots')
 
     await page.getByRole('button', { name: '展开子标签: 项目', exact: true }).click()
