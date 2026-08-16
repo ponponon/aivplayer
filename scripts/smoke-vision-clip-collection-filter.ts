@@ -39,7 +39,7 @@ async function runSmoke(): Promise<void> {
 
     const originals = await page.evaluate(({ nextTitles }) => Promise.all(nextTitles.map((title, index) => window.aiv.saveVisionClipCollection({
       title,
-      tags: index === 0 ? ['采访'] : index === 1 ? ['室内'] : ['海边', '精选'],
+      tags: index === 0 ? ['采访', '专题'] : index === 1 ? ['室内'] : ['海边', '精选'],
       sortMode: 'source-time',
       selections: [{
         sourceId: 'source-collection-filter-smoke',
@@ -60,7 +60,7 @@ async function runSmoke(): Promise<void> {
     await page.reload({ waitUntil: 'domcontentloaded' })
     await openVisionPanel(page)
     const queryInput = page.getByRole('textbox', { name: '按名称或标签筛选', exact: true })
-    const tagSelect = page.getByRole('combobox', { name: '按标签筛选', exact: true })
+    const tagSelect = page.getByRole('listbox', { name: '按标签筛选（可多选）', exact: true })
     await queryInput.waitFor({ timeout: 10_000 })
     await tagSelect.waitFor({ timeout: 10_000 })
     if (await page.locator('.vision-collection').count() !== 3) throw new Error('Collection filter smoke should start with three collections')
@@ -76,6 +76,15 @@ async function runSmoke(): Promise<void> {
     if (await page.locator('.vision-collection').count() !== 2 || await page.getByText(titles[0], { exact: true }).count() !== 1 || await page.getByText(titles[2], { exact: true }).count() !== 1) {
       throw new Error('Collection query and hierarchical tag filter should combine with AND semantics')
     }
+
+    await page.getByRole('button', { name: '清除筛选', exact: true }).click()
+    await tagSelect.selectOption([{ label: '采访' }, { label: '精选' }])
+    await page.getByRole('status').filter({ hasText: '显示 2 / 3 个集合' }).waitFor({ timeout: 10_000 })
+    if (await page.locator('.vision-collection').count() !== 2) throw new Error('Any tag mode should match collections for either selected tag')
+    const tagMode = page.getByRole('combobox', { name: '标签组合方式', exact: true })
+    await tagMode.selectOption('all')
+    await page.getByRole('status').filter({ hasText: '显示 1 / 3 个集合' }).waitFor({ timeout: 10_000 })
+    if (await page.locator('.vision-collection').count() !== 1 || await page.getByText(titles[2], { exact: true }).count() !== 1) throw new Error('All tag mode should require every selected tag, including hierarchy matches')
 
     await page.getByRole('button', { name: '清除筛选', exact: true }).click()
     await page.getByRole('status').filter({ hasText: '显示 3 / 3 个集合' }).waitFor({ timeout: 10_000 })
@@ -106,7 +115,7 @@ async function runSmoke(): Promise<void> {
     const sessionOnly = await page.locator('.vision-collection').count() === 3
     if (!sessionOnly) throw new Error('Collection filters should be session-only and reset after reload')
     if (session.errors.length > 0) throw new Error(`Renderer errors during clip collection filter smoke:\n${session.errors.join('\n')}`)
-    console.log(`AIVPlayer Smoke Vision Clip Collection Filter passed: ${JSON.stringify({ originalCount: originals.length, queryMatches: 2, tagMatches: 2, hierarchyTagMatches: 2, emptyState: true, dataUnchanged, sessionOnly, screenshotPath: screenshotPath ?? null })}`)
+    console.log(`AIVPlayer Smoke Vision Clip Collection Filter passed: ${JSON.stringify({ originalCount: originals.length, queryMatches: 2, tagMatches: 2, hierarchyTagMatches: 2, multiTagAnyMatches: 2, multiTagAllMatches: 1, emptyState: true, dataUnchanged, sessionOnly, screenshotPath: screenshotPath ?? null })}`)
   } finally {
     if (app) await app.close().catch(() => undefined)
     await rm(userDataDirectory, { recursive: true, force: true }).catch(() => undefined)
