@@ -6,6 +6,7 @@ import { removePlaybackHistoryEntries, removePlaybackHistoryEntry, setPlaybackHi
 import type { AppModel } from './app-types'
 import { getPlaylistFileByPath, mergePlaylist } from './app-helpers'
 import { usePlaybackBookmarkActions } from './use-playback-bookmark-actions'
+import { syncPlayerPlayingState } from './playback-state'
 
 export function usePlaybackMemoryActions(model: AppModel, patchSection: AppSettingsSectionPatcher) {
   const bookmarks = usePlaybackBookmarkActions(model, patchSection)
@@ -108,7 +109,9 @@ export function usePlaybackMemoryActions(model: AppModel, patchSection: AppSetti
   }
   const loadFiles = (files: MediaFile[]): void => {
     if (files.length === 0) return
-    model.videoRef.current?.pause()
+    const video = model.videoRef.current
+    video?.pause()
+    syncPlayerPlayingState(model.setState, video, model.videoRef.current)
     resetSubtitleState(); model.playbackEndedRef.current = false
     const playlist = mergePlaylist(model.state.playlist, files)
     const currentFile = getPlaylistFileByPath(playlist, files[0])
@@ -123,7 +126,9 @@ export function usePlaybackMemoryActions(model: AppModel, patchSection: AppSetti
   const openFiles = async (): Promise<void> => loadFiles(await window.aiv.openMediaFiles())
   const createMediaFilesFromPaths = async (paths: string[]): Promise<MediaFile[]> => Promise.all(paths.map((path) => window.aiv.createMediaFile(path)))
   const selectFile = (file: MediaFile): void => {
-    model.videoRef.current?.pause()
+    const video = model.videoRef.current
+    video?.pause()
+    syncPlayerPlayingState(model.setState, video, model.videoRef.current)
     resetSubtitleState(); model.playbackEndedRef.current = false
     recordPlaybackHistory(file)
     const initial = getInitialPlaybackState(file)

@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import type { AppModel } from './app-types'
+import { syncPlayerPlayingState } from './playback-state'
 
 export function useWindowEffects(model: AppModel): void {
   useEffect(() => {
@@ -18,7 +19,12 @@ export function useWindowEffects(model: AppModel): void {
 
   useEffect(() => {
     if (!model.appSettings.playback.pauseWhenMinimized) return
-    const pauseVideo = (): void => { if (model.videoRef.current && !model.videoRef.current.paused) model.videoRef.current.pause() }
+    const pauseVideo = (): void => {
+      const video = model.videoRef.current
+      if (!video || video.paused) return
+      video.pause()
+      syncPlayerPlayingState(model.setState, video, model.videoRef.current)
+    }
     const onVisibilityChange = (): void => { if (document.visibilityState === 'hidden') pauseVideo() }
     window.addEventListener('blur', pauseVideo)
     document.addEventListener('visibilitychange', onVisibilityChange)

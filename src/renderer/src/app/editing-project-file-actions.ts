@@ -6,6 +6,7 @@ import type { AppDerived } from './use-app-derived'
 import type { AppModel } from './app-types'
 import { clampEditingTime, createEditingSource, seekEditingTime } from './editing-action-helpers'
 import { loadEditingProject, saveEditingProject } from './editing-project-storage'
+import { syncPlayerPlayingState } from './playback-state'
 
 type SelectFile = (file: NonNullable<AppModel['state']['currentFile']>) => void
 
@@ -24,7 +25,9 @@ function formatSourceRepairSummary(copy: AppDerived['copy']['editing'], sources:
 }
 
 export function setEditingProject(model: AppModel, project: EditingProject, sourceTime = 0): void {
-  model.videoRef.current?.pause()
+  const video = model.videoRef.current
+  video?.pause()
+  syncPlayerPlayingState(model.setState, video, model.videoRef.current)
   model.setEditingProject(project)
   model.setEditingPast([])
   model.setEditingFuture([])

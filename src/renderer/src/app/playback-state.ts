@@ -13,16 +13,20 @@ export function isMediaPlaying(media: MediaPlaybackSnapshot | null | undefined):
 
 export function syncPlayerPlayingState<State extends { isPlaying: boolean }>(
   setState: Dispatch<SetStateAction<State>>,
-  media: MediaPlaybackSnapshot | null | undefined
+  media: MediaPlaybackSnapshot | null | undefined,
+  currentMedia: MediaPlaybackSnapshot | null | undefined = media
 ): void {
+  if (media !== currentMedia) return
   const isPlaying = isMediaPlaying(media)
   setState((current) => current.isPlaying === isPlaying ? current : { ...current, isPlaying })
 }
 
 export function syncBooleanPlayingState(
   setState: Dispatch<SetStateAction<boolean>>,
-  media: MediaPlaybackSnapshot | null | undefined
+  media: MediaPlaybackSnapshot | null | undefined,
+  currentMedia: MediaPlaybackSnapshot | null | undefined = media
 ): void {
+  if (media !== currentMedia) return
   const isPlaying = isMediaPlaying(media)
   setState((current) => current === isPlaying ? current : isPlaying)
 }

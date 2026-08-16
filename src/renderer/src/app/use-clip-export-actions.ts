@@ -2,11 +2,14 @@ import { isClipExportLengthSeconds, type ClipExportLengthSeconds, type ClipExpor
 import type { MediaClipExportRequest } from '../../../shared/media-types'
 import type { AppDerived } from './use-app-derived'
 import type { AppModel } from './app-types'
+import { syncPlayerPlayingState } from './playback-state'
 
 export function useClipExportActions(model: AppModel, derived: AppDerived, syncPreferences: (length: ClipExportLengthSeconds, mode: ClipExportMode) => void) {
   const openClipExportDialog = (): void => {
     if (model.state.currentFile && !model.isExportingClip) {
-      model.videoRef.current?.pause()
+      const video = model.videoRef.current
+      video?.pause()
+      syncPlayerPlayingState(model.setState, video, model.videoRef.current)
       model.setIsClipExportDialogOpen(true)
     }
   }

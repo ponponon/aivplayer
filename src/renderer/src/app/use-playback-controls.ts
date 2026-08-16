@@ -7,7 +7,7 @@ import type { PlaybackMemoryActions } from './use-playback-actions'
 import { clamp } from '../lib/time'
 import { VIDEO_SINGLE_CLICK_DELAY_MS, getMediaErrorMessage, getPlayFailureMessage } from './app-helpers'
 import { getNextRepeatMode, getPlaybackEndedIndex } from '../../../shared/playback-policy'
-import { syncPlayerPlayingState } from './playback-state'
+import { isMediaPlaying, syncPlayerPlayingState } from './playback-state'
 
 export function usePlaybackControls(model: AppModel, derived: AppDerived, memory: PlaybackMemoryActions, patchSection: AppSettingsSectionPatcher) {
   const clearControlDeckHideTimer = (): void => { if (model.controlDeckHideTimerRef.current != null) window.clearTimeout(model.controlDeckHideTimerRef.current); model.controlDeckHideTimerRef.current = null }
@@ -20,18 +20,18 @@ export function usePlaybackControls(model: AppModel, derived: AppDerived, memory
   const openPanelMode = (panelMode: Exclude<PanelMode, 'none'>): void => model.setState((current) => ({ ...current, panelMode }))
   const setPlaybackError = (message: string): void => model.setState((current) => ({ ...current, error: message }))
   const clearPlaybackError = (): void => model.setState((current) => current.error ? { ...current, error: null } : current)
-  const syncPlaybackState = useCallback((video = model.videoRef.current): void => syncPlayerPlayingState(model.setState, video), [model.setState])
+  const syncPlaybackState = useCallback((video = model.videoRef.current): void => syncPlayerPlayingState(model.setState, video, model.videoRef.current), [model.setState, model.videoRef])
   const togglePlay = async (): Promise<void> => {
     revealControlDeck(); const video = model.videoRef.current
     if (!video || !model.state.currentFile) return
-    if (!video.paused) { video.pause(); syncPlaybackState(video); return }
+    if (isMediaPlaying(video)) { video.pause(); syncPlaybackState(video); return }
     try { await video.play(); syncPlaybackState(video) } catch (error) { syncPlaybackState(video); const message = getPlayFailureMessage(derived.copy, error); if (message) setPlaybackError(message) }
   }
   const seekBy = (seconds: number): void => { revealControlDeck(); const video = model.videoRef.current; if (video) video.currentTime = clamp(video.currentTime + seconds, 0, video.duration || 0) }
   const stopPlayback = (): void => {
     if (!model.state.currentFile) return
     revealControlDeck(); const video = model.videoRef.current; const file = model.state.currentFile
-    if (video) { model.playbackEndedRef.current = false; video.currentTime = 0; video.pause(); model.setState((current) => ({ ...current, isPlaying: false, currentTime: 0 })); model.lastSavedProgressRef.current = { path: file.path, time: 0 }; memory.persistPlaybackProgress(0, true) }
+    if (video) { model.playbackEndedRef.current = false; video.currentTime = 0; video.pause(); syncPlaybackState(video); model.setState((current) => ({ ...current, currentTime: 0 })); model.lastSavedProgressRef.current = { path: file.path, time: 0 }; memory.persistPlaybackProgress(0, true) }
     void window.aiv.stopNativePlayer().catch(() => undefined)
   }
   const playAdjacent = (direction: -1 | 1): void => {
@@ -55,7 +55,8 @@ export function usePlaybackControls(model: AppModel, derived: AppDerived, memory
     revealControlDeck()
     patchSection('playback', (current) => ({ ...current, endAction: current.endAction === 'next' ? 'stop' : 'next' }))
   }
-  const handlePlaybackEnded = (): void => {
+  const handlePlaybackEnded = (endedVideo = model.videoRef.current): void => {
+    if (endedVideo !== model.videoRef.current) return
     const file = model.state.currentFile
     if (!file) return
     model.playbackEndedRef.current = true
@@ -68,7 +69,7 @@ export function usePlaybackControls(model: AppModel, derived: AppDerived, memory
       repeatMode: model.appSettings.playback.repeatMode,
       order: model.appSettings.playback.order
     })
-    const video = model.videoRef.current
+    const video = endedVideo
     if (nextIndex == null) {
       syncPlaybackState(video)
       model.setState((current) => ({ ...current, currentTime: 0 }))

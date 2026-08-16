@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import type { WebDesktopStateUpdate, WebRemoteCommandForDesktop } from '../../../shared/web-types'
 import type { AppModel } from './app-types'
+import { isMediaPlaying } from './playback-state'
 
 type Actions = {
   togglePlay: () => Promise<void>
@@ -52,11 +53,11 @@ export function useWebDesktopSync(model: AppModel, actions: Actions): void {
       return
     }
     if (remoteCommand.type === 'play') {
-      if (video?.paused !== false) void actions.togglePlay()
+      if (!isMediaPlaying(video)) void actions.togglePlay()
       return
     }
     if (remoteCommand.type === 'pause') {
-      if (video && !video.paused) void actions.togglePlay()
+      if (video && isMediaPlaying(video)) void actions.togglePlay()
       return
     }
     if (remoteCommand.type === 'toggle') { void actions.togglePlay(); return }
