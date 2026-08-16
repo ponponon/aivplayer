@@ -39,7 +39,7 @@ async function runSmoke(): Promise<void> {
 
     const originals = await page.evaluate(({ nextTitles }) => Promise.all(nextTitles.map((title, index) => window.aiv.saveVisionClipCollection({
       title,
-      tags: index === 0 ? ['海边', '采访'] : index === 1 ? ['室内'] : ['海边', '精选'],
+      tags: index === 0 ? ['采访'] : index === 1 ? ['室内'] : ['海边', '精选'],
       sortMode: 'source-time',
       selections: [{
         sourceId: 'source-collection-filter-smoke',
@@ -54,6 +54,8 @@ async function runSmoke(): Promise<void> {
         evidenceTypes: ['subtitle']
       }]
     }))), { nextTitles: titles })
+    const hierarchyResult = await page.evaluate(() => window.aiv.updateVisionClipCollectionTagMetadata({ tag: '海边', parentTag: '采访' }))
+    if (!hierarchyResult.success) throw new Error(`Unable to prepare hierarchical tag filter: ${hierarchyResult.message}`)
 
     await page.reload({ waitUntil: 'domcontentloaded' })
     await openVisionPanel(page)
@@ -70,9 +72,9 @@ async function runSmoke(): Promise<void> {
     }
 
     await tagSelect.selectOption({ label: '采访' })
-    await page.getByRole('status').filter({ hasText: '显示 1 / 3 个集合' }).waitFor({ timeout: 10_000 })
-    if (await page.locator('.vision-collection').count() !== 1 || await page.getByText(titles[0], { exact: true }).count() !== 1) {
-      throw new Error('Collection query and exact tag filter should combine with AND semantics')
+    await page.getByRole('status').filter({ hasText: '显示 2 / 3 个集合' }).waitFor({ timeout: 10_000 })
+    if (await page.locator('.vision-collection').count() !== 2 || await page.getByText(titles[0], { exact: true }).count() !== 1 || await page.getByText(titles[2], { exact: true }).count() !== 1) {
+      throw new Error('Collection query and hierarchical tag filter should combine with AND semantics')
     }
 
     await page.getByRole('button', { name: '清除筛选', exact: true }).click()
@@ -104,7 +106,7 @@ async function runSmoke(): Promise<void> {
     const sessionOnly = await page.locator('.vision-collection').count() === 3
     if (!sessionOnly) throw new Error('Collection filters should be session-only and reset after reload')
     if (session.errors.length > 0) throw new Error(`Renderer errors during clip collection filter smoke:\n${session.errors.join('\n')}`)
-    console.log(`AIVPlayer Smoke Vision Clip Collection Filter passed: ${JSON.stringify({ originalCount: originals.length, queryMatches: 2, tagMatches: 1, emptyState: true, dataUnchanged, sessionOnly, screenshotPath: screenshotPath ?? null })}`)
+    console.log(`AIVPlayer Smoke Vision Clip Collection Filter passed: ${JSON.stringify({ originalCount: originals.length, queryMatches: 2, tagMatches: 2, hierarchyTagMatches: 2, emptyState: true, dataUnchanged, sessionOnly, screenshotPath: screenshotPath ?? null })}`)
   } finally {
     if (app) await app.close().catch(() => undefined)
     await rm(userDataDirectory, { recursive: true, force: true }).catch(() => undefined)
