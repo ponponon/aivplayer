@@ -57,6 +57,22 @@ export function hasVisionCollectionTagChildren(tag: unknown, metadata: readonly 
   return getVisionCollectionTagChildren(tag, metadata).length > 0
 }
 
+/** Reports whether a tag is the selected tag or one of its descendants. */
+export function isVisionCollectionTagDescendantOrSelf(tag: unknown, ancestorTag: unknown, metadata: readonly VisionClipCollectionTagMetadata[]): boolean {
+  const normalizedTag = normalizeVisionCollectionTag(tag)
+  const normalizedAncestorTag = normalizeVisionCollectionTag(ancestorTag)
+  if (!normalizedTag || !normalizedAncestorTag) return false
+  const parents = createVisionCollectionTagParentMap(metadata)
+  const visited = new Set<string>()
+  let current = normalizedTag
+  while (current && !visited.has(current)) {
+    if (current === normalizedAncestorTag) return true
+    visited.add(current)
+    current = parents.get(current) ?? ''
+  }
+  return false
+}
+
 /** Reports whether a tag is hidden by a collapsed parent somewhere above it. */
 export function isVisionCollectionTagHiddenByCollapsedAncestor(
   tag: unknown,
