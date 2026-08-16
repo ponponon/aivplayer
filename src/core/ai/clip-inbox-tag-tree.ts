@@ -1,10 +1,45 @@
 import type { VisionClipCollectionTagMetadata } from '../../shared/vision-types'
 import { normalizeVisionCollectionTag } from './clip-inbox-operations'
 
+export const VISION_CLIP_COLLECTION_TAG_COLLAPSE_PREFERENCES_STORAGE_KEY = 'aivplayer.vision-clip-collection-tag-collapse.v1'
+export const VISION_CLIP_COLLECTION_TAG_COLLAPSE_PREFERENCES_SCHEMA_VERSION = 1
+
+export type VisionClipCollectionTagCollapsePreferences = {
+  schemaVersion: 1
+  collapsedTags: string[]
+}
+
 function createVisionCollectionTagParentMap(metadata: readonly VisionClipCollectionTagMetadata[]): Map<string, string> {
   return new Map(metadata
     .map((item) => [normalizeVisionCollectionTag(item.tag), normalizeVisionCollectionTag(item.parentTag)] as const)
     .filter(([tag]) => Boolean(tag)))
+}
+
+export function normalizeVisionClipCollectionTagCollapsePreferences(value: unknown): VisionClipCollectionTagCollapsePreferences {
+  const record = value && typeof value === 'object' ? value as Record<string, unknown> : {}
+  const collapsedTags = Array.isArray(record.collapsedTags)
+    ? [...new Set(record.collapsedTags.map((tag) => normalizeVisionCollectionTag(tag)).filter(Boolean))].slice(0, 5000)
+    : []
+  return { schemaVersion: VISION_CLIP_COLLECTION_TAG_COLLAPSE_PREFERENCES_SCHEMA_VERSION, collapsedTags }
+}
+
+export function parseVisionClipCollectionTagCollapsePreferences(raw: string | null): VisionClipCollectionTagCollapsePreferences {
+  if (!raw) return normalizeVisionClipCollectionTagCollapsePreferences(null)
+  try {
+    return normalizeVisionClipCollectionTagCollapsePreferences(JSON.parse(raw) as unknown)
+  } catch {
+    return normalizeVisionClipCollectionTagCollapsePreferences(null)
+  }
+}
+
+export function serializeVisionClipCollectionTagCollapsePreferences(preferences: VisionClipCollectionTagCollapsePreferences): string {
+  return JSON.stringify(normalizeVisionClipCollectionTagCollapsePreferences(preferences))
+}
+
+/** Retains collapsed tags that are still present without collapsing newly discovered tags. */
+export function mergeVisionClipCollectionTagCollapsePreferences(collapsedTags: Iterable<unknown>, activeTags: readonly unknown[]): string[] {
+  const active = new Set(activeTags.map((tag) => normalizeVisionCollectionTag(tag)).filter(Boolean))
+  return [...new Set([...collapsedTags].map((tag) => normalizeVisionCollectionTag(tag)).filter((tag) => active.has(tag)))]
 }
 
 /** Returns the directly nested tags below a parent, in a stable display order. */

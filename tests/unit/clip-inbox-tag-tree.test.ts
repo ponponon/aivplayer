@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { VisionClipCollectionTagMetadata } from '../../src/shared/vision-types'
-import { getVisionCollectionTagChildren, hasVisionCollectionTagChildren, isVisionCollectionTagHiddenByCollapsedAncestor } from '../../src/core/ai/clip-inbox-tag-tree'
+import { getVisionCollectionTagChildren, hasVisionCollectionTagChildren, isVisionCollectionTagHiddenByCollapsedAncestor, mergeVisionClipCollectionTagCollapsePreferences, normalizeVisionClipCollectionTagCollapsePreferences, parseVisionClipCollectionTagCollapsePreferences, serializeVisionClipCollectionTagCollapsePreferences } from '../../src/core/ai/clip-inbox-tag-tree'
 
 function metadata(tag: string, parentTag = ''): VisionClipCollectionTagMetadata {
   return { tag, parentTag, color: '', textColor: '', note: '', isFavorite: false, updatedAt: 0 }
@@ -28,5 +28,14 @@ describe('clip inbox tag tree', () => {
     const cyclic = [metadata('甲', '乙'), metadata('乙', '甲')]
     expect(isVisionCollectionTagHiddenByCollapsedAncestor('甲', cyclic, [])).toBe(false)
     expect(isVisionCollectionTagHiddenByCollapsedAncestor('甲', cyclic, ['乙'])).toBe(true)
+  })
+
+  it('normalizes and persists only active collapsed tags', () => {
+    const preferences = normalizeVisionClipCollectionTagCollapsePreferences({ collapsedTags: [' 项目 ', '项目', '', '旧标签'] })
+    expect(preferences).toEqual({ schemaVersion: 1, collapsedTags: ['项目', '旧标签'] })
+    const raw = serializeVisionClipCollectionTagCollapsePreferences(preferences)
+    expect(parseVisionClipCollectionTagCollapsePreferences(raw)).toEqual(preferences)
+    expect(parseVisionClipCollectionTagCollapsePreferences('{invalid}')).toEqual({ schemaVersion: 1, collapsedTags: [] })
+    expect(mergeVisionClipCollectionTagCollapsePreferences(['项目', '旧标签'], ['项目', '新增'])).toEqual(['项目'])
   })
 })
