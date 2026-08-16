@@ -614,6 +614,8 @@
       collectionDuplicateUnavailable: '无法复制：选段集合不存在。',
       collectionSelectAll: '全选集合',
       collectionClearSelection: '清空选择',
+      collectionSelectVisible: '全选可见集合',
+      collectionClearVisible: '清空可见选择',
       selectCollection: (title: string) => `选择集合：${title}`,
       selectedCollections: (count: number) => `已选择 ${count} 个集合`,
       duplicateSelectedCollections: '复制选中集合',

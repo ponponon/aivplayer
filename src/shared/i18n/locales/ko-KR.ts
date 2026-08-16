@@ -614,6 +614,8 @@
       collectionDuplicateUnavailable: '복제할 수 없습니다: 클립 컬렉션을 찾을 수 없습니다.',
       collectionSelectAll: '컬렉션 모두 선택',
       collectionClearSelection: '선택 해제',
+      collectionSelectVisible: '표시된 컬렉션 모두 선택',
+      collectionClearVisible: '표시된 선택 해제',
       selectCollection: (title: string) => `컬렉션 선택: ${title}`,
       selectedCollections: (count: number) => `${count}개 컬렉션 선택됨`,
       duplicateSelectedCollections: '선택한 컬렉션 복제',

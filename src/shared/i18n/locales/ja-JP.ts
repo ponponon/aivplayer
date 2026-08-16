@@ -614,6 +614,8 @@
       collectionDuplicateUnavailable: '複製できません：クリップコレクションが見つかりません。',
       collectionSelectAll: 'コレクションを全選択',
       collectionClearSelection: '選択を解除',
+      collectionSelectVisible: '表示中のコレクションを全選択',
+      collectionClearVisible: '表示中の選択を解除',
       selectCollection: (title: string) => `コレクションを選択：${title}`,
       selectedCollections: (count: number) => `${count} 件のコレクションを選択中`,
       duplicateSelectedCollections: '選択したコレクションを複製',

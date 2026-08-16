@@ -614,6 +614,8 @@
       collectionDuplicateUnavailable: 'Unable to duplicate: clip collection not found.',
       collectionSelectAll: 'Select all collections',
       collectionClearSelection: 'Clear selection',
+      collectionSelectVisible: 'Select visible collections',
+      collectionClearVisible: 'Clear visible selection',
       selectCollection: (title: string) => `Select collection: ${title}`,
       selectedCollections: (count: number) => `${count} collections selected`,
       duplicateSelectedCollections: 'Duplicate selected collections',
