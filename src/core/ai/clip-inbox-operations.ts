@@ -32,6 +32,23 @@ export function normalizeVisionClipCollectionIds(value: unknown): string[] {
     .filter(Boolean))].slice(0, MAX_CLIP_COLLECTION_BATCH_DUPLICATES)
 }
 
+/** Adds or removes only the currently visible collection ids while preserving other selections. */
+export function toggleVisibleVisionClipCollectionSelection(currentIds: Iterable<unknown>, visibleIds: readonly unknown[], selectVisible: boolean): string[] {
+  const selected = new Set([...currentIds]
+    .filter((id): id is string => typeof id === 'string')
+    .map((id) => id.trim())
+    .filter(Boolean))
+  const normalizedVisibleIds = [...new Set(visibleIds
+    .filter((id): id is string => typeof id === 'string')
+    .map((id) => id.trim())
+    .filter(Boolean))]
+  for (const id of normalizedVisibleIds) {
+    if (selectVisible) selected.add(id)
+    else selected.delete(id)
+  }
+  return [...selected]
+}
+
 export function normalizeVisionCollectionTags(value: unknown): string[] {
   const values = Array.isArray(value) ? value : typeof value === 'string' ? value.split(',') : []
   return [...new Set(values

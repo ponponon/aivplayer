@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyVisionCollectionTags, duplicateVisionCollectionTitle, getVisionCollectionTagPath, invertVisionClipSelections, normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTag, normalizeVisionCollectionTagColor, normalizeVisionCollectionTagFavorite, normalizeVisionCollectionTagNote, normalizeVisionCollectionTags, normalizeVisionCollectionTagsMode, renameVisionCollectionTag, renameVisionClipCollectionTitle, sortVisionClipSelections, wouldCreateVisionCollectionTagParentCycle } from '../../src/core/ai/clip-inbox-operations'
+import { applyVisionCollectionTags, duplicateVisionCollectionTitle, getVisionCollectionTagPath, invertVisionClipSelections, normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTag, normalizeVisionCollectionTagColor, normalizeVisionCollectionTagFavorite, normalizeVisionCollectionTagNote, normalizeVisionCollectionTags, normalizeVisionCollectionTagsMode, renameVisionCollectionTag, renameVisionClipCollectionTitle, sortVisionClipSelections, toggleVisibleVisionClipCollectionSelection, wouldCreateVisionCollectionTagParentCycle } from '../../src/core/ai/clip-inbox-operations'
 import type { VisionClipSelection } from '../../src/shared/vision-types'
 
 const selection = (patch: Partial<VisionClipSelection> = {}): VisionClipSelection => ({
@@ -26,6 +26,8 @@ describe('clip inbox operations', () => {
   it('normalizes and caps batch collection ids', () => {
     expect(normalizeVisionClipCollectionIds([' first ', 'first', '', 'second', 3, ' third '])).toEqual(['first', 'second', 'third'])
     expect(normalizeVisionClipCollectionIds(Array.from({ length: 25 }, (_, index) => `collection-${index}`))).toHaveLength(20)
+    expect(toggleVisibleVisionClipCollectionSelection(new Set(['outside']), [' first ', 'visible'], true)).toEqual(['outside', 'first', 'visible'])
+    expect(toggleVisibleVisionClipCollectionSelection(new Set(['outside', 'visible']), ['visible'], false)).toEqual(['outside'])
   })
 
   it('builds bounded collection titles from prefix and suffix rules', () => {
