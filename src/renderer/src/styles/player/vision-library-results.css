@@ -637,7 +637,8 @@
 }
 
 .vision-collection-filter-input,
-.vision-collection-filter-tag {
+.vision-collection-filter-tag,
+.vision-collection-filter-mode {
   min-height: 30px;
   padding: 0 8px;
   color: var(--text-primary);
@@ -653,12 +654,20 @@
 }
 
 .vision-collection-filter-tag {
-  min-width: 120px;
-  flex: 0 1 180px;
+  min-width: 150px;
+  flex: 0 1 220px;
+  min-height: 60px;
+  padding: 4px 6px;
+}
+
+.vision-collection-filter-mode {
+  min-width: 110px;
+  flex: 0 1 150px;
 }
 
 .vision-collection-filter-input:focus,
-.vision-collection-filter-tag:focus {
+.vision-collection-filter-tag:focus,
+.vision-collection-filter-mode:focus {
   border-color: var(--accent);
   outline: 0;
 }
