@@ -1969,3 +1969,9 @@
 - 现象：CI 能识别 `Developer ID Application` 证书，但 macOS job 在 electron-builder 开始签名后长时间无输出，取消任务时仍残留 `notarytool` 子进程；DMG / ZIP 尚未生成，问题不在公证或压缩阶段。
 - 经验：GitHub macOS runner 上应由工作流显式创建临时钥匙串、导入 `.p12` 并设置 `apple-tool:,apple:` 分区权限；只设置 `CSC_LINK` / `CSC_KEY_PASSWORD` 会把钥匙串生命周期和访问权限交给构建器，遇到 runner 的钥匙串状态变化时可能卡在 `codesign`。
 - 处理：使用 `apple-actions/import-codesign-certs@v7` 导入 `MACOS_CSC_LINK`，将 `CSC_KEYCHAIN` 指向 `signing_temp.keychain`，移除 electron-builder 的重复导入路径；同时保留签名、公证、stapler 和 `spctl` 验证。
+
+## 2026-08-19：公证等待不能隐藏在 electron-builder 打包步骤里
+
+- 现象：显式导入钥匙串后，CI 已成功识别 Developer ID Application，但 electron-builder 的 `Build & Package` 仍长时间无输出；取消时能看到残留 `notarytool` 子进程，说明卡点是 Apple 公证提交等待而不是签名或 DMG 压缩。
+- 经验：第三方构建器封装的 `notarytool submit --wait` 不便于区分凭据错误、Apple 队列等待和网络超时；发布工作流应把公证从打包中拆出，记录 submission ID 和每次状态，并给单次请求及总等待设置上限。
+- 处理：先生成签名 app，使用有界的 `notarytool submit` / `info` 轮询并保存公证信息，Accepted 后 staple app，再用 `--prepackaged` 生成 DMG / ZIP；这样发布日志能明确显示公证阶段，避免把未公证包误上传。

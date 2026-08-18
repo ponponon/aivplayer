@@ -193,8 +193,75 @@ jobs:
       - name: Write runtime metadata
         run: npm run release:write-runtime-metadata -- --platform darwin --resource-dir "$GITHUB_WORKSPACE/resources" --whisper-version "$WHISPER_CPP_VERSION" --libheif-version "$LIBHEIF_VERSION" --libheif-encoder kvazaar --remote-vision-model
 
-      - name: Build & Package
-        run: npm run build && npx electron-builder --publish never
+      - name: Build signed macOS app
+        run: npm run build && npx electron-builder --dir --publish never -c.mac.notarize=false
+
+      - name: Notarize macOS app
+        shell: bash
+        run: |
+          set -euo pipefail
+          app_path="$(find release -type d -path '*/AIVPlayer.app' -print -quit)"
+          test -n "$app_path"
+          notarization_archive="$RUNNER_TEMP/AIVPlayer-notarization.zip"
+          submission_json="$RUNNER_TEMP/aivplayer-notary-submission.json"
+          ditto -c -k --sequesterRsrc --keepParent "$app_path" "$notarization_archive"
+
+          # Keep each notarytool request bounded and poll explicitly so an Apple
+          # service/network stall is visible instead of hiding inside electron-builder.
+          notarytool() {
+            python3 -c 'import subprocess, sys; completed = subprocess.run(sys.argv[1:], capture_output=True, text=True, timeout=180); print(completed.stdout, end=""); print(completed.stderr, end="", file=sys.stderr); raise SystemExit(completed.returncode)' "$@"
+          }
+
+          notarytool xcrun notarytool submit "$notarization_archive" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --output-format json > "$submission_json"
+          submission_id="$(node -e 'const fs = require("node:fs"); const value = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); process.stdout.write(value.id ?? "");' "$submission_json")"
+          test -n "$submission_id"
+
+          final_info=""
+          for attempt in $(seq 1 60); do
+            final_info="$(notarytool xcrun notarytool info "$submission_id" \
+              --apple-id "$APPLE_ID" \
+              --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+              --team-id "$APPLE_TEAM_ID" \
+              --output-format json)"
+            status="$(printf '%s' "$final_info" | node -e 'let input=""; process.stdin.on("data", chunk => input += chunk).on("end", () => { const value = JSON.parse(input); process.stdout.write(value.status ?? ""); });')"
+            echo "Apple notarization status ($attempt/60): $status"
+            case "$status" in
+              Accepted)
+                break
+                ;;
+              Invalid|Rejected)
+                notarytool xcrun notarytool log "$submission_id" \
+                  --apple-id "$APPLE_ID" \
+                  --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+                  --team-id "$APPLE_TEAM_ID" > release/notarization-log.txt || true
+                printf '%s\n' "$final_info" > release/notarization-info.json
+                exit 1
+                ;;
+              *)
+                if [[ "$attempt" == 60 ]]; then
+                  printf '%s\n' "$final_info" > release/notarization-info.json
+                  echo "Apple notarization did not finish within 30 minutes."
+                  exit 1
+                fi
+                sleep 30
+                ;;
+            esac
+          done
+
+          printf '%s\n' "$final_info" > release/notarization-info.json
+          xcrun stapler staple "$app_path"
+          xcrun stapler validate "$app_path"
+
+      - name: Package notarized macOS app
+        shell: bash
+        run: |
+          app_path="$(find release -type d -path '*/AIVPlayer.app' -print -quit)"
+          test -n "$app_path"
+          npx electron-builder --prepackaged "$app_path" --mac dmg zip --publish never -c.mac.notarize=false
 
       - name: Report package size
         run: npm run release:report-package-size -- --directory release --output release/package-size-report-macos.json
@@ -229,6 +296,8 @@ jobs:
           path: |
             release/platform-release-report-macos.json
             release/package-size-report-macos.json
+            release/notarization-info.json
+            release/notarization-log.txt
           if-no-files-found: ignore
 
       - name: Upload artifacts

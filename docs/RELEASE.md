@@ -99,6 +99,8 @@ macOS 发布需要在 GitHub Actions Secrets 中配置以下变量：
 
 工作流会把 `.p12` 导入临时钥匙串 `signing_temp`，设置 `codesign` 的访问权限，并在任务结束时清理。不要把 `.p12`、私钥、导出密码或 App 专用密码写入仓库文件、workflow 明文或 Release 资产。
 
+macOS job 会先只生成签名 `.app`，再使用 `notarytool` 提交并显式轮询公证状态；只有状态为 `Accepted`、完成 staple 和验证后，才会用 `--prepackaged` 生成 DMG / ZIP。这样 Apple 公证队列或网络异常会在独立步骤中暴露，不会被误判为 DMG 打包卡住。
+
 ## 三、提交、检查并触发正式发布
 
 ### 1. 提交版本变更
