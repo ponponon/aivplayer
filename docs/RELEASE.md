@@ -40,7 +40,7 @@
 正式发布工作流位于 `.github/workflows/release.yml`，由以下事件触发：
 
 - 推送匹配 `v*` 的 Git tag，例如 `v0.6.0`；这是正式发布方式。
-- 手动执行 `workflow_dispatch`；适合执行 `verify_only` 预演，不适合作为日常正式发布入口。
+- 手动执行 `workflow_dispatch`；默认用于 `verify_only` 预演。如果某个 tag 已经推送但 Release 尚未创建，可在包含修复的分支上将 `verify_only` 设为 `false` 重跑该 tag；已发布版本不得用此方式覆盖资产。
 
 ## 二、发布前准备
 
@@ -86,6 +86,18 @@
     git diff -- package.json package-lock.json
 
 提交前检查新增内容中没有 API key、token、密码、私钥或其他敏感信息。尤其不要把本地签名文件、证书、云服务凭据和安装包提交到 Git 仓库。
+
+### 5. GitHub Actions 签名密钥
+
+macOS 发布需要在 GitHub Actions Secrets 中配置以下变量：
+
+- `MACOS_CSC_LINK`：`.p12` 文件的 Base64 内容；
+- `MACOS_CSC_KEY_PASSWORD`：导出 `.p12` 时设置的密码；
+- `APPLE_ID`：用于公证的 Apple 账号邮箱；
+- `APPLE_APP_SPECIFIC_PASSWORD`：该 Apple 账号生成的 App 专用密码；
+- `APPLE_TEAM_ID`：Apple Developer Team ID。
+
+工作流会把 `.p12` 导入临时钥匙串 `signing_temp`，设置 `codesign` 的访问权限，并在任务结束时清理。不要把 `.p12`、私钥、导出密码或 App 专用密码写入仓库文件、workflow 明文或 Release 资产。
 
 ## 三、提交、检查并触发正式发布
 

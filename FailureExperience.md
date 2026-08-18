@@ -1963,3 +1963,9 @@
 - 现象：可见集合选择 Smoke 使用全局 `getByText('已选择 3 个集合')`，但批量标签卡片和批量重命名卡片都展示相同数量文案，Playwright 因 strict mode 命中两个元素而失败；功能状态本身已正确更新。
 - 经验：同一状态数量可能在多个批处理入口重复呈现，Smoke 不应依赖全局文案唯一性；应优先以稳定容器、角色或语义区域限定定位，再读取动态文本。
 - 处理：将选择数量断言限定到 `.vision-collection-batch-tags-actions strong`，并继续覆盖筛选内清除 / 恢复可见选择与筛选外选择保留。
+
+## 2026-08-19：GitHub Actions macOS 签名不能只依赖 electron-builder 自动导入
+
+- 现象：CI 能识别 `Developer ID Application` 证书，但 macOS job 在 electron-builder 开始签名后长时间无输出，取消任务时仍残留 `notarytool` 子进程；DMG / ZIP 尚未生成，问题不在公证或压缩阶段。
+- 经验：GitHub macOS runner 上应由工作流显式创建临时钥匙串、导入 `.p12` 并设置 `apple-tool:,apple:` 分区权限；只设置 `CSC_LINK` / `CSC_KEY_PASSWORD` 会把钥匙串生命周期和访问权限交给构建器，遇到 runner 的钥匙串状态变化时可能卡在 `codesign`。
+- 处理：使用 `apple-actions/import-codesign-certs@v7` 导入 `MACOS_CSC_LINK`，将 `CSC_KEYCHAIN` 指向 `signing_temp.keychain`，移除 electron-builder 的重复导入路径；同时保留签名、公证、stapler 和 `spctl` 验证。

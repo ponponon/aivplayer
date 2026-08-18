@@ -44,8 +44,7 @@ jobs:
       MACOSX_DEPLOYMENT_TARGET: '12.0'
       electron_config_cache: ${{ github.workspace }}/.cache/electron
       ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.cache/electron-builder
-      CSC_LINK: ${{ secrets.MACOS_CSC_LINK }}
-      CSC_KEY_PASSWORD: ${{ secrets.MACOS_CSC_KEY_PASSWORD }}
+      CSC_KEYCHAIN: signing_temp.keychain
       APPLE_ID: ${{ secrets.APPLE_ID }}
       APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
@@ -56,6 +55,13 @@ jobs:
         with:
           node-version: 22
           cache: npm
+
+      - name: Import macOS signing certificate
+        uses: apple-actions/import-codesign-certs@v7
+        with:
+          keychain: signing_temp
+          p12-file-base64: ${{ secrets.MACOS_CSC_LINK }}
+          p12-password: ${{ secrets.MACOS_CSC_KEY_PASSWORD }}
 
       - name: Restore Electron download cache
         uses: actions/cache@v4

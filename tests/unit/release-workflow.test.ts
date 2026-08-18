@@ -116,6 +116,13 @@ describe('release workflow source constraints', () => {
 
   it('builds macOS native runtimes with an explicit deployment target', () => {
     expect(releaseWorkflow).toContain("MACOSX_DEPLOYMENT_TARGET: '12.0'")
+    expect(macosWorkflow).toContain('CSC_KEYCHAIN: signing_temp.keychain')
+    expect(macosWorkflow).not.toContain('CSC_LINK: ${{ secrets.MACOS_CSC_LINK }}')
+    expect(macosWorkflow).not.toContain('CSC_KEY_PASSWORD: ${{ secrets.MACOS_CSC_KEY_PASSWORD }}')
+    expect(macosWorkflow).toContain('uses: apple-actions/import-codesign-certs@v7')
+    expect(macosWorkflow).toContain('keychain: signing_temp')
+    expect(macosWorkflow).toContain('p12-file-base64: ${{ secrets.MACOS_CSC_LINK }}')
+    expect(macosWorkflow).toContain('p12-password: ${{ secrets.MACOS_CSC_KEY_PASSWORD }}')
     expect(macosWorkflow).toContain('brew install cmake ninja pkg-config libde265 kvazaar jpeg-turbo')
     expect(macosWorkflow).toContain('name: Restore macOS FFmpeg build cache')
     expect(macosWorkflow).toContain('path: ${{ runner.temp }}/ffmpeg-install')
