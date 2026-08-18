@@ -34,7 +34,7 @@ async function runCheck(platform: string, artifactsDirectory: string, reportPath
 
 describe('platform release artifact contract', () => {
   it.each([
-    ['macos', ['AIVPlayer-0.4.0.dmg', 'AIVPlayer-0.4.0.zip', 'AIVPlayer-0.4.0.pkg', 'AIVPlayer-0.4.0.dmg.blockmap', 'latest-mac.yml']],
+    ['macos', ['AIVPlayer-0.4.0.dmg', 'AIVPlayer-0.4.0.zip', 'AIVPlayer-0.4.0.dmg.blockmap', 'latest-mac.yml']],
     ['windows', ['AIVPlayer Setup 0.4.0.exe', 'AIVPlayer Setup 0.4.0.exe.blockmap', 'latest.yml']],
     ['linux', ['AIVPlayer-0.4.0.AppImage', 'aivplayer_0.4.0_amd64.deb', 'AIVPlayer-0.4.0-arm64.AppImage', 'aivplayer_0.4.0_arm64.deb', 'latest-linux.yml', 'latest-linux-arm64.yml']]
   ])('accepts the complete %s package set', async (platform, names) => {
@@ -44,8 +44,8 @@ describe('platform release artifact contract', () => {
   })
 
   it('rejects a platform when one configured target is missing', async () => {
-    const artifactsDirectory = await createFixture(['AIVPlayer-0.4.0.dmg', 'AIVPlayer-0.4.0.zip', 'latest-mac.yml'])
-    await expect(runCheck('macos', artifactsDirectory)).rejects.toThrow('missing packages: .pkg')
+    const artifactsDirectory = await createFixture(['AIVPlayer-0.4.0.dmg', 'latest-mac.yml'])
+    await expect(runCheck('macos', artifactsDirectory)).rejects.toThrow('missing packages: .zip')
   })
 
   it('rejects cross-platform package leakage and unknown platforms', async () => {
@@ -70,7 +70,7 @@ describe('platform release artifact contract', () => {
   })
 
   it('writes a hashable evidence report without debug files', async () => {
-    const artifactsDirectory = await createFixture(['AIVPlayer-0.4.0.dmg', 'AIVPlayer-0.4.0.zip', 'AIVPlayer-0.4.0.pkg', 'latest-mac.yml', 'builder-debug.yml'])
+    const artifactsDirectory = await createFixture(['AIVPlayer-0.4.0.dmg', 'AIVPlayer-0.4.0.zip', 'latest-mac.yml', 'builder-debug.yml'])
     const reportPath = join(artifactsDirectory, 'platform-release-report-macos.json')
     await runCheck('macos', artifactsDirectory, reportPath)
     const report = JSON.parse(await readFile(reportPath, 'utf8')) as {
@@ -82,7 +82,6 @@ describe('platform release artifact contract', () => {
     expect(report.platform).toBe('macos')
     expect(report.artifacts.map((artifact) => artifact.name)).toEqual([
       'AIVPlayer-0.4.0.dmg',
-      'AIVPlayer-0.4.0.pkg',
       'AIVPlayer-0.4.0.zip',
       'latest-mac.yml'
     ])

@@ -232,7 +232,6 @@ jobs:
           path: |
             release/*.dmg
             release/*.zip
-            release/*.pkg
             release/latest*.yml
             release/*.blockmap
           if-no-files-found: error
@@ -1184,7 +1183,6 @@ jobs:
           files: |
             artifacts/assembled/*.dmg
             artifacts/assembled/*.zip
-            artifacts/assembled/*.pkg
             artifacts/assembled/*.exe
             artifacts/assembled/*.AppImage
             artifacts/assembled/*.deb

@@ -6,7 +6,7 @@ import { sha256File } from './release-manifest.mjs'
 
 export const PLATFORM_CONTRACTS = {
   macos: {
-    packages: ['.dmg', '.zip', '.pkg'],
+    packages: ['.dmg', '.zip'],
     metadata: ['latest-mac.yml']
   },
   windows: {

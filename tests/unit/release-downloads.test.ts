@@ -21,7 +21,6 @@ describe('release download selection', () => {
     const selected = selectInstallerAssets([
       { name: 'AIVPlayer-0.5.5-arm64-mac.zip' },
       { name: 'AIVPlayer-0.5.5-arm64.dmg' },
-      { name: 'AIVPlayer-0.5.5-arm64.pkg' },
       { name: 'AIVPlayer-Setup-0.5.5-x64.exe' },
       { name: 'AIVPlayer-Setup-0.5.5-arm64.exe' },
       { name: 'aivplayer-0.5.5-x86_64.AppImage' },
@@ -77,7 +76,7 @@ describe('download publishing integration', () => {
 
   it('provides a manual bootstrap path for already-published releases', () => {
     expect(syncWorkflow).toContain('workflow_dispatch:')
-    expect(syncWorkflow).toContain("default: v0.5.6")
+    expect(syncWorkflow).toContain("default: v0.6.0")
     expect(syncWorkflow).toContain('npm run release:publish-downloads')
     expect(syncWorkflow).toContain('CLOUDFLARE_API_TOKEN')
     expect(syncWorkflow).not.toContain('CLOUDFLARE_R2_ACCESS_KEY_ID')
@@ -105,9 +104,9 @@ describe('download publishing integration', () => {
     expect(siteScript).toContain('architectureUnknown')
     expect(siteScript).not.toContain('const architectureHint = [navigator.userAgentData?.architecture, navigator.userAgent]')
     expect(siteScript).toContain('FALLBACK_DOWNLOAD_MANIFEST')
+    expect(siteScript).toContain("version: '0.6.0'")
     expect(siteScript).toContain("version: '0.5.6'")
-    expect(siteScript).toContain("version: '0.5.5'")
-    expect(siteScript).not.toContain("version: '0.5.4'")
+    expect(siteScript).not.toContain("version: '0.5.5'")
     expect(siteScript).toContain('selectedHistoryVersion')
     expect(siteScript).toContain("wireDownloadSelect('history')")
   })

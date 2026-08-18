@@ -39,17 +39,17 @@
 
 正式发布工作流位于 `.github/workflows/release.yml`，由以下事件触发：
 
-- 推送匹配 `v*` 的 Git tag，例如 `v0.5.6`；这是正式发布方式。
+- 推送匹配 `v*` 的 Git tag，例如 `v0.6.0`；这是正式发布方式。
 - 手动执行 `workflow_dispatch`；适合执行 `verify_only` 预演，不适合作为日常正式发布入口。
 
 ## 二、发布前准备
 
 ### 1. 确认版本规则
 
-应用版本来自 `package.json` 的 `version` 字段，必须是三段式版本，例如 `0.5.6`。正式 tag 必须是对应的 `v` 前缀形式：
+应用版本来自 `package.json` 的 `version` 字段，必须是三段式版本，例如 `0.6.0`。正式 tag 必须是对应的 `v` 前缀形式：
 
-    package.json: 0.5.6
-    Git tag:      v0.5.6
+    package.json: 0.6.0
+    Git tag:      v0.6.0
 
 已发布版本视为不可变版本。不要移动或复用已经推送过的 tag；如果安装包内容发生变化，应递增版本号并创建新的 tag。
 
@@ -57,7 +57,7 @@
 
 推荐使用 npm 同时更新 `package.json` 和 `package-lock.json`：
 
-    npm version 0.5.6 --no-git-tag-version
+    npm version 0.6.0 --no-git-tag-version
 
 然后确认两个文件中的版本一致：
 
@@ -94,7 +94,7 @@
 使用项目约定的中文 commit message：
 
     git add package.json package-lock.json
-    git commit -m "chore(发布) : 准备 0.5.6 版本"
+    git commit -m "chore(发布) : 准备 0.6.0 版本"
 
 如果还有与本版本直接相关的文档或代码变更，应一并审阅并按范围提交；不要把无关的本地修改混入发布提交。
 
@@ -119,13 +119,13 @@
 审计通过后，先推送版本提交，再创建并推送正式 tag：
 
     git push origin main
-    git tag -a v0.5.6 -m "发布 v0.5.6"
-    git push origin v0.5.6
+    git tag -a v0.6.0 -m "发布 v0.6.0"
+    git push origin v0.6.0
 
 最后一个命令会触发 `Release` workflow。tag 推送前必须再次确认：
 
     git show -s --format='%h %s' HEAD
-    git show -s --format='%D' v0.5.6
+    git show -s --format='%D' v0.6.0
     git status --short
 
 工作区应保持干净，tag 应指向刚刚推送的版本提交。
@@ -169,7 +169,7 @@
 
 正式资产由 artifact policy 控制，主要包括：
 
-- macOS：`.dmg`、`.zip`、`.pkg`、`latest-mac.yml`；
+- macOS：`.dmg`、`.zip`、`latest-mac.yml`；DMG / ZIP 使用 Developer ID Application 签名并由 GitHub Actions 公证；
 - Windows：x64 / arm64 `.exe`、合并后的 `latest.yml`；
 - Linux：x64 / arm64 `.AppImage`、`.deb`、`latest-linux.yml`、`latest-linux-arm64.yml`；
 - 更新辅助文件：`.blockmap`；
@@ -186,14 +186,14 @@
 ### 5. 官网桌面下载路径
 
 - 官网读取稳定清单：`https://releases.quniv.cn/aivplayer/releases/download-manifest.json`。
-- 安装包路径按版本隔离，例如：`https://releases.quniv.cn/aivplayer/releases/0.5.6/<asset>`。
+- 安装包路径按版本隔离，例如：`https://releases.quniv.cn/aivplayer/releases/0.6.0/<asset>`。
 - R2 只保留清单中的最新两个正式版本；更早版本和 R2 中不存在的平台资产统一跳转 GitHub Releases。
-- 发布工作流使用 `scripts/publish-release-downloads.mjs`；首次启用时，在 `Sync AIVPlayer Downloads` workflow 手动填入已发布 tag（默认 `v0.5.6`），即可把现有版本补齐到 R2。
+- 发布工作流使用 `scripts/publish-release-downloads.mjs`；首次启用时，在 `Sync AIVPlayer Downloads` workflow 手动填入已发布 tag（默认 `v0.6.0`），即可把现有版本补齐到 R2。
 - 官网不会把浏览器暴露的 `MacIntel` 直接当成真实 x64 架构；当 macOS 架构信息不可用时，会从当前平台清单中选择可用安装包。若未来补充 x64 资产，重新生成 Release 清单后即可在手动选择器中出现该选项。
 
-该同步脚本只使用 `CLOUDFLARE_API_TOKEN` 完成 Pages 发布、R2 对象上传、清单更新和旧对象清理，不需要额外的 R2 S3 Access Key / Secret。当前 Cloudflare R2 REST 上传接口的单对象上限是 300 MB；脚本会在网络上传前拒绝更大的安装包，当前 v0.5.6 / v0.5.5 发布资产必须保持在该限制内。Actions 账号级别权限配置为：`Pages Read`、`Pages Write`、`Workers R2 Storage Write`（控制台有时显示为 R2 Storage 的 Edit）以及 `User → Memberships → Read`（供 Wrangler 读取账号成员关系）。`CLOUDFLARE_ACCOUNT_ID` 继续放在 Actions Variables 中，不要写入仓库。
+该同步脚本只使用 `CLOUDFLARE_API_TOKEN` 完成 Pages 发布、R2 对象上传、清单更新和旧对象清理，不需要额外的 R2 S3 Access Key / Secret。当前 Cloudflare R2 REST 上传接口的单对象上限是 300 MB；脚本会在网络上传前拒绝更大的安装包，当前 v0.6.0 / v0.5.6 发布资产必须保持在该限制内。Actions 账号级别权限配置为：`Pages Read`、`Pages Write`、`Workers R2 Storage Write`（控制台有时显示为 R2 Storage 的 Edit）以及 `User → Memberships → Read`（供 Wrangler 读取账号成员关系）。`CLOUDFLARE_ACCOUNT_ID` 继续放在 Actions Variables 中，不要写入仓库。
 
-- 0.5.6 仍将 FFmpeg、HEIF 和 whisper.cpp 内置；后续如需继续瘦身，可单独评估它们的按需下载。
+- 0.6.0 仍将 FFmpeg、HEIF 和 whisper.cpp 内置；后续如需继续瘦身，可单独评估它们的按需下载。
 
 ## 五、正式发布后的检查
 
@@ -211,7 +211,7 @@
 
     gh run list --workflow Release --limit 5
     gh run view <run-id>
-    gh release view v0.5.6
+    gh release view v0.6.0
 
 最终下载验证至少抽查一个 macOS、一个 Windows 和一个 Linux 安装包；对大文件不要只看文件名，优先检查 GitHub 页面显示的大小和 SHA-256。
 
@@ -221,7 +221,7 @@ GitHub Actions 的 `workflow_dispatch` 支持 `verify_only` 输入。使用方�
 
 1. 在 GitHub Actions 打开 `Release` workflow。
 2. 选择包含目标版本号的分支或提交。
-3. 填写 `tag`，例如 `v0.5.6`。
+3. 填写 `tag`，例如 `v0.6.0`。
 4. 将 `verify_only` 设置为 `true`。
 5. 等待五个平台构建和汇总门禁完成。
 

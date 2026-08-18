@@ -45,8 +45,6 @@ function validateEdges(extension, edges) {
       return hasDmgTrailer(edges.trailer)
     case '.zip':
       return hasPrefix(edges.prefix, 'PK\u0003\u0004') || hasPrefix(edges.prefix, 'PK\u0005\u0006') || hasPrefix(edges.prefix, 'PK\u0007\u0008')
-    case '.pkg':
-      return hasPrefix(edges.prefix, 'xar!')
     case '.exe':
       return hasPrefix(edges.prefix, 'MZ')
     case '.appimage':

@@ -43,7 +43,7 @@ export async function createPackageSizeReport(options = {}) {
   const components = [...topLevel.entries()]
     .map(([name, sizeBytes]) => ({ name, sizeBytes }))
     .sort((left, right) => right.sizeBytes - left.sizeBytes)
-  const installers = files.filter((file) => /\.(?:dmg|zip|pkg|exe|AppImage|deb)$/iu.test(file.path))
+  const installers = files.filter((file) => /\.(?:dmg|zip|exe|AppImage|deb)$/iu.test(file.path))
   const largestInstallerBytes = installers[0]?.sizeBytes ?? totalBytes
   return {
     schemaVersion: 1,

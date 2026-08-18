@@ -39,8 +39,7 @@ describe('release package format check', () => {
   it.each([
     ['macos', {
       'AIVPlayer-0.4.0.dmg': makeBytes(Buffer.from('not-a-dmg'), Buffer.from('koly')),
-      'AIVPlayer-0.4.0.zip': makeBytes(Buffer.from('PK\u0003\u0004')),
-      'AIVPlayer-0.4.0.pkg': makeBytes(Buffer.from('xar!'))
+      'AIVPlayer-0.4.0.zip': makeBytes(Buffer.from('PK\u0003\u0004'))
     }],
     ['windows', { 'AIVPlayer Setup 0.4.0.exe': makeBytes(Buffer.from('MZ')) }],
     ['linux', {

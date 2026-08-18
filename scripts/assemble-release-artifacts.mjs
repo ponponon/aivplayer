@@ -4,11 +4,11 @@ import { pathToFileURL } from 'node:url'
 import { isReleaseArtifact, listReleaseArtifacts } from './release-artifact-policy.mjs'
 import { sha256File } from './release-manifest.mjs'
 
-const PACKAGE_EXTENSIONS = ['.dmg', '.zip', '.pkg', '.exe', '.AppImage', '.deb', '.blockmap']
+const PACKAGE_EXTENSIONS = ['.dmg', '.zip', '.exe', '.AppImage', '.deb', '.blockmap']
 const PLATFORM_EVIDENCE = {
   macos: {
     reportSources: [['release-evidence-macos', 'platform-release-report-macos.json']],
-    packages: ['.dmg', '.zip', '.pkg'],
+    packages: ['.dmg', '.zip'],
     metadata: ['latest-mac.yml']
   },
   windows: {

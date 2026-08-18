@@ -16,7 +16,6 @@ const PACKAGE_SIGNATURES = {
     return buffer
   },
   '.zip': () => Buffer.from([0x50, 0x4b, 0x03, 0x04]),
-  '.pkg': () => Buffer.from('xar!dry-run'),
   '.exe': () => Buffer.from('MZdry-run'),
   '.AppImage': () => Buffer.from([0x7f, 0x45, 0x4c, 0x46]),
   '.deb': () => Buffer.from('!<arch>\ndry-run')
@@ -52,7 +51,6 @@ async function writeDryRunArtifacts(directory, version, platform) {
     macos: [
       ['package', packageName(version, 'arm64.dmg')],
       ['package', macZip],
-      ['package', packageName(version, 'arm64.pkg')],
       ['metadata', 'latest-mac.yml', macZip]
     ],
     windows: [

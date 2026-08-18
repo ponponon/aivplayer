@@ -53,7 +53,6 @@ async function createFixture() {
   for (const name of ['release-evidence-macos', 'release-evidence-windows', 'release-evidence-windows-arm64', 'release-evidence-linux', 'release-evidence-linux-arm64']) await mkdir(join(root, name), { recursive: true })
   await writeFile(join(root, 'macos', 'AIVPlayer-0.5.1-arm64.dmg'), 'dmg')
   await writeFile(join(root, 'macos', 'AIVPlayer-0.5.1-arm64.zip'), 'zip')
-  await writeFile(join(root, 'macos', 'AIVPlayer-0.5.1-arm64.pkg'), 'pkg')
   await writeFile(join(root, 'macos', 'latest-mac.yml'), metadata('0.5.1', 'AIVPlayer-0.5.1-arm64.zip'))
   await writeFile(join(root, 'windows-x64', 'AIVPlayer-Setup-0.5.1-x64.exe'), 'x64')
   await writeFile(join(root, 'windows-x64', 'latest.yml'), metadata('0.5.1', 'AIVPlayer-Setup-0.5.1-x64.exe'))
@@ -65,8 +64,8 @@ async function createFixture() {
   await writeFile(join(root, 'linux-arm64', 'aivplayer-0.5.1-arm64.AppImage'), 'appimage-arm64')
   await writeFile(join(root, 'linux-arm64', 'aivplayer-0.5.1-arm64.deb'), 'deb-arm64')
   await writeFile(join(root, 'linux-arm64', 'latest-linux-arm64.yml'), metadata('0.5.1', 'aivplayer-0.5.1-arm64.AppImage'))
-  await writeEvidenceReport(root, 'macos', 'release-evidence-macos', 'platform-release-report-macos.json', 'macos', ['.dmg', '.zip', '.pkg'], ['latest-mac.yml'], [
-    'AIVPlayer-0.5.1-arm64.dmg', 'AIVPlayer-0.5.1-arm64.zip', 'AIVPlayer-0.5.1-arm64.pkg', 'latest-mac.yml'
+  await writeEvidenceReport(root, 'macos', 'release-evidence-macos', 'platform-release-report-macos.json', 'macos', ['.dmg', '.zip'], ['latest-mac.yml'], [
+    'AIVPlayer-0.5.1-arm64.dmg', 'AIVPlayer-0.5.1-arm64.zip', 'latest-mac.yml'
   ])
   await writeEvidenceReport(root, 'windows-x64', 'release-evidence-windows', 'platform-release-report-windows.json', 'windows', ['.exe'], ['latest.yml'], [
     'AIVPlayer-Setup-0.5.1-x64.exe', 'latest.yml'
@@ -118,7 +117,7 @@ describe('release artifact assembly', () => {
     await expect(access(join(output, 'ffmpeg.exe'))).rejects.toMatchObject({ code: 'ENOENT' })
 
     const evidenceResult = await runEvidenceCheck(output)
-    expect(evidenceResult.stdout).toContain('Platform evidence verified: macos, windows, linux, 13 artifact(s)')
+    expect(evidenceResult.stdout).toContain('Platform evidence verified: macos, windows, linux, 12 artifact(s)')
     const windowsReport = JSON.parse(await readFile(join(output, 'platform-release-report-windows.json'), 'utf8')) as { artifacts: Array<{ name: string }> }
     expect(windowsReport.artifacts.map(({ name }) => name)).toEqual([
       'AIVPlayer-Setup-0.5.1-arm64.exe',

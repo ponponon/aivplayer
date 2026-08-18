@@ -1,6 +1,6 @@
 # AIVPlayer 功能列表
 
-- macOS 发布链路已接入 Developer ID Application 签名、Hardened Runtime 和 GitHub Actions 公证凭据；便携式 DMG / ZIP 不再携带 Windows `aivcli.cmd`，避免 macOS 深层代码签名失败。macOS `.pkg` 仍需单独配置 Developer ID Installer 证书。
+- 0.6.0 macOS 发布链路已接入 Developer ID Application 签名、Hardened Runtime 和 GitHub Actions 公证凭据；正式发布只提供经过签名和公证的便携式 DMG / ZIP，不再构建或上传 `.pkg`，也不再携带 Windows `aivcli.cmd`，避免 macOS 深层代码签名失败。
 
 - 官网下载清单的 R2 自定义域名已配置只读 CORS，允许 Cloudflare Pages 和本地预览读取 `download-manifest.json`；避免浏览器跨域拦截后误触发 GitHub 回退链接。
 
@@ -160,7 +160,7 @@
 - AI 短剧音频任务新增 `openai-tts` 兼容适配器：将提示词映射到 `/audio/speech` 的 `input`，接收同步音频二进制并原子保存；支持 voice、格式、速度、指令字段，明确拒绝 SSE 响应，避免把流事件误当成音频文件。
 - AI 短剧视频任务新增 `ark-video` 兼容适配器：将统一视频任务映射到火山方舟 Seedance 的创建任务 / 轮询 / 视频下载协议，支持模型、比例、时长、分辨率、音频开关和首尾帧 URL 参数；未识别的参数不会被隐式转发。
 - AI 短剧生成结果支持回流现有剪辑时间线：完成任务带有本地结果路径且当前已打开剪辑工程时，可复用现有素材源、主轨追加、撤销 / 重做和工程保存链路；未打开剪辑工程时不会修改时间线。
-- 桌面安装包集成 `aivcli` 启动器：Windows NSIS 将启动器加入用户 PATH，macOS `.pkg` 在 `/usr/local/bin/aivcli` 安装命令，Linux `.deb` 在 `/usr/bin/aivcli` 安装命令；启动器只转发到 AIVPlayer 的 `--cli` 模式，不重复打包业务运行时。
+- 桌面安装包集成 `aivcli` 启动器：Windows NSIS 将启动器加入用户 PATH，Linux `.deb` 在 `/usr/bin/aivcli` 安装命令；macOS DMG / ZIP 保持便携，不修改系统 PATH。启动器只转发到 AIVPlayer 的 `--cli` 模式，不重复打包业务运行时。
 - M4 Agent 剪辑第一阶段新增 `aivcli edit inspect/captions` 只读查询：复用严格 `.aivproj` 解析器，输出稳定的素材、成片时间线、字幕统计和脚本行检索结果；包含已删除脚本行与译文命中信息，不写工程、媒体或字幕文件，为后续 Proposal 提供可复核输入。
 - M4 Agent 剪辑第二阶段新增 `aivcli edit propose delete-script`：基于工程 revision 生成确定性的 Proposal / Diff，展示删除源区间、原编辑时间线区间、保留区间、脚本行状态、字幕变化和预计时长；应用前会拒绝 stale 工程，CLI 仍只读生成方案，不写回 `.aivproj`。
 - M4 Agent 剪辑第三阶段把脚本行删除接入桌面确认链路：删除动作先展示 Proposal 的删除 / 保留源区间、脚本行、字幕影响和时长变化，确认后才通过工程 revision 校验写入现有撤销 / 重做历史和本地工程缓存，确认期间工程被修改会拒绝应用。
@@ -527,7 +527,7 @@
 - 下载弹窗会默认优先显示设置里选中的下载源，并标记为默认选项。
 
 ## 应用自动更新
-- Windows/Linux 正式安装包通过 `electron-updater` 在主进程后台检查 GitHub Releases，并按当前平台下载新版本；macOS 因未配置 Apple Developer ID 签名和公证暂不启用自动更新，开发模式和 `aivcli` 也不触发更新检查。
+- Windows/Linux 正式安装包通过 `electron-updater` 在主进程后台检查 GitHub Releases，并按当前平台下载新版本；macOS 当前仍由运行时策略明确关闭自动更新，即使 0.6.0 已完成签名和公证，仍需从 GitHub 手动下载安装，开发模式和 `aivcli` 也不触发更新检查。
 - 更新过程通过 IPC 同步 `checking`、`downloading`、`downloaded`、`installing` 和错误状态，顶栏展示后台下载进度。
 - 更新下载完成后只提供“重启并更新”操作，调用安装器完成替换，不在播放或编辑过程中强制退出应用。
 - 通用设置新增“自动更新”开关，默认保持开启；关闭后停止启动检查、定时检查和后台下载，但“关于”页仍可由用户手动检查并下载更新。
@@ -700,8 +700,8 @@
 - GitHub Release 创建后会通过只读 API 回读实际资产，流式下载并核对每个文件的大小、SHA-256 和 `release-manifest.json` 内容；远端缺失、额外或漂移都会让发布任务失败。
 - 远端回读会拒绝所有不在本地 manifest 中的附件（包括调试 YAML 等非发布文件），并对成功报告及异常下载消息中的 URL 查询参数和 fragment 做脱敏，避免把远端凭据写入审计报告。
 - 发布 job 会先校验 `v<package.json.version>` 与 tag 完全一致，再校验每个 `latest*.yml` 的版本和 `url` / `path` 引用都指向当前批次资产；artifact policy 只接收 `latest*.yml`，不会把 `builder-debug.yml` 等调试文件发布到 GitHub Release。
-- 三个平台的构建 job 会在上传前执行平台产物契约：macOS 必须有 DMG / ZIP / PKG 与 `latest-mac.yml`，Windows 的 x64 / arm64 安装包会合并到包含两种架构文件的 `latest.yml`，Linux 则分别提供 `latest-linux.yml` 与 `latest-linux-arm64.yml`；缺包、跨平台包泄漏或 metadata 命名错误会在合并 manifest 前阻断发布。
-- 构建上传前还会读取安装包格式边界：DMG 校验 UDIF `koly` trailer，ZIP / PKG 校验对应容器头，Windows EXE 校验 PE `MZ`，Linux AppImage 校验 ELF、DEB 校验 ar 头；空文件或伪装文件不会仅凭文件名进入发布批次。
+- 三个平台的构建 job 会在上传前执行平台产物契约：macOS 必须有 DMG / ZIP 与 `latest-mac.yml`，Windows 的 x64 / arm64 安装包会合并到包含两种架构文件的 `latest.yml`，Linux 则分别提供 `latest-linux.yml` 与 `latest-linux-arm64.yml`；缺包、跨平台包泄漏或 metadata 命名错误会在合并 manifest 前阻断发布。
+- 构建上传前还会读取安装包格式边界：DMG 校验 UDIF `koly` trailer，ZIP 校验对应容器头，Windows EXE 校验 PE `MZ`，Linux AppImage 校验 ELF、DEB 校验 ar 头；空文件或伪装文件不会仅凭文件名进入发布批次。
 - 每个构建 Runner 在上传前生成独立的 `platform-release-report-*.json` evidence artifact，记录平台契约、资产文件名、大小和 SHA-256；Windows 双架构更新元数据会在汇总 job 中合并，Linux arm64 保留标准的 `latest-linux-arm64.yml`，报告参与 workflow 证据留存但不会进入 GitHub Release。
 - publish job 下载五组平台构建产物后，会先组装唯一文件集合、合并 Windows 更新元数据，再逐项核对三平台契约、文件集合、大小和 SHA-256，最后执行版本门禁和 `release-manifest.json` 生成；任一架构构建缺失、报告重叠、漂移或合并目录出现未报告资产都会阻断发布。
 - 发布清单会记录受控的 CI provenance（提交 SHA、仓库、workflow、运行 ID 和尝试次数）；只允许 GitHub Actions 提供的非敏感标识进入 `release-manifest.json`，不写入 token、URL 查询凭据或本机绝对路径。

@@ -259,15 +259,15 @@ Download a package for your platform from [GitHub Releases](https://github.com/p
 
 | Platform | Package |
 | --- | --- |
-| macOS | `.dmg` / `.zip` / `.pkg` |
+| macOS | `.dmg` / `.zip` |
 | Windows | `.exe` (NSIS installer) |
 | Linux | `.AppImage` / `.deb` |
 
-Windows NSIS, macOS `.pkg`, and Linux `.deb` install the `aivcli` launcher and add it to the system command path. macOS `.dmg` / `.zip` and Linux `.AppImage` are portable formats and do not modify PATH automatically; with a portable package, launch the app in `--cli` mode or create a command-line launcher yourself.
+Windows NSIS and Linux `.deb` install the `aivcli` launcher and add it to the system command path. macOS `.dmg` / `.zip` and Linux `.AppImage` are portable formats and do not modify PATH automatically; with a portable package, launch the app in `--cli` mode or create a command-line launcher yourself.
 
 ### Automatic updates
 
-After launch, official Windows and Linux installers check GitHub Releases in the background and download a new version for the current platform. When the download finishes, a “Restart and update” button appears at the top of the window; installation only begins after clicking it and does not forcibly interrupt playback or editing. macOS does not currently enable automatic updates because Apple Developer ID signing and notarization are not configured, so updates must be downloaded manually from GitHub. Development mode and `aivcli` do not participate in automatic updates.
+After launch, official Windows and Linux installers check GitHub Releases in the background and download a new version for the current platform. When the download finishes, a “Restart and update” button appears at the top of the window; installation only begins after clicking it and does not forcibly interrupt playback or editing. macOS automatic updates remain disabled by the current runtime policy, so updates must be downloaded manually from GitHub even though the 0.6.0 DMG / ZIP packages are signed and notarized. Development mode and `aivcli` do not participate in automatic updates.
 
 Automatic updates depend on the `latest*.yml` metadata and corresponding installer/update packages on the GitHub release page, so the release process must upload all of them.
 
@@ -286,9 +286,9 @@ Node.js 22.12.0 or later is required. Some network environments need a proxy to 
 
 ### The app started from “Open With” reports `Cannot find module 'apache-arrow'`
 
-This was a startup issue in older installers that did not package LanceDB’s runtime dependency. It is not caused by the video filename, an external-drive path, or MP4 encoding; the current `v0.5.6` release includes the fix. Download the installer from the relevant Release and do not install npm dependencies manually inside the app bundle.
+This was a startup issue in older installers that did not package LanceDB’s runtime dependency. It is not caused by the video filename, an external-drive path, or MP4 encoding; the current `v0.6.0` release includes the fix. Download the installer from the relevant Release and do not install npm dependencies manually inside the app bundle.
 
-The current release is `v0.5.6`; prefer the installer from that Release.
+The current release is `v0.6.0`; prefer the installer from that Release.
 
 ### Subtitle generation fails
 

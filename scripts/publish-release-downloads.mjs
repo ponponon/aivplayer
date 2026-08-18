@@ -15,15 +15,14 @@ export const DEFAULT_R2_PUBLIC_BASE_URL = 'https://releases.quniv.cn/aivplayer/r
 const CLOUDFLARE_API_BASE_URL = 'https://api.cloudflare.com/client/v4'
 const GITHUB_API_BASE_URL = 'https://api.github.com'
 const R2_REST_MAX_UPLOAD_BYTES = 300 * 1000 * 1000
-const INSTALLER_EXTENSIONS = new Set(['.dmg', '.pkg', '.zip', '.exe', '.appimage', '.deb'])
+const INSTALLER_EXTENSIONS = new Set(['.dmg', '.zip', '.exe', '.appimage', '.deb'])
 const FORMAT_PRIORITY = {
-  darwin: { '.dmg': 0, '.pkg': 1, '.zip': 2 },
+  darwin: { '.dmg': 0, '.zip': 1 },
   win32: { '.exe': 0 },
   linux: { '.appimage': 0, '.deb': 1 }
 }
 const CONTENT_TYPES = {
   '.dmg': 'application/x-apple-diskimage',
-  '.pkg': 'application/octet-stream',
   '.zip': 'application/zip',
   '.exe': 'application/vnd.microsoft.portable-executable',
   '.appimage': 'application/octet-stream',
@@ -67,7 +66,7 @@ function classifyPlatform(name) {
   const lowerName = name.toLowerCase()
   if (lowerName.endsWith('.exe')) return 'win32'
   if (lowerName.endsWith('.appimage') || lowerName.endsWith('.deb')) return 'linux'
-  if (lowerName.endsWith('.dmg') || lowerName.endsWith('.pkg') || lowerName.includes('-mac')) return 'darwin'
+  if (lowerName.endsWith('.dmg') || lowerName.includes('-mac')) return 'darwin'
   if (lowerName.endsWith('.zip') && lowerName.includes('mac')) return 'darwin'
   return null
 }

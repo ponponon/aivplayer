@@ -256,15 +256,15 @@ aivcli drama provider test
 
 | 平台 | 安装包 |
 | --- | --- |
-| macOS | `.dmg` / `.zip` / `.pkg` |
+| macOS | `.dmg` / `.zip` |
 | Windows | `.exe`（NSIS 安装器） |
 | Linux | `.AppImage` / `.deb` |
 
-Windows NSIS、macOS `.pkg` 和 Linux `.deb` 会安装 `aivcli` 启动器并加入系统命令路径。macOS `.dmg` / `.zip` 与 Linux `.AppImage` 是便携式格式，不会自动修改 PATH；使用便携式格式时可直接启动应用的 `--cli` 模式，或自行建立命令行启动器。
+Windows NSIS 和 Linux `.deb` 会安装 `aivcli` 启动器并加入系统命令路径。macOS `.dmg` / `.zip` 与 Linux `.AppImage` 是便携式格式，不会自动修改 PATH；使用便携式格式时可直接启动应用的 `--cli` 模式，或自行建立命令行启动器。
 
 ### 自动更新
 
-Windows 和 Linux 正式安装包启动后会在后台检查 GitHub Releases，并自动下载适配当前平台的新版本；下载完成后，窗口顶部会出现“重启并更新”按钮，点击后才会退出并安装，不会强制中断当前播放或编辑。macOS 当前因为尚未配置 Apple Developer ID 签名和公证，暂不启用自动更新，需要从 GitHub 手动下载安装。开发模式和 `aivcli` 不参与自动更新。
+Windows 和 Linux 正式安装包启动后会在后台检查 GitHub Releases，并自动下载适配当前平台的新版本；下载完成后，窗口顶部会出现“重启并更新”按钮，点击后才会退出并安装，不会强制中断当前播放或编辑。macOS 当前仍由运行时策略关闭自动更新，因此即使 0.6.0 的 DMG / ZIP 已完成签名和公证，也需要从 GitHub 手动下载安装。开发模式和 `aivcli` 不参与自动更新。
 
 自动更新依赖 GitHub 发布页中的 `latest*.yml` 元数据和对应的安装包 / 更新包，因此发布流程必须完整上传这些文件。
 
@@ -283,9 +283,9 @@ npm run dev
 
 ### 右键“打开方式”启动时报 `Cannot find module 'apache-arrow'`
 
-这是旧版安装包没有把 LanceDB 的运行时依赖一起打包导致的启动问题，不是视频文件名、外置硬盘路径或 MP4 编码的问题；当前 `v0.5.6` 发布包已经包含修复。请直接下载对应 Release 的安装包，不要在应用包内手动安装 npm 依赖。
+这是旧版安装包没有把 LanceDB 的运行时依赖一起打包导致的启动问题，不是视频文件名、外置硬盘路径或 MP4 编码的问题；当前 `v0.6.0` 发布包已经包含修复。请直接下载对应 Release 的安装包，不要在应用包内手动安装 npm 依赖。
 
-当前发布版本为 `v0.5.6`，请优先使用对应 Release 的安装包。
+当前发布版本为 `v0.6.0`，请优先使用对应 Release 的安装包。
 
 ### 字幕生成失败
 

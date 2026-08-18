@@ -391,7 +391,6 @@ mac:
   target:
     - dmg
     - zip
-    - pkg
   hardenedRuntime: true
   notarize: true
   forceCodeSigning: true

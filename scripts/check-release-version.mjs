@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url'
 import { listReleaseArtifacts } from './release-artifact-policy.mjs'
 
 const UPDATE_METADATA_PATTERN = /^latest(?:-[^/]+)?\.yml$/i
-const PACKAGE_FILE_PATTERN = /\.(?:dmg|zip|pkg|exe|AppImage|deb|blockmap)$/i
+const PACKAGE_FILE_PATTERN = /\.(?:dmg|zip|exe|AppImage|deb|blockmap)$/i
 const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/
 
 function readOptions(argv) {

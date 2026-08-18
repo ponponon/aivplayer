@@ -195,7 +195,7 @@ describe('release workflow source constraints', () => {
     expect(releaseWorkflow).toContain('--platform linux --architecture arm64 --artifacts-dir release')
     expect(releaseWorkflow).toContain('name: Verify assembled package formats')
     expect(releaseWorkflow).not.toContain('--artifacts-dir artifacts/assembled --report-path artifacts/assembled/platform-release-report-')
-    expect(platformRelease).toContain("packages: ['.dmg', '.zip', '.pkg']")
+    expect(platformRelease).toContain("packages: ['.dmg', '.zip']")
     expect(platformRelease).toContain("packages: ['.AppImage', '.deb']")
     expect(platformRelease).toContain('unexpected packages')
   })
@@ -227,7 +227,7 @@ describe('release workflow source constraints', () => {
   it('checks package format signatures before uploading artifacts', () => {
     expect(releaseWorkflow.match(/release:check-formats/g)).toHaveLength(8)
     expect(packageFormats).toContain("case '.dmg':")
-    expect(packageFormats).toContain("case '.pkg':")
+    expect(packageFormats).not.toContain("case '.pkg':")
     expect(packageFormats).toContain("case '.exe':")
     expect(packageFormats).toContain("case '.deb':")
     expect(packageFormats).toContain("case '.appimage':")
