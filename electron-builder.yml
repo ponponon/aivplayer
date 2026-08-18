@@ -7,11 +7,6 @@ publish:
     owner: ponponon
     repo: aivplayer
     releaseType: release
-extraFiles:
-  - from: resources/cli/aivcli.cmd
-    to: aivcli.cmd
-  - from: resources/cli/aivcli
-    to: aivcli
 files:
   - out/**
   - package.json
@@ -397,8 +392,9 @@ mac:
     - dmg
     - zip
     - pkg
-  identity: null
-  hardenedRuntime: false
+  hardenedRuntime: true
+  notarize: true
+  forceCodeSigning: true
 pkg:
   installLocation: /Applications
   allowCurrentUserHome: false
@@ -406,6 +402,9 @@ pkg:
 win:
   icon: brand/icon.ico
   artifactName: '${productName}-Setup-${version}-${arch}.${ext}'
+  extraFiles:
+    - from: resources/cli/aivcli.cmd
+      to: aivcli.cmd
   target:
     - nsis
 nsis:
@@ -423,6 +422,9 @@ linux:
   executableName: aivplayer
   artifactName: '${name}-${version}-${arch}.${ext}'
   category: AudioVideo
+  extraFiles:
+    - from: resources/cli/aivcli
+      to: aivcli
   target:
     - AppImage
     - deb

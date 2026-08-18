@@ -1,5 +1,7 @@
 # AIVPlayer 功能列表
 
+- macOS 发布链路已接入 Developer ID Application 签名、Hardened Runtime 和 GitHub Actions 公证凭据；便携式 DMG / ZIP 不再携带 Windows `aivcli.cmd`，避免 macOS 深层代码签名失败。macOS `.pkg` 仍需单独配置 Developer ID Installer 证书。
+
 - 官网下载清单的 R2 自定义域名已配置只读 CORS，允许 Cloudflare Pages 和本地预览读取 `download-manifest.json`；避免浏览器跨域拦截后误触发 GitHub 回退链接。
 
 - 官网下载推荐的架构判断改用 UA-CH 高熵 `architecture` / `bitness` 异步提示，不再从普通 UA 字符串猜测 x86 / ARM；浏览器无法可靠确认时会引导手动选择，避免把不确定的设备静默发到错误安装包。

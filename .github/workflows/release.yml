@@ -44,6 +44,11 @@ jobs:
       MACOSX_DEPLOYMENT_TARGET: '12.0'
       electron_config_cache: ${{ github.workspace }}/.cache/electron
       ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.cache/electron-builder
+      CSC_LINK: ${{ secrets.MACOS_CSC_LINK }}
+      CSC_KEY_PASSWORD: ${{ secrets.MACOS_CSC_KEY_PASSWORD }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
     steps:
       - uses: actions/checkout@v7
 
@@ -194,6 +199,15 @@ jobs:
           resource_dir="$(find release -type d -path '*/AIVPlayer.app/Contents/Resources' -print -quit)"
           test -n "$resource_dir"
           npm run release:check-packaged-resources -- --resource-dir "$resource_dir"
+
+      - name: Verify macOS signature and notarization
+        shell: bash
+        run: |
+          app_path="$(find release -type d -path '*/AIVPlayer.app' -print -quit)"
+          test -n "$app_path"
+          codesign --verify --deep --strict --verbose=2 "$app_path"
+          xcrun stapler validate "$app_path"
+          spctl --assess --type execute --verbose=4 "$app_path"
 
       - name: Verify macOS release artifacts
         run: npm run release:check-platform -- --platform macos --artifacts-dir release --report-path release/platform-release-report-macos.json
