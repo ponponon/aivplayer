@@ -129,6 +129,8 @@ describe('release workflow source constraints', () => {
     expect(macosWorkflow).toContain('name: Notarize macOS app')
     expect(macosWorkflow).toContain('xcrun notarytool submit')
     expect(macosWorkflow).toContain('xcrun notarytool info')
+    expect(macosWorkflow).toContain('notarization_attempts=120')
+    expect(macosWorkflow).toContain('Apple notarization did not finish within 60 minutes.')
     expect(macosWorkflow).toContain('xcrun stapler staple "$app_path"')
     expect(macosWorkflow).toContain('notarization-info.json')
     expect(macosWorkflow).toContain('brew install cmake ninja pkg-config libde265 kvazaar jpeg-turbo')

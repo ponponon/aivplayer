@@ -1975,3 +1975,9 @@
 - 现象：显式导入钥匙串后，CI 已成功识别 Developer ID Application，但 electron-builder 的 `Build & Package` 仍长时间无输出；取消时能看到残留 `notarytool` 子进程，说明卡点是 Apple 公证提交等待而不是签名或 DMG 压缩。
 - 经验：第三方构建器封装的 `notarytool submit --wait` 不便于区分凭据错误、Apple 队列等待和网络超时；发布工作流应把公证从打包中拆出，记录 submission ID 和每次状态，并给单次请求及总等待设置上限。
 - 处理：先生成签名 app，使用有界的 `notarytool submit` / `info` 轮询并保存公证信息，Accepted 后 staple app，再用 `--prepackaged` 生成 DMG / ZIP；这样发布日志能明确显示公证阶段，避免把未公证包误上传。
+
+## 2026-08-19：Apple 公证队列可能超过 30 分钟
+
+- 现象：第二次 CI 已成功提交 `AIVPlayer-notarization.zip`，凭据和签名均通过，Apple submission 一直返回 `In Progress`；30 分钟轮询结束时没有 `Invalid` 或 `Rejected`，只是达到本地等待上限。
+- 经验：公证耗时受 Apple 服务队列和应用体积影响，不能把 30 分钟当作可靠的完成上限；应保留 submission ID 和最终状态，使用更宽裕的总等待窗口，同时继续拒绝未获得 `Accepted` 的安装包。
+- 处理：将工作流公证轮询从 30 分钟延长到 60 分钟，保留每 30 秒一次状态输出及失败证据上传。

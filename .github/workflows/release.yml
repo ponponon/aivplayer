@@ -221,14 +221,15 @@ jobs:
           test -n "$submission_id"
 
           final_info=""
-          for attempt in $(seq 1 60); do
+          notarization_attempts=120
+          for attempt in $(seq 1 "$notarization_attempts"); do
             final_info="$(notarytool xcrun notarytool info "$submission_id" \
               --apple-id "$APPLE_ID" \
               --password "$APPLE_APP_SPECIFIC_PASSWORD" \
               --team-id "$APPLE_TEAM_ID" \
               --output-format json)"
             status="$(printf '%s' "$final_info" | node -e 'let input=""; process.stdin.on("data", chunk => input += chunk).on("end", () => { const value = JSON.parse(input); process.stdout.write(value.status ?? ""); });')"
-            echo "Apple notarization status ($attempt/60): $status"
+            echo "Apple notarization status ($attempt/$notarization_attempts): $status"
             case "$status" in
               Accepted)
                 break
@@ -242,9 +243,9 @@ jobs:
                 exit 1
                 ;;
               *)
-                if [[ "$attempt" == 60 ]]; then
+                if [[ "$attempt" == "$notarization_attempts" ]]; then
                   printf '%s\n' "$final_info" > release/notarization-info.json
-                  echo "Apple notarization did not finish within 30 minutes."
+                  echo "Apple notarization did not finish within 60 minutes."
                   exit 1
                 fi
                 sleep 30
