@@ -25,6 +25,10 @@ async function openVisionPanel(page: Page): Promise<void> {
   await page.locator('.vision-panel').waitFor({ timeout: 10_000 })
 }
 
+async function readCollectionTitles(page: Page): Promise<string[]> {
+  return page.locator('.vision-collection-title-row strong').allTextContents()
+}
+
 async function runSmoke(): Promise<void> {
   const userDataDirectory = await mkdtemp(join(tmpdir(), 'aivplayer-smoke-vision-clip-collection-filter-'))
   const prefix = `集合筛选 Smoke ${Date.now()}`
@@ -52,7 +56,18 @@ async function runSmoke(): Promise<void> {
         evidenceIds: [`collection-filter-evidence-${index + 1}`],
         text: `集合筛选验证 ${index + 1}`,
         evidenceTypes: ['subtitle']
-      }]
+      }, ...(index === 2 ? [{
+        sourceId: 'source-collection-filter-smoke',
+        videoPath: '/tmp/aivplayer-collection-filter-smoke-missing.mp4',
+        fileName: 'collection-filter-smoke-missing.mp4',
+        fingerprint: 'collection-filter-smoke-fingerprint',
+        durationSeconds: 30,
+        startSeconds: 10,
+        endSeconds: 30,
+        evidenceIds: ['collection-filter-evidence-extra'],
+        text: '集合筛选验证附加选段',
+        evidenceTypes: ['subtitle']
+      }] : [])]
     }))), { nextTitles: titles })
     const hierarchyResult = await page.evaluate(() => window.aiv.updateVisionClipCollectionTagMetadata({ tag: '海边', parentTag: '采访' }))
     if (!hierarchyResult.success) throw new Error(`Unable to prepare hierarchical tag filter: ${hierarchyResult.message}`)
@@ -66,6 +81,19 @@ async function runSmoke(): Promise<void> {
     await tagSelect.waitFor({ timeout: 10_000 })
     await excludedTagSelect.waitFor({ timeout: 10_000 })
     if (await page.locator('.vision-collection').count() !== 3) throw new Error('Collection filter smoke should start with three collections')
+    const collectionListSort = page.getByRole('combobox', { name: '集合排序', exact: true })
+    await collectionListSort.waitFor({ timeout: 10_000 })
+    await collectionListSort.selectOption('title-asc')
+    const titleSortedCollections = await readCollectionTitles(page)
+    const expectedTitleOrder = await page.evaluate((items) => [...items].sort((left, right) => left.localeCompare(right, undefined, { sensitivity: 'base' })), titles)
+    if (JSON.stringify(titleSortedCollections) !== JSON.stringify(expectedTitleOrder)) throw new Error(`Title collection sort produced an unexpected order: ${JSON.stringify(titleSortedCollections)}`)
+    await collectionListSort.selectOption('selection-count-desc')
+    const countSortedCollections = await readCollectionTitles(page)
+    if (countSortedCollections[0] !== titles[2]) throw new Error(`Selection count collection sort should put the two-selection collection first: ${JSON.stringify(countSortedCollections)}`)
+    await collectionListSort.selectOption('duration-desc')
+    const durationSortedCollections = await readCollectionTitles(page)
+    if (durationSortedCollections[0] !== titles[2]) throw new Error(`Duration collection sort should put the longest collection first: ${JSON.stringify(durationSortedCollections)}`)
+    await collectionListSort.selectOption('title-asc')
 
     await queryInput.fill('海边')
     await page.getByRole('status').filter({ hasText: '显示 2 / 3 个集合' }).waitFor({ timeout: 10_000 })
@@ -133,13 +161,15 @@ async function runSmoke(): Promise<void> {
     const persistedTagMode = page.getByRole('combobox', { name: '标签组合方式', exact: true })
     await persistedTagMode.selectOption('all')
     await excludedTagSelect.selectOption({ label: '室内' })
+    if (!(await collectionListSort.inputValue() === 'title-asc')) throw new Error('Collection list sort should remain independently selectable from filter conditions')
     await page.getByRole('status').filter({ hasText: '显示 1 / 3 个集合' }).waitFor({ timeout: 10_000 })
     await page.getByRole('group', { name: '已选标签', exact: true }).waitFor({ timeout: 10_000 })
     if (await page.getByRole('button', { name: '移除标签筛选: 采访', exact: true }).count() !== 1 || await page.getByRole('button', { name: '移除标签筛选: 精选', exact: true }).count() !== 1) {
       throw new Error('Final screenshot state should expose both selected tag summary chips')
     }
     const storedFilterPreferences = await page.evaluate(() => localStorage.getItem('aivplayer.vision-clip-collection-filter.v1'))
-    if (!storedFilterPreferences?.includes('"query":"海边"') || !storedFilterPreferences.includes('"tagMode":"all"') || !storedFilterPreferences.includes('"excludedTags":["室内"]')) {
+    const storedCollectionOrderPreferences = await page.evaluate(() => localStorage.getItem('aivplayer.vision-clip-collection-order.v1'))
+    if (!storedFilterPreferences?.includes('"query":"海边"') || !storedFilterPreferences.includes('"tagMode":"all"') || !storedFilterPreferences.includes('"excludedTags":["室内"]') || storedCollectionOrderPreferences !== '{"schemaVersion":1,"sortMode":"title-asc"}') {
       throw new Error(`Collection filter preferences were not persisted: ${storedFilterPreferences ?? 'null'}`)
     }
     if (screenshotPath) {
@@ -153,17 +183,22 @@ async function runSmoke(): Promise<void> {
     const restoredTagSelect = page.getByRole('listbox', { name: '按标签筛选（可多选）', exact: true })
     const restoredExcludedTagSelect = page.getByRole('listbox', { name: '排除标签（可多选）', exact: true })
     const restoredTagMode = page.getByRole('combobox', { name: '标签组合方式', exact: true })
+    const restoredCollectionListSort = page.getByRole('combobox', { name: '集合排序', exact: true })
     await restoredQueryInput.waitFor({ timeout: 10_000 })
     await page.getByRole('status').filter({ hasText: '显示 1 / 3 个集合' }).waitFor({ timeout: 10_000 })
     const restoredTags = await restoredTagSelect.evaluate((element) => Array.from((element as HTMLSelectElement).selectedOptions).map((option) => option.value))
     const restoredExcludedTags = await restoredExcludedTagSelect.evaluate((element) => Array.from((element as HTMLSelectElement).selectedOptions).map((option) => option.value))
     const restoredQuery = await restoredQueryInput.inputValue()
     const restoredMode = await restoredTagMode.inputValue()
+    const restoredCollectionListSortMode = await restoredCollectionListSort.inputValue()
     const restoredCollectionCount = await page.locator('.vision-collection').count()
+    const restoredCollectionTitles = await readCollectionTitles(page)
     const filterPersisted = restoredQuery === '海边'
       && JSON.stringify(restoredTags) === JSON.stringify(['采访', '精选'])
       && JSON.stringify(restoredExcludedTags) === JSON.stringify(['室内'])
       && restoredMode === 'all'
+      && restoredCollectionListSortMode === 'title-asc'
+      && JSON.stringify(restoredCollectionTitles) === JSON.stringify([titles[2]])
       && restoredCollectionCount === 1
     if (!filterPersisted || await page.getByRole('button', { name: '移除标签筛选: 采访', exact: true }).count() !== 1 || await page.getByRole('button', { name: '移除标签筛选: 精选', exact: true }).count() !== 1 || await page.getByRole('button', { name: '移除排除标签筛选: 室内', exact: true }).count() !== 1) {
       throw new Error(`Collection filters should restore after reload: ${JSON.stringify({ query: restoredQuery, tags: restoredTags, excludedTags: restoredExcludedTags, tagMode: restoredMode, count: restoredCollectionCount })}`)
@@ -246,7 +281,7 @@ async function runSmoke(): Promise<void> {
     await page.getByRole('button', { name: `删除筛选视图: ${conflictFilterName}`, exact: true }).click()
     if (await updatedSavedFilterButton.count() !== 0) throw new Error('Imported collection filter could not be deleted after conflict resolution')
     if (session.errors.length > 0) throw new Error(`Renderer errors during clip collection filter smoke:\n${session.errors.join('\n')}`)
-    console.log(`AIVPlayer Smoke Vision Clip Collection Filter passed: ${JSON.stringify({ originalCount: originals.length, queryMatches: 2, tagMatches: 2, hierarchyTagMatches: 2, excludedTagMatches: 1, multiTagAnyMatches: 2, multiTagAllMatches: 1, individualTagRemoval: true, visibleSelectionPreserved: true, emptyState: true, dataUnchanged, filterPersisted, savedFilterRestored: true, savedFilterDeleted: true, savedFilterExported: true, savedFilterImported: true, savedFilterImportPreview: true, savedFilterConflictOverwritten: true, excludedFilterPersisted: true, screenshotPath: screenshotPath ?? null })}`)
+    console.log(`AIVPlayer Smoke Vision Clip Collection Filter passed: ${JSON.stringify({ originalCount: originals.length, queryMatches: 2, tagMatches: 2, hierarchyTagMatches: 2, excludedTagMatches: 1, collectionTitleSort: true, collectionSelectionCountSort: true, collectionDurationSort: true, collectionOrderPersisted: true, multiTagAnyMatches: 2, multiTagAllMatches: 1, individualTagRemoval: true, visibleSelectionPreserved: true, emptyState: true, dataUnchanged, filterPersisted, savedFilterRestored: true, savedFilterDeleted: true, savedFilterExported: true, savedFilterImported: true, savedFilterImportPreview: true, savedFilterConflictOverwritten: true, excludedFilterPersisted: true, screenshotPath: screenshotPath ?? null })}`)
   } finally {
     if (app) await app.close().catch(() => undefined)
     await rm(userDataDirectory, { recursive: true, force: true }).catch(() => undefined)
