@@ -365,6 +365,7 @@ const api = {
   getVisionClipCollectionTagOperationHistory: (): Promise<VisionClipCollectionTagOperationHistory | null> => ipcRenderer.invoke(IPC_CHANNELS.VISION_CLIP_COLLECTION_TAG_OPERATION_HISTORY),
   undoVisionClipCollectionTagOperation: (): Promise<VisionClipCollectionTagUndoResult> => ipcRenderer.invoke(IPC_CHANNELS.VISION_CLIP_COLLECTION_TAG_OPERATION_UNDO),
   getVisionClipCollectionOperationHistory: (): Promise<VisionClipCollectionOperationHistory | null> => ipcRenderer.invoke(IPC_CHANNELS.VISION_CLIP_COLLECTION_OPERATION_HISTORY),
+  getVisionClipCollectionOperationRedoHistory: (): Promise<VisionClipCollectionOperationHistory | null> => ipcRenderer.invoke(IPC_CHANNELS.VISION_CLIP_COLLECTION_OPERATION_REDO_HISTORY),
   undoVisionClipCollectionOperation: (): Promise<VisionClipCollectionOperationUndoResult> => ipcRenderer.invoke(IPC_CHANNELS.VISION_CLIP_COLLECTION_OPERATION_UNDO),
   redoVisionClipCollectionOperation: (): Promise<VisionClipCollectionOperationRedoResult> => ipcRenderer.invoke(IPC_CHANNELS.VISION_CLIP_COLLECTION_OPERATION_REDO),
   duplicateVisionClipCollection: (collectionId: string): Promise<VisionClipCollection | null> => ipcRenderer.invoke(IPC_CHANNELS.VISION_CLIP_COLLECTION_DUPLICATE, collectionId),
