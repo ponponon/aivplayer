@@ -10,6 +10,7 @@ import type { VisionObjectDetectionFilterState, VisionObjectDetectionResult } fr
 import { getVisionCollectionTagPath, invertVisionClipSelections, mergeVisionCollectionSelections, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTag, normalizeVisionCollectionTags, renameVisionClipCollectionTitle, toggleVisibleVisionClipCollectionSelection, wouldCreateVisionCollectionTagParentCycle } from '../../../core/ai/clip-inbox-operations'
 import { hasVisionCollectionTagChildren, isVisionCollectionTagHiddenByCollapsedAncestor, matchesVisionCollectionTagFilter, mergeVisionClipCollectionTagCollapsePreferences, parseVisionClipCollectionTagCollapsePreferences, serializeVisionClipCollectionTagCollapsePreferences, VISION_CLIP_COLLECTION_TAG_COLLAPSE_PREFERENCES_STORAGE_KEY, type VisionCollectionTagFilterMode } from '../../../core/ai/clip-inbox-tag-tree'
 import { createVisionClipSelections, normalizeVisionTimeRange } from '../../../core/ai/vision-evidence'
+import { mergeVisionClipCollectionFilterTags, parseVisionClipCollectionFilterPreferences, serializeVisionClipCollectionFilterPreferences, VISION_CLIP_COLLECTION_FILTER_PREFERENCES_STORAGE_KEY } from '../../../core/ai/clip-inbox-filter-preferences'
 import { getVisionSearchResultIds } from '../../../core/ai/vision-search-selection'
 import { getNextVisionSearchLimit, shouldLoadMoreVisionSearchResults, VISION_SEARCH_PAGE_SIZE } from '../../../core/ai/vision-search-pagination'
 import { createVisionSimilarSearchRequest } from '../../../core/ai/vision-similar-search'
@@ -105,6 +106,24 @@ function writeVisionClipCollectionTagCollapsePreferences(collapsedTags: string[]
   }
 }
 
+function readVisionClipCollectionFilterPreferences() {
+  if (typeof window === 'undefined') return parseVisionClipCollectionFilterPreferences(null)
+  try {
+    return parseVisionClipCollectionFilterPreferences(window.localStorage.getItem(VISION_CLIP_COLLECTION_FILTER_PREFERENCES_STORAGE_KEY))
+  } catch {
+    return parseVisionClipCollectionFilterPreferences(null)
+  }
+}
+
+function writeVisionClipCollectionFilterPreferences(query: string, tags: string[], tagMode: VisionCollectionTagFilterMode): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(VISION_CLIP_COLLECTION_FILTER_PREFERENCES_STORAGE_KEY, serializeVisionClipCollectionFilterPreferences({ schemaVersion: 1, query, tags, tagMode }))
+  } catch {
+    // Renderer storage can be disabled or full; the in-memory filter remains authoritative.
+  }
+}
+
 function formatDuration(milliseconds: number): string {
   if (milliseconds < 1000) return `${Math.max(1, Math.round(milliseconds))}ms`
   const seconds = milliseconds / 1000
@@ -164,10 +183,11 @@ export function VisionPanel(): React.ReactElement {
   const [collectionTitle, setCollectionTitle] = useState('')
   const [collectionTags, setCollectionTags] = useState('')
   const [collections, setCollections] = useState<VisionClipCollection[]>([])
+  const [hasLoadedCollections, setHasLoadedCollections] = useState(false)
   const [selectedCollectionIds, setSelectedCollectionIds] = useState<Set<string>>(new Set())
-  const [collectionFilterQuery, setCollectionFilterQuery] = useState('')
-  const [collectionFilterTags, setCollectionFilterTags] = useState<string[]>([])
-  const [collectionFilterTagMode, setCollectionFilterTagMode] = useState<VisionCollectionTagFilterMode>('any')
+  const [collectionFilterQuery, setCollectionFilterQuery] = useState(() => readVisionClipCollectionFilterPreferences().query)
+  const [collectionFilterTags, setCollectionFilterTags] = useState<string[]>(() => readVisionClipCollectionFilterPreferences().tags)
+  const [collectionFilterTagMode, setCollectionFilterTagMode] = useState<VisionCollectionTagFilterMode>(() => readVisionClipCollectionFilterPreferences().tagMode)
   const [collectionTransferStatus, setCollectionTransferStatus] = useState<string | null>(null)
   const [collectionAvailability, setCollectionAvailability] = useState<Record<string, CollectionAvailability>>({})
   const [thumbnailUrls, setThumbnailUrls] = useState<Record<string, string>>({})
@@ -229,6 +249,8 @@ export function VisionPanel(): React.ReactElement {
   const collectionFilterQueryLower = collectionFilterQuery.trim().toLocaleLowerCase()
   const collectionTagMetadataByTag = new Map(collectionTagMetadata.map((metadata) => [metadata.tag, metadata]))
   const availableCollectionFilterTags = [...new Set(collections.flatMap((collection) => collection.tags))].sort((left, right) => left.localeCompare(right, undefined, { sensitivity: 'base' }))
+  const availableCollectionFilterTagsKey = availableCollectionFilterTags.join('\u001f')
+  const collectionFilterTagsKey = collectionFilterTags.join('\u001f')
   const collectionTagStats = [...collections.reduce((counts, collection) => {
     for (const tag of collection.tags) counts.set(tag, (counts.get(tag) ?? 0) + 1)
     return counts
@@ -286,6 +308,17 @@ export function VisionPanel(): React.ReactElement {
     : app.copy.vision.exactVectorSearch
 
   useEffect(() => { writeVisionSearchPreferences(searchPreferences) }, [searchPreferences])
+  useEffect(() => {
+    if (!hasLoadedCollections) return
+    setCollectionFilterTags((current) => {
+      const next = mergeVisionClipCollectionFilterTags(current, availableCollectionFilterTags)
+      return JSON.stringify(next) === JSON.stringify(current) ? current : next
+    })
+  }, [hasLoadedCollections, availableCollectionFilterTagsKey])
+  useEffect(() => {
+    if (!hasLoadedCollections) return
+    writeVisionClipCollectionFilterPreferences(collectionFilterQuery, collectionFilterTags, collectionFilterTagMode)
+  }, [hasLoadedCollections, collectionFilterQuery, collectionFilterTagsKey, collectionFilterTagMode])
   useEffect(() => {
     if (collectionTagNames.length === 0) return
     setCollectionTagOrder((current) => {
@@ -527,7 +560,10 @@ export function VisionPanel(): React.ReactElement {
   useEffect(() => {
     let active = true
     void window.aiv.listVisionClipCollections().then((nextCollections) => {
-      if (active) setCollections(nextCollections)
+      if (active) {
+        setCollections(nextCollections)
+        setHasLoadedCollections(true)
+      }
     }).catch((reason: unknown) => {
       if (active) setError(reason instanceof Error ? reason.message : String(reason))
     })
