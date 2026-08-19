@@ -81,6 +81,11 @@ async function runSmoke(): Promise<void> {
     await tagSelect.selectOption([{ label: '采访' }, { label: '精选' }])
     await page.getByRole('status').filter({ hasText: '显示 2 / 3 个集合' }).waitFor({ timeout: 10_000 })
     if (await page.locator('.vision-collection').count() !== 2) throw new Error('Any tag mode should match collections for either selected tag')
+    await page.getByRole('button', { name: '移除标签筛选: 采访', exact: true }).click()
+    await page.getByRole('status').filter({ hasText: '显示 1 / 3 个集合' }).waitFor({ timeout: 10_000 })
+    if (await page.getByRole('button', { name: '移除标签筛选: 采访', exact: true }).count() !== 0 || await page.locator('.vision-collection').count() !== 1) throw new Error('Removing one selected tag should keep the other tag filter active')
+    await tagSelect.selectOption([{ label: '采访' }, { label: '精选' }])
+    await page.getByRole('status').filter({ hasText: '显示 2 / 3 个集合' }).waitFor({ timeout: 10_000 })
     const tagMode = page.getByRole('combobox', { name: '标签组合方式', exact: true })
     await tagMode.selectOption('all')
     await page.getByRole('status').filter({ hasText: '显示 1 / 3 个集合' }).waitFor({ timeout: 10_000 })
@@ -94,6 +99,7 @@ async function runSmoke(): Promise<void> {
     await page.getByRole('button', { name: '全选集合', exact: true }).click()
     await selectedCollectionSummary.filter({ hasText: '已选择 3 个集合' }).waitFor({ timeout: 10_000 })
     await queryInput.fill('海边')
+    await tagSelect.selectOption({ label: '采访' })
     await page.getByRole('status').filter({ hasText: '显示 2 / 3 个集合' }).waitFor({ timeout: 10_000 })
     await page.getByRole('button', { name: '清空可见选择', exact: true }).click()
     await selectedCollectionSummary.filter({ hasText: '已选择 1 个集合' }).waitFor({ timeout: 10_000 })
@@ -115,6 +121,9 @@ async function runSmoke(): Promise<void> {
     if (!dataUnchanged) throw new Error(`Collection filter should not mutate saved data: ${JSON.stringify(persisted)}`)
 
     await queryInput.fill('海边')
+    await tagSelect.selectOption({ label: '采访' })
+    await page.getByRole('group', { name: '已选标签', exact: true }).waitFor({ timeout: 10_000 })
+    if (await page.getByRole('button', { name: '移除标签筛选: 采访', exact: true }).count() !== 1) throw new Error('Final screenshot state should expose the selected tag summary chip')
     if (screenshotPath) {
       await page.locator('.vision-collections').scrollIntoViewIfNeeded()
       await page.screenshot({ path: screenshotPath, fullPage: false })
@@ -127,7 +136,7 @@ async function runSmoke(): Promise<void> {
     const sessionOnly = await page.locator('.vision-collection').count() === 3
     if (!sessionOnly) throw new Error('Collection filters should be session-only and reset after reload')
     if (session.errors.length > 0) throw new Error(`Renderer errors during clip collection filter smoke:\n${session.errors.join('\n')}`)
-    console.log(`AIVPlayer Smoke Vision Clip Collection Filter passed: ${JSON.stringify({ originalCount: originals.length, queryMatches: 2, tagMatches: 2, hierarchyTagMatches: 2, multiTagAnyMatches: 2, multiTagAllMatches: 1, visibleSelectionPreserved: true, emptyState: true, dataUnchanged, sessionOnly, screenshotPath: screenshotPath ?? null })}`)
+    console.log(`AIVPlayer Smoke Vision Clip Collection Filter passed: ${JSON.stringify({ originalCount: originals.length, queryMatches: 2, tagMatches: 2, hierarchyTagMatches: 2, multiTagAnyMatches: 2, multiTagAllMatches: 1, individualTagRemoval: true, visibleSelectionPreserved: true, emptyState: true, dataUnchanged, sessionOnly, screenshotPath: screenshotPath ?? null })}`)
   } finally {
     if (app) await app.close().catch(() => undefined)
     await rm(userDataDirectory, { recursive: true, force: true }).catch(() => undefined)
