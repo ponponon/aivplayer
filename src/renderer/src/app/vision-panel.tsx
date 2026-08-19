@@ -252,6 +252,7 @@ export function VisionPanel(): React.ReactElement {
   const [savedCollectionFilterImportPreview, setSavedCollectionFilterImportPreview] = useState<VisionClipCollectionSavedFilterImportPreviewItem[] | null>(null)
   const [savedCollectionFilterImportDecisions, setSavedCollectionFilterImportDecisions] = useState<Record<string, VisionClipCollectionSavedFilterImportDecision>>({})
   const savedCollectionFilterFileInputRef = useRef<HTMLInputElement | null>(null)
+  const collectionOperationRefreshVersionRef = useRef(0)
   const [collectionTransferStatus, setCollectionTransferStatus] = useState<string | null>(null)
   const [collectionAvailability, setCollectionAvailability] = useState<Record<string, CollectionAvailability>>({})
   const [thumbnailUrls, setThumbnailUrls] = useState<Record<string, string>>({})
@@ -432,7 +433,12 @@ export function VisionPanel(): React.ReactElement {
   const refreshSavedSearches = (): void => { void window.aiv.listVisionSavedSearches().then(setSavedSearches).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))) }
   const refreshCollectionTagMetadata = (): void => { void window.aiv.listVisionClipCollectionTagMetadata().then(setCollectionTagMetadata).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))) }
   const refreshCollectionTagOperation = (): void => { void window.aiv.getVisionClipCollectionTagOperationHistory().then(setLastCollectionTagOperation).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))) }
-  const refreshCollectionOperation = (): void => { void window.aiv.getVisionClipCollectionOperationHistory().then(setLastCollectionOperation).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))) }
+  const refreshCollectionOperation = (): void => {
+    const version = ++collectionOperationRefreshVersionRef.current
+    void window.aiv.getVisionClipCollectionOperationHistory().then((next) => {
+      if (version === collectionOperationRefreshVersionRef.current) setLastCollectionOperation(next)
+    }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
+  }
 
   useEffect(() => {
     setCollectionTagParent(managedCollectionTagMetadata?.parentTag ?? '')

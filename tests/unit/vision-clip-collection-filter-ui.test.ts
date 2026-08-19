@@ -25,6 +25,8 @@ describe('vision clip collection filter UI wiring', () => {
     expect(panel).toContain('getVisionClipCollectionOperationHistory')
     expect(panel).toContain('undoVisionClipCollectionOperation')
     expect(panel).toContain('undoCollectionOperation')
+    expect(panel).toContain('collectionOperationRefreshVersionRef')
+    expect(panel).toContain('version === collectionOperationRefreshVersionRef.current')
     expect(panel).toContain('collectionOperationUndo')
     expect(panel).toContain('summarizeVisionClipCollectionStatuses')
     expect(panel).toContain('collectionStatusSummaryLabel')
