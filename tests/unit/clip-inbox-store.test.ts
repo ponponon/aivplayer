@@ -85,6 +85,18 @@ describe('clip inbox store', () => {
     expect(store.getCollection(saved.id)).toEqual(saved)
   })
 
+  it('persists collection favorite and archive flags and preserves them on ordinary updates', () => {
+    const saved = store.saveCollection({ title: '收藏归档集合', isFavorite: true, isArchived: true, selections: [selection()] })
+    expect(saved).toMatchObject({ isFavorite: true, isArchived: true })
+
+    const updated = store.saveCollection({ id: saved.id, title: '收藏归档集合已改名', selections: [selection({ startSeconds: 4, endSeconds: 6 })] })
+    expect(updated).toMatchObject({ id: saved.id, title: '收藏归档集合已改名', isFavorite: true, isArchived: true })
+
+    store.close()
+    store = new ClipInboxStore(tempDirectory)
+    expect(store.getCollection(saved.id)).toMatchObject({ isFavorite: true, isArchived: true })
+  })
+
   it('deletes a collection and rejects empty collections', () => {
     expect(() => store.saveCollection({ title: '空集合', selections: [] })).toThrow('至少需要一个有效选段')
     const saved = store.saveCollection({ title: '待删除', selections: [selection()] })

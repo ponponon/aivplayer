@@ -8,6 +8,8 @@ function collection(id: string, title: string, updatedAt: number, selections: Ar
     title,
     tags: [],
     sortMode: 'source-time',
+    isFavorite: false,
+    isArchived: false,
     createdAt: updatedAt - 1,
     updatedAt,
     selections: selections.map(([startSeconds, endSeconds], index) => ({

@@ -70,6 +70,8 @@ function parseCollectionInput(value: unknown): VisionClipCollectionInput {
     title,
     tags: normalizeVisionCollectionTags(collection.tags),
     sortMode: normalizeVisionCollectionSortMode(collection.sortMode),
+    isFavorite: collection.isFavorite === true,
+    isArchived: collection.isArchived === true,
     selections: collection.selections.map((selection, index) => parseSelection(selection, index))
   }
 }

@@ -7,6 +7,8 @@ const collection: VisionClipCollection = {
   title: '海边, 第一集',
   tags: ['海边'],
   sortMode: 'source-time',
+  isFavorite: true,
+  isArchived: true,
   createdAt: 1,
   updatedAt: 2,
   selections: [{
@@ -26,7 +28,7 @@ const collection: VisionClipCollection = {
 describe('clip inbox export', () => {
   it('renders versioned JSON', () => {
     const output = renderVisionClipCollectionExport(collection, 'json')
-    expect(JSON.parse(output)).toMatchObject({ exportVersion: 1, collection: { title: collection.title, tags: ['海边'] } })
+    expect(JSON.parse(output)).toMatchObject({ exportVersion: 1, collection: { title: collection.title, tags: ['海边'], isFavorite: true, isArchived: true } })
   })
 
   it('renders a versioned multi-collection JSON export', () => {

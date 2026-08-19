@@ -413,6 +413,8 @@ export type VisionClipCollection = {
   title: string
   tags: string[]
   sortMode: VisionClipCollectionSortMode
+  isFavorite: boolean
+  isArchived: boolean
   createdAt: number
   updatedAt: number
   selections: VisionClipSelection[]
@@ -427,6 +429,8 @@ export type VisionClipCollectionInput = {
   title: string
   tags?: string[]
   sortMode?: VisionClipCollectionSortMode
+  isFavorite?: boolean
+  isArchived?: boolean
   selections: VisionClipSelection[]
 }
 

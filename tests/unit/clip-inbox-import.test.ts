@@ -24,6 +24,12 @@ describe('clip inbox import', () => {
   it('accepts the rendered export and deliberately drops the old collection id', () => {
     const input = parseVisionClipCollectionImportText(JSON.stringify({ exportVersion: 1, collection: { id: 'old-id', title: '备份', selections: [{ ...selection, startSeconds: 1, endSeconds: 2 }] } }))
     expect(input).not.toHaveProperty('id')
+    expect(input).toMatchObject({ isFavorite: false, isArchived: false })
+  })
+
+  it('preserves collection favorite and archive flags in portable JSON', () => {
+    const input = parseVisionClipCollectionImport({ exportVersion: 1, collection: { title: '归档备份', isFavorite: true, isArchived: true, selections: [selection] } })
+    expect(input).toMatchObject({ isFavorite: true, isArchived: true })
   })
 
   it('rejects unsupported versions, empty collections, and invalid ranges', () => {

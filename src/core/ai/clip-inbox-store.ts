@@ -100,6 +100,8 @@ export class ClipInboxStore {
         title TEXT NOT NULL,
         tags_json TEXT NOT NULL DEFAULT '[]',
         sort_mode TEXT NOT NULL DEFAULT 'source-time',
+        is_favorite INTEGER NOT NULL DEFAULT 0,
+        is_archived INTEGER NOT NULL DEFAULT 0,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
       );
@@ -142,6 +144,8 @@ export class ClipInboxStore {
     `)
     this.ensureCollectionColumn('tags_json', "TEXT NOT NULL DEFAULT '[]'")
     this.ensureCollectionColumn('sort_mode', "TEXT NOT NULL DEFAULT 'source-time'")
+    this.ensureCollectionColumn('is_favorite', 'INTEGER NOT NULL DEFAULT 0')
+    this.ensureCollectionColumn('is_archived', 'INTEGER NOT NULL DEFAULT 0')
     this.ensureTagMetadataColumn('note', "TEXT NOT NULL DEFAULT ''")
     this.ensureTagMetadataColumn('is_favorite', 'INTEGER NOT NULL DEFAULT 0')
   }
@@ -246,14 +250,16 @@ export class ClipInboxStore {
     const tags = normalizeVisionCollectionTags(input.tags)
     const sortMode = normalizeVisionCollectionSortMode(input.sortMode)
     const id = typeof input.id === 'string' && input.id.trim() ? input.id.trim() : randomUUID()
-    const existing = this.database.prepare('SELECT created_at FROM clip_collections WHERE id = ?').get(id) as SqliteRow | undefined
+    const existing = this.database.prepare('SELECT created_at, is_favorite, is_archived FROM clip_collections WHERE id = ?').get(id) as SqliteRow | undefined
+    const isFavorite = input.isFavorite === undefined ? normalizeVisionCollectionTagFavorite(existing?.is_favorite) : normalizeVisionCollectionTagFavorite(input.isFavorite)
+    const isArchived = input.isArchived === undefined ? normalizeVisionCollectionTagFavorite(existing?.is_archived) : normalizeVisionCollectionTagFavorite(input.isArchived)
     const now = Date.now()
     this.database.exec('BEGIN')
     try {
       this.database.prepare(`
-        INSERT INTO clip_collections (id, title, tags_json, sort_mode, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)
-        ON CONFLICT(id) DO UPDATE SET title = excluded.title, tags_json = excluded.tags_json, sort_mode = excluded.sort_mode, updated_at = excluded.updated_at
-      `).run(id, title, JSON.stringify(tags), sortMode, existing ? numberValue(existing, 'created_at') : now, now)
+        INSERT INTO clip_collections (id, title, tags_json, sort_mode, is_favorite, is_archived, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET title = excluded.title, tags_json = excluded.tags_json, sort_mode = excluded.sort_mode, is_favorite = excluded.is_favorite, is_archived = excluded.is_archived, updated_at = excluded.updated_at
+      `).run(id, title, JSON.stringify(tags), sortMode, isFavorite ? 1 : 0, isArchived ? 1 : 0, existing ? numberValue(existing, 'created_at') : now, now)
       this.database.prepare('DELETE FROM clip_collection_items WHERE collection_id = ?').run(id)
       const insert = this.database.prepare(`
         INSERT INTO clip_collection_items (id, collection_id, item_index, source_id, video_path, file_name, fingerprint, duration_seconds, width, height, start_seconds, end_seconds, evidence_ids_json, text, evidence_types_json)
@@ -283,6 +289,8 @@ export class ClipInboxStore {
       title: duplicateVisionCollectionTitle(collection.title),
       tags: collection.tags,
       sortMode: collection.sortMode,
+      isFavorite: false,
+      isArchived: false,
       selections: collection.selections
     })
   }
@@ -513,6 +521,8 @@ export class ClipInboxStore {
       title: stringValue(row, 'title') || '未命名选段集合',
       tags: normalizeVisionCollectionTags(parseJsonArray(row.tags_json)),
       sortMode: normalizeVisionCollectionSortMode(row.sort_mode),
+      isFavorite: normalizeVisionCollectionTagFavorite(row.is_favorite),
+      isArchived: normalizeVisionCollectionTagFavorite(row.is_archived),
       createdAt: numberValue(row, 'created_at'),
       updatedAt: numberValue(row, 'updated_at'),
       selections
@@ -574,7 +584,7 @@ export class ClipInboxStore {
     return { id, type: type as VisionClipCollectionTagOperationType, createdAt: numberValue(row, 'created_at') }
   }
 
-  private ensureCollectionColumn(name: 'tags_json' | 'sort_mode', definition: string): void {
+  private ensureCollectionColumn(name: 'tags_json' | 'sort_mode' | 'is_favorite' | 'is_archived', definition: string): void {
     const columns = this.database.prepare('PRAGMA table_info(clip_collections)').all() as SqliteRow[]
     if (columns.some((column) => stringValue(column, 'name') === name)) return
     this.database.exec(`ALTER TABLE clip_collections ADD COLUMN ${name} ${definition}`)
