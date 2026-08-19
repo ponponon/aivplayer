@@ -738,6 +738,48 @@
   white-space: nowrap;
 }
 
+.vision-collection-status-card {
+  padding: 7px 9px;
+}
+
+.vision-collection-status-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.vision-collection-status-summary-label {
+  margin-right: 2px;
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.vision-collection-status-filter {
+  min-height: 24px;
+  padding: 2px 7px;
+  color: var(--text-secondary);
+  background: rgba(var(--overlay-rgb), 0.06);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 9px;
+}
+
+.vision-collection-status-filter:hover:not(:disabled),
+.vision-collection-status-filter:focus-visible,
+.vision-collection-status-filter.is-active {
+  color: var(--text-primary);
+  background: rgba(var(--accent-rgb), 0.12);
+  border-color: var(--accent);
+  outline: 0;
+}
+
+.vision-collection-status-filter:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
 .vision-collection-batch-tags-actions {
   display: grid;
   gap: 7px;
