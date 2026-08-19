@@ -1,6 +1,6 @@
 import { Archive, Check, CheckSquare, ChevronDown, ChevronRight, ChevronUp, Copy, Database, Download, FilePlus, ImageUp, Pencil, ScanSearch, Search, Square, Tags, Trash2, Undo2, Upload, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import type { KeyboardEvent } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type { ChangeEvent, KeyboardEvent } from 'react'
 import type { VisionIndexProgress, VisionRuntimeStatus, VisionSearchResult } from '../../../shared/media-types'
 import type { AsrSubtitleResult } from '../../../shared/media-types'
 import type { MediaEvidenceDraftImportResult } from '../../../shared/evidence-task-types'
@@ -10,7 +10,7 @@ import type { VisionObjectDetectionFilterState, VisionObjectDetectionResult } fr
 import { getVisionCollectionTagPath, invertVisionClipSelections, mergeVisionCollectionSelections, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTag, normalizeVisionCollectionTags, renameVisionClipCollectionTitle, toggleVisibleVisionClipCollectionSelection, wouldCreateVisionCollectionTagParentCycle } from '../../../core/ai/clip-inbox-operations'
 import { hasVisionCollectionTagChildren, isVisionCollectionTagHiddenByCollapsedAncestor, matchesVisionCollectionTagFilter, mergeVisionClipCollectionTagCollapsePreferences, parseVisionClipCollectionTagCollapsePreferences, serializeVisionClipCollectionTagCollapsePreferences, VISION_CLIP_COLLECTION_TAG_COLLAPSE_PREFERENCES_STORAGE_KEY, type VisionCollectionTagFilterMode } from '../../../core/ai/clip-inbox-tag-tree'
 import { createVisionClipSelections, normalizeVisionTimeRange } from '../../../core/ai/vision-evidence'
-import { mergeVisionClipCollectionFilterTags, parseVisionClipCollectionFilterPreferences, parseVisionClipCollectionSavedFilters, removeVisionClipCollectionSavedFilter, serializeVisionClipCollectionFilterPreferences, serializeVisionClipCollectionSavedFilters, upsertVisionClipCollectionSavedFilter, VISION_CLIP_COLLECTION_FILTER_PREFERENCES_STORAGE_KEY, VISION_CLIP_COLLECTION_SAVED_FILTERS_STORAGE_KEY, type VisionClipCollectionSavedFilter } from '../../../core/ai/clip-inbox-filter-preferences'
+import { mergeVisionClipCollectionFilterTags, mergeVisionClipCollectionSavedFilters, parseVisionClipCollectionFilterPreferences, parseVisionClipCollectionSavedFilterManifest, parseVisionClipCollectionSavedFilters, removeVisionClipCollectionSavedFilter, serializeVisionClipCollectionFilterPreferences, serializeVisionClipCollectionSavedFilters, upsertVisionClipCollectionSavedFilter, VISION_CLIP_COLLECTION_FILTER_PREFERENCES_STORAGE_KEY, VISION_CLIP_COLLECTION_SAVED_FILTERS_STORAGE_KEY, type VisionClipCollectionSavedFilter } from '../../../core/ai/clip-inbox-filter-preferences'
 import { getVisionSearchResultIds } from '../../../core/ai/vision-search-selection'
 import { getNextVisionSearchLimit, shouldLoadMoreVisionSearchResults, VISION_SEARCH_PAGE_SIZE } from '../../../core/ai/vision-search-pagination'
 import { createVisionSimilarSearchRequest } from '../../../core/ai/vision-similar-search'
@@ -147,6 +147,16 @@ function createVisionClipCollectionSavedFilterId(): string {
   return `collection-filter-${Date.now()}-${Math.random().toString(36).slice(2)}`
 }
 
+function downloadVisionClipCollectionSavedFilters(filters: readonly VisionClipCollectionSavedFilter[]): void {
+  const blob = new Blob([serializeVisionClipCollectionSavedFilters(filters)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = `aivplayer-collection-filter-views-${new Date().toISOString().slice(0, 10)}.json`
+  anchor.click()
+  URL.revokeObjectURL(url)
+}
+
 function formatDuration(milliseconds: number): string {
   if (milliseconds < 1000) return `${Math.max(1, Math.round(milliseconds))}ms`
   const seconds = milliseconds / 1000
@@ -213,6 +223,8 @@ export function VisionPanel(): React.ReactElement {
   const [collectionFilterTagMode, setCollectionFilterTagMode] = useState<VisionCollectionTagFilterMode>(() => readVisionClipCollectionFilterPreferences().tagMode)
   const [savedCollectionFilterName, setSavedCollectionFilterName] = useState('')
   const [savedCollectionFilters, setSavedCollectionFilters] = useState<VisionClipCollectionSavedFilter[]>(readVisionClipCollectionSavedFilters)
+  const [savedCollectionFilterTransferStatus, setSavedCollectionFilterTransferStatus] = useState<string | null>(null)
+  const savedCollectionFilterFileInputRef = useRef<HTMLInputElement | null>(null)
   const [collectionTransferStatus, setCollectionTransferStatus] = useState<string | null>(null)
   const [collectionAvailability, setCollectionAvailability] = useState<Record<string, CollectionAvailability>>({})
   const [thumbnailUrls, setThumbnailUrls] = useState<Record<string, string>>({})
@@ -1205,6 +1217,33 @@ export function VisionPanel(): React.ReactElement {
     setSavedCollectionFilters((current) => removeVisionClipCollectionSavedFilter(current, id))
   }
 
+  const exportSavedCollectionFilters = (): void => {
+    if (isCollectionBatchBusy || savedCollectionFilters.length === 0) return
+    setSavedCollectionFilterTransferStatus(null)
+    downloadVisionClipCollectionSavedFilters(savedCollectionFilters)
+    setSavedCollectionFilterTransferStatus(app.copy.vision.collectionFilterSavedViewsExported)
+  }
+
+  const importSavedCollectionFilters = (): void => {
+    if (isCollectionBatchBusy) return
+    setSavedCollectionFilterTransferStatus(null)
+    savedCollectionFilterFileInputRef.current?.click()
+  }
+
+  const handleSavedCollectionFilterFile = (event: ChangeEvent<HTMLInputElement>): void => {
+    const file = event.currentTarget.files?.[0]
+    event.currentTarget.value = ''
+    if (!file || isCollectionBatchBusy) return
+    setError(null)
+    setSavedCollectionFilterTransferStatus(null)
+    void file.text().then((raw) => {
+      const imported = parseVisionClipCollectionSavedFilterManifest(raw)
+      const result = mergeVisionClipCollectionSavedFilters(savedCollectionFilters, imported)
+      setSavedCollectionFilters(result.filters)
+      setSavedCollectionFilterTransferStatus(app.copy.vision.collectionFilterSavedViewsImported(result.importedCount, result.skippedCount))
+    }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
+  }
+
   const toggleAllCollectionSelection = (): void => {
     setSelectedCollectionIds((current) => new Set(toggleVisibleVisionClipCollectionSelection(current, visibleCollectionIds, !allVisibleCollectionsSelected)))
   }
@@ -1674,7 +1713,14 @@ export function VisionPanel(): React.ReactElement {
         <button className="vision-secondary-action" type="button" onClick={saveCurrentCollectionFilter} disabled={isCollectionBatchBusy || !hasCollectionFilter || !savedCollectionFilterName.trim()}>{app.copy.vision.collectionFilterSaveView}</button>
       </div>
       <div className="vision-saved-searches" aria-label={app.copy.vision.collectionFilterSavedViewsLabel}>
-        <strong className="vision-saved-search-heading">{app.copy.vision.collectionFilterSavedViewsLabel}</strong>
+        <div className="vision-saved-search-heading-row">
+          <strong className="vision-saved-search-heading">{app.copy.vision.collectionFilterSavedViewsLabel}</strong>
+          <div className="vision-saved-search-actions">
+            <button className="vision-secondary-action" type="button" onClick={importSavedCollectionFilters} disabled={isCollectionBatchBusy}><Upload size={12} />{app.copy.vision.collectionFilterSavedViewsImport}</button>
+            <button className="vision-secondary-action" type="button" onClick={exportSavedCollectionFilters} disabled={isCollectionBatchBusy || savedCollectionFilters.length === 0}><Download size={12} />{app.copy.vision.collectionFilterSavedViewsExport}</button>
+            <input ref={savedCollectionFilterFileInputRef} hidden type="file" accept="application/json,.json" onChange={handleSavedCollectionFilterFile} />
+          </div>
+        </div>
         {savedCollectionFilters.length > 0 ? <div className="vision-saved-search-list" role="list">{savedCollectionFilters.map((savedFilter) => <div className="vision-saved-search" key={savedFilter.id} role="listitem">
           <button className="vision-saved-search-button" type="button" onClick={() => applySavedCollectionFilter(savedFilter)} disabled={isCollectionBatchBusy} aria-label={`${app.copy.vision.collectionFilterApplyView}: ${savedFilter.name}`}>
             <strong>{savedFilter.name}</strong>
@@ -1682,6 +1728,7 @@ export function VisionPanel(): React.ReactElement {
           </button>
           <button className="vision-saved-search-delete" type="button" onClick={() => deleteSavedCollectionFilter(savedFilter.id)} title={app.copy.vision.collectionFilterDeleteView} aria-label={`${app.copy.vision.collectionFilterDeleteView}: ${savedFilter.name}`} disabled={isCollectionBatchBusy}><Trash2 size={14} /></button>
         </div>)}</div> : <small className="vision-saved-search-empty">{app.copy.vision.collectionFilterSavedViewEmpty}</small>}
+        {savedCollectionFilterTransferStatus ? <small className="vision-saved-search-status" role="status">{savedCollectionFilterTransferStatus}</small> : null}
       </div>
     </div> : null}
     {collections.length > 0 && collectionTagStats.length === 0 && lastCollectionTagOperation ? <div className="vision-card vision-collection-tag-undo-only"><small>{app.copy.vision.collectionTagManagerUndoDescription}</small><button className="vision-secondary-action" type="button" onClick={undoCollectionTagOperation} disabled={isCollectionBatchBusy}><Undo2 size={13} />{app.copy.vision.collectionTagManagerUndo}</button></div> : null}
