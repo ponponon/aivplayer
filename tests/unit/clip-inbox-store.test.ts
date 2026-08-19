@@ -372,6 +372,26 @@ describe('clip inbox store', () => {
     expect(store.getLastTagRedoOperation()).toBeNull()
   })
 
+  it('lists tag operation history in write order with undo and redo status', () => {
+    const collection = store.saveCollection({ title: '标签历史', tags: ['海边'], selections: [selection()] })
+    store.saveTagMetadata({ tag: '海边', color: '#123456' })
+    store.updateCollectionsTags([collection.id], ['精选'], 'add')
+
+    expect(store.listTagOperationHistory()).toMatchObject([
+      { type: 'batch', status: 'active', undoneAt: null },
+      { type: 'metadata', status: 'active', undoneAt: null }
+    ])
+
+    expect(store.undoLastTagOperation().success).toBe(true)
+    const history = store.listTagOperationHistory()
+    expect(history[0]).toMatchObject({ type: 'batch', status: 'redoable', undoneAt: expect.any(Number) })
+    expect(history[1]).toMatchObject({ type: 'metadata', status: 'active', undoneAt: null })
+
+    store.close()
+    store = new ClipInboxStore(tempDirectory)
+    expect(store.listTagOperationHistory()[0]).toMatchObject({ type: 'batch', status: 'redoable' })
+  })
+
   it('clears a tag redo branch when a new tag operation is recorded', () => {
     const collection = store.saveCollection({ title: '重做分支', tags: ['父'], selections: [selection()] })
 

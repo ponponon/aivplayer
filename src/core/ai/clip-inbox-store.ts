@@ -4,7 +4,7 @@ import { dirname, join, resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { mergeVisionClipSelections, normalizeVisionTimeRange } from './vision-evidence'
 import { applyVisionCollectionTags, duplicateVisionCollectionTitle, normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionSortMode, normalizeVisionCollectionTag, normalizeVisionCollectionTagColor, normalizeVisionCollectionTagFavorite, normalizeVisionCollectionTagNote, normalizeVisionCollectionTags, normalizeVisionCollectionTagsMode, renameVisionCollectionTag, renameVisionClipCollectionTitle, sortVisionClipSelections, wouldCreateVisionCollectionTagParentCycle } from './clip-inbox-operations'
-import type { VisionClipCollection, VisionClipCollectionBatchDeleteResult, VisionClipCollectionBatchRenameResult, VisionClipCollectionBatchTagsResult, VisionClipCollectionFlagUpdateRequest, VisionClipCollectionInput, VisionClipCollectionOperationHistory, VisionClipCollectionOperationRedoResult, VisionClipCollectionOperationType, VisionClipCollectionOperationUndoResult, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataUpdateRequest, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationType, VisionClipCollectionTagRedoResult, VisionClipCollectionTagUndoResult, VisionClipSelection, VisionEvidenceType } from '../../shared/vision-types'
+import type { VisionClipCollection, VisionClipCollectionBatchDeleteResult, VisionClipCollectionBatchRenameResult, VisionClipCollectionBatchTagsResult, VisionClipCollectionFlagUpdateRequest, VisionClipCollectionInput, VisionClipCollectionOperationHistory, VisionClipCollectionOperationRedoResult, VisionClipCollectionOperationType, VisionClipCollectionOperationUndoResult, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataUpdateRequest, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationHistoryEntry, VisionClipCollectionTagOperationType, VisionClipCollectionTagRedoResult, VisionClipCollectionTagUndoResult, VisionClipSelection, VisionEvidenceType } from '../../shared/vision-types'
 
 type SqliteRow = Record<string, unknown>
 const EVIDENCE_TYPES: readonly VisionEvidenceType[] = ['subtitle', 'visual', 'scene', 'ocr', 'entity', 'object']
@@ -307,6 +307,11 @@ export class ClipInboxStore {
   getLastTagOperation(): VisionClipCollectionTagOperationHistory | null {
     const row = this.database.prepare('SELECT id, operation_type, created_at FROM clip_tag_operation_history WHERE undone_at IS NULL ORDER BY rowid DESC LIMIT 1').get() as SqliteRow | undefined
     return row ? this.readTagOperationHistory(row) : null
+  }
+
+  listTagOperationHistory(): VisionClipCollectionTagOperationHistoryEntry[] {
+    const rows = this.database.prepare('SELECT id, operation_type, created_at, undone_at, redoable FROM clip_tag_operation_history ORDER BY rowid DESC LIMIT 20').all() as SqliteRow[]
+    return rows.map((row) => this.readTagOperationHistoryEntry(row)).filter((operation): operation is VisionClipCollectionTagOperationHistoryEntry => operation !== null)
   }
 
   getLastTagRedoOperation(): VisionClipCollectionTagOperationHistory | null {
@@ -776,6 +781,14 @@ export class ClipInboxStore {
     const type = stringValue(row, 'operation_type')
     if (!id || !TAG_OPERATION_TYPES.includes(type as VisionClipCollectionTagOperationType)) return null
     return { id, type: type as VisionClipCollectionTagOperationType, createdAt: numberValue(row, 'created_at') }
+  }
+
+  private readTagOperationHistoryEntry(row: SqliteRow): VisionClipCollectionTagOperationHistoryEntry | null {
+    const operation = this.readTagOperationHistory(row)
+    if (!operation) return null
+    const undoneAt = nullableNumberValue(row, 'undone_at') ?? null
+    const status = undoneAt === null ? 'active' : numberValue(row, 'redoable') > 0 ? 'redoable' : 'undone'
+    return { ...operation, status, undoneAt }
   }
 
   private parseCollectionOperationSnapshot(value: unknown): CollectionOperationSnapshot | null {
