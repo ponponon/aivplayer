@@ -31,6 +31,16 @@ export type VisionClipCollectionSavedFilterImportResult = {
   skippedCount: number
 }
 
+export type VisionClipCollectionSavedFilterImportDecision = 'overwrite' | 'keep-local' | 'skip'
+
+export type VisionClipCollectionSavedFilterImportPreviewState = 'new' | 'unchanged' | 'conflict' | 'duplicate' | 'over-limit'
+
+export type VisionClipCollectionSavedFilterImportPreviewItem = {
+  incoming: VisionClipCollectionSavedFilter
+  current: VisionClipCollectionSavedFilter | null
+  state: VisionClipCollectionSavedFilterImportPreviewState
+}
+
 function normalizeFilterTags(value: unknown): string[] {
   if (!Array.isArray(value)) return []
   return [...new Set(value.map((tag) => normalizeVisionCollectionTag(tag)).filter(Boolean))].slice(0, MAX_FILTER_TAGS)
@@ -123,6 +133,74 @@ export function removeVisionClipCollectionSavedFilter(current: readonly VisionCl
 
 function savedFilterKey(filter: VisionClipCollectionSavedFilter): string {
   return `${filter.query.toLocaleLowerCase()}\0${filter.tagMode}\0${[...filter.tags].sort().join('\0')}`
+}
+
+function sameSavedFilter(left: VisionClipCollectionSavedFilter, right: VisionClipCollectionSavedFilter): boolean {
+  return left.id === right.id
+    && left.name === right.name
+    && left.query === right.query
+    && left.tagMode === right.tagMode
+    && left.tags.length === right.tags.length
+    && left.tags.every((tag, index) => tag === right.tags[index])
+    && left.createdAt === right.createdAt
+    && left.updatedAt === right.updatedAt
+}
+
+export function createVisionClipCollectionSavedFilterImportPreview(
+  current: readonly VisionClipCollectionSavedFilter[],
+  imported: readonly VisionClipCollectionSavedFilter[]
+): VisionClipCollectionSavedFilterImportPreviewItem[] {
+  const existing = normalizeVisionClipCollectionSavedFilters(current)
+  const currentById = new Map(existing.map((filter) => [filter.id, filter]))
+  const currentByKey = new Map(existing.map((filter) => [savedFilterKey(filter), filter]))
+  const seenKeys = new Set<string>()
+  let newCount = 0
+  return normalizeVisionClipCollectionSavedFilters(imported).map((incoming) => {
+    const key = savedFilterKey(incoming)
+    const currentByFilter = currentByKey.get(key) ?? null
+    const currentByIdentifier = currentById.get(incoming.id) ?? null
+    if (seenKeys.has(key)) return { incoming, current: currentByFilter, state: currentByFilter ? 'conflict' : 'duplicate' }
+    seenKeys.add(key)
+    if (currentByFilter && currentByIdentifier && sameSavedFilter(incoming, currentByFilter) && currentByFilter.id === currentByIdentifier.id) {
+      return { incoming, current: currentByFilter, state: 'unchanged' }
+    }
+    if (currentByFilter || currentByIdentifier) {
+      return { incoming, current: currentByFilter ?? currentByIdentifier, state: 'conflict' }
+    }
+    if (existing.length + newCount >= MAX_SAVED_FILTERS) return { incoming, current: null, state: 'over-limit' }
+    newCount += 1
+    return { incoming, current: null, state: 'new' }
+  })
+}
+
+export function applyVisionClipCollectionSavedFilterImportPreview(
+  current: readonly VisionClipCollectionSavedFilter[],
+  preview: readonly VisionClipCollectionSavedFilterImportPreviewItem[],
+  decisions: Readonly<Record<string, VisionClipCollectionSavedFilterImportDecision>> = {}
+): VisionClipCollectionSavedFilterImportResult {
+  let next = normalizeVisionClipCollectionSavedFilters(current)
+  let importedCount = 0
+  let skippedCount = 0
+  for (const item of preview) {
+    const decision = decisions[item.incoming.id] ?? 'keep-local'
+    if (item.state === 'new') {
+      if (next.length >= MAX_SAVED_FILTERS || next.some((filter) => savedFilterKey(filter) === savedFilterKey(item.incoming))) {
+        skippedCount += 1
+        continue
+      }
+      next = [...next, item.incoming]
+      importedCount += 1
+      continue
+    }
+    if (item.state !== 'conflict' || decision !== 'overwrite') {
+      skippedCount += 1
+      continue
+    }
+    const incomingKey = savedFilterKey(item.incoming)
+    next = [item.incoming, ...next.filter((filter) => filter.id !== item.incoming.id && savedFilterKey(filter) !== incomingKey)]
+    importedCount += 1
+  }
+  return { filters: normalizeVisionClipCollectionSavedFilters(next), importedCount, skippedCount }
 }
 
 export function mergeVisionClipCollectionSavedFilters(current: readonly VisionClipCollectionSavedFilter[], imported: readonly VisionClipCollectionSavedFilter[]): VisionClipCollectionSavedFilterImportResult {
