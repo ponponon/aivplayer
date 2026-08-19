@@ -97,6 +97,35 @@ describe('clip inbox store', () => {
     expect(store.getCollection(saved.id)).toMatchObject({ isFavorite: true, isArchived: true })
   })
 
+  it('records batch flag changes and restores the previous state from a SQLite snapshot', () => {
+    const first = store.saveCollection({ title: '撤销收藏一', selections: [selection()] })
+    const second = store.saveCollection({ title: '撤销收藏二', isArchived: true, selections: [selection({ startSeconds: 4, endSeconds: 6 })] })
+    const beforeFirst = store.getCollection(first.id)
+    const beforeSecond = store.getCollection(second.id)
+
+    const updated = store.updateCollectionFlags({ collectionIds: [first.id, second.id, 'missing'], isFavorite: true })
+    expect(updated.collections).toHaveLength(2)
+    expect(updated.collections.every((collection) => collection.isFavorite)).toBe(true)
+    expect(updated.collections.find((collection) => collection.id === second.id)?.isArchived).toBe(true)
+    expect(updated.skippedCount).toBe(1)
+    expect(store.getLastCollectionOperation()).toMatchObject({ type: 'flags' })
+
+    const undone = store.undoLastCollectionOperation()
+    expect(undone).toMatchObject({ success: true, operation: expect.objectContaining({ type: 'flags' }) })
+    expect(store.getCollection(first.id)).toEqual(beforeFirst)
+    expect(store.getCollection(second.id)).toEqual(beforeSecond)
+    expect(store.getLastCollectionOperation()).toBeNull()
+    expect(store.undoLastCollectionOperation()).toMatchObject({ success: false, operation: null, collections: [] })
+  })
+
+  it('does not create an undo entry for a no-op flag update', () => {
+    const saved = store.saveCollection({ title: '无变化收藏', isFavorite: true, selections: [selection()] })
+    const result = store.updateCollectionFlags({ collectionIds: [saved.id], isFavorite: true })
+
+    expect(result.collections).toEqual([saved])
+    expect(store.getLastCollectionOperation()).toBeNull()
+  })
+
   it('deletes a collection and rejects empty collections', () => {
     expect(() => store.saveCollection({ title: '空集合', selections: [] })).toThrow('至少需要一个有效选段')
     const saved = store.saveCollection({ title: '待删除', selections: [selection()] })

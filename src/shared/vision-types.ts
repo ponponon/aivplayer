@@ -479,6 +479,19 @@ export type VisionClipCollectionBatchTagsResult = {
   skippedCount: number
 }
 
+export type VisionClipCollectionFlagUpdateRequest = {
+  collectionIds: string[]
+  isFavorite?: boolean
+  isArchived?: boolean
+}
+
+export type VisionClipCollectionFlagUpdateResult = {
+  success: boolean
+  message: string
+  collections: VisionClipCollection[]
+  skippedCount: number
+}
+
 export type VisionClipCollectionTagCleanupRequest = {
   tag: string
 }
@@ -579,6 +592,21 @@ export type VisionClipCollectionTagUndoResult = {
   operation: VisionClipCollectionTagOperationHistory | null
   collections: VisionClipCollection[]
   metadata: VisionClipCollectionTagMetadata[]
+}
+
+export type VisionClipCollectionOperationType = 'flags'
+
+export type VisionClipCollectionOperationHistory = {
+  id: string
+  type: VisionClipCollectionOperationType
+  createdAt: number
+}
+
+export type VisionClipCollectionOperationUndoResult = {
+  success: boolean
+  message: string
+  operation: VisionClipCollectionOperationHistory | null
+  collections: VisionClipCollection[]
 }
 
 export type VisionClipCollectionBatchExportRequest = {
