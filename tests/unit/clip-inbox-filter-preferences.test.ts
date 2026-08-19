@@ -3,14 +3,14 @@ import { applyVisionClipCollectionSavedFilterImportPreview, createVisionClipColl
 
 describe('clip inbox filter preferences', () => {
   it('normalizes query, tags and match mode', () => {
-    expect(normalizeVisionClipCollectionFilterPreferences({ query: `  海边  `, tags: [' 采访 ', '采访', '', '精选'], excludedTags: [' 室内 ', '室内'], tagMode: 'all' })).toEqual({ schemaVersion: 1, query: '海边', tags: ['采访', '精选'], excludedTags: ['室内'], tagMode: 'all' })
-    expect(normalizeVisionClipCollectionFilterPreferences({ query: 'x'.repeat(240), tags: ['x'.repeat(60)], tagMode: 'invalid' })).toEqual({ schemaVersion: 1, query: 'x'.repeat(200), tags: ['x'.repeat(40)], excludedTags: [], tagMode: 'any' })
+    expect(normalizeVisionClipCollectionFilterPreferences({ query: `  海边  `, tags: [' 采访 ', '采访', '', '精选'], excludedTags: [' 室内 ', '室内'], tagMode: 'all', visibility: 'favorites' })).toEqual({ schemaVersion: 1, query: '海边', tags: ['采访', '精选'], excludedTags: ['室内'], tagMode: 'all', visibility: 'favorites' })
+    expect(normalizeVisionClipCollectionFilterPreferences({ query: 'x'.repeat(240), tags: ['x'.repeat(60)], tagMode: 'invalid', visibility: 'unknown' })).toEqual({ schemaVersion: 1, query: 'x'.repeat(200), tags: ['x'.repeat(40)], excludedTags: [], tagMode: 'any', visibility: 'all' })
   })
 
   it('round trips valid preferences and rejects malformed JSON', () => {
-    const preferences = { schemaVersion: 1 as const, query: '海边', tags: ['采访'], excludedTags: ['室内'], tagMode: 'any' as const }
+    const preferences = { schemaVersion: 1 as const, query: '海边', tags: ['采访'], excludedTags: ['室内'], tagMode: 'any' as const, visibility: 'archived' as const }
     expect(parseVisionClipCollectionFilterPreferences(serializeVisionClipCollectionFilterPreferences(preferences))).toEqual(preferences)
-    expect(parseVisionClipCollectionFilterPreferences('{invalid}')).toEqual({ schemaVersion: 1, query: '', tags: [], excludedTags: [], tagMode: 'any' })
+    expect(parseVisionClipCollectionFilterPreferences('{invalid}')).toEqual({ schemaVersion: 1, query: '', tags: [], excludedTags: [], tagMode: 'any', visibility: 'all' })
   })
 
   it('removes saved tags that are no longer active', () => {
@@ -25,13 +25,20 @@ describe('clip inbox filter preferences', () => {
     expect(result.filters[1].excludedTags).toEqual(['室内'])
   })
 
+  it('keeps favorite and archive visibility in saved view identity', () => {
+    const current = normalizeVisionClipCollectionSavedFilters([{ id: 'all', name: '全部集合', query: '', tags: [], excludedTags: [], tagMode: 'any', visibility: 'all', createdAt: 1, updatedAt: 1 }])
+    const result = mergeVisionClipCollectionSavedFilters(current, normalizeVisionClipCollectionSavedFilters([{ id: 'favorites', name: '收藏集合', query: '', tags: [], excludedTags: [], tagMode: 'any', visibility: 'favorites', createdAt: 2, updatedAt: 2 }]))
+    expect(result.importedCount).toBe(1)
+    expect(result.filters[1].visibility).toBe('favorites')
+  })
+
   it('normalizes, round trips and deduplicates saved filters', () => {
     const saved = normalizeVisionClipCollectionSavedFilters([
       { id: ' coastal ', name: ' 海边素材 ', query: ' 海边 ', tags: ['采访', '采访'], tagMode: 'all', createdAt: 10, updatedAt: 5 },
       { id: 'coastal', name: '重复项', query: 'ignored', tags: [], tagMode: 'any', createdAt: 20, updatedAt: 20 },
       { id: '', name: '无效项' }
     ])
-    expect(saved).toEqual([{ schemaVersion: 1, id: 'coastal', name: '海边素材', query: '海边', tags: ['采访'], excludedTags: [], tagMode: 'all', createdAt: 10, updatedAt: 10 }])
+    expect(saved).toEqual([{ schemaVersion: 1, id: 'coastal', name: '海边素材', query: '海边', tags: ['采访'], excludedTags: [], tagMode: 'all', visibility: 'all', createdAt: 10, updatedAt: 10 }])
     expect(parseVisionClipCollectionSavedFilters(serializeVisionClipCollectionSavedFilters(saved))).toEqual(saved)
     expect(parseVisionClipCollectionSavedFilters('{invalid}')).toEqual([])
     expect(parseVisionClipCollectionSavedFilters(JSON.stringify({ schemaVersion: 2, filters: saved }))).toEqual([])

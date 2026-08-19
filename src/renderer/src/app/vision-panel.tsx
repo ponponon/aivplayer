@@ -11,7 +11,7 @@ import { getVisionCollectionTagPath, invertVisionClipSelections, mergeVisionColl
 import { hasVisionCollectionTagChildren, isVisionCollectionTagHiddenByCollapsedAncestor, matchesVisionCollectionTagFilter, mergeVisionClipCollectionTagCollapsePreferences, parseVisionClipCollectionTagCollapsePreferences, serializeVisionClipCollectionTagCollapsePreferences, VISION_CLIP_COLLECTION_TAG_COLLAPSE_PREFERENCES_STORAGE_KEY, type VisionCollectionTagFilterMode } from '../../../core/ai/clip-inbox-tag-tree'
 import { createVisionClipSelections, normalizeVisionTimeRange } from '../../../core/ai/vision-evidence'
 import { parseVisionClipCollectionOrderPreferences, serializeVisionClipCollectionOrderPreferences, sortVisionClipCollections, VISION_CLIP_COLLECTION_ORDER_PREFERENCES_STORAGE_KEY, type VisionClipCollectionListSortMode } from '../../../core/ai/clip-inbox-collection-order'
-import { applyVisionClipCollectionSavedFilterImportPreview, createVisionClipCollectionSavedFilterImportPreview, mergeVisionClipCollectionFilterTags, parseVisionClipCollectionFilterPreferences, parseVisionClipCollectionSavedFilterManifest, parseVisionClipCollectionSavedFilters, removeVisionClipCollectionSavedFilter, serializeVisionClipCollectionFilterPreferences, serializeVisionClipCollectionSavedFilters, upsertVisionClipCollectionSavedFilter, VISION_CLIP_COLLECTION_FILTER_PREFERENCES_STORAGE_KEY, VISION_CLIP_COLLECTION_SAVED_FILTERS_STORAGE_KEY, type VisionClipCollectionSavedFilter, type VisionClipCollectionSavedFilterImportDecision, type VisionClipCollectionSavedFilterImportPreviewItem } from '../../../core/ai/clip-inbox-filter-preferences'
+import { applyVisionClipCollectionSavedFilterImportPreview, createVisionClipCollectionSavedFilterImportPreview, mergeVisionClipCollectionFilterTags, parseVisionClipCollectionFilterPreferences, parseVisionClipCollectionSavedFilterManifest, parseVisionClipCollectionSavedFilters, removeVisionClipCollectionSavedFilter, serializeVisionClipCollectionFilterPreferences, serializeVisionClipCollectionSavedFilters, upsertVisionClipCollectionSavedFilter, VISION_CLIP_COLLECTION_FILTER_PREFERENCES_STORAGE_KEY, VISION_CLIP_COLLECTION_SAVED_FILTERS_STORAGE_KEY, type VisionClipCollectionFilterVisibility, type VisionClipCollectionSavedFilter, type VisionClipCollectionSavedFilterImportDecision, type VisionClipCollectionSavedFilterImportPreviewItem } from '../../../core/ai/clip-inbox-filter-preferences'
 import { getVisionSearchResultIds } from '../../../core/ai/vision-search-selection'
 import { getNextVisionSearchLimit, shouldLoadMoreVisionSearchResults, VISION_SEARCH_PAGE_SIZE } from '../../../core/ai/vision-search-pagination'
 import { createVisionSimilarSearchRequest } from '../../../core/ai/vision-similar-search'
@@ -134,10 +134,10 @@ function readVisionClipCollectionFilterPreferences() {
   }
 }
 
-function writeVisionClipCollectionFilterPreferences(query: string, tags: string[], excludedTags: string[], tagMode: VisionCollectionTagFilterMode): void {
+function writeVisionClipCollectionFilterPreferences(query: string, tags: string[], excludedTags: string[], tagMode: VisionCollectionTagFilterMode, visibility: VisionClipCollectionFilterVisibility = 'all'): void {
   if (typeof window === 'undefined') return
   try {
-    window.localStorage.setItem(VISION_CLIP_COLLECTION_FILTER_PREFERENCES_STORAGE_KEY, serializeVisionClipCollectionFilterPreferences({ schemaVersion: 1, query, tags, excludedTags, tagMode }))
+    window.localStorage.setItem(VISION_CLIP_COLLECTION_FILTER_PREFERENCES_STORAGE_KEY, serializeVisionClipCollectionFilterPreferences({ schemaVersion: 1, query, tags, excludedTags, tagMode, visibility }))
   } catch {
     // Renderer storage can be disabled or full; the in-memory filter remains authoritative.
   }

@@ -11,12 +11,15 @@ const MAX_SAVED_FILTERS = 20
 const MAX_SAVED_FILTER_NAME_LENGTH = 80
 const MAX_SAVED_FILTER_ID_LENGTH = 120
 
+export type VisionClipCollectionFilterVisibility = 'all' | 'active' | 'favorites' | 'archived'
+
 export type VisionClipCollectionFilterPreferences = {
   schemaVersion: 1
   query: string
   tags: string[]
   excludedTags: string[]
   tagMode: VisionCollectionTagFilterMode
+  visibility: VisionClipCollectionFilterVisibility
 }
 
 export type VisionClipCollectionSavedFilter = VisionClipCollectionFilterPreferences & {
@@ -47,6 +50,10 @@ function normalizeFilterTags(value: unknown): string[] {
   return [...new Set(value.map((tag) => normalizeVisionCollectionTag(tag)).filter(Boolean))].slice(0, MAX_FILTER_TAGS)
 }
 
+function normalizeFilterVisibility(value: unknown): VisionClipCollectionFilterVisibility {
+  return value === 'active' || value === 'favorites' || value === 'archived' ? value : 'all'
+}
+
 export function normalizeVisionClipCollectionFilterPreferences(value: unknown): VisionClipCollectionFilterPreferences {
   const record = value && typeof value === 'object' ? value as Record<string, unknown> : {}
   const query = typeof record.query === 'string' ? record.query.trim().slice(0, MAX_FILTER_QUERY_LENGTH) : ''
@@ -55,7 +62,8 @@ export function normalizeVisionClipCollectionFilterPreferences(value: unknown): 
     query,
     tags: normalizeFilterTags(record.tags),
     excludedTags: normalizeFilterTags(record.excludedTags),
-    tagMode: record.tagMode === 'all' ? 'all' : 'any'
+    tagMode: record.tagMode === 'all' ? 'all' : 'any',
+    visibility: normalizeFilterVisibility(record.visibility)
   }
 }
 
@@ -134,7 +142,7 @@ export function removeVisionClipCollectionSavedFilter(current: readonly VisionCl
 }
 
 function savedFilterKey(filter: VisionClipCollectionSavedFilter): string {
-  return `${filter.query.toLocaleLowerCase()}\0${filter.tagMode}\0${[...filter.tags].sort().join('\0')}\0!${[...filter.excludedTags].sort().join('\0')}`
+  return `${filter.query.toLocaleLowerCase()}\0${filter.tagMode}\0${filter.visibility}\0${[...filter.tags].sort().join('\0')}\0!${[...filter.excludedTags].sort().join('\0')}`
 }
 
 function sameSavedFilter(left: VisionClipCollectionSavedFilter, right: VisionClipCollectionSavedFilter): boolean {
@@ -144,6 +152,7 @@ function sameSavedFilter(left: VisionClipCollectionSavedFilter, right: VisionCli
     && left.excludedTags.length === right.excludedTags.length
     && left.excludedTags.every((tag, index) => tag === right.excludedTags[index])
     && left.tagMode === right.tagMode
+    && left.visibility === right.visibility
     && left.tags.length === right.tags.length
     && left.tags.every((tag, index) => tag === right.tags[index])
     && left.createdAt === right.createdAt
