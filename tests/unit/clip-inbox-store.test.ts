@@ -126,6 +126,24 @@ describe('clip inbox store', () => {
     expect(store.getLastCollectionOperation()).toBeNull()
   })
 
+  it('persists a redo snapshot across restart and clears it after a new operation', () => {
+    const saved = store.saveCollection({ title: '重做收藏', selections: [selection()] })
+    store.updateCollectionFlags({ collectionIds: [saved.id], isFavorite: true })
+    expect(store.undoLastCollectionOperation().success).toBe(true)
+    expect(store.getLastCollectionRedoOperation()).toMatchObject({ type: 'flags' })
+
+    store.close()
+    store = new ClipInboxStore(tempDirectory)
+    const redone = store.redoLastCollectionOperation()
+    expect(redone).toMatchObject({ success: true, operation: expect.objectContaining({ type: 'flags' }) })
+    expect(store.getCollection(saved.id)).toMatchObject({ isFavorite: true, isArchived: false })
+    expect(store.getLastCollectionRedoOperation()).toBeNull()
+
+    expect(store.undoLastCollectionOperation().success).toBe(true)
+    store.updateCollectionFlags({ collectionIds: [saved.id], isArchived: true })
+    expect(store.getLastCollectionRedoOperation()).toBeNull()
+  })
+
   it('deletes a collection and rejects empty collections', () => {
     expect(() => store.saveCollection({ title: '空集合', selections: [] })).toThrow('至少需要一个有效选段')
     const saved = store.saveCollection({ title: '待删除', selections: [selection()] })

@@ -4,7 +4,7 @@ import { dirname, join, resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { mergeVisionClipSelections, normalizeVisionTimeRange } from './vision-evidence'
 import { applyVisionCollectionTags, duplicateVisionCollectionTitle, normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionSortMode, normalizeVisionCollectionTag, normalizeVisionCollectionTagColor, normalizeVisionCollectionTagFavorite, normalizeVisionCollectionTagNote, normalizeVisionCollectionTags, normalizeVisionCollectionTagsMode, renameVisionCollectionTag, renameVisionClipCollectionTitle, sortVisionClipSelections, wouldCreateVisionCollectionTagParentCycle } from './clip-inbox-operations'
-import type { VisionClipCollection, VisionClipCollectionBatchDeleteResult, VisionClipCollectionBatchRenameResult, VisionClipCollectionBatchTagsResult, VisionClipCollectionFlagUpdateRequest, VisionClipCollectionInput, VisionClipCollectionOperationHistory, VisionClipCollectionOperationType, VisionClipCollectionOperationUndoResult, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataUpdateRequest, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationType, VisionClipCollectionTagUndoResult, VisionClipSelection, VisionEvidenceType } from '../../shared/vision-types'
+import type { VisionClipCollection, VisionClipCollectionBatchDeleteResult, VisionClipCollectionBatchRenameResult, VisionClipCollectionBatchTagsResult, VisionClipCollectionFlagUpdateRequest, VisionClipCollectionInput, VisionClipCollectionOperationHistory, VisionClipCollectionOperationRedoResult, VisionClipCollectionOperationType, VisionClipCollectionOperationUndoResult, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataUpdateRequest, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationType, VisionClipCollectionTagUndoResult, VisionClipSelection, VisionEvidenceType } from '../../shared/vision-types'
 
 type SqliteRow = Record<string, unknown>
 const EVIDENCE_TYPES: readonly VisionEvidenceType[] = ['subtitle', 'visual', 'scene', 'ocr', 'entity', 'object']
@@ -17,8 +17,11 @@ type TagOperationSnapshot = {
   metadata: VisionClipCollectionTagMetadata[]
 }
 
+type CollectionOperationFlagSnapshot = { id: string; isFavorite: boolean; isArchived: boolean; updatedAt: number }
+
 type CollectionOperationSnapshot = {
-  collectionFlags: Array<{ id: string; isFavorite: boolean; isArchived: boolean; updatedAt: number }>
+  collectionFlags: CollectionOperationFlagSnapshot[]
+  redoCollectionFlags?: CollectionOperationFlagSnapshot[]
 }
 
 export function getClipInboxDatabasePath(userDataPath: string): string {
@@ -151,10 +154,12 @@ export class ClipInboxStore {
         operation_type TEXT NOT NULL,
         snapshot_json TEXT NOT NULL,
         created_at INTEGER NOT NULL,
-        undone_at INTEGER
+        undone_at INTEGER,
+        redoable INTEGER NOT NULL DEFAULT 0
       );
       CREATE INDEX IF NOT EXISTS clip_collection_operation_history_latest ON clip_collection_operation_history(undone_at, created_at DESC);
     `)
+    this.ensureCollectionOperationHistoryColumn('redoable', 'INTEGER NOT NULL DEFAULT 0')
     this.ensureCollectionColumn('tags_json', "TEXT NOT NULL DEFAULT '[]'")
     this.ensureCollectionColumn('sort_mode', "TEXT NOT NULL DEFAULT 'source-time'")
     this.ensureCollectionColumn('is_favorite', 'INTEGER NOT NULL DEFAULT 0')
@@ -180,13 +185,14 @@ export class ClipInboxStore {
     const placeholders = normalizedIds.map(() => '?').join(', ')
     const rows = this.database.prepare(`SELECT id, is_favorite, is_archived, updated_at FROM clip_collections WHERE id IN (${placeholders})`).all(...normalizedIds) as SqliteRow[]
     const existingIds = new Set(rows.map((row) => stringValue(row, 'id')).filter(Boolean))
+    const collectionFlags = rows.map((row) => ({
+      id: stringValue(row, 'id'),
+      isFavorite: normalizeVisionCollectionTagFavorite(row.is_favorite),
+      isArchived: normalizeVisionCollectionTagFavorite(row.is_archived),
+      updatedAt: numberValue(row, 'updated_at')
+    })).filter((item) => Boolean(item.id))
     const snapshot: CollectionOperationSnapshot = {
-      collectionFlags: rows.map((row) => ({
-        id: stringValue(row, 'id'),
-        isFavorite: normalizeVisionCollectionTagFavorite(row.is_favorite),
-        isArchived: normalizeVisionCollectionTagFavorite(row.is_archived),
-        updatedAt: numberValue(row, 'updated_at')
-      })).filter((item) => Boolean(item.id))
+      collectionFlags
     }
     const changed = snapshot.collectionFlags.some((item) => (hasFavoritePatch && item.isFavorite !== request.isFavorite) || (hasArchivedPatch && item.isArchived !== request.isArchived))
     if (!changed) {
@@ -204,12 +210,19 @@ export class ClipInboxStore {
       values.push(request.isArchived ? 1 : 0)
     }
     const now = Date.now()
+    snapshot.redoCollectionFlags = snapshot.collectionFlags.map((item) => ({
+      ...item,
+      isFavorite: hasFavoritePatch ? request.isFavorite as boolean : item.isFavorite,
+      isArchived: hasArchivedPatch ? request.isArchived as boolean : item.isArchived,
+      updatedAt: now
+    }))
     this.database.exec('BEGIN')
     try {
       const update = this.database.prepare(`UPDATE clip_collections SET ${assignments.join(', ')}, updated_at = ? WHERE id = ?`)
       for (const id of normalizedIds) {
         if (existingIds.has(id)) update.run(...values, now, id)
       }
+      this.database.prepare('UPDATE clip_collection_operation_history SET redoable = 0 WHERE undone_at IS NOT NULL AND redoable = 1').run()
       this.recordCollectionOperation('flags', snapshot, now)
       this.database.exec('COMMIT')
       const collections = normalizedIds.filter((id) => existingIds.has(id)).map((id) => this.getCollection(id)).filter((collection): collection is VisionClipCollection => collection !== null)
@@ -225,6 +238,11 @@ export class ClipInboxStore {
     return row ? this.readCollectionOperationHistory(row) : null
   }
 
+  getLastCollectionRedoOperation(): VisionClipCollectionOperationHistory | null {
+    const row = this.database.prepare('SELECT id, operation_type, created_at FROM clip_collection_operation_history WHERE undone_at IS NOT NULL AND redoable = 1 ORDER BY undone_at DESC, rowid DESC LIMIT 1').get() as SqliteRow | undefined
+    return row ? this.readCollectionOperationHistory(row) : null
+  }
+
   undoLastCollectionOperation(): VisionClipCollectionOperationUndoResult {
     const row = this.database.prepare('SELECT id, operation_type, snapshot_json, created_at FROM clip_collection_operation_history WHERE undone_at IS NULL ORDER BY rowid DESC LIMIT 1').get() as SqliteRow | undefined
     if (!row) return { success: false, message: '没有可撤销的收藏归档操作', operation: null, collections: [] }
@@ -236,10 +254,31 @@ export class ClipInboxStore {
     try {
       const update = this.database.prepare('UPDATE clip_collections SET is_favorite = ?, is_archived = ?, updated_at = ? WHERE id = ?')
       for (const collection of snapshot.collectionFlags) update.run(collection.isFavorite ? 1 : 0, collection.isArchived ? 1 : 0, collection.updatedAt, collection.id)
-      this.database.prepare('UPDATE clip_collection_operation_history SET undone_at = ? WHERE id = ?').run(now, operation.id)
+      this.database.prepare('UPDATE clip_collection_operation_history SET undone_at = ?, redoable = ? WHERE id = ?').run(now, snapshot.redoCollectionFlags ? 1 : 0, operation.id)
       this.database.exec('COMMIT')
       const collections = snapshot.collectionFlags.map((item) => this.getCollection(item.id)).filter((collection): collection is VisionClipCollection => collection !== null)
       return { success: true, message: '已撤销上次收藏归档操作', operation, collections }
+    } catch (error) {
+      this.database.exec('ROLLBACK')
+      throw error
+    }
+  }
+
+  redoLastCollectionOperation(): VisionClipCollectionOperationRedoResult {
+    const row = this.database.prepare('SELECT id, operation_type, snapshot_json, created_at FROM clip_collection_operation_history WHERE undone_at IS NOT NULL AND redoable = 1 ORDER BY undone_at DESC, rowid DESC LIMIT 1').get() as SqliteRow | undefined
+    if (!row) return { success: false, message: '没有可重做的收藏归档操作', operation: null, collections: [] }
+    const operation = this.readCollectionOperationHistory(row)
+    const snapshot = this.parseCollectionOperationSnapshot(row.snapshot_json)
+    if (!operation || !snapshot?.redoCollectionFlags) return { success: false, message: '收藏归档操作没有可重做快照', operation: null, collections: [] }
+    const now = Date.now()
+    this.database.exec('BEGIN')
+    try {
+      const update = this.database.prepare('UPDATE clip_collections SET is_favorite = ?, is_archived = ?, updated_at = ? WHERE id = ?')
+      for (const collection of snapshot.redoCollectionFlags) update.run(collection.isFavorite ? 1 : 0, collection.isArchived ? 1 : 0, collection.updatedAt, collection.id)
+      this.database.prepare('UPDATE clip_collection_operation_history SET undone_at = NULL, redoable = 0 WHERE id = ?').run(operation.id)
+      this.database.exec('COMMIT')
+      const collections = snapshot.redoCollectionFlags.map((item) => this.getCollection(item.id)).filter((collection): collection is VisionClipCollection => collection !== null)
+      return { success: true, message: '已重做上次收藏归档操作', operation, collections }
     } catch (error) {
       this.database.exec('ROLLBACK')
       throw error
@@ -681,8 +720,16 @@ export class ClipInboxStore {
     try {
       const parsed = JSON.parse(value) as Partial<CollectionOperationSnapshot>
       if (!Array.isArray(parsed.collectionFlags)) return null
-      const collectionFlags = parsed.collectionFlags.filter((item): item is CollectionOperationSnapshot['collectionFlags'][number] => Boolean(item && typeof item === 'object' && typeof item.id === 'string' && typeof item.isFavorite === 'boolean' && typeof item.isArchived === 'boolean' && typeof item.updatedAt === 'number')).map((item) => ({ id: item.id, isFavorite: item.isFavorite, isArchived: item.isArchived, updatedAt: item.updatedAt }))
-      return { collectionFlags }
+      if (parsed.redoCollectionFlags !== undefined && !Array.isArray(parsed.redoCollectionFlags)) return null
+      const readFlags = (items: unknown[]): CollectionOperationFlagSnapshot[] => items.map((item) => {
+        if (!item || typeof item !== 'object') return null
+        const candidate = item as Partial<CollectionOperationFlagSnapshot>
+        if (typeof candidate.id !== 'string' || typeof candidate.isFavorite !== 'boolean' || typeof candidate.isArchived !== 'boolean' || typeof candidate.updatedAt !== 'number') return null
+        return { id: candidate.id, isFavorite: candidate.isFavorite, isArchived: candidate.isArchived, updatedAt: candidate.updatedAt }
+      }).filter((item): item is CollectionOperationFlagSnapshot => item !== null)
+      const collectionFlags = readFlags(parsed.collectionFlags)
+      const redoCollectionFlags = parsed.redoCollectionFlags === undefined ? undefined : readFlags(parsed.redoCollectionFlags)
+      return redoCollectionFlags === undefined ? { collectionFlags } : { collectionFlags, redoCollectionFlags }
     } catch {
       return null
     }
@@ -705,5 +752,11 @@ export class ClipInboxStore {
     const columns = this.database.prepare('PRAGMA table_info(clip_tag_metadata)').all() as SqliteRow[]
     if (columns.some((column) => stringValue(column, 'name') === name)) return
     this.database.exec(`ALTER TABLE clip_tag_metadata ADD COLUMN ${name} ${definition}`)
+  }
+
+  private ensureCollectionOperationHistoryColumn(name: 'redoable', definition: string): void {
+    const columns = this.database.prepare('PRAGMA table_info(clip_collection_operation_history)').all() as SqliteRow[]
+    if (columns.some((column) => stringValue(column, 'name') === name)) return
+    this.database.exec(`ALTER TABLE clip_collection_operation_history ADD COLUMN ${name} ${definition}`)
   }
 }

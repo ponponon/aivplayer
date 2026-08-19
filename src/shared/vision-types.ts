@@ -609,6 +609,13 @@ export type VisionClipCollectionOperationUndoResult = {
   collections: VisionClipCollection[]
 }
 
+export type VisionClipCollectionOperationRedoResult = {
+  success: boolean
+  message: string
+  operation: VisionClipCollectionOperationHistory | null
+  collections: VisionClipCollection[]
+}
+
 export type VisionClipCollectionBatchExportRequest = {
   collectionIds: string[]
 }
