@@ -7,7 +7,7 @@ const panel = readFileSync(join(projectRoot, 'src/renderer/src/app/vision-panel.
 const styles = readFileSync(join(projectRoot, 'src/renderer/src/styles/player/vision-library-results.css'), 'utf8')
 
 describe('vision clip collection filter UI wiring', () => {
-  it('matches collection titles and tags locally without persistence wiring', () => {
+  it('matches collection titles and tags locally with persistence and saved views', () => {
     expect(panel).toContain('collectionFilterQueryLower')
     expect(panel).toContain('collectionFilterTags')
     expect(panel).toContain('matchesVisionCollectionTagFilter')
@@ -15,6 +15,14 @@ describe('vision clip collection filter UI wiring', () => {
     expect(panel).toContain('writeVisionClipCollectionFilterPreferences')
     expect(panel).toContain('mergeVisionClipCollectionFilterTags')
     expect(panel).toContain('VISION_CLIP_COLLECTION_FILTER_PREFERENCES_STORAGE_KEY')
+    expect(panel).toContain('VISION_CLIP_COLLECTION_SAVED_FILTERS_STORAGE_KEY')
+    expect(panel).toContain('readVisionClipCollectionSavedFilters')
+    expect(panel).toContain('writeVisionClipCollectionSavedFilters')
+    expect(panel).toContain('savedCollectionFilters')
+    expect(panel).toContain('saveCurrentCollectionFilter')
+    expect(panel).toContain('applySavedCollectionFilter')
+    expect(panel).toContain('deleteSavedCollectionFilter')
+    expect(panel).toContain('vision-collection-saved-filters')
     expect(panel).toContain('hasLoadedCollections')
     expect(panel).toContain('collectionFilterSelectedTagsLabel')
     expect(panel).toContain('collectionFilterRemoveTag')

@@ -10,7 +10,7 @@ import type { VisionObjectDetectionFilterState, VisionObjectDetectionResult } fr
 import { getVisionCollectionTagPath, invertVisionClipSelections, mergeVisionCollectionSelections, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTag, normalizeVisionCollectionTags, renameVisionClipCollectionTitle, toggleVisibleVisionClipCollectionSelection, wouldCreateVisionCollectionTagParentCycle } from '../../../core/ai/clip-inbox-operations'
 import { hasVisionCollectionTagChildren, isVisionCollectionTagHiddenByCollapsedAncestor, matchesVisionCollectionTagFilter, mergeVisionClipCollectionTagCollapsePreferences, parseVisionClipCollectionTagCollapsePreferences, serializeVisionClipCollectionTagCollapsePreferences, VISION_CLIP_COLLECTION_TAG_COLLAPSE_PREFERENCES_STORAGE_KEY, type VisionCollectionTagFilterMode } from '../../../core/ai/clip-inbox-tag-tree'
 import { createVisionClipSelections, normalizeVisionTimeRange } from '../../../core/ai/vision-evidence'
-import { mergeVisionClipCollectionFilterTags, parseVisionClipCollectionFilterPreferences, serializeVisionClipCollectionFilterPreferences, VISION_CLIP_COLLECTION_FILTER_PREFERENCES_STORAGE_KEY } from '../../../core/ai/clip-inbox-filter-preferences'
+import { mergeVisionClipCollectionFilterTags, parseVisionClipCollectionFilterPreferences, parseVisionClipCollectionSavedFilters, removeVisionClipCollectionSavedFilter, serializeVisionClipCollectionFilterPreferences, serializeVisionClipCollectionSavedFilters, upsertVisionClipCollectionSavedFilter, VISION_CLIP_COLLECTION_FILTER_PREFERENCES_STORAGE_KEY, VISION_CLIP_COLLECTION_SAVED_FILTERS_STORAGE_KEY, type VisionClipCollectionSavedFilter } from '../../../core/ai/clip-inbox-filter-preferences'
 import { getVisionSearchResultIds } from '../../../core/ai/vision-search-selection'
 import { getNextVisionSearchLimit, shouldLoadMoreVisionSearchResults, VISION_SEARCH_PAGE_SIZE } from '../../../core/ai/vision-search-pagination'
 import { createVisionSimilarSearchRequest } from '../../../core/ai/vision-similar-search'
@@ -124,6 +124,29 @@ function writeVisionClipCollectionFilterPreferences(query: string, tags: string[
   }
 }
 
+function readVisionClipCollectionSavedFilters(): VisionClipCollectionSavedFilter[] {
+  if (typeof window === 'undefined') return []
+  try {
+    return parseVisionClipCollectionSavedFilters(window.localStorage.getItem(VISION_CLIP_COLLECTION_SAVED_FILTERS_STORAGE_KEY), Date.now())
+  } catch {
+    return []
+  }
+}
+
+function writeVisionClipCollectionSavedFilters(filters: readonly VisionClipCollectionSavedFilter[]): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(VISION_CLIP_COLLECTION_SAVED_FILTERS_STORAGE_KEY, serializeVisionClipCollectionSavedFilters(filters))
+  } catch {
+    // Renderer storage can be disabled or full; the in-memory saved views remain authoritative.
+  }
+}
+
+function createVisionClipCollectionSavedFilterId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+  return `collection-filter-${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
+
 function formatDuration(milliseconds: number): string {
   if (milliseconds < 1000) return `${Math.max(1, Math.round(milliseconds))}ms`
   const seconds = milliseconds / 1000
@@ -188,6 +211,8 @@ export function VisionPanel(): React.ReactElement {
   const [collectionFilterQuery, setCollectionFilterQuery] = useState(() => readVisionClipCollectionFilterPreferences().query)
   const [collectionFilterTags, setCollectionFilterTags] = useState<string[]>(() => readVisionClipCollectionFilterPreferences().tags)
   const [collectionFilterTagMode, setCollectionFilterTagMode] = useState<VisionCollectionTagFilterMode>(() => readVisionClipCollectionFilterPreferences().tagMode)
+  const [savedCollectionFilterName, setSavedCollectionFilterName] = useState('')
+  const [savedCollectionFilters, setSavedCollectionFilters] = useState<VisionClipCollectionSavedFilter[]>(readVisionClipCollectionSavedFilters)
   const [collectionTransferStatus, setCollectionTransferStatus] = useState<string | null>(null)
   const [collectionAvailability, setCollectionAvailability] = useState<Record<string, CollectionAvailability>>({})
   const [thumbnailUrls, setThumbnailUrls] = useState<Record<string, string>>({})
@@ -319,6 +344,7 @@ export function VisionPanel(): React.ReactElement {
     if (!hasLoadedCollections) return
     writeVisionClipCollectionFilterPreferences(collectionFilterQuery, collectionFilterTags, collectionFilterTagMode)
   }, [hasLoadedCollections, collectionFilterQuery, collectionFilterTagsKey, collectionFilterTagMode])
+  useEffect(() => { writeVisionClipCollectionSavedFilters(savedCollectionFilters) }, [savedCollectionFilters])
   useEffect(() => {
     if (collectionTagNames.length === 0) return
     setCollectionTagOrder((current) => {
@@ -1150,6 +1176,35 @@ export function VisionPanel(): React.ReactElement {
     })
   }
 
+  const applySavedCollectionFilter = (savedFilter: VisionClipCollectionSavedFilter): void => {
+    setCollectionFilterQuery(savedFilter.query)
+    setCollectionFilterTags(mergeVisionClipCollectionFilterTags(savedFilter.tags, availableCollectionFilterTags))
+    setCollectionFilterTagMode(savedFilter.tagMode)
+  }
+
+  const saveCurrentCollectionFilter = (): void => {
+    const name = savedCollectionFilterName.trim()
+    if (!name || !hasCollectionFilter) return
+    const now = Date.now()
+    setSavedCollectionFilters((current) => {
+      const existing = current.find((item) => item.name.toLocaleLowerCase() === name.toLocaleLowerCase())
+      return upsertVisionClipCollectionSavedFilter(current, {
+        id: existing?.id ?? createVisionClipCollectionSavedFilterId(),
+        name,
+        query: collectionFilterQuery,
+        tags: collectionFilterTags,
+        tagMode: collectionFilterTagMode,
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now
+      }, now)
+    })
+    setSavedCollectionFilterName('')
+  }
+
+  const deleteSavedCollectionFilter = (id: string): void => {
+    setSavedCollectionFilters((current) => removeVisionClipCollectionSavedFilter(current, id))
+  }
+
   const toggleAllCollectionSelection = (): void => {
     setSelectedCollectionIds((current) => new Set(toggleVisibleVisionClipCollectionSelection(current, visibleCollectionIds, !allVisibleCollectionsSelected)))
   }
@@ -1612,6 +1667,22 @@ export function VisionPanel(): React.ReactElement {
         </div>
         {lastCollectionTagOperation ? <div className="vision-collection-tag-manager-undo"><small>{app.copy.vision.collectionTagManagerUndoDescription}</small><button className="vision-secondary-action" type="button" onClick={undoCollectionTagOperation} disabled={isCollectionBatchBusy}><Undo2 size={13} />{app.copy.vision.collectionTagManagerUndo}</button></div> : null}
       </> : <div className="vision-collection-tag-manager-empty">{app.copy.vision.collectionTagManagerEmpty}</div>}
+    </div> : null}
+    {collections.length > 0 ? <div className="vision-card vision-collection-saved-filters">
+      <div className="vision-saved-search-toolbar">
+        <input className="vision-saved-search-name-input" value={savedCollectionFilterName} onChange={(event) => setSavedCollectionFilterName(event.target.value)} placeholder={app.copy.vision.collectionFilterSavedViewNamePlaceholder} aria-label={app.copy.vision.collectionFilterSavedViewNamePlaceholder} disabled={isCollectionBatchBusy} />
+        <button className="vision-secondary-action" type="button" onClick={saveCurrentCollectionFilter} disabled={isCollectionBatchBusy || !hasCollectionFilter || !savedCollectionFilterName.trim()}>{app.copy.vision.collectionFilterSaveView}</button>
+      </div>
+      <div className="vision-saved-searches" aria-label={app.copy.vision.collectionFilterSavedViewsLabel}>
+        <strong className="vision-saved-search-heading">{app.copy.vision.collectionFilterSavedViewsLabel}</strong>
+        {savedCollectionFilters.length > 0 ? <div className="vision-saved-search-list" role="list">{savedCollectionFilters.map((savedFilter) => <div className="vision-saved-search" key={savedFilter.id} role="listitem">
+          <button className="vision-saved-search-button" type="button" onClick={() => applySavedCollectionFilter(savedFilter)} disabled={isCollectionBatchBusy} aria-label={`${app.copy.vision.collectionFilterApplyView}: ${savedFilter.name}`}>
+            <strong>{savedFilter.name}</strong>
+            <small>{savedFilter.query || app.copy.vision.collectionFilterTagAll}{savedFilter.tags.length > 0 ? ` · ${savedFilter.tags.join(' · ')}` : ''}{savedFilter.tags.length > 1 ? ` · ${savedFilter.tagMode === 'all' ? app.copy.vision.collectionFilterTagModeAll : app.copy.vision.collectionFilterTagModeAny}` : ''}</small>
+          </button>
+          <button className="vision-saved-search-delete" type="button" onClick={() => deleteSavedCollectionFilter(savedFilter.id)} title={app.copy.vision.collectionFilterDeleteView} aria-label={`${app.copy.vision.collectionFilterDeleteView}: ${savedFilter.name}`} disabled={isCollectionBatchBusy}><Trash2 size={14} /></button>
+        </div>)}</div> : <small className="vision-saved-search-empty">{app.copy.vision.collectionFilterSavedViewEmpty}</small>}
+      </div>
     </div> : null}
     {collections.length > 0 && collectionTagStats.length === 0 && lastCollectionTagOperation ? <div className="vision-card vision-collection-tag-undo-only"><small>{app.copy.vision.collectionTagManagerUndoDescription}</small><button className="vision-secondary-action" type="button" onClick={undoCollectionTagOperation} disabled={isCollectionBatchBusy}><Undo2 size={13} />{app.copy.vision.collectionTagManagerUndo}</button></div> : null}
     {selectedCollectionIds.size > 0 ? <div className="vision-card vision-collection-batch-tags-actions"><div className="vision-collection-batch-tags-heading"><strong>{app.copy.vision.selectedCollections(selectedCollectionIds.size)}</strong><small>{app.copy.vision.collectionTagsBatchPlaceholder}</small></div><div className="vision-collection-batch-tags-controls"><select className="vision-collection-batch-tags-mode" value={collectionBatchTagsMode} onChange={(event) => setCollectionBatchTagsMode(event.target.value as VisionClipCollectionBatchTagsMode)} aria-label={app.copy.vision.collectionTagsBatchModeAriaLabel} disabled={isCollectionBatchBusy}><option value="replace">{app.copy.vision.collectionTagsBatchModeLabel.replace}</option><option value="add">{app.copy.vision.collectionTagsBatchModeLabel.add}</option><option value="remove">{app.copy.vision.collectionTagsBatchModeLabel.remove}</option></select><input className="vision-collection-batch-tags-input" value={collectionBatchTags} maxLength={800} onChange={(event) => setCollectionBatchTags(event.target.value)} placeholder={app.copy.vision.collectionTagsBatchInputPlaceholder} aria-label={app.copy.vision.collectionTagsBatchInputPlaceholder} disabled={isCollectionBatchBusy} /><button className="vision-primary-action" type="button" onClick={updateSelectedCollectionsTags} disabled={isCollectionBatchBusy || !canUpdateCollectionTags}><Tags size={13} />{app.copy.vision.updateSelectedCollectionTags}</button>{!canUpdateCollectionTags ? <small className="vision-collection-batch-tags-hint">{app.copy.vision.collectionTagsBatchNeedInput}</small> : null}</div></div> : null}
