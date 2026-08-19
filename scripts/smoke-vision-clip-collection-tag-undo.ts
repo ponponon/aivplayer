@@ -68,9 +68,19 @@ async function runSmoke(): Promise<void> {
 
     await page.reload({ waitUntil: 'domcontentloaded' })
     await openVisionPanel(page)
+    const historyEntries = page.locator('.vision-collection-tag-history-entry')
+    await historyEntries.first().waitFor({ timeout: 10_000 })
+    const metadataHistory = await historyEntries.allTextContents()
+    if (metadataHistory.length !== 1 || !metadataHistory[0]?.includes('样式 / 元数据') || !metadataHistory[0]?.includes('已应用')) {
+      throw new Error(`Metadata operation should appear in history: ${JSON.stringify(metadataHistory)}`)
+    }
     await page.getByRole('button', { name: '海边 · 2 个集合', exact: true }).click()
     await confirmCleanup(page)
     await page.getByRole('status').filter({ hasText: '已从 2 个集合中清理标签：海边' }).waitFor({ timeout: 10_000 })
+    const cleanupHistory = await historyEntries.allTextContents()
+    if (cleanupHistory.length !== 2 || !cleanupHistory[0]?.includes('清理标签') || !cleanupHistory[0]?.includes('已应用')) {
+      throw new Error(`Cleanup operation should be the latest active history entry: ${JSON.stringify(cleanupHistory)}`)
+    }
 
     let persisted = await page.evaluate(() => window.aiv.listVisionClipCollections())
     if (persisted.filter((collection) => collection.tags.includes('海边')).length !== 0) throw new Error('Cleanup should remove the tag before undo')
@@ -79,6 +89,10 @@ async function runSmoke(): Promise<void> {
     const undoButton = page.getByRole('button', { name: '撤销上次标签操作', exact: true })
     await undoButton.click()
     await page.getByRole('status').filter({ hasText: '已撤销上次标签操作' }).waitFor({ timeout: 10_000 })
+    const undoneHistory = await historyEntries.allTextContents()
+    if (undoneHistory.length !== 2 || !undoneHistory[0]?.includes('清理标签') || !undoneHistory[0]?.includes('可重做')) {
+      throw new Error(`Undo should mark the latest history entry redoable: ${JSON.stringify(undoneHistory)}`)
+    }
     persisted = await page.evaluate(() => window.aiv.listVisionClipCollections())
     if (persisted.length !== originals.length || persisted.filter((collection) => collection.tags.includes('海边')).length !== 2) throw new Error(`Undo should restore tags: ${JSON.stringify(persisted)}`)
     const restoredMetadata = await page.evaluate(() => window.aiv.listVisionClipCollectionTagMetadata())
@@ -90,6 +104,10 @@ async function runSmoke(): Promise<void> {
     await persistedRedoButton.waitFor({ timeout: 10_000 })
     await persistedRedoButton.click()
     await page.getByRole('status').filter({ hasText: '已重做上次标签操作' }).waitFor({ timeout: 10_000 })
+    const redoneHistory = await historyEntries.allTextContents()
+    if (redoneHistory.length !== 2 || !redoneHistory[0]?.includes('清理标签') || !redoneHistory[0]?.includes('已应用')) {
+      throw new Error(`Redo should restore the latest history status: ${JSON.stringify(redoneHistory)}`)
+    }
     persisted = await page.evaluate(() => window.aiv.listVisionClipCollections())
     if (persisted.filter((collection) => collection.tags.includes('海边')).length !== 0) throw new Error('Redo should reapply cleanup after reload')
     if ((await page.evaluate(() => window.aiv.listVisionClipCollectionTagMetadata())).some((item) => item.tag === '海边')) throw new Error('Redo should remove metadata after reload')
@@ -115,7 +133,7 @@ async function runSmoke(): Promise<void> {
       await page.screenshot({ path: screenshotPath, fullPage: false })
     }
     if (session.errors.length > 0) throw new Error(`Renderer errors during clip collection tag undo smoke:\n${session.errors.join('\n')}`)
-    console.log(`AIVPlayer Smoke Vision Clip Collection Tag Undo passed: ${JSON.stringify({ originalCount: originals.length, cleaned: true, restored: true, persistedHistory: true, redoAfterReload: true, metadataUndo: true, screenshotPath: screenshotPath ?? null })}`)
+    console.log(`AIVPlayer Smoke Vision Clip Collection Tag Undo passed: ${JSON.stringify({ originalCount: originals.length, cleaned: true, restored: true, persistedHistory: true, historyTimeline: true, redoAfterReload: true, metadataUndo: true, screenshotPath: screenshotPath ?? null })}`)
   } finally {
     if (app) await app.close().catch(() => undefined)
     await rm(userDataDirectory, { recursive: true, force: true }).catch(() => undefined)
