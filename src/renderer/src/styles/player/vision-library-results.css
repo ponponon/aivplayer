@@ -1108,6 +1108,19 @@
   font-size: 9px;
 }
 
+.vision-collection-operation-redo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.vision-collection-operation-redo small {
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
 .vision-collection-tag-manager-list {
   display: flex;
   flex-wrap: wrap;
