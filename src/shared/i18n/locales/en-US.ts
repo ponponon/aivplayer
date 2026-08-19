@@ -603,6 +603,8 @@
       collectionFilterTagModeAll: 'All selected tags',
       collectionFilterTagAll: 'All tags',
       collectionFilterClear: 'Clear filters',
+      collectionFilterSelectedTagsLabel: 'Selected tags',
+      collectionFilterRemoveTag: 'Remove tag filter',
       collectionFilterSummary: (visible: number, total: number) => `Showing ${visible} / ${total} collections`,
       collectionFilterEmpty: 'No clip collections match the current filters.',
       collectionImport: 'Import clip collection',

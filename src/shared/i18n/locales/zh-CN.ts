@@ -603,6 +603,8 @@
       collectionFilterTagModeAll: '全部标签',
       collectionFilterTagAll: '全部标签',
       collectionFilterClear: '清除筛选',
+      collectionFilterSelectedTagsLabel: '已选标签',
+      collectionFilterRemoveTag: '移除标签筛选',
       collectionFilterSummary: (visible: number, total: number) => `显示 ${visible} / ${total} 个集合`,
       collectionFilterEmpty: '没有符合筛选条件的选段集合。',
       collectionImport: '导入选段集合',

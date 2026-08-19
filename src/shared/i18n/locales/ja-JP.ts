@@ -603,6 +603,8 @@
       collectionFilterTagModeAll: 'すべてのタグ',
       collectionFilterTagAll: 'すべてのタグ',
       collectionFilterClear: '絞り込みを解除',
+      collectionFilterSelectedTagsLabel: '選択中のタグ',
+      collectionFilterRemoveTag: 'タグの絞り込みを解除',
       collectionFilterSummary: (visible: number, total: number) => `${total} 件中 ${visible} 件のコレクション`,
       collectionFilterEmpty: '条件に一致するクリップコレクションはありません。',
       collectionImport: 'クリップコレクションをインポート',

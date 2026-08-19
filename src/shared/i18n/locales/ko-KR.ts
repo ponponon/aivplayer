@@ -603,6 +603,8 @@
       collectionFilterTagModeAll: '선택한 모든 태그',
       collectionFilterTagAll: '모든 태그',
       collectionFilterClear: '필터 지우기',
+      collectionFilterSelectedTagsLabel: '선택한 태그',
+      collectionFilterRemoveTag: '태그 필터 제거',
       collectionFilterSummary: (visible: number, total: number) => `${total}개 중 ${visible}개 컬렉션 표시`,
       collectionFilterEmpty: '현재 필터와 일치하는 클립 컬렉션이 없습니다.',
       collectionImport: '클립 컬렉션 가져오기',
