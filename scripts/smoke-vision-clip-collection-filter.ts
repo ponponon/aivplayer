@@ -156,11 +156,32 @@ async function runSmoke(): Promise<void> {
     if (!filterPersisted || await page.getByRole('button', { name: '移除标签筛选: 采访', exact: true }).count() !== 1 || await page.getByRole('button', { name: '移除标签筛选: 精选', exact: true }).count() !== 1) {
       throw new Error(`Collection filters should restore after reload: ${JSON.stringify({ query: restoredQuery, tags: restoredTags, tagMode: restoredMode, count: restoredCollectionCount })}`)
     }
+    const savedFilterName = `海边精选视图 ${prefix}`
+    const savedFilterNameInput = page.getByRole('textbox', { name: '筛选视图名称', exact: true })
+    await savedFilterNameInput.fill(savedFilterName)
+    await page.getByRole('button', { name: '保存当前筛选', exact: true }).click()
+    const savedFilterButton = page.getByRole('button', { name: `应用筛选视图: ${savedFilterName}`, exact: true })
+    await savedFilterButton.waitFor({ timeout: 10_000 })
+    const storedSavedFilters = await page.evaluate(() => localStorage.getItem('aivplayer.vision-clip-collection-saved-filters.v1'))
+    if (!storedSavedFilters?.includes(savedFilterName)) throw new Error(`Saved collection filter was not persisted: ${storedSavedFilters ?? 'null'}`)
+    if (screenshotPath) {
+      await page.locator('.vision-collection-saved-filters').scrollIntoViewIfNeeded()
+      await page.screenshot({ path: screenshotPath, fullPage: false })
+    }
     await page.getByRole('button', { name: '清除筛选', exact: true }).click()
     await page.getByRole('status').filter({ hasText: '显示 3 / 3 个集合' }).waitFor({ timeout: 10_000 })
-    if (await page.locator('.vision-collection').count() !== 3) throw new Error('Clearing restored collection filters should restore all collections')
+    if (await page.locator('.vision-collection').count() !== 3 || await savedFilterButton.count() !== 1) throw new Error('Clearing restored collection filters should keep the saved view available')
+    await savedFilterButton.click()
+    await page.getByRole('status').filter({ hasText: '显示 1 / 3 个集合' }).waitFor({ timeout: 10_000 })
+    if (await page.locator('.vision-collection').count() !== 1 || await page.getByRole('button', { name: '移除标签筛选: 采访', exact: true }).count() !== 1 || await page.getByRole('button', { name: '移除标签筛选: 精选', exact: true }).count() !== 1) {
+      throw new Error('Applying the saved collection filter should restore its query and tag conditions')
+    }
+    await page.getByRole('button', { name: `删除筛选视图: ${savedFilterName}`, exact: true }).click()
+    if (await page.getByRole('button', { name: `应用筛选视图: ${savedFilterName}`, exact: true }).count() !== 0) throw new Error('Deleting a saved collection filter should remove only that view')
+    const savedFilterPersisted = await page.evaluate(() => localStorage.getItem('aivplayer.vision-clip-collection-saved-filters.v1'))
+    if (savedFilterPersisted?.includes(savedFilterName)) throw new Error(`Deleted collection filter remained in storage: ${savedFilterPersisted}`)
     if (session.errors.length > 0) throw new Error(`Renderer errors during clip collection filter smoke:\n${session.errors.join('\n')}`)
-    console.log(`AIVPlayer Smoke Vision Clip Collection Filter passed: ${JSON.stringify({ originalCount: originals.length, queryMatches: 2, tagMatches: 2, hierarchyTagMatches: 2, multiTagAnyMatches: 2, multiTagAllMatches: 1, individualTagRemoval: true, visibleSelectionPreserved: true, emptyState: true, dataUnchanged, filterPersisted, screenshotPath: screenshotPath ?? null })}`)
+    console.log(`AIVPlayer Smoke Vision Clip Collection Filter passed: ${JSON.stringify({ originalCount: originals.length, queryMatches: 2, tagMatches: 2, hierarchyTagMatches: 2, multiTagAnyMatches: 2, multiTagAllMatches: 1, individualTagRemoval: true, visibleSelectionPreserved: true, emptyState: true, dataUnchanged, filterPersisted, savedFilterRestored: true, savedFilterDeleted: true, screenshotPath: screenshotPath ?? null })}`)
   } finally {
     if (app) await app.close().catch(() => undefined)
     await rm(userDataDirectory, { recursive: true, force: true }).catch(() => undefined)
