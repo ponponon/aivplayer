@@ -86,6 +86,21 @@ async function runSmoke(): Promise<void> {
 
     await page.reload({ waitUntil: 'domcontentloaded' })
     await openVisionPanel(page)
+    const persistedRedoButton = page.getByRole('button', { name: '重做上次标签操作', exact: true })
+    await persistedRedoButton.waitFor({ timeout: 10_000 })
+    await persistedRedoButton.click()
+    await page.getByRole('status').filter({ hasText: '已重做上次标签操作' }).waitFor({ timeout: 10_000 })
+    persisted = await page.evaluate(() => window.aiv.listVisionClipCollections())
+    if (persisted.filter((collection) => collection.tags.includes('海边')).length !== 0) throw new Error('Redo should reapply cleanup after reload')
+    if ((await page.evaluate(() => window.aiv.listVisionClipCollectionTagMetadata())).some((item) => item.tag === '海边')) throw new Error('Redo should remove metadata after reload')
+
+    const undoAfterRedo = page.getByRole('button', { name: '撤销上次标签操作', exact: true })
+    await undoAfterRedo.waitFor({ timeout: 10_000 })
+    await undoAfterRedo.click()
+    await page.getByRole('status').filter({ hasText: '已撤销上次标签操作' }).waitFor({ timeout: 10_000 })
+    persisted = await page.evaluate(() => window.aiv.listVisionClipCollections())
+    if (persisted.filter((collection) => collection.tags.includes('海边')).length !== 2) throw new Error('Undo after redo should restore tags')
+
     const persistedUndoButton = page.getByRole('button', { name: '撤销上次标签操作', exact: true })
     await persistedUndoButton.waitFor({ timeout: 10_000 })
     await persistedUndoButton.click()
@@ -93,13 +108,14 @@ async function runSmoke(): Promise<void> {
     const metadataAfterSecondUndo = await page.evaluate(() => window.aiv.listVisionClipCollectionTagMetadata())
     if (metadataAfterSecondUndo.some((item) => item.tag === '海边')) throw new Error('Second undo should remove the earlier style operation')
     if (await page.getByRole('button', { name: '撤销上次标签操作', exact: true }).count() !== 0) throw new Error('All tag history should be consumed after the second undo')
+    if (await page.getByRole('button', { name: '重做上次标签操作', exact: true }).count() === 0) throw new Error('Redo history should remain available after undoing style metadata')
 
     if (screenshotPath) {
       await page.locator('.vision-collection-tag-manager').scrollIntoViewIfNeeded()
       await page.screenshot({ path: screenshotPath, fullPage: false })
     }
     if (session.errors.length > 0) throw new Error(`Renderer errors during clip collection tag undo smoke:\n${session.errors.join('\n')}`)
-    console.log(`AIVPlayer Smoke Vision Clip Collection Tag Undo passed: ${JSON.stringify({ originalCount: originals.length, cleaned: true, restored: true, persistedHistory: true, metadataUndo: true, screenshotPath: screenshotPath ?? null })}`)
+    console.log(`AIVPlayer Smoke Vision Clip Collection Tag Undo passed: ${JSON.stringify({ originalCount: originals.length, cleaned: true, restored: true, persistedHistory: true, redoAfterReload: true, metadataUndo: true, screenshotPath: screenshotPath ?? null })}`)
   } finally {
     if (app) await app.close().catch(() => undefined)
     await rm(userDataDirectory, { recursive: true, force: true }).catch(() => undefined)
