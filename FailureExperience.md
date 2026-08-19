@@ -1981,3 +1981,9 @@
 - 现象：第二次 CI 已成功提交 `AIVPlayer-notarization.zip`，凭据和签名均通过，Apple submission 一直返回 `In Progress`；30 分钟轮询结束时没有 `Invalid` 或 `Rejected`，只是达到本地等待上限。
 - 经验：公证耗时受 Apple 服务队列和应用体积影响，不能把 30 分钟当作可靠的完成上限；应保留 submission ID 和最终状态，使用更宽裕的总等待窗口，同时继续拒绝未获得 `Accepted` 的安装包。
 - 处理：将工作流公证轮询从 30 分钟延长到 60 分钟，保留每 30 秒一次状态输出及失败证据上传。
+
+## 2026-08-19：Electron Blob 导出 Smoke 不能只等待 download 事件
+
+- 现象：筛选视图导出使用 Blob URL 和动态 `<a download>`，产品点击逻辑已执行，但 Playwright Electron Smoke 连续等待 30 秒都收不到 `download` 事件。
+- 经验：桌面 Electron 的下载事件不一定等同于浏览器上下文的 download 事件；测试不能把适配层事件作为唯一导出证据，也不能直接把“无事件”判断为产品导出失败。
+- 处理：导出锚点先挂载到 DOM，点击后再移除并异步释放 Blob URL；Smoke 在页面内捕获真实 Blob 和建议文件名，将内容写入临时 JSON，再通过真实文件选择器导入，继续验证序列化内容和用户可见迁移闭环。
