@@ -751,6 +751,16 @@ export function registerVisionIpc(): void {
       return { success: false, message: error instanceof Error ? error.message : String(error), operation: null, collections: [] }
     }
   })
+  ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_OPERATION_REDO, () => {
+    const copy = getAppCopy(getCurrentLocale()).vision
+    try {
+      const result = getClipInboxStore().redoLastCollectionOperation()
+      if (!result.success) return { ...result, message: copy.collectionOperationRedoUnavailable }
+      return { ...result, message: copy.collectionOperationRedoSuccess }
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : String(error), operation: null, collections: [] }
+    }
+  })
   ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_TAG_METADATA_UPDATE, (_event, request: VisionClipCollectionTagMetadataUpdateRequest) => {
     const copy = getAppCopy(getCurrentLocale()).vision
     const tag = normalizeVisionCollectionTag(request?.tag)

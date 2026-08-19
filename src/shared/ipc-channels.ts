@@ -148,6 +148,7 @@ export const IPC_CHANNELS = {
   VISION_CLIP_COLLECTION_TAG_OPERATION_UNDO: 'vision:clip-collection-tag-operation-undo',
   VISION_CLIP_COLLECTION_OPERATION_HISTORY: 'vision:clip-collection-operation-history',
   VISION_CLIP_COLLECTION_OPERATION_UNDO: 'vision:clip-collection-operation-undo',
+  VISION_CLIP_COLLECTION_OPERATION_REDO: 'vision:clip-collection-operation-redo',
   VISION_CLIP_COLLECTION_DUPLICATE: 'vision:clip-collection-duplicate',
   VISION_CLIP_COLLECTION_BATCH_DUPLICATE: 'vision:clip-collection-batch-duplicate',
   VISION_CLIP_COLLECTION_EXPORT: 'vision:clip-collection-export',
