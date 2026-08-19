@@ -95,21 +95,33 @@ export function selectInstallerAssets(items) {
     const architecture = classifyArchitecture(name, platform)
     const target = `${platform}-${architecture}`
     const candidate = { ...item, name, format: extension.slice(1) }
-    const previous = selected[target]
-    if (!previous || installerScore(candidate, platform) < installerScore(previous, platform)) selected[target] = candidate
+    if (!selected[target]) selected[target] = {}
+    selected[target][candidate.format] = candidate
   }
   return selected
 }
 
 export function createDownloadRelease({ tag, assets, publicBaseUrl, repository, generatedAt = new Date().toISOString() }) {
   const version = normalizeVersion(tag)
-  const releaseAssets = Object.fromEntries(Object.entries(assets).map(([target, asset]) => [target, {
-    name: asset.name,
-    format: asset.format ?? getFileExtension(asset.name).slice(1),
-    sizeBytes: asset.sizeBytes,
-    sha256: asset.sha256,
-    url: asset.url ?? getPublicObjectUrl(publicBaseUrl, version, asset.name)
-  }]))
+  const releaseAssets = Object.fromEntries(Object.entries(assets).map(([target, formats]) => {
+    if (formats.name) {
+      return [target, {
+        name: formats.name,
+        format: formats.format ?? getFileExtension(formats.name).slice(1),
+        sizeBytes: formats.sizeBytes,
+        sha256: formats.sha256,
+        url: formats.url ?? getPublicObjectUrl(publicBaseUrl, version, formats.name)
+      }]
+    }
+    const formatEntries = Object.entries(formats).map(([formatName, asset]) => [formatName, {
+      name: asset.name,
+      format: asset.format ?? getFileExtension(asset.name).slice(1),
+      sizeBytes: asset.sizeBytes,
+      sha256: asset.sha256,
+      url: asset.url ?? getPublicObjectUrl(publicBaseUrl, version, asset.name)
+    }])
+    return [target, Object.fromEntries(formatEntries)]
+  }))
   return {
     version,
     tag,
@@ -124,7 +136,7 @@ export function createDownloadManifest({ repository, releases, generatedAt = new
     schemaVersion: DOWNLOAD_MANIFEST_SCHEMA_VERSION,
     repository,
     generatedAt,
-    retention: 2,
+    retention: 1,
     releases
   }
 }
@@ -271,22 +283,45 @@ async function publishVersion({ release, localAssets, repository, publicBaseUrl,
   if (Object.keys(selected).length === 0) throw new Error(`No supported installer assets found for ${tag}.`)
 
   const uploadedAssets = {}
-  for (const [target, asset] of Object.entries(selected)) {
-    const filePath = asset.path ?? join(temporaryDirectory, asset.name)
-    if (!asset.path) await downloadGithubAsset({ asset, destination: filePath })
-    const details = await fileDetails(filePath)
-    const key = `${r2ReleasePrefix}/${version}/${asset.name}`
-    await uploadR2File({
-      accountId,
-      bucket,
-      key,
-      filePath,
-      token,
-      cacheControl: 'public, max-age=31536000, immutable',
-      contentDisposition: `attachment; filename="${asset.name.replaceAll('"', '')}"`
-    })
-    uploadedAssets[target] = { ...asset, ...details, url: getPublicObjectUrl(publicBaseUrl, version, asset.name) }
-    console.log(`Published ${tag} ${target}: ${asset.name}`)
+  for (const [target, formats] of Object.entries(selected)) {
+    if (formats.name) {
+      const asset = formats
+      const filePath = asset.path ?? join(temporaryDirectory, asset.name)
+      if (!asset.path) await downloadGithubAsset({ asset, destination: filePath })
+      const details = await fileDetails(filePath)
+      const key = `${r2ReleasePrefix}/${version}/${asset.name}`
+      await uploadR2File({
+        accountId,
+        bucket,
+        key,
+        filePath,
+        token,
+        cacheControl: 'public, max-age=31536000, immutable',
+        contentDisposition: `attachment; filename="${asset.name.replaceAll('"', '')}"`
+      })
+      uploadedAssets[target] = { ...asset, ...details, url: getPublicObjectUrl(publicBaseUrl, version, asset.name) }
+      console.log(`Published ${tag} ${target}: ${asset.name}`)
+    } else {
+      const formatEntries = {}
+      for (const [formatName, asset] of Object.entries(formats)) {
+        const filePath = asset.path ?? join(temporaryDirectory, asset.name)
+        if (!asset.path) await downloadGithubAsset({ asset, destination: filePath })
+        const details = await fileDetails(filePath)
+        const key = `${r2ReleasePrefix}/${version}/${asset.name}`
+        await uploadR2File({
+          accountId,
+          bucket,
+          key,
+          filePath,
+          token,
+          cacheControl: 'public, max-age=31536000, immutable',
+          contentDisposition: `attachment; filename="${asset.name.replaceAll('"', '')}"`
+        })
+        formatEntries[formatName] = { ...asset, ...details, url: getPublicObjectUrl(publicBaseUrl, version, asset.name) }
+        console.log(`Published ${tag} ${target}/${formatName}: ${asset.name}`)
+      }
+      uploadedAssets[target] = formatEntries
+    }
   }
 
   const entry = createDownloadRelease({

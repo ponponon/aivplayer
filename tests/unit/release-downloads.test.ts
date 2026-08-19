@@ -17,7 +17,7 @@ const r2Cors = JSON.parse(readFileSync(join(projectRoot, 'config/r2-cors.json'),
 }
 
 describe('release download selection', () => {
-  it('selects one installer for every real platform and architecture', () => {
+  it('selects all installers for every real platform and architecture', () => {
     const selected = selectInstallerAssets([
       { name: 'AIVPlayer-0.5.5-arm64-mac.zip' },
       { name: 'AIVPlayer-0.5.5-arm64.dmg' },
@@ -29,9 +29,10 @@ describe('release download selection', () => {
     ])
 
     expect(Object.keys(selected).sort()).toEqual(['darwin-arm64', 'linux-arm64', 'linux-x64', 'win32-arm64', 'win32-x64'])
-    expect(selected['darwin-arm64'].name).toBe('AIVPlayer-0.5.5-arm64.dmg')
-    expect(selected['linux-x64'].name).toBe('aivplayer-0.5.5-x86_64.AppImage')
-    expect(selected['win32-arm64'].name).toBe('AIVPlayer-Setup-0.5.5-arm64.exe')
+    expect(selected['darwin-arm64']['dmg'].name).toBe('AIVPlayer-0.5.5-arm64.dmg')
+    expect(selected['linux-x64']['appimage'].name).toBe('aivplayer-0.5.5-x86_64.AppImage')
+    expect(selected['linux-x64']['deb'].name).toBe('aivplayer-0.5.5-amd64.deb')
+    expect(selected['win32-arm64']['exe'].name).toBe('AIVPlayer-Setup-0.5.5-arm64.exe')
   })
 
   it('keeps compatibility with older release naming', () => {
@@ -43,7 +44,8 @@ describe('release download selection', () => {
     ])
 
     expect(Object.keys(selected).sort()).toEqual(['darwin-arm64', 'linux-x64', 'win32-x64'])
-    expect(selected['linux-x64'].name).toBe('AIVPlayer-0.4.0.AppImage')
+    expect(selected['linux-x64']['appimage'].name).toBe('AIVPlayer-0.4.0.AppImage')
+    expect(selected['linux-x64']['deb'].name).toBe('aivplayer_0.4.0_amd64.deb')
   })
 
   it('creates an immutable R2 URL and a short retention manifest', () => {
@@ -58,8 +60,25 @@ describe('release download selection', () => {
     const manifest = createDownloadManifest({ repository: 'ponponon/aivplayer', releases: [release] })
 
     expect(release.assets['win32-x64'].url).toBe('https://releases.quniv.cn/aivplayer/releases/0.5.5/AIVPlayer-Setup-0.5.5-x64.exe')
-    expect(manifest.retention).toBe(2)
+    expect(manifest.retention).toBe(1)
     expect(manifest.releases).toHaveLength(1)
+  })
+
+  it('handles multi-format assets for Linux', () => {
+    const release = createDownloadRelease({
+      tag: 'v0.6.0',
+      repository: 'ponponon/aivplayer',
+      publicBaseUrl: 'https://releases.quniv.cn/aivplayer/releases',
+      assets: {
+        'linux-x64': {
+          appimage: { name: 'aivplayer-0.6.0-x86_64.AppImage', format: 'appimage', sizeBytes: 100, sha256: 'b'.repeat(64) },
+          deb: { name: 'aivplayer-0.6.0-amd64.deb', format: 'deb', sizeBytes: 200, sha256: 'c'.repeat(64) }
+        }
+      }
+    })
+
+    expect(release.assets['linux-x64']['appimage'].url).toBe('https://releases.quniv.cn/aivplayer/releases/0.6.0/aivplayer-0.6.0-x86_64.AppImage')
+    expect(release.assets['linux-x64']['deb'].url).toBe('https://releases.quniv.cn/aivplayer/releases/0.6.0/aivplayer-0.6.0-amd64.deb')
   })
 })
 
@@ -85,19 +104,16 @@ describe('download publishing integration', () => {
 
   it('keeps the public page centered on one automatic download path', () => {
     expect(siteHtml).toContain('id="download-recommended-link"')
-    expect(siteHtml).toContain('id="download-history-panel"')
-    expect(siteHtml).toContain('id="download-history-download-link"')
-    expect(siteHtml).toContain('id="download-manual"')
-    expect(siteHtml).toContain('id="download-platform-select"')
-    expect(siteHtml).toContain('id="download-architecture-select"')
-    expect(siteHtml).toContain('role="listbox"')
-    expect(siteHtml).not.toContain('<select id="download-platform-select"')
-    expect(siteScript).toContain('wireDownloadSelect')
+    expect(siteHtml).toContain('id="download-manual-link"')
+    expect(siteHtml).toContain('id="download-platform-grid"')
+    expect(siteHtml).toContain('id="download-architecture-chips"')
+    expect(siteHtml).toContain('id="download-format-chips"')
+    expect(siteHtml).toContain('id="download-version-chips"')
+    expect(siteHtml).toContain('role="radiogroup"')
     expect(siteScript).toContain('platformIconSvgs')
     expect(siteScript).toContain('simple-icons/simple-icons/blob/develop/icons/apple.svg')
     expect(siteScript).toContain("platformHint.includes('mac') || platformHint.includes('darwin')")
     expect(siteScript).not.toContain('macintel')
-    expect(siteStyles).toContain('.download-select-menu')
     expect(siteScript).toContain('DOWNLOAD_MANIFEST_URL')
     expect(siteScript).toContain('detectDownloadTarget')
     expect(siteScript).toContain("getHighEntropyValues(['architecture', 'bitness'])")
@@ -107,8 +123,10 @@ describe('download publishing integration', () => {
     expect(siteScript).toContain("version: '0.6.0'")
     expect(siteScript).toContain("version: '0.5.6'")
     expect(siteScript).not.toContain("version: '0.5.5'")
-    expect(siteScript).toContain('selectedHistoryVersion')
-    expect(siteScript).toContain("wireDownloadSelect('history')")
+    expect(siteScript).toContain('wirePlatformCards')
+    expect(siteScript).toContain('wireArchitectureChips')
+    expect(siteScript).toContain('wireFormatChips')
+    expect(siteScript).toContain('wireVersionChips')
   })
 
   it('uses the Cloudflare API token for R2 REST uploads without S3 credentials', () => {

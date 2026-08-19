@@ -39,8 +39,14 @@ const FALLBACK_DOWNLOAD_MANIFEST = {
       'darwin-arm64': { name: 'AIVPlayer-0.6.0-arm64.dmg', url: createGithubAssetUrl('0.6.0', 'AIVPlayer-0.6.0-arm64.dmg'), format: 'dmg' },
       'win32-x64': { name: 'AIVPlayer-Setup-0.6.0-x64.exe', url: createGithubAssetUrl('0.6.0', 'AIVPlayer-Setup-0.6.0-x64.exe'), format: 'exe' },
       'win32-arm64': { name: 'AIVPlayer-Setup-0.6.0-arm64.exe', url: createGithubAssetUrl('0.6.0', 'AIVPlayer-Setup-0.6.0-arm64.exe'), format: 'exe' },
-      'linux-x64': { name: 'aivplayer-0.6.0-x86_64.AppImage', url: createGithubAssetUrl('0.6.0', 'aivplayer-0.6.0-x86_64.AppImage'), format: 'AppImage' },
-      'linux-arm64': { name: 'aivplayer-0.6.0-arm64.AppImage', url: createGithubAssetUrl('0.6.0', 'aivplayer-0.6.0-arm64.AppImage'), format: 'AppImage' }
+      'linux-x64': {
+        appimage: { name: 'aivplayer-0.6.0-x86_64.AppImage', url: createGithubAssetUrl('0.6.0', 'aivplayer-0.6.0-x86_64.AppImage'), format: 'AppImage' },
+        deb: { name: 'aivplayer-0.6.0-amd64.deb', url: createGithubAssetUrl('0.6.0', 'aivplayer-0.6.0-amd64.deb'), format: 'deb' }
+      },
+      'linux-arm64': {
+        appimage: { name: 'aivplayer-0.6.0-arm64.AppImage', url: createGithubAssetUrl('0.6.0', 'aivplayer-0.6.0-arm64.AppImage'), format: 'AppImage' },
+        deb: { name: 'aivplayer-0.6.0-arm64.deb', url: createGithubAssetUrl('0.6.0', 'aivplayer-0.6.0-arm64.deb'), format: 'deb' }
+      }
     }
   }, {
     version: '0.5.6',
@@ -50,8 +56,14 @@ const FALLBACK_DOWNLOAD_MANIFEST = {
       'darwin-arm64': { name: 'AIVPlayer-0.5.6-arm64.dmg', url: createGithubAssetUrl('0.5.6', 'AIVPlayer-0.5.6-arm64.dmg'), format: 'dmg' },
       'win32-x64': { name: 'AIVPlayer-Setup-0.5.6-x64.exe', url: createGithubAssetUrl('0.5.6', 'AIVPlayer-Setup-0.5.6-x64.exe'), format: 'exe' },
       'win32-arm64': { name: 'AIVPlayer-Setup-0.5.6-arm64.exe', url: createGithubAssetUrl('0.5.6', 'AIVPlayer-Setup-0.5.6-arm64.exe'), format: 'exe' },
-      'linux-x64': { name: 'aivplayer-0.5.6-x86_64.AppImage', url: createGithubAssetUrl('0.5.6', 'aivplayer-0.5.6-x86_64.AppImage'), format: 'AppImage' },
-      'linux-arm64': { name: 'aivplayer-0.5.6-arm64.AppImage', url: createGithubAssetUrl('0.5.6', 'aivplayer-0.5.6-arm64.AppImage'), format: 'AppImage' }
+      'linux-x64': {
+        appimage: { name: 'aivplayer-0.5.6-x86_64.AppImage', url: createGithubAssetUrl('0.5.6', 'aivplayer-0.5.6-x86_64.AppImage'), format: 'AppImage' },
+        deb: { name: 'aivplayer-0.5.6-amd64.deb', url: createGithubAssetUrl('0.5.6', 'aivplayer-0.5.6-amd64.deb'), format: 'deb' }
+      },
+      'linux-arm64': {
+        appimage: { name: 'aivplayer-0.5.6-arm64.AppImage', url: createGithubAssetUrl('0.5.6', 'aivplayer-0.5.6-arm64.AppImage'), format: 'AppImage' },
+        deb: { name: 'aivplayer-0.5.6-arm64.deb', url: createGithubAssetUrl('0.5.6', 'aivplayer-0.5.6-arm64.deb'), format: 'deb' }
+      }
     }
   }]
 }
@@ -71,7 +83,7 @@ const copy = {
     workflow: { eyebrow: '更清晰的剪辑路径', title: '从导入<br>到洞察。', lede: '每一步都有自己的位置，文件和决定仍然由你掌控。', link: '阅读工作流文档', import: { title: '导入', body: '打开视频、图片、Live Photo 或音频，媒体库留在本机。' }, understand: { title: '理解', body: '按需生成字幕、摘要、章节和视觉证据。' }, shape: { title: '创作', body: '收集片段、调整字幕、处理图片，并在时间线上剪辑。' }, export: { title: '导出', body: '导出片段、字幕和工程，也可以在局域网共享 Web 播放器。' } },
     preview: { eyebrow: '不是占位图', title: '先看看工作区<br><em>真实的样子。</em>', lede: '以下都是桌面端真实截图，不是占位符。界面深色、适合键盘操作，并围绕当前媒体展开。', playerAlt: 'AIVPlayer 显示视频和字幕生成面板', settingsAlt: 'AIVPlayer 偏好设置窗口，显示界面语言设置', playerTitle: '播放 + 字幕工作区', playerCaption: '观看、跳转、检查运行状态，并在一个界面准备本地 ASR。', settingsTitle: '尊重你的使用方式', settingsCaption: '语言、文件夹、播放、截图录屏、快捷键和 AI 服务都可以配置。' },
     quickstart: { eyebrow: '无需复杂仪式', title: '打开视频。<br><em>继续工作。</em>', lede: '安装包自带核心播放和媒体运行时。可选 AI 模型只会在你主动使用时下载。', engine: { title: '安装应用', body: '下载对应系统的安装包，打开你的第一个文件。' }, model: { title: '需要时再添加模型', body: '在应用内选择模型来源，不会静默下载大文件。' }, ai: { title: '按你的方式连接 AI', body: '翻译和生成使用你配置的地址和密钥，不需要 AIVPlayer 账号。' } },
-    download: { eyebrow: '准备好时再开始', title: '为你的电脑下载 AIVPlayer。', lede: '为你的系统选择安装包，应用完全在本地运行——不需要账号，不会上传文件。', recommendedLabel: '为这台电脑推荐', downloadRecommended: '下载推荐版本', downloadFor: '下载 {platform} 版', chooserLabel: '或选择其他平台', architectureLabel: '构建', historyVersionLabel: '版本', versionLatest: '最新版本（{version}）', downloadSelected: '下载这个构建', archiveBody: '更早的版本保留在 GitHub Releases。', archiveLink: '查看全部版本', detected: '已检测到', unavailable: '该架构目前没有安装包。', architectureUnknown: '浏览器无法可靠确认架构，请手动选择。', choosePlatform: '请在下方选择平台开始下载。', unavailableTag: '暂无', macos: 'macOS', windows: 'Windows', linux: 'Linux', arm64: 'ARM64', x64: 'x64', privacyBody: '你的文件、工程、字幕和索引默认保存在本地。', privacyLink: '阅读完整隐私政策', arch: { darwin: { arm64: 'Apple 芯片', x64: 'Intel' }, win32: { x64: '标准版（x64）', arm64: 'ARM64' }, linux: { x64: 'x64', arm64: 'ARM64' } } },
+    download: { eyebrow: '准备好时再开始', title: '为你的电脑下载 AIVPlayer。', lede: '为你的系统选择安装包，应用完全在本地运行——不需要账号，不会上传文件。', recommendedLabel: '为这台电脑推荐', downloadRecommended: '下载推荐版本', downloadFor: '下载 {platform} 版', chooserLabel: '或选择其他平台', architectureLabel: '构建', formatLabel: '格式', historyVersionLabel: '版本', versionLatest: '最新版本（{version}）', downloadSelected: '下载这个构建', archiveBody: '更早的版本保留在 GitHub Releases。', archiveLink: '查看全部版本', detected: '已检测到', unavailable: '该架构目前没有安装包。', architectureUnknown: '浏览器无法可靠确认架构，请手动选择。', choosePlatform: '请在下方选择平台开始下载。', unavailableTag: '暂无', macos: 'macOS', windows: 'Windows', linux: 'Linux', arm64: 'ARM64', x64: 'x64', privacyBody: '你的文件、工程、字幕和索引默认保存在本地。', privacyLink: '阅读完整隐私政策', arch: { darwin: { arm64: 'Apple 芯片', x64: 'Intel' }, win32: { x64: '标准版（x64）', arm64: 'ARM64' }, linux: { x64: 'x64', arm64: 'ARM64' } } },
     footer: { tagline: '为认真处理动态影像的人准备的本地 AI 视频工作台。', docs: '使用文档', privacy: '隐私政策', issues: '反馈问题', note: '为与影像一起工作的人而造。' }
   },
   'en-US': {
@@ -84,7 +96,7 @@ const copy = {
     workflow: { eyebrow: 'A CLEARER CUT', title: 'From import<br>to insight.', lede: 'The app gives every stage a place, while keeping the files and decisions under your control.', link: 'Read the workflow docs', import: { title: 'Import', body: 'Open video, images, Live Photos, or audio and keep the library on disk.' }, understand: { title: 'Understand', body: 'Generate subtitles, summaries, chapters, and visual evidence when you need them.' }, shape: { title: 'Shape', body: 'Collect clips, refine captions, adjust images, and edit on a timeline.' }, export: { title: 'Export', body: 'Export clips, subtitles, projects, and share a local web player on your network.' } },
     preview: { eyebrow: 'NO MOCKUPS', title: 'See the workspace<br><em>as it really is.</em>', lede: 'These are direct captures from the desktop app, not placeholders. The interface is dark, keyboard-friendly, and designed around the media in front of you.', playerAlt: 'AIVPlayer showing a video and subtitle generation panel', settingsAlt: 'AIVPlayer preferences window showing interface language settings', playerTitle: 'Playback + subtitle workspace', playerCaption: 'Watch, seek, inspect engine readiness, and prepare local ASR in one view.', settingsTitle: 'Preferences that respect your setup', settingsCaption: 'Language, folders, playback, capture, shortcuts, and AI services stay configurable.' },
     quickstart: { eyebrow: 'START WITHOUT THE RITUAL', title: 'Open a video.<br><em>Keep going.</em>', lede: 'The packaged app includes the core playback and media runtime. Optional AI models are downloaded only when you ask for them.', engine: { title: 'Install the app', body: 'Download the package for your operating system and open your first file.' }, model: { title: 'Add a model when needed', body: 'Choose a model source inside the app. Nothing large is downloaded silently.' }, ai: { title: 'Connect AI on your terms', body: 'Translation and generation use the endpoint and key you configure, not an AIVPlayer account.' } },
-    download: { eyebrow: 'READY WHEN YOU ARE', title: 'Download AIVPlayer for your computer.', lede: 'Pick the installer for your operating system. The app runs locally — no account, no upload.', recommendedLabel: 'Recommended for this computer', downloadRecommended: 'Download recommended build', downloadFor: 'Download for {platform}', chooserLabel: 'Or pick another platform', architectureLabel: 'Build', historyVersionLabel: 'Version', versionLatest: 'Latest ({version})', downloadSelected: 'Download this build', archiveBody: 'Older versions stay available on GitHub Releases.', archiveLink: 'View all releases', detected: 'Detected', unavailable: 'That architecture does not have an installer yet.', architectureUnknown: 'Your browser cannot reliably confirm the architecture. Choose it manually.', choosePlatform: 'Choose a platform below to start your download.', unavailableTag: 'Soon', macos: 'macOS', windows: 'Windows', linux: 'Linux', arm64: 'ARM64', x64: 'x64', privacyBody: 'Your files, projects, subtitles and indexes stay on your device by default.', privacyLink: 'Read the privacy policy', arch: { darwin: { arm64: 'Apple silicon', x64: 'Intel' }, win32: { x64: 'Standard (x64)', arm64: 'ARM64' }, linux: { x64: 'x64', arm64: 'ARM64' } } },
+    download: { eyebrow: 'READY WHEN YOU ARE', title: 'Download AIVPlayer for your computer.', lede: 'Pick the installer for your operating system. The app runs locally — no account, no upload.', recommendedLabel: 'Recommended for this computer', downloadRecommended: 'Download recommended build', downloadFor: 'Download for {platform}', chooserLabel: 'Or pick another platform', architectureLabel: 'Build', formatLabel: 'Format', historyVersionLabel: 'Version', versionLatest: 'Latest ({version})', downloadSelected: 'Download this build', archiveBody: 'Older versions stay available on GitHub Releases.', archiveLink: 'View all releases', detected: 'Detected', unavailable: 'That architecture does not have an installer yet.', architectureUnknown: 'Your browser cannot reliably confirm the architecture. Choose it manually.', choosePlatform: 'Choose a platform below to start your download.', unavailableTag: 'Soon', macos: 'macOS', windows: 'Windows', linux: 'Linux', arm64: 'ARM64', x64: 'x64', privacyBody: 'Your files, projects, subtitles and indexes stay on your device by default.', privacyLink: 'Read the privacy policy', arch: { darwin: { arm64: 'Apple silicon', x64: 'Intel' }, win32: { x64: 'Standard (x64)', arm64: 'ARM64' }, linux: { x64: 'x64', arm64: 'ARM64' } } },
     footer: { tagline: 'A local AI video workspace for thoughtful editing.', docs: 'Documentation', privacy: 'Privacy', issues: 'Report an issue', note: 'Built for people who work with moving images.' }
   },
   'ja-JP': {
@@ -97,7 +109,7 @@ const copy = {
     workflow: { eyebrow: 'わかりやすい編集の流れ', title: '読み込みから<br>インサイトへ。', lede: '各ステージに居場所を作りながら、ファイルと判断はあなたの手元に残します。', link: 'ワークフローのドキュメント', import: { title: '読み込む', body: '動画、画像、Live Photo、音声を開き、ライブラリを端末に保ちます。' }, understand: { title: '理解する', body: '必要なときに字幕、要約、チャプター、視覚エビデンスを生成します。' }, shape: { title: '形にする', body: 'クリップを集め、字幕を整え、画像を調整し、タイムラインで編集します。' }, export: { title: '書き出す', body: 'クリップ、字幕、プロジェクトを出力し、ローカル Web プレーヤーも共有できます。' } },
     preview: { eyebrow: 'モックアップではありません', title: 'ワークスペースを<br><em>実際の画面で。</em>', lede: 'デスクトップアプリを直接撮影した画面です。暗いテーマ、キーボード操作、目の前のメディアを中心に設計されています。', playerAlt: '動画と字幕生成パネルを表示した AIVPlayer', settingsAlt: 'インターフェース言語設定を表示した AIVPlayer の環境設定', playerTitle: '再生 + 字幕ワークスペース', playerCaption: '再生、シーク、エンジン状態の確認、ローカル ASR の準備をひとつの画面で。', settingsTitle: '使い方に合わせる環境設定', settingsCaption: '言語、フォルダ、再生、キャプチャ、ショートカット、AI サービスを設定できます。' },
     quickstart: { eyebrow: '面倒な手順なしで始める', title: '動画を開く。<br><em>そのまま続ける。</em>', lede: 'パッケージには再生とメディアの基本ランタイムが含まれます。AI モデルは必要なときだけダウンロードします。', engine: { title: 'アプリをインストール', body: 'OS に合うパッケージをダウンロードして、最初のファイルを開きます。' }, model: { title: '必要なときにモデルを追加', body: 'アプリ内でモデルソースを選択。大きなファイルを勝手にダウンロードしません。' }, ai: { title: '自分の方法で AI に接続', body: '翻訳と生成には設定したエンドポイントとキーを使い、AIVPlayer アカウントは必要ありません。' } },
-    download: { eyebrow: '準備ができたら', title: 'あなたのパソコンに AIVPlayer をダウンロード。', lede: 'お使いのオペレーティングシステムに合わせてインストーラーを選んでください。アプリはローカルで動作し、アカウントやアップロードは不要です。', recommendedLabel: 'このパソコン向けのおすすめ', downloadRecommended: 'おすすめのビルドをダウンロード', downloadFor: '{platform} 版をダウンロード', chooserLabel: 'または他のプラットフォームを選択', architectureLabel: 'ビルド', historyVersionLabel: 'バージョン', versionLatest: '最新（{version}）', downloadSelected: 'このビルドをダウンロード', archiveBody: '古いバージョンは GitHub Releases にあります。', archiveLink: 'すべてのリリースを見る', detected: '検出', unavailable: 'このアーキテクチャ用のインストーラーはまだありません。', architectureUnknown: 'ブラウザではアーキテクチャを確実に確認できません。手動で選択してください。', choosePlatform: '下のプラットフォームを選んでダウンロードを開始してください。', unavailableTag: '準備中', macos: 'macOS', windows: 'Windows', linux: 'Linux', arm64: 'ARM64', x64: 'x64', privacyBody: 'ファイル、プロジェクト、字幕、インデックスは標準でローカルに残ります。', privacyLink: 'プライバシーポリシーを読む', arch: { darwin: { arm64: 'Apple シリコン', x64: 'Intel' }, win32: { x64: '標準（x64）', arm64: 'ARM64' }, linux: { x64: 'x64', arm64: 'ARM64' } } },
+    download: { eyebrow: '準備ができたら', title: 'あなたのパソコンに AIVPlayer をダウンロード。', lede: 'お使いのオペレーティングシステムに合わせてインストーラーを選んでください。アプリはローカルで動作し、アカウントやアップロードは不要です。', recommendedLabel: 'このパソコン向けのおすすめ', downloadRecommended: 'おすすめのビルドをダウンロード', downloadFor: '{platform} 版をダウンロード', chooserLabel: 'または他のプラットフォームを選択', architectureLabel: 'ビルド', formatLabel: 'フォーマット', historyVersionLabel: 'バージョン', versionLatest: '最新（{version}）', downloadSelected: 'このビルドをダウンロード', archiveBody: '古いバージョンは GitHub Releases にあります。', archiveLink: 'すべてのリリースを見る', detected: '検出', unavailable: 'このアーキテクチャ用のインストーラーはまだありません。', architectureUnknown: 'ブラウザではアーキテクチャを確実に確認できません。手動で選択してください。', choosePlatform: '下のプラットフォームを選んでダウンロードを開始してください。', unavailableTag: '準備中', macos: 'macOS', windows: 'Windows', linux: 'Linux', arm64: 'ARM64', x64: 'x64', privacyBody: 'ファイル、プロジェクト、字幕、インデックスは標準でローカルに残ります。', privacyLink: 'プライバシーポリシーを読む', arch: { darwin: { arm64: 'Apple シリコン', x64: 'Intel' }, win32: { x64: '標準（x64）', arm64: 'ARM64' }, linux: { x64: 'x64', arm64: 'ARM64' } } },
     footer: { tagline: '動く映像と丁寧に向き合うためのローカル AI ビデオワークスペース。', docs: 'ドキュメント', privacy: 'プライバシー', issues: '問題を報告', note: '映像とともに働く人のために。' }
   },
   'ko-KR': {
@@ -110,7 +122,7 @@ const copy = {
     workflow: { eyebrow: '더 선명한 편집 흐름', title: '가져오기에서<br>인사이트까지.', lede: '각 단계에 자리를 마련하면서 파일과 결정은 당신의 통제 아래 둡니다.', link: '워크플로 문서 읽기', import: { title: '가져오기', body: '영상, 이미지, Live Photo, 오디오를 열고 라이브러리를 디스크에 보관합니다.' }, understand: { title: '이해하기', body: '필요할 때 자막, 요약, 챕터, 시각 증거를 생성합니다.' }, shape: { title: '다듬기', body: '클립을 모으고 캡션을 정리하고 이미지를 조정하며 타임라인에서 편집합니다.' }, export: { title: '내보내기', body: '클립, 자막, 프로젝트를 내보내고 로컬 웹 플레이어를 네트워크에서 공유합니다.' } },
     preview: { eyebrow: '목업이 아닙니다', title: '워크스페이스를<br><em>있는 그대로 보세요.</em>', lede: '데스크톱 앱에서 직접 캡처한 화면입니다. 어둡고 키보드 친화적이며 지금 보고 있는 미디어를 중심으로 설계되었습니다.', playerAlt: '영상과 자막 생성 패널을 보여주는 AIVPlayer', settingsAlt: '인터페이스 언어 설정을 보여주는 AIVPlayer 환경설정', playerTitle: '재생 + 자막 워크스페이스', playerCaption: '재생하고 탐색하고 엔진 상태를 확인하며 로컬 ASR을 한 화면에서 준비합니다.', settingsTitle: '사용 방식에 맞는 환경설정', settingsCaption: '언어, 폴더, 재생, 캡처, 단축키, AI 서비스를 설정할 수 있습니다.' },
     quickstart: { eyebrow: '복잡한 의식 없이 시작', title: '영상을 여세요.<br><em>계속 작업하세요.</em>', lede: '패키지 앱에는 핵심 재생 및 미디어 런타임이 포함됩니다. 선택적 AI 모델은 요청할 때만 다운로드됩니다.', engine: { title: '앱 설치', body: '운영체제에 맞는 패키지를 내려받고 첫 파일을 엽니다.' }, model: { title: '필요할 때 모델 추가', body: '앱 안에서 모델 소스를 선택하세요. 큰 파일을 몰래 다운로드하지 않습니다.' }, ai: { title: '원하는 방식으로 AI 연결', body: '번역과 생성은 설정한 엔드포인트와 키를 사용하며 AIVPlayer 계정은 필요하지 않습니다.' } },
-    download: { eyebrow: '준비되었을 때', title: '당신의 컴퓨터에 AIVPlayer를 다운로드하세요.', lede: '운영체제에 맞는 설치 프로그램을 선택하세요. 앱은 로컬에서 실행되며 계정이나 업로드가 필요하지 않습니다.', recommendedLabel: '이 컴퓨터에 권장', downloadRecommended: '권장 빌드 다운로드', downloadFor: '{platform}용 다운로드', chooserLabel: '또 다른 플랫폼 선택', architectureLabel: '빌드', historyVersionLabel: '버전', versionLatest: '최신 ({version})', downloadSelected: '이 빌드 다운로드', archiveBody: '이전 버전은 GitHub Releases에서 확인할 수 있습니다.', archiveLink: '모든 릴리스 보기', detected: '감지됨', unavailable: '이 아키텍처용 설치 프로그램이 아직 없습니다.', architectureUnknown: '브라우저에서 아키텍처를 확실하게 확인할 수 없습니다. 직접 선택해 주세요.', choosePlatform: '아래에서 플랫폼을 선택해 다운로드를 시작하세요.', unavailableTag: '준비 중', macos: 'macOS', windows: 'Windows', linux: 'Linux', arm64: 'ARM64', x64: 'x64', privacyBody: '파일, 프로젝트, 자막, 인덱스는 기본적으로 로컬에 남습니다.', privacyLink: '전체 개인정보 처리방침 보기', arch: { darwin: { arm64: 'Apple 실리콘', x64: 'Intel' }, win32: { x64: '표준 (x64)', arm64: 'ARM64' }, linux: { x64: 'x64', arm64: 'ARM64' } } },
+    download: { eyebrow: '준비되었을 때', title: '당신의 컴퓨터에 AIVPlayer를 다운로드하세요.', lede: '운영체제에 맞는 설치 프로그램을 선택하세요. 앱은 로컬에서 실행되며 계정이나 업로드가 필요하지 않습니다.', recommendedLabel: '이 컴퓨터에 권장', downloadRecommended: '권장 빌드 다운로드', downloadFor: '{platform}용 다운로드', chooserLabel: '또 다른 플랫폼 선택', architectureLabel: '빌드', formatLabel: '포맷', historyVersionLabel: '버전', versionLatest: '최신 ({version})', downloadSelected: '이 빌드 다운로드', archiveBody: '이전 버전은 GitHub Releases에서 확인할 수 있습니다.', archiveLink: '모든 릴리스 보기', detected: '감지됨', unavailable: '이 아키텍처용 설치 프로그램이 아직 없습니다.', architectureUnknown: '브라우저에서 아키텍처를 확실하게 확인할 수 없습니다. 직접 선택해 주세요.', choosePlatform: '아래에서 플랫폼을 선택해 다운로드를 시작하세요.', unavailableTag: '준비 중', macos: 'macOS', windows: 'Windows', linux: 'Linux', arm64: 'ARM64', x64: 'x64', privacyBody: '파일, 프로젝트, 자막, 인덱스는 기본적으로 로컬에 남습니다.', privacyLink: '전체 개인정보 처리방침 보기', arch: { darwin: { arm64: 'Apple 실리콘', x64: 'Intel' }, win32: { x64: '표준 (x64)', arm64: 'ARM64' }, linux: { x64: 'x64', arm64: 'ARM64' } } },
     footer: { tagline: '움직이는 이미지를 깊이 있게 다루는 사람을 위한 로컬 AI 비디오 워크스페이스.', docs: '문서', privacy: '개인정보', issues: '문제 신고', note: '영상과 함께 일하는 사람을 위해 만들었습니다.' }
   }
 }
@@ -210,17 +222,33 @@ function getArchitectureOptions(platform, release = getCurrentDownloadRelease())
     .map((target) => target.slice(platform.length + 1))
 }
 
+function getFormatOptions(platform, architecture, release = getCurrentDownloadRelease()) {
+  const target = `${platform}-${architecture}`
+  const asset = release.assets?.[target]
+  if (!asset) return []
+  if (asset.name) return [asset.format]
+  return Object.keys(asset)
+}
+
 function pickDownloadTarget(preferred = detectedDownloadTarget, release = getCurrentDownloadRelease()) {
   const platforms = getPlatformOptions(release)
   const platform = platforms.includes(preferred.platform) ? preferred.platform : platforms[0]
-  if (!platform) return { platform: null, architecture: null, asset: null }
+  if (!platform) return { platform: null, architecture: null, format: null, asset: null }
   const architectures = getArchitectureOptions(platform, release)
   const architecture = preferred.architecture && architectures.includes(preferred.architecture) ? preferred.architecture : null
-  return {
-    platform,
-    architecture,
-    asset: architecture ? release.assets?.[`${platform}-${architecture}`] ?? null : null
+  const formats = architecture ? getFormatOptions(platform, architecture, release) : []
+  const format = formats.length > 0 ? formats[0] : null
+  const assetKey = `${platform}-${architecture}`
+  const assetEntry = release.assets?.[assetKey]
+  let asset = null
+  if (assetEntry) {
+    if (assetEntry.name) {
+      asset = assetEntry
+    } else if (format && assetEntry[format]) {
+      asset = assetEntry[format]
+    }
   }
+  return { platform, architecture, format, asset }
 }
 
 function detectDownloadPlatform() {
@@ -258,7 +286,8 @@ async function detectDownloadTarget() {
 let chooserState = {
   platform: null,    // null = use detected/recommended
   architecture: null,
-  version: null      // null = use latest release
+  version: null,     // null = use latest release
+  format: null       // null = use default format
 }
 let chooserExpanded = false
 
@@ -285,13 +314,27 @@ function getCurrentSelection(locale) {
   const architecture = chooserState.architecture && archs.includes(chooserState.architecture)
     ? chooserState.architecture
     : (recommendedArch ?? archs[0] ?? null)
+  const formats = platform && architecture ? getFormatOptions(platform, architecture, release) : []
+  const recommendedFormat = platform === recommended.platform && architecture === recommended.architecture ? recommended.format : null
+  const format = chooserState.format && formats.includes(chooserState.format)
+    ? chooserState.format
+    : (recommendedFormat ?? formats[0] ?? null)
   const versionPool = activeDownloadManifest.releases ?? FALLBACK_DOWNLOAD_MANIFEST.releases
   const version = chooserState.version && versionPool.some((entry) => entry.version === chooserState.version)
     ? chooserState.version
     : release.version
   const versionRelease = versionPool.find((entry) => entry.version === version) ?? release
-  const asset = versionRelease.assets?.[`${platform}-${architecture}`] ?? null
-  return { platform, architecture, version, release: versionRelease, recommended, asset }
+  const assetKey = `${platform}-${architecture}`
+  const assetEntry = versionRelease.assets?.[assetKey]
+  let asset = null
+  if (assetEntry) {
+    if (assetEntry.name) {
+      asset = assetEntry
+    } else if (format && assetEntry[format]) {
+      asset = assetEntry[format]
+    }
+  }
+  return { platform, architecture, format, version, release: versionRelease, recommended, asset }
 }
 
 function createPlatformCard(platform, locale, release, isActive) {
@@ -323,6 +366,38 @@ function renderPlatformGrid(locale) {
   const platforms = getPlatformOptions(release)
   const selection = getCurrentSelection(locale)
   grid.replaceChildren(...platforms.map((platform) => createPlatformCard(platform, locale, release, platform === selection.platform)))
+}
+
+function createFormatChip(format, locale, platform, architecture, release, isActive) {
+  const chip = document.createElement('button')
+  chip.type = 'button'
+  chip.className = 'download-chip' + (isActive ? ' is-active' : '')
+  chip.dataset.format = format
+  chip.setAttribute('role', 'radio')
+  chip.setAttribute('aria-checked', String(isActive))
+  chip.setAttribute('aria-label', format.toUpperCase())
+  const label = document.createElement('span')
+  label.className = 'download-chip-label'
+  label.textContent = format.toUpperCase()
+  chip.append(label)
+  return chip
+}
+
+function renderFormatChips(locale) {
+  const container = document.getElementById('download-format-chips')
+  if (!container) return
+  const selection = getCurrentSelection(locale)
+  if (!selection.platform || !selection.architecture) { container.replaceChildren(); return }
+  const formats = getFormatOptions(selection.platform, selection.architecture, selection.release)
+  if (formats.length <= 1) { container.replaceChildren(); return }
+  container.replaceChildren(...formats.map((format) => createFormatChip(
+    format,
+    locale,
+    selection.platform,
+    selection.architecture,
+    selection.release,
+    format === selection.format
+  )))
 }
 
 function createArchitectureChip(architecture, locale, platform, release, isActive, isDisabled, isMissingAsset) {
@@ -457,6 +532,7 @@ function renderDownloadControls(locale) {
 
   if (shouldExpand) {
     renderArchitectureChips(locale)
+    renderFormatChips(locale)
     renderVersionChips(locale)
   }
 
@@ -516,6 +592,9 @@ function wireChipGroup(containerId, stateKey) {
     const value = chip.dataset[stateKey]
     if (!value) return
     chooserState[stateKey] = value
+    if (stateKey === 'architecture') {
+      chooserState.format = null
+    }
     chooserExpanded = true
     renderDownloadControls(detectLocale())
   })
@@ -529,6 +608,10 @@ function wireChipGroup(containerId, stateKey) {
     const nextIndex = (currentIndex < 0 ? 0 : (currentIndex + direction + chips.length) % chips.length)
     chips[nextIndex].focus()
   })
+}
+
+function wireFormatChips() {
+  wireChipGroup('download-format-chips', 'format')
 }
 
 function wireArchitectureChips() {
@@ -590,6 +673,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   wirePlatformCards()
   wireArchitectureChips()
+  wireFormatChips()
   wireVersionChips()
 
   const menu = document.getElementById('mobile-menu')
