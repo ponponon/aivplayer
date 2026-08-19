@@ -4,7 +4,7 @@ import type { ChangeEvent, KeyboardEvent } from 'react'
 import type { VisionIndexProgress, VisionRuntimeStatus, VisionSearchResult } from '../../../shared/media-types'
 import type { AsrSubtitleResult } from '../../../shared/media-types'
 import type { MediaEvidenceDraftImportResult } from '../../../shared/evidence-task-types'
-import type { VisionClipCollection, VisionClipCollectionBatchTagsMode, VisionClipCollectionExportFormat, VisionClipCollectionOperationHistory, VisionClipCollectionSortMode, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataImportDecision, VisionClipCollectionTagMetadataImportPreviewResult, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagSortMode, VisionEvidenceType, VisionIndexFailureRecord, VisionLibrarySource, VisionModelDownloadProgress, VisionSavedSearch, VisionSearchFullExportRequest, VisionSearchPageRequest, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchSortMode } from '../../../shared/vision-types'
+import type { VisionClipCollection, VisionClipCollectionBatchTagsMode, VisionClipCollectionExportFormat, VisionClipCollectionOperationHistory, VisionClipCollectionSortMode, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataImportDecision, VisionClipCollectionTagMetadataImportPreviewResult, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationHistoryEntry, VisionClipCollectionTagSortMode, VisionEvidenceType, VisionIndexFailureRecord, VisionLibrarySource, VisionModelDownloadProgress, VisionSavedSearch, VisionSearchFullExportRequest, VisionSearchPageRequest, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchSortMode } from '../../../shared/vision-types'
 import type { LocaleCopy } from '../../../shared/i18n'
 import type { VisionObjectDetectionFilterState, VisionObjectDetectionResult } from '../../../shared/vision-object-detection-types'
 import { getVisionCollectionTagPath, invertVisionClipSelections, mergeVisionCollectionSelections, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTag, normalizeVisionCollectionTags, renameVisionClipCollectionTitle, toggleVisibleVisionClipCollectionSelection, wouldCreateVisionCollectionTagParentCycle } from '../../../core/ai/clip-inbox-operations'
@@ -297,6 +297,7 @@ export function VisionPanel(): React.ReactElement {
   const [isUndoingCollectionTagOperation, setIsUndoingCollectionTagOperation] = useState(false)
   const [lastCollectionTagRedoOperation, setLastCollectionTagRedoOperation] = useState<VisionClipCollectionTagOperationHistory | null>(null)
   const [isRedoingCollectionTagOperation, setIsRedoingCollectionTagOperation] = useState(false)
+  const [collectionTagOperationHistory, setCollectionTagOperationHistory] = useState<VisionClipCollectionTagOperationHistoryEntry[]>([])
   const [lastCollectionOperation, setLastCollectionOperation] = useState<VisionClipCollectionOperationHistory | null>(null)
   const [isUndoingCollectionOperation, setIsUndoingCollectionOperation] = useState(false)
   const [lastCollectionRedoOperation, setLastCollectionRedoOperation] = useState<VisionClipCollectionOperationHistory | null>(null)
@@ -439,9 +440,10 @@ export function VisionPanel(): React.ReactElement {
   const refreshCollectionTagMetadata = (): void => { void window.aiv.listVisionClipCollectionTagMetadata().then(setCollectionTagMetadata).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))) }
   const refreshCollectionTagOperation = (): void => {
     const version = ++collectionTagOperationRefreshVersionRef.current
-    void Promise.all([window.aiv.getVisionClipCollectionTagOperationHistory(), window.aiv.getVisionClipCollectionTagOperationRedoHistory()]).then(([nextUndo, nextRedo]) => {
+    void Promise.all([window.aiv.getVisionClipCollectionTagOperationHistory(), window.aiv.listVisionClipCollectionTagOperationHistory(), window.aiv.getVisionClipCollectionTagOperationRedoHistory()]).then(([nextUndo, nextHistory, nextRedo]) => {
       if (version === collectionTagOperationRefreshVersionRef.current) {
         setLastCollectionTagOperation(nextUndo)
+        setCollectionTagOperationHistory(nextHistory)
         setLastCollectionTagRedoOperation(nextRedo)
       }
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
@@ -1894,6 +1896,16 @@ export function VisionPanel(): React.ReactElement {
         </div> : <small className="vision-collection-tag-manager-import-preview-empty">{app.copy.vision.collectionTagManagerMetadataImportPreviewNoConflicts}</small>}
         <div className="vision-collection-tag-manager-import-preview-actions"><button className="vision-primary-action" type="button" onClick={applyCollectionTagMetadataImport} disabled={isTransferringCollectionTagMetadata}><Check size={12} />{app.copy.vision.collectionTagManagerMetadataImportApply}</button><button className="vision-secondary-action" type="button" onClick={cancelCollectionTagMetadataImport} disabled={isTransferringCollectionTagMetadata}><X size={12} />{app.copy.vision.collectionTagManagerMetadataImportCancel}</button></div>
       </div> : null}
+      <details className="vision-collection-tag-history" open>
+        <summary className="vision-collection-tag-history-summary"><span><strong>{app.copy.vision.collectionTagManagerHistoryTitle}</strong><small>{app.copy.vision.collectionTagManagerHistoryDescription}</small></span><b>{collectionTagOperationHistory.length}</b></summary>
+        {collectionTagOperationHistory.length > 0 ? <div className="vision-collection-tag-history-list" role="list" aria-label={app.copy.vision.collectionTagManagerHistoryTitle}>
+          {collectionTagOperationHistory.map((operation) => <div className={`vision-collection-tag-history-entry is-${operation.status}`} key={operation.id} role="listitem">
+            <strong>{app.copy.vision.collectionTagManagerHistoryType[operation.type]}</strong>
+            <time dateTime={new Date(operation.createdAt).toISOString()}>{new Date(operation.createdAt).toLocaleString()}</time>
+            <small>{app.copy.vision.collectionTagManagerHistoryStatus[operation.status]}</small>
+          </div>)}
+        </div> : <small className="vision-collection-tag-history-empty">{app.copy.vision.collectionTagManagerHistoryEmpty}</small>}
+      </details>
       {collectionTagStats.length > 0 ? <>
         <div className="vision-collection-tag-manager-filter">
           <input value={collectionTagFilterQuery} onChange={(event) => setCollectionTagFilterQuery(event.target.value)} placeholder={app.copy.vision.collectionTagManagerFilterPlaceholder} aria-label={app.copy.vision.collectionTagManagerFilterPlaceholder} disabled={isCollectionBatchBusy} />

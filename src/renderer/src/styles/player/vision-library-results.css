@@ -1097,6 +1097,102 @@
   font-size: 9px;
 }
 
+.vision-collection-tag-history {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.vision-collection-tag-history-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.vision-collection-tag-history-summary::-webkit-details-marker {
+  display: none;
+}
+
+.vision-collection-tag-history-summary > span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.vision-collection-tag-history-summary strong {
+  color: var(--text-primary);
+  font-size: 10px;
+}
+
+.vision-collection-tag-history-summary small,
+.vision-collection-tag-history-empty {
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.vision-collection-tag-history-summary b {
+  flex: 0 0 auto;
+  min-width: 18px;
+  padding: 2px 5px;
+  color: var(--text-secondary);
+  background: rgba(var(--overlay-rgb), 0.08);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  font-size: 9px;
+  text-align: center;
+}
+
+.vision-collection-tag-history-list {
+  display: grid;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.vision-collection-tag-history-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 8px;
+  padding: 5px 6px;
+  background: rgba(var(--overlay-rgb), 0.04);
+  border-left: 2px solid var(--border-soft);
+  border-radius: 4px;
+}
+
+.vision-collection-tag-history-entry strong,
+.vision-collection-tag-history-entry time {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vision-collection-tag-history-entry time {
+  color: var(--text-muted);
+}
+
+.vision-collection-tag-history-entry small {
+  grid-column: 1 / -1;
+  color: var(--text-muted);
+  font-size: 8px;
+}
+
+.vision-collection-tag-history-entry.is-active {
+  border-left-color: var(--accent);
+}
+
+.vision-collection-tag-history-entry.is-redoable {
+  border-left-color: var(--warning, #d99a46);
+}
+
+.vision-collection-tag-history-entry.is-undone {
+  opacity: 0.72;
+}
+
 .vision-collection-tag-undo-only {
   display: flex;
   align-items: center;
