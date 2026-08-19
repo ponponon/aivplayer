@@ -660,6 +660,10 @@
   padding: 4px 6px;
 }
 
+.vision-collection-filter-excluded-tag {
+  border-color: rgba(var(--danger-rgb, 239, 138, 138), 0.45);
+}
+
 .vision-collection-filter-mode {
   min-width: 110px;
   flex: 0 1 150px;
@@ -718,6 +722,14 @@
 .vision-collection-filter-chip:disabled {
   cursor: default;
   opacity: 0.55;
+}
+
+.vision-collection-filter-excluded {
+  color: var(--danger, #ef8a8a);
+}
+
+.vision-collection-filter-chip-excluded {
+  border-color: rgba(var(--danger-rgb, 239, 138, 138), 0.42);
 }
 
 .vision-collection-filter-summary {
