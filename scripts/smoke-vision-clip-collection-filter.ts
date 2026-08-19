@@ -121,9 +121,18 @@ async function runSmoke(): Promise<void> {
     if (!dataUnchanged) throw new Error(`Collection filter should not mutate saved data: ${JSON.stringify(persisted)}`)
 
     await queryInput.fill('海边')
-    await tagSelect.selectOption({ label: '采访' })
+    await tagSelect.selectOption([{ label: '采访' }, { label: '精选' }])
+    const persistedTagMode = page.getByRole('combobox', { name: '标签组合方式', exact: true })
+    await persistedTagMode.selectOption('all')
+    await page.getByRole('status').filter({ hasText: '显示 1 / 3 个集合' }).waitFor({ timeout: 10_000 })
     await page.getByRole('group', { name: '已选标签', exact: true }).waitFor({ timeout: 10_000 })
-    if (await page.getByRole('button', { name: '移除标签筛选: 采访', exact: true }).count() !== 1) throw new Error('Final screenshot state should expose the selected tag summary chip')
+    if (await page.getByRole('button', { name: '移除标签筛选: 采访', exact: true }).count() !== 1 || await page.getByRole('button', { name: '移除标签筛选: 精选', exact: true }).count() !== 1) {
+      throw new Error('Final screenshot state should expose both selected tag summary chips')
+    }
+    const storedFilterPreferences = await page.evaluate(() => localStorage.getItem('aivplayer.vision-clip-collection-filter.v1'))
+    if (!storedFilterPreferences?.includes('"query":"海边"') || !storedFilterPreferences.includes('"tagMode":"all"')) {
+      throw new Error(`Collection filter preferences were not persisted: ${storedFilterPreferences ?? 'null'}`)
+    }
     if (screenshotPath) {
       await page.locator('.vision-collections').scrollIntoViewIfNeeded()
       await page.screenshot({ path: screenshotPath, fullPage: false })
@@ -131,12 +140,27 @@ async function runSmoke(): Promise<void> {
 
     await page.reload({ waitUntil: 'domcontentloaded' })
     await openVisionPanel(page)
-    await page.getByRole('textbox', { name: '按名称或标签筛选', exact: true }).waitFor({ timeout: 10_000 })
+    const restoredQueryInput = page.getByRole('textbox', { name: '按名称或标签筛选', exact: true })
+    const restoredTagSelect = page.getByRole('listbox', { name: '按标签筛选（可多选）', exact: true })
+    const restoredTagMode = page.getByRole('combobox', { name: '标签组合方式', exact: true })
+    await restoredQueryInput.waitFor({ timeout: 10_000 })
+    await page.getByRole('status').filter({ hasText: '显示 1 / 3 个集合' }).waitFor({ timeout: 10_000 })
+    const restoredTags = await restoredTagSelect.evaluate((element) => Array.from((element as HTMLSelectElement).selectedOptions).map((option) => option.value))
+    const restoredQuery = await restoredQueryInput.inputValue()
+    const restoredMode = await restoredTagMode.inputValue()
+    const restoredCollectionCount = await page.locator('.vision-collection').count()
+    const filterPersisted = restoredQuery === '海边'
+      && JSON.stringify(restoredTags) === JSON.stringify(['采访', '精选'])
+      && restoredMode === 'all'
+      && restoredCollectionCount === 1
+    if (!filterPersisted || await page.getByRole('button', { name: '移除标签筛选: 采访', exact: true }).count() !== 1 || await page.getByRole('button', { name: '移除标签筛选: 精选', exact: true }).count() !== 1) {
+      throw new Error(`Collection filters should restore after reload: ${JSON.stringify({ query: restoredQuery, tags: restoredTags, tagMode: restoredMode, count: restoredCollectionCount })}`)
+    }
+    await page.getByRole('button', { name: '清除筛选', exact: true }).click()
     await page.getByRole('status').filter({ hasText: '显示 3 / 3 个集合' }).waitFor({ timeout: 10_000 })
-    const sessionOnly = await page.locator('.vision-collection').count() === 3
-    if (!sessionOnly) throw new Error('Collection filters should be session-only and reset after reload')
+    if (await page.locator('.vision-collection').count() !== 3) throw new Error('Clearing restored collection filters should restore all collections')
     if (session.errors.length > 0) throw new Error(`Renderer errors during clip collection filter smoke:\n${session.errors.join('\n')}`)
-    console.log(`AIVPlayer Smoke Vision Clip Collection Filter passed: ${JSON.stringify({ originalCount: originals.length, queryMatches: 2, tagMatches: 2, hierarchyTagMatches: 2, multiTagAnyMatches: 2, multiTagAllMatches: 1, individualTagRemoval: true, visibleSelectionPreserved: true, emptyState: true, dataUnchanged, sessionOnly, screenshotPath: screenshotPath ?? null })}`)
+    console.log(`AIVPlayer Smoke Vision Clip Collection Filter passed: ${JSON.stringify({ originalCount: originals.length, queryMatches: 2, tagMatches: 2, hierarchyTagMatches: 2, multiTagAnyMatches: 2, multiTagAllMatches: 1, individualTagRemoval: true, visibleSelectionPreserved: true, emptyState: true, dataUnchanged, filterPersisted, screenshotPath: screenshotPath ?? null })}`)
   } finally {
     if (app) await app.close().catch(() => undefined)
     await rm(userDataDirectory, { recursive: true, force: true }).catch(() => undefined)
