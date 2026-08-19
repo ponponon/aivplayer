@@ -95,12 +95,18 @@ describe('vision clip collection tag manager UI wiring', () => {
 
   it('exposes the latest tag operation for undo', () => {
     expect(panel).toContain('lastCollectionTagOperation')
+    expect(panel).toContain('lastCollectionTagRedoOperation')
     expect(panel).toContain('window.aiv.getVisionClipCollectionTagOperationHistory')
+    expect(panel).toContain('window.aiv.getVisionClipCollectionTagOperationRedoHistory')
     expect(panel).toContain('window.aiv.undoVisionClipCollectionTagOperation')
+    expect(panel).toContain('window.aiv.redoVisionClipCollectionTagOperation')
     expect(panel).toContain('undoCollectionTagOperation')
+    expect(panel).toContain('redoCollectionTagOperation')
     expect(panel).toContain('collectionTagManagerUndoDescription')
+    expect(panel).toContain('collectionTagManagerRedoDescription')
     expect(panel).toContain('refreshCollectionTagOperation()')
     expect(panel).toContain('vision-collection-tag-undo-only')
+    expect(panel).toContain('vision-collection-tag-redo-only')
   })
 
   it('keeps tag management accessible and responsive', () => {
@@ -121,7 +127,9 @@ describe('vision clip collection tag manager UI wiring', () => {
     expect(styles).toContain('.vision-collection-tag-manager-metadata')
     expect(styles).toContain(".vision-collection-tag-manager-metadata-controls input[type='color']")
     expect(styles).toContain('.vision-collection-tag-manager-undo')
+    expect(styles).toContain('.vision-collection-tag-manager-redo')
     expect(styles).toContain('.vision-collection-tag-undo-only')
+    expect(styles).toContain('.vision-collection-tag-redo-only')
     expect(styles).toContain('flex-wrap: wrap')
     expect(styles).toContain(':focus-visible')
   })
