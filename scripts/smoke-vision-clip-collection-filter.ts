@@ -2,6 +2,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { _electron as electron, type ElectronApplication, type Page } from 'playwright'
+import type { VisionEvidenceType } from '../src/shared/vision-types'
 
 const mediaPath = process.argv[2] ?? '/Users/ponponon/Music/aivplayer_test_video_1min.mp4'
 const screenshotPath = process.env.AIVPLAYER_SMOKE_SCREENSHOT_PATH
@@ -55,7 +56,7 @@ async function runSmoke(): Promise<void> {
         endSeconds: index + 7,
         evidenceIds: [`collection-filter-evidence-${index + 1}`],
         text: `集合筛选验证 ${index + 1}`,
-        evidenceTypes: ['subtitle']
+        evidenceTypes: ['subtitle'] as VisionEvidenceType[]
       }, ...(index === 2 ? [{
         sourceId: 'source-collection-filter-smoke',
         videoPath: '/tmp/aivplayer-collection-filter-smoke-missing.mp4',
@@ -66,7 +67,7 @@ async function runSmoke(): Promise<void> {
         endSeconds: 30,
         evidenceIds: ['collection-filter-evidence-extra'],
         text: '集合筛选验证附加选段',
-        evidenceTypes: ['subtitle']
+        evidenceTypes: ['subtitle'] as VisionEvidenceType[]
       }] : [])]
     }))), { nextTitles: titles })
     const hierarchyResult = await page.evaluate(() => window.aiv.updateVisionClipCollectionTagMetadata({ tag: '海边', parentTag: '采访' }))
@@ -77,9 +78,11 @@ async function runSmoke(): Promise<void> {
     const queryInput = page.getByRole('textbox', { name: '按名称或标签筛选', exact: true })
     const tagSelect = page.getByRole('listbox', { name: '按标签筛选（可多选）', exact: true })
     const excludedTagSelect = page.getByRole('listbox', { name: '排除标签（可多选）', exact: true })
+    const visibilitySelect = page.getByRole('combobox', { name: '集合视图', exact: true })
     await queryInput.waitFor({ timeout: 10_000 })
     await tagSelect.waitFor({ timeout: 10_000 })
     await excludedTagSelect.waitFor({ timeout: 10_000 })
+    await visibilitySelect.waitFor({ timeout: 10_000 })
     if (await page.locator('.vision-collection').count() !== 3) throw new Error('Collection filter smoke should start with three collections')
     const collectionListSort = page.getByRole('combobox', { name: '集合排序', exact: true })
     await collectionListSort.waitFor({ timeout: 10_000 })
@@ -94,6 +97,22 @@ async function runSmoke(): Promise<void> {
     const durationSortedCollections = await readCollectionTitles(page)
     if (durationSortedCollections[0] !== titles[2]) throw new Error(`Duration collection sort should put the longest collection first: ${JSON.stringify(durationSortedCollections)}`)
     await collectionListSort.selectOption('title-asc')
+
+    await page.getByRole('button', { name: `收藏集合: ${titles[2]}`, exact: true }).click()
+    await page.getByRole('button', { name: `取消收藏集合: ${titles[2]}`, exact: true }).waitFor({ timeout: 10_000 })
+    await visibilitySelect.selectOption('favorites')
+    await page.getByRole('status').filter({ hasText: '显示 1 / 3 个集合' }).waitFor({ timeout: 10_000 })
+    if (await page.locator('.vision-collection').count() !== 1 || await page.getByText(titles[2], { exact: true }).count() !== 1) throw new Error('Favorites collection view should show only the favorited collection')
+    await visibilitySelect.selectOption('all')
+    await page.getByRole('button', { name: `归档集合: ${titles[1]}`, exact: true }).click()
+    await page.getByRole('button', { name: `取消归档集合: ${titles[1]}`, exact: true }).waitFor({ timeout: 10_000 })
+    await visibilitySelect.selectOption('archived')
+    await page.getByRole('status').filter({ hasText: '显示 1 / 3 个集合' }).waitFor({ timeout: 10_000 })
+    if (await page.locator('.vision-collection').count() !== 1 || await page.getByText(titles[1], { exact: true }).count() !== 1) throw new Error('Archived collection view should show only the archived collection')
+    await visibilitySelect.selectOption('active')
+    await page.getByRole('status').filter({ hasText: '显示 2 / 3 个集合' }).waitFor({ timeout: 10_000 })
+    if (await page.locator('.vision-collection').count() !== 2 || await page.getByText(titles[1], { exact: true }).count() !== 0) throw new Error('Active collection view should hide archived collections')
+    await visibilitySelect.selectOption('all')
 
     await queryInput.fill('海边')
     await page.getByRole('status').filter({ hasText: '显示 2 / 3 个集合' }).waitFor({ timeout: 10_000 })
@@ -143,6 +162,18 @@ async function runSmoke(): Promise<void> {
     await selectedCollectionSummary.filter({ hasText: '已选择 3 个集合' }).waitFor({ timeout: 10_000 })
     await page.getByRole('button', { name: '清除筛选', exact: true }).click()
     await selectedCollectionSummary.filter({ hasText: '已选择 3 个集合' }).waitFor({ timeout: 10_000 })
+    await page.getByRole('button', { name: '收藏集合', exact: true }).click()
+    await page.getByRole('button', { name: '取消收藏集合', exact: true }).waitFor({ timeout: 10_000 })
+    await page.getByRole('button', { name: '取消收藏集合', exact: true }).click()
+    await page.getByRole('button', { name: '收藏集合', exact: true }).waitFor({ timeout: 10_000 })
+    await page.getByRole('button', { name: `收藏集合: ${titles[2]}`, exact: true }).click()
+    await page.getByRole('button', { name: `取消收藏集合: ${titles[2]}`, exact: true }).waitFor({ timeout: 10_000 })
+    await page.getByRole('button', { name: '归档集合', exact: true }).click()
+    await page.getByRole('button', { name: '取消归档集合', exact: true }).waitFor({ timeout: 10_000 })
+    await page.getByRole('button', { name: '取消归档集合', exact: true }).click()
+    await page.getByRole('button', { name: '归档集合', exact: true }).waitFor({ timeout: 10_000 })
+    await page.getByRole('button', { name: `归档集合: ${titles[1]}`, exact: true }).click()
+    await page.getByRole('button', { name: `取消归档集合: ${titles[1]}`, exact: true }).waitFor({ timeout: 10_000 })
 
     await queryInput.fill('不存在的集合')
     await page.getByText('没有符合筛选条件的选段集合。', { exact: true }).waitFor({ timeout: 10_000 })
@@ -150,17 +181,23 @@ async function runSmoke(): Promise<void> {
     await page.getByRole('button', { name: '清除筛选', exact: true }).click()
 
     const persisted = await page.evaluate(() => window.aiv.listVisionClipCollections())
+    const collectionFlagsPersisted = persisted.find((collection) => collection.title === titles[2])?.isFavorite === true
+      && persisted.find((collection) => collection.title === titles[1])?.isArchived === true
+      && persisted.find((collection) => collection.title === titles[0])?.isFavorite === false
+      && persisted.find((collection) => collection.title === titles[0])?.isArchived === false
     const dataUnchanged = originals.length === persisted.length && originals.every((original) => {
       const current = persisted.find((collection) => collection.id === original.id)
       return current?.title === original.title && JSON.stringify(current?.tags) === JSON.stringify(original.tags) && current?.selections[0]?.evidenceIds[0] === original.selections[0]?.evidenceIds[0]
     })
     if (!dataUnchanged) throw new Error(`Collection filter should not mutate saved data: ${JSON.stringify(persisted)}`)
+    if (!collectionFlagsPersisted) throw new Error(`Collection favorite/archive flags were not persisted: ${JSON.stringify(persisted)}`)
 
     await queryInput.fill('海边')
     await tagSelect.selectOption([{ label: '采访' }, { label: '精选' }])
     const persistedTagMode = page.getByRole('combobox', { name: '标签组合方式', exact: true })
     await persistedTagMode.selectOption('all')
     await excludedTagSelect.selectOption({ label: '室内' })
+    await visibilitySelect.selectOption('favorites')
     if (!(await collectionListSort.inputValue() === 'title-asc')) throw new Error('Collection list sort should remain independently selectable from filter conditions')
     await page.getByRole('status').filter({ hasText: '显示 1 / 3 个集合' }).waitFor({ timeout: 10_000 })
     await page.getByRole('group', { name: '已选标签', exact: true }).waitFor({ timeout: 10_000 })
@@ -169,7 +206,7 @@ async function runSmoke(): Promise<void> {
     }
     const storedFilterPreferences = await page.evaluate(() => localStorage.getItem('aivplayer.vision-clip-collection-filter.v1'))
     const storedCollectionOrderPreferences = await page.evaluate(() => localStorage.getItem('aivplayer.vision-clip-collection-order.v1'))
-    if (!storedFilterPreferences?.includes('"query":"海边"') || !storedFilterPreferences.includes('"tagMode":"all"') || !storedFilterPreferences.includes('"excludedTags":["室内"]') || storedCollectionOrderPreferences !== '{"schemaVersion":1,"sortMode":"title-asc"}') {
+    if (!storedFilterPreferences?.includes('"query":"海边"') || !storedFilterPreferences.includes('"tagMode":"all"') || !storedFilterPreferences.includes('"excludedTags":["室内"]') || !storedFilterPreferences.includes('"visibility":"favorites"') || storedCollectionOrderPreferences !== '{"schemaVersion":1,"sortMode":"title-asc"}') {
       throw new Error(`Collection filter preferences were not persisted: ${storedFilterPreferences ?? 'null'}`)
     }
     if (screenshotPath) {
@@ -182,6 +219,7 @@ async function runSmoke(): Promise<void> {
     const restoredQueryInput = page.getByRole('textbox', { name: '按名称或标签筛选', exact: true })
     const restoredTagSelect = page.getByRole('listbox', { name: '按标签筛选（可多选）', exact: true })
     const restoredExcludedTagSelect = page.getByRole('listbox', { name: '排除标签（可多选）', exact: true })
+    const restoredVisibilitySelect = page.getByRole('combobox', { name: '集合视图', exact: true })
     const restoredTagMode = page.getByRole('combobox', { name: '标签组合方式', exact: true })
     const restoredCollectionListSort = page.getByRole('combobox', { name: '集合排序', exact: true })
     await restoredQueryInput.waitFor({ timeout: 10_000 })
@@ -189,6 +227,7 @@ async function runSmoke(): Promise<void> {
     const restoredTags = await restoredTagSelect.evaluate((element) => Array.from((element as HTMLSelectElement).selectedOptions).map((option) => option.value))
     const restoredExcludedTags = await restoredExcludedTagSelect.evaluate((element) => Array.from((element as HTMLSelectElement).selectedOptions).map((option) => option.value))
     const restoredQuery = await restoredQueryInput.inputValue()
+    const restoredVisibility = await restoredVisibilitySelect.inputValue()
     const restoredMode = await restoredTagMode.inputValue()
     const restoredCollectionListSortMode = await restoredCollectionListSort.inputValue()
     const restoredCollectionCount = await page.locator('.vision-collection').count()
@@ -196,12 +235,13 @@ async function runSmoke(): Promise<void> {
     const filterPersisted = restoredQuery === '海边'
       && JSON.stringify(restoredTags) === JSON.stringify(['采访', '精选'])
       && JSON.stringify(restoredExcludedTags) === JSON.stringify(['室内'])
+      && restoredVisibility === 'favorites'
       && restoredMode === 'all'
       && restoredCollectionListSortMode === 'title-asc'
       && JSON.stringify(restoredCollectionTitles) === JSON.stringify([titles[2]])
       && restoredCollectionCount === 1
     if (!filterPersisted || await page.getByRole('button', { name: '移除标签筛选: 采访', exact: true }).count() !== 1 || await page.getByRole('button', { name: '移除标签筛选: 精选', exact: true }).count() !== 1 || await page.getByRole('button', { name: '移除排除标签筛选: 室内', exact: true }).count() !== 1) {
-      throw new Error(`Collection filters should restore after reload: ${JSON.stringify({ query: restoredQuery, tags: restoredTags, excludedTags: restoredExcludedTags, tagMode: restoredMode, count: restoredCollectionCount })}`)
+      throw new Error(`Collection filters should restore after reload: ${JSON.stringify({ query: restoredQuery, tags: restoredTags, excludedTags: restoredExcludedTags, visibility: restoredVisibility, tagMode: restoredMode, count: restoredCollectionCount })}`)
     }
     const savedFilterName = `海边精选视图 ${prefix}`
     const savedFilterNameInput = page.getByRole('textbox', { name: '筛选视图名称', exact: true })
@@ -230,7 +270,7 @@ async function runSmoke(): Promise<void> {
       const value = scope.__aivplayerFilterExport
       return value ? { json: await value.blob.text(), fileName: value.fileName } : null
     })
-    if (!exportedFilter?.json || !exportedFilter.fileName.endsWith('.json') || !exportedFilter.json.includes('"excludedTags":["室内"]')) throw new Error(`Exported collection filter did not produce a JSON download with excluded tags: ${JSON.stringify(exportedFilter)}`)
+    if (!exportedFilter?.json || !exportedFilter.fileName.endsWith('.json') || !exportedFilter.json.includes('"excludedTags":["室内"]') || !exportedFilter.json.includes('"visibility":"favorites"')) throw new Error(`Exported collection filter did not produce a JSON download with excluded tags and visibility: ${JSON.stringify(exportedFilter)}`)
     const exportedFilterPath = join(userDataDirectory, 'exported-filter-views.json')
     await writeFile(exportedFilterPath, exportedFilter.json, 'utf8')
     const exportedManifest = JSON.parse(exportedFilter.json) as { schemaVersion: number; filters: Array<Record<string, unknown>> }
@@ -249,8 +289,8 @@ async function runSmoke(): Promise<void> {
     if (await page.locator('.vision-collection').count() !== 3 || await savedFilterButton.count() !== 1) throw new Error('Clearing restored collection filters should keep the saved view available')
     await savedFilterButton.click()
     await page.getByRole('status').filter({ hasText: '显示 1 / 3 个集合' }).waitFor({ timeout: 10_000 })
-    if (await page.locator('.vision-collection').count() !== 1 || await page.getByRole('button', { name: '移除标签筛选: 采访', exact: true }).count() !== 1 || await page.getByRole('button', { name: '移除标签筛选: 精选', exact: true }).count() !== 1) {
-      throw new Error('Applying the saved collection filter should restore its query and tag conditions')
+    if (await page.locator('.vision-collection').count() !== 1 || await page.getByRole('button', { name: '移除标签筛选: 采访', exact: true }).count() !== 1 || await page.getByRole('button', { name: '移除标签筛选: 精选', exact: true }).count() !== 1 || await visibilitySelect.inputValue() !== 'favorites') {
+      throw new Error('Applying the saved collection filter should restore its query, tag, and visibility conditions')
     }
     await page.getByRole('button', { name: `删除筛选视图: ${savedFilterName}`, exact: true }).click()
     if (await page.getByRole('button', { name: `应用筛选视图: ${savedFilterName}`, exact: true }).count() !== 0) throw new Error('Deleting a saved collection filter should remove only that view')
@@ -281,7 +321,7 @@ async function runSmoke(): Promise<void> {
     await page.getByRole('button', { name: `删除筛选视图: ${conflictFilterName}`, exact: true }).click()
     if (await updatedSavedFilterButton.count() !== 0) throw new Error('Imported collection filter could not be deleted after conflict resolution')
     if (session.errors.length > 0) throw new Error(`Renderer errors during clip collection filter smoke:\n${session.errors.join('\n')}`)
-    console.log(`AIVPlayer Smoke Vision Clip Collection Filter passed: ${JSON.stringify({ originalCount: originals.length, queryMatches: 2, tagMatches: 2, hierarchyTagMatches: 2, excludedTagMatches: 1, collectionTitleSort: true, collectionSelectionCountSort: true, collectionDurationSort: true, collectionOrderPersisted: true, multiTagAnyMatches: 2, multiTagAllMatches: 1, individualTagRemoval: true, visibleSelectionPreserved: true, emptyState: true, dataUnchanged, filterPersisted, savedFilterRestored: true, savedFilterDeleted: true, savedFilterExported: true, savedFilterImported: true, savedFilterImportPreview: true, savedFilterConflictOverwritten: true, excludedFilterPersisted: true, screenshotPath: screenshotPath ?? null })}`)
+    console.log(`AIVPlayer Smoke Vision Clip Collection Filter passed: ${JSON.stringify({ originalCount: originals.length, queryMatches: 2, tagMatches: 2, hierarchyTagMatches: 2, excludedTagMatches: 1, favoriteFilterMatches: 1, archivedFilterMatches: 1, activeFilterMatches: 2, collectionFlagsPersisted, collectionTitleSort: true, collectionSelectionCountSort: true, collectionDurationSort: true, collectionOrderPersisted: true, multiTagAnyMatches: 2, multiTagAllMatches: 1, individualTagRemoval: true, visibleSelectionPreserved: true, emptyState: true, dataUnchanged, filterPersisted, savedFilterRestored: true, savedFilterDeleted: true, savedFilterExported: true, savedFilterImported: true, savedFilterImportPreview: true, savedFilterConflictOverwritten: true, excludedFilterPersisted: true, visibilityFilterPersisted: true, screenshotPath: screenshotPath ?? null })}`)
   } finally {
     if (app) await app.close().catch(() => undefined)
     await rm(userDataDirectory, { recursive: true, force: true }).catch(() => undefined)
