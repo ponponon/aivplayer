@@ -9,6 +9,10 @@ const styles = readFileSync(join(projectRoot, 'src/renderer/src/styles/player/vi
 describe('vision clip collection filter UI wiring', () => {
   it('matches collection titles and tags locally with persistence and saved views', () => {
     expect(panel).toContain('collectionFilterQueryLower')
+    expect(panel).toContain('collectionListSortMode')
+    expect(panel).toContain('sortVisionClipCollections')
+    expect(panel).toContain('VISION_CLIP_COLLECTION_ORDER_PREFERENCES_STORAGE_KEY')
+    expect(panel).toContain('writeVisionClipCollectionOrderPreferences')
     expect(panel).toContain('collectionFilterTags')
     expect(panel).toContain('collectionFilterExcludedTags')
     expect(panel).toContain('matchesVisionCollectionTagFilter')
@@ -64,6 +68,7 @@ describe('vision clip collection filter UI wiring', () => {
     expect(panel).toContain('multiple size=')
     expect(panel).toContain('selectedOptions')
     expect(panel).toContain('aria-label={app.copy.vision.collectionFilterTagModeLabel}')
+    expect(panel).toContain('aria-label={app.copy.vision.collectionListSortLabel}')
     expect(panel).toContain('className="vision-collection-filter-summary" role="status"')
     expect(styles).toContain('.vision-collection-filter-bar')
     expect(styles).toContain('flex-wrap: wrap')
