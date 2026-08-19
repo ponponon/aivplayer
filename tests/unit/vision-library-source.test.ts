@@ -319,6 +319,8 @@ describe('vision library setup', () => {
     expect(filterSmoke).toContain('集合状态: 归档 1')
     expect(filterSmoke).toContain('集合状态: 活跃 2')
     expect(filterSmoke).toContain('collectionFlagsPersisted')
+    expect(filterSmoke).toContain('singleFlagUndoPersisted')
+    expect(filterSmoke).toContain('batchFlagUndoPersisted')
     expect(filterSmoke).toContain('"visibility":"favorites"')
     expect(filterSmoke).toContain('aivplayer.vision-clip-collection-filter.v1')
     const batchExportSmoke = readFileSync(join(projectRoot, 'scripts/smoke-vision-clip-collection-batch-export.ts'), 'utf8')
