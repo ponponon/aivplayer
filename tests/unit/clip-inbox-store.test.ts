@@ -341,6 +341,50 @@ describe('clip inbox store', () => {
     expect(store.getLastTagOperation()).toMatchObject({ type: 'metadata' })
   })
 
+  it('redoes tag cleanup with metadata after restarting the store', () => {
+    const parent = store.saveCollection({ title: '重做父标签', tags: ['父'], selections: [selection()] })
+    const child = store.saveCollection({ title: '重做子标签', tags: ['子'], selections: [selection({ startSeconds: 4, endSeconds: 6 })] })
+    store.saveTagMetadata({ tag: '父', color: '#123456' })
+    store.saveTagMetadata({ tag: '子', parentTag: '父', color: '#654321' })
+
+    store.removeTagFromAllCollections('父')
+    expect(store.getCollection(parent.id)?.tags).toEqual([])
+    expect(store.getTagMetadata('父')).toBeNull()
+
+    const undone = store.undoLastTagOperation()
+    expect(undone.success).toBe(true)
+    expect(store.getLastTagRedoOperation()).toMatchObject({ type: 'cleanup' })
+    expect(store.getCollection(parent.id)?.tags).toEqual(['父'])
+    expect(store.getCollection(child.id)?.tags).toEqual(['子'])
+    expect(store.getTagMetadata('父')).toMatchObject({ color: '#123456' })
+    expect(store.getTagMetadata('子')).toMatchObject({ parentTag: '父', color: '#654321' })
+
+    store.close()
+    store = new ClipInboxStore(tempDirectory)
+    expect(store.getLastTagRedoOperation()).toMatchObject({ type: 'cleanup' })
+
+    const redone = store.redoLastTagOperation()
+    expect(redone).toMatchObject({ success: true, operation: expect.objectContaining({ type: 'cleanup' }) })
+    expect(store.getCollection(parent.id)?.tags).toEqual([])
+    expect(store.getCollection(child.id)?.tags).toEqual(['子'])
+    expect(store.getTagMetadata('父')).toBeNull()
+    expect(store.getTagMetadata('子')).toMatchObject({ parentTag: '', color: '#654321' })
+    expect(store.getLastTagRedoOperation()).toBeNull()
+  })
+
+  it('clears a tag redo branch when a new tag operation is recorded', () => {
+    const collection = store.saveCollection({ title: '重做分支', tags: ['父'], selections: [selection()] })
+
+    store.removeTagFromAllCollections('父')
+    expect(store.undoLastTagOperation().success).toBe(true)
+    expect(store.getLastTagRedoOperation()).toMatchObject({ type: 'cleanup' })
+
+    store.updateCollectionsTags([collection.id], ['新标签'], 'add')
+    expect(store.getLastTagOperation()).toMatchObject({ type: 'batch' })
+    expect(store.getLastTagRedoOperation()).toBeNull()
+    expect(store.redoLastTagOperation()).toMatchObject({ success: false, message: '没有可重做的标签操作' })
+  })
+
   it('undoes tag rename and metadata updates in reverse chronological order', () => {
     const source = store.saveCollection({ title: '撤销重命名', tags: ['海边'], selections: [selection()] })
     store.saveTagMetadata({ tag: '海边', color: '#aabbcc' })

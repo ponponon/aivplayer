@@ -4,17 +4,22 @@ import { dirname, join, resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { mergeVisionClipSelections, normalizeVisionTimeRange } from './vision-evidence'
 import { applyVisionCollectionTags, duplicateVisionCollectionTitle, normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionSortMode, normalizeVisionCollectionTag, normalizeVisionCollectionTagColor, normalizeVisionCollectionTagFavorite, normalizeVisionCollectionTagNote, normalizeVisionCollectionTags, normalizeVisionCollectionTagsMode, renameVisionCollectionTag, renameVisionClipCollectionTitle, sortVisionClipSelections, wouldCreateVisionCollectionTagParentCycle } from './clip-inbox-operations'
-import type { VisionClipCollection, VisionClipCollectionBatchDeleteResult, VisionClipCollectionBatchRenameResult, VisionClipCollectionBatchTagsResult, VisionClipCollectionFlagUpdateRequest, VisionClipCollectionInput, VisionClipCollectionOperationHistory, VisionClipCollectionOperationRedoResult, VisionClipCollectionOperationType, VisionClipCollectionOperationUndoResult, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataUpdateRequest, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationType, VisionClipCollectionTagUndoResult, VisionClipSelection, VisionEvidenceType } from '../../shared/vision-types'
+import type { VisionClipCollection, VisionClipCollectionBatchDeleteResult, VisionClipCollectionBatchRenameResult, VisionClipCollectionBatchTagsResult, VisionClipCollectionFlagUpdateRequest, VisionClipCollectionInput, VisionClipCollectionOperationHistory, VisionClipCollectionOperationRedoResult, VisionClipCollectionOperationType, VisionClipCollectionOperationUndoResult, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataUpdateRequest, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationType, VisionClipCollectionTagRedoResult, VisionClipCollectionTagUndoResult, VisionClipSelection, VisionEvidenceType } from '../../shared/vision-types'
 
 type SqliteRow = Record<string, unknown>
 const EVIDENCE_TYPES: readonly VisionEvidenceType[] = ['subtitle', 'visual', 'scene', 'ocr', 'entity', 'object']
 const TAG_OPERATION_TYPES: readonly VisionClipCollectionTagOperationType[] = ['cleanup', 'rename', 'metadata', 'batch']
 const COLLECTION_OPERATION_TYPES: readonly VisionClipCollectionOperationType[] = ['flags']
 
+type TagOperationCollectionSnapshot = { id: string; tags: string[]; updatedAt: number }
+
 type TagOperationSnapshot = {
-  collectionTags: Array<{ id: string; tags: string[]; updatedAt: number }>
+  collectionTags: TagOperationCollectionSnapshot[]
   metadataTags: string[]
   metadata: VisionClipCollectionTagMetadata[]
+  redoCollectionTags?: TagOperationCollectionSnapshot[]
+  redoMetadataTags?: string[]
+  redoMetadata?: VisionClipCollectionTagMetadata[]
 }
 
 type CollectionOperationFlagSnapshot = { id: string; isFavorite: boolean; isArchived: boolean; updatedAt: number }
@@ -146,7 +151,8 @@ export class ClipInboxStore {
         operation_type TEXT NOT NULL,
         snapshot_json TEXT NOT NULL,
         created_at INTEGER NOT NULL,
-        undone_at INTEGER
+        undone_at INTEGER,
+        redoable INTEGER NOT NULL DEFAULT 0
       );
       CREATE INDEX IF NOT EXISTS clip_tag_operation_history_latest ON clip_tag_operation_history(undone_at, created_at DESC);
       CREATE TABLE IF NOT EXISTS clip_collection_operation_history (
@@ -159,6 +165,7 @@ export class ClipInboxStore {
       );
       CREATE INDEX IF NOT EXISTS clip_collection_operation_history_latest ON clip_collection_operation_history(undone_at, created_at DESC);
     `)
+    this.ensureTagOperationHistoryColumn('redoable', 'INTEGER NOT NULL DEFAULT 0')
     this.ensureCollectionOperationHistoryColumn('redoable', 'INTEGER NOT NULL DEFAULT 0')
     this.ensureCollectionColumn('tags_json', "TEXT NOT NULL DEFAULT '[]'")
     this.ensureCollectionColumn('sort_mode', "TEXT NOT NULL DEFAULT 'source-time'")
@@ -302,6 +309,11 @@ export class ClipInboxStore {
     return row ? this.readTagOperationHistory(row) : null
   }
 
+  getLastTagRedoOperation(): VisionClipCollectionTagOperationHistory | null {
+    const row = this.database.prepare('SELECT id, operation_type, created_at FROM clip_tag_operation_history WHERE undone_at IS NOT NULL AND redoable = 1 ORDER BY undone_at DESC, rowid DESC LIMIT 1').get() as SqliteRow | undefined
+    return row ? this.readTagOperationHistory(row) : null
+  }
+
   undoLastTagOperation(): VisionClipCollectionTagUndoResult {
     const row = this.database.prepare('SELECT id, operation_type, snapshot_json, created_at FROM clip_tag_operation_history WHERE undone_at IS NULL ORDER BY rowid DESC LIMIT 1').get() as SqliteRow | undefined
     if (!row) return { success: false, message: '没有可撤销的标签操作', operation: null, collections: [], metadata: [] }
@@ -311,19 +323,30 @@ export class ClipInboxStore {
     const now = Date.now()
     this.database.exec('BEGIN')
     try {
-      const updateCollection = this.database.prepare('UPDATE clip_collections SET tags_json = ?, updated_at = ? WHERE id = ?')
-      for (const collection of snapshot.collectionTags) updateCollection.run(JSON.stringify(collection.tags), collection.updatedAt, collection.id)
-      const metadataTags = snapshot.metadataTags
-      if (metadataTags.length > 0) {
-        const placeholders = metadataTags.map(() => '?').join(', ')
-        this.database.prepare(`DELETE FROM clip_tag_metadata WHERE tag IN (${placeholders})`).run(...metadataTags)
-      }
-      const insertMetadata = this.database.prepare('INSERT INTO clip_tag_metadata (tag, parent_tag, color, text_color, note, is_favorite, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-      for (const metadata of snapshot.metadata) insertMetadata.run(metadata.tag, metadata.parentTag, metadata.color, metadata.textColor, metadata.note, metadata.isFavorite ? 1 : 0, metadata.updatedAt)
-      this.database.prepare('UPDATE clip_tag_operation_history SET undone_at = ? WHERE id = ?').run(now, operation.id)
+      this.restoreTagOperationSnapshot(snapshot, false)
+      this.database.prepare('UPDATE clip_tag_operation_history SET undone_at = ?, redoable = ? WHERE id = ?').run(now, snapshot.redoCollectionTags && snapshot.redoMetadataTags && snapshot.redoMetadata ? 1 : 0, operation.id)
       this.database.exec('COMMIT')
       const collections = snapshot.collectionTags.map((item) => this.getCollection(item.id)).filter((collection): collection is VisionClipCollection => collection !== null)
       return { success: true, message: '已撤销上次标签操作', operation, collections, metadata: this.listTagMetadata() }
+    } catch (error) {
+      this.database.exec('ROLLBACK')
+      throw error
+    }
+  }
+
+  redoLastTagOperation(): VisionClipCollectionTagRedoResult {
+    const row = this.database.prepare('SELECT id, operation_type, snapshot_json, created_at FROM clip_tag_operation_history WHERE undone_at IS NOT NULL AND redoable = 1 ORDER BY undone_at DESC, rowid DESC LIMIT 1').get() as SqliteRow | undefined
+    if (!row) return { success: false, message: '没有可重做的标签操作', operation: null, collections: [], metadata: [] }
+    const operation = this.readTagOperationHistory(row)
+    const snapshot = this.parseTagOperationSnapshot(row.snapshot_json)
+    if (!operation || !snapshot || !snapshot.redoCollectionTags || !snapshot.redoMetadataTags || !snapshot.redoMetadata) return { success: false, message: '标签操作没有可重做快照', operation: null, collections: [], metadata: [] }
+    this.database.exec('BEGIN')
+    try {
+      this.restoreTagOperationSnapshot(snapshot, true)
+      this.database.prepare('UPDATE clip_tag_operation_history SET undone_at = NULL, redoable = 0 WHERE id = ?').run(operation.id)
+      this.database.exec('COMMIT')
+      const collections = snapshot.redoCollectionTags.map((item) => this.getCollection(item.id)).filter((collection): collection is VisionClipCollection => collection !== null)
+      return { success: true, message: '已重做上次标签操作', operation, collections, metadata: this.listTagMetadata() }
     } catch (error) {
       this.database.exec('ROLLBACK')
       throw error
@@ -679,7 +702,18 @@ export class ClipInboxStore {
   }
 
   private recordTagOperation(type: VisionClipCollectionTagOperationType, snapshot: TagOperationSnapshot, createdAt: number): void {
-    this.database.prepare('INSERT INTO clip_tag_operation_history (id, operation_type, snapshot_json, created_at) VALUES (?, ?, ?, ?)').run(randomUUID(), type, JSON.stringify(snapshot), createdAt)
+    const redoMetadata = this.listTagMetadata()
+    const redoSnapshot: TagOperationSnapshot = {
+      ...snapshot,
+      redoCollectionTags: snapshot.collectionTags.map((item) => {
+        const collection = this.getCollection(item.id)
+        return collection ? { id: collection.id, tags: collection.tags, updatedAt: collection.updatedAt } : null
+      }).filter((item): item is TagOperationCollectionSnapshot => item !== null),
+      redoMetadataTags: [...new Set([...snapshot.metadataTags, ...redoMetadata.map((item) => item.tag)])],
+      redoMetadata
+    }
+    this.database.prepare('UPDATE clip_tag_operation_history SET redoable = 0 WHERE undone_at IS NOT NULL AND redoable = 1').run()
+    this.database.prepare('INSERT INTO clip_tag_operation_history (id, operation_type, snapshot_json, created_at) VALUES (?, ?, ?, ?)').run(randomUUID(), type, JSON.stringify(redoSnapshot), createdAt)
     this.database.exec('DELETE FROM clip_tag_operation_history WHERE id NOT IN (SELECT id FROM clip_tag_operation_history ORDER BY rowid DESC LIMIT 20)')
   }
 
@@ -693,19 +727,48 @@ export class ClipInboxStore {
     try {
       const parsed = JSON.parse(value) as Partial<TagOperationSnapshot>
       if (!Array.isArray(parsed.collectionTags) || !Array.isArray(parsed.metadataTags) || !Array.isArray(parsed.metadata)) return null
-      const collectionTags = parsed.collectionTags.filter((item): item is TagOperationSnapshot['collectionTags'][number] => Boolean(item && typeof item === 'object' && typeof item.id === 'string' && Array.isArray(item.tags) && typeof item.updatedAt === 'number')).map((item) => ({ id: item.id, tags: normalizeVisionCollectionTags(item.tags), updatedAt: item.updatedAt }))
-      const metadata = parsed.metadata.map((item) => {
+      if (parsed.redoCollectionTags !== undefined && !Array.isArray(parsed.redoCollectionTags)) return null
+      if (parsed.redoMetadataTags !== undefined && !Array.isArray(parsed.redoMetadataTags)) return null
+      if (parsed.redoMetadata !== undefined && !Array.isArray(parsed.redoMetadata)) return null
+      const readCollectionTags = (items: unknown[]): TagOperationCollectionSnapshot[] => items.map((item) => {
+        if (!item || typeof item !== 'object') return null
+        const candidate = item as Partial<TagOperationCollectionSnapshot>
+        if (typeof candidate.id !== 'string' || !Array.isArray(candidate.tags) || typeof candidate.updatedAt !== 'number') return null
+        return { id: candidate.id, tags: normalizeVisionCollectionTags(candidate.tags), updatedAt: candidate.updatedAt }
+      }).filter((item): item is TagOperationCollectionSnapshot => item !== null)
+      const readMetadata = (items: unknown[]): VisionClipCollectionTagMetadata[] => items.map((item) => {
         if (!item || typeof item !== 'object') return null
         const candidate = item as Partial<VisionClipCollectionTagMetadata>
         const tag = normalizeVisionCollectionTag(candidate.tag)
         if (!tag || typeof candidate.updatedAt !== 'number') return null
         return { tag, parentTag: normalizeVisionCollectionTag(candidate.parentTag), color: normalizeVisionCollectionTagColor(candidate.color), textColor: normalizeVisionCollectionTagColor(candidate.textColor), note: normalizeVisionCollectionTagNote(candidate.note), isFavorite: normalizeVisionCollectionTagFavorite(candidate.isFavorite), updatedAt: candidate.updatedAt }
       }).filter((item): item is VisionClipCollectionTagMetadata => item !== null)
-      const metadataTags = parsed.metadataTags.filter((tag): tag is string => typeof tag === 'string' && Boolean(normalizeVisionCollectionTag(tag))).map((tag) => normalizeVisionCollectionTag(tag))
-      return { collectionTags, metadataTags, metadata }
+      const readMetadataTags = (items: unknown[]): string[] => items.filter((tag): tag is string => typeof tag === 'string' && Boolean(normalizeVisionCollectionTag(tag))).map((tag) => normalizeVisionCollectionTag(tag))
+      const collectionTags = readCollectionTags(parsed.collectionTags)
+      const metadataTags = readMetadataTags(parsed.metadataTags)
+      const metadata = readMetadata(parsed.metadata)
+      const redoCollectionTags = parsed.redoCollectionTags === undefined ? undefined : readCollectionTags(parsed.redoCollectionTags)
+      const redoMetadataTags = parsed.redoMetadataTags === undefined ? undefined : readMetadataTags(parsed.redoMetadataTags)
+      const redoMetadata = parsed.redoMetadata === undefined ? undefined : readMetadata(parsed.redoMetadata)
+      return { collectionTags, metadataTags, metadata, ...(redoCollectionTags === undefined ? {} : { redoCollectionTags }), ...(redoMetadataTags === undefined ? {} : { redoMetadataTags }), ...(redoMetadata === undefined ? {} : { redoMetadata }) }
     } catch {
       return null
     }
+  }
+
+  private restoreTagOperationSnapshot(snapshot: TagOperationSnapshot, redo: boolean): void {
+    const collectionTags = redo ? snapshot.redoCollectionTags : snapshot.collectionTags
+    const metadataTags = redo ? snapshot.redoMetadataTags : snapshot.metadataTags
+    const metadata = redo ? snapshot.redoMetadata : snapshot.metadata
+    if (!collectionTags || !metadataTags || !metadata) throw new Error('标签操作快照缺少可恢复数据')
+    const updateCollection = this.database.prepare('UPDATE clip_collections SET tags_json = ?, updated_at = ? WHERE id = ?')
+    for (const collection of collectionTags) updateCollection.run(JSON.stringify(collection.tags), collection.updatedAt, collection.id)
+    if (metadataTags.length > 0) {
+      const placeholders = metadataTags.map(() => '?').join(', ')
+      this.database.prepare(`DELETE FROM clip_tag_metadata WHERE tag IN (${placeholders})`).run(...metadataTags)
+    }
+    const insertMetadata = this.database.prepare('INSERT INTO clip_tag_metadata (tag, parent_tag, color, text_color, note, is_favorite, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    for (const item of metadata) insertMetadata.run(item.tag, item.parentTag, item.color, item.textColor, item.note, item.isFavorite ? 1 : 0, item.updatedAt)
   }
 
   private readTagOperationHistory(row: SqliteRow): VisionClipCollectionTagOperationHistory | null {
@@ -752,6 +815,12 @@ export class ClipInboxStore {
     const columns = this.database.prepare('PRAGMA table_info(clip_tag_metadata)').all() as SqliteRow[]
     if (columns.some((column) => stringValue(column, 'name') === name)) return
     this.database.exec(`ALTER TABLE clip_tag_metadata ADD COLUMN ${name} ${definition}`)
+  }
+
+  private ensureTagOperationHistoryColumn(name: 'redoable', definition: string): void {
+    const columns = this.database.prepare('PRAGMA table_info(clip_tag_operation_history)').all() as SqliteRow[]
+    if (columns.some((column) => stringValue(column, 'name') === name)) return
+    this.database.exec(`ALTER TABLE clip_tag_operation_history ADD COLUMN ${name} ${definition}`)
   }
 
   private ensureCollectionOperationHistoryColumn(name: 'redoable', definition: string): void {

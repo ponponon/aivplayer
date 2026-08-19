@@ -594,6 +594,14 @@ export type VisionClipCollectionTagUndoResult = {
   metadata: VisionClipCollectionTagMetadata[]
 }
 
+export type VisionClipCollectionTagRedoResult = {
+  success: boolean
+  message: string
+  operation: VisionClipCollectionTagOperationHistory | null
+  collections: VisionClipCollection[]
+  metadata: VisionClipCollectionTagMetadata[]
+}
+
 export type VisionClipCollectionOperationType = 'flags'
 
 export type VisionClipCollectionOperationHistory = {
