@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { _electron as electron, type ElectronApplication, type Page } from 'playwright'
@@ -164,6 +164,28 @@ async function runSmoke(): Promise<void> {
     await savedFilterButton.waitFor({ timeout: 10_000 })
     const storedSavedFilters = await page.evaluate(() => localStorage.getItem('aivplayer.vision-clip-collection-saved-filters.v1'))
     if (!storedSavedFilters?.includes(savedFilterName)) throw new Error(`Saved collection filter was not persisted: ${storedSavedFilters ?? 'null'}`)
+    await page.evaluate(() => {
+      const scope = window as unknown as { __aivplayerFilterExport?: { blob: Blob; fileName: string } }
+      const originalCreateObjectURL = URL.createObjectURL.bind(URL)
+      const originalAnchorClick = HTMLAnchorElement.prototype.click
+      URL.createObjectURL = (blob: Blob) => {
+        scope.__aivplayerFilterExport = { blob, fileName: '' }
+        return originalCreateObjectURL(blob)
+      }
+      HTMLAnchorElement.prototype.click = function () {
+        if (scope.__aivplayerFilterExport) scope.__aivplayerFilterExport.fileName = this.download
+        originalAnchorClick.call(this)
+      }
+    })
+    await page.getByRole('button', { name: '导出筛选视图', exact: true }).click()
+    const exportedFilter = await page.evaluate(async () => {
+      const scope = window as unknown as { __aivplayerFilterExport?: { blob: Blob; fileName: string } }
+      const value = scope.__aivplayerFilterExport
+      return value ? { json: await value.blob.text(), fileName: value.fileName } : null
+    })
+    if (!exportedFilter?.json || !exportedFilter.fileName.endsWith('.json')) throw new Error(`Exported collection filter did not produce a JSON download: ${JSON.stringify(exportedFilter)}`)
+    const exportedFilterPath = join(userDataDirectory, 'exported-filter-views.json')
+    await writeFile(exportedFilterPath, exportedFilter.json, 'utf8')
     if (screenshotPath) {
       await page.locator('.vision-collection-saved-filters').scrollIntoViewIfNeeded()
       await page.screenshot({ path: screenshotPath, fullPage: false })
@@ -180,8 +202,15 @@ async function runSmoke(): Promise<void> {
     if (await page.getByRole('button', { name: `应用筛选视图: ${savedFilterName}`, exact: true }).count() !== 0) throw new Error('Deleting a saved collection filter should remove only that view')
     const savedFilterPersisted = await page.evaluate(() => localStorage.getItem('aivplayer.vision-clip-collection-saved-filters.v1'))
     if (savedFilterPersisted?.includes(savedFilterName)) throw new Error(`Deleted collection filter remained in storage: ${savedFilterPersisted}`)
+    const savedFilterFileInput = page.locator('.vision-collection-saved-filters input[type="file"]')
+    await savedFilterFileInput.setInputFiles(exportedFilterPath)
+    await savedFilterButton.waitFor({ timeout: 10_000 })
+    const importedSavedFilters = await page.evaluate(() => localStorage.getItem('aivplayer.vision-clip-collection-saved-filters.v1'))
+    if (!importedSavedFilters?.includes(savedFilterName)) throw new Error(`Imported collection filter did not appear in storage: ${importedSavedFilters ?? 'null'}`)
+    await page.getByRole('button', { name: `删除筛选视图: ${savedFilterName}`, exact: true }).click()
+    if (await savedFilterButton.count() !== 0) throw new Error('Imported collection filter could not be deleted after import')
     if (session.errors.length > 0) throw new Error(`Renderer errors during clip collection filter smoke:\n${session.errors.join('\n')}`)
-    console.log(`AIVPlayer Smoke Vision Clip Collection Filter passed: ${JSON.stringify({ originalCount: originals.length, queryMatches: 2, tagMatches: 2, hierarchyTagMatches: 2, multiTagAnyMatches: 2, multiTagAllMatches: 1, individualTagRemoval: true, visibleSelectionPreserved: true, emptyState: true, dataUnchanged, filterPersisted, savedFilterRestored: true, savedFilterDeleted: true, screenshotPath: screenshotPath ?? null })}`)
+    console.log(`AIVPlayer Smoke Vision Clip Collection Filter passed: ${JSON.stringify({ originalCount: originals.length, queryMatches: 2, tagMatches: 2, hierarchyTagMatches: 2, multiTagAnyMatches: 2, multiTagAllMatches: 1, individualTagRemoval: true, visibleSelectionPreserved: true, emptyState: true, dataUnchanged, filterPersisted, savedFilterRestored: true, savedFilterDeleted: true, savedFilterExported: true, savedFilterImported: true, screenshotPath: screenshotPath ?? null })}`)
   } finally {
     if (app) await app.close().catch(() => undefined)
     await rm(userDataDirectory, { recursive: true, force: true }).catch(() => undefined)
