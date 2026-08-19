@@ -730,6 +730,7 @@ export function registerVisionIpc(): void {
   })
   ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_TAG_METADATA_LIST, () => getClipInboxStore().listTagMetadata())
   ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_TAG_OPERATION_HISTORY, () => getClipInboxStore().getLastTagOperation())
+  ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_TAG_OPERATION_HISTORY_LIST, () => getClipInboxStore().listTagOperationHistory())
   ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_TAG_OPERATION_REDO_HISTORY, () => getClipInboxStore().getLastTagRedoOperation())
   ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_TAG_OPERATION_UNDO, () => {
     const copy = getAppCopy(getCurrentLocale()).vision
