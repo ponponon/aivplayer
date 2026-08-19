@@ -28,9 +28,9 @@
   <url type="bugtracker">https://github.com/ponponon/aivplayer/issues</url>
   <url type="vcs-browser">https://github.com/ponponon/aivplayer</url>
   <releases>
-    <release version="0.5.4" date="2026-08-13">
+    <release version="0.6.0" date="2026-08-18">
       <description>
-        <p>Flatpak packaging preparation for AIVPlayer 0.5.4.</p>
+        <p>Flatpak packaging preparation for AIVPlayer 0.6.0.</p>
       </description>
     </release>
   </releases>
