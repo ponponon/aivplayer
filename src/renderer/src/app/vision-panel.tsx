@@ -153,8 +153,10 @@ function downloadVisionClipCollectionSavedFilters(filters: readonly VisionClipCo
   const anchor = document.createElement('a')
   anchor.href = url
   anchor.download = `aivplayer-collection-filter-views-${new Date().toISOString().slice(0, 10)}.json`
+  document.body.append(anchor)
   anchor.click()
-  URL.revokeObjectURL(url)
+  anchor.remove()
+  window.setTimeout(() => URL.revokeObjectURL(url), 0)
 }
 
 function formatDuration(milliseconds: number): string {
