@@ -118,6 +118,97 @@
   font-size: 9px;
 }
 
+.vision-saved-search-import-preview {
+  display: grid;
+  gap: 7px;
+  padding: 8px;
+  background: rgba(var(--accent-rgb), 0.06);
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
+  border-radius: var(--radius-sm);
+}
+
+.vision-saved-search-import-preview-heading,
+.vision-saved-search-import-conflict,
+.vision-saved-search-import-preview-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.vision-saved-search-import-preview-heading {
+  justify-content: space-between;
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+.vision-saved-search-import-preview-heading small,
+.vision-saved-search-import-preview-empty {
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.vision-saved-search-import-conflicts {
+  display: grid;
+  gap: 4px;
+}
+
+.vision-saved-search-import-conflict {
+  justify-content: space-between;
+  min-width: 0;
+  padding: 5px 6px;
+  color: var(--text-primary);
+  background: rgba(var(--overlay-rgb), 0.05);
+  border-radius: 4px;
+  font-size: 10px;
+}
+
+.vision-saved-search-import-conflict > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.vision-saved-search-import-conflict strong,
+.vision-saved-search-import-conflict small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vision-saved-search-import-conflict small {
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.vision-saved-search-import-conflict label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.vision-saved-search-import-conflict select {
+  min-height: 25px;
+  padding: 0 6px;
+  color: var(--text-primary);
+  background: rgba(var(--overlay-rgb), 0.06);
+  border: 1px solid var(--border-soft);
+  border-radius: 4px;
+  font-size: 9px;
+}
+
+.vision-saved-search-import-conflict select:focus {
+  border-color: var(--accent);
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.vision-saved-search-import-preview-actions {
+  justify-content: flex-end;
+}
+
 .vision-saved-search-empty,
 .vision-saved-search-status {
   color: var(--text-muted);

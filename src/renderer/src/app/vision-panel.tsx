@@ -10,7 +10,7 @@ import type { VisionObjectDetectionFilterState, VisionObjectDetectionResult } fr
 import { getVisionCollectionTagPath, invertVisionClipSelections, mergeVisionCollectionSelections, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTag, normalizeVisionCollectionTags, renameVisionClipCollectionTitle, toggleVisibleVisionClipCollectionSelection, wouldCreateVisionCollectionTagParentCycle } from '../../../core/ai/clip-inbox-operations'
 import { hasVisionCollectionTagChildren, isVisionCollectionTagHiddenByCollapsedAncestor, matchesVisionCollectionTagFilter, mergeVisionClipCollectionTagCollapsePreferences, parseVisionClipCollectionTagCollapsePreferences, serializeVisionClipCollectionTagCollapsePreferences, VISION_CLIP_COLLECTION_TAG_COLLAPSE_PREFERENCES_STORAGE_KEY, type VisionCollectionTagFilterMode } from '../../../core/ai/clip-inbox-tag-tree'
 import { createVisionClipSelections, normalizeVisionTimeRange } from '../../../core/ai/vision-evidence'
-import { mergeVisionClipCollectionFilterTags, mergeVisionClipCollectionSavedFilters, parseVisionClipCollectionFilterPreferences, parseVisionClipCollectionSavedFilterManifest, parseVisionClipCollectionSavedFilters, removeVisionClipCollectionSavedFilter, serializeVisionClipCollectionFilterPreferences, serializeVisionClipCollectionSavedFilters, upsertVisionClipCollectionSavedFilter, VISION_CLIP_COLLECTION_FILTER_PREFERENCES_STORAGE_KEY, VISION_CLIP_COLLECTION_SAVED_FILTERS_STORAGE_KEY, type VisionClipCollectionSavedFilter } from '../../../core/ai/clip-inbox-filter-preferences'
+import { applyVisionClipCollectionSavedFilterImportPreview, createVisionClipCollectionSavedFilterImportPreview, mergeVisionClipCollectionFilterTags, parseVisionClipCollectionFilterPreferences, parseVisionClipCollectionSavedFilterManifest, parseVisionClipCollectionSavedFilters, removeVisionClipCollectionSavedFilter, serializeVisionClipCollectionFilterPreferences, serializeVisionClipCollectionSavedFilters, upsertVisionClipCollectionSavedFilter, VISION_CLIP_COLLECTION_FILTER_PREFERENCES_STORAGE_KEY, VISION_CLIP_COLLECTION_SAVED_FILTERS_STORAGE_KEY, type VisionClipCollectionSavedFilter, type VisionClipCollectionSavedFilterImportDecision, type VisionClipCollectionSavedFilterImportPreviewItem } from '../../../core/ai/clip-inbox-filter-preferences'
 import { getVisionSearchResultIds } from '../../../core/ai/vision-search-selection'
 import { getNextVisionSearchLimit, shouldLoadMoreVisionSearchResults, VISION_SEARCH_PAGE_SIZE } from '../../../core/ai/vision-search-pagination'
 import { createVisionSimilarSearchRequest } from '../../../core/ai/vision-similar-search'
@@ -226,6 +226,8 @@ export function VisionPanel(): React.ReactElement {
   const [savedCollectionFilterName, setSavedCollectionFilterName] = useState('')
   const [savedCollectionFilters, setSavedCollectionFilters] = useState<VisionClipCollectionSavedFilter[]>(readVisionClipCollectionSavedFilters)
   const [savedCollectionFilterTransferStatus, setSavedCollectionFilterTransferStatus] = useState<string | null>(null)
+  const [savedCollectionFilterImportPreview, setSavedCollectionFilterImportPreview] = useState<VisionClipCollectionSavedFilterImportPreviewItem[] | null>(null)
+  const [savedCollectionFilterImportDecisions, setSavedCollectionFilterImportDecisions] = useState<Record<string, VisionClipCollectionSavedFilterImportDecision>>({})
   const savedCollectionFilterFileInputRef = useRef<HTMLInputElement | null>(null)
   const [collectionTransferStatus, setCollectionTransferStatus] = useState<string | null>(null)
   const [collectionAvailability, setCollectionAvailability] = useState<Record<string, CollectionAvailability>>({})
@@ -342,6 +344,10 @@ export function VisionPanel(): React.ReactElement {
   const isCollectionBatchBusy = isDuplicatingCollections || isExportingCollections || isDeletingCollections || isRenamingCollections || isUpdatingCollectionTags || isCleaningCollectionTag || isRenamingCollectionTag || isSavingCollectionTagMetadata || isTransferringCollectionTagMetadata || isUndoingCollectionTagOperation || isSavingCollectionTitle || isSavingCollectionTags || editingCollectionId !== null || editingCollectionTagsId !== null || duplicatingCollectionId !== null
   const collectionTagImportPreviewItems = collectionTagImportPreview?.preview ?? []
   const collectionTagImportConflicts = collectionTagImportPreviewItems.filter((item) => item.state === 'conflict')
+  const savedCollectionFilterImportItems = savedCollectionFilterImportPreview ?? []
+  const savedCollectionFilterImportConflicts = savedCollectionFilterImportItems.filter((item) => item.state === 'conflict')
+  const savedCollectionFilterImportNewCount = savedCollectionFilterImportItems.filter((item) => item.state === 'new').length
+  const savedCollectionFilterImportSkippedCount = savedCollectionFilterImportItems.filter((item) => item.state !== 'new' && item.state !== 'conflict').length
   const vectorIndexLabel = status?.vectorIndexType
     ? app.copy.vision.vectorIndex(status.vectorIndexType, status.vectorIndexDistanceType ?? '—', status.vectorIndexIndexedRows, status.vectorIndexUnindexedRows)
     : app.copy.vision.exactVectorSearch
@@ -1198,7 +1204,7 @@ export function VisionPanel(): React.ReactElement {
 
   const saveCurrentCollectionFilter = (): void => {
     const name = savedCollectionFilterName.trim()
-    if (!name || !hasCollectionFilter) return
+    if (savedCollectionFilterImportPreview !== null || !name || !hasCollectionFilter) return
     const now = Date.now()
     setSavedCollectionFilters((current) => {
       const existing = current.find((item) => item.name.toLocaleLowerCase() === name.toLocaleLowerCase())
@@ -1220,14 +1226,14 @@ export function VisionPanel(): React.ReactElement {
   }
 
   const exportSavedCollectionFilters = (): void => {
-    if (isCollectionBatchBusy || savedCollectionFilters.length === 0) return
+    if (isCollectionBatchBusy || savedCollectionFilterImportPreview !== null || savedCollectionFilters.length === 0) return
     setSavedCollectionFilterTransferStatus(null)
     downloadVisionClipCollectionSavedFilters(savedCollectionFilters)
     setSavedCollectionFilterTransferStatus(app.copy.vision.collectionFilterSavedViewsExported)
   }
 
   const importSavedCollectionFilters = (): void => {
-    if (isCollectionBatchBusy) return
+    if (isCollectionBatchBusy || savedCollectionFilterImportPreview !== null) return
     setSavedCollectionFilterTransferStatus(null)
     savedCollectionFilterFileInputRef.current?.click()
   }
@@ -1235,15 +1241,35 @@ export function VisionPanel(): React.ReactElement {
   const handleSavedCollectionFilterFile = (event: ChangeEvent<HTMLInputElement>): void => {
     const file = event.currentTarget.files?.[0]
     event.currentTarget.value = ''
-    if (!file || isCollectionBatchBusy) return
+    if (!file || isCollectionBatchBusy || savedCollectionFilterImportPreview !== null) return
     setError(null)
     setSavedCollectionFilterTransferStatus(null)
     void file.text().then((raw) => {
       const imported = parseVisionClipCollectionSavedFilterManifest(raw)
-      const result = mergeVisionClipCollectionSavedFilters(savedCollectionFilters, imported)
-      setSavedCollectionFilters(result.filters)
-      setSavedCollectionFilterTransferStatus(app.copy.vision.collectionFilterSavedViewsImported(result.importedCount, result.skippedCount))
+      const preview = createVisionClipCollectionSavedFilterImportPreview(savedCollectionFilters, imported)
+      const defaultDecisions: Record<string, VisionClipCollectionSavedFilterImportDecision> = {}
+      for (const item of preview) {
+        if (item.state === 'conflict') defaultDecisions[item.incoming.id] = 'keep-local'
+      }
+      setSavedCollectionFilterImportDecisions(defaultDecisions)
+      setSavedCollectionFilterImportPreview(preview)
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
+  }
+
+  const applySavedCollectionFilterImport = (): void => {
+    if (!savedCollectionFilterImportPreview || isCollectionBatchBusy) return
+    const result = applyVisionClipCollectionSavedFilterImportPreview(savedCollectionFilters, savedCollectionFilterImportPreview, savedCollectionFilterImportDecisions)
+    setSavedCollectionFilters(result.filters)
+    setSavedCollectionFilterImportPreview(null)
+    setSavedCollectionFilterImportDecisions({})
+    setSavedCollectionFilterTransferStatus(app.copy.vision.collectionFilterSavedViewsImported(result.importedCount, result.skippedCount))
+  }
+
+  const cancelSavedCollectionFilterImport = (): void => {
+    if (isCollectionBatchBusy) return
+    setSavedCollectionFilterImportPreview(null)
+    setSavedCollectionFilterImportDecisions({})
+    setSavedCollectionFilterTransferStatus(null)
   }
 
   const toggleAllCollectionSelection = (): void => {
@@ -1711,24 +1737,34 @@ export function VisionPanel(): React.ReactElement {
     </div> : null}
     {collections.length > 0 ? <div className="vision-card vision-collection-saved-filters">
       <div className="vision-saved-search-toolbar">
-        <input className="vision-saved-search-name-input" value={savedCollectionFilterName} onChange={(event) => setSavedCollectionFilterName(event.target.value)} placeholder={app.copy.vision.collectionFilterSavedViewNamePlaceholder} aria-label={app.copy.vision.collectionFilterSavedViewNamePlaceholder} disabled={isCollectionBatchBusy} />
-        <button className="vision-secondary-action" type="button" onClick={saveCurrentCollectionFilter} disabled={isCollectionBatchBusy || !hasCollectionFilter || !savedCollectionFilterName.trim()}>{app.copy.vision.collectionFilterSaveView}</button>
+        <input className="vision-saved-search-name-input" value={savedCollectionFilterName} onChange={(event) => setSavedCollectionFilterName(event.target.value)} placeholder={app.copy.vision.collectionFilterSavedViewNamePlaceholder} aria-label={app.copy.vision.collectionFilterSavedViewNamePlaceholder} disabled={isCollectionBatchBusy || savedCollectionFilterImportPreview !== null} />
+        <button className="vision-secondary-action" type="button" onClick={saveCurrentCollectionFilter} disabled={isCollectionBatchBusy || savedCollectionFilterImportPreview !== null || !hasCollectionFilter || !savedCollectionFilterName.trim()}>{app.copy.vision.collectionFilterSaveView}</button>
       </div>
       <div className="vision-saved-searches" aria-label={app.copy.vision.collectionFilterSavedViewsLabel}>
         <div className="vision-saved-search-heading-row">
           <strong className="vision-saved-search-heading">{app.copy.vision.collectionFilterSavedViewsLabel}</strong>
           <div className="vision-saved-search-actions">
-            <button className="vision-secondary-action" type="button" onClick={importSavedCollectionFilters} disabled={isCollectionBatchBusy}><Upload size={12} />{app.copy.vision.collectionFilterSavedViewsImport}</button>
-            <button className="vision-secondary-action" type="button" onClick={exportSavedCollectionFilters} disabled={isCollectionBatchBusy || savedCollectionFilters.length === 0}><Download size={12} />{app.copy.vision.collectionFilterSavedViewsExport}</button>
+            <button className="vision-secondary-action" type="button" onClick={importSavedCollectionFilters} disabled={isCollectionBatchBusy || savedCollectionFilterImportPreview !== null}><Upload size={12} />{app.copy.vision.collectionFilterSavedViewsImport}</button>
+            <button className="vision-secondary-action" type="button" onClick={exportSavedCollectionFilters} disabled={isCollectionBatchBusy || savedCollectionFilterImportPreview !== null || savedCollectionFilters.length === 0}><Download size={12} />{app.copy.vision.collectionFilterSavedViewsExport}</button>
             <input ref={savedCollectionFilterFileInputRef} hidden type="file" accept="application/json,.json" onChange={handleSavedCollectionFilterFile} />
           </div>
         </div>
+        {savedCollectionFilterImportPreview ? <div className="vision-saved-search-import-preview" role="dialog" aria-label={app.copy.vision.collectionFilterSavedViewsImportPreviewTitle}>
+          <div className="vision-saved-search-import-preview-heading"><strong>{app.copy.vision.collectionFilterSavedViewsImportPreviewTitle}</strong><small>{app.copy.vision.collectionFilterSavedViewsImportPreviewDescription(savedCollectionFilterImportConflicts.length, savedCollectionFilterImportNewCount, savedCollectionFilterImportSkippedCount)}</small></div>
+          {savedCollectionFilterImportConflicts.length > 0 ? <div className="vision-saved-search-import-conflicts" role="list">
+            {savedCollectionFilterImportConflicts.map((item) => <div className="vision-saved-search-import-conflict" key={item.incoming.id} role="listitem">
+              <div><strong>{item.incoming.name}</strong><small>{item.current?.name ?? '—'} → {item.incoming.query || app.copy.vision.collectionFilterTagAll}{item.incoming.tags.length > 0 ? ` · ${item.incoming.tags.join(' · ')}` : ''}</small></div>
+              <label><span>{app.copy.vision.collectionFilterSavedViewsImportDecisionLabel}</span><select value={savedCollectionFilterImportDecisions[item.incoming.id] ?? 'keep-local'} aria-label={`${app.copy.vision.collectionFilterSavedViewsImportDecisionLabel}: ${item.incoming.name}`} onChange={(event) => setSavedCollectionFilterImportDecisions((current) => ({ ...current, [item.incoming.id]: event.target.value as VisionClipCollectionSavedFilterImportDecision }))} disabled={isCollectionBatchBusy}><option value="overwrite">{app.copy.vision.collectionFilterSavedViewsImportOverwrite}</option><option value="keep-local">{app.copy.vision.collectionFilterSavedViewsImportKeepLocal}</option><option value="skip">{app.copy.vision.collectionFilterSavedViewsImportSkip}</option></select></label>
+            </div>)}
+          </div> : <small className="vision-saved-search-import-preview-empty">{app.copy.vision.collectionFilterSavedViewsImportPreviewNoConflicts}</small>}
+          <div className="vision-saved-search-import-preview-actions"><button className="vision-primary-action" type="button" onClick={applySavedCollectionFilterImport} disabled={isCollectionBatchBusy}><Check size={12} />{app.copy.vision.collectionFilterSavedViewsImportApply}</button><button className="vision-secondary-action" type="button" onClick={cancelSavedCollectionFilterImport} disabled={isCollectionBatchBusy}><X size={12} />{app.copy.vision.collectionFilterSavedViewsImportCancel}</button></div>
+        </div> : null}
         {savedCollectionFilters.length > 0 ? <div className="vision-saved-search-list" role="list">{savedCollectionFilters.map((savedFilter) => <div className="vision-saved-search" key={savedFilter.id} role="listitem">
-          <button className="vision-saved-search-button" type="button" onClick={() => applySavedCollectionFilter(savedFilter)} disabled={isCollectionBatchBusy} aria-label={`${app.copy.vision.collectionFilterApplyView}: ${savedFilter.name}`}>
+          <button className="vision-saved-search-button" type="button" onClick={() => applySavedCollectionFilter(savedFilter)} disabled={isCollectionBatchBusy || savedCollectionFilterImportPreview !== null} aria-label={`${app.copy.vision.collectionFilterApplyView}: ${savedFilter.name}`}>
             <strong>{savedFilter.name}</strong>
             <small>{savedFilter.query || app.copy.vision.collectionFilterTagAll}{savedFilter.tags.length > 0 ? ` · ${savedFilter.tags.join(' · ')}` : ''}{savedFilter.tags.length > 1 ? ` · ${savedFilter.tagMode === 'all' ? app.copy.vision.collectionFilterTagModeAll : app.copy.vision.collectionFilterTagModeAny}` : ''}</small>
           </button>
-          <button className="vision-saved-search-delete" type="button" onClick={() => deleteSavedCollectionFilter(savedFilter.id)} title={app.copy.vision.collectionFilterDeleteView} aria-label={`${app.copy.vision.collectionFilterDeleteView}: ${savedFilter.name}`} disabled={isCollectionBatchBusy}><Trash2 size={14} /></button>
+          <button className="vision-saved-search-delete" type="button" onClick={() => deleteSavedCollectionFilter(savedFilter.id)} title={app.copy.vision.collectionFilterDeleteView} aria-label={`${app.copy.vision.collectionFilterDeleteView}: ${savedFilter.name}`} disabled={isCollectionBatchBusy || savedCollectionFilterImportPreview !== null}><Trash2 size={14} /></button>
         </div>)}</div> : <small className="vision-saved-search-empty">{app.copy.vision.collectionFilterSavedViewEmpty}</small>}
         {savedCollectionFilterTransferStatus ? <small className="vision-saved-search-status" role="status">{savedCollectionFilterTransferStatus}</small> : null}
       </div>
