@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { mergeVisionClipCollectionFilterTags, normalizeVisionClipCollectionFilterPreferences, normalizeVisionClipCollectionSavedFilters, parseVisionClipCollectionFilterPreferences, parseVisionClipCollectionSavedFilters, removeVisionClipCollectionSavedFilter, serializeVisionClipCollectionFilterPreferences, serializeVisionClipCollectionSavedFilters, upsertVisionClipCollectionSavedFilter } from '../../src/core/ai/clip-inbox-filter-preferences'
+import { mergeVisionClipCollectionFilterTags, mergeVisionClipCollectionSavedFilters, normalizeVisionClipCollectionFilterPreferences, normalizeVisionClipCollectionSavedFilters, parseVisionClipCollectionFilterPreferences, parseVisionClipCollectionSavedFilterManifest, parseVisionClipCollectionSavedFilters, removeVisionClipCollectionSavedFilter, serializeVisionClipCollectionFilterPreferences, serializeVisionClipCollectionSavedFilters, upsertVisionClipCollectionSavedFilter } from '../../src/core/ai/clip-inbox-filter-preferences'
 
 describe('clip inbox filter preferences', () => {
   it('normalizes query, tags and match mode', () => {
@@ -28,6 +28,8 @@ describe('clip inbox filter preferences', () => {
     expect(parseVisionClipCollectionSavedFilters(serializeVisionClipCollectionSavedFilters(saved))).toEqual(saved)
     expect(parseVisionClipCollectionSavedFilters('{invalid}')).toEqual([])
     expect(parseVisionClipCollectionSavedFilters(JSON.stringify({ schemaVersion: 2, filters: saved }))).toEqual([])
+    expect(parseVisionClipCollectionSavedFilterManifest(serializeVisionClipCollectionSavedFilters(saved))).toEqual(saved)
+    expect(() => parseVisionClipCollectionSavedFilterManifest(JSON.stringify({ schemaVersion: 2, filters: saved }))).toThrow('格式无效')
   })
 
   it('upserts newest saved filters, caps the list and removes by id', () => {
@@ -40,5 +42,17 @@ describe('clip inbox filter preferences', () => {
     expect(inserted).toHaveLength(20)
     expect(inserted.some((item) => item.id === 'filter-19')).toBe(false)
     expect(removeVisionClipCollectionSavedFilter(inserted, 'new-filter').some((item) => item.id === 'new-filter')).toBe(false)
+  })
+
+  it('merges imported views with duplicate, id collision and capacity protection', () => {
+    const current = normalizeVisionClipCollectionSavedFilters([{ id: 'same-id', name: '当前视图', query: '当前', tags: [], tagMode: 'any', createdAt: 1, updatedAt: 1 }])
+    const result = mergeVisionClipCollectionSavedFilters(current, normalizeVisionClipCollectionSavedFilters([
+      { id: 'same-id', name: '导入视图', query: '导入', tags: [], tagMode: 'any', createdAt: 2, updatedAt: 2 },
+      { id: 'new-id', name: '重复条件', query: '当前', tags: [], tagMode: 'any', createdAt: 3, updatedAt: 3 },
+      { id: 'other-id', name: '新视图', query: '新', tags: [], tagMode: 'any', createdAt: 4, updatedAt: 4 }
+    ]))
+    expect(result.importedCount).toBe(2)
+    expect(result.skippedCount).toBe(1)
+    expect(result.filters.map((filter) => filter.id)).toEqual(['same-id', 'same-id-import-1', 'other-id'])
   })
 })

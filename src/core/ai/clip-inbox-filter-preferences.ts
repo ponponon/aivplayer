@@ -25,6 +25,12 @@ export type VisionClipCollectionSavedFilter = VisionClipCollectionFilterPreferen
   updatedAt: number
 }
 
+export type VisionClipCollectionSavedFilterImportResult = {
+  filters: VisionClipCollectionSavedFilter[]
+  importedCount: number
+  skippedCount: number
+}
+
 function normalizeFilterTags(value: unknown): string[] {
   if (!Array.isArray(value)) return []
   return [...new Set(value.map((tag) => normalizeVisionCollectionTag(tag)).filter(Boolean))].slice(0, MAX_FILTER_TAGS)
@@ -94,6 +100,13 @@ export function parseVisionClipCollectionSavedFilters(raw: string | null, fallba
   }
 }
 
+export function parseVisionClipCollectionSavedFilterManifest(raw: string, fallbackTimestamp = Date.now()): VisionClipCollectionSavedFilter[] {
+  const parsed = JSON.parse(raw) as unknown
+  const record = parsed && typeof parsed === 'object' ? parsed as Record<string, unknown> : null
+  if (record?.schemaVersion !== VISION_CLIP_COLLECTION_SAVED_FILTERS_SCHEMA_VERSION || !Array.isArray(record.filters)) throw new Error('筛选视图文件格式无效')
+  return normalizeVisionClipCollectionSavedFilters(record.filters, fallbackTimestamp)
+}
+
 export function serializeVisionClipCollectionSavedFilters(filters: readonly VisionClipCollectionSavedFilter[]): string {
   return JSON.stringify({ schemaVersion: VISION_CLIP_COLLECTION_SAVED_FILTERS_SCHEMA_VERSION, filters: normalizeVisionClipCollectionSavedFilters(filters) })
 }
@@ -106,6 +119,40 @@ export function upsertVisionClipCollectionSavedFilter(current: readonly VisionCl
 
 export function removeVisionClipCollectionSavedFilter(current: readonly VisionClipCollectionSavedFilter[], id: string): VisionClipCollectionSavedFilter[] {
   return normalizeVisionClipCollectionSavedFilters(current.filter((item) => item.id !== id))
+}
+
+function savedFilterKey(filter: VisionClipCollectionSavedFilter): string {
+  return `${filter.query.toLocaleLowerCase()}\0${filter.tagMode}\0${[...filter.tags].sort().join('\0')}`
+}
+
+export function mergeVisionClipCollectionSavedFilters(current: readonly VisionClipCollectionSavedFilter[], imported: readonly VisionClipCollectionSavedFilter[]): VisionClipCollectionSavedFilterImportResult {
+  const existing = normalizeVisionClipCollectionSavedFilters(current)
+  const next = [...existing]
+  const seenIds = new Set(next.map((filter) => filter.id))
+  const seenKeys = new Set(next.map(savedFilterKey))
+  let importedCount = 0
+  let skippedCount = 0
+  for (const candidate of normalizeVisionClipCollectionSavedFilters(imported)) {
+    const key = savedFilterKey(candidate)
+    if (seenKeys.has(key) || next.length >= MAX_SAVED_FILTERS) {
+      skippedCount += 1
+      continue
+    }
+    let id = candidate.id
+    if (seenIds.has(id)) {
+      let suffix = 1
+      do {
+        id = `${candidate.id}-import-${suffix}`.slice(0, MAX_SAVED_FILTER_ID_LENGTH)
+        suffix += 1
+      } while (seenIds.has(id))
+    }
+    const importedFilter = { ...candidate, id }
+    next.push(importedFilter)
+    seenIds.add(id)
+    seenKeys.add(key)
+    importedCount += 1
+  }
+  return { filters: normalizeVisionClipCollectionSavedFilters(next), importedCount, skippedCount }
 }
 
 /** Drops saved tags that no longer occur in the loaded collection set. */
