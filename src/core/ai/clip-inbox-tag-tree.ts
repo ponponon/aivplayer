@@ -81,10 +81,13 @@ export function matchesVisionCollectionTagFilter(
   selectedTags: readonly unknown[],
   metadata: readonly VisionClipCollectionTagMetadata[],
   mode: VisionCollectionTagFilterMode,
+  excludedTags: readonly unknown[] = [],
 ): boolean {
   const normalizedSelectedTags = [...new Set(selectedTags.map((tag) => normalizeVisionCollectionTag(tag)).filter(Boolean))]
-  if (normalizedSelectedTags.length === 0) return true
+  const normalizedExcludedTags = [...new Set(excludedTags.map((tag) => normalizeVisionCollectionTag(tag)).filter(Boolean))]
   const matchesTag = (selectedTag: string): boolean => collectionTags.some((tag) => isVisionCollectionTagDescendantOrSelf(tag, selectedTag, metadata))
+  if (normalizedExcludedTags.some(matchesTag)) return false
+  if (normalizedSelectedTags.length === 0) return true
   return mode === 'all' ? normalizedSelectedTags.every(matchesTag) : normalizedSelectedTags.some(matchesTag)
 }
 

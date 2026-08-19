@@ -15,6 +15,7 @@ export type VisionClipCollectionFilterPreferences = {
   schemaVersion: 1
   query: string
   tags: string[]
+  excludedTags: string[]
   tagMode: VisionCollectionTagFilterMode
 }
 
@@ -53,6 +54,7 @@ export function normalizeVisionClipCollectionFilterPreferences(value: unknown): 
     schemaVersion: VISION_CLIP_COLLECTION_FILTER_PREFERENCES_SCHEMA_VERSION,
     query,
     tags: normalizeFilterTags(record.tags),
+    excludedTags: normalizeFilterTags(record.excludedTags),
     tagMode: record.tagMode === 'all' ? 'all' : 'any'
   }
 }
@@ -132,13 +134,15 @@ export function removeVisionClipCollectionSavedFilter(current: readonly VisionCl
 }
 
 function savedFilterKey(filter: VisionClipCollectionSavedFilter): string {
-  return `${filter.query.toLocaleLowerCase()}\0${filter.tagMode}\0${[...filter.tags].sort().join('\0')}`
+  return `${filter.query.toLocaleLowerCase()}\0${filter.tagMode}\0${[...filter.tags].sort().join('\0')}\0!${[...filter.excludedTags].sort().join('\0')}`
 }
 
 function sameSavedFilter(left: VisionClipCollectionSavedFilter, right: VisionClipCollectionSavedFilter): boolean {
   return left.id === right.id
     && left.name === right.name
     && left.query === right.query
+    && left.excludedTags.length === right.excludedTags.length
+    && left.excludedTags.every((tag, index) => tag === right.excludedTags[index])
     && left.tagMode === right.tagMode
     && left.tags.length === right.tags.length
     && left.tags.every((tag, index) => tag === right.tags[index])

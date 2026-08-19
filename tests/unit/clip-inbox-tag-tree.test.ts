@@ -22,6 +22,9 @@ describe('clip inbox tag tree', () => {
     expect(matchesVisionCollectionTagFilter(['采访'], ['项目', '音频'], tree, 'all')).toBe(false)
     expect(matchesVisionCollectionTagFilter(['孤立'], ['项目', '孤立'], tree, 'any')).toBe(true)
     expect(matchesVisionCollectionTagFilter(['孤立'], [], tree, 'all')).toBe(true)
+    expect(matchesVisionCollectionTagFilter(['采访'], [], tree, 'any', ['项目'])).toBe(false)
+    expect(matchesVisionCollectionTagFilter(['音频'], ['项目'], tree, 'any', ['采访'])).toBe(true)
+    expect(matchesVisionCollectionTagFilter(['采访', '音频'], ['项目'], tree, 'any', ['音频'])).toBe(false)
   })
 
   it('hides descendants under a collapsed ancestor but keeps siblings visible', () => {
