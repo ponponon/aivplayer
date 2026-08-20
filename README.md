@@ -39,6 +39,22 @@
   <a href="README.ko-KR.md">한국어</a>
 </p>
 
+## Product preview
+
+<p align="center">
+  <a href="https://aivplayer.pages.dev/">
+    <img src="https://releases.quniv.cn/aivplayer/site/screenshots/player-asr-panel.png" width="860" alt="AIVPlayer player and subtitle workspace">
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://aivplayer.pages.dev/">
+    <img src="https://releases.quniv.cn/aivplayer/site/screenshots/settings-panel-en.png" width="520" alt="AIVPlayer settings panel">
+  </a>
+</p>
+
+<p align="center"><em>Real interface screenshots from the <a href="https://aivplayer.pages.dev/">AIVPlayer product site</a>.</em></p>
+
 ---
 
 ## About

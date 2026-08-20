@@ -39,6 +39,22 @@
   <a href="README.ko-KR.md">한국어</a>
 </p>
 
+## 製品プレビュー
+
+<p align="center">
+  <a href="https://aivplayer.pages.dev/">
+    <img src="https://releases.quniv.cn/aivplayer/site/screenshots/player-asr-panel.png" width="860" alt="AIVPlayer のプレイヤーと字幕ワークスペース">
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://aivplayer.pages.dev/">
+    <img src="https://releases.quniv.cn/aivplayer/site/screenshots/settings-panel-en.png" width="520" alt="AIVPlayer の設定パネル">
+  </a>
+</p>
+
+<p align="center"><em><a href="https://aivplayer.pages.dev/">AIVPlayer 製品サイト</a>に掲載している実際の画面です。</em></p>
+
 ---
 
 ## 概要
