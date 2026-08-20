@@ -73,6 +73,7 @@
       title: 'AIVPlayer 정보',
       description: '로컬 미디어와 AI 자막을 지원하는 크로스 플랫폼 플레이어입니다.',
       versionLabel: '버전',
+      releaseDateLabel: '출시일',
       licenseLabel: '라이선스',
       license: 'MIT License',
       websiteLabel: '프로젝트',

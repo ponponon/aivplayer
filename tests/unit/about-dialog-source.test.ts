@@ -14,11 +14,14 @@ describe('cross-platform about dialog', () => {
 
   it('loads the packaged version and follows the shared dialog accessibility pattern', () => {
     const dialogSource = readSource('src/renderer/src/app/about-dialog.tsx')
+    const releaseSource = readSource('src/shared/app-release.ts')
     const overlaySource = readSource('src/renderer/src/app/app-overlays.tsx')
     const playerCssSource = readSource('src/renderer/src/styles/player.css')
     const aboutCssSource = readSource('src/renderer/src/styles/player/about-dialog.css')
 
     expect(dialogSource).toContain('window.aiv.getAppVersion()')
+    expect(dialogSource).toContain('APP_RELEASE_DATE')
+    expect(releaseSource).toContain("APP_RELEASE_DATE = '2026-08-20'")
     expect(dialogSource).toContain('useModalFocusTrap(true')
     expect(dialogSource).toContain('role="dialog"')
     expect(dialogSource).toContain('aria-labelledby="about-dialog-title"')
@@ -31,7 +34,18 @@ describe('cross-platform about dialog', () => {
 
   it('keeps the about dialog copy available in every supported locale', () => {
     for (const locale of ['zh-CN', 'en-US', 'ja-JP', 'ko-KR']) {
-      expect(readSource(`src/shared/i18n/locales/${locale}.ts`)).toContain('aboutDialog:')
+      const source = readSource(`src/shared/i18n/locales/${locale}.ts`)
+      expect(source).toContain('aboutDialog:')
+      expect(source).toContain('releaseDateLabel:')
     }
+  })
+
+  it('configures the native about panel with a visible ISO release date', () => {
+    const desktopSource = readSource('src/desktop/desktop-settings.ts')
+    const panelSource = readSource('src/desktop/about-panel.ts')
+
+    expect(desktopSource).toContain('configureAboutPanel()')
+    expect(panelSource).toContain('createAboutPanelOptions')
+    expect(panelSource).toContain('copyright: `${copy.releaseDateLabel} ${releaseDate}\\nCopyright © 2026 ponponon`')
   })
 })

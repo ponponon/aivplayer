@@ -1,5 +1,6 @@
 import { CircleQuestionMark, ExternalLink, X } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactElement } from 'react'
+import { APP_RELEASE_DATE } from '../../../shared/app-release'
 import { OFFICIAL_WEBSITE_URL } from '../../../shared/app-links'
 import type { LocaleCopy } from '../../../shared/i18n'
 import { useModalFocusTrap } from './use-modal-focus-trap'
@@ -49,6 +50,7 @@ export function AboutDialog({ copy, onClose }: AboutDialogProps): ReactElement {
         <p id="about-dialog-description" className="about-dialog-description">{copy.aboutDialog.description}</p>
         <div className="about-dialog-meta">
           <div><span>{copy.aboutDialog.versionLabel}</span><strong>{version}</strong></div>
+          <div><span>{copy.aboutDialog.releaseDateLabel}</span><strong>{APP_RELEASE_DATE}</strong></div>
           <div><span>{copy.aboutDialog.licenseLabel}</span><strong>{copy.aboutDialog.license}</strong></div>
           <div className="about-dialog-meta-wide"><span>{copy.aboutDialog.websiteLabel}</span><strong>{copy.aboutDialog.website}</strong></div>
         </div>

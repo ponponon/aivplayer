@@ -1,5 +1,6 @@
 import { Check, Download, ExternalLink, Info, RefreshCw, RotateCcw } from 'lucide-react'
 import type { ReactElement } from 'react'
+import { APP_RELEASE_DATE } from '../../../../shared/app-release'
 import type { AppUpdateState } from '../../../../shared/app-update-types'
 import { OFFICIAL_WEBSITE_URL } from '../../../../shared/app-links'
 import type { LocaleCopy } from '../../../../shared/i18n'
@@ -57,6 +58,10 @@ export function AboutSettingsSection({ copy, activeSectionId, updateState, onChe
 
       <SettingsField title={copy.settingsDialog.about.versionLabel}>
         <div className="settings-about-value">{updateState.currentVersion || '—'}</div>
+      </SettingsField>
+
+      <SettingsField title={copy.aboutDialog.releaseDateLabel}>
+        <div className="settings-about-value">{APP_RELEASE_DATE}</div>
       </SettingsField>
 
       <SettingsField title={copy.settingsDialog.about.licenseLabel}>

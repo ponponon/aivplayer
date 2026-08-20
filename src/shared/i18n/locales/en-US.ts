@@ -73,6 +73,7 @@
       title: 'About AIVPlayer',
       description: 'A cross-platform player for local media and AI-assisted subtitles.',
       versionLabel: 'Version',
+      releaseDateLabel: 'Release date',
       licenseLabel: 'License',
       license: 'MIT License',
       websiteLabel: 'Project',

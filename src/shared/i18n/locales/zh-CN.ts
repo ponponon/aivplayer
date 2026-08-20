@@ -73,6 +73,7 @@
       title: '关于 AIVPlayer',
       description: '一款面向本地媒体和 AI 字幕工作的跨平台播放器。',
       versionLabel: '版本',
+      releaseDateLabel: '发布日期',
       licenseLabel: '许可证',
       license: 'MIT License',
       websiteLabel: '项目地址',

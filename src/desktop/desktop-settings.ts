@@ -1,6 +1,7 @@
 import { app, Menu } from 'electron'
 import { readAppSettings, writeAppSettings } from '../core/app-settings'
 import { APP_NAME, createApplicationMenuTemplate } from './app-menu'
+import { createAboutPanelOptions } from './about-panel'
 import { getAppCopy } from '../shared/i18n'
 import type { AppLocale } from '../shared/localization'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
@@ -19,8 +20,13 @@ export async function loadAppSettings(): Promise<void> {
 export async function saveAppSettings(settings: Parameters<typeof writeAppSettings>[1]): Promise<typeof desktopState.currentAppSettings> {
   desktopState.currentAppSettings = await writeAppSettings(app.getPath('userData'), settings, app.getPath('videos'))
   updateAppUpdaterPreference(desktopState.currentAppSettings.ui.autoUpdate)
+  configureAboutPanel()
   installApplicationMenu()
   return desktopState.currentAppSettings
+}
+
+export function configureAboutPanel(): void {
+  app.setAboutPanelOptions(createAboutPanelOptions(getSettingsCopy().aboutDialog))
 }
 
 export function installApplicationMenu(): void {

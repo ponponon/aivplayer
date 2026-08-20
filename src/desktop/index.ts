@@ -1,6 +1,6 @@
 import { app, BrowserWindow } from 'electron'
 import { registerMediaProtocolHandler, registerMediaProtocolScheme } from './media/media-protocol'
-import { APP_NAME, installApplicationMenu, loadAppSettings } from './desktop-settings'
+import { APP_NAME, configureAboutPanel, installApplicationMenu, loadAppSettings } from './desktop-settings'
 import { registerBatchSubtitleIpc } from './ipc-batch-subtitle'
 import { registerClipExportIpc } from './ipc-clip-export'
 import { registerTimelineExportIpc } from './ipc-timeline-export'
@@ -119,7 +119,7 @@ if (isCliInvocation) {
       await loadAppSettings()
       registerMediaProtocolHandler()
       registerIpc()
-      app.setAboutPanelOptions({ applicationName: APP_NAME })
+      configureAboutPanel()
       installApplicationMenu()
       applyMacDockIcon()
       const mainWindow = createWindow()
