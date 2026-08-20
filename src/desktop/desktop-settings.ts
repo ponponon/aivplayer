@@ -7,7 +7,7 @@ import type { AppLocale } from '../shared/localization'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import { desktopState } from './desktop-state'
 import { promptForMediaFiles } from './media-dialogs'
-import { updateAppUpdaterPreference } from './app-updater'
+import { checkForAppUpdate, updateAppUpdaterPreference } from './app-updater'
 
 export function getCurrentLocale(): AppLocale {
   return desktopState.currentAppSettings.ui.locale
@@ -32,7 +32,8 @@ export function configureAboutPanel(): void {
 export function installApplicationMenu(): void {
   Menu.setApplicationMenu(Menu.buildFromTemplate(createApplicationMenuTemplate(process.platform, getCurrentLocale(), {
     openFiles: () => { void promptForMediaFiles().then((files) => { if (files.length > 0) desktopState.mainWindow?.webContents.send(IPC_CHANNELS.MEDIA_FILES_OPENED, files) }) },
-    openSettings: () => { desktopState.mainWindow?.webContents.send(IPC_CHANNELS.APP_MENU_OPEN_SETTINGS) }
+    openSettings: () => { desktopState.mainWindow?.webContents.send(IPC_CHANNELS.APP_MENU_OPEN_SETTINGS) },
+    checkForUpdates: () => { void checkForAppUpdate() }
   })))
 }
 

@@ -23,6 +23,8 @@ function getUpdateStatusLabel(copy: LocaleCopy, state: AppUpdateState): string {
       return copy.settingsDialog.about.checking
     case 'up-to-date':
       return copy.settingsDialog.about.upToDate
+    case 'available':
+      return copy.update.availableDescription(state.version ?? '—', state.currentVersion)
     case 'downloading':
       return copy.update.downloading(state.version ?? '—', state.progress ? Math.round(state.progress.percent) : null)
     case 'downloaded':
@@ -39,7 +41,7 @@ function getUpdateStatusLabel(copy: LocaleCopy, state: AppUpdateState): string {
 
 export function AboutSettingsSection({ copy, activeSectionId, updateState, onCheckForUpdate, onInstallUpdate }: AboutSettingsSectionProps): ReactElement {
   const isChecking = updateState.status === 'checking'
-  const isBusy = isChecking || updateState.status === 'downloading' || updateState.status === 'installing'
+  const isBusy = isChecking || updateState.status === 'available' || updateState.status === 'downloading' || updateState.status === 'installing'
   const canInstall = updateState.status === 'downloaded' || updateState.status === 'installing'
   const progress = updateState.progress ? Math.round(updateState.progress.percent) : null
 
@@ -94,6 +96,7 @@ export function AboutSettingsSection({ copy, activeSectionId, updateState, onChe
         <div className="settings-about-update" role="status" aria-live="polite">
           <div className={`settings-about-update-status is-${updateState.status}`}>
             {updateState.status === 'up-to-date' ? <Check size={14} /> : null}
+            {updateState.status === 'available' ? <Download size={14} /> : null}
             {updateState.status === 'downloading' ? <Download size={14} /> : null}
             {updateState.status === 'downloaded' || updateState.status === 'installing' ? <RotateCcw size={14} /> : null}
             <span>{getUpdateStatusLabel(copy, updateState)}</span>

@@ -267,7 +267,7 @@ Windows NSIS and Linux `.deb` install the `aivcli` launcher and add it to the sy
 
 ### Automatic updates
 
-After launch, official Windows and Linux installers check GitHub Releases in the background and download a new version for the current platform. When the download finishes, a “Restart and update” button appears at the top of the window; installation only begins after clicking it and does not forcibly interrupt playback or editing. macOS automatic updates remain disabled by the current runtime policy, so updates must be downloaded manually from GitHub even though the 0.6.0 DMG / ZIP packages are signed and notarized. Development mode and `aivcli` do not participate in automatic updates.
+After launch, official Windows, Linux, and macOS installers check GitHub Releases in the background. When a new version is found, an update dialog lets you skip it, be reminded later, or download it; installation only begins after clicking “Restart and update” and does not forcibly interrupt playback or editing. macOS also provides “Check for Updates…” in the application menu. Development mode, Windows Store builds, and `aivcli` do not participate in automatic updates.
 
 Automatic updates depend on the `latest*.yml` metadata and corresponding installer/update packages on the GitHub release page, so the release process must upload all of them.
 

@@ -29,7 +29,8 @@ describe('application menu', () => {
   it('connects application menu actions to the main process', () => {
     const openFiles = vi.fn()
     const openSettings = vi.fn()
-    const template = createApplicationMenuTemplate('darwin', 'en-US', { openFiles, openSettings })
+    const checkForUpdates = vi.fn()
+    const template = createApplicationMenuTemplate('darwin', 'en-US', { openFiles, openSettings, checkForUpdates })
     const appSubmenu = template[0]?.submenu
     const fileSubmenu = template[1]?.submenu
 
@@ -38,9 +39,11 @@ describe('application menu', () => {
     }
 
     appSubmenu[1]?.click?.({} as never, {} as never, {} as never)
+    appSubmenu[2]?.click?.({} as never, {} as never, {} as never)
     fileSubmenu[0]?.click?.({} as never, {} as never, {} as never)
 
     expect(openSettings).toHaveBeenCalledOnce()
+    expect(checkForUpdates).toHaveBeenCalledOnce()
     expect(openFiles).toHaveBeenCalledOnce()
   })
 })

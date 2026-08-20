@@ -7,6 +7,7 @@ export const APP_NAME = 'AIVPlayer'
 export type ApplicationMenuActions = {
   openFiles?: () => void
   openSettings?: () => void
+  checkForUpdates?: () => void
 }
 
 export function createApplicationMenuTemplate(
@@ -72,6 +73,7 @@ export function createApplicationMenuTemplate(
       submenu: [
         { role: 'about', label: menu.about },
         { label: menu.settings, accelerator: 'CommandOrControl+,', click: actions.openSettings },
+        { label: menu.checkForUpdates, click: actions.checkForUpdates },
         { type: 'separator' },
         { role: 'services', label: menu.services },
         { type: 'separator' },

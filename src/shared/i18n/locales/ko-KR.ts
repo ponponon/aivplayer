@@ -3,6 +3,7 @@
     menu: {
       about: 'AIVPlayer 정보',
       settings: '설정…',
+      checkForUpdates: '업데이트 확인…',
       file: '파일',
       openFiles: '미디어 파일 열기…',
       close: '윈도우 닫기',
@@ -1229,10 +1230,18 @@
       sourceAria: (sourceName: string) => `${sourceName}에서 추천 ASR 모델 다운로드`
     },
     update: {
+      availableTitle: '새 AIVPlayer 버전이 출시되었습니다',
+      availableDescription: (version: string, currentVersion: string) => `AIVPlayer ${version}을(를) 다운로드할 수 있습니다. 현재 버전은 ${currentVersion}입니다. 지금 다운로드할까요?`,
       downloading: (version: string, percent: number | null) => `백그라운드에서 AIVPlayer ${version} 다운로드 중${percent === null ? '…' : ` · ${percent}%`}`,
       ready: (version: string) => `AIVPlayer ${version}을(를) 설치할 준비가 되었습니다.`,
       installing: (version: string) => `AIVPlayer ${version} 설치 중…`,
       error: (message: string) => `자동 업데이트 실패${message ? `: ${message}` : ''}`,
+      autoInstall: '앞으로 업데이트를 자동으로 다운로드하고 설치',
+      skipVersion: '이 버전 건너뛰기',
+      remindLater: '나중에 알림',
+      installAction: '업데이트 설치',
+      downloadingAction: '다운로드 중…',
+      downloadProgress: (percent: number) => `업데이트 다운로드 진행률 ${percent}%`,
       restartAction: '재시작하여 업데이트',
       retryAction: '다시 확인',
       installingAction: '설치 중…'

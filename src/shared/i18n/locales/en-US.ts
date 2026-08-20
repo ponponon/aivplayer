@@ -3,6 +3,7 @@
     menu: {
       about: 'About AIVPlayer',
       settings: 'Settings…',
+      checkForUpdates: 'Check for Updates…',
       file: 'File',
       openFiles: 'Open media files…',
       close: 'Close Window',
@@ -1229,10 +1230,18 @@
       sourceAria: (sourceName: string) => `Download the recommended ASR model from ${sourceName}`
     },
     update: {
+      availableTitle: 'A new version of AIVPlayer is available',
+      availableDescription: (version: string, currentVersion: string) => `AIVPlayer ${version} is available to download. You are currently using version ${currentVersion}. Download it now?`,
       downloading: (version: string, percent: number | null) => `Downloading AIVPlayer ${version} in the background${percent === null ? '…' : ` · ${percent}%`}`,
       ready: (version: string) => `AIVPlayer ${version} is ready to install.`,
       installing: (version: string) => `Installing AIVPlayer ${version}…`,
       error: (message: string) => `Automatic update failed${message ? `: ${message}` : ''}`,
+      autoInstall: 'Automatically download and install updates in the future',
+      skipVersion: 'Skip this version',
+      remindLater: 'Remind me later',
+      installAction: 'Install Update',
+      downloadingAction: 'Downloading…',
+      downloadProgress: (percent: number) => `Update download progress ${percent}%`,
       restartAction: 'Restart & update',
       retryAction: 'Retry check',
       installingAction: 'Installing…'

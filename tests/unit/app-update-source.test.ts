@@ -10,18 +10,36 @@ describe('app update source constraints', () => {
     })
   })
 
-  it('downloads in the background and installs only after explicit restart', () => {
+  it('prompts before downloading and installs only after explicit restart', () => {
     const updaterSource = readSource('src/desktop/app-updater.ts')
 
-    expect(updaterSource).toContain("process.platform !== 'darwin'")
+    expect(updaterSource).not.toContain("process.platform !== 'darwin'")
     expect(updaterSource).toContain('!process.windowsStore')
     expect(updaterSource).toContain('autoUpdatePreference')
     expect(updaterSource).toContain('updateAppUpdaterPreference')
     expect(updaterSource).toContain('startAutomaticUpdateChecks')
+    expect(updaterSource).toContain("status: 'available'")
+    expect(updaterSource).toContain('downloadAppUpdate')
+    expect(updaterSource).toContain('skipAppUpdate')
+    expect(updaterSource).toContain('writeSkippedUpdateVersion')
     expect(updaterSource).toContain('autoUpdater.autoDownload = false')
     expect(updaterSource).toContain('autoUpdater.autoInstallOnAppQuit = false')
-    expect(updaterSource).toContain('void autoUpdater.downloadUpdate()')
+    expect(updaterSource).toContain('await pkg.autoUpdater.downloadUpdate()')
     expect(updaterSource).toContain('autoUpdater.quitAndInstall(true, true)')
+  })
+
+  it('exposes the ChatGPT-style update dialog actions', () => {
+    const dialogSource = readSource('src/renderer/src/app/app-update-dialog.tsx')
+    const channelSource = readSource('src/shared/ipc-channels.ts')
+
+    expect(dialogSource).toContain('skipVersion')
+    expect(dialogSource).toContain('remindLater')
+    expect(dialogSource).toContain('autoInstall')
+    expect(dialogSource).toContain('onDownload')
+    expect(dialogSource).toContain('onInstall')
+    expect(channelSource).toContain("APP_UPDATE_DOWNLOAD: 'app-update:download'")
+    expect(channelSource).toContain("APP_UPDATE_DISMISS: 'app-update:dismiss'")
+    expect(channelSource).toContain("APP_UPDATE_SKIP: 'app-update:skip'")
   })
 
   it('publishes update metadata required by electron-updater', () => {

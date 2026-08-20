@@ -3,6 +3,7 @@ export type AppUpdateStatus =
   | 'idle'
   | 'checking'
   | 'up-to-date'
+  | 'available'
   | 'downloading'
   | 'downloaded'
   | 'installing'

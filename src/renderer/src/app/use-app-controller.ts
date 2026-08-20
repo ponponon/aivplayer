@@ -53,5 +53,5 @@ export function useAppController() {
   const updater = useAppUpdater()
   useAppEffects(model, derived, { ...playback, ...runtime, ...quickSubtitle }, settings.patchSubtitleDisplaySettings)
 
-  return { ...model, ...derived, ...settings, ...playback, ...runtime, ...generation, ...translation, ...summary, ...summaryExport, ...aiWorkflow, ...subtitleFiles, ...quickSubtitle, ...clip, ...editing, ...aiSetup, ...webShare, appUpdateState: updater.state, checkForAppUpdate: updater.check, installAppUpdate: updater.install }
+  return { ...model, ...derived, ...settings, ...playback, ...runtime, ...generation, ...translation, ...summary, ...summaryExport, ...aiWorkflow, ...subtitleFiles, ...quickSubtitle, ...clip, ...editing, ...aiSetup, ...webShare, appUpdateState: updater.state, checkForAppUpdate: updater.check, downloadAppUpdate: updater.download, installAppUpdate: updater.install, dismissAppUpdate: updater.dismiss, skipAppUpdate: updater.skip }
 }

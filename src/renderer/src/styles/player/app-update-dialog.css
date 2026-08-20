@@ -1,0 +1,113 @@
+.app-update-dialog-backdrop {
+  z-index: 40;
+}
+
+.app-update-dialog {
+  display: grid;
+  gap: 18px;
+  width: min(680px, calc(100vw - 32px));
+  min-width: 0;
+  padding: 24px;
+  color: var(--text-primary);
+  background: rgba(var(--panel-rgb), 0.98);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.46);
+}
+
+.app-update-dialog:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.app-update-dialog-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: start;
+}
+
+.app-update-dialog-icon {
+  display: inline-grid;
+  width: 58px;
+  height: 58px;
+  place-items: center;
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.1);
+  border: 1px solid rgba(var(--accent-rgb), 0.28);
+  border-radius: 17px;
+}
+
+.app-update-dialog-heading {
+  min-width: 0;
+}
+
+.app-update-dialog-heading h2 {
+  margin: 3px 0 6px;
+  font-size: 20px;
+  line-height: 1.25;
+}
+
+.app-update-dialog-heading p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.app-update-dialog-progress {
+  height: 6px;
+  overflow: hidden;
+  background: rgba(var(--overlay-rgb), 0.12);
+  border-radius: 99px;
+}
+
+.app-update-dialog-progress i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: inherit;
+  transition: width 160ms ease;
+}
+
+.app-update-dialog > .setting-toggle {
+  margin-top: 2px;
+}
+
+.app-update-dialog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.app-update-dialog-actions .app-update-dialog-primary {
+  min-width: 112px;
+}
+
+@media (max-width: 560px) {
+  .app-update-dialog {
+    padding: 18px;
+  }
+
+  .app-update-dialog-header {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .app-update-dialog-close {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+  }
+
+  .app-update-dialog-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .app-update-dialog-actions button {
+    width: 100%;
+  }
+}

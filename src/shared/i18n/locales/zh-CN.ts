@@ -3,6 +3,7 @@
     menu: {
       about: '关于 AIVPlayer',
       settings: '设置…',
+      checkForUpdates: '检查更新…',
       file: '文件',
       openFiles: '打开媒体文件…',
       close: '关闭窗口',
@@ -1229,10 +1230,18 @@
       sourceAria: (sourceName: string) => `从 ${sourceName} 下载推荐 ASR 模型`
     },
     update: {
+      availableTitle: '新版本的 AIVPlayer 已经发布',
+      availableDescription: (version: string, currentVersion: string) => `AIVPlayer ${version} 可供下载，您现在的版本是 ${currentVersion}。要现在下载吗？`,
       downloading: (version: string, percent: number | null) => `正在后台下载 AIVPlayer ${version}${percent === null ? '…' : ` · ${percent}%`}`,
       ready: (version: string) => `AIVPlayer ${version} 已下载完成，可以重启更新。`,
       installing: (version: string) => `正在安装 AIVPlayer ${version}…`,
       error: (message: string) => `自动更新失败${message ? `：${message}` : ''}`,
+      autoInstall: '以后自动下载并安装更新',
+      skipVersion: '跳过这个版本',
+      remindLater: '稍后提醒我',
+      installAction: '安装更新',
+      downloadingAction: '下载中…',
+      downloadProgress: (percent: number) => `更新下载进度 ${percent}%`,
       restartAction: '重启并更新',
       retryAction: '重试检查',
       installingAction: '安装中…'

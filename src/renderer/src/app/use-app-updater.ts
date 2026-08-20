@@ -4,7 +4,10 @@ import { createInitialAppUpdateState, type AppUpdateState } from '../../../share
 export function useAppUpdater(): {
   state: AppUpdateState
   check: () => Promise<AppUpdateState>
+  download: () => Promise<AppUpdateState>
   install: () => Promise<void>
+  dismiss: () => Promise<AppUpdateState>
+  skip: (version: string) => Promise<AppUpdateState>
 } {
   const [state, setState] = useState<AppUpdateState>(() => createInitialAppUpdateState())
 
@@ -23,9 +26,12 @@ export function useAppUpdater(): {
   }, [])
 
   const check = useCallback((): Promise<AppUpdateState> => window.aiv.checkForAppUpdate(), [])
+  const download = useCallback((): Promise<AppUpdateState> => window.aiv.downloadAppUpdate(), [])
   const install = useCallback(async (): Promise<void> => {
     await window.aiv.installAppUpdate()
   }, [])
+  const dismiss = useCallback((): Promise<AppUpdateState> => window.aiv.dismissAppUpdate(), [])
+  const skip = useCallback((version: string): Promise<AppUpdateState> => window.aiv.skipAppUpdate(version), [])
 
-  return { state, check, install }
+  return { state, check, download, install, dismiss, skip }
 }
