@@ -32,20 +32,20 @@ function createGithubAssetUrl(version, fileName) {
 const FALLBACK_DOWNLOAD_MANIFEST = {
   schemaVersion: 1,
   releases: [{
-    version: '0.6.0',
-    tag: 'v0.6.0',
-    githubUrl: `${GITHUB_RELEASES_URL}/tag/v0.6.0`,
+    version: '0.6.1',
+    tag: 'v0.6.1',
+    githubUrl: `${GITHUB_RELEASES_URL}/tag/v0.6.1`,
     assets: {
-      'darwin-arm64': { name: 'AIVPlayer-0.6.0-arm64.dmg', url: createGithubAssetUrl('0.6.0', 'AIVPlayer-0.6.0-arm64.dmg'), format: 'dmg' },
-      'win32-x64': { name: 'AIVPlayer-Setup-0.6.0-x64.exe', url: createGithubAssetUrl('0.6.0', 'AIVPlayer-Setup-0.6.0-x64.exe'), format: 'exe' },
-      'win32-arm64': { name: 'AIVPlayer-Setup-0.6.0-arm64.exe', url: createGithubAssetUrl('0.6.0', 'AIVPlayer-Setup-0.6.0-arm64.exe'), format: 'exe' },
+      'darwin-arm64': { name: 'AIVPlayer-0.6.1-arm64.dmg', url: createGithubAssetUrl('0.6.1', 'AIVPlayer-0.6.1-arm64.dmg'), format: 'dmg' },
+      'win32-x64': { name: 'AIVPlayer-Setup-0.6.1-x64.exe', url: createGithubAssetUrl('0.6.1', 'AIVPlayer-Setup-0.6.1-x64.exe'), format: 'exe' },
+      'win32-arm64': { name: 'AIVPlayer-Setup-0.6.1-arm64.exe', url: createGithubAssetUrl('0.6.1', 'AIVPlayer-Setup-0.6.1-arm64.exe'), format: 'exe' },
       'linux-x64': {
-        appimage: { name: 'aivplayer-0.6.0-x86_64.AppImage', url: createGithubAssetUrl('0.6.0', 'aivplayer-0.6.0-x86_64.AppImage'), format: 'AppImage' },
-        deb: { name: 'aivplayer-0.6.0-amd64.deb', url: createGithubAssetUrl('0.6.0', 'aivplayer-0.6.0-amd64.deb'), format: 'deb' }
+        appimage: { name: 'aivplayer-0.6.1-x86_64.AppImage', url: createGithubAssetUrl('0.6.1', 'aivplayer-0.6.1-x86_64.AppImage'), format: 'AppImage' },
+        deb: { name: 'aivplayer-0.6.1-amd64.deb', url: createGithubAssetUrl('0.6.1', 'aivplayer-0.6.1-amd64.deb'), format: 'deb' }
       },
       'linux-arm64': {
-        appimage: { name: 'aivplayer-0.6.0-arm64.AppImage', url: createGithubAssetUrl('0.6.0', 'aivplayer-0.6.0-arm64.AppImage'), format: 'AppImage' },
-        deb: { name: 'aivplayer-0.6.0-arm64.deb', url: createGithubAssetUrl('0.6.0', 'aivplayer-0.6.0-arm64.deb'), format: 'deb' }
+        appimage: { name: 'aivplayer-0.6.1-arm64.AppImage', url: createGithubAssetUrl('0.6.1', 'aivplayer-0.6.1-arm64.AppImage'), format: 'AppImage' },
+        deb: { name: 'aivplayer-0.6.1-arm64.deb', url: createGithubAssetUrl('0.6.1', 'aivplayer-0.6.1-arm64.deb'), format: 'deb' }
       }
     }
   }, {
@@ -77,7 +77,7 @@ const copy = {
     a11y: { skip: '跳到主要内容' },
     language: { label: '语言', auto: '跟随系统' },
     nav: { features: '功能', workflow: '工作流', preview: '界面预览', download: '下载', docs: '文档' },
-    hero: { eyebrow: '本地优先 · 为视频而生', title: '你的本地 AI<br><em>视频工作台。</em>', lede: 'AIVPlayer 把播放、字幕、视觉检索和剪辑收进一款专注的桌面应用。媒体和项目默认留在你的设备上。', primary: '下载 AIVPlayer', secondary: '查看功能', localNote: '本地运行，无需账号。', mediaCaption: '真实界面 · 截取自 AIVPlayer 0.6.0' },
+    hero: { eyebrow: '本地优先 · 为视频而生', title: '你的本地 AI<br><em>视频工作台。</em>', lede: 'AIVPlayer 把播放、字幕、视觉检索和剪辑收进一款专注的桌面应用。媒体和项目默认留在你的设备上。', primary: '下载 AIVPlayer', secondary: '查看功能', localNote: '本地运行，无需账号。', mediaCaption: '真实界面 · 截取自 AIVPlayer 0.6.1' },
     signals: { local: '本地优先处理', languages: '简体中文 · English · 日本語 · 한국어', platforms: 'macOS · Windows · Linux' },
     features: { eyebrow: '一款应用，完成整条工作流', title: '少切换工具。<br><em>把时间留给内容。</em>', lede: 'AIVPlayer 让高频视频工作保持连贯：观看、理解、选段和创作，都不必把媒体库交给云端。', subtitle: { title: '字幕始终在身边', body: '用 whisper.cpp 在本地生成字幕；需要时通过 OpenAI 兼容服务翻译，并导出干净的外挂字幕文件。' }, search: { title: '找到你记得的画面', body: '使用 SigLIP2 和 LanceDB 建立本地视觉影视库。按文字或图片搜索，直接跳到匹配的时间点。' }, edit: { title: '把选段变成工作', body: '在同一个本地工作区里使用 Clip Inbox、多轨剪辑、字幕、图片工具和 AI 短剧文本创作。' } },
     workflow: { eyebrow: '更清晰的剪辑路径', title: '从导入<br>到洞察。', lede: '每一步都有自己的位置，文件和决定仍然由你掌控。', link: '阅读工作流文档', import: { title: '导入', body: '打开视频、图片、Live Photo 或音频，媒体库留在本机。' }, understand: { title: '理解', body: '按需生成字幕、摘要、章节和视觉证据。' }, shape: { title: '创作', body: '收集片段、调整字幕、处理图片，并在时间线上剪辑。' }, export: { title: '导出', body: '导出片段、字幕和工程，也可以在局域网共享 Web 播放器。' } },
@@ -90,7 +90,7 @@ const copy = {
     a11y: { skip: 'Skip to content' },
     language: { label: 'Language', auto: 'Auto' },
     nav: { features: 'Features', workflow: 'Workflow', preview: 'Preview', download: 'Download', docs: 'Docs' },
-    hero: { eyebrow: 'PRIVATE BY DEFAULT · BUILT FOR VIDEO', title: 'Your local AI<br><em>video workspace.</em>', lede: 'AIVPlayer brings playback, subtitles, visual search, and editing into one focused desktop app. Your media and projects stay on your machine by default.', primary: 'Download AIVPlayer', secondary: 'Explore features', localNote: 'Runs locally. No account required.', mediaCaption: 'Real interface · captured from AIVPlayer 0.6.0' },
+    hero: { eyebrow: 'PRIVATE BY DEFAULT · BUILT FOR VIDEO', title: 'Your local AI<br><em>video workspace.</em>', lede: 'AIVPlayer brings playback, subtitles, visual search, and editing into one focused desktop app. Your media and projects stay on your machine by default.', primary: 'Download AIVPlayer', secondary: 'Explore features', localNote: 'Runs locally. No account required.', mediaCaption: 'Real interface · captured from AIVPlayer 0.6.1' },
     signals: { local: 'Local-first processing', languages: '中文 · English · 日本語 · 한국어', platforms: 'macOS · Windows · Linux' },
     features: { eyebrow: 'ONE APP, THE WHOLE CUT', title: 'Less tool switching.<br><em>More time with the story.</em>', lede: 'AIVPlayer keeps the everyday video workflow close: watch, understand, select, and shape without handing your library to a cloud service.', subtitle: { title: 'Subtitles that stay close', body: 'Generate local subtitles with whisper.cpp, translate through an OpenAI-compatible service when you choose, and export the result as a clean sidecar file.' }, search: { title: 'Find the frame you remember', body: 'Build a local visual library with SigLIP2 and LanceDB. Search by words or an image, then jump straight to the matching moment.' }, edit: { title: 'Turn selections into work', body: 'Use Clip Inbox, multi-track editing, captions, image tools, and AI short-drama writing in the same local workspace.' } },
     workflow: { eyebrow: 'A CLEARER CUT', title: 'From import<br>to insight.', lede: 'The app gives every stage a place, while keeping the files and decisions under your control.', link: 'Read the workflow docs', import: { title: 'Import', body: 'Open video, images, Live Photos, or audio and keep the library on disk.' }, understand: { title: 'Understand', body: 'Generate subtitles, summaries, chapters, and visual evidence when you need them.' }, shape: { title: 'Shape', body: 'Collect clips, refine captions, adjust images, and edit on a timeline.' }, export: { title: 'Export', body: 'Export clips, subtitles, projects, and share a local web player on your network.' } },
@@ -103,7 +103,7 @@ const copy = {
     a11y: { skip: '本文へ移動' },
     language: { label: '言語', auto: 'システムに合わせる' },
     nav: { features: '機能', workflow: 'ワークフロー', preview: '画面プレビュー', download: 'ダウンロード', docs: 'ドキュメント' },
-    hero: { eyebrow: 'ローカル優先 · 映像のために', title: 'あなたのローカル AI<br><em>ビデオワークスペース。</em>', lede: 'AIVPlayer は再生、字幕、ビジュアル検索、編集をひとつのデスクトップアプリにまとめます。メディアとプロジェクトは標準で端末内に保存されます。', primary: 'AIVPlayer をダウンロード', secondary: '機能を見る', localNote: 'ローカルで動作。アカウント不要。', mediaCaption: '実際の画面 · AIVPlayer 0.6.0 で撮影' },
+    hero: { eyebrow: 'ローカル優先 · 映像のために', title: 'あなたのローカル AI<br><em>ビデオワークスペース。</em>', lede: 'AIVPlayer は再生、字幕、ビジュアル検索、編集をひとつのデスクトップアプリにまとめます。メディアとプロジェクトは標準で端末内に保存されます。', primary: 'AIVPlayer をダウンロード', secondary: '機能を見る', localNote: 'ローカルで動作。アカウント不要。', mediaCaption: '実際の画面 · AIVPlayer 0.6.1 で撮影' },
     signals: { local: 'ローカル優先の処理', languages: '简体中文 · English · 日本語 · 한국어', platforms: 'macOS · Windows · Linux' },
     features: { eyebrow: 'ひとつのアプリで、一本を仕上げる', title: 'ツールの切り替えを減らし、<br><em>物語に向き合う時間を。</em>', lede: '見る、理解する、選ぶ、形にする。ライブラリをクラウドサービスに預けず、日々の映像作業をひとつにつなぎます。', subtitle: { title: 'そばにある字幕', body: 'whisper.cpp で字幕をローカル生成。必要なときだけ OpenAI 互換サービスで翻訳し、サイドカーファイルとして書き出せます。' }, search: { title: '覚えているフレームを探す', body: 'SigLIP2 と LanceDB でローカルのビジュアルライブラリを構築。言葉や画像で検索して、その瞬間へ移動できます。' }, edit: { title: '選んだ素材を仕事にする', body: 'Clip Inbox、マルチトラック編集、字幕、画像ツール、AI 短編ドラマの文章制作を同じワークスペースで。' } },
     workflow: { eyebrow: 'わかりやすい編集の流れ', title: '読み込みから<br>インサイトへ。', lede: '各ステージに居場所を作りながら、ファイルと判断はあなたの手元に残します。', link: 'ワークフローのドキュメント', import: { title: '読み込む', body: '動画、画像、Live Photo、音声を開き、ライブラリを端末に保ちます。' }, understand: { title: '理解する', body: '必要なときに字幕、要約、チャプター、視覚エビデンスを生成します。' }, shape: { title: '形にする', body: 'クリップを集め、字幕を整え、画像を調整し、タイムラインで編集します。' }, export: { title: '書き出す', body: 'クリップ、字幕、プロジェクトを出力し、ローカル Web プレーヤーも共有できます。' } },
@@ -116,7 +116,7 @@ const copy = {
     a11y: { skip: '본문으로 이동' },
     language: { label: '언어', auto: '시스템에 맞추기' },
     nav: { features: '기능', workflow: '워크플로', preview: '화면 미리보기', download: '다운로드', docs: '문서' },
-    hero: { eyebrow: '로컬 우선 · 영상을 위해 설계', title: '당신의 로컬 AI<br><em>비디오 워크스페이스.</em>', lede: 'AIVPlayer는 재생, 자막, 시각 검색, 편집을 하나의 집중된 데스크톱 앱으로 묶습니다. 미디어와 프로젝트는 기본적으로 기기에 보관됩니다.', primary: 'AIVPlayer 다운로드', secondary: '기능 살펴보기', localNote: '로컬에서 실행됩니다. 계정이 필요 없습니다.', mediaCaption: '실제 인터페이스 · AIVPlayer 0.6.0에서 캡처' },
+    hero: { eyebrow: '로컬 우선 · 영상을 위해 설계', title: '당신의 로컬 AI<br><em>비디오 워크스페이스.</em>', lede: 'AIVPlayer는 재생, 자막, 시각 검색, 편집을 하나의 집중된 데스크톱 앱으로 묶습니다. 미디어와 프로젝트는 기본적으로 기기에 보관됩니다.', primary: 'AIVPlayer 다운로드', secondary: '기능 살펴보기', localNote: '로컬에서 실행됩니다. 계정이 필요 없습니다.', mediaCaption: '실제 인터페이스 · AIVPlayer 0.6.1에서 캡처' },
     signals: { local: '로컬 우선 처리', languages: '简体中文 · English · 日本語 · 한국어', platforms: 'macOS · Windows · Linux' },
     features: { eyebrow: '하나의 앱으로 전체 컷을', title: '도구 전환은 줄이고,<br><em>이야기에 더 집중하세요.</em>', lede: '보고, 이해하고, 고르고, 다듬는 흐름을 클라우드 서비스에 라이브러리를 맡기지 않고 한곳에 유지합니다.', subtitle: { title: '곁에 두는 자막', body: 'whisper.cpp로 로컬 자막을 만들고, 원할 때만 OpenAI 호환 서비스로 번역한 뒤 깔끔한 사이드카 파일로 내보냅니다.' }, search: { title: '기억하는 프레임 찾기', body: 'SigLIP2와 LanceDB로 로컬 시각 라이브러리를 만듭니다. 단어나 이미지로 검색하고 일치하는 순간으로 바로 이동하세요.' }, edit: { title: '선택을 작업으로 바꾸기', body: 'Clip Inbox, 멀티트랙 편집, 캡션, 이미지 도구, AI 숏드라마 글쓰기를 같은 로컬 워크스페이스에서 사용하세요.' } },
     workflow: { eyebrow: '더 선명한 편집 흐름', title: '가져오기에서<br>인사이트까지.', lede: '각 단계에 자리를 마련하면서 파일과 결정은 당신의 통제 아래 둡니다.', link: '워크플로 문서 읽기', import: { title: '가져오기', body: '영상, 이미지, Live Photo, 오디오를 열고 라이브러리를 디스크에 보관합니다.' }, understand: { title: '이해하기', body: '필요할 때 자막, 요약, 챕터, 시각 증거를 생성합니다.' }, shape: { title: '다듬기', body: '클립을 모으고 캡션을 정리하고 이미지를 조정하며 타임라인에서 편집합니다.' }, export: { title: '내보내기', body: '클립, 자막, 프로젝트를 내보내고 로컬 웹 플레이어를 네트워크에서 공유합니다.' } },

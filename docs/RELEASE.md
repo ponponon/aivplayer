@@ -42,6 +42,14 @@
 - 推送匹配 `v*` 的 Git tag，例如 `v0.6.0`；这是正式发布方式。
 - 手动执行 `workflow_dispatch`；默认用于 `verify_only` 预演。如果某个 tag 已经推送但 Release 尚未创建，可在包含修复的分支上将 `verify_only` 设为 `false` 重跑该 tag；已发布版本不得用此方式覆盖资产。
 
+### Release 文案约定
+
+每个正式版本都必须在 `docs/releases/v<version>.md` 保存可直接展示在 GitHub Release 的正文。发布工作流会在创建 Release 前校验该文件并通过 `body_path` 使用它；缺少文案时，发布会在上传资产前失败。
+
+正文按 PicGo v3.0.2 的清晰结构组织：先写用户可感知的 `Features`、`Performance`、`UI Improvements` 和 `Bug Fixes`，随后提供中英文版本；在底部单独放置 `国内可下载链接`，按 Windows、macOS、Linux 分平台，并把架构与安装包格式直接写成链接；最后保留 `Full Changelog`。
+
+国内下载链接使用发布工作流同步后的 R2 公共路径：`https://releases.quniv.cn/aivplayer/releases/<version>/<asset>`。链接中的资产名称必须与 `release-manifest.json` 和 GitHub Release 完全一致；如果某个平台没有对应架构，只展示实际存在的安装包，不编造链接。
+
 ## 二、发布前准备
 
 ### 1. 确认版本规则

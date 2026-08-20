@@ -47,6 +47,10 @@ describe('release workflow source constraints', () => {
     expect(releaseWorkflow).toContain('--workflow "${{ github.workflow }}"')
     expect(releaseWorkflow).toContain('--workflow-run-id "${{ github.run_id }}"')
     expect(releaseWorkflow).toContain('--workflow-run-attempt "${{ github.run_attempt }}"')
+    expect(releaseWorkflow).toContain('name: Prepare release notes')
+    expect(releaseWorkflow).toContain('cp "$notes" artifacts/assembled/release-notes.md')
+    expect(releaseWorkflow).toContain('generate_release_notes: false')
+    expect(releaseWorkflow).toContain('body_path: artifacts/assembled/release-notes.md')
   })
 
   it('publishes Vision Packs to R2 before creating the release', () => {

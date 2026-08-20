@@ -1225,6 +1225,15 @@ jobs:
       - name: Verify release manifest
         run: npm run release:check-manifest -- --artifacts-dir artifacts/assembled --tag "${{ inputs.tag || github.ref_name }}"
 
+      - name: Prepare release notes
+        shell: bash
+        run: |
+          version="${{ inputs.tag || github.ref_name }}"
+          version="${version#v}"
+          notes="docs/releases/v${version}.md"
+          test -s "$notes"
+          cp "$notes" artifacts/assembled/release-notes.md
+
       - name: Upload platform-specific Vision Packs to R2
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.verify_only != true }}
         env:
@@ -1255,7 +1264,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.tag || github.ref_name }}
-          generate_release_notes: true
+          generate_release_notes: false
+          body_path: artifacts/assembled/release-notes.md
           files: |
             artifacts/assembled/*.dmg
             artifacts/assembled/*.zip

@@ -28,6 +28,11 @@
   <url type="bugtracker">https://github.com/ponponon/aivplayer/issues</url>
   <url type="vcs-browser">https://github.com/ponponon/aivplayer</url>
   <releases>
+    <release version="0.6.1" date="2026-08-21">
+      <description>
+        <p>Improved Clip Inbox workflows, in-app updates and platform downloads for AIVPlayer 0.6.1.</p>
+      </description>
+    </release>
     <release version="0.6.0" date="2026-08-18">
       <description>
         <p>Flatpak packaging preparation for AIVPlayer 0.6.0.</p>
