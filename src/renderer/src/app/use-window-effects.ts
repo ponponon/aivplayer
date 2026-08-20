@@ -23,7 +23,7 @@ export function useWindowEffects(model: AppModel): void {
       const video = model.videoRef.current
       if (!video || video.paused) return
       video.pause()
-      syncPlayerPlayingState(model.setState, video, model.videoRef.current)
+      syncPlayerPlayingState(model.setState, video, () => model.videoRef.current)
     }
     const onVisibilityChange = (): void => { if (document.visibilityState === 'hidden') pauseVideo() }
     window.addEventListener('blur', pauseVideo)

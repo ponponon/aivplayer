@@ -33,7 +33,7 @@ export function useEditingActions(model: AppModel, derived: AppDerived, selectFi
     if (!source) return
     const restoredProject = loadEditingProject(source)
     const project = restoredProject ?? createEditingProject(source)
-    captureEditingAudio(model); const video = model.videoRef.current; video?.pause(); syncPlayerPlayingState(model.setState, video, model.videoRef.current)
+    captureEditingAudio(model); const video = model.videoRef.current; video?.pause(); syncPlayerPlayingState(model.setState, video, () => model.videoRef.current)
     const sourceTime = clampEditingTime(model.state.currentTime, durationSeconds)
     model.setEditingProject(project); model.setEditingPast([]); model.setEditingFuture([]); model.setEditingCurrentTime(sourceTime); model.setEditingClipPreview(null)
     model.setEditingSelectedClipId(null); model.setEditingSelectedCaptionId(null); model.setEditingSelectedGraphicId(null); model.setEditingSelectedVideoBlockId(null)
@@ -45,7 +45,7 @@ export function useEditingActions(model: AppModel, derived: AppDerived, selectFi
   }
   const closeEditingMode = (): void => {
     if (model.editingProject) saveEditingProject(model.editingProject)
-    const video = model.videoRef.current; video?.pause(); syncPlayerPlayingState(model.setState, video, model.videoRef.current); restoreEditingAudio(model)
+    const video = model.videoRef.current; video?.pause(); syncPlayerPlayingState(model.setState, video, () => model.videoRef.current); restoreEditingAudio(model)
     model.setIsEditingMode(false)
     model.setEditingProject(null); model.setEditingPast([]); model.setEditingFuture([]); model.setEditingCurrentTime(0); model.setEditingClipPreview(null)
     model.setEditingSelectedClipId(null); model.setEditingSelectedCaptionId(null); model.setEditingSelectedGraphicId(null); model.setEditingSelectedVideoBlockId(null); model.setEditingSourceFiles({}); model.setEditingPreviewSourceId(null)
@@ -164,7 +164,7 @@ export function useEditingActions(model: AppModel, derived: AppDerived, selectFi
     if (!video || !project) return
     if (isMediaPlaying(video)) {
       video.pause()
-      syncPlayerPlayingState(model.setState, video, model.videoRef.current)
+      syncPlayerPlayingState(model.setState, video, () => model.videoRef.current)
       return
     }
     const sourcePoint = editedTimeToSource(project.videoClips, model.editingCurrentTime)
@@ -175,7 +175,7 @@ export function useEditingActions(model: AppModel, derived: AppDerived, selectFi
     }
     if (sourcePoint && Math.abs(video.currentTime - sourcePoint.sourceSeconds) > 0.05) video.currentTime = sourcePoint.sourceSeconds
     try { await video.play() } catch { /* The media event will report the final paused state. */ }
-    syncPlayerPlayingState(model.setState, video, model.videoRef.current)
+    syncPlayerPlayingState(model.setState, video, () => model.videoRef.current)
   }
 
   useEditingPlaybackEffect(model); const captionEffect = useEditingCaptionEffect(model, derived); useEditingSourceEffect(model)

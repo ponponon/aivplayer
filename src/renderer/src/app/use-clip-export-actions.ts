@@ -9,7 +9,7 @@ export function useClipExportActions(model: AppModel, derived: AppDerived, syncP
     if (model.state.currentFile && !model.isExportingClip) {
       const video = model.videoRef.current
       video?.pause()
-      syncPlayerPlayingState(model.setState, video, model.videoRef.current)
+      syncPlayerPlayingState(model.setState, video, () => model.videoRef.current)
       model.setIsClipExportDialogOpen(true)
     }
   }

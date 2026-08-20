@@ -1,6 +1,11 @@
 import type { Dispatch, SetStateAction } from 'react'
 
 export type MediaPlaybackSnapshot = Pick<HTMLMediaElement, 'paused' | 'ended'>
+export type MediaPlaybackCurrent = MediaPlaybackSnapshot | null | undefined | (() => MediaPlaybackSnapshot | null | undefined)
+
+function readCurrentMedia(currentMedia: MediaPlaybackCurrent): MediaPlaybackSnapshot | null | undefined {
+  return typeof currentMedia === 'function' ? currentMedia() : currentMedia
+}
 
 /**
  * The media element is the source of truth for transport state. React state is
@@ -14,19 +19,19 @@ export function isMediaPlaying(media: MediaPlaybackSnapshot | null | undefined):
 export function syncPlayerPlayingState<State extends { isPlaying: boolean }>(
   setState: Dispatch<SetStateAction<State>>,
   media: MediaPlaybackSnapshot | null | undefined,
-  currentMedia: MediaPlaybackSnapshot | null | undefined = media
+  currentMedia: MediaPlaybackCurrent = media
 ): void {
-  if (media !== currentMedia) return
+  if (media !== readCurrentMedia(currentMedia)) return
   const isPlaying = isMediaPlaying(media)
-  setState((current) => current.isPlaying === isPlaying ? current : { ...current, isPlaying })
+  setState((current) => media !== readCurrentMedia(currentMedia) || current.isPlaying === isPlaying ? current : { ...current, isPlaying })
 }
 
 export function syncBooleanPlayingState(
   setState: Dispatch<SetStateAction<boolean>>,
   media: MediaPlaybackSnapshot | null | undefined,
-  currentMedia: MediaPlaybackSnapshot | null | undefined = media
+  currentMedia: MediaPlaybackCurrent = media
 ): void {
-  if (media !== currentMedia) return
+  if (media !== readCurrentMedia(currentMedia)) return
   const isPlaying = isMediaPlaying(media)
-  setState((current) => current === isPlaying ? current : isPlaying)
+  setState((current) => media !== readCurrentMedia(currentMedia) || current === isPlaying ? current : isPlaying)
 }

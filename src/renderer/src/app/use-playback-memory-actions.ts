@@ -111,7 +111,7 @@ export function usePlaybackMemoryActions(model: AppModel, patchSection: AppSetti
     if (files.length === 0) return
     const video = model.videoRef.current
     video?.pause()
-    syncPlayerPlayingState(model.setState, video, model.videoRef.current)
+    syncPlayerPlayingState(model.setState, video, () => model.videoRef.current)
     resetSubtitleState(); model.playbackEndedRef.current = false
     const playlist = mergePlaylist(model.state.playlist, files)
     const currentFile = getPlaylistFileByPath(playlist, files[0])
@@ -128,7 +128,7 @@ export function usePlaybackMemoryActions(model: AppModel, patchSection: AppSetti
   const selectFile = (file: MediaFile): void => {
     const video = model.videoRef.current
     video?.pause()
-    syncPlayerPlayingState(model.setState, video, model.videoRef.current)
+    syncPlayerPlayingState(model.setState, video, () => model.videoRef.current)
     resetSubtitleState(); model.playbackEndedRef.current = false
     recordPlaybackHistory(file)
     const initial = getInitialPlaybackState(file)

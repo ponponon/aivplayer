@@ -20,7 +20,7 @@ export function usePlaybackControls(model: AppModel, derived: AppDerived, memory
   const openPanelMode = (panelMode: Exclude<PanelMode, 'none'>): void => model.setState((current) => ({ ...current, panelMode }))
   const setPlaybackError = (message: string): void => model.setState((current) => ({ ...current, error: message }))
   const clearPlaybackError = (): void => model.setState((current) => current.error ? { ...current, error: null } : current)
-  const syncPlaybackState = useCallback((video = model.videoRef.current): void => syncPlayerPlayingState(model.setState, video, model.videoRef.current), [model.setState, model.videoRef])
+  const syncPlaybackState = useCallback((video = model.videoRef.current): void => syncPlayerPlayingState(model.setState, video, () => model.videoRef.current), [model.setState, model.videoRef])
   const togglePlay = async (): Promise<void> => {
     revealControlDeck(); const video = model.videoRef.current
     if (!video || !model.state.currentFile) return

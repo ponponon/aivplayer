@@ -28,7 +28,7 @@ export function ClipEditorPreview(props: ClipEditorPreviewProps): ReactElement {
     if (!video) return
     if (video.currentTime < selection.startSeconds || video.currentTime > selection.endSeconds) {
       if (isMediaPlaying(video)) video.pause()
-      syncBooleanPlayingState(setIsPlaying, video, videoRef.current)
+      syncBooleanPlayingState(setIsPlaying, video, () => videoRef.current)
       video.currentTime = selection.startSeconds
       setPreviewTimeSeconds(selection.startSeconds)
     }
@@ -39,7 +39,7 @@ export function ClipEditorPreview(props: ClipEditorPreviewProps): ReactElement {
     if (!video || !canPreview) return
     if (isMediaPlaying(video)) {
       video.pause()
-      syncBooleanPlayingState(setIsPlaying, video, videoRef.current)
+      syncBooleanPlayingState(setIsPlaying, video, () => videoRef.current)
       return
     }
     if (video.currentTime < selection.startSeconds || video.currentTime >= selection.endSeconds) {
@@ -47,9 +47,9 @@ export function ClipEditorPreview(props: ClipEditorPreviewProps): ReactElement {
       setPreviewTimeSeconds(selection.startSeconds)
     }
     void video.play().then(() => {
-      if (isCurrentPreviewVideo(video)) syncBooleanPlayingState(setIsPlaying, video, videoRef.current)
+      if (isCurrentPreviewVideo(video)) syncBooleanPlayingState(setIsPlaying, video, () => videoRef.current)
     }).catch(() => {
-      if (isCurrentPreviewVideo(video)) syncBooleanPlayingState(setIsPlaying, video, videoRef.current)
+      if (isCurrentPreviewVideo(video)) syncBooleanPlayingState(setIsPlaying, video, () => videoRef.current)
     })
   }
 
@@ -69,12 +69,12 @@ export function ClipEditorPreview(props: ClipEditorPreviewProps): ReactElement {
             event.currentTarget.currentTime = selection.startSeconds
             setPreviewTimeSeconds(selection.startSeconds)
           }}
-          onPlay={(event) => { if (isCurrentPreviewVideo(event.currentTarget)) syncBooleanPlayingState(setIsPlaying, event.currentTarget, videoRef.current) }}
-          onPause={(event) => { if (isCurrentPreviewVideo(event.currentTarget)) syncBooleanPlayingState(setIsPlaying, event.currentTarget, videoRef.current) }}
+          onPlay={(event) => { if (isCurrentPreviewVideo(event.currentTarget)) syncBooleanPlayingState(setIsPlaying, event.currentTarget, () => videoRef.current) }}
+          onPause={(event) => { if (isCurrentPreviewVideo(event.currentTarget)) syncBooleanPlayingState(setIsPlaying, event.currentTarget, () => videoRef.current) }}
           onTimeUpdate={(event) => {
             const video = event.currentTarget
             if (!isCurrentPreviewVideo(video)) return
-            syncBooleanPlayingState(setIsPlaying, video, videoRef.current)
+            syncBooleanPlayingState(setIsPlaying, video, () => videoRef.current)
             if (video.currentTime >= selection.endSeconds - 0.02) {
               video.pause()
               video.currentTime = selection.endSeconds

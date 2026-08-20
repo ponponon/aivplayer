@@ -40,4 +40,38 @@ describe('media playback state projection', () => {
     syncBooleanPlayingState(setIsPlaying, staleVideo, currentVideo)
     expect(isPlaying).toBe(false)
   })
+
+  it('rechecks the current media when a React state updater runs later', () => {
+    let playerState = { isPlaying: false }
+    const pendingUpdates: Array<(state: typeof playerState) => typeof playerState> = []
+    const setPlayerState: Dispatch<SetStateAction<typeof playerState>> = (update) => {
+      if (typeof update === 'function') pendingUpdates.push(update)
+      else playerState = update
+    }
+    const staleVideo = { paused: false, ended: false }
+    let currentVideo: typeof staleVideo | null = staleVideo
+
+    syncPlayerPlayingState(setPlayerState, staleVideo, () => currentVideo)
+    currentVideo = { paused: true, ended: false }
+    for (const update of pendingUpdates) playerState = update(playerState)
+
+    expect(playerState.isPlaying).toBe(false)
+  })
+
+  it('rechecks the preview media when its state updater runs later', () => {
+    let isPlaying = false
+    const pendingUpdates: Array<(state: boolean) => boolean> = []
+    const setIsPlaying: Dispatch<SetStateAction<boolean>> = (update) => {
+      if (typeof update === 'function') pendingUpdates.push(update)
+      else isPlaying = update
+    }
+    const staleVideo = { paused: false, ended: false }
+    let currentVideo: typeof staleVideo | null = staleVideo
+
+    syncBooleanPlayingState(setIsPlaying, staleVideo, () => currentVideo)
+    currentVideo = { paused: true, ended: false }
+    for (const update of pendingUpdates) isPlaying = update(isPlaying)
+
+    expect(isPlaying).toBe(false)
+  })
 })

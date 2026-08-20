@@ -19,7 +19,7 @@ export function useEditingPlaybackEffect(model: AppModel): void {
 
     const syncCurrentVideoState = (): void => {
       if (model.videoRef.current !== video) return
-      syncPlayerPlayingState(model.setState, video, model.videoRef.current)
+      syncPlayerPlayingState(model.setState, video, () => model.videoRef.current)
     }
 
     const applyClipAudio = (clip: NonNullable<typeof project>['videoClips'][number]): void => {
@@ -49,7 +49,7 @@ export function useEditingPlaybackEffect(model: AppModel): void {
           }
           video.pause()
           model.setEditingCurrentTime(active.editedEndSeconds)
-          syncPlayerPlayingState(model.setState, video, model.videoRef.current)
+          syncPlayerPlayingState(model.setState, video, () => model.videoRef.current)
           model.setState((current) => ({ ...current, currentTime: active.clip.sourceEndSeconds }))
           return
         }
