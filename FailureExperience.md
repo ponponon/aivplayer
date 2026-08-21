@@ -2039,3 +2039,9 @@
 - 原因：macOS 发布流程为了先公证 `.app`，改成先执行 `electron-builder --dir --publish never`，再用 `--prepackaged` 生成 DMG / ZIP；Electron Builder 只有在 dmg / zip 目标的 afterPack 阶段才写入 `app-update.yml`，`--dir` 阶段不会生成，后续打包只是保留缺失状态。
 - 经验：`latest-mac.yml` 是 GitHub Release 上的远程更新元数据，不能替代安装包内部的 `app-update.yml`。涉及分阶段签名、公证和 prepackaged 打包时，必须把运行时必需的本地配置显式写入，并纳入最终资源门禁。
 - 处理：将固定的 `resources/app-update.yml` 作为 `extraResources` 在签名前放入应用，`check-packaged-resources` 同时校验配置内容，发布 v0.6.2 修复已安装应用的自动更新链路；不能在签名后再改写 `.app` 资源。
+
+## 2026-08-21：智谱免费模型必须使用官方 API 编码
+
+- 现象：Cloudflare Worker 初始把 BigModel 免费模型配置为 `glm-4-flash`，但用户实际指定的是文档页面对应的 `glm-4-flash-250414`，模型名称不够精确。
+- 经验：接入第三方模型时，展示名称、文档页面标题和 API 请求中的 `model` 编码可能不同；不能只凭简称配置，必须以官方对话补全接口允许的模型枚举为准。
+- 处理：Worker 固定改为 `glm-4-flash-250414`，同步更新健康检查、测试、部署文档和功能记录，并用真实的无敏感内容请求验证返回模型和 HTTP 200。
