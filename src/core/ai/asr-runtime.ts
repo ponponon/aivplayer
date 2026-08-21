@@ -70,9 +70,7 @@ export type AsrRuntimeOptions = {
   env?: NodeJS.ProcessEnv
   extraBinaryDirectories?: string[]
   translationFetch?: (url: string, init?: RequestInit) => Promise<Response>
-  getTranslationServiceSettings?: () =>
-    | (Pick<AppSettings['asr'], 'translationBaseUrl' | 'translationModel' | 'translationApiKey'> &
-        Partial<Pick<AppSettings['asr'], 'translationGlossary'>>)
-    | null
+  translationHeaders?: Record<string, string>
+  getTranslationServiceSettings?: () => Partial<Pick<AppSettings['asr'], 'translationServiceMode' | 'translationBaseUrl' | 'translationModel' | 'translationApiKey' | 'translationGlossary'>> | null
   getLocale?: () => AppLocale
 }

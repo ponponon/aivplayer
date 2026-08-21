@@ -6,8 +6,9 @@ import type { SubtitleEmphasisMode, SubtitlePresetId } from './subtitle-presets'
 import type { PlaybackBookmark, PlaybackEndAction, PlaybackMediaProfile, PlaybackOrder, PlaybackRepeatMode, PlaybackSegment } from './playback-memory'
 import type { MediaStructureCorrection } from './media-base-types'
 import type { DramaGenerationMediaType } from './drama-types'
+import type { TranslationServiceMode } from './translation-service'
 
-export const APP_SETTINGS_SCHEMA_VERSION = 28
+export const APP_SETTINGS_SCHEMA_VERSION = 29
 
 export const SIDE_PANEL_WIDTH_MIN = 240
 export const SIDE_PANEL_WIDTH_MAX = 480
@@ -106,6 +107,7 @@ export type AppSettings = {
     preferredModelSourceId: AsrModelSourceId
     defaultSubtitleLanguage: SubtitleLanguageId
     autoLoadCachedSubtitles: boolean
+    translationServiceMode: TranslationServiceMode
     translationBaseUrl: string | null
     translationModel: string | null
     translationApiKey: string | null
@@ -283,6 +285,7 @@ export function createDefaultAppSettings(): AppSettings {
       preferredModelSourceId: 'modelscope',
       defaultSubtitleLanguage: DEFAULT_SUBTITLE_LANGUAGE,
       autoLoadCachedSubtitles: true,
+      translationServiceMode: 'managed',
       translationBaseUrl: null,
       translationModel: null,
       translationApiKey: null,

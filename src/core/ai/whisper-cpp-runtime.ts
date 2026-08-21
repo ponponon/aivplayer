@@ -59,6 +59,12 @@ import {
   runSubtitleSummaryJob,
   SubtitleSummaryError
 } from './subtitle-summary.ts'
+import {
+  MANAGED_TRANSLATION_SERVICE_AUTH_TOKEN,
+  MANAGED_TRANSLATION_SERVICE_ENDPOINT,
+  MANAGED_TRANSLATION_SERVICE_MODEL,
+  type TranslationServiceMode
+} from '../../shared/translation-service'
 
 const execFileAsync = promisify(execFile)
 const POSIX_FFMPEG_BINARY_NAMES = ['ffmpeg']
@@ -402,13 +408,39 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
   const getSubtitleCacheDirectory = (): string => env.AIVPLAYER_ASR_CACHE_DIR || join(options.userDataPath, 'asr-cache')
 
   const getTranslationServiceConfig = (): {
+    mode: TranslationServiceMode
     baseUrl: string | null
     apiKey: string | null
     model: string | null
     glossary: string | null
   } => {
     const translationSettings = options.getTranslationServiceSettings?.()
+    const hasCustomSettings = [
+      translationSettings?.translationBaseUrl,
+      translationSettings?.translationModel,
+      translationSettings?.translationApiKey
+    ].some((field) => typeof field === 'string' && field.trim().length > 0)
+    const hasEnvironmentSettings = [
+      env.AIVPLAYER_TRANSLATION_BASE_URL,
+      env.AIVPLAYER_TRANSLATION_MODEL,
+      env.AIVPLAYER_TRANSLATION_API_KEY
+    ].some((field) => typeof field === 'string' && field.trim().length > 0)
+    const mode = translationSettings?.translationServiceMode ??
+      (((translationSettings && hasCustomSettings) || hasEnvironmentSettings) ? 'custom' : 'managed')
+
+    if (mode === 'managed') {
+      return {
+        mode,
+        baseUrl: MANAGED_TRANSLATION_SERVICE_ENDPOINT,
+        apiKey: MANAGED_TRANSLATION_SERVICE_AUTH_TOKEN,
+        model: MANAGED_TRANSLATION_SERVICE_MODEL,
+        glossary:
+          translationSettings?.translationGlossary?.trim() || env.AIVPLAYER_TRANSLATION_GLOSSARY?.trim() || null
+      }
+    }
+
     return {
+      mode,
       baseUrl: translationSettings?.translationBaseUrl?.trim() || env.AIVPLAYER_TRANSLATION_BASE_URL?.trim() || null,
       apiKey: translationSettings?.translationApiKey?.trim() || env.AIVPLAYER_TRANSLATION_API_KEY?.trim() || null,
       model: translationSettings?.translationModel?.trim() || env.AIVPLAYER_TRANSLATION_MODEL?.trim() || null,
@@ -422,7 +454,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
   }
 
   const createTranslationProvider = () => {
-    const { baseUrl, apiKey, model, glossary } = getTranslationServiceConfig()
+    const { mode, baseUrl, apiKey, model, glossary } = getTranslationServiceConfig()
 
     if (!baseUrl || !apiKey || !model) {
       return null
@@ -433,6 +465,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
       apiKey,
       model,
       glossary,
+      headers: mode === 'managed' ? options.translationHeaders : undefined,
       fetchImpl: options.translationFetch
     })
   }
@@ -443,9 +476,9 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
   }
 
   const createSummaryProvider = () => {
-    const { baseUrl, apiKey, model } = getTranslationServiceConfig()
+    const { mode, baseUrl, apiKey, model } = getTranslationServiceConfig()
     if (!baseUrl || !apiKey || !model) return null
-    return createOpenAiCompatibleSummaryProvider({ baseUrl, apiKey, model, fetchImpl: options.translationFetch })
+    return createOpenAiCompatibleSummaryProvider({ baseUrl, apiKey, model, headers: mode === 'managed' ? options.translationHeaders : undefined, fetchImpl: options.translationFetch })
   }
 
   const getSummaryProviderRef = () => createSubtitleSummaryProviderRef(getTranslationServiceConfig().model)
@@ -1142,6 +1175,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
               apiKey: translationServiceConfig.apiKey,
               model: translationServiceConfig.model,
               glossary: translationServiceConfig.glossary,
+              headers: translationServiceConfig.mode === 'managed' ? options.translationHeaders : undefined,
               fetchImpl: options.translationFetch
             })
           : null

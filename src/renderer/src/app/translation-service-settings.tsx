@@ -1,6 +1,6 @@
 import { Sparkles } from 'lucide-react'
 import type { ReactElement } from 'react'
-import { SettingsField } from './settings-controls'
+import { SettingsField, SettingsSelect } from './settings-controls'
 import { SettingsTextInput, SettingsTextarea } from './settings-inputs'
 import type { SettingsSectionProps } from './settings-section-types'
 
@@ -16,34 +16,56 @@ export function TranslationServiceSettings({
   onTestTranslationService,
   asrStatus
 }: SettingsSectionProps): ReactElement {
+  const isManagedTranslationService = settings.asr.translationServiceMode === 'managed'
+  const translationServiceModeOptions = [
+    { value: 'managed' as const, label: copy.settingsDialog.subtitles.translationServiceModeOptions.managed },
+    { value: 'custom' as const, label: copy.settingsDialog.subtitles.translationServiceModeOptions.custom }
+  ]
+
   return (
     <>
       <div className="settings-note-box">
         <span className="settings-note-title">{copy.settingsDialog.subtitles.translationServiceTitle}</span>
         <p>{copy.settingsDialog.subtitles.translationServiceDescription}</p>
       </div>
-      <SettingsField title={copy.settingsDialog.subtitles.translationBaseUrl} description={copy.settingsDialog.subtitles.translationBaseUrlDescription}>
-        <SettingsTextInput
-          value={settings.asr.translationBaseUrl ?? ''}
-          autoComplete="off"
-          onChange={(translationBaseUrl) => patchSettingsSection('asr', { translationBaseUrl: translationBaseUrl.trim() || null })}
+      <SettingsField title={copy.settingsDialog.subtitles.translationServiceMode} description={copy.settingsDialog.subtitles.translationServiceModeDescription}>
+        <SettingsSelect
+          value={settings.asr.translationServiceMode}
+          options={translationServiceModeOptions}
+          onChange={(translationServiceMode) => patchSettingsSection('asr', { translationServiceMode })}
         />
       </SettingsField>
-      <SettingsField title={copy.settingsDialog.subtitles.translationModel} description={copy.settingsDialog.subtitles.translationModelDescription}>
-        <SettingsTextInput
-          value={settings.asr.translationModel ?? ''}
-          autoComplete="off"
-          onChange={(translationModel) => patchSettingsSection('asr', { translationModel: translationModel.trim() || null })}
-        />
-      </SettingsField>
-      <SettingsField title={copy.settingsDialog.subtitles.translationApiKey} description={copy.settingsDialog.subtitles.translationApiKeyDescription}>
-        <SettingsTextInput
-          type="password"
-          value={settings.asr.translationApiKey ?? ''}
-          autoComplete="new-password"
-          onChange={(translationApiKey) => patchSettingsSection('asr', { translationApiKey: translationApiKey.trim() || null })}
-        />
-      </SettingsField>
+      {isManagedTranslationService ? (
+        <div className="settings-note-box">
+          <span className="settings-note-title">{copy.settingsDialog.subtitles.translationServiceManagedTitle}</span>
+          <p>{copy.settingsDialog.subtitles.translationServiceManagedDescription}</p>
+        </div>
+      ) : (
+        <>
+          <SettingsField title={copy.settingsDialog.subtitles.translationBaseUrl} description={copy.settingsDialog.subtitles.translationBaseUrlDescription}>
+            <SettingsTextInput
+              value={settings.asr.translationBaseUrl ?? ''}
+              autoComplete="off"
+              onChange={(translationBaseUrl) => patchSettingsSection('asr', { translationBaseUrl: translationBaseUrl.trim() || null })}
+            />
+          </SettingsField>
+          <SettingsField title={copy.settingsDialog.subtitles.translationModel} description={copy.settingsDialog.subtitles.translationModelDescription}>
+            <SettingsTextInput
+              value={settings.asr.translationModel ?? ''}
+              autoComplete="off"
+              onChange={(translationModel) => patchSettingsSection('asr', { translationModel: translationModel.trim() || null })}
+            />
+          </SettingsField>
+          <SettingsField title={copy.settingsDialog.subtitles.translationApiKey} description={copy.settingsDialog.subtitles.translationApiKeyDescription}>
+            <SettingsTextInput
+              type="password"
+              value={settings.asr.translationApiKey ?? ''}
+              autoComplete="new-password"
+              onChange={(translationApiKey) => patchSettingsSection('asr', { translationApiKey: translationApiKey.trim() || null })}
+            />
+          </SettingsField>
+        </>
+      )}
       <SettingsField title={copy.settingsDialog.subtitles.translationGlossary} description={copy.settingsDialog.subtitles.translationGlossaryDescription}>
         <SettingsTextarea
           value={settings.asr.translationGlossary ?? ''}

@@ -611,6 +611,14 @@ function sanitizeAsrSettings(
   defaults: AppSettings['asr']
 ): AppSettings['asr'] {
   const asr = value ?? {}
+  const hasLegacyCustomTranslationSettings = [asr.translationBaseUrl, asr.translationModel, asr.translationApiKey].some(
+    (field) => typeof field === 'string' && field.trim().length > 0
+  )
+  const translationServiceMode = asr.translationServiceMode === 'managed' || asr.translationServiceMode === 'custom'
+    ? asr.translationServiceMode
+    : hasLegacyCustomTranslationSettings
+      ? 'custom'
+      : defaults.translationServiceMode
 
   return {
     preferredModelSourceId: isAsrModelSourceId(asr.preferredModelSourceId)
@@ -621,6 +629,7 @@ function sanitizeAsrSettings(
       : defaults.defaultSubtitleLanguage,
     autoLoadCachedSubtitles:
       typeof asr.autoLoadCachedSubtitles === 'boolean' ? asr.autoLoadCachedSubtitles : defaults.autoLoadCachedSubtitles,
+    translationServiceMode,
     translationBaseUrl: normalizeTextField(asr.translationBaseUrl, defaults.translationBaseUrl),
     translationModel: normalizeTextField(asr.translationModel, defaults.translationModel),
     translationApiKey: normalizeTextField(asr.translationApiKey, defaults.translationApiKey),

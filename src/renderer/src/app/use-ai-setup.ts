@@ -42,7 +42,7 @@ export function useAiSetup(
 
   const isAsrRuntimeReady = Boolean(model.asrStatus?.binaryPath && model.asrStatus.ffmpegPath)
   const isRecommendedModelReady = hasRecommendedModel(model.asrStatus)
-  const isTranslationConfigured = Boolean(
+  const isTranslationConfigured = model.appSettings.asr.translationServiceMode === 'managed' || Boolean(
     model.appSettings.asr.translationBaseUrl?.trim() &&
       model.appSettings.asr.translationModel?.trim() &&
       model.appSettings.asr.translationApiKey?.trim()
@@ -56,7 +56,7 @@ export function useAiSetup(
     const currentDerived = derivedRef.current
     const runtimeReady = Boolean(currentModel.asrStatus?.binaryPath && currentModel.asrStatus.ffmpegPath)
     const modelReady = hasRecommendedModel(currentModel.asrStatus)
-    const translationConfigured = Boolean(
+    const translationConfigured = currentModel.appSettings.asr.translationServiceMode === 'managed' || Boolean(
       currentModel.appSettings.asr.translationBaseUrl?.trim() &&
         currentModel.appSettings.asr.translationModel?.trim() &&
         currentModel.appSettings.asr.translationApiKey?.trim()
@@ -88,7 +88,7 @@ export function useAiSetup(
     const modelReady = hasRecommendedModel(latestStatus)
     const currentModel = modelRef.current
     const currentDerived = derivedRef.current
-    const translationReady = Boolean(
+    const translationReady = currentModel.appSettings.asr.translationServiceMode === 'managed' || Boolean(
       currentModel.appSettings.asr.translationBaseUrl?.trim() &&
         currentModel.appSettings.asr.translationModel?.trim() &&
         currentModel.appSettings.asr.translationApiKey?.trim()

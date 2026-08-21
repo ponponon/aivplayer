@@ -116,6 +116,7 @@ export type OpenAiCompatibleTranslationProviderOptions = {
   apiKey: string
   model: string
   glossary?: string | null
+  headers?: Record<string, string>
   fetchImpl?: (url: string, init?: RequestInit) => Promise<Response>
 }
 
@@ -911,10 +912,9 @@ export function createOpenAiCompatibleTranslationProvider(
       const glossaryInstruction = request.glossary?.length
         ? ` Apply these fixed glossary translations when the source term appears: ${JSON.stringify(request.glossary)}`
         : ''
-      const headers = new Headers({
-        Authorization: `Bearer ${options.apiKey}`,
-        'Content-Type': 'application/json'
-      })
+      const headers = new Headers(options.headers)
+      headers.set('Authorization', `Bearer ${options.apiKey}`)
+      headers.set('Content-Type', 'application/json')
       let response: Response
 
       try {

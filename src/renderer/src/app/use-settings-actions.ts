@@ -8,6 +8,7 @@ import {
   type AppSettingsSectionPatcher
 } from '../../../shared/app-settings'
 import type { AsrTranslationServiceTestResult } from '../../../shared/media-types'
+import { MANAGED_TRANSLATION_SERVICE_ENDPOINT } from '../../../shared/translation-service'
 import type { AppDerived } from './use-app-derived'
 import type { AppModel } from './app-types'
 
@@ -96,7 +97,9 @@ export function useSettingsActions(model: AppModel, derived: AppDerived) {
         sourceLanguage: derived.subtitleTranslationSourceLanguage,
         targetLanguage: appSettings.subtitles.targetLanguage,
         translationModel: derived.subtitleTranslationModel || undefined,
-        translationBaseUrlSummary: appSettings.asr.translationBaseUrl?.trim() || undefined
+        translationBaseUrlSummary: appSettings.asr.translationServiceMode === 'managed'
+          ? MANAGED_TRANSLATION_SERVICE_ENDPOINT
+          : appSettings.asr.translationBaseUrl?.trim() || undefined
       }
       model.setTranslationServiceTestMessage(fallback)
     } finally {
@@ -106,7 +109,7 @@ export function useSettingsActions(model: AppModel, derived: AppDerived) {
 
   useEffect(() => {
     model.setTranslationServiceTestMessage(null)
-  }, [appSettings.asr.translationBaseUrl, appSettings.asr.translationModel, derived.subtitleTranslationGlossary, derived.subtitleTranslationSourceLanguage, appSettings.subtitles.targetLanguage])
+  }, [appSettings.asr.translationServiceMode, appSettings.asr.translationBaseUrl, appSettings.asr.translationModel, derived.subtitleTranslationGlossary, derived.subtitleTranslationSourceLanguage, appSettings.subtitles.targetLanguage])
 
   return {
     patchAppSettingsSection,

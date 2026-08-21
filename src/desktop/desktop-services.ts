@@ -1,4 +1,5 @@
 import { app } from 'electron'
+import { createHash } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { getBatchSubtitleHistoryPath, getBatchSubtitleLogDirectoryPath, getBatchSubtitleStatePath, BatchSubtitleManager } from '../core/ai/batch-subtitle-manager'
@@ -45,11 +46,19 @@ export function resolveResourcePath(): string {
 
 export function getAsrRuntime(): ReturnType<typeof createWhisperCppRuntime> {
   if (!desktopState.asrRuntime) {
+    const userDataPath = app.getPath('userData')
+    const translationDeviceId = createHash('sha256').update(`aivplayer:${userDataPath}`).digest('hex')
     desktopState.asrRuntime = createWhisperCppRuntime({
-      userDataPath: app.getPath('userData'),
+      userDataPath,
       resourcePath: resolveResourcePath(),
       getLocale: getCurrentLocale,
+      translationHeaders: {
+        'X-AIVPlayer-Client': 'aivplayer',
+        'X-AIVPlayer-Device': translationDeviceId,
+        'X-AIVPlayer-Version': app.getVersion()
+      },
       getTranslationServiceSettings: () => ({
+        translationServiceMode: desktopState.currentAppSettings.asr.translationServiceMode,
         translationBaseUrl: desktopState.currentAppSettings.asr.translationBaseUrl,
         translationModel: desktopState.currentAppSettings.asr.translationModel,
         translationApiKey: desktopState.currentAppSettings.asr.translationApiKey,

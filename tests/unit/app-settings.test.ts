@@ -147,10 +147,34 @@ describe('app settings', () => {
         preferredModelSourceId: 'modelscope',
         defaultSubtitleLanguage: 'auto',
         autoLoadCachedSubtitles: true,
+        translationServiceMode: 'managed',
         translationBaseUrl: null,
         translationModel: null,
         translationApiKey: null,
         translationGlossary: null
+      }
+    })
+  })
+
+  it('keeps legacy custom translation settings in custom mode', async () => {
+    await writeFile(
+      join(tempDirectory, 'app-settings.json'),
+      JSON.stringify({
+        schemaVersion: 28,
+        asr: {
+          translationBaseUrl: 'https://example.test/v1/chat/completions',
+          translationModel: 'custom-model',
+          translationApiKey: 'custom-key'
+        }
+      })
+    )
+
+    await expect(readAppSettings(tempDirectory)).resolves.toMatchObject({
+      asr: {
+        translationServiceMode: 'custom',
+        translationBaseUrl: 'https://example.test/v1/chat/completions',
+        translationModel: 'custom-model',
+        translationApiKey: 'custom-key'
       }
     })
   })
@@ -191,7 +215,7 @@ describe('app settings', () => {
     )
 
     await expect(readAppSettings(tempDirectory)).resolves.toMatchObject({
-      schemaVersion: 28,
+      schemaVersion: 29,
       playback: {
         singleClickPause: true
       }

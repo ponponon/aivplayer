@@ -37,6 +37,7 @@ export type OpenAiCompatibleSummaryProviderOptions = {
   baseUrl: string
   apiKey: string
   model: string
+  headers?: Record<string, string>
   fetchImpl?: (url: string, init?: RequestInit) => Promise<Response>
 }
 
@@ -220,7 +221,9 @@ export function createOpenAiCompatibleSummaryProvider(options: OpenAiCompatibleS
     model: options.model,
     async complete(request): Promise<string> {
       throwIfSummaryAborted(request.signal)
-      const headers = new Headers({ Authorization: `Bearer ${options.apiKey}`, 'Content-Type': 'application/json' })
+      const headers = new Headers(options.headers)
+      headers.set('Authorization', `Bearer ${options.apiKey}`)
+      headers.set('Content-Type', 'application/json')
       let response: Response
       try {
         response = await fetchImpl(options.baseUrl, {

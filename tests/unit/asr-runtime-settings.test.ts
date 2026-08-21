@@ -313,6 +313,47 @@ describe('ASR runtime settings', () => {
     await expect(readFile(result.subtitleSrtPath ?? '', 'utf8')).resolves.toContain('技术')
   })
 
+  it('uses the built-in managed translation service without a user API key', async () => {
+    const subtitleDirectory = join(tempDirectory, 'managed-subtitles')
+    const vttPath = join(subtitleDirectory, 'demo.vtt')
+    const requests: Array<{ url: string; authorization: string | null; device: string | null; model: string | undefined }> = []
+
+    await mkdir(subtitleDirectory, { recursive: true })
+    await writeFile(vttPath, 'WEBVTT\n\n00:00:00.000 --> 00:00:01.000\nhello\n')
+
+    const runtime = createWhisperCppRuntime({
+      userDataPath: tempDirectory,
+      resourcePath: join(tempDirectory, 'resources'),
+      translationHeaders: { 'X-AIVPlayer-Device': 'test-device' },
+      getTranslationServiceSettings: () => ({ translationServiceMode: 'managed' }),
+      translationFetch: async (url, init) => {
+        const body = JSON.parse(String(init?.body ?? '{}')) as { model?: string }
+        requests.push({
+          url,
+          authorization: init?.headers instanceof Headers ? init.headers.get('Authorization') : null,
+          device: init?.headers instanceof Headers ? init.headers.get('X-AIVPlayer-Device') : null,
+          model: body.model
+        })
+        return new Response(
+          JSON.stringify({ choices: [{ message: { content: JSON.stringify([{ id: 'cue-1', text: '你好' }]) } }] }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        )
+      }
+    })
+
+    const result = await runtime.translateSubtitle({ subtitlePath: vttPath, sourceLanguage: 'en', targetLanguage: 'zh' })
+
+    expect(result.success).toBe(true)
+    expect(requests).toEqual([
+      {
+        url: 'https://aivplayer-translation.ponponon-universe.workers.dev/v1/chat/completions',
+        authorization: 'Bearer public',
+        device: 'test-device',
+        model: 'glm-4-flash-250414'
+      }
+    ])
+  })
+
   it('resolves cached translated subtitles without needing the translation API key', async () => {
     const subtitleDirectory = join(tempDirectory, 'subtitles')
     const vttPath = join(subtitleDirectory, 'demo.vtt')

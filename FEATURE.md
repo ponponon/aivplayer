@@ -1,5 +1,7 @@
 # AIVPlayer 功能列表
 
+- 字幕翻译新增开箱即用的内置托管服务：默认通过保留的 `aivplayer-translation.ponponon-universe.workers.dev` 调用服务端固定的 `glm-4-flash-250414`，客户端不携带 BigModel API Key；高级用户可以切换到自定义 OpenAI-compatible 服务，并继续使用本机加密保存的 API Key 配置。
+
 - 新增 Cloudflare 智谱翻译 Worker：客户端不携带智谱 API Key，Worker 使用 Cloudflare Secret 转发固定的 `glm-4-flash-250414` 请求，并通过设备 / IP 短时限流、Durable Objects 每日配额、请求体积和输出 Token 上限保护公共免费接口。
 
 - Linux `.deb` / AppImage 改用 512×512 的 hicolor 标准图标源；Ubuntu GNOME 可以正确找到 `aivplayer` 图标，不再因只安装 1024×1024 图标而显示默认齿轮；Linux x64 / ARM64 发布 job 会检查最终 `.deb` 中确实包含该标准尺寸图标。
