@@ -35,7 +35,6 @@ type(scope) : subject
 
 ( 3 ) subject（必须） : commit 的简短描述，不超过50个字符。
 
-
 ---
 
 对于 electron 的细节有不清楚的地方，可以直接去查看其源代码：~/Desktop/code/me/github/electron
@@ -55,7 +54,6 @@ github 发版要注意打上 tag，github releases 页面的东西也不要忘�
 
 要保证流程的一致性，别出现纰漏
 
-
 ---
 
 测试用的普通图片可以用：~/Pictures/loopy.jpg
@@ -68,25 +66,28 @@ github 发版要注意打上 tag，github releases 页面的东西也不要忘�
 
 测试用的长视频可以用(1小时24分): ~/Pictures/百万英镑.mp4
 
-----
+官网演示图专用的无版权视频：~/Downloads/12688023_3840_2160_30fps.mp4 (前面的其他视频有版权的问题，不能直接使用)
+
+---
 
 因为引入 lancedb ，我把 lancedb 的源码 clone 到 ~/Desktop/code/me/github/lancedb 了，你需要你可以查看
 
-----
+---
 
 注意维护 Cloudflare pages ，如果更新的某些功能，你觉得需要让用户知道，记得更新 Cloudflare pages
 
 现在已经配置 GitHub Actions 发布到 Cloudflare pages 了
 
------
+---
 
 对于新功能，你依据情况，可以加到 README.md 和 cloudflare pages （https://aivplayer.pages.dev/） 里面
 
 但不要什么细枝末节都加，要克制，有必要展示的才加
 
-----
+---
 
 涉及以下操作时，禁止仅在默认沙盒中执行，必须使用宿主权限：
+
 - test-proxy.sh、代理端口检测
 - gh auth/status/api/run/release
 - git push、git tag、GitHub Release
@@ -100,12 +101,10 @@ github 发版要注意打上 tag，github releases 页面的东西也不要忘�
 - `.worktrees/` 已加入 `.gitignore`，不要提交其中内容。
 - 完成后执行：`git worktree remove .worktrees/feature-a && git worktree prune`。
 
-
 ---
 
 如果要修改 README.md ，记得把 README.zh-CN.md、README.ko-KR.md、README.ja-JP.md 同步修改一下
 
-
-----
+---
 
 如果要发布新的版本，注意阅读 docs/RELEASE.md 的要求
