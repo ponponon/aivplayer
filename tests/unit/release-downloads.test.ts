@@ -96,10 +96,20 @@ describe('download publishing integration', () => {
   it('provides a manual bootstrap path for already-published releases', () => {
     expect(syncWorkflow).toContain('workflow_dispatch:')
     expect(syncWorkflow).toContain("default: v0.6.1")
+    expect(syncWorkflow).toContain('Sync latest release to R2')
     expect(syncWorkflow).toContain('npm run release:publish-downloads')
     expect(syncWorkflow).toContain('CLOUDFLARE_API_TOKEN')
     expect(syncWorkflow).not.toContain('CLOUDFLARE_R2_ACCESS_KEY_ID')
     expect(syncWorkflow).not.toContain('CLOUDFLARE_R2_SECRET_ACCESS_KEY')
+  })
+
+  it('keeps only the current release in the R2 manifest', () => {
+    const uploader = readFileSync(join(projectRoot, 'scripts/publish-release-downloads.mjs'), 'utf8')
+
+    expect(uploader).toContain('const entries = [currentEntry]')
+    expect(uploader).toContain('retention: 1')
+    expect(uploader).not.toContain('findPreviousRelease')
+    expect(uploader).not.toContain('loadExistingVersionManifest')
   })
 
   it('keeps the public page centered on one automatic download path', () => {

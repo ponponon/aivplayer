@@ -25,7 +25,7 @@ jobs:
 
       - run: npm ci
 
-      - name: Sync latest two releases to R2
+      - name: Sync latest release to R2
         run: npm run release:publish-downloads -- --tag "${{ inputs.tag }}" --repository "${{ github.repository }}" --artifacts-dir "$RUNNER_TEMP/aivplayer-no-local-artifacts"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

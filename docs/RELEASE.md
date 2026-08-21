@@ -2,7 +2,7 @@
 
 本文档记录当前项目的正式发布流程，目标是让任何维护者都能按同一套步骤发布新版本。
 
-当前发布入口仍是 GitHub Release；视觉模型、平台特定 Vision Pack 和官网最近两个版本的安装包由发布工作流同步到 Cloudflare R2。GitHub Release 是完整历史版本的权威来源，R2 只承担官网的低延迟下载入口，不替代 GitHub Release 的安装包校验，也不进入正式安装包资产清单。
+当前发布入口仍是 GitHub Release；视觉模型、平台特定 Vision Pack 和官网当前版本的安装包由发布工作流同步到 Cloudflare R2。GitHub Release 是完整历史版本的权威来源，R2 只承担官网的低延迟下载入口，不替代 GitHub Release 的安装包校验，也不进入正式安装包资产清单。
 
 ## 一、发布链路总览
 
@@ -35,7 +35,7 @@
       ↓
     通过 GitHub API 回读并校验远端资产
       ↓
-    将当前版和上一版安装包同步到 R2，删除更早下载对象并更新稳定清单
+    将当前版安装包同步到 R2，删除所有更早下载对象并更新只包含当前版本的稳定清单
 
 正式发布工作流位于 `.github/workflows/release.yml`，由以下事件触发：
 
@@ -182,7 +182,7 @@ macOS job 会先只生成签名 `.app`，再使用 `notarytool` 提交并显式�
 8. 创建 GitHub Release 并上传正式资产。
 9. 把五个平台的 Vision Pack 及 manifest 上传到 R2，并使用固定版本 / 平台 / 架构路径。
 10. 通过 GitHub API 回读 Release 资产，重新下载并校验大小、SHA-256 和 manifest 内容。
-11. 将当前版和上一版安装包写入 R2 的 `aivplayer/releases/<version>/`，更新 `download-manifest.json`，并删除更早版本的安装包对象。
+11. 将当前版安装包写入 R2 的 `aivplayer/releases/<version>/`，更新 `download-manifest.json`，并删除所有更早版本的安装包对象。
 12. 保存不含凭据的远端校验报告作为 workflow artifact。
 
 任何一个门禁失败，后续发布步骤都不应被视为成功。特别是“跳过了某个可选步骤”不能等同于“远端同步成功”。
@@ -209,7 +209,7 @@ macOS job 会先只生成签名 `.app`，再使用 `notarytool` 提交并显式�
 
 - 官网读取稳定清单：`https://releases.quniv.cn/aivplayer/releases/download-manifest.json`。
 - 安装包路径按版本隔离，例如：`https://releases.quniv.cn/aivplayer/releases/0.6.0/<asset>`。
-- R2 只保留清单中的最新两个正式版本；更早版本和 R2 中不存在的平台资产统一跳转 GitHub Releases。
+- R2 只保留清单中的最新一个正式版本；更早版本统一从 GitHub Releases 下载。
 - 发布工作流使用 `scripts/publish-release-downloads.mjs`；首次启用时，在 `Sync AIVPlayer Downloads` workflow 手动填入已发布 tag（默认 `v0.6.0`），即可把现有版本补齐到 R2。
 - 官网不会把浏览器暴露的 `MacIntel` 直接当成真实 x64 架构；当 macOS 架构信息不可用时，会从当前平台清单中选择可用安装包。若未来补充 x64 资产，重新生成 Release 清单后即可在手动选择器中出现该选项。
 
@@ -308,7 +308,7 @@ GitHub Actions 的 `workflow_dispatch` 支持 `verify_only` 输入。使用方�
 - [ ] `v<version>` tag 指向正确提交并已推送。
 - [ ] 五个平台构建和 `publish-release` 全部成功。
 - [ ] GitHub Release 资产、tag、更新元数据和远端回读校验均正常。
-- [ ] R2 稳定下载清单只包含当前版和上一版，旧版本对象已清理，历史版本链接仍指向 GitHub Releases。
+- [ ] R2 稳定下载清单只包含当前版本，所有旧版本对象已清理，历史版本链接指向 GitHub Releases。
 
 ## 九、相关文件和命令索引
 

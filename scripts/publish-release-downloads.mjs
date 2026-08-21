@@ -194,12 +194,6 @@ function findPublishedRelease(releases, tag) {
   return releases.find((release) => release.tag_name === tag && !release.draft && !release.prerelease)
 }
 
-function findPreviousRelease(releases, currentTag) {
-  return releases
-    .filter((release) => !release.draft && !release.prerelease && release.tag_name !== currentTag)
-    .sort((left, right) => String(right.published_at).localeCompare(String(left.published_at)))[0]
-}
-
 async function listR2Objects({ accountId, bucket, prefix, token }) {
   const objects = []
   let cursor = null
@@ -263,14 +257,6 @@ async function downloadGithubAsset({ asset, destination }) {
   const response = await fetch(asset.browser_download_url, { redirect: 'follow' })
   if (!response.ok || !response.body) throw new Error(`GitHub asset download failed (${response.status}): ${asset.name}`)
   await pipeline(Readable.fromWeb(response.body), createWriteStream(destination))
-}
-
-async function loadExistingVersionManifest({ publicBaseUrl, version }) {
-  const url = `${trimTrailingSlash(publicBaseUrl)}/${encodeURIComponent(version)}/download-manifest.json`
-  const response = await fetch(url, { cache: 'no-store' })
-  if (!response.ok) return null
-  const candidate = await response.json()
-  return candidate?.schemaVersion === DOWNLOAD_MANIFEST_SCHEMA_VERSION && candidate.release?.version === version ? candidate.release : null
 }
 
 async function publishVersion({ release, localAssets, repository, publicBaseUrl, accountId, bucket, r2ReleasePrefix, token, temporaryDirectory }) {
@@ -376,7 +362,6 @@ export async function publishReleaseDownloads(options = {}) {
 
   const releases = await fetchGithubReleases({ repository, token: githubToken })
   const currentRelease = findPublishedRelease(releases, tag) ?? { tag_name: tag, assets: [] }
-  const previousRelease = findPreviousRelease(releases, tag)
   const temporaryDirectory = await mkdtemp(join(process.env.RUNNER_TEMP ?? '/tmp', 'aivplayer-downloads-'))
   try {
     const localFiles = await pathExists(artifactsDirectory) ? await listReleaseArtifacts(artifactsDirectory, { includeManifest: false }) : []
@@ -393,22 +378,8 @@ export async function publishReleaseDownloads(options = {}) {
       temporaryDirectory
     })
 
+    // R2 只保留当前发布版本，历史版本继续由 GitHub Releases 提供。
     const entries = [currentEntry]
-    if (previousRelease) {
-      const previousVersion = normalizeVersion(previousRelease.tag_name)
-      const existing = await loadExistingVersionManifest({ publicBaseUrl, version: previousVersion })
-      entries.push(existing ?? await publishVersion({
-        release: previousRelease,
-        localAssets: null,
-        repository,
-        publicBaseUrl,
-        accountId,
-        bucket,
-        r2ReleasePrefix,
-        token,
-        temporaryDirectory
-      }))
-    }
 
     const manifest = createDownloadManifest({ repository, releases: entries })
     const releaseRootPrefix = `${r2ReleasePrefix}/`
