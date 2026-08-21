@@ -84,31 +84,10 @@ jobs:
             echo "rust-stable 安装失败（第 ${i} 次），$((i * 30)) 秒后重试..."
             # 首次失败时输出详细诊断：确认 CDN 区域与缺失对象
             if [ "$i" = "1" ]; then
-              echo "===== flatpak verbose 诊断 ====="
-              dbus-run-session -- flatpak install -v --user --assumeyes --noninteractive --no-static-deltas flathub "$rust_ref" 2>&1 | grep -iE "GET|404|pulling|object|delta|url" | head -30 || true
-              echo "===== summary 解析 + 对象级诊断 ====="
-              curl -s --max-time 60 "https://dl.flathub.org/repo/summary" -o /tmp/summary.bin
-              python3 - <<'PYEOF'
-import re
-d = open('/tmp/summary.bin','rb').read()
-target = b'runtime/org.freedesktop.Sdk.Extension.rust-stable/x86_64/25.08'
-pos = d.find(target)
-print(f"ref found: {pos != -1}")
-if pos != -1:
-    off = pos + len(target)
-    chunk = d[off:off+60]
-    print("after-ref bytes:", chunk.hex())
-    # checksum 通常在 metadata 后，尝试在后续 200 字节找 64-hex
-    m = re.search(rb'[0-9a-f]{64}', d[off:off+200])
-    if m:
-        csum = m.group().decode()
-        print("checksum:", csum)
-        import subprocess
-        for suffix in [".commit", ".dirtree", ".dirmeta"]:
-            url = f"https://dl.flathub.org/repo/objects/{csum[:2]}/{csum[2:]}{suffix}"
-            code = subprocess.run(["curl","-s","-o","/dev/null","-w","%{http_code}","--max-time","20",url], capture_output=True, text=True).stdout
-            print(f"object {suffix}: HTTP {code}")
-PYEOF
+              echo "===== flatpak verbose 诊断（所有请求 URL）====="
+              dbus-run-session -- flatpak install -v --user --assumeyes --noninteractive --no-static-deltas flathub "$rust_ref" 2>&1 | grep -E "^F:|404|error|Error|Loading|pulling" | head -60 || true
+              echo "===== summary.idx 对象级诊断 ====="
+              bash scripts/diagnose-flatpak-rust.sh "$arch" || true
             fi
             sleep $((i * 30))
           done
@@ -170,31 +149,10 @@ PYEOF
             echo "rust-stable 安装失败（第 ${i} 次），$((i * 30)) 秒后重试..."
             # 首次失败时输出详细诊断：确认 CDN 区域与缺失对象
             if [ "$i" = "1" ]; then
-              echo "===== flatpak verbose 诊断 ====="
-              dbus-run-session -- flatpak install -v --user --assumeyes --noninteractive --no-static-deltas flathub "$rust_ref" 2>&1 | grep -iE "GET|404|pulling|object|delta|url" | head -30 || true
-              echo "===== summary 解析 + 对象级诊断 ====="
-              curl -s --max-time 60 "https://dl.flathub.org/repo/summary" -o /tmp/summary.bin
-              python3 - <<'PYEOF'
-import re
-d = open('/tmp/summary.bin','rb').read()
-target = b'runtime/org.freedesktop.Sdk.Extension.rust-stable/x86_64/25.08'
-pos = d.find(target)
-print(f"ref found: {pos != -1}")
-if pos != -1:
-    off = pos + len(target)
-    chunk = d[off:off+60]
-    print("after-ref bytes:", chunk.hex())
-    # checksum 通常在 metadata 后，尝试在后续 200 字节找 64-hex
-    m = re.search(rb'[0-9a-f]{64}', d[off:off+200])
-    if m:
-        csum = m.group().decode()
-        print("checksum:", csum)
-        import subprocess
-        for suffix in [".commit", ".dirtree", ".dirmeta"]:
-            url = f"https://dl.flathub.org/repo/objects/{csum[:2]}/{csum[2:]}{suffix}"
-            code = subprocess.run(["curl","-s","-o","/dev/null","-w","%{http_code}","--max-time","20",url], capture_output=True, text=True).stdout
-            print(f"object {suffix}: HTTP {code}")
-PYEOF
+              echo "===== flatpak verbose 诊断（所有请求 URL）====="
+              dbus-run-session -- flatpak install -v --user --assumeyes --noninteractive --no-static-deltas flathub "$rust_ref" 2>&1 | grep -E "^F:|404|error|Error|Loading|pulling" | head -60 || true
+              echo "===== summary.idx 对象级诊断 ====="
+              bash scripts/diagnose-flatpak-rust.sh "$arch" || true
             fi
             sleep $((i * 30))
           done
