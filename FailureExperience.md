@@ -1,3 +1,9 @@
+## 2026-08-21：Linux hicolor 图标不能只提供 1024×1024
+- 现象：Ubuntu 26.04 安装 `.deb` 后，GNOME 应用列表中的 AIVPlayer 显示默认齿轮图标；应用本身的 `.desktop` 文件和图标文件都存在。
+- 原因：electron-builder 将单个 1024×1024 PNG 安装到了 `/usr/share/icons/hicolor/1024x1024/apps`，而 Ubuntu 的 hicolor 主题只声明并索引到 512×512，`Icon=aivplayer` 因此无法解析到实际图标。
+- 经验：Linux 发布图标必须落在目标发行版 hicolor 主题声明的标准尺寸中；不能只检查 `.desktop` 的 `Icon` 字段或图标文件是否存在，还要检查最终 `.deb` 的安装路径和主题尺寸。
+- 处理：保留 1024×1024 品牌源用于应用资源，新增 512×512 Linux 图标并让 electron-builder 使用它；增加 PNG 尺寸回归测试，后续还应在 Linux Runner 的 `.deb` Smoke 中验证 512×512 图标确实进入安装包。
+
 ## 2026-08-14：不能用普通 UA 字符串判断真实 CPU 架构
 - 现象：Windows ARM 设备点击官网推荐下载后拿到 `AIVPlayer-Setup-0.5.6-x64.exe`，用户实际需要 ARM64 安装包。
 - 原因：旧逻辑在 `navigator.userAgentData` 架构字段不可用时，把 `navigator.userAgent` 中的 `x86` / `x64` 文本当成设备架构。浏览器可能运行在 x86 模拟层，普通 UA 只能说明浏览器暴露的兼容信息，不能证明物理 CPU 架构。

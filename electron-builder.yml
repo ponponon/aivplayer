@@ -420,7 +420,10 @@ nsis:
   differentialPackage: false
   include: build/installer.nsh
 linux:
-  icon: brand/icon.png
+  # Ubuntu's hicolor theme indexes application icons up to 512x512. Keep the
+  # 1024x1024 source for the bundled about/resource artwork, but use a
+  # theme-compatible Linux icon so GNOME does not fall back to its generic gear.
+  icon: brand/icon-linux.png
   executableName: aivplayer
   artifactName: '${name}-${version}-${arch}.${ext}'
   category: AudioVideo

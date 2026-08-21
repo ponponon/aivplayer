@@ -1,5 +1,7 @@
 # AIVPlayer 功能列表
 
+- Linux `.deb` / AppImage 改用 512×512 的 hicolor 标准图标源；Ubuntu GNOME 可以正确找到 `aivplayer` 图标，不再因只安装 1024×1024 图标而显示默认齿轮；Linux x64 / ARM64 发布 job 会检查最终 `.deb` 中确实包含该标准尺寸图标。
+
 - 关于面板新增 ISO 8601 格式的发布日期（`2026-08-20`）：macOS 原生 About Panel、跨平台关于弹窗和设置页统一显示发布日期，并随界面语言切换标签。
 
 - 0.6.0 macOS 发布链路已接入 Developer ID Application 签名、Hardened Runtime 和 GitHub Actions 公证凭据；正式发布只提供经过签名和公证的便携式 DMG / ZIP，不再构建或上传 `.pkg`，也不再携带 Windows `aivcli.cmd`，避免 macOS 深层代码签名失败。

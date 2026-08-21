@@ -985,6 +985,13 @@ jobs:
       - name: Verify Linux package formats
         run: npm run release:check-formats -- --platform linux --artifacts-dir release
 
+      - name: Verify Linux application icon
+        shell: bash
+        run: |
+          deb_file="$(find release -maxdepth 1 -type f -name '*.deb' -print -quit)"
+          test -n "$deb_file"
+          npm run release:check-linux-icon -- --package "$deb_file"
+
       - name: Upload Linux release evidence
         if: ${{ always() }}
         uses: actions/upload-artifact@v7
@@ -1148,6 +1155,13 @@ jobs:
 
       - name: Verify Linux ARM64 package formats
         run: npm run release:check-formats -- --platform linux --artifacts-dir release
+
+      - name: Verify Linux ARM64 application icon
+        shell: bash
+        run: |
+          deb_file="$(find release -maxdepth 1 -type f -name '*.deb' -print -quit)"
+          test -n "$deb_file"
+          npm run release:check-linux-icon -- --package "$deb_file"
 
       - name: Upload Linux ARM64 release evidence
         if: ${{ always() }}

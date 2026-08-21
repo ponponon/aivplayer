@@ -33,6 +33,7 @@
     "release:check-version": "node scripts/check-release-version.mjs",
     "release:check-platform": "node scripts/check-platform-release-artifacts.mjs",
     "release:check-formats": "node scripts/check-release-package-formats.mjs",
+    "release:check-linux-icon": "node scripts/check-linux-package-icon.mjs",
     "release:check-evidence": "node scripts/check-platform-evidence.mjs",
     "release:assemble-artifacts": "node scripts/assemble-release-artifacts.mjs",
     "release:dry-run": "node scripts/release-dry-run.mjs",
