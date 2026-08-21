@@ -86,10 +86,29 @@ jobs:
             if [ "$i" = "1" ]; then
               echo "===== flatpak verbose 诊断 ====="
               dbus-run-session -- flatpak install -v --user --assumeyes --noninteractive --no-static-deltas flathub "$rust_ref" 2>&1 | grep -iE "GET|404|pulling|object|delta|url" | head -30 || true
-              echo "===== 测试关键 CDN 路径 ====="
-              curl -sI "https://dl.flathub.org/repo/summary" -o /dev/null -w "summary: %{http_code}\n" || true
-              curl -sI "https://dl.flathub.org/repo/config" -o /dev/null -w "config: %{http_code}\n" || true
-              curl -s "https://dl.flathub.org/repo/refs/heads/runtime/${rust_ref}" -w "\nref: %{http_code}\n" | tail -1 || true
+              echo "===== summary 解析 + 对象级诊断 ====="
+              curl -s --max-time 60 "https://dl.flathub.org/repo/summary" -o /tmp/summary.bin
+              python3 - <<'PYEOF'
+import re
+d = open('/tmp/summary.bin','rb').read()
+target = b'runtime/org.freedesktop.Sdk.Extension.rust-stable/x86_64/25.08'
+pos = d.find(target)
+print(f"ref found: {pos != -1}")
+if pos != -1:
+    off = pos + len(target)
+    chunk = d[off:off+60]
+    print("after-ref bytes:", chunk.hex())
+    # checksum 通常在 metadata 后，尝试在后续 200 字节找 64-hex
+    m = re.search(rb'[0-9a-f]{64}', d[off:off+200])
+    if m:
+        csum = m.group().decode()
+        print("checksum:", csum)
+        import subprocess
+        for suffix in [".commit", ".dirtree", ".dirmeta"]:
+            url = f"https://dl.flathub.org/repo/objects/{csum[:2]}/{csum[2:]}{suffix}"
+            code = subprocess.run(["curl","-s","-o","/dev/null","-w","%{http_code}","--max-time","20",url], capture_output=True, text=True).stdout
+            print(f"object {suffix}: HTTP {code}")
+PYEOF
             fi
             sleep $((i * 30))
           done
@@ -153,10 +172,29 @@ jobs:
             if [ "$i" = "1" ]; then
               echo "===== flatpak verbose 诊断 ====="
               dbus-run-session -- flatpak install -v --user --assumeyes --noninteractive --no-static-deltas flathub "$rust_ref" 2>&1 | grep -iE "GET|404|pulling|object|delta|url" | head -30 || true
-              echo "===== 测试关键 CDN 路径 ====="
-              curl -sI "https://dl.flathub.org/repo/summary" -o /dev/null -w "summary: %{http_code}\n" || true
-              curl -sI "https://dl.flathub.org/repo/config" -o /dev/null -w "config: %{http_code}\n" || true
-              curl -s "https://dl.flathub.org/repo/refs/heads/runtime/${rust_ref}" -w "\nref: %{http_code}\n" | tail -1 || true
+              echo "===== summary 解析 + 对象级诊断 ====="
+              curl -s --max-time 60 "https://dl.flathub.org/repo/summary" -o /tmp/summary.bin
+              python3 - <<'PYEOF'
+import re
+d = open('/tmp/summary.bin','rb').read()
+target = b'runtime/org.freedesktop.Sdk.Extension.rust-stable/x86_64/25.08'
+pos = d.find(target)
+print(f"ref found: {pos != -1}")
+if pos != -1:
+    off = pos + len(target)
+    chunk = d[off:off+60]
+    print("after-ref bytes:", chunk.hex())
+    # checksum 通常在 metadata 后，尝试在后续 200 字节找 64-hex
+    m = re.search(rb'[0-9a-f]{64}', d[off:off+200])
+    if m:
+        csum = m.group().decode()
+        print("checksum:", csum)
+        import subprocess
+        for suffix in [".commit", ".dirtree", ".dirmeta"]:
+            url = f"https://dl.flathub.org/repo/objects/{csum[:2]}/{csum[2:]}{suffix}"
+            code = subprocess.run(["curl","-s","-o","/dev/null","-w","%{http_code}","--max-time","20",url], capture_output=True, text=True).stdout
+            print(f"object {suffix}: HTTP {code}")
+PYEOF
             fi
             sleep $((i * 30))
           done
