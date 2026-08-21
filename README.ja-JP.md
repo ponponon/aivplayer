@@ -43,15 +43,24 @@
 
 <p align="center">
   <a href="https://aivplayer.pages.dev/">
-    <img src="https://releases.quniv.cn/aivplayer/site/screenshots/player-asr-panel.png" width="860" alt="AIVPlayer のプレイヤーと字幕ワークスペース">
+    <img src="https://releases.quniv.cn/aivplayer/site/screenshots/player-workspace.png" width="860" alt="AIVPlayer のローカル動画再生ワークスペース">
   </a>
 </p>
 
-<p align="center">
-  <a href="https://aivplayer.pages.dev/">
-    <img src="https://releases.quniv.cn/aivplayer/site/screenshots/settings-panel-en.png" width="520" alt="AIVPlayer の設定パネル">
-  </a>
-</p>
+<table>
+  <tr>
+    <td width="50%" align="center"><img src="https://releases.quniv.cn/aivplayer/site/screenshots/player-asr-panel.png" width="100%" alt="AIVPlayer の再生と字幕ワークスペース"></td>
+    <td width="50%" align="center"><img src="https://releases.quniv.cn/aivplayer/site/screenshots/visual-library.png" width="100%" alt="AIVPlayer のビジュアルメディアライブラリ"></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center"><img src="https://releases.quniv.cn/aivplayer/site/screenshots/editing-timeline.png" width="100%" alt="AIVPlayer の動画編集タイムライン"></td>
+    <td width="50%" align="center"><img src="https://releases.quniv.cn/aivplayer/site/screenshots/image-workspace.png" width="100%" alt="AIVPlayer の画像ワークスペース"></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center"><img src="https://releases.quniv.cn/aivplayer/site/screenshots/settings-panel-en.png" width="100%" alt="AIVPlayer の設定パネル"></td>
+    <td width="50%"></td>
+  </tr>
+</table>
 
 <p align="center"><em><a href="https://aivplayer.pages.dev/">AIVPlayer 製品サイト</a>に掲載している実際の画面です。</em></p>
 

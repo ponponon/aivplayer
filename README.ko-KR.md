@@ -43,15 +43,24 @@
 
 <p align="center">
   <a href="https://aivplayer.pages.dev/">
-    <img src="https://releases.quniv.cn/aivplayer/site/screenshots/player-asr-panel.png" width="860" alt="AIVPlayer 플레이어 및 자막 작업 공간">
+    <img src="https://releases.quniv.cn/aivplayer/site/screenshots/player-workspace.png" width="860" alt="AIVPlayer 로컬 비디오 재생 워크스페이스">
   </a>
 </p>
 
-<p align="center">
-  <a href="https://aivplayer.pages.dev/">
-    <img src="https://releases.quniv.cn/aivplayer/site/screenshots/settings-panel-en.png" width="520" alt="AIVPlayer 설정 패널">
-  </a>
-</p>
+<table>
+  <tr>
+    <td width="50%" align="center"><img src="https://releases.quniv.cn/aivplayer/site/screenshots/player-asr-panel.png" width="100%" alt="AIVPlayer 재생 및 자막 워크스페이스"></td>
+    <td width="50%" align="center"><img src="https://releases.quniv.cn/aivplayer/site/screenshots/visual-library.png" width="100%" alt="AIVPlayer 시각 미디어 라이브러리"></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center"><img src="https://releases.quniv.cn/aivplayer/site/screenshots/editing-timeline.png" width="100%" alt="AIVPlayer 비디오 편집 타임라인"></td>
+    <td width="50%" align="center"><img src="https://releases.quniv.cn/aivplayer/site/screenshots/image-workspace.png" width="100%" alt="AIVPlayer 이미지 워크스페이스"></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center"><img src="https://releases.quniv.cn/aivplayer/site/screenshots/settings-panel-en.png" width="100%" alt="AIVPlayer 설정 패널"></td>
+    <td width="50%"></td>
+  </tr>
+</table>
 
 <p align="center"><em><a href="https://aivplayer.pages.dev/">AIVPlayer 제품 사이트</a>에 게시된 실제 인터페이스 스크린샷입니다.</em></p>
 

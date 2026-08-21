@@ -43,15 +43,24 @@
 
 <p align="center">
   <a href="https://aivplayer.pages.dev/">
-    <img src="https://releases.quniv.cn/aivplayer/site/screenshots/player-asr-panel.png" width="860" alt="AIVPlayer 播放器与字幕工作区">
+    <img src="https://releases.quniv.cn/aivplayer/site/screenshots/player-workspace.png" width="860" alt="AIVPlayer 本地视频播放工作区">
   </a>
 </p>
 
-<p align="center">
-  <a href="https://aivplayer.pages.dev/">
-    <img src="https://releases.quniv.cn/aivplayer/site/screenshots/settings-panel-en.png" width="520" alt="AIVPlayer 设置面板">
-  </a>
-</p>
+<table>
+  <tr>
+    <td width="50%" align="center"><img src="https://releases.quniv.cn/aivplayer/site/screenshots/player-asr-panel.png" width="100%" alt="AIVPlayer 播放与字幕工作区"></td>
+    <td width="50%" align="center"><img src="https://releases.quniv.cn/aivplayer/site/screenshots/visual-library.png" width="100%" alt="AIVPlayer 视觉媒体库"></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center"><img src="https://releases.quniv.cn/aivplayer/site/screenshots/editing-timeline.png" width="100%" alt="AIVPlayer 视频剪辑时间线"></td>
+    <td width="50%" align="center"><img src="https://releases.quniv.cn/aivplayer/site/screenshots/image-workspace.png" width="100%" alt="AIVPlayer 图片工作区"></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center"><img src="https://releases.quniv.cn/aivplayer/site/screenshots/settings-panel.png" width="100%" alt="AIVPlayer 设置面板"></td>
+    <td width="50%"></td>
+  </tr>
+</table>
 
 <p align="center"><em>以上为 <a href="https://aivplayer.pages.dev/">AIVPlayer 产品主页</a>中的真实界面截图。</em></p>
 

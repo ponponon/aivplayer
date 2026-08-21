@@ -43,15 +43,24 @@
 
 <p align="center">
   <a href="https://aivplayer.pages.dev/">
-    <img src="https://releases.quniv.cn/aivplayer/site/screenshots/player-asr-panel.png" width="860" alt="AIVPlayer player and subtitle workspace">
+    <img src="https://releases.quniv.cn/aivplayer/site/screenshots/player-workspace.png" width="860" alt="AIVPlayer local video playback workspace">
   </a>
 </p>
 
-<p align="center">
-  <a href="https://aivplayer.pages.dev/">
-    <img src="https://releases.quniv.cn/aivplayer/site/screenshots/settings-panel-en.png" width="520" alt="AIVPlayer settings panel">
-  </a>
-</p>
+<table>
+  <tr>
+    <td width="50%" align="center"><img src="https://releases.quniv.cn/aivplayer/site/screenshots/player-asr-panel.png" width="100%" alt="AIVPlayer playback and subtitle workspace"></td>
+    <td width="50%" align="center"><img src="https://releases.quniv.cn/aivplayer/site/screenshots/visual-library.png" width="100%" alt="AIVPlayer visual media library"></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center"><img src="https://releases.quniv.cn/aivplayer/site/screenshots/editing-timeline.png" width="100%" alt="AIVPlayer video editing timeline"></td>
+    <td width="50%" align="center"><img src="https://releases.quniv.cn/aivplayer/site/screenshots/image-workspace.png" width="100%" alt="AIVPlayer image workspace"></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center"><img src="https://releases.quniv.cn/aivplayer/site/screenshots/settings-panel-en.png" width="100%" alt="AIVPlayer settings panel"></td>
+    <td width="50%"></td>
+  </tr>
+</table>
 
 <p align="center"><em>Real interface screenshots from the <a href="https://aivplayer.pages.dev/">AIVPlayer product site</a>.</em></p>
 
