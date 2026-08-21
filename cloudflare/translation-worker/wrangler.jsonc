@@ -1,0 +1,37 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "aivplayer-translation",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-21",
+  "workers_dev": true,
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "DAILY_QUOTA",
+        "class_name": "DailyQuotaLimiter"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["DailyQuotaLimiter"]
+    }
+  ],
+  "ratelimits": [
+    {
+      "name": "BURST_LIMITER",
+      "namespace_id": "1001",
+      "simple": {
+        "limit": 20,
+        "period": 60
+      }
+    }
+  ],
+  "vars": {
+    "DAILY_REQUEST_LIMIT": "200",
+    "MAX_REQUEST_BYTES": "262144",
+    "MAX_INPUT_CHARS": "120000",
+    "MAX_OUTPUT_TOKENS": "4096"
+  }
+}

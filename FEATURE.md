@@ -1,5 +1,7 @@
 # AIVPlayer 功能列表
 
+- 新增 Cloudflare 智谱翻译 Worker：客户端不携带智谱 API Key，Worker 使用 Cloudflare Secret 转发固定的 `glm-4.7-flash` 请求，并通过设备 / IP 短时限流、Durable Objects 每日配额、请求体积和输出 Token 上限保护公共免费接口。
+
 - Linux `.deb` / AppImage 改用 512×512 的 hicolor 标准图标源；Ubuntu GNOME 可以正确找到 `aivplayer` 图标，不再因只安装 1024×1024 图标而显示默认齿轮；Linux x64 / ARM64 发布 job 会检查最终 `.deb` 中确实包含该标准尺寸图标。
 
 - 关于面板新增 ISO 8601 格式的发布日期（`2026-08-20`）：macOS 原生 About Panel、跨平台关于弹窗和设置页统一显示发布日期，并随界面语言切换标签。
