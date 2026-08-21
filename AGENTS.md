@@ -68,6 +68,8 @@ github 发版要注意打上 tag，github releases 页面的东西也不要忘�
 
 官网演示图专用的无版权视频：~/Downloads/12688023_3840_2160_30fps.mp4 (前面的其他视频有版权的问题，不能直接使用)
 
+官网演示图专用的无版权图片：~/Downloads/beasternchen-strawflower-10385439_1920.jpg
+
 ---
 
 因为引入 lancedb ，我把 lancedb 的源码 clone 到 ~/Desktop/code/me/github/lancedb 了，你需要你可以查看
