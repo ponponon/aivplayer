@@ -66,9 +66,9 @@ github 发版要注意打上 tag，github releases 页面的东西也不要忘�
 
 测试用的长视频可以用(1小时24分): ~/Pictures/百万英镑.mp4
 
-官网演示图专用的无版权视频：~/Downloads/12688023_3840_2160_30fps.mp4 (前面的其他视频有版权的问题，不能直接使用)
+官网演示图专用的无版权视频：~/Pictures/12688023_3840_2160_30fps.mp4 (前面的其他视频有版权的问题，不能直接使用)
 
-官网演示图专用的无版权图片：~/Downloads/beasternchen-strawflower-10385439_1920.jpg
+官网演示图专用的无版权图片：~/Pictures/beasternchen-strawflower-10385439_1920.jpg
 
 ---
 
