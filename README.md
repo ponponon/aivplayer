@@ -300,12 +300,6 @@ Node.js 22.12.0 or later is required. Some network environments need a proxy to 
 
 ## Troubleshooting
 
-### The app started from “Open With” reports `Cannot find module 'apache-arrow'`
-
-This was a startup issue in older installers that did not package LanceDB’s runtime dependency. It is not caused by the video filename, an external-drive path, or MP4 encoding; the current `v0.6.1` release includes the fix. Download the installer from the relevant Release and do not install npm dependencies manually inside the app bundle.
-
-The current release is `v0.6.1`; prefer the installer from that Release.
-
 ### Subtitle generation fails
 
 Run:

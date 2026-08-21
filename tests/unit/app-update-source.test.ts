@@ -57,6 +57,19 @@ describe('app update source constraints', () => {
     expect(workflowSource).toContain("Get-ChildItem -Path $ffmpegRoot -Filter 'ffmpeg.exe'")
   })
 
+  it('includes app-update.yml in the signed macOS app', () => {
+    const builderSource = readSource('electron-builder.yml')
+    const configSource = readSource('resources/app-update.yml')
+    const workflowSource = readSource('.github/workflows/release.yml')
+    const checkSource = readSource('scripts/check-packaged-resources.ts')
+
+    expect(builderSource).toContain('mac:\n  category: public.app-category.video\n  icon: brand/icon.icns\n  extraResources:\n    - from: resources/app-update.yml\n      to: app-update.yml')
+    expect(configSource).toContain('provider: github')
+    expect(workflowSource).toContain('npx electron-builder --dir --publish never')
+    expect(workflowSource).not.toContain('write-app-update-config')
+    expect(checkSource).toContain("join(resourcePath, 'app-update.yml')")
+  })
+
   it('keeps GitHub release metadata as the only update source', () => {
     const workflowSource = readSource('.github/workflows/release.yml')
 

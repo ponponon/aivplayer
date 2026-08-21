@@ -388,6 +388,9 @@ fileAssociations:
 mac:
   category: public.app-category.video
   icon: brand/icon.icns
+  extraResources:
+    - from: resources/app-update.yml
+      to: app-update.yml
   target:
     - dmg
     - zip

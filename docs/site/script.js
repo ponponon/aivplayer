@@ -32,20 +32,20 @@ function createGithubAssetUrl(version, fileName) {
 const FALLBACK_DOWNLOAD_MANIFEST = {
   schemaVersion: 1,
   releases: [{
-    version: '0.6.1',
-    tag: 'v0.6.1',
-    githubUrl: `${GITHUB_RELEASES_URL}/tag/v0.6.1`,
+    version: '0.6.2',
+    tag: 'v0.6.2',
+    githubUrl: `${GITHUB_RELEASES_URL}/tag/v0.6.2`,
     assets: {
-      'darwin-arm64': { name: 'AIVPlayer-0.6.1-arm64.dmg', url: createGithubAssetUrl('0.6.1', 'AIVPlayer-0.6.1-arm64.dmg'), format: 'dmg' },
-      'win32-x64': { name: 'AIVPlayer-Setup-0.6.1-x64.exe', url: createGithubAssetUrl('0.6.1', 'AIVPlayer-Setup-0.6.1-x64.exe'), format: 'exe' },
-      'win32-arm64': { name: 'AIVPlayer-Setup-0.6.1-arm64.exe', url: createGithubAssetUrl('0.6.1', 'AIVPlayer-Setup-0.6.1-arm64.exe'), format: 'exe' },
+      'darwin-arm64': { name: 'AIVPlayer-0.6.2-arm64.dmg', url: createGithubAssetUrl('0.6.2', 'AIVPlayer-0.6.2-arm64.dmg'), format: 'dmg' },
+      'win32-x64': { name: 'AIVPlayer-Setup-0.6.2-x64.exe', url: createGithubAssetUrl('0.6.2', 'AIVPlayer-Setup-0.6.2-x64.exe'), format: 'exe' },
+      'win32-arm64': { name: 'AIVPlayer-Setup-0.6.2-arm64.exe', url: createGithubAssetUrl('0.6.2', 'AIVPlayer-Setup-0.6.2-arm64.exe'), format: 'exe' },
       'linux-x64': {
-        appimage: { name: 'aivplayer-0.6.1-x86_64.AppImage', url: createGithubAssetUrl('0.6.1', 'aivplayer-0.6.1-x86_64.AppImage'), format: 'AppImage' },
-        deb: { name: 'aivplayer-0.6.1-amd64.deb', url: createGithubAssetUrl('0.6.1', 'aivplayer-0.6.1-amd64.deb'), format: 'deb' }
+        appimage: { name: 'aivplayer-0.6.2-x86_64.AppImage', url: createGithubAssetUrl('0.6.2', 'aivplayer-0.6.2-x86_64.AppImage'), format: 'AppImage' },
+        deb: { name: 'aivplayer-0.6.2-amd64.deb', url: createGithubAssetUrl('0.6.2', 'aivplayer-0.6.2-amd64.deb'), format: 'deb' }
       },
       'linux-arm64': {
-        appimage: { name: 'aivplayer-0.6.1-arm64.AppImage', url: createGithubAssetUrl('0.6.1', 'aivplayer-0.6.1-arm64.AppImage'), format: 'AppImage' },
-        deb: { name: 'aivplayer-0.6.1-arm64.deb', url: createGithubAssetUrl('0.6.1', 'aivplayer-0.6.1-arm64.deb'), format: 'deb' }
+        appimage: { name: 'aivplayer-0.6.2-arm64.AppImage', url: createGithubAssetUrl('0.6.2', 'aivplayer-0.6.2-arm64.AppImage'), format: 'AppImage' },
+        deb: { name: 'aivplayer-0.6.2-arm64.deb', url: createGithubAssetUrl('0.6.2', 'aivplayer-0.6.2-arm64.deb'), format: 'deb' }
       }
     }
   }, {

@@ -36,6 +36,7 @@ resources/
 # Keep CLI launchers and installer hooks; continue ignoring bundled binaries.
 !resources/
 resources/*
+!resources/app-update.yml
 !resources/cli/
 resources/cli/*
 !resources/cli/aivcli

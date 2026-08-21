@@ -109,6 +109,8 @@ macOS 发布需要在 GitHub Actions Secrets 中配置以下变量：
 
 macOS job 会先只生成签名 `.app`，再使用 `notarytool` 提交并显式轮询公证状态，最多等待 60 分钟；只有状态为 `Accepted`、完成 staple 和验证后，才会用 `--prepackaged` 生成 DMG / ZIP。这样 Apple 公证队列或网络异常会在独立步骤中暴露，不会被误判为 DMG 打包卡住。
 
+macOS 的 `--dir` 目标不会自动生成 `app-update.yml`；因此必须把固定的 `resources/app-update.yml` 配置作为 macOS 专属 `extraResources` 在签名前放入 `.app`。Windows / Linux 继续使用 electron-builder 原有的更新元数据生成流程。不能在签名后再改写应用资源；后续 `release:check-packaged-resources` 只对 macOS 校验该文件存在且包含完整配置，防止自动更新正常构建但在安装后报 `ENOENT`。
+
 ## 三、提交、检查并触发正式发布
 
 ### 1. 提交版本变更
@@ -307,6 +309,7 @@ GitHub Actions 的 `workflow_dispatch` 支持 `verify_only` 输入。使用方�
 - [ ] 版本提交已经推送到 `main`。
 - [ ] `v<version>` tag 指向正确提交并已推送。
 - [ ] 五个平台构建和 `publish-release` 全部成功。
+- [ ] macOS 安装包内部包含有效的 `Contents/Resources/app-update.yml`，自动更新配置门禁通过。
 - [ ] GitHub Release 资产、tag、更新元数据和远端回读校验均正常。
 - [ ] R2 稳定下载清单只包含当前版本，所有旧版本对象已清理，历史版本链接指向 GitHub Releases。
 

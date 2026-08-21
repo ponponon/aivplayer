@@ -2028,3 +2028,8 @@
 - 原因：脚本的 `retention` 字段已经是 `1`，但实际执行逻辑仍寻找上一版并把它加入 `entries`，文档和实现语义没有保持一致。
 - 经验：R2 只是官网低延迟下载镜像，不是历史版本存档；需要严格以存储成本约束为准，manifest、保留目录和清理逻辑必须共同只保留最新一版，历史版本统一回到 GitHub Releases。
 - 处理：发布同步只上传当前版本，清理时只保留当前版本目录，并补充测试 / 文档约束，避免以后恢复“最新两版”逻辑。
+## 2026-08-21：macOS --dir 构建不能假设生成 app-update.yml
+- 现象：v0.6.1 安装后点击自动更新时报 `ENOENT: no such file or directory, open '/Applications/AIVPlayer.app/Contents/Resources/app-update.yml'`。
+- 原因：macOS 发布流程为了先公证 `.app`，改成先执行 `electron-builder --dir --publish never`，再用 `--prepackaged` 生成 DMG / ZIP；Electron Builder 只有在 dmg / zip 目标的 afterPack 阶段才写入 `app-update.yml`，`--dir` 阶段不会生成，后续打包只是保留缺失状态。
+- 经验：`latest-mac.yml` 是 GitHub Release 上的远程更新元数据，不能替代安装包内部的 `app-update.yml`。涉及分阶段签名、公证和 prepackaged 打包时，必须把运行时必需的本地配置显式写入，并纳入最终资源门禁。
+- 处理：将固定的 `resources/app-update.yml` 作为 `extraResources` 在签名前放入应用，`check-packaged-resources` 同时校验配置内容，发布 v0.6.2 修复已安装应用的自动更新链路；不能在签名后再改写 `.app` 资源。

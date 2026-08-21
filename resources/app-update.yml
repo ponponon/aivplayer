@@ -1,0 +1,5 @@
+owner: ponponon
+repo: aivplayer
+provider: github
+releaseType: release
+updaterCacheDirName: aivplayer-updater

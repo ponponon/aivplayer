@@ -57,12 +57,23 @@ async function hasValidRuntimeMetadata(filePath: string): Promise<boolean> {
   }
 }
 
+async function hasValidAppUpdateConfig(filePath: string): Promise<boolean> {
+  try {
+    const content = await readFile(filePath, 'utf8')
+    return ['owner:', 'repo:', 'provider: github', 'releaseType: release', 'updaterCacheDirName:']
+      .every((entry) => content.split('\n').some((line) => line.trim().startsWith(entry)))
+  } catch {
+    return false
+  }
+}
+
 export async function checkPackagedResources(options: {
   resourcePath: string
   platform?: NodeJS.Platform
 }): Promise<PackagedResourceCheckResult> {
   const platform = options.platform ?? process.platform
   const resourcePath = resolve(options.resourcePath)
+  const appUpdateConfigPath = join(resourcePath, 'app-update.yml')
   const checked = [
     join(resourcePath, 'web', 'index.html'),
     join(resourcePath, 'web', 'assets'),
@@ -71,7 +82,8 @@ export async function checkPackagedResources(options: {
     join(resourcePath, 'LICENSE'),
     join(resourcePath, 'THIRD_PARTY_LICENSES.md'),
     join(resourcePath, 'vision-model-manifest.json'),
-    join(resourcePath, 'runtime-metadata.json')
+    join(resourcePath, 'runtime-metadata.json'),
+    ...(platform === 'darwin' ? [appUpdateConfigPath] : [])
   ]
   const [webIndexExists, webAssetsExist, ffmpegExists, ffprobeExists, licenseExists, thirdPartyLicenseExists, visionModelManifestExists, runtimeMetadataExists] = await Promise.all([
     fileExists(checked[0]!, 'win32'),
@@ -83,6 +95,7 @@ export async function checkPackagedResources(options: {
     fileExists(checked[6]!, 'win32'),
     hasValidRuntimeMetadata(checked[7]!)
   ])
+  const appUpdateConfigExists = platform !== 'darwin' || await hasValidAppUpdateConfig(appUpdateConfigPath)
   const missing = [
     ...(webIndexExists ? [] : [checked[0]!]),
     ...(webAssetsExist ? [] : [checked[1]!]),
@@ -91,7 +104,8 @@ export async function checkPackagedResources(options: {
     ...(licenseExists ? [] : [checked[4]!]),
     ...(thirdPartyLicenseExists ? [] : [checked[5]!]),
     ...(visionModelManifestExists ? [] : [checked[6]!]),
-    ...(runtimeMetadataExists ? [] : [checked[7]!])
+    ...(runtimeMetadataExists ? [] : [checked[7]!]),
+    ...(appUpdateConfigExists ? [] : [appUpdateConfigPath])
   ]
   const ok = missing.length === 0
   return {

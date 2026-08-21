@@ -95,7 +95,7 @@ describe('download publishing integration', () => {
 
   it('provides a manual bootstrap path for already-published releases', () => {
     expect(syncWorkflow).toContain('workflow_dispatch:')
-    expect(syncWorkflow).toContain("default: v0.6.1")
+    expect(syncWorkflow).toContain("default: v0.6.2")
     expect(syncWorkflow).toContain('Sync latest release to R2')
     expect(syncWorkflow).toContain('npm run release:publish-downloads')
     expect(syncWorkflow).toContain('CLOUDFLARE_API_TOKEN')
@@ -130,7 +130,7 @@ describe('download publishing integration', () => {
     expect(siteScript).toContain('architectureUnknown')
     expect(siteScript).not.toContain('const architectureHint = [navigator.userAgentData?.architecture, navigator.userAgent]')
     expect(siteScript).toContain('FALLBACK_DOWNLOAD_MANIFEST')
-    expect(siteScript).toContain("version: '0.6.1'")
+    expect(siteScript).toContain("version: '0.6.2'")
     expect(siteScript).toContain("version: '0.5.6'")
     expect(siteScript).not.toContain("version: '0.5.5'")
     expect(siteScript).toContain('wirePlatformCards')

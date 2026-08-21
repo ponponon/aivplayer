@@ -34,6 +34,14 @@ async function createResourceFixture(): Promise<string> {
       siglip2: { files: [] }
     }
   }))
+  await writeFile(join(directory, 'app-update.yml'), [
+    'owner: ponponon',
+    'repo: aivplayer',
+    'provider: github',
+    'releaseType: release',
+    'updaterCacheDirName: aivplayer-updater',
+    ''
+  ].join('\n'))
   await chmod(join(directory, 'ffmpeg', 'ffmpeg'), 0o755)
   await chmod(join(directory, 'ffmpeg', 'ffprobe'), 0o755)
   return directory
@@ -92,8 +100,19 @@ describe('checkPackagedResources', () => {
     expect(result.missing).toEqual([join(resourcePath, 'runtime-metadata.json')])
   })
 
+  it('requires valid electron-updater configuration in packaged resources', async () => {
+    const resourcePath = await createResourceFixture()
+    await writeFile(join(resourcePath, 'app-update.yml'), 'provider: github\n')
+
+    const result = await checkPackagedResources({ resourcePath, platform: 'darwin' })
+
+    expect(result.ok).toBe(false)
+    expect(result.missing).toEqual([join(resourcePath, 'app-update.yml')])
+  })
+
   it('accepts explicit platform names for cross-platform artifact checks', async () => {
     const resourcePath = await createResourceFixture()
+    await rm(join(resourcePath, 'app-update.yml'), { force: true })
     await rm(join(resourcePath, 'ffmpeg', 'ffmpeg'), { force: true })
     await rm(join(resourcePath, 'ffmpeg', 'ffprobe'), { force: true })
     await writeFile(join(resourcePath, 'ffmpeg', 'ffmpeg.exe'), 'ffmpeg')
@@ -103,5 +122,6 @@ describe('checkPackagedResources', () => {
 
     expect(result.ok).toBe(true)
     expect(result.checked).toContain(join(resourcePath, 'ffmpeg', 'ffmpeg.exe'))
+    expect(result.checked).not.toContain(join(resourcePath, 'app-update.yml'))
   })
 })
