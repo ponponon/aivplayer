@@ -28,6 +28,11 @@
   <url type="bugtracker">https://github.com/ponponon/aivplayer/issues</url>
   <url type="vcs-browser">https://github.com/ponponon/aivplayer</url>
   <releases>
+    <release version="0.6.3" date="2026-08-21">
+      <description>
+        <p>Adds built-in managed translation service switching and Zhipu (GLM) model support for AIVPlayer 0.6.3.</p>
+      </description>
+    </release>
     <release version="0.6.2" date="2026-08-21">
       <description>
         <p>Fixes macOS automatic update configuration and strengthens packaged resource validation for AIVPlayer 0.6.2.</p>
