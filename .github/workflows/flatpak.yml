@@ -74,7 +74,7 @@ jobs:
             org.freedesktop.Sdk/${arch}/25.08 \
             org.freedesktop.Sdk.Extension.node22/${arch}/25.08 \
             org.electronjs.Electron2.BaseApp/${arch}/25.08
-          # rust-stable extension：Flathub 发布新版（如 1.98.0）后 CDN 区域节点偶发 404，
+          # rust-stable extension：Flathub 端偶发发布不完整（summary 缺 25.08 条目导致 pull 404），
           # 单独安装 + 跳过静态 delta + 最多重试 6 次（间隔递增），给 Flathub 同步留时间
           rust_ref="org.freedesktop.Sdk.Extension.rust-stable/${arch}/25.08"
           for i in 1 2 3 4 5 6; do
@@ -82,11 +82,8 @@ jobs:
               break
             fi
             echo "rust-stable 安装失败（第 ${i} 次），$((i * 30)) 秒后重试..."
-            # 首次失败时输出详细诊断：确认 CDN 区域与缺失对象
+            # 首次失败时输出简洁诊断（summary.idx 中 25.08 条目是否存在）
             if [ "$i" = "1" ]; then
-              echo "===== flatpak verbose 诊断（所有请求 URL）====="
-              dbus-run-session -- flatpak install -v --user --assumeyes --noninteractive --no-static-deltas flathub "$rust_ref" 2>&1 | grep -E "^F:|404|error|Error|Loading|pulling" | head -60 || true
-              echo "===== summary.idx 对象级诊断 ====="
               bash scripts/diagnose-flatpak-rust.sh "$arch" || true
             fi
             sleep $((i * 30))
@@ -139,7 +136,7 @@ jobs:
             org.freedesktop.Sdk/${arch}/25.08 \
             org.freedesktop.Sdk.Extension.node22/${arch}/25.08 \
             org.electronjs.Electron2.BaseApp/${arch}/25.08
-          # rust-stable extension：Flathub 发布新版（如 1.98.0）后 CDN 区域节点偶发 404，
+          # rust-stable extension：Flathub 端偶发发布不完整（summary 缺 25.08 条目导致 pull 404），
           # 单独安装 + 跳过静态 delta + 最多重试 6 次（间隔递增），给 Flathub 同步留时间
           rust_ref="org.freedesktop.Sdk.Extension.rust-stable/${arch}/25.08"
           for i in 1 2 3 4 5 6; do
@@ -147,11 +144,8 @@ jobs:
               break
             fi
             echo "rust-stable 安装失败（第 ${i} 次），$((i * 30)) 秒后重试..."
-            # 首次失败时输出详细诊断：确认 CDN 区域与缺失对象
+            # 首次失败时输出简洁诊断（summary.idx 中 25.08 条目是否存在）
             if [ "$i" = "1" ]; then
-              echo "===== flatpak verbose 诊断（所有请求 URL）====="
-              dbus-run-session -- flatpak install -v --user --assumeyes --noninteractive --no-static-deltas flathub "$rust_ref" 2>&1 | grep -E "^F:|404|error|Error|Loading|pulling" | head -60 || true
-              echo "===== summary.idx 对象级诊断 ====="
               bash scripts/diagnose-flatpak-rust.sh "$arch" || true
             fi
             sleep $((i * 30))
