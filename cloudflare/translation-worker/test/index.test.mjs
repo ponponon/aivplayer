@@ -32,7 +32,7 @@ function request(body, headers = {}) {
 test('health endpoint does not require the upstream key', async () => {
   const response = await handleRequest(new Request('https://example.com/health'), {})
   assert.equal(response.status, 200)
-  assert.deepEqual(await response.json(), { status: 'ok', model: 'glm-4.7-flash' })
+  assert.deepEqual(await response.json(), { status: 'ok', model: 'glm-4-flash' })
 })
 
 test('rejects non-public authorization before forwarding', async () => {
@@ -62,7 +62,7 @@ test('forwards a fixed model and only the Worker secret upstream', async () => {
   assert.equal(response.status, 200)
   assert.equal(forwarded.url, 'https://open.bigmodel.cn/api/paas/v4/chat/completions')
   assert.equal(forwarded.options.headers.Authorization, 'Bearer test-secret')
-  assert.equal(forwarded.body.model, 'glm-4.7-flash')
+  assert.equal(forwarded.body.model, 'glm-4-flash')
   assert.equal(forwarded.body.max_tokens, 4096)
   assert.equal(await response.json().then((value) => value.choices[0].message.content), '你好')
 })

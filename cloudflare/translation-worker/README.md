@@ -14,6 +14,14 @@ wrangler deploy
 
 `wrangler secret put` 会交互式读取 Key。不要把 Key 写进 `.env`、`wrangler.jsonc`、源码或命令历史。
 
+也可以在 Cloudflare 控制台配置：
+
+1. 打开 [aivplayer-translation Worker 的 Variables and Secrets 页面](https://dash.cloudflare.com/c57c83028780abdf346c0ae895b7c4dc/workers/services/view/aivplayer-translation/production/settings/variables)。
+2. 选择 `Add` / `添加`，类型选择 `Secret` / `加密变量`。
+3. 名称填写 `BIGMODEL_API_KEY`，值填写 BigModel 的完整 API Key，然后保存。
+
+这个 Secret 只会注入 Worker 服务端，不会进入客户端、Git 仓库或响应内容。
+
 部署后检查：
 
 ```bash
@@ -23,7 +31,7 @@ curl https://aivplayer-translation.<你的账户>.workers.dev/health
 预期返回：
 
 ```json
-{"status":"ok","model":"glm-4.7-flash"}
+{"status":"ok","model":"glm-4-flash"}
 ```
 
 ## 接口
@@ -36,12 +44,12 @@ curl https://aivplayer-translation.<你的账户>.workers.dev/v1/chat/completion
   -H 'Content-Type: application/json' \
   -H 'X-AIVPlayer-Device: local-test-device' \
   -d '{
-    "model": "glm-4.7-flash",
+    "model": "glm-4-flash",
     "messages": [{"role": "user", "content": "把 hello 翻译成中文"}]
   }'
 ```
 
-客户端传入的模型会被 Worker 固定改写为 `glm-4.7-flash`，避免公开代理被拿去调用其他模型。客户端的 `Bearer public` 只是兼容现有 OpenAI-compatible 请求格式的公开标记，不是安全凭证；真正的保护依赖 Worker 端的限流、每日配额和请求大小限制。
+客户端传入的模型会被 Worker 固定改写为 `glm-4-flash`，避免公开代理被拿去调用其他模型。客户端的 `Bearer public` 只是兼容现有 OpenAI-compatible 请求格式的公开标记，不是安全凭证；真正的保护依赖 Worker 端的限流、每日配额和请求大小限制。
 
 ## 防刷边界
 

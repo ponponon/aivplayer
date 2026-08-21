@@ -1,4 +1,4 @@
-const MODEL_ID = 'glm-4.7-flash'
+const MODEL_ID = 'glm-4-flash'
 const UPSTREAM_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions'
 const DEFAULT_DAILY_REQUEST_LIMIT = 200
 const DEFAULT_MAX_REQUEST_BYTES = 256 * 1024
