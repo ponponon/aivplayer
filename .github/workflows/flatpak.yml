@@ -73,8 +73,17 @@ jobs:
             org.freedesktop.Platform/${arch}/25.08 \
             org.freedesktop.Sdk/${arch}/25.08 \
             org.freedesktop.Sdk.Extension.node22/${arch}/25.08 \
-            org.freedesktop.Sdk.Extension.rust-stable/${arch}/25.08 \
             org.electronjs.Electron2.BaseApp/${arch}/25.08
+          # rust-stable extension 偶发 Flathub CDN 404（发布后对象同步滞后），
+          # 单独安装 + 跳过静态 delta + 最多重试 5 次
+          for i in 1 2 3 4 5; do
+            if dbus-run-session -- flatpak install --user --assumeyes --noninteractive --no-static-deltas flathub org.freedesktop.Sdk.Extension.rust-stable/${arch}/25.08; then
+              break
+            fi
+            echo "rust-stable 安装失败（第 ${i} 次），30 秒后重试..."
+            sleep 30
+          done
+          flatpak info org.freedesktop.Sdk.Extension.rust-stable/${arch}/25.08
           dbus-run-session -- flatpak install --user --assumeyes --noninteractive flathub org.flatpak.Builder
       - name: Build Flatpak
         run: |
@@ -121,8 +130,17 @@ jobs:
             org.freedesktop.Platform/${arch}/25.08 \
             org.freedesktop.Sdk/${arch}/25.08 \
             org.freedesktop.Sdk.Extension.node22/${arch}/25.08 \
-            org.freedesktop.Sdk.Extension.rust-stable/${arch}/25.08 \
             org.electronjs.Electron2.BaseApp/${arch}/25.08
+          # rust-stable extension 偶发 Flathub CDN 404（发布后对象同步滞后），
+          # 单独安装 + 跳过静态 delta + 最多重试 5 次
+          for i in 1 2 3 4 5; do
+            if dbus-run-session -- flatpak install --user --assumeyes --noninteractive --no-static-deltas flathub org.freedesktop.Sdk.Extension.rust-stable/${arch}/25.08; then
+              break
+            fi
+            echo "rust-stable 安装失败（第 ${i} 次），30 秒后重试..."
+            sleep 30
+          done
+          flatpak info org.freedesktop.Sdk.Extension.rust-stable/${arch}/25.08
           dbus-run-session -- flatpak install --user --assumeyes --noninteractive flathub org.flatpak.Builder
       - name: Build Flatpak
         run: |
