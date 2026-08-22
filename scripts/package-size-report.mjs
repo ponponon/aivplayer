@@ -20,6 +20,8 @@ function readOptions(argv) {
 
 async function collectFiles(directory, root = directory, files = []) {
   for (const entry of await readdir(directory, { withFileTypes: true })) {
+    // electron-builder 的 snap 构建临时目录（release/__snap-amd64 等）不纳入统计
+    if (entry.isDirectory() && entry.name.startsWith('__snap-')) continue
     const filePath = join(directory, entry.name)
     if (entry.isDirectory()) await collectFiles(filePath, root, files)
     else {
@@ -43,7 +45,7 @@ export async function createPackageSizeReport(options = {}) {
   const components = [...topLevel.entries()]
     .map(([name, sizeBytes]) => ({ name, sizeBytes }))
     .sort((left, right) => right.sizeBytes - left.sizeBytes)
-  const installers = files.filter((file) => /\.(?:dmg|zip|exe|AppImage|deb)$/iu.test(file.path))
+  const installers = files.filter((file) => /\.(?:dmg|zip|exe|AppImage|deb|snap)$/iu.test(file.path))
   const largestInstallerBytes = installers[0]?.sizeBytes ?? totalBytes
   return {
     schemaVersion: 1,

@@ -19,6 +19,8 @@ export async function listReleaseArtifacts(directory, options = {}) {
     for (const entry of entries) {
       const filePath = join(currentDirectory, entry.name)
       if (entry.isDirectory()) {
+        // electron-builder 的 snap 构建临时目录不纳入发布产物
+        if (entry.name.startsWith('__snap-')) continue
         if (recursive) await walk(filePath)
         continue
       }
