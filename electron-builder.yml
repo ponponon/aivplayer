@@ -433,7 +433,8 @@ linux:
   target:
     - AppImage
     - deb
-    - snap
+    # snap 由 CI 显式构建（--linux snap），不放入默认 target，
+    # 避免各平台 job 连带构建（snap 仅 x64 发布）
 # Snap package: built with electron-builder's core24 snapcraft strategy.
 # useDestructiveMode builds directly on the CI host (GitHub Actions LXD
 # containers have no network, so LXD provider is unusable there); sudo is used

@@ -1143,7 +1143,7 @@ jobs:
         run: npm run release:write-runtime-metadata -- --platform linux --resource-dir "$GITHUB_WORKSPACE/resources" --whisper-version "$WHISPER_CPP_VERSION" --libheif-version "$LIBHEIF_VERSION" --libheif-encoder x265 --remote-vision-model
 
       - name: Build & Package ARM64
-        run: npm run build && npx electron-builder --linux --arm64 AppImage deb --publish never
+        run: npm run build && npx electron-builder --linux --arm64 --publish never
 
       - name: Report package size
         run: npm run release:report-package-size -- --directory release --output release/package-size-report-linux-arm64.json
