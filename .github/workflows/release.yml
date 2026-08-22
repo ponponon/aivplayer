@@ -947,12 +947,13 @@ jobs:
         run: npm run release:write-runtime-metadata -- --platform linux --resource-dir "$GITHUB_WORKSPACE/resources" --whisper-version "$WHISPER_CPP_VERSION" --libheif-version "$LIBHEIF_VERSION" --libheif-encoder x265 --remote-vision-model
 
       - name: Build & Package
-        run: npm run build && npx electron-builder --publish never
+        run: npm run build && npx electron-builder --linux AppImage deb --publish never
 
       - name: Build Snap package
         shell: bash
         run: |
-          # lxd group 变更需新会话生效，用 sg 包裹；snapcraft 通过 LXD 隔离构建
+          # snap 构建走 LXD，需要 lxd group 权限；usermod 后当前会话 group 不刷新，
+          # 用 sg lxd 启动子 shell（core24 策略：snapcraft pack --use-lxd）
           sg lxd -c 'export PATH="/snap/bin:$PATH" && npx electron-builder --linux snap --publish never'
 
       - name: Report package size
