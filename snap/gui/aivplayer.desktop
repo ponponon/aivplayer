@@ -1,9 +1,0 @@
-[Desktop Entry]
-Name=AIVPlayer
-Comment=本地 AI 字幕生成的视频播放器
-Exec=aivplayer %U
-Icon=${SNAP}/usr/lib/aivplayer/icon.png
-Type=Application
-Categories=AudioVideo;Video;Player;
-MimeType=video/mp4;video/x-matroska;video/webm;video/quicktime;video/x-msvideo;video/x-flv;video/x-ms-wmv;video/mp2t;video/mpeg;
-StartupWMClass=aivplayer
