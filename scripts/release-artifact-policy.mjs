@@ -5,7 +5,7 @@ export const RELEASE_MANIFEST_NAME = 'release-manifest.json'
 const UPDATE_METADATA_PATTERN = /^latest(?:-[^/]+)?\.yml$/i
 
 export function isReleaseArtifact(name) {
-  return name === RELEASE_MANIFEST_NAME || /\.(?:dmg|zip|exe|AppImage|deb|blockmap)$/i.test(name) || UPDATE_METADATA_PATTERN.test(name)
+  return name === RELEASE_MANIFEST_NAME || /\.(?:dmg|zip|exe|AppImage|deb|snap|blockmap)$/i.test(name) || UPDATE_METADATA_PATTERN.test(name)
 }
 
 export async function listReleaseArtifacts(directory, options = {}) {

@@ -51,6 +51,9 @@ function validateEdges(extension, edges) {
       return edges.prefix.length >= 4 && edges.prefix[0] === 0x7f && edges.prefix.subarray(1, 4).equals(Buffer.from('ELF'))
     case '.deb':
       return hasPrefix(edges.prefix, '!<arch>\n')
+    case '.snap':
+      // Squashfs superblock magic (little-endian 0x73717368 -> "hsqs")
+      return hasPrefix(edges.prefix, 'hsqs')
     default:
       return false
   }

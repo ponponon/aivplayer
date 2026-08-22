@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url'
 import { isReleaseArtifact, listReleaseArtifacts } from './release-artifact-policy.mjs'
 import { sha256File } from './release-manifest.mjs'
 
-const PACKAGE_EXTENSIONS = ['.dmg', '.zip', '.exe', '.AppImage', '.deb', '.blockmap']
+const PACKAGE_EXTENSIONS = ['.dmg', '.zip', '.exe', '.AppImage', '.deb', '.snap', '.blockmap']
 const PLATFORM_EVIDENCE = {
   macos: {
     reportSources: [['release-evidence-macos', 'platform-release-report-macos.json']],
@@ -24,7 +24,7 @@ const PLATFORM_EVIDENCE = {
       ['release-evidence-linux', 'platform-release-report-linux.json'],
       ['release-evidence-linux-arm64', 'platform-release-report-linux-arm64.json']
     ],
-    packages: ['.AppImage', '.deb'],
+    packages: ['.AppImage', '.deb', '.snap'],
     metadata: ['latest-linux.yml', 'latest-linux-arm64.yml']
   }
 }

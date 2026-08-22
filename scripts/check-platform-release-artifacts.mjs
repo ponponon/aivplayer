@@ -14,7 +14,7 @@ export const PLATFORM_CONTRACTS = {
     metadata: ['latest.yml']
   },
   linux: {
-    packages: ['.AppImage', '.deb'],
+    packages: ['.AppImage', '.deb', '.snap'],
     metadata: ['latest-linux.yml', 'latest-linux-arm64.yml']
   }
 }
@@ -48,6 +48,8 @@ function getPlatformContract(platform, architecture) {
   if (platform === 'linux') {
     return {
       ...contract,
+      // Snap 目前只在 x64 构建，arm64 契约不要求 .snap
+      packages: architecture === 'arm64' ? contract.packages.filter((extension) => extension.toLowerCase() !== '.snap') : contract.packages,
       metadata: architecture === 'arm64' ? ['latest-linux-arm64.yml'] : ['latest-linux.yml']
     }
   }

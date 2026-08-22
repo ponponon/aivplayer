@@ -15,11 +15,11 @@ export const DEFAULT_R2_PUBLIC_BASE_URL = 'https://releases.quniv.cn/aivplayer/r
 const CLOUDFLARE_API_BASE_URL = 'https://api.cloudflare.com/client/v4'
 const GITHUB_API_BASE_URL = 'https://api.github.com'
 const R2_REST_MAX_UPLOAD_BYTES = 300 * 1000 * 1000
-const INSTALLER_EXTENSIONS = new Set(['.dmg', '.zip', '.exe', '.appimage', '.deb'])
+const INSTALLER_EXTENSIONS = new Set(['.dmg', '.zip', '.exe', '.appimage', '.deb', '.snap'])
 const FORMAT_PRIORITY = {
   darwin: { '.dmg': 0, '.zip': 1 },
   win32: { '.exe': 0 },
-  linux: { '.appimage': 0, '.deb': 1 }
+  linux: { '.appimage': 0, '.deb': 1, '.snap': 2 }
 }
 const CONTENT_TYPES = {
   '.dmg': 'application/x-apple-diskimage',
@@ -27,6 +27,7 @@ const CONTENT_TYPES = {
   '.exe': 'application/vnd.microsoft.portable-executable',
   '.appimage': 'application/octet-stream',
   '.deb': 'application/vnd.debian.binary-package',
+  '.snap': 'application/vnd.snapcraft.snap',
   '.json': 'application/json'
 }
 
@@ -65,7 +66,7 @@ function getFileExtension(name) {
 function classifyPlatform(name) {
   const lowerName = name.toLowerCase()
   if (lowerName.endsWith('.exe')) return 'win32'
-  if (lowerName.endsWith('.appimage') || lowerName.endsWith('.deb')) return 'linux'
+  if (lowerName.endsWith('.appimage') || lowerName.endsWith('.deb') || lowerName.endsWith('.snap')) return 'linux'
   if (lowerName.endsWith('.dmg') || lowerName.includes('-mac')) return 'darwin'
   if (lowerName.endsWith('.zip') && lowerName.includes('mac')) return 'darwin'
   return null

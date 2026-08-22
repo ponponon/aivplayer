@@ -18,7 +18,8 @@ const PACKAGE_SIGNATURES = {
   '.zip': () => Buffer.from([0x50, 0x4b, 0x03, 0x04]),
   '.exe': () => Buffer.from('MZdry-run'),
   '.AppImage': () => Buffer.from([0x7f, 0x45, 0x4c, 0x46]),
-  '.deb': () => Buffer.from('!<arch>\ndry-run')
+  '.deb': () => Buffer.from('!<arch>\ndry-run'),
+  '.snap': () => Buffer.from('hsqs' + 'dry-run-snap')
 }
 
 function packageName(version, suffix) {
@@ -61,6 +62,7 @@ async function writeDryRunArtifacts(directory, version, platform) {
     linux: [
       ['package', linuxX64AppImage],
       ['package', packageName(version, 'x64.deb')],
+      ['package', packageName(version, 'x64.snap')],
       ['metadata', 'latest-linux.yml', linuxX64AppImage],
       ['package', linuxArm64AppImage],
       ['package', packageName(version, 'arm64.deb')],
