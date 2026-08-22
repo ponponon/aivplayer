@@ -884,21 +884,6 @@ jobs:
       - name: Install Snapcraft toolchain
         run: |
           sudo snap install snapcraft --classic
-          sudo snap install lxd
-          sudo lxd init --minimal
-          sudo usermod -aG lxd "$USER"
-          # LXD 网络自检：确保 lxdbr0 存在且 NAT 生效（GitHub runner 上偶发未配置）
-          sg lxd -c '
-            set -e
-            if ! lxc network show lxdbr0 >/dev/null 2>&1; then
-              lxc network create lxdbr0 type=bridge
-            fi
-            lxc network set lxdbr0 ipv4.address=10.10.10.1/24 ipv4.nat=true
-            lxc network set lxdbr0 ipv6.address=none 2>/dev/null || true
-            echo "=== LXD network ==="
-            lxc network list
-            lxc network show lxdbr0 | grep -E "ipv4|ipv6|nat" || true
-          '
 
       - name: Install fixed FFmpeg runtime
         shell: bash
@@ -964,9 +949,9 @@ jobs:
       - name: Build Snap package
         shell: bash
         run: |
-          # snap 构建走 LXD，需要 lxd group 权限；usermod 后当前会话 group 不刷新，
-          # 用 sg lxd 启动子 shell（core24 策略：snapcraft pack --use-lxd）
-          sg lxd -c 'export PATH="/snap/bin:$PATH" && npx electron-builder --linux snap --publish never'
+          # core24 destructive mode 构建需要 root；GitHub Actions 的 LXD 容器无网络，
+          # 改用宿主机 destructive 构建（sudo -E 保留 node/npm 环境与缓存路径）
+          sudo -E env "PATH=$PATH" npx electron-builder --linux snap --publish never
 
       - name: Report package size
         run: npm run release:report-package-size -- --directory release --output release/package-size-report-linux.json

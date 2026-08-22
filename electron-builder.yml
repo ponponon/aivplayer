@@ -434,22 +434,42 @@ linux:
     - AppImage
     - deb
     - snap
-# Snap package: built with electron-builder's core24 snapcraft strategy
-# (generates snapcraft.yaml internally, `snapcraft pack --use-lxd` on CI).
-# core24 applies the gnome extension (GTK3/icon/theme content snaps) and
-# strict confinement; `default` expands the standard desktop plug set plus
-# removable-media / network-bind / browser-support for reading user media.
+# Snap package: built with electron-builder's core24 snapcraft strategy.
+# useDestructiveMode builds directly on the CI host (GitHub Actions LXD
+# containers have no network, so LXD provider is unusable there); sudo is used
+# for the snapcraft step since destructive mode requires root. Stage packages
+# are listed explicitly because the gnome extension is incompatible with
+# destructive mode.
 snapcraft:
   base: core24
   core24:
     confinement: strict
     grade: stable
-    useLXD: true
+    useDestructiveMode: true
     plugs:
       - default
       - removable-media
       - network-bind
       - browser-support
+    stagePackages:
+      - default
+      - libgtk-3-0
+      - libgbm1
+      - libasound2
+      - libatspi2.0-0
+      - libdrm2
+      - libxkbcommon0
+      - libxcomposite1
+      - libxdamage1
+      - libxfixes3
+      - libxrandr2
+      - libpango-1.0-0
+      - libcairo2
+      - libgdk-pixbuf-2.0-0
+      - libpangocairo-1.0-0
+      - libpangoft2-1.0-0
+      - gsettings-desktop-schemas
+      - shared-mime-info
 deb:
   afterInstall: build/deb-after-install.sh
   afterRemove: build/deb-after-remove.sh
