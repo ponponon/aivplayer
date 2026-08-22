@@ -195,7 +195,7 @@ macOS 的 `--dir` 目标不会自动生成 `app-update.yml`；因此必须把固
 
 - macOS：`.dmg`、`.zip`、`latest-mac.yml`；DMG / ZIP 使用 Developer ID Application 签名并由 GitHub Actions 公证；
 - Windows：x64 / arm64 `.exe`、合并后的 `latest.yml`；
-- Linux：x64 / arm64 `.AppImage`、`.deb`、`latest-linux.yml`、`latest-linux-arm64.yml`；x64 额外构建 `.snap`（electron-builder 原生 snap target，core22 / strict，LXD 隔离构建，ARM64 暂不构建）。
+- Linux：x64 / arm64 `.AppImage`、`.deb`、`latest-linux.yml`、`latest-linux-arm64.yml`；x64 额外构建 `.snap`（electron-builder 原生 snapcraft target，core24 / strict，LXD 隔离构建，ARM64 暂不构建）。
 - 更新辅助文件：`.blockmap`；
 - 发布审计清单：`release-manifest.json`。
 

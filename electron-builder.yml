@@ -434,48 +434,22 @@ linux:
     - AppImage
     - deb
     - snap
-# Snap package: built with electron-builder's native snap target (generates
-# snapcraft.yaml internally), using LXD isolation on CI. Strict confinement
-# with explicit plugs so the app can read user media files.
-snap:
-  base: core22
-  confinement: strict
-  grade: stable
-  useLXD: true
-  plugs:
-    - default
-    - home
-    - removable-media
-    - network
-    - network-bind
-    - audio-playback
-    - browser-support
-    - opengl
-    - wayland
-    - x11
-  stagePackages:
-    - libnspr4
-    - libnss3
-    - libxss1
-    - libappindicator3-1
-    - libsecret-1-0
-    - libgtk-3-0
-    - libgbm1
-    - libasound2
-    - libatspi2.0-0
-    - libdrm2
-    - libxkbcommon0
-    - libxcomposite1
-    - libxdamage1
-    - libxfixes3
-    - libxrandr2
-    - libpango-1.0-0
-    - libcairo2
-    - libgdk-pixbuf-2.0-0
-    - libpangocairo-1.0-0
-    - libpangoft2-1.0-0
-    - gsettings-desktop-schemas
-    - shared-mime-info
+# Snap package: built with electron-builder's core24 snapcraft strategy
+# (generates snapcraft.yaml internally, `snapcraft pack --use-lxd` on CI).
+# core24 applies the gnome extension (GTK3/icon/theme content snaps) and
+# strict confinement; `default` expands the standard desktop plug set plus
+# removable-media / network-bind / browser-support for reading user media.
+snapcraft:
+  base: core24
+  core24:
+    confinement: strict
+    grade: stable
+    useLXD: true
+    plugs:
+      - default
+      - removable-media
+      - network-bind
+      - browser-support
 deb:
   afterInstall: build/deb-after-install.sh
   afterRemove: build/deb-after-remove.sh
