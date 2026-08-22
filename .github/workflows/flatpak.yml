@@ -82,9 +82,9 @@ jobs:
               break
             fi
             echo "rust-stable 安装失败（第 ${i} 次），$((i * 30)) 秒后重试..."
-            # 首次失败时输出完整 verbose（找 flatpak 实际请求的 URL）
+            # 首次失败时输出完整 ostree verbose（找 flatpak 实际请求的 URL）
             if [ "$i" = "1" ]; then
-              dbus-run-session -- flatpak install -v --user --assumeyes --noninteractive --no-static-deltas flathub "$rust_ref" 2>&1 | grep -E "F:|URI|url|GET|404|pulling|commit|object" | head -80 || true
+              dbus-run-session -- flatpak install -v --ostree-verbose --user --assumeyes --noninteractive --no-static-deltas flathub "$rust_ref" 2>&1 | grep -iE "GET |URI|url|http|404|pulling|commit|object|delta|Requesting|Fetching|Writing|Received" | head -100 || true
             fi
             sleep $((i * 30))
           done
@@ -144,9 +144,9 @@ jobs:
               break
             fi
             echo "rust-stable 安装失败（第 ${i} 次），$((i * 30)) 秒后重试..."
-            # 首次失败时输出完整 verbose（找 flatpak 实际请求的 URL）
+            # 首次失败时输出完整 ostree verbose（找 flatpak 实际请求的 URL）
             if [ "$i" = "1" ]; then
-              dbus-run-session -- flatpak install -v --user --assumeyes --noninteractive --no-static-deltas flathub "$rust_ref" 2>&1 | grep -E "F:|URI|url|GET|404|pulling|commit|object" | head -80 || true
+              dbus-run-session -- flatpak install -v --ostree-verbose --user --assumeyes --noninteractive --no-static-deltas flathub "$rust_ref" 2>&1 | grep -iE "GET |URI|url|http|404|pulling|commit|object|delta|Requesting|Fetching|Writing|Received" | head -100 || true
             fi
             sleep $((i * 30))
           done
