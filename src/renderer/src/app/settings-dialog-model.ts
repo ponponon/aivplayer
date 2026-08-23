@@ -99,7 +99,7 @@ export function createSettingsSectionProps(input: SettingsSectionPropsInput): Se
       { value: 'asr' as AppPanelModePreference, label: copy.panels.asrTitle },
       { value: 'info' as AppPanelModePreference, label: copy.panels.infoTitle }
     ],
-    modelSourceOptions: (['modelscope', 'huggingface'] as const).map((value) => ({
+    modelSourceOptions: (['r2', 'modelscope', 'huggingface'] as const).map((value) => ({
       value,
       label: copy.modelSources[value].title,
       description: copy.modelSources[value].description

@@ -7,7 +7,10 @@ describe('ASR model manifests', () => {
 
     expect(model.id).toBe('large-v3-turbo-q5_0')
     expect(model.fileName).toBe('ggml-large-v3-turbo-q5_0.bin')
-    expect(model.sources.map((source) => source.id)).toEqual(['modelscope', 'huggingface'])
+    expect(model.sources.map((source) => source.id)).toEqual(['r2', 'modelscope', 'huggingface'])
+    expect(model.sources.find((source) => source.id === 'r2')?.url).toBe(
+      'https://releases.quniv.cn/aivplayer/models/whisper/large-v3-turbo-q5_0/ggml-large-v3-turbo-q5_0.bin'
+    )
     expect(model.sources.find((source) => source.id === 'modelscope')?.url).toBe(
       'https://modelscope.cn/models/timeless/whispercpp/resolve/master/ggml-large-v3-turbo-q5_0.bin'
     )

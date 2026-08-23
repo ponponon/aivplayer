@@ -1222,8 +1222,9 @@
     downloadDialog: {
       title: 'Choose an ASR model download source',
       description: (fileName: string, sizeLabel: string) =>
-        `For mainland China, ModelScope is the recommended source. If you are overseas or already have a stable international proxy, use Hugging Face. Your default source is shown first and marked as default. Both sources download the same ${fileName}, about ${sizeLabel}.`,
+        `AIVPlayer's official R2 mirror is used by default. If it is unavailable, mainland China users can switch to ModelScope, while overseas users can switch to Hugging Face. Your default source is shown first and marked as default. Every source downloads the same ${fileName}, about ${sizeLabel}.`,
       close: 'Close download source picker',
+      sourceOfficial: 'Official R2 download',
       sourceDomestic: 'ModelScope download',
       sourceInternational: 'Hugging Face download',
       defaultBadge: 'Default',
@@ -1612,6 +1613,12 @@
       progressLabel: 'Working'
     },
     modelSources: {
+      r2: {
+        title: 'AIVPlayer R2',
+        description: 'AIVPlayer official Cloudflare R2 mirror, recommended for direct downloads.',
+        hint: 'Official mirror by default',
+        region: 'Official mirror'
+      },
       modelscope: {
         title: 'ModelScope',
         description: 'Best for mainland China networks and usually works without an extra proxy.',

@@ -282,7 +282,7 @@ export function createDefaultAppSettings(): AppSettings {
       }
     },
     asr: {
-      preferredModelSourceId: 'modelscope',
+      preferredModelSourceId: 'r2',
       defaultSubtitleLanguage: DEFAULT_SUBTITLE_LANGUAGE,
       autoLoadCachedSubtitles: true,
       translationServiceMode: 'managed',

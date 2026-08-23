@@ -40,7 +40,7 @@ describe('task center store', () => {
         kind: 'vision-index',
         status: 'failed',
         title: '视觉索引',
-        message: 'Vision Pack 0.5.5 未安装，无法加载 @lancedb/lancedb',
+        message: 'Vision Pack 0.6.3 未安装，无法加载 @lancedb/lancedb',
         progress: 0,
         updatedAt: 10
       })

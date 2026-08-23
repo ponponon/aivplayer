@@ -1222,8 +1222,9 @@
     downloadDialog: {
       title: 'ASR モデルのダウンロード元を選択',
       description: (fileName: string, sizeLabel: string) =>
-        `中国本土のネットワークでは ModelScope をおすすめします。海外、または安定した国際プロキシがある場合は Hugging Face を使ってください。既定のソースは先頭に表示され、既定としてマークされます。どちらも同じ ${fileName} をダウンロードし、サイズは約 ${sizeLabel} です。`,
+        `既定では AIVPlayer 公式 R2 ミラーを使用します。利用できない場合、中国本土では ModelScope、海外では Hugging Face に切り替えられます。既定のソースは先頭に表示され、既定としてマークされます。どのソースも同じ ${fileName}（約 ${sizeLabel}）をダウンロードします。`,
       close: 'ダウンロード元の選択を閉じる',
+      sourceOfficial: '公式 R2 からダウンロード',
       sourceDomestic: 'ModelScope からダウンロード',
       sourceInternational: 'Hugging Face からダウンロード',
       defaultBadge: '既定',
@@ -1612,6 +1613,12 @@
       progressLabel: '処理中'
     },
     modelSources: {
+      r2: {
+        title: 'AIVPlayer R2',
+        description: 'AIVPlayer 公式 Cloudflare R2 ミラー。直接ダウンロードする場合におすすめです。',
+        hint: '既定の公式ミラー',
+        region: '公式ミラー'
+      },
       modelscope: {
         title: 'ModelScope',
         description: '中国本土のネットワークに向いており、通常は追加プロキシなしで使えます。',

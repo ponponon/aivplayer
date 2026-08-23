@@ -3,7 +3,7 @@ import type { SubtitleTargetLanguageId } from './app-settings'
 export type AsrRuntimeStatus = { available: boolean; backend: 'whisper.cpp'; binaryPath: string | null; ffmpegPath: string | null; modelDirectory: string; installedModels: AsrModelInfo[]; recommendedModel: string; recommendedModelManifest: AsrModelManifest; whisperVersion: string | null; message: string }
 export type AsrRuntimeSetupResult = { success: boolean; canceled?: boolean; message: string; status?: AsrRuntimeStatus }
 export type AsrModelInfo = { id: string; name: string; path: string; sizeBytes: number }
-export type AsrModelSourceId = 'modelscope' | 'huggingface'
+export type AsrModelSourceId = 'r2' | 'modelscope' | 'huggingface'
 export type AsrModelDownloadSource = { id: AsrModelSourceId; name: string; region: string; url: string; description: string; sha256?: string }
 export type AsrModelManifest = { id: string; name: string; fileName: string; sources: AsrModelDownloadSource[]; expectedSizeBytes: number; ramRequirement: string; description: string }
 export type AsrModelDownloadProgress = { modelId: string; fileName: string; sourceId: AsrModelSourceId; sourceName: string; receivedBytes: number; totalBytes: number | null; percent: number | null; message: string }

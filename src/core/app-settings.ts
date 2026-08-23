@@ -52,7 +52,7 @@ function isSettingsSectionId(value: unknown): value is AppSettingsSectionId {
 }
 
 function isAsrModelSourceId(value: unknown): value is AsrModelSourceId {
-  return value === 'modelscope' || value === 'huggingface'
+  return value === 'r2' || value === 'modelscope' || value === 'huggingface'
 }
 
 function isCaptureImageFormat(value: unknown): value is CaptureImageFormat {

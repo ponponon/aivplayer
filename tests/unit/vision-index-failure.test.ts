@@ -56,7 +56,7 @@ describe('vision index failure recovery', () => {
       const store = new VisionIndexFailureStore(directory)
       expect(store.recordFailure({
         mediaPath: '/media/demo.mp4',
-        error: 'Vision Pack 0.5.5 未安装，无法加载 @lancedb/lancedb',
+        error: 'Vision Pack 0.6.3 未安装，无法加载 @lancedb/lancedb',
         intervalSeconds: 5,
         includeEntityEvidence: true,
         includeObjectEvidence: true,

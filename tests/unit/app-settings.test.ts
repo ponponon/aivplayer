@@ -144,7 +144,7 @@ describe('app settings', () => {
         clipExportMode: 'video'
       },
       asr: {
-        preferredModelSourceId: 'modelscope',
+            preferredModelSourceId: 'r2',
         defaultSubtitleLanguage: 'auto',
         autoLoadCachedSubtitles: true,
         translationServiceMode: 'managed',

@@ -1222,8 +1222,9 @@
     downloadDialog: {
       title: 'ASR 모델 다운로드 소스 선택',
       description: (fileName: string, sizeLabel: string) =>
-        `중국 본토 네트워크에서는 ModelScope를 추천합니다. 해외이거나 안정적인 국제 프록시가 있으면 Hugging Face를 사용하세요. 기본 소스는 먼저 표시되고 기본으로 표시됩니다. 두 소스는 같은 ${fileName}을 다운로드하며, 크기는 약 ${sizeLabel}입니다.`,
+        `기본적으로 AIVPlayer 공식 R2 미러를 사용합니다. 사용할 수 없으면 중국 본토에서는 ModelScope, 해외에서는 Hugging Face로 전환할 수 있습니다. 기본 소스는 먼저 표시되고 기본으로 표시됩니다. 모든 소스는 같은 ${fileName}을 다운로드하며, 크기는 약 ${sizeLabel}입니다.`,
       close: '다운로드 소스 선택 닫기',
+      sourceOfficial: '공식 R2에서 다운로드',
       sourceDomestic: 'ModelScope에서 다운로드',
       sourceInternational: 'Hugging Face에서 다운로드',
       defaultBadge: '기본',
@@ -1612,6 +1613,12 @@
       progressLabel: '작업 중'
     },
     modelSources: {
+      r2: {
+        title: 'AIVPlayer R2',
+        description: 'AIVPlayer 공식 Cloudflare R2 미러로, 직접 다운로드할 때 권장됩니다.',
+        hint: '기본 공식 미러',
+        region: '공식 미러'
+      },
       modelscope: {
         title: 'ModelScope',
         description: '중국 본토 네트워크에 적합하며 보통 추가 프록시 없이 사용할 수 있습니다.',

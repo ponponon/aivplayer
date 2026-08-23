@@ -2,10 +2,19 @@ import type { AsrModelDownloadSource, AsrModelManifest, AsrModelSourceId } from 
 
 const HUGGING_FACE_WHISPER_CPP_BASE = 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main'
 const MODELSCOPE_WHISPER_CPP_BASE = 'https://modelscope.cn/models/timeless/whispercpp/resolve/master'
+const R2_WHISPER_CPP_BASE = 'https://releases.quniv.cn/aivplayer/models/whisper/large-v3-turbo-q5_0'
 const LARGE_V3_TURBO_Q5_0_FILE = 'ggml-large-v3-turbo-q5_0.bin'
 const SMALL_Q5_1_FILE = 'ggml-small-q5_1.bin'
 
 const largeV3TurboQ50Sources: AsrModelDownloadSource[] = [
+  {
+    id: 'r2',
+    name: 'AIVPlayer R2',
+    region: '官方镜像',
+    url: `${R2_WHISPER_CPP_BASE}/${LARGE_V3_TURBO_Q5_0_FILE}`,
+    description: 'AIVPlayer 官方 Cloudflare R2 镜像，默认推荐，适合直接下载。',
+    sha256: '394221709cd5ad1f40c46e6031ca61bce88931e6e088c188294c6d5a55ffa7e2'
+  },
   {
     id: 'modelscope',
     name: 'ModelScope',

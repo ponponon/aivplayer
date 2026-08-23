@@ -1222,8 +1222,9 @@
     downloadDialog: {
       title: '选择 ASR 模型下载源',
       description: (fileName: string, sizeLabel: string) =>
-        `中国大陆网络建议走阿里云 ModelScope；海外用户或已经配置稳定国际代理时，走 Hugging Face。设置里的默认源会排在第一位并标记为默认。两个源下载的是同一个 ${fileName}，约 ${sizeLabel}。`,
+        `默认使用 AIVPlayer 官方 R2 镜像；如果镜像访问不稳定，中国大陆网络可切换 ModelScope，海外用户可切换 Hugging Face。设置里的默认源会排在第一位并标记为默认。各源下载的是同一个 ${fileName}，约 ${sizeLabel}。`,
       close: '关闭下载源选择',
+      sourceOfficial: '官方 R2 下载',
       sourceDomestic: '国内下载 ModelScope',
       sourceInternational: '国际下载 Hugging Face',
       defaultBadge: '默认',
@@ -1610,6 +1611,12 @@
       progressLabel: '处理中'
     },
     modelSources: {
+      r2: {
+        title: 'AIVPlayer R2',
+        description: 'AIVPlayer 官方 Cloudflare R2 镜像，默认推荐，适合直接下载。',
+        hint: '默认官方镜像',
+        region: '官方镜像'
+      },
       modelscope: {
         title: 'ModelScope',
         description: '阿里云魔搭社区镜像源，适合中国大陆网络，通常不需要额外代理。',
