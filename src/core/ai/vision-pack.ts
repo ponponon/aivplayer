@@ -1,8 +1,10 @@
 import { createRequire } from 'node:module'
+import { readFileSync, readdirSync } from 'node:fs'
 import { join, resolve } from 'node:path'
+import packageMetadata from '../../../package.json'
 
 export const VISION_PACK_ID = 'aivplayer-vision-pack'
-export const VISION_PACK_VERSION = '0.5.5'
+export const VISION_PACK_VERSION = packageMetadata.version
 export const VISION_PACK_BASE_URL = 'https://releases.quniv.cn/aivplayer/vision-pack'
 
 export type VisionPackModuleName = '@huggingface/transformers' | '@lancedb/lancedb' | 'apache-arrow'
@@ -25,6 +27,7 @@ export function isVisionPackUnavailableMessage(value: unknown): boolean {
 type VisionPackManifest = {
   id: string
   version: string
+  revision?: string
   platform: NodeJS.Platform
   arch: string
   entry: string
@@ -34,8 +37,11 @@ function getPlatformKey(): string {
   return `${process.platform}-${process.arch}`
 }
 
-export function getVisionPackDirectory(userDataPath: string): string {
-  return join(resolve(userDataPath), 'models', 'vision-pack', VISION_PACK_VERSION, getPlatformKey())
+// 本地目录按内容 revision 组织（跨 app 版本共享同一份视觉运行时）。
+// 未指定 revision 时回退到当前 app 版本目录名，保持向后兼容。
+export function getVisionPackDirectory(userDataPath: string, revision?: string): string {
+  const key = revision ?? VISION_PACK_VERSION
+  return join(resolve(userDataPath), 'models', 'vision-pack', key, getPlatformKey())
 }
 
 export function getBundledVisionPackDirectory(resourcePath: string): string {
@@ -46,9 +52,23 @@ function getVisionPackCandidates(resourcePath: string, userDataPath: string): st
   const configured = process.env.AIVPLAYER_VISION_PACK_DIR?.trim()
   return [
     configured ? resolve(configured) : null,
-    getVisionPackDirectory(userDataPath),
+    ...listInstalledVisionPackDirectories(userDataPath),
     getBundledVisionPackDirectory(resourcePath)
   ].filter((value): value is string => Boolean(value))
+}
+
+// 扫描 userData/models/vision-pack/ 下所有已安装的 revision 目录（含旧版 app 版本目录名）
+function listInstalledVisionPackDirectories(userDataPath: string): string[] {
+  const versionsRoot = join(resolve(userDataPath), 'models', 'vision-pack')
+  let entries: string[] = []
+  try {
+    entries = readdirSync(versionsRoot)
+  } catch {
+    return []
+  }
+  return entries
+    .map((entry) => getVisionPackDirectory(userDataPath, entry))
+    .filter((directory) => isDirectoryAvailableSync(directory))
 }
 
 export function resolveVisionPackDirectory(resourcePath: string, userDataPath: string): string | null {
@@ -85,14 +105,24 @@ export function getVisionPackStatus(resourcePath: string, userDataPath: string):
   }
   const directory = resolvedDirectory ?? getVisionPackDirectory(userDataPath)
   const available = resolvedDirectory !== null
+  const installedVersion = available ? readInstalledManifestVersion(resolvedDirectory) : undefined
   return {
     available,
     downloadable: true,
-    version: VISION_PACK_VERSION,
+    version: installedVersion ?? VISION_PACK_VERSION,
     directory,
     message: available
-      ? `视觉运行组件 ${VISION_PACK_VERSION} 已就绪`
+      ? `视觉运行组件 ${installedVersion ?? VISION_PACK_VERSION} 已就绪`
       : `视觉运行组件未安装，需要下载 Vision Pack ${VISION_PACK_VERSION}`
+  }
+}
+
+function readInstalledManifestVersion(directory: string): string | undefined {
+  try {
+    const manifest = JSON.parse(readFileSync(getVisionPackManifestPath(directory), 'utf8')) as { version?: unknown }
+    return typeof manifest.version === 'string' ? manifest.version : undefined
+  } catch {
+    return undefined
   }
 }
 
@@ -124,8 +154,10 @@ export function getVisionPackPackageRoot(directory: string): string {
 export function isVisionPackManifest(value: unknown): value is VisionPackManifest {
   if (!value || typeof value !== 'object') return false
   const candidate = value as Partial<VisionPackManifest>
+  // 内容寻址后包内 version 是构建时的 app 版本，跨版本复用时可能与当前版本不一致，
+  // 因此以 id + revision 为准，version 仅作展示。
   return candidate.id === VISION_PACK_ID
-    && candidate.version === VISION_PACK_VERSION
+    && (typeof candidate.revision === 'undefined' || /^[a-f0-9]{32,64}$/u.test(candidate.revision))
     && typeof candidate.platform === 'string'
     && typeof candidate.arch === 'string'
     && candidate.entry === 'package.json'

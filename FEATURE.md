@@ -1,5 +1,7 @@
 # AIVPlayer 功能列表
 
+- Vision Pack 改为内容寻址存储：R2 中同平台的视觉运行时按内容 revision 只存一份（revision 由打包后的 node_modules 逐文件哈希生成），app 版本只写一份小映射清单（`vision-pack/<版本>/<平台>/manifest.json` 指向 revision）；依赖未升级时不同版本共享同一份压缩包，消除跨版本重复上传与存储，发布流水线检测 revision 已存在时跳过内容上传。应用下载时先取版本映射再按 revision 拉取内容，本地已安装同 revision 则直接复用，不再重复下载。
+
 - 新增可复用的 R2 大文件分片上传脚本：通过 S3 Multipart Upload 绕过 Wrangler 300 MiB 单文件限制，支持失败重试、状态文件断点续传、对象元数据和 SHA-256 校验，适用于模型与其他大体积资源发布。
 
 - ASR 首次启动自动准备：正式安装包启动后会在后台使用默认 ModelScope 源下载推荐 Whisper 模型，不阻塞播放器界面；下载进度和失败状态会显示在顶部，失败后下次启动会继续重试；whisper.cpp、FFmpeg、ffprobe 和 HEIF 原生运行时仍由正式安装包内置，Vision Pack 与视觉模型继续按需下载。

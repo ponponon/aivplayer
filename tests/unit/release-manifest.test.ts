@@ -101,11 +101,11 @@ describe('release manifest', () => {
 
     expect(result.ok).toBe(true)
     expect(result.tag).toBe(`v${packageVersion.version}`)
-    expect(result.artifactCount).toBe(12)
+    expect(result.artifactCount).toBe(13)
     expect(result.platforms).toEqual({
       macos: { artifactCount: 3, packageCount: 2 },
       windows: { artifactCount: 3, packageCount: 2 },
-      linux: { artifactCount: 6, packageCount: 4 }
+      linux: { artifactCount: 7, packageCount: 5 }
     })
     expect(result.manifest.provenance).toEqual({
       commit: '0'.repeat(40),

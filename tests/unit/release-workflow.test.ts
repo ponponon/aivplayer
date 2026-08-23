@@ -65,7 +65,7 @@ describe('release workflow source constraints', () => {
     expect(releaseWorkflow).toContain('description: \'Build and validate all release artifacts without creating a release\'')
     expect(releaseWorkflow).toContain('default: false')
     expect(releaseWorkflow).toContain('type: boolean')
-    expect(releaseWorkflow.match(/github\.event_name != 'workflow_dispatch' \|\| inputs\.verify_only != true/g)).toHaveLength(5)
+    expect(releaseWorkflow.match(/github\.event_name != 'workflow_dispatch' \|\| inputs\.verify_only != true/g)).toHaveLength(6)
     expect(releaseWorkflow.indexOf('release:check-evidence')).toBeLessThan(releaseWorkflow.indexOf('Create GitHub Release'))
   })
 
@@ -217,7 +217,7 @@ describe('release workflow source constraints', () => {
     expect(releaseWorkflow).toContain('name: Verify assembled package formats')
     expect(releaseWorkflow).not.toContain('--artifacts-dir artifacts/assembled --report-path artifacts/assembled/platform-release-report-')
     expect(platformRelease).toContain("packages: ['.dmg', '.zip']")
-    expect(platformRelease).toContain("packages: ['.AppImage', '.deb']")
+    expect(platformRelease).toContain("packages: ['.AppImage', '.deb', '.snap']")
     expect(platformRelease).toContain('unexpected packages')
   })
 

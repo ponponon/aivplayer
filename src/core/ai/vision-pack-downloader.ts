@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto'
 import { execFile } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import { mkdir, open, readFile, rename, rm, stat } from 'node:fs/promises'
 import { promisify } from 'node:util'
 import { dirname, join } from 'node:path'
@@ -10,6 +11,7 @@ const execFileAsync = promisify(execFile)
 type RemoteVisionPackManifest = {
   id: string
   version: string
+  revision: string
   platform: NodeJS.Platform
   arch: string
   archive: string
@@ -37,6 +39,7 @@ function isRemoteVisionPackManifest(value: unknown): value is RemoteVisionPackMa
   const candidate = value as Partial<RemoteVisionPackManifest>
   return candidate.id === 'aivplayer-vision-pack'
     && candidate.version === VISION_PACK_VERSION
+    && typeof candidate.revision === 'string' && /^[a-f0-9]{32,64}$/u.test(candidate.revision)
     && candidate.platform === process.platform
     && candidate.arch === process.arch
     && typeof candidate.archive === 'string'
@@ -89,13 +92,19 @@ export async function downloadVisionPack(options: DownloadVisionPackOptions): Pr
   const manifest = await manifestResponse.json() as unknown
   if (!isRemoteVisionPackManifest(manifest)) throw new Error('Vision Pack 清单无效或与当前平台不匹配')
 
-  const targetDirectory = getVisionPackDirectory(options.userDataPath)
+  // 内容寻址：目标目录按远端清单的 revision 组织；若该 revision 已安装则直接复用，
+  // 不同 app 版本只要依赖相同，就会命中同一个 revision，避免重复下载。
+  const targetDirectory = getVisionPackDirectory(options.userDataPath, manifest.revision)
+  if (isVisionPackDirectoryReady(targetDirectory, manifest)) {
+    return getVisionPackStatus('', options.userDataPath)
+  }
+
   const temporaryDirectory = `${targetDirectory}.download-${process.pid}`
   const archivePath = `${temporaryDirectory}.tar.gz`
   await rm(temporaryDirectory, { recursive: true, force: true })
   await rm(archivePath, { force: true })
   try {
-    const archiveUrl = `${baseUrl.replace(/\/$/u, '')}/${VISION_PACK_VERSION}/${getPlatformKey()}/${manifest.archive}`
+    const archiveUrl = `${baseUrl.replace(/\/$/u, '')}/${manifest.revision}/${getPlatformKey()}/${manifest.archive}`
     const actual = await downloadToFile(archiveUrl, archivePath, fetchImpl, options.signal)
     if (actual.sha256 !== manifest.sha256 || actual.sizeBytes !== manifest.sizeBytes) throw new Error('Vision Pack 校验失败，下载内容与清单不一致')
     await mkdir(temporaryDirectory, { recursive: true })
@@ -111,4 +120,15 @@ export async function downloadVisionPack(options: DownloadVisionPackOptions): Pr
     await rm(archivePath, { force: true })
   }
   return getVisionPackStatus('', options.userDataPath)
+}
+
+function isVisionPackDirectoryReady(directory: string, manifest: RemoteVisionPackManifest): boolean {
+  try {
+    const embeddedManifest = JSON.parse(readFileSync(getVisionPackManifestPath(directory), 'utf8')) as { revision?: unknown }
+    if (!isVisionPackManifest(embeddedManifest)) return false
+    // 远端清单的 revision 与本地一致才复用；旧结构（无 revision 字段）不匹配时重新下载
+    return embeddedManifest.revision === manifest.revision
+  } catch {
+    return false
+  }
 }

@@ -36,7 +36,7 @@ describe('platform release artifact contract', () => {
   it.each([
     ['macos', ['AIVPlayer-0.4.0.dmg', 'AIVPlayer-0.4.0.zip', 'AIVPlayer-0.4.0.dmg.blockmap', 'latest-mac.yml']],
     ['windows', ['AIVPlayer Setup 0.4.0.exe', 'AIVPlayer Setup 0.4.0.exe.blockmap', 'latest.yml']],
-    ['linux', ['AIVPlayer-0.4.0.AppImage', 'aivplayer_0.4.0_amd64.deb', 'AIVPlayer-0.4.0-arm64.AppImage', 'aivplayer_0.4.0_arm64.deb', 'latest-linux.yml', 'latest-linux-arm64.yml']]
+    ['linux', ['AIVPlayer-0.4.0.AppImage', 'aivplayer_0.4.0_amd64.deb', 'aivplayer_0.4.0_amd64.snap', 'AIVPlayer-0.4.0-arm64.AppImage', 'aivplayer_0.4.0_arm64.deb', 'latest-linux.yml', 'latest-linux-arm64.yml']]
   ])('accepts the complete %s package set', async (platform, names) => {
     const artifactsDirectory = await createFixture([...names, 'builder-debug.yml'])
     const result = await runCheck(platform, artifactsDirectory)
@@ -64,7 +64,7 @@ describe('platform release artifact contract', () => {
   })
 
   it('accepts common x64 package name aliases', async () => {
-    const artifactsDirectory = await createFixture(['AIVPlayer-0.4.0-x86_64.AppImage', 'aivplayer_0.4.0_amd64.deb', 'latest-linux.yml'])
+    const artifactsDirectory = await createFixture(['AIVPlayer-0.4.0-x86_64.AppImage', 'aivplayer_0.4.0_amd64.deb', 'aivplayer_0.4.0_amd64.snap', 'latest-linux.yml'])
     const result = await runCheck('linux', artifactsDirectory, undefined, 'x64')
     expect(result.stdout).toContain('Platform release artifacts verified: linux')
   })
