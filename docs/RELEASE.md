@@ -182,7 +182,7 @@ macOS 的 `--dir` 目标不会自动生成 `app-update.yml`；因此必须把固
 6. 检查 `latest*.yml` 的版本、`url` / `path` 引用和实际文件名。
 7. 生成并校验 `release-manifest.json`，记录资产大小与 SHA-256。
 8. 创建 GitHub Release 并上传正式资产。
-9. 把五个平台的 Vision Pack 及 manifest 上传到 R2，并使用固定版本 / 平台 / 架构路径。
+9. 把五个平台的 Vision Pack 上传到 R2：版本 manifest 使用版本 / 平台 / 架构路径，内容归档使用 revision / 平台 / 架构路径；如果 revision 已存在则复用已有归档校验值。
 10. 通过 GitHub API 回读 Release 资产，重新下载并校验大小、SHA-256 和 manifest 内容。
 11. 将当前版安装包写入 R2 的 `aivplayer/releases/<version>/`，更新 `download-manifest.json`，并删除所有更早版本的安装包对象。
 12. 保存不含凭据的远端校验报告作为 workflow artifact。
@@ -204,8 +204,10 @@ macOS 的 `--dir` 目标不会自动生成 `app-update.yml`；因此必须把固
 ### 4. R2 视觉资源路径
 
 - SigLIP2：`https://releases.quniv.cn/aivplayer/models/siglip2/<revision>/<file>`。
-- Vision Pack：`https://releases.quniv.cn/aivplayer/vision-pack/<version>/<platform>-<arch>/`。
-- Vision Pack 下载前校验远程 manifest，下载后校验归档 SHA-256，并使用临时目录原子替换到用户数据目录。
+- Vision Pack 版本映射：`https://releases.quniv.cn/aivplayer/vision-pack/<version>/<platform>-<arch>/manifest.json`；内容归档：`https://releases.quniv.cn/aivplayer/vision-pack/<revision>/<platform>-<arch>/vision-pack.tar.gz`。
+- Vision Pack 的 `<revision>` 由平台依赖内容计算，同一依赖内容只上传一份归档；版本 manifest 只负责指向对应 revision。
+- Vision Pack 下载前校验远程 manifest，下载后校验归档 SHA-256，并使用临时目录原子替换和 `active.json` 指针切换到用户数据目录。
+- R2 清理 Vision Pack 时，必须同时保留仍被支持版本 manifest 引用的 revision 归档；不要按版本目录直接删除内容归档。
 
 ### 5. 官网桌面下载路径
 

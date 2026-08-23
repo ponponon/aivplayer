@@ -1,10 +1,10 @@
 import { createHash } from 'node:crypto'
 import { execFile } from 'node:child_process'
 import { readFileSync } from 'node:fs'
-import { mkdir, open, readFile, rename, rm, stat } from 'node:fs/promises'
+import { mkdir, open, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { promisify } from 'node:util'
 import { dirname, join } from 'node:path'
-import { getVisionPackDirectory, getVisionPackManifestPath, getVisionPackStatus, isVisionPackManifest, resolveVisionPackDirectory, VISION_PACK_BASE_URL, VISION_PACK_VERSION, type VisionPackStatus } from './vision-pack'
+import { getVisionPackActivePointerPath, getVisionPackDirectory, getVisionPackManifestPath, getVisionPackRootDirectory, getVisionPackStatus, isVisionPackManifest, VISION_PACK_BASE_URL, VISION_PACK_ID, VISION_PACK_VERSION, type VisionPackStatus } from './vision-pack'
 
 const execFileAsync = promisify(execFile)
 
@@ -84,8 +84,6 @@ async function downloadToFile(url: string, filePath: string, fetchImpl: typeof f
 export async function downloadVisionPack(options: DownloadVisionPackOptions): Promise<VisionPackStatus> {
   const baseUrl = options.baseUrl ?? process.env.VISION_PACK_BASE_URL ?? VISION_PACK_BASE_URL
   const fetchImpl = options.fetchImpl ?? fetch
-  const existingDirectory = resolveVisionPackDirectory('', options.userDataPath)
-  if (existingDirectory) return getVisionPackStatus('', options.userDataPath)
 
   const manifestResponse = await fetchImpl(getManifestUrl(baseUrl), { redirect: 'follow', signal: options.signal })
   if (!manifestResponse.ok) throw new Error(`Vision Pack 清单下载失败：HTTP ${manifestResponse.status} ${manifestResponse.statusText}`)
@@ -96,6 +94,7 @@ export async function downloadVisionPack(options: DownloadVisionPackOptions): Pr
   // 不同 app 版本只要依赖相同，就会命中同一个 revision，避免重复下载。
   const targetDirectory = getVisionPackDirectory(options.userDataPath, manifest.revision)
   if (isVisionPackDirectoryReady(targetDirectory, manifest)) {
+    await writeActiveVisionPackPointer(options.userDataPath, manifest)
     return getVisionPackStatus('', options.userDataPath)
   }
 
@@ -111,6 +110,9 @@ export async function downloadVisionPack(options: DownloadVisionPackOptions): Pr
     await execFileAsync('tar', ['-xzf', archivePath, '-C', temporaryDirectory], { timeout: 120_000 })
     const embeddedManifest = JSON.parse(await readFile(getVisionPackManifestPath(temporaryDirectory), 'utf8')) as unknown
     if (!isVisionPackManifest(embeddedManifest)) throw new Error('Vision Pack 内部清单无效')
+    if (embeddedManifest.revision !== manifest.revision || embeddedManifest.platform !== process.platform || embeddedManifest.arch !== process.arch) {
+      throw new Error('Vision Pack 内部清单与远端清单不一致')
+    }
     await stat(join(temporaryDirectory, 'package.json'))
     await rm(targetDirectory, { recursive: true, force: true })
     await mkdir(dirname(targetDirectory), { recursive: true })
@@ -119,16 +121,36 @@ export async function downloadVisionPack(options: DownloadVisionPackOptions): Pr
     await rm(temporaryDirectory, { recursive: true, force: true })
     await rm(archivePath, { force: true })
   }
+  await writeActiveVisionPackPointer(options.userDataPath, manifest)
   return getVisionPackStatus('', options.userDataPath)
 }
 
 function isVisionPackDirectoryReady(directory: string, manifest: RemoteVisionPackManifest): boolean {
   try {
-    const embeddedManifest = JSON.parse(readFileSync(getVisionPackManifestPath(directory), 'utf8')) as { revision?: unknown }
+    const embeddedManifest = JSON.parse(readFileSync(getVisionPackManifestPath(directory), 'utf8')) as unknown
     if (!isVisionPackManifest(embeddedManifest)) return false
     // 远端清单的 revision 与本地一致才复用；旧结构（无 revision 字段）不匹配时重新下载
     return embeddedManifest.revision === manifest.revision
   } catch {
     return false
+  }
+}
+
+async function writeActiveVisionPackPointer(userDataPath: string, manifest: RemoteVisionPackManifest): Promise<void> {
+  const pointerPath = getVisionPackActivePointerPath(userDataPath)
+  const temporaryPath = `${pointerPath}.tmp-${process.pid}`
+  const pointer = {
+    id: VISION_PACK_ID,
+    version: VISION_PACK_VERSION,
+    revision: manifest.revision,
+    platform: process.platform,
+    arch: process.arch
+  }
+  await mkdir(getVisionPackRootDirectory(userDataPath), { recursive: true })
+  try {
+    await writeFile(temporaryPath, `${JSON.stringify(pointer)}\n`, 'utf8')
+    await rename(temporaryPath, pointerPath)
+  } finally {
+    await rm(temporaryPath, { force: true })
   }
 }

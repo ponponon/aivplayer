@@ -57,6 +57,8 @@ describe('release workflow source constraints', () => {
     expect(releaseWorkflow).toContain('Upload platform-specific Vision Packs to R2')
     expect(releaseWorkflow).toContain('CLOUDFLARE_API_TOKEN')
     expect(releaseWorkflow).toContain('aivplayer-releases/aivplayer/vision-pack/$version')
+    expect(releaseWorkflow).toContain('复用 R2 归档校验值（跨版本复用）')
+    expect(releaseWorkflow).toContain('content_manifest_url')
     expect(releaseWorkflow).toContain('name: Create GitHub Release')
   })
 

@@ -1,11 +1,13 @@
 import { createRequire } from 'node:module'
-import { readFileSync, readdirSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import packageMetadata from '../../../package.json'
 
 export const VISION_PACK_ID = 'aivplayer-vision-pack'
 export const VISION_PACK_VERSION = packageMetadata.version
 export const VISION_PACK_BASE_URL = 'https://releases.quniv.cn/aivplayer/vision-pack'
+const VISION_PACK_ROOT = 'models/vision-pack'
+const VISION_PACK_ACTIVE_POINTER = 'active.json'
 
 export type VisionPackModuleName = '@huggingface/transformers' | '@lancedb/lancedb' | 'apache-arrow'
 
@@ -33,6 +35,14 @@ type VisionPackManifest = {
   entry: string
 }
 
+type VisionPackActivePointer = {
+  id: string
+  version: string
+  revision: string
+  platform: NodeJS.Platform
+  arch: string
+}
+
 function getPlatformKey(): string {
   return `${process.platform}-${process.arch}`
 }
@@ -41,7 +51,15 @@ function getPlatformKey(): string {
 // 未指定 revision 时回退到当前 app 版本目录名，保持向后兼容。
 export function getVisionPackDirectory(userDataPath: string, revision?: string): string {
   const key = revision ?? VISION_PACK_VERSION
-  return join(resolve(userDataPath), 'models', 'vision-pack', key, getPlatformKey())
+  return join(getVisionPackRootDirectory(userDataPath), key, getPlatformKey())
+}
+
+export function getVisionPackRootDirectory(userDataPath: string): string {
+  return join(resolve(userDataPath), VISION_PACK_ROOT)
+}
+
+export function getVisionPackActivePointerPath(userDataPath: string): string {
+  return join(getVisionPackRootDirectory(userDataPath), VISION_PACK_ACTIVE_POINTER)
 }
 
 export function getBundledVisionPackDirectory(resourcePath: string): string {
@@ -52,23 +70,22 @@ function getVisionPackCandidates(resourcePath: string, userDataPath: string): st
   const configured = process.env.AIVPLAYER_VISION_PACK_DIR?.trim()
   return [
     configured ? resolve(configured) : null,
-    ...listInstalledVisionPackDirectories(userDataPath),
+    getActiveVisionPackDirectory(userDataPath),
+    getVisionPackDirectory(userDataPath),
     getBundledVisionPackDirectory(resourcePath)
   ].filter((value): value is string => Boolean(value))
 }
 
-// 扫描 userData/models/vision-pack/ 下所有已安装的 revision 目录（含旧版 app 版本目录名）
-function listInstalledVisionPackDirectories(userDataPath: string): string[] {
-  const versionsRoot = join(resolve(userDataPath), 'models', 'vision-pack')
-  let entries: string[] = []
+function getActiveVisionPackDirectory(userDataPath: string): string | null {
   try {
-    entries = readdirSync(versionsRoot)
+    const pointer = JSON.parse(readFileSync(getVisionPackActivePointerPath(userDataPath), 'utf8')) as unknown
+    if (!isVisionPackActivePointer(pointer)) return null
+    if (pointer.version !== VISION_PACK_VERSION || pointer.platform !== process.platform || pointer.arch !== process.arch) return null
+    const directory = getVisionPackDirectory(userDataPath, pointer.revision)
+    return isDirectoryAvailableSync(directory) ? directory : null
   } catch {
-    return []
+    return null
   }
-  return entries
-    .map((entry) => getVisionPackDirectory(userDataPath, entry))
-    .filter((directory) => isDirectoryAvailableSync(directory))
 }
 
 export function resolveVisionPackDirectory(resourcePath: string, userDataPath: string): string | null {
@@ -157,8 +174,20 @@ export function isVisionPackManifest(value: unknown): value is VisionPackManifes
   // 内容寻址后包内 version 是构建时的 app 版本，跨版本复用时可能与当前版本不一致，
   // 因此以 id + revision 为准，version 仅作展示。
   return candidate.id === VISION_PACK_ID
+    && typeof candidate.version === 'string'
     && (typeof candidate.revision === 'undefined' || /^[a-f0-9]{32,64}$/u.test(candidate.revision))
     && typeof candidate.platform === 'string'
     && typeof candidate.arch === 'string'
     && candidate.entry === 'package.json'
+}
+
+export function isVisionPackActivePointer(value: unknown): value is VisionPackActivePointer {
+  if (!value || typeof value !== 'object') return false
+  const candidate = value as Partial<VisionPackActivePointer>
+  return candidate.id === VISION_PACK_ID
+    && typeof candidate.version === 'string'
+    && typeof candidate.revision === 'string'
+    && /^[a-f0-9]{32,64}$/u.test(candidate.revision)
+    && typeof candidate.platform === 'string'
+    && typeof candidate.arch === 'string'
 }

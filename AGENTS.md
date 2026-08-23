@@ -80,6 +80,16 @@ github 发版要注意打上 tag，github releases 页面的东西也不要忘�
 
 现在已经配置 GitHub Actions 发布到 Cloudflare pages 了
 
+## R2 大文件上传
+
+超过 Wrangler 单文件限制的大文件，使用 `scripts/upload-r2-multipart.py` 上传。先配置 `CLOUDFLARE_ACCOUNT_ID`、`R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY`，再执行：
+
+```shell
+python3 scripts/upload-r2-multipart.py --file <本地文件> --bucket aivplayer-releases --key <R2对象路径>
+```
+
+脚本支持失败重试和断点续传；不要把密钥写入仓库。
+
 ---
 
 对于新功能，你依据情况，可以加到 README.md 和 cloudflare pages （https://aivplayer.pages.dev/） 里面

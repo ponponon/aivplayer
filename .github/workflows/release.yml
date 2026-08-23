@@ -1293,17 +1293,29 @@ jobs:
             local revision
             revision="$(node -e "const m=JSON.parse(require('fs').readFileSync('$manifest','utf8')); if(!/^[a-f0-9]{32,64}$/.test(m.revision||'')) { console.error('manifest missing revision'); process.exit(1) } console.log(m.revision)")"
             local content_url="https://releases.quniv.cn/aivplayer/vision-pack/$revision/$platform_key/vision-pack.tar.gz"
+            local content_manifest_url="https://releases.quniv.cn/aivplayer/vision-pack/$revision/$platform_key/manifest.json"
+            local mapping_manifest
+            mapping_manifest="$(mktemp)"
             local exists
             exists="$(curl -sI --max-time 30 "$content_url" -o /dev/null -w '%{http_code}' || true)"
-            if [ "$exists" = "200" ]; then
-              echo "Vision Pack $revision/$platform_key 已存在，跳过内容上传（跨版本复用）"
+            if [ "$exists" = "200" ] && curl --fail --silent --show-error --location --max-time 30 "$content_manifest_url" -o "$mapping_manifest"; then
+              if node -e "const fs=require('fs'); const local=JSON.parse(fs.readFileSync(process.argv[1],'utf8')); const remote=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); if(remote.revision!==local.revision || remote.archive!=='vision-pack.tar.gz' || !/^[a-f0-9]{64}$/.test(remote.sha256||'') || !(Number.isInteger(remote.sizeBytes)&&remote.sizeBytes>0)) process.exit(1); fs.writeFileSync(process.argv[3], JSON.stringify({...local, archive:remote.archive, sha256:remote.sha256, sizeBytes:remote.sizeBytes})+'\n')" "$manifest" "$mapping_manifest" "$mapping_manifest"; then
+                echo "Vision Pack $revision/$platform_key 已存在，复用 R2 归档校验值（跨版本复用）"
+              else
+                echo "Vision Pack $revision/$platform_key 的远端清单无效，重新上传内容"
+                wrangler r2 object put "aivplayer-releases/aivplayer/vision-pack/$revision/$platform_key/vision-pack.tar.gz" --remote --file "$archive" --force --cache-control 'public, max-age=31536000, immutable' --content-type 'application/gzip'
+                wrangler r2 object put "aivplayer-releases/aivplayer/vision-pack/$revision/$platform_key/manifest.json" --remote --file "$manifest" --force --cache-control 'public, max-age=31536000, immutable' --content-type 'application/json'
+                cp "$manifest" "$mapping_manifest"
+              fi
             else
               echo "上传 Vision Pack 内容 $revision/$platform_key"
               wrangler r2 object put "aivplayer-releases/aivplayer/vision-pack/$revision/$platform_key/vision-pack.tar.gz" --remote --file "$archive" --force --cache-control 'public, max-age=31536000, immutable' --content-type 'application/gzip'
               wrangler r2 object put "aivplayer-releases/aivplayer/vision-pack/$revision/$platform_key/manifest.json" --remote --file "$manifest" --force --cache-control 'public, max-age=31536000, immutable' --content-type 'application/json'
+              cp "$manifest" "$mapping_manifest"
             fi
             # 版本映射清单：新版本 app 从这里拿 revision 再下载内容
-            wrangler r2 object put "aivplayer-releases/aivplayer/vision-pack/$version/$platform_key/manifest.json" --remote --file "$manifest" --force --cache-control 'public, max-age=31536000, immutable' --content-type 'application/json'
+            wrangler r2 object put "aivplayer-releases/aivplayer/vision-pack/$version/$platform_key/manifest.json" --remote --file "$mapping_manifest" --force --cache-control 'public, max-age=31536000, immutable' --content-type 'application/json'
+            rm -f "$mapping_manifest"
           }
           upload_pack vision-pack-macos darwin-arm64
           upload_pack vision-pack-windows-x64 win32-x64

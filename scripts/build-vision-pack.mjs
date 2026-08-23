@@ -3,6 +3,7 @@ import { cp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { readFileSync } from 'node:fs'
 import { basename, join, resolve, dirname } from 'node:path'
 const projectRoot = resolve(process.cwd())
+const projectMetadata = JSON.parse(readFileSync(join(projectRoot, 'package.json'), 'utf8'))
 const outputDirectory = resolve(process.env.VISION_PACK_OUTPUT_DIR ?? 'resources/vision-pack')
 const platform = process.env.VISION_PACK_PLATFORM ?? process.platform
 const arch = process.env.VISION_PACK_ARCH ?? process.arch
@@ -155,7 +156,7 @@ async function main() {
   await removeUnneededFiles()
   const packageJson = {
     name: 'aivplayer-vision-pack',
-    version: process.env.npm_package_version ?? '0.5.5',
+    version: process.env.npm_package_version ?? projectMetadata.version,
     private: true,
     main: 'node_modules/@lancedb/lancedb/dist/index.js'
   }
