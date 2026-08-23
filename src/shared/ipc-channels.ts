@@ -45,6 +45,8 @@ export const IPC_CHANNELS = {
   ASR_SELECT_WHISPER_BINARY: 'asr:select-whisper-binary',
   ASR_DOWNLOAD_MODEL: 'asr:download-model',
   ASR_MODEL_DOWNLOAD_PROGRESS: 'asr:model-download-progress',
+  ASR_MODEL_BOOTSTRAP_GET_STATE: 'asr:model-bootstrap-get-state',
+  ASR_MODEL_BOOTSTRAP_STATE_CHANGED: 'asr:model-bootstrap-state-changed',
   ASR_GENERATE_SUBTITLE: 'asr:generate-subtitle',
   ASR_CANCEL_SUBTITLE: 'asr:cancel-subtitle',
   ASR_RESOLVE_SUBTITLE_CACHE: 'asr:resolve-subtitle-cache',

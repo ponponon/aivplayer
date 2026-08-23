@@ -17,6 +17,7 @@ import type { PanelMode, PlayerState } from './player-state'
 import type { EditingClipFilter, EditingClipTreatment, EditingProject, EditingTreatmentAnchor } from '../../../shared/editing-types'
 import type { WebShareStatus } from '../../../shared/web-types'
 import type { EditingAgentProposalRequest } from '../../../shared/editing-agent'
+import type { AsrModelBootstrapState } from '../../../shared/asr-model-bootstrap'
 
 export type AsrNotice = {
   success: boolean
@@ -82,6 +83,7 @@ export type AppStateSetters = {
   setSummaryNotice: React.Dispatch<React.SetStateAction<AsrNotice | null>>
   setActiveSubtitle: React.Dispatch<React.SetStateAction<AsrSubtitleResult | null>>
   setDownloadProgress: React.Dispatch<React.SetStateAction<AsrModelDownloadProgress | null>>
+  setAsrModelBootstrapState: React.Dispatch<React.SetStateAction<AsrModelBootstrapState | null>>
   setIsAsrBusy: React.Dispatch<React.SetStateAction<boolean>>
   setAsrElapsedMs: React.Dispatch<React.SetStateAction<number | null>>
   setIsDownloadingModel: React.Dispatch<React.SetStateAction<boolean>>
@@ -144,6 +146,7 @@ export type AppModel = AppRefs &
     summaryNotice: AsrNotice | null
     activeSubtitle: AsrSubtitleResult | null
     downloadProgress: AsrModelDownloadProgress | null
+    asrModelBootstrapState: AsrModelBootstrapState | null
     isAsrBusy: boolean
     asrElapsedMs: number | null
     isDownloadingModel: boolean

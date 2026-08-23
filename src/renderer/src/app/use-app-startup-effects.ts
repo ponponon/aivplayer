@@ -33,7 +33,20 @@ export function useAppStartupEffects(model: AppModel, loadFiles: (files: MediaFi
 
   useEffect(() => {
     const cleanupDownload = window.aiv.onAsrModelDownloadProgress(model.setDownloadProgress)
+    const applyBootstrapState = (state: import('../../../shared/asr-model-bootstrap').AsrModelBootstrapState): void => {
+      model.setAsrModelBootstrapState(state)
+      if (state.status === 'downloading') {
+        model.setIsDownloadingModel(true)
+        model.setDownloadProgress(state.progress)
+      } else if (state.status === 'ready' || state.status === 'error' || state.status === 'blocked') {
+        model.setIsDownloadingModel(false)
+        if (state.status === 'ready') model.setDownloadProgress(null)
+      }
+      if (state.status === 'ready') void refreshAsrStatus()
+    }
+    const cleanupBootstrap = window.aiv.onAsrModelBootstrapStateChanged(applyBootstrapState)
     const cleanupJob = window.aiv.onAsrJobProgress(model.setAsrProgress)
-    return () => { cleanupDownload(); cleanupJob() }
+    void window.aiv.getAsrModelBootstrapState().then(applyBootstrapState)
+    return () => { cleanupDownload(); cleanupBootstrap(); cleanupJob() }
   }, [])
 }

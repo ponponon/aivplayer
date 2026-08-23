@@ -32,7 +32,7 @@ The script normalizes binary names to the layout above and copies sibling runtim
 
 On macOS, it also recursively bundles non-system Mach-O dylib dependencies for ffmpeg and ffprobe, rewrites them to `@loader_path` references, applies an ad-hoc signature, and executes both binaries with `-version` before staging succeeds. Do not manually copy `/opt/homebrew/bin/ffmpeg` into this directory: that symlink points to a Homebrew build whose absolute Cellar paths are not portable.
 
-Large Whisper model files are intentionally not stored in this directory. The app downloads ASR models into the user's app data directory so installers stay small and updates remain cheap. The SigLIP2 vision model is different: it is an application feature dependency and is therefore staged into the installer by the release workflow.
+Large Whisper model files are intentionally not stored in this directory. On the first launch of a packaged app, AIVPlayer downloads the recommended ASR model in the background into the user's app data directory; a failed download is retried on the next launch, while the installer remains small and updates remain cheap. The SigLIP2 vision model is optional and is downloaded when visual search is first used.
 
 ## License files in packaged resources
 

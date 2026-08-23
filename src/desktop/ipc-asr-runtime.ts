@@ -5,6 +5,7 @@ import { getAppCopy } from '../shared/i18n'
 import { getAsrRuntime } from './desktop-services'
 import { getCurrentLocale } from './desktop-settings'
 import { desktopState } from './desktop-state'
+import { getAsrModelBootstrapState } from './asr-model-bootstrap'
 
 export function registerAsrRuntimeIpc(): void {
   ipcMain.handle(IPC_CHANNELS.ASR_HEALTH_CHECK, () => getAsrRuntime().healthCheck())
@@ -23,5 +24,6 @@ export function registerAsrRuntimeIpc(): void {
     const normalized = status.binaryPath
     return { success: Boolean(normalized), message: normalized ? normalized === binaryPath ? copy.runtimeDialog.selectWhisperSuccess(binaryPath) : copy.runtimeDialog.selectWhisperCompatSuccess(normalized) : copy.runtimeDialog.selectWhisperFailed, status }
   })
+  ipcMain.handle(IPC_CHANNELS.ASR_MODEL_BOOTSTRAP_GET_STATE, () => getAsrModelBootstrapState())
   ipcMain.handle(IPC_CHANNELS.ASR_DOWNLOAD_MODEL, async (event, modelId?: string, sourceId?: AsrModelSourceId) => getAsrRuntime().downloadModel(modelId, sourceId, (progress) => event.sender.send(IPC_CHANNELS.ASR_MODEL_DOWNLOAD_PROGRESS, progress)))
 }

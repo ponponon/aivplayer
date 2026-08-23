@@ -163,6 +163,7 @@ import type { EditingAgentProposalDecision, EditingAgentProposalRequest } from '
 import type { MediaImportInboxDirectoriesChangedEvent, MediaImportInboxItem, MediaImportInboxMetadataUpdateRequest, MediaImportInboxPipelineProgress, MediaImportInboxScanRequest, MediaImportInboxScanResponse, MediaImportInboxScanProgress, MediaImportInboxTransitionRequest, MediaImportInboxWatchRequest, MediaImportInboxWatchStartResult } from '../shared/media-import-inbox'
 import type { TaskCenterEvent } from '../shared/task-center-types'
 import type { VisionSearchExportBatchRecreateRequest, VisionSearchExportBatchRecreateResult, VisionSearchExportCancelRequest, VisionSearchExportRetryRequest } from '../shared/vision-search-export-types'
+import type { AsrModelBootstrapState } from '../shared/asr-model-bootstrap'
 
 const editingAgentProposalListeners = new Set<(request: EditingAgentProposalRequest) => void>()
 const queuedEditingAgentProposals: EditingAgentProposalRequest[] = []
@@ -259,6 +260,7 @@ const api = {
     ipcRenderer.invoke(IPC_CHANNELS.ASR_SELECT_WHISPER_BINARY),
   downloadAsrModel: (modelId?: string, sourceId?: AsrModelSourceId): Promise<AsrModelDownloadResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.ASR_DOWNLOAD_MODEL, modelId, sourceId),
+  getAsrModelBootstrapState: (): Promise<AsrModelBootstrapState> => ipcRenderer.invoke(IPC_CHANNELS.ASR_MODEL_BOOTSTRAP_GET_STATE),
   generateAsrSubtitle: (request: AsrSubtitleRequest): Promise<AsrSubtitleResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.ASR_GENERATE_SUBTITLE, request),
   cancelAsrSubtitle: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.ASR_CANCEL_SUBTITLE),
@@ -457,6 +459,11 @@ const api = {
     const listener = (_event: Electron.IpcRendererEvent, progress: AsrModelDownloadProgress): void => callback(progress)
     ipcRenderer.on(IPC_CHANNELS.ASR_MODEL_DOWNLOAD_PROGRESS, listener)
     return () => ipcRenderer.removeListener(IPC_CHANNELS.ASR_MODEL_DOWNLOAD_PROGRESS, listener)
+  },
+  onAsrModelBootstrapStateChanged: (callback: (state: AsrModelBootstrapState) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, state: AsrModelBootstrapState): void => callback(state)
+    ipcRenderer.on(IPC_CHANNELS.ASR_MODEL_BOOTSTRAP_STATE_CHANGED, listener)
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.ASR_MODEL_BOOTSTRAP_STATE_CHANGED, listener)
   },
   onAsrJobProgress: (callback: (progress: AsrJobProgress) => void): (() => void) => {
     const listener = (_event: Electron.IpcRendererEvent, progress: AsrJobProgress): void => callback(progress)

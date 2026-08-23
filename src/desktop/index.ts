@@ -36,6 +36,7 @@ import { runCli } from '../cli/cli-main'
 import { readGpuAccelerationPreferenceSync } from '../core/app-settings'
 import { GPU_DISABLE_SWITCHES, shouldDisableGpu } from '../core/gpu-settings'
 import { desktopState } from './desktop-state'
+import { startPackagedAsrModelBootstrap } from './asr-model-bootstrap'
 
 registerMediaProtocolScheme()
 app.setName(APP_NAME)
@@ -126,6 +127,7 @@ if (isCliInvocation) {
       mainWindow.webContents.once('did-finish-load', () => {
         void startEditingAgentBridge().catch((error) => console.error('[editing-agent-bridge] 启动失败', error))
         resumeVisionSearchExports()
+        startPackagedAsrModelBootstrap()
       })
       startAppUpdater(false, desktopState.currentAppSettings.ui.autoUpdate)
       app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() })

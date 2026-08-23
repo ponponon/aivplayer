@@ -18,6 +18,7 @@ import { useAppRefs } from './use-app-refs'
 import type { EditingProject } from '../../../shared/editing-types'
 import type { WebShareStatus } from '../../../shared/web-types'
 import type { EditingAgentProposalRequest } from '../../../shared/editing-agent'
+import type { AsrModelBootstrapState } from '../../../shared/asr-model-bootstrap'
 export function useAppModel(): AppModel {
   const refs = useAppRefs()
   const [state, setState] = useState(initialPlayerState)
@@ -33,6 +34,7 @@ export function useAppModel(): AppModel {
   const [summaryNotice, setSummaryNotice] = useState<AsrNotice | null>(null)
   const [activeSubtitle, setActiveSubtitle] = useState<AsrSubtitleResult | null>(null)
   const [downloadProgress, setDownloadProgress] = useState<AsrModelDownloadProgress | null>(null)
+  const [asrModelBootstrapState, setAsrModelBootstrapState] = useState<AsrModelBootstrapState | null>(null)
   const [isAsrBusy, setIsAsrBusy] = useState(false)
   const [asrElapsedMs, setAsrElapsedMs] = useState<number | null>(null)
   const [isDownloadingModel, setIsDownloadingModel] = useState(false)
@@ -96,6 +98,8 @@ export function useAppModel(): AppModel {
     setActiveSubtitle,
     downloadProgress,
     setDownloadProgress,
+    asrModelBootstrapState,
+    setAsrModelBootstrapState,
     isAsrBusy,
     setIsAsrBusy,
     asrElapsedMs,

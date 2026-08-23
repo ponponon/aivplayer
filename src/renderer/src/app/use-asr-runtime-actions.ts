@@ -15,6 +15,7 @@ export function useAsrRuntimeActions(model: AppModel, derived: AppDerived) {
     if (!model.asrStatus) return
     model.setIsDownloadDialogOpen(false)
     model.setIsDownloadingModel(true)
+    model.setAsrModelBootstrapState(null)
     model.setDownloadProgress(null)
     model.setAsrNotice(null)
     try {
