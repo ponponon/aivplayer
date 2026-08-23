@@ -400,8 +400,8 @@ fs.writeFileSync(outputBase + '.json', JSON.stringify({ result: { language: 'en'
 
     const calls = (await readFile(callLogPath, 'utf8')).trim().split(/\r?\n/)
     expect(calls).toHaveLength(2)
-    expect(calls[0]).toContain('-ot 120000 -d 60000')
-    expect(calls[1]).not.toContain('-ot')
+    expect(calls[0]).toMatch(/(?:^|\s)-ot 120000 -d 60000(?:\s|$)/u)
+    expect(calls[1]).not.toMatch(/(?:^|\s)-ot(?:\s|$)/u)
     expect(progress.some((item) => item.prioritySubtitleReady)).toBe(true)
     expect(priorityContent).toContain('priority cue')
     await expect(readFile(result.subtitlePath, 'utf8')).resolves.toContain('full cue')
