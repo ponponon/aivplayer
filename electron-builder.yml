@@ -471,6 +471,13 @@ snapcraft:
       - libpangoft2-1.0-0
       - gsettings-desktop-schemas
       - shared-mime-info
+  # Snap Store 发布：正式发版（tag push）时构建并上传 stable + edge 渠道。
+  # 认证通过 SNAP_CSC_LINK secret 注入（snapcraft export-login - | base64 -w0 生成）。
+  publish:
+    provider: snapStore
+    channels:
+      - stable
+      - edge
 deb:
   afterInstall: build/deb-after-install.sh
   afterRemove: build/deb-after-remove.sh

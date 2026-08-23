@@ -948,10 +948,22 @@ jobs:
 
       - name: Build Snap package
         shell: bash
+        env:
+          # 正式发布（tag push）才上传 Snap Store；verify_only 只构建不上传
+          SNAP_CSC_LINK: ${{ secrets.SNAP_CSC_LINK }}
+          SNAP_PUBLISH_ENABLED: ${{ github.event_name != 'workflow_dispatch' || inputs.verify_only != true }}
         run: |
           # core24 destructive mode 构建需要 root；GitHub Actions 的 LXD 容器无网络，
-          # 改用宿主机 destructive 构建（sudo -E 保留 node/npm 环境与缓存路径）
-          sudo -E env "PATH=$PATH" npx electron-builder --linux snap --publish never
+          # 改用宿主机 destructive 构建（sudo -E 保留 node/npm 环境与缓存路径）。
+          # 有 SNAP_CSC_LINK 且非 verify_only 时，构建并发布到 Snap Store（stable,edge）。
+          if [ -n "$SNAP_CSC_LINK" ] && [ "$SNAP_PUBLISH_ENABLED" = "true" ]; then
+            echo "::notice::Publishing snap to Snap Store (stable, edge)"
+            sudo -E env "PATH=$PATH" SNAP_CSC_LINK="$SNAP_CSC_LINK" \
+              npx electron-builder --linux snap --publish always
+          else
+            echo "::notice::Building snap without publishing (no SNAP_CSC_LINK or verify-only)"
+            sudo -E env "PATH=$PATH" npx electron-builder --linux snap --publish never
+          fi
 
       - name: Report package size
         run: npm run release:report-package-size -- --directory release --output release/package-size-report-linux.json
