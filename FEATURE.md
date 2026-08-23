@@ -1,5 +1,7 @@
 # AIVPlayer 功能列表
 
+- 新增可复用的 R2 大文件分片上传脚本：通过 S3 Multipart Upload 绕过 Wrangler 300 MiB 单文件限制，支持失败重试、状态文件断点续传、对象元数据和 SHA-256 校验，适用于模型与其他大体积资源发布。
+
 - ASR 首次启动自动准备：正式安装包启动后会在后台使用默认 ModelScope 源下载推荐 Whisper 模型，不阻塞播放器界面；下载进度和失败状态会显示在顶部，失败后下次启动会继续重试；whisper.cpp、FFmpeg、ffprobe 和 HEIF 原生运行时仍由正式安装包内置，Vision Pack 与视觉模型继续按需下载。
 
 - Linux Snap 打包恢复：改用 electron-builder 原生 snapcraft target（`snapcraft` 配置，core24 / strict / stable / LXD 隔离构建，gnome extension 自动处理 GTK/主题依赖），自动生成 snapcraft 配置并处理 chrome-sandbox、desktop 入口；废弃的手写 `snap/snapcraft.yaml`（version 停留在 0.3.1、缺 FFmpeg/whisper/heif 运行时）已删除；发布流水线 x64 job 构建 `.snap` 并随 GitHub Release 与 R2 下载清单发布，CI 格式契约与证据校验同步支持 `.snap`（squashfs magic 校验），ARM64 暂不构建 snap。

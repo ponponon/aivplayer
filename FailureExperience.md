@@ -1,3 +1,9 @@
+## 2026-08-23：R2 大文件不能继续使用 Wrangler 单文件上传
+- 现象：Whisper 模型本地文件大小约 547 MiB，使用 `wrangler r2 object put --remote --file` 上传时在客户端直接失败，提示 Wrangler 只支持不超过 300 MiB 的文件；此前因此误以为模型无法上传到 R2。
+- 原因：Wrangler 的 REST 上传路径有 300 MiB 的单文件限制，和 R2 本身支持的大对象能力不是同一个限制；超过该大小的文件应使用 R2 的 S3-compatible Multipart Upload。
+- 经验：发布脚本必须按资产大小选择上传通道：普通安装包可继续使用 Cloudflare REST API，模型等大文件要使用 R2 API Token 的 Access Key ID / Secret Access Key，通过 S3 Multipart Upload 分片、重试并在完成后校验远端大小。
+- 处理：新增 `scripts/upload-r2-multipart.py`，仅依赖 Python 标准库，保存不包含密钥的断点状态；以后遇到超过 300 MiB 的 R2 资源，复用该脚本，不要修改 Wrangler 限制或把大文件拆成客户端无法识别的多个对象。
+
 ## 2026-08-21：Linux hicolor 图标不能只提供 1024×1024
 - 现象：Ubuntu 26.04 安装 `.deb` 后，GNOME 应用列表中的 AIVPlayer 显示默认齿轮图标；应用本身的 `.desktop` 文件和图标文件都存在。
 - 原因：electron-builder 将单个 1024×1024 PNG 安装到了 `/usr/share/icons/hicolor/1024x1024/apps`，而 Ubuntu 的 hicolor 主题只声明并索引到 512×512，`Icon=aivplayer` 因此无法解析到实际图标。
