@@ -76,6 +76,10 @@ cloudflare/translation-worker/.dev.vars
 cloudflare/translation-worker/.env
 cloudflare/translation-worker/.env.*
 
+# Local R2 multipart upload credentials
+.r2-upload.env
+*.r2-upload.env
+
 # Internal product research; keep the detailed borrowing plan out of the public repository.
 OPEN_SOURCE_INSPIRATION_PLAN.md
 

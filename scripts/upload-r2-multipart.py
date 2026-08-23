@@ -78,6 +78,11 @@ def parse_args() -> argparse.Namespace:
         help="自定义 S3 endpoint；默认使用 https://<account-id>.r2.cloudflarestorage.com。",
     )
     parser.add_argument(
+        "--env-file",
+        type=Path,
+        help="可选的本地凭证文件；只读取 R2_ACCESS_KEY_ID、R2_SECRET_ACCESS_KEY 和 CLOUDFLARE_ACCOUNT_ID。",
+    )
+    parser.add_argument(
         "--part-size-mib",
         type=int,
         default=64,
@@ -124,6 +129,35 @@ def parse_args() -> argparse.Namespace:
 
 def fail(message: str) -> None:
     raise SystemExit(f"错误：{message}")
+
+
+def load_env_file(path: Path | None) -> None:
+    if path is None:
+        return
+    path = path.expanduser().resolve()
+    if not path.is_file():
+        fail(f"凭证文件不存在：{path}")
+    try:
+        lines = path.read_text().splitlines()
+    except OSError as error:
+        fail(f"无法读取凭证文件 {path}：{error}")
+    allowed_names = {
+        "CLOUDFLARE_ACCOUNT_ID",
+        "R2_ACCESS_KEY_ID",
+        "R2_SECRET_ACCESS_KEY",
+    }
+    for line_number, raw_line in enumerate(lines, start=1):
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if "=" not in line:
+            fail(f"凭证文件第 {line_number} 行缺少 =：{path}")
+        name, value = (part.strip() for part in line.split("=", 1))
+        if name not in allowed_names:
+            fail(f"凭证文件第 {line_number} 行包含不支持的变量：{name}")
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+            value = value[1:-1]
+        os.environ.setdefault(name, value)
 
 
 def require_credentials() -> tuple[str, str]:
@@ -471,6 +505,9 @@ def validate_args(args: argparse.Namespace) -> tuple[Path, str, int]:
 
 
 def upload(args: argparse.Namespace) -> None:
+    load_env_file(args.env_file)
+    if not args.account_id:
+        args.account_id = os.environ.get("CLOUDFLARE_ACCOUNT_ID")
     path, endpoint, part_size = validate_args(args)
     access_key, secret_key = require_credentials()
     state_path = args.state_file or path.with_name(f"{path.name}.r2-upload.json")
