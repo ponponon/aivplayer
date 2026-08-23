@@ -283,9 +283,9 @@ aivcli drama provider test
 | --- | --- |
 | macOS | `.dmg` / `.zip` |
 | Windows | `.exe`（NSIS 安装器） |
-| Linux | `.AppImage` / `.deb` |
+| Linux | `.AppImage` / `.deb` / `.snap` |
 
-Windows NSIS 和 Linux `.deb` 会安装 `aivcli` 启动器并加入系统命令路径。macOS `.dmg` / `.zip` 与 Linux `.AppImage` 是便携式格式，不会自动修改 PATH；使用便携式格式时可直接启动应用的 `--cli` 模式，或自行建立命令行启动器。
+Windows NSIS 和 Linux `.deb` 会安装 `aivcli` 启动器并加入系统命令路径。macOS `.dmg` / `.zip` 与 Linux `.AppImage` 是便携式格式，不会自动修改 PATH；使用便携式格式时可直接启动应用的 `--cli` 模式，或自行建立命令行启动器。Ubuntu 等支持 snap 的系统还可以从 Snap Store 安装：`snap install aivplayer`。
 
 ### 自动更新
 

@@ -282,9 +282,9 @@ aivcli drama provider test
 | --- | --- |
 | macOS | `.dmg` / `.zip` |
 | Windows | `.exe` (NSIS 설치 프로그램) |
-| Linux | `.AppImage` / `.deb` |
+| Linux | `.AppImage` / `.deb` / `.snap` |
 
-Windows NSIS와 Linux `.deb`는 `aivcli` 런처를 설치하고 시스템 명령 경로에 추가합니다. macOS `.dmg` / `.zip`과 Linux `.AppImage`는 포터블 형식이라 PATH를 자동으로 수정하지 않습니다. 포터블 형식에서는 앱의 `--cli` 모드를 직접 실행하거나 직접 명령줄 런처를 만들 수 있습니다.
+Windows NSIS와 Linux `.deb`는 `aivcli` 런처를 설치하고 시스템 명령 경로에 추가합니다. macOS `.dmg` / `.zip`과 Linux `.AppImage`는 포터블 형식이라 PATH를 자동으로 수정하지 않습니다. 포터블 형식에서는 앱의 `--cli` 모드를 직접 실행하거나 직접 명령줄 런처를 만들 수 있습니다. Ubuntu 등 snap 지원 시스템에서는 Snap Store에서 `snap install aivplayer`로도 설치할 수 있습니다.
 
 ### 자동 업데이트
 
