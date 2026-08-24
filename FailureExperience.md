@@ -2077,3 +2077,10 @@
 - **原因**：内容寻址解决了“相同内容只存一份”，但没有定义“当前激活哪一份”的状态边界；本地缓存目录不能代替版本映射。
 - **修复**：使用 `active.json` 记录当前版本、平台、架构和 revision；解析时只信任当前版本的 active 指针和当前版本兼容路径。下载时先获取版本 manifest，再复用目标 revision 或下载新归档，成功后原子更新 active 指针。
 - **经验**：历史 revision 可以保留用于复用或回滚，但必须通过明确的 manifest / pointer 选择，不能用目录枚举结果隐式决定运行时版本。
+
+## 2026-08-24：macOS 挂载旧 DMG 不能污染“打开方式”
+
+- 现象：用户先后下载并挂载多个 AIVPlayer DMG 时，Finder 的视频“打开方式”同时显示 0.6.0、0.6.1 等历史版本；旧 DMG 没有被安装到 `/Applications`，但其中的 `.app` 仍被 LaunchServices 识别。
+- 原因：DMG 是只读磁盘映像，挂载后其中的 `.app` 是独立 Bundle；`fileAssociations` 会让 LaunchServices 为每个 Bundle 注册视频关联。应用内自动更新只替换安装位置，无法自动注销仍挂载的历史 Bundle。
+- 经验：不能把“用户会 eject DMG”当成产品前置条件；正式 macOS 应用启动时应按 Bundle ID / 版本清理其他路径的旧登记，但不能删除用户文件、卸载磁盘或注销更新版本。
+- 处理：新增 LaunchServices 清理模块，扫描 `/Volumes`、`/Applications`、用户 Applications、Downloads 和 Desktop 的直接 `.app`，只对版本不高于当前版本的其他 `cn.quniv.aivplayer` Bundle 执行 `lsregister -u`，随后强制登记当前 App；开发态和 CLI 不执行，失败也不阻断启动。

@@ -37,6 +37,7 @@ import { readGpuAccelerationPreferenceSync } from '../core/app-settings'
 import { GPU_DISABLE_SWITCHES, shouldDisableGpu } from '../core/gpu-settings'
 import { desktopState } from './desktop-state'
 import { startPackagedAsrModelBootstrap } from './asr-model-bootstrap'
+import { cleanupMacApplicationRegistrations, getMacApplicationBundlePath } from './macos-launch-services'
 
 registerMediaProtocolScheme()
 app.setName(APP_NAME)
@@ -117,6 +118,15 @@ if (isCliInvocation) {
     app.on('open-file', (event, filePath) => { event.preventDefault(); queueIncomingMediaPaths([filePath]) })
     app.on('second-instance', (_event, commandLine) => { queueIncomingMediaPaths(commandLine); focusMainWindow() })
     void app.whenReady().then(async () => {
+      if (process.platform === 'darwin' && app.isPackaged) {
+        const removedApplications = cleanupMacApplicationRegistrations({
+          currentApplicationPath: getMacApplicationBundlePath(process.execPath),
+          currentVersion: app.getVersion()
+        })
+        if (removedApplications.length > 0) {
+          console.info(`[macos-launch-services] 清理旧应用登记：${removedApplications.length}`)
+        }
+      }
       await loadAppSettings()
       registerMediaProtocolHandler()
       registerIpc()
