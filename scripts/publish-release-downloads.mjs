@@ -15,11 +15,11 @@ export const DEFAULT_R2_PUBLIC_BASE_URL = 'https://releases.quniv.cn/aivplayer/r
 const CLOUDFLARE_API_BASE_URL = 'https://api.cloudflare.com/client/v4'
 const GITHUB_API_BASE_URL = 'https://api.github.com'
 const R2_REST_MAX_UPLOAD_BYTES = 300 * 1000 * 1000
-const INSTALLER_EXTENSIONS = new Set(['.dmg', '.zip', '.exe', '.appimage', '.deb', '.snap'])
+const INSTALLER_EXTENSIONS = new Set(['.dmg', '.zip', '.exe', '.appimage', '.deb', '.snap', '.flatpak'])
 const FORMAT_PRIORITY = {
   darwin: { '.dmg': 0, '.zip': 1 },
   win32: { '.exe': 0 },
-  linux: { '.appimage': 0, '.deb': 1, '.snap': 2 }
+  linux: { '.appimage': 0, '.deb': 1, '.snap': 2, '.flatpak': 3 }
 }
 const CONTENT_TYPES = {
   '.dmg': 'application/x-apple-diskimage',
@@ -28,6 +28,7 @@ const CONTENT_TYPES = {
   '.appimage': 'application/octet-stream',
   '.deb': 'application/vnd.debian.binary-package',
   '.snap': 'application/vnd.snapcraft.snap',
+  '.flatpak': 'application/flatpak',
   '.json': 'application/json'
 }
 
@@ -66,7 +67,7 @@ function getFileExtension(name) {
 function classifyPlatform(name) {
   const lowerName = name.toLowerCase()
   if (lowerName.endsWith('.exe')) return 'win32'
-  if (lowerName.endsWith('.appimage') || lowerName.endsWith('.deb') || lowerName.endsWith('.snap')) return 'linux'
+  if (lowerName.endsWith('.appimage') || lowerName.endsWith('.deb') || lowerName.endsWith('.snap') || lowerName.endsWith('.flatpak')) return 'linux'
   if (lowerName.endsWith('.dmg') || lowerName.includes('-mac')) return 'darwin'
   if (lowerName.endsWith('.zip') && lowerName.includes('mac')) return 'darwin'
   return null
@@ -269,6 +270,11 @@ async function downloadGithubAsset({ asset, destination }) {
   await pipeline(Readable.fromWeb(response.body), createWriteStream(destination))
 }
 
+function overR2RestLimit(githubAssetMeta) {
+  const size = Number(githubAssetMeta?.size)
+  return Number.isFinite(size) && size > R2_REST_MAX_UPLOAD_BYTES
+}
+
 async function publishVersion({ release, localAssets, repository, publicBaseUrl, accountId, bucket, r2ReleasePrefix, token, temporaryDirectory }) {
   const tag = release.tag_name ?? release.tag
   const version = normalizeVersion(tag)
@@ -282,6 +288,12 @@ async function publishVersion({ release, localAssets, repository, publicBaseUrl,
   for (const [target, formats] of Object.entries(selected)) {
     if (formats.name) {
       const asset = formats
+      const githubAssetMeta = githubAssets.find((candidate) => candidate?.name === asset.name)
+      if (!asset.path && overR2RestLimit(githubAssetMeta)) {
+        uploadedAssets[target] = { ...asset, sizeBytes: githubAssetMeta.size, url: githubAssetMeta.browser_download_url }
+        console.log(`Published ${tag} ${target}: ${asset.name} (GitHub 直链，超过 R2 REST 300MB 上限，跳过镜像)`)
+        continue
+      }
       const filePath = asset.path ?? join(temporaryDirectory, asset.name)
       if (!asset.path) await downloadGithubAsset({ asset, destination: filePath })
       const details = await fileDetails(filePath)
@@ -300,6 +312,12 @@ async function publishVersion({ release, localAssets, repository, publicBaseUrl,
     } else {
       const formatEntries = {}
       for (const [formatName, asset] of Object.entries(formats)) {
+        const githubAssetMeta = githubAssets.find((candidate) => candidate?.name === asset.name)
+        if (!asset.path && overR2RestLimit(githubAssetMeta)) {
+          formatEntries[formatName] = { ...asset, sizeBytes: githubAssetMeta.size, url: githubAssetMeta.browser_download_url }
+          console.log(`Published ${tag} ${target}/${formatName}: ${asset.name} (GitHub 直链，超过 R2 REST 300MB 上限，跳过镜像)`)
+          continue
+        }
         const filePath = asset.path ?? join(temporaryDirectory, asset.name)
         if (!asset.path) await downloadGithubAsset({ asset, destination: filePath })
         const details = await fileDetails(filePath)

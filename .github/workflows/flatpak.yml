@@ -19,6 +19,8 @@ on:
       - '.github/workflows/flatpak.yml'
       - 'package.json'
       - 'package-lock.json'
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       build_arm64:
@@ -138,3 +140,31 @@ jobs:
         with:
           name: aivplayer-flatpak-aarch64
           path: AIVPlayer-aarch64.flatpak
+
+  upload-release-asset:
+    name: Upload Flatpak bundle to GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build-x86_64
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download bundle artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: aivplayer-flatpak-x86_64
+      - name: Wait for release and upload bundle
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          # Release 工作流构建全平台约 1 小时后才创建 Release，这里轮询等待后追加 bundle
+          for i in $(seq 1 90); do
+            if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              gh release upload "$TAG" AIVPlayer-x86_64.flatpak --repo "$GITHUB_REPOSITORY" --clobber && exit 0
+            fi
+            echo "Release $TAG 尚未创建（第 $i/90 次等待），60 秒后重试..."
+            sleep 60
+          done
+          echo "等待 Release 超时" >&2
+          exit 1

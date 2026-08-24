@@ -113,6 +113,29 @@ describe('release download selection', () => {
 
     expect(Object.keys(release.assets['linux-x64'])).toEqual(['appimage', 'deb', 'snap'])
   })
+
+  it('classifies Flatpak bundles as Linux and orders them after Snap', () => {
+    const selected = selectInstallerAssets([
+      { name: 'AIVPlayer-x86_64.flatpak' },
+      { name: 'aivplayer-0.6.4-amd64.snap' }
+    ])
+    expect(selected['linux-x64']['flatpak'].name).toBe('AIVPlayer-x86_64.flatpak')
+
+    const release = createDownloadRelease({
+      tag: 'v0.6.4',
+      repository: 'ponponon/aivplayer',
+      publicBaseUrl: 'https://releases.quniv.cn/aivplayer/releases',
+      assets: {
+        'linux-x64': {
+          flatpak: { name: 'AIVPlayer-x86_64.flatpak', format: 'flatpak', sizeBytes: 290000000, sha256: 'c'.repeat(64), url: 'https://github.com/ponponon/aivplayer/releases/download/v0.6.4/AIVPlayer-x86_64.flatpak' },
+          snap: { name: 'aivplayer-0.6.4-amd64.snap', format: 'snap', sizeBytes: 300, sha256: 'f'.repeat(64) },
+          appimage: { name: 'aivplayer-0.6.4-x86_64.AppImage', format: 'appimage', sizeBytes: 100, sha256: 'b'.repeat(64) }
+        }
+      }
+    })
+    expect(Object.keys(release.assets['linux-x64'])).toEqual(['appimage', 'snap', 'flatpak'])
+    expect(release.assets['linux-x64'].flatpak.url).toContain('github.com')
+  })
 })
 
 describe('download publishing integration', () => {
@@ -165,7 +188,7 @@ describe('download publishing integration', () => {
     expect(siteScript).toContain('FALLBACK_DOWNLOAD_MANIFEST')
     expect(siteScript).toContain("win32: ['exe']")
     expect(siteScript).toContain("darwin: ['dmg', 'zip']")
-    expect(siteScript).toContain("linux: ['appimage', 'deb', 'snap']")
+    expect(siteScript).toContain("linux: ['appimage', 'deb', 'snap', 'flatpak']")
     expect(siteScript).toContain('function orderDownloadFormats')
     expect(siteScript).toContain("version: '0.6.2'")
     expect(siteScript).toContain("version: '0.5.6'")

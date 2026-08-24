@@ -7,7 +7,7 @@ const platformCopyKeys = { darwin: 'macos', win32: 'windows', linux: 'linux' }
 const DOWNLOAD_FORMAT_PRIORITY = {
   darwin: ['dmg', 'zip'],
   win32: ['exe'],
-  linux: ['appimage', 'deb', 'snap']
+  linux: ['appimage', 'deb', 'snap', 'flatpak']
 }
 const platformIconSvgs = {
   // Apple mark from Simple Icons (CC0): https://github.com/simple-icons/simple-icons/blob/develop/icons/apple.svg
