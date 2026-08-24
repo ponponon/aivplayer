@@ -1297,8 +1297,8 @@ jobs:
             local mapping_manifest
             mapping_manifest="$(mktemp)"
             local exists
-            exists="$(curl -sI --max-time 30 "$content_url" -o /dev/null -w '%{http_code}' || true)"
-            if [ "$exists" = "200" ] && curl --fail --silent --show-error --location --max-time 30 "$content_manifest_url" -o "$mapping_manifest"; then
+            exists="$(curl -sI --header 'Cache-Control: no-cache' --max-time 30 "$content_url" -o /dev/null -w '%{http_code}' || true)"
+            if [ "$exists" = "200" ] && curl --fail --silent --show-error --location --header 'Cache-Control: no-cache' --max-time 30 "$content_manifest_url" -o "$mapping_manifest"; then
               if node -e "const fs=require('fs'); const local=JSON.parse(fs.readFileSync(process.argv[1],'utf8')); const remote=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); if(remote.revision!==local.revision || remote.archive!=='vision-pack.tar.gz' || !/^[a-f0-9]{64}$/.test(remote.sha256||'') || !(Number.isInteger(remote.sizeBytes)&&remote.sizeBytes>0)) process.exit(1); fs.writeFileSync(process.argv[3], JSON.stringify({...local, archive:remote.archive, sha256:remote.sha256, sizeBytes:remote.sizeBytes})+'\n')" "$manifest" "$mapping_manifest" "$mapping_manifest"; then
                 echo "Vision Pack $revision/$platform_key 已存在，复用 R2 归档校验值（跨版本复用）"
               else
@@ -1320,14 +1320,17 @@ jobs:
             # 时可能在上传成功后短暂返回 404，因此整个回读过程必须带退避重试。
             local verified_manifest
             verified_manifest="$(mktemp)"
-            local max_attempts=6
+            local verified_archive
+            verified_archive="$(mktemp)"
+            local max_attempts=12
             local retry_delay=5
             local actual_sha256
             local verified=false
             for ((attempt = 1; attempt <= max_attempts; attempt++)); do
-              if curl --fail --silent --show-error --location --max-time 30 "$content_manifest_url" -o "$verified_manifest" \
+              if curl --fail --silent --show-error --location --header 'Cache-Control: no-cache' --max-time 30 "$content_manifest_url" -o "$verified_manifest" \
                 && node -e "const fs=require('fs'); const local=JSON.parse(fs.readFileSync(process.argv[1],'utf8')); const remote=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); if(remote.revision!==local.revision || remote.archive!=='vision-pack.tar.gz' || remote.sha256!==local.sha256 || remote.sizeBytes!==local.sizeBytes) { console.error('Vision Pack 远端清单与本地不一致'); process.exit(1) }" "$mapping_manifest" "$verified_manifest" \
-                && actual_sha256="$(curl --fail --silent --show-error --location --max-time 600 "$content_url" | sha256sum | awk '{print $1}')" \
+                && curl --fail --silent --show-error --location --header 'Cache-Control: no-cache' --max-time 600 "$content_url" -o "$verified_archive" \
+                && actual_sha256="$(sha256sum "$verified_archive" | awk '{print $1}')" \
                 && node -e "const fs=require('fs'); const manifest=JSON.parse(fs.readFileSync(process.argv[1],'utf8')); if(manifest.sha256!==process.argv[2]) { console.error('Vision Pack 远端归档 SHA-256 不一致'); process.exit(1) }" "$mapping_manifest" "$actual_sha256"; then
                 verified=true
                 break
@@ -1336,9 +1339,12 @@ jobs:
                 echo "Vision Pack $revision/$platform_key 远端回读暂不可用，第 $attempt/$max_attempts 次重试，等待 ${retry_delay}s"
                 sleep "$retry_delay"
                 retry_delay=$((retry_delay * 2))
+                if [ "$retry_delay" -gt 60 ]; then
+                  retry_delay=60
+                fi
               fi
             done
-            rm -f "$verified_manifest" "$mapping_manifest"
+            rm -f "$verified_manifest" "$verified_archive" "$mapping_manifest"
             if [ "$verified" != true ]; then
               echo "Vision Pack $revision/$platform_key 远端回读校验失败" >&2
               return 1
