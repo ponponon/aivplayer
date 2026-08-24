@@ -2091,3 +2091,10 @@
 - 原因：`SNAPCRAFT_STORE_CREDENTIALS` 是 Snapcraft 原生环境变量，适合直接调用 Snapcraft；`SNAP_CSC_LINK` 是 electron-builder 的 CI 入口，electron-builder 会把它转换并注入 Snapcraft 子进程。
 - 经验：本项目通过 electron-builder 构建并发布 Snap，因此只保留 `SNAP_CSC_LINK`；不要把同一份凭据以两种格式重复配置，避免格式不匹配和凭据入口分叉。
 - 处理：删除 GitHub Actions Secret `SNAPCRAFT_STORE_CREDENTIALS`，保留 `SNAP_CSC_LINK`；工作流继续使用 `SNAP_CSC_LINK`，仓库内不直接依赖 Snapcraft 原生变量。
+
+## 2026-08-24：R2/CDN 上传后的完整性校验必须容忍短暂不可见
+
+- 现象：`wrangler r2 object put` 已返回 `Upload complete`，但发布工作流立即通过公开 CDN URL 回读新上传的 Vision Pack 时返回 404，随后被误报为归档 SHA-256 不一致；等待一段时间后同一 URL 可以正常返回 200。
+- 原因：R2 对象写入成功与自定义域名/CDN 边缘节点可读之间存在短暂传播窗口，上传 API 的成功响应不代表公开 URL 已经立即收敛。
+- 经验：发布门禁必须继续校验远端清单和完整归档，但对刚写入对象的 404、连接失败等暂态网络错误使用有界指数退避；只有所有重试耗尽后，才能判定发布失败。
+- 处理：Vision Pack 回读增加 6 次、5 秒起步的指数退避，同时保留清单字段校验和完整归档 SHA-256 校验，避免把传播延迟误判为内容损坏。
