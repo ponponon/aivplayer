@@ -1,9 +1,5 @@
 .task-center {
-  position: fixed;
-  right: 16px;
-  bottom: 16px;
-  z-index: 40;
-  width: min(360px, calc(100vw - 32px));
+  width: min(360px, 100%);
   overflow: hidden;
   color: var(--text-secondary);
   background: rgba(var(--panel-rgb), 0.96);
@@ -300,5 +296,5 @@
 @keyframes task-center-spin { to { transform: rotate(360deg); } }
 
 @media (max-width: 600px) {
-  .task-center { right: 8px; bottom: 8px; width: calc(100vw - 16px); }
+  .task-center { width: 100%; }
 }

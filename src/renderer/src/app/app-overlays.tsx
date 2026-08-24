@@ -16,13 +16,93 @@ export function AppOverlays(): React.ReactElement {
   const mediaDurationSeconds = app.mediaDurationSeconds ?? app.state.duration
   const initialClipStartSeconds = Math.min(Math.max(0, app.state.currentTime), Math.max(0, mediaDurationSeconds))
   const initialClipEndSeconds = Math.min(mediaDurationSeconds, initialClipStartSeconds + app.appSettings.capture.clipExportLengthSeconds)
+
   useEffect(() => {
     if (app.isDownloadDialogOpen) app.downloadDialogRef.current?.focus()
   }, [app.isDownloadDialogOpen])
+
   const updateState = app.appUpdateState
-  const isUpdatePromptVisible = updateState.status === 'available' || updateState.status === 'downloading' || updateState.status === 'downloaded' || updateState.status === 'installing'
+  const isUpdatePromptVisible = updateState.status === 'available'
   const dismissUpdatePrompt = (): void => {
     if (updateState.status === 'available') void app.dismissAppUpdate()
   }
-  return <><TaskCenter copy={app.copy.taskCenter} />{isUpdatePromptVisible ? <AppUpdateDialog copy={app.copy} state={updateState} autoUpdate={app.appSettings.ui.autoUpdate} onAutoUpdateChange={(enabled) => app.patchAppSettingsSection('ui', { autoUpdate: enabled })} onDownload={app.downloadAppUpdate} onInstall={app.installAppUpdate} onDismiss={dismissUpdatePrompt} onSkip={() => { if (updateState.version) void app.skipAppUpdate(updateState.version) }} /> : null}{app.isSettingsDialogOpen ? <SettingsDialog copy={app.copy} settings={app.appSettings} asrStatus={app.asrStatus} runtimeSetupMessage={app.runtimeSetupMessage} translationServiceTestMessage={app.translationServiceTestMessage} isDetectingWhisperBinary={app.isDetectingWhisperBinary} isSelectingWhisperBinary={app.isSelectingWhisperBinary} isTestingTranslationService={app.isTestingTranslationService} initialSectionId={app.initialSettingsSectionId} patchSettingsSection={app.patchAppSettingsSection} onClose={() => app.setIsSettingsDialogOpen(false)} onAutoDetectWhisperBinary={app.autoDetectWhisperBinary} onOpenAsrPanel={() => { app.setIsSettingsDialogOpen(false); app.openPanelMode('asr') }} onPickDefaultFolder={app.pickDefaultFolder} onPickCaptureFolder={app.pickCaptureFolder} onSelectWhisperBinary={app.selectWhisperBinary} onTestTranslationService={app.testTranslationService} onResetDefaults={app.resetAppSettings} onRestartWithGpuAcceleration={app.restartWithGpuAcceleration} appUpdateState={app.appUpdateState} onCheckForAppUpdate={app.checkForAppUpdate} onInstallAppUpdate={app.installAppUpdate} /> : null}{app.isAboutDialogOpen ? <AboutDialog copy={app.copy} onClose={() => app.setIsAboutDialogOpen(false)} /> : null}{app.isClipExportDialogOpen && app.state.currentFile ? <ClipExportDialog copy={app.copy} mediaUrl={app.state.currentFile.url} mediaDurationSeconds={mediaDurationSeconds} currentTimeSeconds={app.state.currentTime} hasSubtitle={app.hasClipExportSubtitle} initialStartSeconds={initialClipStartSeconds} initialEndSeconds={initialClipEndSeconds} initialMode={app.appSettings.capture.clipExportMode} onClose={() => app.setIsClipExportDialogOpen(false)} onConfirm={app.confirmClipExport} /> : null}<AiSetupDialog /><DownloadModelDialog />{app.isMediaDetailsDialogOpen ? <MediaDetailsDialog copy={app.copy} metadata={app.mediaMetadata} onClose={() => app.setIsMediaDetailsDialogOpen(false)} /> : null}{app.isWebShareDialogOpen ? <WebShareDialog copy={app.copy} status={app.webShareStatus} error={app.webShareError} notice={app.webShareNotice} playlistCount={app.state.playlist.length} directoryPaths={app.webShareDirectoryPaths} allowRemoteControl={app.allowRemoteControl} onToggleRemoteControl={(enabled) => { void app.toggleRemoteControl(enabled) }} onStart={() => void app.startWebShare()} onStop={() => void app.stopWebShare()} onRefresh={() => void app.refreshWebShare()} onAddDirectory={() => void app.addWebShareDirectory()} onRemoveDirectory={(directoryPath) => { void app.removeWebShareDirectory(directoryPath) }} onCopy={(url) => { void app.copyWebShareUrl(url) }} onOpen={(url) => app.openWebShareUrl(url)} onClose={() => app.setIsWebShareDialogOpen(false)} /> : null}{app.editingAgentProposal ? <EditingProposalConfirmDialog copy={app.copy.editing} proposal={app.editingAgentProposal.proposal} onClose={() => { void app.resolveEditingAgentProposal(false) }} onConfirm={() => { void app.resolveEditingAgentProposal(true) }} /> : null}</>
+
+  return <>
+    <div className="app-notification-stack">
+      <TaskCenter copy={app.copy.taskCenter} />
+      {isUpdatePromptVisible ? <AppUpdateDialog
+        copy={app.copy}
+        state={updateState}
+        autoUpdate={app.appSettings.ui.autoUpdate}
+        onAutoUpdateChange={(enabled) => app.patchAppSettingsSection('ui', { autoUpdate: enabled })}
+        onDownload={app.downloadAppUpdate}
+        onDismiss={dismissUpdatePrompt}
+        onSkip={() => { if (updateState.version) void app.skipAppUpdate(updateState.version) }}
+      /> : null}
+    </div>
+    {app.isSettingsDialogOpen ? <SettingsDialog
+      copy={app.copy}
+      settings={app.appSettings}
+      asrStatus={app.asrStatus}
+      runtimeSetupMessage={app.runtimeSetupMessage}
+      translationServiceTestMessage={app.translationServiceTestMessage}
+      isDetectingWhisperBinary={app.isDetectingWhisperBinary}
+      isSelectingWhisperBinary={app.isSelectingWhisperBinary}
+      isTestingTranslationService={app.isTestingTranslationService}
+      initialSectionId={app.initialSettingsSectionId}
+      patchSettingsSection={app.patchAppSettingsSection}
+      onClose={() => app.setIsSettingsDialogOpen(false)}
+      onAutoDetectWhisperBinary={app.autoDetectWhisperBinary}
+      onOpenAsrPanel={() => { app.setIsSettingsDialogOpen(false); app.openPanelMode('asr') }}
+      onPickDefaultFolder={app.pickDefaultFolder}
+      onPickCaptureFolder={app.pickCaptureFolder}
+      onSelectWhisperBinary={app.selectWhisperBinary}
+      onTestTranslationService={app.testTranslationService}
+      onResetDefaults={app.resetAppSettings}
+      onRestartWithGpuAcceleration={app.restartWithGpuAcceleration}
+      appUpdateState={app.appUpdateState}
+      onCheckForAppUpdate={app.checkForAppUpdate}
+      onInstallAppUpdate={app.installAppUpdate}
+    /> : null}
+    {app.isAboutDialogOpen ? <AboutDialog copy={app.copy} onClose={() => app.setIsAboutDialogOpen(false)} /> : null}
+    {app.isClipExportDialogOpen && app.state.currentFile ? <ClipExportDialog
+      copy={app.copy}
+      mediaUrl={app.state.currentFile.url}
+      mediaDurationSeconds={mediaDurationSeconds}
+      currentTimeSeconds={app.state.currentTime}
+      hasSubtitle={app.hasClipExportSubtitle}
+      initialStartSeconds={initialClipStartSeconds}
+      initialEndSeconds={initialClipEndSeconds}
+      initialMode={app.appSettings.capture.clipExportMode}
+      onClose={() => app.setIsClipExportDialogOpen(false)}
+      onConfirm={app.confirmClipExport}
+    /> : null}
+    <AiSetupDialog />
+    <DownloadModelDialog />
+    {app.isMediaDetailsDialogOpen ? <MediaDetailsDialog copy={app.copy} metadata={app.mediaMetadata} onClose={() => app.setIsMediaDetailsDialogOpen(false)} /> : null}
+    {app.isWebShareDialogOpen ? <WebShareDialog
+      copy={app.copy}
+      status={app.webShareStatus}
+      error={app.webShareError}
+      notice={app.webShareNotice}
+      playlistCount={app.state.playlist.length}
+      directoryPaths={app.webShareDirectoryPaths}
+      allowRemoteControl={app.allowRemoteControl}
+      onToggleRemoteControl={(enabled) => { void app.toggleRemoteControl(enabled) }}
+      onStart={() => void app.startWebShare()}
+      onStop={() => void app.stopWebShare()}
+      onRefresh={() => void app.refreshWebShare()}
+      onAddDirectory={() => void app.addWebShareDirectory()}
+      onRemoveDirectory={(directoryPath) => { void app.removeWebShareDirectory(directoryPath) }}
+      onCopy={(url) => { void app.copyWebShareUrl(url) }}
+      onOpen={(url) => app.openWebShareUrl(url)}
+      onClose={() => app.setIsWebShareDialogOpen(false)}
+    /> : null}
+    {app.editingAgentProposal ? <EditingProposalConfirmDialog
+      copy={app.copy.editing}
+      proposal={app.editingAgentProposal.proposal}
+      onClose={() => { void app.resolveEditingAgentProposal(false) }}
+      onConfirm={() => { void app.resolveEditingAgentProposal(true) }}
+    /> : null}
+  </>
 }

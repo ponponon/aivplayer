@@ -83,7 +83,7 @@ describe('settings UI source constraints', () => {
     expect(controlsSource).toContain('function SettingsToggle')
     expect(sharedSettingsSource).toContain('autoUpdate: boolean')
     expect(sharedSettingsSource).toContain('autoUpdate: true')
-    expect(localeSource).toContain("autoUpdate: '自动更新'")
+    expect(localeSource).toContain("autoUpdate: '自动检查更新'")
   })
 
   it('routes settings section writes through one shared patch helper', () => {

@@ -68,5 +68,5 @@
 .image-inspector-empty { display: grid; padding: 20px; }
 .image-inspector-empty span { font-size: 11px; }
 .image-file-input { display: none; }
-.image-workspace-notice { position: fixed; right: 338px; bottom: 18px; max-width: 48%; padding: 8px 11px; color: var(--text-primary); background: rgba(var(--panel-rgb), .95); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); box-shadow: var(--shadow-heavy); font-size: 10px; }
+.image-workspace-notice { position: fixed; right: calc(16px + min(460px, calc(100vw - 32px)) + 12px); bottom: 18px; z-index: 8; max-width: min(360px, calc(100vw - 32px)); padding: 8px 11px; color: var(--text-primary); background: rgba(var(--panel-rgb), .95); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); box-shadow: var(--shadow-heavy); font-size: 10px; }
 .image-workspace-notice.error { color: #ffd2d0; border-color: rgba(255,115,111,.45); }

@@ -1,6 +1,5 @@
 @media (max-width: 1120px) {
   .image-workspace-body { grid-template-columns: 190px minmax(0, 1fr) 290px; }
-  .image-workspace-notice { right: 306px; }
 }
 
 @media (max-width: 900px) {
@@ -12,7 +11,7 @@
   .image-inspector-heading { grid-column: 1 / -1; }
   .image-output-summary { justify-content: center; }
   .image-inspector > .image-export-button { margin-top: 4px; }
-  .image-workspace-notice { right: 12px; bottom: 12px; max-width: calc(100% - 24px); }
+  .image-workspace-notice { position: static; max-width: none; margin-top: 10px; }
 }
 
 @media (max-width: 620px) {

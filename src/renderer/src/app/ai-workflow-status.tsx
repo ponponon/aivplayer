@@ -10,7 +10,7 @@ export function AiWorkflowStatus(): React.ReactElement | null {
   if (!isCurrentFile) return null
 
   if (app.isAiAutomationPromptVisible) {
-    return <section className="ai-workflow-bar ai-workflow-prompt" aria-label={app.copy.asrPanel.workflowAutoPromptTitle}>
+    return <section className="ai-workflow-bar ai-workflow-prompt" role="region" aria-live="polite" aria-label={app.copy.asrPanel.workflowAutoPromptTitle}>
       <div className="ai-workflow-bar-main"><span className="ai-workflow-icon"><Sparkles size={15} /></span><div><strong>{app.copy.asrPanel.workflowAutoPromptTitle}</strong><p>{app.copy.asrPanel.workflowAutoPromptDescription(app.subtitleTargetLanguageLabel)}</p></div></div>
       <div className="ai-workflow-actions"><button className="ai-workflow-button primary" type="button" onClick={() => void app.acceptAiAutomation('guide')}><Sparkles size={13} />{app.copy.asrPanel.workflowAutoGuide}</button><button className="ai-workflow-button" type="button" onClick={() => void app.acceptAiAutomation('complete')}>{app.copy.asrPanel.workflowAutoComplete}</button><button className="ai-workflow-button quiet" type="button" onClick={app.dismissAiAutomationPrompt}>{app.copy.asrPanel.workflowDismiss}</button></div>
     </section>

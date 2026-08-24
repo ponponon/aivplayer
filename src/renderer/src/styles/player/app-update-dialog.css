@@ -1,19 +1,7 @@
-.app-update-dialog-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 40;
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
-  padding: 16px;
-  pointer-events: none;
-}
-
 .app-update-dialog {
-  pointer-events: auto;
   display: grid;
   gap: 14px;
-  width: min(460px, calc(100vw - 32px));
+  width: min(460px, 100%);
   min-width: 0;
   max-height: calc(100dvh - 32px);
   overflow: auto;
@@ -66,21 +54,6 @@
   overflow-wrap: anywhere;
 }
 
-.app-update-dialog-progress {
-  height: 6px;
-  overflow: hidden;
-  background: rgba(var(--overlay-rgb), 0.12);
-  border-radius: 99px;
-}
-
-.app-update-dialog-progress i {
-  display: block;
-  height: 100%;
-  background: var(--accent);
-  border-radius: inherit;
-  transition: width 160ms ease;
-}
-
 .app-update-dialog > .setting-toggle {
   margin-top: 1px;
 }
@@ -116,12 +89,8 @@
 }
 
 @media (max-width: 560px) {
-  .app-update-dialog-backdrop {
-    padding: 12px;
-  }
-
   .app-update-dialog {
-    width: min(100%, 460px);
+    width: 100%;
     padding: 14px;
   }
 
