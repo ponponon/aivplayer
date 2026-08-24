@@ -1316,27 +1316,30 @@ jobs:
             # 版本映射清单：新版本 app 从这里拿 revision 再下载内容
             wrangler r2 object put "aivplayer-releases/aivplayer/vision-pack/$version/$platform_key/manifest.json" --remote --file "$mapping_manifest" --force --cache-control 'public, max-age=31536000, immutable' --content-type 'application/json'
             # 上传成功不能只看 wrangler 返回 0：回读清单和完整归档，确认
-            # R2/CDN 没有返回旧对象、截断对象或错误 revision。R2 经由 CDN
-            # 时可能在上传成功后短暂返回 404，因此整个回读过程必须带退避重试。
+            # 对象完整且哈希一致。回读必须直连 R2 源站（wrangler），
+            # 不能经过 releases.quniv.cn —— CDN 对刚写入的对象存在负缓存 /
+            # 脏缓存（no-cache 头不保证生效），曾导致上传成功但校验拿到
+            # 404 或错误哈希而误判失败。保留退避重试兜底瞬时错误。
             local verified_manifest
             verified_manifest="$(mktemp)"
             local verified_archive
             verified_archive="$(mktemp)"
-            local max_attempts=12
+            local content_key="aivplayer-releases/aivplayer/vision-pack/$revision/$platform_key"
+            local max_attempts=6
             local retry_delay=5
             local actual_sha256
             local verified=false
             for ((attempt = 1; attempt <= max_attempts; attempt++)); do
-              if curl --fail --silent --show-error --location --header 'Cache-Control: no-cache' --max-time 30 "$content_manifest_url" -o "$verified_manifest" \
+              if wrangler r2 object get "$content_key/manifest.json" --remote --file "$verified_manifest" \
                 && node -e "const fs=require('fs'); const local=JSON.parse(fs.readFileSync(process.argv[1],'utf8')); const remote=JSON.parse(fs.readFileSync(process.argv[2],'utf8')); if(remote.revision!==local.revision || remote.archive!=='vision-pack.tar.gz' || remote.sha256!==local.sha256 || remote.sizeBytes!==local.sizeBytes) { console.error('Vision Pack 远端清单与本地不一致'); process.exit(1) }" "$mapping_manifest" "$verified_manifest" \
-                && curl --fail --silent --show-error --location --header 'Cache-Control: no-cache' --max-time 600 "$content_url" -o "$verified_archive" \
+                && wrangler r2 object get "$content_key/vision-pack.tar.gz" --remote --file "$verified_archive" \
                 && actual_sha256="$(sha256sum "$verified_archive" | awk '{print $1}')" \
                 && node -e "const fs=require('fs'); const manifest=JSON.parse(fs.readFileSync(process.argv[1],'utf8')); if(manifest.sha256!==process.argv[2]) { console.error('Vision Pack 远端归档 SHA-256 不一致'); process.exit(1) }" "$mapping_manifest" "$actual_sha256"; then
                 verified=true
                 break
               fi
               if [ "$attempt" -lt "$max_attempts" ]; then
-                echo "Vision Pack $revision/$platform_key 远端回读暂不可用，第 $attempt/$max_attempts 次重试，等待 ${retry_delay}s"
+                echo "Vision Pack $revision/$platform_key R2 源站回读暂不可用，第 $attempt/$max_attempts 次重试，等待 ${retry_delay}s"
                 sleep "$retry_delay"
                 retry_delay=$((retry_delay * 2))
                 if [ "$retry_delay" -gt 60 ]; then
