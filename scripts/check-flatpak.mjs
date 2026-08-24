@@ -10,17 +10,15 @@ const flatpakIconPath = join(flatpakDirectory, 'icon-512.png')
 const desktopPath = join(flatpakDirectory, 'cn.quniv.aivplayer.desktop')
 const metainfoPath = join(flatpakDirectory, 'cn.quniv.aivplayer.metainfo.xml')
 const generatedSourcesPath = join(flatpakDirectory, 'generated-sources.json')
-const lancedbCargoSourcesPath = join(flatpakDirectory, 'lancedb-cargo-sources.json')
 
-const [packageText, manifest, electronBuilderConfig, flatpakIcon, desktop, metainfo, generatedSources, lancedbCargoSources] = await Promise.all([
+const [packageText, manifest, electronBuilderConfig, flatpakIcon, desktop, metainfo, generatedSources] = await Promise.all([
   readFile(join(root, 'package.json'), 'utf8'),
   readFile(manifestPath, 'utf8'),
   readFile(electronBuilderConfigPath, 'utf8'),
   readFile(flatpakIconPath),
   readFile(desktopPath, 'utf8'),
   readFile(metainfoPath, 'utf8'),
-  readFile(generatedSourcesPath, 'utf8').catch(() => ''),
-  readFile(lancedbCargoSourcesPath, 'utf8').catch(() => '')
+  readFile(generatedSourcesPath, 'utf8').catch(() => '')
 ])
 
 const packageJson = JSON.parse(packageText)
@@ -37,7 +35,7 @@ assertCondition(manifest.includes("runtime-version: '25.08'"), 'runtime 不是�
 assertCondition(manifest.includes(`base: org.electronjs.Electron2.BaseApp`), '没有声明 Electron BaseApp')
 assertCondition(manifest.includes(`base-version: '25.08'`), 'Electron BaseApp 版本与 runtime 不一致')
 assertCondition(manifest.includes('org.freedesktop.Sdk.Extension.node22'), '没有声明 Node.js SDK extension')
-assertCondition(manifest.includes('org.freedesktop.Sdk.Extension.rust-stable'), '没有声明 Rust SDK extension')
+assertCondition(!manifest.includes('org.freedesktop.Sdk.Extension.rust-stable'), 'Flatpak 不应依赖 Rust SDK extension（LanceDB 已改用 npm 预编译二进制）')
 assertCondition(manifest.includes('- generated-sources.json'), 'manifest 没有接入离线 npm 源清单')
 assertCondition(manifest.includes('npm install --offline'), 'Flatpak 构建不能依赖联网 npm install')
 assertCondition(manifest.includes('ONNXRUNTIME_NODE_INSTALL: skip'), 'Flatpak npm 构建必须跳过 ONNX Runtime CUDA 下载')
@@ -88,16 +86,15 @@ assertCondition(manifest.includes('https://github.com/ggml-org/whisper.cpp.git')
 assertCondition(manifest.includes('commit: f049fff95a089aa9969deb009cdd4892b3e74916'), 'whisper.cpp 必须固定 commit')
 assertCondition(manifest.includes('export AIVPLAYER_WHISPER_CPP_BIN=/app/bin/whisper-cli'), 'Flatpak 没有指向 whisper-cli 运行时')
 assertCondition(!manifest.includes('build/bin/whisper-cli'), 'Flatpak 不能复制不存在的 build/bin/whisper-cli')
-assertCondition(manifest.includes('name: protobuf'), 'LanceDB 构建缺少 protobuf 源码模块')
-assertCondition(manifest.includes('protobuf-30.2.tar.gz'), 'protobuf 源码版本必须固定')
-assertCondition(manifest.includes('PROTOC: /app/bin/protoc'), 'LanceDB 必须显式使用 Flatpak 构建的 protoc')
-assertCondition(manifest.includes('name: lancedb-native'), 'Flatpak 没有声明 LanceDB 源码构建模块')
-assertCondition(manifest.includes('https://github.com/lancedb/lancedb.git'), 'LanceDB 源码地址不正确')
-assertCondition(manifest.includes('commit: 3f8d76817e6020ea344fba8a66c5de9ad8c82234'), 'LanceDB 必须固定 v0.31.0 commit')
-assertCondition(manifest.includes('cargo build --release --locked --offline -p lancedb-nodejs'), 'LanceDB 构建命令必须交给 Flatpak builder 执行')
-assertCondition(manifest.includes('lancedb-cargo-sources.json'), 'LanceDB 缺少 Cargo 源码清单')
-assertCondition(manifest.includes('NAPI_RS_NATIVE_LIBRARY_PATH=/app/lib/aivplayer/lancedb.linux-x64-gnu.node'), 'Flatpak x86_64 必须加载源码构建的 LanceDB NAPI 绑定')
-assertCondition(manifest.includes('NAPI_RS_NATIVE_LIBRARY_PATH=/app/lib/aivplayer/lancedb.linux-arm64-gnu.node'), 'Flatpak ARM64 必须加载源码构建的 LanceDB NAPI 绑定')
+assertCondition(!manifest.includes('name: protobuf'), 'LanceDB 已改用预编译二进制，不再需要 protobuf 源码模块')
+assertCondition(!manifest.includes('name: lancedb-native'), 'LanceDB 已改用 npm 预编译二进制，不应保留源码构建模块')
+assertCondition(!manifest.includes('cargo build'), 'Flatpak 构建不应执行 Cargo 编译')
+assertCondition(!manifest.includes('lancedb-cargo-sources.json'), 'Cargo 源码清单已废弃，manifest 不应再引用')
+assertCondition(manifest.includes('lancedb.linux-x64-gnu.node') && manifest.includes('lancedb.linux-arm64-gnu.node'), 'Flatpak 必须安装 LanceDB 预编译 NAPI 绑定')
+assertCondition(manifest.includes('@lancedb/lancedb-linux-x64-gnu') && manifest.includes('@lancedb/lancedb-linux-arm64-gnu'), '预编译绑定必须来自官方 npm 平台包路径')
+assertCondition(manifest.includes('NODEJS_THIRD_PARTY_LICENSES.md'), '必须随包提供 LanceDB Apache-2.0 许可证收据')
+assertCondition(manifest.includes('NAPI_RS_NATIVE_LIBRARY_PATH=/app/lib/aivplayer/lancedb.linux-x64-gnu.node'), 'Flatpak x86_64 必须加载预编译 LanceDB NAPI 绑定')
+assertCondition(manifest.includes('NAPI_RS_NATIVE_LIBRARY_PATH=/app/lib/aivplayer/lancedb.linux-arm64-gnu.node'), 'Flatpak ARM64 必须加载预编译 LanceDB NAPI 绑定')
 assertCondition(manifest.includes('desktopName = "cn.quniv.aivplayer.desktop"'), '没有修正 Electron desktop 文件名')
 assertCondition(packageJson.scripts?.['flatpak:prepare-ci-manifest'], '缺少 Flatpak CI 本地源码 manifest 生成命令')
 assertCondition(packageJson.scripts?.['flatpak:audit-native'], '缺少 Flatpak 原生 npm 依赖审计命令')
@@ -129,7 +126,6 @@ assertCondition(metainfo.includes('docs/assets/flatpak-screenshot.png'), 'MetaIn
 assertCondition(metainfo.includes(`<release version="${version}"`), 'MetaInfo release 版本与 package.json 不一致')
 
 assertCondition(generatedSources.trim().length > 0, '缺少 generated-sources.json，请先运行 flatpak:generate-sources')
-assertCondition(lancedbCargoSources.trim().length > 0, '缺少 lancedb-cargo-sources.json，请生成 Flathub 离线 Cargo 源清单')
 let parsedSources
 try {
   parsedSources = JSON.parse(generatedSources)
@@ -137,20 +133,9 @@ try {
   throw new Error(`Flatpak 检查失败：generated-sources.json 不是合法 JSON：${error instanceof Error ? error.message : String(error)}`)
 }
 assertCondition(Array.isArray(parsedSources) && parsedSources.length > 0, 'generated-sources.json 没有有效 source')
-let parsedLancedbCargoSources
-try {
-  parsedLancedbCargoSources = JSON.parse(lancedbCargoSources)
-} catch (error) {
-  throw new Error(`Flatpak 检查失败：lancedb-cargo-sources.json 不是合法 JSON：${error instanceof Error ? error.message : String(error)}`)
-}
-assertCondition(Array.isArray(parsedLancedbCargoSources) && parsedLancedbCargoSources.length > 0, 'lancedb-cargo-sources.json 没有有效 source')
-const lancedbCargoConfig = parsedLancedbCargoSources.find((source) => (
-  source?.type === 'inline' && source?.dest === '.cargo' && source?.['dest-filename'] === 'config'
+const lancedbPlatformTarballs = parsedSources.filter((source) => (
+  typeof source?.url === 'string' && source.url.includes('/@lancedb/lancedb-linux-')
 ))
-assertCondition(lancedbCargoConfig, 'LanceDB Cargo 离线配置必须写入 .cargo/config')
-assertCondition(
-  typeof lancedbCargoConfig.contents === 'string' && lancedbCargoConfig.contents.includes('replace-with = "vendored-sources"'),
-  'LanceDB Cargo 必须替换为 vendored source'
-)
+assertCondition(lancedbPlatformTarballs.length >= 2, '离线 npm 源清单必须包含 LanceDB linux 平台预编译包')
 
-console.log(`Flatpak 静态检查通过：${id} v${version}，${parsedSources.length} 个 npm source，${parsedLancedbCargoSources.length} 个 Cargo source`)
+console.log(`Flatpak 静态检查通过：${id} v${version}，${parsedSources.length} 个 npm source，其中 ${lancedbPlatformTarballs.length} 个 LanceDB 预编译平台包`)

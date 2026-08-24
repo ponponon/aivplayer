@@ -6,7 +6,6 @@ base: org.electronjs.Electron2.BaseApp
 base-version: '25.08'
 sdk-extensions:
   - org.freedesktop.Sdk.Extension.node22
-  - org.freedesktop.Sdk.Extension.rust-stable
 command: cn.quniv.aivplayer
 
 finish-args:
@@ -113,47 +112,6 @@ modules:
         tag: v1.9.1
         commit: f049fff95a089aa9969deb009cdd4892b3e74916
 
-  - name: protobuf
-    buildsystem: cmake-ninja
-    config-opts:
-      - -Dprotobuf_BUILD_TESTS=OFF
-      - -Dprotobuf_BUILD_LIBUPB=OFF
-      - -Dprotobuf_BUILD_CONFORMANCE=OFF
-      - -Dprotobuf_BUILD_EXAMPLES=OFF
-      - -Dprotobuf_BUILD_SHARED_LIBS=OFF
-    sources:
-      - type: archive
-        url: https://github.com/protocolbuffers/protobuf/releases/download/v30.2/protobuf-30.2.tar.gz
-        sha512: 555d1b18d175eeaf17f3879f124d33080f490367840d35b34bfc4e4a5b383bf6a1d09f1570acb6af9c53ac4940a14572d46423b6e3dd0c712e7802c986fb6be6
-
-  - name: lancedb-native
-    buildsystem: simple
-    build-options:
-      append-path: /usr/lib/sdk/rust-stable/bin
-      env:
-        CARGO_NET_OFFLINE: 'true'
-        CARGO_PROFILE_RELEASE_CODEGEN_UNITS: '16'
-        CARGO_PROFILE_RELEASE_LTO: thin
-        PROTOC: /app/bin/protoc
-    build-commands:
-      - cargo build --release --locked --offline -p lancedb-nodejs
-      - install -Dm644 LICENSE /app/share/licenses/cn.quniv.aivplayer/lancedb/LICENSE
-      - |
-          case "$(uname -m)" in
-            x86_64) native_file=lancedb.linux-x64-gnu.node ;;
-            aarch64) native_file=lancedb.linux-arm64-gnu.node ;;
-            *) echo "不支持的 Linux 架构：$(uname -m)" >&2; exit 1 ;;
-          esac
-          install -Dm755 target/release/liblancedb_nodejs.so "/app/lib/aivplayer/${native_file}"
-    sources:
-      - type: git
-        url: https://github.com/lancedb/lancedb.git
-        tag: v0.31.0
-        commit: 3f8d76817e6020ea344fba8a66c5de9ad8c82234
-      - type: patch
-        path: patches/lancedb-cargo-lock.patch
-      - lancedb-cargo-sources.json
-
   - name: aivplayer
     buildsystem: simple
     build-options:
@@ -202,6 +160,16 @@ modules:
           - exec zypak-wrapper /app/main/aivplayer "$@"
     build-commands:
       - cd app && npm install --offline
+      - |
+          set -eu
+          case "$(uname -m)" in
+            x86_64)
+              install -Dm755 app/node_modules/@lancedb/lancedb-linux-x64-gnu/lancedb.linux-x64-gnu.node /app/lib/aivplayer/lancedb.linux-x64-gnu.node ;;
+            aarch64)
+              install -Dm755 app/node_modules/@lancedb/lancedb-linux-arm64-gnu/lancedb.linux-arm64-gnu.node /app/lib/aivplayer/lancedb.linux-arm64-gnu.node ;;
+            *) echo "不支持的 Linux 架构：$(uname -m)" >&2; exit 1 ;;
+          esac
+      - install -Dm644 app/node_modules/@lancedb/lancedb/NODEJS_THIRD_PARTY_LICENSES.md /app/share/licenses/cn.quniv.aivplayer/lancedb/LICENSES.md
       - cd app && npm run build
       - cd app && jq '.desktopName = "cn.quniv.aivplayer.desktop"' package.json > package.json.flatpak && mv package.json.flatpak package.json
       - cd app && npx electron-builder --config flatpak/electron-builder-flatpak.yml --linux --dir --publish never

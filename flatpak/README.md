@@ -9,20 +9,19 @@
 - 固定 Flatpak ID `cn.quniv.aivplayer`，与 Electron 的 `appId` 保持一致；
 - Electron BaseApp、Node.js SDK extension、X11/PulseAudio/GPU 和用户目录权限的初始声明；
 - whisper.cpp `v1.9.1` 已改为 Flatpak manifest 中的固定 Git commit 源码模块，安装到 `/app/bin/whisper-cli`，运行 wrapper 会显式指向该路径；
-- protobuf `v30.2` 已加入固定 SHA-512 的源码模块，远程 builder 会生成 `/app/bin/protoc` 供 LanceDB 的 Rust build script 使用；
 - Flatpak npm 构建已显式跳过 `onnxruntime-node` 的 CUDA 扩展下载，兼容新旧安装变量，使用 npm 包随附的 CPU 运行时，避免离线构建访问 NuGet；
 - Electron `v43.2.0` Linux x64 / ARM64 发行包已按架构作为固定 SHA-256 的 Flatpak 源下载并解压到独立目录，electron-builder 通过 `electronDist` 使用本地目录，避免构建阶段访问 GitHub；
 - Flatpak 使用独立的 `icon-512.png` 应用图标，保留桌面端原始 1024 图标不变，满足 Flatpak 导出器的最大图标尺寸限制；
 - FFmpeg `8.1.2` 使用 FFmpeg 官方 Git 源码 tag，并固定 commit，关闭 GPL/nonfree 和外部自动探测，静态安装 `/app/bin/ffmpeg` 与 `/app/bin/ffprobe`；
 - libheif `v1.23.1` 已接入固定源码模块，依赖 libde265 `v1.0.16`、libjpeg-turbo `3.1.2` 和 x265 `3.4`，关闭插件加载、宿主可选后端探测并安装 `heif-enc`、`heif-convert`；x265 的 GPL-2.0 许可证边界需要随最终 Flathub 审核材料复核。x265 另带一个只修复 CMake 4 兼容性的最小 patch；
-- LanceDB `v0.31.0` 已加入 Flathub manifest 的源码构建描述：固定 Git commit、Cargo.lock 最小修正和 Cargo 离线源码清单均作为 manifest 输入；本机不执行 Cargo 编译，实际 Linux x86_64 / arm64 编译由 Flathub builder 完成。
+- LanceDB `v0.31.0` 已改用 npm 官方预编译平台包（`@lancedb/lancedb-linux-x64-gnu` / `lancedb-linux-arm64-gnu`），与 Snap 及其他桌面平台保持一致；预编译 tarball 已包含在离线 npm 源清单中，构建时从 `node_modules` 复制到 `/app/lib/aivplayer/`，不再依赖 Rust SDK extension，也不再有 Cargo 离线源码清单。
 - Electron 启动 wrapper、desktop 文件、AppStream MetaInfo 和 Flatpak 专用 electron-builder 配置；
 - 从 `package-lock.json` 生成离线 npm 源的入口；当前仓库中的 `generated-sources.json` 是用于第一阶段静态接线的 stub 清单，来源完整性沿用 lockfile，但没有包含 Electron BaseApp 缓存等特殊扩展。
 - 新增 `npm run flatpak:audit-native` 原生 npm 依赖审计，当前会明确列出 LanceDB、ONNX Runtime、Sharp/libvips 和 sherpa-onnx 的 62 个 lockfile 条目；它们仍是阻塞项，不把“平台包是 optional”误判为“已经符合 Flathub”。
 
 ## 仍需完成的 Flathub 阻塞项
 
-1. LanceDB 已写入 Flathub 源码构建模块；本地 CPU 版 `onnxruntime-node` 已通过跳过 CUDA 下载规避 NuGet 网络依赖，Electron 发行包也已固定为 manifest 源，但 Sharp 的 libvips 平台包和 sherpa-onnx 的平台包仍是原生依赖阻塞项。可用 `npm run flatpak:audit-native -- --strict` 作为依赖审计门禁。
+1. LanceDB 已改用 npm 预编译平台包；本地 CPU 版 `onnxruntime-node` 已通过跳过 CUDA 下载规避 NuGet 网络依赖，Electron 发行包也已固定为 manifest 源，但 Sharp 的 libvips 平台包和 sherpa-onnx 的平台包仍是原生依赖阻塞项。可用 `npm run flatpak:audit-native -- --strict` 作为依赖审计门禁。
 2. 把当前只读、随包提供的 SigLIP2 视觉模型改成用户数据目录中的可审计下载 / 安装流程；Flathub manifest 不应携带这类大模型二进制。
 3. 重新评估文件访问权限。当前实现支持用户选择任意媒体目录、递归扫描和导出，第一版使用 XDG 目录权限配合文件选择器；最终提交前需要在 Flatpak 沙箱中用真实文件选择、目录扫描和导出 Smoke 验证，并尽量收窄权限。
 4. 在 Linux Flatpak 构建机上运行 `flatpak-builder`、`flatpak-builder-lint` 和真实启动 Smoke。macOS 开发机没有 Flatpak 工具，不能用本地 TypeScript 构建代替这一步。
@@ -36,7 +35,6 @@
 ```sh
 npm run flatpak:check
 npm run flatpak:generate-sources
-# 使用 flatpak-cargo-generator.py 根据 LanceDB Cargo.lock 生成 Cargo 源码清单
 flatpak-builder build-dir flatpak/cn.quniv.aivplayer.yml \
   --install-deps-from=flathub --force-clean --user --install
 flatpak run cn.quniv.aivplayer

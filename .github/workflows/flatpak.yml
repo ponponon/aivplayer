@@ -74,21 +74,6 @@ jobs:
             org.freedesktop.Sdk/${arch}/25.08 \
             org.freedesktop.Sdk.Extension.node22/${arch}/25.08 \
             org.electronjs.Electron2.BaseApp/${arch}/25.08
-          # rust-stable extension：Flathub 上游发布不完整（binding commit 存在但内容对象 404），
-          # 单独安装 + 跳过静态 delta + 最多重试 6 次（间隔递增），等 Flathub 修复后自动恢复
-          rust_ref="org.freedesktop.Sdk.Extension.rust-stable/${arch}/25.08"
-          for i in 1 2 3 4 5 6; do
-            if dbus-run-session -- flatpak install --user --assumeyes --noninteractive --no-static-deltas flathub "$rust_ref"; then
-              break
-            fi
-            echo "rust-stable 安装失败（第 ${i} 次），$((i * 30)) 秒后重试..."
-            # 首次失败时输出诊断（确认是否为 Flathub 上游问题）
-            if [ "$i" = "1" ]; then
-              bash scripts/diagnose-flatpak-rust.sh "$arch" || true
-            fi
-            sleep $((i * 30))
-          done
-          flatpak info "$rust_ref"
           dbus-run-session -- flatpak install --user --assumeyes --noninteractive flathub org.flatpak.Builder
       - name: Build Flatpak
         run: |
@@ -136,21 +121,6 @@ jobs:
             org.freedesktop.Sdk/${arch}/25.08 \
             org.freedesktop.Sdk.Extension.node22/${arch}/25.08 \
             org.electronjs.Electron2.BaseApp/${arch}/25.08
-          # rust-stable extension：Flathub 上游发布不完整（binding commit 存在但内容对象 404），
-          # 单独安装 + 跳过静态 delta + 最多重试 6 次（间隔递增），等 Flathub 修复后自动恢复
-          rust_ref="org.freedesktop.Sdk.Extension.rust-stable/${arch}/25.08"
-          for i in 1 2 3 4 5 6; do
-            if dbus-run-session -- flatpak install --user --assumeyes --noninteractive --no-static-deltas flathub "$rust_ref"; then
-              break
-            fi
-            echo "rust-stable 安装失败（第 ${i} 次），$((i * 30)) 秒后重试..."
-            # 首次失败时输出诊断（确认是否为 Flathub 上游问题）
-            if [ "$i" = "1" ]; then
-              bash scripts/diagnose-flatpak-rust.sh "$arch" || true
-            fi
-            sleep $((i * 30))
-          done
-          flatpak info "$rust_ref"
           dbus-run-session -- flatpak install --user --assumeyes --noninteractive flathub org.flatpak.Builder
       - name: Build Flatpak
         run: |

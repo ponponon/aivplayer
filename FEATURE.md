@@ -1049,3 +1049,10 @@
 - 发布工作流会按 tag 构建 Windows x64 / arm64 安装包，并将全部平台产物发布到 GitHub Release；当前不再向 MinIO 或 Cloudflare R2 上传额外副本，未来大陆下载入口计划使用 R2。
 - 发布渠道已移除旧镜像：工作流、远端校验、脚本、测试和公开下载页面只保留 GitHub Release；未来大陆用户下载入口计划迁移到 Cloudflare R2。
 - macOS 自动更新配置进入正式打包门禁：将固定的 `resources/app-update.yml` 在签名前作为 macOS 专属 `extraResources` 放入 `Contents/Resources`，并由 macOS 打包资源检查验证 GitHub 更新源；Windows / Linux 继续沿用原有更新产物流程，避免 macOS 安装后首次检查更新时报 `ENOENT`。
+
+## Flatpak LanceDB 预编译二进制
+
+- Flatpak 构建不再从源码编译 LanceDB，也不依赖 `org.freedesktop.Sdk.Extension.rust-stable`；改为使用 npm 官方预编译平台包 `@lancedb/lancedb-linux-x64-gnu` / `@lancedb/lancedb-linux-arm64-gnu`（v0.31.0），与 Snap、macOS、Windows 渠道保持一致。
+- 背景：2026-08-21 起 Flathub 上游 rust-stable 25.08 发布不完整（binding commit 元数据存在但内容对象 404，见 flathub/org.freedesktop.Sdk.Extension.rust-stable#538），导致依赖该扩展的 CI 持续失败；移除该依赖后发版流水线不再受上游单点故障影响。
+- manifest 删除了 `lancedb-native` 与 `protobuf` 源码模块（protobuf 仅服务于 LanceDB 的 Rust build script）、Cargo 离线源码清单和 Cargo.lock patch；构建时把 `node_modules` 中的预编译 `.node` 复制到 `/app/lib/aivplayer/`，运行时加载路径不变，并随包提供 Apache-2.0 许可证收据。
+- `scripts/check-flatpak.mjs` 的门禁同步反转：断言 manifest 不再包含 rust-stable / cargo build / protobuf，且离线 npm 清单必须包含 LanceDB linux 预编译包。
