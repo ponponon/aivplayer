@@ -30,6 +30,7 @@ describe('app update source constraints', () => {
 
   it('exposes the ChatGPT-style update dialog actions', () => {
     const dialogSource = readSource('src/renderer/src/app/app-update-dialog.tsx')
+    const dialogStyleSource = readSource('src/renderer/src/styles/player/app-update-dialog.css')
     const channelSource = readSource('src/shared/ipc-channels.ts')
 
     expect(dialogSource).toContain('skipVersion')
@@ -37,6 +38,12 @@ describe('app update source constraints', () => {
     expect(dialogSource).toContain('autoInstall')
     expect(dialogSource).toContain('onDownload')
     expect(dialogSource).toContain('onInstall')
+    expect(dialogSource).not.toContain('useModalFocusTrap')
+    expect(dialogSource).not.toContain('aria-modal="true"')
+    expect(dialogStyleSource).toContain('pointer-events: none')
+    expect(dialogStyleSource).toContain('align-items: flex-end')
+    expect(dialogStyleSource).toContain('justify-content: flex-end')
+    expect(dialogStyleSource).toContain('prefers-reduced-motion: no-preference')
     expect(channelSource).toContain("APP_UPDATE_DOWNLOAD: 'app-update:download'")
     expect(channelSource).toContain("APP_UPDATE_DISMISS: 'app-update:dismiss'")
     expect(channelSource).toContain("APP_UPDATE_SKIP: 'app-update:skip'")

@@ -1,9 +1,8 @@
 import { Download, PackageCheck, X } from 'lucide-react'
-import { useEffect, useRef, useState, type ReactElement } from 'react'
+import { useEffect, useState, type ReactElement } from 'react'
 import type { LocaleCopy } from '../../../shared/i18n'
 import type { AppUpdateState } from '../../../shared/app-update-types'
 import { SettingsToggle } from './settings-controls'
-import { useModalFocusTrap } from './use-modal-focus-trap'
 
 type AppUpdateDialogProps = {
   copy: LocaleCopy
@@ -30,15 +29,12 @@ export function AppUpdateDialog({
   onDismiss,
   onSkip
 }: AppUpdateDialogProps): ReactElement | null {
-  const dialogRef = useRef<HTMLElement | null>(null)
   const [dismissedVersion, setDismissedVersion] = useState<string | null>(null)
   const version = state.version ?? ''
   const isDownloading = state.status === 'downloading'
   const isDownloaded = state.status === 'downloaded'
   const isInstalling = state.status === 'installing'
   const progress = state.progress ? Math.round(state.progress.percent) : null
-
-  useModalFocusTrap(isPromptState(state.status) && dismissedVersion !== version, dialogRef, '.app-update-dialog-primary')
 
   useEffect(() => {
     setDismissedVersion(null)
@@ -78,15 +74,15 @@ export function AppUpdateDialog({
         : copy.update.availableDescription(version, state.currentVersion)
 
   return (
-    <div className="modal-backdrop app-update-dialog-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && handleDismiss()}>
-      <section ref={dialogRef} className="app-update-dialog" tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="app-update-dialog-title" aria-describedby="app-update-dialog-description">
+    <div className="app-update-dialog-backdrop" role="presentation">
+      <section className="app-update-dialog" role="dialog" aria-labelledby="app-update-dialog-title" aria-describedby="app-update-dialog-description" data-testid="app-update-dialog">
         <div className="app-update-dialog-header">
           <div className="app-update-dialog-icon" aria-hidden="true">
             {isDownloaded ? <PackageCheck size={23} /> : <Download size={23} />}
           </div>
           <div className="app-update-dialog-heading">
             <h2 id="app-update-dialog-title">{copy.update.availableTitle}</h2>
-            <p id="app-update-dialog-description">{description}</p>
+            <p id="app-update-dialog-description" aria-live="polite" aria-atomic="true">{description}</p>
           </div>
           <button className="mini-tool-button app-update-dialog-close" type="button" onClick={handleDismiss} title={copy.update.remindLater} aria-label={copy.update.remindLater}>
             <X size={14} />

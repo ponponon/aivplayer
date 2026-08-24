@@ -1,18 +1,28 @@
 .app-update-dialog-backdrop {
+  position: fixed;
+  inset: 0;
   z-index: 40;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 16px;
+  pointer-events: none;
 }
 
 .app-update-dialog {
+  pointer-events: auto;
   display: grid;
-  gap: 18px;
-  width: min(680px, calc(100vw - 32px));
+  gap: 14px;
+  width: min(460px, calc(100vw - 32px));
   min-width: 0;
-  padding: 24px;
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  padding: 16px;
   color: var(--text-primary);
   background: rgba(var(--panel-rgb), 0.98);
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius-lg);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.46);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.32);
 }
 
 .app-update-dialog:focus-visible {
@@ -29,13 +39,13 @@
 
 .app-update-dialog-icon {
   display: inline-grid;
-  width: 58px;
-  height: 58px;
+  width: 44px;
+  height: 44px;
   place-items: center;
   color: var(--accent);
   background: rgba(var(--accent-rgb), 0.1);
   border: 1px solid rgba(var(--accent-rgb), 0.28);
-  border-radius: 17px;
+  border-radius: var(--radius-md);
 }
 
 .app-update-dialog-heading {
@@ -43,16 +53,16 @@
 }
 
 .app-update-dialog-heading h2 {
-  margin: 3px 0 6px;
-  font-size: 20px;
+  margin: 1px 0 5px;
+  font-size: 16px;
   line-height: 1.25;
 }
 
 .app-update-dialog-heading p {
   margin: 0;
   color: var(--text-secondary);
-  font-size: 13px;
-  line-height: 1.6;
+  font-size: 12px;
+  line-height: 1.5;
   overflow-wrap: anywhere;
 }
 
@@ -72,7 +82,7 @@
 }
 
 .app-update-dialog > .setting-toggle {
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 .app-update-dialog-actions {
@@ -84,12 +94,35 @@
 }
 
 .app-update-dialog-actions .app-update-dialog-primary {
-  min-width: 112px;
+  min-width: 108px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .app-update-dialog {
+    animation: app-update-dialog-enter 220ms ease-out both;
+  }
+}
+
+@keyframes app-update-dialog-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @media (max-width: 560px) {
+  .app-update-dialog-backdrop {
+    padding: 12px;
+  }
+
   .app-update-dialog {
-    padding: 18px;
+    width: min(100%, 460px);
+    padding: 14px;
   }
 
   .app-update-dialog-header {
