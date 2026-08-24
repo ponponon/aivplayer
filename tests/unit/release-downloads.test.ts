@@ -96,6 +96,23 @@ describe('release download selection', () => {
 
     expect(Object.keys(release.assets['darwin-arm64'])).toEqual(['dmg', 'zip'])
   })
+
+  it('orders Linux formats by explicit download preference', () => {
+    const release = createDownloadRelease({
+      tag: 'v0.6.3',
+      repository: 'ponponon/aivplayer',
+      publicBaseUrl: 'https://releases.quniv.cn/aivplayer/releases',
+      assets: {
+        'linux-x64': {
+          snap: { name: 'aivplayer-0.6.3-x86_64.snap', format: 'snap', sizeBytes: 300, sha256: 'f'.repeat(64) },
+          deb: { name: 'aivplayer-0.6.3-amd64.deb', format: 'deb', sizeBytes: 200, sha256: 'a'.repeat(64) },
+          appimage: { name: 'aivplayer-0.6.3-x86_64.AppImage', format: 'appimage', sizeBytes: 100, sha256: 'b'.repeat(64) }
+        }
+      }
+    })
+
+    expect(Object.keys(release.assets['linux-x64'])).toEqual(['appimage', 'deb', 'snap'])
+  })
 })
 
 describe('download publishing integration', () => {
@@ -146,7 +163,9 @@ describe('download publishing integration', () => {
     expect(siteScript).toContain('architectureUnknown')
     expect(siteScript).not.toContain('const architectureHint = [navigator.userAgentData?.architecture, navigator.userAgent]')
     expect(siteScript).toContain('FALLBACK_DOWNLOAD_MANIFEST')
+    expect(siteScript).toContain("win32: ['exe']")
     expect(siteScript).toContain("darwin: ['dmg', 'zip']")
+    expect(siteScript).toContain("linux: ['appimage', 'deb', 'snap']")
     expect(siteScript).toContain('function orderDownloadFormats')
     expect(siteScript).toContain("version: '0.6.2'")
     expect(siteScript).toContain("version: '0.5.6'")

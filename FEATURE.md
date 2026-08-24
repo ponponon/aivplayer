@@ -1,6 +1,6 @@
 # AIVPlayer 功能列表
 
-- 官网 macOS 下载默认格式固定优先使用 DMG：发布清单同时包含 DMG / ZIP 时，推荐下载和默认手动选择均指向 DMG，ZIP 仍可手动选择；发布脚本同时规范清单内的格式顺序，避免 JSON 键顺序导致推荐包漂移。
+- 官网各平台下载默认格式使用显式优先级：macOS 优先 DMG、Linux 优先 AppImage、Windows 使用唯一的 EXE 安装器；发布清单同时包含多个格式时，推荐下载和默认手动选择不再依赖 JSON 键顺序，其他格式仍可手动选择。
 - 模型下载完整性统一：ASR、Vision 和人物抠像共用远程 manifest、文件大小 / SHA-256 校验、唯一临时文件和原子替换；损坏或版本不匹配的缓存会失效并重新下载，ASR 默认源失败时自动按 R2、ModelScope、Hugging Face 回退。ASR 模型清单同时固定 large-v3-turbo-q5_0 和 small-q5_1 的文件大小与 SHA-256，避免“文件存在但实际模型错误”。
 - Vision Pack 下载兼容旧 R2 版本清单：线上历史清单缺少 revision 时继续按版本 / 平台路径下载并校验归档；新清单继续使用 revision 内容寻址和 active pointer，不要求用户手动清空旧缓存。
 
