@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import type { PersonMatteModelStatus } from '../../shared/person-matte-types'
+import type { ModelFileIntegrity } from './model-download-utils'
 
 /** Pinned Transformers.js model layout; model files are installed separately from the app source. */
 export const PERSON_MATTE_MODEL_ID = 'Xenova/modnet' as const
@@ -9,10 +10,23 @@ export const PERSON_MATTE_MODEL_REVISION = 'main' as const
 
 const PERSON_MATTE_MODEL_BASE_URL = `https://huggingface.co/${PERSON_MATTE_MODEL_ID}/resolve/${PERSON_MATTE_MODEL_REVISION}`
 
-export const PERSON_MATTE_MODEL_FILES = [
+export type PersonMatteModelFile = {
+  relativePath: string
+  url: string
+  expected?: ModelFileIntegrity
+}
+
+export const PERSON_MATTE_MODEL_FILES: readonly PersonMatteModelFile[] = [
   { relativePath: 'config.json', url: `${PERSON_MATTE_MODEL_BASE_URL}/config.json` },
   { relativePath: 'preprocessor_config.json', url: `${PERSON_MATTE_MODEL_BASE_URL}/preprocessor_config.json` },
-  { relativePath: 'onnx/model.onnx', url: `${PERSON_MATTE_MODEL_BASE_URL}/onnx/model.onnx` }
+  {
+    relativePath: 'onnx/model.onnx',
+    url: `${PERSON_MATTE_MODEL_BASE_URL}/onnx/model.onnx`,
+    expected: {
+      sizeBytes: 25_888_640,
+      sha256: '07c308cf0fc7e6e8b2065a12ed7fc07e1de8febb7dc7839d7b7f15dd66584df9'
+    }
+  }
 ] as const
 
 export type PersonMatteModelPaths = {

@@ -3,6 +3,7 @@ import { constants } from 'node:fs'
 import { basename, join } from 'node:path'
 import type { AsrModelInfo, AsrModelManifest } from '../../shared/media-types.ts'
 import { findWhisperModelManifest, getRecommendedWhisperModelManifest } from './asr-models.ts'
+import { getVerifiedFileSize } from './model-download-utils'
 
 const WHISPER_MODEL_PREFIX = 'ggml-'
 const WHISPER_MODEL_SUFFIX = '.bin'
@@ -38,21 +39,27 @@ export async function listWhisperModels(modelDirectory: string): Promise<AsrMode
     (entry) => entry.startsWith(WHISPER_MODEL_PREFIX) && entry.endsWith(WHISPER_MODEL_SUFFIX)
   )
 
-  const models = await Promise.all(
+  const models = (await Promise.all(
     modelFiles.map(async (entry) => {
       const modelPath = join(modelDirectory, entry)
       const modelStat = await stat(modelPath)
       const fallbackId = entry.replace(WHISPER_MODEL_PREFIX, '').replace(WHISPER_MODEL_SUFFIX, '')
       const manifest = findWhisperModelManifest(entry) ?? findWhisperModelManifest(fallbackId)
+      const expectedSize = manifest?.expectedSizeBytes
+      const expectedSha256 = manifest?.sha256 ?? manifest?.sources.find((source) => source.sha256)?.sha256
+      const verifiedSize = manifest
+        ? await getVerifiedFileSize(modelPath, { sizeBytes: expectedSize, sha256: expectedSha256 })
+        : modelStat.isFile() && modelStat.size > 0 ? modelStat.size : null
+      if (verifiedSize === null) return null
 
       return {
         id: manifest?.id ?? fallbackId,
         name: manifest?.name ?? basename(entry, WHISPER_MODEL_SUFFIX),
         path: modelPath,
-        sizeBytes: modelStat.size
+        sizeBytes: verifiedSize
       }
     })
-  )
+  )).filter((model): model is AsrModelInfo => model !== null)
 
   return models.sort((a, b) => a.name.localeCompare(b.name))
 }

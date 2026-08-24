@@ -587,18 +587,25 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
     ): Promise<AsrModelDownloadResult> {
       const copy = getCopy()
       try {
+        let resolvedSourceId = sourceId
+        let resolvedSourceName: string | undefined
         const model = await downloadWhisperModel({
           modelDirectory: getModelDirectory(),
           modelId,
           sourceId,
-          onProgress,
+          onProgress: (progress) => {
+            resolvedSourceId = progress.sourceId
+            resolvedSourceName = progress.sourceName
+            onProgress?.(progress)
+          },
           getLocale: options.getLocale
         })
 
         return {
           success: true,
           message: copy.runtime.modelDownloaded(model.name),
-          sourceId,
+          sourceId: resolvedSourceId,
+          sourceName: resolvedSourceName,
           model
         }
       } catch (error) {

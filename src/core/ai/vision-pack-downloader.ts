@@ -11,7 +11,7 @@ const execFileAsync = promisify(execFile)
 type RemoteVisionPackManifest = {
   id: string
   version: string
-  revision: string
+  revision?: string
   platform: NodeJS.Platform
   arch: string
   archive: string
@@ -39,7 +39,7 @@ function isRemoteVisionPackManifest(value: unknown): value is RemoteVisionPackMa
   const candidate = value as Partial<RemoteVisionPackManifest>
   return candidate.id === 'aivplayer-vision-pack'
     && candidate.version === VISION_PACK_VERSION
-    && typeof candidate.revision === 'string' && /^[a-f0-9]{32,64}$/u.test(candidate.revision)
+    && (typeof candidate.revision === 'undefined' || (typeof candidate.revision === 'string' && /^[a-f0-9]{32,64}$/u.test(candidate.revision)))
     && candidate.platform === process.platform
     && candidate.arch === process.arch
     && typeof candidate.archive === 'string'
@@ -92,9 +92,11 @@ export async function downloadVisionPack(options: DownloadVisionPackOptions): Pr
 
   // 内容寻址：目标目录按远端清单的 revision 组织；若该 revision 已安装则直接复用，
   // 不同 app 版本只要依赖相同，就会命中同一个 revision，避免重复下载。
+  // 兼容 0.6.3 之前已经上传到 R2 的 version/platform 目录；新清单带 revision
+  // 时使用内容寻址目录，旧清单则继续使用当前版本目录，避免升级后无法下载视觉运行组件。
   const targetDirectory = getVisionPackDirectory(options.userDataPath, manifest.revision)
   if (isVisionPackDirectoryReady(targetDirectory, manifest)) {
-    await writeActiveVisionPackPointer(options.userDataPath, manifest)
+    if (manifest.revision) await writeActiveVisionPackPointer(options.userDataPath, manifest)
     return getVisionPackStatus('', options.userDataPath)
   }
 
@@ -103,14 +105,15 @@ export async function downloadVisionPack(options: DownloadVisionPackOptions): Pr
   await rm(temporaryDirectory, { recursive: true, force: true })
   await rm(archivePath, { force: true })
   try {
-    const archiveUrl = `${baseUrl.replace(/\/$/u, '')}/${manifest.revision}/${getPlatformKey()}/${manifest.archive}`
+    const archiveKey = manifest.revision ?? manifest.version
+    const archiveUrl = `${baseUrl.replace(/\/$/u, '')}/${archiveKey}/${getPlatformKey()}/${manifest.archive}`
     const actual = await downloadToFile(archiveUrl, archivePath, fetchImpl, options.signal)
     if (actual.sha256 !== manifest.sha256 || actual.sizeBytes !== manifest.sizeBytes) throw new Error('Vision Pack 校验失败，下载内容与清单不一致')
     await mkdir(temporaryDirectory, { recursive: true })
     await execFileAsync('tar', ['-xzf', archivePath, '-C', temporaryDirectory], { timeout: 120_000 })
     const embeddedManifest = JSON.parse(await readFile(getVisionPackManifestPath(temporaryDirectory), 'utf8')) as unknown
     if (!isVisionPackManifest(embeddedManifest)) throw new Error('Vision Pack 内部清单无效')
-    if (embeddedManifest.revision !== manifest.revision || embeddedManifest.platform !== process.platform || embeddedManifest.arch !== process.arch) {
+    if (embeddedManifest.platform !== process.platform || embeddedManifest.arch !== process.arch || embeddedManifest.version !== manifest.version || manifest.revision !== undefined && embeddedManifest.revision !== manifest.revision) {
       throw new Error('Vision Pack 内部清单与远端清单不一致')
     }
     await stat(join(temporaryDirectory, 'package.json'))
@@ -121,7 +124,7 @@ export async function downloadVisionPack(options: DownloadVisionPackOptions): Pr
     await rm(temporaryDirectory, { recursive: true, force: true })
     await rm(archivePath, { force: true })
   }
-  await writeActiveVisionPackPointer(options.userDataPath, manifest)
+  if (manifest.revision) await writeActiveVisionPackPointer(options.userDataPath, manifest)
   return getVisionPackStatus('', options.userDataPath)
 }
 
@@ -129,8 +132,11 @@ function isVisionPackDirectoryReady(directory: string, manifest: RemoteVisionPac
   try {
     const embeddedManifest = JSON.parse(readFileSync(getVisionPackManifestPath(directory), 'utf8')) as unknown
     if (!isVisionPackManifest(embeddedManifest)) return false
-    // 远端清单的 revision 与本地一致才复用；旧结构（无 revision 字段）不匹配时重新下载
-    return embeddedManifest.revision === manifest.revision
+    if (embeddedManifest.platform !== process.platform || embeddedManifest.arch !== process.arch || embeddedManifest.version !== manifest.version) return false
+    // 新结构必须按 revision 精确复用；旧版 R2 清单没有 revision，只能按版本目录兼容复用。
+    return manifest.revision
+      ? embeddedManifest.revision === manifest.revision
+      : embeddedManifest.revision === undefined
   } catch {
     return false
   }

@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { downloadPersonMatteModel } from '../../src/core/ai/person-matte-downloader'
 import { PERSON_MATTE_MODEL_FILES, getPersonMatteModelPaths } from '../../src/core/ai/person-matte-model'
 
+const fixtureFiles = PERSON_MATTE_MODEL_FILES.map((file) => ({ ...file, expected: undefined }))
+
 describe('person matte model downloader', () => {
   let tempDirectory: string
 
@@ -23,6 +25,7 @@ describe('person matte model downloader', () => {
 
     const paths = await downloadPersonMatteModel({
       modelRoot: tempDirectory,
+      files: fixtureFiles,
       onProgress: (event) => progress.push({ status: event.status, relativePath: event.relativePath }),
       fetchImpl: async (url) => {
         requestedUrls.push(String(url))
@@ -39,10 +42,10 @@ describe('person matte model downloader', () => {
   it('reuses non-empty files without requesting them again', async () => {
     const paths = getPersonMatteModelPaths(tempDirectory)
     const firstBytes = new Uint8Array([9, 8, 7])
-    await downloadPersonMatteModel({ modelRoot: tempDirectory, fetchImpl: async () => new Response(firstBytes, { status: 200 }) })
+    await downloadPersonMatteModel({ modelRoot: tempDirectory, files: fixtureFiles, fetchImpl: async () => new Response(firstBytes, { status: 200 }) })
     const requestedUrls: string[] = []
 
-    await downloadPersonMatteModel({ modelRoot: tempDirectory, fetchImpl: async (url) => { requestedUrls.push(String(url)); return new Response(new Uint8Array([0]), { status: 200 }) } })
+    await downloadPersonMatteModel({ modelRoot: tempDirectory, files: fixtureFiles, fetchImpl: async (url) => { requestedUrls.push(String(url)); return new Response(new Uint8Array([0]), { status: 200 }) } })
 
     expect(requestedUrls).toEqual([])
     expect(await readFile(paths.modelPath)).toEqual(Buffer.from(firstBytes))

@@ -206,8 +206,10 @@ macOS 的 `--dir` 目标不会自动生成 `app-update.yml`；因此必须把固
 - SigLIP2：`https://releases.quniv.cn/aivplayer/models/siglip2/<revision>/<file>`。
 - Vision Pack 版本映射：`https://releases.quniv.cn/aivplayer/vision-pack/<version>/<platform>-<arch>/manifest.json`；内容归档：`https://releases.quniv.cn/aivplayer/vision-pack/<revision>/<platform>-<arch>/vision-pack.tar.gz`。
 - Vision Pack 的 `<revision>` 由平台依赖内容计算，同一依赖内容只上传一份归档；版本 manifest 只负责指向对应 revision。
+- 旧版 version/platform manifest 可能没有 `revision`；客户端会兼容读取 `<version>/<platform>/vision-pack.tar.gz`，新发布不得再生成这种清单。
 - Vision Pack 下载前校验远程 manifest，下载后校验归档 SHA-256，并使用临时目录原子替换和 `active.json` 指针切换到用户数据目录。
-- R2 清理 Vision Pack 时，必须同时保留仍被支持版本 manifest 引用的 revision 归档；不要按版本目录直接删除内容归档。
+- 发布工作流在上传 Vision Pack 后会通过公开域名回读 manifest，并重新计算归档 SHA-256；不能只看 `wrangler` 命令返回成功。
+- Vision Pack 内容目前采用追加式保留策略，不在发布时自动删除历史 revision；这是为了保证旧版应用和历史版本 manifest 仍可恢复。未来清理时必须先枚举所有仍被支持版本 manifest 引用的 revision，再删除无引用内容，不能按版本目录直接删除内容归档。
 
 ### 5. 官网桌面下载路径
 
@@ -218,6 +220,8 @@ macOS 的 `--dir` 目标不会自动生成 `app-update.yml`；因此必须把固
 - 官网不会把浏览器暴露的 `MacIntel` 直接当成真实 x64 架构；当 macOS 架构信息不可用时，会从当前平台清单中选择可用安装包。若未来补充 x64 资产，重新生成 Release 清单后即可在手动选择器中出现该选项。
 
 该同步脚本只使用 `CLOUDFLARE_API_TOKEN` 完成 Pages 发布、R2 对象上传、清单更新和旧对象清理，不需要额外的 R2 S3 Access Key / Secret。当前 Cloudflare R2 REST 上传接口的单对象上限是 300 MB；脚本会在网络上传前拒绝更大的安装包，当前 v0.6.0 / v0.5.6 发布资产必须保持在该限制内。Actions 账号级别权限配置为：`Pages Read`、`Pages Write`、`Workers R2 Storage Write`（控制台有时显示为 R2 Storage 的 Edit）以及 `User → Memberships → Read`（供 Wrangler 读取账号成员关系）。`CLOUDFLARE_ACCOUNT_ID` 继续放在 Actions Variables 中，不要写入仓库。
+
+超过 300 MiB 的模型等大文件使用 `scripts/upload-r2-multipart.py`。脚本会把本地 SHA-256 写入断点状态和 R2 对象元数据；文件内容变化时不会复用旧分片，合并后还会校验远端大小和 SHA-256 元数据。旧的 v1 状态文件不应继续续传，使用 `--restart` 创建新的 Multipart Upload。
 
 - 0.6.0 仍将 FFmpeg、HEIF 和 whisper.cpp 内置；后续如需继续瘦身，可单独评估它们的按需下载。
 

@@ -1,5 +1,8 @@
 # AIVPlayer 功能列表
 
+- 模型下载完整性统一：ASR、Vision 和人物抠像共用远程 manifest、文件大小 / SHA-256 校验、唯一临时文件和原子替换；损坏或版本不匹配的缓存会失效并重新下载，ASR 默认源失败时自动按 R2、ModelScope、Hugging Face 回退。ASR 模型清单同时固定 large-v3-turbo-q5_0 和 small-q5_1 的文件大小与 SHA-256，避免“文件存在但实际模型错误”。
+- Vision Pack 下载兼容旧 R2 版本清单：线上历史清单缺少 revision 时继续按版本 / 平台路径下载并校验归档；新清单继续使用 revision 内容寻址和 active pointer，不要求用户手动清空旧缓存。
+
 - Vision Pack 改为内容寻址存储：R2 中同平台的视觉运行时按内容 revision 只存一份（revision 由打包后的 node_modules 逐文件哈希生成），app 版本只写一份小映射清单（`vision-pack/<版本>/<平台>/manifest.json` 指向 revision）；依赖未升级时不同版本共享同一份压缩包，消除跨版本重复上传与存储，发布流水线检测 revision 已存在时跳过内容上传。应用下载时先取版本映射再按 revision 拉取内容，本地已安装同 revision 则直接复用，不再重复下载。
 
 - 新增可复用的 R2 大文件分片上传脚本：通过 S3 Multipart Upload 绕过 Wrangler 300 MiB 单文件限制，支持失败重试、状态文件断点续传、对象元数据和 SHA-256 校验，适用于模型与其他大体积资源发布。

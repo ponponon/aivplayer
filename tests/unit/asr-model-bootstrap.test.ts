@@ -111,6 +111,26 @@ describe('ASR model bootstrap', () => {
     expect(downloadModel).not.toHaveBeenCalled()
   })
 
+  it('does not treat a different installed model as the recommended model', async () => {
+    const manifest = getRecommendedWhisperModelManifest()
+    const downloadModel = vi.fn().mockResolvedValue({ success: false, message: '测试下载失败' })
+    const result = await runAsrModelBootstrap({
+      runtime: {
+        healthCheck: async () => createRuntimeStatus({
+          available: true,
+          installedModels: [{ id: 'small-q5_1', name: 'Small', path: '/models/small.bin', sizeBytes: 1 }]
+        }),
+        downloadModel
+      },
+      manifest,
+      sourceId: undefined,
+      onState: () => undefined
+    })
+
+    expect(downloadModel).toHaveBeenCalledWith(manifest.id, undefined, expect.any(Function))
+    expect(result.status).toBe('error')
+  })
+
   it('creates a stable idle state for renderer startup before bootstrap begins', () => {
     const manifest = getRecommendedWhisperModelManifest()
     expect(createAsrModelBootstrapState(manifest, 'modelscope')).toMatchObject({

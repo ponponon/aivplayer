@@ -38,6 +38,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -365,7 +366,12 @@ class R2Client:
         time.sleep(delay)
 
     def create_multipart(
-        self, bucket: str, key: str, content_type: str, cache_control: str
+        self,
+        bucket: str,
+        key: str,
+        content_type: str,
+        cache_control: str,
+        sha256: str,
     ) -> str:
         _, _, body = self.request(
             "POST",
@@ -375,6 +381,7 @@ class R2Client:
             headers={
                 "Content-Type": content_type,
                 "Cache-Control": cache_control,
+                "x-amz-meta-sha256": sha256,
             },
         )
         upload_id = xml_text(ET.fromstring(body), "UploadId")
@@ -439,7 +446,7 @@ def calculate_sha256(path: Path, chunk_size: int = 8 * 1024 * 1024) -> str:
 
 def atomic_write_json(path: Path, value: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(f".{path.name}.tmp")
+    temporary = path.with_name(f".{path.name}.{os.getpid()}.{uuid.uuid4().hex}.tmp")
     temporary.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n")
     temporary.replace(path)
 
@@ -453,6 +460,7 @@ def load_state(
     bucket: str,
     key: str,
     part_size: int,
+    file_sha256: str,
 ) -> dict[str, Any] | None:
     if not path.exists():
         return None
@@ -461,13 +469,14 @@ def load_state(
     except (OSError, json.JSONDecodeError) as error:
         raise R2UploadError(f"无法读取状态文件 {path}: {error}") from error
     expected = {
-        "version": 1,
+        "version": 2,
         "file_size": file_size,
         "file_mtime_ns": file_mtime_ns,
         "endpoint": endpoint,
         "bucket": bucket,
         "key": key,
         "part_size": part_size,
+        "file_sha256": file_sha256,
     }
     if any(state.get(name) != value for name, value in expected.items()):
         raise R2UploadError(
@@ -513,15 +522,15 @@ def upload(args: argparse.Namespace) -> None:
     state_path = args.state_file or path.with_name(f"{path.name}.r2-upload.json")
     file_stat = path.stat()
 
+    print(f"正在计算本地 SHA-256：{path}")
+    local_sha256 = calculate_sha256(path)
     if args.expected_sha256:
-        print(f"正在校验本地 SHA-256：{path}")
-        local_sha256 = calculate_sha256(path)
         if local_sha256.lower() != args.expected_sha256.lower():
             fail(
                 f"本地文件 SHA-256 不匹配：{local_sha256}，"
                 f"期望 {args.expected_sha256.lower()}。"
             )
-        print(f"本地 SHA-256 校验通过：{local_sha256}")
+    print(f"本地 SHA-256：{local_sha256}")
 
     client = R2Client(
         endpoint=endpoint,
@@ -538,6 +547,7 @@ def upload(args: argparse.Namespace) -> None:
         bucket=args.bucket,
         key=args.key,
         part_size=part_size,
+        file_sha256=local_sha256,
     )
 
     if args.restart and state_path.exists():
@@ -553,10 +563,14 @@ def upload(args: argparse.Namespace) -> None:
 
     if state is None:
         upload_id = client.create_multipart(
-            args.bucket, args.key, args.content_type, args.cache_control
+            args.bucket,
+            args.key,
+            args.content_type,
+            args.cache_control,
+            local_sha256,
         )
         state = {
-            "version": 1,
+            "version": 2,
             "file": str(path),
             "file_size": file_stat.st_size,
             "file_mtime_ns": file_stat.st_mtime_ns,
@@ -564,6 +578,7 @@ def upload(args: argparse.Namespace) -> None:
             "bucket": args.bucket,
             "key": args.key,
             "part_size": part_size,
+            "file_sha256": local_sha256,
             "upload_id": upload_id,
             "parts": {},
         }
@@ -579,6 +594,14 @@ def upload(args: argparse.Namespace) -> None:
         if remote_size != file_stat.st_size:
             raise R2UploadError(
                 f"远端对象大小不一致：本地 {file_stat.st_size}，远端 {remote_size}。"
+            )
+        remote_sha256 = next(
+            (value for name, value in remote_headers.items() if name.lower() == "x-amz-meta-sha256"),
+            "",
+        )
+        if remote_sha256.lower() != local_sha256.lower():
+            raise R2UploadError(
+                f"远端对象 SHA-256 元数据不一致：本地 {local_sha256}，远端 {remote_sha256 or '缺失'}。"
             )
         state_path.unlink(missing_ok=True)
         print(f"上传已完成：s3://{args.bucket}/{args.key}")
@@ -623,15 +646,30 @@ def upload(args: argparse.Namespace) -> None:
             raise R2UploadError(
                 f"已上传 {len(uploaded_parts)} 个分片，但需要 {part_count} 个。"
             )
+        latest_file_stat = path.stat()
+        latest_sha256 = calculate_sha256(path)
+        if latest_file_stat.st_size != file_stat.st_size or latest_sha256.lower() != local_sha256.lower():
+            raise R2UploadError(
+                "上传期间本地文件发生变化；为避免合并出错误对象，请使用 --restart 重新上传。"
+            )
         print("正在合并 Multipart Upload…")
         client.complete_multipart(args.bucket, args.key, upload_id, uploaded_parts)
         state["completed"] = True
+        state["file_sha256"] = local_sha256
         atomic_write_json(state_path, state)
         remote_headers = client.head(args.bucket, args.key)
         remote_size = int(remote_headers.get("Content-Length", "-1"))
         if remote_size != file_stat.st_size:
             raise R2UploadError(
                 f"上传完成但远端大小不一致：本地 {file_stat.st_size}，远端 {remote_size}。"
+            )
+        remote_sha256 = next(
+            (value for name, value in remote_headers.items() if name.lower() == "x-amz-meta-sha256"),
+            "",
+        )
+        if remote_sha256.lower() != local_sha256.lower():
+            raise R2UploadError(
+                f"上传完成但远端 SHA-256 元数据不一致：本地 {local_sha256}，远端 {remote_sha256 or '缺失'}。"
             )
         state_path.unlink(missing_ok=True)
         print(

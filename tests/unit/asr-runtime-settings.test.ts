@@ -58,7 +58,8 @@ describe('ASR runtime settings', () => {
     const whisperBinaryPath = join(binaryDirectory, 'whisper-cli')
     const ffmpegPath = join(binaryDirectory, 'ffmpeg')
     const modelDirectory = join(tempDirectory, 'models')
-    const modelPath = join(modelDirectory, 'ggml-large-v3-turbo-q5_0.bin')
+    // 使用未知模型名作为轻量 fixture；已知模型现在必须通过真实大小和 SHA-256 校验。
+    const modelPath = join(modelDirectory, 'ggml-test.bin')
 
     await mkdir(binaryDirectory, { recursive: true })
     await mkdir(modelDirectory, { recursive: true })

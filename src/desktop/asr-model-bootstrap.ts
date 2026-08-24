@@ -29,7 +29,8 @@ export function startAsrModelBootstrap(): Promise<AsrModelBootstrapState> {
   bootstrapPromise = runAsrModelBootstrap({
     runtime: getAsrRuntime(),
     manifest: recommendedManifest,
-    sourceId: defaultSourceId,
+    // 不指定源时由下载器按 R2 → ModelScope → Hugging Face 自动回退。
+    sourceId: undefined,
     onState: emitState
   }).catch((error) => {
     const message = error instanceof Error ? error.message : String(error)

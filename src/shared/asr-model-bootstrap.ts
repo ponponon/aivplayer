@@ -30,7 +30,7 @@ export type AsrModelBootstrapRuntime = {
 
 export function createAsrModelBootstrapState(
   manifest: AsrModelManifest,
-  sourceId: AsrModelSourceId,
+  sourceId?: AsrModelSourceId,
   status: AsrModelBootstrapStatus = 'idle'
 ): AsrModelBootstrapState {
   const source = manifest.sources.find((candidate) => candidate.id === sourceId) ?? manifest.sources[0]
@@ -48,7 +48,7 @@ export function createAsrModelBootstrapState(
 export async function runAsrModelBootstrap(options: {
   runtime: AsrModelBootstrapRuntime
   manifest: AsrModelManifest
-  sourceId: AsrModelSourceId
+  sourceId?: AsrModelSourceId
   onState: (state: AsrModelBootstrapState) => void
 }): Promise<AsrModelBootstrapState> {
   const { runtime, manifest, sourceId, onState } = options
@@ -67,7 +67,7 @@ export async function runAsrModelBootstrap(options: {
     return blockedState
   }
 
-  const hasInstalledModel = runtimeStatus.installedModels.length > 0
+  const hasInstalledModel = runtimeStatus.installedModels.some((model) => model.id === manifest.id)
 
   if (hasInstalledModel) {
     const readyState: AsrModelBootstrapState = {

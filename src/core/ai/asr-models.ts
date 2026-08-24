@@ -40,6 +40,7 @@ export const WHISPER_MODEL_MANIFESTS: AsrModelManifest[] = [
     fileName: LARGE_V3_TURBO_Q5_0_FILE,
     sources: largeV3TurboQ50Sources,
     expectedSizeBytes: 574_041_195,
+    sha256: '394221709cd5ad1f40c46e6031ca61bce88931e6e088c188294c6d5a55ffa7e2',
     ramRequirement: '建议预留 2-3 GB 可用内存',
     description: '默认高质量模式，适合本地自动字幕生成。'
   },
@@ -56,7 +57,8 @@ export const WHISPER_MODEL_MANIFESTS: AsrModelManifest[] = [
         description: 'whisper.cpp 官方模型源，适合海外网络，或已经配置稳定国际代理的环境。'
       }
     ],
-    expectedSizeBytes: 181 * 1024 * 1024,
+    expectedSizeBytes: 190_085_487,
+    sha256: 'ae85e4a935d7a567bd102fe55afc16bb595bdb618e11b2fc7591bc08120411bb',
     ramRequirement: '建议预留 1 GB 可用内存',
     description: '低配快速模式，适合先验证流程或低内存机器。'
   }
