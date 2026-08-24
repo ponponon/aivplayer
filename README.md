@@ -286,7 +286,7 @@ Download a package for your platform from [GitHub Releases](https://github.com/p
 | --- | --- |
 | macOS | `.dmg` / `.zip` |
 | Windows | `.exe` (NSIS installer) |
-| Linux | `.AppImage` / `.deb` / `.snap` |
+| Linux | `.AppImage` / `.deb` / `.snap` (x64 and ARM64) |
 
 Windows NSIS and Linux `.deb` install the `aivcli` launcher and add it to the system command path. macOS `.dmg` / `.zip` and Linux `.AppImage` are portable formats and do not modify PATH automatically; with a portable package, launch the app in `--cli` mode or create a command-line launcher yourself. On snap-enabled systems (e.g. Ubuntu), you can also install from the Snap Store with `snap install aivplayer`.
 

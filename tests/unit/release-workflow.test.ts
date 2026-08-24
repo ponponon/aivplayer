@@ -35,6 +35,17 @@ describe('release workflow source constraints', () => {
     expect(releaseWorkflow).not.toContain('SNAPCRAFT_STORE_CREDENTIALS')
   })
 
+  it('builds and publishes the ARM64 Snap before checking ARM64 release artifacts', () => {
+    const arm64Workflow = releaseWorkflow.slice(releaseWorkflow.indexOf('  build-linux-arm64:'), releaseWorkflow.indexOf('  publish-release:'))
+    expect(arm64Workflow).toContain('name: Install Snapcraft toolchain')
+    expect(arm64Workflow).toContain('SNAP_CSC_LINK: ${{ secrets.SNAP_CSC_LINK }}')
+    expect(arm64Workflow).toContain('SNAP_PUBLISH_ENABLED: ${{ github.event_name != \'workflow_dispatch\' || inputs.verify_only != true }}')
+    expect(arm64Workflow).toContain('npx electron-builder --linux snap --arm64 --publish always')
+    expect(arm64Workflow).toContain('npx electron-builder --linux snap --arm64 --publish never')
+    expect(arm64Workflow).toContain('release/*.snap')
+    expect(arm64Workflow.indexOf('name: Build Snap package')).toBeLessThan(arm64Workflow.indexOf('name: Verify Linux ARM64 release artifacts'))
+  })
+
   it('waits for all desktop artifacts before creating a release', () => {
     expect(releaseWorkflow).toContain('needs: [build-macos, build-windows, build-windows-arm64, build-linux, build-linux-arm64]')
     expect(releaseWorkflow).toContain('tag_name: ${{ inputs.tag || github.ref_name }}')
@@ -67,7 +78,7 @@ describe('release workflow source constraints', () => {
     expect(releaseWorkflow).toContain('description: \'Build and validate all release artifacts without creating a release\'')
     expect(releaseWorkflow).toContain('default: false')
     expect(releaseWorkflow).toContain('type: boolean')
-    expect(releaseWorkflow.match(/github\.event_name != 'workflow_dispatch' \|\| inputs\.verify_only != true/g)).toHaveLength(6)
+    expect(releaseWorkflow.match(/github\.event_name != 'workflow_dispatch' \|\| inputs\.verify_only != true/g)).toHaveLength(7)
     expect(releaseWorkflow.indexOf('release:check-evidence')).toBeLessThan(releaseWorkflow.indexOf('Create GitHub Release'))
   })
 

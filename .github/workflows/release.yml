@@ -1174,6 +1174,26 @@ jobs:
           test -n "$executable"
           npm run release:check-architecture -- --architecture arm64 --file "$executable"
 
+      - name: Install Snapcraft toolchain
+        run: |
+          sudo snap install snapcraft --classic
+
+      - name: Build Snap package
+        shell: bash
+        env:
+          SNAP_CSC_LINK: ${{ secrets.SNAP_CSC_LINK }}
+          SNAP_PUBLISH_ENABLED: ${{ github.event_name != 'workflow_dispatch' || inputs.verify_only != true }}
+        run: |
+          if [ -n "$SNAP_CSC_LINK" ] && [ "$SNAP_PUBLISH_ENABLED" = "true" ]; then
+            echo "::notice::Publishing ARM64 snap to Snap Store (stable, edge)"
+            sudo -E env "PATH=$PATH" SNAP_CSC_LINK="$SNAP_CSC_LINK" \
+              npx electron-builder --linux snap --arm64 --publish always
+          else
+            echo "::notice::Building ARM64 snap without publishing (no SNAP_CSC_LINK or verify-only)"
+            sudo -E env "PATH=$PATH" \
+              npx electron-builder --linux snap --arm64 --publish never
+          fi
+
       - name: Verify Linux ARM64 release artifacts
         run: npm run release:check-platform -- --platform linux --architecture arm64 --artifacts-dir release --report-path release/platform-release-report-linux-arm64.json
 
@@ -1204,6 +1224,7 @@ jobs:
           path: |
             release/*.AppImage
             release/*.deb
+            release/*.snap
             release/latest*.yml
             release/*.blockmap
           if-no-files-found: error

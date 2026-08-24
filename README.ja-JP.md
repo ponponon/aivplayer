@@ -282,7 +282,7 @@ aivcli drama provider test
 | --- | --- |
 | macOS | `.dmg` / `.zip` |
 | Windows | `.exe`（NSIS インストーラー） |
-| Linux | `.AppImage` / `.deb` / `.snap` |
+| Linux | `.AppImage` / `.deb` / `.snap`（x64 / ARM64） |
 
 Windows NSIS と Linux `.deb` は `aivcli` ランチャーをインストールし、システムのコマンドパスへ追加します。macOS `.dmg` / `.zip` と Linux `.AppImage` はポータブル形式で、PATH を自動変更しません。ポータブル形式ではアプリの `--cli` モードを直接起動するか、自分でコマンドラインランチャーを作成してください。Ubuntu など snap 対応システムでは Snap Store から `snap install aivplayer` でもインストールできます。
 

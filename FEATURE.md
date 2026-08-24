@@ -1,5 +1,7 @@
 # AIVPlayer 功能列表
 
+- 自动更新提示改为右下角非模态通知：不再使用全屏遮罩或抢占焦点，播放器可以继续操作；版本下载、重启安装、稍后提醒和跳过版本仍保留原有流程。
+
 - macOS 正式应用启动时会清理 LaunchServices 中位于挂载磁盘映像、应用程序、下载和桌面目录的旧 AIVPlayer 登记项：只注销当前版本及更旧版本的其他 Bundle，不删除用户文件、不卸载 DMG，并重新登记当前 App，避免多个 DMG 同时挂载时 Finder“打开方式”出现历史版本；开发态和 CLI 不触发。
 - 官网各平台下载默认格式使用显式优先级：macOS 优先 DMG、Linux 优先 AppImage、Windows 使用唯一的 EXE 安装器；发布清单同时包含多个格式时，推荐下载和默认手动选择不再依赖 JSON 键顺序，其他格式仍可手动选择。
 - 模型下载完整性统一：ASR、Vision 和人物抠像共用远程 manifest、文件大小 / SHA-256 校验、唯一临时文件和原子替换；损坏或版本不匹配的缓存会失效并重新下载，ASR 默认源失败时自动按 R2、ModelScope、Hugging Face 回退。ASR 模型清单同时固定 large-v3-turbo-q5_0 和 small-q5_1 的文件大小与 SHA-256，避免“文件存在但实际模型错误”。
@@ -1049,6 +1051,11 @@
 - 发布工作流会按 tag 构建 Windows x64 / arm64 安装包，并将全部平台产物发布到 GitHub Release；当前不再向 MinIO 或 Cloudflare R2 上传额外副本，未来大陆下载入口计划使用 R2。
 - 发布渠道已移除旧镜像：工作流、远端校验、脚本、测试和公开下载页面只保留 GitHub Release；未来大陆用户下载入口计划迁移到 Cloudflare R2。
 - macOS 自动更新配置进入正式打包门禁：将固定的 `resources/app-update.yml` 在签名前作为 macOS 专属 `extraResources` 放入 `Contents/Resources`，并由 macOS 打包资源检查验证 GitHub 更新源；Windows / Linux 继续沿用原有更新产物流程，避免 macOS 安装后首次检查更新时报 `ENOENT`。
+
+## ARM64 Snap 发布
+
+- Linux ARM64 发布任务使用 `ubuntu-24.04-arm` 构建 Snap，并通过现有 `SNAP_CSC_LINK` 自动发布到 `aivplayer` 的 `stable` 与 `edge` 通道；Snap 客户端会按设备架构选择 ARM64 revision。
+- ARM64 Release 产物现在同时包含 AppImage、deb 和 snap；手动 `verify_only` 运行只构建不上传，正式 tag 发布才写入 Snap Store。
 
 ## Flatpak LanceDB 预编译二进制
 
