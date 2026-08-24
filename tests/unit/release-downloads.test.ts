@@ -80,6 +80,22 @@ describe('release download selection', () => {
     expect(release.assets['linux-x64']['appimage'].url).toBe('https://releases.quniv.cn/aivplayer/releases/0.6.0/aivplayer-0.6.0-x86_64.AppImage')
     expect(release.assets['linux-x64']['deb'].url).toBe('https://releases.quniv.cn/aivplayer/releases/0.6.0/aivplayer-0.6.0-amd64.deb')
   })
+
+  it('orders macOS DMG before ZIP regardless of input object order', () => {
+    const release = createDownloadRelease({
+      tag: 'v0.6.3',
+      repository: 'ponponon/aivplayer',
+      publicBaseUrl: 'https://releases.quniv.cn/aivplayer/releases',
+      assets: {
+        'darwin-arm64': {
+          zip: { name: 'AIVPlayer-0.6.3-arm64-mac.zip', format: 'zip', sizeBytes: 200, sha256: 'd'.repeat(64) },
+          dmg: { name: 'AIVPlayer-0.6.3-arm64.dmg', format: 'dmg', sizeBytes: 100, sha256: 'e'.repeat(64) }
+        }
+      }
+    })
+
+    expect(Object.keys(release.assets['darwin-arm64'])).toEqual(['dmg', 'zip'])
+  })
 })
 
 describe('download publishing integration', () => {
@@ -130,6 +146,8 @@ describe('download publishing integration', () => {
     expect(siteScript).toContain('architectureUnknown')
     expect(siteScript).not.toContain('const architectureHint = [navigator.userAgentData?.architecture, navigator.userAgent]')
     expect(siteScript).toContain('FALLBACK_DOWNLOAD_MANIFEST')
+    expect(siteScript).toContain("darwin: ['dmg', 'zip']")
+    expect(siteScript).toContain('function orderDownloadFormats')
     expect(siteScript).toContain("version: '0.6.2'")
     expect(siteScript).toContain("version: '0.5.6'")
     expect(siteScript).not.toContain("version: '0.5.5'")

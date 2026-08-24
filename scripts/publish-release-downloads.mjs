@@ -85,6 +85,15 @@ function installerScore(asset, platform) {
   return FORMAT_PRIORITY[platform]?.[extension] ?? 99
 }
 
+function sortFormatEntries(platform, formats) {
+  const priority = FORMAT_PRIORITY[platform] ?? {}
+  return Object.entries(formats).sort(([leftFormat], [rightFormat]) => {
+    const leftScore = priority[`.${leftFormat}`] ?? 99
+    const rightScore = priority[`.${rightFormat}`] ?? 99
+    return leftScore - rightScore || leftFormat.localeCompare(rightFormat)
+  })
+}
+
 export function selectInstallerAssets(items) {
   const selected = {}
   for (const item of items) {
@@ -114,7 +123,7 @@ export function createDownloadRelease({ tag, assets, publicBaseUrl, repository, 
         url: formats.url ?? getPublicObjectUrl(publicBaseUrl, version, formats.name)
       }]
     }
-    const formatEntries = Object.entries(formats).map(([formatName, asset]) => [formatName, {
+    const formatEntries = sortFormatEntries(target.split('-')[0], formats).map(([formatName, asset]) => [formatName, {
       name: asset.name,
       format: asset.format ?? getFileExtension(asset.name).slice(1),
       sizeBytes: asset.sizeBytes,
