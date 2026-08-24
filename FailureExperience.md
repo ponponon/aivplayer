@@ -122,7 +122,7 @@
 - Electron 主进程会在应用启动时加载视觉影视库服务，所以 Finder 的“打开方式”只是暴露问题的入口，视频文件名、外置磁盘路径和 MP4 编码都不是根因。凡是被打包运行时代码直接 require 的 peer dependency，都必须在根 `package.json` 的 `dependencies` 中显式固定版本，并通过生产构建检查实际进入应用资源。
 - Snapcraft dump plugin 默认用 `cp --link` 把 Electron 的 `linux-unpacked` 目录放进 part install；当前 Electron 产物包含多平台原生模块和大量文件，GitHub runner 上会在复制阶段只返回 `None` 而退出 1，日志没有给出可操作的源文件。对已生成的本地目录不要继续依赖 dump plugin，改用 nil plugin + `CRAFT_PART_INSTALL` + 普通 `cp -a` 显式复制，才能把构建产物稳定送入 Snap。
 - Snapcraft 的 `apps.<name>.desktop` 路径必须和仓库中的 `snap/gui/*.desktop` 真实路径一致；只把文件放在 `snap/local` 并不能满足 metadata 生成阶段，最终会在 `Copying snap assets` 报 `file does not exist`。
-- Snapcraft 9 已移除 `snapcraft login --with -` 参数；GitHub Actions 发布 Snap 时应把 `SNAPCRAFT_STORE_CREDENTIALS` Secret 注入上传步骤，让 Snapcraft 从环境变量读取凭据，否则会以退出码 64 失败。
+- Snapcraft 9 已移除 `snapcraft login --with -` 参数；历史上的直接 Snapcraft 发布方案需要把 `SNAPCRAFT_STORE_CREDENTIALS` Secret 注入上传步骤，让 Snapcraft 从环境变量读取凭据，否则会以退出码 64 失败。当前项目已改为通过 electron-builder 的 `SNAP_CSC_LINK` 入口发布，不再直接注入该原生变量。
 
 ## 真实翻译 smoke 不要把 API Key 写进仓库
 - 真实接口回归需要覆盖应用 IPC 和 renderer overlay，但 Key 不能进入产品源码、默认设置或 smoke 脚本常量。
@@ -2084,3 +2084,10 @@
 - 原因：DMG 是只读磁盘映像，挂载后其中的 `.app` 是独立 Bundle；`fileAssociations` 会让 LaunchServices 为每个 Bundle 注册视频关联。应用内自动更新只替换安装位置，无法自动注销仍挂载的历史 Bundle。
 - 经验：不能把“用户会 eject DMG”当成产品前置条件；正式 macOS 应用启动时应按 Bundle ID / 版本清理其他路径的旧登记，但不能删除用户文件、卸载磁盘或注销更新版本。
 - 处理：新增 LaunchServices 清理模块，扫描 `/Volumes`、`/Applications`、用户 Applications、Downloads 和 Desktop 的直接 `.app`，只对版本不高于当前版本的其他 `cn.quniv.aivplayer` Bundle 执行 `lsregister -u`，随后强制登记当前 App；开发态和 CLI 不执行，失败也不阻断启动。
+
+## 2026-08-24：Snap 发布凭据只保留一个 CI 入口
+
+- 现象：GitHub Actions 同时配置了 `SNAPCRAFT_STORE_CREDENTIALS` 和 `SNAP_CSC_LINK`，容易误以为两者都必须注入。
+- 原因：`SNAPCRAFT_STORE_CREDENTIALS` 是 Snapcraft 原生环境变量，适合直接调用 Snapcraft；`SNAP_CSC_LINK` 是 electron-builder 的 CI 入口，electron-builder 会把它转换并注入 Snapcraft 子进程。
+- 经验：本项目通过 electron-builder 构建并发布 Snap，因此只保留 `SNAP_CSC_LINK`；不要把同一份凭据以两种格式重复配置，避免格式不匹配和凭据入口分叉。
+- 处理：删除 GitHub Actions Secret `SNAPCRAFT_STORE_CREDENTIALS`，保留 `SNAP_CSC_LINK`；工作流继续使用 `SNAP_CSC_LINK`，仓库内不直接依赖 Snapcraft 原生变量。
