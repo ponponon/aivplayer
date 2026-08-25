@@ -55,11 +55,11 @@ describe('platform release artifact contract', () => {
   })
 
   it('checks an architecture-specific Linux artifact set', async () => {
-    const artifactsDirectory = await createFixture(['AIVPlayer-0.4.0-arm64.AppImage', 'aivplayer_0.4.0_arm64.deb', 'aivplayer_0.4.0_arm64.snap', 'latest-linux-arm64.yml'])
+    const artifactsDirectory = await createFixture(['AIVPlayer-0.4.0-arm64.AppImage', 'aivplayer_0.4.0_arm64.deb', 'latest-linux-arm64.yml'])
     const result = await runCheck('linux', artifactsDirectory, undefined, 'arm64')
     expect(result.stdout).toContain('Platform release artifacts verified: linux')
 
-    const wrongArchitectureDirectory = await createFixture(['AIVPlayer-0.4.0-x64.AppImage', 'aivplayer_0.4.0_x64.deb', 'aivplayer_0.4.0_x64.snap', 'latest-linux-arm64.yml'])
+    const wrongArchitectureDirectory = await createFixture(['AIVPlayer-0.4.0-x64.AppImage', 'aivplayer_0.4.0_x64.deb', 'latest-linux-arm64.yml'])
     await expect(runCheck('linux', wrongArchitectureDirectory, undefined, 'arm64')).rejects.toThrow('wrong architecture packages')
   })
 

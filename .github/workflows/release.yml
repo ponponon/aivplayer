@@ -881,13 +881,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libgtk-3-0 libnotify4 libnss3 libxss1 libxtst6 xdg-utils libatspi2.0-0 libuuid1 libsecret-1-0 cmake ninja-build pkg-config libde265-dev libx265-dev libjpeg-dev zlib1g-dev
 
-      - name: Install Snapcraft toolchain
-        run: |
-          sudo snap install snapcraft --classic
-
-      - name: Set up LXD
-        uses: canonical/setup-lxd@v1
-
       - name: Install fixed FFmpeg runtime
         shell: bash
         if: steps.restore-native-runtime-cache.outputs.cache-hit != 'true'
@@ -948,26 +941,6 @@ jobs:
 
       - name: Build & Package
         run: npm run build && npx electron-builder --linux AppImage deb --publish never
-
-      - name: Build Snap package
-        shell: bash
-        env:
-          # 正式发布（tag push）才上传 Snap Store；verify_only 只构建不上传
-          SNAP_CSC_LINK: ${{ secrets.SNAP_CSC_LINK }}
-          SNAP_PUBLISH_ENABLED: ${{ github.event_name != 'workflow_dispatch' || inputs.verify_only != true }}
-        run: |
-          # core24 + gnome extension 需要 LXD 隔离构建以拉取 content snap
-          # （gnome-46-2404 GTK 运行时 + mesa-2404 GL 驱动），
-          # LXD 由 canonical/setup-lxd 步骤初始化并配置网络。
-          # 有 SNAP_CSC_LINK 且非 verify_only 时，构建并发布到 Snap Store（stable,edge）。
-          if [ -n "$SNAP_CSC_LINK" ] && [ "$SNAP_PUBLISH_ENABLED" = "true" ]; then
-            echo "::notice::Publishing snap to Snap Store (stable, edge)"
-            sudo -E env "PATH=$PATH" SNAP_CSC_LINK="$SNAP_CSC_LINK" \
-              npx electron-builder --linux snap --publish always
-          else
-            echo "::notice::Building snap without publishing (no SNAP_CSC_LINK or verify-only)"
-            sudo -E env "PATH=$PATH" npx electron-builder --linux snap --publish never
-          fi
 
       - name: Report package size
         run: npm run release:report-package-size -- --directory release --output release/package-size-report-linux.json
@@ -1036,7 +1009,6 @@ jobs:
           path: |
             release/*.AppImage
             release/*.deb
-            release/*.snap
             release/latest*.yml
             release/*.blockmap
           if-no-files-found: error
@@ -1178,30 +1150,6 @@ jobs:
           test -n "$executable"
           npm run release:check-architecture -- --architecture arm64 --file "$executable"
 
-      - name: Install Snapcraft toolchain
-        run: |
-          sudo snap install snapcraft --classic
-
-      - name: Set up LXD
-        uses: canonical/setup-lxd@v1
-
-      - name: Build Snap package
-        shell: bash
-        env:
-          SNAP_CSC_LINK: ${{ secrets.SNAP_CSC_LINK }}
-          SNAP_PUBLISH_ENABLED: ${{ github.event_name != 'workflow_dispatch' || inputs.verify_only != true }}
-        run: |
-          # 与 x64 一致：core24 + gnome extension 走 LXD 隔离构建
-          if [ -n "$SNAP_CSC_LINK" ] && [ "$SNAP_PUBLISH_ENABLED" = "true" ]; then
-            echo "::notice::Publishing ARM64 snap to Snap Store (stable, edge)"
-            sudo -E env "PATH=$PATH" SNAP_CSC_LINK="$SNAP_CSC_LINK" \
-              npx electron-builder --linux snap --arm64 --publish always
-          else
-            echo "::notice::Building ARM64 snap without publishing (no SNAP_CSC_LINK or verify-only)"
-            sudo -E env "PATH=$PATH" \
-              npx electron-builder --linux snap --arm64 --publish never
-          fi
-
       - name: Verify Linux ARM64 release artifacts
         run: npm run release:check-platform -- --platform linux --architecture arm64 --artifacts-dir release --report-path release/platform-release-report-linux-arm64.json
 
@@ -1232,7 +1180,6 @@ jobs:
           path: |
             release/*.AppImage
             release/*.deb
-            release/*.snap
             release/latest*.yml
             release/*.blockmap
           if-no-files-found: error
@@ -1244,8 +1191,116 @@ jobs:
           path: ${{ runner.temp }}/aivplayer-vision-pack-archive/*
           if-no-files-found: error
 
+  build-snap-x64:
+    runs-on: ubuntu-latest
+    env:
+      electron_config_cache: ${{ github.workspace }}/.cache/electron
+      ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.cache/electron-builder
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - name: Restore Electron cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.cache/electron
+            ${{ github.workspace }}/.cache/electron-builder
+          key: electron-snap-x64-${{ hashFiles('package-lock.json') }}
+      - name: Restore Snapcraft cache
+        uses: actions/cache@v4
+        with:
+          path: /var/lib/snapd/cache
+          key: snapcraft-x64-core24-gnome-${{ hashFiles('electron-builder.yml') }}
+      - run: npm ci
+      - name: Install Snapcraft and LXD
+        run: |
+          sudo snap install snapcraft --classic
+      - name: Set up LXD
+        uses: canonical/setup-lxd@v1
+      - name: Build Snap package
+        env:
+          SNAP_CSC_LINK: ${{ secrets.SNAP_CSC_LINK }}
+          SNAP_PUBLISH_ENABLED: ${{ github.event_name != 'workflow_dispatch' || inputs.verify_only != true }}
+        run: |
+          if [ -n "$SNAP_CSC_LINK" ] && [ "$SNAP_PUBLISH_ENABLED" = "true" ]; then
+            sudo -E env "PATH=$PATH" SNAP_CSC_LINK="$SNAP_CSC_LINK" npx electron-builder --linux snap --publish always
+          else
+            sudo -E env "PATH=$PATH" npx electron-builder --linux snap --publish never
+          fi
+      - name: Verify Snap artifact
+        run: node scripts/check-snap-release-artifact.mjs --architecture x64 --artifacts-dir release --report-path release/snap-release-report-x64.json
+      - name: Upload Snap artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: snap-x64
+          path: release/*.snap
+          if-no-files-found: error
+      - name: Upload Snap evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-evidence-snap-x64
+          path: release/snap-release-report-x64.json
+          if-no-files-found: error
+
+  build-snap-arm64:
+    runs-on: ubuntu-24.04-arm
+    env:
+      electron_config_cache: ${{ github.workspace }}/.cache/electron
+      ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.cache/electron-builder
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - name: Restore Electron cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.cache/electron
+            ${{ github.workspace }}/.cache/electron-builder
+          key: electron-snap-arm64-${{ hashFiles('package-lock.json') }}
+      - name: Restore Snapcraft cache
+        uses: actions/cache@v4
+        with:
+          path: /var/lib/snapd/cache
+          key: snapcraft-arm64-core24-gnome-${{ hashFiles('electron-builder.yml') }}
+      - run: npm ci
+      - name: Install Snapcraft and LXD
+        run: |
+          sudo snap install snapcraft --classic
+      - name: Set up LXD
+        uses: canonical/setup-lxd@v1
+      - name: Build Snap package
+        env:
+          SNAP_CSC_LINK: ${{ secrets.SNAP_CSC_LINK }}
+          SNAP_PUBLISH_ENABLED: ${{ github.event_name != 'workflow_dispatch' || inputs.verify_only != true }}
+        run: |
+          if [ -n "$SNAP_CSC_LINK" ] && [ "$SNAP_PUBLISH_ENABLED" = "true" ]; then
+            sudo -E env "PATH=$PATH" SNAP_CSC_LINK="$SNAP_CSC_LINK" npx electron-builder --linux snap --arm64 --publish always
+          else
+            sudo -E env "PATH=$PATH" npx electron-builder --linux snap --arm64 --publish never
+          fi
+      - name: Verify Snap artifact
+        run: node scripts/check-snap-release-artifact.mjs --architecture arm64 --artifacts-dir release --report-path release/snap-release-report-arm64.json
+      - name: Upload Snap artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: snap-arm64
+          path: release/*.snap
+          if-no-files-found: error
+      - name: Upload Snap evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-evidence-snap-arm64
+          path: release/snap-release-report-arm64.json
+          if-no-files-found: error
+
   publish-release:
-    needs: [build-macos, build-windows, build-windows-arm64, build-linux, build-linux-arm64]
+    needs: [build-macos, build-windows, build-windows-arm64, build-linux, build-linux-arm64, build-snap-x64, build-snap-arm64]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

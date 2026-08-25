@@ -49,8 +49,8 @@ async function writeEvidenceReport(root: string, sourceDirectory: string, eviden
 async function createFixture() {
   const root = await mkdtemp(join(tmpdir(), 'aivplayer-release-assembly-'))
   temporaryDirectories.push(root)
-  for (const name of ['macos', 'windows-x64', 'windows-arm64', 'linux-x64', 'linux-arm64']) await mkdir(join(root, name), { recursive: true })
-  for (const name of ['release-evidence-macos', 'release-evidence-windows', 'release-evidence-windows-arm64', 'release-evidence-linux', 'release-evidence-linux-arm64']) await mkdir(join(root, name), { recursive: true })
+  for (const name of ['macos', 'windows-x64', 'windows-arm64', 'linux-x64', 'linux-arm64', 'snap-x64', 'snap-arm64']) await mkdir(join(root, name), { recursive: true })
+  for (const name of ['release-evidence-macos', 'release-evidence-windows', 'release-evidence-windows-arm64', 'release-evidence-linux', 'release-evidence-linux-arm64', 'release-evidence-snap-x64', 'release-evidence-snap-arm64']) await mkdir(join(root, name), { recursive: true })
   await writeFile(join(root, 'macos', 'AIVPlayer-0.5.1-arm64.dmg'), 'dmg')
   await writeFile(join(root, 'macos', 'AIVPlayer-0.5.1-arm64.zip'), 'zip')
   await writeFile(join(root, 'macos', 'latest-mac.yml'), metadata('0.5.1', 'AIVPlayer-0.5.1-arm64.zip'))
@@ -63,7 +63,6 @@ async function createFixture() {
   await writeFile(join(root, 'linux-x64', 'latest-linux.yml'), metadata('0.5.1', 'aivplayer-0.5.1-x64.AppImage'))
   await writeFile(join(root, 'linux-arm64', 'aivplayer-0.5.1-arm64.AppImage'), 'appimage-arm64')
   await writeFile(join(root, 'linux-arm64', 'aivplayer-0.5.1-arm64.deb'), 'deb-arm64')
-  await writeFile(join(root, 'linux-arm64', 'aivplayer-0.5.1-arm64.snap'), 'snap-arm64')
   await writeFile(join(root, 'linux-arm64', 'latest-linux-arm64.yml'), metadata('0.5.1', 'aivplayer-0.5.1-arm64.AppImage'))
   await writeEvidenceReport(root, 'macos', 'release-evidence-macos', 'platform-release-report-macos.json', 'macos', ['.dmg', '.zip'], ['latest-mac.yml'], [
     'AIVPlayer-0.5.1-arm64.dmg', 'AIVPlayer-0.5.1-arm64.zip', 'latest-mac.yml'
@@ -77,9 +76,13 @@ async function createFixture() {
   await writeEvidenceReport(root, 'linux-x64', 'release-evidence-linux', 'platform-release-report-linux.json', 'linux', ['.AppImage', '.deb'], ['latest-linux.yml'], [
     'aivplayer-0.5.1-x64.AppImage', 'aivplayer-0.5.1-x64.deb', 'latest-linux.yml'
   ])
-  await writeEvidenceReport(root, 'linux-arm64', 'release-evidence-linux-arm64', 'platform-release-report-linux-arm64.json', 'linux', ['.AppImage', '.deb', '.snap'], ['latest-linux-arm64.yml'], [
-    'aivplayer-0.5.1-arm64.AppImage', 'aivplayer-0.5.1-arm64.deb', 'aivplayer-0.5.1-arm64.snap', 'latest-linux-arm64.yml'
+  await writeEvidenceReport(root, 'linux-arm64', 'release-evidence-linux-arm64', 'platform-release-report-linux-arm64.json', 'linux', ['.AppImage', '.deb'], ['latest-linux-arm64.yml'], [
+    'aivplayer-0.5.1-arm64.AppImage', 'aivplayer-0.5.1-arm64.deb', 'latest-linux-arm64.yml'
   ])
+  await writeFile(join(root, 'snap-x64', 'aivplayer-0.5.1-amd64.snap'), 'snap-x64')
+  await writeFile(join(root, 'snap-arm64', 'aivplayer-0.5.1-arm64.snap'), 'snap-arm64-separate')
+  await writeEvidenceReport(root, 'snap-x64', 'release-evidence-snap-x64', 'snap-release-report-x64.json', 'linux', ['.snap'], [], ['aivplayer-0.5.1-amd64.snap'])
+  await writeEvidenceReport(root, 'snap-arm64', 'release-evidence-snap-arm64', 'snap-release-report-arm64.json', 'linux', ['.snap'], [], ['aivplayer-0.5.1-arm64.snap'])
   await mkdir(join(root, 'windows-x64', 'release', 'win-unpacked', 'resources'), { recursive: true })
   await writeFile(join(root, 'windows-x64', 'release', 'win-unpacked', 'AIVPlayer.exe'), 'unpacked application')
   await writeFile(join(root, 'windows-x64', 'release', 'win-unpacked', 'resources', 'ffmpeg.exe'), 'unpacked runtime')
@@ -118,7 +121,7 @@ describe('release artifact assembly', () => {
     await expect(access(join(output, 'ffmpeg.exe'))).rejects.toMatchObject({ code: 'ENOENT' })
 
     const evidenceResult = await runEvidenceCheck(output)
-    expect(evidenceResult.stdout).toContain('Platform evidence verified: macos, windows, linux, 13 artifact(s)')
+    expect(evidenceResult.stdout).toContain('Platform evidence verified: macos, windows, linux, 14 artifact(s)')
     const windowsReport = JSON.parse(await readFile(join(output, 'platform-release-report-windows.json'), 'utf8')) as { artifacts: Array<{ name: string }> }
     expect(windowsReport.artifacts.map(({ name }) => name)).toEqual([
       'AIVPlayer-Setup-0.5.1-arm64.exe',

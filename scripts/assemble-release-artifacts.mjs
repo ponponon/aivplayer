@@ -19,10 +19,12 @@ const PLATFORM_EVIDENCE = {
     packages: ['.exe'],
     metadata: ['latest.yml']
   },
-  linux: {
-    reportSources: [
-      ['release-evidence-linux', 'platform-release-report-linux.json'],
-      ['release-evidence-linux-arm64', 'platform-release-report-linux-arm64.json']
+    linux: {
+      reportSources: [
+        ['release-evidence-linux', 'platform-release-report-linux.json'],
+        ['release-evidence-linux-arm64', 'platform-release-report-linux-arm64.json'],
+        ['release-evidence-snap-x64', 'snap-release-report-x64.json'],
+        ['release-evidence-snap-arm64', 'snap-release-report-arm64.json']
     ],
     packages: ['.AppImage', '.deb', '.snap'],
     metadata: ['latest-linux.yml', 'latest-linux-arm64.yml']
@@ -168,7 +170,7 @@ async function writeMergedEvidenceReports(inputDirectory, outputDirectory) {
 export async function assembleReleaseArtifacts(options = {}) {
   const inputDirectory = resolve(options.inputDir ?? process.env.ARTIFACT_INPUT_DIR ?? 'artifacts')
   const outputDirectory = resolve(options.outputDir ?? process.env.ARTIFACT_OUTPUT_DIR ?? join(inputDirectory, 'assembled'))
-  const sourceNames = ['macos', 'windows-x64', 'windows-arm64', 'linux-x64', 'linux-arm64']
+  const sourceNames = ['macos', 'windows-x64', 'windows-arm64', 'linux-x64', 'linux-arm64', 'snap-x64', 'snap-arm64']
   for (const sourceName of sourceNames) {
     try {
       await readdir(join(inputDirectory, sourceName))

@@ -10,11 +10,11 @@ const execFileAsync = promisify(execFile)
 const projectRoot = process.cwd()
 const temporaryDirectories: string[] = []
 
-const platformFiles = {
+  const platformFiles = {
   macos: ['AIVPlayer-0.4.0.dmg', 'AIVPlayer-0.4.0.zip', 'latest-mac.yml'],
   windows: ['AIVPlayer Setup 0.4.0.exe', 'AIVPlayer Setup 0.4.0 arm64.exe', 'latest.yml'],
   linux: ['AIVPlayer-0.4.0.AppImage', 'aivplayer_0.4.0_amd64.deb', 'aivplayer_0.4.0_amd64.snap', 'AIVPlayer-0.4.0-arm64.AppImage', 'aivplayer_0.4.0_arm64.deb', 'aivplayer_0.4.0_arm64.snap', 'latest-linux.yml', 'latest-linux-arm64.yml']
-} as const
+  } as const
 
 const platformContracts = {
   macos: { packages: ['.dmg', '.zip'], metadata: ['latest-mac.yml'] },

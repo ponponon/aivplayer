@@ -1062,6 +1062,7 @@
 
 - Linux ARM64 发布任务使用 `ubuntu-24.04-arm` 构建 Snap，并通过现有 `SNAP_CSC_LINK` 自动发布到 `aivplayer` 的 `stable` 与 `edge` 通道；Snap 客户端会按设备架构选择 ARM64 revision。
 - ARM64 Release 产物现在同时包含 AppImage、deb 和 snap；手动 `verify_only` 运行只构建不上传，正式 tag 发布才写入 Snap Store。
+- Snap 构建已从普通 Linux Job 拆为独立的 x64 / ARM64 Job，与 AppImage/deb 并行；独立 Job 负责 LXD、Snapcraft、Snap Store 发布和 Snap 产物 evidence，主 Linux Job 不再等待 Snap Store processing。
 - Snap Store Listing 已完成基础商店资料：图标、`Photo and Video` 分类、MIT 许可证、官网、源码地址、Issue 地址，以及适合商店展示的 Summary / Description；后续版本发布不覆盖这些独立 Listing 字段。
 
 ## R2 超限安装包回退
