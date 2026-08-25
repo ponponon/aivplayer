@@ -2152,3 +2152,10 @@
 - 原因：为绕过 GitHub Actions LXD 网络问题改用 destructive mode，代价是 gnome extension 被禁用，GTK/GL 驱动只能手写 stagePackages，且遗漏了 mesa DRI 驱动；Snap Store Listing 图标与 Snap 二进制元数据也是两条独立链路，electron-builder 不会自动上传 Listing 图标。
 - 经验：(1) GUI Snap 的标准做法是 core24 + gnome extension，GTK、主题和 GL 由 `gnome-46-2404` / `mesa-2404` 内容 Snap 在运行时提供；(2) LXD 网络问题应使用 `canonical/setup-lxd` Action，不要直接放弃 LXD；(3) electron-builder 动态生成 manifest 时，使用 setup-lxd + useLXD，不要直接套用只适合仓库自带 snapcraft.yaml 的 action-buildsnap；(4) Snap 体积必须区分 MiB 与 MB，R2 限制按十进制 bytes 计算。
 - 处理：Snap 构建改为 `useLXD: true` + `extensions: [gnome]`，两个架构 runner 都加入 setup-lxd；0.6.5 包体降到 amd64 240.8MB / arm64 221.9MB，R2 超限问题消失，Wayland 所需 GL 运行时由共享 content snap 提供；Listing 图标、分类、许可证、官网、源码和 Issue 已在 Snap Store 手动保存一次，后续版本发布不覆盖这些字段。
+
+## 2026-08-25：拆分 Snap Job 时必须保证预打包 artifact 的生产顺序
+
+- 现象：首次把 Snap 拆成独立 Job 后，Snap Job 找不到 `linux-unpacked` artifact；同时归档步骤误放入 macOS Job，导致 macOS runner 执行 `tar` 时找不到 Linux 目录。
+- 原因：GitHub Actions Job 之间只通过显式 artifact 传递文件，步骤插入位置和 Job 依赖目录不能靠文件名推断；把 Linux 归档步骤放在错误 Job 会在运行时才暴露。
+- 经验：拆分构建前要明确每个 artifact 的生产者、消费者和目录；普通 Linux Job 必须先上传 `linux-unpacked`，Snap Job 再下载并使用 `--prepackaged`，不能让 Snap Job重复构建，也不能把跨平台步骤放到 macOS Job。
+- 处理：归档步骤移回 x64/ARM64 Linux Job，Snap Job通过 artifact 下载并使用预打包目录；保留单元测试验证 Job 名称、下载路径和 `--prepackaged` 参数。

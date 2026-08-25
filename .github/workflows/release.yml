@@ -312,16 +312,6 @@ jobs:
             release/*.blockmap
           if-no-files-found: error
 
-      - name: Archive Linux x64 app for Snap
-        run: tar -czf release/linux-unpacked-x64.tar.gz -C release linux-unpacked
-
-      - name: Upload Linux x64 app for Snap
-        uses: actions/upload-artifact@v7
-        with:
-          name: linux-unpacked-x64
-          path: release/linux-unpacked-x64.tar.gz
-          if-no-files-found: error
-
       - name: Upload macOS Vision Pack
         uses: actions/upload-artifact@v7
         with:
@@ -1021,6 +1011,16 @@ jobs:
             release/*.deb
             release/latest*.yml
             release/*.blockmap
+          if-no-files-found: error
+
+      - name: Archive Linux x64 app for Snap
+        run: tar -czf release/linux-unpacked-x64.tar.gz -C release linux-unpacked
+
+      - name: Upload Linux x64 app for Snap
+        uses: actions/upload-artifact@v7
+        with:
+          name: linux-unpacked-x64
+          path: release/linux-unpacked-x64.tar.gz
           if-no-files-found: error
 
       - name: Upload Linux x64 Vision Pack
