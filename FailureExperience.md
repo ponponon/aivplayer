@@ -2145,3 +2145,10 @@
 - 原因：Flathub 审核全部由志愿者承担，2025-2026 年 AI 速成应用（slop）涌入导致审核资源被击穿，团队选择一刀切止血；政策不溯及已上架应用。
 - 经验：(1) 提审 Flathub 的任何材料（申请 issue、manifest PR、审核沟通）必须由项目所有者本人手写并手动操作，不能让 AI 代发，否则可能被秒拒甚至给账号留下违规记录；(2) AI 深度参与开发的项目在达到「成熟维护」标准（持续发版历史、真实用户量）之前不应尝试提交；(3) Flatpak 格式本身开放，`.flatpak` bundle 自行分发完全合规，不依赖商店审核。
 - 处理：AIVPlayer 当前阶段不提交 Flathub，改为 GitHub Release + 官网直接分发 `.flatpak` bundle；建议 2027Q1 由项目所有者本人重新评估「成熟项目例外」的可行性。
+
+## 2026-08-25：Snap 图形应用必须走 gnome extension + LXD，而不是手写 stagePackages
+
+- 现象：Snap 在 ARM64 Ubuntu 上启动时 Wayland 初始化失败并段错误，沙箱内缺少 `dri_gbm.so`；x64 包体积 300,052,480 bytes，刚好超过 R2 REST 的 300,000,000 bytes 镜像限制。
+- 原因：为绕过 GitHub Actions LXD 网络问题改用 destructive mode，代价是 gnome extension 被禁用，GTK/GL 驱动只能手写 stagePackages，且遗漏了 mesa DRI 驱动；Snap Store Listing 图标与 Snap 二进制元数据也是两条独立链路，electron-builder 不会自动上传 Listing 图标。
+- 经验：(1) GUI Snap 的标准做法是 core24 + gnome extension，GTK、主题和 GL 由 `gnome-46-2404` / `mesa-2404` 内容 Snap 在运行时提供；(2) LXD 网络问题应使用 `canonical/setup-lxd` Action，不要直接放弃 LXD；(3) electron-builder 动态生成 manifest 时，使用 setup-lxd + useLXD，不要直接套用只适合仓库自带 snapcraft.yaml 的 action-buildsnap；(4) Snap 体积必须区分 MiB 与 MB，R2 限制按十进制 bytes 计算。
+- 处理：Snap 构建改为 `useLXD: true` + `extensions: [gnome]`，两个架构 runner 都加入 setup-lxd；0.6.5 包体降到 amd64 240.8MB / arm64 221.9MB，R2 超限问题消失，Wayland 所需 GL 运行时由共享 content snap 提供；Listing 图标、分类、许可证、官网、源码和 Issue 已在 Snap Store 手动保存一次，后续版本发布不覆盖这些字段。
