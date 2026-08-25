@@ -312,6 +312,16 @@ jobs:
             release/*.blockmap
           if-no-files-found: error
 
+      - name: Archive Linux x64 app for Snap
+        run: tar -czf release/linux-unpacked-x64.tar.gz -C release linux-unpacked
+
+      - name: Upload Linux x64 app for Snap
+        uses: actions/upload-artifact@v7
+        with:
+          name: linux-unpacked-x64
+          path: release/linux-unpacked-x64.tar.gz
+          if-no-files-found: error
+
       - name: Upload macOS Vision Pack
         uses: actions/upload-artifact@v7
         with:
@@ -1184,6 +1194,16 @@ jobs:
             release/*.blockmap
           if-no-files-found: error
 
+      - name: Archive Linux ARM64 app for Snap
+        run: tar -czf release/linux-arm64-unpacked.tar.gz -C release linux-arm64-unpacked
+
+      - name: Upload Linux ARM64 app for Snap
+        uses: actions/upload-artifact@v7
+        with:
+          name: linux-unpacked-arm64
+          path: release/linux-arm64-unpacked.tar.gz
+          if-no-files-found: error
+
       - name: Upload Linux ARM64 Vision Pack
         uses: actions/upload-artifact@v7
         with:
@@ -1202,19 +1222,21 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - name: Restore Electron cache
-        uses: actions/cache@v4
+      - name: Download Linux x64 app
+        uses: actions/download-artifact@v8
         with:
-          path: |
-            ${{ github.workspace }}/.cache/electron
-            ${{ github.workspace }}/.cache/electron-builder
-          key: electron-snap-x64-${{ hashFiles('package-lock.json') }}
+          name: linux-unpacked-x64
+          path: release
       - name: Restore Snapcraft cache
         uses: actions/cache@v4
         with:
-          path: /var/lib/snapd/cache
+          path: |
+            /var/lib/snapd/cache
+            /var/snap/lxd/common/lxd/images
           key: snapcraft-x64-core24-gnome-${{ hashFiles('electron-builder.yml') }}
-      - run: npm ci
+      - run: npm ci --ignore-scripts
+      - name: Extract Linux x64 app
+        run: tar -xzf release/linux-unpacked-x64.tar.gz -C release
       - name: Install Snapcraft and LXD
         run: |
           sudo snap install snapcraft --classic
@@ -1226,9 +1248,9 @@ jobs:
           SNAP_PUBLISH_ENABLED: ${{ github.event_name != 'workflow_dispatch' || inputs.verify_only != true }}
         run: |
           if [ -n "$SNAP_CSC_LINK" ] && [ "$SNAP_PUBLISH_ENABLED" = "true" ]; then
-            sudo -E env "PATH=$PATH" SNAP_CSC_LINK="$SNAP_CSC_LINK" npx electron-builder --linux snap --publish always
+            sudo -E env "PATH=$PATH" SNAP_CSC_LINK="$SNAP_CSC_LINK" npx electron-builder --linux snap --prepackaged release/linux-unpacked --publish always
           else
-            sudo -E env "PATH=$PATH" npx electron-builder --linux snap --publish never
+            sudo -E env "PATH=$PATH" npx electron-builder --linux snap --prepackaged release/linux-unpacked --publish never
           fi
       - name: Verify Snap artifact
         run: node scripts/check-snap-release-artifact.mjs --architecture x64 --artifacts-dir release --report-path release/snap-release-report-x64.json
@@ -1256,19 +1278,21 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - name: Restore Electron cache
-        uses: actions/cache@v4
+      - name: Download Linux ARM64 app
+        uses: actions/download-artifact@v8
         with:
-          path: |
-            ${{ github.workspace }}/.cache/electron
-            ${{ github.workspace }}/.cache/electron-builder
-          key: electron-snap-arm64-${{ hashFiles('package-lock.json') }}
+          name: linux-unpacked-arm64
+          path: release
       - name: Restore Snapcraft cache
         uses: actions/cache@v4
         with:
-          path: /var/lib/snapd/cache
+          path: |
+            /var/lib/snapd/cache
+            /var/snap/lxd/common/lxd/images
           key: snapcraft-arm64-core24-gnome-${{ hashFiles('electron-builder.yml') }}
-      - run: npm ci
+      - run: npm ci --ignore-scripts
+      - name: Extract Linux ARM64 app
+        run: tar -xzf release/linux-arm64-unpacked.tar.gz -C release
       - name: Install Snapcraft and LXD
         run: |
           sudo snap install snapcraft --classic
@@ -1280,9 +1304,9 @@ jobs:
           SNAP_PUBLISH_ENABLED: ${{ github.event_name != 'workflow_dispatch' || inputs.verify_only != true }}
         run: |
           if [ -n "$SNAP_CSC_LINK" ] && [ "$SNAP_PUBLISH_ENABLED" = "true" ]; then
-            sudo -E env "PATH=$PATH" SNAP_CSC_LINK="$SNAP_CSC_LINK" npx electron-builder --linux snap --arm64 --publish always
+            sudo -E env "PATH=$PATH" SNAP_CSC_LINK="$SNAP_CSC_LINK" npx electron-builder --linux snap --arm64 --prepackaged release/linux-arm64-unpacked --publish always
           else
-            sudo -E env "PATH=$PATH" npx electron-builder --linux snap --arm64 --publish never
+            sudo -E env "PATH=$PATH" SNAP_CSC_LINK="$SNAP_CSC_LINK" npx electron-builder --linux snap --arm64 --prepackaged release/linux-arm64-unpacked --publish never
           fi
       - name: Verify Snap artifact
         run: node scripts/check-snap-release-artifact.mjs --architecture arm64 --artifacts-dir release --report-path release/snap-release-report-arm64.json

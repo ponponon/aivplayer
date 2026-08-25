@@ -50,7 +50,7 @@ function getPlatformContract(platform, architecture) {
       ...contract,
       // Snap is assembled from the dedicated Snap runner; the regular Linux
       // runner only owns AppImage/deb for architecture-specific validation.
-      packages: architecture === 'arm64' ? ['.AppImage', '.deb'] : contract.packages,
+      packages: ['.AppImage', '.deb'],
       metadata: architecture === 'arm64' ? ['latest-linux-arm64.yml'] : ['latest-linux.yml']
     }
   }
