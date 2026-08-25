@@ -28,6 +28,11 @@
   <url type="bugtracker">https://github.com/ponponon/aivplayer/issues</url>
   <url type="vcs-browser">https://github.com/ponponon/aivplayer</url>
   <releases>
+    <release version="0.6.5" date="2026-08-25">
+      <description>
+        <p>Update for AIVPlayer 0.6.5.</p>
+      </description>
+    </release>
     <release version="0.6.4" date="2026-08-24">
       <description>
         <p>Adds reliable model downloads, cross-version Vision Pack reuse, Linux Snap distribution, and macOS app registration cleanup.</p>
