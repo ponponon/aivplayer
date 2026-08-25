@@ -5,16 +5,30 @@ import { join } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import { createInitialAppUpdateState, type AppUpdateState } from '../shared/app-update-types'
 
-const UPDATE_CHECK_INTERVAL_MS = 10 * 60 * 1000
+const INITIAL_UPDATE_CHECK_DELAY_MS = 60 * 1000
+const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000
+const UPDATE_REMINDER_INTERVAL_MS = 24 * 60 * 60 * 1000
 const UPDATE_PREFERENCES_FILE_NAME = 'update-preferences.json'
+
+type UpdateCheckSource = 'automatic' | 'manual'
+
+type UpdatePreferences = {
+  skippedVersion: string | null
+  dismissedVersion: string | null
+  dismissedAt: number | null
+}
 
 let updaterAvailable = false
 let automaticUpdatesEnabled = false
 let state = createInitialAppUpdateState()
 let checkPromise: Promise<AppUpdateState> | null = null
+let initialCheckTimer: NodeJS.Timeout | null = null
 let updateTimer: NodeJS.Timeout | null = null
 let listenersRegistered = false
 let skippedUpdateVersion: string | null = null
+let dismissedUpdateVersion: string | null = null
+let dismissedUpdateAt: number | null = null
+let currentCheckSource: UpdateCheckSource = 'manual'
 
 const silentLogger = {
   info: (): void => undefined,
@@ -25,7 +39,7 @@ const silentLogger = {
 
 export function registerAppUpdaterIpc(): void {
   ipcMain.handle(IPC_CHANNELS.APP_UPDATE_GET_STATE, () => state)
-  ipcMain.handle(IPC_CHANNELS.APP_UPDATE_CHECK, () => checkForAppUpdate())
+  ipcMain.handle(IPC_CHANNELS.APP_UPDATE_CHECK, () => checkForAppUpdate('manual'))
   ipcMain.handle(IPC_CHANNELS.APP_UPDATE_DOWNLOAD, () => downloadAppUpdate())
   ipcMain.handle(IPC_CHANNELS.APP_UPDATE_INSTALL, () => installAppUpdate())
   ipcMain.handle(IPC_CHANNELS.APP_UPDATE_DISMISS, () => dismissAppUpdate())
@@ -36,6 +50,9 @@ export function startAppUpdater(isCliInvocation: boolean, autoUpdatePreference =
   updaterAvailable = app.isPackaged && !process.windowsStore && !isCliInvocation && process.env.AIVPLAYER_DISABLE_AUTO_UPDATE !== '1'
   automaticUpdatesEnabled = updaterAvailable && autoUpdatePreference
   skippedUpdateVersion = updaterAvailable ? readSkippedUpdateVersion() : null
+  const dismissedReminder = updaterAvailable ? readDismissedUpdateReminder() : { version: null, dismissedAt: null }
+  dismissedUpdateVersion = dismissedReminder.version
+  dismissedUpdateAt = dismissedReminder.dismissedAt
   state = updaterAvailable
     ? createInitialAppUpdateState(app.getVersion())
     : { ...createInitialAppUpdateState(app.getVersion()), status: 'disabled' }
@@ -59,6 +76,10 @@ export function updateAppUpdaterPreference(autoUpdatePreference: boolean): void 
 }
 
 export function stopAppUpdater(): void {
+  if (initialCheckTimer) {
+    clearTimeout(initialCheckTimer)
+    initialCheckTimer = null
+  }
   if (updateTimer) {
     clearInterval(updateTimer)
     updateTimer = null
@@ -80,7 +101,7 @@ function configureAutoUpdater(): void {
     setState({ status: 'checking', error: undefined, progress: undefined })
   })
   autoUpdater.on('update-available', (updateInfo) => {
-    if (skippedUpdateVersion === updateInfo.version) {
+    if (skippedUpdateVersion === updateInfo.version || (currentCheckSource === 'automatic' && isDismissedUpdateReminderActive(updateInfo.version))) {
       setState({ status: 'idle', version: undefined, error: undefined, progress: undefined })
       return
     }
@@ -110,16 +131,24 @@ function configureAutoUpdater(): void {
 
 function startAutomaticUpdateChecks(): void {
   if (!updaterAvailable || !automaticUpdatesEnabled || updateTimer) return
-  void checkForAppUpdate()
-  updateTimer = setInterval(() => { void checkForAppUpdate() }, UPDATE_CHECK_INTERVAL_MS)
+  initialCheckTimer = setTimeout(() => {
+    initialCheckTimer = null
+    void checkForAppUpdate('automatic')
+  }, INITIAL_UPDATE_CHECK_DELAY_MS)
+  initialCheckTimer.unref()
+  updateTimer = setInterval(() => { void checkForAppUpdate('automatic') }, UPDATE_CHECK_INTERVAL_MS)
   updateTimer.unref()
 }
 
-export async function checkForAppUpdate(): Promise<AppUpdateState> {
+export async function checkForAppUpdate(source: UpdateCheckSource = 'manual'): Promise<AppUpdateState> {
   if (!updaterAvailable) return state
   if (state.status === 'checking' || state.status === 'available' || state.status === 'downloading' || state.status === 'downloaded' || state.status === 'installing') return state
-  if (checkPromise) return checkPromise
+  if (checkPromise) {
+    if (source === 'manual') currentCheckSource = 'manual'
+    return checkPromise
+  }
 
+  currentCheckSource = source
   checkPromise = pkg.autoUpdater.checkForUpdates()
     .then((result) => {
       if (!result?.isUpdateAvailable && state.status === 'checking') {
@@ -167,7 +196,8 @@ function installAppUpdate(): void {
 }
 
 function dismissAppUpdate(): AppUpdateState {
-  if (state.status === 'available') {
+  if (state.status === 'available' && state.version) {
+    writeDismissedUpdateReminder(state.version, Date.now())
     setState({ status: 'idle', version: undefined, error: undefined, progress: undefined })
   }
   return state
@@ -177,6 +207,8 @@ function skipAppUpdate(version: string): AppUpdateState {
   const normalizedVersion = version.trim()
   if (state.status !== 'available' || !normalizedVersion || state.version !== normalizedVersion) return state
   skippedUpdateVersion = normalizedVersion
+  dismissedUpdateVersion = null
+  dismissedUpdateAt = null
   writeSkippedUpdateVersion(normalizedVersion)
   setState({ status: 'idle', version: undefined, error: undefined, progress: undefined })
   return state
@@ -201,25 +233,59 @@ function getUpdatePreferencesPath(): string {
   return join(app.getPath('userData'), UPDATE_PREFERENCES_FILE_NAME)
 }
 
-function readSkippedUpdateVersion(): string | null {
+function readUpdatePreferences(): UpdatePreferences {
   try {
     const value: unknown = JSON.parse(readFileSync(getUpdatePreferencesPath(), 'utf8'))
-    if (!value || typeof value !== 'object' || !('skippedVersion' in value)) return null
-    const skippedVersion = value.skippedVersion
-    return typeof skippedVersion === 'string' && skippedVersion.trim() ? skippedVersion : null
+    if (!value || typeof value !== 'object') return { skippedVersion: null, dismissedVersion: null, dismissedAt: null }
+    const preferences = value as Record<string, unknown>
+    const skippedVersion = typeof preferences.skippedVersion === 'string' && preferences.skippedVersion.trim() ? preferences.skippedVersion : null
+    const dismissedVersion = typeof preferences.dismissedVersion === 'string' && preferences.dismissedVersion.trim() ? preferences.dismissedVersion : null
+    const dismissedAt = typeof preferences.dismissedAt === 'number' && Number.isFinite(preferences.dismissedAt) && preferences.dismissedAt > 0 ? preferences.dismissedAt : null
+    return { skippedVersion, dismissedVersion, dismissedAt }
   } catch {
-    return null
+    return { skippedVersion: null, dismissedVersion: null, dismissedAt: null }
   }
 }
 
+function readSkippedUpdateVersion(): string | null {
+  return readUpdatePreferences().skippedVersion
+}
+
+function readDismissedUpdateReminder(): { version: string | null; dismissedAt: number | null } {
+  const preferences = readUpdatePreferences()
+  return { version: preferences.dismissedVersion, dismissedAt: preferences.dismissedAt }
+}
+
+function isDismissedUpdateReminderActive(version: string): boolean {
+  if (dismissedUpdateVersion !== version || dismissedUpdateAt === null) return false
+  const elapsed = Date.now() - dismissedUpdateAt
+  if (elapsed >= 0 && elapsed < UPDATE_REMINDER_INTERVAL_MS) return true
+
+  dismissedUpdateVersion = null
+  dismissedUpdateAt = null
+  persistUpdatePreferences()
+  return false
+}
+
 function writeSkippedUpdateVersion(version: string): void {
+  skippedUpdateVersion = version
+  persistUpdatePreferences()
+}
+
+function writeDismissedUpdateReminder(version: string, dismissedAt: number): void {
+  dismissedUpdateVersion = version
+  dismissedUpdateAt = dismissedAt
+  persistUpdatePreferences()
+}
+
+function persistUpdatePreferences(): void {
   try {
     const preferencesPath = getUpdatePreferencesPath()
     const temporaryPath = `${preferencesPath}.tmp`
     mkdirSync(app.getPath('userData'), { recursive: true })
-    writeFileSync(temporaryPath, `${JSON.stringify({ skippedVersion: version })}\n`, 'utf8')
+    writeFileSync(temporaryPath, `${JSON.stringify({ skippedVersion: skippedUpdateVersion, dismissedVersion: dismissedUpdateVersion, dismissedAt: dismissedUpdateAt })}\n`, 'utf8')
     renameSync(temporaryPath, preferencesPath)
   } catch (error) {
-    console.warn('[app-updater] 保存跳过版本失败', error)
+    console.warn('[app-updater] 保存更新偏好失败', error)
   }
 }

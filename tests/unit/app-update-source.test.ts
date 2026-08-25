@@ -28,6 +28,19 @@ describe('app update source constraints', () => {
     expect(updaterSource).toContain('autoUpdater.quitAndInstall(true, true)')
   })
 
+  it('uses a low-frequency automatic check and persists a reminder cooldown', () => {
+    const updaterSource = readSource('src/desktop/app-updater.ts')
+
+    expect(updaterSource).toContain('const INITIAL_UPDATE_CHECK_DELAY_MS = 60 * 1000')
+    expect(updaterSource).toContain('const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000')
+    expect(updaterSource).toContain('const UPDATE_REMINDER_INTERVAL_MS = 24 * 60 * 60 * 1000')
+    expect(updaterSource).toContain("checkForAppUpdate('automatic')")
+    expect(updaterSource).toContain("checkForAppUpdate('manual')")
+    expect(updaterSource).toContain('dismissedVersion')
+    expect(updaterSource).toContain('dismissedAt')
+    expect(updaterSource).toContain('isDismissedUpdateReminderActive')
+  })
+
   it('exposes the ChatGPT-style update dialog actions', () => {
     const dialogSource = readSource('src/renderer/src/app/app-update-dialog.tsx')
     const dialogStyleSource = readSource('src/renderer/src/styles/player/app-update-dialog.css')
