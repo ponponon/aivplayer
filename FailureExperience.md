@@ -2159,3 +2159,10 @@
 - 原因：GitHub Actions Job 之间只通过显式 artifact 传递文件，步骤插入位置和 Job 依赖目录不能靠文件名推断；把 Linux 归档步骤放在错误 Job 会在运行时才暴露。
 - 经验：拆分构建前要明确每个 artifact 的生产者、消费者和目录；普通 Linux Job 必须先上传 `linux-unpacked`，Snap Job 再下载并使用 `--prepackaged`，不能让 Snap Job重复构建，也不能把跨平台步骤放到 macOS Job。
 - 处理：归档步骤移回 x64/ARM64 Linux Job，Snap Job通过 artifact 下载并使用预打包目录；保留单元测试验证 Job 名称、下载路径和 `--prepackaged` 参数。
+
+## 2026-08-25：自动更新诊断必须区分已安装应用与工作区产物
+
+- 现象：`/Applications/AIVPlayer.app` 自动更新报 `sha512 checksum mismatch`；排查时如果只看仓库 `release/` 目录，容易把旧的本地构建文件误认为当前应用实际使用的更新资产。
+- 原因：真正运行的应用版本、其 `Contents/Resources/app-update.yml`、electron-updater 缓存和 GitHub Release 远端资产，分别位于 `/Applications`、用户 Library 和远端；工作区里的 `release/` 不能作为运行时证据。本次还发现同一个已发布的 `v0.6.4` 被 workflow_dispatch 重跑并通过 `overwrite_files: true` 删除后重新上传，导致旧 `latest-mac.yml` 缓存可能与新 macOS ZIP 混用。
+- 经验：自动更新完整性问题必须先读取已安装 Bundle 版本和内置 updater 配置，再把报错中的 expected / got 与对应 Release 的历史重传记录、元数据和安装包逐一对照；已发布版本应视为不可变，不能用覆盖同一 tag / Release 资产的方式修复构建问题。
+- 处理：本地保留更新缓存和应用数据不动，确认 `got` 与当前 `v0.6.4` ZIP 的 sha512 一致、当前线上元数据已收敛后再重试；后续发布失败应递增版本号重新发布，并在 workflow 中禁止对已存在 Release 执行同名资产覆盖。
