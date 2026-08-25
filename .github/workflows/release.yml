@@ -1228,21 +1228,6 @@ jobs:
         with:
           name: linux-unpacked-x64
           path: release
-      - name: Restore Snapcraft cache
-        uses: actions/cache@v4
-        with:
-          path: .cache/snapcraft/snapd-cache.tar
-          key: snapcraft-x64-core24-gnome-${{ hashFiles('electron-builder.yml') }}
-          restore-keys: snapcraft-x64-core24-gnome-
-      - name: Restore Snapd download cache
-        run: |
-          if [ -f .cache/snapcraft/snapd-cache.tar ]; then
-            sudo mkdir -p /var/lib/snapd/cache
-            sudo tar -xf .cache/snapcraft/snapd-cache.tar -C /
-            echo "Restored Snapd download cache: $(du -h .cache/snapcraft/snapd-cache.tar | awk '{print $1}')"
-          else
-            echo "No Snapd download cache available"
-          fi
       - run: npm ci --ignore-scripts
       - name: Extract Linux x64 app
         run: tar -xzf release/linux-unpacked-x64.tar.gz -C release
@@ -1275,17 +1260,6 @@ jobs:
           name: release-evidence-snap-x64
           path: release/snap-release-report-x64.json
           if-no-files-found: error
-      - name: Prepare Snapd cache for next run
-        if: always()
-        run: |
-          mkdir -p .cache/snapcraft
-          rm -f .cache/snapcraft/snapd-cache.tar
-          if [ -d /var/lib/snapd/cache ]; then
-            sudo tar -cf "$RUNNER_TEMP/snapd-cache.tar" -C / var/lib/snapd/cache
-            sudo chown "$(id -u):$(id -g)" "$RUNNER_TEMP/snapd-cache.tar"
-            mv "$RUNNER_TEMP/snapd-cache.tar" .cache/snapcraft/snapd-cache.tar
-            echo "Prepared Snapd download cache: $(du -h .cache/snapcraft/snapd-cache.tar | awk '{print $1}')"
-          fi
 
   build-snap-arm64:
     needs: build-linux-arm64
@@ -1304,21 +1278,6 @@ jobs:
         with:
           name: linux-unpacked-arm64
           path: release
-      - name: Restore Snapcraft cache
-        uses: actions/cache@v4
-        with:
-          path: .cache/snapcraft/snapd-cache.tar
-          key: snapcraft-arm64-core24-gnome-${{ hashFiles('electron-builder.yml') }}
-          restore-keys: snapcraft-arm64-core24-gnome-
-      - name: Restore Snapd download cache
-        run: |
-          if [ -f .cache/snapcraft/snapd-cache.tar ]; then
-            sudo mkdir -p /var/lib/snapd/cache
-            sudo tar -xf .cache/snapcraft/snapd-cache.tar -C /
-            echo "Restored Snapd download cache: $(du -h .cache/snapcraft/snapd-cache.tar | awk '{print $1}')"
-          else
-            echo "No Snapd download cache available"
-          fi
       - run: npm ci --ignore-scripts
       - name: Extract Linux ARM64 app
         run: tar -xzf release/linux-arm64-unpacked.tar.gz -C release
@@ -1351,17 +1310,6 @@ jobs:
           name: release-evidence-snap-arm64
           path: release/snap-release-report-arm64.json
           if-no-files-found: error
-      - name: Prepare Snapd cache for next run
-        if: always()
-        run: |
-          mkdir -p .cache/snapcraft
-          rm -f .cache/snapcraft/snapd-cache.tar
-          if [ -d /var/lib/snapd/cache ]; then
-            sudo tar -cf "$RUNNER_TEMP/snapd-cache.tar" -C / var/lib/snapd/cache
-            sudo chown "$(id -u):$(id -g)" "$RUNNER_TEMP/snapd-cache.tar"
-            mv "$RUNNER_TEMP/snapd-cache.tar" .cache/snapcraft/snapd-cache.tar
-            echo "Prepared Snapd download cache: $(du -h .cache/snapcraft/snapd-cache.tar | awk '{print $1}')"
-          fi
 
   publish-release:
     needs: [build-macos, build-windows, build-windows-arm64, build-linux, build-linux-arm64, build-snap-x64, build-snap-arm64]
