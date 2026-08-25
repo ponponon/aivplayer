@@ -52,6 +52,9 @@ describe('release workflow source constraints', () => {
     expect(snapArm64Workflow).toContain('npx electron-builder --linux snap --arm64 --prepackaged release/linux-arm64-unpacked --publish always')
     expect(snapArm64Workflow).toContain('npx electron-builder --linux snap --arm64 --prepackaged release/linux-arm64-unpacked --publish never')
     expect(snapArm64Workflow).toContain('path: release/*.snap')
+    expect(releaseWorkflow).toContain('Restore Snapd download cache')
+    expect(releaseWorkflow).toContain('Prepare Snapd cache for next run')
+    expect(releaseWorkflow).not.toContain('/var/lib/snapd/cache\n            /var/snap/lxd/common/lxd/images')
   })
 
   it('waits for all desktop artifacts before creating a release', () => {
