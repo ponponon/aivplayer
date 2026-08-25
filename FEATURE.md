@@ -1058,6 +1058,11 @@
 
 - Linux ARM64 发布任务使用 `ubuntu-24.04-arm` 构建 Snap，并通过现有 `SNAP_CSC_LINK` 自动发布到 `aivplayer` 的 `stable` 与 `edge` 通道；Snap 客户端会按设备架构选择 ARM64 revision。
 - ARM64 Release 产物现在同时包含 AppImage、deb 和 snap；手动 `verify_only` 运行只构建不上传，正式 tag 发布才写入 Snap Store。
+- Snap Store Listing 已完成基础商店资料：图标、`Photo and Video` 分类、MIT 许可证、官网、源码地址、Issue 地址，以及适合商店展示的 Summary / Description；后续版本发布不覆盖这些独立 Listing 字段。
+
+## R2 超限安装包回退
+
+- 发布下载清单遇到超过 Cloudflare R2 REST 单文件限制的安装包时，不再阻断整个发布；保留 GitHub Release 直链、文件大小和 SHA-256，其他安装包继续上传 R2。当前 x86_64 Snap 约 300,052,480 bytes，仅超过 300,000,000 bytes 约 52 KB，属于 R2 镜像限制而不是 Snap Store 限制。
 
 ## Flatpak LanceDB 预编译二进制
 

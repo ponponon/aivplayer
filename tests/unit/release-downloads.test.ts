@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 // @ts-expect-error JavaScript release utility is exercised through its exported test seam.
-import { createDownloadManifest, createDownloadRelease, selectInstallerAssets } from '../../scripts/publish-release-downloads.mjs'
+import { createDownloadManifest, createDownloadRelease, createGithubAssetFallback, selectInstallerAssets } from '../../scripts/publish-release-downloads.mjs'
 
 const projectRoot = process.cwd()
 const releaseWorkflow = readFileSync(join(projectRoot, '.github/workflows/release.yml'), 'utf8')
@@ -135,6 +135,30 @@ describe('release download selection', () => {
     })
     expect(Object.keys(release.assets['linux-x64'])).toEqual(['appimage', 'snap', 'flatpak'])
     expect(release.assets['linux-x64'].flatpak.url).toContain('github.com')
+  })
+
+  it('keeps oversized assets on GitHub while retaining their verified digest', async () => {
+    const fallback = await createGithubAssetFallback(
+      { name: 'aivplayer-0.6.4-amd64.snap' },
+      { name: 'aivplayer-0.6.4-amd64.snap', size: 300100000, digest: `sha256:${'a'.repeat(64)}`, browser_download_url: 'https://github.com/example/snap' }
+    )
+    expect(fallback).toMatchObject({
+      name: 'aivplayer-0.6.4-amd64.snap',
+      sizeBytes: 300100000,
+      sha256: 'a'.repeat(64),
+      url: 'https://github.com/example/snap'
+    })
+  })
+
+  it('builds a GitHub asset URL for an oversized local asset before the release exists', async () => {
+    const fallback = await createGithubAssetFallback(
+      { name: 'aivplayer-0.6.5-amd64.snap', path: join(projectRoot, 'package.json') },
+      undefined,
+      'https://github.com/ponponon/aivplayer/releases/download/v0.6.5/aivplayer-0.6.5-amd64.snap'
+    )
+    expect(fallback.url).toBe('https://github.com/ponponon/aivplayer/releases/download/v0.6.5/aivplayer-0.6.5-amd64.snap')
+    expect(fallback.sizeBytes).toBeGreaterThan(0)
+    expect(fallback.sha256).toMatch(/^[a-f0-9]{64}$/)
   })
 })
 

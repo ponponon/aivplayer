@@ -4,6 +4,20 @@
 - 经验：偏好名称和按钮必须描述真实的状态转换；一个状态只保留一个主要通知来源，避免用户面对重复进度和互相遮挡的操作。
 - 处理：将偏好改为“自动检查更新”，可用状态按钮改为“立即下载”；右下角通知轨道只承载待确认的可用更新，下载、完成和安装状态统一由顶部更新条展示；自动 AI 工作流和 ASR 结果提示补充 live region 语义。
 
+## 2026-08-25：Snap Store Listing 与 Snap 二进制元数据是两条链路
+
+- 现象：Snap 包内已经有 `meta/gui/*.png` 和 `.desktop`，Ubuntu 桌面入口可以使用图标，但 Snap Store / App Center 列表仍显示灰色占位图；Listing 页面还要求独立的 Category、License、官网、源码和 Issue 字段。
+- 原因：Snap 的桌面入口图标与 Store Listing 图标不是同一个字段；electron-builder 生成并发布 Snap 二进制不会自动完成所有 Store Listing 运营资料，`linux.category: AudioVideo` 也不会自动转换为 Snap Store 的 `Photo and Video` 分类。
+- 经验：发布验证必须分开检查 Snap 包内容、Snap Store channel-map 和 Store Listing 页面；不能因为 Snap 上传成功就认为商店资料完整。Listing 资料应由独立流程或首次人工配置维护，普通版本发布不应覆盖它。
+- 处理：已在 Snap Store Listing 保存图标、`Photo and Video`、MIT、官网、源码、Issue 和 Summary / Description；仓库的发布流程保留这些字段的事实记录，但不把账号登录态、商店凭据或页面操作写入代码。
+
+## 2026-08-25：R2 镜像超限不能阻断 Snap 发布
+
+- 现象：x86_64 Snap 在 Snap Store 发布成功，但发布后的 R2 下载同步因为 `300,052,480` bytes 超过 REST API 的 `300,000,000` bytes 限制而失败；Snap Store 本身并未拒绝该包。
+- 原因：Snap Store / GitHub Release 与 R2 REST 镜像有不同的文件大小限制；此前只对从 GitHub 下载的资产做超限判断，正式 workflow 传入本地 assembled 资产时没有走回退分支。
+- 经验：发布脚本必须同时检查 GitHub 远端元数据和本地资产大小；R2 无法承载的包应保留 GitHub Release 直链和已验证哈希，不能让单个镜像失败阻断整个 Release。
+- 处理：增加本地大文件检测和 GitHub 直链回退，补充 SHA-256 / URL 回退测试；Snap Store 继续作为 Snap 的权威发布渠道，R2 仅作为可选下载镜像。
+
 ## 2026-08-24：自动更新提醒不能默认使用全屏模态框
 
 - 现象：版本更新提示使用全屏遮罩和焦点锁定，用户在播放视频或处理素材时被迫中断主任务；更新检查本质上是低频、可稍后处理的后台状态，不符合模态交互的打断级别。

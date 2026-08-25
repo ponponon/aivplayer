@@ -46,6 +46,10 @@ function githubReleaseUrl(repository, tag) {
   return `https://github.com/${repository}/releases/tag/${encodeURIComponent(tag)}`
 }
 
+function githubAssetDownloadUrl(repository, tag, name) {
+  return `https://github.com/${repository}/releases/download/${encodeURIComponent(tag)}/${name.split('/').map((part) => encodeURIComponent(part)).join('/')}`
+}
+
 function encodeObjectKey(key) {
   return key.split('/').map((part) => encodeURIComponent(part)).join('/')
 }
@@ -275,6 +279,26 @@ function overR2RestLimit(githubAssetMeta) {
   return Number.isFinite(size) && size > R2_REST_MAX_UPLOAD_BYTES
 }
 
+export async function createGithubAssetFallback(asset, githubAssetMeta, fallbackUrl) {
+  const url = githubAssetMeta?.browser_download_url ?? fallbackUrl
+  if (!url) throw new Error(`GitHub asset URL missing for oversized asset: ${asset.name}`)
+  const details = asset.path
+    ? await fileDetails(asset.path)
+    : {
+        sizeBytes: githubAssetMeta.size,
+        sha256: String(githubAssetMeta.digest ?? '').replace(/^sha256:/, '')
+      }
+  if (!Number.isInteger(details.sizeBytes) || !/^[a-f0-9]{64}$/i.test(details.sha256)) {
+    throw new Error(`GitHub asset digest missing for oversized asset: ${asset.name}`)
+  }
+  return {
+    ...asset,
+    sizeBytes: details.sizeBytes,
+    sha256: details.sha256,
+    url
+  }
+}
+
 async function publishVersion({ release, localAssets, repository, publicBaseUrl, accountId, bucket, r2ReleasePrefix, token, temporaryDirectory }) {
   const tag = release.tag_name ?? release.tag
   const version = normalizeVersion(tag)
@@ -289,12 +313,13 @@ async function publishVersion({ release, localAssets, repository, publicBaseUrl,
     if (formats.name) {
       const asset = formats
       const githubAssetMeta = githubAssets.find((candidate) => candidate?.name === asset.name)
-      if (!asset.path && overR2RestLimit(githubAssetMeta)) {
-        uploadedAssets[target] = { ...asset, sizeBytes: githubAssetMeta.size, url: githubAssetMeta.browser_download_url }
+      const filePath = asset.path ?? join(temporaryDirectory, asset.name)
+      const localAssetIsOversized = !githubAssetMeta && asset.path && (await stat(filePath)).size > R2_REST_MAX_UPLOAD_BYTES
+      if (overR2RestLimit(githubAssetMeta) || localAssetIsOversized) {
+        uploadedAssets[target] = await createGithubAssetFallback(asset, githubAssetMeta, githubAssetDownloadUrl(repository, tag, asset.name))
         console.log(`Published ${tag} ${target}: ${asset.name} (GitHub 直链，超过 R2 REST 300MB 上限，跳过镜像)`)
         continue
       }
-      const filePath = asset.path ?? join(temporaryDirectory, asset.name)
       if (!asset.path) await downloadGithubAsset({ asset, destination: filePath })
       const details = await fileDetails(filePath)
       const key = `${r2ReleasePrefix}/${version}/${asset.name}`
@@ -313,12 +338,13 @@ async function publishVersion({ release, localAssets, repository, publicBaseUrl,
       const formatEntries = {}
       for (const [formatName, asset] of Object.entries(formats)) {
         const githubAssetMeta = githubAssets.find((candidate) => candidate?.name === asset.name)
-        if (!asset.path && overR2RestLimit(githubAssetMeta)) {
-          formatEntries[formatName] = { ...asset, sizeBytes: githubAssetMeta.size, url: githubAssetMeta.browser_download_url }
+        const filePath = asset.path ?? join(temporaryDirectory, asset.name)
+        const localAssetIsOversized = !githubAssetMeta && asset.path && (await stat(filePath)).size > R2_REST_MAX_UPLOAD_BYTES
+        if (overR2RestLimit(githubAssetMeta) || localAssetIsOversized) {
+          formatEntries[formatName] = await createGithubAssetFallback(asset, githubAssetMeta, githubAssetDownloadUrl(repository, tag, asset.name))
           console.log(`Published ${tag} ${target}/${formatName}: ${asset.name} (GitHub 直链，超过 R2 REST 300MB 上限，跳过镜像)`)
           continue
         }
-        const filePath = asset.path ?? join(temporaryDirectory, asset.name)
         if (!asset.path) await downloadGithubAsset({ asset, destination: filePath })
         const details = await fileDetails(filePath)
         const key = `${r2ReleasePrefix}/${version}/${asset.name}`
