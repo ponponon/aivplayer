@@ -1,3 +1,10 @@
+## 2026-08-26：发布依赖不能永久依赖已被上游清理的固定构建资产
+
+- 现象：v0.6.6 Release workflow 的 macOS 权限修复尚未进入发布汇总，Windows 和 Linux 多个平台却先后在 FFmpeg 下载步骤失败，`curl` 返回退出码 22。
+- 原因：工作流固定的 `autobuild-2026-08-09-13-03` 已不在 FFmpeg-Builds 的公开 Release 列表中，四个 Windows / Linux 下载地址全部返回 HTTP 404；这不是 Runner 网络故障，也不是本次 AIVPlayer 代码改动导致的编译错误。
+- 经验：发布依赖的“版本固定”必须同时验证上游 Release、资产名称、HTTP 可达性和 SHA-256；不能只把旧 URL 和哈希写进 workflow，就假设第三方构建资产永久保留。正式发布前应先回读所有外部二进制资产。
+- 处理：将 FFmpeg 8.1.2 的 Windows / Linux 资产统一切换到仍存在的 `autobuild-2026-08-25-13-06`，同步更新构建 revision、四个平台 URL 和 SHA-256；已失败且尚未创建 Release 的 v0.6.6 workflow 取消后，从修复后的 main 手动重跑同一个 tag，不覆盖任何已有 Release 资产。
+
 ## 2026-08-25：macOS ShipIt 更新失败不是签名失败，而是发布包内 native runtime 只读
 
 - 现象：`/Applications/AIVPlayer.app` 下载 0.6.5 后仍显示 0.6.3；ShipIt 连续重试后放弃安装并重新启动旧版本。

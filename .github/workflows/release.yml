@@ -23,17 +23,17 @@ env:
   LIBHEIF_VERSION: 1.23.1
   WHISPER_CPP_VERSION: 1.9.1
   FFMPEG_VERSION: 8.1.2
-  FFMPEG_BUILD_REVISION: n8.1.2-34-g9b6c8969e0
-  FFMPEG_RELEASE_TAG: autobuild-2026-08-09-13-03
+  FFMPEG_BUILD_REVISION: n8.1.2-44-g7c533d0f86
+  FFMPEG_RELEASE_TAG: autobuild-2026-08-25-13-06
   FFMPEG_SOURCE_SHA256: 464beb5e7bf0c311e68b45ae2f04e9cc2af88851abb4082231742a74d97b524c
-  FFMPEG_WIN64_URL: https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-08-09-13-03/ffmpeg-n8.1.2-34-g9b6c8969e0-win64-gpl-8.1.zip
-  FFMPEG_WIN64_SHA256: dee1b458ad8fa8556d0cc7287a1ec66664d0c2d6a1098d19cf0c465d9d8430bf
-  FFMPEG_WINARM64_URL: https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-08-09-13-03/ffmpeg-n8.1.2-34-g9b6c8969e0-winarm64-gpl-8.1.zip
-  FFMPEG_WINARM64_SHA256: ab350d5e1f77468c98dfe237064efba4004a7b059669fefd206c4a54dd23b211
-  FFMPEG_LINUX64_URL: https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-08-09-13-03/ffmpeg-n8.1.2-34-g9b6c8969e0-linux64-gpl-8.1.tar.xz
-  FFMPEG_LINUX64_SHA256: c7f279081aa3dd837ba23c05e4d02f5f3874c428d2f134e1bbbea9726f8d2e7e
-  FFMPEG_LINUXARM64_URL: https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-08-09-13-03/ffmpeg-n8.1.2-34-g9b6c8969e0-linuxarm64-gpl-8.1.tar.xz
-  FFMPEG_LINUXARM64_SHA256: bde27b02e0067a45e1d942d8b455f6668bb6ac08e2da680a1a8d7c8465a38cc0
+  FFMPEG_WIN64_URL: https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-08-25-13-06/ffmpeg-n8.1.2-44-g7c533d0f86-win64-gpl-8.1.zip
+  FFMPEG_WIN64_SHA256: 7c2fd45e2e700b291489acc98e4f2274c30bff4256e5a989c3eecbc5912e63b9
+  FFMPEG_WINARM64_URL: https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-08-25-13-06/ffmpeg-n8.1.2-44-g7c533d0f86-winarm64-gpl-8.1.zip
+  FFMPEG_WINARM64_SHA256: 57b7dc944c03991067db38a25976147db127597100f56c10fb3c8b537ff30dcc
+  FFMPEG_LINUX64_URL: https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-08-25-13-06/ffmpeg-n8.1.2-44-g7c533d0f86-linux64-gpl-8.1.tar.xz
+  FFMPEG_LINUX64_SHA256: 30fc0f171f3482491ec4c17dcd62af57fb79cb84b1ae25d5af682d47ca4b1fa8
+  FFMPEG_LINUXARM64_URL: https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-08-25-13-06/ffmpeg-n8.1.2-44-g7c533d0f86-linuxarm64-gpl-8.1.tar.xz
+  FFMPEG_LINUXARM64_SHA256: e2e1f196efc7476a4d175f44ed6c3d180077c0e70b0ec8b182e2e355f7a426d5
   FFMPEG_MACOS_CACHE_VERSION: v1
   NATIVE_RUNTIME_CACHE_VERSION: v1
 
