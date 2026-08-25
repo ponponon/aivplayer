@@ -1,3 +1,10 @@
+## 2026-08-25：macOS ShipIt 更新失败不是签名失败，而是发布包内 native runtime 只读
+
+- 现象：`/Applications/AIVPlayer.app` 下载 0.6.5 后仍显示 0.6.3；ShipIt 连续重试后放弃安装并重新启动旧版本。
+- 原因：下载包 SHA512 校验和 App 签名 / 公证均正常，但 `Contents/Resources/heif/libwebp.7.2.0.dylib` 等 native sidecar 被复制成 `0444`。ShipIt 清理 `com.apple.quarantine` 时需要修改文件属性，因所有者没有写权限返回 `NSPOSIXErrorDomain Code=13`。
+- 经验：macOS 更新排查必须按“下载校验 → 签名 / 公证 → ShipIt 安装日志 → 目标文件权限”分层判断；App 能运行只证明可以读取并加载动态库，不能证明 ShipIt 能修改这些文件。不能把沙盒内 `codesign` 的异常输出直接当成真实签名失败。
+- 处理：HEIF、FFmpeg 和 whisper.cpp 的复制链路统一规范 native runtime 权限；可执行文件使用 `0755`，动态库和 sidecar 使用 `0644`；`check-packaged-resources` 对 macOS runtime 目录增加 owner-write 门禁，发布前直接阻止只读文件进入安装包。
+
 ## 2026-08-25：自动更新检查频率与提醒频率不能绑定
 
 - 现象：自动更新启动后立即检查，随后每 10 分钟检查一次；用户关闭同一版本的更新提示后，下一轮检查又会再次弹出，应用重启后也没有“稍后提醒”的记忆。

@@ -1,4 +1,4 @@
-import { access, readFile, readdir } from 'node:fs/promises'
+import { access, readFile, readdir, stat } from 'node:fs/promises'
 import { constants } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -8,6 +8,7 @@ export type PackagedResourceCheckResult = {
   resourcePath: string
   checked: string[]
   missing: string[]
+  unwritable: string[]
   message: string
 }
 
@@ -35,6 +36,33 @@ async function hasWebAssets(webDirectory: string): Promise<boolean> {
   } catch {
     return false
   }
+}
+
+async function findUnwritableRuntimeFiles(resourcePath: string, platform: NodeJS.Platform): Promise<string[]> {
+  if (platform !== 'darwin') return []
+
+  const unwritable: string[] = []
+  const runtimeDirectories = ['heif', 'ffmpeg', 'whisper.cpp']
+
+  async function visit(directory: string): Promise<void> {
+    const entries = await readdir(directory, { withFileTypes: true }).catch(() => [])
+    for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
+      const filePath = join(directory, entry.name)
+      if (entry.isDirectory()) {
+        await visit(filePath)
+        continue
+      }
+      if (!entry.isFile()) continue
+      const fileStat = await stat(filePath)
+      if ((fileStat.mode & 0o200) === 0) unwritable.push(filePath)
+    }
+  }
+
+  for (const directoryName of runtimeDirectories) {
+    await visit(join(resourcePath, directoryName))
+  }
+
+  return unwritable
 }
 
 async function hasValidRuntimeMetadata(filePath: string): Promise<boolean> {
@@ -95,6 +123,7 @@ export async function checkPackagedResources(options: {
     fileExists(checked[6]!, 'win32'),
     hasValidRuntimeMetadata(checked[7]!)
   ])
+  const unwritable = await findUnwritableRuntimeFiles(resourcePath, platform)
   const appUpdateConfigExists = platform !== 'darwin' || await hasValidAppUpdateConfig(appUpdateConfigPath)
   const missing = [
     ...(webIndexExists ? [] : [checked[0]!]),
@@ -107,15 +136,20 @@ export async function checkPackagedResources(options: {
     ...(runtimeMetadataExists ? [] : [checked[7]!]),
     ...(appUpdateConfigExists ? [] : [appUpdateConfigPath])
   ]
-  const ok = missing.length === 0
+  const ok = missing.length === 0 && unwritable.length === 0
   return {
     ok,
     resourcePath,
     checked,
     missing,
+    unwritable,
     message: ok
       ? `Packaged resources are ready: ${resourcePath}`
-      : ['Packaged resources are incomplete.', ...missing.map((filePath) => `Missing: ${filePath}`)].join('\n')
+      : [
+          'Packaged resources are incomplete or not writable for macOS updates.',
+          ...missing.map((filePath) => `Missing: ${filePath}`),
+          ...unwritable.map((filePath) => `Not owner-writable: ${filePath}`)
+        ].join('\n')
   }
 }
 

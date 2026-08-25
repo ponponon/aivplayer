@@ -110,6 +110,21 @@ describe('checkPackagedResources', () => {
     expect(result.missing).toEqual([join(resourcePath, 'app-update.yml')])
   })
 
+  it('rejects read-only macOS native runtime files', async () => {
+    const resourcePath = await createResourceFixture()
+    const heifDirectory = join(resourcePath, 'heif')
+    const readOnlyLibrary = join(heifDirectory, 'libwebp.dylib')
+    await mkdir(heifDirectory)
+    await writeFile(readOnlyLibrary, 'read-only library')
+    await chmod(readOnlyLibrary, 0o444)
+
+    const result = await checkPackagedResources({ resourcePath, platform: 'darwin' })
+
+    expect(result.ok).toBe(false)
+    expect(result.unwritable).toEqual([readOnlyLibrary])
+    expect(result.message).toContain(`Not owner-writable: ${readOnlyLibrary}`)
+  })
+
   it('accepts explicit platform names for cross-platform artifact checks', async () => {
     const resourcePath = await createResourceFixture()
     await rm(join(resourcePath, 'app-update.yml'), { force: true })

@@ -7,7 +7,11 @@ import {
   getWhisperBinaryDestinationName,
   getWhisperBinaryNames as getSupportedWhisperBinaryNames
 } from '../src/core/ai/whisper-binary.ts'
-import { bundleMachODependencies, clearRuntimeSidecars } from './macos-runtime-dependencies.ts'
+import {
+  bundleMachODependencies,
+  clearRuntimeSidecars,
+  normalizeRuntimeFilePermissions
+} from './macos-runtime-dependencies.ts'
 
 export type PrepareAsrRuntimeOptions = {
   resourcePath?: string
@@ -290,6 +294,7 @@ export async function prepareAsrRuntime(options: PrepareAsrRuntimeOptions): Prom
     ...ffmpegSidecars,
     ...ffmpegDependencies.copiedFiles
   ]
+  await normalizeRuntimeFilePermissions(copiedFiles, platform)
   const message = [
     'ASR runtime staged for release.',
     `whisper.cpp: ${whisperBinaryPath}`,

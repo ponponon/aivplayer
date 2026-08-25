@@ -1,4 +1,4 @@
-import { copyFile, mkdir, readdir, realpath, stat, unlink } from 'node:fs/promises'
+import { chmod, copyFile, mkdir, readdir, realpath, stat, unlink } from 'node:fs/promises'
 import { basename, dirname, join, normalize } from 'node:path'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
@@ -37,6 +37,28 @@ export type BundleMachODependenciesOptions = {
 export type BundleMachODependenciesResult = {
   copiedFiles: string[]
   dependencyCount: number
+}
+
+/**
+ * ShipIt removes the quarantine xattr while installing a macOS update. The
+ * target file must be owner-writable for that operation, so do not preserve
+ * read-only modes from Homebrew/CMake/cache artifacts in the app bundle.
+ * Executable bits are retained for native tools; libraries only need 0644.
+ */
+export async function normalizeRuntimeFilePermissions(
+  filePaths: Iterable<string>,
+  platform?: NodeJS.Platform
+): Promise<void> {
+  if (platform !== 'darwin' && platform !== undefined) return
+
+  await Promise.all(
+    [...new Set(filePaths)].map(async (filePath) => {
+      const fileStat = await stat(filePath)
+      if (!fileStat.isFile()) return
+      const isExecutable = (fileStat.mode & 0o111) !== 0
+      await chmod(filePath, isExecutable ? 0o755 : 0o644)
+    })
+  )
 }
 
 function isSystemLibrary(path: string): boolean {
@@ -276,6 +298,8 @@ export async function bundleMachODependencies(
     await copyFile(sourcePath, destinationPath)
     copiedFiles.add(destinationPath)
   }
+
+  await normalizeRuntimeFilePermissions(copiedFiles, options.platform)
 
   for (const entry of entries) {
     await rewriteMachOFile(entry, destinationsBySource)

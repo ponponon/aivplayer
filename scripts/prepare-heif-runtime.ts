@@ -4,7 +4,7 @@ import { basename, dirname, extname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { bundleMachODependencies } from './macos-runtime-dependencies.ts'
+import { bundleMachODependencies, normalizeRuntimeFilePermissions } from './macos-runtime-dependencies.ts'
 
 const execFileAsync = promisify(execFile)
 const RUNTIME_SIDECAR_EXTENSIONS = new Set(['.dll', '.dylib', '.so', '.metal'])
@@ -158,6 +158,7 @@ export async function prepareHeifRuntime(options: PrepareHeifRuntimeOptions): Pr
     ]
   })
   copiedFiles.push(...machODependencies.copiedFiles)
+  await normalizeRuntimeFilePermissions(copiedFiles, platform)
   await validateTool(encoderPath)
   await validateTool(converterPath)
   for (const filePath of copiedFiles) {

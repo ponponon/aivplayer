@@ -30,6 +30,7 @@
 - 关于面板新增 ISO 8601 格式的发布日期（`2026-08-20`）：macOS 原生 About Panel、跨平台关于弹窗和设置页统一显示发布日期，并随界面语言切换标签。
 
 - 0.6.0 macOS 发布链路已接入 Developer ID Application 签名、Hardened Runtime 和 GitHub Actions 公证凭据；正式发布只提供经过签名和公证的便携式 DMG / ZIP，不再构建或上传 `.pkg`，也不再携带 Windows `aivcli.cmd`，避免 macOS 深层代码签名失败。
+- macOS 自动更新发布包会在运行时复制和最终打包检查阶段确保 native runtime 文件具备所有者写权限：可执行文件保持 `0755`，动态库等 sidecar 使用 `0644`，避免 ShipIt 清理 quarantine 属性时因只读文件放弃替换应用。
 
 - 官网下载清单的 R2 自定义域名已配置只读 CORS，允许 Cloudflare Pages 和本地预览读取 `download-manifest.json`；避免浏览器跨域拦截后误触发 GitHub 回退链接。
 

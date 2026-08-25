@@ -1,4 +1,4 @@
-import { access, chmod, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
+import { access, chmod, mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises'
 import { constants } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -160,6 +160,7 @@ describe('prepare ASR runtime', () => {
     await writeFile(ffmpegSource, '#!/bin/sh\necho ffmpeg\n')
     await writeFile(ffprobeSource, '#!/bin/sh\necho ffprobe\n')
     await chmod(whisperSource, 0o755)
+    await chmod(whisperSidecar, 0o444)
     await chmod(ffmpegSource, 0o755)
     await chmod(ffprobeSource, 0o755)
 
@@ -172,6 +173,9 @@ describe('prepare ASR runtime', () => {
 
     expect(result.ok).toBe(true)
     await expect(access(join(resourcePath, 'whisper.cpp', 'libggml.dylib'), constants.F_OK)).resolves.toBeUndefined()
+    await expect(
+      stat(join(resourcePath, 'whisper.cpp', 'libggml.dylib')).then((value) => value.mode & 0o777)
+    ).resolves.toBe(0o644)
     await expect(access(join(resourcePath, 'whisper.cpp', 'notes.txt'), constants.F_OK)).rejects.toThrow()
   })
 })

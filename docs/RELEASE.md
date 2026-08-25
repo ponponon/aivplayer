@@ -111,6 +111,8 @@ macOS job 会先只生成签名 `.app`，再使用 `notarytool` 提交并显式�
 
 macOS 的 `--dir` 目标不会自动生成 `app-update.yml`；因此必须把固定的 `resources/app-update.yml` 配置作为 macOS 专属 `extraResources` 在签名前放入 `.app`。Windows / Linux 继续使用 electron-builder 原有的更新元数据生成流程。不能在签名后再改写应用资源；后续 `release:check-packaged-resources` 只对 macOS 校验该文件存在且包含完整配置，防止自动更新正常构建但在安装后报 `ENOENT`。
 
+同一个 macOS 资源门禁还会递归检查 `Contents/Resources/heif`、`ffmpeg` 和 `whisper.cpp` 下的 native runtime 文件是否具备所有者写权限。可执行文件保持 `0755`，动态库和 sidecar 至少为 `0644`；否则 ShipIt 清理 quarantine 属性时可能以 `Permission denied (Code 13)` 放弃更新。
+
 ## 三、提交、检查并触发正式发布
 
 ### 1. 提交版本变更
@@ -316,6 +318,7 @@ GitHub Actions 的 `workflow_dispatch` 支持 `verify_only` 输入。使用方�
 - [ ] `v<version>` tag 指向正确提交并已推送。
 - [ ] 五个平台构建和 `publish-release` 全部成功。
 - [ ] macOS 安装包内部包含有效的 `Contents/Resources/app-update.yml`，自动更新配置门禁通过。
+- [ ] macOS 打包资源中的 native runtime 权限门禁通过，没有只读 `.dylib` / sidecar。
 - [ ] GitHub Release 资产、tag、更新元数据和远端回读校验均正常。
 - [ ] R2 稳定下载清单只包含当前版本，所有旧版本对象已清理，历史版本链接指向 GitHub Releases。
 
