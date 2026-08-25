@@ -49,6 +49,7 @@
     "flatpak:prepare-ci-manifest": "node scripts/prepare-flatpak-ci-manifest.mjs",
     "flatpak:check": "node scripts/check-flatpak.mjs",
     "smoke:open-video": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-open-video.ts",
+    "smoke:window-reopen": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-window-reopen.ts",
     "smoke:playback-segments": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-playback-segments.ts",
     "smoke:structure-analysis": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-structure-analysis.ts",
     "smoke:vision-clip-inbox": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-inbox.ts",

@@ -31,7 +31,7 @@ import { registerMediaImportInboxIpc, stopMediaImportInboxIpc } from './ipc-medi
 import { registerWebIpc, stopWebServer } from './ipc-web'
 import { registerTaskCenterIpc } from './ipc-task-center'
 import { registerAppUpdaterIpc, startAppUpdater, stopAppUpdater } from './app-updater'
-import { applyMacDockIcon, createWindow, focusMainWindow, queueIncomingMediaPaths } from './window-lifecycle'
+import { applyMacDockIcon, createWindow, ensureMainWindow, queueIncomingMediaPaths } from './window-lifecycle'
 import { runCli } from '../cli/cli-main'
 import { readGpuAccelerationPreferenceSync } from '../core/app-settings'
 import { GPU_DISABLE_SWITCHES, shouldDisableGpu } from '../core/gpu-settings'
@@ -115,8 +115,8 @@ if (isCliInvocation) {
   if (!hasSingleInstanceLock) {
     app.quit()
   } else {
-    app.on('open-file', (event, filePath) => { event.preventDefault(); queueIncomingMediaPaths([filePath]) })
-    app.on('second-instance', (_event, commandLine) => { queueIncomingMediaPaths(commandLine); focusMainWindow() })
+    app.on('open-file', (event, filePath) => { event.preventDefault(); queueIncomingMediaPaths([filePath]); ensureMainWindow() })
+    app.on('second-instance', (_event, commandLine) => { queueIncomingMediaPaths(commandLine); ensureMainWindow() })
     void app.whenReady().then(async () => {
       if (process.platform === 'darwin' && app.isPackaged) {
         const removedApplications = cleanupMacApplicationRegistrations({
@@ -140,7 +140,7 @@ if (isCliInvocation) {
         startPackagedAsrModelBootstrap()
       })
       startAppUpdater(false, desktopState.currentAppSettings.ui.autoUpdate)
-      app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() })
+      app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) ensureMainWindow() })
     })
   }
 }

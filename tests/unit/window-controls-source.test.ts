@@ -25,6 +25,19 @@ describe('Linux and Windows window controls', () => {
     expect(headerSource).toContain('window.aiv.closeWindow()')
   })
 
+  it('recreates and focuses the main window when an external file is opened after closing it on macOS', () => {
+    const lifecycleSource = readSource('src/desktop/window-lifecycle.ts')
+    const mainSource = readSource('src/desktop/index.ts')
+
+    expect(lifecycleSource).toContain('export function ensureMainWindow(): void')
+    expect(lifecycleSource).toContain('if (!app.isReady()) return')
+    expect(lifecycleSource).toContain('function getLiveMainWindow(): BrowserWindow | null')
+    expect(lifecycleSource).toContain('window && !window.isDestroyed()')
+    expect(lifecycleSource).toContain('void deliverMediaPaths(paths, true)')
+    expect(mainSource).toContain("queueIncomingMediaPaths([filePath]); ensureMainWindow()")
+    expect(mainSource).toContain("queueIncomingMediaPaths(commandLine); ensureMainWindow()")
+  })
+
   it('gives missing ASR runtime components direct setup actions', () => {
     const source = readSource('src/renderer/src/app/asr-runtime-card.tsx')
 
