@@ -885,6 +885,9 @@ jobs:
         run: |
           sudo snap install snapcraft --classic
 
+      - name: Set up LXD
+        uses: canonical/setup-lxd@v1
+
       - name: Install fixed FFmpeg runtime
         shell: bash
         if: steps.restore-native-runtime-cache.outputs.cache-hit != 'true'
@@ -953,8 +956,9 @@ jobs:
           SNAP_CSC_LINK: ${{ secrets.SNAP_CSC_LINK }}
           SNAP_PUBLISH_ENABLED: ${{ github.event_name != 'workflow_dispatch' || inputs.verify_only != true }}
         run: |
-          # core24 destructive mode 构建需要 root；GitHub Actions 的 LXD 容器无网络，
-          # 改用宿主机 destructive 构建（sudo -E 保留 node/npm 环境与缓存路径）。
+          # core24 + gnome extension 需要 LXD 隔离构建以拉取 content snap
+          # （gnome-46-2404 GTK 运行时 + mesa-2404 GL 驱动），
+          # LXD 由 canonical/setup-lxd 步骤初始化并配置网络。
           # 有 SNAP_CSC_LINK 且非 verify_only 时，构建并发布到 Snap Store（stable,edge）。
           if [ -n "$SNAP_CSC_LINK" ] && [ "$SNAP_PUBLISH_ENABLED" = "true" ]; then
             echo "::notice::Publishing snap to Snap Store (stable, edge)"
@@ -1178,12 +1182,16 @@ jobs:
         run: |
           sudo snap install snapcraft --classic
 
+      - name: Set up LXD
+        uses: canonical/setup-lxd@v1
+
       - name: Build Snap package
         shell: bash
         env:
           SNAP_CSC_LINK: ${{ secrets.SNAP_CSC_LINK }}
           SNAP_PUBLISH_ENABLED: ${{ github.event_name != 'workflow_dispatch' || inputs.verify_only != true }}
         run: |
+          # 与 x64 一致：core24 + gnome extension 走 LXD 隔离构建
           if [ -n "$SNAP_CSC_LINK" ] && [ "$SNAP_PUBLISH_ENABLED" = "true" ]; then
             echo "::notice::Publishing ARM64 snap to Snap Store (stable, edge)"
             sudo -E env "PATH=$PATH" SNAP_CSC_LINK="$SNAP_CSC_LINK" \

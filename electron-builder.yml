@@ -436,25 +436,29 @@ linux:
     # snap 由 CI 显式构建（--linux snap），不放入默认 target，
     # 避免各平台 job 连带构建；x64 与 arm64 分别在对应 runner 发布
 # Snap package: built with electron-builder's core24 snapcraft strategy.
-# useDestructiveMode builds directly on the CI host (GitHub Actions LXD
-# containers have no network, so LXD provider is unusable there); sudo is used
-# for the snapcraft step since destructive mode requires root. Stage packages
-# are listed explicitly because the gnome extension is incompatible with
-# destructive mode.
+# useLXD builds inside an LXD container so the gnome extension can pull its
+# content snaps (gnome-46-2404 GTK runtime + mesa-2404 GL drivers) from the
+# store; destructive mode cannot fetch content snaps and is incompatible with
+# the extension. GitHub Actions runners must initialize LXD first — CI does
+# this with the canonical/setup-lxd action before invoking electron-builder.
+# GL/EGL therefore comes from the shared mesa-2404 content snap at runtime
+# instead of being bundled (keeps the snap small, drivers auto-update).
+# Only custom plugs are listed here: the gnome extension provides the common
+# desktop/wayland/x11/opengl/audio plugs automatically.
 snapcraft:
   base: core24
   core24:
     confinement: strict
     grade: stable
-    useDestructiveMode: true
+    useLXD: true
+    extensions:
+      - gnome
     plugs:
-      - default
       - removable-media
       - network-bind
       - browser-support
     stagePackages:
       - default
-      - libgtk-3-0
       - libgbm1
       - libasound2
       - libatspi2.0-0
@@ -464,13 +468,8 @@ snapcraft:
       - libxdamage1
       - libxfixes3
       - libxrandr2
-      - libpango-1.0-0
-      - libcairo2
-      - libgdk-pixbuf-2.0-0
-      - libpangocairo-1.0-0
-      - libpangoft2-1.0-0
-      - gsettings-desktop-schemas
       - shared-mime-info
+      - gsettings-desktop-schemas
   # Snap Store 发布：正式发版（tag push）时构建并上传 stable + edge 渠道。
   # 认证通过 SNAP_CSC_LINK secret 注入（snapcraft export-login - | base64 -w0 生成）。
   publish:
