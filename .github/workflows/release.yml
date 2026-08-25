@@ -1212,6 +1212,7 @@ jobs:
           if-no-files-found: error
 
   build-snap-x64:
+    needs: build-linux
     runs-on: ubuntu-latest
     env:
       electron_config_cache: ${{ github.workspace }}/.cache/electron
@@ -1268,6 +1269,7 @@ jobs:
           if-no-files-found: error
 
   build-snap-arm64:
+    needs: build-linux-arm64
     runs-on: ubuntu-24.04-arm
     env:
       electron_config_cache: ${{ github.workspace }}/.cache/electron

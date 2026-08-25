@@ -29,6 +29,8 @@ describe('release workflow source constraints', () => {
     expect(releaseWorkflow.match(/run: npm run build && npx electron-builder.*--publish never/g)).toHaveLength(5)
     expect(releaseWorkflow).toContain('build-snap-x64:')
     expect(releaseWorkflow).toContain('build-snap-arm64:')
+    expect(releaseWorkflow).toContain('build-snap-x64:\n    needs: build-linux')
+    expect(releaseWorkflow).toContain('build-snap-arm64:\n    needs: build-linux-arm64')
     expect(releaseWorkflow).toContain('name: Download Linux x64 app')
     expect(releaseWorkflow).toContain('name: Download Linux ARM64 app')
     expect(releaseWorkflow).toContain('--prepackaged release/linux-unpacked')
