@@ -2139,6 +2139,13 @@
 - 经验：不能把“用户会 eject DMG”当成产品前置条件；正式 macOS 应用启动时应按 Bundle ID / 版本清理其他路径的旧登记，但不能删除用户文件、卸载磁盘或注销更新版本。
 - 处理：新增 LaunchServices 清理模块，扫描 `/Volumes`、`/Applications`、用户 Applications、Downloads 和 Desktop 的直接 `.app`，只对版本不高于当前版本的其他 `cn.quniv.aivplayer` Bundle 执行 `lsregister -u`，随后强制登记当前 App；开发态和 CLI 不执行，失败也不阻断启动。
 
+## 2026-08-26：不要为了清理 LaunchServices 扫描受保护的用户目录
+
+- 现象：正式版首次启动时，macOS 弹出 “AIVPlayer.app 想访问桌面文件夹中的文件” 的隐私授权提示。
+- 原因：启动阶段的 LaunchServices 清理逻辑主动读取 `~/Desktop`，触发了 macOS 对桌面目录的 TCC 保护；这个与播放器启动无关的后台维护动作不应该要求用户授权。
+- 经验：桌面应用启动时不能为了修复 Finder 的历史关联而扫描 Desktop、Downloads 等用户目录；如果一个低频清理需求会引入系统权限弹窗，应直接移除该需求，不要把权限请求转嫁给用户。
+- 处理：删除启动时的 LaunchServices 自动清理逻辑、对应单元测试和发布说明；应用启动不再主动读取用户桌面或下载目录。
+
 ## 2026-08-24：Snap 发布凭据只保留一个 CI 入口
 
 - 现象：GitHub Actions 同时配置了 `SNAPCRAFT_STORE_CREDENTIALS` 和 `SNAP_CSC_LINK`，容易误以为两者都必须注入。
