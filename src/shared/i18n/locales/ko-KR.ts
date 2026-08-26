@@ -1515,7 +1515,13 @@
       downloadingLabel: '모델 다운로드 중',
       installedLabel: '모델 설치됨',
       downloadRecommended: '추천 모델 다운로드',
-      redownload: '다시 다운로드 / 소스 변경'
+      redownload: '다시 다운로드 / 소스 변경',
+      progressPending: '계산 중',
+      downloadBytes: (received: string, total: string) => `${received} / ${total}`,
+      downloadSizeUnknown: '전체 크기 알 수 없음',
+      downloadSpeed: (speed: string) => `${speed}/초`,
+      downloadEta: (duration: string) => `예상 잔여 시간 ${duration}`,
+      downloadEtaUnknown: '잔여 시간 계산 중…'
     },
     messages: {
       noSubtitleFolder: '자막 폴더를 열 수 없습니다. 파일이 아직 존재하는지 확인하세요.',

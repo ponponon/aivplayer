@@ -1515,7 +1515,13 @@
       downloadingLabel: 'モデルをダウンロード中',
       installedLabel: 'モデルインストール済み',
       downloadRecommended: '推奨モデルをダウンロード',
-      redownload: '再ダウンロード / ソース変更'
+      redownload: '再ダウンロード / ソース変更',
+      progressPending: '計算中',
+      downloadBytes: (received: string, total: string) => `${received} / ${total}`,
+      downloadSizeUnknown: '合計サイズ不明',
+      downloadSpeed: (speed: string) => `${speed}/秒`,
+      downloadEta: (duration: string) => `残り約 ${duration}`,
+      downloadEtaUnknown: '残り時間を計算中…'
     },
     messages: {
       noSubtitleFolder: '字幕フォルダを開けませんでした。ファイルがまだ存在するか確認してください。',

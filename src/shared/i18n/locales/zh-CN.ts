@@ -1513,7 +1513,13 @@
       downloadingLabel: '模型文件下载中',
       installedLabel: '模型文件已安装',
       downloadRecommended: '下载推荐模型',
-      redownload: '重新下载 / 更换来源'
+      redownload: '重新下载 / 更换来源',
+      progressPending: '计算中',
+      downloadBytes: (received: string, total: string) => `${received} / ${total}`,
+      downloadSizeUnknown: '总大小未知',
+      downloadSpeed: (speed: string) => `${speed}/秒`,
+      downloadEta: (duration: string) => `预计剩余 ${duration}`,
+      downloadEtaUnknown: '预计剩余时间计算中…'
     },
     messages: {
       noSubtitleFolder: '无法打开字幕文件夹，请检查文件是否还存在。',

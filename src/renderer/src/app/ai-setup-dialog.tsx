@@ -1,6 +1,7 @@
 import { Check, ChevronDown, ChevronRight, CircleAlert, Cpu, Download, KeyRound, RefreshCcw, Sparkles, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { formatBytes } from './app-helpers'
+import { AsrModelDownloadProgress } from './asr-model-download-progress'
 import { SettingsField, SettingsSelect } from './settings-controls'
 import { SettingsTextInput } from './settings-inputs'
 import { useAppContext } from './app-context'
@@ -170,7 +171,7 @@ function ModelStep(): React.ReactElement {
   if (app.isRecommendedModelReady) return <p className="ai-setup-detail-copy">{app.copy.aiSetup.modelReady(manifest.name)}</p>
   return <>
     <p className="ai-setup-detail-copy">{app.copy.aiSetup.modelDownloadDescription(manifest.name, formatBytes(manifest.expectedSizeBytes), manifest.ramRequirement)}</p>
-    {app.downloadProgress ? <div className="progress-block"><div className="progress-label"><span>{app.downloadProgress.message}</span><strong>{app.downloadProgress.percent == null ? app.copy.asrModelStatus.progressLabel : `${Math.round(app.downloadProgress.percent * 100)}%`}</strong></div><div className="progress-track"><div className="progress-fill" style={{ width: `${Math.round((app.downloadProgress.percent ?? 0) * 100)}%` }} /></div></div> : null}
+    {app.downloadProgress ? <AsrModelDownloadProgress copy={app.copy} progress={app.downloadProgress} expectedSizeBytes={manifest.expectedSizeBytes} className="ai-setup-download-progress" /> : null}
     <button className="asr-action-button primary" type="button" onClick={app.openModelDownloadDialog} disabled={!app.canDownloadRecommendedModel}><Download size={15} />{app.isDownloadingModel ? app.copy.modelView.downloadingLabel : app.copy.aiSetup.downloadModel}</button>
   </>
 }

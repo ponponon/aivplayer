@@ -1515,7 +1515,13 @@
       downloadingLabel: 'Model downloading',
       installedLabel: 'Model installed',
       downloadRecommended: 'Download recommended model',
-      redownload: 'Redownload / change source'
+      redownload: 'Redownload / change source',
+      progressPending: 'Calculating',
+      downloadBytes: (received: string, total: string) => `${received} / ${total}`,
+      downloadSizeUnknown: 'total size unknown',
+      downloadSpeed: (speed: string) => `${speed}/s`,
+      downloadEta: (duration: string) => `${duration} remaining`,
+      downloadEtaUnknown: 'Estimating time remaining…'
     },
     messages: {
       noSubtitleFolder: 'Could not open the subtitle folder. Please check whether the file still exists.',
