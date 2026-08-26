@@ -223,6 +223,14 @@ describe('download publishing integration', () => {
     expect(siteScript).toContain('wireVersionChips')
   })
 
+  it('reveals and focuses the manual chooser when architecture detection is unavailable', () => {
+    expect(siteScript).toContain("chooseArchitecture: '选择平台和架构'")
+    expect(siteScript).toContain('function revealDownloadChooser()')
+    expect(siteScript).toContain("detail?.scrollIntoView({ behavior: 'smooth', block: 'center' })")
+    expect(siteScript).toContain('firstChoice?.focus({ preventScroll: true })')
+    expect(siteScript).toContain('revealDownloadChooser()')
+  })
+
   it('uses the Cloudflare API token for R2 REST uploads without S3 credentials', () => {
     const uploader = readFileSync(join(projectRoot, 'scripts/publish-release-downloads.mjs'), 'utf8')
     expect(uploader).toContain('CLOUDFLARE_API_BASE_URL')
