@@ -35,6 +35,18 @@ type(scope) : subject
 
 ( 3 ) subject（必须） : commit 的简短描述，不超过50个字符。
 
+然后如果是 AI 自动写的代码和提交的，则要在 message 的尾部标记是哪个 AI 模型写的(用全称)
+
+比如下面这样
+
+```txt
+edit by gpt5.6-luna
+```
+
+```txt
+edit by gemini3.7-flash
+```
+
 ---
 
 对于 electron 的细节有不清楚的地方，可以直接去查看其源代码：~/Desktop/code/me/github/electron
@@ -120,3 +132,5 @@ python3 scripts/upload-r2-multipart.py --file <本地文件> --bucket aivplayer-
 ---
 
 如果要发布新的版本，注意阅读 docs/RELEASE.md 的要求
+
+
