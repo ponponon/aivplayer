@@ -4,6 +4,8 @@ import { tmpdir } from 'node:os'
 import { _electron as electron, type ElectronApplication, type Page } from 'playwright'
 
 const mediaPath = process.argv[2] ?? '/Users/ponponon/Music/aivplayer_test_video_1min.mp4'
+const undoScreenshotPath = process.env.AIVPLAYER_SMOKE_UNDO_SCREENSHOT_PATH
+const screenshotPath = process.env.AIVPLAYER_SMOKE_SCREENSHOT_PATH
 
 async function launchPlayer(userDataDirectory: string): Promise<{ app: ElectronApplication; page: Page; errors: string[] }> {
   const app = await electron.launch({
@@ -64,6 +66,29 @@ async function runSmoke(): Promise<void> {
     if (!duplicate || !persistedOriginal || duplicate.id === original.id || persistedOriginal.title !== collectionTitle || duplicate.selections[0]?.evidenceIds[0] !== 'duplicate-evidence-1') {
       throw new Error(`Clip collection duplicate persistence mismatch: ${JSON.stringify(collectionsAfterCopy)}`)
     }
+    const duplicateSnapshot = { ...duplicate, selections: duplicate.selections.map((selection) => ({ ...selection, evidenceIds: [...selection.evidenceIds], evidenceTypes: [...selection.evidenceTypes] })) }
+
+    const undoButton = page.getByRole('button', { name: '撤销上次集合操作', exact: true })
+    await undoButton.waitFor({ timeout: 10_000 })
+    await undoButton.click()
+    await page.getByRole('status').filter({ hasText: '已撤销上次集合操作' }).waitFor({ timeout: 10_000 })
+    const collectionsAfterUndo = await page.evaluate(() => window.aiv.listVisionClipCollections())
+    if (collectionsAfterUndo.length !== 1 || !collectionsAfterUndo.some((collection) => collection.id === original.id && collection.title === collectionTitle) || collectionsAfterUndo.some((collection) => collection.id === duplicateSnapshot.id)) {
+      throw new Error(`Clip collection duplicate undo mismatch: ${JSON.stringify(collectionsAfterUndo)}`)
+    }
+    if (undoScreenshotPath) {
+      await page.locator('.vision-collection-operation-redo').scrollIntoViewIfNeeded()
+      await page.screenshot({ path: undoScreenshotPath, fullPage: false })
+    }
+
+    const redoButton = page.getByRole('button', { name: '重做上次集合操作', exact: true })
+    await redoButton.waitFor({ timeout: 10_000 })
+    await redoButton.click()
+    await page.getByRole('status').filter({ hasText: '已重做上次集合操作' }).waitFor({ timeout: 10_000 })
+    const collectionsAfterRedo = await page.evaluate(() => window.aiv.listVisionClipCollections())
+    if (collectionsAfterRedo.length !== 2 || !collectionsAfterRedo.some((collection) => JSON.stringify(collection) === JSON.stringify(duplicateSnapshot)) || !collectionsAfterRedo.some((collection) => collection.id === original.id && collection.title === collectionTitle)) {
+      throw new Error(`Clip collection duplicate redo mismatch: ${JSON.stringify(collectionsAfterRedo)}`)
+    }
 
     await page.evaluate(({ collectionId }) => window.aiv.saveVisionClipCollection({
       id: collectionId,
@@ -87,7 +112,22 @@ async function runSmoke(): Promise<void> {
     }
 
     if (session.errors.length > 0) throw new Error(`Renderer errors during clip collection duplicate smoke:\n${session.errors.join('\n')}`)
-    console.log(`AIVPlayer Smoke Vision Clip Collection Duplicate passed: ${JSON.stringify({ originalId: original.id, duplicateId: duplicate.id, independent: true })}`)
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await page.getByRole('tab', { name: '影视库搜索' }).click()
+    await page.locator('.vision-panel').waitFor({ timeout: 10_000 })
+    const persistedAfterReload = await page.evaluate(() => window.aiv.listVisionClipCollections())
+    const persistedEditedDuplicate = persistedAfterReload.find((collection) => collection.id === duplicateSnapshot.id)
+    if (persistedAfterReload.length !== 2 || persistedEditedDuplicate?.title !== '复制副本已修改' || persistedAfterReload.some((collection) => collection.id === original.id && collection.title !== collectionTitle)) {
+      throw new Error(`Clip collection duplicate reload mismatch: ${JSON.stringify(persistedAfterReload)}`)
+    }
+    const activeOperation = await page.evaluate(() => window.aiv.getVisionClipCollectionOperationHistory())
+    if (activeOperation?.type !== 'duplicate') throw new Error(`Clip collection duplicate history mismatch: ${JSON.stringify(activeOperation)}`)
+    if (screenshotPath) {
+      await page.locator('.vision-collection-operation-undo').scrollIntoViewIfNeeded()
+      await page.screenshot({ path: screenshotPath, fullPage: false })
+    }
+    if (session.errors.length > 0) throw new Error(`Renderer errors during clip collection duplicate smoke:\n${session.errors.join('\n')}`)
+    console.log(`AIVPlayer Smoke Vision Clip Collection Duplicate passed: ${JSON.stringify({ originalId: original.id, duplicateId: duplicate.id, independent: true, duplicateUndoRedoVerified: true, persistedAfterReload: true, consoleErrors: session.errors.length, undoScreenshotPath: undoScreenshotPath ?? null, screenshotPath: screenshotPath ?? null })}`)
   } finally {
     if (app) await app.close().catch(() => undefined)
     await rm(userDataDirectory, { recursive: true, force: true }).catch(() => undefined)
