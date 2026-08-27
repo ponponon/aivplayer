@@ -56,8 +56,19 @@ async function runSmoke(): Promise<void> {
         endSeconds: index === 0 ? 3 : 5,
         evidenceIds: [`batch-merge-evidence-${index + 1}`],
         text: `批量合并验证 ${index + 1}`,
-        evidenceTypes: ['subtitle']
-      }]
+        evidenceTypes: ['subtitle'] as ['subtitle']
+      }, ...(index === 0 ? [{
+        sourceId: 'source-batch-merge-smoke',
+        videoPath: '/tmp/aivplayer-batch-merge-smoke-missing.mp4',
+        fileName: 'batch-merge-smoke-missing.mp4',
+        fingerprint: 'batch-merge-smoke-fingerprint',
+        durationSeconds: 30,
+        startSeconds: 10,
+        endSeconds: 11,
+        evidenceIds: ['batch-merge-evidence-extra'],
+        text: '批量合并验证待取消',
+        evidenceTypes: ['subtitle'] as ['subtitle']
+      }] : [])]
     }))), { nextTitles: titles })
 
     await page.reload({ waitUntil: 'domcontentloaded' })
@@ -72,9 +83,13 @@ async function runSmoke(): Promise<void> {
     await mergeAction.waitFor({ timeout: 10_000 })
     await page.getByRole('region', { name: '合并预览', exact: true }).waitFor({ timeout: 10_000 })
     const preview = mergeAction.locator('.vision-collection-merge-preview')
-    await preview.getByText('合并后 1 个选段 · 3 个标签', { exact: true }).waitFor({ timeout: 10_000 })
+    await preview.getByText('合并后 2 个选段 · 3 个标签', { exact: true }).waitFor({ timeout: 10_000 })
     const previewSources = await preview.locator('.vision-collection-merge-preview-source').allTextContents()
-    if (previewSources.length !== 2 || titles.some((title) => !previewSources.some((source) => source.includes(title))) || !previewSources.some((source) => source.includes('00:01.0–00:03.0')) || !previewSources.some((source) => source.includes('00:02.6–00:05.0'))) throw new Error(`Batch merge preview source ranges mismatch: ${JSON.stringify(previewSources)}`)
+    if (previewSources.length !== 2 || titles.some((title) => !previewSources.some((source) => source.includes(title))) || !previewSources.some((source) => source.includes('00:01.0–00:03.0')) || !previewSources.some((source) => source.includes('00:02.6–00:05.0')) || !previewSources.some((source) => source.includes('00:10.0–00:11.0'))) throw new Error(`Batch merge preview source ranges mismatch: ${JSON.stringify(previewSources)}`)
+    const removableSelection = preview.getByRole('checkbox', { name: '选择合并选段 00:10.0–00:11.0', exact: true })
+    await removableSelection.uncheck()
+    await preview.getByText('已选择 2 个来源选段', { exact: true }).waitFor({ timeout: 10_000 })
+    await preview.getByText('合并后 1 个选段 · 3 个标签', { exact: true }).waitFor({ timeout: 10_000 })
     const previewOutputRanges = await preview.locator('.vision-collection-merge-preview-output-ranges span').allTextContents()
     if (previewOutputRanges.length !== 1 || previewOutputRanges[0] !== '00:01.0–00:05.0') throw new Error(`Batch merge preview output ranges mismatch: ${JSON.stringify(previewOutputRanges)}`)
     const titleInput = mergeAction.getByRole('textbox', { name: '合并后集合名称', exact: true })
@@ -117,6 +132,9 @@ async function runSmoke(): Promise<void> {
     if (!mergedSelection.evidenceIds.includes('batch-merge-evidence-1') || !mergedSelection.evidenceIds.includes('batch-merge-evidence-2')) {
       throw new Error(`Clip collection batch merge evidence mismatch: ${JSON.stringify(mergedSelection)}`)
     }
+    if (mergedSelection.evidenceIds.includes('batch-merge-evidence-extra')) {
+      throw new Error(`Clip collection batch merge included an unselected range: ${JSON.stringify(mergedSelection)}`)
+    }
 
     await page.reload({ waitUntil: 'domcontentloaded' })
     await openVisionPanel(page)
@@ -134,7 +152,7 @@ async function runSmoke(): Promise<void> {
     }
 
     if (session.errors.length > 0) throw new Error(`Renderer errors during clip collection batch merge smoke:\n${session.errors.join('\n')}`)
-    console.log(`AIVPlayer Smoke Vision Clip Collection Batch Merge passed: ${JSON.stringify({ pageIdentity, originalCount: originals.length, mergedCount: 1, mergedTitle, mergedSelectionCount: reloadedMerged.selections.length, mergedRange: [reloadedMerged.selections[0]?.startSeconds, reloadedMerged.selections[0]?.endSeconds], previewVerified: true, tagsPreserved: true, originalsPreserved: true, persistedAfterReload: true, consoleErrors: session.errors.length, previewScreenshotPath: previewScreenshotPath ?? null, screenshotPath: screenshotPath ?? null })}`)
+    console.log(`AIVPlayer Smoke Vision Clip Collection Batch Merge passed: ${JSON.stringify({ pageIdentity, originalCount: originals.length, mergedCount: 1, mergedTitle, selectedSourceSelectionCount: 2, mergedSelectionCount: reloadedMerged.selections.length, mergedRange: [reloadedMerged.selections[0]?.startSeconds, reloadedMerged.selections[0]?.endSeconds], previewVerified: true, tagsPreserved: true, originalsPreserved: true, persistedAfterReload: true, consoleErrors: session.errors.length, previewScreenshotPath: previewScreenshotPath ?? null, screenshotPath: screenshotPath ?? null })}`)
   } finally {
     if (app) await app.close().catch(() => undefined)
     await rm(userDataDirectory, { recursive: true, force: true }).catch(() => undefined)
