@@ -1151,6 +1151,40 @@
   margin-top: 6px;
 }
 
+.vision-collection-tag-history-toolbar {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.vision-collection-tag-history-toolbar label {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  color: var(--text-muted);
+  font-size: 8px;
+}
+
+.vision-collection-tag-history-toolbar select {
+  min-width: 116px;
+  max-width: 180px;
+  min-height: 25px;
+  padding: 0 7px;
+  color: var(--text-secondary);
+  background: rgba(var(--overlay-rgb), 0.06);
+  border: 1px solid var(--border-soft);
+  border-radius: 4px;
+  font-size: 9px;
+}
+
+.vision-collection-tag-history-toolbar select:focus-visible {
+  border-color: var(--accent);
+  outline: 0;
+}
+
 .vision-collection-tag-history-entry {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

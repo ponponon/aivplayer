@@ -7,7 +7,9 @@ import type { MediaEvidenceDraftImportResult } from '../../../shared/evidence-ta
 import type { VisionClipCollection, VisionClipCollectionBatchTagsMode, VisionClipCollectionExportFormat, VisionClipCollectionOperationHistory, VisionClipCollectionSortMode, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataImportDecision, VisionClipCollectionTagMetadataImportPreviewResult, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationHistoryEntry, VisionClipCollectionTagSortMode, VisionEvidenceType, VisionIndexFailureRecord, VisionLibrarySource, VisionModelDownloadProgress, VisionSavedSearch, VisionSearchFullExportRequest, VisionSearchPageRequest, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchSortMode } from '../../../shared/vision-types'
 import type { LocaleCopy } from '../../../shared/i18n'
 import type { VisionObjectDetectionFilterState, VisionObjectDetectionResult } from '../../../shared/vision-object-detection-types'
+import type { VisionClipCollectionTagOperationHistoryFilter } from '../../../shared/vision-types'
 import { getVisionCollectionTagPath, invertVisionClipSelections, mergeVisionCollectionSelections, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTag, normalizeVisionCollectionTags, renameVisionClipCollectionTitle, toggleVisibleVisionClipCollectionSelection, wouldCreateVisionCollectionTagParentCycle } from '../../../core/ai/clip-inbox-operations'
+import { filterVisionClipCollectionTagOperationHistory, serializeVisionClipCollectionTagOperationHistory } from '../../../core/ai/clip-inbox-tag-history'
 import { hasVisionCollectionTagChildren, isVisionCollectionTagHiddenByCollapsedAncestor, matchesVisionCollectionTagFilter, mergeVisionClipCollectionTagCollapsePreferences, parseVisionClipCollectionTagCollapsePreferences, serializeVisionClipCollectionTagCollapsePreferences, VISION_CLIP_COLLECTION_TAG_COLLAPSE_PREFERENCES_STORAGE_KEY, type VisionCollectionTagFilterMode } from '../../../core/ai/clip-inbox-tag-tree'
 import { createVisionClipSelections, normalizeVisionTimeRange } from '../../../core/ai/vision-evidence'
 import { parseVisionClipCollectionOrderPreferences, serializeVisionClipCollectionOrderPreferences, sortVisionClipCollections, VISION_CLIP_COLLECTION_ORDER_PREFERENCES_STORAGE_KEY, type VisionClipCollectionListSortMode } from '../../../core/ai/clip-inbox-collection-order'
@@ -179,6 +181,20 @@ function downloadVisionClipCollectionSavedFilters(filters: readonly VisionClipCo
   window.setTimeout(() => URL.revokeObjectURL(url), 0)
 }
 
+function downloadVisionClipCollectionTagOperationHistory(entries: readonly VisionClipCollectionTagOperationHistoryEntry[], filter: VisionClipCollectionTagOperationHistoryFilter): number {
+  const filteredEntries = filterVisionClipCollectionTagOperationHistory(entries, filter)
+  const blob = new Blob([serializeVisionClipCollectionTagOperationHistory(entries, filter)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = `aivplayer-tag-operation-history-${filter}-${new Date().toISOString().slice(0, 10)}.json`
+  document.body.append(anchor)
+  anchor.click()
+  anchor.remove()
+  window.setTimeout(() => URL.revokeObjectURL(url), 0)
+  return filteredEntries.length
+}
+
 function formatDuration(milliseconds: number): string {
   if (milliseconds < 1000) return `${Math.max(1, Math.round(milliseconds))}ms`
   const seconds = milliseconds / 1000
@@ -298,6 +314,7 @@ export function VisionPanel(): React.ReactElement {
   const [lastCollectionTagRedoOperation, setLastCollectionTagRedoOperation] = useState<VisionClipCollectionTagOperationHistory | null>(null)
   const [isRedoingCollectionTagOperation, setIsRedoingCollectionTagOperation] = useState(false)
   const [collectionTagOperationHistory, setCollectionTagOperationHistory] = useState<VisionClipCollectionTagOperationHistoryEntry[]>([])
+  const [collectionTagHistoryFilter, setCollectionTagHistoryFilter] = useState<VisionClipCollectionTagOperationHistoryFilter>('all')
   const [lastCollectionOperation, setLastCollectionOperation] = useState<VisionClipCollectionOperationHistory | null>(null)
   const [isUndoingCollectionOperation, setIsUndoingCollectionOperation] = useState(false)
   const [lastCollectionRedoOperation, setLastCollectionRedoOperation] = useState<VisionClipCollectionOperationHistory | null>(null)
@@ -390,6 +407,7 @@ export function VisionPanel(): React.ReactElement {
   const savedCollectionFilterImportConflicts = savedCollectionFilterImportItems.filter((item) => item.state === 'conflict')
   const savedCollectionFilterImportNewCount = savedCollectionFilterImportItems.filter((item) => item.state === 'new').length
   const savedCollectionFilterImportSkippedCount = savedCollectionFilterImportItems.filter((item) => item.state !== 'new' && item.state !== 'conflict').length
+  const visibleCollectionTagOperationHistory = filterVisionClipCollectionTagOperationHistory(collectionTagOperationHistory, collectionTagHistoryFilter)
   const vectorIndexLabel = status?.vectorIndexType
     ? app.copy.vision.vectorIndex(status.vectorIndexType, status.vectorIndexDistanceType ?? '—', status.vectorIndexIndexedRows, status.vectorIndexUnindexedRows)
     : app.copy.vision.exactVectorSearch
@@ -1644,6 +1662,13 @@ export function VisionPanel(): React.ReactElement {
     setCollectionTagTransferStatus(null)
   }
 
+  const exportCollectionTagOperationHistory = (): void => {
+    if (isCollectionBatchBusy || visibleCollectionTagOperationHistory.length === 0) return
+    setError(null)
+    const exportedCount = downloadVisionClipCollectionTagOperationHistory(collectionTagOperationHistory, collectionTagHistoryFilter)
+    setCollectionTagTransferStatus(app.copy.vision.collectionTagManagerHistoryExported(exportedCount))
+  }
+
   const undoCollectionTagOperation = (): void => {
     if (isCollectionBatchBusy || !lastCollectionTagOperation) return
     setIsUndoingCollectionTagOperation(true)
@@ -1897,14 +1922,24 @@ export function VisionPanel(): React.ReactElement {
         <div className="vision-collection-tag-manager-import-preview-actions"><button className="vision-primary-action" type="button" onClick={applyCollectionTagMetadataImport} disabled={isTransferringCollectionTagMetadata}><Check size={12} />{app.copy.vision.collectionTagManagerMetadataImportApply}</button><button className="vision-secondary-action" type="button" onClick={cancelCollectionTagMetadataImport} disabled={isTransferringCollectionTagMetadata}><X size={12} />{app.copy.vision.collectionTagManagerMetadataImportCancel}</button></div>
       </div> : null}
       <details className="vision-collection-tag-history" open>
-        <summary className="vision-collection-tag-history-summary"><span><strong>{app.copy.vision.collectionTagManagerHistoryTitle}</strong><small>{app.copy.vision.collectionTagManagerHistoryDescription}</small></span><b>{collectionTagOperationHistory.length}</b></summary>
-        {collectionTagOperationHistory.length > 0 ? <div className="vision-collection-tag-history-list" role="list" aria-label={app.copy.vision.collectionTagManagerHistoryTitle}>
-          {collectionTagOperationHistory.map((operation) => <div className={`vision-collection-tag-history-entry is-${operation.status}`} key={operation.id} role="listitem">
+        <summary className="vision-collection-tag-history-summary"><span><strong>{app.copy.vision.collectionTagManagerHistoryTitle}</strong><small>{app.copy.vision.collectionTagManagerHistoryDescription}</small></span><b>{visibleCollectionTagOperationHistory.length}</b></summary>
+        <div className="vision-collection-tag-history-toolbar">
+          <label><span>{app.copy.vision.collectionTagManagerHistoryFilterLabel}</span><select value={collectionTagHistoryFilter} onChange={(event) => setCollectionTagHistoryFilter(event.target.value as VisionClipCollectionTagOperationHistoryFilter)} aria-label={app.copy.vision.collectionTagManagerHistoryFilterLabel} disabled={isCollectionBatchBusy}>
+            <option value="all">{app.copy.vision.collectionTagManagerHistoryFilterAll}</option>
+            <option value="cleanup">{app.copy.vision.collectionTagManagerHistoryType.cleanup}</option>
+            <option value="rename">{app.copy.vision.collectionTagManagerHistoryType.rename}</option>
+            <option value="metadata">{app.copy.vision.collectionTagManagerHistoryType.metadata}</option>
+            <option value="batch">{app.copy.vision.collectionTagManagerHistoryType.batch}</option>
+          </select></label>
+          <button className="vision-secondary-action" type="button" onClick={exportCollectionTagOperationHistory} disabled={isCollectionBatchBusy || visibleCollectionTagOperationHistory.length === 0}><Download size={12} />{app.copy.vision.collectionTagManagerHistoryExport}</button>
+        </div>
+        {visibleCollectionTagOperationHistory.length > 0 ? <div className="vision-collection-tag-history-list" role="list" aria-label={app.copy.vision.collectionTagManagerHistoryTitle}>
+          {visibleCollectionTagOperationHistory.map((operation) => <div className={`vision-collection-tag-history-entry is-${operation.status}`} key={operation.id} role="listitem">
             <strong>{app.copy.vision.collectionTagManagerHistoryType[operation.type]}</strong>
             <time dateTime={new Date(operation.createdAt).toISOString()}>{new Date(operation.createdAt).toLocaleString()}</time>
             <small>{app.copy.vision.collectionTagManagerHistoryStatus[operation.status]}</small>
           </div>)}
-        </div> : <small className="vision-collection-tag-history-empty">{app.copy.vision.collectionTagManagerHistoryEmpty}</small>}
+        </div> : <small className="vision-collection-tag-history-empty">{collectionTagOperationHistory.length > 0 ? app.copy.vision.collectionTagManagerHistoryFilterEmpty : app.copy.vision.collectionTagManagerHistoryEmpty}</small>}
       </details>
       {collectionTagStats.length > 0 ? <>
         <div className="vision-collection-tag-manager-filter">
