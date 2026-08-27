@@ -1193,3 +1193,12 @@
 - 真实 Electron Smoke 已验证规范化标签保存、Escape 取消、单集合撤销、重做、清空 / 重设、重载持久化和 Renderer `consoleErrors: 0`；截图输出到 `/private/tmp/aivplayer-inline-tags-undo.png` 与 `/private/tmp/aivplayer-inline-tags-final.png`。
 - 分阶段提交：`d8e0e971 feat(选段集合) : 支持单集合标签撤销`（标签历史核心、单测和冲突保护）；`f359820f feat(选段集合) : 接入单集合标签历史`（IPC、Preload、四语类型和 Renderer 接线）；`e99cf1c5 test(选段集合) : 验证单集合标签撤销`（真实 Electron Smoke）。
 - 当前边界：只记录单集合标签数组编辑，不把集合标题、选段内容、颜色 / 父标签 / 备注元数据或媒体文件操作混入这条历史；历史保留最近 20 条，不提供跨设备同步或云端协作。
+
+## AI 服务多配置档案与独立设置分类
+
+- AI 服务从字幕设置独立为一级设置分类（新「AI 服务」tab），与界面、视频、字幕等并列，统一管理翻译和总结使用的 AI 服务。
+- 支持多配置档案：内置托管服务 + 多个自定义 OpenAI-compatible 服务，可新增、编辑、删除档案并随时切换激活档案；激活档案决定翻译请求走向。
+- 旧版单服务配置（schemaVersion 29 的 custom 模式 baseUrl / model / apiKey）在升级时自动迁移为一条自定义档案并置为使用中，术语表等其余配置不受影响；迁移兼容旧版加密存储的 API Key。
+- API Key 仍加密存储在本机，不以明文写入普通设置文件；档案编辑中测试连接失败不会落盘生效。
+- AI 引导弹窗同步支持档案切换，与设置面板共用同一套激活档案状态。
+- 移除废弃的服务模式切换 UI 与对应的多语言文案键，四语言（zh-CN / en-US / ja-JP / ko-KR）AI 服务相关文案完整无缺键。

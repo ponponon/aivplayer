@@ -1466,12 +1466,7 @@
         translationServiceTitle: 'AI 서비스(번역 및 요약)',
         translationServiceDescription:
           '기본으로 AIVPlayer의 관리형 번역 서비스를 사용하므로 설치 후 바로 번역할 수 있습니다. 더 나은 품질이나 자신의 사용량을 원하면 사용자 지정 OpenAI 호환 서비스로 전환하세요.',
-        translationServiceMode: '서비스 모드',
         translationServiceModeDescription: '관리형 서비스에는 API key가 필요하지 않습니다. 사용자 지정 서비스에서는 엔드포인트, 모델, API key를 입력할 수 있습니다.',
-        translationServiceModeOptions: {
-          managed: '관리형 서비스(권장)',
-          custom: '사용자 지정 서비스'
-        },
         translationServiceManagedTitle: '내장 관리형 서비스 사용 중',
         translationServiceManagedDescription: '요청은 AIVPlayer의 Cloudflare Worker로 전송되고 서버에서 glm-4-flash-250414를 호출합니다. BigModel API key는 클라이언트에 포함되지 않습니다. 자신의 모델을 사용하려면 사용자 지정 서비스로 전환하세요.',
         translationBaseUrl: '번역 엔드포인트',

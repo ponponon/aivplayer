@@ -115,7 +115,7 @@ describe('settings UI source constraints', () => {
   })
 
   it('routes subtitle display settings through shared settings controls', () => {
-    const settingsDialogSource = `${readSource('src/renderer/src/app/settings-dialog-model.ts')}\n${readSource('src/renderer/src/app/settings-sections/subtitles.tsx')}\n${readSource('src/renderer/src/app/settings-sections/tts-provider-settings.tsx')}\n${readSource('src/renderer/src/app/translation-service-settings.tsx')}`
+    const settingsDialogSource = `${readSource('src/renderer/src/app/settings-dialog-model.ts')}\n${readSource('src/renderer/src/app/settings-sections/subtitles.tsx')}\n${readSource('src/renderer/src/app/settings-sections/tts-provider-settings.tsx')}\n${readSource('src/renderer/src/app/settings-sections/ai-service.tsx')}`
     const subtitlesSectionSource = settingsDialogSource
 
     expect(settingsDialogSource).toContain('subtitleLineHeightOptions')
@@ -133,7 +133,6 @@ describe('settings UI source constraints', () => {
     expect(settingsDialogSource).toContain('options={subtitleDisplayModeOptions}')
     expect(settingsDialogSource).toContain('value={settings.subtitles.targetLanguage}')
     expect(settingsDialogSource).toContain('options={targetLanguageOptions}')
-    expect(settingsDialogSource).toContain('translationServiceTitle')
     expect(settingsDialogSource).toContain('translationBaseUrl')
     expect(settingsDialogSource).toContain('translationModel')
     expect(settingsDialogSource).toContain('translationApiKey')
@@ -153,10 +152,6 @@ describe('settings UI source constraints', () => {
     expect(settingsDialogSource).toContain("patchSettingsSection('subtitles', { lineHeight })")
     expect(settingsDialogSource).toContain("patchSettingsSection('subtitles', { displayMode })")
     expect(settingsDialogSource).toContain("patchSettingsSection('subtitles', { targetLanguage })")
-    expect(settingsDialogSource).toContain("patchSettingsSection('asr', { translationBaseUrl: translationBaseUrl.trim() || null })")
-    expect(settingsDialogSource).toContain("patchSettingsSection('asr', { translationModel: translationModel.trim() || null })")
-    expect(settingsDialogSource).toContain("patchSettingsSection('asr', { translationApiKey: translationApiKey.trim() || null })")
-    expect(settingsDialogSource).toContain("patchSettingsSection('asr', { translationGlossary: translationGlossary.trim() || null })")
     expect(settingsDialogSource).toContain('translationServiceTestMessage')
     expect(settingsDialogSource).toContain('isTestingTranslationService')
     expect(settingsDialogSource).toContain('onTestTranslationService')
@@ -175,7 +170,17 @@ describe('settings UI source constraints', () => {
     expectInOrder(subtitlesSectionSource, 'options={subtitleLineHeightOptions}', "patchSettingsSection('subtitles', { lineHeight })")
     expectInOrder(subtitlesSectionSource, 'options={subtitleDisplayModeOptions}', "patchSettingsSection('subtitles', { displayMode })")
     expectInOrder(subtitlesSectionSource, 'options={targetLanguageOptions}', "patchSettingsSection('subtitles', { targetLanguage })")
-    expectInOrder(subtitlesSectionSource, 'translationServiceTitle', "patchSettingsSection('asr', { translationBaseUrl: translationBaseUrl.trim() || null })")
+
+    const aiServiceSource = readSource('src/renderer/src/app/settings-sections/ai-service.tsx')
+    const navSource = readSource('src/renderer/src/app/settings-dialog-model.ts')
+    const subtitlesSectionOnly = readSource('src/renderer/src/app/settings-sections/subtitles.tsx')
+
+    expect(navSource).toContain("{ id: 'ai', label: copy.settingsDialog.tabs.ai")
+    expect(aiServiceSource).toContain("patchSettingsSection('ai', { activeProviderId })")
+    expect(aiServiceSource).toContain('MANAGED_AI_PROVIDER_ID')
+    expect(aiServiceSource).toContain('onTestTranslationService')
+    expect(subtitlesSectionOnly).toContain('translationGlossary')
+    expect(subtitlesSectionOnly).toContain("patchSettingsSection('asr', { translationGlossary: translationGlossary.trim() || null })")
   })
 
   it('routes app settings section writes through the shared update helper', () => {

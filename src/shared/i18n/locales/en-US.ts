@@ -1466,12 +1466,7 @@
         translationServiceTitle: 'AI service (translation and summaries)',
         translationServiceDescription:
           'AIVPlayer uses its managed translation service by default, so translation works after installation. Switch to a custom OpenAI-compatible service when you want your own model or quota.',
-        translationServiceMode: 'Service mode',
         translationServiceModeDescription: 'The managed service needs no API key. Custom service lets you enter your own endpoint, model, and API key.',
-        translationServiceModeOptions: {
-          managed: 'Managed service (recommended)',
-          custom: 'Custom service'
-        },
         translationServiceManagedTitle: 'Built-in managed service is enabled',
         translationServiceManagedDescription: 'Requests go to AIVPlayer’s Cloudflare Worker, which calls glm-4-flash-250414 on the server. The BigModel API key is not included in the client. Switch to Custom service to use your own model.',
         translationBaseUrl: 'Translation endpoint',

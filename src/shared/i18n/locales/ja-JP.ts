@@ -1466,12 +1466,7 @@
         translationServiceTitle: 'AI サービス（翻訳と要約）',
         translationServiceDescription:
           '既定では AIVPlayer の管理翻訳サービスを使うため、インストール後すぐに翻訳できます。より高品質なモデルや自分の利用枠を使う場合は、カスタムサービスへ切り替えてください。',
-        translationServiceMode: 'サービスモード',
         translationServiceModeDescription: '管理サービスでは API key は不要です。カスタムサービスではエンドポイント、モデル、API key を入力できます。',
-        translationServiceModeOptions: {
-          managed: '管理サービス（推奨）',
-          custom: 'カスタムサービス'
-        },
         translationServiceManagedTitle: '内蔵の管理サービスを使用中',
         translationServiceManagedDescription: 'リクエストは AIVPlayer の Cloudflare Worker に送られ、サーバー側で glm-4-flash-250414 を呼び出します。BigModel API key はクライアントに含まれません。自分のモデルを使う場合はカスタムサービスへ切り替えてください。',
         translationBaseUrl: '翻訳エンドポイント',

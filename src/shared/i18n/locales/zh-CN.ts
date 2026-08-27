@@ -1465,12 +1465,7 @@
         modelSourceDescription: '下载弹窗会优先把这里选中的源排在前面。',
         translationServiceTitle: 'AI 服务（翻译和总结）',
         translationServiceDescription: '默认使用 AIVPlayer 内置的托管翻译服务，安装后即可翻译；需要更高质量或自有额度时，可以切换到自定义 OpenAI-compatible 服务。',
-        translationServiceMode: '服务模式',
         translationServiceModeDescription: '内置托管服务无需填写 API Key；自定义服务可填写自己的接口、模型和 API Key。',
-        translationServiceModeOptions: {
-          managed: '内置托管服务（推荐）',
-          custom: '自定义服务'
-        },
         translationServiceManagedTitle: '已启用内置托管服务',
         translationServiceManagedDescription: '请求会发送到 AIVPlayer 的 Cloudflare Worker，再由服务端调用 glm-4-flash-250414。客户端不包含 BigModel API Key；如需使用自己的模型，请切换为“自定义服务”。',
         translationBaseUrl: '翻译接口地址',
