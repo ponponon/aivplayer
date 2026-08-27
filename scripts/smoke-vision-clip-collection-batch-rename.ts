@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { _electron as electron, type ElectronApplication, type Page } from 'playwright'
 
 const mediaPath = process.argv[2] ?? '/Users/ponponon/Music/aivplayer_test_video_1min.mp4'
+const undoScreenshotPath = process.env.AIVPLAYER_SMOKE_UNDO_SCREENSHOT_PATH
 const screenshotPath = process.env.AIVPLAYER_SMOKE_SCREENSHOT_PATH
 
 async function launchPlayer(userDataDirectory: string): Promise<{ app: ElectronApplication; page: Page; errors: string[] }> {
@@ -101,15 +102,37 @@ async function runSmoke(): Promise<void> {
       }
     }
 
+    const undoButton = page.getByRole('button', { name: '撤销上次集合操作', exact: true })
+    await undoButton.waitFor({ timeout: 10_000 })
+    await undoButton.click()
+    await page.getByRole('status').filter({ hasText: '已撤销上次集合操作' }).waitFor({ timeout: 10_000 })
+    const afterUndo = await page.evaluate(() => window.aiv.listVisionClipCollections())
+    if (afterUndo.length !== 3 || originals.some((original) => !afterUndo.some((collection) => collection.id === original.id && collection.title === original.title))) {
+      throw new Error(`Clip collection batch rename undo mismatch: ${JSON.stringify(afterUndo)}`)
+    }
+    if (undoScreenshotPath) {
+      await page.locator('.vision-collection-operation-redo').scrollIntoViewIfNeeded()
+      await page.screenshot({ path: undoScreenshotPath, fullPage: false })
+    }
+
+    const redoButton = page.getByRole('button', { name: '重做上次集合操作', exact: true })
+    await redoButton.waitFor({ timeout: 10_000 })
+    await redoButton.click()
+    await page.getByRole('status').filter({ hasText: '已重做上次集合操作' }).waitFor({ timeout: 10_000 })
+    const afterRedo = await page.evaluate(() => window.aiv.listVisionClipCollections())
+    if (afterRedo.length !== 3 || originals.slice(0, 2).some((original) => !afterRedo.some((collection) => collection.id === original.id && collection.title === `项目 · ${original.title} · 精选`))) {
+      throw new Error(`Clip collection batch rename redo mismatch: ${JSON.stringify(afterRedo)}`)
+    }
+
     await page.reload({ waitUntil: 'domcontentloaded' })
     await openVisionPanel(page)
     await page.getByText(`项目 · ${titles[0]} · 精选`, { exact: true }).waitFor({ timeout: 10_000 })
     if (screenshotPath) {
-      await page.locator('.vision-collections').scrollIntoViewIfNeeded()
+      await page.locator('.vision-collection-operation-undo').scrollIntoViewIfNeeded()
       await page.screenshot({ path: screenshotPath, fullPage: false })
     }
     if (session.errors.length > 0) throw new Error(`Renderer errors during clip collection batch rename smoke:\n${session.errors.join('\n')}`)
-    console.log(`AIVPlayer Smoke Vision Clip Collection Batch Rename passed: ${JSON.stringify({ originalCount: originals.length, renamedCount: renamed.length, preview: true, metadataPreserved: true, screenshotPath: screenshotPath ?? null })}`)
+    console.log(`AIVPlayer Smoke Vision Clip Collection Batch Rename passed: ${JSON.stringify({ originalCount: originals.length, renamedCount: renamed.length, preview: true, metadataPreserved: true, renameUndoRedoVerified: true, persistedAfterReload: true, consoleErrors: session.errors.length, undoScreenshotPath: undoScreenshotPath ?? null, screenshotPath: screenshotPath ?? null })}`)
   } finally {
     if (app) await app.close().catch(() => undefined)
     await rm(userDataDirectory, { recursive: true, force: true }).catch(() => undefined)
