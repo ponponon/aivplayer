@@ -74,6 +74,34 @@ async function runSmoke(): Promise<void> {
     if (metadataHistory.length !== 1 || !metadataHistory[0]?.includes('样式 / 元数据') || !metadataHistory[0]?.includes('已应用')) {
       throw new Error(`Metadata operation should appear in history: ${JSON.stringify(metadataHistory)}`)
     }
+    await page.getByRole('combobox', { name: '操作类型', exact: true }).selectOption('metadata')
+    if (await historyEntries.count() !== 1 || !(await historyEntries.first().textContent())?.includes('样式 / 元数据')) throw new Error('Metadata history filter should keep only style operations')
+    await page.evaluate(() => {
+      const scope = window as unknown as { __aivplayerTagHistoryExport?: { blob: Blob; fileName: string } }
+      const originalCreateObjectURL = URL.createObjectURL.bind(URL)
+      const originalAnchorClick = HTMLAnchorElement.prototype.click
+      URL.createObjectURL = (blob: Blob) => {
+        scope.__aivplayerTagHistoryExport = { blob, fileName: '' }
+        return originalCreateObjectURL(blob)
+      }
+      HTMLAnchorElement.prototype.click = function () {
+        if (scope.__aivplayerTagHistoryExport) scope.__aivplayerTagHistoryExport.fileName = this.download
+        originalAnchorClick.call(this)
+      }
+    })
+    await page.getByRole('button', { name: '导出当前历史', exact: true }).click()
+    await page.getByRole('status').filter({ hasText: '已导出 1 条标签历史' }).waitFor({ timeout: 10_000 })
+    const exportedHistory = await page.evaluate(async () => {
+      const scope = window as unknown as { __aivplayerTagHistoryExport?: { blob: Blob; fileName: string } }
+      const value = scope.__aivplayerTagHistoryExport
+      return value ? { json: await value.blob.text(), fileName: value.fileName } : null
+    })
+    if (!exportedHistory?.fileName.endsWith('.json')) throw new Error(`Tag history export filename mismatch: ${JSON.stringify(exportedHistory)}`)
+    const exportedHistoryManifest = JSON.parse(exportedHistory.json) as { schemaVersion: number; filter: string; entries: Array<{ type: string }> }
+    if (exportedHistoryManifest.schemaVersion !== 1 || exportedHistoryManifest.filter !== 'metadata' || exportedHistoryManifest.entries.length !== 1 || exportedHistoryManifest.entries[0]?.type !== 'metadata') {
+      throw new Error(`Tag history export manifest mismatch: ${JSON.stringify(exportedHistoryManifest)}`)
+    }
+    await page.getByRole('combobox', { name: '操作类型', exact: true }).selectOption('all')
     await page.getByRole('button', { name: '海边 · 2 个集合', exact: true }).click()
     await confirmCleanup(page)
     await page.getByRole('status').filter({ hasText: '已从 2 个集合中清理标签：海边' }).waitFor({ timeout: 10_000 })
@@ -133,7 +161,7 @@ async function runSmoke(): Promise<void> {
       await page.screenshot({ path: screenshotPath, fullPage: false })
     }
     if (session.errors.length > 0) throw new Error(`Renderer errors during clip collection tag undo smoke:\n${session.errors.join('\n')}`)
-    console.log(`AIVPlayer Smoke Vision Clip Collection Tag Undo passed: ${JSON.stringify({ originalCount: originals.length, cleaned: true, restored: true, persistedHistory: true, historyTimeline: true, redoAfterReload: true, metadataUndo: true, screenshotPath: screenshotPath ?? null })}`)
+    console.log(`AIVPlayer Smoke Vision Clip Collection Tag Undo passed: ${JSON.stringify({ originalCount: originals.length, cleaned: true, restored: true, persistedHistory: true, historyTimeline: true, historyExported: true, redoAfterReload: true, metadataUndo: true, screenshotPath: screenshotPath ?? null })}`)
   } finally {
     if (app) await app.close().catch(() => undefined)
     await rm(userDataDirectory, { recursive: true, force: true }).catch(() => undefined)
