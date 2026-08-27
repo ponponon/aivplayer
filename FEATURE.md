@@ -1120,3 +1120,11 @@
 - 真实 Electron Smoke 已验证取消 `00:10.0–00:11.0` 后只保留 2 个来源选段，最终范围 `[1,5]`，未选证据未写入，原集合保留、重载持久化和 Renderer 无错误；截图输出到 `/private/tmp/aivplayer-collection-batch-merge-selection-before.png` 与 `/private/tmp/aivplayer-collection-batch-merge-selection-after.png`。
 - 分阶段提交：`978c8a4 feat(选段集合) : 支持选择合并片段`（共享选择合同、核心纯函数、Store、IPC 和回归）；`ec202e8 feat(选段集合) : 增加合并片段勾选`（Renderer、四语文案、样式和 UI 契约）；`d20a03d test(选段集合) : 验证合并片段勾选`（Electron Smoke 取消选段和来源门禁）。
 - 当前边界：只支持按已有选段整体勾选，不提供单个范围裁切、波形 / 视频缩略图、拖拽排序、合并撤销或跨设备同步。
+
+## Clip Inbox 批量合并单段范围编辑
+
+- 合并预览中的每个来源选段支持编辑起点和终点，输入按源视频时长限制并保留一位小数；修改会实时反映到来源范围和合并后输出范围。
+- 提供恢复原范围操作；无效或结束时间不大于起点的输入不会写入预览状态，提交时主进程再次校验范围，避免 Renderer 输入绕过数据边界。
+- 真实 Electron Smoke 已验证 `00:10.0–00:11.0` 编辑为 `00:08.0–00:09.0`、恢复原范围、再取消该片段，最终新集合仍只写入 `[1,5]`；同时覆盖自定义名称、原集合保留、重载持久化和 Renderer 无错误，截图输出到 `/private/tmp/aivplayer-collection-batch-merge-range-edit-final-before.png` 与 `/private/tmp/aivplayer-collection-batch-merge-range-edit-final-after.png`。
+- 分阶段提交：`5b7f1b6 feat(选段集合) : 支持合并范围覆盖`（共享覆盖合同、核心筛选和 Store 回归）；`5813514 feat(选段集合) : 增加合并范围编辑`（Renderer、四语文案、控件样式和 UI 契约）；`4c86963 test(选段集合) : 验证合并范围编辑`（范围修改、恢复、取消和来源门禁）；`841b12f style(选段集合) : 调整范围预览高度`（完整显示编辑控件）。
+- 当前边界：只支持按已有选段编辑起止时间，不提供波形 / 视频缩略图、拖拽排序、单独拆分片段、合并撤销或跨设备同步。
