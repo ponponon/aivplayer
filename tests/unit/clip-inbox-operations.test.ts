@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { applyVisionCollectionTags, duplicateVisionCollectionTitle, getVisionCollectionTagPath, invertVisionClipSelections, normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTag, normalizeVisionCollectionTagColor, normalizeVisionCollectionTagFavorite, normalizeVisionCollectionTagNote, normalizeVisionCollectionTags, normalizeVisionCollectionTagsMode, renameVisionCollectionTag, renameVisionClipCollectionTitle, sortVisionClipSelections, toggleVisibleVisionClipCollectionSelection, wouldCreateVisionCollectionTagParentCycle } from '../../src/core/ai/clip-inbox-operations'
-import type { VisionClipSelection } from '../../src/shared/vision-types'
+import { applyVisionCollectionTags, duplicateVisionCollectionTitle, getVisionCollectionTagPath, invertVisionClipSelections, mergeVisionClipCollections, normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTag, normalizeVisionCollectionTagColor, normalizeVisionCollectionTagFavorite, normalizeVisionCollectionTagNote, normalizeVisionCollectionTags, normalizeVisionCollectionTagsMode, renameVisionCollectionTag, renameVisionClipCollectionTitle, sortVisionClipSelections, toggleVisibleVisionClipCollectionSelection, wouldCreateVisionCollectionTagParentCycle } from '../../src/core/ai/clip-inbox-operations'
+import type { VisionClipCollection, VisionClipSelection } from '../../src/shared/vision-types'
 
 const selection = (patch: Partial<VisionClipSelection> = {}): VisionClipSelection => ({
   sourceId: 'source-demo',
@@ -14,6 +14,19 @@ const selection = (patch: Partial<VisionClipSelection> = {}): VisionClipSelectio
   endSeconds: 3,
   evidenceIds: ['cue-1'],
   evidenceTypes: ['subtitle'],
+  ...patch
+})
+
+const collection = (id: string, patch: Partial<VisionClipCollection> = {}): VisionClipCollection => ({
+  id,
+  title: id,
+  tags: [],
+  sortMode: 'source-time',
+  isFavorite: true,
+  isArchived: true,
+  createdAt: 1,
+  updatedAt: 2,
+  selections: [selection()],
   ...patch
 })
 
@@ -79,6 +92,32 @@ describe('clip inbox operations', () => {
     ]
     expect(sortVisionClipSelections(selections, 'duration-desc').map((item) => item.fileName)).toEqual(['a.mp4', 'b.mp4', 'z.mp4'])
     expect(sortVisionClipSelections(selections, 'file-name').map((item) => item.fileName)).toEqual(['a.mp4', 'b.mp4', 'z.mp4'])
+  })
+
+  it('merges distinct collections into a new portable input without mutating originals', () => {
+    const first = collection('first', { title: '第一组', tags: ['海边'], selections: [selection({ evidenceIds: ['cue-1'], text: '第一段', startSeconds: 1, endSeconds: 3 })] })
+    const second = collection('second', {
+      title: '第二组',
+      tags: ['精选', '海边'],
+      selections: [
+        selection({ evidenceIds: ['cue-2'], text: '第二段', startSeconds: 3.4, endSeconds: 5 }),
+        selection({ sourceId: 'source-demo', videoPath: '/videos/other.mp4', fileName: 'other.mp4', fingerprint: '/videos/other.mp4:12', startSeconds: 2, endSeconds: 4, evidenceIds: ['other-1'] })
+      ]
+    })
+
+    const merged = mergeVisionClipCollections([first, second, first], '  合并片段  ', 'duration-desc')
+
+    expect(merged).toMatchObject({ title: '合并片段', tags: ['海边', '精选'], sortMode: 'duration-desc', isFavorite: false, isArchived: false })
+    expect(merged.selections).toHaveLength(2)
+    expect(merged.selections[0]).toMatchObject({ videoPath: '/videos/demo.mp4', startSeconds: 1, endSeconds: 5, evidenceIds: ['cue-1', 'cue-2'], text: '第一段\n第二段' })
+    expect(merged.selections[1]).toMatchObject({ videoPath: '/videos/other.mp4', startSeconds: 2, endSeconds: 4 })
+    expect(first.selections[0]).toMatchObject({ startSeconds: 1, endSeconds: 3, evidenceIds: ['cue-1'] })
+  })
+
+  it('rejects an empty title or fewer than two distinct collections', () => {
+    const first = collection('first')
+    expect(() => mergeVisionClipCollections([first, first], '合并')).toThrow('至少需要两个不同的选段集合')
+    expect(() => mergeVisionClipCollections([first, collection('second')], '  ')).toThrow('合并后的选段集合名称不能为空')
   })
 
   it('inverts selected ranges into unselected ranges per source', () => {

@@ -1,12 +1,12 @@
 import { mergeVisionClipSelections, normalizeVisionTimeRange } from './vision-evidence'
-import type { VisionClipCollectionBatchTagsMode, VisionClipCollectionSortMode, VisionClipCollectionTagMetadata, VisionClipSelection } from '../../shared/vision-types'
+import type { VisionClipCollection, VisionClipCollectionBatchTagsMode, VisionClipCollectionInput, VisionClipCollectionSortMode, VisionClipCollectionTagMetadata, VisionClipSelection } from '../../shared/vision-types'
 
 const MAX_COLLECTION_TAGS = 20
 const MAX_COLLECTION_TAG_LENGTH = 40
 export const MAX_VISION_COLLECTION_TAG_NOTE_LENGTH = 240
 export const MAX_CLIP_COLLECTION_BATCH_DUPLICATES = 20
 export const MAX_CLIP_COLLECTION_RENAME_PART_LENGTH = 40
-const MAX_CLIP_COLLECTION_TITLE_LENGTH = 200
+export const MAX_CLIP_COLLECTION_TITLE_LENGTH = 200
 
 export function duplicateVisionCollectionTitle(title: string): string {
   const normalizedTitle = title.trim() || '未命名选段集合'
@@ -160,6 +160,37 @@ export function sortVisionClipSelections(selections: readonly VisionClipSelectio
 
 export function mergeVisionCollectionSelections(selections: readonly VisionClipSelection[], mergeGapSeconds = 0.5): VisionClipSelection[] {
   return mergeVisionClipSelections(selections, mergeGapSeconds)
+}
+
+/** Builds a new collection from several collections without mutating the originals. */
+export function mergeVisionClipCollections(collections: readonly VisionClipCollection[], title: unknown, sortMode: unknown = 'source-time'): VisionClipCollectionInput {
+  const uniqueCollections = [...new Map(collections.map((collection) => [collection.id, collection])).values()]
+  if (uniqueCollections.length < 2) throw new Error('至少需要两个不同的选段集合')
+  const normalizedTitle = typeof title === 'string' ? title.trim().slice(0, MAX_CLIP_COLLECTION_TITLE_LENGTH) : ''
+  if (!normalizedTitle) throw new Error('合并后的选段集合名称不能为空')
+
+  const selectionsBySource = new Map<string, VisionClipSelection[]>()
+  for (const collection of uniqueCollections) {
+    for (const selection of collection.selections) {
+      const sourceKey = `${selection.sourceId}\0${selection.videoPath}\0${selection.fingerprint}`
+      const sourceSelections = selectionsBySource.get(sourceKey) ?? []
+      sourceSelections.push(selection)
+      selectionsBySource.set(sourceKey, sourceSelections)
+    }
+  }
+  const selections = sortVisionClipSelections(
+    [...selectionsBySource.values()].flatMap((sourceSelections) => mergeVisionClipSelections(sourceSelections, 0.5)),
+    sortMode
+  )
+  if (selections.length === 0) throw new Error('选段集合至少需要一个有效选段')
+  return {
+    title: normalizedTitle,
+    tags: normalizeVisionCollectionTags(uniqueCollections.flatMap((collection) => collection.tags)),
+    sortMode: normalizeVisionCollectionSortMode(sortMode),
+    isFavorite: false,
+    isArchived: false,
+    selections
+  }
 }
 
 function selectionGroupKey(selection: VisionClipSelection): string {

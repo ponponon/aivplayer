@@ -697,6 +697,20 @@ export type VisionClipCollectionBatchDuplicateResult = {
   skippedCount: number
 }
 
+export type VisionClipCollectionBatchMergeRequest = {
+  collectionIds: string[]
+  title?: string
+  sortMode?: VisionClipCollectionSortMode
+}
+
+export type VisionClipCollectionBatchMergeResult = {
+  success: boolean
+  message: string
+  collection: VisionClipCollection | null
+  sourceIds: string[]
+  skippedCount: number
+}
+
 export type VisionSearchResult = {
   id: string
   videoPath: string
