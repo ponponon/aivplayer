@@ -86,8 +86,20 @@ async function runSmoke(): Promise<void> {
     await preview.getByText('合并后 2 个选段 · 3 个标签', { exact: true }).waitFor({ timeout: 10_000 })
     const previewSources = await preview.locator('.vision-collection-merge-preview-source').allTextContents()
     if (previewSources.length !== 2 || titles.some((title) => !previewSources.some((source) => source.includes(title))) || !previewSources.some((source) => source.includes('00:01.0–00:03.0')) || !previewSources.some((source) => source.includes('00:02.6–00:05.0')) || !previewSources.some((source) => source.includes('00:10.0–00:11.0'))) throw new Error(`Batch merge preview source ranges mismatch: ${JSON.stringify(previewSources)}`)
-    const removableSelection = preview.getByRole('checkbox', { name: '选择合并选段 00:10.0–00:11.0', exact: true })
-    await removableSelection.uncheck()
+    await preview.getByText('已选择 3 个来源选段', { exact: true }).waitFor({ timeout: 10_000 })
+    const extraStart = preview.getByRole('spinbutton', { name: '起点: 00:10.0–00:11.0', exact: true })
+    await extraStart.fill('8')
+    const extraEnd = preview.getByRole('spinbutton', { name: '终点: 00:08.0–00:11.0', exact: true })
+    await extraEnd.fill('9')
+    await preview.getByRole('checkbox', { name: '选择合并选段 00:08.0–00:09.0', exact: true }).waitFor({ timeout: 10_000 })
+    const editedOutputRanges = await preview.locator('.vision-collection-merge-preview-output-ranges span').allTextContents()
+    if (editedOutputRanges.length !== 2 || !editedOutputRanges.includes('00:01.0–00:05.0') || !editedOutputRanges.includes('00:08.0–00:09.0')) throw new Error(`Batch merge preview edited ranges mismatch: ${JSON.stringify(editedOutputRanges)}`)
+    await preview.getByRole('button', { name: '恢复原范围: 00:10.0–00:11.0', exact: true }).click()
+    await preview.getByRole('checkbox', { name: '选择合并选段 00:10.0–00:11.0', exact: true }).waitFor({ timeout: 10_000 })
+    await preview.getByRole('spinbutton', { name: '起点: 00:10.0–00:11.0', exact: true }).fill('8')
+    await preview.getByRole('spinbutton', { name: '终点: 00:08.0–00:11.0', exact: true }).fill('9')
+    await preview.getByRole('checkbox', { name: '选择合并选段 00:08.0–00:09.0', exact: true }).waitFor({ timeout: 10_000 })
+    await preview.getByRole('checkbox', { name: '选择合并选段 00:08.0–00:09.0', exact: true }).uncheck()
     await preview.getByText('已选择 2 个来源选段', { exact: true }).waitFor({ timeout: 10_000 })
     await preview.getByText('合并后 1 个选段 · 3 个标签', { exact: true }).waitFor({ timeout: 10_000 })
     const previewOutputRanges = await preview.locator('.vision-collection-merge-preview-output-ranges span').allTextContents()
@@ -110,7 +122,7 @@ async function runSmoke(): Promise<void> {
     })
     await Promise.all([mergeButton.click(), dialogPromise])
     const confirmationMessage = await dialogPromise
-    if (!confirmationMessage.includes('2') || !confirmationMessage.includes(mergedTitle) || !confirmationMessage.includes('原集合会保留')) {
+    if (!confirmationMessage.includes('2') || !confirmationMessage.includes('2 个选段') || !confirmationMessage.includes(mergedTitle) || !confirmationMessage.includes('原集合会保留')) {
       throw new Error(`Batch merge confirmation mismatch: ${confirmationMessage}`)
     }
 
