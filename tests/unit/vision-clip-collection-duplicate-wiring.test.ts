@@ -15,5 +15,12 @@ describe('vision clip collection duplicate wiring', () => {
     expect(desktop).toContain('getClipInboxStore().duplicateCollection(collectionId.trim())')
     expect(preload).toContain('duplicateVisionClipCollection')
     expect(preload).toContain('IPC_CHANNELS.VISION_CLIP_COLLECTION_DUPLICATE')
+
+    const panel = readFileSync(join(projectRoot, 'src/renderer/src/app/vision-panel.tsx'), 'utf8')
+    const duplicateStart = panel.indexOf('const duplicateCollection = async')
+    const duplicateEnd = panel.indexOf('  const toggleCollectionSelection', duplicateStart)
+    expect(duplicateStart).toBeGreaterThanOrEqual(0)
+    expect(duplicateEnd).toBeGreaterThan(duplicateStart)
+    expect(panel.slice(duplicateStart, duplicateEnd)).toContain('refreshCollectionOperation()')
   })
 })

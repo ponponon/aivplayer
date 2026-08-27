@@ -1402,6 +1402,7 @@ export function VisionPanel(): React.ReactElement {
         return
       }
       setCollections((current) => [duplicate, ...current.filter((item) => item.id !== duplicate.id)])
+      refreshCollectionOperation()
       setCollectionTransferStatus(app.copy.vision.collectionDuplicated(duplicate.title))
     } catch (reason: unknown) {
       setError(reason instanceof Error ? reason.message : String(reason))
