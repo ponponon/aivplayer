@@ -661,7 +661,7 @@ export type VisionClipCollectionTagRedoResult = {
   metadata: VisionClipCollectionTagMetadata[]
 }
 
-export type VisionClipCollectionOperationType = 'flags'
+export type VisionClipCollectionOperationType = 'flags' | 'merge'
 
 export type VisionClipCollectionOperationHistory = {
   id: string
@@ -674,6 +674,7 @@ export type VisionClipCollectionOperationUndoResult = {
   message: string
   operation: VisionClipCollectionOperationHistory | null
   collections: VisionClipCollection[]
+  deletedCollectionIds?: string[]
 }
 
 export type VisionClipCollectionOperationRedoResult = {
@@ -681,6 +682,7 @@ export type VisionClipCollectionOperationRedoResult = {
   message: string
   operation: VisionClipCollectionOperationHistory | null
   collections: VisionClipCollection[]
+  createdCollectionIds?: string[]
 }
 
 export type VisionClipCollectionBatchExportRequest = {

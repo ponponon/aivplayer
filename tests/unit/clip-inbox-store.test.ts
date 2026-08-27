@@ -145,6 +145,45 @@ describe('clip inbox store', () => {
     expect(store.getLastCollectionRedoOperation()).toBeNull()
   })
 
+  it('records batch merges and restores only the generated collection through undo and redo', () => {
+    const first = store.saveCollection({ title: '合并源一', tags: ['人物'], selections: [selection({ startSeconds: 1, endSeconds: 3 })] })
+    const second = store.saveCollection({ title: '合并源二', tags: ['采访'], selections: [selection({ startSeconds: 4, endSeconds: 6 })] })
+    const result = store.mergeCollections([first.id, second.id], '合并结果', 'source-time')
+
+    expect(result.collection).toMatchObject({ title: '合并结果', tags: ['人物', '采访'] })
+    expect(result.collection.selections).toEqual([
+      expect.objectContaining({ startSeconds: 1, endSeconds: 3 }),
+      expect.objectContaining({ startSeconds: 4, endSeconds: 6 })
+    ])
+    expect(store.getLastCollectionOperation()).toMatchObject({ type: 'merge' })
+
+    const undone = store.undoLastCollectionOperation()
+    expect(undone).toMatchObject({ success: true, operation: expect.objectContaining({ type: 'merge' }), deletedCollectionIds: [result.collection.id] })
+    expect(store.getCollection(result.collection.id)).toBeNull()
+    expect(store.getCollection(first.id)).toEqual(first)
+    expect(store.getCollection(second.id)).toEqual(second)
+    expect(store.getLastCollectionRedoOperation()).toMatchObject({ type: 'merge' })
+
+    store.close()
+    store = new ClipInboxStore(tempDirectory)
+    const redone = store.redoLastCollectionOperation()
+    expect(redone).toMatchObject({ success: true, operation: expect.objectContaining({ type: 'merge' }), createdCollectionIds: [result.collection.id] })
+    expect(store.getCollection(result.collection.id)).toEqual(result.collection)
+    expect(store.getLastCollectionRedoOperation()).toBeNull()
+  })
+
+  it('refuses to undo a merge after the generated collection was edited', () => {
+    const first = store.saveCollection({ title: '编辑源一', selections: [selection({ startSeconds: 1, endSeconds: 2 })] })
+    const second = store.saveCollection({ title: '编辑源二', selections: [selection({ startSeconds: 3, endSeconds: 4 })] })
+    const result = store.mergeCollections([first.id, second.id], '待编辑合并', 'source-time')
+    const edited = store.saveCollection({ id: result.collection.id, title: '用户编辑后的合并', selections: result.collection.selections })
+
+    const undone = store.undoLastCollectionOperation()
+    expect(undone).toMatchObject({ success: false, operation: null, collections: [] })
+    expect(store.getCollection(result.collection.id)).toEqual(edited)
+    expect(store.getLastCollectionOperation()).toMatchObject({ type: 'merge' })
+  })
+
   it('deletes a collection and rejects empty collections', () => {
     expect(() => store.saveCollection({ title: '空集合', selections: [] })).toThrow('至少需要一个有效选段')
     const saved = store.saveCollection({ title: '待删除', selections: [selection()] })
