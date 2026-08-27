@@ -195,6 +195,21 @@ function downloadVisionClipCollectionTagOperationHistory(entries: readonly Visio
   return filteredEntries.length
 }
 
+async function loadAllVisionClipCollectionTagOperationHistory(filter: VisionClipCollectionTagOperationHistoryFilter): Promise<VisionClipCollectionTagOperationHistoryEntry[]> {
+  const entries: VisionClipCollectionTagOperationHistoryEntry[] = []
+  let page = await window.aiv.listVisionClipCollectionTagOperationHistoryPage({ offset: 0, limit: VISION_CLIP_COLLECTION_TAG_OPERATION_HISTORY_PAGE_SIZE, filter })
+  let pageCount = 0
+  while (true) {
+    entries.push(...page.entries)
+    pageCount += 1
+    if (!page.hasMore || page.entries.length === 0) return entries
+    if (pageCount >= 100) throw new Error('标签历史导出分页超过安全上限')
+    const nextOffset = page.offset + page.entries.length
+    if (nextOffset <= page.offset) throw new Error('标签历史导出分页位置无效')
+    page = await window.aiv.listVisionClipCollectionTagOperationHistoryPage({ offset: nextOffset, limit: VISION_CLIP_COLLECTION_TAG_OPERATION_HISTORY_PAGE_SIZE, filter })
+  }
+}
+
 function formatDuration(milliseconds: number): string {
   if (milliseconds < 1000) return `${Math.max(1, Math.round(milliseconds))}ms`
   const seconds = milliseconds / 1000
@@ -308,6 +323,7 @@ export function VisionPanel(): React.ReactElement {
   const [isSavingCollectionTagMetadata, setIsSavingCollectionTagMetadata] = useState(false)
   const [isTransferringCollectionTagMetadata, setIsTransferringCollectionTagMetadata] = useState(false)
   const [collectionTagTransferStatus, setCollectionTagTransferStatus] = useState<string | null>(null)
+  const [isExportingCollectionTagHistory, setIsExportingCollectionTagHistory] = useState(false)
   const [collectionTagImportPreview, setCollectionTagImportPreview] = useState<VisionClipCollectionTagMetadataImportPreviewResult | null>(null)
   const [collectionTagImportDecisions, setCollectionTagImportDecisions] = useState<Record<string, VisionClipCollectionTagMetadataImportDecision>>({})
   const [lastCollectionTagOperation, setLastCollectionTagOperation] = useState<VisionClipCollectionTagOperationHistory | null>(null)
@@ -408,7 +424,7 @@ export function VisionPanel(): React.ReactElement {
   const renameSuffix = normalizeVisionClipCollectionRenamePart(collectionRenameSuffix)
   const hasRenameRule = Boolean(renamePrefix || renameSuffix)
   const renamePreviewCollections = selectedCollectionsForRename.map((collection) => ({ ...collection, title: renameVisionClipCollectionTitle(collection.title, renamePrefix, renameSuffix) }))
-  const isCollectionBatchBusy = isDuplicatingCollections || isExportingCollections || isDeletingCollections || isRenamingCollections || isUpdatingCollectionTags || isUpdatingCollectionFlags || isCleaningCollectionTag || isRenamingCollectionTag || isSavingCollectionTagMetadata || isTransferringCollectionTagMetadata || isUndoingCollectionTagOperation || isRedoingCollectionTagOperation || isUndoingCollectionOperation || isRedoingCollectionOperation || isSavingCollectionTitle || isSavingCollectionTags || editingCollectionId !== null || editingCollectionTagsId !== null || duplicatingCollectionId !== null || updatingCollectionFlagId !== null
+  const isCollectionBatchBusy = isDuplicatingCollections || isExportingCollections || isDeletingCollections || isRenamingCollections || isUpdatingCollectionTags || isUpdatingCollectionFlags || isCleaningCollectionTag || isRenamingCollectionTag || isSavingCollectionTagMetadata || isTransferringCollectionTagMetadata || isExportingCollectionTagHistory || isUndoingCollectionTagOperation || isRedoingCollectionTagOperation || isUndoingCollectionOperation || isRedoingCollectionOperation || isSavingCollectionTitle || isSavingCollectionTags || editingCollectionId !== null || editingCollectionTagsId !== null || duplicatingCollectionId !== null || updatingCollectionFlagId !== null
   const collectionTagImportPreviewItems = collectionTagImportPreview?.preview ?? []
   const collectionTagImportConflicts = collectionTagImportPreviewItems.filter((item) => item.state === 'conflict')
   const savedCollectionFilterImportItems = savedCollectionFilterImportPreview ?? []
@@ -1734,8 +1750,12 @@ export function VisionPanel(): React.ReactElement {
   const exportCollectionTagOperationHistory = (): void => {
     if (isCollectionBatchBusy || isCollectionTagHistoryBusy || visibleCollectionTagOperationHistory.length === 0) return
     setError(null)
-    const exportedCount = downloadVisionClipCollectionTagOperationHistory(collectionTagOperationHistory, collectionTagHistoryFilter)
-    setCollectionTagTransferStatus(app.copy.vision.collectionTagManagerHistoryExported(exportedCount))
+    setIsExportingCollectionTagHistory(true)
+    setCollectionTagTransferStatus(app.copy.vision.collectionTagManagerHistoryExporting)
+    void loadAllVisionClipCollectionTagOperationHistory(collectionTagHistoryFilter).then((entries) => {
+      const exportedCount = downloadVisionClipCollectionTagOperationHistory(entries, collectionTagHistoryFilter)
+      setCollectionTagTransferStatus(app.copy.vision.collectionTagManagerHistoryExported(exportedCount))
+    }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setIsExportingCollectionTagHistory(false))
   }
 
   const undoCollectionTagOperation = (): void => {

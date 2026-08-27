@@ -114,6 +114,8 @@ describe('vision clip collection tag manager UI wiring', () => {
     expect(panel).toContain('collectionTagManagerHistoryFilterLabel')
     expect(panel).toContain('collectionTagManagerHistoryExport')
     expect(panel).toContain('collectionTagManagerHistoryExported')
+    expect(panel).toContain('loadAllVisionClipCollectionTagOperationHistory')
+    expect(panel).toContain('collectionTagManagerHistoryExporting')
     expect(panel).toContain('listVisionClipCollectionTagOperationHistoryPage')
     expect(panel).toContain('getVisionClipCollectionTagOperationHistoryDetail')
     expect(panel).toContain('collectionTagHistoryTotal')
