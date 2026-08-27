@@ -742,6 +742,25 @@
   padding: 7px 9px;
 }
 
+.vision-collection-batch-merge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 9px;
+}
+
+.vision-collection-batch-merge > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.vision-collection-batch-merge small {
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
 .vision-collection-status-summary {
   display: flex;
   align-items: center;

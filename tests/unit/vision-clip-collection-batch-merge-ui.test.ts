@@ -1,0 +1,22 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { describe, expect, it } from 'vitest'
+
+const projectRoot = process.cwd()
+
+describe('vision clip collection batch merge UI wiring', () => {
+  it('exposes a guarded action that keeps the source collections', () => {
+    const panel = readFileSync(join(projectRoot, 'src/renderer/src/app/vision-panel.tsx'), 'utf8')
+    const styles = readFileSync(join(projectRoot, 'src/renderer/src/styles/player/vision-library-results.css'), 'utf8')
+
+    expect(panel).toContain('isMergingCollections')
+    expect(panel).toContain('mergeSelectedCollections')
+    expect(panel).toContain('selectedCollectionIds.size < 2')
+    expect(panel).toContain('collectionsMergeConfirm')
+    expect(panel).toContain('window.aiv.mergeVisionClipCollections({ collectionIds')
+    expect(panel).toContain('collectionMergeDefaultTitle')
+    expect(panel).toContain('collectionMergeDescription')
+    expect(panel).toContain('collectionsMerged')
+    expect(styles).toContain('.vision-collection-batch-merge')
+  })
+})

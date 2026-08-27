@@ -296,6 +296,7 @@ export function VisionPanel(): React.ReactElement {
   const [repairingCollectionId, setRepairingCollectionId] = useState<string | null>(null)
   const [duplicatingCollectionId, setDuplicatingCollectionId] = useState<string | null>(null)
   const [isDuplicatingCollections, setIsDuplicatingCollections] = useState(false)
+  const [isMergingCollections, setIsMergingCollections] = useState(false)
   const [isExportingCollections, setIsExportingCollections] = useState(false)
   const [isDeletingCollections, setIsDeletingCollections] = useState(false)
   const [isUpdatingCollectionFlags, setIsUpdatingCollectionFlags] = useState(false)
@@ -425,7 +426,7 @@ export function VisionPanel(): React.ReactElement {
   const renameSuffix = normalizeVisionClipCollectionRenamePart(collectionRenameSuffix)
   const hasRenameRule = Boolean(renamePrefix || renameSuffix)
   const renamePreviewCollections = selectedCollectionsForRename.map((collection) => ({ ...collection, title: renameVisionClipCollectionTitle(collection.title, renamePrefix, renameSuffix) }))
-  const isCollectionBatchBusy = isDuplicatingCollections || isExportingCollections || isDeletingCollections || isRenamingCollections || isUpdatingCollectionTags || isUpdatingCollectionFlags || isCleaningCollectionTag || isRenamingCollectionTag || isSavingCollectionTagMetadata || isTransferringCollectionTagMetadata || isExportingCollectionTagHistory || isUndoingCollectionTagOperation || isRedoingCollectionTagOperation || isUndoingCollectionOperation || isRedoingCollectionOperation || isSavingCollectionTitle || isSavingCollectionTags || editingCollectionId !== null || editingCollectionTagsId !== null || duplicatingCollectionId !== null || updatingCollectionFlagId !== null
+  const isCollectionBatchBusy = isDuplicatingCollections || isMergingCollections || isExportingCollections || isDeletingCollections || isRenamingCollections || isUpdatingCollectionTags || isUpdatingCollectionFlags || isCleaningCollectionTag || isRenamingCollectionTag || isSavingCollectionTagMetadata || isTransferringCollectionTagMetadata || isExportingCollectionTagHistory || isUndoingCollectionTagOperation || isRedoingCollectionTagOperation || isUndoingCollectionOperation || isRedoingCollectionOperation || isSavingCollectionTitle || isSavingCollectionTags || editingCollectionId !== null || editingCollectionTagsId !== null || duplicatingCollectionId !== null || updatingCollectionFlagId !== null
   const collectionTagImportPreviewItems = collectionTagImportPreview?.preview ?? []
   const collectionTagImportConflicts = collectionTagImportPreviewItems.filter((item) => item.state === 'conflict')
   const savedCollectionFilterImportItems = savedCollectionFilterImportPreview ?? []
@@ -1472,6 +1473,31 @@ export function VisionPanel(): React.ReactElement {
     }
   }
 
+  const mergeSelectedCollections = async (): Promise<void> => {
+    if (isCollectionBatchBusy || selectedCollectionsForRename.length < 2) {
+      if (!isCollectionBatchBusy && selectedCollectionsForRename.length < 2) setError(app.copy.vision.collectionMergeSelectionRequired)
+      return
+    }
+    const collectionIds = selectedCollectionsForRename.map((collection) => collection.id)
+    if (!window.confirm(app.copy.vision.collectionsMergeConfirm(collectionIds.length))) return
+    setIsMergingCollections(true)
+    setError(null)
+    try {
+      const result = await window.aiv.mergeVisionClipCollections({ collectionIds, title: app.copy.vision.collectionMergeDefaultTitle, sortMode: 'source-time' })
+      if (!result.success || !result.collection) {
+        setError(result.message)
+        return
+      }
+      setCollections((current) => [result.collection as VisionClipCollection, ...current.filter((item) => item.id !== result.collection?.id)])
+      setSelectedCollectionIds(new Set())
+      setCollectionTransferStatus(app.copy.vision.collectionsMerged(result.sourceIds.length, result.collection.selections.length, result.skippedCount))
+    } catch (reason: unknown) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    } finally {
+      setIsMergingCollections(false)
+    }
+  }
+
   const setSelectedCollectionFlag = async (flag: 'isFavorite' | 'isArchived', enabled: boolean): Promise<void> => {
     if (isCollectionBatchBusy || selectedCollectionsForRename.length === 0) return
     setIsUpdatingCollectionFlags(true)
@@ -1930,7 +1956,10 @@ export function VisionPanel(): React.ReactElement {
     )
     : null
 
+  const collectionBatchMergeAction = selectedCollectionIds.size > 0 ? <section className="vision-card vision-collection-batch-merge"><div><strong>{app.copy.vision.mergeSelectedCollections}</strong><small>{app.copy.vision.collectionMergeDescription}</small></div><button className="vision-secondary-action" type="button" onClick={() => void mergeSelectedCollections()} disabled={isCollectionBatchBusy || selectedCollectionIds.size < 2}>{app.copy.vision.mergeSelectedCollections}</button></section> : null
+
   return <div className="vision-panel">
+    {collectionBatchMergeAction}
     <section className="vision-card vision-intro">
       <div className="vision-heading"><div><span className="panel-kicker">{app.copy.panels.visionKicker}</span><h2>{app.copy.panels.visionTitle}</h2></div><ScanSearch size={18} /></div>
       <p>{app.copy.vision.description}</p>
