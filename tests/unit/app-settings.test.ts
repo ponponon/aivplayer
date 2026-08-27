@@ -184,6 +184,39 @@ describe('app settings', () => {
     expect(settings.asr.translationGlossary).toBe('Technology=技术')
   })
 
+  it('decrypts a legacy encrypted custom translation key while migrating it into a provider profile', async () => {
+    const secretCodec = {
+      encryptString: (value: string) => Buffer.from(`cipher:${value}`, 'utf8').toString('base64'),
+      decryptString: (value: string) => Buffer.from(value, 'base64').toString('utf8').replace(/^cipher:/, '')
+    }
+    const legacyEncrypted = `safe:${secretCodec.encryptString('legacy-custom-key')}`
+    await writeFile(
+      join(tempDirectory, 'app-settings.json'),
+      JSON.stringify({
+        schemaVersion: 29,
+        asr: {
+          translationServiceMode: 'custom',
+          translationBaseUrl: 'https://example.test/v1/chat/completions',
+          translationModel: 'custom-model',
+          translationApiKey: legacyEncrypted
+        }
+      })
+    )
+
+    const settings = await readAppSettings(tempDirectory, null, secretCodec)
+    const migrated = settings.ai.providers.find((provider) => provider.kind === 'custom')
+
+    expect(migrated?.apiKey).toBe('legacy-custom-key')
+
+    const persisted = await writeAppSettings(tempDirectory, settings, null, secretCodec)
+    const customAfterWrite = persisted.ai.providers.find((provider) => provider.kind === 'custom')
+    expect(customAfterWrite?.apiKey).toBe('legacy-custom-key')
+
+    const rawContent = await readFile(join(tempDirectory, 'app-settings.json'), 'utf8')
+    expect(rawContent).toContain(`safe:${secretCodec.encryptString('legacy-custom-key')}`)
+    expect(rawContent).not.toContain('safe:safe:')
+  })
+
   it('migrates legacy managed translation settings and falls back for invalid active ids', async () => {
     await writeFile(
       join(tempDirectory, 'app-settings.json'),

@@ -777,6 +777,21 @@ export async function readAppSettings(
       }
     }
 
+    const legacyAsr = parsed.asr as Record<string, unknown> | undefined
+    const legacyTranslationApiKey = legacyAsr?.translationApiKey
+    const hasNoProviders = !Array.isArray(parsed.ai?.providers) || parsed.ai.providers.length === 0
+    if (
+      hasNoProviders &&
+      typeof legacyTranslationApiKey === 'string' &&
+      legacyTranslationApiKey.startsWith(APP_SETTINGS_SECRET_PREFIX)
+    ) {
+      const codec = secretCodec ?? (await resolveAppSettingsSecretCodec())
+      parsed.asr = {
+        ...parsed.asr,
+        translationApiKey: decodeSecretValue(legacyTranslationApiKey, codec)
+      } as AppSettings['asr']
+    }
+
     if (parsed.ai?.providers && Array.isArray(parsed.ai.providers)) {
       const needsCodec = parsed.ai.providers.some(
         (provider) => typeof provider?.apiKey === 'string' && provider.apiKey.startsWith(APP_SETTINGS_SECRET_PREFIX)
