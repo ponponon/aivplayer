@@ -844,22 +844,85 @@
 }
 
 .vision-collection-merge-preview-selection {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
+  display: grid;
+  min-width: min(100%, 220px);
+  flex: 1 1 100%;
+  gap: 4px;
   padding: 1px 4px;
   color: var(--text-secondary);
   background: rgba(var(--overlay-rgb), 0.08);
   border-radius: 3px;
-  cursor: pointer;
   font-size: 9px;
 }
 
-.vision-collection-merge-preview-selection input {
+.vision-collection-merge-preview-selection-toggle {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+}
+
+.vision-collection-merge-preview-selection-toggle input {
   width: 11px;
   height: 11px;
   margin: 0;
   accent-color: var(--accent);
+}
+
+.vision-collection-merge-preview-selection-toggle span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.vision-collection-merge-preview-range-controls {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.vision-collection-merge-preview-range-controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--text-muted);
+  font-size: 8px;
+}
+
+.vision-collection-merge-preview-range-controls input {
+  width: 52px;
+  min-height: 20px;
+  padding: 0 3px;
+  color: var(--text-primary);
+  background: rgba(var(--overlay-rgb), 0.08);
+  border: 1px solid var(--border-soft);
+  border-radius: 3px;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  outline: 0;
+}
+
+.vision-collection-merge-preview-range-controls input:focus {
+  border-color: var(--accent);
+}
+
+.vision-collection-merge-preview-reset {
+  min-height: 20px;
+  padding: 2px 5px;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border-soft);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 8px;
+}
+
+.vision-collection-merge-preview-reset:hover {
+  color: var(--text-primary);
+  border-color: var(--accent);
 }
 
 .vision-collection-merge-preview-source-ranges > span,

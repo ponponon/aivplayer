@@ -56,6 +56,11 @@ type VisionSearchSnapshot = {
   selectedIds: Set<string>
 }
 
+type CollectionMergeRangeOverride = {
+  startSeconds: number
+  endSeconds: number
+}
+
 function readVisionSearchPreferences(): VisionSearchPreferences {
   if (typeof window === 'undefined') return createDefaultVisionSearchPreferences()
   try {
@@ -291,6 +296,7 @@ export function VisionPanel(): React.ReactElement {
   const [hasLoadedCollections, setHasLoadedCollections] = useState(false)
   const [selectedCollectionIds, setSelectedCollectionIds] = useState<Set<string>>(new Set())
   const [excludedCollectionMergeSelectionKeys, setExcludedCollectionMergeSelectionKeys] = useState<Set<string>>(new Set())
+  const [collectionMergeRangeOverrides, setCollectionMergeRangeOverrides] = useState<Record<string, CollectionMergeRangeOverride>>({})
   const [collectionFilterQuery, setCollectionFilterQuery] = useState(() => readVisionClipCollectionFilterPreferences().query)
   const [collectionFilterTags, setCollectionFilterTags] = useState<string[]>(() => readVisionClipCollectionFilterPreferences().tags)
   const [collectionFilterExcludedTags, setCollectionFilterExcludedTags] = useState<string[]>(() => readVisionClipCollectionFilterPreferences().excludedTags)
@@ -447,10 +453,19 @@ export function VisionPanel(): React.ReactElement {
   const hasRenameRule = Boolean(renamePrefix || renameSuffix)
   const renamePreviewCollections = selectedCollectionsForRename.map((collection) => ({ ...collection, title: renameVisionClipCollectionTitle(collection.title, renamePrefix, renameSuffix) }))
   const collectionMergeTitleValue = collectionMergeTitle.trim() || app.copy.vision.collectionMergeDefaultTitle
-  const collectionMergeSelectedSelections: VisionClipCollectionMergeSelection[] = selectedCollectionsForRename.map((collection) => ({
-    collectionId: collection.id,
-    selectionKeys: collection.selections.filter((selection) => !excludedCollectionMergeSelectionKeys.has(getCollectionMergeSelectionStateKey(collection.id, selection))).map((selection) => getVisionClipSelectionMergeKey(selection))
-  }))
+  const collectionMergeSelectedSelections: VisionClipCollectionMergeSelection[] = selectedCollectionsForRename.map((collection) => {
+    const selectedSelections = collection.selections.filter((selection) => !excludedCollectionMergeSelectionKeys.has(getCollectionMergeSelectionStateKey(collection.id, selection)))
+    const rangeOverrides = selectedSelections.map((selection) => {
+      const selectionKey = getVisionClipSelectionMergeKey(selection)
+      const rangeOverride = collectionMergeRangeOverrides[getCollectionMergeSelectionStateKey(collection.id, selection)]
+      return rangeOverride ? { selectionKey, ...rangeOverride } : null
+    }).filter((override): override is { selectionKey: string; startSeconds: number; endSeconds: number } => override !== null)
+    return {
+      collectionId: collection.id,
+      selectionKeys: selectedSelections.map((selection) => getVisionClipSelectionMergeKey(selection)),
+      ...(rangeOverrides.length > 0 ? { rangeOverrides } : {})
+    }
+  })
   const collectionMergeSelectionCount = collectionMergeSelectedSelections.reduce((count, item) => count + item.selectionKeys.length, 0)
   const collectionMergePreview = selectedCollectionsForRename.length >= 2
     ? (() => {
@@ -1396,6 +1411,36 @@ export function VisionPanel(): React.ReactElement {
     })
   }
 
+  const updateCollectionMergeRange = (collectionId: string, selection: VisionClipSelection, field: keyof CollectionMergeRangeOverride, value: string): void => {
+    if (isCollectionBatchBusy) return
+    const numericValue = Number(value)
+    if (!Number.isFinite(numericValue)) return
+    const stateKey = getCollectionMergeSelectionStateKey(collectionId, selection)
+    setCollectionMergeRangeOverrides((current) => {
+      const currentRange = current[stateKey] ?? { startSeconds: selection.startSeconds, endSeconds: selection.endSeconds }
+      const candidate = { ...currentRange, [field]: numericValue }
+      const normalized = normalizeVisionTimeRange(candidate, selection.durationSeconds)
+      if (!normalized) return current
+      if (normalized.startSeconds === selection.startSeconds && normalized.endSeconds === selection.endSeconds) {
+        const next = { ...current }
+        delete next[stateKey]
+        return next
+      }
+      return { ...current, [stateKey]: normalized }
+    })
+  }
+
+  const resetCollectionMergeRange = (collectionId: string, selection: VisionClipSelection): void => {
+    if (isCollectionBatchBusy) return
+    const stateKey = getCollectionMergeSelectionStateKey(collectionId, selection)
+    setCollectionMergeRangeOverrides((current) => {
+      if (!current[stateKey]) return current
+      const next = { ...current }
+      delete next[stateKey]
+      return next
+    })
+  }
+
   const applySavedCollectionFilter = (savedFilter: VisionClipCollectionSavedFilter): void => {
     setCollectionFilterQuery(savedFilter.query)
     const excludedTags = mergeVisionClipCollectionFilterTags(savedFilter.excludedTags, availableCollectionFilterTags)
@@ -1540,6 +1585,7 @@ export function VisionPanel(): React.ReactElement {
       setSelectedCollectionIds(new Set())
       setCollectionMergeTitle('')
       setExcludedCollectionMergeSelectionKeys(new Set())
+      setCollectionMergeRangeOverrides({})
       setCollectionTransferStatus(app.copy.vision.collectionsMerged(result.sourceIds.length, result.collection.selections.length, result.skippedCount))
     } catch (reason: unknown) {
       setError(reason instanceof Error ? reason.message : String(reason))
@@ -2017,7 +2063,17 @@ export function VisionPanel(): React.ReactElement {
           <small>{collectionMergePreview ? app.copy.vision.collectionMergePreviewSummary(collectionMergePreview.collection.selections.length, collectionMergePreviewTags.length) : app.copy.vision.collectionMergePreviewUnavailable}</small>
           <small>{app.copy.vision.collectionMergePreviewSelected(collectionMergeSelectionCount)}</small>
           <div className="vision-collection-merge-preview-sources" role="list" aria-label={app.copy.vision.collectionMergePreviewSources(collectionMergePreviewSources.length)}>
-            {collectionMergePreviewSources.map((source) => <div className="vision-collection-merge-preview-source" key={source.collectionId} role="listitem"><strong>{source.title}</strong><div className="vision-collection-merge-preview-source-ranges">{source.selections.length > 0 ? source.selections.map((selection, index) => { const range = formatClipPreviewRange(selection); const selectionStateKey = getCollectionMergeSelectionStateKey(source.collectionId, selection); return <label className="vision-collection-merge-preview-selection" key={`${selectionStateKey}-${index}`}><input type="checkbox" checked={!excludedCollectionMergeSelectionKeys.has(selectionStateKey)} onChange={() => toggleCollectionMergeSelection(source.collectionId, selection)} disabled={isCollectionBatchBusy} aria-label={app.copy.vision.collectionMergePreviewSelectionAriaLabel(range)} /><span>{range}</span></label> }) : <small>{app.copy.vision.collectionMergePreviewNoSelections}</small>}</div></div>)}
+            {collectionMergePreviewSources.map((source) => <div className="vision-collection-merge-preview-source" key={source.collectionId} role="listitem"><strong>{source.title}</strong><div className="vision-collection-merge-preview-source-ranges">{source.selections.length > 0 ? source.selections.map((selection, index) => {
+              const selectionStateKey = getCollectionMergeSelectionStateKey(source.collectionId, selection)
+              const rangeOverride = collectionMergeRangeOverrides[selectionStateKey]
+              const displaySelection = rangeOverride ? { ...selection, ...rangeOverride } : selection
+              const range = formatClipPreviewRange(displaySelection)
+              const originalRange = formatClipPreviewRange(selection)
+              return <div className="vision-collection-merge-preview-selection" key={`${selectionStateKey}-${index}`}>
+                <label className="vision-collection-merge-preview-selection-toggle"><input type="checkbox" checked={!excludedCollectionMergeSelectionKeys.has(selectionStateKey)} onChange={() => toggleCollectionMergeSelection(source.collectionId, selection)} disabled={isCollectionBatchBusy} aria-label={app.copy.vision.collectionMergePreviewSelectionAriaLabel(range)} /><span>{range}</span></label>
+                <div className="vision-collection-merge-preview-range-controls"><label><span>{app.copy.vision.collectionMergePreviewStart}</span><input type="number" min={0} max={selection.durationSeconds} step={0.1} value={displaySelection.startSeconds} onChange={(event) => updateCollectionMergeRange(source.collectionId, selection, 'startSeconds', event.currentTarget.value)} disabled={isCollectionBatchBusy} aria-label={`${app.copy.vision.collectionMergePreviewStart}: ${range}`} /></label><label><span>{app.copy.vision.collectionMergePreviewEnd}</span><input type="number" min={0} max={selection.durationSeconds} step={0.1} value={displaySelection.endSeconds} onChange={(event) => updateCollectionMergeRange(source.collectionId, selection, 'endSeconds', event.currentTarget.value)} disabled={isCollectionBatchBusy} aria-label={`${app.copy.vision.collectionMergePreviewEnd}: ${range}`} /></label>{rangeOverride ? <button className="vision-collection-merge-preview-reset" type="button" onClick={() => resetCollectionMergeRange(source.collectionId, selection)} disabled={isCollectionBatchBusy} aria-label={`${app.copy.vision.collectionMergePreviewResetRange}: ${originalRange}`}>{app.copy.vision.collectionMergePreviewResetRange}</button> : null}</div>
+              </div>
+            }) : <small>{app.copy.vision.collectionMergePreviewNoSelections}</small>}</div></div>)}
           </div>
           {collectionMergePreview ? <>
             <div className="vision-collection-merge-preview-output" role="group" aria-label={app.copy.vision.collectionMergePreviewOutputTitle}><strong>{app.copy.vision.collectionMergePreviewOutputTitle}</strong><div className="vision-collection-merge-preview-output-ranges" role="list" aria-label={app.copy.vision.collectionMergePreviewOutputTitle}>{collectionMergePreview.collection.selections.map((selection, index) => <span key={`${selection.sourceId}-${selection.startSeconds}-${index}`} role="listitem">{formatClipPreviewRange(selection)}</span>)}</div></div>
