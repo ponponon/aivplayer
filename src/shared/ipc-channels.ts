@@ -151,6 +151,8 @@ export const IPC_CHANNELS = {
   VISION_CLIP_COLLECTION_TAG_METADATA_IMPORT_APPLY: 'vision:clip-collection-tag-metadata-import-apply',
   VISION_CLIP_COLLECTION_TAG_OPERATION_HISTORY: 'vision:clip-collection-tag-operation-history',
   VISION_CLIP_COLLECTION_TAG_OPERATION_HISTORY_LIST: 'vision:clip-collection-tag-operation-history-list',
+  VISION_CLIP_COLLECTION_TAG_OPERATION_HISTORY_PAGE: 'vision:clip-collection-tag-operation-history-page',
+  VISION_CLIP_COLLECTION_TAG_OPERATION_HISTORY_DETAIL: 'vision:clip-collection-tag-operation-history-detail',
   VISION_CLIP_COLLECTION_TAG_OPERATION_REDO_HISTORY: 'vision:clip-collection-tag-operation-redo-history',
   VISION_CLIP_COLLECTION_TAG_OPERATION_UNDO: 'vision:clip-collection-tag-operation-undo',
   VISION_CLIP_COLLECTION_TAG_OPERATION_REDO: 'vision:clip-collection-tag-operation-redo',
