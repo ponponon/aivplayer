@@ -593,6 +593,15 @@ export type VisionClipCollectionTagOperationHistoryEntry = VisionClipCollectionT
   undoneAt: number | null
 }
 
+export type VisionClipCollectionTagOperationHistoryFilter = 'all' | VisionClipCollectionTagOperationType
+
+export type VisionClipCollectionTagOperationHistoryExportManifest = {
+  schemaVersion: 1
+  filter: VisionClipCollectionTagOperationHistoryFilter
+  exportedAt: number
+  entries: VisionClipCollectionTagOperationHistoryEntry[]
+}
+
 export type VisionClipCollectionTagUndoResult = {
   success: boolean
   message: string
