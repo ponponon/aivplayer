@@ -5,6 +5,7 @@ import { _electron as electron, type ElectronApplication, type Page } from 'play
 
 const mediaPath = process.argv[2] ?? '/Users/ponponon/Music/aivplayer_test_video_1min.mp4'
 const screenshotPath = process.env.AIVPLAYER_SMOKE_SCREENSHOT_PATH
+const previewScreenshotPath = process.env.AIVPLAYER_SMOKE_PREVIEW_SCREENSHOT_PATH
 
 async function launchPlayer(userDataDirectory: string): Promise<{ app: ElectronApplication; page: Page; errors: string[] }> {
   const app = await electron.launch({
@@ -32,6 +33,7 @@ async function runSmoke(): Promise<void> {
   const userDataDirectory = await mkdtemp(join(tmpdir(), 'aivplayer-smoke-vision-clip-collection-batch-merge-'))
   const prefix = `批量合并 Smoke ${Date.now()}`
   const titles = [`${prefix} 一号`, `${prefix} 二号`]
+  const mergedTitle = `精选合并结果 ${Date.now()}`
   let app: ElectronApplication | null = null
 
   try {
@@ -68,6 +70,18 @@ async function runSmoke(): Promise<void> {
 
     const mergeAction = page.locator('.vision-collection-batch-merge')
     await mergeAction.waitFor({ timeout: 10_000 })
+    await page.getByRole('region', { name: '合并预览', exact: true }).waitFor({ timeout: 10_000 })
+    const preview = mergeAction.locator('.vision-collection-merge-preview')
+    await preview.getByText('合并后 1 个选段 · 3 个标签', { exact: true }).waitFor({ timeout: 10_000 })
+    const previewSources = await preview.getByRole('listitem').allTextContents()
+    if (previewSources.length !== 2 || titles.some((title) => !previewSources.includes(title))) throw new Error(`Batch merge preview sources mismatch: ${JSON.stringify(previewSources)}`)
+    const titleInput = mergeAction.getByRole('textbox', { name: '合并后集合名称', exact: true })
+    await titleInput.fill(mergedTitle)
+    if (await titleInput.inputValue() !== mergedTitle) throw new Error('Batch merge custom title input did not retain its value')
+    if (previewScreenshotPath) {
+      await mergeAction.scrollIntoViewIfNeeded()
+      await mergeAction.screenshot({ path: previewScreenshotPath })
+    }
     const mergeButton = mergeAction.getByRole('button', { name: '合并选中集合', exact: true })
     if (!(await mergeButton.isEnabled())) throw new Error('Batch merge button should be enabled for two selected collections')
 
@@ -79,13 +93,13 @@ async function runSmoke(): Promise<void> {
     })
     await Promise.all([mergeButton.click(), dialogPromise])
     const confirmationMessage = await dialogPromise
-    if (!confirmationMessage.includes('2') || !confirmationMessage.includes('原集合会保留')) {
+    if (!confirmationMessage.includes('2') || !confirmationMessage.includes(mergedTitle) || !confirmationMessage.includes('原集合会保留')) {
       throw new Error(`Batch merge confirmation mismatch: ${confirmationMessage}`)
     }
 
     await page.getByRole('status').filter({ hasText: '已将 2 个集合合并为新集合' }).waitFor({ timeout: 10_000 })
     const afterMerge = await page.evaluate(() => window.aiv.listVisionClipCollections())
-    const merged = afterMerge.find((collection) => collection.title === '合并选段集合')
+    const merged = afterMerge.find((collection) => collection.title === mergedTitle)
     const persistedOriginals = originals.map((original) => afterMerge.find((collection) => collection.id === original.id))
     if (afterMerge.length !== 3 || !merged || persistedOriginals.some((collection) => !collection)) {
       throw new Error(`Clip collection batch merge persistence mismatch: ${JSON.stringify(afterMerge)}`)
@@ -118,7 +132,7 @@ async function runSmoke(): Promise<void> {
     }
 
     if (session.errors.length > 0) throw new Error(`Renderer errors during clip collection batch merge smoke:\n${session.errors.join('\n')}`)
-    console.log(`AIVPlayer Smoke Vision Clip Collection Batch Merge passed: ${JSON.stringify({ pageIdentity, originalCount: originals.length, mergedCount: 1, mergedSelectionCount: reloadedMerged.selections.length, mergedRange: [reloadedMerged.selections[0]?.startSeconds, reloadedMerged.selections[0]?.endSeconds], tagsPreserved: true, originalsPreserved: true, persistedAfterReload: true, consoleErrors: session.errors.length, screenshotPath: screenshotPath ?? null })}`)
+    console.log(`AIVPlayer Smoke Vision Clip Collection Batch Merge passed: ${JSON.stringify({ pageIdentity, originalCount: originals.length, mergedCount: 1, mergedTitle, mergedSelectionCount: reloadedMerged.selections.length, mergedRange: [reloadedMerged.selections[0]?.startSeconds, reloadedMerged.selections[0]?.endSeconds], previewVerified: true, tagsPreserved: true, originalsPreserved: true, persistedAfterReload: true, consoleErrors: session.errors.length, previewScreenshotPath: previewScreenshotPath ?? null, screenshotPath: screenshotPath ?? null })}`)
   } finally {
     if (app) await app.close().catch(() => undefined)
     await rm(userDataDirectory, { recursive: true, force: true }).catch(() => undefined)
