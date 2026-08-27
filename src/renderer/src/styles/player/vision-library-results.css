@@ -1185,6 +1185,103 @@
   outline: 0;
 }
 
+.vision-collection-tag-history-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.vision-collection-tag-history-pagination small,
+.vision-collection-tag-history-detail-loading {
+  color: var(--text-muted);
+  font-size: 8px;
+}
+
+.vision-collection-tag-history-entry .vision-collection-tag-history-detail-action {
+  grid-column: 1 / -1;
+  justify-self: start;
+  min-height: 21px;
+  padding: 0 6px;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border-soft);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 8px;
+}
+
+.vision-collection-tag-history-entry .vision-collection-tag-history-detail-action:hover:not(:disabled),
+.vision-collection-tag-history-entry .vision-collection-tag-history-detail-action:focus-visible {
+  color: var(--text-primary);
+  border-color: var(--accent);
+  outline: 0;
+}
+
+.vision-collection-tag-history-entry .vision-collection-tag-history-detail-action:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.vision-collection-tag-history-detail {
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 7px;
+  background: rgba(var(--accent-rgb), 0.05);
+  border: 1px solid var(--border-soft);
+  border-radius: 4px;
+}
+
+.vision-collection-tag-history-detail-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.vision-collection-tag-history-detail-heading strong {
+  color: var(--text-primary);
+  font-size: 9px;
+}
+
+.vision-collection-tag-history-detail dl {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+.vision-collection-tag-history-detail dl > div {
+  display: grid;
+  grid-template-columns: minmax(92px, 0.42fr) minmax(0, 1fr);
+  gap: 6px;
+  min-width: 0;
+}
+
+.vision-collection-tag-history-detail dt,
+.vision-collection-tag-history-detail dd {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vision-collection-tag-history-detail dd {
+  color: var(--text-secondary);
+}
+
+.vision-collection-tag-history-detail code {
+  overflow: hidden;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-overflow: ellipsis;
+}
+
 .vision-collection-tag-history-entry {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

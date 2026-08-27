@@ -4,12 +4,12 @@ import type { ChangeEvent, KeyboardEvent } from 'react'
 import type { VisionIndexProgress, VisionRuntimeStatus, VisionSearchResult } from '../../../shared/media-types'
 import type { AsrSubtitleResult } from '../../../shared/media-types'
 import type { MediaEvidenceDraftImportResult } from '../../../shared/evidence-task-types'
-import type { VisionClipCollection, VisionClipCollectionBatchTagsMode, VisionClipCollectionExportFormat, VisionClipCollectionOperationHistory, VisionClipCollectionSortMode, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataImportDecision, VisionClipCollectionTagMetadataImportPreviewResult, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationHistoryEntry, VisionClipCollectionTagSortMode, VisionEvidenceType, VisionIndexFailureRecord, VisionLibrarySource, VisionModelDownloadProgress, VisionSavedSearch, VisionSearchFullExportRequest, VisionSearchPageRequest, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchSortMode } from '../../../shared/vision-types'
+import type { VisionClipCollection, VisionClipCollectionBatchTagsMode, VisionClipCollectionExportFormat, VisionClipCollectionOperationHistory, VisionClipCollectionSortMode, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataImportDecision, VisionClipCollectionTagMetadataImportPreviewResult, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationHistoryDetail, VisionClipCollectionTagOperationHistoryEntry, VisionClipCollectionTagSortMode, VisionEvidenceType, VisionIndexFailureRecord, VisionLibrarySource, VisionModelDownloadProgress, VisionSavedSearch, VisionSearchFullExportRequest, VisionSearchPageRequest, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchSortMode } from '../../../shared/vision-types'
 import type { LocaleCopy } from '../../../shared/i18n'
 import type { VisionObjectDetectionFilterState, VisionObjectDetectionResult } from '../../../shared/vision-object-detection-types'
 import type { VisionClipCollectionTagOperationHistoryFilter } from '../../../shared/vision-types'
 import { getVisionCollectionTagPath, invertVisionClipSelections, mergeVisionCollectionSelections, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTag, normalizeVisionCollectionTags, renameVisionClipCollectionTitle, toggleVisibleVisionClipCollectionSelection, wouldCreateVisionCollectionTagParentCycle } from '../../../core/ai/clip-inbox-operations'
-import { filterVisionClipCollectionTagOperationHistory, serializeVisionClipCollectionTagOperationHistory } from '../../../core/ai/clip-inbox-tag-history'
+import { filterVisionClipCollectionTagOperationHistory, serializeVisionClipCollectionTagOperationHistory, VISION_CLIP_COLLECTION_TAG_OPERATION_HISTORY_PAGE_SIZE } from '../../../core/ai/clip-inbox-tag-history'
 import { hasVisionCollectionTagChildren, isVisionCollectionTagHiddenByCollapsedAncestor, matchesVisionCollectionTagFilter, mergeVisionClipCollectionTagCollapsePreferences, parseVisionClipCollectionTagCollapsePreferences, serializeVisionClipCollectionTagCollapsePreferences, VISION_CLIP_COLLECTION_TAG_COLLAPSE_PREFERENCES_STORAGE_KEY, type VisionCollectionTagFilterMode } from '../../../core/ai/clip-inbox-tag-tree'
 import { createVisionClipSelections, normalizeVisionTimeRange } from '../../../core/ai/vision-evidence'
 import { parseVisionClipCollectionOrderPreferences, serializeVisionClipCollectionOrderPreferences, sortVisionClipCollections, VISION_CLIP_COLLECTION_ORDER_PREFERENCES_STORAGE_KEY, type VisionClipCollectionListSortMode } from '../../../core/ai/clip-inbox-collection-order'
@@ -270,6 +270,7 @@ export function VisionPanel(): React.ReactElement {
   const savedCollectionFilterFileInputRef = useRef<HTMLInputElement | null>(null)
   const collectionOperationRefreshVersionRef = useRef(0)
   const collectionTagOperationRefreshVersionRef = useRef(0)
+  const collectionTagHistoryDetailRequestVersionRef = useRef(0)
   const [collectionTransferStatus, setCollectionTransferStatus] = useState<string | null>(null)
   const [collectionAvailability, setCollectionAvailability] = useState<Record<string, CollectionAvailability>>({})
   const [thumbnailUrls, setThumbnailUrls] = useState<Record<string, string>>({})
@@ -315,6 +316,13 @@ export function VisionPanel(): React.ReactElement {
   const [isRedoingCollectionTagOperation, setIsRedoingCollectionTagOperation] = useState(false)
   const [collectionTagOperationHistory, setCollectionTagOperationHistory] = useState<VisionClipCollectionTagOperationHistoryEntry[]>([])
   const [collectionTagHistoryFilter, setCollectionTagHistoryFilter] = useState<VisionClipCollectionTagOperationHistoryFilter>('all')
+  const [collectionTagHistoryOffset, setCollectionTagHistoryOffset] = useState(0)
+  const [collectionTagHistoryTotal, setCollectionTagHistoryTotal] = useState(0)
+  const [collectionTagHistoryHasMore, setCollectionTagHistoryHasMore] = useState(false)
+  const [isLoadingCollectionTagHistory, setIsLoadingCollectionTagHistory] = useState(false)
+  const [collectionTagHistoryDetailId, setCollectionTagHistoryDetailId] = useState<string | null>(null)
+  const [collectionTagHistoryDetail, setCollectionTagHistoryDetail] = useState<VisionClipCollectionTagOperationHistoryDetail | null>(null)
+  const [isLoadingCollectionTagHistoryDetail, setIsLoadingCollectionTagHistoryDetail] = useState(false)
   const [lastCollectionOperation, setLastCollectionOperation] = useState<VisionClipCollectionOperationHistory | null>(null)
   const [isUndoingCollectionOperation, setIsUndoingCollectionOperation] = useState(false)
   const [lastCollectionRedoOperation, setLastCollectionRedoOperation] = useState<VisionClipCollectionOperationHistory | null>(null)
@@ -408,6 +416,9 @@ export function VisionPanel(): React.ReactElement {
   const savedCollectionFilterImportNewCount = savedCollectionFilterImportItems.filter((item) => item.state === 'new').length
   const savedCollectionFilterImportSkippedCount = savedCollectionFilterImportItems.filter((item) => item.state !== 'new' && item.state !== 'conflict').length
   const visibleCollectionTagOperationHistory = filterVisionClipCollectionTagOperationHistory(collectionTagOperationHistory, collectionTagHistoryFilter)
+  const collectionTagHistoryPageCount = Math.ceil(collectionTagHistoryTotal / VISION_CLIP_COLLECTION_TAG_OPERATION_HISTORY_PAGE_SIZE)
+  const collectionTagHistoryPageNumber = collectionTagHistoryTotal === 0 ? 0 : Math.floor(collectionTagHistoryOffset / VISION_CLIP_COLLECTION_TAG_OPERATION_HISTORY_PAGE_SIZE) + 1
+  const isCollectionTagHistoryBusy = isLoadingCollectionTagHistory || isLoadingCollectionTagHistoryDetail
   const vectorIndexLabel = status?.vectorIndexType
     ? app.copy.vision.vectorIndex(status.vectorIndexType, status.vectorIndexDistanceType ?? '—', status.vectorIndexIndexedRows, status.vectorIndexUnindexedRows)
     : app.copy.vision.exactVectorSearch
@@ -456,15 +467,29 @@ export function VisionPanel(): React.ReactElement {
   const refreshFailures = (): void => { void window.aiv.listVisionIndexFailures().then(setFailures).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))) }
   const refreshSavedSearches = (): void => { void window.aiv.listVisionSavedSearches().then(setSavedSearches).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))) }
   const refreshCollectionTagMetadata = (): void => { void window.aiv.listVisionClipCollectionTagMetadata().then(setCollectionTagMetadata).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))) }
-  const refreshCollectionTagOperation = (): void => {
+  const refreshCollectionTagOperation = (offset = 0, filter: VisionClipCollectionTagOperationHistoryFilter = collectionTagHistoryFilter): void => {
     const version = ++collectionTagOperationRefreshVersionRef.current
-    void Promise.all([window.aiv.getVisionClipCollectionTagOperationHistory(), window.aiv.listVisionClipCollectionTagOperationHistory(), window.aiv.getVisionClipCollectionTagOperationRedoHistory()]).then(([nextUndo, nextHistory, nextRedo]) => {
+    setIsLoadingCollectionTagHistory(true)
+    setCollectionTagHistoryDetailId(null)
+    setCollectionTagHistoryDetail(null)
+    void Promise.all([
+      window.aiv.getVisionClipCollectionTagOperationHistory(),
+      window.aiv.listVisionClipCollectionTagOperationHistoryPage({ offset, limit: VISION_CLIP_COLLECTION_TAG_OPERATION_HISTORY_PAGE_SIZE, filter }),
+      window.aiv.getVisionClipCollectionTagOperationRedoHistory()
+    ]).then(([nextUndo, nextHistoryPage, nextRedo]) => {
       if (version === collectionTagOperationRefreshVersionRef.current) {
         setLastCollectionTagOperation(nextUndo)
-        setCollectionTagOperationHistory(nextHistory)
+        setCollectionTagOperationHistory(nextHistoryPage.entries)
+        setCollectionTagHistoryOffset(nextHistoryPage.offset)
+        setCollectionTagHistoryTotal(nextHistoryPage.total)
+        setCollectionTagHistoryHasMore(nextHistoryPage.hasMore)
         setLastCollectionTagRedoOperation(nextRedo)
       }
-    }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
+    }).catch((reason: unknown) => {
+      if (version === collectionTagOperationRefreshVersionRef.current) setError(reason instanceof Error ? reason.message : String(reason))
+    }).finally(() => {
+      if (version === collectionTagOperationRefreshVersionRef.current) setIsLoadingCollectionTagHistory(false)
+    })
   }
   const refreshCollectionOperation = (): void => {
     const version = ++collectionOperationRefreshVersionRef.current
@@ -1662,8 +1687,52 @@ export function VisionPanel(): React.ReactElement {
     setCollectionTagTransferStatus(null)
   }
 
+  const changeCollectionTagHistoryFilter = (filter: VisionClipCollectionTagOperationHistoryFilter): void => {
+    if (isCollectionBatchBusy || isCollectionTagHistoryBusy) return
+    setCollectionTagHistoryFilter(filter)
+    refreshCollectionTagOperation(0, filter)
+  }
+
+  const changeCollectionTagHistoryPage = (direction: -1 | 1): void => {
+    if (isCollectionBatchBusy || isCollectionTagHistoryBusy) return
+    const nextOffset = Math.max(0, collectionTagHistoryOffset + direction * VISION_CLIP_COLLECTION_TAG_OPERATION_HISTORY_PAGE_SIZE)
+    if (direction < 0 && collectionTagHistoryOffset === 0) return
+    if (direction > 0 && !collectionTagHistoryHasMore) return
+    refreshCollectionTagOperation(nextOffset)
+  }
+
+  const inspectCollectionTagOperation = (operationId: string): void => {
+    if (isCollectionBatchBusy || isCollectionTagHistoryBusy) return
+    const version = ++collectionTagHistoryDetailRequestVersionRef.current
+    setError(null)
+    setCollectionTagHistoryDetailId(operationId)
+    setCollectionTagHistoryDetail(null)
+    setIsLoadingCollectionTagHistoryDetail(true)
+    void window.aiv.getVisionClipCollectionTagOperationHistoryDetail(operationId).then((detail) => {
+      if (version === collectionTagHistoryDetailRequestVersionRef.current) {
+        if (!detail) {
+          setCollectionTagHistoryDetailId(null)
+          setError(app.copy.vision.collectionTagManagerHistoryDetailUnavailable)
+          return
+        }
+        setCollectionTagHistoryDetail(detail)
+      }
+    }).catch((reason: unknown) => {
+      if (version === collectionTagHistoryDetailRequestVersionRef.current) setError(reason instanceof Error ? reason.message : String(reason))
+    }).finally(() => {
+      if (version === collectionTagHistoryDetailRequestVersionRef.current) setIsLoadingCollectionTagHistoryDetail(false)
+    })
+  }
+
+  const closeCollectionTagOperationDetail = (): void => {
+    ++collectionTagHistoryDetailRequestVersionRef.current
+    setCollectionTagHistoryDetailId(null)
+    setCollectionTagHistoryDetail(null)
+    setIsLoadingCollectionTagHistoryDetail(false)
+  }
+
   const exportCollectionTagOperationHistory = (): void => {
-    if (isCollectionBatchBusy || visibleCollectionTagOperationHistory.length === 0) return
+    if (isCollectionBatchBusy || isCollectionTagHistoryBusy || visibleCollectionTagOperationHistory.length === 0) return
     setError(null)
     const exportedCount = downloadVisionClipCollectionTagOperationHistory(collectionTagOperationHistory, collectionTagHistoryFilter)
     setCollectionTagTransferStatus(app.copy.vision.collectionTagManagerHistoryExported(exportedCount))
@@ -1922,24 +1991,42 @@ export function VisionPanel(): React.ReactElement {
         <div className="vision-collection-tag-manager-import-preview-actions"><button className="vision-primary-action" type="button" onClick={applyCollectionTagMetadataImport} disabled={isTransferringCollectionTagMetadata}><Check size={12} />{app.copy.vision.collectionTagManagerMetadataImportApply}</button><button className="vision-secondary-action" type="button" onClick={cancelCollectionTagMetadataImport} disabled={isTransferringCollectionTagMetadata}><X size={12} />{app.copy.vision.collectionTagManagerMetadataImportCancel}</button></div>
       </div> : null}
       <details className="vision-collection-tag-history" open>
-        <summary className="vision-collection-tag-history-summary"><span><strong>{app.copy.vision.collectionTagManagerHistoryTitle}</strong><small>{app.copy.vision.collectionTagManagerHistoryDescription}</small></span><b>{visibleCollectionTagOperationHistory.length}</b></summary>
+        <summary className="vision-collection-tag-history-summary"><span><strong>{app.copy.vision.collectionTagManagerHistoryTitle}</strong><small>{app.copy.vision.collectionTagManagerHistoryDescription}</small></span><b>{collectionTagHistoryTotal}</b></summary>
         <div className="vision-collection-tag-history-toolbar">
-          <label><span>{app.copy.vision.collectionTagManagerHistoryFilterLabel}</span><select value={collectionTagHistoryFilter} onChange={(event) => setCollectionTagHistoryFilter(event.target.value as VisionClipCollectionTagOperationHistoryFilter)} aria-label={app.copy.vision.collectionTagManagerHistoryFilterLabel} disabled={isCollectionBatchBusy}>
+          <label><span>{app.copy.vision.collectionTagManagerHistoryFilterLabel}</span><select value={collectionTagHistoryFilter} onChange={(event) => changeCollectionTagHistoryFilter(event.target.value as VisionClipCollectionTagOperationHistoryFilter)} aria-label={app.copy.vision.collectionTagManagerHistoryFilterLabel} disabled={isCollectionBatchBusy || isCollectionTagHistoryBusy}>
             <option value="all">{app.copy.vision.collectionTagManagerHistoryFilterAll}</option>
             <option value="cleanup">{app.copy.vision.collectionTagManagerHistoryType.cleanup}</option>
             <option value="rename">{app.copy.vision.collectionTagManagerHistoryType.rename}</option>
             <option value="metadata">{app.copy.vision.collectionTagManagerHistoryType.metadata}</option>
             <option value="batch">{app.copy.vision.collectionTagManagerHistoryType.batch}</option>
           </select></label>
-          <button className="vision-secondary-action" type="button" onClick={exportCollectionTagOperationHistory} disabled={isCollectionBatchBusy || visibleCollectionTagOperationHistory.length === 0}><Download size={12} />{app.copy.vision.collectionTagManagerHistoryExport}</button>
+          <button className="vision-secondary-action" type="button" onClick={exportCollectionTagOperationHistory} disabled={isCollectionBatchBusy || isCollectionTagHistoryBusy || visibleCollectionTagOperationHistory.length === 0}><Download size={12} />{app.copy.vision.collectionTagManagerHistoryExport}</button>
         </div>
         {visibleCollectionTagOperationHistory.length > 0 ? <div className="vision-collection-tag-history-list" role="list" aria-label={app.copy.vision.collectionTagManagerHistoryTitle}>
           {visibleCollectionTagOperationHistory.map((operation) => <div className={`vision-collection-tag-history-entry is-${operation.status}`} key={operation.id} role="listitem">
             <strong>{app.copy.vision.collectionTagManagerHistoryType[operation.type]}</strong>
             <time dateTime={new Date(operation.createdAt).toISOString()}>{new Date(operation.createdAt).toLocaleString()}</time>
             <small>{app.copy.vision.collectionTagManagerHistoryStatus[operation.status]}</small>
+            <button className="vision-collection-tag-history-detail-action" type="button" onClick={() => inspectCollectionTagOperation(operation.id)} disabled={isCollectionBatchBusy || isCollectionTagHistoryBusy} aria-current={collectionTagHistoryDetailId === operation.id ? 'true' : undefined} aria-label={`${app.copy.vision.collectionTagManagerHistoryViewDetail}: ${app.copy.vision.collectionTagManagerHistoryType[operation.type]}`}>{app.copy.vision.collectionTagManagerHistoryViewDetail}</button>
           </div>)}
-        </div> : <small className="vision-collection-tag-history-empty">{collectionTagOperationHistory.length > 0 ? app.copy.vision.collectionTagManagerHistoryFilterEmpty : app.copy.vision.collectionTagManagerHistoryEmpty}</small>}
+        </div> : <small className="vision-collection-tag-history-empty">{collectionTagHistoryTotal > 0 ? app.copy.vision.collectionTagManagerHistoryFilterEmpty : app.copy.vision.collectionTagManagerHistoryEmpty}</small>}
+        {isLoadingCollectionTagHistoryDetail ? <small className="vision-collection-tag-history-detail-loading" role="status">{app.copy.vision.collectionTagManagerHistoryDetailLoading}</small> : null}
+        {collectionTagHistoryDetail ? <div className="vision-collection-tag-history-detail" role="region" aria-label={app.copy.vision.collectionTagManagerHistoryDetailTitle}>
+          <div className="vision-collection-tag-history-detail-heading"><strong>{app.copy.vision.collectionTagManagerHistoryDetailTitle}</strong><button className="vision-secondary-action" type="button" onClick={closeCollectionTagOperationDetail}>{app.copy.vision.collectionTagManagerHistoryDetailClose}</button></div>
+          <dl>
+            <div><dt>{app.copy.vision.collectionTagManagerHistoryDetailType}</dt><dd>{app.copy.vision.collectionTagManagerHistoryType[collectionTagHistoryDetail.type]}</dd></div>
+            <div><dt>{app.copy.vision.collectionTagManagerHistoryDetailId}</dt><dd><code>{collectionTagHistoryDetail.id}</code></dd></div>
+            <div><dt>{app.copy.vision.collectionTagManagerHistoryDetailCreatedAt}</dt><dd><time dateTime={new Date(collectionTagHistoryDetail.createdAt).toISOString()}>{new Date(collectionTagHistoryDetail.createdAt).toLocaleString()}</time></dd></div>
+            <div><dt>{app.copy.vision.collectionTagManagerHistoryDetailUndoneAt}</dt><dd>{collectionTagHistoryDetail.undoneAt === null ? app.copy.vision.collectionTagManagerHistoryDetailNeverUndone : new Date(collectionTagHistoryDetail.undoneAt).toLocaleString()}</dd></div>
+            <div><dt>{app.copy.vision.collectionTagManagerHistoryDetailCollectionCount}</dt><dd>{app.copy.vision.collectionTagManagerHistoryDetailCollectionCountValue(collectionTagHistoryDetail.collectionCount)}</dd></div>
+            <div><dt>{app.copy.vision.collectionTagManagerHistoryDetailMetadataCount}</dt><dd>{app.copy.vision.collectionTagManagerHistoryDetailMetadataCountValue(collectionTagHistoryDetail.metadataCount)}</dd></div>
+          </dl>
+        </div> : null}
+        {collectionTagHistoryPageCount > 0 ? <div className="vision-collection-tag-history-pagination" aria-label={app.copy.vision.collectionTagManagerHistoryPaginationLabel}>
+          <button className="vision-secondary-action" type="button" onClick={() => changeCollectionTagHistoryPage(-1)} disabled={isCollectionBatchBusy || isCollectionTagHistoryBusy || collectionTagHistoryOffset === 0}>{app.copy.vision.collectionTagManagerHistoryPreviousPage}</button>
+          <small aria-live="polite">{app.copy.vision.collectionTagManagerHistoryPage(collectionTagHistoryPageNumber, collectionTagHistoryPageCount)}</small>
+          <button className="vision-secondary-action" type="button" onClick={() => changeCollectionTagHistoryPage(1)} disabled={isCollectionBatchBusy || isCollectionTagHistoryBusy || !collectionTagHistoryHasMore}>{app.copy.vision.collectionTagManagerHistoryNextPage}</button>
+        </div> : null}
       </details>
       {collectionTagStats.length > 0 ? <>
         <div className="vision-collection-tag-manager-filter">
