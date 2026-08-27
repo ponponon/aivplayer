@@ -1309,9 +1309,15 @@ export function VisionPanel(): React.ReactElement {
     setError(null)
     setIsSavingCollectionTags(true)
     try {
-      const updated = await updateCollection(collection, { tags })
-      if (!updated) return
-      setCollectionTransferStatus(app.copy.vision.collectionTagsUpdated(updated.title))
+      const result = await window.aiv.updateVisionClipCollectionTags({ collectionId: collection.id, tags })
+      const updated = result.collection
+      if (!result.success || !updated) {
+        setError(result.message)
+        return
+      }
+      setCollections((current) => [updated, ...current.filter((item) => item.id !== updated.id)])
+      refreshCollectionTagOperation()
+      setCollectionTransferStatus(result.message)
       setEditingCollectionTagsId(null)
       setEditingCollectionTags('')
     } finally {
@@ -2195,6 +2201,7 @@ export function VisionPanel(): React.ReactElement {
             <option value="rename">{app.copy.vision.collectionTagManagerHistoryType.rename}</option>
             <option value="metadata">{app.copy.vision.collectionTagManagerHistoryType.metadata}</option>
             <option value="batch">{app.copy.vision.collectionTagManagerHistoryType.batch}</option>
+            <option value="single">{app.copy.vision.collectionTagManagerHistoryType.single}</option>
           </select></label>
           <button className="vision-secondary-action" type="button" onClick={exportCollectionTagOperationHistory} disabled={isCollectionBatchBusy || isCollectionTagHistoryBusy || visibleCollectionTagOperationHistory.length === 0}><Download size={12} />{app.copy.vision.collectionTagManagerHistoryExport}</button>
         </div>
