@@ -268,6 +268,23 @@ describe('clip inbox store', () => {
     expect(store.getLastCollectionOperation()).toMatchObject({ type: 'rename' })
   })
 
+  it('records an inline rename and restores the complete collection through undo and redo', () => {
+    const saved = store.saveCollection({ title: '内联改名前', tags: ['精选'], isFavorite: true, sortMode: 'duration-desc', selections: [selection({ startSeconds: 4, endSeconds: 9, evidenceIds: ['inline-rename'] })] })
+    const renamed = store.renameCollection(saved.id, '内联改名后')
+
+    expect(renamed).toMatchObject({ id: saved.id, title: '内联改名后', tags: saved.tags, isFavorite: true, sortMode: 'duration-desc', selections: saved.selections })
+    expect(store.getLastCollectionOperation()).toMatchObject({ type: 'rename' })
+
+    const undone = store.undoLastCollectionOperation()
+    expect(undone.success).toBe(true)
+    expect(store.getCollection(saved.id)).toEqual(saved)
+    expect(store.getLastCollectionRedoOperation()).toMatchObject({ type: 'rename' })
+
+    const redone = store.redoLastCollectionOperation()
+    expect(redone.success).toBe(true)
+    expect(store.getCollection(saved.id)).toEqual(renamed)
+  })
+
   it('deletes several collections in one transaction and reports missing ids', () => {
     const first = store.saveCollection({ title: '批量待删一', selections: [selection({ startSeconds: 1, endSeconds: 2 })] })
     const second = store.saveCollection({ title: '批量待删二', selections: [selection({ startSeconds: 3, endSeconds: 4 })] })

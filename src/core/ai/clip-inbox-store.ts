@@ -586,6 +586,27 @@ export class ClipInboxStore {
     return this.getCollection(id) as VisionClipCollection
   }
 
+  renameCollection(collectionId: string, title: unknown): VisionClipCollection | null {
+    const id = typeof collectionId === 'string' ? collectionId.trim() : ''
+    const normalizedTitle = typeof title === 'string' ? title.trim() : ''
+    if (!id) return null
+    if (!normalizedTitle) throw new Error('选段集合名称不能为空')
+    const beforeCollection = this.getCollection(id)
+    if (!beforeCollection || beforeCollection.title === normalizedTitle) return beforeCollection
+    const now = Date.now()
+    this.database.exec('BEGIN')
+    try {
+      this.database.prepare('UPDATE clip_collections SET title = ?, updated_at = ? WHERE id = ?').run(normalizedTitle, now, id)
+      const afterCollection = this.getCollection(id)
+      if (afterCollection) this.recordCollectionOperation('rename', { beforeCollections: [beforeCollection], afterCollections: [afterCollection] }, now)
+      this.database.exec('COMMIT')
+      return afterCollection
+    } catch (error) {
+      this.database.exec('ROLLBACK')
+      throw error
+    }
+  }
+
   importCollection(input: VisionClipCollectionInput): VisionClipCollection {
     return this.saveCollection({ ...input, id: undefined })
   }

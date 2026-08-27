@@ -481,6 +481,11 @@ export type VisionClipCollectionBatchRenameRequest = {
   suffix?: string
 }
 
+export type VisionClipCollectionRenameRequest = {
+  collectionId: string
+  title: string
+}
+
 export type VisionClipCollectionBatchRenameResult = {
   success: boolean
   message: string
