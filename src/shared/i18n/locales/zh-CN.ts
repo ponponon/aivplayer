@@ -689,6 +689,7 @@
       collectionMergeDescription: '生成一个新集合，原集合和它们的标签都会保留。',
       collectionMergeTitleLabel: '合并后集合名称',
       collectionMergePreviewTitle: '合并预览',
+      collectionMergePreviewOutputTitle: '合并后选段',
       collectionMergePreviewSources: (count: number) => `来源集合（${count}）`,
       collectionMergePreviewSummary: (selectionCount: number, tagCount: number) => `合并后 ${selectionCount} 个选段 · ${tagCount} 个标签`,
       collectionMergePreviewTags: '合并后标签',

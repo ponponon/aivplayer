@@ -689,6 +689,7 @@
       collectionMergeDescription: 'Create a new collection while keeping the originals and their tags.',
       collectionMergeTitleLabel: 'Merged collection name',
       collectionMergePreviewTitle: 'Merge preview',
+      collectionMergePreviewOutputTitle: 'Merged clips',
       collectionMergePreviewSources: (count: number) => `Source collections (${count})`,
       collectionMergePreviewSummary: (selectionCount: number, tagCount: number) => `After merge: ${selectionCount} clips · ${tagCount} tags`,
       collectionMergePreviewTags: 'Merged tags',

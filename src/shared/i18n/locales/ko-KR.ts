@@ -689,6 +689,7 @@
       collectionMergeDescription: '원본 컬렉션과 태그를 유지하면서 새 컬렉션을 만듭니다.',
       collectionMergeTitleLabel: '병합된 컬렉션 이름',
       collectionMergePreviewTitle: '병합 미리보기',
+      collectionMergePreviewOutputTitle: '병합 후 클립',
       collectionMergePreviewSources: (count: number) => `원본 컬렉션(${count}개)`,
       collectionMergePreviewSummary: (selectionCount: number, tagCount: number) => `병합 후: 클립 ${selectionCount}개 · 태그 ${tagCount}개`,
       collectionMergePreviewTags: '병합 후 태그',

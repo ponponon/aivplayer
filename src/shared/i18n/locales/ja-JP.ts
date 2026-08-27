@@ -689,6 +689,7 @@
       collectionMergeDescription: '元のコレクションとタグを残したまま、新しいコレクションを作成します。',
       collectionMergeTitleLabel: '統合後のコレクション名',
       collectionMergePreviewTitle: '統合プレビュー',
+      collectionMergePreviewOutputTitle: '統合後のクリップ',
       collectionMergePreviewSources: (count: number) => `元のコレクション（${count}件）`,
       collectionMergePreviewSummary: (selectionCount: number, tagCount: number) => `統合後：${selectionCount}件のクリップ · ${tagCount}個のタグ`,
       collectionMergePreviewTags: '統合後のタグ',
