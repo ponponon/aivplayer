@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { filterVisionClipCollectionTagOperationHistory, normalizeVisionClipCollectionTagOperationHistoryFilter, serializeVisionClipCollectionTagOperationHistory } from '../../src/core/ai/clip-inbox-tag-history'
+import { filterVisionClipCollectionTagOperationHistory, normalizeVisionClipCollectionTagOperationHistoryFilter, normalizeVisionClipCollectionTagOperationHistoryPageRequest, paginateVisionClipCollectionTagOperationHistory, serializeVisionClipCollectionTagOperationHistory } from '../../src/core/ai/clip-inbox-tag-history'
 import type { VisionClipCollectionTagOperationHistoryEntry } from '../../src/shared/vision-types'
 
 const entries: VisionClipCollectionTagOperationHistoryEntry[] = [
@@ -33,5 +33,17 @@ describe('clip inbox tag history', () => {
     expect(manifest.filter).toBe('all')
     expect(manifest.entries).toHaveLength(entries.length)
     expect(manifest.exportedAt).toBeGreaterThanOrEqual(before)
+  })
+
+  it('normalizes page boundaries and keeps the page size bounded', () => {
+    expect(normalizeVisionClipCollectionTagOperationHistoryPageRequest({ offset: 2.8, limit: 999, filter: 'rename' })).toEqual({ offset: 2, limit: 20, filter: 'rename' })
+    expect(normalizeVisionClipCollectionTagOperationHistoryPageRequest({ offset: -4, limit: 0, filter: 'invalid' })).toEqual({ offset: 0, limit: 1, filter: 'all' })
+  })
+
+  it('paginates filtered history and reports total and continuation state', () => {
+    const page = paginateVisionClipCollectionTagOperationHistory(entries, { offset: 1, limit: 2, filter: 'all' })
+    expect(page).toEqual({ entries: [entries[1], entries[2]], offset: 1, limit: 2, total: 4, hasMore: true })
+    expect(paginateVisionClipCollectionTagOperationHistory(entries, { offset: 4, limit: 20 }).entries).toEqual([])
+    expect(paginateVisionClipCollectionTagOperationHistory(entries, { offset: 0, limit: 20, filter: 'metadata' })).toMatchObject({ total: 1, hasMore: false, entries: [entries[2]] })
   })
 })

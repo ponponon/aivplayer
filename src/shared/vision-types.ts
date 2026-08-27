@@ -602,6 +602,25 @@ export type VisionClipCollectionTagOperationHistoryExportManifest = {
   entries: VisionClipCollectionTagOperationHistoryEntry[]
 }
 
+export type VisionClipCollectionTagOperationHistoryPageRequest = {
+  offset?: number
+  limit?: number
+  filter?: VisionClipCollectionTagOperationHistoryFilter
+}
+
+export type VisionClipCollectionTagOperationHistoryPage = {
+  entries: VisionClipCollectionTagOperationHistoryEntry[]
+  offset: number
+  limit: number
+  total: number
+  hasMore: boolean
+}
+
+export type VisionClipCollectionTagOperationHistoryDetail = VisionClipCollectionTagOperationHistoryEntry & {
+  collectionCount: number
+  metadataCount: number
+}
+
 export type VisionClipCollectionTagUndoResult = {
   success: boolean
   message: string
