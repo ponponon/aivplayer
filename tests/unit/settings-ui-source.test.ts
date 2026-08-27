@@ -22,6 +22,13 @@ describe('settings UI source constraints', () => {
     expect(playerCss).toMatch(/\.settings-grid\s*\{[^}]*align-items:\s*start;/s)
   })
 
+  it('stretches the settings grid so its own overflow can scroll', () => {
+    const playerCss = readSource('src/renderer/src/styles/player.css')
+
+    expect(playerCss).toMatch(/\.settings-grid\s*\{[^}]*align-self:\s*stretch;/s)
+    expect(playerCss).toMatch(/\.settings-grid\s*\{[^}]*overflow-y:\s*auto;/s)
+  })
+
   it('routes every settings field through the shared SettingsField structure', () => {
     const settingsDialogSource = readSource('src/renderer/src/app/settings-controls.tsx')
 
@@ -334,6 +341,9 @@ describe('settings UI source constraints', () => {
     expect(smokeScript).toContain("page.locator('[data-settings-tab=\"interface\"]').click()")
     expect(smokeScript).toContain("page.locator('[data-settings-tab=\"video\"]').click()")
     expect(smokeScript).toContain('videoCardHeight.alignItems !== \'start\'')
+    expect(smokeScript).toContain('settingsGridBeforeScroll.clientHeight >= settingsGridBeforeScroll.scrollHeight')
+    expect(smokeScript).toContain('settingsGridAfterScroll.scrollTop <= settingsGridBeforeScroll.scrollTop')
+    expect(smokeScript).toContain("join(smokeHomeDirectory, 'aivplayer-smoke-settings-scroll.png')")
   })
 
   it('keeps the light theme on a warm neutral surface system', () => {

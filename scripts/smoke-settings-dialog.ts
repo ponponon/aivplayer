@@ -169,6 +169,29 @@ async function main(): Promise<void> {
     dialogHeightByTab.subtitles = await readDialogHeight()
     aboutVisibilityByTab.subtitles = await readAboutDisplay()
 
+    const settingsGrid = page.locator('.settings-grid')
+    const settingsGridBeforeScroll = await settingsGrid.evaluate((element) => ({
+      clientHeight: element.clientHeight,
+      scrollHeight: element.scrollHeight,
+      scrollTop: element.scrollTop
+    }))
+    const settingsGridBox = await settingsGrid.boundingBox()
+    if (settingsGridBox) {
+      await page.mouse.move(
+        settingsGridBox.x + settingsGridBox.width / 2,
+        settingsGridBox.y + settingsGridBox.height / 2
+      )
+      await page.mouse.wheel(0, 600)
+    }
+    await page.waitForTimeout(100)
+    const settingsGridAfterScroll = await settingsGrid.evaluate((element) => ({
+      clientHeight: element.clientHeight,
+      scrollHeight: element.scrollHeight,
+      scrollTop: element.scrollTop
+    }))
+    const settingsScrollScreenshotPath = join(smokeHomeDirectory, 'aivplayer-smoke-settings-scroll.png')
+    await page.screenshot({ path: settingsScrollScreenshotPath, fullPage: false })
+
     const cachePanelState = await page.evaluate(() => {
       const panel = document.querySelector('#settings-section-subtitles') as HTMLElement | null
       const cachePanel = panel?.querySelector('.settings-cache-management') as HTMLElement | null
@@ -248,6 +271,8 @@ async function main(): Promise<void> {
     console.log(`Settings dialog heights: ${JSON.stringify(dialogHeightByTab)}`)
     console.log(`About visibility by tab: ${JSON.stringify(aboutVisibilityByTab)}`)
     console.log(`Settings layout state: ${JSON.stringify(settingsLayoutState)}`)
+    console.log(`Settings scroll state: ${JSON.stringify({ before: settingsGridBeforeScroll, after: settingsGridAfterScroll })}`)
+    console.log(`Settings scroll screenshot: ${settingsScrollScreenshotPath}`)
     console.log(`Video settings card height: ${JSON.stringify(videoCardHeight)}`)
     console.log(`Subtitle cache panel: ${JSON.stringify(cachePanelState)}`)
     console.log(`TTS settings state: ${JSON.stringify({ ...ttsSettingsState, initialTtsStatus, ttsStatusAfterCheck })}`)
@@ -277,6 +302,8 @@ async function main(): Promise<void> {
       settingsLayoutState.bodyOverflow !== 'hidden' ||
       settingsLayoutState.gridOverflowY !== 'auto' ||
       settingsLayoutState.gridScrollbarGutter !== 'stable' ||
+      settingsGridBeforeScroll.clientHeight >= settingsGridBeforeScroll.scrollHeight ||
+      settingsGridAfterScroll.scrollTop <= settingsGridBeforeScroll.scrollTop ||
       !videoCardHeight ||
       videoCardHeight.alignItems !== 'start' ||
       videoCardHeight.clientHeight > videoCardHeight.scrollHeight + 1 ||

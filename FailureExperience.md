@@ -1,3 +1,10 @@
+## 2026-08-27：设置弹窗的滚动网格不能只设置 overflow-y
+
+- 现象：字幕设置内容超出弹窗底部，但鼠标滚轮和程序设置 `scrollTop` 都没有效果；用户看到的是被底部裁掉的长内容，无法继续下滑。
+- 原因：`.settings-body` 为了让左侧分组导航按自身内容高度排列而使用 `align-items: start`，右侧 `.settings-grid` 因此没有被拉伸到中间可视区域，而是按全部卡片的内容高度展开；外层 `settings-body` 又是 `overflow: hidden`，滚动网格实际没有溢出距离。
+- 经验：CSS 滚动容器除了 `overflow-y: auto`，还必须检查它在 Grid / Flex 父级中的实际尺寸；当父级需要保留 `align-items: start` 时，滚动子项要显式 `align-self: stretch`，并用真实滚轮交互验证 `clientHeight < scrollHeight` 且 `scrollTop` 会变化。
+- 处理：为 `.settings-grid` 增加 `align-self: stretch`，补充设置页 Smoke 的真实滚轮滚动断言和源码约束，防止后续布局调整再次让滚动区域被内容高度撑开。
+
 ## 2026-08-26：未知架构的官网下载按钮不能只重渲染
 
 - 现象：Firefox 154 点击官网推荐下载按钮没有下载，也没有明显界面变化；WebDriver BiDi 记录到按钮地址是 `#download-chooser`，点击后没有产生 DMG 请求。
