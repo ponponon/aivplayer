@@ -1086,3 +1086,12 @@
 - 背景：2026-08-21 起 Flathub 上游 rust-stable 25.08 发布不完整（binding commit 元数据存在但内容对象 404，见 flathub/org.freedesktop.Sdk.Extension.rust-stable#538），导致依赖该扩展的 CI 持续失败；移除该依赖后发版流水线不再受上游单点故障影响。
 - manifest 删除了 `lancedb-native` 与 `protobuf` 源码模块（protobuf 仅服务于 LanceDB 的 Rust build script）、Cargo 离线源码清单和 Cargo.lock patch；构建时把 `node_modules` 中的预编译 `.node` 复制到 `/app/lib/aivplayer/`，运行时加载路径不变，并随包提供 Apache-2.0 许可证收据。
 - `scripts/check-flatpak.mjs` 的门禁同步反转：断言 manifest 不再包含 rust-stable / cargo build / protobuf，且离线 npm 清单必须包含 LanceDB linux 预编译包。
+
+## Clip Inbox 选段集合批量合并
+
+- 选段集合支持多选后合并为一个新集合；合并按 `sourceId`、视频路径和文件指纹隔离来源，并将同一来源中重叠或间隔不超过 0.5 秒的选段合并，避免把不同版本的视频错误拼接。
+- 新集合会合并去重标签、保留选段证据和文本，并从未收藏、未归档状态开始；原集合不会被删除或修改，合并失败也不会产生部分新数据。
+- Renderer 提供批量合并操作卡片和确认弹窗，至少选择两个集合后才可执行；完成后清空选择并显示新集合与选段数量，四种界面语言保持同一语义。
+- 新增共享批量合并请求 / 结果类型、主进程 IPC 和 Preload API；纯函数与 Store 单测覆盖来源隔离、相邻区间、标签去重、状态重置、输入校验和原集合不突变。
+- 真实 Electron Smoke 已验证真实勾选、确认合并、合并区间 `[1,5]`、标签 / 证据保留、原集合保留、重载持久化和 Renderer 无错误，截图输出到 `/private/tmp/aivplayer-collection-batch-merge.png`。
+- 当前边界：只创建一个固定本地化名称“合并选段集合”的新集合，不提供合并结果自定义名称、集合级撤销 / 删除原集合、云端协作或跨设备同步。
