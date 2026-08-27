@@ -8,7 +8,7 @@ import type { VisionClipCollection, VisionClipCollectionBatchTagsMode, VisionCli
 import type { LocaleCopy } from '../../../shared/i18n'
 import type { VisionObjectDetectionFilterState, VisionObjectDetectionResult } from '../../../shared/vision-object-detection-types'
 import type { VisionClipCollectionTagOperationHistoryFilter } from '../../../shared/vision-types'
-import { getVisionCollectionTagPath, invertVisionClipSelections, mergeVisionCollectionSelections, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTag, normalizeVisionCollectionTags, renameVisionClipCollectionTitle, toggleVisibleVisionClipCollectionSelection, wouldCreateVisionCollectionTagParentCycle } from '../../../core/ai/clip-inbox-operations'
+import { getVisionCollectionTagPath, invertVisionClipSelections, mergeVisionClipCollections, mergeVisionCollectionSelections, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTag, normalizeVisionCollectionTags, renameVisionClipCollectionTitle, toggleVisibleVisionClipCollectionSelection, wouldCreateVisionCollectionTagParentCycle } from '../../../core/ai/clip-inbox-operations'
 import { filterVisionClipCollectionTagOperationHistory, serializeVisionClipCollectionTagOperationHistory, VISION_CLIP_COLLECTION_TAG_OPERATION_HISTORY_PAGE_SIZE } from '../../../core/ai/clip-inbox-tag-history'
 import { hasVisionCollectionTagChildren, isVisionCollectionTagHiddenByCollapsedAncestor, matchesVisionCollectionTagFilter, mergeVisionClipCollectionTagCollapsePreferences, parseVisionClipCollectionTagCollapsePreferences, serializeVisionClipCollectionTagCollapsePreferences, VISION_CLIP_COLLECTION_TAG_COLLAPSE_PREFERENCES_STORAGE_KEY, type VisionCollectionTagFilterMode } from '../../../core/ai/clip-inbox-tag-tree'
 import { createVisionClipSelections, normalizeVisionTimeRange } from '../../../core/ai/vision-evidence'
@@ -297,6 +297,7 @@ export function VisionPanel(): React.ReactElement {
   const [duplicatingCollectionId, setDuplicatingCollectionId] = useState<string | null>(null)
   const [isDuplicatingCollections, setIsDuplicatingCollections] = useState(false)
   const [isMergingCollections, setIsMergingCollections] = useState(false)
+  const [collectionMergeTitle, setCollectionMergeTitle] = useState('')
   const [isExportingCollections, setIsExportingCollections] = useState(false)
   const [isDeletingCollections, setIsDeletingCollections] = useState(false)
   const [isUpdatingCollectionFlags, setIsUpdatingCollectionFlags] = useState(false)
@@ -426,6 +427,17 @@ export function VisionPanel(): React.ReactElement {
   const renameSuffix = normalizeVisionClipCollectionRenamePart(collectionRenameSuffix)
   const hasRenameRule = Boolean(renamePrefix || renameSuffix)
   const renamePreviewCollections = selectedCollectionsForRename.map((collection) => ({ ...collection, title: renameVisionClipCollectionTitle(collection.title, renamePrefix, renameSuffix) }))
+  const collectionMergeTitleValue = collectionMergeTitle.trim() || app.copy.vision.collectionMergeDefaultTitle
+  const collectionMergePreview = selectedCollectionsForRename.length >= 2
+    ? (() => {
+      try {
+        return mergeVisionClipCollections(selectedCollectionsForRename, collectionMergeTitleValue, 'source-time')
+      } catch {
+        return null
+      }
+    })()
+    : null
+  const collectionMergePreviewTags = collectionMergePreview?.tags ?? []
   const isCollectionBatchBusy = isDuplicatingCollections || isMergingCollections || isExportingCollections || isDeletingCollections || isRenamingCollections || isUpdatingCollectionTags || isUpdatingCollectionFlags || isCleaningCollectionTag || isRenamingCollectionTag || isSavingCollectionTagMetadata || isTransferringCollectionTagMetadata || isExportingCollectionTagHistory || isUndoingCollectionTagOperation || isRedoingCollectionTagOperation || isUndoingCollectionOperation || isRedoingCollectionOperation || isSavingCollectionTitle || isSavingCollectionTags || editingCollectionId !== null || editingCollectionTagsId !== null || duplicatingCollectionId !== null || updatingCollectionFlagId !== null
   const collectionTagImportPreviewItems = collectionTagImportPreview?.preview ?? []
   const collectionTagImportConflicts = collectionTagImportPreviewItems.filter((item) => item.state === 'conflict')
@@ -1479,17 +1491,18 @@ export function VisionPanel(): React.ReactElement {
       return
     }
     const collectionIds = selectedCollectionsForRename.map((collection) => collection.id)
-    if (!window.confirm(app.copy.vision.collectionsMergeConfirm(collectionIds.length))) return
+    if (!window.confirm(app.copy.vision.collectionsMergeConfirm(collectionIds.length, collectionMergeTitleValue))) return
     setIsMergingCollections(true)
     setError(null)
     try {
-      const result = await window.aiv.mergeVisionClipCollections({ collectionIds, title: app.copy.vision.collectionMergeDefaultTitle, sortMode: 'source-time' })
+      const result = await window.aiv.mergeVisionClipCollections({ collectionIds, title: collectionMergeTitleValue, sortMode: 'source-time' })
       if (!result.success || !result.collection) {
         setError(result.message)
         return
       }
       setCollections((current) => [result.collection as VisionClipCollection, ...current.filter((item) => item.id !== result.collection?.id)])
       setSelectedCollectionIds(new Set())
+      setCollectionMergeTitle('')
       setCollectionTransferStatus(app.copy.vision.collectionsMerged(result.sourceIds.length, result.collection.selections.length, result.skippedCount))
     } catch (reason: unknown) {
       setError(reason instanceof Error ? reason.message : String(reason))
@@ -1956,7 +1969,7 @@ export function VisionPanel(): React.ReactElement {
     )
     : null
 
-  const collectionBatchMergeAction = selectedCollectionIds.size > 0 ? <section className="vision-card vision-collection-batch-merge"><div><strong>{app.copy.vision.mergeSelectedCollections}</strong><small>{app.copy.vision.collectionMergeDescription}</small></div><button className="vision-secondary-action" type="button" onClick={() => void mergeSelectedCollections()} disabled={isCollectionBatchBusy || selectedCollectionIds.size < 2}>{app.copy.vision.mergeSelectedCollections}</button></section> : null
+  const collectionBatchMergeAction = selectedCollectionIds.size > 0 ? <section className="vision-card vision-collection-batch-merge"><div className="vision-collection-batch-merge-heading"><strong>{app.copy.vision.mergeSelectedCollections}</strong><small>{app.copy.vision.collectionMergeDescription}</small></div><div className="vision-collection-batch-merge-controls"><label><span>{app.copy.vision.collectionMergeTitleLabel}</span><input className="vision-collection-merge-title-input" value={collectionMergeTitle} maxLength={200} onChange={(event) => setCollectionMergeTitle(event.target.value)} placeholder={app.copy.vision.collectionMergeDefaultTitle} aria-label={app.copy.vision.collectionMergeTitleLabel} disabled={isCollectionBatchBusy} /></label><button className="vision-secondary-action" type="button" onClick={() => void mergeSelectedCollections()} disabled={isCollectionBatchBusy || selectedCollectionIds.size < 2 || selectedCollectionsForRename.length < 2 || !collectionMergePreview}>{app.copy.vision.mergeSelectedCollections}</button></div>{selectedCollectionsForRename.length < 2 ? <small className="vision-collection-merge-hint">{app.copy.vision.collectionMergeSelectionRequired}</small> : collectionMergePreview ? <div className="vision-collection-merge-preview" role="region" aria-label={app.copy.vision.collectionMergePreviewTitle}><strong>{app.copy.vision.collectionMergePreviewTitle}</strong><small>{app.copy.vision.collectionMergePreviewSummary(collectionMergePreview.selections.length, collectionMergePreviewTags.length)}</small><div className="vision-collection-merge-preview-sources" role="list" aria-label={app.copy.vision.collectionMergePreviewSources(selectedCollectionsForRename.length)}>{selectedCollectionsForRename.map((collection) => <span key={collection.id} role="listitem">{collection.title}</span>)}</div><small>{app.copy.vision.collectionMergePreviewTags}: {collectionMergePreviewTags.join(' · ') || app.copy.vision.collectionTagsEmpty}</small></div> : <small className="vision-collection-merge-hint">{app.copy.vision.collectionMergePreviewUnavailable}</small>}</section> : null
 
   return <div className="vision-panel">
     {collectionBatchMergeAction}
