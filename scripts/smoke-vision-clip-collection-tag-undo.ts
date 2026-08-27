@@ -156,12 +156,44 @@ async function runSmoke(): Promise<void> {
     if (await page.getByRole('button', { name: '撤销上次标签操作', exact: true }).count() !== 0) throw new Error('All tag history should be consumed after the second undo')
     if (await page.getByRole('button', { name: '重做上次标签操作', exact: true }).count() === 0) throw new Error('Redo history should remain available after undoing style metadata')
 
+    const paginationHistoryResults = await page.evaluate(() => Promise.all(Array.from({ length: 21 }, (_, index) => window.aiv.updateVisionClipCollectionTagMetadata({
+      tag: '分页测试',
+      parentTag: '',
+      color: index % 2 === 0 ? '#aabbcc' : '#ccbbaa',
+      textColor: '#101010',
+      note: `分页测试 ${index + 1}`,
+      isFavorite: index % 2 === 0
+    }))))
+    if (paginationHistoryResults.some((result) => !result.success)) throw new Error(`Unable to prepare pagination history: ${JSON.stringify(paginationHistoryResults)}`)
+
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await openVisionPanel(page)
+    await historyEntries.first().waitFor({ timeout: 10_000 })
+    const historyTotal = await page.locator('.vision-collection-tag-history-summary b').textContent()
+    if (historyTotal !== '23') throw new Error(`Expected 23 retained tag history entries, received ${historyTotal}`)
+    const historyPageLabel = page.locator('.vision-collection-tag-history-pagination small')
+    await historyPageLabel.filter({ hasText: '第 1 / 2 页' }).waitFor({ timeout: 10_000 })
+    const nextHistoryPageButton = page.getByRole('button', { name: '下一页', exact: true })
+    if (await nextHistoryPageButton.isDisabled()) throw new Error('History next-page action should be enabled on the first page')
+    await nextHistoryPageButton.click()
+    await historyPageLabel.filter({ hasText: '第 2 / 2 页' }).waitFor({ timeout: 10_000 })
+    if (await historyEntries.count() !== 3) throw new Error(`Expected 3 entries on the second history page, received ${await historyEntries.count()}`)
+    const previousHistoryPageButton = page.getByRole('button', { name: '上一页', exact: true })
+    if (await previousHistoryPageButton.isDisabled()) throw new Error('History previous-page action should be enabled on the second page')
+    await previousHistoryPageButton.click()
+    await historyPageLabel.filter({ hasText: '第 1 / 2 页' }).waitFor({ timeout: 10_000 })
+    const historyDetailButton = page.getByRole('button', { name: /查看详情/ }).first()
+    await historyDetailButton.click()
+    const historyDetail = page.getByRole('region', { name: '标签操作详情', exact: true })
+    await historyDetail.waitFor({ timeout: 10_000 })
+    if (!(await historyDetail.textContent())?.includes('1 条标签元数据')) throw new Error(`History detail should include metadata snapshot count: ${await historyDetail.textContent()}`)
+
     if (screenshotPath) {
       await page.locator('.vision-collection-tag-manager').scrollIntoViewIfNeeded()
       await page.screenshot({ path: screenshotPath, fullPage: false })
     }
     if (session.errors.length > 0) throw new Error(`Renderer errors during clip collection tag undo smoke:\n${session.errors.join('\n')}`)
-    console.log(`AIVPlayer Smoke Vision Clip Collection Tag Undo passed: ${JSON.stringify({ originalCount: originals.length, cleaned: true, restored: true, persistedHistory: true, historyTimeline: true, historyExported: true, redoAfterReload: true, metadataUndo: true, screenshotPath: screenshotPath ?? null })}`)
+    console.log(`AIVPlayer Smoke Vision Clip Collection Tag Undo passed: ${JSON.stringify({ originalCount: originals.length, cleaned: true, restored: true, persistedHistory: true, historyTimeline: true, historyExported: true, historyPagination: true, historyDetail: true, redoAfterReload: true, metadataUndo: true, screenshotPath: screenshotPath ?? null })}`)
   } finally {
     if (app) await app.close().catch(() => undefined)
     await rm(userDataDirectory, { recursive: true, force: true }).catch(() => undefined)
