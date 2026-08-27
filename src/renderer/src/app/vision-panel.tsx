@@ -570,6 +570,20 @@ export function VisionPanel(): React.ReactElement {
       }
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
   }
+  const applyCollectionOperationResult = (result: { collections: VisionClipCollection[]; deletedCollectionIds?: string[]; createdCollectionIds?: string[] }): void => {
+    if (result.deletedCollectionIds?.length) {
+      const deletedIds = new Set(result.deletedCollectionIds)
+      setCollections((current) => current.filter((collection) => !deletedIds.has(collection.id)))
+      return
+    }
+    if (result.createdCollectionIds?.length) {
+      const createdIds = new Set(result.createdCollectionIds)
+      setCollections((current) => [...result.collections, ...current.filter((collection) => !createdIds.has(collection.id))])
+      return
+    }
+    const updatedById = new Map(result.collections.map((collection) => [collection.id, collection]))
+    setCollections((current) => current.map((collection) => updatedById.get(collection.id) ?? collection))
+  }
 
   useEffect(() => {
     setCollectionTagParent(managedCollectionTagMetadata?.parentTag ?? '')
@@ -1586,6 +1600,7 @@ export function VisionPanel(): React.ReactElement {
       setCollectionMergeTitle('')
       setExcludedCollectionMergeSelectionKeys(new Set())
       setCollectionMergeRangeOverrides({})
+      refreshCollectionOperation()
       setCollectionTransferStatus(app.copy.vision.collectionsMerged(result.sourceIds.length, result.collection.selections.length, result.skippedCount))
     } catch (reason: unknown) {
       setError(reason instanceof Error ? reason.message : String(reason))
@@ -1604,8 +1619,7 @@ export function VisionPanel(): React.ReactElement {
         setError(result.message)
         return
       }
-      const updatedById = new Map(result.collections.map((collection) => [collection.id, collection]))
-      setCollections((current) => current.map((collection) => updatedById.get(collection.id) ?? collection))
+      applyCollectionOperationResult(result)
       refreshCollectionOperation()
       const label = flag === 'isFavorite'
         ? (enabled ? app.copy.vision.collectionStatusFavorite : app.copy.vision.collectionStatusUnfavorite)
@@ -1928,8 +1942,7 @@ export function VisionPanel(): React.ReactElement {
         setError(result.message)
         return
       }
-      const updatedById = new Map(result.collections.map((collection) => [collection.id, collection]))
-      setCollections((current) => current.map((collection) => updatedById.get(collection.id) ?? collection))
+      applyCollectionOperationResult(result)
       refreshCollectionOperation()
       setCollectionTransferStatus(result.message)
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setIsUndoingCollectionOperation(false))
@@ -1944,8 +1957,7 @@ export function VisionPanel(): React.ReactElement {
         setError(result.message)
         return
       }
-      const updatedById = new Map(result.collections.map((collection) => [collection.id, collection]))
-      setCollections((current) => current.map((collection) => updatedById.get(collection.id) ?? collection))
+      applyCollectionOperationResult(result)
       refreshCollectionOperation()
       setCollectionTransferStatus(result.message)
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setIsRedoingCollectionOperation(false))

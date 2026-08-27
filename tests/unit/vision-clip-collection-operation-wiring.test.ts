@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 const projectRoot = process.cwd()
 
 describe('vision clip collection operation wiring', () => {
-  it('keeps flag updates and undo/redo behind shared IPC, desktop and preload', () => {
+  it('keeps collection updates and undo/redo behind shared IPC, desktop and preload', () => {
     const channels = readFileSync(join(projectRoot, 'src/shared/ipc-channels.ts'), 'utf8')
     const desktop = readFileSync(join(projectRoot, 'src/desktop/ipc-vision.ts'), 'utf8')
     const preload = readFileSync(join(projectRoot, 'src/preload/index.ts'), 'utf8')
@@ -36,6 +36,7 @@ describe('vision clip collection operation wiring', () => {
     expect(store).toContain('CREATE TABLE IF NOT EXISTS clip_collection_operation_history')
     expect(store).toContain('updateCollectionFlags(request: VisionClipCollectionFlagUpdateRequest)')
     expect(store).toContain('recordCollectionOperation(\'flags\'')
+    expect(store).toContain('recordCollectionOperation(\'merge\'')
     expect(store).toContain('undoLastCollectionOperation()')
     expect(store).toContain('getLastCollectionRedoOperation()')
     expect(store).toContain('redoLastCollectionOperation()')
