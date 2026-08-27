@@ -1111,3 +1111,12 @@
 - 真实 Electron Smoke 已验证两条来源范围 `00:01.0–00:03.0`、`00:02.6–00:05.0` 和合并后范围 `00:01.0–00:05.0`，同时验证自定义名称、标签 / 证据、原集合保留、重载持久化和 Renderer 无错误；截图输出到 `/private/tmp/aivplayer-collection-batch-merge-ranges-before.png` 与 `/private/tmp/aivplayer-collection-batch-merge-ranges-after.png`。
 - 分阶段提交：`b4742f5 feat(选段集合) : 增加合并差异预览合同`（来源快照、合并结果预览类型和核心回归）；`4af687d feat(选段集合) : 展示逐片段合并差异`（Renderer、四语文案、范围格式化和样式）；`4d6299b test(选段集合) : 验证逐片段合并预览`（Electron Smoke 范围断言和来源门禁）。
 - 当前边界：只展示时间范围差异，不提供波形 / 视频缩略图、单个范围编辑、冲突解决、合并撤销或跨设备同步。
+
+## Clip Inbox 批量合并可选片段
+
+- 合并预览中的每个来源选段现在都可以单独勾选或取消；取消后会实时重算已选来源数量、合并后时间范围和标签，所有片段取消时仍保留来源列表以便重新选择。
+- 提交时 Renderer 会把每个来源集合的选段键传给主进程，Store 会重新从本地数据库筛选后再合并，避免只修改预览而实际仍写入未选片段；未提供选段选择时保持旧版全选兼容。
+- 确认弹窗会同时显示集合数量和实际选段数量；成功后原集合保持不变，选择状态和名称输入一起清空。
+- 真实 Electron Smoke 已验证取消 `00:10.0–00:11.0` 后只保留 2 个来源选段，最终范围 `[1,5]`，未选证据未写入，原集合保留、重载持久化和 Renderer 无错误；截图输出到 `/private/tmp/aivplayer-collection-batch-merge-selection-before.png` 与 `/private/tmp/aivplayer-collection-batch-merge-selection-after.png`。
+- 分阶段提交：`978c8a4 feat(选段集合) : 支持选择合并片段`（共享选择合同、核心纯函数、Store、IPC 和回归）；`ec202e8 feat(选段集合) : 增加合并片段勾选`（Renderer、四语文案、样式和 UI 契约）；`d20a03d test(选段集合) : 验证合并片段勾选`（Electron Smoke 取消选段和来源门禁）。
+- 当前边界：只支持按已有选段整体勾选，不提供单个范围裁切、波形 / 视频缩略图、拖拽排序、合并撤销或跨设备同步。
