@@ -814,7 +814,7 @@
 
 .vision-collection-merge-preview-sources {
   display: grid;
-  max-height: 120px;
+  max-height: 240px;
   gap: 4px;
   overflow: auto;
 }
