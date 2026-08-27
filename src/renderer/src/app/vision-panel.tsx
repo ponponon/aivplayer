@@ -4,11 +4,11 @@ import type { ChangeEvent, KeyboardEvent } from 'react'
 import type { VisionIndexProgress, VisionRuntimeStatus, VisionSearchResult } from '../../../shared/media-types'
 import type { AsrSubtitleResult } from '../../../shared/media-types'
 import type { MediaEvidenceDraftImportResult } from '../../../shared/evidence-task-types'
-import type { VisionClipCollection, VisionClipCollectionBatchTagsMode, VisionClipCollectionExportFormat, VisionClipCollectionOperationHistory, VisionClipCollectionSortMode, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataImportDecision, VisionClipCollectionTagMetadataImportPreviewResult, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationHistoryDetail, VisionClipCollectionTagOperationHistoryEntry, VisionClipCollectionTagSortMode, VisionClipSelection, VisionEvidenceType, VisionIndexFailureRecord, VisionLibrarySource, VisionModelDownloadProgress, VisionSavedSearch, VisionSearchFullExportRequest, VisionSearchPageRequest, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchSortMode } from '../../../shared/vision-types'
+import type { VisionClipCollection, VisionClipCollectionBatchTagsMode, VisionClipCollectionExportFormat, VisionClipCollectionMergeSelection, VisionClipCollectionOperationHistory, VisionClipCollectionSortMode, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataImportDecision, VisionClipCollectionTagMetadataImportPreviewResult, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationHistoryDetail, VisionClipCollectionTagOperationHistoryEntry, VisionClipCollectionTagSortMode, VisionClipSelection, VisionEvidenceType, VisionIndexFailureRecord, VisionLibrarySource, VisionModelDownloadProgress, VisionSavedSearch, VisionSearchFullExportRequest, VisionSearchPageRequest, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchSortMode } from '../../../shared/vision-types'
 import type { LocaleCopy } from '../../../shared/i18n'
 import type { VisionObjectDetectionFilterState, VisionObjectDetectionResult } from '../../../shared/vision-object-detection-types'
 import type { VisionClipCollectionTagOperationHistoryFilter } from '../../../shared/vision-types'
-import { getVisionCollectionTagPath, invertVisionClipSelections, mergeVisionCollectionSelections, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTag, normalizeVisionCollectionTags, previewVisionClipCollectionMerge, renameVisionClipCollectionTitle, toggleVisibleVisionClipCollectionSelection, wouldCreateVisionCollectionTagParentCycle } from '../../../core/ai/clip-inbox-operations'
+import { getVisionClipSelectionMergeKey, getVisionCollectionTagPath, invertVisionClipSelections, mergeVisionCollectionSelections, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTag, normalizeVisionCollectionTags, previewVisionClipCollectionMerge, renameVisionClipCollectionTitle, toggleVisibleVisionClipCollectionSelection, wouldCreateVisionCollectionTagParentCycle } from '../../../core/ai/clip-inbox-operations'
 import { filterVisionClipCollectionTagOperationHistory, serializeVisionClipCollectionTagOperationHistory, VISION_CLIP_COLLECTION_TAG_OPERATION_HISTORY_PAGE_SIZE } from '../../../core/ai/clip-inbox-tag-history'
 import { hasVisionCollectionTagChildren, isVisionCollectionTagHiddenByCollapsedAncestor, matchesVisionCollectionTagFilter, mergeVisionClipCollectionTagCollapsePreferences, parseVisionClipCollectionTagCollapsePreferences, serializeVisionClipCollectionTagCollapsePreferences, VISION_CLIP_COLLECTION_TAG_COLLAPSE_PREFERENCES_STORAGE_KEY, type VisionCollectionTagFilterMode } from '../../../core/ai/clip-inbox-tag-tree'
 import { createVisionClipSelections, normalizeVisionTimeRange } from '../../../core/ai/vision-evidence'
@@ -231,6 +231,10 @@ function formatClipPreviewRange(selection: Pick<VisionClipSelection, 'startSecon
   return `${formatClipPreviewTime(selection.startSeconds)}–${formatClipPreviewTime(selection.endSeconds)}`
 }
 
+function getCollectionMergeSelectionStateKey(collectionId: string, selection: VisionClipSelection): string {
+  return `${collectionId}\u0000${getVisionClipSelectionMergeKey(selection)}`
+}
+
 function createDefaultVisionObjectDetectionFilter(): VisionObjectDetectionFilterState {
   return { labelQuery: '', minimumScore: 0, categoryLabels: [] }
 }
@@ -286,6 +290,7 @@ export function VisionPanel(): React.ReactElement {
   const [collections, setCollections] = useState<VisionClipCollection[]>([])
   const [hasLoadedCollections, setHasLoadedCollections] = useState(false)
   const [selectedCollectionIds, setSelectedCollectionIds] = useState<Set<string>>(new Set())
+  const [excludedCollectionMergeSelectionKeys, setExcludedCollectionMergeSelectionKeys] = useState<Set<string>>(new Set())
   const [collectionFilterQuery, setCollectionFilterQuery] = useState(() => readVisionClipCollectionFilterPreferences().query)
   const [collectionFilterTags, setCollectionFilterTags] = useState<string[]>(() => readVisionClipCollectionFilterPreferences().tags)
   const [collectionFilterExcludedTags, setCollectionFilterExcludedTags] = useState<string[]>(() => readVisionClipCollectionFilterPreferences().excludedTags)
@@ -442,16 +447,22 @@ export function VisionPanel(): React.ReactElement {
   const hasRenameRule = Boolean(renamePrefix || renameSuffix)
   const renamePreviewCollections = selectedCollectionsForRename.map((collection) => ({ ...collection, title: renameVisionClipCollectionTitle(collection.title, renamePrefix, renameSuffix) }))
   const collectionMergeTitleValue = collectionMergeTitle.trim() || app.copy.vision.collectionMergeDefaultTitle
+  const collectionMergeSelectedSelections: VisionClipCollectionMergeSelection[] = selectedCollectionsForRename.map((collection) => ({
+    collectionId: collection.id,
+    selectionKeys: collection.selections.filter((selection) => !excludedCollectionMergeSelectionKeys.has(getCollectionMergeSelectionStateKey(collection.id, selection))).map((selection) => getVisionClipSelectionMergeKey(selection))
+  }))
+  const collectionMergeSelectionCount = collectionMergeSelectedSelections.reduce((count, item) => count + item.selectionKeys.length, 0)
   const collectionMergePreview = selectedCollectionsForRename.length >= 2
     ? (() => {
       try {
-        return previewVisionClipCollectionMerge(selectedCollectionsForRename, collectionMergeTitleValue, 'source-time')
+        return previewVisionClipCollectionMerge(selectedCollectionsForRename, collectionMergeTitleValue, 'source-time', collectionMergeSelectedSelections)
       } catch {
         return null
       }
     })()
     : null
   const collectionMergePreviewTags = collectionMergePreview?.collection.tags ?? []
+  const collectionMergePreviewSources = collectionMergePreview?.sources ?? selectedCollectionsForRename.map((collection) => ({ collectionId: collection.id, title: collection.title, selections: collection.selections }))
   const isCollectionBatchBusy = isDuplicatingCollections || isMergingCollections || isExportingCollections || isDeletingCollections || isRenamingCollections || isUpdatingCollectionTags || isUpdatingCollectionFlags || isCleaningCollectionTag || isRenamingCollectionTag || isSavingCollectionTagMetadata || isTransferringCollectionTagMetadata || isExportingCollectionTagHistory || isUndoingCollectionTagOperation || isRedoingCollectionTagOperation || isUndoingCollectionOperation || isRedoingCollectionOperation || isSavingCollectionTitle || isSavingCollectionTags || editingCollectionId !== null || editingCollectionTagsId !== null || duplicatingCollectionId !== null || updatingCollectionFlagId !== null
   const collectionTagImportPreviewItems = collectionTagImportPreview?.preview ?? []
   const collectionTagImportConflicts = collectionTagImportPreviewItems.filter((item) => item.state === 'conflict')
@@ -1374,6 +1385,17 @@ export function VisionPanel(): React.ReactElement {
     })
   }
 
+  const toggleCollectionMergeSelection = (collectionId: string, selection: VisionClipSelection): void => {
+    if (isCollectionBatchBusy) return
+    const key = getCollectionMergeSelectionStateKey(collectionId, selection)
+    setExcludedCollectionMergeSelectionKeys((current) => {
+      const next = new Set(current)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
   const applySavedCollectionFilter = (savedFilter: VisionClipCollectionSavedFilter): void => {
     setCollectionFilterQuery(savedFilter.query)
     const excludedTags = mergeVisionClipCollectionFilterTags(savedFilter.excludedTags, availableCollectionFilterTags)
@@ -1500,16 +1522,16 @@ export function VisionPanel(): React.ReactElement {
   }
 
   const mergeSelectedCollections = async (): Promise<void> => {
-    if (isCollectionBatchBusy || selectedCollectionsForRename.length < 2) {
+    if (isCollectionBatchBusy || selectedCollectionsForRename.length < 2 || !collectionMergePreview) {
       if (!isCollectionBatchBusy && selectedCollectionsForRename.length < 2) setError(app.copy.vision.collectionMergeSelectionRequired)
       return
     }
     const collectionIds = selectedCollectionsForRename.map((collection) => collection.id)
-    if (!window.confirm(app.copy.vision.collectionsMergeConfirm(collectionIds.length, collectionMergeTitleValue))) return
+    if (!window.confirm(app.copy.vision.collectionsMergeConfirm(collectionIds.length, collectionMergeTitleValue, collectionMergeSelectionCount))) return
     setIsMergingCollections(true)
     setError(null)
     try {
-      const result = await window.aiv.mergeVisionClipCollections({ collectionIds, title: collectionMergeTitleValue, sortMode: 'source-time' })
+      const result = await window.aiv.mergeVisionClipCollections({ collectionIds, title: collectionMergeTitleValue, sortMode: 'source-time', selectedSelections: collectionMergeSelectedSelections })
       if (!result.success || !result.collection) {
         setError(result.message)
         return
@@ -1517,6 +1539,7 @@ export function VisionPanel(): React.ReactElement {
       setCollections((current) => [result.collection as VisionClipCollection, ...current.filter((item) => item.id !== result.collection?.id)])
       setSelectedCollectionIds(new Set())
       setCollectionMergeTitle('')
+      setExcludedCollectionMergeSelectionKeys(new Set())
       setCollectionTransferStatus(app.copy.vision.collectionsMerged(result.sourceIds.length, result.collection.selections.length, result.skippedCount))
     } catch (reason: unknown) {
       setError(reason instanceof Error ? reason.message : String(reason))
@@ -1989,17 +2012,18 @@ export function VisionPanel(): React.ReactElement {
       <div className="vision-collection-batch-merge-controls"><label><span>{app.copy.vision.collectionMergeTitleLabel}</span><input className="vision-collection-merge-title-input" value={collectionMergeTitle} maxLength={200} onChange={(event) => setCollectionMergeTitle(event.target.value)} placeholder={app.copy.vision.collectionMergeDefaultTitle} aria-label={app.copy.vision.collectionMergeTitleLabel} disabled={isCollectionBatchBusy} /></label><button className="vision-secondary-action" type="button" onClick={() => void mergeSelectedCollections()} disabled={isCollectionBatchBusy || selectedCollectionIds.size < 2 || selectedCollectionsForRename.length < 2 || !collectionMergePreview}>{app.copy.vision.mergeSelectedCollections}</button></div>
       {selectedCollectionsForRename.length < 2
         ? <small className="vision-collection-merge-hint">{app.copy.vision.collectionMergeSelectionRequired}</small>
-        : collectionMergePreview
-          ? <div className="vision-collection-merge-preview" role="region" aria-label={app.copy.vision.collectionMergePreviewTitle}>
-            <strong>{app.copy.vision.collectionMergePreviewTitle}</strong>
-            <small>{app.copy.vision.collectionMergePreviewSummary(collectionMergePreview.collection.selections.length, collectionMergePreviewTags.length)}</small>
-            <div className="vision-collection-merge-preview-sources" role="list" aria-label={app.copy.vision.collectionMergePreviewSources(collectionMergePreview.sources.length)}>
-              {collectionMergePreview.sources.map((source) => <div className="vision-collection-merge-preview-source" key={source.collectionId} role="listitem"><strong>{source.title}</strong><div className="vision-collection-merge-preview-source-ranges">{source.selections.map((selection, index) => <span key={`${source.collectionId}-${index}`}>{formatClipPreviewRange(selection)}</span>)}</div></div>)}
-            </div>
+        : <div className="vision-collection-merge-preview" role="region" aria-label={app.copy.vision.collectionMergePreviewTitle}>
+          <strong>{app.copy.vision.collectionMergePreviewTitle}</strong>
+          <small>{collectionMergePreview ? app.copy.vision.collectionMergePreviewSummary(collectionMergePreview.collection.selections.length, collectionMergePreviewTags.length) : app.copy.vision.collectionMergePreviewUnavailable}</small>
+          <small>{app.copy.vision.collectionMergePreviewSelected(collectionMergeSelectionCount)}</small>
+          <div className="vision-collection-merge-preview-sources" role="list" aria-label={app.copy.vision.collectionMergePreviewSources(collectionMergePreviewSources.length)}>
+            {collectionMergePreviewSources.map((source) => <div className="vision-collection-merge-preview-source" key={source.collectionId} role="listitem"><strong>{source.title}</strong><div className="vision-collection-merge-preview-source-ranges">{source.selections.length > 0 ? source.selections.map((selection, index) => { const range = formatClipPreviewRange(selection); const selectionStateKey = getCollectionMergeSelectionStateKey(source.collectionId, selection); return <label className="vision-collection-merge-preview-selection" key={`${selectionStateKey}-${index}`}><input type="checkbox" checked={!excludedCollectionMergeSelectionKeys.has(selectionStateKey)} onChange={() => toggleCollectionMergeSelection(source.collectionId, selection)} disabled={isCollectionBatchBusy} aria-label={app.copy.vision.collectionMergePreviewSelectionAriaLabel(range)} /><span>{range}</span></label> }) : <small>{app.copy.vision.collectionMergePreviewNoSelections}</small>}</div></div>)}
+          </div>
+          {collectionMergePreview ? <>
             <div className="vision-collection-merge-preview-output" role="group" aria-label={app.copy.vision.collectionMergePreviewOutputTitle}><strong>{app.copy.vision.collectionMergePreviewOutputTitle}</strong><div className="vision-collection-merge-preview-output-ranges" role="list" aria-label={app.copy.vision.collectionMergePreviewOutputTitle}>{collectionMergePreview.collection.selections.map((selection, index) => <span key={`${selection.sourceId}-${selection.startSeconds}-${index}`} role="listitem">{formatClipPreviewRange(selection)}</span>)}</div></div>
             <small>{app.copy.vision.collectionMergePreviewTags}: {collectionMergePreviewTags.join(' · ') || app.copy.vision.collectionTagsEmpty}</small>
-          </div>
-          : <small className="vision-collection-merge-hint">{app.copy.vision.collectionMergePreviewUnavailable}</small>}
+          </> : null}
+        </div>}
     </section>
     : null
 

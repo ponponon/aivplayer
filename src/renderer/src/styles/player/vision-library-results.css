@@ -843,8 +843,27 @@
   gap: 3px;
 }
 
-.vision-collection-merge-preview-source-ranges span,
-.vision-collection-merge-preview-output-ranges span {
+.vision-collection-merge-preview-selection {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 4px;
+  color: var(--text-secondary);
+  background: rgba(var(--overlay-rgb), 0.08);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 9px;
+}
+
+.vision-collection-merge-preview-selection input {
+  width: 11px;
+  height: 11px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.vision-collection-merge-preview-source-ranges > span,
+.vision-collection-merge-preview-output-ranges > span {
   padding: 2px 5px;
   color: var(--text-secondary);
   background: rgba(var(--overlay-rgb), 0.08);
@@ -865,7 +884,7 @@
   font-size: 9px;
 }
 
-.vision-collection-merge-preview-output-ranges span {
+.vision-collection-merge-preview-output-ranges > span {
   color: var(--text-primary);
   background: rgba(var(--accent-rgb), 0.14);
   border: 1px solid rgba(var(--accent-rgb), 0.22);
