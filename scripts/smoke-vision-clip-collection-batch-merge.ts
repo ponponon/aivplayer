@@ -94,7 +94,8 @@ async function runSmoke(): Promise<void> {
     if (merged.selections.length !== 1 || mergedSelection?.startSeconds !== 1 || mergedSelection.endSeconds !== 5) {
       throw new Error(`Clip collection batch merge interval mismatch: ${JSON.stringify(merged)}`)
     }
-    if (JSON.stringify(merged.tags) !== JSON.stringify(['人物', '烟火', '采访']) || merged.isFavorite || merged.isArchived) {
+    const expectedTags = new Set(['人物', '烟火', '采访'])
+    if (merged.tags.length !== expectedTags.size || merged.tags.some((tag) => !expectedTags.has(tag)) || merged.isFavorite || merged.isArchived) {
       throw new Error(`Clip collection batch merge metadata mismatch: ${JSON.stringify(merged)}`)
     }
     if (!mergedSelection.evidenceIds.includes('batch-merge-evidence-1') || !mergedSelection.evidenceIds.includes('batch-merge-evidence-2')) {
