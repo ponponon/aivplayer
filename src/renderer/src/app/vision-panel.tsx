@@ -1673,6 +1673,7 @@ export function VisionPanel(): React.ReactElement {
       setSelectedCollectionIds(new Set())
       setCollectionRenamePrefix('')
       setCollectionRenameSuffix('')
+      refreshCollectionOperation()
       setCollectionTransferStatus(result.message)
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setIsRenamingCollections(false))
   }
