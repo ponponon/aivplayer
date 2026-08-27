@@ -192,6 +192,47 @@ describe('clip inbox store', () => {
     expect(store.listCollections()).toEqual([])
   })
 
+  it('records batch deletion and restores the original collections through undo and redo', () => {
+    const first = store.saveCollection({ title: '删除恢复一', tags: ['旧'], isFavorite: true, selections: [selection({ startSeconds: 1, endSeconds: 2 })] })
+    const second = store.saveCollection({ title: '删除恢复二', isArchived: true, selections: [selection({ startSeconds: 3, endSeconds: 5 })] })
+    const untouched = store.saveCollection({ title: '删除恢复保留', selections: [selection({ startSeconds: 7, endSeconds: 9 })] })
+    const deleted = store.deleteCollections([first.id, second.id, 'missing'])
+
+    expect(deleted).toEqual({ deletedIds: [first.id, second.id], deletedCount: 2, skippedCount: 1 })
+    expect(store.getLastCollectionOperation()).toMatchObject({ type: 'delete' })
+    expect(store.getCollection(first.id)).toBeNull()
+    expect(store.getCollection(second.id)).toBeNull()
+
+    const undone = store.undoLastCollectionOperation()
+    expect(undone).toMatchObject({ success: true, operation: expect.objectContaining({ type: 'delete' }), createdCollectionIds: [first.id, second.id] })
+    expect(undone.collections).toEqual([first, second])
+    expect(store.getCollection(first.id)).toEqual(first)
+    expect(store.getCollection(second.id)).toEqual(second)
+    expect(store.getCollection(untouched.id)).toEqual(untouched)
+
+    store.close()
+    store = new ClipInboxStore(tempDirectory)
+    const redone = store.redoLastCollectionOperation()
+    expect(redone).toMatchObject({ success: true, operation: expect.objectContaining({ type: 'delete' }), deletedCollectionIds: [first.id, second.id] })
+    expect(store.getCollection(first.id)).toBeNull()
+    expect(store.getCollection(second.id)).toBeNull()
+    expect(store.getCollection(untouched.id)).toEqual(untouched)
+  })
+
+  it('refuses to redo a deletion after a restored collection was edited', () => {
+    const first = store.saveCollection({ title: '重做冲突一', selections: [selection({ startSeconds: 1, endSeconds: 2 })] })
+    const second = store.saveCollection({ title: '重做冲突二', selections: [selection({ startSeconds: 3, endSeconds: 4 })] })
+    store.deleteCollections([first.id, second.id])
+    expect(store.undoLastCollectionOperation().success).toBe(true)
+    const edited = store.saveCollection({ id: first.id, title: '恢复后被编辑', selections: first.selections })
+
+    const redone = store.redoLastCollectionOperation()
+    expect(redone).toMatchObject({ success: false, operation: null, collections: [] })
+    expect(store.getCollection(first.id)).toEqual(edited)
+    expect(store.getCollection(second.id)).toEqual(second)
+    expect(store.getLastCollectionRedoOperation()).toMatchObject({ type: 'delete' })
+  })
+
   it('deletes several collections in one transaction and reports missing ids', () => {
     const first = store.saveCollection({ title: '批量待删一', selections: [selection({ startSeconds: 1, endSeconds: 2 })] })
     const second = store.saveCollection({ title: '批量待删二', selections: [selection({ startSeconds: 3, endSeconds: 4 })] })

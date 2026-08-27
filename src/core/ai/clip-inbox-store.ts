@@ -10,7 +10,7 @@ import type { VisionClipCollection, VisionClipCollectionBatchDeleteResult, Visio
 type SqliteRow = Record<string, unknown>
 const EVIDENCE_TYPES: readonly VisionEvidenceType[] = ['subtitle', 'visual', 'scene', 'ocr', 'entity', 'object']
 const TAG_OPERATION_TYPES: readonly VisionClipCollectionTagOperationType[] = ['cleanup', 'rename', 'metadata', 'batch']
-const COLLECTION_OPERATION_TYPES: readonly VisionClipCollectionOperationType[] = ['flags', 'merge']
+const COLLECTION_OPERATION_TYPES: readonly VisionClipCollectionOperationType[] = ['flags', 'merge', 'delete']
 const TAG_OPERATION_HISTORY_RETENTION_LIMIT = 100
 
 type TagOperationCollectionSnapshot = { id: string; tags: string[]; updatedAt: number }
@@ -30,6 +30,7 @@ type CollectionOperationSnapshot = {
   collectionFlags?: CollectionOperationFlagSnapshot[]
   redoCollectionFlags?: CollectionOperationFlagSnapshot[]
   createdCollections?: VisionClipCollection[]
+  removedCollections?: VisionClipCollection[]
 }
 
 export function getClipInboxDatabasePath(userDataPath: string): string {
@@ -274,24 +275,46 @@ export class ClipInboxStore {
         throw error
       }
     }
-    const createdCollections = snapshot.createdCollections
-    if (!createdCollections || createdCollections.length === 0) return { success: false, message: '合并操作记录已损坏', operation: null, collections: [] }
-    const currentCollections = createdCollections.map((collection) => this.getCollection(collection.id))
-    if (currentCollections.some((collection, index) => !collection || JSON.stringify(collection) !== JSON.stringify(createdCollections[index]))) {
-      return { success: false, message: '合并结果已被修改或删除，无法安全撤销', operation: null, collections: [] }
+    if (operation.type === 'merge') {
+      const createdCollections = snapshot.createdCollections
+      if (!createdCollections || createdCollections.length === 0) return { success: false, message: '合并操作记录已损坏', operation: null, collections: [] }
+      const currentCollections = createdCollections.map((collection) => this.getCollection(collection.id))
+      if (currentCollections.some((collection, index) => !collection || JSON.stringify(collection) !== JSON.stringify(createdCollections[index]))) {
+        return { success: false, message: '合并结果已被修改或删除，无法安全撤销', operation: null, collections: [] }
+      }
+      const now = Date.now()
+      this.database.exec('BEGIN')
+      try {
+        const placeholders = createdCollections.map(() => '?').join(', ')
+        this.database.prepare(`DELETE FROM clip_collections WHERE id IN (${placeholders})`).run(...createdCollections.map((collection) => collection.id))
+        this.database.prepare('UPDATE clip_collection_operation_history SET undone_at = ?, redoable = 1 WHERE id = ?').run(now, operation.id)
+        this.database.exec('COMMIT')
+        return { success: true, message: '已撤销上次合并操作', operation, collections: [], deletedCollectionIds: createdCollections.map((collection) => collection.id) }
+      } catch (error) {
+        this.database.exec('ROLLBACK')
+        throw error
+      }
     }
-    const now = Date.now()
-    this.database.exec('BEGIN')
-    try {
-      const placeholders = createdCollections.map(() => '?').join(', ')
-      this.database.prepare(`DELETE FROM clip_collections WHERE id IN (${placeholders})`).run(...createdCollections.map((collection) => collection.id))
-      this.database.prepare('UPDATE clip_collection_operation_history SET undone_at = ?, redoable = 1 WHERE id = ?').run(now, operation.id)
-      this.database.exec('COMMIT')
-      return { success: true, message: '已撤销上次合并操作', operation, collections: [], deletedCollectionIds: createdCollections.map((collection) => collection.id) }
-    } catch (error) {
-      this.database.exec('ROLLBACK')
-      throw error
+    if (operation.type === 'delete') {
+      const removedCollections = snapshot.removedCollections
+      if (!removedCollections || removedCollections.length === 0) return { success: false, message: '删除操作记录已损坏', operation: null, collections: [] }
+      if (removedCollections.some((collection) => this.getCollection(collection.id) !== null)) {
+        return { success: false, message: '删除集合 ID 已被占用，无法安全恢复', operation: null, collections: [] }
+      }
+      const now = Date.now()
+      this.database.exec('BEGIN')
+      try {
+        for (const collection of removedCollections) this.insertCollectionSnapshot(collection)
+        this.database.prepare('UPDATE clip_collection_operation_history SET undone_at = ?, redoable = 1 WHERE id = ?').run(now, operation.id)
+        this.database.exec('COMMIT')
+        const collections = removedCollections.map((item) => this.getCollection(item.id)).filter((collection): collection is VisionClipCollection => collection !== null)
+        return { success: true, message: '已撤销上次删除操作', operation, collections, createdCollectionIds: removedCollections.map((collection) => collection.id) }
+      } catch (error) {
+        this.database.exec('ROLLBACK')
+        throw error
+      }
     }
+    return { success: false, message: '集合操作类型不受支持', operation: null, collections: [] }
   }
 
   redoLastCollectionOperation(): VisionClipCollectionOperationRedoResult {
@@ -302,7 +325,6 @@ export class ClipInboxStore {
     if (!operation || !snapshot) return { success: false, message: '集合操作没有可重做快照', operation: null, collections: [] }
     if (operation.type === 'flags') {
       if (!snapshot.redoCollectionFlags) return { success: false, message: '收藏归档操作没有可重做快照', operation: null, collections: [] }
-      const now = Date.now()
       this.database.exec('BEGIN')
       try {
         const update = this.database.prepare('UPDATE clip_collections SET is_favorite = ?, is_archived = ?, updated_at = ? WHERE id = ?')
@@ -316,22 +338,44 @@ export class ClipInboxStore {
         throw error
       }
     }
-    const createdCollections = snapshot.createdCollections
-    if (!createdCollections || createdCollections.length === 0) return { success: false, message: '合并操作没有可重做快照', operation: null, collections: [] }
-    if (createdCollections.some((collection) => this.getCollection(collection.id) !== null)) {
-      return { success: false, message: '合并结果已存在，无法安全重做', operation: null, collections: [] }
+    if (operation.type === 'merge') {
+      const createdCollections = snapshot.createdCollections
+      if (!createdCollections || createdCollections.length === 0) return { success: false, message: '合并操作没有可重做快照', operation: null, collections: [] }
+      if (createdCollections.some((collection) => this.getCollection(collection.id) !== null)) {
+        return { success: false, message: '合并结果已存在，无法安全重做', operation: null, collections: [] }
+      }
+      this.database.exec('BEGIN')
+      try {
+        for (const collection of createdCollections) this.insertCollectionSnapshot(collection)
+        this.database.prepare('UPDATE clip_collection_operation_history SET undone_at = NULL, redoable = 0 WHERE id = ?').run(operation.id)
+        this.database.exec('COMMIT')
+        const collections = createdCollections.map((item) => this.getCollection(item.id)).filter((collection): collection is VisionClipCollection => collection !== null)
+        return { success: true, message: '已重做上次合并操作', operation, collections, createdCollectionIds: createdCollections.map((collection) => collection.id) }
+      } catch (error) {
+        this.database.exec('ROLLBACK')
+        throw error
+      }
     }
-    this.database.exec('BEGIN')
-    try {
-      for (const collection of createdCollections) this.insertCollectionSnapshot(collection)
-      this.database.prepare('UPDATE clip_collection_operation_history SET undone_at = NULL, redoable = 0 WHERE id = ?').run(operation.id)
-      this.database.exec('COMMIT')
-      const collections = createdCollections.map((item) => this.getCollection(item.id)).filter((collection): collection is VisionClipCollection => collection !== null)
-      return { success: true, message: '已重做上次合并操作', operation, collections, createdCollectionIds: createdCollections.map((collection) => collection.id) }
-    } catch (error) {
-      this.database.exec('ROLLBACK')
-      throw error
+    if (operation.type === 'delete') {
+      const removedCollections = snapshot.removedCollections
+      if (!removedCollections || removedCollections.length === 0) return { success: false, message: '删除操作没有可重做快照', operation: null, collections: [] }
+      const currentCollections = removedCollections.map((collection) => this.getCollection(collection.id))
+      if (currentCollections.some((collection, index) => !collection || JSON.stringify(collection) !== JSON.stringify(removedCollections[index]))) {
+        return { success: false, message: '恢复后的集合已被修改或删除，无法安全重做', operation: null, collections: [] }
+      }
+      this.database.exec('BEGIN')
+      try {
+        const placeholders = removedCollections.map(() => '?').join(', ')
+        this.database.prepare(`DELETE FROM clip_collections WHERE id IN (${placeholders})`).run(...removedCollections.map((collection) => collection.id))
+        this.database.prepare('UPDATE clip_collection_operation_history SET undone_at = NULL, redoable = 0 WHERE id = ?').run(operation.id)
+        this.database.exec('COMMIT')
+        return { success: true, message: '已重做上次删除操作', operation, collections: [], deletedCollectionIds: removedCollections.map((collection) => collection.id) }
+      } catch (error) {
+        this.database.exec('ROLLBACK')
+        throw error
+      }
     }
+    return { success: false, message: '集合操作类型不受支持', operation: null, collections: [] }
   }
 
   listTagMetadata(): VisionClipCollectionTagMetadata[] {
@@ -542,8 +586,10 @@ export class ClipInboxStore {
       const existingIds = new Set(rows.map((row) => stringValue(row, 'id')).filter(Boolean))
       const deletedIds = normalizedIds.filter((collectionId) => existingIds.has(collectionId))
       if (deletedIds.length > 0) {
+        const removedCollections = deletedIds.map((collectionId) => this.getCollection(collectionId)).filter((collection): collection is VisionClipCollection => collection !== null)
         const deletePlaceholders = deletedIds.map(() => '?').join(', ')
         this.database.prepare(`DELETE FROM clip_collections WHERE id IN (${deletePlaceholders})`).run(...deletedIds)
+        this.recordCollectionOperation('delete', { removedCollections }, Date.now())
       }
       this.database.exec('COMMIT')
       return { deletedIds, deletedCount: deletedIds.length, skippedCount: normalizedIds.length - deletedIds.length }
@@ -873,8 +919,9 @@ export class ClipInboxStore {
     if (typeof value !== 'string' || !value.trim()) return null
     try {
       const parsed = JSON.parse(value) as Partial<CollectionOperationSnapshot>
-      if (!Array.isArray(parsed.collectionFlags) && !Array.isArray(parsed.createdCollections)) return null
+      if (!Array.isArray(parsed.collectionFlags) && !Array.isArray(parsed.createdCollections) && !Array.isArray(parsed.removedCollections)) return null
       if (parsed.redoCollectionFlags !== undefined && !Array.isArray(parsed.redoCollectionFlags)) return null
+      if (parsed.removedCollections !== undefined && !Array.isArray(parsed.removedCollections)) return null
       const readFlags = (items: unknown[]): CollectionOperationFlagSnapshot[] => items.map((item) => {
         if (!item || typeof item !== 'object') return null
         const candidate = item as Partial<CollectionOperationFlagSnapshot>
@@ -902,10 +949,12 @@ export class ClipInboxStore {
       const collectionFlags = parsed.collectionFlags === undefined ? undefined : readFlags(parsed.collectionFlags)
       const redoCollectionFlags = parsed.redoCollectionFlags === undefined ? undefined : readFlags(parsed.redoCollectionFlags)
       const createdCollections = parsed.createdCollections === undefined ? undefined : readCollections(parsed.createdCollections)
+      const removedCollections = parsed.removedCollections === undefined ? undefined : readCollections(parsed.removedCollections)
       return {
         ...(collectionFlags === undefined ? {} : { collectionFlags }),
         ...(redoCollectionFlags === undefined ? {} : { redoCollectionFlags }),
-        ...(createdCollections === undefined ? {} : { createdCollections })
+        ...(createdCollections === undefined ? {} : { createdCollections }),
+        ...(removedCollections === undefined ? {} : { removedCollections })
       }
     } catch {
       return null
