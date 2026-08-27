@@ -157,7 +157,7 @@ async function runSmoke(): Promise<void> {
     if (await page.getByRole('button', { name: '重做上次标签操作', exact: true }).count() === 0) throw new Error('Redo history should remain available after undoing style metadata')
 
     const paginationHistoryResults = await page.evaluate(() => Promise.all(Array.from({ length: 21 }, (_, index) => window.aiv.updateVisionClipCollectionTagMetadata({
-      tag: '分页测试',
+      tag: '海边',
       parentTag: '',
       color: index % 2 === 0 ? '#aabbcc' : '#ccbbaa',
       textColor: '#101010',
@@ -189,7 +189,9 @@ async function runSmoke(): Promise<void> {
     if (!(await historyDetail.textContent())?.includes('1 条标签元数据')) throw new Error(`History detail should include metadata snapshot count: ${await historyDetail.textContent()}`)
 
     if (screenshotPath) {
-      await page.locator('.vision-collection-tag-manager').scrollIntoViewIfNeeded()
+      await historyDetail.scrollIntoViewIfNeeded()
+      await page.keyboard.press('Escape')
+      await page.mouse.move(400, 400)
       await page.screenshot({ path: screenshotPath, fullPage: false })
     }
     if (session.errors.length > 0) throw new Error(`Renderer errors during clip collection tag undo smoke:\n${session.errors.join('\n')}`)
