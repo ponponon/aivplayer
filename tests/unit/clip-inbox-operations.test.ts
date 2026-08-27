@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyVisionCollectionTags, duplicateVisionCollectionTitle, getVisionCollectionTagPath, invertVisionClipSelections, mergeVisionClipCollections, normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTag, normalizeVisionCollectionTagColor, normalizeVisionCollectionTagFavorite, normalizeVisionCollectionTagNote, normalizeVisionCollectionTags, normalizeVisionCollectionTagsMode, renameVisionCollectionTag, renameVisionClipCollectionTitle, sortVisionClipSelections, toggleVisibleVisionClipCollectionSelection, wouldCreateVisionCollectionTagParentCycle } from '../../src/core/ai/clip-inbox-operations'
+import { applyVisionCollectionTags, duplicateVisionCollectionTitle, getVisionCollectionTagPath, invertVisionClipSelections, mergeVisionClipCollections, normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTag, normalizeVisionCollectionTagColor, normalizeVisionCollectionTagFavorite, normalizeVisionCollectionTagNote, normalizeVisionCollectionTags, normalizeVisionCollectionTagsMode, previewVisionClipCollectionMerge, renameVisionCollectionTag, renameVisionClipCollectionTitle, sortVisionClipSelections, toggleVisibleVisionClipCollectionSelection, wouldCreateVisionCollectionTagParentCycle } from '../../src/core/ai/clip-inbox-operations'
 import type { VisionClipCollection, VisionClipSelection } from '../../src/shared/vision-types'
 
 const selection = (patch: Partial<VisionClipSelection> = {}): VisionClipSelection => ({
@@ -118,6 +118,20 @@ describe('clip inbox operations', () => {
     const first = collection('first')
     expect(() => mergeVisionClipCollections([first, first], '合并')).toThrow('至少需要两个不同的选段集合')
     expect(() => mergeVisionClipCollections([first, collection('second')], '  ')).toThrow('合并后的选段集合名称不能为空')
+  })
+
+  it('builds source and output ranges for an inspectable merge preview', () => {
+    const first = collection('first', { title: '第一组', selections: [selection({ startSeconds: 1, endSeconds: 3 })] })
+    const second = collection('second', { title: '第二组', selections: [selection({ startSeconds: 2.6, endSeconds: 5, evidenceIds: ['cue-2'] })] })
+
+    const preview = previewVisionClipCollectionMerge([first, second, first], '合并预览')
+
+    expect(preview.sources.map((source) => source.title)).toEqual(['第一组', '第二组'])
+    expect(preview.sources.map((source) => source.selections[0]?.startSeconds)).toEqual([1, 2.6])
+    expect(preview.collection.selections).toHaveLength(1)
+    expect(preview.collection.selections[0]).toMatchObject({ startSeconds: 1, endSeconds: 5 })
+    expect(preview.sources[0]?.selections[0]).toMatchObject({ startSeconds: 1, endSeconds: 3, evidenceIds: ['cue-1'] })
+    expect(first.selections[0]).toMatchObject({ startSeconds: 1, endSeconds: 3, evidenceIds: ['cue-1'] })
   })
 
   it('inverts selected ranges into unselected ranges per source', () => {

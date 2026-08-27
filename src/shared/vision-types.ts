@@ -434,6 +434,17 @@ export type VisionClipCollectionInput = {
   selections: VisionClipSelection[]
 }
 
+export type VisionClipCollectionMergePreviewSource = {
+  collectionId: string
+  title: string
+  selections: VisionClipSelection[]
+}
+
+export type VisionClipCollectionMergePreview = {
+  collection: VisionClipCollectionInput
+  sources: VisionClipCollectionMergePreviewSource[]
+}
+
 export type VisionClipCollectionExportFormat = 'json' | 'csv' | 'edl'
 
 export type VisionClipCollectionExportRequest = {

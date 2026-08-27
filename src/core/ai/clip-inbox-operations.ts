@@ -1,5 +1,5 @@
 import { mergeVisionClipSelections, normalizeVisionTimeRange } from './vision-evidence'
-import type { VisionClipCollection, VisionClipCollectionBatchTagsMode, VisionClipCollectionInput, VisionClipCollectionSortMode, VisionClipCollectionTagMetadata, VisionClipSelection } from '../../shared/vision-types'
+import type { VisionClipCollection, VisionClipCollectionBatchTagsMode, VisionClipCollectionInput, VisionClipCollectionMergePreview, VisionClipCollectionMergePreviewSource, VisionClipCollectionSortMode, VisionClipCollectionTagMetadata, VisionClipSelection } from '../../shared/vision-types'
 
 const MAX_COLLECTION_TAGS = 20
 const MAX_COLLECTION_TAG_LENGTH = 40
@@ -192,6 +192,21 @@ export function mergeVisionClipCollections(collections: readonly VisionClipColle
     isArchived: false,
     selections
   }
+}
+
+/** Builds an inspectable merge preview without mutating source collections. */
+export function previewVisionClipCollectionMerge(collections: readonly VisionClipCollection[], title: unknown, sortMode: unknown = 'source-time'): VisionClipCollectionMergePreview {
+  const uniqueCollections = [...new Map(collections.map((collection) => [collection.id, collection])).values()]
+  const sources: VisionClipCollectionMergePreviewSource[] = uniqueCollections.map((collection) => ({
+    collectionId: collection.id,
+    title: collection.title,
+    selections: collection.selections.map((selection) => ({
+      ...selection,
+      evidenceIds: [...selection.evidenceIds],
+      evidenceTypes: [...selection.evidenceTypes]
+    }))
+  }))
+  return { collection: mergeVisionClipCollections(uniqueCollections, title, sortMode), sources }
 }
 
 function selectionGroupKey(selection: VisionClipSelection): string {
