@@ -140,7 +140,7 @@ describe('clip inbox operations', () => {
     const first = collection('first', { selections: [firstSelection, secondSelection] })
     const second = collection('second', { selections: [selection({ startSeconds: 7, endSeconds: 9 })] })
     const selectedSelections = [
-      { collectionId: first.id, selectionKeys: [getVisionClipSelectionMergeKey(firstSelection)] },
+      { collectionId: first.id, selectionKeys: [getVisionClipSelectionMergeKey(firstSelection)], rangeOverrides: [{ selectionKey: getVisionClipSelectionMergeKey(firstSelection), startSeconds: 1.5, endSeconds: 2.5 }] },
       { collectionId: second.id, selectionKeys: [] }
     ]
 
@@ -148,12 +148,12 @@ describe('clip inbox operations', () => {
     const preview = previewVisionClipCollectionMerge([first, second], '筛选合并', 'source-time', selectedSelections)
 
     expect(selected[0]?.selections).toHaveLength(1)
-    expect(selected[0]?.selections[0]).toMatchObject({ startSeconds: 1, endSeconds: 3 })
+    expect(selected[0]?.selections[0]).toMatchObject({ startSeconds: 1.5, endSeconds: 2.5 })
     expect(selected[1]?.selections).toHaveLength(0)
     expect(preview.sources[0]?.selections).toHaveLength(2)
-    expect(preview.selectedSelections).toEqual([{ collectionId: 'first', selectionKeys: [getVisionClipSelectionMergeKey(firstSelection)] }, { collectionId: 'second', selectionKeys: [] }])
+    expect(preview.selectedSelections).toEqual([{ collectionId: 'first', selectionKeys: [getVisionClipSelectionMergeKey(firstSelection)], rangeOverrides: [{ selectionKey: getVisionClipSelectionMergeKey(firstSelection), startSeconds: 1.5, endSeconds: 2.5 }] }, { collectionId: 'second', selectionKeys: [] }])
     expect(preview.collection.selections).toHaveLength(1)
-    expect(preview.collection.selections[0]).toMatchObject({ startSeconds: 1, endSeconds: 3 })
+    expect(preview.collection.selections[0]).toMatchObject({ startSeconds: 1.5, endSeconds: 2.5 })
   })
 
   it('inverts selected ranges into unselected ranges per source', () => {

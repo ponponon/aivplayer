@@ -170,12 +170,21 @@ export function getVisionClipSelectionMergeKey(selection: Pick<VisionClipSelecti
 /** Applies per-collection source-range selections without mutating stored collections. */
 export function selectVisionClipCollectionsForMerge(collections: readonly VisionClipCollection[], selectedSelections?: readonly VisionClipCollectionMergeSelection[]): VisionClipCollection[] {
   const uniqueCollections = [...new Map(collections.map((collection) => [collection.id, collection])).values()]
-  const selectedKeysByCollection = new Map<string, Set<string>>((selectedSelections ?? []).map((item) => [item.collectionId, new Set(item.selectionKeys.filter((key) => typeof key === 'string' && key.length > 0))]))
+  const selectedKeysByCollection = new Map((selectedSelections ?? []).map((item) => [item.collectionId, {
+    keys: new Set(item.selectionKeys.filter((key) => typeof key === 'string' && key.length > 0)),
+    rangeOverrides: new Map((item.rangeOverrides ?? []).filter((override) => typeof override?.selectionKey === 'string').map((override) => [override.selectionKey, override]))
+  }]))
   return uniqueCollections.map((collection) => {
-    const selectedKeys = selectedKeysByCollection.get(collection.id)
+    const selectionConfig = selectedKeysByCollection.get(collection.id)
     const selections = collection.selections
-      .filter((selection) => selectedKeys === undefined || selectedKeys.has(getVisionClipSelectionMergeKey(selection)))
-      .map((selection) => ({ ...selection, evidenceIds: [...selection.evidenceIds], evidenceTypes: [...selection.evidenceTypes] }))
+      .filter((selection) => selectionConfig === undefined || selectionConfig.keys.has(getVisionClipSelectionMergeKey(selection)))
+      .map((selection) => {
+        const override = selectionConfig?.rangeOverrides.get(getVisionClipSelectionMergeKey(selection))
+        const range = override ? normalizeVisionTimeRange(override, selection.durationSeconds) : { startSeconds: selection.startSeconds, endSeconds: selection.endSeconds }
+        if (!range) return null
+        return { ...selection, ...range, evidenceIds: [...selection.evidenceIds], evidenceTypes: [...selection.evidenceTypes] }
+      })
+      .filter((selection): selection is VisionClipSelection => selection !== null)
     return { ...collection, tags: [...collection.tags], selections }
   })
 }
@@ -225,10 +234,18 @@ export function previewVisionClipCollectionMerge(collections: readonly VisionCli
       evidenceTypes: [...selection.evidenceTypes]
     }))
   }))
-  const selectedKeys = selectedCollections.map((collection) => ({
-    collectionId: collection.id,
-    selectionKeys: collection.selections.map((selection) => getVisionClipSelectionMergeKey(selection))
-  }))
+  const selectedKeysByCollection = new Map((selectedSelections ?? []).map((item) => [item.collectionId, new Set(item.selectionKeys)]))
+  const selectedKeys = uniqueCollections.map((collection) => {
+    const selectionConfig = selectedSelections?.find((item) => item.collectionId === collection.id)
+    const rangeOverrides = selectionConfig?.rangeOverrides?.filter((override) => typeof override.selectionKey === 'string' && Number.isFinite(override.startSeconds) && Number.isFinite(override.endSeconds))
+    return {
+      collectionId: collection.id,
+      selectionKeys: collection.selections
+        .filter((selection) => selectedKeysByCollection.get(collection.id)?.has(getVisionClipSelectionMergeKey(selection)) ?? true)
+        .map((selection) => getVisionClipSelectionMergeKey(selection)),
+      ...(rangeOverrides && rangeOverrides.length > 0 ? { rangeOverrides: rangeOverrides.map((override) => ({ ...override })) } : {})
+    }
+  })
   return { collection: mergeVisionClipCollections(selectedCollections, title, sortMode), sources, selectedSelections: selectedKeys }
 }
 

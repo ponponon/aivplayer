@@ -443,6 +443,13 @@ export type VisionClipCollectionMergePreviewSource = {
 export type VisionClipCollectionMergeSelection = {
   collectionId: string
   selectionKeys: string[]
+  rangeOverrides?: VisionClipCollectionMergeRangeOverride[]
+}
+
+export type VisionClipCollectionMergeRangeOverride = {
+  selectionKey: string
+  startSeconds: number
+  endSeconds: number
 }
 
 export type VisionClipCollectionMergePreview = {

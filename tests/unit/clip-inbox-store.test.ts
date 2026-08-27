@@ -493,12 +493,12 @@ describe('clip inbox store', () => {
     const second = store.saveCollection({ title: '筛选二', selections: [selection({ startSeconds: 7, endSeconds: 9 })] })
 
     const result = store.mergeCollections([first.id, second.id], '筛选结果', 'source-time', [
-      { collectionId: first.id, selectionKeys: [getVisionClipSelectionMergeKey(firstSelection)] },
+      { collectionId: first.id, selectionKeys: [getVisionClipSelectionMergeKey(firstSelection)], rangeOverrides: [{ selectionKey: getVisionClipSelectionMergeKey(firstSelection), startSeconds: 1.5, endSeconds: 2.5 }] },
       { collectionId: second.id, selectionKeys: [] }
     ])
 
     expect(result.collection.selections).toHaveLength(1)
-    expect(result.collection.selections[0]).toMatchObject({ startSeconds: 1, endSeconds: 3 })
+    expect(result.collection.selections[0]).toMatchObject({ startSeconds: 1.5, endSeconds: 2.5 })
     expect(result.collection.selections[0]?.evidenceIds).not.toContain('merge-skip')
     expect(store.getCollection(first.id)?.selections).toHaveLength(2)
     expect(store.getCollection(second.id)?.selections).toHaveLength(1)
