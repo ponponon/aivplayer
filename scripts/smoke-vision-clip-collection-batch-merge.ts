@@ -113,6 +113,7 @@ async function runSmoke(): Promise<void> {
       const status = page.getByRole('status').filter({ hasText: '显示 3 / 3 个选段集合' })
       await status.waitFor({ timeout: 10_000 }).catch(() => undefined)
       await page.locator('.vision-collections').scrollIntoViewIfNeeded()
+      await page.locator('.vision-collections').hover()
       await page.screenshot({ path: screenshotPath, fullPage: false })
     }
 
