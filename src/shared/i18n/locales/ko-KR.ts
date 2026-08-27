@@ -1297,6 +1297,7 @@
       description: '설정은 모두 로컬에 저장되며 다음 실행 시 적용됩니다.',
       tabs: {
         general: '일반',
+        ai: 'AI 서비스',
         interface: '인터페이스',
         video: '비디오',
         subtitles: '자막',
@@ -1306,6 +1307,7 @@
       },
       tabAria: {
         general: '일반 설정으로 이동',
+        ai: 'AI 서비스 설정으로 이동',
         interface: '인터페이스 설정으로 이동',
         video: '비디오 설정으로 이동',
         subtitles: '자막 설정으로 이동',
@@ -1418,6 +1420,24 @@
       gpuRestartMessage: 'GPU 가속 설정 변경은 적용을 위해 앱을 다시 시작해야 합니다. 지금 다시 시작하시겠습니까?',
       gpuRestartConfirm: '지금 다시 시작',
       gpuRestartCancel: '나중에 다시 시작',
+      aiService: {
+        title: 'AI 서비스',
+        introDescription: '번역·요약 등 AI 기능은 "사용 중" 프로필을 공통으로 사용합니다. 관리형 서비스는 바로 쓸 수 있고, OpenAI-compatible 서비스를 추가할 수도 있습니다.',
+        activeProvider: '사용 중인 서비스',
+        profileListTitle: '프로필',
+        addProfile: '프로필 추가',
+        activeBadge: '사용 중',
+        managedBadge: '관리형',
+        customBadge: '사용자 지정',
+        managedProviderName: '관리형 서비스',
+        customProviderName: '사용자 지정 서비스',
+        editProfile: '편집',
+        deleteProfile: '삭제',
+        saveProfile: '저장',
+        cancelEdit: '취소',
+        nameField: '프로필 이름',
+        nameFieldDescription: '목록에서 구별하기 위한 이름입니다. 비워 두면 유형 기본 이름이 표시됩니다.'
+      },
       subtitles: {
         title: '자막',
         displayHeading: '자막 표시',

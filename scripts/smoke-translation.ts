@@ -131,7 +131,7 @@ try {
   await page.waitForLoadState('domcontentloaded')
   await page.waitForSelector('#root', { timeout: 10_000 })
 
-  await page.evaluate(async (translationBaseUrl) => {
+  await page.evaluate(async (baseUrl) => {
     const current = await window.aiv.getAppSettings()
 
     await window.aiv.setAppSettings({
@@ -140,11 +140,13 @@ try {
         ...current.ui,
         locale: 'zh-CN'
       },
-      asr: {
-        ...current.asr,
-        translationBaseUrl,
-        translationModel: 'mock-model',
-        translationApiKey: 'mock-key'
+      ai: {
+        ...current.ai,
+        providers: [
+          ...current.ai.providers,
+          { id: 'custom-mock', name: 'Mock', kind: 'custom' as const, baseUrl, model: 'mock-model', apiKey: 'mock-key' }
+        ],
+        activeProviderId: 'custom-mock'
       }
     })
   }, mockServer.url)

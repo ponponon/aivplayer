@@ -57,12 +57,10 @@ export function getAsrRuntime(): ReturnType<typeof createWhisperCppRuntime> {
         'X-AIVPlayer-Device': translationDeviceId,
         'X-AIVPlayer-Version': app.getVersion()
       },
-      getTranslationServiceSettings: () => ({
-        translationServiceMode: desktopState.currentAppSettings.asr.translationServiceMode,
-        translationBaseUrl: desktopState.currentAppSettings.asr.translationBaseUrl,
-        translationModel: desktopState.currentAppSettings.asr.translationModel,
-        translationApiKey: desktopState.currentAppSettings.asr.translationApiKey,
-        translationGlossary: desktopState.currentAppSettings.asr.translationGlossary
+      getAiServiceSettings: () => ({
+        providers: desktopState.currentAppSettings.ai.providers,
+        activeProviderId: desktopState.currentAppSettings.ai.activeProviderId,
+        glossary: desktopState.currentAppSettings.asr.translationGlossary
       })
     })
   }

@@ -8,6 +8,7 @@ import {
   updateAppSettingsSection
 } from '../../src/shared/app-settings'
 import { readAppSettings, readGpuAccelerationPreferenceSync, writeAppSettings } from '../../src/core/app-settings'
+import { MANAGED_AI_PROVIDER_ID, createCustomAiProvider, createManagedAiProvider } from '../../src/shared/ai-providers'
 
 describe('app settings', () => {
   let tempDirectory: string
@@ -43,9 +44,11 @@ describe('app settings', () => {
     settings.ui.lastSettingsSectionId = 'subtitles'
     settings.ui.sidePanelWidth = 360
     settings.asr.preferredModelSourceId = 'huggingface'
-    settings.asr.translationBaseUrl = 'https://example.test/v1/chat/completions'
-    settings.asr.translationModel = 'translation-model'
-    settings.asr.translationApiKey = 'secret-key'
+    settings.ai.providers = [
+      createManagedAiProvider(),
+      { ...createCustomAiProvider('custom-1'), name: '自定义', baseUrl: 'https://example.test/v1/chat/completions', model: 'translation-model', apiKey: 'secret-key' }
+    ]
+    settings.ai.activeProviderId = 'custom-1'
     settings.tts.executablePath = '/usr/local/bin/custom-say'
     settings.tts.voice = 'Tingting'
     settings.capture.saveDirectoryPath = tempDirectory
@@ -147,36 +150,80 @@ describe('app settings', () => {
             preferredModelSourceId: 'r2',
         defaultSubtitleLanguage: 'auto',
         autoLoadCachedSubtitles: true,
-        translationServiceMode: 'managed',
-        translationBaseUrl: null,
-        translationModel: null,
-        translationApiKey: null,
         translationGlossary: null
       }
     })
   })
 
-  it('keeps legacy custom translation settings in custom mode', async () => {
+  it('migrates legacy custom translation settings into a custom provider profile', async () => {
     await writeFile(
       join(tempDirectory, 'app-settings.json'),
       JSON.stringify({
-        schemaVersion: 28,
+        schemaVersion: 29,
         asr: {
+          translationServiceMode: 'custom',
           translationBaseUrl: 'https://example.test/v1/chat/completions',
           translationModel: 'custom-model',
-          translationApiKey: 'custom-key'
+          translationApiKey: 'custom-key',
+          translationGlossary: 'Technology=技术'
         }
       })
     )
 
-    await expect(readAppSettings(tempDirectory)).resolves.toMatchObject({
-      asr: {
-        translationServiceMode: 'custom',
-        translationBaseUrl: 'https://example.test/v1/chat/completions',
-        translationModel: 'custom-model',
-        translationApiKey: 'custom-key'
-      }
-    })
+    const settings = await readAppSettings(tempDirectory)
+
+    expect(settings.schemaVersion).toBe(30)
+    expect(settings.ai.providers).toHaveLength(2)
+    expect(settings.ai.providers[0]).toEqual({ id: MANAGED_AI_PROVIDER_ID, name: '', kind: 'managed', baseUrl: null, model: null, apiKey: null })
+    const migrated = settings.ai.providers[1]
+    expect(migrated.kind).toBe('custom')
+    expect(migrated.baseUrl).toBe('https://example.test/v1/chat/completions')
+    expect(migrated.model).toBe('custom-model')
+    expect(migrated.apiKey).toBe('custom-key')
+    expect(settings.ai.activeProviderId).toBe(migrated.id)
+    expect(settings.asr.translationGlossary).toBe('Technology=技术')
+  })
+
+  it('migrates legacy managed translation settings and falls back for invalid active ids', async () => {
+    await writeFile(
+      join(tempDirectory, 'app-settings.json'),
+      JSON.stringify({
+        schemaVersion: 29,
+        asr: { translationServiceMode: 'managed' },
+        ai: { activeProviderId: 'gone' }
+      })
+    )
+
+    const settings = await readAppSettings(tempDirectory)
+
+    expect(settings.ai.providers).toEqual([
+      { id: MANAGED_AI_PROVIDER_ID, name: '', kind: 'managed', baseUrl: null, model: null, apiKey: null }
+    ])
+    expect(settings.ai.activeProviderId).toBe(MANAGED_AI_PROVIDER_ID)
+  })
+
+  it('forces managed provider secret fields back to null and keeps glossary untouched', async () => {
+    await writeFile(
+      join(tempDirectory, 'app-settings.json'),
+      JSON.stringify({
+        schemaVersion: 30,
+        ai: {
+          providers: [
+            { id: MANAGED_AI_PROVIDER_ID, name: 'hack', kind: 'managed', baseUrl: 'https://evil.test', model: 'm', apiKey: 'k' },
+            { id: MANAGED_AI_PROVIDER_ID, name: 'dup', kind: 'managed', baseUrl: null, model: null, apiKey: null }
+          ],
+          activeProviderId: MANAGED_AI_PROVIDER_ID
+        },
+        asr: { translationGlossary: 'AIVPlayer=AIV 播放器' }
+      })
+    )
+
+    const settings = await readAppSettings(tempDirectory)
+
+    expect(settings.ai.providers).toEqual([
+      { id: MANAGED_AI_PROVIDER_ID, name: '', kind: 'managed', baseUrl: null, model: null, apiKey: null }
+    ])
+    expect(settings.asr.translationGlossary).toBe('AIVPlayer=AIV 播放器')
   })
 
   it('keeps the speaker model directory absolute and falls back for invalid values', async () => {
@@ -215,7 +262,7 @@ describe('app settings', () => {
     )
 
     await expect(readAppSettings(tempDirectory)).resolves.toMatchObject({
-      schemaVersion: 29,
+      schemaVersion: 30,
       playback: {
         singleClickPause: true
       }
@@ -330,9 +377,11 @@ describe('app settings', () => {
     }
 
     const settings = createDefaultAppSettings()
-    settings.asr.translationBaseUrl = 'https://example.test/v1/chat/completions'
-    settings.asr.translationModel = 'translation-model'
-    settings.asr.translationApiKey = 'secret-key'
+    settings.ai.providers = [
+      createManagedAiProvider(),
+      { ...createCustomAiProvider('custom-1'), name: '自定义', baseUrl: 'https://example.test/v1/chat/completions', model: 'translation-model', apiKey: 'secret-key' }
+    ]
+    settings.ai.activeProviderId = 'custom-1'
     settings.drama.apiBaseUrl = 'https://example.test/v1/chat/completions'
     settings.drama.model = 'drama-model'
     settings.drama.apiKey = 'drama-secret-key'

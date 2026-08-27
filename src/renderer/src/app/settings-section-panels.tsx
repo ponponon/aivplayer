@@ -2,6 +2,7 @@ import type { ReactElement } from 'react'
 import type { AppUpdateState } from '../../../shared/app-update-types'
 import type { LocaleCopy } from '../../../shared/i18n'
 import { AboutSettingsSection } from './settings-sections/about'
+import { AiServiceSettingsSection } from './settings-sections/ai-service'
 import { CaptureSettingsSection } from './settings-sections/capture'
 import { GeneralSettingsSection } from './settings-sections/general'
 import { InterfaceSettingsSection } from './settings-sections/interface'
@@ -23,6 +24,7 @@ export type SettingsSectionPanelsProps = {
 
 const sectionComponents: Record<Exclude<SettingsTabId, 'about'>, (props: SettingsSectionProps) => ReactElement> = {
   general: GeneralSettingsSection,
+  ai: AiServiceSettingsSection,
   interface: InterfaceSettingsSection,
   video: VideoSettingsSection,
   subtitles: SubtitlesSettingsSection,

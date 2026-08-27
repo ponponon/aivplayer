@@ -20,7 +20,7 @@ import type {
   AsrSubtitleResult
 } from '../../shared/media-types.ts'
 import type { AsrCacheClearResult, AsrCacheStatsResult } from '../../shared/media-types.ts'
-import type { AppSettings } from '../../shared/app-settings'
+import type { AiProviderProfile } from '../../shared/ai-providers'
 import type { AppLocale } from '../../shared/localization'
 
 export type AsrRuntime = {
@@ -71,6 +71,6 @@ export type AsrRuntimeOptions = {
   extraBinaryDirectories?: string[]
   translationFetch?: (url: string, init?: RequestInit) => Promise<Response>
   translationHeaders?: Record<string, string>
-  getTranslationServiceSettings?: () => Partial<Pick<AppSettings['asr'], 'translationServiceMode' | 'translationBaseUrl' | 'translationModel' | 'translationApiKey' | 'translationGlossary'>> | null
+  getAiServiceSettings?: () => { providers: AiProviderProfile[]; activeProviderId: string; glossary: string | null } | null
   getLocale?: () => AppLocale
 }

@@ -19,6 +19,7 @@ import { readAsrRuntimeSettings, saveWhisperBinaryPath } from './asr-settings.ts
 import { clearStaleSubtitleCache, getSubtitleCacheStats } from './subtitle-cache-management.ts'
 import { getWhisperBinaryNames, parseWhisperBinaryReplacementName } from './whisper-binary.ts'
 import { getAppCopy } from '../../shared/i18n'
+import { resolveActiveAiProvider } from '../../shared/ai-providers'
 import type {
   AsrJobProgress,
   AsrErrorDetails,
@@ -414,38 +415,26 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
     model: string | null
     glossary: string | null
   } => {
-    const translationSettings = options.getTranslationServiceSettings?.()
-    const hasCustomSettings = [
-      translationSettings?.translationBaseUrl,
-      translationSettings?.translationModel,
-      translationSettings?.translationApiKey
-    ].some((field) => typeof field === 'string' && field.trim().length > 0)
-    const hasEnvironmentSettings = [
-      env.AIVPLAYER_TRANSLATION_BASE_URL,
-      env.AIVPLAYER_TRANSLATION_MODEL,
-      env.AIVPLAYER_TRANSLATION_API_KEY
-    ].some((field) => typeof field === 'string' && field.trim().length > 0)
-    const mode = translationSettings?.translationServiceMode ??
-      (((translationSettings && hasCustomSettings) || hasEnvironmentSettings) ? 'custom' : 'managed')
+    const aiSettings = options.getAiServiceSettings?.()
+    const activeProvider = resolveActiveAiProvider(aiSettings?.providers, aiSettings?.activeProviderId)
+    const glossary = aiSettings?.glossary?.trim() || env.AIVPLAYER_TRANSLATION_GLOSSARY?.trim() || null
 
-    if (mode === 'managed') {
+    if (activeProvider.kind === 'managed') {
       return {
-        mode,
+        mode: 'managed',
         baseUrl: MANAGED_TRANSLATION_SERVICE_ENDPOINT,
         apiKey: MANAGED_TRANSLATION_SERVICE_AUTH_TOKEN,
         model: MANAGED_TRANSLATION_SERVICE_MODEL,
-        glossary:
-          translationSettings?.translationGlossary?.trim() || env.AIVPLAYER_TRANSLATION_GLOSSARY?.trim() || null
+        glossary
       }
     }
 
     return {
-      mode,
-      baseUrl: translationSettings?.translationBaseUrl?.trim() || env.AIVPLAYER_TRANSLATION_BASE_URL?.trim() || null,
-      apiKey: translationSettings?.translationApiKey?.trim() || env.AIVPLAYER_TRANSLATION_API_KEY?.trim() || null,
-      model: translationSettings?.translationModel?.trim() || env.AIVPLAYER_TRANSLATION_MODEL?.trim() || null,
-      glossary:
-        translationSettings?.translationGlossary?.trim() || env.AIVPLAYER_TRANSLATION_GLOSSARY?.trim() || null
+      mode: 'custom',
+      baseUrl: activeProvider.baseUrl?.trim() || env.AIVPLAYER_TRANSLATION_BASE_URL?.trim() || null,
+      apiKey: activeProvider.apiKey?.trim() || env.AIVPLAYER_TRANSLATION_API_KEY?.trim() || null,
+      model: activeProvider.model?.trim() || env.AIVPLAYER_TRANSLATION_MODEL?.trim() || null,
+      glossary
     }
   }
 
@@ -1174,7 +1163,22 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
     ): Promise<AsrTranslationServiceTestResult> {
       const copy = getCopy()
       const sourceLanguage = request.sourceLanguage ?? 'auto'
-      const translationServiceConfig = getTranslationServiceConfig()
+      const providerOverride = request.provider
+      const translationServiceConfig = providerOverride
+        ? {
+            mode: providerOverride.kind,
+            baseUrl: providerOverride.kind === 'managed'
+              ? MANAGED_TRANSLATION_SERVICE_ENDPOINT
+              : providerOverride.baseUrl?.trim() || null,
+            apiKey: providerOverride.kind === 'managed'
+              ? MANAGED_TRANSLATION_SERVICE_AUTH_TOKEN
+              : providerOverride.apiKey?.trim() || null,
+            model: providerOverride.kind === 'managed'
+              ? MANAGED_TRANSLATION_SERVICE_MODEL
+              : providerOverride.model?.trim() || null,
+            glossary: options.getAiServiceSettings?.()?.glossary?.trim() || env.AIVPLAYER_TRANSLATION_GLOSSARY?.trim() || null
+          }
+        : getTranslationServiceConfig()
       const provider =
         translationServiceConfig.baseUrl && translationServiceConfig.apiKey && translationServiceConfig.model
           ? createOpenAiCompatibleTranslationProvider({

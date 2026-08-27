@@ -6,9 +6,9 @@ import type { SubtitleEmphasisMode, SubtitlePresetId } from './subtitle-presets'
 import type { PlaybackBookmark, PlaybackEndAction, PlaybackMediaProfile, PlaybackOrder, PlaybackRepeatMode, PlaybackSegment } from './playback-memory'
 import type { MediaStructureCorrection } from './media-base-types'
 import type { DramaGenerationMediaType } from './drama-types'
-import type { TranslationServiceMode } from './translation-service'
+import { MANAGED_AI_PROVIDER_ID, createManagedAiProvider, type AiProviderProfile } from './ai-providers'
 
-export const APP_SETTINGS_SCHEMA_VERSION = 29
+export const APP_SETTINGS_SCHEMA_VERSION = 30
 
 export const SIDE_PANEL_WIDTH_MIN = 240
 export const SIDE_PANEL_WIDTH_MAX = 480
@@ -24,7 +24,7 @@ export type AiAutomationMode = 'cache-only' | 'ask' | 'guide' | 'complete'
 export type AppThemePreference = 'system' | 'light' | 'dark'
 
 export type AppPanelModePreference = 'playlist' | 'asr' | 'info'
-export type AppSettingsSectionId = 'general' | 'interface' | 'video' | 'subtitles' | 'capture' | 'shortcuts'
+export type AppSettingsSectionId = 'general' | 'ai' | 'interface' | 'video' | 'subtitles' | 'capture' | 'shortcuts'
 
 export type { AppLocale, SubtitleLanguageId } from './localization'
 
@@ -90,6 +90,8 @@ export type AppSettings = {
   }
   ai: {
     openMode: AiAutomationMode
+    providers: AiProviderProfile[]
+    activeProviderId: string
   }
   vision: {
     libraryDirectories: string[]
@@ -107,10 +109,6 @@ export type AppSettings = {
     preferredModelSourceId: AsrModelSourceId
     defaultSubtitleLanguage: SubtitleLanguageId
     autoLoadCachedSubtitles: boolean
-    translationServiceMode: TranslationServiceMode
-    translationBaseUrl: string | null
-    translationModel: string | null
-    translationApiKey: string | null
     translationGlossary: string | null
   }
   tts: {
@@ -263,7 +261,9 @@ export function createDefaultAppSettings(): AppSettings {
       keywords: ''
     },
     ai: {
-      openMode: 'cache-only'
+      openMode: 'cache-only',
+      providers: [createManagedAiProvider()],
+      activeProviderId: MANAGED_AI_PROVIDER_ID
     },
     vision: {
       libraryDirectories: [],
@@ -285,10 +285,6 @@ export function createDefaultAppSettings(): AppSettings {
       preferredModelSourceId: 'r2',
       defaultSubtitleLanguage: DEFAULT_SUBTITLE_LANGUAGE,
       autoLoadCachedSubtitles: true,
-      translationServiceMode: 'managed',
-      translationBaseUrl: null,
-      translationModel: null,
-      translationApiKey: null,
       translationGlossary: null
     },
     tts: {

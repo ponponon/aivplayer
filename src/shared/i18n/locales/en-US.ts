@@ -1297,6 +1297,7 @@
       description: 'All preferences are saved locally and applied next time you launch the app.',
       tabs: {
         general: 'General',
+        ai: 'AI service',
         interface: 'Interface',
         video: 'Video',
         subtitles: 'Subtitles',
@@ -1306,6 +1307,7 @@
       },
       tabAria: {
         general: 'Jump to General settings',
+        ai: 'Jump to AI service settings',
         interface: 'Jump to Interface settings',
         video: 'Jump to Video settings',
         subtitles: 'Jump to Subtitle settings',
@@ -1418,6 +1420,24 @@
       gpuRestartMessage: 'Changing GPU acceleration settings requires a restart to take effect. Restart now?',
       gpuRestartConfirm: 'Restart Now',
       gpuRestartCancel: 'Restart Later',
+      aiService: {
+        title: 'AI service',
+        introDescription: 'Translation and summary features share the active profile. The managed service works out of the box, and you can add your own OpenAI-compatible services.',
+        activeProvider: 'Active service',
+        profileListTitle: 'Profiles',
+        addProfile: 'Add profile',
+        activeBadge: 'in use',
+        managedBadge: 'Managed',
+        customBadge: 'Custom',
+        managedProviderName: 'Managed service',
+        customProviderName: 'Custom service',
+        editProfile: 'Edit',
+        deleteProfile: 'Delete',
+        saveProfile: 'Save',
+        cancelEdit: 'Cancel',
+        nameField: 'Profile name',
+        nameFieldDescription: 'Distinguishes profiles in the list. Falls back to the type default when empty.'
+      },
       subtitles: {
         title: 'Subtitles',
         displayHeading: 'Subtitle display',
