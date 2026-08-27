@@ -603,6 +603,39 @@ describe('clip inbox store', () => {
     expect(store.listCollections()).toHaveLength(4)
   })
 
+  it('records batch duplicates and restores the same copies through undo and redo', () => {
+    const first = store.saveCollection({ title: '可逆复制一', tags: ['旅行'], selections: [selection({ startSeconds: 1, endSeconds: 2 })] })
+    const second = store.saveCollection({ title: '可逆复制二', isArchived: true, selections: [selection({ startSeconds: 4, endSeconds: 6 })] })
+
+    const result = store.duplicateCollections([first.id, second.id])
+    const duplicateIds = result.collections.map((collection) => collection.id)
+    expect(store.getLastCollectionOperation()).toMatchObject({ type: 'duplicate' })
+    expect(result.collections.map((collection) => collection.title)).toEqual(['可逆复制一 · 副本', '可逆复制二 · 副本'])
+
+    const undone = store.undoLastCollectionOperation()
+    expect(undone).toMatchObject({ success: true, operation: expect.objectContaining({ type: 'duplicate' }), deletedCollectionIds: duplicateIds })
+    expect(duplicateIds.every((id) => store.getCollection(id) === null)).toBe(true)
+    expect(store.getCollection(first.id)).toEqual(first)
+    expect(store.getCollection(second.id)).toEqual(second)
+
+    const redone = store.redoLastCollectionOperation()
+    expect(redone).toMatchObject({ success: true, operation: expect.objectContaining({ type: 'duplicate' }), createdCollectionIds: duplicateIds })
+    expect(redone.collections).toEqual(result.collections)
+  })
+
+  it('refuses to undo a batch duplicate after a copied collection was edited', () => {
+    const original = store.saveCollection({ title: '复制冲突源', selections: [selection()] })
+    const result = store.duplicateCollections([original.id])
+    const duplicate = result.collections[0]
+    expect(duplicate).toBeDefined()
+    store.saveCollection({ id: duplicate!.id, title: '复制后被编辑', selections: duplicate!.selections })
+
+    const undone = store.undoLastCollectionOperation()
+    expect(undone.success).toBe(false)
+    expect(store.getCollection(duplicate!.id)?.title).toBe('复制后被编辑')
+    expect(store.getLastCollectionOperation()).toMatchObject({ type: 'duplicate' })
+  })
+
   it('merges several collections into a new collection and keeps the originals', () => {
     const first = store.saveCollection({ title: '合并一', tags: ['海边'], selections: [selection({ startSeconds: 1, endSeconds: 3, evidenceIds: ['merge-one'] })] })
     const second = store.saveCollection({ title: '合并二', tags: ['精选', '海边'], selections: [selection({ startSeconds: 3.4, endSeconds: 5, evidenceIds: ['merge-two'] })] })

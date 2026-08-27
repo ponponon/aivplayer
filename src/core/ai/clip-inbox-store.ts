@@ -10,7 +10,7 @@ import type { VisionClipCollection, VisionClipCollectionBatchDeleteResult, Visio
 type SqliteRow = Record<string, unknown>
 const EVIDENCE_TYPES: readonly VisionEvidenceType[] = ['subtitle', 'visual', 'scene', 'ocr', 'entity', 'object']
 const TAG_OPERATION_TYPES: readonly VisionClipCollectionTagOperationType[] = ['cleanup', 'rename', 'metadata', 'batch']
-const COLLECTION_OPERATION_TYPES: readonly VisionClipCollectionOperationType[] = ['flags', 'merge', 'delete', 'rename']
+const COLLECTION_OPERATION_TYPES: readonly VisionClipCollectionOperationType[] = ['flags', 'merge', 'delete', 'rename', 'duplicate']
 const TAG_OPERATION_HISTORY_RETENTION_LIMIT = 100
 
 type TagOperationCollectionSnapshot = { id: string; tags: string[]; updatedAt: number }
@@ -277,6 +277,25 @@ export class ClipInboxStore {
         throw error
       }
     }
+    if (operation.type === 'duplicate') {
+      const createdCollections = snapshot.createdCollections
+      if (!createdCollections || createdCollections.length === 0) return { success: false, message: '复制操作记录已损坏', operation: null, collections: [] }
+      const currentCollections = createdCollections.map((collection) => this.getCollection(collection.id))
+      if (currentCollections.some((collection, index) => !collection || JSON.stringify(collection) !== JSON.stringify(createdCollections[index]))) {
+        return { success: false, message: '复制结果已被修改或删除，无法安全撤销', operation: null, collections: [] }
+      }
+      this.database.exec('BEGIN')
+      try {
+        const placeholders = createdCollections.map(() => '?').join(', ')
+        this.database.prepare(`DELETE FROM clip_collections WHERE id IN (${placeholders})`).run(...createdCollections.map((collection) => collection.id))
+        this.database.prepare('UPDATE clip_collection_operation_history SET undone_at = ?, redoable = 1 WHERE id = ?').run(Date.now(), operation.id)
+        this.database.exec('COMMIT')
+        return { success: true, message: '已撤销上次复制操作', operation, collections: [], deletedCollectionIds: createdCollections.map((collection) => collection.id) }
+      } catch (error) {
+        this.database.exec('ROLLBACK')
+        throw error
+      }
+    }
     if (operation.type === 'merge') {
       const createdCollections = snapshot.createdCollections
       if (!createdCollections || createdCollections.length === 0) return { success: false, message: '合并操作记录已损坏', operation: null, collections: [] }
@@ -355,6 +374,24 @@ export class ClipInboxStore {
         this.database.exec('COMMIT')
         const collections = snapshot.redoCollectionFlags.map((item) => this.getCollection(item.id)).filter((collection): collection is VisionClipCollection => collection !== null)
         return { success: true, message: '已重做上次收藏归档操作', operation, collections }
+      } catch (error) {
+        this.database.exec('ROLLBACK')
+        throw error
+      }
+    }
+    if (operation.type === 'duplicate') {
+      const createdCollections = snapshot.createdCollections
+      if (!createdCollections || createdCollections.length === 0) return { success: false, message: '复制操作没有可重做快照', operation: null, collections: [] }
+      if (createdCollections.some((collection) => this.getCollection(collection.id) !== null)) {
+        return { success: false, message: '复制结果已存在，无法安全重做', operation: null, collections: [] }
+      }
+      this.database.exec('BEGIN')
+      try {
+        for (const collection of createdCollections) this.insertCollectionSnapshot(collection)
+        this.database.prepare('UPDATE clip_collection_operation_history SET undone_at = NULL, redoable = 0 WHERE id = ?').run(operation.id)
+        this.database.exec('COMMIT')
+        const collections = createdCollections.map((item) => this.getCollection(item.id)).filter((collection): collection is VisionClipCollection => collection !== null)
+        return { success: true, message: '已重做上次复制操作', operation, collections, createdCollectionIds: createdCollections.map((collection) => collection.id) }
       } catch (error) {
         this.database.exec('ROLLBACK')
         throw error
@@ -626,7 +663,28 @@ export class ClipInboxStore {
 
   duplicateCollections(collectionIds: readonly string[]): { collections: VisionClipCollection[]; skippedCount: number } {
     const normalizedIds = normalizeVisionClipCollectionIds(collectionIds)
-    const collections = normalizedIds.map((collectionId) => this.duplicateCollection(collectionId)).filter((collection): collection is VisionClipCollection => collection !== null)
+    const sourceCollections = normalizedIds.map((collectionId) => this.getCollection(collectionId)).filter((collection): collection is VisionClipCollection => collection !== null)
+    if (sourceCollections.length === 0) return { collections: [], skippedCount: normalizedIds.length }
+    const now = Date.now()
+    const collections = sourceCollections.map((source) => ({
+      ...source,
+      id: randomUUID(),
+      title: duplicateVisionCollectionTitle(source.title),
+      isFavorite: false,
+      isArchived: false,
+      createdAt: now,
+      updatedAt: now,
+      selections: source.selections.map((selection) => ({ ...selection, evidenceIds: [...selection.evidenceIds], evidenceTypes: [...selection.evidenceTypes] }))
+    }))
+    this.database.exec('BEGIN')
+    try {
+      for (const collection of collections) this.insertCollectionSnapshot(collection)
+      this.recordCollectionOperation('duplicate', { createdCollections: collections }, now)
+      this.database.exec('COMMIT')
+    } catch (error) {
+      this.database.exec('ROLLBACK')
+      throw error
+    }
     return { collections, skippedCount: normalizedIds.length - collections.length }
   }
 
