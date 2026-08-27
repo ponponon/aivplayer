@@ -32,4 +32,16 @@ describe('vision clip collection inline rename UI wiring', () => {
     expect(styles).toContain('.vision-collection-inline-action')
     expect(styles).toContain('min-width: 0')
   })
+
+  it('routes inline renaming through a dedicated IPC contract', () => {
+    const channels = readFileSync(join(projectRoot, 'src/shared/ipc-channels.ts'), 'utf8')
+    const desktop = readFileSync(join(projectRoot, 'src/desktop/ipc-vision.ts'), 'utf8')
+    const preload = readFileSync(join(projectRoot, 'src/preload/index.ts'), 'utf8')
+
+    expect(channels).toContain("VISION_CLIP_COLLECTION_RENAME: 'vision:clip-collection-rename'")
+    expect(desktop).toContain('IPC_CHANNELS.VISION_CLIP_COLLECTION_RENAME')
+    expect(desktop).toContain('getClipInboxStore().renameCollection(request.collectionId, request.title)')
+    expect(preload).toContain('renameVisionClipCollection')
+    expect(preload).toContain('IPC_CHANNELS.VISION_CLIP_COLLECTION_RENAME')
+  })
 })

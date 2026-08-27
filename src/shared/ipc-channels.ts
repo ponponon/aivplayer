@@ -139,6 +139,7 @@ export const IPC_CHANNELS = {
   VISION_CLIP_COLLECTION_SAVE: 'vision:clip-collection-save',
   VISION_CLIP_COLLECTION_DELETE: 'vision:clip-collection-delete',
   VISION_CLIP_COLLECTION_BATCH_DELETE: 'vision:clip-collection-batch-delete',
+  VISION_CLIP_COLLECTION_RENAME: 'vision:clip-collection-rename',
   VISION_CLIP_COLLECTION_BATCH_RENAME: 'vision:clip-collection-batch-rename',
   VISION_CLIP_COLLECTION_BATCH_TAGS: 'vision:clip-collection-batch-tags',
   VISION_CLIP_COLLECTION_FLAGS_UPDATE: 'vision:clip-collection-flags-update',
