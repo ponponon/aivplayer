@@ -9,7 +9,7 @@ import type { VisionClipCollection, VisionClipCollectionBatchDeleteResult, Visio
 
 type SqliteRow = Record<string, unknown>
 const EVIDENCE_TYPES: readonly VisionEvidenceType[] = ['subtitle', 'visual', 'scene', 'ocr', 'entity', 'object']
-const TAG_OPERATION_TYPES: readonly VisionClipCollectionTagOperationType[] = ['cleanup', 'rename', 'metadata', 'batch']
+const TAG_OPERATION_TYPES: readonly VisionClipCollectionTagOperationType[] = ['cleanup', 'rename', 'metadata', 'batch', 'single']
 const COLLECTION_OPERATION_TYPES: readonly VisionClipCollectionOperationType[] = ['flags', 'merge', 'delete', 'rename', 'duplicate']
 const TAG_OPERATION_HISTORY_RETENTION_LIMIT = 100
 
@@ -516,6 +516,7 @@ export class ClipInboxStore {
     const operation = this.readTagOperationHistory(row)
     const snapshot = this.parseTagOperationSnapshot(row.snapshot_json)
     if (!operation || !snapshot) return { success: false, message: '标签操作记录已损坏', operation: null, collections: [], metadata: [] }
+    if (operation.type === 'single' && !this.collectionTagSnapshotsMatch(snapshot.redoCollectionTags)) return { success: false, message: '单集合标签已被修改或删除，无法安全撤销', operation: null, collections: [], metadata: [] }
     const now = Date.now()
     this.database.exec('BEGIN')
     try {
@@ -536,6 +537,7 @@ export class ClipInboxStore {
     const operation = this.readTagOperationHistory(row)
     const snapshot = this.parseTagOperationSnapshot(row.snapshot_json)
     if (!operation || !snapshot || !snapshot.redoCollectionTags || !snapshot.redoMetadataTags || !snapshot.redoMetadata) return { success: false, message: '标签操作没有可重做快照', operation: null, collections: [], metadata: [] }
+    if (operation.type === 'single' && !this.collectionTagSnapshotsMatch(snapshot.collectionTags)) return { success: false, message: '撤销后的单集合标签已被修改或删除，无法安全重做', operation: null, collections: [], metadata: [] }
     this.database.exec('BEGIN')
     try {
       this.restoreTagOperationSnapshot(snapshot, true)
@@ -758,6 +760,28 @@ export class ClipInboxStore {
       }
       this.database.exec('COMMIT')
       return { collections, skippedCount: normalizedIds.length - collections.length }
+    } catch (error) {
+      this.database.exec('ROLLBACK')
+      throw error
+    }
+  }
+
+  updateCollectionTags(collectionId: unknown, tags: unknown): VisionClipCollection | null {
+    const id = typeof collectionId === 'string' ? collectionId.trim() : ''
+    if (!id) return null
+    const row = this.database.prepare('SELECT id, tags_json, updated_at FROM clip_collections WHERE id = ?').get(id) as SqliteRow | undefined
+    const beforeCollection = this.getCollection(id)
+    if (!row || !beforeCollection) return null
+    const normalizedTags = normalizeVisionCollectionTags(tags)
+    if (JSON.stringify(normalizedTags) === JSON.stringify(beforeCollection.tags)) return beforeCollection
+    const snapshot = this.createTagOperationSnapshot([row])
+    const now = Date.now()
+    this.database.exec('BEGIN')
+    try {
+      this.database.prepare('UPDATE clip_collections SET tags_json = ?, updated_at = ? WHERE id = ?').run(JSON.stringify(normalizedTags), now, id)
+      this.recordTagOperation('single', snapshot, now)
+      this.database.exec('COMMIT')
+      return this.getCollection(id)
     } catch (error) {
       this.database.exec('ROLLBACK')
       throw error
@@ -1036,6 +1060,14 @@ export class ClipInboxStore {
     }
     const insertMetadata = this.database.prepare('INSERT INTO clip_tag_metadata (tag, parent_tag, color, text_color, note, is_favorite, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
     for (const item of metadata) insertMetadata.run(item.tag, item.parentTag, item.color, item.textColor, item.note, item.isFavorite ? 1 : 0, item.updatedAt)
+  }
+
+  private collectionTagSnapshotsMatch(snapshots: readonly TagOperationCollectionSnapshot[] | undefined): boolean {
+    if (!snapshots || snapshots.length === 0) return false
+    return snapshots.every((snapshot) => {
+      const collection = this.getCollection(snapshot.id)
+      return collection !== null && collection.updatedAt === snapshot.updatedAt && JSON.stringify(collection.tags) === JSON.stringify(snapshot.tags)
+    })
   }
 
   private readTagOperationHistory(row: SqliteRow): VisionClipCollectionTagOperationHistory | null {

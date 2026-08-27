@@ -326,6 +326,39 @@ describe('clip inbox store', () => {
     expect(store.getCollection(second.id)?.tags).toEqual(['海边', '精选'])
   })
 
+  it('records, undoes, and redoes a single collection tag edit across restart', () => {
+    const original = store.saveCollection({ title: '单集合标签历史', tags: ['旧标签'], sortMode: 'duration-desc', selections: [selection({ startSeconds: 2, endSeconds: 5 })] })
+    const updated = store.updateCollectionTags(original.id, ['新标签', '精选'])
+    expect(updated).toMatchObject({ id: original.id, title: original.title, tags: ['新标签', '精选'], sortMode: original.sortMode, selections: original.selections })
+    expect(store.getLastTagOperation()).toMatchObject({ type: 'single' })
+
+    const undone = store.undoLastTagOperation()
+    expect(undone).toMatchObject({ success: true, operation: expect.objectContaining({ type: 'single' }) })
+    expect(store.getCollection(original.id)).toEqual(original)
+    expect(store.getLastTagRedoOperation()).toMatchObject({ type: 'single' })
+
+    store.close()
+    store = new ClipInboxStore(tempDirectory)
+    expect(store.getLastTagRedoOperation()).toMatchObject({ type: 'single' })
+
+    const redone = store.redoLastTagOperation()
+    expect(redone).toMatchObject({ success: true, operation: expect.objectContaining({ type: 'single' }) })
+    expect(redone.collections).toEqual([updated])
+    expect(store.getCollection(original.id)).toEqual(updated)
+  })
+
+  it('refuses to undo a single collection tag edit after a tag branch changes', () => {
+    const original = store.saveCollection({ title: '单集合标签冲突', tags: ['旧标签'], selections: [selection()] })
+    const updated = store.updateCollectionTags(original.id, ['新标签'])
+    expect(updated).toBeDefined()
+    store.saveCollection({ id: original.id, title: original.title, tags: ['分支标签'], sortMode: original.sortMode, selections: original.selections })
+
+    const undone = store.undoLastTagOperation()
+    expect(undone.success).toBe(false)
+    expect(store.getCollection(original.id)?.tags).toEqual(['分支标签'])
+    expect(store.getLastTagOperation()).toMatchObject({ type: 'single' })
+  })
+
   it('records and undoes batch tag changes without touching unselected collections', () => {
     const first = store.saveCollection({ title: '批量撤销一', tags: ['旧标签'], selections: [selection()] })
     const second = store.saveCollection({ title: '批量撤销二', tags: ['保留'], selections: [selection({ startSeconds: 3, endSeconds: 4 })] })

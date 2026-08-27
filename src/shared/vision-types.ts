@@ -508,6 +508,17 @@ export type VisionClipCollectionBatchTagsResult = {
   skippedCount: number
 }
 
+export type VisionClipCollectionTagUpdateRequest = {
+  collectionId: string
+  tags?: string[]
+}
+
+export type VisionClipCollectionTagUpdateResult = {
+  success: boolean
+  message: string
+  collection: VisionClipCollection | null
+}
+
 export type VisionClipCollectionFlagUpdateRequest = {
   collectionIds: string[]
   isFavorite?: boolean
@@ -607,7 +618,7 @@ export type VisionClipCollectionTagMetadataImportApplyRequest = {
   decisions?: Record<string, VisionClipCollectionTagMetadataImportDecision>
 }
 
-export type VisionClipCollectionTagOperationType = 'cleanup' | 'rename' | 'metadata' | 'batch'
+export type VisionClipCollectionTagOperationType = 'cleanup' | 'rename' | 'metadata' | 'batch' | 'single'
 
 export type VisionClipCollectionTagOperationHistory = {
   id: string

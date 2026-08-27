@@ -16,6 +16,12 @@ describe('clip inbox tag history', () => {
     expect(filterVisionClipCollectionTagOperationHistory(entries, 'all').map((entry) => entry.id)).toEqual(['batch-1', 'rename-1', 'metadata-1', 'cleanup-1'])
   })
 
+  it('supports filtering single collection tag edits', () => {
+    const entry: VisionClipCollectionTagOperationHistoryEntry = { id: 'single-1', type: 'single', createdAt: 500, status: 'active', undoneAt: null }
+    expect(normalizeVisionClipCollectionTagOperationHistoryFilter('single')).toBe('single')
+    expect(filterVisionClipCollectionTagOperationHistory([entry], 'single')).toEqual([entry])
+  })
+
   it('serializes a versioned filtered manifest without changing source entries', () => {
     const serialized = serializeVisionClipCollectionTagOperationHistory(entries, 'metadata', 1234.9)
     expect(JSON.parse(serialized)).toEqual({

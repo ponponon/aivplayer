@@ -1,6 +1,6 @@
 import type { VisionClipCollectionTagOperationHistoryEntry, VisionClipCollectionTagOperationHistoryExportManifest, VisionClipCollectionTagOperationHistoryFilter, VisionClipCollectionTagOperationHistoryPage, VisionClipCollectionTagOperationHistoryPageRequest } from '../../shared/vision-types'
 
-const TAG_OPERATION_HISTORY_FILTERS: readonly VisionClipCollectionTagOperationHistoryFilter[] = ['all', 'cleanup', 'rename', 'metadata', 'batch']
+const TAG_OPERATION_HISTORY_FILTERS: readonly VisionClipCollectionTagOperationHistoryFilter[] = ['all', 'cleanup', 'rename', 'metadata', 'batch', 'single']
 export const VISION_CLIP_COLLECTION_TAG_OPERATION_HISTORY_PAGE_SIZE = 20
 export const VISION_CLIP_COLLECTION_TAG_OPERATION_HISTORY_MAX_PAGE_SIZE = 20
 
