@@ -239,6 +239,7 @@ describe('vision library setup', () => {
     expect(tagUndoSmoke).toContain('persistedHistory: true')
     expect(tagUndoSmoke).toContain('historyTimeline: true')
     expect(tagUndoSmoke).toContain('historyExported: true')
+    expect(tagUndoSmoke).toContain('historyFullExport: true')
     expect(tagUndoSmoke).toContain('historyPagination: true')
     expect(tagUndoSmoke).toContain('historyDetail: true')
     expect(tagUndoSmoke).toContain('vision-collection-tag-history-entry')
