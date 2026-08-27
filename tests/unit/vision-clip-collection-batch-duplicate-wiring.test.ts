@@ -15,5 +15,8 @@ describe('vision clip collection batch duplicate wiring', () => {
     expect(desktop).toContain('getClipInboxStore().duplicateCollections(request.collectionIds)')
     expect(preload).toContain('duplicateVisionClipCollections')
     expect(preload).toContain('IPC_CHANNELS.VISION_CLIP_COLLECTION_BATCH_DUPLICATE')
+
+    const panel = readFileSync(join(projectRoot, 'src/renderer/src/app/vision-panel.tsx'), 'utf8')
+    expect(panel).toContain('refreshCollectionOperation()')
   })
 })

@@ -1577,6 +1577,7 @@ export function VisionPanel(): React.ReactElement {
       const result = await window.aiv.duplicateVisionClipCollections({ collectionIds: [...selectedCollectionIds] })
       setCollections((current) => [...result.collections, ...current.filter((item) => !result.collections.some((duplicate) => duplicate.id === item.id))])
       setSelectedCollectionIds(new Set())
+      refreshCollectionOperation()
       setCollectionTransferStatus(app.copy.vision.collectionsDuplicated(result.collections.length, result.skippedCount))
     } catch (reason: unknown) {
       setError(reason instanceof Error ? reason.message : String(reason))
