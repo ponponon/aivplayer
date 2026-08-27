@@ -572,7 +572,7 @@ function sanitizeAiSettings(
   let migratedActiveProviderId: string | null = null
   if (providers.length === 0 && (legacyMode === 'managed' || legacyMode === 'custom' || hasLegacyCustomFields)) {
     providers.push(createManagedAiProvider())
-    if (legacyMode === 'custom' || hasLegacyCustomFields) {
+    if (legacyMode !== 'managed' && (legacyMode === 'custom' || hasLegacyCustomFields)) {
       const migrated = sanitizeAiProviderProfile({
         id: randomUUID(),
         kind: 'custom',

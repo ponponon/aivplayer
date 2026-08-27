@@ -235,6 +235,28 @@ describe('app settings', () => {
     expect(settings.ai.activeProviderId).toBe(MANAGED_AI_PROVIDER_ID)
   })
 
+  it('activates the managed provider and ignores leftover custom fields when legacy mode is managed', async () => {
+    await writeFile(
+      join(tempDirectory, 'app-settings.json'),
+      JSON.stringify({
+        schemaVersion: 29,
+        asr: {
+          translationServiceMode: 'managed',
+          translationBaseUrl: 'https://stale.test/v1/chat/completions',
+          translationModel: 'stale-model',
+          translationApiKey: 'stale-key'
+        }
+      })
+    )
+
+    const settings = await readAppSettings(tempDirectory)
+
+    expect(settings.ai.providers).toEqual([
+      { id: MANAGED_AI_PROVIDER_ID, name: '', kind: 'managed', baseUrl: null, model: null, apiKey: null }
+    ])
+    expect(settings.ai.activeProviderId).toBe(MANAGED_AI_PROVIDER_ID)
+  })
+
   it('forces managed provider secret fields back to null and keeps glossary untouched', async () => {
     await writeFile(
       join(tempDirectory, 'app-settings.json'),
