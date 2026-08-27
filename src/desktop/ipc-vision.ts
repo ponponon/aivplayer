@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
-import type { VisionClipCollectionBatchDeleteRequest, VisionClipCollectionBatchDuplicateRequest, VisionClipCollectionBatchExportRequest, VisionClipCollectionBatchRenameRequest, VisionClipCollectionBatchTagsRequest, VisionClipCollectionFlagUpdateRequest, VisionClipCollectionTagCleanupRequest, VisionClipCollectionTagMetadataImportApplyRequest, VisionClipCollectionTagMetadataUpdateRequest, VisionClipCollectionTagRenameRequest, VisionClipCollectionTagOperationHistoryPageRequest, VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionEvidenceAuditPage, VisionEvidenceAuditRequest, VisionEvidenceBatchClearResult, VisionEvidenceSourceRequest, VisionEvidenceType, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionModelDownloadResult, VisionPackDownloadResult, VisionSavedSearchInput, VisionSearchFullExportRequest, VisionSearchPageKind, VisionSearchPageRequest, VisionSearchRequest, VisionSearchResult, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchResultsExportRequest, VisionSearchResultsExportResult, VisionSimilarSearchRequest } from '../shared/vision-types'
+import type { VisionClipCollectionBatchDeleteRequest, VisionClipCollectionBatchDuplicateRequest, VisionClipCollectionBatchExportRequest, VisionClipCollectionBatchMergeRequest, VisionClipCollectionBatchRenameRequest, VisionClipCollectionBatchTagsRequest, VisionClipCollectionFlagUpdateRequest, VisionClipCollectionTagCleanupRequest, VisionClipCollectionTagMetadataImportApplyRequest, VisionClipCollectionTagMetadataUpdateRequest, VisionClipCollectionTagRenameRequest, VisionClipCollectionTagOperationHistoryPageRequest, VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionEvidenceAuditPage, VisionEvidenceAuditRequest, VisionEvidenceBatchClearResult, VisionEvidenceSourceRequest, VisionEvidenceType, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionModelDownloadResult, VisionPackDownloadResult, VisionSavedSearchInput, VisionSearchFullExportRequest, VisionSearchPageKind, VisionSearchPageRequest, VisionSearchRequest, VisionSearchResult, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchResultsExportRequest, VisionSearchResultsExportResult, VisionSimilarSearchRequest } from '../shared/vision-types'
 import { VISION_SEARCH_FULL_EXPORT_MAX_RESULTS } from '../shared/vision-types'
 import type { VisionEntityCatalogBatchPatch, VisionEntityCatalogCreateInput, VisionEntityCatalogPatch } from '../shared/vision-entity-types'
 import { scanVisionDirectory, isVisionScanAbortError } from '../core/ai/vision-directory-scan'
@@ -851,6 +851,16 @@ export function registerVisionIpc(): void {
   ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_BATCH_DUPLICATE, (_event, request: VisionClipCollectionBatchDuplicateRequest) => {
     if (!request || !Array.isArray(request.collectionIds)) return { collections: [], skippedCount: 0 }
     return getClipInboxStore().duplicateCollections(request.collectionIds)
+  })
+  ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_BATCH_MERGE, (_event, request: VisionClipCollectionBatchMergeRequest) => {
+    const collectionIds = normalizeVisionClipCollectionIds(request?.collectionIds)
+    if (collectionIds.length < 2) return { success: false, message: '批量合并至少需要选择两个选段集合', collection: null, sourceIds: [], skippedCount: collectionIds.length }
+    try {
+      const result = getClipInboxStore().mergeCollections(collectionIds, request?.title, request?.sortMode)
+      return { success: true, message: `已将 ${result.sourceIds.length} 个选段集合合并为“${result.collection.title}”，原集合已保留`, ...result }
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : String(error), collection: null, sourceIds: [], skippedCount: 0 }
+    }
   })
   ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_EXPORT, async (_event, request: VisionClipCollectionExportRequest) => {
     if (!request || typeof request.collectionId !== 'string' || !request.collectionId.trim() || !isVisionClipCollectionExportFormat(request.format)) {

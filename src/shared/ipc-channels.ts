@@ -162,6 +162,7 @@ export const IPC_CHANNELS = {
   VISION_CLIP_COLLECTION_OPERATION_REDO: 'vision:clip-collection-operation-redo',
   VISION_CLIP_COLLECTION_DUPLICATE: 'vision:clip-collection-duplicate',
   VISION_CLIP_COLLECTION_BATCH_DUPLICATE: 'vision:clip-collection-batch-duplicate',
+  VISION_CLIP_COLLECTION_BATCH_MERGE: 'vision:clip-collection-batch-merge',
   VISION_CLIP_COLLECTION_EXPORT: 'vision:clip-collection-export',
   VISION_CLIP_COLLECTION_BATCH_EXPORT: 'vision:clip-collection-batch-export',
   VISION_CLIP_COLLECTION_IMPORT: 'vision:clip-collection-import',

@@ -469,4 +469,26 @@ describe('clip inbox store', () => {
     expect(result.skippedCount).toBe(1)
     expect(store.listCollections()).toHaveLength(4)
   })
+
+  it('merges several collections into a new collection and keeps the originals', () => {
+    const first = store.saveCollection({ title: '合并一', tags: ['海边'], selections: [selection({ startSeconds: 1, endSeconds: 3, evidenceIds: ['merge-one'] })] })
+    const second = store.saveCollection({ title: '合并二', tags: ['精选', '海边'], selections: [selection({ startSeconds: 3.4, endSeconds: 5, evidenceIds: ['merge-two'] })] })
+
+    const result = store.mergeCollections([first.id, second.id, 'missing'], '合并结果', 'duration-desc')
+
+    expect(result).toMatchObject({ sourceIds: [first.id, second.id], skippedCount: 1 })
+    expect(result.collection).toMatchObject({ title: '合并结果', tags: ['海边', '精选'], sortMode: 'duration-desc', isFavorite: false, isArchived: false })
+    expect(result.collection.selections).toHaveLength(1)
+    expect(result.collection.selections[0]).toMatchObject({ startSeconds: 1, endSeconds: 5, evidenceIds: ['merge-one', 'merge-two'] })
+    expect(store.listCollections().map((collection) => collection.id)).toEqual(expect.arrayContaining([result.collection.id, second.id, first.id]))
+    expect(store.getCollection(first.id)).toEqual(first)
+    expect(store.getCollection(second.id)).toEqual(second)
+  })
+
+  it('rejects batch merge when fewer than two collections exist', () => {
+    const first = store.saveCollection({ title: '只有一个', selections: [selection()] })
+
+    expect(() => store.mergeCollections([first.id, 'missing'], '不能合并')).toThrow('至少需要两个不同的选段集合')
+    expect(store.listCollections()).toHaveLength(1)
+  })
 })

@@ -178,15 +178,16 @@ export function mergeVisionClipCollections(collections: readonly VisionClipColle
       selectionsBySource.set(sourceKey, sourceSelections)
     }
   }
+  const normalizedSortMode = normalizeVisionCollectionSortMode(sortMode)
   const selections = sortVisionClipSelections(
     [...selectionsBySource.values()].flatMap((sourceSelections) => mergeVisionClipSelections(sourceSelections, 0.5)),
-    sortMode
+    normalizedSortMode
   )
   if (selections.length === 0) throw new Error('选段集合至少需要一个有效选段')
   return {
     title: normalizedTitle,
     tags: normalizeVisionCollectionTags(uniqueCollections.flatMap((collection) => collection.tags)),
-    sortMode: normalizeVisionCollectionSortMode(sortMode),
+    sortMode: normalizedSortMode,
     isFavorite: false,
     isArchived: false,
     selections
