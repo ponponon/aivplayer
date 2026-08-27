@@ -202,7 +202,8 @@ async function loadAllVisionClipCollectionTagOperationHistory(filter: VisionClip
   while (true) {
     entries.push(...page.entries)
     pageCount += 1
-    if (!page.hasMore || page.entries.length === 0) return entries
+    if (!page.hasMore) return entries
+    if (page.entries.length === 0) throw new Error('标签历史导出分页返回空页')
     if (pageCount >= 100) throw new Error('标签历史导出分页超过安全上限')
     const nextOffset = page.offset + page.entries.length
     if (nextOffset <= page.offset) throw new Error('标签历史导出分页位置无效')
