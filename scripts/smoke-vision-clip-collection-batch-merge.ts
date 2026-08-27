@@ -148,6 +148,25 @@ async function runSmoke(): Promise<void> {
       throw new Error(`Clip collection batch merge included an unselected range: ${JSON.stringify(mergedSelection)}`)
     }
 
+    const undoButton = page.getByRole('button', { name: '撤销上次集合操作', exact: true })
+    await undoButton.waitFor({ timeout: 10_000 })
+    await undoButton.click()
+    await page.getByRole('status').filter({ hasText: '已撤销上次集合操作' }).waitFor({ timeout: 10_000 })
+    const afterUndo = await page.evaluate(() => window.aiv.listVisionClipCollections())
+    if (afterUndo.length !== 2 || afterUndo.some((collection) => collection.id === merged.id) || originals.some((original) => !afterUndo.some((collection) => collection.id === original.id))) {
+      throw new Error(`Clip collection batch merge undo mismatch: ${JSON.stringify(afterUndo)}`)
+    }
+
+    const redoButton = page.getByRole('button', { name: '重做上次集合操作', exact: true })
+    await redoButton.waitFor({ timeout: 10_000 })
+    await redoButton.click()
+    await page.getByRole('status').filter({ hasText: '已重做上次集合操作' }).waitFor({ timeout: 10_000 })
+    const afterRedo = await page.evaluate(() => window.aiv.listVisionClipCollections())
+    const restoredMerged = afterRedo.find((collection) => collection.id === merged.id)
+    if (afterRedo.length !== 3 || !restoredMerged || restoredMerged.title !== mergedTitle || restoredMerged.selections.length !== 1 || restoredMerged.selections[0]?.endSeconds !== 5) {
+      throw new Error(`Clip collection batch merge redo mismatch: ${JSON.stringify(afterRedo)}`)
+    }
+
     await page.reload({ waitUntil: 'domcontentloaded' })
     await openVisionPanel(page)
     const persistedAfterReload = await page.evaluate(() => window.aiv.listVisionClipCollections())
@@ -164,7 +183,7 @@ async function runSmoke(): Promise<void> {
     }
 
     if (session.errors.length > 0) throw new Error(`Renderer errors during clip collection batch merge smoke:\n${session.errors.join('\n')}`)
-    console.log(`AIVPlayer Smoke Vision Clip Collection Batch Merge passed: ${JSON.stringify({ pageIdentity, originalCount: originals.length, mergedCount: 1, mergedTitle, selectedSourceSelectionCount: 2, mergedSelectionCount: reloadedMerged.selections.length, mergedRange: [reloadedMerged.selections[0]?.startSeconds, reloadedMerged.selections[0]?.endSeconds], previewVerified: true, tagsPreserved: true, originalsPreserved: true, persistedAfterReload: true, consoleErrors: session.errors.length, previewScreenshotPath: previewScreenshotPath ?? null, screenshotPath: screenshotPath ?? null })}`)
+    console.log(`AIVPlayer Smoke Vision Clip Collection Batch Merge passed: ${JSON.stringify({ pageIdentity, originalCount: originals.length, mergedCount: 1, mergedTitle, selectedSourceSelectionCount: 2, mergedSelectionCount: reloadedMerged.selections.length, mergedRange: [reloadedMerged.selections[0]?.startSeconds, reloadedMerged.selections[0]?.endSeconds], previewVerified: true, tagsPreserved: true, originalsPreserved: true, mergeUndoRedoVerified: true, persistedAfterReload: true, consoleErrors: session.errors.length, previewScreenshotPath: previewScreenshotPath ?? null, screenshotPath: screenshotPath ?? null })}`)
   } finally {
     if (app) await app.close().catch(() => undefined)
     await rm(userDataDirectory, { recursive: true, force: true }).catch(() => undefined)
