@@ -196,6 +196,8 @@ describe('vision library setup', () => {
     expect(batchMergeSmoke).toContain("name: '合并选中集合'")
     expect(batchMergeSmoke).toContain('精选合并结果')
     expect(batchMergeSmoke).toContain('previewVerified: true')
+    expect(batchMergeSmoke).toContain('previewOutputRanges')
+    expect(batchMergeSmoke).toContain('00:01.0–00:05.0')
     expect(batchMergeSmoke).toContain('previewScreenshotPath')
     expect(batchMergeSmoke).toContain('originalsPreserved: true')
     expect(batchMergeSmoke).toContain('persistedAfterReload: true')
