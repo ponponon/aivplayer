@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { _electron as electron, type ElectronApplication, type Page } from 'playwright'
 
 const mediaPath = process.argv[2] ?? '/Users/ponponon/Music/aivplayer_test_video_1min.mp4'
+const undoScreenshotPath = process.env.AIVPLAYER_SMOKE_UNDO_SCREENSHOT_PATH
 const screenshotPath = process.env.AIVPLAYER_SMOKE_SCREENSHOT_PATH
 
 async function launchPlayer(userDataDirectory: string): Promise<{ app: ElectronApplication; page: Page; errors: string[] }> {
@@ -71,6 +72,30 @@ async function runSmoke(): Promise<void> {
       throw new Error(`Inline collection tags normalization mismatch: ${JSON.stringify(updated)}`)
     }
 
+    await page.getByRole('button', { name: '撤销上次标签操作', exact: true }).waitFor({ timeout: 10_000 })
+    const tagHistory = await page.evaluate(() => window.aiv.getVisionClipCollectionTagOperationHistory())
+    if (!tagHistory || tagHistory.type !== 'single') throw new Error(`Single tag history type mismatch: ${JSON.stringify(tagHistory)}`)
+    await page.getByRole('button', { name: '撤销上次标签操作', exact: true }).click()
+    await page.getByRole('status').filter({ hasText: '已撤销上次标签操作' }).waitFor({ timeout: 10_000 })
+    const afterUndo = await page.evaluate(() => window.aiv.listVisionClipCollections())
+    const undone = afterUndo.find((collection) => collection.id === original.id)
+    if (!undone || JSON.stringify(undone.tags) !== JSON.stringify(['初始标签', '保留元数据']) || undone.title !== original.title || undone.sortMode !== original.sortMode || JSON.stringify(undone.selections) !== JSON.stringify(original.selections)) {
+      throw new Error(`Inline collection tags undo mismatch: ${JSON.stringify(undone)}`)
+    }
+    if (undoScreenshotPath) {
+      await page.locator('.vision-collection-tag-manager').scrollIntoViewIfNeeded()
+      await page.screenshot({ path: undoScreenshotPath, fullPage: false })
+    }
+
+    await page.getByRole('button', { name: '重做上次标签操作', exact: true }).waitFor({ timeout: 10_000 })
+    await page.getByRole('button', { name: '重做上次标签操作', exact: true }).click()
+    await page.getByRole('status').filter({ hasText: '已重做上次标签操作' }).waitFor({ timeout: 10_000 })
+    const afterRedo = await page.evaluate(() => window.aiv.listVisionClipCollections())
+    const redone = afterRedo.find((collection) => collection.id === original.id)
+    if (!redone || JSON.stringify(redone.tags) !== JSON.stringify(['海边', '采访']) || redone.title !== original.title || redone.sortMode !== original.sortMode || JSON.stringify(redone.selections) !== JSON.stringify(original.selections)) {
+      throw new Error(`Inline collection tags redo mismatch: ${JSON.stringify(redone)}`)
+    }
+
     row = page.locator('.vision-collection').filter({ hasText: title }).first()
     await row.getByRole('button', { name: `编辑集合标签: ${title}`, exact: true }).click()
     const cancelInput = page.getByRole('textbox', { name: '集合标签', exact: true })
@@ -106,7 +131,7 @@ async function runSmoke(): Promise<void> {
       await page.screenshot({ path: screenshotPath, fullPage: false })
     }
     if (session.errors.length > 0) throw new Error(`Renderer errors during inline collection tags smoke:\n${session.errors.join('\n')}`)
-    console.log(`AIVPlayer Smoke Vision Clip Collection Inline Tags passed: ${JSON.stringify({ originalId: original.id, normalized: true, escapeCancelled: true, cleared: true, metadataPreserved: true, screenshotPath: screenshotPath ?? null })}`)
+    console.log(`AIVPlayer Smoke Vision Clip Collection Inline Tags passed: ${JSON.stringify({ originalId: original.id, normalized: true, tagUndoRedoVerified: true, escapeCancelled: true, cleared: true, metadataPreserved: true, persistedAfterReload: true, undoScreenshotPath: undoScreenshotPath ?? null, screenshotPath: screenshotPath ?? null, consoleErrors: session.errors.length })}`)
   } finally {
     if (app) await app.close().catch(() => undefined)
     await rm(userDataDirectory, { recursive: true, force: true }).catch(() => undefined)
