@@ -1260,8 +1260,13 @@ export function VisionPanel(): React.ReactElement {
     setError(null)
     setIsSavingCollectionTitle(true)
     try {
-      const updated = await updateCollection(collection, { title })
-      if (!updated) return
+      const updated = await window.aiv.renameVisionClipCollection({ collectionId: collection.id, title })
+      if (!updated) {
+        setError(app.copy.vision.collectionRenameUnavailable)
+        return
+      }
+      setCollections((current) => [updated, ...current.filter((item) => item.id !== updated.id)])
+      refreshCollectionOperation()
       setCollectionTransferStatus(app.copy.vision.collectionRenamed(updated.title))
       setEditingCollectionId(null)
       setEditingCollectionTitle('')

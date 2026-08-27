@@ -513,6 +513,7 @@
       saveCollectionTitle: '保存集合名称',
       cancelCollectionTitle: '取消编辑集合名称',
       collectionTitleRequired: '集合名称不能为空',
+      collectionRenameUnavailable: '选段集合不存在，无法改名',
       collectionRenamed: (title: string) => `已更新选段集合：${title}`,
       editCollectionTags: '编辑集合标签',
       collectionTagsEditLabel: '集合标签',

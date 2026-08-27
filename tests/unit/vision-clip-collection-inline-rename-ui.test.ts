@@ -15,7 +15,8 @@ describe('vision clip collection inline rename UI wiring', () => {
     expect(panel).toContain("event.key === 'Escape'")
     expect(panel).toContain("event.key === 'Enter'")
     expect(panel).toContain('collectionTitleRequired')
-    expect(panel).toContain('title: patch.title ?? collection.title')
+    expect(panel).toContain('renameVisionClipCollection({ collectionId: collection.id, title })')
+    expect(panel).toContain('refreshCollectionOperation()')
     expect(panel).toContain('maxLength={200}')
   })
 

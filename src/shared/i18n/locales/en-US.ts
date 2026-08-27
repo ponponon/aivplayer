@@ -513,6 +513,7 @@
       saveCollectionTitle: 'Save collection name',
       cancelCollectionTitle: 'Cancel collection name edit',
       collectionTitleRequired: 'Collection name cannot be empty',
+      collectionRenameUnavailable: 'The clip collection no longer exists and cannot be renamed',
       collectionRenamed: (title: string) => `Updated clip collection: ${title}`,
       editCollectionTags: 'Edit collection tags',
       collectionTagsEditLabel: 'Collection tags',

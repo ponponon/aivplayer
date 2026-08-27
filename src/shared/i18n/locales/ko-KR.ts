@@ -513,6 +513,7 @@
       saveCollectionTitle: '컬렉션 이름 저장',
       cancelCollectionTitle: '컬렉션 이름 편집 취소',
       collectionTitleRequired: '컬렉션 이름을 입력하세요',
+      collectionRenameUnavailable: '클립 컬렉션이 없어 이름을 변경할 수 없습니다',
       collectionRenamed: (title: string) => `클립 컬렉션을 업데이트했습니다: ${title}`,
       editCollectionTags: '컬렉션 태그 편집',
       collectionTagsEditLabel: '컬렉션 태그',

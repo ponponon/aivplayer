@@ -513,6 +513,7 @@
       saveCollectionTitle: 'コレクション名を保存',
       cancelCollectionTitle: 'コレクション名の編集をキャンセル',
       collectionTitleRequired: 'コレクション名を入力してください',
+      collectionRenameUnavailable: 'クリップコレクションが存在しないため名前を変更できません',
       collectionRenamed: (title: string) => `クリップコレクションを更新しました：${title}`,
       editCollectionTags: 'コレクションタグを編集',
       collectionTagsEditLabel: 'コレクションタグ',
