@@ -233,6 +233,41 @@ describe('clip inbox store', () => {
     expect(store.getLastCollectionRedoOperation()).toMatchObject({ type: 'delete' })
   })
 
+  it('records batch renaming and restores collection titles through undo and redo', () => {
+    const first = store.saveCollection({ title: '重命名恢复一', tags: ['保留'], isFavorite: true, selections: [selection({ startSeconds: 1, endSeconds: 2 })] })
+    const second = store.saveCollection({ title: '重命名恢复二', isArchived: true, selections: [selection({ startSeconds: 3, endSeconds: 5 })] })
+    const renamed = store.renameCollections([first.id, second.id, 'missing'], '项目 · ', ' · 精选')
+
+    expect(renamed.collections.map((collection) => collection.title)).toEqual(['项目 · 重命名恢复一 · 精选', '项目 · 重命名恢复二 · 精选'])
+    expect(store.getLastCollectionOperation()).toMatchObject({ type: 'rename' })
+
+    const undone = store.undoLastCollectionOperation()
+    expect(undone).toMatchObject({ success: true, operation: expect.objectContaining({ type: 'rename' }) })
+    expect(undone.collections).toEqual([first, second])
+    expect(store.getLastCollectionRedoOperation()).toMatchObject({ type: 'rename' })
+
+    store.close()
+    store = new ClipInboxStore(tempDirectory)
+    const redone = store.redoLastCollectionOperation()
+    expect(redone).toMatchObject({ success: true, operation: expect.objectContaining({ type: 'rename' }) })
+    expect(redone.collections.map((collection) => collection.title)).toEqual(renamed.collections.map((collection) => collection.title))
+    expect(store.getCollection(first.id)?.tags).toEqual(first.tags)
+    expect(store.getCollection(second.id)?.isArchived).toBe(true)
+  })
+
+  it('refuses to undo a batch rename after a renamed collection was edited', () => {
+    const first = store.saveCollection({ title: '重命名冲突一', selections: [selection({ startSeconds: 1, endSeconds: 2 })] })
+    const second = store.saveCollection({ title: '重命名冲突二', selections: [selection({ startSeconds: 3, endSeconds: 4 })] })
+    const renamed = store.renameCollections([first.id, second.id], '项目 · ', '')
+    const edited = store.saveCollection({ id: first.id, title: '用户编辑后的标题', selections: renamed.collections[0]?.selections ?? [] })
+
+    const undone = store.undoLastCollectionOperation()
+    expect(undone).toMatchObject({ success: false, operation: null, collections: [] })
+    expect(store.getCollection(first.id)).toEqual(edited)
+    expect(store.getCollection(second.id)?.title).toBe(renamed.collections[1]?.title)
+    expect(store.getLastCollectionOperation()).toMatchObject({ type: 'rename' })
+  })
+
   it('deletes several collections in one transaction and reports missing ids', () => {
     const first = store.saveCollection({ title: '批量待删一', selections: [selection({ startSeconds: 1, endSeconds: 2 })] })
     const second = store.saveCollection({ title: '批量待删二', selections: [selection({ startSeconds: 3, endSeconds: 4 })] })

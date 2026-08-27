@@ -10,7 +10,7 @@ import type { VisionClipCollection, VisionClipCollectionBatchDeleteResult, Visio
 type SqliteRow = Record<string, unknown>
 const EVIDENCE_TYPES: readonly VisionEvidenceType[] = ['subtitle', 'visual', 'scene', 'ocr', 'entity', 'object']
 const TAG_OPERATION_TYPES: readonly VisionClipCollectionTagOperationType[] = ['cleanup', 'rename', 'metadata', 'batch']
-const COLLECTION_OPERATION_TYPES: readonly VisionClipCollectionOperationType[] = ['flags', 'merge', 'delete']
+const COLLECTION_OPERATION_TYPES: readonly VisionClipCollectionOperationType[] = ['flags', 'merge', 'delete', 'rename']
 const TAG_OPERATION_HISTORY_RETENTION_LIMIT = 100
 
 type TagOperationCollectionSnapshot = { id: string; tags: string[]; updatedAt: number }
@@ -31,6 +31,8 @@ type CollectionOperationSnapshot = {
   redoCollectionFlags?: CollectionOperationFlagSnapshot[]
   createdCollections?: VisionClipCollection[]
   removedCollections?: VisionClipCollection[]
+  beforeCollections?: VisionClipCollection[]
+  afterCollections?: VisionClipCollection[]
 }
 
 export function getClipInboxDatabasePath(userDataPath: string): string {
@@ -295,6 +297,26 @@ export class ClipInboxStore {
         throw error
       }
     }
+    if (operation.type === 'rename') {
+      const beforeCollections = snapshot.beforeCollections
+      const afterCollections = snapshot.afterCollections
+      if (!beforeCollections || beforeCollections.length === 0 || !afterCollections || afterCollections.length !== beforeCollections.length) return { success: false, message: '重命名操作记录已损坏', operation: null, collections: [] }
+      const currentCollections = afterCollections.map((collection) => this.getCollection(collection.id))
+      if (currentCollections.some((collection, index) => !collection || JSON.stringify(collection) !== JSON.stringify(afterCollections[index]))) {
+        return { success: false, message: '重命名结果已被修改或删除，无法安全撤销', operation: null, collections: [] }
+      }
+      this.database.exec('BEGIN')
+      try {
+        for (const collection of beforeCollections) this.replaceCollectionSnapshot(collection)
+        this.database.prepare('UPDATE clip_collection_operation_history SET undone_at = ?, redoable = 1 WHERE id = ?').run(Date.now(), operation.id)
+        this.database.exec('COMMIT')
+        const collections = beforeCollections.map((item) => this.getCollection(item.id)).filter((collection): collection is VisionClipCollection => collection !== null)
+        return { success: true, message: '已撤销上次重命名操作', operation, collections }
+      } catch (error) {
+        this.database.exec('ROLLBACK')
+        throw error
+      }
+    }
     if (operation.type === 'delete') {
       const removedCollections = snapshot.removedCollections
       if (!removedCollections || removedCollections.length === 0) return { success: false, message: '删除操作记录已损坏', operation: null, collections: [] }
@@ -351,6 +373,26 @@ export class ClipInboxStore {
         this.database.exec('COMMIT')
         const collections = createdCollections.map((item) => this.getCollection(item.id)).filter((collection): collection is VisionClipCollection => collection !== null)
         return { success: true, message: '已重做上次合并操作', operation, collections, createdCollectionIds: createdCollections.map((collection) => collection.id) }
+      } catch (error) {
+        this.database.exec('ROLLBACK')
+        throw error
+      }
+    }
+    if (operation.type === 'rename') {
+      const beforeCollections = snapshot.beforeCollections
+      const afterCollections = snapshot.afterCollections
+      if (!beforeCollections || beforeCollections.length === 0 || !afterCollections || afterCollections.length !== beforeCollections.length) return { success: false, message: '重命名操作没有可重做快照', operation: null, collections: [] }
+      const currentCollections = beforeCollections.map((collection) => this.getCollection(collection.id))
+      if (currentCollections.some((collection, index) => !collection || JSON.stringify(collection) !== JSON.stringify(beforeCollections[index]))) {
+        return { success: false, message: '重命名前的集合已被修改或删除，无法安全重做', operation: null, collections: [] }
+      }
+      this.database.exec('BEGIN')
+      try {
+        for (const collection of afterCollections) this.replaceCollectionSnapshot(collection)
+        this.database.prepare('UPDATE clip_collection_operation_history SET undone_at = NULL, redoable = 0 WHERE id = ?').run(operation.id)
+        this.database.exec('COMMIT')
+        const collections = afterCollections.map((item) => this.getCollection(item.id)).filter((collection): collection is VisionClipCollection => collection !== null)
+        return { success: true, message: '已重做上次重命名操作', operation, collections }
       } catch (error) {
         this.database.exec('ROLLBACK')
         throw error
@@ -610,6 +652,7 @@ export class ClipInboxStore {
     try {
       const rows = this.database.prepare(`SELECT id, title FROM clip_collections WHERE id IN (${placeholders})`).all(...normalizedIds) as SqliteRow[]
       const existingIds = new Set(rows.map((row) => stringValue(row, 'id')).filter(Boolean))
+      const beforeCollections = normalizedIds.map((id) => this.getCollection(id)).filter((collection): collection is VisionClipCollection => collection !== null)
       const now = Date.now()
       const update = this.database.prepare('UPDATE clip_collections SET title = ?, updated_at = ? WHERE id = ?')
       for (const row of rows) {
@@ -617,8 +660,11 @@ export class ClipInboxStore {
         if (!id) continue
         update.run(renameVisionClipCollectionTitle(stringValue(row, 'title'), normalizedPrefix, normalizedSuffix), now, id)
       }
-      this.database.exec('COMMIT')
       const collections = normalizedIds.filter((id) => existingIds.has(id)).map((id) => this.getCollection(id)).filter((collection): collection is VisionClipCollection => collection !== null)
+      if (beforeCollections.length > 0 && beforeCollections.some((collection, index) => JSON.stringify(collection) !== JSON.stringify(collections[index]))) {
+        this.recordCollectionOperation('rename', { beforeCollections, afterCollections: collections }, now)
+      }
+      this.database.exec('COMMIT')
       return { collections, skippedCount: normalizedIds.length - collections.length }
     } catch (error) {
       this.database.exec('ROLLBACK')
@@ -919,9 +965,11 @@ export class ClipInboxStore {
     if (typeof value !== 'string' || !value.trim()) return null
     try {
       const parsed = JSON.parse(value) as Partial<CollectionOperationSnapshot>
-      if (!Array.isArray(parsed.collectionFlags) && !Array.isArray(parsed.createdCollections) && !Array.isArray(parsed.removedCollections)) return null
+      if (!Array.isArray(parsed.collectionFlags) && !Array.isArray(parsed.createdCollections) && !Array.isArray(parsed.removedCollections) && !Array.isArray(parsed.beforeCollections) && !Array.isArray(parsed.afterCollections)) return null
       if (parsed.redoCollectionFlags !== undefined && !Array.isArray(parsed.redoCollectionFlags)) return null
       if (parsed.removedCollections !== undefined && !Array.isArray(parsed.removedCollections)) return null
+      if (parsed.beforeCollections !== undefined && !Array.isArray(parsed.beforeCollections)) return null
+      if (parsed.afterCollections !== undefined && !Array.isArray(parsed.afterCollections)) return null
       const readFlags = (items: unknown[]): CollectionOperationFlagSnapshot[] => items.map((item) => {
         if (!item || typeof item !== 'object') return null
         const candidate = item as Partial<CollectionOperationFlagSnapshot>
@@ -950,11 +998,15 @@ export class ClipInboxStore {
       const redoCollectionFlags = parsed.redoCollectionFlags === undefined ? undefined : readFlags(parsed.redoCollectionFlags)
       const createdCollections = parsed.createdCollections === undefined ? undefined : readCollections(parsed.createdCollections)
       const removedCollections = parsed.removedCollections === undefined ? undefined : readCollections(parsed.removedCollections)
+      const beforeCollections = parsed.beforeCollections === undefined ? undefined : readCollections(parsed.beforeCollections)
+      const afterCollections = parsed.afterCollections === undefined ? undefined : readCollections(parsed.afterCollections)
       return {
         ...(collectionFlags === undefined ? {} : { collectionFlags }),
         ...(redoCollectionFlags === undefined ? {} : { redoCollectionFlags }),
         ...(createdCollections === undefined ? {} : { createdCollections }),
-        ...(removedCollections === undefined ? {} : { removedCollections })
+        ...(removedCollections === undefined ? {} : { removedCollections }),
+        ...(beforeCollections === undefined ? {} : { beforeCollections }),
+        ...(afterCollections === undefined ? {} : { afterCollections })
       }
     } catch {
       return null
@@ -975,6 +1027,11 @@ export class ClipInboxStore {
       selection.durationSeconds, selection.width ?? null, selection.height ?? null, selection.startSeconds, selection.endSeconds,
       JSON.stringify(selection.evidenceIds), selection.text ?? '', JSON.stringify(selection.evidenceTypes)
     ))
+  }
+
+  private replaceCollectionSnapshot(collection: VisionClipCollection): void {
+    this.database.prepare('DELETE FROM clip_collections WHERE id = ?').run(collection.id)
+    this.insertCollectionSnapshot(collection)
   }
 
   private readCollectionOperationHistory(row: SqliteRow): VisionClipCollectionOperationHistory | null {

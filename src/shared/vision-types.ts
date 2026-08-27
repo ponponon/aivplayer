@@ -661,7 +661,7 @@ export type VisionClipCollectionTagRedoResult = {
   metadata: VisionClipCollectionTagMetadata[]
 }
 
-export type VisionClipCollectionOperationType = 'flags' | 'merge' | 'delete'
+export type VisionClipCollectionOperationType = 'flags' | 'merge' | 'delete' | 'rename'
 
 export type VisionClipCollectionOperationHistory = {
   id: string
