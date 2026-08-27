@@ -1652,6 +1652,7 @@ export function VisionPanel(): React.ReactElement {
       const deletedIds = new Set(result.deletedIds)
       setCollections((current) => current.filter((collection) => !deletedIds.has(collection.id)))
       setSelectedCollectionIds(new Set())
+      refreshCollectionOperation()
       setCollectionTransferStatus(app.copy.vision.collectionsDeleted(result.deletedCount, result.skippedCount))
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setIsDeletingCollections(false))
   }
