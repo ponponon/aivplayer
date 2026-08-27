@@ -584,11 +584,40 @@ describe('clip inbox store', () => {
     expect(duplicate).toMatchObject({ title: '待复制 · 副本', tags: ['旅行'], sortMode: 'duration-desc' })
     expect(duplicate?.id).not.toBe(original.id)
     expect(duplicate?.selections).toEqual(original.selections)
+    expect(store.getLastCollectionOperation()).toMatchObject({ type: 'duplicate' })
 
     store.saveCollection({ id: duplicate!.id, title: '副本已修改', selections: [selection({ startSeconds: 5, endSeconds: 7 })] })
     expect(store.getCollection(original.id)).toEqual(original)
     expect(store.getCollection(duplicate!.id)?.title).toBe('副本已修改')
     expect(store.duplicateCollection('not-found')).toBeNull()
+  })
+
+  it('restores a single duplicate through undo and redo with the same id', () => {
+    const original = store.saveCollection({ title: '单个可逆复制', tags: ['旅行'], selections: [selection({ startSeconds: 2, endSeconds: 4 })] })
+    const duplicate = store.duplicateCollection(original.id)
+    expect(duplicate).toBeDefined()
+
+    const undone = store.undoLastCollectionOperation()
+    expect(undone).toMatchObject({ success: true, operation: expect.objectContaining({ type: 'duplicate' }), deletedCollectionIds: [duplicate!.id] })
+    expect(store.getCollection(duplicate!.id)).toBeNull()
+    expect(store.getCollection(original.id)).toEqual(original)
+
+    const redone = store.redoLastCollectionOperation()
+    expect(redone).toMatchObject({ success: true, operation: expect.objectContaining({ type: 'duplicate' }), createdCollectionIds: [duplicate!.id] })
+    expect(redone.collections).toEqual([duplicate])
+    expect(store.getCollection(duplicate!.id)).toEqual(duplicate)
+  })
+
+  it('refuses to undo a single duplicate after the copy was edited', () => {
+    const original = store.saveCollection({ title: '单个复制冲突源', selections: [selection()] })
+    const duplicate = store.duplicateCollection(original.id)
+    expect(duplicate).toBeDefined()
+    store.saveCollection({ id: duplicate!.id, title: '单个复制后被编辑', selections: duplicate!.selections })
+
+    const undone = store.undoLastCollectionOperation()
+    expect(undone.success).toBe(false)
+    expect(store.getCollection(duplicate!.id)?.title).toBe('单个复制后被编辑')
+    expect(store.getLastCollectionOperation()).toMatchObject({ type: 'duplicate' })
   })
 
   it('duplicates several collections and reports missing ids', () => {

@@ -651,14 +651,27 @@ export class ClipInboxStore {
   duplicateCollection(collectionId: string): VisionClipCollection | null {
     const collection = this.getCollection(collectionId)
     if (!collection) return null
-    return this.importCollection({
+    const now = Date.now()
+    const duplicate: VisionClipCollection = {
+      ...collection,
+      id: randomUUID(),
       title: duplicateVisionCollectionTitle(collection.title),
-      tags: collection.tags,
-      sortMode: collection.sortMode,
       isFavorite: false,
       isArchived: false,
-      selections: collection.selections
-    })
+      createdAt: now,
+      updatedAt: now,
+      selections: collection.selections.map((selection) => ({ ...selection, evidenceIds: [...selection.evidenceIds], evidenceTypes: [...selection.evidenceTypes] }))
+    }
+    this.database.exec('BEGIN')
+    try {
+      this.insertCollectionSnapshot(duplicate)
+      this.recordCollectionOperation('duplicate', { createdCollections: [duplicate] }, now)
+      this.database.exec('COMMIT')
+    } catch (error) {
+      this.database.exec('ROLLBACK')
+      throw error
+    }
+    return duplicate
   }
 
   duplicateCollections(collectionIds: readonly string[]): { collections: VisionClipCollection[]; skippedCount: number } {
