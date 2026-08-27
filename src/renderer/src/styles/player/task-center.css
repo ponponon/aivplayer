@@ -215,6 +215,31 @@
   border-color: var(--accent);
 }
 
+.task-center-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.task-center-delete.is-first {
+  margin-left: auto;
+}
+
+.task-center-delete:hover,
+.task-center-delete:focus-visible {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
 .task-center-item.is-running .task-center-status-icon,
 .task-center-item.is-queued .task-center-status-icon,
 .task-center-item.is-paused .task-center-status-icon { color: var(--accent); }

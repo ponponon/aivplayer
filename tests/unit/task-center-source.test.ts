@@ -12,9 +12,11 @@ describe('task center wiring', () => {
     expect(channels).toContain('TASK_CENTER_EVENT')
     expect(channels).toContain('TASK_CENTER_LIST')
     expect(channels).toContain('TASK_CENTER_CLEAR_FINISHED')
+    expect(channels).toContain('TASK_CENTER_REMOVE')
     expect(preload).toContain('onTaskCenterEvent')
     expect(preload).toContain('getTaskCenterEvents')
     expect(preload).toContain('clearTaskCenterFinished')
+    expect(preload).toContain('removeTaskCenterEvent')
     expect(bridge).toContain('TASK_CENTER_EVENT')
   })
 
@@ -35,6 +37,7 @@ describe('task center wiring', () => {
     expect(taskCenter).toContain('task-center-cancel')
     expect(taskCenter).toContain('task-center-retry')
     expect(taskCenter).toContain('task-center-recreate')
+    expect(taskCenter).toContain('task-center-delete')
     expect(taskCenter).toContain('task-center-recreate-all')
     expect(taskCenter).toContain('recreateAllTasks')
     expect(taskCenter).toContain('recreateBatchResult')
@@ -42,7 +45,9 @@ describe('task center wiring', () => {
     const hook = readFileSync(join(projectRoot, 'src/renderer/src/app/use-task-center.ts'), 'utf8')
     expect(hook).toContain('getTaskCenterEvents')
     expect(hook).toContain('clearTaskCenterFinished')
+    expect(hook).toContain('removeTaskCenterEvent')
     expect(readFileSync(join(projectRoot, 'src/desktop/ipc-task-center.ts'), 'utf8')).toContain('clearFinished')
+    expect(readFileSync(join(projectRoot, 'src/desktop/ipc-task-center.ts'), 'utf8')).toContain('store.remove')
   })
 
   it('fans out all long-running media workflows into the adapter layer', () => {

@@ -31,6 +31,27 @@ describe('task center store', () => {
     }
   })
 
+  it('removes a single terminal event from memory and persistence', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'aivplayer-task-center-remove-'))
+    try {
+      const store = new TaskCenterStore(root)
+      store.record(event('first', 'completed', 1))
+      store.record(event('second', 'failed', 2))
+      await store.flush()
+
+      store.remove('first')
+      await store.flush()
+
+      expect(store.list().map((item) => item.id)).toEqual(['second'])
+
+      store.remove('missing')
+      await store.flush()
+      expect(new TaskCenterStore(root).list().map((item) => item.id)).toEqual(['second'])
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
   it('ignores visual runtime setup failures instead of showing them as completed tasks', async () => {
     const root = mkdtempSync(join(tmpdir(), 'aivplayer-task-center-vision-setup-'))
     try {

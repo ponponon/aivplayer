@@ -438,6 +438,7 @@ const api = {
   },
   getTaskCenterEvents: (): Promise<TaskCenterEvent[]> => ipcRenderer.invoke(IPC_CHANNELS.TASK_CENTER_LIST),
   clearTaskCenterFinished: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.TASK_CENTER_CLEAR_FINISHED),
+  removeTaskCenterEvent: (id: string): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.TASK_CENTER_REMOVE, id),
   stopNativePlayer: (): Promise<NativePlaybackResult> => ipcRenderer.invoke(IPC_CHANNELS.STOP_NATIVE_PLAYER),
   minimizeWindow: (): Promise<void> => ipcRenderer.invoke(IPC_CHANNELS.WINDOW_MINIMIZE),
   toggleMaximizeWindow: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.WINDOW_TOGGLE_MAXIMIZE),

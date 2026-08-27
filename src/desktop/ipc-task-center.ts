@@ -9,4 +9,9 @@ export function registerTaskCenterIpc(): void {
     store.clearFinished()
     await store.flush()
   })
+  ipcMain.handle(IPC_CHANNELS.TASK_CENTER_REMOVE, async (_event, id: string) => {
+    const store = getTaskCenterStore()
+    store.remove(id)
+    await store.flush()
+  })
 }

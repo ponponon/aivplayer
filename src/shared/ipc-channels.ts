@@ -183,6 +183,7 @@ export const IPC_CHANNELS = {
   TASK_CENTER_EVENT: 'task-center:event',
   TASK_CENTER_LIST: 'task-center:list',
   TASK_CENTER_CLEAR_FINISHED: 'task-center:clear-finished',
+  TASK_CENTER_REMOVE: 'task-center:remove',
   EVIDENCE_TASK_CAPABILITIES: 'evidence-task:capabilities',
   EVIDENCE_TASK_START: 'evidence-task:start',
   EVIDENCE_TASK_CANCEL: 'evidence-task:cancel',

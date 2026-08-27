@@ -81,6 +81,12 @@ export class TaskCenterStore {
     this.enqueueWrite()
   }
 
+  remove(id: string): void {
+    if (!this.events.some((event) => event.id === id)) return
+    this.events = this.events.filter((event) => event.id !== id)
+    this.enqueueWrite()
+  }
+
   record(event: TaskCenterEvent): void {
     if (isTaskCenterActive(event.status)) return
     const normalized = normalizeEvent(event)

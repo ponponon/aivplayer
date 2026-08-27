@@ -7,6 +7,7 @@ export function useTaskCenter(): {
   events: TaskCenterEvent[]
   activeCount: number
   clearFinished: () => void
+  removeEvent: (id: string) => void
 } {
   const [events, setEvents] = useState<TaskCenterEvent[]>([])
 
@@ -31,6 +32,11 @@ export function useTaskCenter(): {
     clearFinished: () => {
       void window.aiv.clearTaskCenterFinished().then(() => {
         setEvents((current) => sortTaskCenterEvents(current.filter((event) => isTaskCenterActive(event.status))))
+      }).catch(() => undefined)
+    },
+    removeEvent: (id: string) => {
+      void window.aiv.removeTaskCenterEvent(id).then(() => {
+        setEvents((current) => sortTaskCenterEvents(current.filter((event) => event.id !== id)))
       }).catch(() => undefined)
     }
   }
