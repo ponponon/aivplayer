@@ -392,6 +392,26 @@ describe('clip inbox store', () => {
     expect(store.listTagOperationHistory()[0]).toMatchObject({ type: 'batch', status: 'redoable' })
   })
 
+  it('paginates retained tag history and returns a safe single-operation detail', () => {
+    const collection = store.saveCollection({ title: '标签历史分页', tags: ['分页标签'], selections: [selection()] })
+    store.saveTagMetadata({ tag: '分页标签', color: '#123456' })
+    for (let index = 0; index < 24; index += 1) store.saveTagMetadata({ tag: '分页标签', note: `第 ${index} 次` })
+
+    const firstPage = store.listTagOperationHistoryPage({ limit: 20 })
+    const secondPage = store.listTagOperationHistoryPage({ offset: 20, limit: 20 })
+    expect(firstPage.entries).toHaveLength(20)
+    expect(firstPage.total).toBe(25)
+    expect(firstPage.hasMore).toBe(true)
+    expect(secondPage.entries).toHaveLength(5)
+    expect(secondPage.hasMore).toBe(false)
+    expect(store.listTagOperationHistory()).toHaveLength(20)
+
+    const detail = store.getTagOperationHistoryDetail(firstPage.entries[0]?.id)
+    expect(detail).toMatchObject({ id: firstPage.entries[0]?.id, type: 'metadata', collectionCount: 0, metadataCount: 1 })
+    expect(store.getTagOperationHistoryDetail('missing')).toBeNull()
+    expect(collection.id).toBeTruthy()
+  })
+
   it('clears a tag redo branch when a new tag operation is recorded', () => {
     const collection = store.saveCollection({ title: '重做分支', tags: ['父'], selections: [selection()] })
 

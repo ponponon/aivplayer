@@ -3,13 +3,15 @@ import { mkdirSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { mergeVisionClipSelections, normalizeVisionTimeRange } from './vision-evidence'
+import { normalizeVisionClipCollectionTagOperationHistoryPageRequest } from './clip-inbox-tag-history'
 import { applyVisionCollectionTags, duplicateVisionCollectionTitle, normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionSortMode, normalizeVisionCollectionTag, normalizeVisionCollectionTagColor, normalizeVisionCollectionTagFavorite, normalizeVisionCollectionTagNote, normalizeVisionCollectionTags, normalizeVisionCollectionTagsMode, renameVisionCollectionTag, renameVisionClipCollectionTitle, sortVisionClipSelections, wouldCreateVisionCollectionTagParentCycle } from './clip-inbox-operations'
-import type { VisionClipCollection, VisionClipCollectionBatchDeleteResult, VisionClipCollectionBatchRenameResult, VisionClipCollectionBatchTagsResult, VisionClipCollectionFlagUpdateRequest, VisionClipCollectionInput, VisionClipCollectionOperationHistory, VisionClipCollectionOperationRedoResult, VisionClipCollectionOperationType, VisionClipCollectionOperationUndoResult, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataUpdateRequest, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationHistoryEntry, VisionClipCollectionTagOperationType, VisionClipCollectionTagRedoResult, VisionClipCollectionTagUndoResult, VisionClipSelection, VisionEvidenceType } from '../../shared/vision-types'
+import type { VisionClipCollection, VisionClipCollectionBatchDeleteResult, VisionClipCollectionBatchRenameResult, VisionClipCollectionBatchTagsResult, VisionClipCollectionFlagUpdateRequest, VisionClipCollectionInput, VisionClipCollectionOperationHistory, VisionClipCollectionOperationRedoResult, VisionClipCollectionOperationType, VisionClipCollectionOperationUndoResult, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataUpdateRequest, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationHistoryDetail, VisionClipCollectionTagOperationHistoryEntry, VisionClipCollectionTagOperationHistoryPage, VisionClipCollectionTagOperationType, VisionClipCollectionTagRedoResult, VisionClipCollectionTagUndoResult, VisionClipSelection, VisionEvidenceType } from '../../shared/vision-types'
 
 type SqliteRow = Record<string, unknown>
 const EVIDENCE_TYPES: readonly VisionEvidenceType[] = ['subtitle', 'visual', 'scene', 'ocr', 'entity', 'object']
 const TAG_OPERATION_TYPES: readonly VisionClipCollectionTagOperationType[] = ['cleanup', 'rename', 'metadata', 'batch']
 const COLLECTION_OPERATION_TYPES: readonly VisionClipCollectionOperationType[] = ['flags']
+const TAG_OPERATION_HISTORY_RETENTION_LIMIT = 100
 
 type TagOperationCollectionSnapshot = { id: string; tags: string[]; updatedAt: number }
 
@@ -312,6 +314,32 @@ export class ClipInboxStore {
   listTagOperationHistory(): VisionClipCollectionTagOperationHistoryEntry[] {
     const rows = this.database.prepare('SELECT id, operation_type, created_at, undone_at, redoable FROM clip_tag_operation_history ORDER BY rowid DESC LIMIT 20').all() as SqliteRow[]
     return rows.map((row) => this.readTagOperationHistoryEntry(row)).filter((operation): operation is VisionClipCollectionTagOperationHistoryEntry => operation !== null)
+  }
+
+  listTagOperationHistoryPage(request: unknown = {}): VisionClipCollectionTagOperationHistoryPage {
+    const normalized = normalizeVisionClipCollectionTagOperationHistoryPageRequest(request)
+    const filterClause = normalized.filter === 'all' ? '' : ' WHERE operation_type = ?'
+    const filterValue = normalized.filter === 'all' ? [] : [normalized.filter]
+    const totalRow = this.database.prepare(`SELECT COUNT(*) AS count FROM clip_tag_operation_history${filterClause}`).get(...filterValue) as SqliteRow | undefined
+    const rows = this.database.prepare(`SELECT id, operation_type, created_at, undone_at, redoable FROM clip_tag_operation_history${filterClause} ORDER BY rowid DESC LIMIT ? OFFSET ?`).all(...filterValue, normalized.limit, normalized.offset) as SqliteRow[]
+    const entries = rows.map((row) => this.readTagOperationHistoryEntry(row)).filter((operation): operation is VisionClipCollectionTagOperationHistoryEntry => operation !== null)
+    const total = Math.max(0, Math.floor(numberValue(totalRow ?? {}, 'count')))
+    return { entries, offset: normalized.offset, limit: normalized.limit, total, hasMore: normalized.offset + entries.length < total }
+  }
+
+  getTagOperationHistoryDetail(operationId: unknown): VisionClipCollectionTagOperationHistoryDetail | null {
+    const id = typeof operationId === 'string' ? operationId.trim() : ''
+    if (!id) return null
+    const row = this.database.prepare('SELECT id, operation_type, created_at, undone_at, redoable, snapshot_json FROM clip_tag_operation_history WHERE id = ?').get(id) as SqliteRow | undefined
+    if (!row) return null
+    const operation = this.readTagOperationHistoryEntry(row)
+    const snapshot = this.parseTagOperationSnapshot(row.snapshot_json)
+    if (!operation || !snapshot) return null
+    return {
+      ...operation,
+      collectionCount: snapshot.collectionTags.length,
+      metadataCount: snapshot.metadata.length
+    }
   }
 
   getLastTagRedoOperation(): VisionClipCollectionTagOperationHistory | null {
@@ -719,7 +747,7 @@ export class ClipInboxStore {
     }
     this.database.prepare('UPDATE clip_tag_operation_history SET redoable = 0 WHERE undone_at IS NOT NULL AND redoable = 1').run()
     this.database.prepare('INSERT INTO clip_tag_operation_history (id, operation_type, snapshot_json, created_at) VALUES (?, ?, ?, ?)').run(randomUUID(), type, JSON.stringify(redoSnapshot), createdAt)
-    this.database.exec('DELETE FROM clip_tag_operation_history WHERE id NOT IN (SELECT id FROM clip_tag_operation_history ORDER BY rowid DESC LIMIT 20)')
+    this.database.exec(`DELETE FROM clip_tag_operation_history WHERE id NOT IN (SELECT id FROM clip_tag_operation_history ORDER BY rowid DESC LIMIT ${TAG_OPERATION_HISTORY_RETENTION_LIMIT})`)
   }
 
   private recordCollectionOperation(type: VisionClipCollectionOperationType, snapshot: CollectionOperationSnapshot, createdAt: number): void {
