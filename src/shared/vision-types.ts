@@ -440,9 +440,15 @@ export type VisionClipCollectionMergePreviewSource = {
   selections: VisionClipSelection[]
 }
 
+export type VisionClipCollectionMergeSelection = {
+  collectionId: string
+  selectionKeys: string[]
+}
+
 export type VisionClipCollectionMergePreview = {
   collection: VisionClipCollectionInput
   sources: VisionClipCollectionMergePreviewSource[]
+  selectedSelections: VisionClipCollectionMergeSelection[]
 }
 
 export type VisionClipCollectionExportFormat = 'json' | 'csv' | 'edl'
@@ -712,6 +718,7 @@ export type VisionClipCollectionBatchMergeRequest = {
   collectionIds: string[]
   title?: string
   sortMode?: VisionClipCollectionSortMode
+  selectedSelections?: VisionClipCollectionMergeSelection[]
 }
 
 export type VisionClipCollectionBatchMergeResult = {

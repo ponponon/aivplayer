@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { ClipInboxStore } from '../../src/core/ai/clip-inbox-store'
+import { getVisionClipSelectionMergeKey } from '../../src/core/ai/clip-inbox-operations'
 import type { VisionClipSelection } from '../../src/shared/vision-types'
 
 const selection = (patch: Partial<VisionClipSelection> = {}): VisionClipSelection => ({
@@ -483,6 +484,24 @@ describe('clip inbox store', () => {
     expect(store.listCollections().map((collection) => collection.id)).toEqual(expect.arrayContaining([result.collection.id, second.id, first.id]))
     expect(store.getCollection(first.id)).toEqual(first)
     expect(store.getCollection(second.id)).toEqual(second)
+  })
+
+  it('merges only the source ranges selected by the preview', () => {
+    const firstSelection = selection({ startSeconds: 1, endSeconds: 3 })
+    const secondSelection = selection({ startSeconds: 4, endSeconds: 6, evidenceIds: ['merge-skip'] })
+    const first = store.saveCollection({ title: '筛选一', selections: [firstSelection, secondSelection] })
+    const second = store.saveCollection({ title: '筛选二', selections: [selection({ startSeconds: 7, endSeconds: 9 })] })
+
+    const result = store.mergeCollections([first.id, second.id], '筛选结果', 'source-time', [
+      { collectionId: first.id, selectionKeys: [getVisionClipSelectionMergeKey(firstSelection)] },
+      { collectionId: second.id, selectionKeys: [] }
+    ])
+
+    expect(result.collection.selections).toHaveLength(1)
+    expect(result.collection.selections[0]).toMatchObject({ startSeconds: 1, endSeconds: 3 })
+    expect(result.collection.selections[0]?.evidenceIds).not.toContain('merge-skip')
+    expect(store.getCollection(first.id)?.selections).toHaveLength(2)
+    expect(store.getCollection(second.id)?.selections).toHaveLength(1)
   })
 
   it('rejects batch merge when fewer than two collections exist', () => {

@@ -1,5 +1,5 @@
 import { mergeVisionClipSelections, normalizeVisionTimeRange } from './vision-evidence'
-import type { VisionClipCollection, VisionClipCollectionBatchTagsMode, VisionClipCollectionInput, VisionClipCollectionMergePreview, VisionClipCollectionMergePreviewSource, VisionClipCollectionSortMode, VisionClipCollectionTagMetadata, VisionClipSelection } from '../../shared/vision-types'
+import type { VisionClipCollection, VisionClipCollectionBatchTagsMode, VisionClipCollectionInput, VisionClipCollectionMergePreview, VisionClipCollectionMergePreviewSource, VisionClipCollectionMergeSelection, VisionClipCollectionSortMode, VisionClipCollectionTagMetadata, VisionClipSelection } from '../../shared/vision-types'
 
 const MAX_COLLECTION_TAGS = 20
 const MAX_COLLECTION_TAG_LENGTH = 40
@@ -162,6 +162,24 @@ export function mergeVisionCollectionSelections(selections: readonly VisionClipS
   return mergeVisionClipSelections(selections, mergeGapSeconds)
 }
 
+/** Returns a stable key for selecting a source range during a collection merge. */
+export function getVisionClipSelectionMergeKey(selection: Pick<VisionClipSelection, 'sourceId' | 'videoPath' | 'fingerprint' | 'startSeconds' | 'endSeconds'>): string {
+  return JSON.stringify([selection.sourceId, selection.videoPath, selection.fingerprint, selection.startSeconds, selection.endSeconds])
+}
+
+/** Applies per-collection source-range selections without mutating stored collections. */
+export function selectVisionClipCollectionsForMerge(collections: readonly VisionClipCollection[], selectedSelections?: readonly VisionClipCollectionMergeSelection[]): VisionClipCollection[] {
+  const uniqueCollections = [...new Map(collections.map((collection) => [collection.id, collection])).values()]
+  const selectedKeysByCollection = new Map<string, Set<string>>((selectedSelections ?? []).map((item) => [item.collectionId, new Set(item.selectionKeys.filter((key) => typeof key === 'string' && key.length > 0))]))
+  return uniqueCollections.map((collection) => {
+    const selectedKeys = selectedKeysByCollection.get(collection.id)
+    const selections = collection.selections
+      .filter((selection) => selectedKeys === undefined || selectedKeys.has(getVisionClipSelectionMergeKey(selection)))
+      .map((selection) => ({ ...selection, evidenceIds: [...selection.evidenceIds], evidenceTypes: [...selection.evidenceTypes] }))
+    return { ...collection, tags: [...collection.tags], selections }
+  })
+}
+
 /** Builds a new collection from several collections without mutating the originals. */
 export function mergeVisionClipCollections(collections: readonly VisionClipCollection[], title: unknown, sortMode: unknown = 'source-time'): VisionClipCollectionInput {
   const uniqueCollections = [...new Map(collections.map((collection) => [collection.id, collection])).values()]
@@ -195,8 +213,9 @@ export function mergeVisionClipCollections(collections: readonly VisionClipColle
 }
 
 /** Builds an inspectable merge preview without mutating source collections. */
-export function previewVisionClipCollectionMerge(collections: readonly VisionClipCollection[], title: unknown, sortMode: unknown = 'source-time'): VisionClipCollectionMergePreview {
+export function previewVisionClipCollectionMerge(collections: readonly VisionClipCollection[], title: unknown, sortMode: unknown = 'source-time', selectedSelections?: readonly VisionClipCollectionMergeSelection[]): VisionClipCollectionMergePreview {
   const uniqueCollections = [...new Map(collections.map((collection) => [collection.id, collection])).values()]
+  const selectedCollections = selectVisionClipCollectionsForMerge(uniqueCollections, selectedSelections)
   const sources: VisionClipCollectionMergePreviewSource[] = uniqueCollections.map((collection) => ({
     collectionId: collection.id,
     title: collection.title,
@@ -206,7 +225,11 @@ export function previewVisionClipCollectionMerge(collections: readonly VisionCli
       evidenceTypes: [...selection.evidenceTypes]
     }))
   }))
-  return { collection: mergeVisionClipCollections(uniqueCollections, title, sortMode), sources }
+  const selectedKeys = selectedCollections.map((collection) => ({
+    collectionId: collection.id,
+    selectionKeys: collection.selections.map((selection) => getVisionClipSelectionMergeKey(selection))
+  }))
+  return { collection: mergeVisionClipCollections(selectedCollections, title, sortMode), sources, selectedSelections: selectedKeys }
 }
 
 function selectionGroupKey(selection: VisionClipSelection): string {

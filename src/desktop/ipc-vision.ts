@@ -856,7 +856,7 @@ export function registerVisionIpc(): void {
     const collectionIds = normalizeVisionClipCollectionIds(request?.collectionIds)
     if (collectionIds.length < 2) return { success: false, message: '批量合并至少需要选择两个选段集合', collection: null, sourceIds: [], skippedCount: collectionIds.length }
     try {
-      const result = getClipInboxStore().mergeCollections(collectionIds, request?.title, request?.sortMode)
+      const result = getClipInboxStore().mergeCollections(collectionIds, request?.title, request?.sortMode, request?.selectedSelections)
       return { success: true, message: `已将 ${result.sourceIds.length} 个选段集合合并为“${result.collection.title}”，原集合已保留`, ...result }
     } catch (error) {
       return { success: false, message: error instanceof Error ? error.message : String(error), collection: null, sourceIds: [], skippedCount: 0 }
