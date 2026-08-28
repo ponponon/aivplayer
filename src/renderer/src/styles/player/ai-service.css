@@ -120,8 +120,8 @@
 .ai-service-table {
   min-width: 0;
   overflow: hidden;
-  border-top: 1px solid var(--border-soft);
-  border-bottom: 1px solid var(--border-soft);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
 }
 
 .ai-service-table-row {
@@ -134,20 +134,20 @@
 
 .ai-service-table-header {
   min-height: 34px;
+  padding: 0 11px;
   color: var(--text-muted);
   font-size: 11px;
   font-weight: 750;
 }
 
 .ai-service-table-row:not(.ai-service-table-header) {
-  padding: 11px 8px;
+  padding: 11px;
   border-top: 1px solid var(--border-soft);
 }
 
 .ai-service-table-row:not(.ai-service-table-header).is-active {
   background: rgba(var(--accent-rgb), 0.06);
-  border-left: 2px solid var(--accent);
-  padding-left: 6px;
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 
 .ai-service-table-service,

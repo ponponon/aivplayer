@@ -152,6 +152,7 @@ async function main(): Promise<void> {
       providerCount: (await window.aiv.getAppSettings()).ai.providers.length,
       managementCards: document.querySelectorAll('.ai-service-management-card').length,
       tableRows: document.querySelectorAll('.ai-service-table-row:not(.ai-service-table-header)').length,
+      tableRadius: window.getComputedStyle(document.querySelector('.ai-service-table') as HTMLElement).borderRadius,
       providerDialogs: document.querySelectorAll('[data-ai-service-provider-dialog]').length,
       currentStrip: document.querySelectorAll('.ai-service-current-strip').length,
       addButton: document.querySelector('.ai-service-add-button') ? 'present' : 'missing'
@@ -386,6 +387,8 @@ async function main(): Promise<void> {
       aiLayoutState.maxGap > 20 ||
       aiServiceInitialState.managementCards !== 1 ||
       aiServiceInitialState.tableRows !== aiServiceInitialState.providerCount ||
+      !aiServiceInitialState.tableRadius ||
+      aiServiceInitialState.tableRadius === '0px' ||
       aiServiceInitialState.providerDialogs !== 0 ||
       aiServiceInitialState.currentStrip !== 1 ||
       aiServiceInitialState.addButton !== 'present' ||
