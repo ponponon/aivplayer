@@ -7,8 +7,9 @@ import {
   updateAppSettingsSection,
   type AppSettingsSectionPatcher
 } from '../../../shared/app-settings'
-import type { AsrTranslationServiceTestResult } from '../../../shared/media-types'
+import type { AsrTranslationServiceTestRequest, AsrTranslationServiceTestResult } from '../../../shared/media-types'
 import { MANAGED_TRANSLATION_SERVICE_ENDPOINT } from '../../../shared/translation-service'
+import { resolveActiveAiProvider } from '../../../shared/ai-providers'
 import type { AppDerived } from './use-app-derived'
 import type { AppModel } from './app-types'
 
@@ -80,14 +81,16 @@ export function useSettingsActions(model: AppModel, derived: AppDerived) {
       model.setIsSelectingWhisperBinary(false)
     }
   }
-  const testTranslationService = async (): Promise<void> => {
+  const activeAiProvider = resolveActiveAiProvider(appSettings.ai.providers, appSettings.ai.activeProviderId)
+  const testTranslationService = async (provider?: AsrTranslationServiceTestRequest['provider']): Promise<void> => {
     if (model.isTestingTranslationService) return
     model.setIsTestingTranslationService(true)
     model.setTranslationServiceTestMessage(null)
     try {
       const result = await window.aiv.testAsrTranslationService({
         sourceLanguage: derived.subtitleTranslationSourceLanguage,
-        targetLanguage: appSettings.subtitles.targetLanguage
+        targetLanguage: appSettings.subtitles.targetLanguage,
+        provider
       })
       model.setTranslationServiceTestMessage(result)
     } catch (error) {
@@ -97,9 +100,9 @@ export function useSettingsActions(model: AppModel, derived: AppDerived) {
         sourceLanguage: derived.subtitleTranslationSourceLanguage,
         targetLanguage: appSettings.subtitles.targetLanguage,
         translationModel: derived.subtitleTranslationModel || undefined,
-        translationBaseUrlSummary: appSettings.asr.translationServiceMode === 'managed'
+        translationBaseUrlSummary: activeAiProvider.kind === 'managed'
           ? MANAGED_TRANSLATION_SERVICE_ENDPOINT
-          : appSettings.asr.translationBaseUrl?.trim() || undefined
+          : activeAiProvider.baseUrl?.trim() || undefined
       }
       model.setTranslationServiceTestMessage(fallback)
     } finally {
@@ -109,7 +112,7 @@ export function useSettingsActions(model: AppModel, derived: AppDerived) {
 
   useEffect(() => {
     model.setTranslationServiceTestMessage(null)
-  }, [appSettings.asr.translationServiceMode, appSettings.asr.translationBaseUrl, appSettings.asr.translationModel, derived.subtitleTranslationGlossary, derived.subtitleTranslationSourceLanguage, appSettings.subtitles.targetLanguage])
+  }, [activeAiProvider.id, derived.subtitleTranslationGlossary, derived.subtitleTranslationSourceLanguage, appSettings.subtitles.targetLanguage])
 
   return {
     patchAppSettingsSection,

@@ -212,7 +212,17 @@ async function translateFormalSubtitleFromUi(page: Page, mediaPath: string, tran
   if (!translatedResult.success || !translatedResult.subtitlePath) throw new Error(`Translation smoke generation failed: ${JSON.stringify(translatedResult)}`)
   await page.evaluate(async (baseUrl) => {
     const settings = await window.aiv.getAppSettings()
-    await window.aiv.setAppSettings({ ...settings, asr: { ...settings.asr, translationBaseUrl: baseUrl, translationApiKey: 'smoke', translationModel: 'smoke-model' } })
+    await window.aiv.setAppSettings({
+      ...settings,
+      ai: {
+        ...settings.ai,
+        providers: [
+          ...settings.ai.providers,
+          { id: 'custom-smoke', name: 'Smoke', kind: 'custom' as const, baseUrl, model: 'smoke-model', apiKey: 'smoke' }
+        ],
+        activeProviderId: 'custom-smoke'
+      }
+    })
   }, translationBaseUrl)
   await page.reload({ waitUntil: 'domcontentloaded' })
   await page.waitForSelector('#root', { timeout: 15_000 })

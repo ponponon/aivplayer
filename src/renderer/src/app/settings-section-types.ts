@@ -13,7 +13,7 @@ import type {
   SubtitleLineHeight,
   SubtitleTargetLanguageId
 } from '../../../shared/app-settings'
-import type { AsrCacheStats, AsrModelSourceId, AsrRuntimeStatus, AsrTranslationServiceTestResult } from '../../../shared/media-types'
+import type { AsrCacheStats, AsrModelSourceId, AsrRuntimeStatus, AsrTranslationServiceTestRequest, AsrTranslationServiceTestResult } from '../../../shared/media-types'
 import type { LocaleCopy } from '../../../shared/i18n'
 import type { SettingsSelectOption } from './settings-controls'
 
@@ -48,7 +48,7 @@ export type SettingsSectionProps = {
   isClearingCache: boolean
   onPickDefaultFolder: () => Promise<string | null>
   onPickCaptureFolder: () => Promise<string | null>
-  onTestTranslationService: () => void
+  onTestTranslationService: (provider?: AsrTranslationServiceTestRequest['provider']) => void
   onRefreshCacheStats: () => void
   onClearStaleCache: () => void
   onGpuAccelerationChange?: (enabled: boolean) => void

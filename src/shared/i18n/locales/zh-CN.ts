@@ -1297,6 +1297,7 @@
       description: '所有偏好都会自动保存到本地，下次启动继续生效。',
       tabs: {
         general: '通用',
+        ai: 'AI 服务',
         interface: '界面',
         video: '视频',
         subtitles: '字幕',
@@ -1306,6 +1307,7 @@
       },
       tabAria: {
         general: '跳到通用设置',
+        ai: '跳到 AI 服务设置',
         interface: '跳到界面设置',
         video: '跳到视频设置',
         subtitles: '跳到字幕设置',
@@ -1418,6 +1420,24 @@
       gpuRestartMessage: '更改 GPU 加速设置需要重启应用才能生效。是否现在重启？',
       gpuRestartConfirm: '立即重启',
       gpuRestartCancel: '稍后重启',
+      aiService: {
+        title: 'AI 服务',
+        introDescription: '翻译和总结等 AI 功能统一使用「当前使用」的配置档案。内置托管服务开箱即用，也可以添加自己的 OpenAI-compatible 服务。',
+        activeProvider: '当前使用的服务',
+        profileListTitle: '配置档案',
+        addProfile: '新增配置',
+        activeBadge: '使用中',
+        managedBadge: '内置托管',
+        customBadge: '自定义',
+        managedProviderName: '内置托管服务',
+        customProviderName: '自定义服务',
+        editProfile: '编辑',
+        deleteProfile: '删除',
+        saveProfile: '保存',
+        cancelEdit: '取消',
+        nameField: '档案名称',
+        nameFieldDescription: '用于在档案列表中区分不同的服务，留空时按类型显示默认名。'
+      },
       subtitles: {
         title: '字幕',
         displayHeading: '字幕显示',
@@ -1445,12 +1465,7 @@
         modelSourceDescription: '下载弹窗会优先把这里选中的源排在前面。',
         translationServiceTitle: 'AI 服务（翻译和总结）',
         translationServiceDescription: '默认使用 AIVPlayer 内置的托管翻译服务，安装后即可翻译；需要更高质量或自有额度时，可以切换到自定义 OpenAI-compatible 服务。',
-        translationServiceMode: '服务模式',
         translationServiceModeDescription: '内置托管服务无需填写 API Key；自定义服务可填写自己的接口、模型和 API Key。',
-        translationServiceModeOptions: {
-          managed: '内置托管服务（推荐）',
-          custom: '自定义服务'
-        },
         translationServiceManagedTitle: '已启用内置托管服务',
         translationServiceManagedDescription: '请求会发送到 AIVPlayer 的 Cloudflare Worker，再由服务端调用 glm-4-flash-250414。客户端不包含 BigModel API Key；如需使用自己的模型，请切换为“自定义服务”。',
         translationBaseUrl: '翻译接口地址',

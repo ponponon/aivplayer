@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs'
+import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, isAbsolute, join } from 'node:path'
 import {
@@ -26,6 +27,7 @@ import type { MediaStructureCorrection, MediaStructureSegmentKind } from '../sha
 import { isAppLocale, isSubtitleLanguageId } from '../shared/localization'
 import { MAX_PLAYBACK_HISTORY_ITEMS, type PlaybackHistoryEntry } from '../shared/playback-history'
 import type { DramaGenerationMediaType } from '../shared/drama-types'
+import { MANAGED_AI_PROVIDER_ID, MAX_AI_PROVIDER_PROFILES, createManagedAiProvider, type AiProviderProfile } from '../shared/ai-providers'
 
 export type AppSettingsSecretCodec = {
   encryptString: (value: string) => string
@@ -48,7 +50,7 @@ function isThemePreference(value: unknown): value is AppThemePreference {
 }
 
 function isSettingsSectionId(value: unknown): value is AppSettingsSectionId {
-  return value === 'general' || value === 'interface' || value === 'video' || value === 'subtitles' || value === 'capture' || value === 'shortcuts'
+  return value === 'general' || value === 'ai' || value === 'interface' || value === 'video' || value === 'subtitles' || value === 'capture' || value === 'shortcuts'
 }
 
 function isAsrModelSourceId(value: unknown): value is AsrModelSourceId {
@@ -530,14 +532,72 @@ function sanitizeSubtitleSettings(
   }
 }
 
+function sanitizeAiProviderProfile(value: unknown): AiProviderProfile | null {
+  if (!value || typeof value !== 'object') return null
+  const provider = value as Partial<AiProviderProfile>
+  const kind: AiProviderProfile['kind'] = provider.kind === 'custom' ? 'custom' : 'managed'
+  const id = typeof provider.id === 'string' ? provider.id.trim().slice(0, 128) : ''
+  if (!id) return null
+  const managed = kind === 'managed'
+  return {
+    id,
+    name: managed ? '' : typeof provider.name === 'string' ? provider.name.trim().slice(0, 64) : '',
+    kind,
+    baseUrl: managed ? null : normalizeTextField(provider.baseUrl, null),
+    model: managed ? null : normalizeTextField(provider.model, null),
+    apiKey: managed ? null : normalizeTextField(provider.apiKey, null)
+  }
+}
+
 function sanitizeAiSettings(
   value: Partial<AppSettings['ai']> | undefined,
+  legacyAsr: Record<string, unknown> | undefined,
   defaults: AppSettings['ai']
 ): AppSettings['ai'] {
   const ai = value ?? {}
+  const providers: AiProviderProfile[] = []
+  if (Array.isArray(ai.providers)) {
+    for (const raw of ai.providers) {
+      const provider = sanitizeAiProviderProfile(raw)
+      if (!provider || providers.some((existing) => existing.id === provider.id)) continue
+      providers.push(provider)
+      if (providers.length >= MAX_AI_PROVIDER_PROFILES) break
+    }
+  }
+
+  const legacyMode = legacyAsr?.translationServiceMode
+  const hasLegacyCustomFields = [legacyAsr?.translationBaseUrl, legacyAsr?.translationModel, legacyAsr?.translationApiKey].some(
+    (field) => typeof field === 'string' && (field as string).trim().length > 0
+  )
+  let migratedActiveProviderId: string | null = null
+  if (providers.length === 0 && (legacyMode === 'managed' || legacyMode === 'custom' || hasLegacyCustomFields)) {
+    providers.push(createManagedAiProvider())
+    if (legacyMode !== 'managed' && (legacyMode === 'custom' || hasLegacyCustomFields)) {
+      const migrated = sanitizeAiProviderProfile({
+        id: randomUUID(),
+        kind: 'custom',
+        baseUrl: legacyAsr?.translationBaseUrl,
+        model: legacyAsr?.translationModel,
+        apiKey: legacyAsr?.translationApiKey
+      })
+      if (migrated) {
+        providers.push(migrated)
+        migratedActiveProviderId = migrated.id
+      }
+    }
+  }
+
+  if (!providers.some((provider) => provider.id === MANAGED_AI_PROVIDER_ID)) {
+    providers.unshift(createManagedAiProvider())
+  }
 
   return {
-    openMode: isAiAutomationMode(ai.openMode) ? ai.openMode : defaults.openMode
+    openMode: isAiAutomationMode(ai.openMode) ? ai.openMode : defaults.openMode,
+    providers,
+    activeProviderId:
+      typeof ai.activeProviderId === 'string' && providers.some((provider) => provider.id === ai.activeProviderId)
+        ? ai.activeProviderId
+        : migratedActiveProviderId ?? MANAGED_AI_PROVIDER_ID
   }
 }
 
@@ -611,14 +671,6 @@ function sanitizeAsrSettings(
   defaults: AppSettings['asr']
 ): AppSettings['asr'] {
   const asr = value ?? {}
-  const hasLegacyCustomTranslationSettings = [asr.translationBaseUrl, asr.translationModel, asr.translationApiKey].some(
-    (field) => typeof field === 'string' && field.trim().length > 0
-  )
-  const translationServiceMode = asr.translationServiceMode === 'managed' || asr.translationServiceMode === 'custom'
-    ? asr.translationServiceMode
-    : hasLegacyCustomTranslationSettings
-      ? 'custom'
-      : defaults.translationServiceMode
 
   return {
     preferredModelSourceId: isAsrModelSourceId(asr.preferredModelSourceId)
@@ -629,10 +681,6 @@ function sanitizeAsrSettings(
       : defaults.defaultSubtitleLanguage,
     autoLoadCachedSubtitles:
       typeof asr.autoLoadCachedSubtitles === 'boolean' ? asr.autoLoadCachedSubtitles : defaults.autoLoadCachedSubtitles,
-    translationServiceMode,
-    translationBaseUrl: normalizeTextField(asr.translationBaseUrl, defaults.translationBaseUrl),
-    translationModel: normalizeTextField(asr.translationModel, defaults.translationModel),
-    translationApiKey: normalizeTextField(asr.translationApiKey, defaults.translationApiKey),
     translationGlossary: normalizeTranslationGlossary(asr.translationGlossary) ?? defaults.translationGlossary
   }
 }
@@ -660,9 +708,11 @@ function encodeAppSettingsForDisk(settings: AppSettings, secretCodec: AppSetting
         audio: { ...settings.drama.media.audio, apiKey: encodeSecretValue(settings.drama.media.audio.apiKey, secretCodec) }
       }
     },
-    asr: {
-      ...settings.asr,
-      translationApiKey: encodeSecretValue(settings.asr.translationApiKey, secretCodec)
+    ai: {
+      ...settings.ai,
+      providers: settings.ai.providers.map((provider) =>
+        provider.apiKey ? { ...provider, apiKey: encodeSecretValue(provider.apiKey, secretCodec) } : provider
+      )
     }
   }
 }
@@ -705,7 +755,7 @@ function sanitizeAppSettings(parsed: unknown, captureDefaultDirectoryPath: strin
     capture: sanitizeCaptureSettings(value.capture, defaults.capture, captureDefaultDirectoryPath),
     playback: sanitizePlaybackSettings(playback, defaults.playback),
     subtitles: sanitizeSubtitleSettings(value.subtitles, defaults.subtitles),
-    ai: sanitizeAiSettings(value.ai, defaults.ai),
+    ai: sanitizeAiSettings(value.ai, value.asr as Record<string, unknown> | undefined, defaults.ai),
     vision: sanitizeVisionSettings(value.vision, defaults.vision),
     drama: sanitizeDramaSettings(value.drama, defaults.drama),
     asr: sanitizeAsrSettings(value.asr, defaults.asr),
@@ -721,23 +771,41 @@ export async function readAppSettings(
   try {
     const content = await readFile(getAppSettingsPath(userDataPath), 'utf-8')
     const parsed = JSON.parse(content) as Partial<AppSettings> & {
-      asr?: Partial<AppSettings['asr']> & {
-        translationApiKey?: unknown
-      }
       drama?: Partial<AppSettings['drama']> & {
         apiKey?: unknown
         media?: Partial<Record<DramaGenerationMediaType, Partial<AppSettings['drama']['media'][DramaGenerationMediaType]> & { apiKey?: unknown }>>
       }
     }
 
+    const legacyAsr = parsed.asr as Record<string, unknown> | undefined
+    const legacyTranslationApiKey = legacyAsr?.translationApiKey
+    const hasNoProviders = !Array.isArray(parsed.ai?.providers) || parsed.ai.providers.length === 0
     if (
-      parsed.asr &&
-      typeof parsed.asr.translationApiKey === 'string' &&
-      parsed.asr.translationApiKey.startsWith(APP_SETTINGS_SECRET_PREFIX)
+      hasNoProviders &&
+      typeof legacyTranslationApiKey === 'string' &&
+      legacyTranslationApiKey.startsWith(APP_SETTINGS_SECRET_PREFIX)
     ) {
+      const codec = secretCodec ?? (await resolveAppSettingsSecretCodec())
       parsed.asr = {
         ...parsed.asr,
-        translationApiKey: decodeSecretValue(parsed.asr.translationApiKey, secretCodec ?? (await resolveAppSettingsSecretCodec()))
+        translationApiKey: decodeSecretValue(legacyTranslationApiKey, codec)
+      } as AppSettings['asr']
+    }
+
+    if (parsed.ai?.providers && Array.isArray(parsed.ai.providers)) {
+      const needsCodec = parsed.ai.providers.some(
+        (provider) => typeof provider?.apiKey === 'string' && provider.apiKey.startsWith(APP_SETTINGS_SECRET_PREFIX)
+      )
+      if (needsCodec) {
+        const codec = secretCodec ?? (await resolveAppSettingsSecretCodec())
+        parsed.ai = {
+          ...parsed.ai,
+          providers: parsed.ai.providers.map((provider) =>
+            typeof provider?.apiKey === 'string' && provider.apiKey.startsWith(APP_SETTINGS_SECRET_PREFIX)
+              ? { ...provider, apiKey: decodeSecretValue(provider.apiKey, codec) }
+              : provider
+          )
+        }
       }
     }
 
@@ -797,10 +865,10 @@ export async function writeAppSettings(
 ): Promise<AppSettings> {
   const nextSettings = sanitizeAppSettings(settings, captureDefaultDirectoryPath)
   const settingsPath = getAppSettingsPath(userDataPath)
-  const codec =
-    typeof nextSettings.asr.translationApiKey === 'string' && nextSettings.asr.translationApiKey.length > 0
-      ? secretCodec ?? (await resolveAppSettingsSecretCodec())
-      : secretCodec
+  const hasProviderSecret = nextSettings.ai.providers.some(
+    (provider) => typeof provider.apiKey === 'string' && provider.apiKey.length > 0
+  )
+  const codec = hasProviderSecret ? secretCodec ?? (await resolveAppSettingsSecretCodec()) : secretCodec
   const diskSettings = encodeAppSettingsForDisk(nextSettings, codec)
 
   await mkdir(dirname(settingsPath), { recursive: true })

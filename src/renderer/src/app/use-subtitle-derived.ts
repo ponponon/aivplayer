@@ -3,6 +3,7 @@ import { normalizeTranslationGlossary } from '../../../shared/app-settings'
 import { formatSubtitleLanguageLabel, isSubtitleLanguageMatch, subtitleTargetLanguageIds } from './app-helpers'
 import type { AppModel } from './app-types'
 import { MANAGED_TRANSLATION_SERVICE_MODEL } from '../../../shared/translation-service'
+import { resolveActiveAiProvider } from '../../../shared/ai-providers'
 
 export function useSubtitleDerived(model: AppModel) {
   const copy = getAppCopy(model.appSettings.ui.locale)
@@ -16,9 +17,10 @@ export function useSubtitleDerived(model: AppModel) {
   const subtitleSourceLanguage = model.activeSubtitle?.subtitleLanguage ?? model.subtitleResult?.subtitleLanguage ?? null
   const subtitleSourceLanguageLabel = formatSubtitleLanguageLabel(copy, subtitleSourceLanguage)
   const subtitleTranslationSourceLanguage = subtitleSourceLanguage ?? model.appSettings.asr.defaultSubtitleLanguage
-  const subtitleTranslationModel = model.appSettings.asr.translationServiceMode === 'managed'
+  const activeAiProvider = resolveActiveAiProvider(model.appSettings.ai.providers, model.appSettings.ai.activeProviderId)
+  const subtitleTranslationModel = activeAiProvider.kind === 'managed'
     ? MANAGED_TRANSLATION_SERVICE_MODEL
-    : model.appSettings.asr.translationModel?.trim() ?? ''
+    : activeAiProvider.model?.trim() ?? ''
   const subtitleTranslationGlossary = normalizeTranslationGlossary(model.appSettings.asr.translationGlossary) ?? ''
   const subtitleLanguagePairLabel = subtitleSourceLanguageLabel ? `${subtitleSourceLanguageLabel} → ${subtitleTargetLanguageLabel}` : null
   const subtitleTranslationModelLabel = model.translatedSubtitleResult?.translationModel ?? subtitleTranslationModel

@@ -1297,6 +1297,7 @@
       description: '設定はすべてローカルに保存され、次回起動時に反映されます。',
       tabs: {
         general: '一般',
+        ai: 'AI サービス',
         interface: 'インターフェース',
         video: 'ビデオ',
         subtitles: '字幕',
@@ -1306,6 +1307,7 @@
       },
       tabAria: {
         general: '一般設定へ移動',
+        ai: 'AI サービス設定へ移動',
         interface: 'インターフェース設定へ移動',
         video: 'ビデオ設定へ移動',
         subtitles: '字幕設定へ移動',
@@ -1418,6 +1420,24 @@
       gpuRestartMessage: 'GPU アクセラレーション設定の変更はアプリの再起動後に有効になります。今すぐ再起動しますか？',
       gpuRestartConfirm: '今すぐ再起動',
       gpuRestartCancel: '後で再起動',
+      aiService: {
+        title: 'AI サービス',
+        introDescription: '翻訳と要約の AI 機能は「使用中」のプロファイルを共通で使います。管理サービスはすぐに使え、OpenAI-compatible なサービスを追加することもできます。',
+        activeProvider: '使用中のサービス',
+        profileListTitle: 'プロファイル',
+        addProfile: 'プロファイル追加',
+        activeBadge: '使用中',
+        managedBadge: '管理サービス',
+        customBadge: 'カスタム',
+        managedProviderName: '管理サービス',
+        customProviderName: 'カスタムサービス',
+        editProfile: '編集',
+        deleteProfile: '削除',
+        saveProfile: '保存',
+        cancelEdit: 'キャンセル',
+        nameField: 'プロファイル名',
+        nameFieldDescription: 'リスト内で区別するための名前。空の場合は種別の既定名を表示します。'
+      },
       subtitles: {
         title: '字幕',
         displayHeading: '字幕表示',
@@ -1446,12 +1466,7 @@
         translationServiceTitle: 'AI サービス（翻訳と要約）',
         translationServiceDescription:
           '既定では AIVPlayer の管理翻訳サービスを使うため、インストール後すぐに翻訳できます。より高品質なモデルや自分の利用枠を使う場合は、カスタムサービスへ切り替えてください。',
-        translationServiceMode: 'サービスモード',
         translationServiceModeDescription: '管理サービスでは API key は不要です。カスタムサービスではエンドポイント、モデル、API key を入力できます。',
-        translationServiceModeOptions: {
-          managed: '管理サービス（推奨）',
-          custom: 'カスタムサービス'
-        },
         translationServiceManagedTitle: '内蔵の管理サービスを使用中',
         translationServiceManagedDescription: 'リクエストは AIVPlayer の Cloudflare Worker に送られ、サーバー側で glm-4-flash-250414 を呼び出します。BigModel API key はクライアントに含まれません。自分のモデルを使う場合はカスタムサービスへ切り替えてください。',
         translationBaseUrl: '翻訳エンドポイント',

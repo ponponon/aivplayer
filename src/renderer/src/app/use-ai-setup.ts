@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import type { AsrRuntimeStatus } from '../../../shared/media-types'
+import { isAiProviderConfigured, resolveActiveAiProvider } from '../../../shared/ai-providers'
 import type { AppDerived } from './use-app-derived'
 import type { AppModel } from './app-types'
 
@@ -42,10 +43,8 @@ export function useAiSetup(
 
   const isAsrRuntimeReady = Boolean(model.asrStatus?.binaryPath && model.asrStatus.ffmpegPath)
   const isRecommendedModelReady = hasRecommendedModel(model.asrStatus)
-  const isTranslationConfigured = model.appSettings.asr.translationServiceMode === 'managed' || Boolean(
-    model.appSettings.asr.translationBaseUrl?.trim() &&
-      model.appSettings.asr.translationModel?.trim() &&
-      model.appSettings.asr.translationApiKey?.trim()
+  const isTranslationConfigured = isAiProviderConfigured(
+    resolveActiveAiProvider(model.appSettings.ai.providers, model.appSettings.ai.activeProviderId)
   )
   // 已保存的接口配置本身就足以继续翻译。测试结果只用于反馈连接是否成功，不能
   // 作为跨重启的硬门槛，否则应用每次启动都会把已经配置好的用户重新拦在引导里。
@@ -56,10 +55,8 @@ export function useAiSetup(
     const currentDerived = derivedRef.current
     const runtimeReady = Boolean(currentModel.asrStatus?.binaryPath && currentModel.asrStatus.ffmpegPath)
     const modelReady = hasRecommendedModel(currentModel.asrStatus)
-    const translationConfigured = currentModel.appSettings.asr.translationServiceMode === 'managed' || Boolean(
-      currentModel.appSettings.asr.translationBaseUrl?.trim() &&
-        currentModel.appSettings.asr.translationModel?.trim() &&
-        currentModel.appSettings.asr.translationApiKey?.trim()
+    const translationConfigured = isAiProviderConfigured(
+      resolveActiveAiProvider(currentModel.appSettings.ai.providers, currentModel.appSettings.ai.activeProviderId)
     )
     const translationReady = translationConfigured
     const needsAsr = intent === 'asr' || (intent === 'quick-complete' && !currentDerived.subtitlePath)
@@ -88,10 +85,8 @@ export function useAiSetup(
     const modelReady = hasRecommendedModel(latestStatus)
     const currentModel = modelRef.current
     const currentDerived = derivedRef.current
-    const translationReady = currentModel.appSettings.asr.translationServiceMode === 'managed' || Boolean(
-      currentModel.appSettings.asr.translationBaseUrl?.trim() &&
-        currentModel.appSettings.asr.translationModel?.trim() &&
-        currentModel.appSettings.asr.translationApiKey?.trim()
+    const translationReady = isAiProviderConfigured(
+      resolveActiveAiProvider(currentModel.appSettings.ai.providers, currentModel.appSettings.ai.activeProviderId)
     )
     const needsAsr = aiSetupIntent === 'asr' || (aiSetupIntent === 'quick-complete' && !currentDerived.subtitlePath)
     const needsTranslation = aiSetupIntent === 'translate' || aiSetupIntent === 'quick-complete'

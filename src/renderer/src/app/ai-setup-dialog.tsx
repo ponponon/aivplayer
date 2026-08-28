@@ -1,5 +1,6 @@
 import { Check, ChevronDown, ChevronRight, CircleAlert, Cpu, Download, KeyRound, RefreshCcw, Sparkles, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { resolveActiveAiProvider, type AiProviderProfile } from '../../../shared/ai-providers'
 import { formatBytes } from './app-helpers'
 import { AsrModelDownloadProgress } from './asr-model-download-progress'
 import { SettingsField, SettingsSelect } from './settings-controls'
@@ -179,20 +180,30 @@ function ModelStep(): React.ReactElement {
 function TranslationStep(): React.ReactElement {
   const app = useAppContext()
   const settings = app.appSettings
-  const isManagedTranslationService = settings.asr.translationServiceMode === 'managed'
+  const activeAiProvider = resolveActiveAiProvider(settings.ai.providers, settings.ai.activeProviderId)
+  const updateActiveProvider = (patch: Partial<AiProviderProfile>): void => {
+    app.patchAppSettingsSection('ai', (current) => ({
+      ...current,
+      providers: current.providers.map((provider) =>
+        provider.id === current.activeProviderId ? { ...provider, ...patch } : provider
+      )
+    }))
+  }
   return <div className="ai-setup-translation-form">
     <p className="ai-setup-detail-copy">{app.copy.aiSetup.translationFormDescription}</p>
-    <SettingsField title={app.copy.settingsDialog.subtitles.translationServiceMode} description={app.copy.settingsDialog.subtitles.translationServiceModeDescription}>
+    <SettingsField title={app.copy.settingsDialog.aiService.activeProvider} description={app.copy.settingsDialog.subtitles.translationServiceModeDescription}>
       <SettingsSelect
-        value={settings.asr.translationServiceMode}
-        options={[
-          { value: 'managed' as const, label: app.copy.settingsDialog.subtitles.translationServiceModeOptions.managed },
-          { value: 'custom' as const, label: app.copy.settingsDialog.subtitles.translationServiceModeOptions.custom }
-        ]}
-        onChange={(translationServiceMode) => app.patchAppSettingsSection('asr', { translationServiceMode })}
+        value={settings.ai.activeProviderId}
+        options={settings.ai.providers.map((provider) => ({
+          value: provider.id,
+          label: provider.name || (provider.kind === 'managed'
+            ? app.copy.settingsDialog.aiService.managedProviderName
+            : app.copy.settingsDialog.aiService.customProviderName)
+        }))}
+        onChange={(activeProviderId) => app.patchAppSettingsSection('ai', { activeProviderId })}
       />
     </SettingsField>
-    {isManagedTranslationService ? (
+    {activeAiProvider.kind === 'managed' ? (
       <div className="settings-note-box">
         <span className="settings-note-title">{app.copy.settingsDialog.subtitles.translationServiceManagedTitle}</span>
         <p>{app.copy.settingsDialog.subtitles.translationServiceManagedDescription}</p>
@@ -200,18 +211,18 @@ function TranslationStep(): React.ReactElement {
     ) : (
       <>
         <SettingsField title={app.copy.settingsDialog.subtitles.translationBaseUrl} description={app.copy.settingsDialog.subtitles.translationBaseUrlDescription}>
-          <SettingsTextInput value={settings.asr.translationBaseUrl ?? ''} autoComplete="off" onChange={(value) => app.patchAppSettingsSection('asr', { translationBaseUrl: value.trim() || null })} />
+          <SettingsTextInput value={activeAiProvider.baseUrl ?? ''} autoComplete="off" onChange={(value) => updateActiveProvider({ baseUrl: value.trim() || null })} />
         </SettingsField>
         <SettingsField title={app.copy.settingsDialog.subtitles.translationModel} description={app.copy.settingsDialog.subtitles.translationModelDescription}>
-          <SettingsTextInput value={settings.asr.translationModel ?? ''} autoComplete="off" onChange={(value) => app.patchAppSettingsSection('asr', { translationModel: value.trim() || null })} />
+          <SettingsTextInput value={activeAiProvider.model ?? ''} autoComplete="off" onChange={(value) => updateActiveProvider({ model: value.trim() || null })} />
         </SettingsField>
         <SettingsField title={app.copy.settingsDialog.subtitles.translationApiKey} description={app.copy.settingsDialog.subtitles.translationApiKeyDescription}>
-          <SettingsTextInput type="password" value={settings.asr.translationApiKey ?? ''} autoComplete="new-password" onChange={(value) => app.patchAppSettingsSection('asr', { translationApiKey: value.trim() || null })} />
+          <SettingsTextInput type="password" value={activeAiProvider.apiKey ?? ''} autoComplete="new-password" onChange={(value) => updateActiveProvider({ apiKey: value.trim() || null })} />
         </SettingsField>
       </>
     )}
     <div className="ai-setup-translation-actions">
-      <button className="ai-setup-translation-test-button" type="button" onClick={app.testTranslationService} disabled={!app.isTranslationConfigured || app.isTestingTranslationService}><Sparkles size={14} />{app.isTestingTranslationService ? app.copy.settingsDialog.subtitles.translationServiceChecking : app.copy.settingsDialog.subtitles.translationServiceCheck}</button>
+      <button className="ai-setup-translation-test-button" type="button" onClick={() => app.testTranslationService()} disabled={!app.isTranslationConfigured || app.isTestingTranslationService}><Sparkles size={14} />{app.isTestingTranslationService ? app.copy.settingsDialog.subtitles.translationServiceChecking : app.copy.settingsDialog.subtitles.translationServiceCheck}</button>
       <span className={`ai-setup-test-state ${app.translationServiceTestMessage?.success ? 'is-ready' : ''}`}>{app.translationServiceTestMessage?.success ? app.copy.aiSetup.testPassed : app.isTranslationConfigured ? app.copy.aiSetup.configured : app.copy.aiSetup.fillRequired}</span>
     </div>
     {app.translationServiceTestMessage ? <div className={`asr-result ${app.translationServiceTestMessage.success ? 'success' : 'failed'}`}>{app.translationServiceTestMessage.message}</div> : null}

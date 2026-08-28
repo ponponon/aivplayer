@@ -24,6 +24,7 @@ ai: {
 type ProviderProfile = {
   id: string                    // 内置托管档案固定为 'managed'，自定义档案用 crypto.randomUUID()
   name: string                  // 必填；内置档案名「内置托管服务」
+                                // 实现备注：托管档案 name 存空字符串，由 i18n 按界面语言回退显示（与初稿「内置托管服务」的差异是有意改进）
   kind: 'managed' | 'custom'
   baseUrl: string | null        // custom 用；managed 恒为 null
   model: string | null          // custom 用；managed 恒为 null
@@ -39,7 +40,7 @@ type ProviderProfile = {
 检测到旧 `asr.translation*` 字段时：
 
 - `translationServiceMode === 'custom'` → 生成一条自定义档案（名称「自定义服务」，继承旧 baseUrl / model / apiKey，apiKey 走现有 safeStorage 编码），设为激活。
-- `translationServiceMode === 'managed'` → 激活内置托管档案。
+- `translationServiceMode === 'managed'` → 激活内置托管档案。旧版 `managed` 模式下残留的自定义字段（旧 UI 切回 managed 时不会清空）在迁移时忽略，不生成自定义档案。
 - `asr.translationGlossary` 保持不动。
 - 迁移完成后清空旧的服务模式字段。
 

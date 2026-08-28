@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { readAsrRuntimeSettings, saveWhisperBinaryPath } from '../../src/core/ai/asr-settings'
 import { createWhisperCppRuntime, resolveFfmpegPath } from '../../src/core/ai/whisper-cpp-runtime'
+import { MANAGED_AI_PROVIDER_ID, createManagedAiProvider } from '../../src/shared/ai-providers'
 import { getAppCopy } from '../../src/shared/i18n'
 
 describe('ASR runtime settings', () => {
@@ -269,6 +270,7 @@ describe('ASR runtime settings', () => {
         AIVPLAYER_TRANSLATION_API_KEY: 'test-key',
         AIVPLAYER_TRANSLATION_MODEL: 'translation-model'
       },
+      getAiServiceSettings: () => ({ providers: [{ id: 'custom-1', name: 'Custom', kind: 'custom', baseUrl: 'https://example.test/v1/chat/completions', model: 'translation-model', apiKey: 'test-key' }], activeProviderId: 'custom-1', glossary: null }),
       translationFetch: async (_url, init) => {
         const body = JSON.parse(String(init?.body ?? '{}')) as { model?: string }
         requests.push({
@@ -326,7 +328,7 @@ describe('ASR runtime settings', () => {
       userDataPath: tempDirectory,
       resourcePath: join(tempDirectory, 'resources'),
       translationHeaders: { 'X-AIVPlayer-Device': 'test-device' },
-      getTranslationServiceSettings: () => ({ translationServiceMode: 'managed' }),
+      getAiServiceSettings: () => ({ providers: [createManagedAiProvider()], activeProviderId: MANAGED_AI_PROVIDER_ID, glossary: null }),
       translationFetch: async (url, init) => {
         const body = JSON.parse(String(init?.body ?? '{}')) as { model?: string }
         requests.push({
@@ -379,6 +381,7 @@ describe('ASR runtime settings', () => {
         AIVPLAYER_TRANSLATION_API_KEY: 'test-key',
         AIVPLAYER_TRANSLATION_MODEL: 'translation-model'
       },
+      getAiServiceSettings: () => ({ providers: [{ id: 'custom-1', name: 'Custom', kind: 'custom', baseUrl: 'https://example.test/v1/chat/completions', model: 'translation-model', apiKey: 'test-key' }], activeProviderId: 'custom-1', glossary: null }),
       translationFetch: async (_url, init) => {
         const body = JSON.parse(String(init?.body ?? '{}')) as { model?: string }
         requests.push({
@@ -420,7 +423,8 @@ describe('ASR runtime settings', () => {
       resourcePath: join(tempDirectory, 'resources'),
       env: {
         AIVPLAYER_TRANSLATION_MODEL: 'translation-model'
-      }
+      },
+      getAiServiceSettings: () => ({ providers: [{ id: 'custom-1', name: 'Custom', kind: 'custom', baseUrl: null, model: 'translation-model', apiKey: null }], activeProviderId: 'custom-1', glossary: null })
     })
 
     const resolved = await cacheOnlyRuntime.resolveTranslatedSubtitleCache({
@@ -463,6 +467,7 @@ describe('ASR runtime settings', () => {
         AIVPLAYER_TRANSLATION_API_KEY: 'test-key',
         AIVPLAYER_TRANSLATION_MODEL: 'translation-model'
       },
+      getAiServiceSettings: () => ({ providers: [{ id: 'custom-1', name: 'Custom', kind: 'custom', baseUrl: 'https://example.test/v1/chat/completions', model: 'translation-model', apiKey: 'test-key' }], activeProviderId: 'custom-1', glossary: null }),
       translationFetch: async () =>
         new Response(
           JSON.stringify({
@@ -491,7 +496,8 @@ describe('ASR runtime settings', () => {
       resourcePath: join(tempDirectory, 'resources'),
       env: {
         AIVPLAYER_TRANSLATION_MODEL: 'different-model'
-      }
+      },
+      getAiServiceSettings: () => ({ providers: [{ id: 'custom-1', name: 'Custom', kind: 'custom', baseUrl: null, model: 'different-model', apiKey: null }], activeProviderId: 'custom-1', glossary: null })
     })
 
     await expect(
@@ -530,11 +536,7 @@ describe('ASR runtime settings', () => {
         AIVPLAYER_TRANSLATION_API_KEY: 'env-key',
         AIVPLAYER_TRANSLATION_MODEL: 'env-model'
       },
-      getTranslationServiceSettings: () => ({
-        translationBaseUrl: 'https://example.test/v1/chat/completions',
-        translationApiKey: 'saved-key',
-        translationModel: 'saved-model'
-      }),
+      getAiServiceSettings: () => ({ providers: [{ id: 'custom-1', name: 'Custom', kind: 'custom', baseUrl: 'https://example.test/v1/chat/completions', model: 'saved-model', apiKey: 'saved-key' }], activeProviderId: 'custom-1', glossary: null }),
       translationFetch: async (url, init) => {
         const body = JSON.parse(String(init?.body ?? '{}')) as { model?: string }
         requests.push({
@@ -589,6 +591,7 @@ describe('ASR runtime settings', () => {
         AIVPLAYER_TRANSLATION_API_KEY: 'probe-key',
         AIVPLAYER_TRANSLATION_MODEL: 'probe-model'
       },
+      getAiServiceSettings: () => ({ providers: [{ id: 'custom-1', name: 'Custom', kind: 'custom', baseUrl: 'https://example.test/v1/chat/completions', model: 'probe-model', apiKey: 'probe-key' }], activeProviderId: 'custom-1', glossary: null }),
       translationFetch: async (url, init) => {
         const body = JSON.parse(String(init?.body ?? '{}')) as {
           model?: string
@@ -652,6 +655,7 @@ describe('ASR runtime settings', () => {
         AIVPLAYER_TRANSLATION_API_KEY: 'probe-key',
         AIVPLAYER_TRANSLATION_MODEL: 'probe-model'
       },
+      getAiServiceSettings: () => ({ providers: [{ id: 'custom-1', name: 'Custom', kind: 'custom', baseUrl: 'https://example.test/v1/chat/completions', model: 'probe-model', apiKey: 'probe-key' }], activeProviderId: 'custom-1', glossary: null }),
       translationFetch: async () =>
         new Response('bad gateway', {
           status: 502,
@@ -681,6 +685,7 @@ describe('ASR runtime settings', () => {
         AIVPLAYER_TRANSLATION_API_KEY: 'probe-key',
         AIVPLAYER_TRANSLATION_MODEL: 'probe-model'
       },
+      getAiServiceSettings: () => ({ providers: [{ id: 'custom-1', name: 'Custom', kind: 'custom', baseUrl: 'https://example.test/v1/chat/completions', model: 'probe-model', apiKey: 'probe-key' }], activeProviderId: 'custom-1', glossary: null }),
       translationFetch: async () =>
         new Response('not-json', {
           status: 200,
@@ -710,6 +715,7 @@ describe('ASR runtime settings', () => {
         AIVPLAYER_TRANSLATION_API_KEY: 'probe-key',
         AIVPLAYER_TRANSLATION_MODEL: 'probe-model'
       },
+      getAiServiceSettings: () => ({ providers: [{ id: 'custom-1', name: 'Custom', kind: 'custom', baseUrl: 'https://example.test/v1/chat/completions', model: 'probe-model', apiKey: 'probe-key' }], activeProviderId: 'custom-1', glossary: null }),
       translationFetch: async () =>
         new Response(
           JSON.stringify({
@@ -768,5 +774,41 @@ describe('ASR runtime settings', () => {
     expect(result.success).toBe(true)
     expect(result.sourceSubtitleRevision).toBe(Math.round((await stat(vttPath)).mtimeMs))
     expect(result.summary?.title).toBe('测试总结')
+  })
+
+  it('probes the translation service with an unsaved provider override', async () => {
+    const requests: Array<{ url: string; authorization: string | null; model: string | undefined }> = []
+    const runtime = createWhisperCppRuntime({
+      userDataPath: tempDirectory,
+      resourcePath: join(tempDirectory, 'resources'),
+      env: {
+        AIVPLAYER_TRANSLATION_BASE_URL: 'https://env.invalid/v1/chat/completions',
+        AIVPLAYER_TRANSLATION_API_KEY: 'env-key',
+        AIVPLAYER_TRANSLATION_MODEL: 'env-model'
+      },
+      translationFetch: async (url, init) => {
+        const body = JSON.parse(String(init?.body ?? '{}')) as { model?: string }
+        requests.push({
+          url,
+          authorization: init?.headers instanceof Headers ? init.headers.get('Authorization') : null,
+          model: body.model
+        })
+        return new Response(
+          JSON.stringify({ choices: [{ message: { content: JSON.stringify([{ id: 'cue-1', text: '你好' }]) } }] }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        )
+      }
+    })
+
+    const result = await runtime.testTranslationService({
+      sourceLanguage: 'en',
+      targetLanguage: 'zh',
+      provider: { kind: 'custom', baseUrl: 'https://override.test/v1/chat/completions', model: 'override-model', apiKey: 'override-key' }
+    })
+
+    expect(result.success).toBe(true)
+    expect(requests).toEqual([
+      { url: 'https://override.test/v1/chat/completions', authorization: 'Bearer override-key', model: 'override-model' }
+    ])
   })
 })

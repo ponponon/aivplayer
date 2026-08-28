@@ -1,10 +1,9 @@
 import { Captions, RefreshCcw, Trash2 } from 'lucide-react'
 import type { ReactElement } from 'react'
 import { SettingsField, SettingsSelect, SettingsToggle } from '../settings-controls'
-import { SettingsNumberInput } from '../settings-inputs'
+import { SettingsNumberInput, SettingsTextarea } from '../settings-inputs'
 import { formatBytes } from '../app-helpers'
 import { clampSubtitleFontSize } from '../subtitle-display-settings'
-import { TranslationServiceSettings } from '../translation-service-settings'
 import type { SettingsSectionProps } from '../settings-section-types'
 import { TtsProviderSettings } from './tts-provider-settings'
 
@@ -95,7 +94,13 @@ export function SubtitlesSettingsSection(props: SettingsSectionProps): ReactElem
         {cacheStatus ? <p className={`settings-card-note settings-cache-status ${cacheStatus.success ? 'is-success' : 'is-error'}`}>{cacheStatus.message}</p> : null}
       </div>
       <TtsProviderSettings {...props} />
-      <TranslationServiceSettings {...props} />
+      <SettingsField title={copy.settingsDialog.subtitles.translationGlossary} description={copy.settingsDialog.subtitles.translationGlossaryDescription}>
+        <SettingsTextarea
+          value={settings.asr.translationGlossary ?? ''}
+          ariaLabel={copy.settingsDialog.subtitles.translationGlossary}
+          onChange={(translationGlossary) => patchSettingsSection('asr', { translationGlossary: translationGlossary.trim() || null })}
+        />
+      </SettingsField>
     </section>
   )
 }

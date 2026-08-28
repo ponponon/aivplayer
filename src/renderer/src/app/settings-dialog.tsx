@@ -6,7 +6,7 @@ import type {
   AppSettingsSectionPatcher
 } from '../../../shared/app-settings'
 import type { AppUpdateState } from '../../../shared/app-update-types'
-import type { AsrRuntimeSetupResult, AsrRuntimeStatus, AsrTranslationServiceTestResult } from '../../../shared/media-types'
+import type { AsrRuntimeSetupResult, AsrRuntimeStatus, AsrTranslationServiceTestRequest, AsrTranslationServiceTestResult } from '../../../shared/media-types'
 import type { LocaleCopy } from '../../../shared/i18n'
 import { useModalFocusTrap } from './use-modal-focus-trap'
 import { useSettingsCacheManagement } from './use-settings-cache-management'
@@ -32,7 +32,7 @@ export type SettingsDialogProps = {
   onPickDefaultFolder: () => Promise<string | null>
   onPickCaptureFolder: () => Promise<string | null>
   onSelectWhisperBinary: () => void
-  onTestTranslationService: () => void
+  onTestTranslationService: (provider?: AsrTranslationServiceTestRequest['provider']) => void
   onResetDefaults: () => void
   onRestartWithGpuAcceleration: (enabled: boolean) => Promise<void>
   appUpdateState: AppUpdateState

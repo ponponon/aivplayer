@@ -1,4 +1,5 @@
 import { normalizeTranslationGlossary } from '../../../shared/app-settings'
+import { isAiProviderConfigured, resolveActiveAiProvider } from '../../../shared/ai-providers'
 import { buildAsrModelViewState } from './asr-model-view-state'
 import { formatBytes, formatElapsedTime } from './app-helpers'
 import type { AppModel } from './app-types'
@@ -14,10 +15,8 @@ export function useAppDerived(model: AppModel) {
   const modelViewState = recommendedModelManifest ? buildAsrModelViewState({ copy: subtitle.copy, recommendedManifest: recommendedModelManifest, installedModels: model.asrStatus?.installedModels ?? [], isDownloadingModel: model.isDownloadingModel, downloadProgress: model.downloadProgress, hasWhisperRuntime: Boolean(model.asrStatus?.binaryPath), hasFfmpegRuntime: Boolean(model.asrStatus?.ffmpegPath) }) : null
   const subtitleTranslationGlossary = normalizeTranslationGlossary(model.appSettings.asr.translationGlossary) ?? ''
   const summaryUsesTranslation = Boolean(model.translatedSubtitleResult?.subtitlePath && model.translatedSubtitleResult.targetLanguage === model.appSettings.subtitles.targetLanguage)
-  const isTranslationConfigured = model.appSettings.asr.translationServiceMode === 'managed' || Boolean(
-    model.appSettings.asr.translationBaseUrl?.trim() &&
-      model.appSettings.asr.translationModel?.trim() &&
-      model.appSettings.asr.translationApiKey?.trim()
+  const isTranslationConfigured = isAiProviderConfigured(
+    resolveActiveAiProvider(model.appSettings.ai.providers, model.appSettings.ai.activeProviderId)
   )
   return {
     ...subtitle,

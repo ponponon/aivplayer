@@ -1297,6 +1297,7 @@
       description: '설정은 모두 로컬에 저장되며 다음 실행 시 적용됩니다.',
       tabs: {
         general: '일반',
+        ai: 'AI 서비스',
         interface: '인터페이스',
         video: '비디오',
         subtitles: '자막',
@@ -1306,6 +1307,7 @@
       },
       tabAria: {
         general: '일반 설정으로 이동',
+        ai: 'AI 서비스 설정으로 이동',
         interface: '인터페이스 설정으로 이동',
         video: '비디오 설정으로 이동',
         subtitles: '자막 설정으로 이동',
@@ -1418,6 +1420,24 @@
       gpuRestartMessage: 'GPU 가속 설정 변경은 적용을 위해 앱을 다시 시작해야 합니다. 지금 다시 시작하시겠습니까?',
       gpuRestartConfirm: '지금 다시 시작',
       gpuRestartCancel: '나중에 다시 시작',
+      aiService: {
+        title: 'AI 서비스',
+        introDescription: '번역·요약 등 AI 기능은 "사용 중" 프로필을 공통으로 사용합니다. 관리형 서비스는 바로 쓸 수 있고, OpenAI-compatible 서비스를 추가할 수도 있습니다.',
+        activeProvider: '사용 중인 서비스',
+        profileListTitle: '프로필',
+        addProfile: '프로필 추가',
+        activeBadge: '사용 중',
+        managedBadge: '관리형',
+        customBadge: '사용자 지정',
+        managedProviderName: '관리형 서비스',
+        customProviderName: '사용자 지정 서비스',
+        editProfile: '편집',
+        deleteProfile: '삭제',
+        saveProfile: '저장',
+        cancelEdit: '취소',
+        nameField: '프로필 이름',
+        nameFieldDescription: '목록에서 구별하기 위한 이름입니다. 비워 두면 유형 기본 이름이 표시됩니다.'
+      },
       subtitles: {
         title: '자막',
         displayHeading: '자막 표시',
@@ -1446,12 +1466,7 @@
         translationServiceTitle: 'AI 서비스(번역 및 요약)',
         translationServiceDescription:
           '기본으로 AIVPlayer의 관리형 번역 서비스를 사용하므로 설치 후 바로 번역할 수 있습니다. 더 나은 품질이나 자신의 사용량을 원하면 사용자 지정 OpenAI 호환 서비스로 전환하세요.',
-        translationServiceMode: '서비스 모드',
         translationServiceModeDescription: '관리형 서비스에는 API key가 필요하지 않습니다. 사용자 지정 서비스에서는 엔드포인트, 모델, API key를 입력할 수 있습니다.',
-        translationServiceModeOptions: {
-          managed: '관리형 서비스(권장)',
-          custom: '사용자 지정 서비스'
-        },
         translationServiceManagedTitle: '내장 관리형 서비스 사용 중',
         translationServiceManagedDescription: '요청은 AIVPlayer의 Cloudflare Worker로 전송되고 서버에서 glm-4-flash-250414를 호출합니다. BigModel API key는 클라이언트에 포함되지 않습니다. 자신의 모델을 사용하려면 사용자 지정 서비스로 전환하세요.',
         translationBaseUrl: '번역 엔드포인트',

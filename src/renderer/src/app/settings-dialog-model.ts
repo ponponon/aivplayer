@@ -1,4 +1,4 @@
-import { Camera, Captions, Clapperboard, Info, Keyboard, LayoutGrid, Settings2 } from 'lucide-react'
+import { Camera, Captions, Clapperboard, Info, Keyboard, LayoutGrid, Settings2, Sparkles } from 'lucide-react'
 import type {
   AppLocale,
   AppPanelModePreference,
@@ -14,7 +14,7 @@ import type {
   SubtitleLineHeight,
   SubtitleTargetLanguageId
 } from '../../../shared/app-settings'
-import type { AsrCacheStats, AsrModelSourceId, AsrRuntimeStatus, AsrTranslationServiceTestResult } from '../../../shared/media-types'
+import type { AsrCacheStats, AsrModelSourceId, AsrRuntimeStatus, AsrTranslationServiceTestRequest, AsrTranslationServiceTestResult } from '../../../shared/media-types'
 import type { LocaleCopy } from '../../../shared/i18n'
 import type { SettingsSelectOption } from './settings-controls'
 import type { SettingsSectionProps } from './settings-section-types'
@@ -31,6 +31,7 @@ export type SettingsTabId = AppSettingsSectionId | 'about'
 export function getSettingsTabs(copy: LocaleCopy): SettingsTab[] {
   return [
     { id: 'general', label: copy.settingsDialog.tabs.general, ariaLabel: copy.settingsDialog.tabAria.general, icon: Settings2 },
+    { id: 'ai', label: copy.settingsDialog.tabs.ai, ariaLabel: copy.settingsDialog.tabAria.ai, icon: Sparkles },
     { id: 'interface', label: copy.settingsDialog.tabs.interface, ariaLabel: copy.settingsDialog.tabAria.interface, icon: LayoutGrid },
     { id: 'video', label: copy.settingsDialog.tabs.video, ariaLabel: copy.settingsDialog.tabAria.video, icon: Clapperboard },
     { id: 'subtitles', label: copy.settingsDialog.tabs.subtitles, ariaLabel: copy.settingsDialog.tabAria.subtitles, icon: Captions },
@@ -54,7 +55,7 @@ type SettingsSectionPropsInput = {
   isClearingCache: boolean
   onPickDefaultFolder: () => Promise<string | null>
   onPickCaptureFolder: () => Promise<string | null>
-  onTestTranslationService: () => void
+  onTestTranslationService: (provider?: AsrTranslationServiceTestRequest['provider']) => void
   onRefreshCacheStats: () => void
   onClearStaleCache: () => void
   onGpuAccelerationChange?: (enabled: boolean) => void
