@@ -1,0 +1,293 @@
+.ai-service-intro {
+  gap: 8px;
+}
+
+.ai-service-intro-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--accent);
+}
+
+.ai-service-current-card,
+.ai-service-profiles-card,
+.ai-service-editor-card,
+.ai-service-result-card {
+  gap: 12px;
+}
+
+.ai-service-current-card > *,
+.ai-service-profiles-card > *,
+.ai-service-editor-card > *,
+.ai-service-result-card > * {
+  grid-column: 1 / -1;
+}
+
+.ai-service-current-card {
+  background: rgba(var(--accent-rgb), 0.035);
+  border-color: rgba(var(--accent-rgb), 0.2);
+}
+
+.ai-service-current-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(220px, 0.9fr);
+  gap: 12px;
+  min-width: 0;
+}
+
+.ai-service-current-summary,
+.ai-service-current-control {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 11px 12px;
+  background: rgba(var(--overlay-rgb), 0.045);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+}
+
+.ai-service-current-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ai-service-current-icon,
+.ai-service-profile-mark {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  color: var(--accent);
+}
+
+.ai-service-current-icon {
+  width: 32px;
+  height: 32px;
+  background: rgba(var(--accent-rgb), 0.1);
+  border: 1px solid rgba(var(--accent-rgb), 0.2);
+  border-radius: var(--radius-md);
+}
+
+.ai-service-control-label {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.ai-service-current-detail {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  min-width: 0;
+  padding: 10px 12px;
+  color: var(--text-secondary);
+  background: rgba(var(--overlay-rgb), 0.035);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.ai-service-current-detail svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.ai-service-current-detail.is-managed svg {
+  color: var(--ok);
+}
+
+.ai-service-current-detail.is-custom svg {
+  color: var(--accent);
+}
+
+.ai-service-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  min-width: 0;
+}
+
+.ai-service-section-header > div:first-child {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.ai-service-add-button {
+  width: auto;
+  flex: 0 0 auto;
+}
+
+.ai-service-profile-list {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ai-service-profile-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 11px 12px;
+  background: rgba(var(--overlay-rgb), 0.035);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.ai-service-profile-card.is-active {
+  background: rgba(var(--accent-rgb), 0.08);
+  border-color: rgba(var(--accent-rgb), 0.3);
+}
+
+.ai-service-profile-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.ai-service-profile-mark {
+  width: 24px;
+  height: 24px;
+  margin-top: 1px;
+  color: var(--text-muted);
+}
+
+.ai-service-profile-card.is-active .ai-service-profile-mark {
+  color: var(--accent);
+}
+
+.ai-service-profile-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+}
+
+.ai-service-profile-actions button {
+  min-height: 30px;
+  padding-inline: 10px;
+  font-size: 12px;
+}
+
+.ai-service-profile-actions button svg {
+  margin-right: 5px;
+}
+
+.ai-service-active-label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.ai-service-active-label::before {
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  background: currentColor;
+  border-radius: 50%;
+  content: '';
+}
+
+.ai-service-editor-card {
+  border-color: rgba(var(--accent-rgb), 0.24);
+}
+
+.ai-service-editor-step {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.ai-service-editor-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  min-width: 0;
+}
+
+.ai-service-editor-fields .settings-field {
+  min-width: 0;
+}
+
+.ai-service-editor-footer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+  min-width: 0;
+  padding-top: 2px;
+}
+
+.ai-service-editor-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+}
+
+.ai-service-editor-actions .asr-action-button {
+  width: auto;
+  min-height: var(--settings-control-height, 36px);
+}
+
+.ai-service-result-card {
+  background: rgba(var(--overlay-rgb), 0.035);
+}
+
+.ai-service-result-preview {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.ai-service-result-preview strong {
+  color: var(--text-primary);
+  font-size: 11px;
+}
+
+@media (max-width: 700px) {
+  .ai-service-current-layout,
+  .ai-service-editor-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-service-section-header,
+  .ai-service-profile-card,
+  .ai-service-editor-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ai-service-add-button,
+  .ai-service-editor-actions {
+    width: 100%;
+  }
+
+  .ai-service-editor-actions > button {
+    flex: 1 1 auto;
+  }
+
+  .ai-service-profile-actions {
+    justify-content: flex-start;
+  }
+}

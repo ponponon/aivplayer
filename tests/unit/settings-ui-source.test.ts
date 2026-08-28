@@ -47,6 +47,37 @@ describe('settings UI source constraints', () => {
     expect(playerCss).toMatch(/\.settings-section-panel\.is-hidden\s*\{[^}]*display:\s*none;/s)
   })
 
+  it('organizes AI service configuration around current service, profiles, and editor states', () => {
+    const aiServiceSource = readSource('src/renderer/src/app/settings-sections/ai-service.tsx')
+    const playerCss = readSource('src/renderer/src/styles/player.css')
+    const aiServiceCss = readSource('src/renderer/src/styles/player/ai-service.css')
+
+    expect(aiServiceSource).toContain('ai-service-current-card')
+    expect(aiServiceSource).toContain('ai-service-profiles-card')
+    expect(aiServiceSource).toContain('data-ai-service-editor')
+    expect(aiServiceSource).toContain('editingMode === \'new\'')
+    expect(aiServiceSource).toContain('providers: editingMode === \'new\'')
+    expect(aiServiceSource).toContain('useProfile')
+    expect(aiServiceSource).toContain('isAiProviderConfigured')
+    expect(readSource('scripts/smoke-settings-dialog.ts')).toContain("aivplayer-smoke-settings-ai-editor.png")
+    expect(playerCss).toContain("@import './player/ai-service.css';")
+    expect(aiServiceCss).toMatch(/\.ai-service-profile-card\.is-active\s*\{[^}]*border-color:/s)
+    expect(aiServiceCss).toMatch(/\.ai-service-editor-fields\s*\{[^}]*grid-template-columns:\s*repeat\(2,/s)
+    expect(aiServiceCss).toMatch(/@media \(max-width: 700px\)/s)
+  })
+
+  it('provides the AI service configuration guidance in every supported locale', () => {
+    for (const locale of ['zh-CN', 'en-US', 'ja-JP', 'ko-KR']) {
+      const source = readSource(`src/shared/i18n/locales/${locale}.ts`)
+
+      expect(source).toContain('currentProviderDescription:')
+      expect(source).toContain('profileListDescription:')
+      expect(source).toContain('newProfileDescription:')
+      expect(source).toContain('baseUrlPlaceholder:')
+      expect(source).toContain('apiKeyPlaceholder:')
+    }
+  })
+
   it('routes every settings field through the shared SettingsField structure', () => {
     const settingsDialogSource = readSource('src/renderer/src/app/settings-controls.tsx')
 
