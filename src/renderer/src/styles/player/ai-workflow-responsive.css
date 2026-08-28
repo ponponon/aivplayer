@@ -6,7 +6,9 @@
 
 @media (max-width: 760px) {
   .ai-workflow-bar {
-    margin: 8px 10px 0;
+    top: 48px;
+    right: 10px;
+    left: 10px;
     width: auto;
   }
 
