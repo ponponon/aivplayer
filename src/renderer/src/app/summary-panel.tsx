@@ -9,6 +9,7 @@ export function SummaryPanel(): ReactElement {
   const app = useAppContext()
   const result = app.subtitleSummaryResult
   const summary = (result?.mode ?? 'detailed') === app.summaryMode ? result?.summary : undefined
+  const isLoading = Boolean(app.state.currentFile && (app.isSummarizingSubtitle || app.aiWorkflowState.status === 'running'))
   const hasFailure = (app.summaryNotice && !app.summaryNotice.success) || app.aiWorkflowState.status === 'failed'
 
   return <>
@@ -18,9 +19,7 @@ export function SummaryPanel(): ReactElement {
     </div>
     <div className="summary-panel-content">
       {!app.state.currentFile ? <div className="panel-empty">{app.copy.summary.noMedia}</div> : null}
-      {app.state.currentFile && (app.isSummarizingSubtitle || app.aiWorkflowState.status === 'running') ? <SummaryLoading /> : null}
-      {app.state.currentFile && app.aiWorkflowState.status !== 'running' && !app.isSummarizingSubtitle && !summary ? <SummaryEmpty hasFailure={Boolean(hasFailure)} /> : null}
-      {summary ? <SummaryArticle /> : null}
+      {app.state.currentFile && (summary ? <SummaryArticle /> : isLoading ? <SummaryLoading /> : <SummaryEmpty hasFailure={Boolean(hasFailure)} />)}
     </div>
   </>
 }

@@ -3,6 +3,7 @@ import type { AppSettings } from '../../../shared/app-settings'
 import type { AsrSubtitleTranslationResult } from '../../../shared/media-types'
 import type { AppDerived } from './use-app-derived'
 import type { AppModel } from './app-types'
+import { canKeepRawSummaryWhileTranslatedSourceLoads } from './summary-cache-context'
 
 type DisplayPatcher = (patch: Partial<AppSettings['subtitles']>) => void
 
@@ -123,18 +124,40 @@ export function useSubtitleCacheEffects(model: AppModel, derived: AppDerived, pa
     const sourceLanguage = derived.summarySourceLanguage
     const current = model.subtitleSummaryResult
     const currentSourceType = current?.sourceType ?? 'raw'
-    const sourceRevisionMatches = derived.summarySourceRevision === undefined || current?.sourceSubtitleRevision === derived.summarySourceRevision
-    const currentContextMatches = Boolean(
+    const currentSourcePath = currentSourceType === 'translated' ? derived.translatedSubtitlePath : derived.subtitlePath
+    const currentSourceRevision = currentSourceType === 'translated' ? derived.translatedSubtitleRevision : derived.subtitleRevision
+    const currentSourceIsAvailable = Boolean(
+      current?.sourceSubtitlePath &&
+      currentSourcePath &&
+      current.sourceSubtitlePath === currentSourcePath &&
+      (currentSourceRevision === undefined || current.sourceSubtitleRevision === currentSourceRevision)
+    )
+    const currentSettingsMatch = Boolean(
       current?.summary &&
-      current.sourceSubtitlePath === sourcePath &&
-      currentSourceType === derived.summarySourceType &&
       current.targetLanguage === model.appSettings.subtitles.targetLanguage &&
       current.summaryModel === derived.subtitleTranslationModel &&
-      (current.mode ?? 'detailed') === model.summaryMode &&
-      sourceRevisionMatches
+      (current.mode ?? 'detailed') === model.summaryMode
+    )
+    const currentContextMatches = Boolean(
+      currentSettingsMatch &&
+      current?.sourceSubtitlePath === sourcePath &&
+      currentSourceType === derived.summarySourceType &&
+      currentSourceIsAvailable
     )
     if (currentContextMatches) return
-    if (current?.summary) {
+
+    // A translated cache may arrive after a valid raw summary was generated.
+    // Keep that summary visible while probing the preferred translated cache;
+    // clearing it here creates a visible article -> empty-state flash.
+    const canKeepRawSummary = canKeepRawSummaryWhileTranslatedSourceLoads(current, {
+      preferredSourceType: derived.summarySourceType,
+      rawSourcePath: derived.subtitlePath,
+      rawSourceRevision: derived.subtitleRevision,
+      targetLanguage: model.appSettings.subtitles.targetLanguage,
+      summaryModel: derived.subtitleTranslationModel,
+      mode: model.summaryMode
+    })
+    if (current?.summary && !canKeepRawSummary) {
       model.setSubtitleSummaryResult(null)
       model.setSummaryNotice(null)
       return
