@@ -150,25 +150,35 @@ async function main(): Promise<void> {
     })
     const aiServiceInitialState = await page.evaluate(async () => ({
       providerCount: (await window.aiv.getAppSettings()).ai.providers.length,
-      currentCards: document.querySelectorAll('.ai-service-current-card').length,
-      profileCards: document.querySelectorAll('.ai-service-profile-card').length,
-      editorCards: document.querySelectorAll('[data-ai-service-editor]').length,
+      managementCards: document.querySelectorAll('.ai-service-management-card').length,
+      tableRows: document.querySelectorAll('.ai-service-table-row:not(.ai-service-table-header)').length,
+      providerDialogs: document.querySelectorAll('[data-ai-service-provider-dialog]').length,
+      currentStrip: document.querySelectorAll('.ai-service-current-strip').length,
       addButton: document.querySelector('.ai-service-add-button') ? 'present' : 'missing'
     }))
     await page.locator('.ai-service-add-button').click()
     await page.waitForTimeout(250)
     const aiServiceEditorState = await page.evaluate(async () => ({
       providerCountAfterAdd: (await window.aiv.getAppSettings()).ai.providers.length,
-      editorCardsAfterAdd: document.querySelectorAll('[data-ai-service-editor]').length,
-      editorTitle: document.querySelector('#ai-service-editor-title')?.textContent?.trim() ?? 'missing'
+      providerDialogsAfterAdd: document.querySelectorAll('[data-ai-service-provider-dialog]').length,
+      editorTitle: document.querySelector('#ai-service-provider-dialog-title')?.textContent?.trim() ?? 'missing',
+      firstFieldFocused: document.activeElement?.getAttribute('data-testid') === 'ai-service-provider-name'
     }))
     const aiServiceEditorScreenshotPath = join(smokeHomeDirectory, 'aivplayer-smoke-settings-ai-editor.png')
     await page.screenshot({ path: aiServiceEditorScreenshotPath, fullPage: false })
-    await page.locator('[data-ai-service-editor] .settings-secondary-button').last().click()
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(250)
+    const aiServiceEscapeState = await page.evaluate(async () => ({
+      providerCountAfterEscape: (await window.aiv.getAppSettings()).ai.providers.length,
+      providerDialogsAfterEscape: document.querySelectorAll('[data-ai-service-provider-dialog]').length
+    }))
+    await page.locator('.ai-service-add-button').click()
+    await page.waitForTimeout(250)
+    await page.locator('[data-ai-service-provider-dialog] .settings-secondary-button').last().click()
     await page.waitForTimeout(250)
     const aiServiceCancelState = await page.evaluate(async () => ({
       providerCountAfterCancel: (await window.aiv.getAppSettings()).ai.providers.length,
-      editorCardsAfterCancel: document.querySelectorAll('[data-ai-service-editor]').length
+      providerDialogsAfterCancel: document.querySelectorAll('[data-ai-service-provider-dialog]').length
     }))
     const aiScreenshotPath = join(smokeHomeDirectory, 'aivplayer-smoke-settings-ai.png')
     await page.screenshot({ path: aiScreenshotPath, fullPage: false })
@@ -334,7 +344,7 @@ async function main(): Promise<void> {
     console.log(`Light theme state: ${JSON.stringify(lightThemeState)}`)
     console.log(`Settings dialog heights: ${JSON.stringify(dialogHeightByTab)}`)
     console.log(`AI settings layout state: ${JSON.stringify(aiLayoutState)}`)
-    console.log(`AI service configuration state: ${JSON.stringify({ initial: aiServiceInitialState, afterAdd: aiServiceEditorState, afterCancel: aiServiceCancelState })}`)
+    console.log(`AI service configuration state: ${JSON.stringify({ initial: aiServiceInitialState, afterAdd: aiServiceEditorState, afterEscape: aiServiceEscapeState, afterCancel: aiServiceCancelState })}`)
     console.log(`AI service editor screenshot: ${aiServiceEditorScreenshotPath}`)
     console.log(`Settings panel visibility: ${JSON.stringify(settingsPanelVisibilityByTab)}`)
     console.log(`About visibility by tab: ${JSON.stringify(aboutVisibilityByTab)}`)
@@ -372,17 +382,21 @@ async function main(): Promise<void> {
       !aiLayoutState ||
       aiLayoutState.alignContent !== 'start' ||
       aiLayoutState.settingsGridAlignContent !== 'start' ||
-      aiLayoutState.visibleChildren !== 3 ||
+      aiLayoutState.visibleChildren !== 2 ||
       aiLayoutState.maxGap > 20 ||
-      aiServiceInitialState.currentCards !== 1 ||
-      aiServiceInitialState.profileCards !== 1 ||
-      aiServiceInitialState.editorCards !== 0 ||
+      aiServiceInitialState.managementCards !== 1 ||
+      aiServiceInitialState.tableRows !== aiServiceInitialState.providerCount ||
+      aiServiceInitialState.providerDialogs !== 0 ||
+      aiServiceInitialState.currentStrip !== 1 ||
       aiServiceInitialState.addButton !== 'present' ||
       aiServiceEditorState.providerCountAfterAdd !== aiServiceInitialState.providerCount ||
-      aiServiceEditorState.editorCardsAfterAdd !== 1 ||
+      aiServiceEditorState.providerDialogsAfterAdd !== 1 ||
       aiServiceEditorState.editorTitle === 'missing' ||
+      aiServiceEditorState.firstFieldFocused !== true ||
+      aiServiceEscapeState.providerCountAfterEscape !== aiServiceInitialState.providerCount ||
+      aiServiceEscapeState.providerDialogsAfterEscape !== 0 ||
       aiServiceCancelState.providerCountAfterCancel !== aiServiceInitialState.providerCount ||
-      aiServiceCancelState.editorCardsAfterCancel !== 0 ||
+      aiServiceCancelState.providerDialogsAfterCancel !== 0 ||
       Object.entries(settingsPanelVisibilityByTab).some(([tab, panels]) => {
         const visiblePanels = panels.filter((panel) => panel.display !== 'none')
         return visiblePanels.length !== 1 ||

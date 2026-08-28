@@ -47,32 +47,41 @@ describe('settings UI source constraints', () => {
     expect(playerCss).toMatch(/\.settings-section-panel\.is-hidden\s*\{[^}]*display:\s*none;/s)
   })
 
-  it('organizes AI service configuration around current service, profiles, and editor states', () => {
+  it('organizes AI service configuration as a management list with a focused editor dialog', () => {
     const aiServiceSource = readSource('src/renderer/src/app/settings-sections/ai-service.tsx')
     const playerCss = readSource('src/renderer/src/styles/player.css')
     const aiServiceCss = readSource('src/renderer/src/styles/player/ai-service.css')
+    const smokeSource = readSource('scripts/smoke-settings-dialog.ts')
 
-    expect(aiServiceSource).toContain('ai-service-current-card')
-    expect(aiServiceSource).toContain('ai-service-profiles-card')
-    expect(aiServiceSource).toContain('data-ai-service-editor')
+    expect(aiServiceSource).toContain('ai-service-management-card')
+    expect(aiServiceSource).toContain('ai-service-table')
+    expect(aiServiceSource).toContain('data-ai-service-provider-dialog')
+    expect(aiServiceSource).toContain('dataTestId="ai-service-provider-name"')
+    expect(aiServiceSource).toContain('useModalFocusTrap')
     expect(aiServiceSource).toContain('editingMode === \'new\'')
     expect(aiServiceSource).toContain('providers: editingMode === \'new\'')
+    expect(aiServiceSource).toContain('const selectProvider = (activeProviderId: string)')
     expect(aiServiceSource).toContain('useProfile')
     expect(aiServiceSource).toContain('isAiProviderConfigured')
-    expect(readSource('scripts/smoke-settings-dialog.ts')).toContain("aivplayer-smoke-settings-ai-editor.png")
+    expect(smokeSource).toContain("aivplayer-smoke-settings-ai-editor.png")
+    expect(smokeSource).toContain("data-ai-service-provider-dialog")
     expect(playerCss).toContain("@import './player/ai-service.css';")
-    expect(aiServiceCss).toMatch(/\.ai-service-profile-card\.is-active\s*\{[^}]*border-color:/s)
-    expect(aiServiceCss).toMatch(/\.ai-service-editor-fields\s*\{[^}]*grid-template-columns:\s*repeat\(2,/s)
-    expect(aiServiceCss).toMatch(/@media \(max-width: 700px\)/s)
+    expect(aiServiceCss).toMatch(/\.ai-service-table-row\s*\{[^}]*grid-template-columns:/s)
+    expect(aiServiceCss).toMatch(/\.ai-service-provider-dialog\s*\{[^}]*max-height:/s)
+    expect(aiServiceCss).toMatch(/\.ai-service-provider-dialog\s*\{[^}]*background:\s*rgba\(var\(--panel-rgb\),/s)
+    expect(aiServiceCss).toMatch(/\.ai-service-provider-backdrop\s*\{[^}]*z-index:\s*1000;/s)
+    expect(aiServiceCss).toMatch(/@media \(max-width: 760px\)/s)
+    expect(aiServiceCss).toMatch(/@media \(max-width: 620px\)/s)
   })
 
   it('provides the AI service configuration guidance in every supported locale', () => {
     for (const locale of ['zh-CN', 'en-US', 'ja-JP', 'ko-KR']) {
       const source = readSource(`src/shared/i18n/locales/${locale}.ts`)
 
-      expect(source).toContain('currentProviderDescription:')
-      expect(source).toContain('profileListDescription:')
-      expect(source).toContain('newProfileDescription:')
+      expect(source).toContain('managementTitle:')
+      expect(source).toContain('managementDescription:')
+      expect(source).toContain('protocolDescription:')
+      expect(source).toContain('managedStatus:')
       expect(source).toContain('baseUrlPlaceholder:')
       expect(source).toContain('apiKeyPlaceholder:')
     }
