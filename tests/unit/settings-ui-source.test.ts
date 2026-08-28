@@ -35,6 +35,18 @@ describe('settings UI source constraints', () => {
     expect(playerCss).toMatch(/\.settings-grid\s*\{[^}]*align-content:\s*start;/s)
   })
 
+  it('centralizes settings section visibility so multi-root sections cannot leak', () => {
+    const panelsSource = readSource('src/renderer/src/app/settings-section-panels.tsx')
+    const playerCss = readSource('src/renderer/src/styles/player.css')
+
+    expect(panelsSource).toContain('settings-section-panel')
+    expect(panelsSource).toContain('data-settings-section={id}')
+    expect(panelsSource).toContain('id={id === \'ai\' ? `settings-section-${id}` : undefined}')
+    expect(panelsSource).toContain('aria-hidden={!isActive}')
+    expect(playerCss).toMatch(/\.settings-section-panel\s*\{[^}]*display:\s*grid;/s)
+    expect(playerCss).toMatch(/\.settings-section-panel\.is-hidden\s*\{[^}]*display:\s*none;/s)
+  })
+
   it('routes every settings field through the shared SettingsField structure', () => {
     const settingsDialogSource = readSource('src/renderer/src/app/settings-controls.tsx')
 

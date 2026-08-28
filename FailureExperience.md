@@ -2229,3 +2229,10 @@
 - 原因：`.settings-grid` 是可滚动且被 `align-self: stretch` 拉满高度的 Grid。AI 服务独立设置组件由 `effa4220` 引入，返回多个顶层节点而不是统一的 `.settings-card` 外壳；Grid 的默认 `align-content: normal` 会把剩余高度分配给这些自动行，导致每个 `gap: 12px` 之外又产生大段空白。
 - 经验：滚动 Grid 既要保持容器拉伸和 `overflow-y: auto`，又要显式设置 `align-content: start`；`align-items: start` 只控制行内项目对齐，不能阻止自动行轨道被拉伸。新增设置分类时要检查组件是否返回单一面板根节点，或验证多根节点在实际窗口高度下的计算布局。
 - 处理：为 `.settings-grid` 增加 `align-content: start`，让多根设置项按内容高度排列并保留 12px 间距；在设置 UI 源码约束中增加防回归断言。
+
+## 2026-08-28：设置分类的可见性必须由统一面板边界控制
+
+- 现象：切换到「界面」「视频」「字幕」等设置分类时，AI 服务的内容仍然显示在顶部，当前分类内容被推到下面；同类问题在后续修复间距后再次暴露。
+- 原因：`SettingsSectionPanels` 会一次性渲染所有 tab。其他设置组件返回带 `is-hidden` 的单一 `<section>`，而 AI 服务组件返回 Fragment，没有任何根节点接收当前 tab 的隐藏状态；因此 `.settings-grid` 只能控制排版，无法阻止 AI 的多个顶层节点跨 tab 泄漏。
+- 经验：设置页的“哪个分类可见”不能交给各个子组件自行约定，面板集合必须在统一边界给每个 tab 包一层可隐藏容器，并同时维护 `display: none` 与 `aria-hidden`；真实 Smoke 必须逐个切换 tab，断言恰好只有当前 tab 的面板可见，不能只断言 active tab 样式。
+- 处理：在 `SettingsSectionPanels` 为所有设置分类统一增加 `.settings-section-panel` 包装层，集中按 `activeSectionId` 控制可见性，并为 AI 面板补齐 `settings-section-ai` 的 tabpanel 语义；保留子组件自身的兼容隐藏逻辑，并补充源码约束和逐 tab Electron Smoke，防止未来 Fragment / 多根节点再次污染其他分类。

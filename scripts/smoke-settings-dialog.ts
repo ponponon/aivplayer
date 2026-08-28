@@ -88,10 +88,18 @@ async function main(): Promise<void> {
 
     const dialogHeightByTab: Record<string, number> = {}
     const aboutVisibilityByTab: Record<string, string> = {}
+    const settingsPanelVisibilityByTab: Record<string, Array<{ id: string; display: string; ariaHidden: string | null; role: string | null }>> = {}
     const readDialogHeight = async (): Promise<number> => page.locator('.settings-dialog').evaluate((element) => Math.round(element.getBoundingClientRect().height))
     const readAboutDisplay = async (): Promise<string> => page.locator('#settings-section-about').evaluate((element) => window.getComputedStyle(element).display)
+    const readSettingsPanelVisibility = async (): Promise<Array<{ id: string; display: string; ariaHidden: string | null; role: string | null }>> => page.evaluate(() => Array.from(document.querySelectorAll<HTMLElement>('[data-settings-section]')).map((element) => ({
+      id: element.dataset.settingsSection ?? 'missing',
+      display: window.getComputedStyle(element).display,
+      ariaHidden: element.getAttribute('aria-hidden'),
+      role: element.getAttribute('role')
+    })))
     dialogHeightByTab.general = await readDialogHeight()
     aboutVisibilityByTab.general = await readAboutDisplay()
+    settingsPanelVisibilityByTab.general = await readSettingsPanelVisibility()
 
     const autoUpdateToggle = page.locator('#settings-section-general .setting-toggle').first().locator('input')
     const autoUpdateInitiallyEnabled = await autoUpdateToggle.isChecked()
@@ -120,9 +128,10 @@ async function main(): Promise<void> {
     await page.waitForTimeout(500)
     dialogHeightByTab.ai = await readDialogHeight()
     aboutVisibilityByTab.ai = await readAboutDisplay()
+    settingsPanelVisibilityByTab.ai = await readSettingsPanelVisibility()
 
     const aiLayoutState = await page.evaluate(() => {
-      const grid = document.querySelector('.settings-grid') as HTMLElement | null
+      const grid = document.querySelector('[data-settings-section="ai"]') as HTMLElement | null
       if (!grid) return null
 
       const visibleChildren = Array.from(grid.children)
@@ -144,6 +153,9 @@ async function main(): Promise<void> {
     await page.waitForTimeout(500)
     dialogHeightByTab.interface = await readDialogHeight()
     aboutVisibilityByTab.interface = await readAboutDisplay()
+    settingsPanelVisibilityByTab.interface = await readSettingsPanelVisibility()
+    const interfaceScreenshotPath = join(smokeHomeDirectory, 'aivplayer-smoke-settings-interface.png')
+    await page.screenshot({ path: interfaceScreenshotPath, fullPage: false })
 
     const themeSelect = page.locator('#settings-section-interface .settings-select')
     await themeSelect.selectOption('light')
@@ -159,6 +171,7 @@ async function main(): Promise<void> {
     await page.waitForTimeout(500)
     dialogHeightByTab.video = await readDialogHeight()
     aboutVisibilityByTab.video = await readAboutDisplay()
+    settingsPanelVisibilityByTab.video = await readSettingsPanelVisibility()
 
     const videoCardHeight = await page.evaluate(() => {
       const card = document.querySelector('#settings-section-video') as HTMLElement | null
@@ -192,6 +205,7 @@ async function main(): Promise<void> {
     await page.waitForTimeout(500)
     dialogHeightByTab.subtitles = await readDialogHeight()
     aboutVisibilityByTab.subtitles = await readAboutDisplay()
+    settingsPanelVisibilityByTab.subtitles = await readSettingsPanelVisibility()
 
     const settingsGrid = page.locator('.settings-grid')
     const settingsGridBeforeScroll = await settingsGrid.evaluate((element) => ({
@@ -246,6 +260,7 @@ async function main(): Promise<void> {
     await page.waitForTimeout(250)
     dialogHeightByTab.shortcuts = await readDialogHeight()
     aboutVisibilityByTab.shortcuts = await readAboutDisplay()
+    settingsPanelVisibilityByTab.shortcuts = await readSettingsPanelVisibility()
 
     const settingsLayoutState = await page.evaluate(() => {
       const body = document.querySelector('.settings-body') as HTMLElement | null
@@ -270,6 +285,7 @@ async function main(): Promise<void> {
     await page.locator('[data-settings-tab="about"]').click()
     await page.waitForTimeout(250)
     dialogHeightByTab.about = await readDialogHeight()
+    settingsPanelVisibilityByTab.about = await readSettingsPanelVisibility()
     const aboutPanelState = await page.evaluate(() => {
       const panel = document.querySelector('#settings-section-about') as HTMLElement | null
       const checkButton = panel?.querySelector('.settings-about-update-actions .settings-secondary-button') as HTMLButtonElement | null
@@ -294,6 +310,7 @@ async function main(): Promise<void> {
     console.log(`Light theme state: ${JSON.stringify(lightThemeState)}`)
     console.log(`Settings dialog heights: ${JSON.stringify(dialogHeightByTab)}`)
     console.log(`AI settings layout state: ${JSON.stringify(aiLayoutState)}`)
+    console.log(`Settings panel visibility: ${JSON.stringify(settingsPanelVisibilityByTab)}`)
     console.log(`About visibility by tab: ${JSON.stringify(aboutVisibilityByTab)}`)
     console.log(`Settings layout state: ${JSON.stringify(settingsLayoutState)}`)
     console.log(`Settings scroll state: ${JSON.stringify({ before: settingsGridBeforeScroll, after: settingsGridAfterScroll })}`)
@@ -305,6 +322,7 @@ async function main(): Promise<void> {
     console.log(`About settings panel: ${JSON.stringify(aboutPanelState)}`)
     console.log(`General settings screenshot: ${generalScreenshotPath}`)
     console.log(`AI settings screenshot: ${aiScreenshotPath}`)
+    console.log(`Interface settings screenshot: ${interfaceScreenshotPath}`)
     console.log(`Settings dialog screenshot: ${screenshotPath}`)
     console.log(`Shortcut settings screenshot: ${shortcutScreenshotPath}`)
 
@@ -329,6 +347,13 @@ async function main(): Promise<void> {
       aiLayoutState.alignContent !== 'start' ||
       aiLayoutState.visibleChildren !== 4 ||
       aiLayoutState.maxGap > 20 ||
+      Object.entries(settingsPanelVisibilityByTab).some(([tab, panels]) => {
+        const visiblePanels = panels.filter((panel) => panel.display !== 'none')
+        return visiblePanels.length !== 1 ||
+          visiblePanels[0]?.id !== tab ||
+          visiblePanels[0]?.ariaHidden !== 'false' ||
+          (tab === 'ai' && visiblePanels[0]?.role !== 'tabpanel')
+      }) ||
       settingsLayoutState.bodyOverflow !== 'hidden' ||
       settingsLayoutState.gridOverflowY !== 'auto' ||
       settingsLayoutState.gridScrollbarGutter !== 'stable' ||
