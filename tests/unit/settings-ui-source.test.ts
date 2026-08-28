@@ -29,6 +29,12 @@ describe('settings UI source constraints', () => {
     expect(playerCss).toMatch(/\.settings-grid\s*\{[^}]*overflow-y:\s*auto;/s)
   })
 
+  it('keeps multi-root settings sections packed at the top of the scroll grid', () => {
+    const playerCss = readSource('src/renderer/src/styles/player.css')
+
+    expect(playerCss).toMatch(/\.settings-grid\s*\{[^}]*align-content:\s*start;/s)
+  })
+
   it('routes every settings field through the shared SettingsField structure', () => {
     const settingsDialogSource = readSource('src/renderer/src/app/settings-controls.tsx')
 

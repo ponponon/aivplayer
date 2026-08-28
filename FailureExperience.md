@@ -2222,3 +2222,10 @@
 - 原因：0.6.6 在 `AppShell` 中新增了第二个顶部状态条 `AsrModelBootstrapBanner`，但 `.app-shell` 仍只有 `grid-template-rows: 40px auto 1fr` 三行定义。第二个状态条占用了 `1fr`，真正的 `.app-surface` 落入隐式行并计算为 `0px` 高度；DOM 和 React 都正常，所以不会出现 JS 异常，只会看到黑色窗口。
 - 经验：桌面应用启动问题必须按“实际安装 Bundle → 内置 asar / renderer → DevTools DOM 与计算布局 → 源码 / Git blame”顺序排查，不能用工作区 `release/` 目录替代 `/Applications` 的运行时证据；Electron 黑屏不等于渲染进程崩溃。
 - 处理：布局修复应让两个状态条各占一行，并给播放器主体显式的剩余空间，例如将 `.app-shell` 的行模板调整为 `40px auto auto minmax(0, 1fr)`；同时补充启动 Smoke，断言 `.app-surface` 在无媒体和模型下载状态下仍有正高度。
+
+## 2026-08-28：设置滚动 Grid 的自动行不能分配剩余高度
+
+- 现象：AI 服务设置页的多个卡片之间出现异常大的垂直空白，页面内容看起来非常稀疏；其他设置页没有同样问题。
+- 原因：`.settings-grid` 是可滚动且被 `align-self: stretch` 拉满高度的 Grid。AI 服务独立设置组件由 `effa4220` 引入，返回多个顶层节点而不是统一的 `.settings-card` 外壳；Grid 的默认 `align-content: normal` 会把剩余高度分配给这些自动行，导致每个 `gap: 12px` 之外又产生大段空白。
+- 经验：滚动 Grid 既要保持容器拉伸和 `overflow-y: auto`，又要显式设置 `align-content: start`；`align-items: start` 只控制行内项目对齐，不能阻止自动行轨道被拉伸。新增设置分类时要检查组件是否返回单一面板根节点，或验证多根节点在实际窗口高度下的计算布局。
+- 处理：为 `.settings-grid` 增加 `align-content: start`，让多根设置项按内容高度排列并保留 12px 间距；在设置 UI 源码约束中增加防回归断言。

@@ -116,6 +116,30 @@ async function main(): Promise<void> {
     const generalScreenshotPath = join(smokeHomeDirectory, 'aivplayer-smoke-settings-general.png')
     await page.screenshot({ path: generalScreenshotPath, fullPage: false })
 
+    await page.locator('[data-settings-tab="ai"]').click()
+    await page.waitForTimeout(500)
+    dialogHeightByTab.ai = await readDialogHeight()
+    aboutVisibilityByTab.ai = await readAboutDisplay()
+
+    const aiLayoutState = await page.evaluate(() => {
+      const grid = document.querySelector('.settings-grid') as HTMLElement | null
+      if (!grid) return null
+
+      const visibleChildren = Array.from(grid.children)
+        .filter((element) => window.getComputedStyle(element).display !== 'none')
+        .map((element) => element as HTMLElement)
+      const gaps = visibleChildren.slice(1).map((element, index) => Math.round(element.getBoundingClientRect().top - visibleChildren[index].getBoundingClientRect().bottom))
+
+      return {
+        alignContent: window.getComputedStyle(grid).alignContent,
+        visibleChildren: visibleChildren.length,
+        maxGap: gaps.length > 0 ? Math.max(...gaps) : 0,
+        gaps
+      }
+    })
+    const aiScreenshotPath = join(smokeHomeDirectory, 'aivplayer-smoke-settings-ai.png')
+    await page.screenshot({ path: aiScreenshotPath, fullPage: false })
+
     await page.locator('[data-settings-tab="interface"]').click()
     await page.waitForTimeout(500)
     dialogHeightByTab.interface = await readDialogHeight()
@@ -269,6 +293,7 @@ async function main(): Promise<void> {
     console.log(`Quick theme toggle state: ${JSON.stringify(quickToggleThemeState)}`)
     console.log(`Light theme state: ${JSON.stringify(lightThemeState)}`)
     console.log(`Settings dialog heights: ${JSON.stringify(dialogHeightByTab)}`)
+    console.log(`AI settings layout state: ${JSON.stringify(aiLayoutState)}`)
     console.log(`About visibility by tab: ${JSON.stringify(aboutVisibilityByTab)}`)
     console.log(`Settings layout state: ${JSON.stringify(settingsLayoutState)}`)
     console.log(`Settings scroll state: ${JSON.stringify({ before: settingsGridBeforeScroll, after: settingsGridAfterScroll })}`)
@@ -279,6 +304,7 @@ async function main(): Promise<void> {
     console.log(`Shortcut panel: ${JSON.stringify({ shortcutCount, ...shortcutPanelState })}`)
     console.log(`About settings panel: ${JSON.stringify(aboutPanelState)}`)
     console.log(`General settings screenshot: ${generalScreenshotPath}`)
+    console.log(`AI settings screenshot: ${aiScreenshotPath}`)
     console.log(`Settings dialog screenshot: ${screenshotPath}`)
     console.log(`Shortcut settings screenshot: ${shortcutScreenshotPath}`)
 
@@ -299,6 +325,10 @@ async function main(): Promise<void> {
       lightThemeState.appBackground !== 'rgb(246, 244, 241)' ||
       Object.values(dialogHeightByTab).some((height) => height !== dialogHeightByTab.general) ||
       Object.entries(aboutVisibilityByTab).some(([tab, display]) => tab !== 'about' && display !== 'none') ||
+      !aiLayoutState ||
+      aiLayoutState.alignContent !== 'start' ||
+      aiLayoutState.visibleChildren !== 4 ||
+      aiLayoutState.maxGap > 20 ||
       settingsLayoutState.bodyOverflow !== 'hidden' ||
       settingsLayoutState.gridOverflowY !== 'auto' ||
       settingsLayoutState.gridScrollbarGutter !== 'stable' ||
