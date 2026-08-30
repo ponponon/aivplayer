@@ -601,6 +601,45 @@ describe('clip inbox store', () => {
     expect(removed?.tags).toEqual(['海边', '旅行'])
   })
 
+  it('undoes and redoes mixed tag history entries atomically in history order', () => {
+    const source = store.saveCollection({ title: '混合标签历史', tags: ['海边'], selections: [selection()] })
+    store.saveTagMetadata({ tag: '海边', color: '#123456', note: '初始备注' })
+    const updated = store.updateCollectionTags(source.id, ['精选'])
+    expect(updated?.tags).toEqual(['精选'])
+
+    const history = store.listTagOperationHistory()
+    const single = history.find((operation) => operation.type === 'single')
+    const metadata = history.find((operation) => operation.type === 'metadata')
+    expect(single?.id).toBeTruthy()
+    expect(metadata?.id).toBeTruthy()
+
+    const undone = store.undoTagOperations([single?.id, metadata?.id])
+    expect(undone).toMatchObject({ success: true, operations: [{ type: 'single' }, { type: 'metadata' }] })
+    expect(store.getCollection(source.id)?.tags).toEqual(['海边'])
+    expect(store.getTagMetadata('海边')).toBeNull()
+
+    const redone = store.redoTagOperations([metadata?.id, single?.id])
+    expect(redone).toMatchObject({ success: true, operations: [{ type: 'metadata' }, { type: 'single' }] })
+    expect(store.getCollection(source.id)?.tags).toEqual(['精选'])
+    expect(store.getTagMetadata('海边')).toMatchObject({ color: '#123456', note: '初始备注' })
+  })
+
+  it('rejects a mixed tag history batch without changing data after a conflict', () => {
+    const source = store.saveCollection({ title: '混合标签冲突', tags: ['父'], selections: [selection()] })
+    store.saveTagMetadata({ tag: '父', color: '#123456' })
+    store.updateCollectionTags(source.id, ['子'])
+    store.saveCollection({ id: source.id, title: source.title, tags: ['分支'], sortMode: source.sortMode, selections: source.selections })
+
+    const history = store.listTagOperationHistory()
+    const operationIds = history.filter((operation) => operation.type === 'single' || operation.type === 'metadata').map((operation) => operation.id)
+    const result = store.undoTagOperations(operationIds)
+
+    expect(result).toMatchObject({ success: false, operations: [], collections: [], metadata: [] })
+    expect(store.getCollection(source.id)?.tags).toEqual(['分支'])
+    expect(store.getTagMetadata('父')).toMatchObject({ color: '#123456' })
+    expect(store.listTagOperationHistory().filter((operation) => operationIds.includes(operation.id)).every((operation) => operation.status === 'active')).toBe(true)
+  })
+
   it('cleans one tag from every matching collection in one transaction', () => {
     const first = store.saveCollection({ title: '清理标签一', tags: ['海边', '采访'], selections: [selection({ evidenceIds: ['cleanup-one'] })] })
     const second = store.saveCollection({ title: '清理标签二', tags: ['海边'], selections: [selection({ startSeconds: 4, endSeconds: 6, evidenceIds: ['cleanup-two'] })] })

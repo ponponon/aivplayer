@@ -688,6 +688,18 @@ export type VisionClipCollectionTagRedoResult = {
   metadata: VisionClipCollectionTagMetadata[]
 }
 
+export type VisionClipCollectionTagOperationBatchResult = {
+  success: boolean
+  message: string
+  operations: VisionClipCollectionTagOperationHistory[]
+  collections: VisionClipCollection[]
+  metadata: VisionClipCollectionTagMetadata[]
+}
+
+export type VisionClipCollectionTagOperationBatchUndoResult = VisionClipCollectionTagOperationBatchResult
+
+export type VisionClipCollectionTagOperationBatchRedoResult = VisionClipCollectionTagOperationBatchResult
+
 export type VisionClipCollectionOperationType = 'flags' | 'merge' | 'delete' | 'rename' | 'duplicate' | 'content'
 
 export type VisionClipCollectionOperationHistory = {
