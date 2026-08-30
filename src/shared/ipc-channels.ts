@@ -159,6 +159,8 @@ export const IPC_CHANNELS = {
   VISION_CLIP_COLLECTION_TAG_OPERATION_REDO_HISTORY: 'vision:clip-collection-tag-operation-redo-history',
   VISION_CLIP_COLLECTION_TAG_OPERATION_UNDO: 'vision:clip-collection-tag-operation-undo',
   VISION_CLIP_COLLECTION_TAG_OPERATION_REDO: 'vision:clip-collection-tag-operation-redo',
+  VISION_CLIP_COLLECTION_TAG_OPERATION_BATCH_UNDO: 'vision:clip-collection-tag-operation-batch-undo',
+  VISION_CLIP_COLLECTION_TAG_OPERATION_BATCH_REDO: 'vision:clip-collection-tag-operation-batch-redo',
   VISION_CLIP_COLLECTION_OPERATION_HISTORY: 'vision:clip-collection-operation-history',
   VISION_CLIP_COLLECTION_OPERATION_HISTORY_LIST: 'vision:clip-collection-operation-history-list',
   VISION_CLIP_COLLECTION_OPERATION_HISTORY_DETAIL: 'vision:clip-collection-operation-history-detail',
