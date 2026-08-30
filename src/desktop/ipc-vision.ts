@@ -784,20 +784,20 @@ export function registerVisionIpc(): void {
   ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_OPERATION_HISTORY_LIST, () => getClipInboxStore().listCollectionOperationHistory())
   ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_OPERATION_HISTORY_DETAIL, (_event, operationId: string) => getClipInboxStore().getCollectionOperationHistoryDetail(operationId))
   ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_OPERATION_REDO_HISTORY, () => getClipInboxStore().getLastCollectionRedoOperation())
-  ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_OPERATION_UNDO, () => {
+  ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_OPERATION_UNDO, (_event, operationId: unknown) => {
     const copy = getAppCopy(getCurrentLocale()).vision
     try {
-      const result = getClipInboxStore().undoLastCollectionOperation()
+      const result = getClipInboxStore().undoCollectionOperation(operationId)
       if (!result.success) return { ...result, message: copy.collectionOperationUndoUnavailable }
       return { ...result, message: copy.collectionOperationUndoSuccess }
     } catch (error) {
       return { success: false, message: error instanceof Error ? error.message : String(error), operation: null, collections: [] }
     }
   })
-  ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_OPERATION_REDO, () => {
+  ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_OPERATION_REDO, (_event, operationId: unknown) => {
     const copy = getAppCopy(getCurrentLocale()).vision
     try {
-      const result = getClipInboxStore().redoLastCollectionOperation()
+      const result = getClipInboxStore().redoCollectionOperation(operationId)
       if (!result.success) return { ...result, message: copy.collectionOperationRedoUnavailable }
       return { ...result, message: copy.collectionOperationRedoSuccess }
     } catch (error) {
