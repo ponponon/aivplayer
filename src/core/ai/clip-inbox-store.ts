@@ -274,13 +274,22 @@ export class ClipInboxStore {
   }
 
   undoLastCollectionOperation(): VisionClipCollectionOperationUndoResult {
-    const row = this.database.prepare('SELECT id, operation_type, snapshot_json, created_at FROM clip_collection_operation_history WHERE undone_at IS NULL ORDER BY rowid DESC LIMIT 1').get() as SqliteRow | undefined
-    if (!row) return { success: false, message: '没有可撤销的集合操作', operation: null, collections: [] }
+    return this.undoCollectionOperation()
+  }
+
+  undoCollectionOperation(operationId?: unknown): VisionClipCollectionOperationUndoResult {
+    const hasTarget = operationId !== undefined
+    const normalizedId = typeof operationId === 'string' ? operationId.trim() : ''
+    const row = hasTarget
+      ? normalizedId ? this.database.prepare('SELECT id, operation_type, snapshot_json, created_at FROM clip_collection_operation_history WHERE id = ? AND undone_at IS NULL').get(normalizedId) as SqliteRow | undefined : undefined
+      : this.database.prepare('SELECT id, operation_type, snapshot_json, created_at FROM clip_collection_operation_history WHERE undone_at IS NULL ORDER BY rowid DESC LIMIT 1').get() as SqliteRow | undefined
+    if (!row) return { success: false, message: hasTarget ? '指定集合操作当前不可撤销' : '没有可撤销的集合操作', operation: null, collections: [] }
     const operation = this.readCollectionOperationHistory(row)
     const snapshot = this.parseCollectionOperationSnapshot(row.snapshot_json)
     if (!operation || !snapshot) return { success: false, message: '集合操作记录已损坏', operation: null, collections: [] }
     if (operation.type === 'flags') {
-      if (!snapshot.collectionFlags) return { success: false, message: '收藏归档操作记录已损坏', operation: null, collections: [] }
+      if (!snapshot.collectionFlags || !snapshot.redoCollectionFlags) return { success: false, message: '收藏归档操作记录已损坏', operation: null, collections: [] }
+      if (!this.collectionFlagSnapshotsMatch(snapshot.redoCollectionFlags)) return { success: false, message: '收藏归档结果已被修改或删除，无法安全撤销', operation: null, collections: [] }
       const now = Date.now()
       this.database.exec('BEGIN')
       try {
@@ -397,13 +406,22 @@ export class ClipInboxStore {
   }
 
   redoLastCollectionOperation(): VisionClipCollectionOperationRedoResult {
-    const row = this.database.prepare('SELECT id, operation_type, snapshot_json, created_at FROM clip_collection_operation_history WHERE undone_at IS NOT NULL AND redoable = 1 ORDER BY undone_at DESC, rowid DESC LIMIT 1').get() as SqliteRow | undefined
-    if (!row) return { success: false, message: '没有可重做的集合操作', operation: null, collections: [] }
+    return this.redoCollectionOperation()
+  }
+
+  redoCollectionOperation(operationId?: unknown): VisionClipCollectionOperationRedoResult {
+    const hasTarget = operationId !== undefined
+    const normalizedId = typeof operationId === 'string' ? operationId.trim() : ''
+    const row = hasTarget
+      ? normalizedId ? this.database.prepare('SELECT id, operation_type, snapshot_json, created_at FROM clip_collection_operation_history WHERE id = ? AND undone_at IS NOT NULL AND redoable = 1').get(normalizedId) as SqliteRow | undefined : undefined
+      : this.database.prepare('SELECT id, operation_type, snapshot_json, created_at FROM clip_collection_operation_history WHERE undone_at IS NOT NULL AND redoable = 1 ORDER BY undone_at DESC, rowid DESC LIMIT 1').get() as SqliteRow | undefined
+    if (!row) return { success: false, message: hasTarget ? '指定集合操作当前不可重做' : '没有可重做的集合操作', operation: null, collections: [] }
     const operation = this.readCollectionOperationHistory(row)
     const snapshot = this.parseCollectionOperationSnapshot(row.snapshot_json)
     if (!operation || !snapshot) return { success: false, message: '集合操作没有可重做快照', operation: null, collections: [] }
     if (operation.type === 'flags') {
       if (!snapshot.redoCollectionFlags) return { success: false, message: '收藏归档操作没有可重做快照', operation: null, collections: [] }
+      if (!snapshot.collectionFlags || !this.collectionFlagSnapshotsMatch(snapshot.collectionFlags)) return { success: false, message: '撤销后的收藏归档状态已被修改或删除，无法安全重做', operation: null, collections: [] }
       this.database.exec('BEGIN')
       try {
         const update = this.database.prepare('UPDATE clip_collections SET is_favorite = ?, is_archived = ?, updated_at = ? WHERE id = ?')
@@ -1157,6 +1175,14 @@ export class ClipInboxStore {
     return snapshots.every((snapshot) => {
       const collection = this.getCollection(snapshot.id)
       return collection !== null && collection.updatedAt === snapshot.updatedAt && JSON.stringify(collection.tags) === JSON.stringify(snapshot.tags)
+    })
+  }
+
+  private collectionFlagSnapshotsMatch(snapshots: readonly CollectionOperationFlagSnapshot[]): boolean {
+    if (snapshots.length === 0) return false
+    return snapshots.every((snapshot) => {
+      const collection = this.getCollection(snapshot.id)
+      return collection !== null && collection.updatedAt === snapshot.updatedAt && collection.isFavorite === snapshot.isFavorite && collection.isArchived === snapshot.isArchived
     })
   }
 
