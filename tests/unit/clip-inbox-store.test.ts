@@ -188,6 +188,53 @@ describe('clip inbox store', () => {
     expect(store.undoCollectionOperation(operationId)).toMatchObject({ success: false, operation: null, collections: [] })
   })
 
+  it('undoes and redoes selected mixed collection operations in history order', () => {
+    const first = store.saveCollection({ title: '批量历史一', selections: [selection()] })
+    const second = store.saveCollection({ title: '批量历史二', selections: [selection({ startSeconds: 4, endSeconds: 6 })] })
+    store.updateCollectionFlags({ collectionIds: [first.id], isFavorite: true })
+    const renamed = store.renameCollection(second.id, '批量历史二已改名')
+    expect(renamed).toBeDefined()
+
+    const history = store.listCollectionOperationHistory()
+    const flagOperation = history.find((operation) => operation.type === 'flags')
+    const renameOperation = history.find((operation) => operation.type === 'rename')
+    expect(flagOperation).toBeDefined()
+    expect(renameOperation).toBeDefined()
+
+    const undone = store.undoCollectionOperations([flagOperation!.id, renameOperation!.id])
+    expect(undone).toMatchObject({ success: true, operations: [{ id: renameOperation!.id }, { id: flagOperation!.id }] })
+    expect(store.getCollection(first.id)).toEqual(first)
+    expect(store.getCollection(second.id)).toEqual(second)
+    expect(store.listCollectionOperationHistory().filter((operation) => [flagOperation!.id, renameOperation!.id].includes(operation.id)).every((operation) => operation.status === 'redoable')).toBe(true)
+
+    const redone = store.redoCollectionOperations([flagOperation!.id, renameOperation!.id])
+    expect(redone).toMatchObject({ success: true, operations: [{ id: flagOperation!.id }, { id: renameOperation!.id }] })
+    expect(store.getCollection(first.id)).toMatchObject({ isFavorite: true })
+    expect(store.getCollection(second.id)).toEqual(renamed)
+  })
+
+  it('keeps a batch unchanged when any selected history snapshot conflicts', () => {
+    const first = store.saveCollection({ title: '批量冲突一', selections: [selection()] })
+    const second = store.saveCollection({ title: '批量冲突二', selections: [selection({ startSeconds: 4, endSeconds: 6 })] })
+    store.updateCollectionFlags({ collectionIds: [first.id], isFavorite: true })
+    const renamed = store.renameCollection(second.id, '批量冲突二已改名')
+    const history = store.listCollectionOperationHistory()
+    const flagOperation = history.find((operation) => operation.type === 'flags')
+    const renameOperation = history.find((operation) => operation.type === 'rename')
+    expect(flagOperation).toBeDefined()
+    expect(renameOperation).toBeDefined()
+
+    const flagged = store.getCollection(first.id)
+    expect(flagged).toBeDefined()
+    const edited = store.saveCollection({ ...flagged!, title: '批量冲突一已编辑' })
+    const conflicted = store.undoCollectionOperations([flagOperation!.id, renameOperation!.id])
+
+    expect(conflicted).toMatchObject({ success: false, operations: [], collections: [] })
+    expect(store.getCollection(first.id)).toEqual(edited)
+    expect(store.getCollection(second.id)).toEqual(renamed)
+    expect(store.listCollectionOperationHistory().find((operation) => operation.id === renameOperation!.id)).toMatchObject({ status: 'active' })
+  })
+
   it('records batch merges and restores only the generated collection through undo and redo', () => {
     const first = store.saveCollection({ title: '合并源一', tags: ['人物'], selections: [selection({ startSeconds: 1, endSeconds: 3 })] })
     const second = store.saveCollection({ title: '合并源二', tags: ['采访'], selections: [selection({ startSeconds: 4, endSeconds: 6 })] })

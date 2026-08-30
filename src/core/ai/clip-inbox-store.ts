@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto'
 import { mergeVisionClipSelections, normalizeVisionTimeRange } from './vision-evidence'
 import { normalizeVisionClipCollectionTagOperationHistoryPageRequest } from './clip-inbox-tag-history'
 import { applyVisionCollectionTags, duplicateVisionCollectionTitle, mergeVisionClipCollections, normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionSortMode, normalizeVisionCollectionTag, normalizeVisionCollectionTagColor, normalizeVisionCollectionTagFavorite, normalizeVisionCollectionTagNote, normalizeVisionCollectionTags, normalizeVisionCollectionTagsMode, renameVisionCollectionTag, renameVisionClipCollectionTitle, selectVisionClipCollectionsForMerge, sortVisionClipSelections, wouldCreateVisionCollectionTagParentCycle } from './clip-inbox-operations'
-import type { VisionClipCollection, VisionClipCollectionBatchDeleteResult, VisionClipCollectionBatchRenameResult, VisionClipCollectionBatchTagsResult, VisionClipCollectionFlagUpdateRequest, VisionClipCollectionInput, VisionClipCollectionMergeSelection, VisionClipCollectionOperationCollectionDetail, VisionClipCollectionOperationHistory, VisionClipCollectionOperationHistoryDetail, VisionClipCollectionOperationHistoryEntry, VisionClipCollectionOperationRedoResult, VisionClipCollectionOperationType, VisionClipCollectionOperationUndoResult, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataUpdateRequest, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationHistoryDetail, VisionClipCollectionTagOperationHistoryEntry, VisionClipCollectionTagOperationHistoryPage, VisionClipCollectionTagOperationType, VisionClipCollectionTagRedoResult, VisionClipCollectionTagUndoResult, VisionClipSelection, VisionEvidenceType } from '../../shared/vision-types'
+import type { VisionClipCollection, VisionClipCollectionBatchDeleteResult, VisionClipCollectionBatchRenameResult, VisionClipCollectionBatchTagsResult, VisionClipCollectionFlagUpdateRequest, VisionClipCollectionInput, VisionClipCollectionMergeSelection, VisionClipCollectionOperationBatchRedoResult, VisionClipCollectionOperationBatchUndoResult, VisionClipCollectionOperationCollectionDetail, VisionClipCollectionOperationHistory, VisionClipCollectionOperationHistoryDetail, VisionClipCollectionOperationHistoryEntry, VisionClipCollectionOperationRedoResult, VisionClipCollectionOperationType, VisionClipCollectionOperationUndoResult, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataUpdateRequest, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationHistoryDetail, VisionClipCollectionTagOperationHistoryEntry, VisionClipCollectionTagOperationHistoryPage, VisionClipCollectionTagOperationType, VisionClipCollectionTagRedoResult, VisionClipCollectionTagUndoResult, VisionClipSelection, VisionEvidenceType } from '../../shared/vision-types'
 
 type SqliteRow = Record<string, unknown>
 const EVIDENCE_TYPES: readonly VisionEvidenceType[] = ['subtitle', 'visual', 'scene', 'ocr', 'entity', 'object']
@@ -33,6 +33,36 @@ type CollectionOperationSnapshot = {
   removedCollections?: VisionClipCollection[]
   beforeCollections?: VisionClipCollection[]
   afterCollections?: VisionClipCollection[]
+}
+
+type CollectionOperationBatchDirection = 'undo' | 'redo'
+
+type CollectionOperationBatchUpdate = {
+  id: string
+  expected: VisionClipCollection | null
+  expectedFlags?: CollectionOperationFlagSnapshot
+  next: VisionClipCollection | null
+}
+
+type CollectionOperationBatchTransition = {
+  operation: VisionClipCollectionOperationHistory
+  updates: CollectionOperationBatchUpdate[]
+}
+
+function cloneCollection(collection: VisionClipCollection): VisionClipCollection {
+  return {
+    ...collection,
+    tags: [...collection.tags],
+    selections: collection.selections.map((selection) => ({
+      ...selection,
+      evidenceIds: [...selection.evidenceIds],
+      evidenceTypes: [...selection.evidenceTypes]
+    }))
+  }
+}
+
+function collectionSnapshotsEqual(left: VisionClipCollection | null, right: VisionClipCollection | null): boolean {
+  return left === null || right === null ? left === right : JSON.stringify(left) === JSON.stringify(right)
 }
 
 export function getClipInboxDatabasePath(userDataPath: string): string {
@@ -531,6 +561,14 @@ export class ClipInboxStore {
       }
     }
     return { success: false, message: '集合操作类型不受支持', operation: null, collections: [] }
+  }
+
+  undoCollectionOperations(operationIds: readonly unknown[]): VisionClipCollectionOperationBatchUndoResult {
+    return this.applyCollectionOperationBatch('undo', operationIds)
+  }
+
+  redoCollectionOperations(operationIds: readonly unknown[]): VisionClipCollectionOperationBatchRedoResult {
+    return this.applyCollectionOperationBatch('redo', operationIds)
   }
 
   listTagMetadata(): VisionClipCollectionTagMetadata[] {
@@ -1184,6 +1222,151 @@ export class ClipInboxStore {
       const collection = this.getCollection(snapshot.id)
       return collection !== null && collection.updatedAt === snapshot.updatedAt && collection.isFavorite === snapshot.isFavorite && collection.isArchived === snapshot.isArchived
     })
+  }
+
+  private applyCollectionOperationBatch(direction: CollectionOperationBatchDirection, operationIds: readonly unknown[]): VisionClipCollectionOperationBatchUndoResult {
+    const normalizedIds = normalizeVisionClipCollectionIds(operationIds)
+    const unavailableMessage = direction === 'undo' ? '选中的集合操作当前不可撤销' : '选中的集合操作当前不可重做'
+    const successMessage = direction === 'undo' ? '已批量撤销选中的集合操作' : '已批量重做选中的集合操作'
+    if (normalizedIds.length === 0) return { success: false, message: unavailableMessage, operations: [], collections: [] }
+
+    const placeholders = normalizedIds.map(() => '?').join(', ')
+    const eligibility = direction === 'undo' ? 'undone_at IS NULL' : 'undone_at IS NOT NULL AND redoable = 1'
+    const rows = this.database.prepare(`SELECT id, operation_type, snapshot_json, created_at, rowid AS operation_rowid FROM clip_collection_operation_history WHERE id IN (${placeholders}) AND ${eligibility}`).all(...normalizedIds) as SqliteRow[]
+    if (rows.length !== normalizedIds.length) return { success: false, message: unavailableMessage, operations: [], collections: [] }
+    rows.sort((left, right) => {
+      const difference = numberValue(left, 'operation_rowid') - numberValue(right, 'operation_rowid')
+      return direction === 'undo' ? -difference : difference
+    })
+
+    const state = new Map(this.listCollections().map((collection) => [collection.id, cloneCollection(collection)]))
+    const initialState = new Map([...state].map(([id, collection]) => [id, cloneCollection(collection)]))
+    const transitions: CollectionOperationBatchTransition[] = []
+    for (const row of rows) {
+      const operation = this.readCollectionOperationHistory(row)
+      const snapshot = this.parseCollectionOperationSnapshot(row.snapshot_json)
+      if (!operation || !snapshot) return { success: false, message: '选中的集合操作记录已损坏', operations: [], collections: [] }
+      const prepared = this.prepareCollectionOperationBatchTransition(operation, snapshot, direction, state)
+      if (!prepared.transition) return { success: false, message: prepared.message, operations: [], collections: [] }
+      transitions.push(prepared.transition)
+    }
+
+    const now = Date.now()
+    this.database.exec('BEGIN')
+    try {
+      for (const transition of transitions) {
+        for (const update of transition.updates) {
+          if (update.next === null) this.database.prepare('DELETE FROM clip_collections WHERE id = ?').run(update.id)
+          else this.replaceCollectionSnapshot(update.next)
+        }
+      }
+      const updateHistory = direction === 'undo'
+        ? this.database.prepare('UPDATE clip_collection_operation_history SET undone_at = ?, redoable = 1 WHERE id = ?')
+        : this.database.prepare('UPDATE clip_collection_operation_history SET undone_at = NULL, redoable = 0 WHERE id = ?')
+      for (const transition of transitions) updateHistory.run(...(direction === 'undo' ? [now, transition.operation.id] : [transition.operation.id]))
+      this.database.exec('COMMIT')
+
+      const touchedIds = new Set(transitions.flatMap((transition) => transition.updates.map((update) => update.id)))
+      const collections = [...touchedIds].map((id) => state.get(id)).filter((collection): collection is VisionClipCollection => collection !== undefined).map(cloneCollection)
+      const createdCollectionIds = [...touchedIds].filter((id) => !initialState.has(id) && state.has(id))
+      const deletedCollectionIds = [...touchedIds].filter((id) => initialState.has(id) && !state.has(id))
+      return {
+        success: true,
+        message: successMessage,
+        operations: transitions.map((transition) => transition.operation),
+        collections,
+        ...(createdCollectionIds.length > 0 ? { createdCollectionIds } : {}),
+        ...(deletedCollectionIds.length > 0 ? { deletedCollectionIds } : {})
+      }
+    } catch (error) {
+      this.database.exec('ROLLBACK')
+      throw error
+    }
+  }
+
+  private prepareCollectionOperationBatchTransition(operation: VisionClipCollectionOperationHistory, snapshot: CollectionOperationSnapshot, direction: CollectionOperationBatchDirection, state: Map<string, VisionClipCollection>): { transition: CollectionOperationBatchTransition | null; message: string } {
+    const updates: CollectionOperationBatchUpdate[] = []
+    const seenIds = new Set<string>()
+    const unavailableMessage = direction === 'undo' ? '批量撤销包含无法安全处理的集合操作' : '批量重做包含无法安全处理的集合操作'
+    const corruptedMessage = direction === 'undo' ? '批量撤销包含损坏的集合操作记录' : '批量重做包含损坏的集合操作记录'
+    const append = (update: CollectionOperationBatchUpdate): boolean => {
+      if (!update.id || seenIds.has(update.id)) return false
+      seenIds.add(update.id)
+      updates.push(update)
+      return true
+    }
+    const appendFullSnapshots = (expected: readonly VisionClipCollection[], next: readonly (VisionClipCollection | null)[]): boolean => {
+      if (expected.length === 0 || expected.length !== next.length) return false
+      for (let index = 0; index < expected.length; index += 1) {
+        const expectedCollection = expected[index]
+        if (!expectedCollection || !append({ id: expectedCollection.id, expected: cloneCollection(expectedCollection), next: next[index] ? cloneCollection(next[index] as VisionClipCollection) : null })) return false
+      }
+      return true
+    }
+
+    if (operation.type === 'flags') {
+      const beforeFlags = snapshot.collectionFlags
+      const afterFlags = snapshot.redoCollectionFlags
+      if (!beforeFlags || !afterFlags || beforeFlags.length === 0 || beforeFlags.length !== afterFlags.length) return { transition: null, message: corruptedMessage }
+      const expectedFlags = direction === 'undo' ? afterFlags : beforeFlags
+      const nextFlags = direction === 'undo' ? beforeFlags : afterFlags
+      for (let index = 0; index < expectedFlags.length; index += 1) {
+        const expected = expectedFlags[index]
+        const next = nextFlags[index]
+        const current = state.get(expected?.id ?? '')
+        if (!expected || !next || expected.id !== next.id || !current || current.updatedAt !== expected.updatedAt || current.isFavorite !== expected.isFavorite || current.isArchived !== expected.isArchived || !append({
+          id: expected.id,
+          expected: cloneCollection(current),
+          expectedFlags: expected,
+          next: current ? cloneCollection({ ...current, isFavorite: next.isFavorite, isArchived: next.isArchived, updatedAt: next.updatedAt }) : null
+        })) return { transition: null, message: unavailableMessage }
+      }
+    } else if (operation.type === 'duplicate' || operation.type === 'merge') {
+      const createdCollections = snapshot.createdCollections
+      if (!createdCollections || createdCollections.length === 0) return { transition: null, message: corruptedMessage }
+      const next = direction === 'undo' ? createdCollections.map(() => null) : createdCollections
+      if (direction === 'undo') {
+        if (!appendFullSnapshots(createdCollections, next)) return { transition: null, message: unavailableMessage }
+      } else {
+        for (const collection of createdCollections) {
+          if (!append({ id: collection.id, expected: null, next: cloneCollection(collection) })) return { transition: null, message: unavailableMessage }
+        }
+      }
+    } else if (operation.type === 'delete') {
+      const removedCollections = snapshot.removedCollections
+      if (!removedCollections || removedCollections.length === 0) return { transition: null, message: corruptedMessage }
+      if (direction === 'undo') {
+        for (const collection of removedCollections) {
+          if (!append({ id: collection.id, expected: null, next: cloneCollection(collection) })) return { transition: null, message: unavailableMessage }
+        }
+      } else if (!appendFullSnapshots(removedCollections, removedCollections.map(() => null))) {
+        return { transition: null, message: unavailableMessage }
+      }
+    } else if (operation.type === 'rename' || operation.type === 'content') {
+      const beforeCollections = snapshot.beforeCollections
+      const afterCollections = snapshot.afterCollections
+      if (!beforeCollections || beforeCollections.length === 0 || !afterCollections || afterCollections.length !== beforeCollections.length) return { transition: null, message: corruptedMessage }
+      if (direction === 'undo') {
+        if (!appendFullSnapshots(afterCollections, beforeCollections)) return { transition: null, message: unavailableMessage }
+      } else if (!appendFullSnapshots(beforeCollections, afterCollections)) {
+        return { transition: null, message: unavailableMessage }
+      }
+    } else {
+      return { transition: null, message: unavailableMessage }
+    }
+
+    for (const update of updates) {
+      const current = state.get(update.id) ?? null
+      const matches = update.expectedFlags
+        ? current !== null && current.updatedAt === update.expectedFlags.updatedAt && current.isFavorite === update.expectedFlags.isFavorite && current.isArchived === update.expectedFlags.isArchived
+        : collectionSnapshotsEqual(current, update.expected)
+      if (!matches) return { transition: null, message: unavailableMessage }
+    }
+    for (const update of updates) {
+      if (update.next === null) state.delete(update.id)
+      else state.set(update.id, cloneCollection(update.next))
+    }
+    return { transition: { operation, updates }, message: '' }
   }
 
   private readTagOperationHistory(row: SqliteRow): VisionClipCollectionTagOperationHistory | null {

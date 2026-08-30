@@ -750,6 +750,19 @@ export type VisionClipCollectionOperationRedoResult = {
   deletedCollectionIds?: string[]
 }
 
+export type VisionClipCollectionOperationBatchResult = {
+  success: boolean
+  message: string
+  operations: VisionClipCollectionOperationHistory[]
+  collections: VisionClipCollection[]
+  createdCollectionIds?: string[]
+  deletedCollectionIds?: string[]
+}
+
+export type VisionClipCollectionOperationBatchUndoResult = VisionClipCollectionOperationBatchResult
+
+export type VisionClipCollectionOperationBatchRedoResult = VisionClipCollectionOperationBatchResult
+
 export type VisionClipCollectionBatchExportRequest = {
   collectionIds: string[]
 }
