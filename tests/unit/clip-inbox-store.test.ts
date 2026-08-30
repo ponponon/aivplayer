@@ -369,6 +369,37 @@ describe('clip inbox store', () => {
     expect(store.listCollectionOperationHistory()[1]).toMatchObject({ type: 'duplicate', collectionTitles: ['历史删除源 · 副本'], selectionCount: 1 })
   })
 
+  it('returns safe before and after details for collection operations', () => {
+    const original = store.saveCollection({ title: '历史详情前', tags: ['保留'], isArchived: true, selections: [selection(), selection({ startSeconds: 5, endSeconds: 7 })] })
+    const renamed = store.renameCollection(original.id, '历史详情后')
+    expect(renamed).toBeDefined()
+    const operation = store.listCollectionOperationHistory()[0]
+    expect(operation).toBeDefined()
+
+    const detail = store.getCollectionOperationHistoryDetail(operation!.id)
+    expect(detail).toMatchObject({
+      type: 'rename',
+      beforeCollections: [{ id: original.id, title: '历史详情前', tags: ['保留'], isArchived: true, selectionCount: 2 }],
+      afterCollections: [{ id: original.id, title: '历史详情后', tags: ['保留'], isArchived: true, selectionCount: 2 }]
+    })
+    expect(JSON.stringify(detail)).not.toContain('/videos/demo.mp4')
+    expect(JSON.stringify(detail)).not.toContain('第一段')
+    expect(store.getCollectionOperationHistoryDetail('missing')).toBeNull()
+  })
+
+  it('keeps deletion details available after the target collection is gone', () => {
+    const original = store.saveCollection({ title: '历史详情删除', tags: ['待删除'], selections: [selection()] })
+    expect(store.deleteCollection(original.id)).toBe(true)
+    const operation = store.listCollectionOperationHistory()[0]
+    const detail = store.getCollectionOperationHistoryDetail(operation?.id)
+
+    expect(detail).toMatchObject({
+      type: 'delete',
+      beforeCollections: [{ id: original.id, title: '历史详情删除', tags: ['待删除'], selectionCount: 1 }],
+      afterCollections: []
+    })
+  })
+
   it('refuses to undo a single collection content edit after the collection changes', () => {
     const original = store.saveCollection({ title: '单集合内容冲突前', selections: [selection({ startSeconds: 1, endSeconds: 3 })] })
     const updated = store.updateCollectionSelections(original.id, [selection({ startSeconds: 4, endSeconds: 6 })])

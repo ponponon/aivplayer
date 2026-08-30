@@ -706,6 +706,21 @@ export type VisionClipCollectionOperationHistoryEntry = VisionClipCollectionOper
   selectionCount: number
 }
 
+export type VisionClipCollectionOperationCollectionDetail = {
+  id: string
+  title: string
+  tags: string[]
+  sortMode: VisionClipCollectionSortMode
+  isFavorite: boolean
+  isArchived: boolean
+  selectionCount: number
+}
+
+export type VisionClipCollectionOperationHistoryDetail = VisionClipCollectionOperationHistoryEntry & {
+  beforeCollections: VisionClipCollectionOperationCollectionDetail[]
+  afterCollections: VisionClipCollectionOperationCollectionDetail[]
+}
+
 export type VisionClipCollectionOperationUndoResult = {
   success: boolean
   message: string

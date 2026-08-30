@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto'
 import { mergeVisionClipSelections, normalizeVisionTimeRange } from './vision-evidence'
 import { normalizeVisionClipCollectionTagOperationHistoryPageRequest } from './clip-inbox-tag-history'
 import { applyVisionCollectionTags, duplicateVisionCollectionTitle, mergeVisionClipCollections, normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionSortMode, normalizeVisionCollectionTag, normalizeVisionCollectionTagColor, normalizeVisionCollectionTagFavorite, normalizeVisionCollectionTagNote, normalizeVisionCollectionTags, normalizeVisionCollectionTagsMode, renameVisionCollectionTag, renameVisionClipCollectionTitle, selectVisionClipCollectionsForMerge, sortVisionClipSelections, wouldCreateVisionCollectionTagParentCycle } from './clip-inbox-operations'
-import type { VisionClipCollection, VisionClipCollectionBatchDeleteResult, VisionClipCollectionBatchRenameResult, VisionClipCollectionBatchTagsResult, VisionClipCollectionFlagUpdateRequest, VisionClipCollectionInput, VisionClipCollectionMergeSelection, VisionClipCollectionOperationHistory, VisionClipCollectionOperationHistoryEntry, VisionClipCollectionOperationRedoResult, VisionClipCollectionOperationType, VisionClipCollectionOperationUndoResult, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataUpdateRequest, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationHistoryDetail, VisionClipCollectionTagOperationHistoryEntry, VisionClipCollectionTagOperationHistoryPage, VisionClipCollectionTagOperationType, VisionClipCollectionTagRedoResult, VisionClipCollectionTagUndoResult, VisionClipSelection, VisionEvidenceType } from '../../shared/vision-types'
+import type { VisionClipCollection, VisionClipCollectionBatchDeleteResult, VisionClipCollectionBatchRenameResult, VisionClipCollectionBatchTagsResult, VisionClipCollectionFlagUpdateRequest, VisionClipCollectionInput, VisionClipCollectionMergeSelection, VisionClipCollectionOperationCollectionDetail, VisionClipCollectionOperationHistory, VisionClipCollectionOperationHistoryDetail, VisionClipCollectionOperationHistoryEntry, VisionClipCollectionOperationRedoResult, VisionClipCollectionOperationType, VisionClipCollectionOperationUndoResult, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataUpdateRequest, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationHistoryDetail, VisionClipCollectionTagOperationHistoryEntry, VisionClipCollectionTagOperationHistoryPage, VisionClipCollectionTagOperationType, VisionClipCollectionTagRedoResult, VisionClipCollectionTagUndoResult, VisionClipSelection, VisionEvidenceType } from '../../shared/vision-types'
 
 type SqliteRow = Record<string, unknown>
 const EVIDENCE_TYPES: readonly VisionEvidenceType[] = ['subtitle', 'visual', 'scene', 'ocr', 'entity', 'object']
@@ -258,6 +258,19 @@ export class ClipInboxStore {
   listCollectionOperationHistory(): VisionClipCollectionOperationHistoryEntry[] {
     const rows = this.database.prepare('SELECT id, operation_type, snapshot_json, created_at, undone_at, redoable FROM clip_collection_operation_history ORDER BY rowid DESC LIMIT 20').all() as SqliteRow[]
     return rows.map((row) => this.readCollectionOperationHistoryEntry(row)).filter((entry): entry is VisionClipCollectionOperationHistoryEntry => entry !== null)
+  }
+
+  getCollectionOperationHistoryDetail(operationId: unknown): VisionClipCollectionOperationHistoryDetail | null {
+    const id = typeof operationId === 'string' ? operationId.trim() : ''
+    if (!id) return null
+    const row = this.database.prepare('SELECT id, operation_type, snapshot_json, created_at, undone_at, redoable FROM clip_collection_operation_history WHERE id = ?').get(id) as SqliteRow | undefined
+    if (!row) return null
+    const operation = this.readCollectionOperationHistoryEntry(row)
+    const snapshot = this.parseCollectionOperationSnapshot(row.snapshot_json)
+    if (!operation || !snapshot) return null
+    const states = this.getCollectionOperationDetailStates(operation.type, snapshot)
+    if (!states) return null
+    return { ...operation, ...states }
   }
 
   undoLastCollectionOperation(): VisionClipCollectionOperationUndoResult {
@@ -1256,6 +1269,56 @@ export class ClipInboxStore {
     const undoneAt = nullableNumberValue(row, 'undone_at') ?? null
     const status = undoneAt === null ? 'active' : numberValue(row, 'redoable') > 0 ? 'redoable' : 'undone'
     return { ...operation, status, undoneAt, ...summary }
+  }
+
+  private getCollectionOperationDetailStates(type: VisionClipCollectionOperationType, snapshot: CollectionOperationSnapshot): Pick<VisionClipCollectionOperationHistoryDetail, 'beforeCollections' | 'afterCollections'> | null {
+    if (type === 'flags') {
+      if (!snapshot.collectionFlags) return null
+      return {
+        beforeCollections: this.describeCollectionFlagSnapshots(snapshot.collectionFlags),
+        afterCollections: this.describeCollectionFlagSnapshots(snapshot.redoCollectionFlags ?? [])
+      }
+    }
+    if (type === 'delete') {
+      if (!snapshot.removedCollections || snapshot.removedCollections.length === 0) return null
+      return { beforeCollections: snapshot.removedCollections.map((collection) => this.describeCollectionDetail(collection)), afterCollections: [] }
+    }
+    if (type === 'duplicate' || type === 'merge') {
+      if (!snapshot.createdCollections || snapshot.createdCollections.length === 0) return null
+      return { beforeCollections: [], afterCollections: snapshot.createdCollections.map((collection) => this.describeCollectionDetail(collection)) }
+    }
+    if (!snapshot.beforeCollections || snapshot.beforeCollections.length === 0 || !snapshot.afterCollections || snapshot.afterCollections.length === 0) return null
+    return {
+      beforeCollections: snapshot.beforeCollections.map((collection) => this.describeCollectionDetail(collection)),
+      afterCollections: snapshot.afterCollections.map((collection) => this.describeCollectionDetail(collection))
+    }
+  }
+
+  private describeCollectionFlagSnapshots(snapshots: readonly CollectionOperationFlagSnapshot[]): VisionClipCollectionOperationCollectionDetail[] {
+    return snapshots.map((snapshot) => {
+      const collection = this.getCollection(snapshot.id)
+      return {
+        id: snapshot.id,
+        title: collection?.title ?? '',
+        tags: collection?.tags ?? [],
+        sortMode: collection?.sortMode ?? 'source-time',
+        isFavorite: snapshot.isFavorite,
+        isArchived: snapshot.isArchived,
+        selectionCount: collection?.selections.length ?? 0
+      }
+    })
+  }
+
+  private describeCollectionDetail(collection: VisionClipCollection): VisionClipCollectionOperationCollectionDetail {
+    return {
+      id: collection.id,
+      title: collection.title,
+      tags: [...collection.tags],
+      sortMode: collection.sortMode,
+      isFavorite: collection.isFavorite,
+      isArchived: collection.isArchived,
+      selectionCount: collection.selections.length
+    }
   }
 
   private summarizeCollectionOperation(type: VisionClipCollectionOperationType, snapshot: CollectionOperationSnapshot): Pick<VisionClipCollectionOperationHistoryEntry, 'collectionIds' | 'collectionTitles' | 'selectionCount'> | null {
