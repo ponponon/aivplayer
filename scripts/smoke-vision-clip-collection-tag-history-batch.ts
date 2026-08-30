@@ -88,12 +88,38 @@ async function runSmoke(): Promise<void> {
     const metadata = await page.evaluate(() => window.aiv.listVisionClipCollectionTagMetadata())
     if (metadata.length !== 1 || metadata[0]?.note !== finalNote) throw new Error(`Tag history batch redo mismatch: ${JSON.stringify(metadata)}`)
 
+    const currentCollection = await page.evaluate((collectionId) => window.aiv.listVisionClipCollections().then((collections) => collections.find((collection) => collection.id === collectionId) ?? null), collection.id)
+    if (!currentCollection) throw new Error('Tag history conflict smoke collection was not found')
+    const conflictMetadata = await page.evaluate(({ tag }) => window.aiv.updateVisionClipCollectionTagMetadata({ tag, note: '冲突前状态' }), { tag })
+    if (!conflictMetadata.success || !conflictMetadata.metadata) throw new Error(`Tag history conflict metadata setup failed: ${JSON.stringify(conflictMetadata)}`)
+    const conflictUpdate = await page.evaluate(({ collectionId, tag }) => window.aiv.updateVisionClipCollectionTags({ collectionId, tags: [tag, '分支标签'] }), { collectionId: collection.id, tag })
+    if (!conflictUpdate.success || !conflictUpdate.collection) throw new Error(`Tag history conflict tag setup failed: ${JSON.stringify(conflictUpdate)}`)
+    const branched = await page.evaluate((next) => window.aiv.saveVisionClipCollection({ id: next.id, title: next.title, tags: ['分支标签'], sortMode: next.sortMode, isFavorite: next.isFavorite, isArchived: next.isArchived, selections: next.selections }), conflictUpdate.collection)
+    if (!branched || branched.tags.join('|') !== '分支标签') throw new Error(`Tag history conflict branch setup failed: ${JSON.stringify(branched)}`)
+
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await openVisionPanel(page)
+    const conflictHistoryCard = page.locator('.vision-collection-tag-history')
+    await conflictHistoryCard.waitFor({ timeout: 10_000 })
+    await conflictHistoryCard.getByRole('button', { name: '全选本页可撤销', exact: true }).click()
+    if (await conflictHistoryCard.getByRole('button', { name: '下一页', exact: true }).count()) {
+      await conflictHistoryCard.getByRole('button', { name: '下一页', exact: true }).click()
+      await conflictHistoryCard.getByRole('button', { name: '全选本页可撤销', exact: true }).click()
+    }
+    await conflictHistoryCard.getByRole('button', { name: '批量撤销选中操作', exact: true }).click()
+    const conflictPanel = conflictHistoryCard.locator('.vision-collection-tag-history-conflicts')
+    await conflictPanel.waitFor({ timeout: 10_000 })
+    if (!(await conflictPanel.getByText('集合标签或更新时间已变化', { exact: true }).count())) throw new Error(`Tag history conflict reason was not rendered: ${await conflictPanel.textContent()}`)
+    if (await page.evaluate(() => window.aiv.listVisionClipCollectionTagOperationHistoryPage({ limit: 100 })).then((result) => result.entries.some((entry) => entry.status !== 'active'))) throw new Error('Tag history conflict batch changed history status')
+    const branchAfterFailure = await page.evaluate((collectionId) => window.aiv.listVisionClipCollections().then((collections) => collections.find((item) => item.id === collectionId) ?? null), collection.id)
+    if (!branchAfterFailure || branchAfterFailure.tags.join('|') !== '分支标签') throw new Error(`Tag history conflict batch changed current data: ${JSON.stringify(branchAfterFailure)}`)
+
     if (screenshotPath) {
-      await historyCard.scrollIntoViewIfNeeded()
+      await conflictHistoryCard.scrollIntoViewIfNeeded()
       await page.screenshot({ path: screenshotPath, fullPage: false })
     }
     if (session.errors.length > 0) throw new Error(`Renderer errors during tag operation history batch smoke:\n${session.errors.join('\n')}`)
-    console.log(`AIVPlayer Smoke Vision Clip Collection Tag Operation History Batch passed: ${JSON.stringify({ pageIdentity, crossPageSelectionVerified: true, selectedCount: 22, atomicUndoVerified: true, atomicRedoVerified: true, consoleErrors: session.errors.length, screenshotPath: screenshotPath ?? null })}`)
+    console.log(`AIVPlayer Smoke Vision Clip Collection Tag Operation History Batch passed: ${JSON.stringify({ pageIdentity, crossPageSelectionVerified: true, selectedCount: 22, atomicUndoVerified: true, atomicRedoVerified: true, conflictDiagnosticsVerified: true, consoleErrors: session.errors.length, screenshotPath: screenshotPath ?? null })}`)
   } finally {
     if (app) await app.close().catch(() => undefined)
     await rm(userDataDirectory, { recursive: true, force: true }).catch(() => undefined)
