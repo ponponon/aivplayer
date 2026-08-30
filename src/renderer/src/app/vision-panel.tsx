@@ -1,10 +1,10 @@
 import { Archive, Check, CheckSquare, ChevronDown, ChevronRight, ChevronUp, Copy, Database, Download, FilePlus, ImageUp, Pencil, Redo2, ScanSearch, Search, Square, Star, Tags, Trash2, Undo2, Upload, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import type { ChangeEvent, KeyboardEvent } from 'react'
+import type { ChangeEvent, KeyboardEvent, ReactNode } from 'react'
 import type { VisionIndexProgress, VisionRuntimeStatus, VisionSearchResult } from '../../../shared/media-types'
 import type { AsrSubtitleResult } from '../../../shared/media-types'
 import type { MediaEvidenceDraftImportResult } from '../../../shared/evidence-task-types'
-import type { VisionClipCollection, VisionClipCollectionBatchTagsMode, VisionClipCollectionExportFormat, VisionClipCollectionMergeSelection, VisionClipCollectionOperationHistory, VisionClipCollectionOperationHistoryEntry, VisionClipCollectionSortMode, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataImportDecision, VisionClipCollectionTagMetadataImportPreviewResult, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationHistoryDetail, VisionClipCollectionTagOperationHistoryEntry, VisionClipCollectionTagSortMode, VisionClipSelection, VisionEvidenceType, VisionIndexFailureRecord, VisionLibrarySource, VisionModelDownloadProgress, VisionSavedSearch, VisionSearchFullExportRequest, VisionSearchPageRequest, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchSortMode } from '../../../shared/vision-types'
+import type { VisionClipCollection, VisionClipCollectionBatchTagsMode, VisionClipCollectionExportFormat, VisionClipCollectionMergeSelection, VisionClipCollectionOperationCollectionDetail, VisionClipCollectionOperationHistory, VisionClipCollectionOperationHistoryDetail, VisionClipCollectionOperationHistoryEntry, VisionClipCollectionSortMode, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataImportDecision, VisionClipCollectionTagMetadataImportPreviewResult, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationHistoryDetail, VisionClipCollectionTagOperationHistoryEntry, VisionClipCollectionTagSortMode, VisionClipSelection, VisionEvidenceType, VisionIndexFailureRecord, VisionLibrarySource, VisionModelDownloadProgress, VisionSavedSearch, VisionSearchFullExportRequest, VisionSearchPageRequest, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchSortMode } from '../../../shared/vision-types'
 import type { LocaleCopy } from '../../../shared/i18n'
 import type { VisionObjectDetectionFilterState, VisionObjectDetectionResult } from '../../../shared/vision-object-detection-types'
 import type { VisionClipCollectionTagOperationHistoryFilter } from '../../../shared/vision-types'
@@ -236,6 +236,28 @@ function formatClipPreviewRange(selection: Pick<VisionClipSelection, 'startSecon
   return `${formatClipPreviewTime(selection.startSeconds)}–${formatClipPreviewTime(selection.endSeconds)}`
 }
 
+function CollectionOperationDetailState({ label, collections, copy }: { label: string; collections: VisionClipCollectionOperationCollectionDetail[]; copy: LocaleCopy['vision'] }): ReactNode {
+  return <div className="vision-collection-operation-history-detail-state">
+    <strong>{label}</strong>
+    {collections.length === 0 ? <small>{copy.collectionOperationHistoryDetailEmpty}</small> : <div className="vision-collection-operation-history-detail-collections">
+      {collections.map((collection) => {
+        const sortLabel = collection.sortMode === 'duration-desc' ? copy.collectionSortDuration : collection.sortMode === 'file-name' ? copy.collectionSortFileName : copy.collectionSortSourceTime
+        const flags = `${collection.isFavorite ? copy.collectionStatusFavorite : copy.collectionStatusUnfavorite} · ${collection.isArchived ? copy.collectionStatusArchived : copy.collectionStatusUnarchived}`
+        return <div className="vision-collection-operation-history-detail-collection" key={collection.id}>
+          <strong title={collection.title || collection.id}>{collection.title || collection.id}</strong>
+          <dl>
+            <div><dt>{copy.collectionOperationHistoryDetailCollectionIdLabel}</dt><dd><code>{collection.id}</code></dd></div>
+            <div><dt>{copy.collectionOperationHistoryDetailTagsLabel}</dt><dd>{collection.tags.length > 0 ? collection.tags.join(' · ') : copy.collectionTagsEmpty}</dd></div>
+            <div><dt>{copy.collectionOperationHistoryDetailFlagsLabel}</dt><dd>{flags}</dd></div>
+            <div><dt>{copy.collectionOperationHistoryDetailSortLabel}</dt><dd>{sortLabel}</dd></div>
+            <div><dt>{copy.collectionOperationHistoryDetailSelectionsLabel}</dt><dd>{copy.collectionOperationHistorySelectionCount(collection.selectionCount)}</dd></div>
+          </dl>
+        </div>
+      })}
+    </div>}
+  </div>
+}
+
 function getCollectionMergeSelectionStateKey(collectionId: string, selection: VisionClipSelection): string {
   return `${collectionId}\u0000${getVisionClipSelectionMergeKey(selection)}`
 }
@@ -310,6 +332,7 @@ export function VisionPanel(): React.ReactElement {
   const [savedCollectionFilterImportDecisions, setSavedCollectionFilterImportDecisions] = useState<Record<string, VisionClipCollectionSavedFilterImportDecision>>({})
   const savedCollectionFilterFileInputRef = useRef<HTMLInputElement | null>(null)
   const collectionOperationRefreshVersionRef = useRef(0)
+  const collectionOperationHistoryDetailRequestVersionRef = useRef(0)
   const collectionTagOperationRefreshVersionRef = useRef(0)
   const collectionTagHistoryDetailRequestVersionRef = useRef(0)
   const [collectionTransferStatus, setCollectionTransferStatus] = useState<string | null>(null)
@@ -373,6 +396,9 @@ export function VisionPanel(): React.ReactElement {
   const [lastCollectionRedoOperation, setLastCollectionRedoOperation] = useState<VisionClipCollectionOperationHistory | null>(null)
   const [isRedoingCollectionOperation, setIsRedoingCollectionOperation] = useState(false)
   const [collectionOperationHistory, setCollectionOperationHistory] = useState<VisionClipCollectionOperationHistoryEntry[]>([])
+  const [collectionOperationHistoryDetailId, setCollectionOperationHistoryDetailId] = useState<string | null>(null)
+  const [collectionOperationHistoryDetail, setCollectionOperationHistoryDetail] = useState<VisionClipCollectionOperationHistoryDetail | null>(null)
+  const [isLoadingCollectionOperationHistoryDetail, setIsLoadingCollectionOperationHistoryDetail] = useState(false)
   const [editingCollectionId, setEditingCollectionId] = useState<string | null>(null)
   const [editingCollectionTitle, setEditingCollectionTitle] = useState('')
   const [isSavingCollectionTitle, setIsSavingCollectionTitle] = useState(false)
@@ -570,8 +596,48 @@ export function VisionPanel(): React.ReactElement {
         setLastCollectionOperation(nextUndo)
         setCollectionOperationHistory(nextHistory)
         setLastCollectionRedoOperation(nextRedo)
+        collectionOperationHistoryDetailRequestVersionRef.current += 1
+        setCollectionOperationHistoryDetailId(null)
+        setCollectionOperationHistoryDetail(null)
+        setIsLoadingCollectionOperationHistoryDetail(false)
       }
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
+  }
+  const inspectCollectionOperation = (operationId: string): void => {
+    if (collectionOperationHistoryDetailId === operationId) {
+      collectionOperationHistoryDetailRequestVersionRef.current += 1
+      setCollectionOperationHistoryDetailId(null)
+      setCollectionOperationHistoryDetail(null)
+      setIsLoadingCollectionOperationHistoryDetail(false)
+      return
+    }
+    const version = ++collectionOperationHistoryDetailRequestVersionRef.current
+    setCollectionOperationHistoryDetailId(operationId)
+    setCollectionOperationHistoryDetail(null)
+    setIsLoadingCollectionOperationHistoryDetail(true)
+    setError(null)
+    void window.aiv.getVisionClipCollectionOperationHistoryDetail(operationId).then((nextDetail) => {
+      if (version !== collectionOperationHistoryDetailRequestVersionRef.current) return
+      if (!nextDetail) {
+        setCollectionOperationHistoryDetailId(null)
+        setError(app.copy.vision.collectionOperationHistoryDetailUnavailable)
+        return
+      }
+      setCollectionOperationHistoryDetail(nextDetail)
+    }).catch((reason: unknown) => {
+      if (version === collectionOperationHistoryDetailRequestVersionRef.current) {
+        setCollectionOperationHistoryDetailId(null)
+        setError(reason instanceof Error ? reason.message : String(reason))
+      }
+    }).finally(() => {
+      if (version === collectionOperationHistoryDetailRequestVersionRef.current) setIsLoadingCollectionOperationHistoryDetail(false)
+    })
+  }
+  const closeCollectionOperationDetail = (): void => {
+    collectionOperationHistoryDetailRequestVersionRef.current += 1
+    setCollectionOperationHistoryDetailId(null)
+    setCollectionOperationHistoryDetail(null)
+    setIsLoadingCollectionOperationHistoryDetail(false)
   }
   const applyCollectionOperationResult = (result: { collections: VisionClipCollection[]; deletedCollectionIds?: string[]; createdCollectionIds?: string[] }): void => {
     if (result.deletedCollectionIds?.length) {
@@ -2351,9 +2417,18 @@ export function VisionPanel(): React.ReactElement {
           return <div className={`vision-collection-operation-history-entry is-${operation.status}`} key={operation.id} role="listitem">
             <div className="vision-collection-operation-history-copy"><strong>{app.copy.vision.collectionOperationTypeLabel[operation.type]}</strong><small title={targets}>{targets}</small></div>
             <div className="vision-collection-operation-history-meta"><span>{app.copy.vision.collectionOperationHistoryStatusLabel[operation.status]}</span><span>{app.copy.vision.collectionOperationHistoryTargetCount(operation.collectionIds.length)} · {app.copy.vision.collectionOperationHistorySelectionCount(operation.selectionCount)}</span><time dateTime={new Date(operation.createdAt).toISOString()}>{new Date(operation.createdAt).toLocaleString()}</time></div>
+            <button className="vision-collection-operation-history-detail-action" type="button" onClick={() => inspectCollectionOperation(operation.id)} disabled={isCollectionBatchBusy || isLoadingCollectionOperationHistoryDetail} aria-expanded={collectionOperationHistoryDetailId === operation.id}>{collectionOperationHistoryDetailId === operation.id ? app.copy.vision.collectionOperationHistoryDetailClose : app.copy.vision.collectionOperationHistoryViewDetail}</button>
           </div>
         })}
       </div>
+      {isLoadingCollectionOperationHistoryDetail ? <small className="vision-collection-operation-history-detail-loading" role="status">{app.copy.vision.collectionOperationHistoryDetailLoading}</small> : null}
+      {collectionOperationHistoryDetail ? <div className="vision-collection-operation-history-detail" role="region" aria-label={app.copy.vision.collectionOperationHistoryDetailTitle}>
+        <div className="vision-collection-operation-history-detail-heading"><strong>{app.copy.vision.collectionOperationHistoryDetailTitle}</strong><button className="vision-secondary-action" type="button" onClick={closeCollectionOperationDetail}>{app.copy.vision.collectionOperationHistoryDetailClose}</button></div>
+        <div className="vision-collection-operation-history-detail-states">
+          <CollectionOperationDetailState label={app.copy.vision.collectionOperationHistoryDetailBefore} collections={collectionOperationHistoryDetail.beforeCollections} copy={app.copy.vision} />
+          <CollectionOperationDetailState label={app.copy.vision.collectionOperationHistoryDetailAfter} collections={collectionOperationHistoryDetail.afterCollections} copy={app.copy.vision} />
+        </div>
+      </div> : null}
     </div> : null}
     {collections.length > 0 ? <div className="vision-card vision-collection-status-card"><div className="vision-collection-status-summary" role="group" aria-label={app.copy.vision.collectionStatusSummaryLabel}><span className="vision-collection-status-summary-label">{app.copy.vision.collectionStatusSummaryLabel}</span><button className={`vision-collection-status-filter${collectionFilterVisibility === 'all' ? ' is-active' : ''}`} type="button" onClick={() => setCollectionFilterVisibility('all')} aria-pressed={collectionFilterVisibility === 'all'} aria-label={`${app.copy.vision.collectionStatusSummaryLabel}: ${app.copy.vision.collectionStatusSummaryAll(collectionStatusSummary.allCount)}`} disabled={isCollectionBatchBusy}>{app.copy.vision.collectionStatusSummaryAll(collectionStatusSummary.allCount)}</button><button className={`vision-collection-status-filter${collectionFilterVisibility === 'active' ? ' is-active' : ''}`} type="button" onClick={() => setCollectionFilterVisibility('active')} aria-pressed={collectionFilterVisibility === 'active'} aria-label={`${app.copy.vision.collectionStatusSummaryLabel}: ${app.copy.vision.collectionStatusSummaryActive(collectionStatusSummary.activeCount)}`} disabled={isCollectionBatchBusy}>{app.copy.vision.collectionStatusSummaryActive(collectionStatusSummary.activeCount)}</button><button className={`vision-collection-status-filter${collectionFilterVisibility === 'favorites' ? ' is-active' : ''}`} type="button" onClick={() => setCollectionFilterVisibility('favorites')} aria-pressed={collectionFilterVisibility === 'favorites'} aria-label={`${app.copy.vision.collectionStatusSummaryLabel}: ${app.copy.vision.collectionStatusSummaryFavorites(collectionStatusSummary.favoriteCount)}`} disabled={isCollectionBatchBusy}>{app.copy.vision.collectionStatusSummaryFavorites(collectionStatusSummary.favoriteCount)}</button><button className={`vision-collection-status-filter${collectionFilterVisibility === 'archived' ? ' is-active' : ''}`} type="button" onClick={() => setCollectionFilterVisibility('archived')} aria-pressed={collectionFilterVisibility === 'archived'} aria-label={`${app.copy.vision.collectionStatusSummaryLabel}: ${app.copy.vision.collectionStatusSummaryArchived(collectionStatusSummary.archivedCount)}`} disabled={isCollectionBatchBusy}>{app.copy.vision.collectionStatusSummaryArchived(collectionStatusSummary.archivedCount)}</button></div></div> : null}
     {selectedCollectionIds.size > 0 ? <div className="vision-card vision-collection-batch-tags-actions"><div className="vision-collection-batch-tags-heading"><strong>{app.copy.vision.selectedCollections(selectedCollectionIds.size)}</strong><small>{app.copy.vision.collectionTagsBatchPlaceholder}</small></div><div className="vision-collection-batch-tags-controls"><select className="vision-collection-batch-tags-mode" value={collectionBatchTagsMode} onChange={(event) => setCollectionBatchTagsMode(event.target.value as VisionClipCollectionBatchTagsMode)} aria-label={app.copy.vision.collectionTagsBatchModeAriaLabel} disabled={isCollectionBatchBusy}><option value="replace">{app.copy.vision.collectionTagsBatchModeLabel.replace}</option><option value="add">{app.copy.vision.collectionTagsBatchModeLabel.add}</option><option value="remove">{app.copy.vision.collectionTagsBatchModeLabel.remove}</option></select><input className="vision-collection-batch-tags-input" value={collectionBatchTags} maxLength={800} onChange={(event) => setCollectionBatchTags(event.target.value)} placeholder={app.copy.vision.collectionTagsBatchInputPlaceholder} aria-label={app.copy.vision.collectionTagsBatchInputPlaceholder} disabled={isCollectionBatchBusy} /><button className="vision-primary-action" type="button" onClick={updateSelectedCollectionsTags} disabled={isCollectionBatchBusy || !canUpdateCollectionTags}><Tags size={13} />{app.copy.vision.updateSelectedCollectionTags}</button>{!canUpdateCollectionTags ? <small className="vision-collection-batch-tags-hint">{app.copy.vision.collectionTagsBatchNeedInput}</small> : null}</div></div> : null}
