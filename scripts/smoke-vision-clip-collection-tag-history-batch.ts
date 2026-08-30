@@ -28,6 +28,23 @@ async function openVisionPanel(page: Page): Promise<string> {
   return identity
 }
 
+async function waitForTagHistoryEntries(page: Page, status: 'active' | 'redoable', count: number): Promise<void> {
+  await page.waitForFunction(({ status, count }) => document.querySelectorAll(`.vision-collection-tag-history-entry.is-${status}`).length === count, { status, count })
+}
+
+async function listAllTagHistory(page: Page) {
+  return page.evaluate(async () => {
+    const entries = []
+    let offset = 0
+    while (true) {
+      const result = await window.aiv.listVisionClipCollectionTagOperationHistoryPage({ offset, limit: 20 })
+      entries.push(...result.entries)
+      if (!result.hasMore) return entries
+      offset += result.entries.length
+    }
+  })
+}
+
 async function runSmoke(): Promise<void> {
   const userDataDirectory = await mkdtemp(join(tmpdir(), 'aivplayer-smoke-vision-clip-tag-history-batch-'))
   const tag = `跨页标签 Smoke ${Date.now()}`
@@ -67,10 +84,12 @@ async function runSmoke(): Promise<void> {
     await openVisionPanel(page)
     const historyCard = page.locator('.vision-collection-tag-history')
     await historyCard.waitFor({ timeout: 10_000 })
+    await waitForTagHistoryEntries(page, 'active', 20)
     if (await historyCard.locator('.vision-collection-tag-history-entry.is-active').count() !== 20) throw new Error('Expected 20 active tag history entries on the first page')
 
     await historyCard.getByRole('button', { name: '全选本页可撤销', exact: true }).click()
     await historyCard.getByRole('button', { name: '下一页', exact: true }).click()
+    await waitForTagHistoryEntries(page, 'active', 2)
     if (await historyCard.locator('.vision-collection-tag-history-entry.is-active').count() !== 2) throw new Error('Expected 2 active tag history entries on the second page')
     await historyCard.getByRole('button', { name: '全选本页可撤销', exact: true }).click()
     if (!(await historyCard.getByRole('status').filter({ hasText: '已选择 22 条标签操作' }).count())) throw new Error('Cross-page tag history selection count was not retained')
@@ -79,8 +98,10 @@ async function runSmoke(): Promise<void> {
     if ((await page.evaluate(() => window.aiv.listVisionClipCollectionTagMetadata())).length !== 0) throw new Error('Tag history batch undo did not restore empty metadata')
 
     const firstPage = historyCard
+    await waitForTagHistoryEntries(page, 'redoable', 20)
     await firstPage.getByRole('button', { name: '全选本页可重做', exact: true }).click()
     await firstPage.getByRole('button', { name: '下一页', exact: true }).click()
+    await waitForTagHistoryEntries(page, 'redoable', 2)
     await firstPage.getByRole('button', { name: '全选本页可重做', exact: true }).click()
     if (!(await firstPage.getByRole('status').filter({ hasText: '已选择 22 条标签操作' }).count())) throw new Error('Cross-page redo selection count was not retained')
     await firstPage.getByRole('button', { name: '批量重做选中操作', exact: true }).click()
@@ -110,7 +131,7 @@ async function runSmoke(): Promise<void> {
     const conflictPanel = conflictHistoryCard.locator('.vision-collection-tag-history-conflicts')
     await conflictPanel.waitFor({ timeout: 10_000 })
     if (!(await conflictPanel.getByText('集合标签或更新时间已变化', { exact: true }).count())) throw new Error(`Tag history conflict reason was not rendered: ${await conflictPanel.textContent()}`)
-    if (await page.evaluate(() => window.aiv.listVisionClipCollectionTagOperationHistoryPage({ limit: 100 })).then((result) => result.entries.some((entry) => entry.status !== 'active'))) throw new Error('Tag history conflict batch changed history status')
+    if ((await listAllTagHistory(page)).some((entry) => entry.status !== 'active')) throw new Error('Tag history conflict batch changed history status')
     const branchAfterFailure = await page.evaluate((collectionId) => window.aiv.listVisionClipCollections().then((collections) => collections.find((item) => item.id === collectionId) ?? null), collection.id)
     if (!branchAfterFailure || branchAfterFailure.tags.join('|') !== '分支标签') throw new Error(`Tag history conflict batch changed current data: ${JSON.stringify(branchAfterFailure)}`)
 
@@ -118,8 +139,19 @@ async function runSmoke(): Promise<void> {
       await conflictHistoryCard.scrollIntoViewIfNeeded()
       await page.screenshot({ path: screenshotPath, fullPage: false })
     }
+    await conflictPanel.getByRole('button', { name: '移除冲突项，保留其他选择', exact: true }).click()
+    await conflictPanel.waitFor({ state: 'hidden', timeout: 10_000 })
+    if (!(await conflictHistoryCard.getByRole('status').filter({ hasText: '已选择 23 条标签操作' }).count())) throw new Error('Tag history conflict removal did not retain safe selections')
+    await conflictHistoryCard.getByRole('button', { name: '批量撤销选中操作', exact: true }).click()
+    await page.getByRole('status').filter({ hasText: '已批量撤销 23 条标签操作' }).waitFor({ timeout: 10_000 })
+    const recoveredMetadata = await page.evaluate(() => window.aiv.listVisionClipCollectionTagMetadata())
+    if (recoveredMetadata.length !== 0) throw new Error(`Tag history conflict recovery did not undo safe metadata: ${JSON.stringify(recoveredMetadata)}`)
+    const recoveredHistory = await listAllTagHistory(page)
+    if (recoveredHistory.filter((entry) => entry.status === 'redoable').length !== 23 || recoveredHistory.filter((entry) => entry.status === 'active').length !== 1) throw new Error(`Tag history conflict recovery changed unexpected history statuses: ${JSON.stringify(recoveredHistory)}`)
+    const branchAfterRecovery = await page.evaluate((collectionId) => window.aiv.listVisionClipCollections().then((collections) => collections.find((item) => item.id === collectionId) ?? null), collection.id)
+    if (!branchAfterRecovery || branchAfterRecovery.tags.join('|') !== '分支标签') throw new Error(`Tag history conflict recovery changed current data: ${JSON.stringify(branchAfterRecovery)}`)
     if (session.errors.length > 0) throw new Error(`Renderer errors during tag operation history batch smoke:\n${session.errors.join('\n')}`)
-    console.log(`AIVPlayer Smoke Vision Clip Collection Tag Operation History Batch passed: ${JSON.stringify({ pageIdentity, crossPageSelectionVerified: true, selectedCount: 22, atomicUndoVerified: true, atomicRedoVerified: true, conflictDiagnosticsVerified: true, consoleErrors: session.errors.length, screenshotPath: screenshotPath ?? null })}`)
+    console.log(`AIVPlayer Smoke Vision Clip Collection Tag Operation History Batch passed: ${JSON.stringify({ pageIdentity, crossPageSelectionVerified: true, selectedCount: 22, atomicUndoVerified: true, atomicRedoVerified: true, conflictDiagnosticsVerified: true, conflictRecoveryVerified: true, consoleErrors: session.errors.length, screenshotPath: screenshotPath ?? null })}`)
   } finally {
     if (app) await app.close().catch(() => undefined)
     await rm(userDataDirectory, { recursive: true, force: true }).catch(() => undefined)
