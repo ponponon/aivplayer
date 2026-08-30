@@ -519,6 +519,17 @@ export type VisionClipCollectionTagUpdateResult = {
   collection: VisionClipCollection | null
 }
 
+export type VisionClipCollectionContentUpdateRequest = {
+  collectionId: string
+  selections: VisionClipSelection[]
+}
+
+export type VisionClipCollectionContentUpdateResult = {
+  success: boolean
+  message: string
+  collection: VisionClipCollection | null
+}
+
 export type VisionClipCollectionFlagUpdateRequest = {
   collectionIds: string[]
   isFavorite?: boolean
@@ -677,7 +688,7 @@ export type VisionClipCollectionTagRedoResult = {
   metadata: VisionClipCollectionTagMetadata[]
 }
 
-export type VisionClipCollectionOperationType = 'flags' | 'merge' | 'delete' | 'rename' | 'duplicate'
+export type VisionClipCollectionOperationType = 'flags' | 'merge' | 'delete' | 'rename' | 'duplicate' | 'content'
 
 export type VisionClipCollectionOperationHistory = {
   id: string

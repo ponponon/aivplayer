@@ -10,7 +10,7 @@ import type { VisionClipCollection, VisionClipCollectionBatchDeleteResult, Visio
 type SqliteRow = Record<string, unknown>
 const EVIDENCE_TYPES: readonly VisionEvidenceType[] = ['subtitle', 'visual', 'scene', 'ocr', 'entity', 'object']
 const TAG_OPERATION_TYPES: readonly VisionClipCollectionTagOperationType[] = ['cleanup', 'rename', 'metadata', 'batch', 'single']
-const COLLECTION_OPERATION_TYPES: readonly VisionClipCollectionOperationType[] = ['flags', 'merge', 'delete', 'rename', 'duplicate']
+const COLLECTION_OPERATION_TYPES: readonly VisionClipCollectionOperationType[] = ['flags', 'merge', 'delete', 'rename', 'duplicate', 'content']
 const TAG_OPERATION_HISTORY_RETENTION_LIMIT = 100
 
 type TagOperationCollectionSnapshot = { id: string; tags: string[]; updatedAt: number }
@@ -336,6 +336,26 @@ export class ClipInboxStore {
         throw error
       }
     }
+    if (operation.type === 'content') {
+      const beforeCollections = snapshot.beforeCollections
+      const afterCollections = snapshot.afterCollections
+      if (!beforeCollections || beforeCollections.length === 0 || !afterCollections || afterCollections.length !== beforeCollections.length) return { success: false, message: '内容编辑操作记录已损坏', operation: null, collections: [] }
+      const currentCollections = afterCollections.map((collection) => this.getCollection(collection.id))
+      if (currentCollections.some((collection, index) => !collection || JSON.stringify(collection) !== JSON.stringify(afterCollections[index]))) {
+        return { success: false, message: '内容编辑结果已被修改或删除，无法安全撤销', operation: null, collections: [] }
+      }
+      this.database.exec('BEGIN')
+      try {
+        for (const collection of beforeCollections) this.replaceCollectionSnapshot(collection)
+        this.database.prepare('UPDATE clip_collection_operation_history SET undone_at = ?, redoable = 1 WHERE id = ?').run(Date.now(), operation.id)
+        this.database.exec('COMMIT')
+        const collections = beforeCollections.map((item) => this.getCollection(item.id)).filter((collection): collection is VisionClipCollection => collection !== null)
+        return { success: true, message: '已撤销上次内容编辑操作', operation, collections }
+      } catch (error) {
+        this.database.exec('ROLLBACK')
+        throw error
+      }
+    }
     if (operation.type === 'delete') {
       const removedCollections = snapshot.removedCollections
       if (!removedCollections || removedCollections.length === 0) return { success: false, message: '删除操作记录已损坏', operation: null, collections: [] }
@@ -430,6 +450,26 @@ export class ClipInboxStore {
         this.database.exec('COMMIT')
         const collections = afterCollections.map((item) => this.getCollection(item.id)).filter((collection): collection is VisionClipCollection => collection !== null)
         return { success: true, message: '已重做上次重命名操作', operation, collections }
+      } catch (error) {
+        this.database.exec('ROLLBACK')
+        throw error
+      }
+    }
+    if (operation.type === 'content') {
+      const beforeCollections = snapshot.beforeCollections
+      const afterCollections = snapshot.afterCollections
+      if (!beforeCollections || beforeCollections.length === 0 || !afterCollections || afterCollections.length !== beforeCollections.length) return { success: false, message: '内容编辑操作没有可重做快照', operation: null, collections: [] }
+      const currentCollections = beforeCollections.map((collection) => this.getCollection(collection.id))
+      if (currentCollections.some((collection, index) => !collection || JSON.stringify(collection) !== JSON.stringify(beforeCollections[index]))) {
+        return { success: false, message: '内容编辑前的集合已被修改或删除，无法安全重做', operation: null, collections: [] }
+      }
+      this.database.exec('BEGIN')
+      try {
+        for (const collection of afterCollections) this.replaceCollectionSnapshot(collection)
+        this.database.prepare('UPDATE clip_collection_operation_history SET undone_at = NULL, redoable = 0 WHERE id = ?').run(operation.id)
+        this.database.exec('COMMIT')
+        const collections = afterCollections.map((item) => this.getCollection(item.id)).filter((collection): collection is VisionClipCollection => collection !== null)
+        return { success: true, message: '已重做上次内容编辑操作', operation, collections }
       } catch (error) {
         this.database.exec('ROLLBACK')
         throw error
@@ -607,22 +647,41 @@ export class ClipInboxStore {
         INSERT INTO clip_collections (id, title, tags_json, sort_mode, is_favorite, is_archived, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET title = excluded.title, tags_json = excluded.tags_json, sort_mode = excluded.sort_mode, is_favorite = excluded.is_favorite, is_archived = excluded.is_archived, updated_at = excluded.updated_at
       `).run(id, title, JSON.stringify(tags), sortMode, isFavorite ? 1 : 0, isArchived ? 1 : 0, existing ? numberValue(existing, 'created_at') : now, now)
-      this.database.prepare('DELETE FROM clip_collection_items WHERE collection_id = ?').run(id)
-      const insert = this.database.prepare(`
-        INSERT INTO clip_collection_items (id, collection_id, item_index, source_id, video_path, file_name, fingerprint, duration_seconds, width, height, start_seconds, end_seconds, evidence_ids_json, text, evidence_types_json)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `)
-      selections.forEach((selection, index) => insert.run(
-        randomUUID(), id, index, selection.sourceId, selection.videoPath, selection.fileName, selection.fingerprint,
-        selection.durationSeconds, selection.width ?? null, selection.height ?? null, selection.startSeconds, selection.endSeconds,
-        JSON.stringify(selection.evidenceIds), selection.text ?? '', JSON.stringify(selection.evidenceTypes)
-      ))
+      this.replaceCollectionSelections(id, selections)
       this.database.exec('COMMIT')
     } catch (error) {
       this.database.exec('ROLLBACK')
       throw error
     }
     return this.getCollection(id) as VisionClipCollection
+  }
+
+  updateCollectionSelections(collectionId: unknown, selections: unknown): VisionClipCollection | null {
+    const id = typeof collectionId === 'string' ? collectionId.trim() : ''
+    if (!id) return null
+    const beforeCollection = this.getCollection(id)
+    if (!beforeCollection) return null
+    if (!Array.isArray(selections)) throw new Error('选段集合内容无效')
+    const normalizedSelections = sortVisionClipSelections(
+      mergeVisionClipSelections(selections.map(normalizeSelection).filter((selection): selection is VisionClipSelection => selection !== null)),
+      beforeCollection.sortMode
+    )
+    if (normalizedSelections.length === 0) throw new Error('选段集合至少需要一个有效选段')
+    if (JSON.stringify(normalizedSelections) === JSON.stringify(beforeCollection.selections)) return beforeCollection
+    const now = Date.now()
+    this.database.exec('BEGIN')
+    try {
+      this.database.prepare('UPDATE clip_collections SET updated_at = ? WHERE id = ?').run(now, id)
+      this.replaceCollectionSelections(id, normalizedSelections)
+      const afterCollection = this.getCollection(id)
+      if (!afterCollection) throw new Error('选段集合更新失败')
+      this.recordCollectionOperation('content', { beforeCollections: [beforeCollection], afterCollections: [afterCollection] }, now)
+      this.database.exec('COMMIT')
+      return afterCollection
+    } catch (error) {
+      this.database.exec('ROLLBACK')
+      throw error
+    }
   }
 
   renameCollection(collectionId: string, title: unknown): VisionClipCollection | null {
@@ -1155,12 +1214,17 @@ export class ClipInboxStore {
       INSERT INTO clip_collections (id, title, tags_json, sort_mode, is_favorite, is_archived, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `).run(collection.id, collection.title, JSON.stringify(collection.tags), collection.sortMode, collection.isFavorite ? 1 : 0, collection.isArchived ? 1 : 0, collection.createdAt, collection.updatedAt)
+    this.replaceCollectionSelections(collection.id, collection.selections)
+  }
+
+  private replaceCollectionSelections(collectionId: string, selections: readonly VisionClipSelection[]): void {
+    this.database.prepare('DELETE FROM clip_collection_items WHERE collection_id = ?').run(collectionId)
     const insert = this.database.prepare(`
       INSERT INTO clip_collection_items (id, collection_id, item_index, source_id, video_path, file_name, fingerprint, duration_seconds, width, height, start_seconds, end_seconds, evidence_ids_json, text, evidence_types_json)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
-    collection.selections.forEach((selection, index) => insert.run(
-      randomUUID(), collection.id, index, selection.sourceId, selection.videoPath, selection.fileName, selection.fingerprint,
+    selections.forEach((selection, index) => insert.run(
+      randomUUID(), collectionId, index, selection.sourceId, selection.videoPath, selection.fileName, selection.fingerprint,
       selection.durationSeconds, selection.width ?? null, selection.height ?? null, selection.startSeconds, selection.endSeconds,
       JSON.stringify(selection.evidenceIds), selection.text ?? '', JSON.stringify(selection.evidenceTypes)
     ))

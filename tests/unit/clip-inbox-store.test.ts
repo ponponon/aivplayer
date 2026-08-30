@@ -317,6 +317,38 @@ describe('clip inbox store', () => {
     expect(store.getCollection(saved.id)).toEqual(renamed)
   })
 
+  it('records a single collection content edit and restores the complete snapshot through undo and redo', () => {
+    const original = store.saveCollection({ title: '单集合内容编辑前', tags: ['保留'], isFavorite: true, isArchived: true, sortMode: 'duration-desc', selections: [selection({ startSeconds: 1, endSeconds: 3 }), selection({ startSeconds: 5, endSeconds: 7, evidenceIds: ['内容编辑前'] })] })
+    const updated = store.updateCollectionSelections(original.id, [selection({ startSeconds: 4, endSeconds: 9, evidenceIds: ['内容编辑后'], text: '编辑后的选段' })])
+
+    expect(updated).toMatchObject({ id: original.id, title: original.title, tags: original.tags, isFavorite: true, isArchived: true, sortMode: original.sortMode })
+    expect(updated?.selections).toEqual([expect.objectContaining({ startSeconds: 4, endSeconds: 9, evidenceIds: ['内容编辑后'], text: '编辑后的选段' })])
+    expect(store.getLastCollectionOperation()).toMatchObject({ type: 'content' })
+
+    const undone = store.undoLastCollectionOperation()
+    expect(undone).toMatchObject({ success: true, operation: expect.objectContaining({ type: 'content' }) })
+    expect(store.getCollection(original.id)).toEqual(original)
+    expect(store.getLastCollectionRedoOperation()).toMatchObject({ type: 'content' })
+
+    store.close()
+    store = new ClipInboxStore(tempDirectory)
+    const redone = store.redoLastCollectionOperation()
+    expect(redone).toMatchObject({ success: true, operation: expect.objectContaining({ type: 'content' }) })
+    expect(store.getCollection(original.id)).toEqual(updated)
+  })
+
+  it('refuses to undo a single collection content edit after the collection changes', () => {
+    const original = store.saveCollection({ title: '单集合内容冲突前', selections: [selection({ startSeconds: 1, endSeconds: 3 })] })
+    const updated = store.updateCollectionSelections(original.id, [selection({ startSeconds: 4, endSeconds: 6 })])
+    expect(updated).toBeDefined()
+    const edited = store.saveCollection({ id: original.id, title: '内容分支编辑', selections: [selection({ startSeconds: 7, endSeconds: 9 })] })
+
+    const undone = store.undoLastCollectionOperation()
+    expect(undone).toMatchObject({ success: false, operation: null, collections: [] })
+    expect(store.getCollection(original.id)).toEqual(edited)
+    expect(store.getLastCollectionOperation()).toMatchObject({ type: 'content' })
+  })
+
   it('deletes several collections in one transaction and reports missing ids', () => {
     const first = store.saveCollection({ title: '批量待删一', selections: [selection({ startSeconds: 1, endSeconds: 2 })] })
     const second = store.saveCollection({ title: '批量待删二', selections: [selection({ startSeconds: 3, endSeconds: 4 })] })
