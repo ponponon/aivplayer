@@ -786,20 +786,22 @@ export function registerVisionIpc(): void {
   ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_OPERATION_REDO_HISTORY, () => getClipInboxStore().getLastCollectionRedoOperation())
   ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_OPERATION_UNDO, (_event, operationId: unknown) => {
     const copy = getAppCopy(getCurrentLocale()).vision
+    const hasTarget = typeof operationId === 'string' && operationId.trim().length > 0
     try {
       const result = getClipInboxStore().undoCollectionOperation(operationId)
-      if (!result.success) return { ...result, message: copy.collectionOperationUndoUnavailable }
-      return { ...result, message: copy.collectionOperationUndoSuccess }
+      if (!result.success) return { ...result, message: hasTarget ? copy.collectionOperationHistoryUndoUnavailable : copy.collectionOperationUndoUnavailable }
+      return { ...result, message: hasTarget ? copy.collectionOperationHistoryUndoSuccess : copy.collectionOperationUndoSuccess }
     } catch (error) {
       return { success: false, message: error instanceof Error ? error.message : String(error), operation: null, collections: [] }
     }
   })
   ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_OPERATION_REDO, (_event, operationId: unknown) => {
     const copy = getAppCopy(getCurrentLocale()).vision
+    const hasTarget = typeof operationId === 'string' && operationId.trim().length > 0
     try {
       const result = getClipInboxStore().redoCollectionOperation(operationId)
-      if (!result.success) return { ...result, message: copy.collectionOperationRedoUnavailable }
-      return { ...result, message: copy.collectionOperationRedoSuccess }
+      if (!result.success) return { ...result, message: hasTarget ? copy.collectionOperationHistoryRedoUnavailable : copy.collectionOperationRedoUnavailable }
+      return { ...result, message: hasTarget ? copy.collectionOperationHistoryRedoSuccess : copy.collectionOperationRedoSuccess }
     } catch (error) {
       return { success: false, message: error instanceof Error ? error.message : String(error), operation: null, collections: [] }
     }

@@ -2049,33 +2049,33 @@ export function VisionPanel(): React.ReactElement {
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setIsRedoingCollectionTagOperation(false))
   }
 
-  const undoCollectionOperation = (): void => {
-    if (isCollectionBatchBusy || !lastCollectionOperation) return
+  const undoCollectionOperation = (operationId?: string): void => {
+    if (isCollectionBatchBusy || (operationId === undefined && !lastCollectionOperation)) return
     setIsUndoingCollectionOperation(true)
     setError(null)
-    void window.aiv.undoVisionClipCollectionOperation().then((result) => {
+    void window.aiv.undoVisionClipCollectionOperation(operationId).then((result) => {
       if (!result.success) {
-        setError(result.message)
+        setError(operationId === undefined ? result.message : app.copy.vision.collectionOperationHistoryUndoUnavailable)
         return
       }
       applyCollectionOperationResult(result)
       refreshCollectionOperation()
-      setCollectionTransferStatus(result.message)
+      setCollectionTransferStatus(operationId === undefined ? app.copy.vision.collectionOperationUndoSuccess : app.copy.vision.collectionOperationHistoryUndoSuccess)
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setIsUndoingCollectionOperation(false))
   }
 
-  const redoCollectionOperation = (): void => {
-    if (isCollectionBatchBusy || !lastCollectionRedoOperation) return
+  const redoCollectionOperation = (operationId?: string): void => {
+    if (isCollectionBatchBusy || (operationId === undefined && !lastCollectionRedoOperation)) return
     setIsRedoingCollectionOperation(true)
     setError(null)
-    void window.aiv.redoVisionClipCollectionOperation().then((result) => {
+    void window.aiv.redoVisionClipCollectionOperation(operationId).then((result) => {
       if (!result.success) {
-        setError(result.message)
+        setError(operationId === undefined ? result.message : app.copy.vision.collectionOperationHistoryRedoUnavailable)
         return
       }
       applyCollectionOperationResult(result)
       refreshCollectionOperation()
-      setCollectionTransferStatus(result.message)
+      setCollectionTransferStatus(operationId === undefined ? app.copy.vision.collectionOperationRedoSuccess : app.copy.vision.collectionOperationHistoryRedoSuccess)
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setIsRedoingCollectionOperation(false))
   }
 
@@ -2416,8 +2416,8 @@ export function VisionPanel(): React.ReactElement {
     </div> : null}
     {collections.length > 0 && collectionTagStats.length === 0 && lastCollectionTagOperation ? <div className="vision-card vision-collection-tag-undo-only"><small>{app.copy.vision.collectionTagManagerUndoDescription}</small><button className="vision-secondary-action" type="button" onClick={undoCollectionTagOperation} disabled={isCollectionBatchBusy}><Undo2 size={13} />{app.copy.vision.collectionTagManagerUndo}</button></div> : null}
     {collections.length > 0 && collectionTagStats.length === 0 && lastCollectionTagRedoOperation ? <div className="vision-card vision-collection-tag-redo-only"><small>{app.copy.vision.collectionTagManagerRedoDescription}</small><button className="vision-secondary-action" type="button" onClick={redoCollectionTagOperation} disabled={isCollectionBatchBusy}><Redo2 size={13} />{app.copy.vision.collectionTagManagerRedo}</button></div> : null}
-    {lastCollectionOperation ? <div className="vision-card vision-collection-operation-undo"><small>{app.copy.vision.collectionOperationUndoDescription}</small><button className="vision-secondary-action" type="button" onClick={undoCollectionOperation} disabled={isCollectionBatchBusy}><Undo2 size={13} />{app.copy.vision.collectionOperationUndo}</button></div> : null}
-    {lastCollectionRedoOperation ? <div className="vision-card vision-collection-operation-redo"><small>{app.copy.vision.collectionOperationRedoDescription}</small><button className="vision-secondary-action" type="button" onClick={redoCollectionOperation} disabled={isCollectionBatchBusy}><Redo2 size={13} />{app.copy.vision.collectionOperationRedo}</button></div> : null}
+    {lastCollectionOperation ? <div className="vision-card vision-collection-operation-undo"><small>{app.copy.vision.collectionOperationUndoDescription}</small><button className="vision-secondary-action" type="button" onClick={() => undoCollectionOperation()} disabled={isCollectionBatchBusy}><Undo2 size={13} />{app.copy.vision.collectionOperationUndo}</button></div> : null}
+    {lastCollectionRedoOperation ? <div className="vision-card vision-collection-operation-redo"><small>{app.copy.vision.collectionOperationRedoDescription}</small><button className="vision-secondary-action" type="button" onClick={() => redoCollectionOperation()} disabled={isCollectionBatchBusy}><Redo2 size={13} />{app.copy.vision.collectionOperationRedo}</button></div> : null}
     {collectionOperationHistory.length > 0 ? <div className="vision-card vision-collection-operation-history">
       <div className="vision-collection-operation-history-heading"><span><strong>{app.copy.vision.collectionOperationHistoryTitle}</strong><small>{app.copy.vision.collectionOperationHistoryDescription}</small></span><b>{app.copy.vision.collectionOperationHistoryCount(collectionOperationHistory.length)}</b></div>
       <div className="vision-collection-operation-history-list" role="list" aria-label={app.copy.vision.collectionOperationHistoryTitle}>
@@ -2426,7 +2426,11 @@ export function VisionPanel(): React.ReactElement {
           return <div className={`vision-collection-operation-history-entry is-${operation.status}`} key={operation.id} role="listitem">
             <div className="vision-collection-operation-history-copy"><strong>{app.copy.vision.collectionOperationTypeLabel[operation.type]}</strong><small title={targets}>{targets}</small></div>
             <div className="vision-collection-operation-history-meta"><span>{app.copy.vision.collectionOperationHistoryStatusLabel[operation.status]}</span><span>{app.copy.vision.collectionOperationHistoryTargetCount(operation.collectionIds.length)} · {app.copy.vision.collectionOperationHistorySelectionCount(operation.selectionCount)}</span><time dateTime={new Date(operation.createdAt).toISOString()}>{new Date(operation.createdAt).toLocaleString()}</time></div>
-            <button className="vision-collection-operation-history-detail-action" type="button" onClick={() => inspectCollectionOperation(operation.id)} disabled={isCollectionBatchBusy || isLoadingCollectionOperationHistoryDetail} aria-expanded={collectionOperationHistoryDetailId === operation.id}>{collectionOperationHistoryDetailId === operation.id ? app.copy.vision.collectionOperationHistoryDetailClose : app.copy.vision.collectionOperationHistoryViewDetail}</button>
+            <div className="vision-collection-operation-history-actions">
+              {operation.status === 'active' ? <button className="vision-collection-operation-history-action" type="button" onClick={() => undoCollectionOperation(operation.id)} disabled={isCollectionBatchBusy} aria-label={`${app.copy.vision.collectionOperationHistoryUndo}: ${app.copy.vision.collectionOperationTypeLabel[operation.type]}`}><Undo2 size={11} />{app.copy.vision.collectionOperationHistoryUndo}</button> : null}
+              {operation.status === 'redoable' ? <button className="vision-collection-operation-history-action" type="button" onClick={() => redoCollectionOperation(operation.id)} disabled={isCollectionBatchBusy} aria-label={`${app.copy.vision.collectionOperationHistoryRedo}: ${app.copy.vision.collectionOperationTypeLabel[operation.type]}`}><Redo2 size={11} />{app.copy.vision.collectionOperationHistoryRedo}</button> : null}
+              <button className="vision-collection-operation-history-detail-action" type="button" onClick={() => inspectCollectionOperation(operation.id)} disabled={isCollectionBatchBusy || isLoadingCollectionOperationHistoryDetail} aria-expanded={collectionOperationHistoryDetailId === operation.id}>{collectionOperationHistoryDetailId === operation.id ? app.copy.vision.collectionOperationHistoryDetailClose : app.copy.vision.collectionOperationHistoryViewDetail}</button>
+            </div>
           </div>
         })}
       </div>

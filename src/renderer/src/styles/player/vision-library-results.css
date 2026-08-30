@@ -1700,8 +1700,18 @@
   opacity: 0.72;
 }
 
-.vision-collection-operation-history-detail-action {
+.vision-collection-operation-history-actions {
   grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.vision-collection-operation-history-action,
+.vision-collection-operation-history-detail-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   justify-self: start;
   min-height: 21px;
   padding: 0 6px;
@@ -1713,6 +1723,8 @@
   font-size: 8px;
 }
 
+.vision-collection-operation-history-action:hover:not(:disabled),
+.vision-collection-operation-history-action:focus-visible,
 .vision-collection-operation-history-detail-action:hover:not(:disabled),
 .vision-collection-operation-history-detail-action:focus-visible {
   color: var(--text-primary);
@@ -1720,6 +1732,7 @@
   outline: 0;
 }
 
+.vision-collection-operation-history-action:disabled,
 .vision-collection-operation-history-detail-action:disabled {
   cursor: default;
   opacity: 0.5;
