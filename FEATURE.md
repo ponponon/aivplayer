@@ -1290,3 +1290,10 @@
 - 标签元数据沿用现有部分 before 快照语义，批量状态模拟会按 `metadataTags` 还原受影响条目，保留未受影响的元数据，避免批量撤销误删其他标签样式。
 - 标签历史批量撤销 / 重做通过独立 IPC / Preload 通道接入，四语言提供选择计数、全选、清除、成功和冲突反馈；成功后刷新集合标签、元数据和历史状态并清空选择。
 - 真实 Electron Smoke 覆盖 22 条元数据历史跨两页选择、批量撤销与重做，验证 `crossPageSelectionVerified: true`、`atomicUndoVerified: true`、`atomicRedoVerified: true` 和 `consoleErrors: 0`。
+
+## Clip Inbox 标签历史批量冲突诊断
+
+- 批量撤销 / 重做失败时返回具体历史操作 ID、操作类型和冲突原因，覆盖历史缺失、状态不符、快照损坏、集合标签或更新时间变化、元数据变化五类情况。
+- 标签历史卡片展示最多五条冲突明细及可读原因，超出部分显示剩余数量；失败不会清空选择集，也不会改变当前集合、元数据或历史状态。
+- 冲突反馈通过 IPC / Preload 透传，四语言补齐标题、说明、原因和超量提示；正常成功路径继续清理冲突状态。
+- 真实 Electron Smoke 构造分支修改并验证 `conflictDiagnosticsVerified: true`、集合仍保持分支标签、历史条目仍为 active、`consoleErrors: 0`，截图输出到 `/private/tmp/aivplayer-tag-history-batch-conflict.png`。
