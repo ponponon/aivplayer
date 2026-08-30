@@ -694,11 +694,20 @@ export type VisionClipCollectionTagOperationBatchResult = {
   operations: VisionClipCollectionTagOperationHistory[]
   collections: VisionClipCollection[]
   metadata: VisionClipCollectionTagMetadata[]
+  conflicts: VisionClipCollectionTagOperationBatchConflict[]
 }
 
 export type VisionClipCollectionTagOperationBatchUndoResult = VisionClipCollectionTagOperationBatchResult
 
 export type VisionClipCollectionTagOperationBatchRedoResult = VisionClipCollectionTagOperationBatchResult
+
+export type VisionClipCollectionTagOperationBatchConflictReason = 'missing' | 'status' | 'corrupt' | 'collection-conflict' | 'metadata-conflict'
+
+export type VisionClipCollectionTagOperationBatchConflict = {
+  operationId: string
+  operationType: VisionClipCollectionTagOperationType | null
+  reason: VisionClipCollectionTagOperationBatchConflictReason
+}
 
 export type VisionClipCollectionOperationType = 'flags' | 'merge' | 'delete' | 'rename' | 'duplicate' | 'content'
 

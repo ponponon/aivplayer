@@ -635,6 +635,7 @@ describe('clip inbox store', () => {
     const result = store.undoTagOperations(operationIds)
 
     expect(result).toMatchObject({ success: false, operations: [], collections: [], metadata: [] })
+    expect(result.conflicts).toMatchObject([{ operationType: 'single', reason: 'collection-conflict' }])
     expect(store.getCollection(source.id)?.tags).toEqual(['分支'])
     expect(store.getTagMetadata('父')).toMatchObject({ color: '#123456' })
     expect(store.listTagOperationHistory().filter((operation) => operationIds.includes(operation.id)).every((operation) => operation.status === 'active')).toBe(true)

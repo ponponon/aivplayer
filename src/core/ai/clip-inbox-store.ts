@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto'
 import { mergeVisionClipSelections, normalizeVisionTimeRange } from './vision-evidence'
 import { normalizeVisionClipCollectionTagOperationHistoryPageRequest } from './clip-inbox-tag-history'
 import { applyVisionCollectionTags, duplicateVisionCollectionTitle, mergeVisionClipCollections, normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionSortMode, normalizeVisionCollectionTag, normalizeVisionCollectionTagColor, normalizeVisionCollectionTagFavorite, normalizeVisionCollectionTagNote, normalizeVisionCollectionTags, normalizeVisionCollectionTagsMode, renameVisionCollectionTag, renameVisionClipCollectionTitle, selectVisionClipCollectionsForMerge, sortVisionClipSelections, wouldCreateVisionCollectionTagParentCycle } from './clip-inbox-operations'
-import type { VisionClipCollection, VisionClipCollectionBatchDeleteResult, VisionClipCollectionBatchRenameResult, VisionClipCollectionBatchTagsResult, VisionClipCollectionFlagUpdateRequest, VisionClipCollectionInput, VisionClipCollectionMergeSelection, VisionClipCollectionOperationBatchRedoResult, VisionClipCollectionOperationBatchUndoResult, VisionClipCollectionOperationCollectionDetail, VisionClipCollectionOperationHistory, VisionClipCollectionOperationHistoryDetail, VisionClipCollectionOperationHistoryEntry, VisionClipCollectionOperationRedoResult, VisionClipCollectionOperationType, VisionClipCollectionOperationUndoResult, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataUpdateRequest, VisionClipCollectionTagOperationBatchRedoResult, VisionClipCollectionTagOperationBatchUndoResult, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationHistoryDetail, VisionClipCollectionTagOperationHistoryEntry, VisionClipCollectionTagOperationHistoryPage, VisionClipCollectionTagOperationType, VisionClipCollectionTagRedoResult, VisionClipCollectionTagUndoResult, VisionClipSelection, VisionEvidenceType } from '../../shared/vision-types'
+import type { VisionClipCollection, VisionClipCollectionBatchDeleteResult, VisionClipCollectionBatchRenameResult, VisionClipCollectionBatchTagsResult, VisionClipCollectionFlagUpdateRequest, VisionClipCollectionInput, VisionClipCollectionMergeSelection, VisionClipCollectionOperationBatchRedoResult, VisionClipCollectionOperationBatchUndoResult, VisionClipCollectionOperationCollectionDetail, VisionClipCollectionOperationHistory, VisionClipCollectionOperationHistoryDetail, VisionClipCollectionOperationHistoryEntry, VisionClipCollectionOperationRedoResult, VisionClipCollectionOperationType, VisionClipCollectionOperationUndoResult, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataUpdateRequest, VisionClipCollectionTagOperationBatchConflict, VisionClipCollectionTagOperationBatchConflictReason, VisionClipCollectionTagOperationBatchRedoResult, VisionClipCollectionTagOperationBatchUndoResult, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationHistoryDetail, VisionClipCollectionTagOperationHistoryEntry, VisionClipCollectionTagOperationHistoryPage, VisionClipCollectionTagOperationType, VisionClipCollectionTagRedoResult, VisionClipCollectionTagUndoResult, VisionClipSelection, VisionEvidenceType } from '../../shared/vision-types'
 
 type SqliteRow = Record<string, unknown>
 const EVIDENCE_TYPES: readonly VisionEvidenceType[] = ['subtitle', 'visual', 'scene', 'ocr', 'entity', 'object']
@@ -35,6 +35,12 @@ type TagOperationBatchTransition = {
   operation: VisionClipCollectionTagOperationHistory
   snapshot: TagOperationSnapshot
   touchedCollectionIds: string[]
+}
+
+type TagOperationBatchPreparation = {
+  transition: TagOperationBatchTransition | null
+  message: string
+  conflictReason?: VisionClipCollectionTagOperationBatchConflictReason
 }
 
 type CollectionOperationFlagSnapshot = { id: string; isFavorite: boolean; isArchived: boolean; updatedAt: number }
@@ -1246,12 +1252,19 @@ export class ClipInboxStore {
     const normalizedIds = normalizeTagOperationIds(operationIds)
     const unavailableMessage = direction === 'undo' ? '选中的标签操作当前不可撤销' : '选中的标签操作当前不可重做'
     const successMessage = direction === 'undo' ? '已批量撤销选中的标签操作' : '已批量重做选中的标签操作'
-    if (normalizedIds.length === 0) return { success: false, message: unavailableMessage, operations: [], collections: [], metadata: [] }
+    if (normalizedIds.length === 0) return { success: false, message: unavailableMessage, operations: [], collections: [], metadata: [], conflicts: [] }
 
     const placeholders = normalizedIds.map(() => '?').join(', ')
-    const eligibility = direction === 'undo' ? 'undone_at IS NULL' : 'undone_at IS NOT NULL AND redoable = 1'
-    const rows = this.database.prepare(`SELECT id, operation_type, snapshot_json, created_at, rowid AS operation_rowid FROM clip_tag_operation_history WHERE id IN (${placeholders}) AND ${eligibility}`).all(...normalizedIds) as SqliteRow[]
-    if (rows.length !== normalizedIds.length) return { success: false, message: unavailableMessage, operations: [], collections: [], metadata: [] }
+    const rows = this.database.prepare(`SELECT id, operation_type, snapshot_json, created_at, undone_at, redoable, rowid AS operation_rowid FROM clip_tag_operation_history WHERE id IN (${placeholders})`).all(...normalizedIds) as SqliteRow[]
+    const rowsById = new Map(rows.map((row) => [stringValue(row, 'id'), row]))
+    const statusConflicts = normalizedIds.map((id): VisionClipCollectionTagOperationBatchConflict | null => {
+      const row = rowsById.get(id)
+      if (!row) return { operationId: id, operationType: null, reason: 'missing' }
+      const operation = this.readTagOperationHistory(row)
+      const eligible = direction === 'undo' ? row.undone_at === null : row.undone_at !== null && numberValue(row, 'redoable') === 1
+      return eligible ? null : { operationId: id, operationType: operation?.type ?? null, reason: 'status' }
+    }).filter((conflict): conflict is VisionClipCollectionTagOperationBatchConflict => conflict !== null)
+    if (statusConflicts.length > 0) return { success: false, message: unavailableMessage, operations: [], collections: [], metadata: [], conflicts: statusConflicts }
     rows.sort((left, right) => {
       const difference = numberValue(left, 'operation_rowid') - numberValue(right, 'operation_rowid')
       return direction === 'undo' ? -difference : difference
@@ -1265,9 +1278,9 @@ export class ClipInboxStore {
     for (const row of rows) {
       const operation = this.readTagOperationHistory(row)
       const snapshot = this.parseTagOperationSnapshot(row.snapshot_json)
-      if (!operation || !snapshot) return { success: false, message: '选中的标签操作记录已损坏', operations: [], collections: [], metadata: [] }
+      if (!operation || !snapshot) return { success: false, message: '选中的标签操作记录已损坏', operations: [], collections: [], metadata: [], conflicts: [{ operationId: stringValue(row, 'id'), operationType: operation?.type ?? null, reason: 'corrupt' }] }
       const prepared = this.prepareTagOperationBatchTransition(operation, snapshot, direction, state)
-      if (!prepared.transition) return { success: false, message: prepared.message, operations: [], collections: [], metadata: [] }
+      if (!prepared.transition) return { success: false, message: prepared.message, operations: [], collections: [], metadata: [], conflicts: [{ operationId: operation.id, operationType: operation.type, reason: prepared.conflictReason ?? 'corrupt' }] }
       transitions.push(prepared.transition)
     }
 
@@ -1283,14 +1296,14 @@ export class ClipInboxStore {
 
       const touchedIds = [...new Set(transitions.flatMap((transition) => transition.touchedCollectionIds))]
       const collections = touchedIds.map((id) => this.getCollection(id)).filter((collection): collection is VisionClipCollection => collection !== null)
-      return { success: true, message: successMessage, operations: transitions.map((transition) => transition.operation), collections, metadata: this.listTagMetadata() }
+      return { success: true, message: successMessage, operations: transitions.map((transition) => transition.operation), collections, metadata: this.listTagMetadata(), conflicts: [] }
     } catch (error) {
       this.database.exec('ROLLBACK')
       throw error
     }
   }
 
-  private prepareTagOperationBatchTransition(operation: VisionClipCollectionTagOperationHistory, snapshot: TagOperationSnapshot, direction: TagOperationBatchDirection, state: TagOperationBatchState): { transition: TagOperationBatchTransition | null; message: string } {
+  private prepareTagOperationBatchTransition(operation: VisionClipCollectionTagOperationHistory, snapshot: TagOperationSnapshot, direction: TagOperationBatchDirection, state: TagOperationBatchState): TagOperationBatchPreparation {
     const unavailableMessage = direction === 'undo' ? '批量撤销包含无法安全处理的标签操作' : '批量重做包含无法安全处理的标签操作'
     const corruptedMessage = direction === 'undo' ? '批量撤销包含损坏的标签操作记录' : '批量重做包含损坏的标签操作记录'
     const beforeCollections = snapshot.collectionTags
@@ -1308,7 +1321,7 @@ export class ClipInboxStore {
       if (!expected || !next || expected.id !== next.id || seenCollectionIds.has(expected.id)) return { transition: null, message: corruptedMessage }
       seenCollectionIds.add(expected.id)
       const current = state.collections.get(expected.id)
-      if (!current || current.updatedAt !== expected.updatedAt || JSON.stringify(current.tags) !== JSON.stringify(expected.tags)) return { transition: null, message: unavailableMessage }
+      if (!current || current.updatedAt !== expected.updatedAt || JSON.stringify(current.tags) !== JSON.stringify(expected.tags)) return { transition: null, message: unavailableMessage, conflictReason: 'collection-conflict' }
       state.collections.set(next.id, { id: next.id, tags: [...next.tags], updatedAt: next.updatedAt })
     }
 
@@ -1318,7 +1331,8 @@ export class ClipInboxStore {
     const nextMetadata = direction === 'undo' ? beforeMetadata : afterMetadata
     const expectedMetadataMap = this.toTagMetadataMap(expectedMetadata)
     const nextMetadataMap = this.toTagMetadataMap(nextMetadata)
-    if (!expectedMetadataMap || !nextMetadataMap || !this.tagMetadataMapsMatch(state.metadata, expectedMetadataMap)) return { transition: null, message: unavailableMessage }
+    if (!expectedMetadataMap || !nextMetadataMap) return { transition: null, message: corruptedMessage }
+    if (!this.tagMetadataMapsMatch(state.metadata, expectedMetadataMap)) return { transition: null, message: unavailableMessage, conflictReason: 'metadata-conflict' }
     state.metadata = nextMetadataMap
 
     return {
