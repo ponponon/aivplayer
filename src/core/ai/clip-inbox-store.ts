@@ -1299,7 +1299,8 @@ export class ClipInboxStore {
       if (expected.length === 0 || expected.length !== next.length) return false
       for (let index = 0; index < expected.length; index += 1) {
         const expectedCollection = expected[index]
-        if (!expectedCollection || !append({ id: expectedCollection.id, expected: cloneCollection(expectedCollection), next: next[index] ? cloneCollection(next[index] as VisionClipCollection) : null })) return false
+        const nextCollection = next[index]
+        if (!expectedCollection || (nextCollection !== null && nextCollection !== undefined && nextCollection.id !== expectedCollection.id) || !append({ id: expectedCollection.id, expected: cloneCollection(expectedCollection), next: nextCollection ? cloneCollection(nextCollection) : null })) return false
       }
       return true
     }
