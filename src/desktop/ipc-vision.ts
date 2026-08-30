@@ -787,7 +787,7 @@ export function registerVisionIpc(): void {
       if (!result.success) return { ...result, message: copy.collectionTagManagerHistoryBatchUndoUnavailable }
       return { ...result, message: copy.collectionTagManagerHistoryBatchUndoSuccess(result.operations.length) }
     } catch (error) {
-      return { success: false, message: error instanceof Error ? error.message : String(error), operations: [], collections: [], metadata: [] }
+      return { success: false, message: error instanceof Error ? error.message : String(error), operations: [], collections: [], metadata: [], conflicts: [] }
     }
   })
   ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_TAG_OPERATION_BATCH_REDO, (_event, operationIds: unknown[]) => {
@@ -797,7 +797,7 @@ export function registerVisionIpc(): void {
       if (!result.success) return { ...result, message: copy.collectionTagManagerHistoryBatchRedoUnavailable }
       return { ...result, message: copy.collectionTagManagerHistoryBatchRedoSuccess(result.operations.length) }
     } catch (error) {
-      return { success: false, message: error instanceof Error ? error.message : String(error), operations: [], collections: [], metadata: [] }
+      return { success: false, message: error instanceof Error ? error.message : String(error), operations: [], collections: [], metadata: [], conflicts: [] }
     }
   })
   ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_OPERATION_HISTORY, () => getClipInboxStore().getLastCollectionOperation())
