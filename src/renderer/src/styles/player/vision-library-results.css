@@ -1592,6 +1592,114 @@
   font-size: 9px;
 }
 
+.vision-collection-operation-history {
+  display: grid;
+  gap: 7px;
+}
+
+.vision-collection-operation-history-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.vision-collection-operation-history-heading > span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.vision-collection-operation-history-heading strong {
+  color: var(--text-primary);
+  font-size: 10px;
+}
+
+.vision-collection-operation-history-heading small {
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.vision-collection-operation-history-heading b {
+  flex: 0 0 auto;
+  min-width: 18px;
+  padding: 2px 5px;
+  color: var(--text-secondary);
+  background: rgba(var(--overlay-rgb), 0.08);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  font-size: 9px;
+  text-align: center;
+}
+
+.vision-collection-operation-history-list {
+  display: grid;
+  gap: 4px;
+  max-height: 240px;
+  overflow: auto;
+}
+
+.vision-collection-operation-history-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 3px 8px;
+  padding: 5px 6px;
+  background: rgba(var(--overlay-rgb), 0.04);
+  border-left: 2px solid var(--border-soft);
+  border-radius: 4px;
+}
+
+.vision-collection-operation-history-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.vision-collection-operation-history-copy strong,
+.vision-collection-operation-history-copy small,
+.vision-collection-operation-history-meta span,
+.vision-collection-operation-history-meta time {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vision-collection-operation-history-copy strong {
+  color: var(--text-secondary);
+  font-size: 9px;
+}
+
+.vision-collection-operation-history-copy small {
+  color: var(--text-muted);
+  font-size: 8px;
+}
+
+.vision-collection-operation-history-meta {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  color: var(--text-muted);
+  font-size: 8px;
+  text-align: right;
+}
+
+.vision-collection-operation-history-meta time {
+  color: var(--text-muted);
+}
+
+.vision-collection-operation-history-entry.is-active {
+  border-left-color: var(--accent);
+}
+
+.vision-collection-operation-history-entry.is-redoable {
+  border-left-color: var(--warning, #d99a46);
+}
+
+.vision-collection-operation-history-entry.is-undone {
+  opacity: 0.72;
+}
+
 .vision-collection-tag-manager-list {
   display: flex;
   flex-wrap: wrap;
