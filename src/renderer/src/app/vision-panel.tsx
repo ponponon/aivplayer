@@ -62,6 +62,8 @@ type CollectionMergeRangeOverride = {
   endSeconds: number
 }
 
+type VisionCollectionTagOperationBatchDirection = 'undo' | 'redo'
+
 function readVisionSearchPreferences(): VisionSearchPreferences {
   if (typeof window === 'undefined') return createDefaultVisionSearchPreferences()
   try {
@@ -400,6 +402,8 @@ export function VisionPanel(): React.ReactElement {
   const [collectionTagHistoryDetailId, setCollectionTagHistoryDetailId] = useState<string | null>(null)
   const [collectionTagHistoryDetail, setCollectionTagHistoryDetail] = useState<VisionClipCollectionTagOperationHistoryDetail | null>(null)
   const [isLoadingCollectionTagHistoryDetail, setIsLoadingCollectionTagHistoryDetail] = useState(false)
+  const [selectedCollectionTagOperationUndoIds, setSelectedCollectionTagOperationUndoIds] = useState<Set<string>>(() => new Set())
+  const [selectedCollectionTagOperationRedoIds, setSelectedCollectionTagOperationRedoIds] = useState<Set<string>>(() => new Set())
   const [lastCollectionOperation, setLastCollectionOperation] = useState<VisionClipCollectionOperationHistory | null>(null)
   const [isUndoingCollectionOperation, setIsUndoingCollectionOperation] = useState(false)
   const [lastCollectionRedoOperation, setLastCollectionRedoOperation] = useState<VisionClipCollectionOperationHistory | null>(null)
@@ -528,6 +532,9 @@ export function VisionPanel(): React.ReactElement {
   const savedCollectionFilterImportNewCount = savedCollectionFilterImportItems.filter((item) => item.state === 'new').length
   const savedCollectionFilterImportSkippedCount = savedCollectionFilterImportItems.filter((item) => item.state !== 'new' && item.state !== 'conflict').length
   const visibleCollectionTagOperationHistory = filterVisionClipCollectionTagOperationHistory(collectionTagOperationHistory, collectionTagHistoryFilter)
+  const undoableCollectionTagOperationHistory = visibleCollectionTagOperationHistory.filter((operation) => operation.status === 'active')
+  const redoableCollectionTagOperationHistory = visibleCollectionTagOperationHistory.filter((operation) => operation.status === 'redoable')
+  const selectedCollectionTagOperationCount = selectedCollectionTagOperationUndoIds.size + selectedCollectionTagOperationRedoIds.size
   const collectionTagHistoryPageCount = Math.ceil(collectionTagHistoryTotal / VISION_CLIP_COLLECTION_TAG_OPERATION_HISTORY_PAGE_SIZE)
   const collectionTagHistoryPageNumber = collectionTagHistoryTotal === 0 ? 0 : Math.floor(collectionTagHistoryOffset / VISION_CLIP_COLLECTION_TAG_OPERATION_HISTORY_PAGE_SIZE) + 1
   const isCollectionTagHistoryBusy = isLoadingCollectionTagHistory || isLoadingCollectionTagHistoryDetail
@@ -691,6 +698,38 @@ export function VisionPanel(): React.ReactElement {
   const clearCollectionOperationSelection = (): void => {
     setSelectedCollectionOperationUndoIds(new Set())
     setSelectedCollectionOperationRedoIds(new Set())
+  }
+
+  const toggleCollectionTagOperationSelection = (operationId: string, direction: VisionCollectionTagOperationBatchDirection): void => {
+    const setSelection = direction === 'undo' ? setSelectedCollectionTagOperationUndoIds : setSelectedCollectionTagOperationRedoIds
+    setSelection((current) => {
+      const next = new Set(current)
+      if (next.has(operationId)) next.delete(operationId)
+      else next.add(operationId)
+      return next
+    })
+  }
+
+  const toggleAllCollectionTagOperationSelection = (direction: VisionCollectionTagOperationBatchDirection): void => {
+    const operations = direction === 'undo' ? undoableCollectionTagOperationHistory : redoableCollectionTagOperationHistory
+    const operationIds = operations.map((operation) => operation.id)
+    if (operationIds.length === 0) return
+    const selected = direction === 'undo' ? selectedCollectionTagOperationUndoIds : selectedCollectionTagOperationRedoIds
+    const setSelection = direction === 'undo' ? setSelectedCollectionTagOperationUndoIds : setSelectedCollectionTagOperationRedoIds
+    setSelection((current) => {
+      const next = new Set(current)
+      const allSelected = operationIds.every((id) => next.has(id))
+      for (const id of operationIds) {
+        if (allSelected) next.delete(id)
+        else next.add(id)
+      }
+      return next
+    })
+  }
+
+  const clearCollectionTagOperationSelection = (): void => {
+    setSelectedCollectionTagOperationUndoIds(new Set())
+    setSelectedCollectionTagOperationRedoIds(new Set())
   }
 
   useEffect(() => {
@@ -2081,6 +2120,48 @@ export function VisionPanel(): React.ReactElement {
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setIsRedoingCollectionTagOperation(false))
   }
 
+  const undoSelectedCollectionTagOperations = (): void => {
+    const operationIds = [...selectedCollectionTagOperationUndoIds]
+    if (isCollectionBatchBusy || operationIds.length === 0) return
+    setIsUndoingCollectionTagOperation(true)
+    setError(null)
+    void window.aiv.undoVisionClipCollectionTagOperations(operationIds).then((result) => {
+      if (!result.success) {
+        setError(result.message)
+        return
+      }
+      const updatedById = new Map(result.collections.map((collection) => [collection.id, collection]))
+      setCollections((current) => current.map((collection) => updatedById.get(collection.id) ?? collection))
+      setCollectionTagMetadata(result.metadata)
+      clearCollectionTagOperationSelection()
+      setCollectionTagToManage('')
+      setCollectionTagRenameTarget('')
+      refreshCollectionTagOperation()
+      setCollectionTransferStatus(result.message)
+    }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setIsUndoingCollectionTagOperation(false))
+  }
+
+  const redoSelectedCollectionTagOperations = (): void => {
+    const operationIds = [...selectedCollectionTagOperationRedoIds]
+    if (isCollectionBatchBusy || operationIds.length === 0) return
+    setIsRedoingCollectionTagOperation(true)
+    setError(null)
+    void window.aiv.redoVisionClipCollectionTagOperations(operationIds).then((result) => {
+      if (!result.success) {
+        setError(result.message)
+        return
+      }
+      const updatedById = new Map(result.collections.map((collection) => [collection.id, collection]))
+      setCollections((current) => current.map((collection) => updatedById.get(collection.id) ?? collection))
+      setCollectionTagMetadata(result.metadata)
+      clearCollectionTagOperationSelection()
+      setCollectionTagToManage('')
+      setCollectionTagRenameTarget('')
+      refreshCollectionTagOperation()
+      setCollectionTransferStatus(result.message)
+    }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setIsRedoingCollectionTagOperation(false))
+  }
+
   const undoCollectionOperation = (operationId?: string): void => {
     if (isCollectionBatchBusy || (operationId === undefined && !lastCollectionOperation)) return
     setIsUndoingCollectionOperation(true)
@@ -2385,9 +2466,20 @@ export function VisionPanel(): React.ReactElement {
           </select></label>
           <button className="vision-secondary-action" type="button" onClick={exportCollectionTagOperationHistory} disabled={isCollectionBatchBusy || isCollectionTagHistoryBusy || visibleCollectionTagOperationHistory.length === 0}><Download size={12} />{app.copy.vision.collectionTagManagerHistoryExport}</button>
         </div>
+        {visibleCollectionTagOperationHistory.length > 0 ? <div className="vision-collection-tag-history-selection-toolbar" role="group" aria-label={app.copy.vision.collectionTagManagerHistoryTitle}>
+          <span className="vision-collection-tag-history-selection-count" role="status">{app.copy.vision.collectionTagManagerHistorySelectedCount(selectedCollectionTagOperationCount)}</span>
+          <div className="vision-collection-tag-history-selection-actions">
+            {undoableCollectionTagOperationHistory.length > 0 ? <><button className="vision-collection-tag-history-selection-action" type="button" onClick={() => toggleAllCollectionTagOperationSelection('undo')} disabled={isCollectionBatchBusy} aria-pressed={undoableCollectionTagOperationHistory.every((operation) => selectedCollectionTagOperationUndoIds.has(operation.id))}>{app.copy.vision.collectionTagManagerHistorySelectAllUndo}</button>{selectedCollectionTagOperationUndoIds.size > 0 ? <button className="vision-collection-tag-history-batch-action" type="button" onClick={undoSelectedCollectionTagOperations} disabled={isCollectionBatchBusy}><Undo2 size={11} />{app.copy.vision.collectionTagManagerHistoryBatchUndo}</button> : null}</> : null}
+            {redoableCollectionTagOperationHistory.length > 0 ? <><button className="vision-collection-tag-history-selection-action" type="button" onClick={() => toggleAllCollectionTagOperationSelection('redo')} disabled={isCollectionBatchBusy} aria-pressed={redoableCollectionTagOperationHistory.every((operation) => selectedCollectionTagOperationRedoIds.has(operation.id))}>{app.copy.vision.collectionTagManagerHistorySelectAllRedo}</button>{selectedCollectionTagOperationRedoIds.size > 0 ? <button className="vision-collection-tag-history-batch-action" type="button" onClick={redoSelectedCollectionTagOperations} disabled={isCollectionBatchBusy}><Redo2 size={11} />{app.copy.vision.collectionTagManagerHistoryBatchRedo}</button> : null}</> : null}
+            {selectedCollectionTagOperationCount > 0 ? <button className="vision-collection-tag-history-selection-action" type="button" onClick={clearCollectionTagOperationSelection} disabled={isCollectionBatchBusy}>{app.copy.vision.collectionTagManagerHistoryClearSelection}</button> : null}
+          </div>
+        </div> : null}
         {visibleCollectionTagOperationHistory.length > 0 ? <div className="vision-collection-tag-history-list" role="list" aria-label={app.copy.vision.collectionTagManagerHistoryTitle}>
           {visibleCollectionTagOperationHistory.map((operation) => <div className={`vision-collection-tag-history-entry is-${operation.status}`} key={operation.id} role="listitem">
-            <strong>{app.copy.vision.collectionTagManagerHistoryType[operation.type]}</strong>
+            <div className="vision-collection-tag-history-entry-main">
+              {operation.status === 'active' ? <input className="vision-collection-tag-history-select" type="checkbox" checked={selectedCollectionTagOperationUndoIds.has(operation.id)} onChange={() => toggleCollectionTagOperationSelection(operation.id, 'undo')} aria-label={app.copy.vision.collectionTagManagerHistorySelectUndo(app.copy.vision.collectionTagManagerHistoryType[operation.type])} disabled={isCollectionBatchBusy} /> : operation.status === 'redoable' ? <input className="vision-collection-tag-history-select" type="checkbox" checked={selectedCollectionTagOperationRedoIds.has(operation.id)} onChange={() => toggleCollectionTagOperationSelection(operation.id, 'redo')} aria-label={app.copy.vision.collectionTagManagerHistorySelectRedo(app.copy.vision.collectionTagManagerHistoryType[operation.type])} disabled={isCollectionBatchBusy} /> : <span className="vision-collection-tag-history-select-placeholder" aria-hidden="true" />}
+              <strong>{app.copy.vision.collectionTagManagerHistoryType[operation.type]}</strong>
+            </div>
             <time dateTime={new Date(operation.createdAt).toISOString()}>{new Date(operation.createdAt).toLocaleString()}</time>
             <small>{app.copy.vision.collectionTagManagerHistoryStatus[operation.status]}</small>
             <button className="vision-collection-tag-history-detail-action" type="button" onClick={() => inspectCollectionTagOperation(operation.id)} disabled={isCollectionBatchBusy || isCollectionTagHistoryBusy} aria-current={collectionTagHistoryDetailId === operation.id ? 'true' : undefined} aria-label={`${app.copy.vision.collectionTagManagerHistoryViewDetail}: ${app.copy.vision.collectionTagManagerHistoryType[operation.type]}`}>{app.copy.vision.collectionTagManagerHistoryViewDetail}</button>

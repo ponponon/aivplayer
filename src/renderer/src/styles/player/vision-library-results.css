@@ -1401,6 +1401,64 @@
   outline: 0;
 }
 
+.vision-collection-tag-history-selection-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 4px 5px;
+  background: rgba(var(--accent-rgb), 0.04);
+  border: 1px solid var(--border-soft);
+  border-radius: 4px;
+}
+
+.vision-collection-tag-history-selection-count {
+  color: var(--text-muted);
+  font-size: 8px;
+}
+
+.vision-collection-tag-history-selection-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.vision-collection-tag-history-selection-action,
+.vision-collection-tag-history-batch-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 21px;
+  padding: 0 6px;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border-soft);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 8px;
+}
+
+.vision-collection-tag-history-batch-action {
+  color: var(--text-primary);
+  border-color: rgba(var(--accent-rgb), 0.45);
+}
+
+.vision-collection-tag-history-selection-action:hover:not(:disabled),
+.vision-collection-tag-history-selection-action:focus-visible,
+.vision-collection-tag-history-batch-action:hover:not(:disabled),
+.vision-collection-tag-history-batch-action:focus-visible {
+  color: var(--text-primary);
+  border-color: var(--accent);
+  outline: 0;
+}
+
+.vision-collection-tag-history-selection-action:disabled,
+.vision-collection-tag-history-batch-action:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
 .vision-collection-tag-history-pagination {
   display: flex;
   align-items: center;
@@ -1506,6 +1564,28 @@
   background: rgba(var(--overlay-rgb), 0.04);
   border-left: 2px solid var(--border-soft);
   border-radius: 4px;
+}
+
+.vision-collection-tag-history-entry-main {
+  display: flex;
+  align-items: flex-start;
+  min-width: 0;
+  gap: 5px;
+}
+
+.vision-collection-tag-history-select {
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  margin: 1px 0 0;
+  accent-color: var(--accent);
+}
+
+.vision-collection-tag-history-select-placeholder {
+  display: block;
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
 }
 
 .vision-collection-tag-history-entry strong,
