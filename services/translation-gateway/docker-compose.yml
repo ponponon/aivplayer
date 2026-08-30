@@ -18,7 +18,11 @@ services:
       BIGMODEL_API_KEY_FILE: /run/secrets/bigmodel_api_key
       MAX_CONCURRENT_REQUESTS: 4
     secrets:
-      - bigmodel_api_key
+      - source: bigmodel_api_key
+        target: bigmodel_api_key
+        uid: "1000"
+        gid: "1000"
+        mode: "0440"
     ports:
       - 127.0.0.1:18787:8787
     healthcheck:
@@ -52,7 +56,11 @@ services:
       BIGMODEL_API_KEY_FILE: /run/secrets/bigmodel_api_key
       MAX_CONCURRENT_REQUESTS: 4
     secrets:
-      - bigmodel_api_key
+      - source: bigmodel_api_key
+        target: bigmodel_api_key
+        uid: "1000"
+        gid: "1000"
+        mode: "0440"
     ports:
       - 127.0.0.1:18788:8787
     healthcheck:
