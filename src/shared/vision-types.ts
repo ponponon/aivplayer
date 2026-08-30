@@ -721,6 +721,17 @@ export type VisionClipCollectionOperationHistoryDetail = VisionClipCollectionOpe
   afterCollections: VisionClipCollectionOperationCollectionDetail[]
 }
 
+export type VisionClipCollectionOperationDetailField = 'title' | 'tags' | 'flags' | 'sortMode' | 'selectionCount'
+
+export type VisionClipCollectionOperationDetailChange = 'unchanged' | 'changed' | 'added' | 'removed'
+
+export type VisionClipCollectionOperationCollectionDiff = {
+  id: string
+  before: VisionClipCollectionOperationCollectionDetail | null
+  after: VisionClipCollectionOperationCollectionDetail | null
+  fieldChanges: Record<VisionClipCollectionOperationDetailField, VisionClipCollectionOperationDetailChange>
+}
+
 export type VisionClipCollectionOperationUndoResult = {
   success: boolean
   message: string
