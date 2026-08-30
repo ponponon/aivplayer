@@ -1459,6 +1459,73 @@
   opacity: 0.5;
 }
 
+.vision-collection-tag-history-conflicts {
+  display: grid;
+  gap: 5px;
+  padding: 6px;
+  color: var(--text-secondary);
+  background: rgba(var(--warning-rgb, 217, 154, 70), 0.08);
+  border: 1px solid rgba(var(--warning-rgb, 217, 154, 70), 0.36);
+  border-radius: 4px;
+}
+
+.vision-collection-tag-history-conflicts-heading {
+  display: grid;
+  gap: 2px;
+}
+
+.vision-collection-tag-history-conflicts-heading strong {
+  color: var(--text-primary);
+  font-size: 9px;
+}
+
+.vision-collection-tag-history-conflicts-heading small,
+.vision-collection-tag-history-conflicts > small {
+  color: var(--text-muted);
+  font-size: 8px;
+}
+
+.vision-collection-tag-history-conflicts ul {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vision-collection-tag-history-conflicts li {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) auto minmax(0, 1.2fr);
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.vision-collection-tag-history-conflicts li strong,
+.vision-collection-tag-history-conflicts li code,
+.vision-collection-tag-history-conflicts li small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vision-collection-tag-history-conflicts li strong,
+.vision-collection-tag-history-conflicts li code {
+  color: var(--text-secondary);
+  font-size: 8px;
+}
+
+.vision-collection-tag-history-conflicts li code {
+  color: var(--text-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.vision-collection-tag-history-conflicts li small {
+  color: var(--text-muted);
+  font-size: 8px;
+}
+
 .vision-collection-tag-history-pagination {
   display: flex;
   align-items: center;

@@ -4,7 +4,7 @@ import type { ChangeEvent, KeyboardEvent, ReactNode } from 'react'
 import type { VisionIndexProgress, VisionRuntimeStatus, VisionSearchResult } from '../../../shared/media-types'
 import type { AsrSubtitleResult } from '../../../shared/media-types'
 import type { MediaEvidenceDraftImportResult } from '../../../shared/evidence-task-types'
-import type { VisionClipCollection, VisionClipCollectionBatchTagsMode, VisionClipCollectionExportFormat, VisionClipCollectionMergeSelection, VisionClipCollectionOperationCollectionDetail, VisionClipCollectionOperationCollectionDiff, VisionClipCollectionOperationDetailField, VisionClipCollectionOperationHistory, VisionClipCollectionOperationHistoryDetail, VisionClipCollectionOperationHistoryEntry, VisionClipCollectionSortMode, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataImportDecision, VisionClipCollectionTagMetadataImportPreviewResult, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationHistoryDetail, VisionClipCollectionTagOperationHistoryEntry, VisionClipCollectionTagSortMode, VisionClipSelection, VisionEvidenceType, VisionIndexFailureRecord, VisionLibrarySource, VisionClipCollectionOperationDetailChange, VisionModelDownloadProgress, VisionSavedSearch, VisionSearchFullExportRequest, VisionSearchPageRequest, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchSortMode } from '../../../shared/vision-types'
+import type { VisionClipCollection, VisionClipCollectionBatchTagsMode, VisionClipCollectionExportFormat, VisionClipCollectionMergeSelection, VisionClipCollectionOperationCollectionDetail, VisionClipCollectionOperationCollectionDiff, VisionClipCollectionOperationDetailField, VisionClipCollectionOperationHistory, VisionClipCollectionOperationHistoryDetail, VisionClipCollectionOperationHistoryEntry, VisionClipCollectionSortMode, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataImportDecision, VisionClipCollectionTagMetadataImportPreviewResult, VisionClipCollectionTagOperationBatchConflict, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationHistoryDetail, VisionClipCollectionTagOperationHistoryEntry, VisionClipCollectionTagSortMode, VisionClipSelection, VisionEvidenceType, VisionIndexFailureRecord, VisionLibrarySource, VisionClipCollectionOperationDetailChange, VisionModelDownloadProgress, VisionSavedSearch, VisionSearchFullExportRequest, VisionSearchPageRequest, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchSortMode } from '../../../shared/vision-types'
 import type { LocaleCopy } from '../../../shared/i18n'
 import type { VisionObjectDetectionFilterState, VisionObjectDetectionResult } from '../../../shared/vision-object-detection-types'
 import type { VisionClipCollectionTagOperationHistoryFilter } from '../../../shared/vision-types'
@@ -404,6 +404,7 @@ export function VisionPanel(): React.ReactElement {
   const [isLoadingCollectionTagHistoryDetail, setIsLoadingCollectionTagHistoryDetail] = useState(false)
   const [selectedCollectionTagOperationUndoIds, setSelectedCollectionTagOperationUndoIds] = useState<Set<string>>(() => new Set())
   const [selectedCollectionTagOperationRedoIds, setSelectedCollectionTagOperationRedoIds] = useState<Set<string>>(() => new Set())
+  const [collectionTagOperationConflicts, setCollectionTagOperationConflicts] = useState<VisionClipCollectionTagOperationBatchConflict[]>([])
   const [lastCollectionOperation, setLastCollectionOperation] = useState<VisionClipCollectionOperationHistory | null>(null)
   const [isUndoingCollectionOperation, setIsUndoingCollectionOperation] = useState(false)
   const [lastCollectionRedoOperation, setLastCollectionRedoOperation] = useState<VisionClipCollectionOperationHistory | null>(null)
@@ -2127,12 +2128,14 @@ export function VisionPanel(): React.ReactElement {
     setError(null)
     void window.aiv.undoVisionClipCollectionTagOperations(operationIds).then((result) => {
       if (!result.success) {
+        setCollectionTagOperationConflicts(result.conflicts ?? [])
         setError(result.message)
         return
       }
       const updatedById = new Map(result.collections.map((collection) => [collection.id, collection]))
       setCollections((current) => current.map((collection) => updatedById.get(collection.id) ?? collection))
       setCollectionTagMetadata(result.metadata)
+      setCollectionTagOperationConflicts([])
       clearCollectionTagOperationSelection()
       setCollectionTagToManage('')
       setCollectionTagRenameTarget('')
@@ -2148,12 +2151,14 @@ export function VisionPanel(): React.ReactElement {
     setError(null)
     void window.aiv.redoVisionClipCollectionTagOperations(operationIds).then((result) => {
       if (!result.success) {
+        setCollectionTagOperationConflicts(result.conflicts ?? [])
         setError(result.message)
         return
       }
       const updatedById = new Map(result.collections.map((collection) => [collection.id, collection]))
       setCollections((current) => current.map((collection) => updatedById.get(collection.id) ?? collection))
       setCollectionTagMetadata(result.metadata)
+      setCollectionTagOperationConflicts([])
       clearCollectionTagOperationSelection()
       setCollectionTagToManage('')
       setCollectionTagRenameTarget('')
@@ -2473,6 +2478,13 @@ export function VisionPanel(): React.ReactElement {
             {redoableCollectionTagOperationHistory.length > 0 ? <><button className="vision-collection-tag-history-selection-action" type="button" onClick={() => toggleAllCollectionTagOperationSelection('redo')} disabled={isCollectionBatchBusy} aria-pressed={redoableCollectionTagOperationHistory.every((operation) => selectedCollectionTagOperationRedoIds.has(operation.id))}>{app.copy.vision.collectionTagManagerHistorySelectAllRedo}</button>{selectedCollectionTagOperationRedoIds.size > 0 ? <button className="vision-collection-tag-history-batch-action" type="button" onClick={redoSelectedCollectionTagOperations} disabled={isCollectionBatchBusy}><Redo2 size={11} />{app.copy.vision.collectionTagManagerHistoryBatchRedo}</button> : null}</> : null}
             {selectedCollectionTagOperationCount > 0 ? <button className="vision-collection-tag-history-selection-action" type="button" onClick={clearCollectionTagOperationSelection} disabled={isCollectionBatchBusy}>{app.copy.vision.collectionTagManagerHistoryClearSelection}</button> : null}
           </div>
+        </div> : null}
+        {collectionTagOperationConflicts.length > 0 ? <div className="vision-collection-tag-history-conflicts" role="alert">
+          <div className="vision-collection-tag-history-conflicts-heading"><strong>{app.copy.vision.collectionTagManagerHistoryConflictTitle}</strong><small>{app.copy.vision.collectionTagManagerHistoryConflictDescription(collectionTagOperationConflicts.length)}</small></div>
+          <ul>
+            {collectionTagOperationConflicts.slice(0, 5).map((conflict) => <li key={`${conflict.operationId}:${conflict.reason}`}><strong>{conflict.operationType ? app.copy.vision.collectionTagManagerHistoryType[conflict.operationType] : conflict.operationId}</strong><code>{conflict.operationId.slice(0, 8)}</code><small>{app.copy.vision.collectionTagManagerHistoryConflictReason[conflict.reason]}</small></li>)}
+          </ul>
+          {collectionTagOperationConflicts.length > 5 ? <small>{app.copy.vision.collectionTagManagerHistoryConflictMore(collectionTagOperationConflicts.length - 5)}</small> : null}
         </div> : null}
         {visibleCollectionTagOperationHistory.length > 0 ? <div className="vision-collection-tag-history-list" role="list" aria-label={app.copy.vision.collectionTagManagerHistoryTitle}>
           {visibleCollectionTagOperationHistory.map((operation) => <div className={`vision-collection-tag-history-entry is-${operation.status}`} key={operation.id} role="listitem">
