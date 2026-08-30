@@ -1270,7 +1270,7 @@
 - 历史面板新增全选可撤销、全选可重做、清除选择和批量执行按钮；四语言文案、无障碍名称和现有暗色布局样式同步覆盖。
 - 真实 Electron Smoke 已验证两条混合历史的全选、批量撤销、收藏状态 / 标题恢复、批量重做、状态再次应用和 Renderer `consoleErrors: 0`；截图输出到 `/private/tmp/aivplayer-collection-history-batch.png`。
 - 验证合同：Store 批量混合操作与原子冲突回滚回归 57 项、历史协议接线测试 1 项、历史 UI 接线测试 2 项通过，`npm run typecheck`、`npm run build` 和真实 Electron Smoke 均通过。
-- 分阶段提交：`128ac6a7 feat(选段集合) : 支持历史操作批量撤销重做`（Store 原子批处理、共享返回类型和回归）；`4ffeca46 feat(选段集合) : 接通历史批量操作协议`（IPC、Preload、四语文案和接线回归）；`060738a3 feat(选段集合) : 增加历史批量选择界面`（Renderer 选择状态、批量按钮、列表合并和样式）；`ea73dc7e test(选段集合) : 增加历史批量操作 Smoke`（真实 Electron Smoke 和 npm 入口）。
+- 分阶段提交：`128ac6a7 feat(选段集合) : 支持历史操作批量撤销重做`（Store 原子批处理、共享返回类型和回归）；`4ffeca46 feat(选段集合) : 接通历史批量操作协议`（IPC、Preload、四语文案和接线回归）；`060738a3 feat(选段集合) : 增加历史批量选择界面`（Renderer 选择状态、批量按钮、列表合并和样式）；`ea73dc7e test(选段集合) : 增加历史批量操作 Smoke`（真实 Electron Smoke 和 npm 入口）；`7595cf34 fix(选段集合) : 校验批量快照集合 ID`（损坏快照安全校验）。
 - 当前边界：批量选择只处理当前历史列表中的本地最近 20 条，选择集不跨重载保留；仍不提供逐字段回放、跨设备同步或云端协作，冲突批次需要用户重新选择当前可用条目。
 
 ## AI 服务多配置档案与独立设置分类
