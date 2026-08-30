@@ -641,6 +641,27 @@ describe('clip inbox store', () => {
     expect(store.listTagOperationHistory().filter((operation) => operationIds.includes(operation.id)).every((operation) => operation.status === 'active')).toBe(true)
   })
 
+  it('reports every conflicting tag history entry before a batch retry', () => {
+    const first = store.saveCollection({ title: '多条标签冲突一', tags: ['父一'], selections: [selection()] })
+    const second = store.saveCollection({ title: '多条标签冲突二', tags: ['父二'], selections: [selection({ startSeconds: 4, endSeconds: 6 })] })
+    const firstUpdate = store.updateCollectionTags(first.id, ['子一'])
+    const secondUpdate = store.updateCollectionTags(second.id, ['子二'])
+    expect(firstUpdate).toBeDefined()
+    expect(secondUpdate).toBeDefined()
+    store.saveCollection({ ...firstUpdate!, tags: ['分支一'] })
+    store.saveCollection({ ...secondUpdate!, tags: ['分支二'] })
+
+    const operationIds = store.listTagOperationHistory().filter((operation) => operation.type === 'single').map((operation) => operation.id)
+    const result = store.undoTagOperations(operationIds)
+
+    expect(result.success).toBe(false)
+    expect(result.conflicts).toHaveLength(2)
+    expect(result.conflicts.map((conflict) => conflict.operationId)).toEqual(expect.arrayContaining(operationIds))
+    expect(result.conflicts.every((conflict) => conflict.reason === 'collection-conflict')).toBe(true)
+    expect(store.getCollection(first.id)?.tags).toEqual(['分支一'])
+    expect(store.getCollection(second.id)?.tags).toEqual(['分支二'])
+  })
+
   it('cleans one tag from every matching collection in one transaction', () => {
     const first = store.saveCollection({ title: '清理标签一', tags: ['海边', '采访'], selections: [selection({ evidenceIds: ['cleanup-one'] })] })
     const second = store.saveCollection({ title: '清理标签二', tags: ['海边'], selections: [selection({ startSeconds: 4, endSeconds: 6, evidenceIds: ['cleanup-two'] })] })

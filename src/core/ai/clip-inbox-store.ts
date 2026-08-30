@@ -1275,14 +1275,31 @@ export class ClipInboxStore {
       metadata: new Map(this.listTagMetadata().map((metadata) => [metadata.tag, { ...metadata }]))
     }
     const transitions: TagOperationBatchTransition[] = []
+    const conflicts: VisionClipCollectionTagOperationBatchConflict[] = []
+    let failureMessage: string | null = null
     for (const row of rows) {
       const operation = this.readTagOperationHistory(row)
       const snapshot = this.parseTagOperationSnapshot(row.snapshot_json)
-      if (!operation || !snapshot) return { success: false, message: '选中的标签操作记录已损坏', operations: [], collections: [], metadata: [], conflicts: [{ operationId: stringValue(row, 'id'), operationType: operation?.type ?? null, reason: 'corrupt' }] }
-      const prepared = this.prepareTagOperationBatchTransition(operation, snapshot, direction, state)
-      if (!prepared.transition) return { success: false, message: prepared.message, operations: [], collections: [], metadata: [], conflicts: [{ operationId: operation.id, operationType: operation.type, reason: prepared.conflictReason ?? 'corrupt' }] }
+      if (!operation || !snapshot) {
+        conflicts.push({ operationId: stringValue(row, 'id'), operationType: operation?.type ?? null, reason: 'corrupt' })
+        failureMessage ??= '选中的标签操作记录已损坏'
+        continue
+      }
+      const candidateState: TagOperationBatchState = {
+        collections: new Map([...state.collections].map(([id, collection]) => [id, { id: collection.id, tags: [...collection.tags], updatedAt: collection.updatedAt }])),
+        metadata: new Map([...state.metadata].map(([tag, metadata]) => [tag, { ...metadata }]))
+      }
+      const prepared = this.prepareTagOperationBatchTransition(operation, snapshot, direction, candidateState)
+      if (!prepared.transition) {
+        conflicts.push({ operationId: operation.id, operationType: operation.type, reason: prepared.conflictReason ?? 'corrupt' })
+        failureMessage ??= prepared.message
+        continue
+      }
+      state.collections = candidateState.collections
+      state.metadata = candidateState.metadata
       transitions.push(prepared.transition)
     }
+    if (conflicts.length > 0) return { success: false, message: failureMessage ?? unavailableMessage, operations: [], collections: [], metadata: [], conflicts }
 
     const now = Date.now()
     this.database.exec('BEGIN')
