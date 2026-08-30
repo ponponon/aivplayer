@@ -24,11 +24,16 @@ describe('vision clip collection operation history UI', () => {
     expect(panel).toContain('collectionOperationHistoryDetail.afterCollections')
     expect(panel).toContain('collectionOperationHistoryDetailCollectionIdLabel')
     expect(panel).toContain('collectionOperationHistoryDetailTagsLabel')
+    expect(panel).toContain('diffVisionClipCollectionOperationDetails')
+    expect(panel).toContain('data-change={change}')
     expect(styles).toContain('.vision-collection-operation-history-entry.is-active')
     expect(styles).toContain('.vision-collection-operation-history-entry.is-redoable')
     expect(styles).toContain('.vision-collection-operation-history-entry.is-undone')
     expect(styles).toContain('.vision-collection-operation-history-detail')
     expect(styles).toContain('.vision-collection-operation-history-detail-states')
+    expect(styles).toContain('.vision-collection-operation-history-detail-field.is-changed')
+    expect(styles).toContain('.vision-collection-operation-history-detail-field.is-added')
+    expect(styles).toContain('.vision-collection-operation-history-detail-field.is-removed')
   })
 
   it('keeps collection operation history copy complete in every supported locale', () => {
@@ -45,6 +50,8 @@ describe('vision clip collection operation history UI', () => {
       expect(source).toContain('collectionOperationHistoryDetailBefore')
       expect(source).toContain('collectionOperationHistoryDetailAfter')
       expect(source).toContain('collectionOperationHistoryDetailCollectionIdLabel')
+      expect(source).toContain('collectionOperationHistoryDetailTitleLabel')
+      expect(source).toContain('collectionOperationHistoryDetailChangeLabel')
     }
   })
 })

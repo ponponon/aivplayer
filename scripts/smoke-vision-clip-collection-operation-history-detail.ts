@@ -95,6 +95,10 @@ async function runSmoke(): Promise<void> {
     if (!detailText.includes(title) || !detailText.includes('详情验证') || !detailText.includes(original.id) || !detailText.includes('2 个选段') || !detailText.includes('操作前') || !detailText.includes('操作后')) {
       throw new Error(`Collection operation history detail UI mismatch: ${detailText}`)
     }
+    const changedFieldCount = await detailRegion.locator('.vision-collection-operation-history-detail-field.is-changed').count()
+    if (changedFieldCount < 1 || !detailText.includes('已变化')) {
+      throw new Error(`Collection operation history detail diff UI mismatch: changedFieldCount=${changedFieldCount}, text=${detailText}`)
+    }
     if (screenshotPath) {
       await detailRegion.scrollIntoViewIfNeeded()
       await page.screenshot({ path: screenshotPath, fullPage: false })
@@ -103,7 +107,7 @@ async function runSmoke(): Promise<void> {
     await detailRegion.getByRole('button', { name: '收起详情', exact: true }).click()
     if (await page.locator('.vision-collection-operation-history-detail').count() !== 0) throw new Error('Collection operation history detail remained open after close')
     if (session.errors.length > 0) throw new Error(`Renderer errors during collection operation history detail smoke:\n${session.errors.join('\n')}`)
-    console.log(`AIVPlayer Smoke Vision Clip Collection Operation History Detail passed: ${JSON.stringify({ pageIdentity, detailVisible: true, safeFieldsVerified: true, detailClosed: true, consoleErrors: session.errors.length, screenshotPath: screenshotPath ?? null })}`)
+    console.log(`AIVPlayer Smoke Vision Clip Collection Operation History Detail passed: ${JSON.stringify({ pageIdentity, detailVisible: true, safeFieldsVerified: true, fieldDiffVisible: true, detailClosed: true, consoleErrors: session.errors.length, screenshotPath: screenshotPath ?? null })}`)
   } finally {
     if (app) await app.close().catch(() => undefined)
     await rm(userDataDirectory, { recursive: true, force: true }).catch(() => undefined)
