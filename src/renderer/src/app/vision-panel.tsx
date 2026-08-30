@@ -2033,9 +2033,20 @@ export function VisionPanel(): React.ReactElement {
   }
 
   const deleteCollection = (collection: VisionClipCollection): void => {
+    if (isCollectionBatchBusy) return
+    setIsDeletingCollections(true)
+    setError(null)
     void window.aiv.deleteVisionClipCollection(collection.id).then((deleted) => {
-      if (deleted) setCollections((current) => current.filter((item) => item.id !== collection.id))
-    }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
+      if (!deleted) return
+      setCollections((current) => current.filter((item) => item.id !== collection.id))
+      setSelectedCollectionIds((current) => {
+        const next = new Set(current)
+        next.delete(collection.id)
+        return next
+      })
+      refreshCollectionOperation()
+      setCollectionTransferStatus(app.copy.vision.collectionsDeleted(1, 0))
+    }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setIsDeletingCollections(false))
   }
 
   const progressLabel = progress?.stage === 'planning'
