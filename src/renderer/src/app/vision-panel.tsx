@@ -4,7 +4,7 @@ import type { ChangeEvent, KeyboardEvent, ReactNode } from 'react'
 import type { VisionIndexProgress, VisionRuntimeStatus, VisionSearchResult } from '../../../shared/media-types'
 import type { AsrSubtitleResult } from '../../../shared/media-types'
 import type { MediaEvidenceDraftImportResult } from '../../../shared/evidence-task-types'
-import type { VisionClipCollection, VisionClipCollectionBatchTagsMode, VisionClipCollectionExportFormat, VisionClipCollectionMergeSelection, VisionClipCollectionOperationCollectionDetail, VisionClipCollectionOperationCollectionDiff, VisionClipCollectionOperationDetailField, VisionClipCollectionOperationHistory, VisionClipCollectionOperationHistoryDetail, VisionClipCollectionOperationHistoryEntry, VisionClipCollectionSortMode, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataImportDecision, VisionClipCollectionTagMetadataImportPreviewResult, VisionClipCollectionTagOperationBatchConflict, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationHistoryDetail, VisionClipCollectionTagOperationHistoryEntry, VisionClipCollectionTagSortMode, VisionClipSelection, VisionEvidenceType, VisionIndexFailureRecord, VisionLibrarySource, VisionClipCollectionOperationDetailChange, VisionModelDownloadProgress, VisionSavedSearch, VisionSearchFullExportRequest, VisionSearchPageRequest, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchSortMode } from '../../../shared/vision-types'
+import type { VisionClipCollection, VisionClipCollectionBatchTagsMode, VisionClipCollectionExportFormat, VisionClipCollectionMergeSelection, VisionClipCollectionOperationBatchConflict, VisionClipCollectionOperationCollectionDetail, VisionClipCollectionOperationCollectionDiff, VisionClipCollectionOperationDetailField, VisionClipCollectionOperationHistory, VisionClipCollectionOperationHistoryDetail, VisionClipCollectionOperationHistoryEntry, VisionClipCollectionSortMode, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataImportDecision, VisionClipCollectionTagMetadataImportPreviewResult, VisionClipCollectionTagOperationBatchConflict, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationHistoryDetail, VisionClipCollectionTagOperationHistoryEntry, VisionClipCollectionTagSortMode, VisionClipSelection, VisionEvidenceType, VisionIndexFailureRecord, VisionLibrarySource, VisionClipCollectionOperationDetailChange, VisionModelDownloadProgress, VisionSavedSearch, VisionSearchFullExportRequest, VisionSearchPageRequest, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchSortMode } from '../../../shared/vision-types'
 import type { LocaleCopy } from '../../../shared/i18n'
 import type { VisionObjectDetectionFilterState, VisionObjectDetectionResult } from '../../../shared/vision-object-detection-types'
 import type { VisionClipCollectionTagOperationHistoryFilter } from '../../../shared/vision-types'
@@ -412,6 +412,7 @@ export function VisionPanel(): React.ReactElement {
   const [collectionOperationHistory, setCollectionOperationHistory] = useState<VisionClipCollectionOperationHistoryEntry[]>([])
   const [selectedCollectionOperationUndoIds, setSelectedCollectionOperationUndoIds] = useState<Set<string>>(() => new Set())
   const [selectedCollectionOperationRedoIds, setSelectedCollectionOperationRedoIds] = useState<Set<string>>(() => new Set())
+  const [collectionOperationConflicts, setCollectionOperationConflicts] = useState<VisionClipCollectionOperationBatchConflict[]>([])
   const [collectionOperationHistoryDetailId, setCollectionOperationHistoryDetailId] = useState<string | null>(null)
   const [collectionOperationHistoryDetail, setCollectionOperationHistoryDetail] = useState<VisionClipCollectionOperationHistoryDetail | null>(null)
   const [isLoadingCollectionOperationHistoryDetail, setIsLoadingCollectionOperationHistoryDetail] = useState(false)
@@ -699,6 +700,16 @@ export function VisionPanel(): React.ReactElement {
   const clearCollectionOperationSelection = (): void => {
     setSelectedCollectionOperationUndoIds(new Set())
     setSelectedCollectionOperationRedoIds(new Set())
+  }
+
+  const removeCollectionOperationConflicts = (): void => {
+    if (isCollectionBatchBusy || collectionOperationConflicts.length === 0) return
+    const conflictIds = new Set(collectionOperationConflicts.map((conflict) => conflict.operationId))
+    setSelectedCollectionOperationUndoIds((current) => new Set([...current].filter((operationId) => !conflictIds.has(operationId))))
+    setSelectedCollectionOperationRedoIds((current) => new Set([...current].filter((operationId) => !conflictIds.has(operationId))))
+    setCollectionOperationConflicts([])
+    setError(null)
+    setCollectionTransferStatus(app.copy.vision.collectionOperationHistoryConflictRemoved(conflictIds.size))
   }
 
   const toggleCollectionTagOperationSelection = (operationId: string, direction: VisionCollectionTagOperationBatchDirection): void => {
@@ -2214,10 +2225,12 @@ export function VisionPanel(): React.ReactElement {
     setError(null)
     void window.aiv.undoVisionClipCollectionOperations(operationIds).then((result) => {
       if (!result.success) {
+        setCollectionOperationConflicts(result.conflicts ?? [])
         setError(result.message)
         return
       }
       applyCollectionOperationResult(result)
+      setCollectionOperationConflicts([])
       clearCollectionOperationSelection()
       refreshCollectionOperation()
       setCollectionTransferStatus(result.message)
@@ -2231,10 +2244,12 @@ export function VisionPanel(): React.ReactElement {
     setError(null)
     void window.aiv.redoVisionClipCollectionOperations(operationIds).then((result) => {
       if (!result.success) {
+        setCollectionOperationConflicts(result.conflicts ?? [])
         setError(result.message)
         return
       }
       applyCollectionOperationResult(result)
+      setCollectionOperationConflicts([])
       clearCollectionOperationSelection()
       refreshCollectionOperation()
       setCollectionTransferStatus(result.message)
@@ -2609,6 +2624,14 @@ export function VisionPanel(): React.ReactElement {
           {selectedCollectionOperationCount > 0 ? <button className="vision-collection-operation-history-selection-action" type="button" onClick={clearCollectionOperationSelection} disabled={isCollectionBatchBusy}>{app.copy.vision.collectionOperationHistoryClearSelection}</button> : null}
         </div>
       </div>
+      {collectionOperationConflicts.length > 0 ? <div className="vision-collection-operation-history-conflicts" role="alert">
+        <div className="vision-collection-operation-history-conflicts-heading"><strong>{app.copy.vision.collectionOperationHistoryConflictTitle}</strong><small>{app.copy.vision.collectionOperationHistoryConflictDescription(collectionOperationConflicts.length)}</small></div>
+        <ul>
+          {collectionOperationConflicts.slice(0, 5).map((conflict) => <li key={`${conflict.operationId}:${conflict.reason}`}><strong>{conflict.operationType ? app.copy.vision.collectionOperationTypeLabel[conflict.operationType] : conflict.operationId}</strong><code>{conflict.operationId.slice(0, 8)}</code><small>{app.copy.vision.collectionOperationHistoryConflictReason[conflict.reason]}</small></li>)}
+        </ul>
+        {collectionOperationConflicts.length > 5 ? <small>{app.copy.vision.collectionOperationHistoryConflictMore(collectionOperationConflicts.length - 5)}</small> : null}
+        <button className="vision-secondary-action" type="button" onClick={removeCollectionOperationConflicts} disabled={isCollectionBatchBusy}>{app.copy.vision.collectionOperationHistoryConflictRemove}</button>
+      </div> : null}
       <div className="vision-collection-operation-history-list" role="list" aria-label={app.copy.vision.collectionOperationHistoryTitle}>
         {collectionOperationHistory.map((operation) => {
           const targets = operation.collectionIds.map((id, index) => operation.collectionTitles[index]?.trim() || id).join(' · ')
