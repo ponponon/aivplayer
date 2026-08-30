@@ -11,7 +11,9 @@ describe('vision clip collection operation history UI', () => {
     const styles = readFileSync(join(projectRoot, 'src/renderer/src/styles/player/vision-library-results.css'), 'utf8')
 
     expect(preload).toContain('listVisionClipCollectionOperationHistory')
+    expect(preload).toContain('getVisionClipCollectionOperationHistoryDetail')
     expect(panel).toContain('window.aiv.listVisionClipCollectionOperationHistory()')
+    expect(panel).toContain('window.aiv.getVisionClipCollectionOperationHistoryDetail(operationId)')
     expect(panel).toContain('vision-collection-operation-history')
     expect(panel).toContain('collectionOperationTypeLabel[operation.type]')
     expect(panel).toContain('collectionOperationHistoryStatusLabel[operation.status]')
@@ -39,6 +41,7 @@ describe('vision clip collection operation history UI', () => {
       expect(source).toContain('collectionOperationHistoryTargetCount')
       expect(source).toContain('collectionOperationHistorySelectionCount')
       expect(source).toContain('collectionOperationHistoryViewDetail')
+      expect(source).toContain('collectionOperationHistoryDetailTitle')
       expect(source).toContain('collectionOperationHistoryDetailBefore')
       expect(source).toContain('collectionOperationHistoryDetailAfter')
       expect(source).toContain('collectionOperationHistoryDetailCollectionIdLabel')
