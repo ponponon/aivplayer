@@ -33,7 +33,7 @@ import { visionIndexFailureFromProgress as getVisionIndexFailureInput } from '..
 import type { MediaImportInboxItem, MediaImportInboxPipelineProgress } from '../shared/media-import-inbox'
 import { createBatchSubtitleTaskCenterEvent, createDramaGenerationTaskCenterEvent, createMediaImportTaskCenterEvent } from '../core/tasks/task-center-adapters'
 import { sendTaskCenterEvent } from './task-center-events'
-import { createAutomaticTranslationFetch } from './translation-network'
+import { createAutomaticTranslationFetch, createManagedTranslationServiceRouter } from './translation-network'
 
 export function resolveAppIconPath(): string | null {
   const iconPath = process.env.ELECTRON_RENDERER_URL ? resolve(process.cwd(), 'brand/icon.png') : join(process.resourcesPath, 'app-icon.png')
@@ -49,6 +49,8 @@ export function getAsrRuntime(): ReturnType<typeof createWhisperCppRuntime> {
   if (!desktopState.asrRuntime) {
     const userDataPath = app.getPath('userData')
     const translationDeviceId = createHash('sha256').update(`aivplayer:${userDataPath}`).digest('hex')
+    const translationFetch = createAutomaticTranslationFetch()
+    const managedTranslationRouter = createManagedTranslationServiceRouter({ fetchImpl: translationFetch })
     desktopState.asrRuntime = createWhisperCppRuntime({
       userDataPath,
       resourcePath: resolveResourcePath(),
@@ -58,7 +60,9 @@ export function getAsrRuntime(): ReturnType<typeof createWhisperCppRuntime> {
         'X-AIVPlayer-Device': translationDeviceId,
         'X-AIVPlayer-Version': app.getVersion()
       },
-      translationFetch: createAutomaticTranslationFetch(),
+      translationFetch,
+      getManagedTranslationEndpointCandidates: managedTranslationRouter.getEndpointCandidates,
+      onManagedTranslationEndpointFailure: managedTranslationRouter.invalidate,
       getAiServiceSettings: () => ({
         providers: desktopState.currentAppSettings.ai.providers,
         activeProviderId: desktopState.currentAppSettings.ai.activeProviderId,

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createAutomaticTranslationFetch, parseQuickQListenPorts, shouldBypassProxyUrl } from '../../src/desktop/translation-network'
+import { createAutomaticTranslationFetch, createManagedTranslationServiceRouter, parseQuickQListenPorts, shouldBypassProxyUrl } from '../../src/desktop/translation-network'
+import { MANAGED_TRANSLATION_SERVICE_DOMESTIC_ENDPOINT, MANAGED_TRANSLATION_SERVICE_ENDPOINT } from '../../src/shared/translation-service'
 
 function response(status = 200): Response {
   return new Response('', { status })
@@ -78,5 +79,41 @@ describe('translation network routing', () => {
 
     await fetch('https://translation.example.test/v1')
     expect(proxy).toHaveBeenCalledOnce()
+  })
+
+  it('prefers the global endpoint when both routes are reachable and refreshes after a route change', async () => {
+    let clock = 0
+    let globalAvailable = true
+    const probeFetch = vi.fn(async (url: string) => {
+      if (url.includes('workers.dev')) return response(globalAvailable ? 200 : 503)
+      return response(200)
+    })
+    const router = createManagedTranslationServiceRouter({
+      fetchImpl: probeFetch,
+      now: () => clock,
+      refreshIntervalMs: 30_000
+    })
+
+    await expect(router.getEndpointCandidates()).resolves.toEqual([
+      MANAGED_TRANSLATION_SERVICE_ENDPOINT,
+      MANAGED_TRANSLATION_SERVICE_DOMESTIC_ENDPOINT
+    ])
+
+    globalAvailable = false
+    clock = 30_001
+    await expect(router.getEndpointCandidates()).resolves.toEqual([MANAGED_TRANSLATION_SERVICE_DOMESTIC_ENDPOINT])
+    expect(probeFetch).toHaveBeenCalledWith(expect.stringContaining('/health'), expect.objectContaining({ method: 'GET' }))
+  })
+
+  it('does not send subtitle text while detecting the managed route', async () => {
+    const probeFetch = vi.fn(async (_url: string, init?: RequestInit) => {
+      expect(init?.method).toBe('GET')
+      expect(init?.body).toBeUndefined()
+      return response(200)
+    })
+    const router = createManagedTranslationServiceRouter({ fetchImpl: probeFetch })
+
+    await router.getEndpointCandidates()
+    expect(probeFetch).toHaveBeenCalledTimes(2)
   })
 })

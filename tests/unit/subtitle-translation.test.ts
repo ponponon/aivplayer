@@ -669,6 +669,37 @@ describe('subtitle translation', () => {
     })
   })
 
+  it('fails over to the next managed endpoint when the preferred route is unavailable', async () => {
+    const failedEndpoints: string[] = []
+    const requests: string[] = []
+    const provider = createOpenAiCompatibleTranslationProvider({
+      baseUrl: 'https://global.example.test/v1/chat/completions',
+      apiKey: 'test-key',
+      model: 'translation-model',
+      getEndpointCandidates: async () => [
+        'https://global.example.test/v1/chat/completions',
+        'https://domestic.example.test/v1/chat/completions'
+      ],
+      onEndpointFailure: (endpoint) => failedEndpoints.push(endpoint),
+      fetchImpl: async (url) => {
+        requests.push(url)
+        if (url.includes('global')) throw new Error('global route unavailable')
+        return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify([{ id: 'cue-1', text: '你好' }]) } }] }))
+      }
+    })
+
+    await expect(provider.translateBatch({
+      sourceLanguage: 'en',
+      targetLanguage: 'zh',
+      segments: [{ id: 'cue-1', text: 'hello' }]
+    })).resolves.toEqual([{ id: 'cue-1', text: '你好' }])
+    expect(requests).toEqual([
+      'https://global.example.test/v1/chat/completions',
+      'https://domestic.example.test/v1/chat/completions'
+    ])
+    expect(failedEndpoints).toEqual(['https://global.example.test/v1/chat/completions'])
+  })
+
   it('tags invalid JSON responses from an OpenAI-compatible translation endpoint', async () => {
     const provider = createOpenAiCompatibleTranslationProvider({
       baseUrl: 'https://example.test/v1/chat/completions',

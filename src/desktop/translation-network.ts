@@ -2,6 +2,10 @@ import { execFile } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { promisify } from 'node:util'
 import { net, session } from 'electron'
+import {
+  MANAGED_TRANSLATION_SERVICE_DOMESTIC_ENDPOINT,
+  MANAGED_TRANSLATION_SERVICE_ENDPOINT
+} from '../shared/translation-service'
 
 export type TranslationFetch = (url: string, init?: RequestInit) => Promise<Response>
 
@@ -326,6 +330,81 @@ export function createAutomaticTranslationFetch(options: TranslationNetworkOptio
       if (isAbortRequested(init)) throw proxyError
       cachedProxy = null
       return fetchDirectWithRefresh(url, init)
+    }
+  }
+}
+
+export type ManagedTranslationServiceRouter = {
+  getEndpointCandidates: () => Promise<string[]>
+  invalidate: () => void
+}
+
+export type ManagedTranslationServiceRouterOptions = {
+  fetchImpl?: TranslationFetch
+  now?: () => number
+  refreshIntervalMs?: number
+  probeTimeoutMs?: number
+}
+
+const MANAGED_ROUTE_REFRESH_INTERVAL_MS = 30_000
+const MANAGED_ROUTE_PROBE_TIMEOUT_MS = 2_500
+
+function getManagedHealthEndpoint(endpoint: string): string {
+  const parsed = new URL(endpoint)
+  parsed.pathname = '/health'
+  parsed.search = ''
+  parsed.hash = ''
+  return parsed.toString()
+}
+
+export function createManagedTranslationServiceRouter(
+  options: ManagedTranslationServiceRouterOptions = {}
+): ManagedTranslationServiceRouter {
+  const fetchImpl = options.fetchImpl ?? createAutomaticTranslationFetch()
+  const now = options.now ?? Date.now
+  const refreshIntervalMs = options.refreshIntervalMs ?? MANAGED_ROUTE_REFRESH_INTERVAL_MS
+  const probeTimeoutMs = options.probeTimeoutMs ?? MANAGED_ROUTE_PROBE_TIMEOUT_MS
+  const endpoints = [MANAGED_TRANSLATION_SERVICE_ENDPOINT, MANAGED_TRANSLATION_SERVICE_DOMESTIC_ENDPOINT]
+  let cached: { candidates: string[]; checkedAt: number } | null = null
+  let refreshInFlight: Promise<string[]> | null = null
+
+  const probe = async (endpoint: string): Promise<boolean> => {
+    try {
+      const response = await fetchImpl(getManagedHealthEndpoint(endpoint), {
+        method: 'GET',
+        signal: AbortSignal.timeout(probeTimeoutMs)
+      })
+      if (response.body) void response.body.cancel().catch(() => undefined)
+      return response.ok
+    } catch {
+      return false
+    }
+  }
+
+  const refresh = async (): Promise<string[]> => {
+    const currentTime = now()
+    if (cached && currentTime - cached.checkedAt < refreshIntervalMs) return cached.candidates
+    if (refreshInFlight) return refreshInFlight
+
+    const pending = (async () => {
+      const availability = await Promise.all(endpoints.map((endpoint) => probe(endpoint)))
+      const available = endpoints.filter((_endpoint, index) => availability[index])
+      const candidates = available.length > 0 ? available : endpoints
+      cached = { candidates, checkedAt: now() }
+      return candidates
+    })()
+    refreshInFlight = pending
+    try {
+      return await pending
+    } finally {
+      if (refreshInFlight === pending) refreshInFlight = null
+    }
+  }
+
+  return {
+    getEndpointCandidates: () => refresh(),
+    invalidate: () => {
+      cached = null
     }
   }
 }

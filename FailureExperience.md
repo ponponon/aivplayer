@@ -1,3 +1,9 @@
+## 2026-08-30：大陆网络连通性不能只用 DNS 污染解释
+
+- 现象：京东云大陆直连访问 `workers.dev` 时，国内 DNS 返回的地址与可信 DoH 结果不同；强制连接可信 Cloudflare IP 后仍然出现 TCP reset，不能只归因于 DNS 污染。
+- 经验：判断一个海外 API 是否能被大陆用户使用，至少要分开验证 DNS、TCP/TLS 建连和应用层 HTTP 响应；改成自定义域名只能改变主机名，不能自动改变 Cloudflare 全球网络的可达性。
+- 处理：为托管翻译服务增加京东云大陆入口，客户端只用不含字幕正文的健康探测选择入口，并在业务请求遇到网络错误或 5xx 时尝试另一入口；Cloudflare Worker 继续作为海外和国内入口故障时的备用路径。
+
 ## 2026-08-28：Node 全局 fetch 不会因为设置环境代理而自动走 VPN
 
 - 现象：AIVPlayer 在 Electron 主进程中设置 Node 的全局代理后，翻译请求仍可能直连失败；OpenCode 的启动时 `setGlobalProxyFromEnv()` 也不能直接证明运行期间的 `fetch` 会遵循代理，更不能感知 VPN 后续开关。

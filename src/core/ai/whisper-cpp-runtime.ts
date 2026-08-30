@@ -455,6 +455,8 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
       model,
       glossary,
       headers: mode === 'managed' ? options.translationHeaders : undefined,
+      getEndpointCandidates: mode === 'managed' ? options.getManagedTranslationEndpointCandidates : undefined,
+      onEndpointFailure: mode === 'managed' ? options.onManagedTranslationEndpointFailure : undefined,
       fetchImpl: options.translationFetch
     })
   }
@@ -467,7 +469,15 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
   const createSummaryProvider = () => {
     const { mode, baseUrl, apiKey, model } = getTranslationServiceConfig()
     if (!baseUrl || !apiKey || !model) return null
-    return createOpenAiCompatibleSummaryProvider({ baseUrl, apiKey, model, headers: mode === 'managed' ? options.translationHeaders : undefined, fetchImpl: options.translationFetch })
+    return createOpenAiCompatibleSummaryProvider({
+      baseUrl,
+      apiKey,
+      model,
+      headers: mode === 'managed' ? options.translationHeaders : undefined,
+      getEndpointCandidates: mode === 'managed' ? options.getManagedTranslationEndpointCandidates : undefined,
+      onEndpointFailure: mode === 'managed' ? options.onManagedTranslationEndpointFailure : undefined,
+      fetchImpl: options.translationFetch
+    })
   }
 
   const getSummaryProviderRef = () => createSubtitleSummaryProviderRef(getTranslationServiceConfig().model)
@@ -1187,11 +1197,15 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
               model: translationServiceConfig.model,
               glossary: translationServiceConfig.glossary,
               headers: translationServiceConfig.mode === 'managed' ? options.translationHeaders : undefined,
+              getEndpointCandidates: translationServiceConfig.mode === 'managed' ? options.getManagedTranslationEndpointCandidates : undefined,
+              onEndpointFailure: translationServiceConfig.mode === 'managed' ? options.onManagedTranslationEndpointFailure : undefined,
               fetchImpl: options.translationFetch
             })
           : null
       const translationModel = provider?.model ?? translationServiceConfig.model ?? undefined
-      const translationBaseUrlSummary = translationServiceConfig.baseUrl
+      const translationBaseUrlSummary = translationServiceConfig.mode === 'managed'
+        ? '自动路由（海外 / 大陆）'
+        : translationServiceConfig.baseUrl
         ? summarizeTranslationServiceEndpoint(translationServiceConfig.baseUrl)
         : undefined
       const sampleSourceText = getTranslationServiceProbeText(sourceLanguage)

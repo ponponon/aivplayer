@@ -1,0 +1,72 @@
+services:
+  translation-a:
+    build: .
+    image: aivplayer-domestic-translation:latest
+    container_name: aivplayer-translation-a
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8787
+      BIGMODEL_API_KEY_FILE: /run/secrets/bigmodel_api_key
+      MAX_CONCURRENT_REQUESTS: 4
+    secrets:
+      - bigmodel_api_key
+    ports:
+      - 127.0.0.1:18787:8787
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8787/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.75"
+          memory: 512M
+
+  translation-b:
+    build: .
+    image: aivplayer-domestic-translation:latest
+    container_name: aivplayer-translation-b
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8787
+      BIGMODEL_API_KEY_FILE: /run/secrets/bigmodel_api_key
+      MAX_CONCURRENT_REQUESTS: 4
+    secrets:
+      - bigmodel_api_key
+    ports:
+      - 127.0.0.1:18788:8787
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8787/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.75"
+          memory: 512M
+
+secrets:
+  bigmodel_api_key:
+    file: ${BIGMODEL_API_KEY_FILE:-./secrets/bigmodel_api_key}

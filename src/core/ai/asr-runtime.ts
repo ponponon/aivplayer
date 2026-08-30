@@ -71,6 +71,8 @@ export type AsrRuntimeOptions = {
   extraBinaryDirectories?: string[]
   translationFetch?: (url: string, init?: RequestInit) => Promise<Response>
   translationHeaders?: Record<string, string>
+  getManagedTranslationEndpointCandidates?: () => Promise<string[]>
+  onManagedTranslationEndpointFailure?: (endpoint: string) => void
   getAiServiceSettings?: () => { providers: AiProviderProfile[]; activeProviderId: string; glossary: string | null } | null
   getLocale?: () => AppLocale
 }

@@ -39,6 +39,8 @@ export type OpenAiCompatibleSummaryProviderOptions = {
   model: string
   headers?: Record<string, string>
   fetchImpl?: (url: string, init?: RequestInit) => Promise<Response>
+  getEndpointCandidates?: () => Promise<string[]>
+  onEndpointFailure?: (endpoint: string) => void
 }
 
 export type SubtitleSummaryErrorCode = 'cancelled' | 'network-error' | 'http-error' | 'invalid-json' | 'invalid-response'
@@ -224,18 +226,39 @@ export function createOpenAiCompatibleSummaryProvider(options: OpenAiCompatibleS
       const headers = new Headers(options.headers)
       headers.set('Authorization', `Bearer ${options.apiKey}`)
       headers.set('Content-Type', 'application/json')
-      let response: Response
+      let endpoints = [options.baseUrl]
       try {
-        response = await fetchImpl(options.baseUrl, {
-          method: 'POST',
-          headers,
-          signal: request.signal,
-          body: JSON.stringify({ model: options.model, temperature: 0.2, messages: [{ role: 'system', content: request.system }, { role: 'user', content: request.user }] })
-        })
-      } catch (error) {
-        if (request.signal?.aborted || (error instanceof Error && error.name === 'AbortError')) throw new SubtitleSummaryError('cancelled', 'AI 内容总结已取消。', { cause: error })
-        throw new SubtitleSummaryError('network-error', '总结服务网络请求失败。', { cause: error })
+        const resolved = await options.getEndpointCandidates?.()
+        if (resolved?.length) endpoints = [...new Set(resolved)]
+      } catch {
+        // Keep the configured endpoint as a safe fallback when probing fails.
       }
+
+      let response: Response | null = null
+      let lastNetworkError: SubtitleSummaryError | null = null
+      for (const [endpointIndex, endpoint] of endpoints.entries()) {
+        try {
+          response = await fetchImpl(endpoint, {
+            method: 'POST',
+            headers,
+            signal: request.signal,
+            body: JSON.stringify({ model: options.model, temperature: 0.2, messages: [{ role: 'system', content: request.system }, { role: 'user', content: request.user }] })
+          })
+        } catch (error) {
+          if (request.signal?.aborted || (error instanceof Error && error.name === 'AbortError')) throw new SubtitleSummaryError('cancelled', 'AI 内容总结已取消。', { cause: error })
+          lastNetworkError = new SubtitleSummaryError('network-error', '总结服务网络请求失败。', { cause: error })
+          options.onEndpointFailure?.(endpoint)
+          if (endpointIndex < endpoints.length - 1) continue
+          throw lastNetworkError
+        }
+
+        if (response.ok || response.status < 500 || endpointIndex === endpoints.length - 1) break
+        if (response.body) await response.body.cancel().catch(() => undefined)
+        options.onEndpointFailure?.(endpoint)
+        response = null
+      }
+
+      if (!response) throw lastNetworkError ?? new SubtitleSummaryError('network-error', '总结服务网络请求失败。')
       if (!response.ok) throw new SubtitleSummaryError('http-error', `总结服务请求失败：HTTP ${response.status}${response.statusText ? ` ${response.statusText}` : ''}。`, { status: response.status, statusText: response.statusText || undefined, responseBody: truncateResponseBody(await response.text().catch(() => '')) })
       let payload: { choices?: Array<{ message?: { content?: unknown } }> }
       let responseBody = ''
