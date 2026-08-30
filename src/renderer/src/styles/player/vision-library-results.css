@@ -1632,6 +1632,64 @@
   text-align: center;
 }
 
+.vision-collection-operation-history-selection-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 4px 5px;
+  background: rgba(var(--accent-rgb), 0.04);
+  border: 1px solid var(--border-soft);
+  border-radius: 4px;
+}
+
+.vision-collection-operation-history-selection-count {
+  color: var(--text-muted);
+  font-size: 8px;
+}
+
+.vision-collection-operation-history-selection-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.vision-collection-operation-history-selection-action,
+.vision-collection-operation-history-batch-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 21px;
+  padding: 0 6px;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border-soft);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 8px;
+}
+
+.vision-collection-operation-history-batch-action {
+  color: var(--text-primary);
+  border-color: rgba(var(--accent-rgb), 0.45);
+}
+
+.vision-collection-operation-history-selection-action:hover:not(:disabled),
+.vision-collection-operation-history-selection-action:focus-visible,
+.vision-collection-operation-history-batch-action:hover:not(:disabled),
+.vision-collection-operation-history-batch-action:focus-visible {
+  color: var(--text-primary);
+  border-color: var(--accent);
+  outline: 0;
+}
+
+.vision-collection-operation-history-selection-action:disabled,
+.vision-collection-operation-history-batch-action:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
 .vision-collection-operation-history-list {
   display: grid;
   gap: 4px;
@@ -1651,8 +1709,28 @@
 
 .vision-collection-operation-history-copy {
   display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
   min-width: 0;
+  gap: 5px;
+}
+
+.vision-collection-operation-history-copy-text {
+  display: grid;
   gap: 2px;
+}
+
+.vision-collection-operation-history-select {
+  width: 12px;
+  height: 12px;
+  margin: 1px 0 0;
+  accent-color: var(--accent);
+}
+
+.vision-collection-operation-history-select-placeholder {
+  display: block;
+  width: 12px;
+  height: 12px;
 }
 
 .vision-collection-operation-history-copy strong,
