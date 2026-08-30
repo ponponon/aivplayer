@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto'
 import { mergeVisionClipSelections, normalizeVisionTimeRange } from './vision-evidence'
 import { normalizeVisionClipCollectionTagOperationHistoryPageRequest } from './clip-inbox-tag-history'
 import { applyVisionCollectionTags, duplicateVisionCollectionTitle, mergeVisionClipCollections, normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionSortMode, normalizeVisionCollectionTag, normalizeVisionCollectionTagColor, normalizeVisionCollectionTagFavorite, normalizeVisionCollectionTagNote, normalizeVisionCollectionTags, normalizeVisionCollectionTagsMode, renameVisionCollectionTag, renameVisionClipCollectionTitle, selectVisionClipCollectionsForMerge, sortVisionClipSelections, wouldCreateVisionCollectionTagParentCycle } from './clip-inbox-operations'
-import type { VisionClipCollection, VisionClipCollectionBatchDeleteResult, VisionClipCollectionBatchRenameResult, VisionClipCollectionBatchTagsResult, VisionClipCollectionFlagUpdateRequest, VisionClipCollectionInput, VisionClipCollectionMergeSelection, VisionClipCollectionOperationBatchRedoResult, VisionClipCollectionOperationBatchUndoResult, VisionClipCollectionOperationCollectionDetail, VisionClipCollectionOperationHistory, VisionClipCollectionOperationHistoryDetail, VisionClipCollectionOperationHistoryEntry, VisionClipCollectionOperationRedoResult, VisionClipCollectionOperationType, VisionClipCollectionOperationUndoResult, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataUpdateRequest, VisionClipCollectionTagOperationBatchConflict, VisionClipCollectionTagOperationBatchConflictReason, VisionClipCollectionTagOperationBatchRedoResult, VisionClipCollectionTagOperationBatchUndoResult, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationHistoryDetail, VisionClipCollectionTagOperationHistoryEntry, VisionClipCollectionTagOperationHistoryPage, VisionClipCollectionTagOperationType, VisionClipCollectionTagRedoResult, VisionClipCollectionTagUndoResult, VisionClipSelection, VisionEvidenceType } from '../../shared/vision-types'
+import type { VisionClipCollection, VisionClipCollectionBatchDeleteResult, VisionClipCollectionBatchRenameResult, VisionClipCollectionBatchTagsResult, VisionClipCollectionFlagUpdateRequest, VisionClipCollectionInput, VisionClipCollectionMergeSelection, VisionClipCollectionOperationBatchConflict, VisionClipCollectionOperationBatchConflictReason, VisionClipCollectionOperationBatchRedoResult, VisionClipCollectionOperationBatchUndoResult, VisionClipCollectionOperationCollectionDetail, VisionClipCollectionOperationHistory, VisionClipCollectionOperationHistoryDetail, VisionClipCollectionOperationHistoryEntry, VisionClipCollectionOperationRedoResult, VisionClipCollectionOperationType, VisionClipCollectionOperationUndoResult, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataUpdateRequest, VisionClipCollectionTagOperationBatchConflict, VisionClipCollectionTagOperationBatchConflictReason, VisionClipCollectionTagOperationBatchRedoResult, VisionClipCollectionTagOperationBatchUndoResult, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationHistoryDetail, VisionClipCollectionTagOperationHistoryEntry, VisionClipCollectionTagOperationHistoryPage, VisionClipCollectionTagOperationType, VisionClipCollectionTagRedoResult, VisionClipCollectionTagUndoResult, VisionClipSelection, VisionEvidenceType } from '../../shared/vision-types'
 
 type SqliteRow = Record<string, unknown>
 const EVIDENCE_TYPES: readonly VisionEvidenceType[] = ['subtitle', 'visual', 'scene', 'ocr', 'entity', 'object']
@@ -66,6 +66,12 @@ type CollectionOperationBatchUpdate = {
 type CollectionOperationBatchTransition = {
   operation: VisionClipCollectionOperationHistory
   updates: CollectionOperationBatchUpdate[]
+}
+
+type CollectionOperationBatchPreparation = {
+  transition: CollectionOperationBatchTransition | null
+  message: string
+  conflictReason?: VisionClipCollectionOperationBatchConflictReason
 }
 
 function normalizeTagOperationIds(value: unknown): string[] {
@@ -1401,12 +1407,19 @@ export class ClipInboxStore {
     const normalizedIds = normalizeVisionClipCollectionIds(operationIds)
     const unavailableMessage = direction === 'undo' ? '选中的集合操作当前不可撤销' : '选中的集合操作当前不可重做'
     const successMessage = direction === 'undo' ? '已批量撤销选中的集合操作' : '已批量重做选中的集合操作'
-    if (normalizedIds.length === 0) return { success: false, message: unavailableMessage, operations: [], collections: [] }
+    if (normalizedIds.length === 0) return { success: false, message: unavailableMessage, operations: [], collections: [], conflicts: [] }
 
     const placeholders = normalizedIds.map(() => '?').join(', ')
-    const eligibility = direction === 'undo' ? 'undone_at IS NULL' : 'undone_at IS NOT NULL AND redoable = 1'
-    const rows = this.database.prepare(`SELECT id, operation_type, snapshot_json, created_at, rowid AS operation_rowid FROM clip_collection_operation_history WHERE id IN (${placeholders}) AND ${eligibility}`).all(...normalizedIds) as SqliteRow[]
-    if (rows.length !== normalizedIds.length) return { success: false, message: unavailableMessage, operations: [], collections: [] }
+    const rows = this.database.prepare(`SELECT id, operation_type, snapshot_json, created_at, undone_at, redoable, rowid AS operation_rowid FROM clip_collection_operation_history WHERE id IN (${placeholders})`).all(...normalizedIds) as SqliteRow[]
+    const rowsById = new Map(rows.map((row) => [stringValue(row, 'id'), row]))
+    const statusConflicts = normalizedIds.map((id): VisionClipCollectionOperationBatchConflict | null => {
+      const row = rowsById.get(id)
+      if (!row) return { operationId: id, operationType: null, reason: 'missing' }
+      const operation = this.readCollectionOperationHistory(row)
+      const eligible = direction === 'undo' ? row.undone_at === null : row.undone_at !== null && numberValue(row, 'redoable') === 1
+      return eligible ? null : { operationId: id, operationType: operation?.type ?? null, reason: 'status' }
+    }).filter((conflict): conflict is VisionClipCollectionOperationBatchConflict => conflict !== null)
+    if (statusConflicts.length > 0) return { success: false, message: unavailableMessage, operations: [], collections: [], conflicts: statusConflicts }
     rows.sort((left, right) => {
       const difference = numberValue(left, 'operation_rowid') - numberValue(right, 'operation_rowid')
       return direction === 'undo' ? -difference : difference
@@ -1415,14 +1428,28 @@ export class ClipInboxStore {
     const state = new Map(this.listCollections().map((collection) => [collection.id, cloneCollection(collection)]))
     const initialState = new Map([...state].map(([id, collection]) => [id, cloneCollection(collection)]))
     const transitions: CollectionOperationBatchTransition[] = []
+    const conflicts: VisionClipCollectionOperationBatchConflict[] = []
+    let failureMessage: string | null = null
     for (const row of rows) {
       const operation = this.readCollectionOperationHistory(row)
       const snapshot = this.parseCollectionOperationSnapshot(row.snapshot_json)
-      if (!operation || !snapshot) return { success: false, message: '选中的集合操作记录已损坏', operations: [], collections: [] }
-      const prepared = this.prepareCollectionOperationBatchTransition(operation, snapshot, direction, state)
-      if (!prepared.transition) return { success: false, message: prepared.message, operations: [], collections: [] }
+      if (!operation || !snapshot) {
+        conflicts.push({ operationId: stringValue(row, 'id'), operationType: operation?.type ?? null, reason: 'corrupt' })
+        failureMessage ??= '选中的集合操作记录已损坏'
+        continue
+      }
+      const candidateState = new Map([...state].map(([id, collection]) => [id, cloneCollection(collection)]))
+      const prepared = this.prepareCollectionOperationBatchTransition(operation, snapshot, direction, candidateState)
+      if (!prepared.transition) {
+        conflicts.push({ operationId: operation.id, operationType: operation.type, reason: prepared.conflictReason ?? 'corrupt' })
+        failureMessage ??= prepared.message
+        continue
+      }
+      state.clear()
+      for (const [id, collection] of candidateState) state.set(id, collection)
       transitions.push(prepared.transition)
     }
+    if (conflicts.length > 0) return { success: false, message: failureMessage ?? unavailableMessage, operations: [], collections: [], conflicts }
 
     const now = Date.now()
     this.database.exec('BEGIN')
@@ -1448,6 +1475,7 @@ export class ClipInboxStore {
         message: successMessage,
         operations: transitions.map((transition) => transition.operation),
         collections,
+        conflicts: [],
         ...(createdCollectionIds.length > 0 ? { createdCollectionIds } : {}),
         ...(deletedCollectionIds.length > 0 ? { deletedCollectionIds } : {})
       }
@@ -1457,7 +1485,7 @@ export class ClipInboxStore {
     }
   }
 
-  private prepareCollectionOperationBatchTransition(operation: VisionClipCollectionOperationHistory, snapshot: CollectionOperationSnapshot, direction: CollectionOperationBatchDirection, state: Map<string, VisionClipCollection>): { transition: CollectionOperationBatchTransition | null; message: string } {
+  private prepareCollectionOperationBatchTransition(operation: VisionClipCollectionOperationHistory, snapshot: CollectionOperationSnapshot, direction: CollectionOperationBatchDirection, state: Map<string, VisionClipCollection>): CollectionOperationBatchPreparation {
     const updates: CollectionOperationBatchUpdate[] = []
     const seenIds = new Set<string>()
     const unavailableMessage = direction === 'undo' ? '批量撤销包含无法安全处理的集合操作' : '批量重做包含无法安全处理的集合操作'
@@ -1488,22 +1516,24 @@ export class ClipInboxStore {
         const expected = expectedFlags[index]
         const next = nextFlags[index]
         const current = state.get(expected?.id ?? '')
-        if (!expected || !next || expected.id !== next.id || !current || current.updatedAt !== expected.updatedAt || current.isFavorite !== expected.isFavorite || current.isArchived !== expected.isArchived || !append({
+        if (!expected || !next || expected.id !== next.id) return { transition: null, message: corruptedMessage }
+        if (!current || current.updatedAt !== expected.updatedAt || current.isFavorite !== expected.isFavorite || current.isArchived !== expected.isArchived) return { transition: null, message: unavailableMessage, conflictReason: 'collection-conflict' }
+        if (!append({
           id: expected.id,
           expected: cloneCollection(current),
           expectedFlags: expected,
           next: current ? cloneCollection({ ...current, isFavorite: next.isFavorite, isArchived: next.isArchived, updatedAt: next.updatedAt }) : null
-        })) return { transition: null, message: unavailableMessage }
+        })) return { transition: null, message: corruptedMessage }
       }
     } else if (operation.type === 'duplicate' || operation.type === 'merge') {
       const createdCollections = snapshot.createdCollections
       if (!createdCollections || createdCollections.length === 0) return { transition: null, message: corruptedMessage }
       const next = direction === 'undo' ? createdCollections.map(() => null) : createdCollections
       if (direction === 'undo') {
-        if (!appendFullSnapshots(createdCollections, next)) return { transition: null, message: unavailableMessage }
+        if (!appendFullSnapshots(createdCollections, next)) return { transition: null, message: corruptedMessage }
       } else {
         for (const collection of createdCollections) {
-          if (!append({ id: collection.id, expected: null, next: cloneCollection(collection) })) return { transition: null, message: unavailableMessage }
+          if (!append({ id: collection.id, expected: null, next: cloneCollection(collection) })) return { transition: null, message: corruptedMessage }
         }
       }
     } else if (operation.type === 'delete') {
@@ -1511,22 +1541,22 @@ export class ClipInboxStore {
       if (!removedCollections || removedCollections.length === 0) return { transition: null, message: corruptedMessage }
       if (direction === 'undo') {
         for (const collection of removedCollections) {
-          if (!append({ id: collection.id, expected: null, next: cloneCollection(collection) })) return { transition: null, message: unavailableMessage }
+          if (!append({ id: collection.id, expected: null, next: cloneCollection(collection) })) return { transition: null, message: corruptedMessage }
         }
       } else if (!appendFullSnapshots(removedCollections, removedCollections.map(() => null))) {
-        return { transition: null, message: unavailableMessage }
+        return { transition: null, message: corruptedMessage }
       }
     } else if (operation.type === 'rename' || operation.type === 'content') {
       const beforeCollections = snapshot.beforeCollections
       const afterCollections = snapshot.afterCollections
       if (!beforeCollections || beforeCollections.length === 0 || !afterCollections || afterCollections.length !== beforeCollections.length) return { transition: null, message: corruptedMessage }
       if (direction === 'undo') {
-        if (!appendFullSnapshots(afterCollections, beforeCollections)) return { transition: null, message: unavailableMessage }
+        if (!appendFullSnapshots(afterCollections, beforeCollections)) return { transition: null, message: corruptedMessage }
       } else if (!appendFullSnapshots(beforeCollections, afterCollections)) {
-        return { transition: null, message: unavailableMessage }
+        return { transition: null, message: corruptedMessage }
       }
     } else {
-      return { transition: null, message: unavailableMessage }
+      return { transition: null, message: unavailableMessage, conflictReason: 'collection-conflict' }
     }
 
     for (const update of updates) {
@@ -1534,7 +1564,7 @@ export class ClipInboxStore {
       const matches = update.expectedFlags
         ? current !== null && current.updatedAt === update.expectedFlags.updatedAt && current.isFavorite === update.expectedFlags.isFavorite && current.isArchived === update.expectedFlags.isArchived
         : collectionSnapshotsEqual(current, update.expected)
-      if (!matches) return { transition: null, message: unavailableMessage }
+      if (!matches) return { transition: null, message: unavailableMessage, conflictReason: 'collection-conflict' }
     }
     for (const update of updates) {
       if (update.next === null) state.delete(update.id)

@@ -776,6 +776,7 @@ export type VisionClipCollectionOperationBatchResult = {
   message: string
   operations: VisionClipCollectionOperationHistory[]
   collections: VisionClipCollection[]
+  conflicts: VisionClipCollectionOperationBatchConflict[]
   createdCollectionIds?: string[]
   deletedCollectionIds?: string[]
 }
@@ -783,6 +784,14 @@ export type VisionClipCollectionOperationBatchResult = {
 export type VisionClipCollectionOperationBatchUndoResult = VisionClipCollectionOperationBatchResult
 
 export type VisionClipCollectionOperationBatchRedoResult = VisionClipCollectionOperationBatchResult
+
+export type VisionClipCollectionOperationBatchConflictReason = 'missing' | 'status' | 'corrupt' | 'collection-conflict'
+
+export type VisionClipCollectionOperationBatchConflict = {
+  operationId: string
+  operationType: VisionClipCollectionOperationType | null
+  reason: VisionClipCollectionOperationBatchConflictReason
+}
 
 export type VisionClipCollectionBatchExportRequest = {
   collectionIds: string[]

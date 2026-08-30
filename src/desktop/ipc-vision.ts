@@ -833,7 +833,7 @@ export function registerVisionIpc(): void {
       if (!result.success) return { ...result, message: copy.collectionOperationHistoryBatchUndoUnavailable }
       return { ...result, message: copy.collectionOperationHistoryBatchUndoSuccess(result.operations.length) }
     } catch (error) {
-      return { success: false, message: error instanceof Error ? error.message : String(error), operations: [], collections: [] }
+      return { success: false, message: error instanceof Error ? error.message : String(error), operations: [], collections: [], conflicts: [] }
     }
   })
   ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_OPERATION_BATCH_REDO, (_event, operationIds: unknown) => {
@@ -843,7 +843,7 @@ export function registerVisionIpc(): void {
       if (!result.success) return { ...result, message: copy.collectionOperationHistoryBatchRedoUnavailable }
       return { ...result, message: copy.collectionOperationHistoryBatchRedoSuccess(result.operations.length) }
     } catch (error) {
-      return { success: false, message: error instanceof Error ? error.message : String(error), operations: [], collections: [] }
+      return { success: false, message: error instanceof Error ? error.message : String(error), operations: [], collections: [], conflicts: [] }
     }
   })
   ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_TAG_METADATA_UPDATE, (_event, request: VisionClipCollectionTagMetadataUpdateRequest) => {

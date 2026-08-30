@@ -226,13 +226,34 @@ describe('clip inbox store', () => {
 
     const flagged = store.getCollection(first.id)
     expect(flagged).toBeDefined()
-    const edited = store.saveCollection({ ...flagged!, title: '批量冲突一已编辑' })
+    const edited = store.saveCollection({ ...flagged!, title: '批量冲突一已编辑', isFavorite: false })
     const conflicted = store.undoCollectionOperations([flagOperation!.id, renameOperation!.id])
 
     expect(conflicted).toMatchObject({ success: false, operations: [], collections: [] })
+    expect(conflicted.conflicts).toMatchObject([{ operationType: 'flags', reason: 'collection-conflict' }])
     expect(store.getCollection(first.id)).toEqual(edited)
     expect(store.getCollection(second.id)).toEqual(renamed)
     expect(store.listCollectionOperationHistory().find((operation) => operation.id === renameOperation!.id)).toMatchObject({ status: 'active' })
+  })
+
+  it('reports every conflicting collection history entry before a batch retry', () => {
+    const first = store.saveCollection({ title: '多条集合冲突一', selections: [selection()] })
+    const second = store.saveCollection({ title: '多条集合冲突二', selections: [selection({ startSeconds: 4, endSeconds: 6 })] })
+    const firstFlags = store.updateCollectionFlags({ collectionIds: [first.id], isFavorite: true })
+    const secondFlags = store.updateCollectionFlags({ collectionIds: [second.id], isArchived: true })
+    expect(firstFlags.collections).toHaveLength(1)
+    expect(secondFlags.collections).toHaveLength(1)
+    const operationIds = store.listCollectionOperationHistory().filter((operation) => operation.type === 'flags').map((operation) => operation.id)
+    store.updateCollectionFlags({ collectionIds: [first.id], isFavorite: false })
+    store.updateCollectionFlags({ collectionIds: [second.id], isArchived: false })
+    const result = store.undoCollectionOperations(operationIds)
+
+    expect(result.success).toBe(false)
+    expect(result.conflicts).toHaveLength(2)
+    expect(result.conflicts.map((conflict) => conflict.operationId)).toEqual(expect.arrayContaining(operationIds))
+    expect(result.conflicts.every((conflict) => conflict.reason === 'collection-conflict')).toBe(true)
+    expect(store.getCollection(first.id)?.isFavorite).toBe(false)
+    expect(store.getCollection(second.id)?.isArchived).toBe(false)
   })
 
   it('records batch merges and restores only the generated collection through undo and redo', () => {
