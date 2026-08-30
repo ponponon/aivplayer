@@ -806,6 +806,26 @@ export function registerVisionIpc(): void {
       return { success: false, message: error instanceof Error ? error.message : String(error), operation: null, collections: [] }
     }
   })
+  ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_OPERATION_BATCH_UNDO, (_event, operationIds: unknown) => {
+    const copy = getAppCopy(getCurrentLocale()).vision
+    try {
+      const result = getClipInboxStore().undoCollectionOperations(operationIds as readonly unknown[])
+      if (!result.success) return { ...result, message: copy.collectionOperationHistoryBatchUndoUnavailable }
+      return { ...result, message: copy.collectionOperationHistoryBatchUndoSuccess(result.operations.length) }
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : String(error), operations: [], collections: [] }
+    }
+  })
+  ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_OPERATION_BATCH_REDO, (_event, operationIds: unknown) => {
+    const copy = getAppCopy(getCurrentLocale()).vision
+    try {
+      const result = getClipInboxStore().redoCollectionOperations(operationIds as readonly unknown[])
+      if (!result.success) return { ...result, message: copy.collectionOperationHistoryBatchRedoUnavailable }
+      return { ...result, message: copy.collectionOperationHistoryBatchRedoSuccess(result.operations.length) }
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : String(error), operations: [], collections: [] }
+    }
+  })
   ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_TAG_METADATA_UPDATE, (_event, request: VisionClipCollectionTagMetadataUpdateRequest) => {
     const copy = getAppCopy(getCurrentLocale()).vision
     const tag = normalizeVisionCollectionTag(request?.tag)
