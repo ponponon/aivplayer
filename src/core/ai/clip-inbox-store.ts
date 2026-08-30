@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto'
 import { mergeVisionClipSelections, normalizeVisionTimeRange } from './vision-evidence'
 import { normalizeVisionClipCollectionTagOperationHistoryPageRequest } from './clip-inbox-tag-history'
 import { applyVisionCollectionTags, duplicateVisionCollectionTitle, mergeVisionClipCollections, normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionSortMode, normalizeVisionCollectionTag, normalizeVisionCollectionTagColor, normalizeVisionCollectionTagFavorite, normalizeVisionCollectionTagNote, normalizeVisionCollectionTags, normalizeVisionCollectionTagsMode, renameVisionCollectionTag, renameVisionClipCollectionTitle, selectVisionClipCollectionsForMerge, sortVisionClipSelections, wouldCreateVisionCollectionTagParentCycle } from './clip-inbox-operations'
-import type { VisionClipCollection, VisionClipCollectionBatchDeleteResult, VisionClipCollectionBatchRenameResult, VisionClipCollectionBatchTagsResult, VisionClipCollectionFlagUpdateRequest, VisionClipCollectionInput, VisionClipCollectionMergeSelection, VisionClipCollectionOperationHistory, VisionClipCollectionOperationRedoResult, VisionClipCollectionOperationType, VisionClipCollectionOperationUndoResult, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataUpdateRequest, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationHistoryDetail, VisionClipCollectionTagOperationHistoryEntry, VisionClipCollectionTagOperationHistoryPage, VisionClipCollectionTagOperationType, VisionClipCollectionTagRedoResult, VisionClipCollectionTagUndoResult, VisionClipSelection, VisionEvidenceType } from '../../shared/vision-types'
+import type { VisionClipCollection, VisionClipCollectionBatchDeleteResult, VisionClipCollectionBatchRenameResult, VisionClipCollectionBatchTagsResult, VisionClipCollectionFlagUpdateRequest, VisionClipCollectionInput, VisionClipCollectionMergeSelection, VisionClipCollectionOperationHistory, VisionClipCollectionOperationHistoryEntry, VisionClipCollectionOperationRedoResult, VisionClipCollectionOperationType, VisionClipCollectionOperationUndoResult, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataUpdateRequest, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationHistoryDetail, VisionClipCollectionTagOperationHistoryEntry, VisionClipCollectionTagOperationHistoryPage, VisionClipCollectionTagOperationType, VisionClipCollectionTagRedoResult, VisionClipCollectionTagUndoResult, VisionClipSelection, VisionEvidenceType } from '../../shared/vision-types'
 
 type SqliteRow = Record<string, unknown>
 const EVIDENCE_TYPES: readonly VisionEvidenceType[] = ['subtitle', 'visual', 'scene', 'ocr', 'entity', 'object']
@@ -253,6 +253,11 @@ export class ClipInboxStore {
   getLastCollectionRedoOperation(): VisionClipCollectionOperationHistory | null {
     const row = this.database.prepare('SELECT id, operation_type, created_at FROM clip_collection_operation_history WHERE undone_at IS NOT NULL AND redoable = 1 ORDER BY undone_at DESC, rowid DESC LIMIT 1').get() as SqliteRow | undefined
     return row ? this.readCollectionOperationHistory(row) : null
+  }
+
+  listCollectionOperationHistory(): VisionClipCollectionOperationHistoryEntry[] {
+    const rows = this.database.prepare('SELECT id, operation_type, snapshot_json, created_at, undone_at, redoable FROM clip_collection_operation_history ORDER BY rowid DESC LIMIT 20').all() as SqliteRow[]
+    return rows.map((row) => this.readCollectionOperationHistoryEntry(row)).filter((entry): entry is VisionClipCollectionOperationHistoryEntry => entry !== null)
   }
 
   undoLastCollectionOperation(): VisionClipCollectionOperationUndoResult {
@@ -1240,6 +1245,44 @@ export class ClipInboxStore {
     const type = stringValue(row, 'operation_type')
     if (!id || !COLLECTION_OPERATION_TYPES.includes(type as VisionClipCollectionOperationType)) return null
     return { id, type: type as VisionClipCollectionOperationType, createdAt: numberValue(row, 'created_at') }
+  }
+
+  private readCollectionOperationHistoryEntry(row: SqliteRow): VisionClipCollectionOperationHistoryEntry | null {
+    const operation = this.readCollectionOperationHistory(row)
+    const snapshot = this.parseCollectionOperationSnapshot(row.snapshot_json)
+    if (!operation || !snapshot) return null
+    const summary = this.summarizeCollectionOperation(operation.type, snapshot)
+    if (!summary || summary.collectionIds.length === 0) return null
+    const undoneAt = nullableNumberValue(row, 'undone_at') ?? null
+    const status = undoneAt === null ? 'active' : numberValue(row, 'redoable') > 0 ? 'redoable' : 'undone'
+    return { ...operation, status, undoneAt, ...summary }
+  }
+
+  private summarizeCollectionOperation(type: VisionClipCollectionOperationType, snapshot: CollectionOperationSnapshot): Pick<VisionClipCollectionOperationHistoryEntry, 'collectionIds' | 'collectionTitles' | 'selectionCount'> | null {
+    if (type === 'flags') {
+      const collectionFlags = snapshot.collectionFlags
+      if (!collectionFlags || collectionFlags.length === 0) return null
+      const summaries = collectionFlags.map((item) => {
+        const collection = this.getCollection(item.id)
+        return { id: item.id, title: collection?.title ?? '', selectionCount: collection?.selections.length ?? 0 }
+      })
+      return {
+        collectionIds: summaries.map((item) => item.id),
+        collectionTitles: summaries.map((item) => item.title),
+        selectionCount: summaries.reduce((total, item) => total + item.selectionCount, 0)
+      }
+    }
+    const collections = type === 'delete'
+      ? snapshot.removedCollections
+      : type === 'duplicate' || type === 'merge'
+        ? snapshot.createdCollections
+        : snapshot.afterCollections ?? snapshot.beforeCollections
+    if (!collections || collections.length === 0) return null
+    return {
+      collectionIds: collections.map((collection) => collection.id),
+      collectionTitles: collections.map((collection) => collection.title),
+      selectionCount: collections.reduce((total, collection) => total + collection.selections.length, 0)
+    }
   }
 
   private ensureCollectionColumn(name: 'tags_json' | 'sort_mode' | 'is_favorite' | 'is_archived', definition: string): void {

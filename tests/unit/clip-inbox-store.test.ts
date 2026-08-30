@@ -337,6 +337,38 @@ describe('clip inbox store', () => {
     expect(store.getCollection(original.id)).toEqual(updated)
   })
 
+  it('lists collection operation summaries without exposing operation snapshots', () => {
+    const original = store.saveCollection({ title: '历史摘要源', selections: [selection(), selection({ startSeconds: 5, endSeconds: 7 })] })
+    store.updateCollectionFlags({ collectionIds: [original.id], isFavorite: true })
+    expect(store.listCollectionOperationHistory()[0]).toMatchObject({
+      type: 'flags',
+      status: 'active',
+      collectionIds: [original.id],
+      collectionTitles: ['历史摘要源'],
+      selectionCount: 2
+    })
+
+    const updated = store.updateCollectionSelections(original.id, [selection({ startSeconds: 4, endSeconds: 6 })])
+    expect(updated).toBeDefined()
+    expect(store.undoLastCollectionOperation().success).toBe(true)
+
+    const history = store.listCollectionOperationHistory()
+    expect(history[0]).toMatchObject({ type: 'content', status: 'redoable', collectionTitles: ['历史摘要源'], selectionCount: 1 })
+    expect(history[1]).toMatchObject({ type: 'flags', status: 'active', collectionTitles: ['历史摘要源'], selectionCount: 2 })
+    expect(JSON.stringify(history)).not.toContain('snapshot_json')
+  })
+
+  it('summarizes deleted and created collection targets from immutable snapshots', () => {
+    const source = store.saveCollection({ title: '历史删除源', selections: [selection()] })
+    const duplicate = store.duplicateCollection(source.id)
+    expect(duplicate).toBeDefined()
+    expect(store.listCollectionOperationHistory()[0]).toMatchObject({ type: 'duplicate', collectionTitles: ['历史删除源 · 副本'], selectionCount: 1 })
+
+    expect(store.deleteCollection(source.id)).toBe(true)
+    expect(store.listCollectionOperationHistory()[0]).toMatchObject({ type: 'delete', status: 'active', collectionIds: [source.id], collectionTitles: ['历史删除源'], selectionCount: 1 })
+    expect(store.listCollectionOperationHistory()[1]).toMatchObject({ type: 'duplicate', collectionTitles: ['历史删除源 · 副本'], selectionCount: 1 })
+  })
+
   it('refuses to undo a single collection content edit after the collection changes', () => {
     const original = store.saveCollection({ title: '单集合内容冲突前', selections: [selection({ startSeconds: 1, endSeconds: 3 })] })
     const updated = store.updateCollectionSelections(original.id, [selection({ startSeconds: 4, endSeconds: 6 })])

@@ -696,6 +696,16 @@ export type VisionClipCollectionOperationHistory = {
   createdAt: number
 }
 
+export type VisionClipCollectionOperationHistoryStatus = 'active' | 'undone' | 'redoable'
+
+export type VisionClipCollectionOperationHistoryEntry = VisionClipCollectionOperationHistory & {
+  status: VisionClipCollectionOperationHistoryStatus
+  undoneAt: number | null
+  collectionIds: string[]
+  collectionTitles: string[]
+  selectionCount: number
+}
+
 export type VisionClipCollectionOperationUndoResult = {
   success: boolean
   message: string
