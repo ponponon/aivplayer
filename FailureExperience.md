@@ -2291,3 +2291,17 @@
 - 原因：只验证了 DOM 结构和交互行为，没有把圆角、边框、间距、可见性、焦点和响应式布局等视觉不变量定义成验收条件；同时把“已记录经验”误当成了“已建立防线”。
 - 经验：凡是 UI 改动，都必须同时验证源码约束、实际计算样式、关键交互和真实渲染截图。删除或调整 `border`、`border-radius`、`gap`、`display` 等基础样式时，必须明确对应的设计意图和回归断言。
 - 处理：AI 服务列表已增加圆角源码断言和 Electron Smoke 计算样式断言；后续应沿用“视觉不变量清单 + 真实 Electron Smoke + 截图复核”的闭环，不能只以测试全绿或文档已记录作为完成标准。
+
+## 2026-08-30：真实 Electron Smoke 必须按 DOM 的无障碍名称定位
+
+- 现象：集合历史时间线 Smoke 已能找到集合卡片，但点击“收藏集合”按钮在 30 秒后超时。
+- 原因：按钮的可见文本是“收藏集合”，但既有源码同时设置了 `aria-label="收藏集合: <集合标题>"`；Smoke 使用了 `getByRole('button', { name: '收藏集合', exact: true })`，与实际无障碍名称不一致。
+- 经验：编写 Electron Smoke 时，优先读取目标组件的实际 DOM、可见文本和 `aria-label`，不要凭按钮视觉文案猜 exact accessible name；带动态上下文的控件应使用完整无障碍名称或稳定的组件选择器。
+- 处理：定位器改为 `getByRole('button', { name: \`收藏集合: ${title}\`, exact: true })`，重新运行 Smoke 通过，并保留 `historyVisible: true`、`statusTransitionVerified: true`、`persistedRedoAfterReload: true` 和 `consoleErrors: 0` 证据。
+
+## 2026-08-30：需要监听本机端口的测试必须在宿主环境运行
+
+- 现象：默认沙盒下全量回归只有既有 `tests/unit/web-server.test.ts` 的 6 项失败，错误为 `listen EPERM: operation not permitted 127.0.0.1`；其余 327 个测试文件 / 1219 项通过。
+- 原因：测试会启动本机 WebServer，默认沙盒禁止绑定 `127.0.0.1` 监听端口；这不是集合操作历史代码或断言失败。
+- 经验：遇到端口、真实 Electron 或其他宿主资源依赖时，要把环境权限作为测试前置条件记录清楚，并区分“沙盒能力限制”和“产品回归”；不能用一次默认沙盒失败直接判断功能不通过。
+- 处理：按项目权限约定在宿主环境重跑完整 Vitest，最终 328 个测试文件 / 1225 项全部通过。
