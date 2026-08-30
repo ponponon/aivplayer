@@ -26,6 +26,8 @@ describe('vision clip collection operation history UI', () => {
     expect(panel).toContain('collectionOperationHistoryDetailTagsLabel')
     expect(panel).toContain('diffVisionClipCollectionOperationDetails')
     expect(panel).toContain('data-change={change}')
+    expect(panel).toContain('undoCollectionOperation(operation.id)')
+    expect(panel).toContain('redoCollectionOperation(operation.id)')
     expect(styles).toContain('.vision-collection-operation-history-entry.is-active')
     expect(styles).toContain('.vision-collection-operation-history-entry.is-redoable')
     expect(styles).toContain('.vision-collection-operation-history-entry.is-undone')
@@ -34,6 +36,7 @@ describe('vision clip collection operation history UI', () => {
     expect(styles).toContain('.vision-collection-operation-history-detail-field.is-changed')
     expect(styles).toContain('.vision-collection-operation-history-detail-field.is-added')
     expect(styles).toContain('.vision-collection-operation-history-detail-field.is-removed')
+    expect(styles).toContain('.vision-collection-operation-history-actions')
   })
 
   it('keeps collection operation history copy complete in every supported locale', () => {
@@ -52,6 +55,10 @@ describe('vision clip collection operation history UI', () => {
       expect(source).toContain('collectionOperationHistoryDetailCollectionIdLabel')
       expect(source).toContain('collectionOperationHistoryDetailTitleLabel')
       expect(source).toContain('collectionOperationHistoryDetailChangeLabel')
+      expect(source).toContain('collectionOperationHistoryUndo')
+      expect(source).toContain('collectionOperationHistoryRedo')
+      expect(source).toContain('collectionOperationHistoryUndoUnavailable')
+      expect(source).toContain('collectionOperationHistoryRedoUnavailable')
     }
   })
 })

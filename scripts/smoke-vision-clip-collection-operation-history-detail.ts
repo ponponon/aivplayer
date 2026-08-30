@@ -99,6 +99,20 @@ async function runSmoke(): Promise<void> {
     if (changedFieldCount < 1 || !detailText.includes('已变化')) {
       throw new Error(`Collection operation history detail diff UI mismatch: changedFieldCount=${changedFieldCount}, text=${detailText}`)
     }
+    const activeEntry = page.locator('.vision-collection-operation-history-entry').first()
+    await activeEntry.getByRole('button', { name: '撤销此操作: 收藏 / 归档', exact: true }).click()
+    await page.getByRole('status').filter({ hasText: '已撤销指定集合操作' }).waitFor({ timeout: 10_000 })
+    const undoneEntry = page.locator('.vision-collection-operation-history-entry').first()
+    await undoneEntry.getByRole('button', { name: '重做此操作: 收藏 / 归档', exact: true }).waitFor({ timeout: 10_000 })
+    if (await page.locator('.vision-collection-operation-history-detail').count() !== 0) throw new Error('Collection operation history detail remained open after targeted undo')
+
+    await undoneEntry.getByRole('button', { name: '重做此操作: 收藏 / 归档', exact: true }).click()
+    await page.getByRole('status').filter({ hasText: '已重做指定集合操作' }).waitFor({ timeout: 10_000 })
+    const redoneEntry = page.locator('.vision-collection-operation-history-entry').first()
+    await redoneEntry.getByRole('button', { name: '撤销此操作: 收藏 / 归档', exact: true }).waitFor({ timeout: 10_000 })
+    await redoneEntry.getByRole('button', { name: '查看详情', exact: true }).click()
+    await detailRegion.waitFor({ timeout: 10_000 })
+    if (await detailRegion.locator('.vision-collection-operation-history-detail-field.is-changed').count() < 1) throw new Error('Collection operation history diff was lost after targeted redo')
     if (screenshotPath) {
       await detailRegion.scrollIntoViewIfNeeded()
       await page.screenshot({ path: screenshotPath, fullPage: false })
@@ -107,7 +121,7 @@ async function runSmoke(): Promise<void> {
     await detailRegion.getByRole('button', { name: '收起详情', exact: true }).click()
     if (await page.locator('.vision-collection-operation-history-detail').count() !== 0) throw new Error('Collection operation history detail remained open after close')
     if (session.errors.length > 0) throw new Error(`Renderer errors during collection operation history detail smoke:\n${session.errors.join('\n')}`)
-    console.log(`AIVPlayer Smoke Vision Clip Collection Operation History Detail passed: ${JSON.stringify({ pageIdentity, detailVisible: true, safeFieldsVerified: true, fieldDiffVisible: true, detailClosed: true, consoleErrors: session.errors.length, screenshotPath: screenshotPath ?? null })}`)
+    console.log(`AIVPlayer Smoke Vision Clip Collection Operation History Detail passed: ${JSON.stringify({ pageIdentity, detailVisible: true, safeFieldsVerified: true, fieldDiffVisible: true, targetedUndoRedoVerified: true, detailClosed: true, consoleErrors: session.errors.length, screenshotPath: screenshotPath ?? null })}`)
   } finally {
     if (app) await app.close().catch(() => undefined)
     await rm(userDataDirectory, { recursive: true, force: true }).catch(() => undefined)
