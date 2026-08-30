@@ -945,8 +945,21 @@ export class ClipInboxStore {
   }
 
   deleteCollection(collectionId: string): boolean {
-    const result = this.database.prepare('DELETE FROM clip_collections WHERE id = ?').run(collectionId)
-    return Number(result.changes) > 0
+    const id = typeof collectionId === 'string' ? collectionId.trim() : ''
+    if (!id) return false
+    const removedCollection = this.getCollection(id)
+    if (!removedCollection) return false
+    const now = Date.now()
+    this.database.exec('BEGIN')
+    try {
+      const result = this.database.prepare('DELETE FROM clip_collections WHERE id = ?').run(id)
+      if (Number(result.changes) > 0) this.recordCollectionOperation('delete', { removedCollections: [removedCollection] }, now)
+      this.database.exec('COMMIT')
+      return Number(result.changes) > 0
+    } catch (error) {
+      this.database.exec('ROLLBACK')
+      throw error
+    }
   }
 
   private readCollection(row: SqliteRow): VisionClipCollection | null {

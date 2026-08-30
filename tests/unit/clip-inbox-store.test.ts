@@ -189,7 +189,39 @@ describe('clip inbox store', () => {
     const saved = store.saveCollection({ title: '待删除', selections: [selection()] })
     expect(store.deleteCollection(saved.id)).toBe(true)
     expect(store.deleteCollection(saved.id)).toBe(false)
+    expect(store.getLastCollectionOperation()).toMatchObject({ type: 'delete' })
     expect(store.listCollections()).toEqual([])
+  })
+
+  it('records single deletion and restores the full collection through undo and redo', () => {
+    const saved = store.saveCollection({ title: '单集合删除恢复', tags: ['待恢复'], isFavorite: true, isArchived: true, sortMode: 'duration-desc', selections: [selection({ startSeconds: 4, endSeconds: 8 })] })
+
+    expect(store.deleteCollection(saved.id)).toBe(true)
+    expect(store.getCollection(saved.id)).toBeNull()
+    expect(store.getLastCollectionOperation()).toMatchObject({ type: 'delete' })
+
+    const undone = store.undoLastCollectionOperation()
+    expect(undone).toMatchObject({ success: true, operation: expect.objectContaining({ type: 'delete' }), createdCollectionIds: [saved.id] })
+    expect(undone.collections).toEqual([saved])
+    expect(store.getCollection(saved.id)).toEqual(saved)
+
+    store.close()
+    store = new ClipInboxStore(tempDirectory)
+    const redone = store.redoLastCollectionOperation()
+    expect(redone).toMatchObject({ success: true, operation: expect.objectContaining({ type: 'delete' }), deletedCollectionIds: [saved.id] })
+    expect(store.getCollection(saved.id)).toBeNull()
+  })
+
+  it('refuses to redo a single deletion after the restored collection was edited', () => {
+    const saved = store.saveCollection({ title: '单集合删除冲突', selections: [selection()] })
+    expect(store.deleteCollection(saved.id)).toBe(true)
+    expect(store.undoLastCollectionOperation().success).toBe(true)
+    const edited = store.saveCollection({ id: saved.id, title: '恢复后改名', selections: saved.selections })
+
+    const redone = store.redoLastCollectionOperation()
+    expect(redone).toMatchObject({ success: false, operation: null, collections: [] })
+    expect(store.getCollection(saved.id)).toEqual(edited)
+    expect(store.getLastCollectionRedoOperation()).toMatchObject({ type: 'delete' })
   })
 
   it('records batch deletion and restores the original collections through undo and redo', () => {
