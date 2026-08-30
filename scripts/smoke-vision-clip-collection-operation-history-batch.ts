@@ -33,6 +33,7 @@ async function runSmoke(): Promise<void> {
   const firstTitle = `批量历史一 Smoke ${Date.now()}`
   const secondTitle = `批量历史二 Smoke ${Date.now()}`
   const renamedTitle = `${secondTitle} · 已重命名`
+  const conflictScreenshotPath = process.env.AIVPLAYER_SMOKE_CONFLICT_SCREENSHOT_PATH
   let app: ElectronApplication | null = null
 
   try {
@@ -94,8 +95,37 @@ async function runSmoke(): Promise<void> {
       await historyCard.scrollIntoViewIfNeeded()
       await page.screenshot({ path: screenshotPath, fullPage: false })
     }
+    const branchedFirst = await page.evaluate((next) => window.aiv.saveVisionClipCollection({ id: next.id, title: next.title, tags: next.tags, sortMode: next.sortMode, isFavorite: false, isArchived: next.isArchived, selections: next.selections }), redoneFirst)
+    if (!branchedFirst || branchedFirst.isFavorite) throw new Error(`Collection history conflict branch setup failed: ${JSON.stringify(branchedFirst)}`)
+
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await openVisionPanel(page)
+    const conflictHistoryCard = page.locator('.vision-collection-operation-history')
+    await conflictHistoryCard.waitFor({ timeout: 10_000 })
+    await conflictHistoryCard.getByRole('button', { name: '全选可撤销', exact: true }).click()
+    await conflictHistoryCard.getByRole('button', { name: '批量撤销选中操作', exact: true }).click()
+    const conflictPanel = conflictHistoryCard.locator('.vision-collection-operation-history-conflicts')
+    await conflictPanel.waitFor({ timeout: 10_000 })
+    if (!(await conflictPanel.getByText('集合已被修改或删除', { exact: true }).count())) throw new Error(`Collection history conflict reason was not rendered: ${await conflictPanel.textContent()}`)
+    const historyBeforeRecovery = await page.evaluate(() => window.aiv.listVisionClipCollectionOperationHistory())
+    if (historyBeforeRecovery.some((entry) => entry.status !== 'active')) throw new Error('Collection history conflict batch changed history status')
+    if (conflictScreenshotPath) {
+      await conflictHistoryCard.scrollIntoViewIfNeeded()
+      await page.screenshot({ path: conflictScreenshotPath, fullPage: false })
+    }
+    await conflictPanel.getByRole('button', { name: '移除冲突项，保留其他选择', exact: true }).click()
+    await conflictPanel.waitFor({ state: 'hidden', timeout: 10_000 })
+    if (!(await conflictHistoryCard.getByRole('status').filter({ hasText: '已选择 1 条操作' }).count())) throw new Error('Collection history conflict removal did not retain the safe selection')
+    await conflictHistoryCard.getByRole('button', { name: '批量撤销选中操作', exact: true }).click()
+    await page.getByRole('status').filter({ hasText: '已批量撤销 1 条集合操作' }).waitFor({ timeout: 10_000 })
+    const recoveredCollections = await page.evaluate(() => window.aiv.listVisionClipCollections())
+    const recoveredFirst = recoveredCollections.find((collection) => collection.id === first.id)
+    const recoveredSecond = recoveredCollections.find((collection) => collection.id === second.id)
+    if (!recoveredFirst || recoveredFirst.isFavorite || !recoveredSecond || recoveredSecond.title !== secondTitle) throw new Error(`Collection history conflict recovery mismatch: ${JSON.stringify({ recoveredFirst, recoveredSecond })}`)
+    const historyAfterRecovery = await page.evaluate(() => window.aiv.listVisionClipCollectionOperationHistory())
+    if (historyAfterRecovery.filter((entry) => entry.status === 'redoable').length !== 1 || historyAfterRecovery.filter((entry) => entry.status === 'active').length !== 1) throw new Error(`Collection history conflict recovery changed unexpected history statuses: ${JSON.stringify(historyAfterRecovery)}`)
     if (session.errors.length > 0) throw new Error(`Renderer errors during collection operation history batch smoke:\n${session.errors.join('\n')}`)
-    console.log(`AIVPlayer Smoke Vision Clip Collection Operation History Batch passed: ${JSON.stringify({ pageIdentity, mixedOperations: true, selectedCount: 2, atomicUndoVerified: true, atomicRedoVerified: true, consoleErrors: session.errors.length, screenshotPath: screenshotPath ?? null })}`)
+    console.log(`AIVPlayer Smoke Vision Clip Collection Operation History Batch passed: ${JSON.stringify({ pageIdentity, mixedOperations: true, selectedCount: 2, atomicUndoVerified: true, atomicRedoVerified: true, conflictDiagnosticsVerified: true, conflictRecoveryVerified: true, consoleErrors: session.errors.length, screenshotPath: screenshotPath ?? null, conflictScreenshotPath: conflictScreenshotPath ?? null })}`)
   } finally {
     if (app) await app.close().catch(() => undefined)
     await rm(userDataDirectory, { recursive: true, force: true }).catch(() => undefined)
