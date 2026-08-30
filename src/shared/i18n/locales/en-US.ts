@@ -631,6 +631,8 @@
       collectionTagManagerHistoryConflictDescription: (count: number) => `${count} history entr${count === 1 ? 'y needs' : 'ies need'} review; no data was changed.`,
       collectionTagManagerHistoryConflictReason: { missing: 'History entry no longer exists', status: 'History status changed', corrupt: 'History snapshot is corrupted', 'collection-conflict': 'Collection tags or timestamp changed', 'metadata-conflict': 'Tag metadata changed' },
       collectionTagManagerHistoryConflictMore: (count: number) => `${count} more conflict entr${count === 1 ? 'y' : 'ies'} not shown`,
+      collectionTagManagerHistoryConflictRemove: 'Remove conflicts, keep other selections',
+      collectionTagManagerHistoryConflictRemoved: (count: number) => `Removed ${count} conflict entr${count === 1 ? 'y' : 'ies'}; other selections remain available`,
       collectionTagManagerHistoryPaginationLabel: 'Tag history pagination',
       collectionTagManagerHistoryPreviousPage: 'Previous',
       collectionTagManagerHistoryNextPage: 'Next',

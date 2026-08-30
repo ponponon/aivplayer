@@ -733,6 +733,16 @@ export function VisionPanel(): React.ReactElement {
     setSelectedCollectionTagOperationRedoIds(new Set())
   }
 
+  const removeCollectionTagOperationConflicts = (): void => {
+    if (isCollectionBatchBusy || collectionTagOperationConflicts.length === 0) return
+    const conflictIds = new Set(collectionTagOperationConflicts.map((conflict) => conflict.operationId))
+    setSelectedCollectionTagOperationUndoIds((current) => new Set([...current].filter((operationId) => !conflictIds.has(operationId))))
+    setSelectedCollectionTagOperationRedoIds((current) => new Set([...current].filter((operationId) => !conflictIds.has(operationId))))
+    setCollectionTagOperationConflicts([])
+    setError(null)
+    setCollectionTagTransferStatus(app.copy.vision.collectionTagManagerHistoryConflictRemoved(conflictIds.size))
+  }
+
   useEffect(() => {
     setCollectionTagParent(managedCollectionTagMetadata?.parentTag ?? '')
     setCollectionTagColor(managedCollectionTagMetadata?.color || DEFAULT_COLLECTION_TAG_COLOR)
@@ -2485,6 +2495,7 @@ export function VisionPanel(): React.ReactElement {
             {collectionTagOperationConflicts.slice(0, 5).map((conflict) => <li key={`${conflict.operationId}:${conflict.reason}`}><strong>{conflict.operationType ? app.copy.vision.collectionTagManagerHistoryType[conflict.operationType] : conflict.operationId}</strong><code>{conflict.operationId.slice(0, 8)}</code><small>{app.copy.vision.collectionTagManagerHistoryConflictReason[conflict.reason]}</small></li>)}
           </ul>
           {collectionTagOperationConflicts.length > 5 ? <small>{app.copy.vision.collectionTagManagerHistoryConflictMore(collectionTagOperationConflicts.length - 5)}</small> : null}
+          <button className="vision-secondary-action" type="button" onClick={removeCollectionTagOperationConflicts} disabled={isCollectionBatchBusy}>{app.copy.vision.collectionTagManagerHistoryConflictRemove}</button>
         </div> : null}
         {visibleCollectionTagOperationHistory.length > 0 ? <div className="vision-collection-tag-history-list" role="list" aria-label={app.copy.vision.collectionTagManagerHistoryTitle}>
           {visibleCollectionTagOperationHistory.map((operation) => <div className={`vision-collection-tag-history-entry is-${operation.status}`} key={operation.id} role="listitem">

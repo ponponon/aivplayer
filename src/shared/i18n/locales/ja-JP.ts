@@ -631,6 +631,8 @@
       collectionTagManagerHistoryConflictDescription: (count: number) => `${count} 件の履歴を再確認してください。データは変更されていません。`,
       collectionTagManagerHistoryConflictReason: { missing: '履歴が存在しません', status: '履歴の状態が変わりました', corrupt: '履歴スナップショットが壊れています', 'collection-conflict': 'コレクションのタグまたは更新日時が変わりました', 'metadata-conflict': 'タグメタデータが変わりました' },
       collectionTagManagerHistoryConflictMore: (count: number) => `ほか ${count} 件の競合は省略されています`,
+      collectionTagManagerHistoryConflictRemove: '競合項目を外し、ほかの選択を残す',
+      collectionTagManagerHistoryConflictRemoved: (count: number) => `${count} 件の競合履歴を選択から外しました。ほかの選択を続行できます`,
       collectionTagManagerHistoryPaginationLabel: 'タグ履歴のページ送り',
       collectionTagManagerHistoryPreviousPage: '前へ',
       collectionTagManagerHistoryNextPage: '次へ',

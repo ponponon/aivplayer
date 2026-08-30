@@ -1526,6 +1526,13 @@
   font-size: 8px;
 }
 
+.vision-collection-tag-history-conflicts .vision-secondary-action {
+  justify-self: start;
+  min-height: 21px;
+  padding: 0 6px;
+  font-size: 8px;
+}
+
 .vision-collection-tag-history-pagination {
   display: flex;
   align-items: center;

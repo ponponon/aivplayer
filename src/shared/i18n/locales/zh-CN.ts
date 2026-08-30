@@ -631,6 +631,8 @@
       collectionTagManagerHistoryConflictDescription: (count: number) => `${count} 条历史记录需要重新确认，数据未被修改。`,
       collectionTagManagerHistoryConflictReason: { missing: '历史记录已不存在', status: '历史状态已变化', corrupt: '历史快照已损坏', 'collection-conflict': '集合标签或更新时间已变化', 'metadata-conflict': '标签元数据已变化' },
       collectionTagManagerHistoryConflictMore: (count: number) => `另有 ${count} 条冲突记录未展开`,
+      collectionTagManagerHistoryConflictRemove: '移除冲突项，保留其他选择',
+      collectionTagManagerHistoryConflictRemoved: (count: number) => `已移除 ${count} 条冲突记录，可继续处理其他选择`,
       collectionTagManagerHistoryPaginationLabel: '标签历史分页',
       collectionTagManagerHistoryPreviousPage: '上一页',
       collectionTagManagerHistoryNextPage: '下一页',

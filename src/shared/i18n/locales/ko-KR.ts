@@ -631,6 +631,8 @@
       collectionTagManagerHistoryConflictDescription: (count: number) => `기록 ${count}개를 다시 확인해야 합니다. 데이터는 변경되지 않았습니다.`,
       collectionTagManagerHistoryConflictReason: { missing: '기록이 더 이상 존재하지 않음', status: '기록 상태가 변경됨', corrupt: '기록 스냅샷이 손상됨', 'collection-conflict': '컬렉션 태그 또는 시간이 변경됨', 'metadata-conflict': '태그 메타데이터가 변경됨' },
       collectionTagManagerHistoryConflictMore: (count: number) => `표시하지 않은 충돌 기록 ${count}개가 더 있습니다`,
+      collectionTagManagerHistoryConflictRemove: '충돌 항목을 제거하고 다른 선택 유지',
+      collectionTagManagerHistoryConflictRemoved: (count: number) => `충돌 기록 ${count}개를 제거했습니다. 다른 선택을 계속 처리할 수 있습니다`,
       collectionTagManagerHistoryPaginationLabel: '태그 기록 페이지 이동',
       collectionTagManagerHistoryPreviousPage: '이전',
       collectionTagManagerHistoryNextPage: '다음',
