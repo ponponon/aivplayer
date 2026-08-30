@@ -1297,3 +1297,9 @@
 - 标签历史卡片展示最多五条冲突明细及可读原因，超出部分显示剩余数量；失败不会清空选择集，也不会改变当前集合、元数据或历史状态。
 - 冲突反馈通过 IPC / Preload 透传，四语言补齐标题、说明、原因和超量提示；正常成功路径继续清理冲突状态。
 - 真实 Electron Smoke 构造分支修改并验证 `conflictDiagnosticsVerified: true`、集合仍保持分支标签、历史条目仍为 active、`consoleErrors: 0`，截图输出到 `/private/tmp/aivplayer-tag-history-batch-conflict.png`。
+
+## Clip Inbox 标签历史冲突选择恢复
+
+- Store 会收集整批可诊断冲突，并用每条操作的隔离候选状态进行预检；冲突批次仍保持原子失败，不会把前面已模拟成功的操作提前写入数据库。
+- 冲突面板提供“移除冲突项，保留其他选择”，一次从撤销 / 重做两个方向的 Renderer 选择集中移除已报告 ID，保留可安全处理的历史操作继续重试。
+- 真实 Electron Smoke 验证一条冲突记录被移除后，剩余 23 条安全标签历史继续撤销，集合分支标签不变、历史状态为 23 条可重做加 1 条仍应用、`consoleErrors: 0`。
