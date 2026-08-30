@@ -60,6 +60,7 @@
     "smoke:vision-clip-collection-batch-delete": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-collection-batch-delete.ts",
     "smoke:vision-clip-collection-single-delete": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-collection-single-delete.ts",
     "smoke:vision-clip-collection-content-undo": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-collection-content-undo.ts",
+    "smoke:vision-clip-collection-operation-history": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-collection-operation-history.ts",
     "smoke:vision-clip-collection-batch-rename": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-collection-batch-rename.ts",
     "smoke:vision-clip-collection-inline-rename": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-collection-inline-rename.ts",
     "smoke:vision-clip-collection-inline-tags": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-collection-inline-tags.ts",
