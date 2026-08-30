@@ -4,7 +4,7 @@ import type { ChangeEvent, KeyboardEvent, ReactNode } from 'react'
 import type { VisionIndexProgress, VisionRuntimeStatus, VisionSearchResult } from '../../../shared/media-types'
 import type { AsrSubtitleResult } from '../../../shared/media-types'
 import type { MediaEvidenceDraftImportResult } from '../../../shared/evidence-task-types'
-import type { VisionClipCollection, VisionClipCollectionBatchTagsMode, VisionClipCollectionExportFormat, VisionClipCollectionMergeSelection, VisionClipCollectionOperationCollectionDetail, VisionClipCollectionOperationHistory, VisionClipCollectionOperationHistoryDetail, VisionClipCollectionOperationHistoryEntry, VisionClipCollectionSortMode, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataImportDecision, VisionClipCollectionTagMetadataImportPreviewResult, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationHistoryDetail, VisionClipCollectionTagOperationHistoryEntry, VisionClipCollectionTagSortMode, VisionClipSelection, VisionEvidenceType, VisionIndexFailureRecord, VisionLibrarySource, VisionModelDownloadProgress, VisionSavedSearch, VisionSearchFullExportRequest, VisionSearchPageRequest, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchSortMode } from '../../../shared/vision-types'
+import type { VisionClipCollection, VisionClipCollectionBatchTagsMode, VisionClipCollectionExportFormat, VisionClipCollectionMergeSelection, VisionClipCollectionOperationCollectionDetail, VisionClipCollectionOperationCollectionDiff, VisionClipCollectionOperationDetailField, VisionClipCollectionOperationHistory, VisionClipCollectionOperationHistoryDetail, VisionClipCollectionOperationHistoryEntry, VisionClipCollectionSortMode, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataImportDecision, VisionClipCollectionTagMetadataImportPreviewResult, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationHistoryDetail, VisionClipCollectionTagOperationHistoryEntry, VisionClipCollectionTagSortMode, VisionClipSelection, VisionEvidenceType, VisionIndexFailureRecord, VisionLibrarySource, VisionClipCollectionOperationDetailChange, VisionModelDownloadProgress, VisionSavedSearch, VisionSearchFullExportRequest, VisionSearchPageRequest, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchSortMode } from '../../../shared/vision-types'
 import type { LocaleCopy } from '../../../shared/i18n'
 import type { VisionObjectDetectionFilterState, VisionObjectDetectionResult } from '../../../shared/vision-object-detection-types'
 import type { VisionClipCollectionTagOperationHistoryFilter } from '../../../shared/vision-types'
@@ -19,6 +19,7 @@ import { getVisionSearchResultIds } from '../../../core/ai/vision-search-selecti
 import { getNextVisionSearchLimit, shouldLoadMoreVisionSearchResults, VISION_SEARCH_PAGE_SIZE } from '../../../core/ai/vision-search-pagination'
 import { createVisionSimilarSearchRequest } from '../../../core/ai/vision-similar-search'
 import { createDefaultVisionSearchPreferences, parseVisionSearchPreferences, serializeVisionSearchPreferences, VISION_SEARCH_PREFERENCES_STORAGE_KEY, type VisionSearchPreferences } from '../../../core/ai/vision-search-preferences'
+import { diffVisionClipCollectionOperationDetails } from '../../../core/ai/clip-inbox-operation-diff'
 import { mergeVisionClipCollectionTagOrder, moveVisionClipCollectionTagOrder, parseVisionClipCollectionTagOrderPreferences, serializeVisionClipCollectionTagOrderPreferences, VISION_CLIP_COLLECTION_TAG_ORDER_PREFERENCES_STORAGE_KEY } from '../../../core/ai/clip-inbox-tag-order'
 import { useAppContext } from './app-context'
 import { useVisionLibraryFolder } from './use-vision-library-folder'
@@ -236,21 +237,27 @@ function formatClipPreviewRange(selection: Pick<VisionClipSelection, 'startSecon
   return `${formatClipPreviewTime(selection.startSeconds)}–${formatClipPreviewTime(selection.endSeconds)}`
 }
 
-function CollectionOperationDetailState({ label, collections, copy }: { label: string; collections: VisionClipCollectionOperationCollectionDetail[]; copy: LocaleCopy['vision'] }): ReactNode {
+function CollectionOperationDetailState({ label, collections, diffs, copy }: { label: string; collections: VisionClipCollectionOperationCollectionDetail[]; diffs: VisionClipCollectionOperationCollectionDiff[]; copy: LocaleCopy['vision'] }): ReactNode {
   return <div className="vision-collection-operation-history-detail-state">
     <strong>{label}</strong>
     {collections.length === 0 ? <small>{copy.collectionOperationHistoryDetailEmpty}</small> : <div className="vision-collection-operation-history-detail-collections">
       {collections.map((collection) => {
+        const collectionDiff = diffs.find((diff) => diff.id === collection.id)
         const sortLabel = collection.sortMode === 'duration-desc' ? copy.collectionSortDuration : collection.sortMode === 'file-name' ? copy.collectionSortFileName : copy.collectionSortSourceTime
         const flags = `${collection.isFavorite ? copy.collectionStatusFavorite : copy.collectionStatusUnfavorite} · ${collection.isArchived ? copy.collectionStatusArchived : copy.collectionStatusUnarchived}`
+        const renderField = (field: VisionClipCollectionOperationDetailField, fieldLabel: string, value: string): ReactNode => {
+          const change: VisionClipCollectionOperationDetailChange = collectionDiff?.fieldChanges[field] ?? 'unchanged'
+          return <div className={`vision-collection-operation-history-detail-field is-${change}`} data-change={change}><dt>{fieldLabel}</dt><dd><span>{value}</span>{change !== 'unchanged' ? <em>{copy.collectionOperationHistoryDetailChangeLabel[change]}</em> : null}</dd></div>
+        }
         return <div className="vision-collection-operation-history-detail-collection" key={collection.id}>
           <strong title={collection.title || collection.id}>{collection.title || collection.id}</strong>
           <dl>
-            <div><dt>{copy.collectionOperationHistoryDetailCollectionIdLabel}</dt><dd><code>{collection.id}</code></dd></div>
-            <div><dt>{copy.collectionOperationHistoryDetailTagsLabel}</dt><dd>{collection.tags.length > 0 ? collection.tags.join(' · ') : copy.collectionTagsEmpty}</dd></div>
-            <div><dt>{copy.collectionOperationHistoryDetailFlagsLabel}</dt><dd>{flags}</dd></div>
-            <div><dt>{copy.collectionOperationHistoryDetailSortLabel}</dt><dd>{sortLabel}</dd></div>
-            <div><dt>{copy.collectionOperationHistoryDetailSelectionsLabel}</dt><dd>{copy.collectionOperationHistorySelectionCount(collection.selectionCount)}</dd></div>
+            <div className="vision-collection-operation-history-detail-field is-unchanged"><dt>{copy.collectionOperationHistoryDetailCollectionIdLabel}</dt><dd><code>{collection.id}</code></dd></div>
+            {renderField('title', copy.collectionOperationHistoryDetailTitleLabel, collection.title)}
+            {renderField('tags', copy.collectionOperationHistoryDetailTagsLabel, collection.tags.length > 0 ? collection.tags.join(' · ') : copy.collectionTagsEmpty)}
+            {renderField('flags', copy.collectionOperationHistoryDetailFlagsLabel, flags)}
+            {renderField('sortMode', copy.collectionOperationHistoryDetailSortLabel, sortLabel)}
+            {renderField('selectionCount', copy.collectionOperationHistoryDetailSelectionsLabel, copy.collectionOperationHistorySelectionCount(collection.selectionCount))}
           </dl>
         </div>
       })}
@@ -2215,6 +2222,8 @@ export function VisionPanel(): React.ReactElement {
     </section>
     : null
 
+  const collectionOperationDetailDiffs = collectionOperationHistoryDetail ? diffVisionClipCollectionOperationDetails(collectionOperationHistoryDetail.beforeCollections, collectionOperationHistoryDetail.afterCollections) : []
+
   return <div className="vision-panel">
     {collectionBatchMergeAction}
     <section className="vision-card vision-intro">
@@ -2425,8 +2434,8 @@ export function VisionPanel(): React.ReactElement {
       {collectionOperationHistoryDetail ? <div className="vision-collection-operation-history-detail" role="region" aria-label={app.copy.vision.collectionOperationHistoryDetailTitle}>
         <div className="vision-collection-operation-history-detail-heading"><strong>{app.copy.vision.collectionOperationHistoryDetailTitle}</strong><button className="vision-secondary-action" type="button" onClick={closeCollectionOperationDetail}>{app.copy.vision.collectionOperationHistoryDetailClose}</button></div>
         <div className="vision-collection-operation-history-detail-states">
-          <CollectionOperationDetailState label={app.copy.vision.collectionOperationHistoryDetailBefore} collections={collectionOperationHistoryDetail.beforeCollections} copy={app.copy.vision} />
-          <CollectionOperationDetailState label={app.copy.vision.collectionOperationHistoryDetailAfter} collections={collectionOperationHistoryDetail.afterCollections} copy={app.copy.vision} />
+          <CollectionOperationDetailState label={app.copy.vision.collectionOperationHistoryDetailBefore} collections={collectionOperationHistoryDetail.beforeCollections} diffs={collectionOperationDetailDiffs} copy={app.copy.vision} />
+          <CollectionOperationDetailState label={app.copy.vision.collectionOperationHistoryDetailAfter} collections={collectionOperationHistoryDetail.afterCollections} diffs={collectionOperationDetailDiffs} copy={app.copy.vision} />
         </div>
       </div> : null}
     </div> : null}

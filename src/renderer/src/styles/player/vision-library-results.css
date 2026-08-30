@@ -1823,6 +1823,62 @@
   color: var(--text-secondary);
 }
 
+.vision-collection-operation-history-detail-field {
+  padding-left: 4px;
+  border-left: 2px solid transparent;
+  border-radius: 2px;
+}
+
+.vision-collection-operation-history-detail-field dd {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.vision-collection-operation-history-detail-field dd > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vision-collection-operation-history-detail-field em {
+  flex: 0 0 auto;
+  padding: 1px 3px;
+  color: var(--text-muted);
+  background: rgba(var(--overlay-rgb), 0.08);
+  border-radius: 2px;
+  font-size: 7px;
+  font-style: normal;
+}
+
+.vision-collection-operation-history-detail-field.is-changed {
+  border-left-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.1);
+}
+
+.vision-collection-operation-history-detail-field.is-changed em {
+  color: var(--accent-strong);
+}
+
+.vision-collection-operation-history-detail-field.is-added {
+  border-left-color: var(--ok);
+  background: rgba(var(--ok-rgb), 0.1);
+}
+
+.vision-collection-operation-history-detail-field.is-added em {
+  color: var(--ok);
+}
+
+.vision-collection-operation-history-detail-field.is-removed {
+  border-left-color: var(--danger);
+  background: rgba(var(--danger-rgb), 0.1);
+}
+
+.vision-collection-operation-history-detail-field.is-removed em {
+  color: var(--danger);
+}
+
 .vision-collection-operation-history-detail-collection code {
   overflow: hidden;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
