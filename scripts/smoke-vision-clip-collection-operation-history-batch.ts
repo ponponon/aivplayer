@@ -74,6 +74,40 @@ async function runSmoke(): Promise<void> {
     if (await activeEntries.count() !== 2) throw new Error(`Expected two active history entries, got ${await activeEntries.count()}`)
     if (await historyCard.locator('.vision-collection-operation-history-select').count() !== 2) throw new Error('Expected two selectable undo history entries')
 
+    const historyTypeFilter = historyCard.getByRole('combobox', { name: '操作类型', exact: true })
+    const historyStatusFilter = historyCard.getByRole('combobox', { name: '状态', exact: true })
+    await historyTypeFilter.selectOption('flags')
+    if (await historyCard.locator('.vision-collection-operation-history-entry').count() !== 1 || !(await historyCard.locator('.vision-collection-operation-history-entry').first().textContent())?.includes('收藏 / 归档')) throw new Error('Collection history type filter should keep only flag operations')
+    await historyStatusFilter.selectOption('undone')
+    if (await historyCard.locator('.vision-collection-operation-history-entry').count() !== 0 || await historyCard.getByText('没有符合当前筛选条件的集合历史。', { exact: true }).count() !== 1) throw new Error('Collection history status filter should render its empty state')
+    await historyStatusFilter.selectOption('all')
+    await page.evaluate(() => {
+      const scope = window as unknown as { __aivplayerCollectionHistoryExport?: { blob: Blob; fileName: string } }
+      const originalCreateObjectURL = URL.createObjectURL.bind(URL)
+      const originalAnchorClick = HTMLAnchorElement.prototype.click
+      URL.createObjectURL = (blob: Blob) => {
+        scope.__aivplayerCollectionHistoryExport = { blob, fileName: '' }
+        return originalCreateObjectURL(blob)
+      }
+      HTMLAnchorElement.prototype.click = function () {
+        if (scope.__aivplayerCollectionHistoryExport) scope.__aivplayerCollectionHistoryExport.fileName = this.download
+        originalAnchorClick.call(this)
+      }
+    })
+    await historyCard.getByRole('button', { name: '导出筛选历史', exact: true }).click()
+    await page.getByRole('status').filter({ hasText: '已导出 1 条集合历史' }).waitFor({ timeout: 10_000 })
+    const exportedHistory = await page.evaluate(async () => {
+      const scope = window as unknown as { __aivplayerCollectionHistoryExport?: { blob: Blob; fileName: string } }
+      const value = scope.__aivplayerCollectionHistoryExport
+      return value ? { json: await value.blob.text(), fileName: value.fileName } : null
+    })
+    if (!exportedHistory?.fileName.endsWith('.json')) throw new Error(`Collection history export filename mismatch: ${JSON.stringify(exportedHistory)}`)
+    const exportedHistoryManifest = JSON.parse(exportedHistory.json) as { schemaVersion: number; typeFilter: string; statusFilter: string; entries: Array<{ type: string; status: string }> }
+    if (exportedHistoryManifest.schemaVersion !== 1 || exportedHistoryManifest.typeFilter !== 'flags' || exportedHistoryManifest.statusFilter !== 'all' || exportedHistoryManifest.entries.length !== 1 || exportedHistoryManifest.entries[0]?.type !== 'flags' || exportedHistoryManifest.entries[0]?.status !== 'active') {
+      throw new Error(`Collection history export manifest mismatch: ${JSON.stringify(exportedHistoryManifest)}`)
+    }
+    await historyTypeFilter.selectOption('all')
+
     await historyCard.getByRole('button', { name: '全选可撤销', exact: true }).click()
     await historyCard.getByRole('button', { name: '批量撤销选中操作', exact: true }).click()
     await page.getByRole('status').filter({ hasText: '已批量撤销 2 条集合操作' }).waitFor({ timeout: 10_000 })
@@ -125,7 +159,7 @@ async function runSmoke(): Promise<void> {
     const historyAfterRecovery = await page.evaluate(() => window.aiv.listVisionClipCollectionOperationHistory())
     if (historyAfterRecovery.filter((entry) => entry.status === 'redoable').length !== 1 || historyAfterRecovery.filter((entry) => entry.status === 'active').length !== 1) throw new Error(`Collection history conflict recovery changed unexpected history statuses: ${JSON.stringify(historyAfterRecovery)}`)
     if (session.errors.length > 0) throw new Error(`Renderer errors during collection operation history batch smoke:\n${session.errors.join('\n')}`)
-    console.log(`AIVPlayer Smoke Vision Clip Collection Operation History Batch passed: ${JSON.stringify({ pageIdentity, mixedOperations: true, selectedCount: 2, atomicUndoVerified: true, atomicRedoVerified: true, conflictDiagnosticsVerified: true, conflictRecoveryVerified: true, consoleErrors: session.errors.length, screenshotPath: screenshotPath ?? null, conflictScreenshotPath: conflictScreenshotPath ?? null })}`)
+    console.log(`AIVPlayer Smoke Vision Clip Collection Operation History Batch passed: ${JSON.stringify({ pageIdentity, mixedOperations: true, historyFilterVerified: true, historyExportVerified: true, selectedCount: 2, atomicUndoVerified: true, atomicRedoVerified: true, conflictDiagnosticsVerified: true, conflictRecoveryVerified: true, consoleErrors: session.errors.length, screenshotPath: screenshotPath ?? null, conflictScreenshotPath: conflictScreenshotPath ?? null })}`)
   } finally {
     if (app) await app.close().catch(() => undefined)
     await rm(userDataDirectory, { recursive: true, force: true }).catch(() => undefined)
