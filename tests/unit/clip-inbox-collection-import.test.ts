@@ -60,4 +60,12 @@ describe('clip inbox collection import preview', () => {
     expect(preview).toHaveLength(2)
     expect(preview.every((item) => item.currentCollectionId === 'first')).toBe(true)
   })
+
+  it('counts distinct unavailable source files without changing classification', () => {
+    const incoming = input({ selections: [selection, { ...selection, sourceId: 'source-missing', videoPath: '/videos/missing.mp4', fileName: 'missing.mp4', fingerprint: 'missing-fingerprint' }] })
+
+    expect(createVisionClipCollectionImportPreview([incoming], [], new Set(['/videos/demo.mp4']))[0]).toMatchObject({ state: 'new', missingSourceCount: 1 })
+    expect(createVisionClipCollectionImportPreview([incoming], [current()], new Set(['/videos/demo.mp4']))[0]).toMatchObject({ state: 'conflict', missingSourceCount: 1 })
+    expect(createVisionClipCollectionImportPreview([incoming], [], new Set(['/videos/demo.mp4', '/videos/missing.mp4']))[0]?.missingSourceCount).toBe(0)
+  })
 })

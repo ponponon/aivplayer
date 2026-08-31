@@ -1,6 +1,6 @@
 import { app, ipcMain } from 'electron'
 import { createHash, randomUUID } from 'node:crypto'
-import { readFile, writeFile } from 'node:fs/promises'
+import { readFile, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type { VisionClipCollectionBatchDeleteRequest, VisionClipCollectionBatchDuplicateRequest, VisionClipCollectionBatchExportRequest, VisionClipCollectionBatchMergeRequest, VisionClipCollectionBatchRenameRequest, VisionClipCollectionBatchTagsRequest, VisionClipCollectionContentUpdateRequest, VisionClipCollectionFlagUpdateRequest, VisionClipCollectionImportApplyRequest, VisionClipCollectionRenameRequest, VisionClipCollectionTagCleanupRequest, VisionClipCollectionTagMetadataImportApplyRequest, VisionClipCollectionTagMetadataUpdateRequest, VisionClipCollectionTagRenameRequest, VisionClipCollectionTagOperationHistoryPageRequest, VisionClipCollectionTagUpdateRequest, VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionEvidenceAuditPage, VisionEvidenceAuditRequest, VisionEvidenceBatchClearResult, VisionEvidenceSourceRequest, VisionEvidenceType, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionModelDownloadResult, VisionPackDownloadResult, VisionSavedSearchInput, VisionSearchFullExportRequest, VisionSearchPageKind, VisionSearchPageRequest, VisionSearchRequest, VisionSearchResult, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchResultsExportRequest, VisionSearchResultsExportResult, VisionSimilarSearchRequest } from '../shared/vision-types'
@@ -62,6 +62,18 @@ function parseVisionClipCollectionImportFile(text: string): VisionClipCollection
     return parseVisionClipCollectionsImport(parsed)
   }
   return [parseVisionClipCollectionImport(parsed)]
+}
+
+async function getAvailableCollectionImportSourcePaths(inputs: readonly VisionClipCollectionInput[]): Promise<Set<string>> {
+  const paths = [...new Set(inputs.flatMap((input) => input.selections.map((selection) => selection.videoPath.trim()).filter(Boolean)))]
+  const available = await Promise.all(paths.map(async (path) => {
+    try {
+      return (await stat(path)).isFile() ? path : null
+    } catch {
+      return null
+    }
+  }))
+  return new Set(available.filter((path): path is string => path !== null))
 }
 
 const visionSearchCursorStore = new VisionSearchCursorStore()
@@ -1013,7 +1025,7 @@ export function registerVisionIpc(): void {
     if (!filePath) return { success: false, canceled: true, message: copy.collectionImportCanceled }
     try {
       const inputs = parseVisionClipCollectionImportFile(await readFile(filePath, 'utf8'))
-      const preview = createVisionClipCollectionImportPreview(inputs, getClipInboxStore().listCollections())
+      const preview = createVisionClipCollectionImportPreview(inputs, getClipInboxStore().listCollections(), await getAvailableCollectionImportSourcePaths(inputs))
       return {
         success: true,
         filePath,
@@ -1035,7 +1047,7 @@ export function registerVisionIpc(): void {
     try {
       const inputs = parseVisionClipCollectionImportFile(await readFile(filePath, 'utf8'))
       const store = getClipInboxStore()
-      const preview = createVisionClipCollectionImportPreview(inputs, store.listCollections())
+      const preview = createVisionClipCollectionImportPreview(inputs, store.listCollections(), await getAvailableCollectionImportSourcePaths(inputs))
       const decisions = request?.decisions ?? {}
       const importItems = [] as { input: (typeof inputs)[number]; overwriteCollectionId?: string }[]
       let skippedCount = 0

@@ -39,7 +39,8 @@ function collectionTitle(collection: VisionClipCollectionInput | VisionClipColle
 /** Classifies imported collections before any local collection is changed. */
 export function createVisionClipCollectionImportPreview(
   incoming: readonly VisionClipCollectionInput[],
-  current: readonly VisionClipCollection[]
+  current: readonly VisionClipCollection[],
+  availableSourcePaths?: ReadonlySet<string>
 ): VisionClipCollectionImportPreviewItem[] {
   const currentByTitle = new Map<string, VisionClipCollection>()
   for (const collection of current) {
@@ -54,6 +55,7 @@ export function createVisionClipCollectionImportPreview(
       : collectionSignature(collection) === collectionSignature(currentCollection)
         ? 'duplicate'
         : 'conflict'
+    const sourcePaths = new Set(collection.selections.map((selection) => selection.videoPath.trim()).filter(Boolean))
     return {
       incomingIndex,
       title,
@@ -65,6 +67,7 @@ export function createVisionClipCollectionImportPreview(
       currentCollectionId: currentCollection?.id ?? null,
       currentTitle: currentCollection?.title ?? null,
       currentSelectionCount: currentCollection?.selections.length ?? null,
+      missingSourceCount: availableSourcePaths ? [...sourcePaths].filter((path) => !availableSourcePaths.has(path)).length : 0,
       state
     }
   })

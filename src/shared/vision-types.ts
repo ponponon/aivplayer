@@ -854,6 +854,7 @@ export type VisionClipCollectionImportPreviewItem = {
   currentCollectionId: string | null
   currentTitle: string | null
   currentSelectionCount: number | null
+  missingSourceCount: number
   state: VisionClipCollectionImportPreviewState
 }
 
