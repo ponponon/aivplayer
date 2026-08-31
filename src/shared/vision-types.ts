@@ -839,6 +839,47 @@ export type VisionClipCollectionImportResult = {
   collections?: VisionClipCollection[]
 }
 
+export type VisionClipCollectionImportPreviewState = 'new' | 'duplicate' | 'conflict'
+
+export type VisionClipCollectionImportDecision = 'overwrite' | 'keep-local' | 'skip'
+
+export type VisionClipCollectionImportPreviewItem = {
+  incomingIndex: number
+  title: string
+  tags: string[]
+  sortMode: VisionClipCollectionSortMode
+  isFavorite: boolean
+  isArchived: boolean
+  selectionCount: number
+  currentCollectionId: string | null
+  currentTitle: string | null
+  currentSelectionCount: number | null
+  state: VisionClipCollectionImportPreviewState
+}
+
+export type VisionClipCollectionImportPreviewResult = {
+  success: boolean
+  message: string
+  canceled?: boolean
+  filePath?: string
+  preview?: VisionClipCollectionImportPreviewItem[]
+}
+
+export type VisionClipCollectionImportApplyRequest = {
+  filePath: string
+  decisions?: Record<string, VisionClipCollectionImportDecision>
+}
+
+export type VisionClipCollectionImportApplyResult = {
+  success: boolean
+  message: string
+  filePath?: string
+  importedCount?: number
+  overwrittenCount?: number
+  skippedCount?: number
+  collections?: VisionClipCollection[]
+}
+
 export type VisionClipCollectionBatchDuplicateRequest = {
   collectionIds: string[]
 }
