@@ -43,6 +43,7 @@ describe('vision clip collection operation history UI', () => {
     expect(panel).toContain('exportCollectionOperationHistory')
     expect(panel).toContain('collectionOperationHistoryFilterTypeLabel')
     expect(panel).toContain('collectionOperationHistoryFilterStatusLabel')
+    expect(panel).toContain('collectionOperationTypeLabel.import')
     expect(panel).toContain('collectionOperationHistoryExport')
     expect(panel).toContain('collectionOperationHistoryFilterEmpty')
     expect(panel).toContain('collectionOperationHistorySelectAllUndo')

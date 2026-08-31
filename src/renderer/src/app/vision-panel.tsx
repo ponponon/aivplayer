@@ -1660,6 +1660,7 @@ export function VisionPanel(): React.ReactElement {
       setCollectionImportPreview(null)
       setCollectionImportDecisions({})
       setCollectionTransferStatus(result.message)
+      refreshCollectionOperation()
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setIsTransferringCollectionImport(false))
   }
 
@@ -2719,6 +2720,7 @@ export function VisionPanel(): React.ReactElement {
           <option value="rename">{app.copy.vision.collectionOperationTypeLabel.rename}</option>
           <option value="duplicate">{app.copy.vision.collectionOperationTypeLabel.duplicate}</option>
           <option value="content">{app.copy.vision.collectionOperationTypeLabel.content}</option>
+          <option value="import">{app.copy.vision.collectionOperationTypeLabel.import}</option>
         </select></label>
         <label><span>{app.copy.vision.collectionOperationHistoryFilterStatusLabel}</span><select value={collectionOperationHistoryStatusFilter} onChange={(event) => setCollectionOperationHistoryStatusFilter(event.target.value as VisionClipCollectionOperationHistoryStatusFilter)} aria-label={app.copy.vision.collectionOperationHistoryFilterStatusLabel} disabled={isCollectionBatchBusy}>
           <option value="all">{app.copy.vision.collectionOperationHistoryFilterStatusAll}</option>
