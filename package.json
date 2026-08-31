@@ -55,6 +55,7 @@
     "smoke:vision-clip-inbox": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-inbox.ts",
     "smoke:vision-clip-collection-import": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-collection-import.ts",
     "smoke:vision-clip-collection-import-preview": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-collection-import-preview.ts",
+    "smoke:vision-clip-collection-batch-repair": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-collection-batch-repair.ts",
     "smoke:vision-clip-collection-duplicate": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-collection-duplicate.ts",
     "smoke:vision-clip-collection-batch-duplicate": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-collection-batch-duplicate.ts",
     "smoke:vision-clip-collection-batch-merge": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-collection-batch-merge.ts",

@@ -11,6 +11,8 @@ describe('vision clip collection repair wiring', () => {
     const preload = readFileSync(join(projectRoot, 'src/preload/index.ts'), 'utf8')
     const panel = readFileSync(join(projectRoot, 'src/renderer/src/app/vision-panel.tsx'), 'utf8')
     const repair = readFileSync(join(projectRoot, 'src/core/ai/clip-inbox-collection-repair.ts'), 'utf8')
+    const packageJson = readFileSync(join(projectRoot, 'package.json'), 'utf8')
+    const smoke = readFileSync(join(projectRoot, 'scripts/smoke-vision-clip-collection-batch-repair.ts'), 'utf8')
 
     expect(channel).toContain("VISION_CLIP_COLLECTION_BATCH_CONTENT_UPDATE: 'vision:clip-collection-batch-content-update'")
     expect(desktop).toContain('IPC_CHANNELS.VISION_CLIP_COLLECTION_BATCH_CONTENT_UPDATE')
@@ -23,6 +25,9 @@ describe('vision clip collection repair wiring', () => {
     expect(panel).toContain('applySelectedCollectionRepair')
     expect(panel).toContain('updateVisionClipCollectionsSelections({ updates })')
     expect(panel).toContain('setCollectionRepairPreview(null)')
+    expect(packageJson).toContain('smoke:vision-clip-collection-batch-repair')
+    expect(smoke).toContain('atomicHistoryVerified')
+    expect(smoke).toContain('undoRedoVerified')
   })
 
   it('provides the batch repair copy in every supported locale', () => {
