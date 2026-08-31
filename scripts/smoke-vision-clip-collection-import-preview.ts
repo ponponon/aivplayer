@@ -98,6 +98,7 @@ async function runSmoke(): Promise<void> {
     const conflictRow = preview.locator('[data-state="conflict"]')
     const newRow = preview.locator('[data-state="new"]')
     if (await conflictRow.count() !== 1 || await newRow.count() !== 1) throw new Error('Import preview did not classify conflict and new collection')
+    if (!(await conflictRow.textContent())?.includes('1 个媒体源不可用') || !(await newRow.textContent())?.includes('1 个媒体源不可用')) throw new Error('Import preview did not report unavailable source files')
     const conflictDecision = conflictRow.locator('select')
     if (await conflictDecision.inputValue() !== 'keep-local') throw new Error('Import preview did not default conflicts to keep-local')
     const beforeApply = await page.evaluate(() => window.aiv.listVisionClipCollections())
