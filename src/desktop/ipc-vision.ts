@@ -3,13 +3,14 @@ import { createHash, randomUUID } from 'node:crypto'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
-import type { VisionClipCollectionBatchDeleteRequest, VisionClipCollectionBatchDuplicateRequest, VisionClipCollectionBatchExportRequest, VisionClipCollectionBatchMergeRequest, VisionClipCollectionBatchRenameRequest, VisionClipCollectionBatchTagsRequest, VisionClipCollectionContentUpdateRequest, VisionClipCollectionFlagUpdateRequest, VisionClipCollectionRenameRequest, VisionClipCollectionTagCleanupRequest, VisionClipCollectionTagMetadataImportApplyRequest, VisionClipCollectionTagMetadataUpdateRequest, VisionClipCollectionTagRenameRequest, VisionClipCollectionTagOperationHistoryPageRequest, VisionClipCollectionTagUpdateRequest, VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionEvidenceAuditPage, VisionEvidenceAuditRequest, VisionEvidenceBatchClearResult, VisionEvidenceSourceRequest, VisionEvidenceType, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionModelDownloadResult, VisionPackDownloadResult, VisionSavedSearchInput, VisionSearchFullExportRequest, VisionSearchPageKind, VisionSearchPageRequest, VisionSearchRequest, VisionSearchResult, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchResultsExportRequest, VisionSearchResultsExportResult, VisionSimilarSearchRequest } from '../shared/vision-types'
+import type { VisionClipCollectionBatchDeleteRequest, VisionClipCollectionBatchDuplicateRequest, VisionClipCollectionBatchExportRequest, VisionClipCollectionBatchMergeRequest, VisionClipCollectionBatchRenameRequest, VisionClipCollectionBatchTagsRequest, VisionClipCollectionContentUpdateRequest, VisionClipCollectionFlagUpdateRequest, VisionClipCollectionImportApplyRequest, VisionClipCollectionRenameRequest, VisionClipCollectionTagCleanupRequest, VisionClipCollectionTagMetadataImportApplyRequest, VisionClipCollectionTagMetadataUpdateRequest, VisionClipCollectionTagRenameRequest, VisionClipCollectionTagOperationHistoryPageRequest, VisionClipCollectionTagUpdateRequest, VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionEvidenceAuditPage, VisionEvidenceAuditRequest, VisionEvidenceBatchClearResult, VisionEvidenceSourceRequest, VisionEvidenceType, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionModelDownloadResult, VisionPackDownloadResult, VisionSavedSearchInput, VisionSearchFullExportRequest, VisionSearchPageKind, VisionSearchPageRequest, VisionSearchRequest, VisionSearchResult, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchResultsExportRequest, VisionSearchResultsExportResult, VisionSimilarSearchRequest } from '../shared/vision-types'
 import { VISION_SEARCH_FULL_EXPORT_MAX_RESULTS } from '../shared/vision-types'
 import type { VisionEntityCatalogBatchPatch, VisionEntityCatalogCreateInput, VisionEntityCatalogPatch } from '../shared/vision-entity-types'
 import { scanVisionDirectory, isVisionScanAbortError } from '../core/ai/vision-directory-scan'
 import { renderVisionClipCollectionExport, renderVisionClipCollectionsExport } from '../core/ai/clip-inbox-export'
 import { createVisionClipCollectionTagMetadataImportPreview, filterVisionClipCollectionTagMetadataImport, parseVisionClipCollectionTagMetadataImport, parseVisionClipCollectionTagMetadataImportText, renderVisionClipCollectionTagMetadataExport } from '../core/ai/clip-inbox-tag-transfer'
-import { parseVisionClipCollectionImportText, parseVisionClipCollectionsImport } from '../core/ai/clip-inbox-import'
+import { createVisionClipCollectionImportPreview } from '../core/ai/clip-inbox-collection-import'
+import { parseVisionClipCollectionImport, parseVisionClipCollectionsImport } from '../core/ai/clip-inbox-import'
 import { normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTag, normalizeVisionCollectionTagColor, normalizeVisionCollectionTags, normalizeVisionCollectionTagsMode, wouldCreateVisionCollectionTagParentCycle } from '../core/ai/clip-inbox-operations'
 import { isVisionSearchExportAbortError, renderVisionSearchResultsExport } from '../core/ai/vision-search-export'
 import { writeVisionSearchResultsExportResumable } from '../core/ai/vision-search-export-resumable'
@@ -48,6 +49,19 @@ function normalizeVisionEvidenceTypes(value: unknown): VisionEvidenceType[] {
 
 function normalizeVisionSearchLimit(value: number | undefined): number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? Math.min(VISION_SEARCH_SNAPSHOT_MAX_RESULTS, Math.floor(value)) : 24
+}
+
+function parseVisionClipCollectionImportFile(text: string): VisionClipCollectionInput[] {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(text) as unknown
+  } catch {
+    throw new Error('导入文件不是有效的 JSON')
+  }
+  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && 'exportVersion' in parsed && parsed.exportVersion === 2) {
+    return parseVisionClipCollectionsImport(parsed)
+  }
+  return [parseVisionClipCollectionImport(parsed)]
 }
 
 const visionSearchCursorStore = new VisionSearchCursorStore()
@@ -983,17 +997,70 @@ export function registerVisionIpc(): void {
     })
     if (!filePath) return { success: false, canceled: true, message: copy.collectionImportCanceled }
     try {
-      const text = await readFile(filePath, 'utf8')
-      const parsed = JSON.parse(text) as unknown
-      if (parsed && typeof parsed === 'object' && 'exportVersion' in parsed && parsed.exportVersion === 2) {
-        const collections = parseVisionClipCollectionsImport(parsed).map((input) => getClipInboxStore().importCollection(input))
-        return { success: true, filePath, collections, message: copy.collectionsImported(collections.length) }
-      }
-       const input = parseVisionClipCollectionImportText(text)
-      const collection = getClipInboxStore().importCollection(input)
-      return { success: true, filePath, collection, collections: [collection], message: copy.collectionImported(collection.title) }
+      const inputs = parseVisionClipCollectionImportFile(await readFile(filePath, 'utf8'))
+      const collections = inputs.map((input) => getClipInboxStore().importCollection(input))
+      return { success: true, filePath, collection: collections.length === 1 ? collections[0] : undefined, collections, message: collections.length === 1 ? copy.collectionImported(collections[0].title) : copy.collectionsImported(collections.length) }
     } catch (error) {
       return { success: false, filePath, message: error instanceof Error ? error.message : String(error) }
+    }
+  })
+  ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_IMPORT_PREVIEW, async () => {
+    const copy = getAppCopy(getCurrentLocale()).vision
+    const filePath = await promptForOpenPath({
+      title: copy.collectionImport,
+      filters: [{ name: 'AIVPlayer clip collection JSON', extensions: ['json'] }]
+    })
+    if (!filePath) return { success: false, canceled: true, message: copy.collectionImportCanceled }
+    try {
+      const inputs = parseVisionClipCollectionImportFile(await readFile(filePath, 'utf8'))
+      const preview = createVisionClipCollectionImportPreview(inputs, getClipInboxStore().listCollections())
+      return {
+        success: true,
+        filePath,
+        preview,
+        message: copy.collectionImportPreviewDescription(
+          preview.filter((item) => item.state === 'conflict').length,
+          preview.filter((item) => item.state === 'duplicate').length,
+          preview.filter((item) => item.state === 'new').length
+        )
+      }
+    } catch (error) {
+      return { success: false, filePath, message: error instanceof Error ? error.message : String(error) }
+    }
+  })
+  ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_IMPORT_APPLY, async (_event, request: VisionClipCollectionImportApplyRequest) => {
+    const copy = getAppCopy(getCurrentLocale()).vision
+    const filePath = typeof request?.filePath === 'string' ? request.filePath.trim() : ''
+    if (!filePath) return { success: false, message: copy.collectionImportCanceled, importedCount: 0, overwrittenCount: 0, skippedCount: 0, collections: [] }
+    try {
+      const inputs = parseVisionClipCollectionImportFile(await readFile(filePath, 'utf8'))
+      const store = getClipInboxStore()
+      const preview = createVisionClipCollectionImportPreview(inputs, store.listCollections())
+      const decisions = request?.decisions ?? {}
+      const collections = [] as NonNullable<ReturnType<typeof store.getCollection>>[]
+      let overwrittenCount = 0
+      let skippedCount = 0
+      for (const item of preview) {
+        const input = inputs[item.incomingIndex]
+        if (!input) {
+          skippedCount += 1
+          continue
+        }
+        if (item.state === 'new') {
+          collections.push(store.importCollection(input))
+          continue
+        }
+        if (item.state === 'conflict' && decisions[String(item.incomingIndex)] === 'overwrite' && item.currentCollectionId) {
+          const overwritten = store.saveCollection({ ...input, id: item.currentCollectionId })
+          collections.push(overwritten)
+          overwrittenCount += 1
+          continue
+        }
+        skippedCount += 1
+      }
+      return { success: true, filePath, importedCount: collections.length - overwrittenCount, overwrittenCount, skippedCount, collections, message: copy.collectionImportApplied(collections.length - overwrittenCount, overwrittenCount, skippedCount) }
+    } catch (error) {
+      return { success: false, filePath, message: error instanceof Error ? error.message : String(error), importedCount: 0, overwrittenCount: 0, skippedCount: 0, collections: [] }
     }
   })
 }

@@ -175,6 +175,8 @@ export const IPC_CHANNELS = {
   VISION_CLIP_COLLECTION_EXPORT: 'vision:clip-collection-export',
   VISION_CLIP_COLLECTION_BATCH_EXPORT: 'vision:clip-collection-batch-export',
   VISION_CLIP_COLLECTION_IMPORT: 'vision:clip-collection-import',
+  VISION_CLIP_COLLECTION_IMPORT_PREVIEW: 'vision:clip-collection-import-preview',
+  VISION_CLIP_COLLECTION_IMPORT_APPLY: 'vision:clip-collection-import-apply',
   MEDIA_IMPORT_INBOX_LIST: 'media-import-inbox:list',
   MEDIA_IMPORT_INBOX_SCAN_START: 'media-import-inbox:scan-start',
   MEDIA_IMPORT_INBOX_SCAN_CANCEL: 'media-import-inbox:scan-cancel',
