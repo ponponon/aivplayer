@@ -145,6 +145,62 @@ describe('clip inbox store', () => {
     expect(store.getLastCollectionRedoOperation()).toBeNull()
   })
 
+  it('records new and overwritten imports as one replayable history snapshot', () => {
+    const existing = store.saveCollection({ id: 'import-existing', title: '本地集合', tags: ['本地'], isFavorite: true, selections: [selection({ startSeconds: 1, endSeconds: 3 })] })
+    const result = store.importCollectionsWithHistory([
+      { input: { title: '远端新增', tags: ['远端'], selections: [selection({ startSeconds: 5, endSeconds: 7 })] } },
+      { input: { title: '远端覆盖', tags: ['覆盖'], isArchived: true, selections: [selection({ startSeconds: 8, endSeconds: 11 })] }, overwriteCollectionId: existing.id }
+    ])
+
+    expect(result).toMatchObject({ importedCount: 1, overwrittenCount: 1 })
+    expect(result.collections).toHaveLength(2)
+    expect(result.collections[1]).toMatchObject({ id: existing.id, title: '远端覆盖', tags: ['覆盖'], isFavorite: true, isArchived: true })
+    expect(result.collections[0]?.id).not.toBe(existing.id)
+    const operation = store.listCollectionOperationHistory()[0]
+    expect(operation).toMatchObject({ type: 'import', status: 'active', collectionIds: [existing.id, result.collections[0]?.id], selectionCount: 2 })
+
+    const detail = store.getCollectionOperationHistoryDetail(operation!.id)
+    expect(detail).toMatchObject({
+      type: 'import',
+      beforeCollections: [{ id: existing.id, title: '本地集合', tags: ['本地'], selectionCount: 1 }],
+      afterCollections: [
+        { id: existing.id, title: '远端覆盖', tags: ['覆盖'], selectionCount: 1 },
+        { id: result.collections[0]?.id, title: '远端新增', tags: ['远端'], selectionCount: 1 }
+      ]
+    })
+
+    const undone = store.undoCollectionOperation(operation!.id)
+    expect(undone).toMatchObject({ success: true, operation: { id: operation!.id, type: 'import' }, deletedCollectionIds: [result.collections[0]?.id] })
+    expect(store.getCollection(existing.id)).toEqual(existing)
+    expect(store.getCollection(result.collections[0]!.id)).toBeNull()
+
+    store.close()
+    store = new ClipInboxStore(tempDirectory)
+    const redone = store.redoCollectionOperation(operation!.id)
+    expect(redone).toMatchObject({ success: true, operation: { id: operation!.id, type: 'import' }, createdCollectionIds: [result.collections[0]?.id] })
+    expect(store.getCollection(existing.id)).toEqual(result.collections[1])
+    expect(store.getCollection(result.collections[0]!.id)).toEqual(result.collections[0])
+
+    expect(store.undoCollectionOperations([operation!.id])).toMatchObject({ success: true, operations: [{ id: operation!.id, type: 'import' }] })
+    expect(store.getCollection(existing.id)).toEqual(existing)
+    expect(store.getCollection(result.collections[0]!.id)).toBeNull()
+    expect(store.redoCollectionOperations([operation!.id])).toMatchObject({ success: true, operations: [{ id: operation!.id, type: 'import' }] })
+    expect(store.getCollection(existing.id)).toEqual(result.collections[1])
+    expect(store.getCollection(result.collections[0]!.id)).toEqual(result.collections[0])
+  })
+
+  it('refuses to undo an overwritten import after local edits', () => {
+    const existing = store.saveCollection({ id: 'import-conflict', title: '覆盖前本地集合', selections: [selection()] })
+    store.importCollectionsWithHistory([{ input: { title: '远端版本', selections: [selection({ startSeconds: 5, endSeconds: 7 })] }, overwriteCollectionId: existing.id }])
+    const edited = store.saveCollection({ id: existing.id, title: '本地再次编辑', selections: [selection({ startSeconds: 8, endSeconds: 10 })] })
+
+    const conflicted = store.undoLastCollectionOperation()
+    expect(conflicted).toMatchObject({ success: false, operation: null, collections: [] })
+    expect(store.getCollection(existing.id)).toEqual(edited)
+    expect(store.getLastCollectionOperation()).toMatchObject({ type: 'import' })
+    expect(store.listCollectionOperationHistory()[0]).toMatchObject({ type: 'import', status: 'active' })
+  })
+
   it('undoes and redoes a selected independent collection operation', () => {
     const first = store.saveCollection({ title: '指定撤销一', selections: [selection()] })
     const second = store.saveCollection({ title: '指定撤销二', selections: [selection({ startSeconds: 4, endSeconds: 6 })] })

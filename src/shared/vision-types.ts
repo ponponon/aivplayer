@@ -709,7 +709,7 @@ export type VisionClipCollectionTagOperationBatchConflict = {
   reason: VisionClipCollectionTagOperationBatchConflictReason
 }
 
-export type VisionClipCollectionOperationType = 'flags' | 'merge' | 'delete' | 'rename' | 'duplicate' | 'content'
+export type VisionClipCollectionOperationType = 'flags' | 'merge' | 'delete' | 'rename' | 'duplicate' | 'content' | 'import'
 
 export type VisionClipCollectionOperationHistory = {
   id: string

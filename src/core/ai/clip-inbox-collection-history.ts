@@ -1,6 +1,6 @@
 import type { VisionClipCollectionOperationHistoryEntry, VisionClipCollectionOperationHistoryExportManifest, VisionClipCollectionOperationHistoryFilter, VisionClipCollectionOperationHistoryStatusFilter, VisionClipCollectionOperationHistoryTypeFilter } from '../../shared/vision-types'
 
-const COLLECTION_OPERATION_HISTORY_TYPE_FILTERS: readonly VisionClipCollectionOperationHistoryTypeFilter[] = ['all', 'flags', 'merge', 'delete', 'rename', 'duplicate', 'content']
+const COLLECTION_OPERATION_HISTORY_TYPE_FILTERS: readonly VisionClipCollectionOperationHistoryTypeFilter[] = ['all', 'flags', 'merge', 'delete', 'rename', 'duplicate', 'content', 'import']
 const COLLECTION_OPERATION_HISTORY_STATUS_FILTERS: readonly VisionClipCollectionOperationHistoryStatusFilter[] = ['all', 'active', 'undone', 'redoable']
 
 export function normalizeVisionClipCollectionOperationHistoryTypeFilter(value: unknown): VisionClipCollectionOperationHistoryTypeFilter {
