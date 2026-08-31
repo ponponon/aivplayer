@@ -8,6 +8,7 @@ import type { VisionClipCollection, VisionClipCollectionBatchTagsMode, VisionCli
 import type { LocaleCopy } from '../../../shared/i18n'
 import type { VisionObjectDetectionFilterState, VisionObjectDetectionResult } from '../../../shared/vision-object-detection-types'
 import type { VisionClipCollectionTagOperationHistoryFilter } from '../../../shared/vision-types'
+import type { VisionClipCollectionImportDecision, VisionClipCollectionImportPreviewResult } from '../../../shared/vision-types'
 import { getVisionClipSelectionMergeKey, getVisionCollectionTagPath, invertVisionClipSelections, mergeVisionCollectionSelections, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionTag, normalizeVisionCollectionTags, previewVisionClipCollectionMerge, renameVisionClipCollectionTitle, toggleVisibleVisionClipCollectionSelection, wouldCreateVisionCollectionTagParentCycle } from '../../../core/ai/clip-inbox-operations'
 import { filterVisionClipCollectionTagOperationHistory, serializeVisionClipCollectionTagOperationHistory, VISION_CLIP_COLLECTION_TAG_OPERATION_HISTORY_PAGE_SIZE } from '../../../core/ai/clip-inbox-tag-history'
 import { filterVisionClipCollectionOperationHistory, serializeVisionClipCollectionOperationHistory } from '../../../core/ai/clip-inbox-collection-history'
@@ -362,6 +363,9 @@ export function VisionPanel(): React.ReactElement {
   const collectionTagOperationRefreshVersionRef = useRef(0)
   const collectionTagHistoryDetailRequestVersionRef = useRef(0)
   const [collectionTransferStatus, setCollectionTransferStatus] = useState<string | null>(null)
+  const [isTransferringCollectionImport, setIsTransferringCollectionImport] = useState(false)
+  const [collectionImportPreview, setCollectionImportPreview] = useState<VisionClipCollectionImportPreviewResult | null>(null)
+  const [collectionImportDecisions, setCollectionImportDecisions] = useState<Record<string, VisionClipCollectionImportDecision>>({})
   const [collectionAvailability, setCollectionAvailability] = useState<Record<string, CollectionAvailability>>({})
   const [thumbnailUrls, setThumbnailUrls] = useState<Record<string, string>>({})
   const [sourceThumbnailUrls, setSourceThumbnailUrls] = useState<Record<string, string>>({})
@@ -546,9 +550,11 @@ export function VisionPanel(): React.ReactElement {
     : null
   const collectionMergePreviewTags = collectionMergePreview?.collection.tags ?? []
   const collectionMergePreviewSources = collectionMergePreview?.sources ?? selectedCollectionsForRename.map((collection) => ({ collectionId: collection.id, title: collection.title, selections: collection.selections }))
-  const isCollectionBatchBusy = isDuplicatingCollections || isMergingCollections || isExportingCollections || isDeletingCollections || isRenamingCollections || isUpdatingCollectionTags || isUpdatingCollectionFlags || isUpdatingCollectionSelections || isCleaningCollectionTag || isRenamingCollectionTag || isSavingCollectionTagMetadata || isTransferringCollectionTagMetadata || isExportingCollectionTagHistory || isExportingCollectionOperationHistory || isUndoingCollectionTagOperation || isRedoingCollectionTagOperation || isUndoingCollectionOperation || isRedoingCollectionOperation || isSavingCollectionTitle || isSavingCollectionTags || editingCollectionId !== null || editingCollectionTagsId !== null || duplicatingCollectionId !== null || updatingCollectionFlagId !== null
+  const isCollectionBatchBusy = isDuplicatingCollections || isMergingCollections || isExportingCollections || isDeletingCollections || isRenamingCollections || isUpdatingCollectionTags || isUpdatingCollectionFlags || isUpdatingCollectionSelections || isCleaningCollectionTag || isRenamingCollectionTag || isSavingCollectionTagMetadata || isTransferringCollectionTagMetadata || isExportingCollectionTagHistory || isExportingCollectionOperationHistory || isUndoingCollectionTagOperation || isRedoingCollectionTagOperation || isUndoingCollectionOperation || isRedoingCollectionOperation || isSavingCollectionTitle || isSavingCollectionTags || isTransferringCollectionImport || collectionImportPreview !== null || editingCollectionId !== null || editingCollectionTagsId !== null || duplicatingCollectionId !== null || updatingCollectionFlagId !== null
   const collectionTagImportPreviewItems = collectionTagImportPreview?.preview ?? []
   const collectionTagImportConflicts = collectionTagImportPreviewItems.filter((item) => item.state === 'conflict')
+  const collectionImportPreviewItems = collectionImportPreview?.preview ?? []
+  const collectionImportPreviewConflicts = collectionImportPreviewItems.filter((item) => item.state === 'conflict')
   const savedCollectionFilterImportItems = savedCollectionFilterImportPreview ?? []
   const savedCollectionFilterImportConflicts = savedCollectionFilterImportItems.filter((item) => item.state === 'conflict')
   const savedCollectionFilterImportNewCount = savedCollectionFilterImportItems.filter((item) => item.state === 'new').length
@@ -1619,18 +1625,49 @@ export function VisionPanel(): React.ReactElement {
   }
 
   const importCollection = (): void => {
+    if (isCollectionBatchBusy || collectionImportPreview !== null) return
     setError(null)
     setCollectionTransferStatus(null)
-    void window.aiv.importVisionClipCollection().then((result) => {
+    setIsTransferringCollectionImport(true)
+    void window.aiv.importVisionClipCollectionPreview().then((result) => {
       if (result.canceled) return
-      const importedCollections = result.collections ?? (result.collection ? [result.collection] : [])
-      if (!result.success || importedCollections.length === 0) {
+      if (!result.success || !result.filePath || !result.preview) {
         setError(result.message)
         return
       }
-      setCollections((current) => [...importedCollections, ...current.filter((item) => !importedCollections.some((imported) => imported.id === item.id))])
+      const defaultDecisions: Record<string, VisionClipCollectionImportDecision> = {}
+      for (const item of result.preview) {
+        if (item.state === 'conflict') defaultDecisions[String(item.incomingIndex)] = 'keep-local'
+      }
+      setCollectionImportDecisions(defaultDecisions)
+      setCollectionImportPreview(result)
       setCollectionTransferStatus(result.message)
-    }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
+    }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setIsTransferringCollectionImport(false))
+  }
+
+  const applyCollectionImport = (): void => {
+    if (!collectionImportPreview?.filePath || isTransferringCollectionImport) return
+    setError(null)
+    setIsTransferringCollectionImport(true)
+    void window.aiv.applyVisionClipCollectionImport({ filePath: collectionImportPreview.filePath, decisions: collectionImportDecisions }).then((result) => {
+      if (!result.success) {
+        setError(result.message)
+        return
+      }
+      const importedCollections = result.collections ?? []
+      const importedIds = new Set(importedCollections.map((item) => item.id))
+      setCollections((current) => [...importedCollections, ...current.filter((item) => !importedIds.has(item.id))])
+      setCollectionImportPreview(null)
+      setCollectionImportDecisions({})
+      setCollectionTransferStatus(result.message)
+    }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setIsTransferringCollectionImport(false))
+  }
+
+  const cancelCollectionImport = (): void => {
+    if (isTransferringCollectionImport) return
+    setCollectionImportPreview(null)
+    setCollectionImportDecisions({})
+    setCollectionTransferStatus(null)
   }
 
   const duplicateCollection = async (collection: VisionClipCollection): Promise<void> => {
@@ -2445,6 +2482,21 @@ export function VisionPanel(): React.ReactElement {
 
   return <div className="vision-panel">
     {collectionBatchMergeAction}
+    {collectionImportPreview ? <div className="vision-card vision-saved-search-import-preview vision-collection-import-preview" role="dialog" aria-label={app.copy.vision.collectionImportPreviewTitle}>
+      <div className="vision-saved-search-import-preview-heading"><strong>{app.copy.vision.collectionImportPreviewTitle}</strong><small>{collectionImportPreview.message}</small></div>
+      {collectionImportPreviewItems.length > 0 ? <div className="vision-saved-search-import-conflicts vision-collection-import-preview-items" role="list" aria-label={app.copy.vision.collectionImportDecisionLabel}>
+        {collectionImportPreviewItems.map((item) => {
+          const stateLabel = item.state === 'conflict' ? app.copy.vision.collectionImportPreviewStateConflict : item.state === 'duplicate' ? app.copy.vision.collectionImportPreviewStateDuplicate : app.copy.vision.collectionImportPreviewStateNew
+          const localSummary = item.currentTitle ? ` · ${app.copy.vision.collectionImportPreviewLocal(item.currentTitle, item.currentSelectionCount ?? 0)}` : ''
+          return <div className="vision-saved-search-import-conflict vision-collection-import-preview-item" key={item.incomingIndex} role="listitem" data-state={item.state}>
+            <div><strong>{item.title}</strong><small>{stateLabel} · {app.copy.vision.collectionImportPreviewSelectionCount(item.selectionCount)}{localSummary}</small></div>
+            {item.state === 'conflict' ? <label><span>{app.copy.vision.collectionImportDecisionLabel}</span><select value={collectionImportDecisions[String(item.incomingIndex)] ?? 'keep-local'} aria-label={`${app.copy.vision.collectionImportDecisionLabel}: ${item.title}`} onChange={(event) => setCollectionImportDecisions((current) => ({ ...current, [String(item.incomingIndex)]: event.target.value as VisionClipCollectionImportDecision }))} disabled={isTransferringCollectionImport}><option value="overwrite">{app.copy.vision.collectionImportOverwrite}</option><option value="keep-local">{app.copy.vision.collectionImportKeepLocal}</option><option value="skip">{app.copy.vision.collectionImportSkip}</option></select></label> : null}
+          </div>
+        })}
+      </div> : null}
+      {collectionImportPreviewConflicts.length === 0 ? <small className="vision-saved-search-import-preview-empty">{app.copy.vision.collectionImportPreviewNoConflicts}</small> : null}
+      <div className="vision-saved-search-import-preview-actions"><button className="vision-primary-action" type="button" onClick={applyCollectionImport} disabled={isTransferringCollectionImport}><Check size={12} />{app.copy.vision.collectionImportApply}</button><button className="vision-secondary-action" type="button" onClick={cancelCollectionImport} disabled={isTransferringCollectionImport}><X size={12} />{app.copy.vision.collectionImportCancel}</button></div>
+    </div> : null}
     <section className="vision-card vision-intro">
       <div className="vision-heading"><div><span className="panel-kicker">{app.copy.panels.visionKicker}</span><h2>{app.copy.panels.visionTitle}</h2></div><ScanSearch size={18} /></div>
       <p>{app.copy.vision.description}</p>

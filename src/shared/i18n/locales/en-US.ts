@@ -702,6 +702,7 @@
       collectionFilterSavedViewsImportCancel: 'Cancel import',
       collectionFilterEmpty: 'No clip collections match the current filters.',
       collectionImport: 'Import clip collection',
+      collectionImportPreviewTitle: 'Import clip collection preview',
       collectionImportCanceled: 'Clip collection import cancelled',
       collectionImported: (title: string) => `Imported clip collection: ${title}`,
       collectionsImported: (count: number) => `Imported ${count} clip collections`,

@@ -702,6 +702,7 @@
       collectionFilterSavedViewsImportCancel: '가져오기 취소',
       collectionFilterEmpty: '현재 필터와 일치하는 클립 컬렉션이 없습니다.',
       collectionImport: '클립 컬렉션 가져오기',
+      collectionImportPreviewTitle: '클립 컬렉션 가져오기 미리보기',
       collectionImportCanceled: '클립 컬렉션 가져오기를 취소했습니다',
       collectionImported: (title: string) => `클립 컬렉션을 가져왔습니다: ${title}`,
       collectionsImported: (count: number) => `${count}개 클립 컬렉션을 가져왔습니다`,

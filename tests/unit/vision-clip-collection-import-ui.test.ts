@@ -5,11 +5,17 @@ import { describe, expect, it } from 'vitest'
 const projectRoot = process.cwd()
 
 describe('vision clip collection import UI', () => {
-  it('exposes import beside saved collections and refreshes the collection view', () => {
+  it('exposes two-stage import preview beside saved collections', () => {
     const panel = readFileSync(join(projectRoot, 'src/renderer/src/app/vision-panel.tsx'), 'utf8')
-    expect(panel).toContain('importVisionClipCollection')
+    expect(panel).toContain('importVisionClipCollectionPreview')
+    expect(panel).toContain('applyVisionClipCollectionImport')
     expect(panel).toContain('collectionImport')
-    expect(panel).toContain('const importedCollections = result.collections ?? (result.collection ? [result.collection] : [])')
+    expect(panel).toContain('collectionImportPreviewTitle')
+    expect(panel).toContain('collectionImportDecisions')
+    expect(panel).toContain('collectionImportOverwrite')
+    expect(panel).toContain('collectionImportKeepLocal')
+    expect(panel).toContain('collectionImportCancel')
+    expect(panel).toContain('isTransferringCollectionImport')
     expect(panel).toContain('savedCollectionEmpty')
   })
 

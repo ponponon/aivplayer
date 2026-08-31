@@ -702,6 +702,7 @@
       collectionFilterSavedViewsImportCancel: 'インポートをキャンセル',
       collectionFilterEmpty: '条件に一致するクリップコレクションはありません。',
       collectionImport: 'クリップコレクションをインポート',
+      collectionImportPreviewTitle: 'クリップコレクションのインポートプレビュー',
       collectionImportCanceled: 'クリップコレクションのインポートをキャンセルしました',
       collectionImported: (title: string) => `クリップコレクションをインポートしました：${title}`,
       collectionsImported: (count: number) => `${count} 件のクリップコレクションをインポートしました`,

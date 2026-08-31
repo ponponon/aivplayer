@@ -702,6 +702,7 @@
       collectionFilterSavedViewsImportCancel: '取消导入',
       collectionFilterEmpty: '没有符合筛选条件的选段集合。',
       collectionImport: '导入选段集合',
+      collectionImportPreviewTitle: '导入选段集合预览',
       collectionImportCanceled: '已取消导入选段集合',
       collectionImported: (title: string) => `已导入选段集合：${title}`,
       collectionsImported: (count: number) => `已导入 ${count} 个选段集合`,

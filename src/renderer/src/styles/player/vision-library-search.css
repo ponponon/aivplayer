@@ -209,6 +209,22 @@
   justify-content: flex-end;
 }
 
+.vision-collection-import-preview {
+  margin-bottom: 8px;
+}
+
+.vision-collection-import-preview-item[data-state="conflict"] {
+  border-left: 2px solid var(--warning, #d99a46);
+}
+
+.vision-collection-import-preview-item[data-state="duplicate"] {
+  opacity: 0.72;
+}
+
+.vision-collection-import-preview-item[data-state="new"] {
+  border-left: 2px solid var(--accent);
+}
+
 .vision-saved-search-empty,
 .vision-saved-search-status {
   color: var(--text-muted);
