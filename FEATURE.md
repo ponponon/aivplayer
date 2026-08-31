@@ -1313,7 +1313,18 @@
 - 真实 Electron Smoke 已验证预览包含 1 个冲突和 1 个新增、默认保留本地、确认后的新增与覆盖持久化、Renderer `consoleErrors: 0`；截图输出到 `/private/tmp/aivplayer-collection-import-preview.png` 与 `/private/tmp/aivplayer-collection-import-preview-applied.png`。
 - 验证合同：集合导入核心、IPC / Preload 接线、Renderer UI 接线共 16 项通过，`npm run typecheck`、`npm run build` 和真实 Electron Smoke 均通过。
 - 分阶段提交：`9265d2be feat(选段集合) : 增加导入冲突预览核心`；`295eedf5 feat(选段集合) : 接通导入预览协议`；`2020763f feat(选段集合) : 接入导入预览界面`；`3ec7444a test(选段集合) : 验证导入冲突预览`。
-- 当前边界：冲突身份以集合标题为主、内容签名用于区分重复 / 冲突；覆盖操作暂不追加集合操作历史，不自动搬运媒体文件，不提供 CSV / EDL 导入、跨设备同步或云端协作。
+- 当前边界：本节记录的是预览与冲突决策阶段；导入操作历史、原子撤销 / 重做已在 9.169 补齐。不自动搬运媒体文件，不处理 CSV / EDL 导入、跨设备同步或云端协作。
+
+## Clip Inbox 选段集合导入操作历史
+
+- 导入确认会把新增集合与覆盖集合放进同一个 SQLite 事务，并只写入一条 `import` 操作历史；新增项保存完整创建快照，覆盖项保存 before / after 完整快照，集合 ID、标签、排序、收藏归档状态、选段和时间字段均可回放。
+- 导入历史支持单项撤销、重做和批量撤销 / 重做；撤销覆盖会恢复原集合，撤销新增会删除导入生成的集合；任一集合在外部被编辑、删除或占用时，操作保持 active / redoable 状态并安全失败，不覆盖用户修改。
+- 旧的直接导入 IPC 继续兼容；预览确认路径改为重新读取文件、重新分类后批量写入，导入完成后 Renderer 刷新历史列表、撤销 / 重做状态，并支持按“导入”筛选历史。
+- 四语言同步提供“导入”历史类型标签及撤销 / 重做描述；历史详情只展示安全摘要，不暴露媒体路径和选段正文。
+- 验证合同：Store 回归 63 项、导入 IPC / 历史筛选接线回归 68 项、Renderer UI 回归 10 项通过，`npm run typecheck`、`npm run build` 和真实 Electron Smoke 均通过；Smoke 验证 `beforeApplyCount: 1`、`importedCount: 1`、`overwrittenCount: 1`、`afterUndoCount: 1`、`afterRedoCount: 2`、`consoleErrors: 0`。
+- 真实 Smoke 截图输出到 `/private/tmp/aivplayer-collection-import-preview.png`、`/private/tmp/aivplayer-collection-import-preview-applied.png` 和 `/private/tmp/aivplayer-collection-import-history.png`。
+- 分阶段提交：`ca10f8d6 feat(选段集合) : 接入导入操作历史`（Store 快照和回放）；`085dfc57 feat(选段集合) : 批量导入写入历史`（IPC 接线）；`0a43f7c0 feat(选段集合) : 刷新导入操作历史`（Renderer 刷新和筛选）；`3f2eaea4 test(选段集合) : 验证导入历史撤销重做`（真实 Electron Smoke）。
+- 当前边界：历史仍只保留最近 20 条，集合导入不自动搬运媒体文件，不处理 CSV / EDL 导入、跨设备同步或云端协作。
 
 ## Clip Inbox 集合历史冲突选择恢复
 
