@@ -31,6 +31,7 @@ async function runSmoke(): Promise<void> {
   const newCollectionTitle = `新增集合 Smoke ${Date.now()}`
   const previewScreenshot = '/private/tmp/aivplayer-collection-import-preview.png'
   const appliedScreenshot = '/private/tmp/aivplayer-collection-import-preview-applied.png'
+  const historyScreenshot = '/private/tmp/aivplayer-collection-import-history.png'
   let app: ElectronApplication | null = null
 
   try {
@@ -114,8 +115,39 @@ async function runSmoke(): Promise<void> {
     }
     await page.locator('.vision-collections').screenshot({ path: appliedScreenshot })
 
+    const historyAfterApply = await page.evaluate(() => window.aiv.listVisionClipCollectionOperationHistory())
+    const importOperation = historyAfterApply.find((operation) => operation.type === 'import' && operation.status === 'active')
+    if (historyAfterApply.length !== 1 || !importOperation || importOperation.collectionIds.length !== 2) {
+      throw new Error(`Import operation history mismatch after apply: ${JSON.stringify(historyAfterApply)}`)
+    }
+    const importDetail = await page.evaluate((operationId) => window.aiv.getVisionClipCollectionOperationHistoryDetail(operationId), importOperation.id)
+    if (!importDetail || importDetail.beforeCollections.length !== 1 || importDetail.afterCollections.length !== 2) {
+      throw new Error(`Import operation detail mismatch: ${JSON.stringify(importDetail)}`)
+    }
+    await page.locator('.vision-collection-operation-history').waitFor({ timeout: 10_000 })
+    await page.locator('.vision-collection-operation-history').screenshot({ path: historyScreenshot })
+
+    const undone = await page.evaluate((operationId) => window.aiv.undoVisionClipCollectionOperation(operationId), importOperation.id)
+    if (!undone.success) throw new Error(`Import operation undo failed: ${JSON.stringify(undone)}`)
+    const afterUndo = await page.evaluate(() => window.aiv.listVisionClipCollections())
+    if (afterUndo.length !== 1 || afterUndo[0]?.id !== localCollection.id || afterUndo[0]?.tags.join('|') !== 'smoke|local') {
+      throw new Error(`Import operation undo persistence mismatch: ${JSON.stringify(afterUndo)}`)
+    }
+
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await openVisionPanel(page)
+    await page.locator('.vision-collection-operation-history').waitFor({ timeout: 10_000 })
+    const redone = await page.evaluate((operationId) => window.aiv.redoVisionClipCollectionOperation(operationId), importOperation.id)
+    if (!redone.success) throw new Error(`Import operation redo failed: ${JSON.stringify(redone)}`)
+    const afterRedo = await page.evaluate(() => window.aiv.listVisionClipCollections())
+    const redoneOverwritten = afterRedo.find((collection) => collection.id === localCollection.id)
+    const redoneNew = afterRedo.find((collection) => collection.title === newCollectionTitle)
+    if (afterRedo.length !== 2 || !redoneOverwritten || !redoneNew || redoneOverwritten.tags.join('|') !== 'smoke|incoming' || redoneOverwritten.selections[0]?.endSeconds !== 10 || redoneNew.selections[0]?.evidenceIds[0] !== 'import-preview-evidence-new') {
+      throw new Error(`Import operation redo persistence mismatch: ${JSON.stringify(afterRedo)}`)
+    }
+
     if (session.errors.length > 0) throw new Error(`Renderer errors during clip collection import preview smoke:\n${session.errors.join('\n')}`)
-    console.log(`AIVPlayer Smoke Vision Clip Collection Import Preview passed: ${JSON.stringify({ beforeApplyCount: beforeApply.length, importedCount: 1, overwrittenCount: 1, afterApplyCount: afterApply.length, previewScreenshot, appliedScreenshot })}`)
+    console.log(`AIVPlayer Smoke Vision Clip Collection Import Preview passed: ${JSON.stringify({ beforeApplyCount: beforeApply.length, importedCount: 1, overwrittenCount: 1, afterApplyCount: afterApply.length, afterUndoCount: afterUndo.length, afterRedoCount: afterRedo.length, previewScreenshot, appliedScreenshot, historyScreenshot })}`)
   } finally {
     if (app) await app.close().catch(() => undefined)
     await rm(userDataDirectory, { recursive: true, force: true }).catch(() => undefined)
