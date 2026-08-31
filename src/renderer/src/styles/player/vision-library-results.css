@@ -1786,6 +1786,43 @@
   text-align: center;
 }
 
+.vision-collection-operation-history-toolbar {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.vision-collection-operation-history-toolbar label {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  color: var(--text-muted);
+  font-size: 8px;
+}
+
+.vision-collection-operation-history-toolbar select {
+  min-width: 96px;
+  min-height: 22px;
+  padding: 0 5px;
+  color: var(--text-secondary);
+  background: rgba(var(--overlay-rgb), 0.06);
+  border: 1px solid var(--border-soft);
+  border-radius: 3px;
+  font-size: 8px;
+}
+
+.vision-collection-operation-history-toolbar select:focus-visible {
+  border-color: var(--accent);
+  outline: 0;
+}
+
+.vision-collection-operation-history-empty {
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
 .vision-collection-operation-history-selection-toolbar {
   display: flex;
   align-items: center;
