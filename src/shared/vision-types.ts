@@ -727,6 +727,23 @@ export type VisionClipCollectionOperationHistoryEntry = VisionClipCollectionOper
   selectionCount: number
 }
 
+export type VisionClipCollectionOperationHistoryTypeFilter = 'all' | VisionClipCollectionOperationType
+
+export type VisionClipCollectionOperationHistoryStatusFilter = 'all' | VisionClipCollectionOperationHistoryStatus
+
+export type VisionClipCollectionOperationHistoryFilter = {
+  type: VisionClipCollectionOperationHistoryTypeFilter
+  status: VisionClipCollectionOperationHistoryStatusFilter
+}
+
+export type VisionClipCollectionOperationHistoryExportManifest = {
+  schemaVersion: 1
+  typeFilter: VisionClipCollectionOperationHistoryTypeFilter
+  statusFilter: VisionClipCollectionOperationHistoryStatusFilter
+  exportedAt: number
+  entries: VisionClipCollectionOperationHistoryEntry[]
+}
+
 export type VisionClipCollectionOperationCollectionDetail = {
   id: string
   title: string
