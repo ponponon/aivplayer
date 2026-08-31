@@ -55,6 +55,8 @@ describe('vision clip collection operation wiring', () => {
     expect(store).toContain('updateCollectionFlags(request: VisionClipCollectionFlagUpdateRequest)')
     expect(store).toContain('recordCollectionOperation(\'flags\'')
     expect(store).toContain('recordCollectionOperation(\'merge\'')
+    expect(store).toContain('importCollectionsWithHistory(items')
+    expect(types).toContain("| 'import'")
     expect(store).toContain('undoLastCollectionOperation()')
     expect(store).toContain('getLastCollectionRedoOperation()')
     expect(store).toContain('redoLastCollectionOperation()')

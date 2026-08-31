@@ -20,6 +20,7 @@ describe('clip inbox collection operation history filters', () => {
   it('normalizes invalid type and status filters to all', () => {
     expect(normalizeVisionClipCollectionOperationHistoryFilter({ type: 'unknown', status: 'unknown' })).toEqual({ type: 'all', status: 'all' })
     expect(normalizeVisionClipCollectionOperationHistoryFilter({ type: 'flags', status: 'redoable' })).toEqual({ type: 'flags', status: 'redoable' })
+    expect(normalizeVisionClipCollectionOperationHistoryFilter({ type: 'import', status: 'active' })).toEqual({ type: 'import', status: 'active' })
   })
 
   it('filters by operation type and status without mutating entries', () => {

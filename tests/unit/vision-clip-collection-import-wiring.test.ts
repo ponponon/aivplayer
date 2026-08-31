@@ -15,6 +15,7 @@ describe('vision clip collection import wiring', () => {
     expect(desktop).toContain('parseVisionClipCollectionImportFile')
     expect(desktop).toContain('createVisionClipCollectionImportPreview')
     expect(desktop).toContain('getClipInboxStore().importCollection')
+    expect(desktop).toContain('store.importCollectionsWithHistory')
     expect(preload).toContain('importVisionClipCollection')
     expect(preload).toContain('importVisionClipCollectionPreview')
     expect(preload).toContain('applyVisionClipCollectionImport')

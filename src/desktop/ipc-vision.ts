@@ -1037,8 +1037,7 @@ export function registerVisionIpc(): void {
       const store = getClipInboxStore()
       const preview = createVisionClipCollectionImportPreview(inputs, store.listCollections())
       const decisions = request?.decisions ?? {}
-      const collections = [] as NonNullable<ReturnType<typeof store.getCollection>>[]
-      let overwrittenCount = 0
+      const importItems = [] as { input: (typeof inputs)[number]; overwriteCollectionId?: string }[]
       let skippedCount = 0
       for (const item of preview) {
         const input = inputs[item.incomingIndex]
@@ -1047,18 +1046,17 @@ export function registerVisionIpc(): void {
           continue
         }
         if (item.state === 'new') {
-          collections.push(store.importCollection(input))
+          importItems.push({ input })
           continue
         }
         if (item.state === 'conflict' && decisions[String(item.incomingIndex)] === 'overwrite' && item.currentCollectionId) {
-          const overwritten = store.saveCollection({ ...input, id: item.currentCollectionId })
-          collections.push(overwritten)
-          overwrittenCount += 1
+          importItems.push({ input, overwriteCollectionId: item.currentCollectionId })
           continue
         }
         skippedCount += 1
       }
-      return { success: true, filePath, importedCount: collections.length - overwrittenCount, overwrittenCount, skippedCount, collections, message: copy.collectionImportApplied(collections.length - overwrittenCount, overwrittenCount, skippedCount) }
+      const result = store.importCollectionsWithHistory(importItems)
+      return { success: true, filePath, importedCount: result.importedCount, overwrittenCount: result.overwrittenCount, skippedCount, collections: result.collections, message: copy.collectionImportApplied(result.importedCount, result.overwrittenCount, skippedCount) }
     } catch (error) {
       return { success: false, filePath, message: error instanceof Error ? error.message : String(error), importedCount: 0, overwrittenCount: 0, skippedCount: 0, collections: [] }
     }
