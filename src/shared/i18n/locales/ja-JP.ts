@@ -523,6 +523,7 @@
       collectionTagsUpdated: (title: string) => `コレクションタグを更新しました：${title}`,
       collectionTagsUpdateUnavailable: 'クリップコレクションが存在しないためタグを更新できません',
       collectionContentUpdated: (title: string, count: number) => `「${title}」のクリップ内容を更新しました（${count} 件）`,
+      collectionContentBatchUpdated: (count: number, skipped: number) => `${count} 件のクリップコレクションを修復しました${skipped > 0 ? `（${skipped} 件をスキップ）` : ''}`,
       collectionContentUpdateUnavailable: 'クリップコレクションが存在しないため内容を更新できません',
       collectionTagsBatchPlaceholder: '一括タグ（カンマ区切り、空欄で解除）',
       collectionTagsBatchInputPlaceholder: 'タグを入力（カンマ区切り）',

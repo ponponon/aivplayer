@@ -504,6 +504,34 @@ describe('clip inbox store', () => {
     expect(store.getCollection(original.id)).toEqual(updated)
   })
 
+  it('updates several collection contents in one history snapshot and restores them atomically', () => {
+    const first = store.saveCollection({ title: '批量修复一', selections: [selection({ videoPath: '/old/one.mp4', fileName: 'one.mp4' })] })
+    const second = store.saveCollection({ title: '批量修复二', selections: [selection({ videoPath: '/old/two.mp4', fileName: 'two.mp4' })] })
+    const beforeFirst = store.getCollection(first.id)
+    const beforeSecond = store.getCollection(second.id)
+    const result = store.updateCollectionsSelections([
+      { collectionId: first.id, selections: [selection({ videoPath: '/new/one.mp4', fileName: 'one.mp4', sourceId: 'source-new-one' })] },
+      { collectionId: second.id, selections: [selection({ videoPath: '/new/two.mp4', fileName: 'two.mp4', sourceId: 'source-new-two' })] },
+      { collectionId: 'missing', selections: [selection()] }
+    ])
+
+    expect(result.collections).toHaveLength(2)
+    expect(result.skippedCount).toBe(1)
+    expect(store.listCollectionOperationHistory()[0]).toMatchObject({ type: 'content', collectionIds: [first.id, second.id] })
+    expect(store.getCollection(first.id)?.selections[0]?.videoPath).toBe('/new/one.mp4')
+    expect(store.getCollection(second.id)?.selections[0]?.videoPath).toBe('/new/two.mp4')
+
+    const undone = store.undoLastCollectionOperation()
+    expect(undone).toMatchObject({ success: true, operation: expect.objectContaining({ type: 'content' }) })
+    expect(store.getCollection(first.id)).toEqual(beforeFirst)
+    expect(store.getCollection(second.id)).toEqual(beforeSecond)
+
+    const redone = store.redoLastCollectionOperation()
+    expect(redone).toMatchObject({ success: true, operation: expect.objectContaining({ type: 'content' }) })
+    expect(store.getCollection(first.id)?.selections[0]?.videoPath).toBe('/new/one.mp4')
+    expect(store.getCollection(second.id)?.selections[0]?.videoPath).toBe('/new/two.mp4')
+  })
+
   it('lists collection operation summaries without exposing operation snapshots', () => {
     const original = store.saveCollection({ title: '历史摘要源', selections: [selection(), selection({ startSeconds: 5, endSeconds: 7 })] })
     store.updateCollectionFlags({ collectionIds: [original.id], isFavorite: true })

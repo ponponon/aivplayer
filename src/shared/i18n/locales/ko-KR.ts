@@ -523,6 +523,7 @@
       collectionTagsUpdated: (title: string) => `컬렉션 태그를 업데이트했습니다: ${title}`,
       collectionTagsUpdateUnavailable: '클립 컬렉션이 없어 태그를 업데이트할 수 없습니다',
       collectionContentUpdated: (title: string, count: number) => `“${title}”의 클립 내용을 업데이트했습니다(${count}개)`,
+      collectionContentBatchUpdated: (count: number, skipped: number) => `${count}개 클립 컬렉션을 복구했습니다${skipped > 0 ? `, ${skipped}개 건너뜀` : ''}`,
       collectionContentUpdateUnavailable: '클립 컬렉션이 없어 클립 내용을 업데이트할 수 없습니다',
       collectionTagsBatchPlaceholder: '일괄 태그 (쉼표로 구분, 비우면 삭제)',
       collectionTagsBatchInputPlaceholder: '태그 입력 (쉼표로 구분)',

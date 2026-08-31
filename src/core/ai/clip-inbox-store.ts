@@ -848,6 +848,58 @@ export class ClipInboxStore {
     }
   }
 
+  updateCollectionsSelections(updates: readonly { collectionId: unknown; selections: unknown }[]): { collections: VisionClipCollection[]; skippedCount: number } {
+    if (!Array.isArray(updates) || updates.length === 0) return { collections: [], skippedCount: 0 }
+    const seenIds = new Set<string>()
+    const beforeCollections: VisionClipCollection[] = []
+    const normalizedUpdates: Array<{ id: string; selections: VisionClipSelection[] }> = []
+    let skippedCount = 0
+
+    for (const update of updates) {
+      const id = typeof update?.collectionId === 'string' ? update.collectionId.trim() : ''
+      if (!id || seenIds.has(id)) {
+        skippedCount += 1
+        continue
+      }
+      seenIds.add(id)
+      const beforeCollection = this.getCollection(id)
+      if (!beforeCollection) {
+        skippedCount += 1
+        continue
+      }
+      if (!Array.isArray(update.selections)) throw new Error('选段集合内容无效')
+      const selections = sortVisionClipSelections(
+        mergeVisionClipSelections(update.selections.map((selection: unknown) => normalizeSelection(selection)).filter((selection: VisionClipSelection | null): selection is VisionClipSelection => selection !== null)),
+        beforeCollection.sortMode
+      )
+      if (selections.length === 0) throw new Error('选段集合至少需要一个有效选段')
+      if (JSON.stringify(selections) === JSON.stringify(beforeCollection.selections)) {
+        skippedCount += 1
+        continue
+      }
+      beforeCollections.push(beforeCollection)
+      normalizedUpdates.push({ id, selections })
+    }
+
+    if (normalizedUpdates.length === 0) return { collections: [], skippedCount }
+    const now = Date.now()
+    this.database.exec('BEGIN')
+    try {
+      for (const update of normalizedUpdates) {
+        this.database.prepare('UPDATE clip_collections SET updated_at = ? WHERE id = ?').run(now, update.id)
+        this.replaceCollectionSelections(update.id, update.selections)
+      }
+      const afterCollections = normalizedUpdates.map((update) => this.getCollection(update.id)).filter((collection): collection is VisionClipCollection => collection !== null)
+      if (afterCollections.length !== normalizedUpdates.length) throw new Error('选段集合批量更新失败')
+      this.recordCollectionOperation('content', { beforeCollections, afterCollections }, now)
+      this.database.exec('COMMIT')
+      return { collections: afterCollections, skippedCount }
+    } catch (error) {
+      this.database.exec('ROLLBACK')
+      throw error
+    }
+  }
+
   renameCollection(collectionId: string, title: unknown): VisionClipCollection | null {
     const id = typeof collectionId === 'string' ? collectionId.trim() : ''
     const normalizedTitle = typeof title === 'string' ? title.trim() : ''

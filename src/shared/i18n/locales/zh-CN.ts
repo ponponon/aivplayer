@@ -523,6 +523,7 @@
       collectionTagsUpdated: (title: string) => `已更新集合标签：${title}`,
       collectionTagsUpdateUnavailable: '选段集合不存在，无法更新集合标签',
       collectionContentUpdated: (title: string, count: number) => `已更新“${title}”的选段内容（${count} 个选段）`,
+      collectionContentBatchUpdated: (count: number, skipped: number) => `已批量修复 ${count} 个选段集合${skipped > 0 ? `，跳过 ${skipped} 个` : ''}`,
       collectionContentUpdateUnavailable: '选段集合不存在，无法更新选段内容',
       collectionTagsBatchPlaceholder: '批量标签（逗号分隔，留空清空）',
       collectionTagsBatchInputPlaceholder: '输入标签（用逗号分隔）',

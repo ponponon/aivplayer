@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { readFile, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
-import type { VisionClipCollectionBatchDeleteRequest, VisionClipCollectionBatchDuplicateRequest, VisionClipCollectionBatchExportRequest, VisionClipCollectionBatchMergeRequest, VisionClipCollectionBatchRenameRequest, VisionClipCollectionBatchTagsRequest, VisionClipCollectionContentUpdateRequest, VisionClipCollectionFlagUpdateRequest, VisionClipCollectionImportApplyRequest, VisionClipCollectionRenameRequest, VisionClipCollectionTagCleanupRequest, VisionClipCollectionTagMetadataImportApplyRequest, VisionClipCollectionTagMetadataUpdateRequest, VisionClipCollectionTagRenameRequest, VisionClipCollectionTagOperationHistoryPageRequest, VisionClipCollectionTagUpdateRequest, VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionEvidenceAuditPage, VisionEvidenceAuditRequest, VisionEvidenceBatchClearResult, VisionEvidenceSourceRequest, VisionEvidenceType, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionModelDownloadResult, VisionPackDownloadResult, VisionSavedSearchInput, VisionSearchFullExportRequest, VisionSearchPageKind, VisionSearchPageRequest, VisionSearchRequest, VisionSearchResult, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchResultsExportRequest, VisionSearchResultsExportResult, VisionSimilarSearchRequest } from '../shared/vision-types'
+import type { VisionClipCollectionBatchContentUpdateRequest, VisionClipCollectionBatchDeleteRequest, VisionClipCollectionBatchDuplicateRequest, VisionClipCollectionBatchExportRequest, VisionClipCollectionBatchMergeRequest, VisionClipCollectionBatchRenameRequest, VisionClipCollectionBatchTagsRequest, VisionClipCollectionContentUpdateRequest, VisionClipCollectionFlagUpdateRequest, VisionClipCollectionImportApplyRequest, VisionClipCollectionRenameRequest, VisionClipCollectionTagCleanupRequest, VisionClipCollectionTagMetadataImportApplyRequest, VisionClipCollectionTagMetadataUpdateRequest, VisionClipCollectionTagRenameRequest, VisionClipCollectionTagOperationHistoryPageRequest, VisionClipCollectionTagUpdateRequest, VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionEvidenceAuditPage, VisionEvidenceAuditRequest, VisionEvidenceBatchClearResult, VisionEvidenceSourceRequest, VisionEvidenceType, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionModelDownloadResult, VisionPackDownloadResult, VisionSavedSearchInput, VisionSearchFullExportRequest, VisionSearchPageKind, VisionSearchPageRequest, VisionSearchRequest, VisionSearchResult, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchResultsExportRequest, VisionSearchResultsExportResult, VisionSimilarSearchRequest } from '../shared/vision-types'
 import { VISION_SEARCH_FULL_EXPORT_MAX_RESULTS } from '../shared/vision-types'
 import type { VisionEntityCatalogBatchPatch, VisionEntityCatalogCreateInput, VisionEntityCatalogPatch } from '../shared/vision-entity-types'
 import { scanVisionDirectory, isVisionScanAbortError } from '../core/ai/vision-directory-scan'
@@ -683,6 +683,16 @@ export function registerVisionIpc(): void {
       return { success: true, message: copy.collectionContentUpdated(collection.title, collection.selections.length), collection }
     } catch (error) {
       return { success: false, message: error instanceof Error ? error.message : String(error), collection: null }
+    }
+  })
+  ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_BATCH_CONTENT_UPDATE, (_event, request: VisionClipCollectionBatchContentUpdateRequest) => {
+    const copy = getAppCopy(getCurrentLocale()).vision
+    if (!request || !Array.isArray(request.updates)) return { success: false, message: copy.collectionContentUpdateUnavailable, collections: [], skippedCount: 0 }
+    try {
+      const result = getClipInboxStore().updateCollectionsSelections(request.updates)
+      return { success: true, message: copy.collectionContentBatchUpdated(result.collections.length, result.skippedCount), collections: result.collections, skippedCount: result.skippedCount }
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : String(error), collections: [], skippedCount: 0 }
     }
   })
   ipcMain.handle(IPC_CHANNELS.VISION_CLIP_COLLECTION_DELETE, (_event, collectionId: string) => {

@@ -523,6 +523,7 @@
       collectionTagsUpdated: (title: string) => `Updated collection tags: ${title}`,
       collectionTagsUpdateUnavailable: 'The clip collection no longer exists and its tags cannot be updated',
       collectionContentUpdated: (title: string, count: number) => `Updated clips in “${title}” (${count} clip${count === 1 ? '' : 's'})`,
+      collectionContentBatchUpdated: (count: number, skipped: number) => `Repaired ${count} clip collection${count === 1 ? '' : 's'}${skipped > 0 ? `, skipped ${skipped}` : ''}`,
       collectionContentUpdateUnavailable: 'The clip collection no longer exists and its clips cannot be updated',
       collectionTagsBatchPlaceholder: 'Batch tags (comma separated; blank clears)',
       collectionTagsBatchInputPlaceholder: 'Enter tags (comma separated)',

@@ -530,6 +530,17 @@ export type VisionClipCollectionContentUpdateResult = {
   collection: VisionClipCollection | null
 }
 
+export type VisionClipCollectionBatchContentUpdateRequest = {
+  updates: VisionClipCollectionContentUpdateRequest[]
+}
+
+export type VisionClipCollectionBatchContentUpdateResult = {
+  success: boolean
+  message: string
+  collections: VisionClipCollection[]
+  skippedCount: number
+}
+
 export type VisionClipCollectionFlagUpdateRequest = {
   collectionIds: string[]
   isFavorite?: boolean
