@@ -711,6 +711,7 @@
       collectionImportPreviewStateDuplicate: 'Duplicate',
       collectionImportPreviewStateConflict: 'Conflict',
       collectionImportPreviewSelectionCount: (count: number) => `${count} clip${count === 1 ? '' : 's'}`,
+      collectionImportPreviewMissingSource: (count: number) => `${count} unavailable media source${count === 1 ? '' : 's'}`,
       collectionImportPreviewLocal: (title: string, count: number) => `Local: ${title} · ${count} clip${count === 1 ? '' : 's'}`,
       collectionImportPreviewNoConflicts: 'There are no conflicts to choose.',
       collectionImportDecisionLabel: 'Import conflict handling',

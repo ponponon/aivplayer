@@ -711,6 +711,7 @@
       collectionImportPreviewStateDuplicate: '重复',
       collectionImportPreviewStateConflict: '冲突',
       collectionImportPreviewSelectionCount: (count: number) => `${count} 个选段`,
+      collectionImportPreviewMissingSource: (count: number) => `${count} 个媒体源不可用`,
       collectionImportPreviewLocal: (title: string, count: number) => `本地：${title} · ${count} 个选段`,
       collectionImportPreviewNoConflicts: '没有需要选择的冲突。',
       collectionImportDecisionLabel: '导入冲突处理',

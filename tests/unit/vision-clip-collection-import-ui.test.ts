@@ -14,6 +14,8 @@ describe('vision clip collection import UI', () => {
     expect(panel).toContain('collectionImportDecisions')
     expect(panel).toContain('collectionImportOverwrite')
     expect(panel).toContain('collectionImportKeepLocal')
+    expect(panel).toContain('collectionImportPreviewMissingSource')
+    expect(panel).toContain('vision-collection-import-missing-source')
     expect(panel).toContain('collectionImportCancel')
     expect(panel).toContain('isTransferringCollectionImport')
     expect(panel).toContain('refreshCollectionOperation()')

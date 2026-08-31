@@ -711,6 +711,7 @@
       collectionImportPreviewStateDuplicate: '重複',
       collectionImportPreviewStateConflict: '競合',
       collectionImportPreviewSelectionCount: (count: number) => `選段 ${count} 件`,
+      collectionImportPreviewMissingSource: (count: number) => `利用できないメディアソース ${count} 件`,
       collectionImportPreviewLocal: (title: string, count: number) => `ローカル：${title} · 選段 ${count} 件`,
       collectionImportPreviewNoConflicts: '選択が必要な競合はありません。',
       collectionImportDecisionLabel: 'インポート時の競合処理',

@@ -105,6 +105,7 @@ describe('vision clip collection operation history UI', () => {
       expect(source).toContain('collectionOperationHistorySelectAllUndo')
       expect(source).toContain('collectionOperationHistorySelectAllRedo')
       expect(source).toContain('collectionOperationHistoryClearSelection')
+      expect(source).toContain('collectionImportPreviewMissingSource')
     }
   })
 })

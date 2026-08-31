@@ -225,6 +225,11 @@
   border-left: 2px solid var(--accent);
 }
 
+.vision-collection-import-missing-source {
+  color: var(--danger, #e06b6b);
+  font-style: normal;
+}
+
 .vision-saved-search-empty,
 .vision-saved-search-status {
   color: var(--text-muted);

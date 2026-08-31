@@ -711,6 +711,7 @@
       collectionImportPreviewStateDuplicate: '중복',
       collectionImportPreviewStateConflict: '충돌',
       collectionImportPreviewSelectionCount: (count: number) => `클립 ${count}개`,
+      collectionImportPreviewMissingSource: (count: number) => `사용할 수 없는 미디어 소스 ${count}개`,
       collectionImportPreviewLocal: (title: string, count: number) => `로컬: ${title} · 클립 ${count}개`,
       collectionImportPreviewNoConflicts: '선택할 충돌 항목이 없습니다.',
       collectionImportDecisionLabel: '가져오기 충돌 처리',
