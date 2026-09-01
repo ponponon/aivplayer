@@ -1527,6 +1527,13 @@
         activeProvider: '当前使用的服务',
         managementTitle: '服务管理',
         managementDescription: '配置翻译和总结使用的 AI 服务。内置托管服务无需配置；需要自己的模型或额度时，再添加自定义服务。',
+        managedRouteTitle: '托管翻译入口',
+        managedRouteDescription: '仅影响内置托管服务。“自动选择”会根据当前网络路径判断；手动指定入口后，如果该入口失败，仍会自动回退到另一个入口。',
+        managedRouteOptions: {
+          auto: '自动选择（推荐）',
+          domestic: '大陆入口（translate.quniv.cn）',
+          worker: 'Cloudflare Worker（海外）'
+        },
         tableLabel: 'AI 服务列表',
         serviceColumn: '服务',
         configurationColumn: '配置',

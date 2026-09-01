@@ -61,11 +61,12 @@ export function getAsrRuntime(): ReturnType<typeof createWhisperCppRuntime> {
         'X-AIVPlayer-Version': app.getVersion()
       },
       translationFetch,
-      getManagedTranslationEndpointCandidates: managedTranslationRouter.getEndpointCandidates,
+      getManagedTranslationEndpointCandidates: (routeMode) => managedTranslationRouter.getEndpointCandidates(routeMode),
       onManagedTranslationEndpointFailure: managedTranslationRouter.invalidate,
       getAiServiceSettings: () => ({
         providers: desktopState.currentAppSettings.ai.providers,
         activeProviderId: desktopState.currentAppSettings.ai.activeProviderId,
+        managedTranslationRouteMode: desktopState.currentAppSettings.ai.managedTranslationRouteMode,
         glossary: desktopState.currentAppSettings.asr.translationGlossary
       })
     })

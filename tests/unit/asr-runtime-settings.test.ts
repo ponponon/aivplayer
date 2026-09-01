@@ -357,6 +357,42 @@ describe('ASR runtime settings', () => {
     ])
   })
 
+  it('passes the managed route preference to the endpoint router', async () => {
+    const subtitleDirectory = join(tempDirectory, 'managed-route-subtitles')
+    const vttPath = join(subtitleDirectory, 'demo.vtt')
+    const routeModes: string[] = []
+    const requests: string[] = []
+
+    await mkdir(subtitleDirectory, { recursive: true })
+    await writeFile(vttPath, 'WEBVTT\n\n00:00:00.000 --> 00:00:01.000\nhello\n')
+
+    const runtime = createWhisperCppRuntime({
+      userDataPath: tempDirectory,
+      resourcePath: join(tempDirectory, 'resources'),
+      getAiServiceSettings: () => ({
+        providers: [createManagedAiProvider()],
+        activeProviderId: MANAGED_AI_PROVIDER_ID,
+        managedTranslationRouteMode: 'domestic',
+        glossary: null
+      }),
+      getManagedTranslationEndpointCandidates: async (routeMode) => {
+        routeModes.push(routeMode ?? 'missing')
+        return ['https://translate.quniv.cn/v1/chat/completions', 'https://aivplayer-translation.ponponon-universe.workers.dev/v1/chat/completions']
+      },
+      translationFetch: async (url) => {
+        requests.push(url)
+        return new Response(
+          JSON.stringify({ choices: [{ message: { content: JSON.stringify([{ id: 'cue-1', text: '你好' }]) } }] }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        )
+      }
+    })
+
+    await expect(runtime.translateSubtitle({ subtitlePath: vttPath, sourceLanguage: 'en', targetLanguage: 'zh' })).resolves.toMatchObject({ success: true })
+    expect(routeModes).toEqual(['domestic'])
+    expect(requests).toEqual(['https://translate.quniv.cn/v1/chat/completions'])
+  })
+
   it('resolves cached translated subtitles without needing the translation API key', async () => {
     const subtitleDirectory = join(tempDirectory, 'subtitles')
     const vttPath = join(subtitleDirectory, 'demo.vtt')

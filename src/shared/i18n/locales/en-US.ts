@@ -1527,6 +1527,13 @@
         activeProvider: 'Active service',
         managementTitle: 'Service management',
         managementDescription: 'Configure the AI service used for translation and summaries. The managed service needs no setup; add a custom service when you need your own model or quota.',
+        managedRouteTitle: 'Managed translation route',
+        managedRouteDescription: 'Only affects the built-in managed service. Automatic mode measures the current network path; a manually preferred route still falls back to the other endpoint when it fails.',
+        managedRouteOptions: {
+          auto: 'Automatic (recommended)',
+          domestic: 'Mainland endpoint (translate.quniv.cn)',
+          worker: 'Cloudflare Worker (overseas)'
+        },
         tableLabel: 'AI service list',
         serviceColumn: 'Service',
         configurationColumn: 'Configuration',

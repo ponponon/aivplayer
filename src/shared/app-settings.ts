@@ -8,7 +8,7 @@ import type { MediaStructureCorrection } from './media-base-types'
 import type { DramaGenerationMediaType } from './drama-types'
 import { MANAGED_AI_PROVIDER_ID, createManagedAiProvider, type AiProviderProfile } from './ai-providers'
 
-export const APP_SETTINGS_SCHEMA_VERSION = 30
+export const APP_SETTINGS_SCHEMA_VERSION = 31
 
 export const SIDE_PANEL_WIDTH_MIN = 240
 export const SIDE_PANEL_WIDTH_MAX = 480
@@ -21,6 +21,7 @@ export type SubtitleDisplayMode = 'source' | 'translation' | 'bilingual'
 export type SubtitleLineHeight = 'compact' | 'normal' | 'relaxed'
 export type SubtitleTargetLanguageId = Exclude<SubtitleLanguageId, 'auto'>
 export type AiAutomationMode = 'cache-only' | 'ask' | 'guide' | 'complete'
+export type ManagedTranslationRouteMode = 'auto' | 'domestic' | 'worker'
 export type AppThemePreference = 'system' | 'light' | 'dark'
 
 export type AppPanelModePreference = 'playlist' | 'asr' | 'info'
@@ -92,6 +93,7 @@ export type AppSettings = {
     openMode: AiAutomationMode
     providers: AiProviderProfile[]
     activeProviderId: string
+    managedTranslationRouteMode: ManagedTranslationRouteMode
   }
   vision: {
     libraryDirectories: string[]
@@ -194,6 +196,10 @@ export function normalizeTranslationGlossary(value: unknown): string | null {
   return lines.length > 0 ? lines.join('\n') : null
 }
 
+export function isManagedTranslationRouteMode(value: unknown): value is ManagedTranslationRouteMode {
+  return value === 'auto' || value === 'domestic' || value === 'worker'
+}
+
 export function normalizeSidePanelWidth(value: unknown, fallback = SIDE_PANEL_WIDTH_DEFAULT): number {
   const width = typeof value === 'number' && Number.isFinite(value) ? value : fallback
   return Math.min(SIDE_PANEL_WIDTH_MAX, Math.max(SIDE_PANEL_WIDTH_MIN, Math.round(width)))
@@ -263,7 +269,8 @@ export function createDefaultAppSettings(): AppSettings {
     ai: {
       openMode: 'cache-only',
       providers: [createManagedAiProvider()],
-      activeProviderId: MANAGED_AI_PROVIDER_ID
+      activeProviderId: MANAGED_AI_PROVIDER_ID,
+      managedTranslationRouteMode: 'auto'
     },
     vision: {
       libraryDirectories: [],

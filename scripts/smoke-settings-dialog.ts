@@ -150,6 +150,7 @@ async function main(): Promise<void> {
     })
     const aiServiceInitialState = await page.evaluate(async () => ({
       providerCount: (await window.aiv.getAppSettings()).ai.providers.length,
+      managedRouteMode: (await window.aiv.getAppSettings()).ai.managedTranslationRouteMode,
       managementCards: document.querySelectorAll('.ai-service-management-card').length,
       tableRows: document.querySelectorAll('.ai-service-table-row:not(.ai-service-table-header)').length,
       tableRadius: window.getComputedStyle(document.querySelector('.ai-service-table') as HTMLElement).borderRadius,
@@ -157,6 +158,14 @@ async function main(): Promise<void> {
       currentStrip: document.querySelectorAll('.ai-service-current-strip').length,
       addButton: document.querySelector('.ai-service-add-button') ? 'present' : 'missing'
     }))
+    const managedRouteSelect = page.locator('[data-settings-section="ai"] .settings-select')
+    const managedRouteSelectCount = await managedRouteSelect.count()
+    await managedRouteSelect.selectOption('worker')
+    await page.waitForTimeout(350)
+    const managedRouteWorkerState = await page.evaluate(async () => (await window.aiv.getAppSettings()).ai.managedTranslationRouteMode)
+    await managedRouteSelect.selectOption('domestic')
+    await page.waitForTimeout(350)
+    const managedRouteDomesticState = await page.evaluate(async () => (await window.aiv.getAppSettings()).ai.managedTranslationRouteMode)
     await page.locator('.ai-service-add-button').click()
     await page.waitForTimeout(250)
     const aiServiceEditorState = await page.evaluate(async () => ({
@@ -290,6 +299,14 @@ async function main(): Promise<void> {
       return Boolean(status) && status !== previousStatus && !['检查中', 'Checking', '確認中', '확인 중'].some((label) => status.startsWith(label))
     }, initialTtsStatus, { timeout: 10_000 })
     const ttsStatusAfterCheck = await ttsStatus.textContent()
+    const ttsLayoutState = await page.evaluate(() => {
+      const provider = document.querySelector('.settings-tts-provider') as HTMLElement | null
+      if (!provider) return null
+      const children = Array.from(provider.children) as HTMLElement[]
+      const gaps = children.slice(1).map((child, index) => Math.round(child.getBoundingClientRect().top - children[index].getBoundingClientRect().bottom))
+      const style = window.getComputedStyle(provider)
+      return { display: style.display, rowGap: style.rowGap, gaps }
+    })
 
     await page.locator('[data-settings-tab="shortcuts"]').click()
     await page.waitForTimeout(250)
@@ -345,7 +362,7 @@ async function main(): Promise<void> {
     console.log(`Light theme state: ${JSON.stringify(lightThemeState)}`)
     console.log(`Settings dialog heights: ${JSON.stringify(dialogHeightByTab)}`)
     console.log(`AI settings layout state: ${JSON.stringify(aiLayoutState)}`)
-    console.log(`AI service configuration state: ${JSON.stringify({ initial: aiServiceInitialState, afterAdd: aiServiceEditorState, afterEscape: aiServiceEscapeState, afterCancel: aiServiceCancelState })}`)
+    console.log(`AI service configuration state: ${JSON.stringify({ initial: aiServiceInitialState, routeWorker: managedRouteWorkerState, routeDomestic: managedRouteDomesticState, afterAdd: aiServiceEditorState, afterEscape: aiServiceEscapeState, afterCancel: aiServiceCancelState })}`)
     console.log(`AI service editor screenshot: ${aiServiceEditorScreenshotPath}`)
     console.log(`Settings panel visibility: ${JSON.stringify(settingsPanelVisibilityByTab)}`)
     console.log(`About visibility by tab: ${JSON.stringify(aboutVisibilityByTab)}`)
@@ -355,6 +372,7 @@ async function main(): Promise<void> {
     console.log(`Video settings card height: ${JSON.stringify(videoCardHeight)}`)
     console.log(`Subtitle cache panel: ${JSON.stringify(cachePanelState)}`)
     console.log(`TTS settings state: ${JSON.stringify({ ...ttsSettingsState, initialTtsStatus, ttsStatusAfterCheck })}`)
+    console.log(`TTS layout state: ${JSON.stringify(ttsLayoutState)}`)
     console.log(`Shortcut panel: ${JSON.stringify({ shortcutCount, ...shortcutPanelState })}`)
     console.log(`About settings panel: ${JSON.stringify(aboutPanelState)}`)
     console.log(`General settings screenshot: ${generalScreenshotPath}`)
@@ -386,6 +404,10 @@ async function main(): Promise<void> {
       aiLayoutState.visibleChildren !== 2 ||
       aiLayoutState.maxGap > 20 ||
       aiServiceInitialState.managementCards !== 1 ||
+      aiServiceInitialState.managedRouteMode !== 'auto' ||
+      managedRouteWorkerState !== 'worker' ||
+      managedRouteDomesticState !== 'domestic' ||
+      managedRouteSelectCount === 0 ||
       aiServiceInitialState.tableRows !== aiServiceInitialState.providerCount ||
       !aiServiceInitialState.tableRadius ||
       aiServiceInitialState.tableRadius === '0px' ||
@@ -421,6 +443,10 @@ async function main(): Promise<void> {
       ttsSettingsState.executablePath !== '/tmp/aivplayer-smoke-tts' ||
       ttsSettingsState.voice !== 'SmokeVoice' ||
       ttsStatusAfterCheck === initialTtsStatus ||
+      !ttsLayoutState ||
+      ttsLayoutState.display !== 'grid' ||
+      ttsLayoutState.rowGap !== '12px' ||
+      ttsLayoutState.gaps.some((gap) => gap <= 0) ||
       shortcutCount !== 9 ||
       shortcutPanelState.display !== 'grid' ||
       shortcutPanelState.ariaHidden !== 'false' ||

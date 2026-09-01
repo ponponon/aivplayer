@@ -42,7 +42,7 @@ export function TtsProviderSettings({ copy, settings, patchSettingsSection }: Se
         : subtitleCopy.ttsNotChecked
 
   return (
-    <div className="settings-card-wide settings-tts-provider">
+    <div className="settings-card-wide settings-stack settings-tts-provider">
       <div className="settings-note-box">
         <span className="settings-note-title">{subtitleCopy.ttsProviderTitle}</span>
         <p>{subtitleCopy.ttsProviderDescription}</p>

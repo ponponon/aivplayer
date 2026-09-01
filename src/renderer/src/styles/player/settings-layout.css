@@ -22,6 +22,16 @@
   grid-column: 1 / -1;
 }
 
+/* Nested settings blocks must establish their own layout. A grid-column alone
+   only positions the wrapper in its parent; it does not create spacing between
+   the fields rendered inside that wrapper. */
+.settings-stack {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  align-content: start;
+}
+
 .settings-card-heading {
   display: inline-flex;
   align-items: center;
@@ -37,6 +47,10 @@
 .settings-card > .settings-shortcuts,
 .settings-card > .settings-field:has(.settings-textarea),
 .settings-card > .settings-field:has(.asr-result) {
+  grid-column: 1 / -1;
+}
+
+.settings-card > .settings-stack {
   grid-column: 1 / -1;
 }
 

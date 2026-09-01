@@ -8,6 +8,7 @@ import type {
   CaptureFileNamingMode,
   CaptureGifResolution,
   CaptureImageFormat,
+  ManagedTranslationRouteMode,
   SubtitleDisplayMode,
   SubtitleLanguageId,
   SubtitleLineHeight,
@@ -29,6 +30,7 @@ export type SettingsSectionProps = {
   subtitleLanguageOptions: ReadonlyArray<SettingsSelectOption<SubtitleLanguageId>>
   targetLanguageOptions: ReadonlyArray<SettingsSelectOption<SubtitleTargetLanguageId>>
   aiAutomationModeOptions: ReadonlyArray<SettingsSelectOption<AiAutomationMode>>
+  managedTranslationRouteModeOptions: ReadonlyArray<SettingsSelectOption<ManagedTranslationRouteMode>>
   subtitleLineHeightOptions: ReadonlyArray<SettingsSelectOption<SubtitleLineHeight>>
   subtitleDisplayModeOptions: ReadonlyArray<SettingsSelectOption<SubtitleDisplayMode>>
   startupPanelOptions: ReadonlyArray<{ value: AppSettings['ui']['defaultPanelMode']; label: string }>

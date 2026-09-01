@@ -135,6 +135,36 @@ describe('translation network routing', () => {
     ])
   })
 
+  it('honors a manually preferred route while retaining the other endpoint as fallback', async () => {
+    const clock = createProbeClock()
+    const probeFetch = vi.fn(async () => response(200))
+    const router = createManagedTranslationServiceRouter({
+      fetchImpl: probeFetch,
+      now: clock.now,
+      refreshIntervalMs: 15_000
+    })
+
+    clock.enqueueRound(0, 500, 100)
+    await expect(router.getEndpointCandidates('worker')).resolves.toEqual([
+      MANAGED_TRANSLATION_SERVICE_ENDPOINT,
+      MANAGED_TRANSLATION_SERVICE_DOMESTIC_ENDPOINT
+    ])
+    await expect(router.getEndpointCandidates('domestic')).resolves.toEqual([
+      MANAGED_TRANSLATION_SERVICE_DOMESTIC_ENDPOINT,
+      MANAGED_TRANSLATION_SERVICE_ENDPOINT
+    ])
+  })
+
+  it('uses the fallback first when the manually preferred endpoint is unhealthy', async () => {
+    const probeFetch = vi.fn(async (url: string) => response(url.includes('workers.dev') ? 503 : 200))
+    const router = createManagedTranslationServiceRouter({ fetchImpl: probeFetch })
+
+    await expect(router.getEndpointCandidates('worker')).resolves.toEqual([
+      MANAGED_TRANSLATION_SERVICE_DOMESTIC_ENDPOINT,
+      MANAGED_TRANSLATION_SERVICE_ENDPOINT
+    ])
+  })
+
   it('requires two consecutive quality observations before switching routes', async () => {
     const clock = createProbeClock()
     const probeFetch = vi.fn(async () => response(200))

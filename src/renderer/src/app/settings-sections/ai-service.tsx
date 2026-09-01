@@ -9,7 +9,7 @@ import {
   resolveActiveAiProvider,
   type AiProviderProfile
 } from '../../../../shared/ai-providers'
-import { SettingsField } from '../settings-controls'
+import { SettingsField, SettingsSelect } from '../settings-controls'
 import { SettingsTextInput } from '../settings-inputs'
 import { useModalFocusTrap } from '../use-modal-focus-trap'
 import type { SettingsSectionProps } from '../settings-section-types'
@@ -45,6 +45,7 @@ export function AiServiceSettingsSection({
   translationServiceSourceLanguageLabel,
   translationServiceTargetLanguageLabel,
   translationServiceEndpointSummary,
+  managedTranslationRouteModeOptions,
   onTestTranslationService
 }: SettingsSectionProps): ReactElement {
   const [editingProviderId, setEditingProviderId] = useState<string | null>(null)
@@ -194,6 +195,18 @@ export function AiServiceSettingsSection({
           </div>
           <span className="ai-service-active-label">{copy.settingsDialog.aiService.activeBadge}</span>
         </div>
+
+        <SettingsField
+          wide
+          title={copy.settingsDialog.aiService.managedRouteTitle}
+          description={copy.settingsDialog.aiService.managedRouteDescription}
+        >
+          <SettingsSelect
+            value={settings.ai.managedTranslationRouteMode}
+            options={managedTranslationRouteModeOptions}
+            onChange={(managedTranslationRouteMode) => patchSettingsSection('ai', { managedTranslationRouteMode })}
+          />
+        </SettingsField>
 
         <div className="ai-service-table" role="table" aria-label={copy.settingsDialog.aiService.tableLabel}>
           <div className="ai-service-table-row ai-service-table-header" role="row">

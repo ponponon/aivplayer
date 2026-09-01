@@ -20,6 +20,7 @@ import { clearStaleSubtitleCache, getSubtitleCacheStats } from './subtitle-cache
 import { getWhisperBinaryNames, parseWhisperBinaryReplacementName } from './whisper-binary.ts'
 import { getAppCopy } from '../../shared/i18n'
 import { resolveActiveAiProvider } from '../../shared/ai-providers'
+import type { ManagedTranslationRouteMode } from '../../shared/app-settings'
 import type {
   AsrJobProgress,
   AsrErrorDetails,
@@ -414,10 +415,12 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
     apiKey: string | null
     model: string | null
     glossary: string | null
+    managedRouteMode: ManagedTranslationRouteMode
   } => {
     const aiSettings = options.getAiServiceSettings?.()
     const activeProvider = resolveActiveAiProvider(aiSettings?.providers, aiSettings?.activeProviderId)
     const glossary = aiSettings?.glossary?.trim() || env.AIVPLAYER_TRANSLATION_GLOSSARY?.trim() || null
+    const managedRouteMode = aiSettings?.managedTranslationRouteMode ?? 'auto'
 
     if (activeProvider.kind === 'managed') {
       return {
@@ -425,7 +428,8 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
         baseUrl: MANAGED_TRANSLATION_SERVICE_ENDPOINT,
         apiKey: MANAGED_TRANSLATION_SERVICE_AUTH_TOKEN,
         model: MANAGED_TRANSLATION_SERVICE_MODEL,
-        glossary
+        glossary,
+        managedRouteMode
       }
     }
 
@@ -434,7 +438,8 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
       baseUrl: activeProvider.baseUrl?.trim() || env.AIVPLAYER_TRANSLATION_BASE_URL?.trim() || null,
       apiKey: activeProvider.apiKey?.trim() || env.AIVPLAYER_TRANSLATION_API_KEY?.trim() || null,
       model: activeProvider.model?.trim() || env.AIVPLAYER_TRANSLATION_MODEL?.trim() || null,
-      glossary
+      glossary,
+      managedRouteMode
     }
   }
 
@@ -443,7 +448,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
   }
 
   const createTranslationProvider = () => {
-    const { mode, baseUrl, apiKey, model, glossary } = getTranslationServiceConfig()
+    const { mode, baseUrl, apiKey, model, glossary, managedRouteMode } = getTranslationServiceConfig()
 
     if (!baseUrl || !apiKey || !model) {
       return null
@@ -455,7 +460,10 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
       model,
       glossary,
       headers: mode === 'managed' ? options.translationHeaders : undefined,
-      getEndpointCandidates: mode === 'managed' ? options.getManagedTranslationEndpointCandidates : undefined,
+      getEndpointCandidates:
+        mode === 'managed' && options.getManagedTranslationEndpointCandidates
+          ? () => options.getManagedTranslationEndpointCandidates?.(managedRouteMode) ?? Promise.resolve([])
+          : undefined,
       onEndpointFailure: mode === 'managed' ? options.onManagedTranslationEndpointFailure : undefined,
       fetchImpl: options.translationFetch
     })
@@ -467,14 +475,17 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
   }
 
   const createSummaryProvider = () => {
-    const { mode, baseUrl, apiKey, model } = getTranslationServiceConfig()
+    const { mode, baseUrl, apiKey, model, managedRouteMode } = getTranslationServiceConfig()
     if (!baseUrl || !apiKey || !model) return null
     return createOpenAiCompatibleSummaryProvider({
       baseUrl,
       apiKey,
       model,
       headers: mode === 'managed' ? options.translationHeaders : undefined,
-      getEndpointCandidates: mode === 'managed' ? options.getManagedTranslationEndpointCandidates : undefined,
+      getEndpointCandidates:
+        mode === 'managed' && options.getManagedTranslationEndpointCandidates
+          ? () => options.getManagedTranslationEndpointCandidates?.(managedRouteMode) ?? Promise.resolve([])
+          : undefined,
       onEndpointFailure: mode === 'managed' ? options.onManagedTranslationEndpointFailure : undefined,
       fetchImpl: options.translationFetch
     })

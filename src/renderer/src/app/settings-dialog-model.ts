@@ -9,6 +9,7 @@ import type {
   CaptureFileNamingMode,
   CaptureGifResolution,
   CaptureImageFormat,
+  ManagedTranslationRouteMode,
   SubtitleDisplayMode,
   SubtitleLanguageId,
   SubtitleLineHeight,
@@ -86,6 +87,10 @@ export function createSettingsSectionProps(input: SettingsSectionPropsInput): Se
     aiAutomationModeOptions: (['cache-only', 'ask', 'guide', 'complete'] as const).map((value) => ({
       value,
       label: copy.settingsDialog.subtitles.aiAutomationOptions[value]
+    })),
+    managedTranslationRouteModeOptions: (['auto', 'domestic', 'worker'] as const).map((value) => ({
+      value: value as ManagedTranslationRouteMode,
+      label: copy.settingsDialog.aiService.managedRouteOptions[value]
     })),
     subtitleLineHeightOptions: Object.entries(copy.subtitleDisplay.lineHeightOptions).map(([value, label]) => ({
       value: value as SubtitleLineHeight,

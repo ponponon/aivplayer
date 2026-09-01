@@ -1527,6 +1527,13 @@
         activeProvider: '사용 중인 서비스',
         managementTitle: '서비스 관리',
         managementDescription: '번역과 요약에 사용할 AI 서비스를 설정합니다. 관리형 서비스는 설정이 필요 없으며, 자체 모델이나 할당량이 필요할 때 사용자 지정 서비스를 추가하세요.',
+        managedRouteTitle: '관리형 번역 경로',
+        managedRouteDescription: '내장 관리형 서비스에만 적용됩니다. 자동 모드는 현재 네트워크 경로를 측정하며, 수동으로 선택한 경로가 실패하면 다른 엔드포인트로 자동 대체합니다.',
+        managedRouteOptions: {
+          auto: '자동 선택(권장)',
+          domestic: '중국 본토 엔드포인트(translate.quniv.cn)',
+          worker: 'Cloudflare Worker(해외)'
+        },
         tableLabel: 'AI 서비스 목록',
         serviceColumn: '서비스',
         configurationColumn: '구성',

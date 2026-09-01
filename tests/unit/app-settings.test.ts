@@ -49,6 +49,7 @@ describe('app settings', () => {
       { ...createCustomAiProvider('custom-1'), name: '自定义', baseUrl: 'https://example.test/v1/chat/completions', model: 'translation-model', apiKey: 'secret-key' }
     ]
     settings.ai.activeProviderId = 'custom-1'
+    settings.ai.managedTranslationRouteMode = 'worker'
     settings.tts.executablePath = '/usr/local/bin/custom-say'
     settings.tts.voice = 'Tingting'
     settings.capture.saveDirectoryPath = tempDirectory
@@ -172,7 +173,7 @@ describe('app settings', () => {
 
     const settings = await readAppSettings(tempDirectory)
 
-    expect(settings.schemaVersion).toBe(30)
+    expect(settings.schemaVersion).toBe(31)
     expect(settings.ai.providers).toHaveLength(2)
     expect(settings.ai.providers[0]).toEqual({ id: MANAGED_AI_PROVIDER_ID, name: '', kind: 'managed', baseUrl: null, model: null, apiKey: null })
     const migrated = settings.ai.providers[1]
@@ -317,7 +318,7 @@ describe('app settings', () => {
     )
 
     await expect(readAppSettings(tempDirectory)).resolves.toMatchObject({
-      schemaVersion: 30,
+      schemaVersion: 31,
       playback: {
         singleClickPause: true
       }
@@ -336,6 +337,20 @@ describe('app settings', () => {
         translationGlossary: 'Technology=技术\nAIVPlayer=AIV 播放器'
       }
     })
+  })
+
+  it('normalizes the managed translation route preference', async () => {
+    await writeFile(
+      join(tempDirectory, 'app-settings.json'),
+      JSON.stringify({ schemaVersion: 31, ai: { managedTranslationRouteMode: 'domestic' } })
+    )
+    await expect(readAppSettings(tempDirectory)).resolves.toMatchObject({ ai: { managedTranslationRouteMode: 'domestic' } })
+
+    await writeFile(
+      join(tempDirectory, 'app-settings.json'),
+      JSON.stringify({ schemaVersion: 31, ai: { managedTranslationRouteMode: 'unsupported' } })
+    )
+    await expect(readAppSettings(tempDirectory)).resolves.toMatchObject({ ai: { managedTranslationRouteMode: 'auto' } })
   })
 
   it('sanitizes unsupported subtitle display settings', async () => {

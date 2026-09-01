@@ -1527,6 +1527,13 @@
         activeProvider: '使用中のサービス',
         managementTitle: 'サービス管理',
         managementDescription: '翻訳と要約に使う AI サービスを設定します。管理サービスは設定不要で、独自のモデルや利用枠が必要な場合だけカスタムサービスを追加します。',
+        managedRouteTitle: '管理翻訳サービスの経路',
+        managedRouteDescription: '内蔵の管理サービスにだけ適用されます。「自動」は現在のネットワーク経路を測定し、手動指定した経路が失敗した場合ももう一方へ自動で切り替えます。',
+        managedRouteOptions: {
+          auto: '自動選択（推奨）',
+          domestic: '中国本土エンドポイント（translate.quniv.cn）',
+          worker: 'Cloudflare Worker（海外）'
+        },
         tableLabel: 'AI サービス一覧',
         serviceColumn: 'サービス',
         configurationColumn: '設定',

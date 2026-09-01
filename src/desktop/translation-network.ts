@@ -6,6 +6,7 @@ import {
   MANAGED_TRANSLATION_SERVICE_DOMESTIC_ENDPOINT,
   MANAGED_TRANSLATION_SERVICE_ENDPOINT
 } from '../shared/translation-service'
+import type { ManagedTranslationRouteMode } from '../shared/app-settings'
 
 export type TranslationFetch = (url: string, init?: RequestInit) => Promise<Response>
 
@@ -335,7 +336,7 @@ export function createAutomaticTranslationFetch(options: TranslationNetworkOptio
 }
 
 export type ManagedTranslationServiceRouter = {
-  getEndpointCandidates: () => Promise<string[]>
+  getEndpointCandidates: (routeMode?: ManagedTranslationRouteMode) => Promise<string[]>
   invalidate: (endpoint?: string) => void
 }
 
@@ -442,8 +443,9 @@ export function createManagedTranslationServiceRouter(
     failureUntil: 0,
     latencySamples: []
   }]))
-  let cached: { candidates: string[]; checkedAt: number } | null = null
-  let refreshInFlight: Promise<string[]> | null = null
+  const cached = new Map<ManagedTranslationRouteMode, { candidates: string[]; checkedAt: number }>()
+  let lastHealthRefreshAt: number | null = null
+  let refreshInFlight: Promise<number> | null = null
   let preferredEndpoint: string | null = null
   let pendingSwitch: { endpoint: string; confirmations: number } | null = null
 
@@ -479,9 +481,8 @@ export function createManagedTranslationServiceRouter(
     return [...available, ...unavailable]
   }
 
-  const refresh = async (): Promise<string[]> => {
-    const currentTime = now()
-    if (cached && currentTime - cached.checkedAt < refreshIntervalMs) return cached.candidates
+  const refreshHealth = async (currentTime: number): Promise<number> => {
+    if (lastHealthRefreshAt !== null && currentTime - lastHealthRefreshAt < refreshIntervalMs) return lastHealthRefreshAt
     if (refreshInFlight) return refreshInFlight
 
     const pending = (async () => {
@@ -513,7 +514,6 @@ export function createManagedTranslationServiceRouter(
         const state = states.get(endpoint) as ManagedEndpointState
         return state.healthy && state.failureUntil <= refreshedAt
       })
-      const ranked = rankEndpoints(refreshedAt)
       const bestEndpoint = available.slice().sort((left, right) => compareManagedEndpoints(left, right, states))[0] ?? null
 
       if (!bestEndpoint) {
@@ -538,11 +538,8 @@ export function createManagedTranslationServiceRouter(
         pendingSwitch = null
       }
 
-      const candidates = preferredEndpoint
-        ? [preferredEndpoint, ...ranked.filter((endpoint) => endpoint !== preferredEndpoint)]
-        : ranked
-      cached = { candidates, checkedAt: refreshedAt }
-      return candidates
+      lastHealthRefreshAt = refreshedAt
+      return refreshedAt
     })()
     refreshInFlight = pending
     try {
@@ -552,8 +549,39 @@ export function createManagedTranslationServiceRouter(
     }
   }
 
+  const isEndpointAvailable = (endpoint: string, currentTime: number): boolean => {
+    const state = states.get(endpoint) as ManagedEndpointState
+    return state.healthy && state.failureUntil <= currentTime
+  }
+
+  const getExplicitCandidates = (routeMode: Exclude<ManagedTranslationRouteMode, 'auto'>, currentTime: number): string[] => {
+    const primary = routeMode === 'domestic' ? MANAGED_TRANSLATION_SERVICE_DOMESTIC_ENDPOINT : MANAGED_TRANSLATION_SERVICE_ENDPOINT
+    const fallback = routeMode === 'domestic' ? MANAGED_TRANSLATION_SERVICE_ENDPOINT : MANAGED_TRANSLATION_SERVICE_DOMESTIC_ENDPOINT
+    return !isEndpointAvailable(primary, currentTime) && isEndpointAvailable(fallback, currentTime)
+      ? [fallback, primary]
+      : [primary, fallback]
+  }
+
+  const refresh = async (routeMode: ManagedTranslationRouteMode = 'auto'): Promise<string[]> => {
+    const currentTime = now()
+    const cachedRoute = cached.get(routeMode)
+    if (cachedRoute && currentTime - cachedRoute.checkedAt < refreshIntervalMs) return cachedRoute.candidates
+
+    const refreshedAt = await refreshHealth(currentTime)
+    const candidates = routeMode === 'auto'
+      ? (() => {
+          const ranked = rankEndpoints(refreshedAt)
+          return preferredEndpoint
+            ? [preferredEndpoint, ...ranked.filter((endpoint) => endpoint !== preferredEndpoint)]
+            : ranked
+        })()
+      : getExplicitCandidates(routeMode, refreshedAt)
+    cached.set(routeMode, { candidates, checkedAt: refreshedAt })
+    return candidates
+  }
+
   return {
-    getEndpointCandidates: () => refresh(),
+    getEndpointCandidates: (routeMode = 'auto') => refresh(routeMode),
     invalidate: (endpoint?: string) => {
       if (endpoint && states.has(endpoint)) {
         const state = states.get(endpoint) as ManagedEndpointState
@@ -564,7 +592,7 @@ export function createManagedTranslationServiceRouter(
           pendingSwitch = null
         }
       }
-      cached = null
+      cached.clear()
     }
   }
 }

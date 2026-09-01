@@ -5,6 +5,7 @@ import { dirname, isAbsolute, join } from 'node:path'
 import {
   APP_SETTINGS_SCHEMA_VERSION,
   createDefaultAppSettings,
+  isManagedTranslationRouteMode,
   normalizeSidePanelWidth,
   normalizeTranslationGlossary,
   type CaptureFileNamingMode,
@@ -597,7 +598,10 @@ function sanitizeAiSettings(
     activeProviderId:
       typeof ai.activeProviderId === 'string' && providers.some((provider) => provider.id === ai.activeProviderId)
         ? ai.activeProviderId
-        : migratedActiveProviderId ?? MANAGED_AI_PROVIDER_ID
+        : migratedActiveProviderId ?? MANAGED_AI_PROVIDER_ID,
+    managedTranslationRouteMode: isManagedTranslationRouteMode(ai.managedTranslationRouteMode)
+      ? ai.managedTranslationRouteMode
+      : defaults.managedTranslationRouteMode
   }
 }
 

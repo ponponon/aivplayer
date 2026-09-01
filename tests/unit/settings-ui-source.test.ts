@@ -237,10 +237,22 @@ describe('settings UI source constraints', () => {
 
     expect(navSource).toContain("{ id: 'ai', label: copy.settingsDialog.tabs.ai")
     expect(aiServiceSource).toContain("patchSettingsSection('ai', { activeProviderId })")
+    expect(aiServiceSource).toContain('managedTranslationRouteMode')
+    expect(aiServiceSource).toContain('managedRouteTitle')
+    expect(navSource).toContain('managedTranslationRouteModeOptions')
     expect(aiServiceSource).toContain('MANAGED_AI_PROVIDER_ID')
     expect(aiServiceSource).toContain('onTestTranslationService')
     expect(subtitlesSectionOnly).toContain('translationGlossary')
     expect(subtitlesSectionOnly).toContain("patchSettingsSection('asr', { translationGlossary: translationGlossary.trim() || null })")
+  })
+
+  it('keeps nested settings blocks on a shared spaced stack', () => {
+    const settingsCss = readSource('src/renderer/src/styles/player/settings-layout.css')
+    const ttsSource = readSource('src/renderer/src/app/settings-sections/tts-provider-settings.tsx')
+
+    expect(settingsCss).toMatch(/\.settings-stack\s*\{[^}]*display:\s*grid;[^}]*gap:\s*12px;/s)
+    expect(settingsCss).toMatch(/\.settings-card\s*>\s*\.settings-stack\s*\{[^}]*grid-column:\s*1\s*\/\s*-1;/s)
+    expect(ttsSource).toContain('settings-card-wide settings-stack settings-tts-provider')
   })
 
   it('routes app settings section writes through the shared update helper', () => {
