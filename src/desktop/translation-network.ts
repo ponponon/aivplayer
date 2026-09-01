@@ -336,7 +336,7 @@ export function createAutomaticTranslationFetch(options: TranslationNetworkOptio
 
 export type ManagedTranslationServiceRouter = {
   getEndpointCandidates: () => Promise<string[]>
-  invalidate: () => void
+  invalidate: (endpoint?: string) => void
 }
 
 export type ManagedTranslationServiceRouterOptions = {
@@ -346,8 +346,12 @@ export type ManagedTranslationServiceRouterOptions = {
   probeTimeoutMs?: number
 }
 
-const MANAGED_ROUTE_REFRESH_INTERVAL_MS = 30_000
+const MANAGED_ROUTE_REFRESH_INTERVAL_MS = 15_000
 const MANAGED_ROUTE_PROBE_TIMEOUT_MS = 2_500
+const MANAGED_ROUTE_LATENCY_TIE_MS = 150
+const MANAGED_ROUTE_SWITCH_CONFIRMATIONS = 2
+const MANAGED_ROUTE_FAILURE_COOLDOWN_MS = 15_000
+const MANAGED_ROUTE_LATENCY_SAMPLE_COUNT = 5
 
 function getManagedHealthEndpoint(endpoint: string): string {
   const parsed = new URL(endpoint)
@@ -357,28 +361,122 @@ function getManagedHealthEndpoint(endpoint: string): string {
   return parsed.toString()
 }
 
+// A desktop client cannot reliably infer a user's country from an IP address:
+// VPN exits, carrier NAT, travel, and stale GeoIP data all make that signal
+// unsuitable for routing. The live network path to each managed endpoint is
+// the source of truth instead.
+
+type ManagedEndpointProbe = {
+  available: boolean
+  latencyMs: number | null
+}
+
+type ManagedEndpointState = {
+  healthy: boolean
+  failureUntil: number
+  latencySamples: number[]
+}
+
+function isDomesticManagedEndpoint(endpoint: string): boolean {
+  return endpoint === MANAGED_TRANSLATION_SERVICE_DOMESTIC_ENDPOINT
+}
+
+function median(values: readonly number[]): number | null {
+  if (values.length === 0) return null
+  const sorted = [...values].sort((left, right) => left - right)
+  const middle = Math.floor(sorted.length / 2)
+  return sorted.length % 2 === 1 ? sorted[middle] ?? null : ((sorted[middle - 1] ?? 0) + (sorted[middle] ?? 0)) / 2
+}
+
+function endpointLatency(state: ManagedEndpointState): number {
+  return median(state.latencySamples) ?? Number.POSITIVE_INFINITY
+}
+
+function compareManagedEndpoints(
+  left: string,
+  right: string,
+  states: Map<string, ManagedEndpointState>
+): number {
+  const leftLatency = endpointLatency(states.get(left) as ManagedEndpointState)
+  const rightLatency = endpointLatency(states.get(right) as ManagedEndpointState)
+  if (leftLatency === rightLatency) {
+    if (isDomesticManagedEndpoint(left)) return -1
+    if (isDomesticManagedEndpoint(right)) return 1
+    return 0
+  }
+
+  const difference = leftLatency - rightLatency
+  if (Math.abs(difference) <= MANAGED_ROUTE_LATENCY_TIE_MS) {
+    if (isDomesticManagedEndpoint(left)) return -1
+    if (isDomesticManagedEndpoint(right)) return 1
+  }
+  return difference
+}
+
+function shouldSwitchManagedEndpoint(
+  next: string,
+  current: string,
+  states: Map<string, ManagedEndpointState>
+): boolean {
+  const nextLatency = endpointLatency(states.get(next) as ManagedEndpointState)
+  const currentLatency = endpointLatency(states.get(current) as ManagedEndpointState)
+  if (!Number.isFinite(nextLatency)) return false
+  if (!Number.isFinite(currentLatency)) return true
+
+  if (isDomesticManagedEndpoint(next) && !isDomesticManagedEndpoint(current)) {
+    return nextLatency <= currentLatency + MANAGED_ROUTE_LATENCY_TIE_MS
+  }
+  return nextLatency + MANAGED_ROUTE_LATENCY_TIE_MS < currentLatency
+}
+
 export function createManagedTranslationServiceRouter(
   options: ManagedTranslationServiceRouterOptions = {}
 ): ManagedTranslationServiceRouter {
   const fetchImpl = options.fetchImpl ?? createAutomaticTranslationFetch()
-  const now = options.now ?? Date.now
+  const now = options.now ?? (() => performance.now())
   const refreshIntervalMs = options.refreshIntervalMs ?? MANAGED_ROUTE_REFRESH_INTERVAL_MS
   const probeTimeoutMs = options.probeTimeoutMs ?? MANAGED_ROUTE_PROBE_TIMEOUT_MS
   const endpoints = [MANAGED_TRANSLATION_SERVICE_ENDPOINT, MANAGED_TRANSLATION_SERVICE_DOMESTIC_ENDPOINT]
+  const states = new Map<string, ManagedEndpointState>(endpoints.map((endpoint) => [endpoint, {
+    healthy: false,
+    failureUntil: 0,
+    latencySamples: []
+  }]))
   let cached: { candidates: string[]; checkedAt: number } | null = null
   let refreshInFlight: Promise<string[]> | null = null
+  let preferredEndpoint: string | null = null
+  let pendingSwitch: { endpoint: string; confirmations: number } | null = null
 
-  const probe = async (endpoint: string): Promise<boolean> => {
+  const probe = async (endpoint: string): Promise<ManagedEndpointProbe> => {
+    const startedAt = now()
     try {
       const response = await fetchImpl(getManagedHealthEndpoint(endpoint), {
         method: 'GET',
         signal: AbortSignal.timeout(probeTimeoutMs)
       })
       if (response.body) void response.body.cancel().catch(() => undefined)
-      return response.ok
+      return { available: response.ok, latencyMs: Math.max(0, now() - startedAt) }
     } catch {
-      return false
+      return { available: false, latencyMs: null }
     }
+  }
+
+  const rankEndpoints = (currentTime: number): string[] => {
+    const available = endpoints
+      .filter((endpoint) => {
+        const state = states.get(endpoint) as ManagedEndpointState
+        return state.healthy && state.failureUntil <= currentTime
+      })
+      .sort((left, right) => compareManagedEndpoints(left, right, states))
+    const unavailable = endpoints
+      .filter((endpoint) => !available.includes(endpoint))
+      .sort((left, right) => {
+        const leftState = states.get(left) as ManagedEndpointState
+        const rightState = states.get(right) as ManagedEndpointState
+        if (leftState.failureUntil !== rightState.failureUntil) return leftState.failureUntil - rightState.failureUntil
+        return compareManagedEndpoints(left, right, states)
+      })
+    return [...available, ...unavailable]
   }
 
   const refresh = async (): Promise<string[]> => {
@@ -387,10 +485,63 @@ export function createManagedTranslationServiceRouter(
     if (refreshInFlight) return refreshInFlight
 
     const pending = (async () => {
-      const availability = await Promise.all(endpoints.map((endpoint) => probe(endpoint)))
-      const available = endpoints.filter((_endpoint, index) => availability[index])
-      const candidates = available.length > 0 ? available : endpoints
-      cached = { candidates, checkedAt: now() }
+      const hasProbeableEndpoint = endpoints.some((endpoint) => {
+        const state = states.get(endpoint) as ManagedEndpointState
+        return state.failureUntil <= currentTime
+      })
+      const results = await Promise.all(endpoints.map(async (endpoint) => {
+        const state = states.get(endpoint) as ManagedEndpointState
+        if (hasProbeableEndpoint && state.failureUntil > currentTime) {
+          return { endpoint, result: { available: false, latencyMs: null } satisfies ManagedEndpointProbe }
+        }
+        return { endpoint, result: await probe(endpoint) }
+      }))
+      const refreshedAt = now()
+      for (const { endpoint, result } of results) {
+        const state = states.get(endpoint) as ManagedEndpointState
+        state.healthy = result.available
+        if (result.available && result.latencyMs !== null) {
+          state.latencySamples.push(result.latencyMs)
+          if (state.latencySamples.length > MANAGED_ROUTE_LATENCY_SAMPLE_COUNT) state.latencySamples.shift()
+          if (state.failureUntil <= refreshedAt) state.failureUntil = 0
+        } else {
+          state.failureUntil = Math.max(state.failureUntil, refreshedAt + MANAGED_ROUTE_FAILURE_COOLDOWN_MS)
+        }
+      }
+
+      const available = endpoints.filter((endpoint) => {
+        const state = states.get(endpoint) as ManagedEndpointState
+        return state.healthy && state.failureUntil <= refreshedAt
+      })
+      const ranked = rankEndpoints(refreshedAt)
+      const bestEndpoint = available.slice().sort((left, right) => compareManagedEndpoints(left, right, states))[0] ?? null
+
+      if (!bestEndpoint) {
+        preferredEndpoint ??= MANAGED_TRANSLATION_SERVICE_DOMESTIC_ENDPOINT
+        pendingSwitch = null
+      } else if (!preferredEndpoint || !available.includes(preferredEndpoint)) {
+        preferredEndpoint = bestEndpoint
+        pendingSwitch = null
+      } else if (bestEndpoint === preferredEndpoint) {
+        pendingSwitch = null
+      } else if (shouldSwitchManagedEndpoint(bestEndpoint, preferredEndpoint, states)) {
+        if (pendingSwitch?.endpoint === bestEndpoint) {
+          pendingSwitch.confirmations += 1
+        } else {
+          pendingSwitch = { endpoint: bestEndpoint, confirmations: 1 }
+        }
+        if ((pendingSwitch?.confirmations ?? 0) >= MANAGED_ROUTE_SWITCH_CONFIRMATIONS) {
+          preferredEndpoint = bestEndpoint
+          pendingSwitch = null
+        }
+      } else {
+        pendingSwitch = null
+      }
+
+      const candidates = preferredEndpoint
+        ? [preferredEndpoint, ...ranked.filter((endpoint) => endpoint !== preferredEndpoint)]
+        : ranked
+      cached = { candidates, checkedAt: refreshedAt }
       return candidates
     })()
     refreshInFlight = pending
@@ -403,7 +554,16 @@ export function createManagedTranslationServiceRouter(
 
   return {
     getEndpointCandidates: () => refresh(),
-    invalidate: () => {
+    invalidate: (endpoint?: string) => {
+      if (endpoint && states.has(endpoint)) {
+        const state = states.get(endpoint) as ManagedEndpointState
+        state.healthy = false
+        state.failureUntil = now() + MANAGED_ROUTE_FAILURE_COOLDOWN_MS
+        if (preferredEndpoint === endpoint) {
+          preferredEndpoint = endpoints.find((candidate) => candidate !== endpoint) ?? null
+          pendingSwitch = null
+        }
+      }
       cached = null
     }
   }

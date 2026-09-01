@@ -1,6 +1,6 @@
 # AIVPlayer 国内翻译入口
 
-这是 AIVPlayer 内置托管翻译服务的大陆入口。它保持与 Cloudflare Worker 相同的 OpenAI-compatible 协议，但智谱 API Key 只放在京东云服务器的 Docker Compose 环境变量中。
+这是 AIVPlayer 内置托管翻译服务的大陆入口。它保持与 Cloudflare Worker 相同的 OpenAI-compatible 协议，但智谱 API Key 只放在京东云服务器的 Secret 文件中。
 
 ## 接口
 
@@ -13,7 +13,7 @@
 
 这提供的是进程级高可用；单台京东云主机、磁盘、地域或公网线路故障时仍需要海外 Cloudflare Worker 或另一台国内节点接管。
 
-客户端会对 `https://aivplayer-translation.ponponon-universe.workers.dev/health` 和 `https://translate.quniv.cn/health` 做无正文探测：两者都可达时优先全球入口，全球入口不可达时优先大陆入口。VPN 开关、网络切换或入口故障会在后续探测 / 请求失败时自动重新选择。
+客户端会对 `https://aivplayer-translation.ponponon-universe.workers.dev/health` 和 `https://translate.quniv.cn/health` 做无正文探测，并记录短期延迟样本：不通过 IP 地理库判断用户位置；大陆网络通常会因大陆入口更快而选择大陆入口，海外网络通常会因 Worker 更快而选择全球入口，延迟接近时固定优先大陆入口。质量变化需要连续两轮确认，真实请求网络错误或 5xx 则立即降级到另一入口。VPN 开关、网络切换或跨国移动会在后续探测 / 请求失败时自动重新选择。
 
 ## 部署
 
@@ -25,10 +25,12 @@ mkdir -p secrets
 read -r -s key
 printf '%s' "$key" > secrets/bigmodel_api_key
 unset key
+sudo chown 1000:1000 secrets/bigmodel_api_key
+sudo chmod 440 secrets/bigmodel_api_key
 docker compose up -d --build
 ```
 
-Compose 会把该文件以 Docker Secret 只读挂载到两个实例，不通过容器环境变量传递 Key。
+Compose 会把该文件以只读 Secret 挂载到两个实例，不通过容器环境变量传递 Key。Docker Compose 在普通 Linux Engine 上可能不会应用文件 Secret 的 `uid/gid/mode` 字段，因此部署时要让文件属主匹配容器内的 Node UID `1000`；后续轮换 Key 也必须保留这个属主和 `0440` 权限。
 
 部署后先用 `curl http://127.0.0.1:18787/health` 和 `curl http://127.0.0.1:18788/health` 检查两个实例，再 reload OpenResty。
 

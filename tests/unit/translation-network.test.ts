@@ -6,6 +6,25 @@ function response(status = 200): Response {
   return new Response('', { status })
 }
 
+function createProbeClock() {
+  const values: number[] = []
+  let fallback = 0
+  return {
+    now: () => values.shift() ?? fallback,
+    enqueueRound: (refreshAt: number, globalLatency: number, domesticLatency: number) => {
+      fallback = refreshAt + Math.max(globalLatency, domesticLatency)
+      values.push(
+        refreshAt,
+        refreshAt,
+        refreshAt,
+        refreshAt + globalLatency,
+        refreshAt + domesticLatency,
+        fallback
+      )
+    }
+  }
+}
+
 describe('translation network routing', () => {
   it('parses dynamically assigned QuickQ listening ports', () => {
     expect(parseQuickQListenPorts('p1\ncQuickQ\nf1\nn127.0.0.1:10021\nf2\nn127.0.0.1:10901\ncOther\nn127.0.0.1:7897')).toEqual([10021, 10901])
@@ -81,8 +100,100 @@ describe('translation network routing', () => {
     expect(proxy).toHaveBeenCalledOnce()
   })
 
-  it('prefers the global endpoint when both routes are reachable and refreshes after a route change', async () => {
-    let clock = 0
+  it('prefers the clearly faster domestic route without using IP geolocation', async () => {
+    const clock = createProbeClock()
+    const probeFetch = vi.fn(async (url: string) => {
+      return response(200)
+    })
+    const router = createManagedTranslationServiceRouter({
+      fetchImpl: probeFetch,
+      now: clock.now,
+      refreshIntervalMs: 15_000
+    })
+
+    clock.enqueueRound(0, 500, 100)
+    await expect(router.getEndpointCandidates()).resolves.toEqual([
+      MANAGED_TRANSLATION_SERVICE_DOMESTIC_ENDPOINT,
+      MANAGED_TRANSLATION_SERVICE_ENDPOINT
+    ])
+    expect(probeFetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('prefers the clearly faster global route for an overseas network', async () => {
+    const clock = createProbeClock()
+    const probeFetch = vi.fn(async () => response(200))
+    const router = createManagedTranslationServiceRouter({
+      fetchImpl: probeFetch,
+      now: clock.now,
+      refreshIntervalMs: 15_000
+    })
+
+    clock.enqueueRound(0, 80, 500)
+    await expect(router.getEndpointCandidates()).resolves.toEqual([
+      MANAGED_TRANSLATION_SERVICE_ENDPOINT,
+      MANAGED_TRANSLATION_SERVICE_DOMESTIC_ENDPOINT
+    ])
+  })
+
+  it('requires two consecutive quality observations before switching routes', async () => {
+    const clock = createProbeClock()
+    const probeFetch = vi.fn(async () => response(200))
+    const router = createManagedTranslationServiceRouter({
+      fetchImpl: probeFetch,
+      now: clock.now,
+      refreshIntervalMs: 15_000
+    })
+
+    clock.enqueueRound(0, 500, 100)
+    await expect(router.getEndpointCandidates()).resolves.toEqual([
+      MANAGED_TRANSLATION_SERVICE_DOMESTIC_ENDPOINT,
+      MANAGED_TRANSLATION_SERVICE_ENDPOINT
+    ])
+
+    clock.enqueueRound(20_000, 80, 500)
+    await expect(router.getEndpointCandidates()).resolves.toEqual([
+      MANAGED_TRANSLATION_SERVICE_DOMESTIC_ENDPOINT,
+      MANAGED_TRANSLATION_SERVICE_ENDPOINT
+    ])
+
+    clock.enqueueRound(40_000, 80, 500)
+    await expect(router.getEndpointCandidates()).resolves.toEqual([
+      MANAGED_TRANSLATION_SERVICE_DOMESTIC_ENDPOINT,
+      MANAGED_TRANSLATION_SERVICE_ENDPOINT
+    ])
+
+    clock.enqueueRound(60_000, 80, 500)
+    await expect(router.getEndpointCandidates()).resolves.toEqual([
+      MANAGED_TRANSLATION_SERVICE_ENDPOINT,
+      MANAGED_TRANSLATION_SERVICE_DOMESTIC_ENDPOINT
+    ])
+  })
+
+  it('immediately demotes an endpoint after a real request failure', async () => {
+    const clock = createProbeClock()
+    const probeFetch = vi.fn(async () => response(200))
+    const router = createManagedTranslationServiceRouter({
+      fetchImpl: probeFetch,
+      now: clock.now,
+      refreshIntervalMs: 15_000
+    })
+
+    clock.enqueueRound(0, 80, 500)
+    await expect(router.getEndpointCandidates()).resolves.toEqual([
+      MANAGED_TRANSLATION_SERVICE_ENDPOINT,
+      MANAGED_TRANSLATION_SERVICE_DOMESTIC_ENDPOINT
+    ])
+
+    router.invalidate(MANAGED_TRANSLATION_SERVICE_ENDPOINT)
+    clock.enqueueRound(20_000, 80, 500)
+    await expect(router.getEndpointCandidates()).resolves.toEqual([
+      MANAGED_TRANSLATION_SERVICE_DOMESTIC_ENDPOINT,
+      MANAGED_TRANSLATION_SERVICE_ENDPOINT
+    ])
+  })
+
+  it('refreshes availability after a route change', async () => {
+    const clock = createProbeClock()
     let globalAvailable = true
     const probeFetch = vi.fn(async (url: string) => {
       if (url.includes('workers.dev')) return response(globalAvailable ? 200 : 503)
@@ -90,18 +201,22 @@ describe('translation network routing', () => {
     })
     const router = createManagedTranslationServiceRouter({
       fetchImpl: probeFetch,
-      now: () => clock,
-      refreshIntervalMs: 30_000
+      now: clock.now,
+      refreshIntervalMs: 15_000
     })
 
+    clock.enqueueRound(0, 100, 100)
     await expect(router.getEndpointCandidates()).resolves.toEqual([
-      MANAGED_TRANSLATION_SERVICE_ENDPOINT,
-      MANAGED_TRANSLATION_SERVICE_DOMESTIC_ENDPOINT
+      MANAGED_TRANSLATION_SERVICE_DOMESTIC_ENDPOINT,
+      MANAGED_TRANSLATION_SERVICE_ENDPOINT
     ])
 
     globalAvailable = false
-    clock = 30_001
-    await expect(router.getEndpointCandidates()).resolves.toEqual([MANAGED_TRANSLATION_SERVICE_DOMESTIC_ENDPOINT])
+    clock.enqueueRound(20_000, 100, 100)
+    await expect(router.getEndpointCandidates()).resolves.toEqual([
+      MANAGED_TRANSLATION_SERVICE_DOMESTIC_ENDPOINT,
+      MANAGED_TRANSLATION_SERVICE_ENDPOINT
+    ])
     expect(probeFetch).toHaveBeenCalledWith(expect.stringContaining('/health'), expect.objectContaining({ method: 'GET' }))
   })
 
