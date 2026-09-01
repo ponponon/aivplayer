@@ -1571,7 +1571,10 @@
         namePlaceholder: '예: 내 OpenAI 서비스',
         baseUrlPlaceholder: '예: https://api.example.com/v1/chat/completions',
         modelPlaceholder: '예: gpt-4o-mini',
-        apiKeyPlaceholder: '서비스 제공자의 API key 붙여넣기'
+        apiKeyPlaceholder: '서비스 제공자의 API key 붙여넣기',
+        translationPrompt: '번역 작업 Prompt',
+        translationPromptDescription: '선택 사항입니다. 비워 두면 내장 Prompt를 사용합니다. 결과를 파싱할 수 있도록 언어, 자막 ID, JSON 출력 규칙은 끝에 계속 추가됩니다.',
+        translationPromptPlaceholder: '예: 고유명사, 말투, 문맥을 유지하면서 자연스러운 구어체로 번역…'
       },
       subtitles: {
         title: '자막',

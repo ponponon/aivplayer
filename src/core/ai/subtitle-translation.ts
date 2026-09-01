@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import { copyFile, mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises'
 import { basename, dirname, extname, join } from 'node:path'
 import type { SubtitleTargetLanguageId } from '../../shared/app-settings.ts'
+import { normalizeAiProviderTranslationPrompt } from '../../shared/ai-providers.ts'
 import type { AsrSubtitleTranslationStats, TranscriptSegment } from '../../shared/media-types.ts'
 import { parseVtt, writeSrt, writeVtt } from './subtitle-writer.ts'
 import { pathExists } from './model-manager.ts'
@@ -46,6 +47,7 @@ export type SubtitleTranslationProvider = {
   id: SubtitleTranslationProviderId
   model: string
   glossary?: string | null
+  translationPrompt?: string | null
   translateBatch: (request: SubtitleTranslationBatchRequest) => Promise<SubtitleTranslationSegment[]>
 }
 
@@ -81,6 +83,7 @@ export class SubtitleTranslationError extends Error {
 
 export type SubtitleTranslationProviderRef = Pick<SubtitleTranslationProvider, 'id' | 'model'> & {
   glossary?: string | null
+  translationPrompt?: string | null
 }
 
 export type RunSubtitleTranslationJobOptions = {
@@ -116,6 +119,7 @@ export type OpenAiCompatibleTranslationProviderOptions = {
   apiKey: string
   model: string
   glossary?: string | null
+  translationPrompt?: string | null
   headers?: Record<string, string>
   fetchImpl?: (url: string, init?: RequestInit) => Promise<Response>
   getEndpointCandidates?: () => Promise<string[]>
@@ -213,7 +217,8 @@ function createTranslationCacheKey(options: {
         options.targetLanguage,
         options.provider.id,
         options.provider.model,
-        normalizeGlossaryForCache(options.provider.glossary)
+        normalizeGlossaryForCache(options.provider.glossary),
+        normalizeAiProviderTranslationPrompt(options.provider.translationPrompt) ?? ''
       ].join('\n')
     )
     .digest('hex')
@@ -254,7 +259,8 @@ function createStreamingTranslationCacheKey(options: {
         options.targetLanguage,
         options.provider.id,
         options.provider.model,
-        normalizeGlossaryForCache(options.provider.glossary)
+        normalizeGlossaryForCache(options.provider.glossary),
+        normalizeAiProviderTranslationPrompt(options.provider.translationPrompt) ?? ''
       ].join('\n')
     )
     .digest('hex')
@@ -328,7 +334,8 @@ async function copyLegacyTranslationCache(
 
 export function createSubtitleTranslationProviderRef(
   model: string | null | undefined,
-  glossary?: string | null
+  glossary?: string | null,
+  translationPrompt?: string | null
 ): SubtitleTranslationProviderRef | null {
   const trimmedModel = model?.trim()
 
@@ -339,7 +346,8 @@ export function createSubtitleTranslationProviderRef(
   return {
     id: 'openai-compatible',
     model: trimmedModel,
-    glossary: normalizeGlossaryForCache(glossary) || null
+    glossary: normalizeGlossaryForCache(glossary) || null,
+    translationPrompt: normalizeAiProviderTranslationPrompt(translationPrompt)
   }
 }
 
@@ -906,6 +914,7 @@ export function createOpenAiCompatibleTranslationProvider(
     id: 'openai-compatible',
     model: options.model,
     glossary: normalizeGlossaryForCache(options.glossary) || null,
+    translationPrompt: normalizeAiProviderTranslationPrompt(options.translationPrompt),
     async translateBatch(request): Promise<SubtitleTranslationSegment[]> {
       const contextInstruction = request.context
         ? ` Nearby subtitle context is reference-only; do not return context cues. ` +
@@ -914,6 +923,7 @@ export function createOpenAiCompatibleTranslationProvider(
       const glossaryInstruction = request.glossary?.length
         ? ` Apply these fixed glossary translations when the source term appears: ${JSON.stringify(request.glossary)}`
         : ''
+      const customPrompt = normalizeAiProviderTranslationPrompt(options.translationPrompt)
       const headers = new Headers(options.headers)
       headers.set('Authorization', `Bearer ${options.apiKey}`)
       headers.set('Content-Type', 'application/json')
@@ -940,9 +950,10 @@ export function createOpenAiCompatibleTranslationProvider(
                 {
                   role: 'system',
                   content:
+                    `${customPrompt ?? 'Translate subtitle cues accurately while preserving meaning, names, numbers, and natural line breaks.'}\n\n` +
                     `Translate subtitle cues from ${request.sourceLanguage} to ${request.targetLanguage}. ` +
-                    'Preserve meaning, names, numbers, and line breaks where natural. ' +
-                    'Return only a JSON array of objects with the same id values and translated text values.' +
+                    'Return only a JSON array of objects with the same id values and translated text values. ' +
+                    'Do not add commentary, Markdown, or omit any cue.' +
                     contextInstruction +
                     glossaryInstruction
                 },

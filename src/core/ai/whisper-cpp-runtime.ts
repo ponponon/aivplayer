@@ -19,7 +19,7 @@ import { readAsrRuntimeSettings, saveWhisperBinaryPath } from './asr-settings.ts
 import { clearStaleSubtitleCache, getSubtitleCacheStats } from './subtitle-cache-management.ts'
 import { getWhisperBinaryNames, parseWhisperBinaryReplacementName } from './whisper-binary.ts'
 import { getAppCopy } from '../../shared/i18n'
-import { resolveActiveAiProvider } from '../../shared/ai-providers'
+import { normalizeAiProviderTranslationPrompt, resolveActiveAiProvider } from '../../shared/ai-providers'
 import type { ManagedTranslationRouteMode } from '../../shared/app-settings'
 import type {
   AsrJobProgress,
@@ -415,6 +415,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
     apiKey: string | null
     model: string | null
     glossary: string | null
+    translationPrompt: string | null
     managedRouteMode: ManagedTranslationRouteMode
   } => {
     const aiSettings = options.getAiServiceSettings?.()
@@ -429,6 +430,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
         apiKey: MANAGED_TRANSLATION_SERVICE_AUTH_TOKEN,
         model: MANAGED_TRANSLATION_SERVICE_MODEL,
         glossary,
+        translationPrompt: null,
         managedRouteMode
       }
     }
@@ -439,6 +441,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
       apiKey: activeProvider.apiKey?.trim() || env.AIVPLAYER_TRANSLATION_API_KEY?.trim() || null,
       model: activeProvider.model?.trim() || env.AIVPLAYER_TRANSLATION_MODEL?.trim() || null,
       glossary,
+      translationPrompt: normalizeAiProviderTranslationPrompt(activeProvider.translationPrompt),
       managedRouteMode
     }
   }
@@ -448,7 +451,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
   }
 
   const createTranslationProvider = () => {
-    const { mode, baseUrl, apiKey, model, glossary, managedRouteMode } = getTranslationServiceConfig()
+    const { mode, baseUrl, apiKey, model, glossary, translationPrompt, managedRouteMode } = getTranslationServiceConfig()
 
     if (!baseUrl || !apiKey || !model) {
       return null
@@ -459,6 +462,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
       apiKey,
       model,
       glossary,
+      translationPrompt,
       headers: mode === 'managed' ? options.translationHeaders : undefined,
       getEndpointCandidates:
         mode === 'managed' && options.getManagedTranslationEndpointCandidates
@@ -471,7 +475,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
 
   const getTranslationProviderRef = () => {
     const config = getTranslationServiceConfig()
-    return createSubtitleTranslationProviderRef(config.model, config.glossary)
+    return createSubtitleTranslationProviderRef(config.model, config.glossary, config.translationPrompt)
   }
 
   const createSummaryProvider = () => {
@@ -1197,6 +1201,9 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
             model: providerOverride.kind === 'managed'
               ? MANAGED_TRANSLATION_SERVICE_MODEL
               : providerOverride.model?.trim() || null,
+            translationPrompt: providerOverride.kind === 'managed'
+              ? null
+              : normalizeAiProviderTranslationPrompt(providerOverride.translationPrompt),
             glossary: options.getAiServiceSettings?.()?.glossary?.trim() || env.AIVPLAYER_TRANSLATION_GLOSSARY?.trim() || null
           }
         : getTranslationServiceConfig()
@@ -1207,6 +1214,7 @@ export function createWhisperCppRuntime(options: AsrRuntimeOptions): AsrRuntime 
               apiKey: translationServiceConfig.apiKey,
               model: translationServiceConfig.model,
               glossary: translationServiceConfig.glossary,
+              translationPrompt: translationServiceConfig.translationPrompt,
               headers: translationServiceConfig.mode === 'managed' ? options.translationHeaders : undefined,
               getEndpointCandidates: translationServiceConfig.mode === 'managed' ? options.getManagedTranslationEndpointCandidates : undefined,
               onEndpointFailure: translationServiceConfig.mode === 'managed' ? options.onManagedTranslationEndpointFailure : undefined,

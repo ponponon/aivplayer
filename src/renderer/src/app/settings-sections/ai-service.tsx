@@ -3,18 +3,20 @@ import { useEffect, useRef, useState } from 'react'
 import type { ReactElement } from 'react'
 import {
   MANAGED_AI_PROVIDER_ID,
+  MAX_AI_PROVIDER_TRANSLATION_PROMPT_LENGTH,
   MAX_AI_PROVIDER_PROFILES,
   createCustomAiProvider,
   isAiProviderConfigured,
+  normalizeAiProviderTranslationPrompt,
   resolveActiveAiProvider,
   type AiProviderProfile
 } from '../../../../shared/ai-providers'
 import { SettingsField, SettingsSelect } from '../settings-controls'
-import { SettingsTextInput } from '../settings-inputs'
+import { SettingsTextInput, SettingsTextarea } from '../settings-inputs'
 import { useModalFocusTrap } from '../use-modal-focus-trap'
 import type { SettingsSectionProps } from '../settings-section-types'
 
-type AiProviderDraft = { name: string; baseUrl: string; model: string; apiKey: string }
+type AiProviderDraft = { name: string; baseUrl: string; model: string; apiKey: string; translationPrompt: string }
 type AiProviderEditingMode = 'new' | 'edit'
 
 function getProviderDisplayName(copy: SettingsSectionProps['copy'], provider: AiProviderProfile): string {
@@ -59,14 +61,14 @@ export function AiServiceSettingsSection({
   const startEditing = (provider: AiProviderProfile): void => {
     setEditingProviderId(provider.id)
     setEditingMode('edit')
-    setDraft({ name: provider.name, baseUrl: provider.baseUrl ?? '', model: provider.model ?? '', apiKey: provider.apiKey ?? '' })
+    setDraft({ name: provider.name, baseUrl: provider.baseUrl ?? '', model: provider.model ?? '', apiKey: provider.apiKey ?? '', translationPrompt: provider.translationPrompt ?? '' })
   }
 
   const startCreating = (): void => {
     const provider = createCustomAiProvider(`custom-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`)
     setEditingProviderId(provider.id)
     setEditingMode('new')
-    setDraft({ name: '', baseUrl: '', model: '', apiKey: '' })
+    setDraft({ name: '', baseUrl: '', model: '', apiKey: '', translationPrompt: '' })
   }
 
   const resetEditing = (): void => {
@@ -108,7 +110,8 @@ export function AiServiceSettingsSection({
             kind: 'custom' as const,
             baseUrl: draft.baseUrl.trim() || null,
             model: draft.model.trim() || null,
-            apiKey: draft.apiKey.trim() || null
+            apiKey: draft.apiKey.trim() || null,
+            translationPrompt: normalizeAiProviderTranslationPrompt(draft.translationPrompt)
           }]
         : current.providers.map((provider) =>
             provider.id === editingProviderId
@@ -118,7 +121,8 @@ export function AiServiceSettingsSection({
                   kind: 'custom' as const,
                   baseUrl: draft.baseUrl.trim() || null,
                   model: draft.model.trim() || null,
-                  apiKey: draft.apiKey.trim() || null
+                  apiKey: draft.apiKey.trim() || null,
+                  translationPrompt: normalizeAiProviderTranslationPrompt(draft.translationPrompt)
                 }
               : provider
           ),
@@ -142,7 +146,7 @@ export function AiServiceSettingsSection({
   const testDraftProvider = (): void => {
     onTestTranslationService(
       draft
-        ? { kind: 'custom' as const, baseUrl: draft.baseUrl.trim() || null, model: draft.model.trim() || null, apiKey: draft.apiKey.trim() || null }
+        ? { kind: 'custom' as const, baseUrl: draft.baseUrl.trim() || null, model: draft.model.trim() || null, apiKey: draft.apiKey.trim() || null, translationPrompt: normalizeAiProviderTranslationPrompt(draft.translationPrompt) }
         : undefined
     )
   }
@@ -310,6 +314,9 @@ export function AiServiceSettingsSection({
               </SettingsField>
               <SettingsField title={copy.settingsDialog.subtitles.translationApiKey} description={copy.settingsDialog.subtitles.translationApiKeyDescription}>
                 <SettingsTextInput dataTestId="ai-service-provider-api-key" type="password" value={draft.apiKey} placeholder={copy.settingsDialog.aiService.apiKeyPlaceholder} autoComplete="new-password" onChange={(apiKey) => setDraft({ ...draft, apiKey })} />
+              </SettingsField>
+              <SettingsField wide title={copy.settingsDialog.aiService.translationPrompt} description={copy.settingsDialog.aiService.translationPromptDescription}>
+                <SettingsTextarea dataTestId="ai-service-provider-translation-prompt" value={draft.translationPrompt} maxLength={MAX_AI_PROVIDER_TRANSLATION_PROMPT_LENGTH} placeholder={copy.settingsDialog.aiService.translationPromptPlaceholder} ariaLabel={copy.settingsDialog.aiService.translationPrompt} rows={7} onChange={(translationPrompt) => setDraft({ ...draft, translationPrompt })} />
               </SettingsField>
             </div>
 

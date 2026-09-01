@@ -173,7 +173,7 @@ describe('app settings', () => {
 
     const settings = await readAppSettings(tempDirectory)
 
-    expect(settings.schemaVersion).toBe(31)
+    expect(settings.schemaVersion).toBe(32)
     expect(settings.ai.providers).toHaveLength(2)
     expect(settings.ai.providers[0]).toEqual({ id: MANAGED_AI_PROVIDER_ID, name: '', kind: 'managed', baseUrl: null, model: null, apiKey: null })
     const migrated = settings.ai.providers[1]
@@ -318,7 +318,7 @@ describe('app settings', () => {
     )
 
     await expect(readAppSettings(tempDirectory)).resolves.toMatchObject({
-      schemaVersion: 31,
+      schemaVersion: 32,
       playback: {
         singleClickPause: true
       }
@@ -337,6 +337,35 @@ describe('app settings', () => {
         translationGlossary: 'Technology=技术\nAIVPlayer=AIV 播放器'
       }
     })
+  })
+
+  it('normalizes custom translation prompts before persisting them', async () => {
+    const settings = createDefaultAppSettings()
+    settings.ai.providers = [
+      createManagedAiProvider(),
+      {
+        ...createCustomAiProvider('custom-prompt'),
+        baseUrl: 'https://example.test/v1/chat/completions',
+        model: 'translation-model',
+        apiKey: 'test-key',
+        translationPrompt: `  Use natural subtitles.  `
+      }
+    ]
+
+    const persisted = await writeAppSettings(tempDirectory, settings)
+    expect(persisted.ai.providers[1]?.translationPrompt).toBe('Use natural subtitles.')
+
+    await writeFile(
+      join(tempDirectory, 'app-settings.json'),
+      JSON.stringify({
+        ai: {
+          providers: [{ ...createCustomAiProvider('long-prompt'), translationPrompt: 'x'.repeat(13_000) }],
+          activeProviderId: 'long-prompt'
+        }
+      })
+    )
+    const reloaded = await readAppSettings(tempDirectory)
+    expect(reloaded.ai.providers[1]?.translationPrompt).toHaveLength(12_000)
   })
 
   it('normalizes the managed translation route preference', async () => {

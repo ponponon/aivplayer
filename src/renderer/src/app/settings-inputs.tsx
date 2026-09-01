@@ -83,18 +83,22 @@ export type SettingsTextareaProps = {
   value: string
   placeholder?: string
   ariaLabel?: string
+  dataTestId?: string
   rows?: number
+  maxLength?: number
   onChange: (value: string) => void
 }
 
-export function SettingsTextarea({ value, placeholder, ariaLabel, rows = 4, onChange }: SettingsTextareaProps): ReactElement {
+export function SettingsTextarea({ value, placeholder, ariaLabel, dataTestId, rows = 4, maxLength, onChange }: SettingsTextareaProps): ReactElement {
   return (
     <textarea
       className="settings-textarea"
       value={value}
       placeholder={placeholder}
       aria-label={ariaLabel}
+      data-testid={dataTestId}
       rows={rows}
+      maxLength={maxLength}
       spellCheck={false}
       onChange={(event) => onChange(event.currentTarget.value)}
     />

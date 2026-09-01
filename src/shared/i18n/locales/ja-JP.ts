@@ -1571,7 +1571,10 @@
         namePlaceholder: '例: 自分の OpenAI サービス',
         baseUrlPlaceholder: '例: https://api.example.com/v1/chat/completions',
         modelPlaceholder: '例: gpt-4o-mini',
-        apiKeyPlaceholder: 'サービス提供元の API key を貼り付け'
+        apiKeyPlaceholder: 'サービス提供元の API key を貼り付け',
+        translationPrompt: '翻訳タスクの Prompt',
+        translationPromptDescription: '任意。空欄なら内蔵 Prompt を使います。解析可能な結果を保つため、言語、字幕 ID、JSON 出力形式の制約は末尾に追加されます。',
+        translationPromptPlaceholder: '例: 自然な口語にしつつ、固有名詞、口調、文脈を保つ…'
       },
       subtitles: {
         title: '字幕',

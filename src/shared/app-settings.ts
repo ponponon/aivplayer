@@ -8,7 +8,7 @@ import type { MediaStructureCorrection } from './media-base-types'
 import type { DramaGenerationMediaType } from './drama-types'
 import { MANAGED_AI_PROVIDER_ID, createManagedAiProvider, type AiProviderProfile } from './ai-providers'
 
-export const APP_SETTINGS_SCHEMA_VERSION = 31
+export const APP_SETTINGS_SCHEMA_VERSION = 32
 
 export const SIDE_PANEL_WIDTH_MIN = 240
 export const SIDE_PANEL_WIDTH_MAX = 480

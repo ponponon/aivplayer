@@ -246,7 +246,7 @@ describe('ASR runtime settings', () => {
   it('translates a VTT subtitle file through the configured OpenAI-compatible provider', async () => {
     const subtitleDirectory = join(tempDirectory, 'subtitles')
     const vttPath = join(subtitleDirectory, 'demo.vtt')
-    const requests: Array<{ authorization: string | null; model: string | undefined }> = []
+    const requests: Array<{ authorization: string | null; model: string | undefined; systemPrompt: string }> = []
 
     await mkdir(subtitleDirectory, { recursive: true })
     await writeFile(
@@ -270,12 +270,13 @@ describe('ASR runtime settings', () => {
         AIVPLAYER_TRANSLATION_API_KEY: 'test-key',
         AIVPLAYER_TRANSLATION_MODEL: 'translation-model'
       },
-      getAiServiceSettings: () => ({ providers: [{ id: 'custom-1', name: 'Custom', kind: 'custom', baseUrl: 'https://example.test/v1/chat/completions', model: 'translation-model', apiKey: 'test-key' }], activeProviderId: 'custom-1', glossary: null }),
+      getAiServiceSettings: () => ({ providers: [{ id: 'custom-1', name: 'Custom', kind: 'custom', baseUrl: 'https://example.test/v1/chat/completions', model: 'translation-model', apiKey: 'test-key', translationPrompt: 'Use concise subtitle language.' }], activeProviderId: 'custom-1', glossary: null }),
       translationFetch: async (_url, init) => {
-        const body = JSON.parse(String(init?.body ?? '{}')) as { model?: string }
+        const body = JSON.parse(String(init?.body ?? '{}')) as { model?: string; messages?: Array<{ content?: string }> }
         requests.push({
           authorization: init?.headers instanceof Headers ? init.headers.get('Authorization') : null,
-          model: body.model
+          model: body.model,
+          systemPrompt: body.messages?.[0]?.content ?? ''
         })
 
         return new Response(
@@ -309,7 +310,8 @@ describe('ASR runtime settings', () => {
     expect(requests).toEqual([
       {
         authorization: 'Bearer test-key',
-        model: 'translation-model'
+        model: 'translation-model',
+        systemPrompt: expect.stringContaining('Use concise subtitle language.')
       }
     ])
     await expect(readFile(result.subtitlePath ?? '', 'utf8')).resolves.toContain('你好')

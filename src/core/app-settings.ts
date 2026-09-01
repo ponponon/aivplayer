@@ -28,7 +28,7 @@ import type { MediaStructureCorrection, MediaStructureSegmentKind } from '../sha
 import { isAppLocale, isSubtitleLanguageId } from '../shared/localization'
 import { MAX_PLAYBACK_HISTORY_ITEMS, type PlaybackHistoryEntry } from '../shared/playback-history'
 import type { DramaGenerationMediaType } from '../shared/drama-types'
-import { MANAGED_AI_PROVIDER_ID, MAX_AI_PROVIDER_PROFILES, createManagedAiProvider, type AiProviderProfile } from '../shared/ai-providers'
+import { MANAGED_AI_PROVIDER_ID, MAX_AI_PROVIDER_PROFILES, normalizeAiProviderTranslationPrompt, createManagedAiProvider, type AiProviderProfile } from '../shared/ai-providers'
 
 export type AppSettingsSecretCodec = {
   encryptString: (value: string) => string
@@ -546,7 +546,8 @@ function sanitizeAiProviderProfile(value: unknown): AiProviderProfile | null {
     kind,
     baseUrl: managed ? null : normalizeTextField(provider.baseUrl, null),
     model: managed ? null : normalizeTextField(provider.model, null),
-    apiKey: managed ? null : normalizeTextField(provider.apiKey, null)
+    apiKey: managed ? null : normalizeTextField(provider.apiKey, null),
+    ...(managed ? {} : { translationPrompt: normalizeAiProviderTranslationPrompt(provider.translationPrompt) })
   }
 }
 

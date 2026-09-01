@@ -401,6 +401,41 @@ describe('subtitle translation', () => {
     expect(first.subtitlePath).not.toBe(second.subtitlePath)
   })
 
+  it('does not reuse translated subtitle cache when the translation prompt changes', async () => {
+    const sourceSubtitlePath = join(tempDirectory, 'prompt-source.vtt')
+    const cacheDirectory = join(tempDirectory, 'cache')
+    let callCount = 0
+    const createProvider = (translationPrompt: string): SubtitleTranslationProvider => ({
+      id: 'mock',
+      model: 'mock-model',
+      translationPrompt,
+      translateBatch: async ({ segments }) => {
+        callCount += 1
+        return segments.map((segment) => ({ id: segment.id, text: `${translationPrompt}:${segment.text}` }))
+      }
+    })
+
+    await writeFile(sourceSubtitlePath, ['WEBVTT', '', '00:00:00.000 --> 00:00:01.000', 'hello'].join('\n'))
+
+    const first = await runSubtitleTranslationJob({
+      sourceSubtitlePath,
+      cacheDirectory,
+      sourceLanguage: 'en',
+      targetLanguage: 'zh',
+      provider: createProvider('保持正式语气')
+    })
+    const second = await runSubtitleTranslationJob({
+      sourceSubtitlePath,
+      cacheDirectory,
+      sourceLanguage: 'en',
+      targetLanguage: 'zh',
+      provider: createProvider('使用自然口语')
+    })
+
+    expect(callCount).toBe(2)
+    expect(first.subtitlePath).not.toBe(second.subtitlePath)
+  })
+
   it('translates long subtitles in batches, reports progress, and retries transient failures', async () => {
     const sourceSubtitlePath = join(tempDirectory, 'long-source.vtt')
     const cacheDirectory = join(tempDirectory, 'cache')
@@ -645,6 +680,36 @@ describe('subtitle translation', () => {
     expect(JSON.stringify(requests[0]?.body)).toContain('Nearby subtitle context')
     expect(JSON.stringify(requests[0]?.body)).toContain('cue-0')
     expect(JSON.stringify(requests[0]?.body)).toContain('Technology')
+  })
+
+  it('includes a custom translation prompt while preserving the response contract', async () => {
+    const requests: Array<{ systemPrompt: string }> = []
+    const customPrompt = 'Prefer concise, natural spoken language and preserve character voice.'
+    const provider = createOpenAiCompatibleTranslationProvider({
+      baseUrl: 'https://example.test/v1/chat/completions',
+      apiKey: 'test-key',
+      model: 'translation-model',
+      translationPrompt: customPrompt,
+      fetchImpl: async (_url, init) => {
+        const body = JSON.parse(String(init?.body ?? '{}')) as { messages?: Array<{ content?: string }> }
+        requests.push({ systemPrompt: body.messages?.[0]?.content ?? '' })
+        return new Response(
+          JSON.stringify({ choices: [{ message: { content: JSON.stringify([{ id: 'cue-1', text: '你好' }]) } }] }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        )
+      }
+    })
+
+    await expect(provider.translateBatch({
+      sourceLanguage: 'en',
+      targetLanguage: 'zh',
+      segments: [{ id: 'cue-1', text: 'hello' }]
+    })).resolves.toEqual([{ id: 'cue-1', text: '你好' }])
+
+    expect(requests[0]?.systemPrompt).toContain(customPrompt)
+    expect(requests[0]?.systemPrompt).toContain('from en to zh')
+    expect(requests[0]?.systemPrompt).toContain('Return only a JSON array')
+    expect(provider.translationPrompt).toBe(customPrompt)
   })
 
   it('tags HTTP failures from an OpenAI-compatible translation endpoint', async () => {

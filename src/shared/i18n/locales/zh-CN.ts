@@ -1571,7 +1571,10 @@
         namePlaceholder: '例如：我的 OpenAI 服务',
         baseUrlPlaceholder: '例如：https://api.example.com/v1/chat/completions',
         modelPlaceholder: '例如：gpt-4o-mini',
-        apiKeyPlaceholder: '粘贴服务商提供的 API Key'
+        apiKeyPlaceholder: '粘贴服务商提供的 API Key',
+        translationPrompt: '翻译任务 Prompt',
+        translationPromptDescription: '可选。留空使用内置 Prompt；应用仍会追加语言、字幕 ID 和 JSON 格式约束，确保结果可解析。',
+        translationPromptPlaceholder: '例如：使用自然口语，保留专有名词、人物语气和上下文……'
       },
       subtitles: {
         title: '字幕',

@@ -57,6 +57,8 @@ describe('settings UI source constraints', () => {
     expect(aiServiceSource).toContain('ai-service-table')
     expect(aiServiceSource).toContain('data-ai-service-provider-dialog')
     expect(aiServiceSource).toContain('dataTestId="ai-service-provider-name"')
+    expect(aiServiceSource).toContain('dataTestId="ai-service-provider-translation-prompt"')
+    expect(aiServiceSource).toContain('translationPromptDescription')
     expect(aiServiceSource).toContain('useModalFocusTrap')
     expect(aiServiceSource).toContain('editingMode === \'new\'')
     expect(aiServiceSource).toContain('providers: editingMode === \'new\'')
@@ -86,6 +88,7 @@ describe('settings UI source constraints', () => {
       expect(source).toContain('managedStatus:')
       expect(source).toContain('baseUrlPlaceholder:')
       expect(source).toContain('apiKeyPlaceholder:')
+      expect(source).toContain('translationPromptPlaceholder:')
     }
   })
 

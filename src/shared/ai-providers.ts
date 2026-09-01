@@ -2,6 +2,13 @@ import type { TranslationServiceMode } from './translation-service'
 
 export const MANAGED_AI_PROVIDER_ID = 'managed'
 export const MAX_AI_PROVIDER_PROFILES = 20
+export const MAX_AI_PROVIDER_TRANSLATION_PROMPT_LENGTH = 12_000
+
+export function normalizeAiProviderTranslationPrompt(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const prompt = value.trim()
+  return prompt ? prompt.slice(0, MAX_AI_PROVIDER_TRANSLATION_PROMPT_LENGTH) : null
+}
 
 export type AiProviderProfile = {
   id: string
@@ -10,6 +17,7 @@ export type AiProviderProfile = {
   baseUrl: string | null
   model: string | null
   apiKey: string | null
+  translationPrompt?: string | null
 }
 
 export function createManagedAiProvider(): AiProviderProfile {
@@ -17,7 +25,7 @@ export function createManagedAiProvider(): AiProviderProfile {
 }
 
 export function createCustomAiProvider(id: string): AiProviderProfile {
-  return { id, name: '', kind: 'custom', baseUrl: null, model: null, apiKey: null }
+  return { id, name: '', kind: 'custom', baseUrl: null, model: null, apiKey: null, translationPrompt: null }
 }
 
 export function resolveActiveAiProvider(

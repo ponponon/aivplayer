@@ -1571,7 +1571,10 @@
         namePlaceholder: 'For example, My OpenAI service',
         baseUrlPlaceholder: 'For example, https://api.example.com/v1/chat/completions',
         modelPlaceholder: 'For example, gpt-4o-mini',
-        apiKeyPlaceholder: 'Paste the API key from your provider'
+        apiKeyPlaceholder: 'Paste the API key from your provider',
+        translationPrompt: 'Translation task prompt',
+        translationPromptDescription: 'Optional. Leave blank to use the built-in prompt. Language, cue IDs, and the JSON output contract are still appended so results remain parseable.',
+        translationPromptPlaceholder: 'For example: use natural spoken language while preserving names, tone, and context…'
       },
       subtitles: {
         title: 'Subtitles',

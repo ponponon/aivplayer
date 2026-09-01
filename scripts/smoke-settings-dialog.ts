@@ -191,7 +191,10 @@ async function main(): Promise<void> {
       providerCountAfterAdd: (await window.aiv.getAppSettings()).ai.providers.length,
       providerDialogsAfterAdd: document.querySelectorAll('[data-ai-service-provider-dialog]').length,
       editorTitle: document.querySelector('#ai-service-provider-dialog-title')?.textContent?.trim() ?? 'missing',
-      firstFieldFocused: document.activeElement?.getAttribute('data-testid') === 'ai-service-provider-name'
+      firstFieldFocused: document.activeElement?.getAttribute('data-testid') === 'ai-service-provider-name',
+      translationPromptField: document.querySelector('[data-testid="ai-service-provider-translation-prompt"]') ? 'present' : 'missing',
+      translationPromptRows: (document.querySelector('[data-testid="ai-service-provider-translation-prompt"]') as HTMLTextAreaElement | null)?.rows ?? 0,
+      translationPromptMaxLength: (document.querySelector('[data-testid="ai-service-provider-translation-prompt"]') as HTMLTextAreaElement | null)?.maxLength ?? 0
     }))
     const aiServiceEditorScreenshotPath = join(smokeHomeDirectory, 'aivplayer-smoke-settings-ai-editor.png')
     await page.screenshot({ path: aiServiceEditorScreenshotPath, fullPage: false })
@@ -444,6 +447,9 @@ async function main(): Promise<void> {
       aiServiceEditorState.providerDialogsAfterAdd !== 1 ||
       aiServiceEditorState.editorTitle === 'missing' ||
       aiServiceEditorState.firstFieldFocused !== true ||
+      aiServiceEditorState.translationPromptField !== 'present' ||
+      aiServiceEditorState.translationPromptRows < 5 ||
+      aiServiceEditorState.translationPromptMaxLength !== 12_000 ||
       aiServiceEscapeState.providerCountAfterEscape !== aiServiceInitialState.providerCount ||
       aiServiceEscapeState.providerDialogsAfterEscape !== 0 ||
       aiServiceCancelState.providerCountAfterCancel !== aiServiceInitialState.providerCount ||

@@ -1,10 +1,10 @@
 import { Check, ChevronDown, ChevronRight, CircleAlert, Cpu, Download, KeyRound, RefreshCcw, Sparkles, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { resolveActiveAiProvider, type AiProviderProfile } from '../../../shared/ai-providers'
+import { MAX_AI_PROVIDER_TRANSLATION_PROMPT_LENGTH, normalizeAiProviderTranslationPrompt, resolveActiveAiProvider, type AiProviderProfile } from '../../../shared/ai-providers'
 import { formatBytes } from './app-helpers'
 import { AsrModelDownloadProgress } from './asr-model-download-progress'
 import { SettingsField, SettingsSelect } from './settings-controls'
-import { SettingsTextInput } from './settings-inputs'
+import { SettingsTextInput, SettingsTextarea } from './settings-inputs'
 import { useAppContext } from './app-context'
 import { useModalFocusTrap } from './use-modal-focus-trap'
 import type { AiSetupStepId } from './use-ai-setup'
@@ -218,6 +218,9 @@ function TranslationStep(): React.ReactElement {
         </SettingsField>
         <SettingsField title={app.copy.settingsDialog.subtitles.translationApiKey} description={app.copy.settingsDialog.subtitles.translationApiKeyDescription}>
           <SettingsTextInput type="password" value={activeAiProvider.apiKey ?? ''} autoComplete="new-password" onChange={(value) => updateActiveProvider({ apiKey: value.trim() || null })} />
+        </SettingsField>
+        <SettingsField wide title={app.copy.settingsDialog.aiService.translationPrompt} description={app.copy.settingsDialog.aiService.translationPromptDescription}>
+          <SettingsTextarea value={activeAiProvider.translationPrompt ?? ''} maxLength={MAX_AI_PROVIDER_TRANSLATION_PROMPT_LENGTH} placeholder={app.copy.settingsDialog.aiService.translationPromptPlaceholder} ariaLabel={app.copy.settingsDialog.aiService.translationPrompt} rows={7} onChange={(value) => updateActiveProvider({ translationPrompt: normalizeAiProviderTranslationPrompt(value) })} />
         </SettingsField>
       </>
     )}
