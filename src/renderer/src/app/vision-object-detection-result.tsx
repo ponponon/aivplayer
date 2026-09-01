@@ -1,3 +1,4 @@
+import { AppSelect } from '../../../shared/app-select'
 import { Boxes, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { LocaleCopy } from '../../../shared/i18n'
@@ -56,12 +57,12 @@ export function VisionObjectDetectionResultView({ copy, result, thumbnailUrl, fi
         </label>
         <label>
           <span>{copy.objectDetectionMinimumScore}</span>
-          <select value={minimumScore} onChange={(event) => onFilterChange({ ...filter, minimumScore: Number(event.target.value) })} aria-label={copy.objectDetectionMinimumScore}>
+          <AppSelect value={minimumScore} onChange={(event) => onFilterChange({ ...filter, minimumScore: Number(event.target.value) })} aria-label={copy.objectDetectionMinimumScore}>
             <option value={0}>{copy.objectDetectionAnyScore}</option>
             <option value={0.5}>{formatScore(0.5)}</option>
             <option value={0.75}>{formatScore(0.75)}</option>
             <option value={0.9}>{formatScore(0.9)}</option>
-          </select>
+          </AppSelect>
         </label>
       </div>
       {categories.length > 0 ? <div className="vision-object-detection-categories">

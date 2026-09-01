@@ -302,7 +302,7 @@ describe('vision library setup', () => {
     expect(tagSortSmoke).toContain('dataUnchanged: true')
     const tagCustomOrderSmoke = readFileSync(join(projectRoot, 'scripts/smoke-vision-clip-collection-tag-custom-order.ts'), 'utf8')
     expect(packageJson.scripts?.['smoke:vision-clip-collection-tag-custom-order']).toContain('smoke-vision-clip-collection-tag-custom-order.ts')
-    expect(tagCustomOrderSmoke).toContain("selectOption('custom')")
+    expect(tagCustomOrderSmoke).toContain("selectAppOption(page, sort, 'custom')")
     expect(tagCustomOrderSmoke).toContain('persisted: true')
     expect(tagCustomOrderSmoke).toContain('dataUnchanged: true')
     const tagCollapseSmoke = readFileSync(join(projectRoot, 'scripts/smoke-vision-clip-collection-tag-collapse.ts'), 'utf8')

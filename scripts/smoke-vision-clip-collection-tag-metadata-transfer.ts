@@ -1,3 +1,4 @@
+import { selectAppOption } from './smoke-select.ts'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -82,8 +83,8 @@ async function runSmoke(): Promise<void> {
     }, exportPath)
     await page.getByRole('button', { name: '导入标签目录', exact: true }).click()
     await page.getByRole('dialog', { name: '导入标签目录预览' }).waitFor({ timeout: 10_000 })
-    await page.getByRole('combobox', { name: '导入冲突处理: 海边' }).selectOption('overwrite')
-    await page.getByRole('combobox', { name: '导入冲突处理: 采访' }).selectOption('keep-local')
+    await selectAppOption(page, page.getByRole('combobox', { name: '导入冲突处理: 海边' }), 'overwrite')
+    await selectAppOption(page, page.getByRole('combobox', { name: '导入冲突处理: 采访' }), 'keep-local')
     await page.getByRole('button', { name: '应用导入', exact: true }).click()
     await page.getByText('已导入 1 个标签元数据，跳过 2 个标签', { exact: true }).waitFor({ timeout: 10_000 })
     await page.getByRole('button', { name: '海边 · 1 个集合', exact: true }).click()
@@ -107,8 +108,8 @@ async function runSmoke(): Promise<void> {
     if (!changedAgain.success) throw new Error(`Unable to prepare skip decision: ${changedAgain.message}`)
     await page.getByRole('button', { name: '导入标签目录', exact: true }).click()
     await page.getByRole('dialog', { name: '导入标签目录预览' }).waitFor({ timeout: 10_000 })
-    await page.getByRole('combobox', { name: '导入冲突处理: 海边' }).selectOption('skip')
-    await page.getByRole('combobox', { name: '导入冲突处理: 采访' }).selectOption('keep-local')
+    await selectAppOption(page, page.getByRole('combobox', { name: '导入冲突处理: 海边' }), 'skip')
+    await selectAppOption(page, page.getByRole('combobox', { name: '导入冲突处理: 采访' }), 'keep-local')
     await page.getByRole('button', { name: '应用导入', exact: true }).click()
     await page.getByText('已导入 0 个标签元数据，跳过 3 个标签', { exact: true }).waitFor({ timeout: 10_000 })
     const skippedMetadata = await page.evaluate(() => window.aiv.listVisionClipCollectionTagMetadata())

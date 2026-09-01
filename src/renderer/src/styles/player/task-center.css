@@ -105,7 +105,7 @@
 }
 
 .task-center-search input,
-.task-center-filters select {
+.task-center-filters .app-select {
   width: 100%;
   min-width: 0;
   height: 25px;
@@ -118,7 +118,7 @@
   outline: 0;
 }
 
-.task-center-filters select {
+.task-center-filters .app-select {
   color: var(--text-muted);
   background: rgba(var(--overlay-rgb), 0.04);
   border: 1px solid var(--border-soft);

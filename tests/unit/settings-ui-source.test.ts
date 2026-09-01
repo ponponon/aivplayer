@@ -411,7 +411,7 @@ describe('settings UI source constraints', () => {
     expect(smokeScript).toContain('openSettingsLabelByLocale')
     expect(smokeScript).toContain("page.locator('[data-theme-control]').click()")
     expect(smokeScript).toContain('quickToggleThemeState.documentTheme !== \'light\'')
-    expect(smokeScript).toContain("themeSelect.selectOption('light')")
+    expect(smokeScript).toContain("selectAppOption(page, themeSelect, 'light')")
     expect(smokeScript).toContain("lightThemeState.documentTheme !== 'light'")
     expect(smokeScript).toContain("page.screenshot({ path: screenshotPath, fullPage: false })")
     expect(smokeScript).toContain("textAlign !== 'right'")

@@ -1,3 +1,4 @@
+import { selectAppOption } from './smoke-select.ts'
 import { _electron as electron } from 'playwright'
 import { copyFile, mkdtemp, utimes, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -172,7 +173,7 @@ async function main(): Promise<void> {
     await page.waitForFunction(() => Array.from(document.querySelectorAll('[data-testid^="editing-script-row-"]')).some((row) => row.textContent?.replace(/\s+/g, '').includes('外部更新字幕10') === true), null, { timeout: 10_000 })
     const redoAcceptedText = await page.locator('[data-testid^="editing-script-row-"]').filter({ hasText: '外部更新字幕10' }).textContent()
     await search.fill('外部更新字幕 10')
-    await page.locator('[data-testid="editing-caption-reload-status-filter"]').selectOption('added')
+    await selectAppOption(page, page.locator('[data-testid="editing-caption-reload-status-filter"]'), 'added')
     await page.locator('[data-testid="editing-caption-reload-no-matches"]').waitFor({ timeout: 10_000 })
     const noMatchesShown = await page.locator('[data-testid="editing-caption-reload-no-matches"]').count() > 0
     await search.fill('')
@@ -214,7 +215,7 @@ async function main(): Promise<void> {
     await page.waitForFunction(() => Array.from(document.querySelectorAll('[data-testid^="editing-script-row-"]')).some((row) => row.textContent?.includes('外部只新增预览') === true) && Array.from(document.querySelectorAll('[data-testid^="editing-caption-item-"]')).some((item) => item.textContent?.includes('外部只新增预览') === true), null, { timeout: 10_000 })
     const redoAddedText = await page.locator('[data-testid^="editing-script-row-"]').filter({ hasText: '外部只新增预览' }).textContent()
     await search.fill('')
-    await page.locator('[data-testid="editing-caption-reload-status-filter"]').selectOption('all')
+    await selectAppOption(page, page.locator('[data-testid="editing-caption-reload-status-filter"]'), 'all')
 
     await search.fill('原始字幕 18')
     await page.waitForFunction(() => document.querySelectorAll('.editing-caption-reload-row').length === 1 && document.querySelector('.editing-caption-reload-row')?.textContent?.includes('原始字幕 18') === true, null, { timeout: 10_000 })
@@ -324,7 +325,7 @@ async function main(): Promise<void> {
     }, null, { timeout: 10_000 })
     const redoRemovedScriptClass = await page.locator(`[data-testid="${await removedScriptRow.getAttribute('data-testid')}"]`).getAttribute('class')
     await search.fill('')
-    await page.locator('[data-testid="editing-caption-reload-status-filter"]').selectOption('all')
+    await selectAppOption(page, page.locator('[data-testid="editing-caption-reload-status-filter"]'), 'all')
 
     await page.locator('[data-testid="editing-caption-reload-keep"]').click()
     await page.waitForFunction(() => document.querySelector('[data-testid="editing-caption-reload-conflict"]') === null, null, { timeout: 10_000 })

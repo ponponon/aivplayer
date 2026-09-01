@@ -1,5 +1,6 @@
 import { FolderOpen } from 'lucide-react'
 import type { ReactElement, ReactNode } from 'react'
+import { AppSelect } from '../../../shared/app-select'
 import { SettingsNumberInput } from './settings-inputs'
 
 export function formatPathLabel(pathValue: string | null, fallback: string): string {
@@ -151,12 +152,12 @@ export function SettingsSelect<TValue extends string>({
   onChange
 }: SettingsSelectProps<TValue>): ReactElement {
   return (
-    <select className="settings-select" value={value} onChange={(event) => onChange(event.currentTarget.value as TValue)}>
+    <AppSelect className="settings-select" value={value} onChange={(event) => onChange(event.currentTarget.value as TValue)}>
       {options.map((option) => (
         <option key={option.value} value={option.value}>
           {option.label}
         </option>
       ))}
-    </select>
+    </AppSelect>
   )
 }

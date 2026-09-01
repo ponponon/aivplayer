@@ -1,3 +1,4 @@
+import { selectAppOption } from './smoke-select.ts'
 import { mkdtemp } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -60,7 +61,7 @@ async function main(): Promise<void> {
     await seekVideo(page, 12)
     await page.getByRole('button', { name: copy.controls.setSegmentEnd }).click()
     await page.locator('.segment-name-input').fill('Smoke segment')
-    await page.locator('.segment-color-field select').selectOption('cyan')
+    await selectAppOption(page, page.locator('.segment-color-field .app-select'), 'cyan')
     await page.getByRole('button', { name: copy.controls.saveSegment }).click()
     await page.locator('.timeline-segment-marker').waitFor({ timeout: 10_000 })
 

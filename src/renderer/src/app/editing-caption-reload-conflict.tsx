@@ -1,3 +1,4 @@
+import { AppSelect } from '../../../shared/app-select'
 import { useEffect, useState } from 'react'
 import { AlertTriangle, ArrowRight, Check, ChevronLeft, ChevronRight, RefreshCw, Search, ShieldCheck, Trash2 } from 'lucide-react'
 import { EDITING_SUBTITLE_RELOAD_PAGE_SIZE, getEditingSubtitleReloadChangePage, getEditingSubtitleReloadChangeScriptSegmentId, getEditingSubtitleReloadChangeTimeRange, type EditingSubtitleReloadChange, type EditingSubtitleReloadChangeKindFilter, type EditingSubtitleReloadChangeStatusFilter } from '../../../core/editing/subtitle-reload'
@@ -162,20 +163,20 @@ export function EditingCaptionReloadConflict({ conflict, copy, candidateCopy, on
           </label>
           <label>
             <span className="editing-caption-reload-visually-hidden">{copy.statusFilter}</span>
-            <select value={status} onChange={(event) => { setStatus(event.currentTarget.value as EditingSubtitleReloadChangeStatusFilter); setPageIndex(0) }} aria-label={copy.statusFilter} data-testid="editing-caption-reload-status-filter">
+            <AppSelect value={status} onChange={(event) => { setStatus(event.currentTarget.value as EditingSubtitleReloadChangeStatusFilter); setPageIndex(0) }} aria-label={copy.statusFilter} data-testid="editing-caption-reload-status-filter">
               <option value="all">{copy.allChanges}</option>
               <option value="changed">{copy.changedLabel}</option>
               <option value="added">{copy.addedLabel}</option>
               <option value="removed">{copy.removedLabel}</option>
-            </select>
+            </AppSelect>
           </label>
           <label>
             <span className="editing-caption-reload-visually-hidden">{copy.trackFilter}</span>
-            <select value={kind} onChange={(event) => { setKind(event.currentTarget.value as EditingSubtitleReloadChangeKindFilter); setPageIndex(0) }} aria-label={copy.trackFilter} data-testid="editing-caption-reload-kind-filter">
+            <AppSelect value={kind} onChange={(event) => { setKind(event.currentTarget.value as EditingSubtitleReloadChangeKindFilter); setPageIndex(0) }} aria-label={copy.trackFilter} data-testid="editing-caption-reload-kind-filter">
               <option value="all">{copy.allTracks}</option>
               <option value="source">{copy.source}</option>
               <option value="translation">{copy.translation}</option>
-            </select>
+            </AppSelect>
           </label>
         </div>
         <div className="editing-caption-reload-time-filter" aria-label={copy.timeRange}>

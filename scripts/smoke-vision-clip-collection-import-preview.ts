@@ -1,3 +1,4 @@
+import { readAppSelectValue, selectAppOption } from './smoke-select.ts'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -99,13 +100,13 @@ async function runSmoke(): Promise<void> {
     const newRow = preview.locator('[data-state="new"]')
     if (await conflictRow.count() !== 1 || await newRow.count() !== 1) throw new Error('Import preview did not classify conflict and new collection')
     if (!(await conflictRow.textContent())?.includes('1 个媒体源不可用') || !(await newRow.textContent())?.includes('1 个媒体源不可用')) throw new Error('Import preview did not report unavailable source files')
-    const conflictDecision = conflictRow.locator('select')
-    if (await conflictDecision.inputValue() !== 'keep-local') throw new Error('Import preview did not default conflicts to keep-local')
+    const conflictDecision = conflictRow.locator('.app-select')
+    if (await readAppSelectValue(conflictDecision) !== 'keep-local') throw new Error('Import preview did not default conflicts to keep-local')
     const beforeApply = await page.evaluate(() => window.aiv.listVisionClipCollections())
     if (beforeApply.length !== 1 || beforeApply[0]?.tags.join('|') !== 'smoke|local') throw new Error(`Import preview mutated local state: ${JSON.stringify(beforeApply)}`)
     await preview.screenshot({ path: previewScreenshot })
 
-    await conflictDecision.selectOption('overwrite')
+    await selectAppOption(page, conflictDecision, 'overwrite')
     await preview.getByRole('button', { name: '确认导入', exact: true }).click()
     await page.getByRole('status').filter({ hasText: '已导入 1 个集合，覆盖 1 个，跳过 0 个' }).waitFor({ timeout: 10_000 })
     const afterApply = await page.evaluate(() => window.aiv.listVisionClipCollections())

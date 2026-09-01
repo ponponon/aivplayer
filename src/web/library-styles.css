@@ -1,8 +1,22 @@
 /* Media-library extensions: the base Web layout stays intentionally compact on desktop. */
+.app-select { display: inline-flex; min-width: 0; min-height: 30px; align-items: center; justify-content: space-between; gap: 7px; padding: 0 8px; color: #d8d7d1; background: #121417; border: 1px solid #303238; border-radius: 6px; outline: none; cursor: pointer; font: inherit; font-size: 11px; text-align: left; appearance: none; }
+.app-select:hover:not(:disabled), .app-select:focus-visible, .app-select[aria-expanded='true'] { color: #f0eee8; border-color: #9d6d32; }
+.app-select:disabled { cursor: not-allowed; opacity: .45; }
+.app-select-value, .app-select-option-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-select-chevron { flex: 0 0 auto; color: #858a91; }
+.app-select[aria-expanded='true'] .app-select-chevron { color: #e5b466; transform: rotate(180deg); }
+.app-select-menu { box-sizing: border-box; display: grid; gap: 3px; max-height: min(320px, calc(100vh - 16px)); padding: 5px; overflow-y: auto; color: #d8d7d1; background: #17191c; border: 1px solid #4b4f56; border-radius: 6px; box-shadow: 0 14px 36px rgba(0, 0, 0, .42); z-index: 2000; }
+.app-select-option { display: flex; min-width: 0; min-height: 29px; align-items: center; justify-content: space-between; gap: 8px; padding: 0 8px; color: #b8babd; background: transparent; border: 1px solid transparent; border-radius: 4px; cursor: pointer; font: inherit; font-size: 11px; text-align: left; }
+.app-select-option:hover, .app-select-option.is-highlighted { color: #f0eee8; background: #25282d; border-color: #303238; }
+.app-select-option.is-selected { color: #e5b466; background: rgba(211, 154, 75, .14); border-color: rgba(211, 154, 75, .32); }
+.app-select-option:focus-visible { outline: 2px solid #dda052; outline-offset: -2px; }
+.app-select-option:disabled { cursor: not-allowed; opacity: .42; }
+.app-select-option-check { flex: 0 0 auto; opacity: 0; }
+.app-select-option.is-selected .app-select-option-check { opacity: 1; }
 .library-toolbar { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 10px; }
 .library-toolbar label, .media-select { display: grid; gap: 5px; color: #777c83; font-size: 10px; }
-.library-toolbar select, .media-select select { width: 100%; min-height: 30px; padding: 0 7px; color: #d8d7d1; background: #121417; border: 1px solid #303238; border-radius: 6px; outline: none; font-size: 11px; }
-.library-toolbar select:focus, .media-select select:focus { border-color: #c98737; }
+.library-toolbar .app-select, .media-select .app-select { width: 100%; min-height: 30px; padding: 0 7px; color: #d8d7d1; background: #121417; border: 1px solid #303238; border-radius: 6px; outline: none; font-size: 11px; }
+.library-toolbar .app-select:focus, .media-select .app-select:focus { border-color: #c98737; }
 .library-view-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 10px; padding: 3px; background: #121417; border: 1px solid #27292d; border-radius: 7px; }
 .library-view-toggle button { min-height: 27px; padding: 0 8px; color: #777c83; background: transparent; border: 0; border-radius: 5px; cursor: pointer; font-size: 10px; white-space: nowrap; }
 .library-view-toggle button:hover { color: #d8d7d1; background: #1a1c20; }

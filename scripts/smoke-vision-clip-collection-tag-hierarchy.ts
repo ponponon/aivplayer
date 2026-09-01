@@ -1,3 +1,4 @@
+import { selectAppOption } from './smoke-select.ts'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -27,7 +28,7 @@ async function openVisionPanel(page: Page): Promise<void> {
 
 async function saveParentMetadata(page: Page, tag: string, parentTag: string): Promise<void> {
   await page.getByRole('button', { name: new RegExp(`^${tag} · 1 个集合$`) }).click()
-  await page.getByRole('combobox', { name: '父标签', exact: true }).selectOption({ label: parentTag })
+  await selectAppOption(page, page.getByRole('combobox', { name: '父标签', exact: true }), { label: parentTag })
   await page.getByRole('button', { name: '保存样式', exact: true }).click()
   await page.getByRole('status').filter({ hasText: `已保存标签“${tag}”的样式设置` }).waitFor({ timeout: 10_000 })
 }

@@ -1,3 +1,4 @@
+import { selectAppOption } from './smoke-select.ts'
 import { appendFile, mkdir, mkdtemp, rm, stat, unlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -140,10 +141,10 @@ async function runSmoke(): Promise<void> {
       throw new Error(`证据来源审计状态不完整：${await panel.locator('.vision-evidence-source').allTextContents()}`)
     }
 
-    await panel.getByTestId('vision-evidence-audit-filter').selectOption('missing')
+    await selectAppOption(session.page, panel.getByTestId('vision-evidence-audit-filter'), 'missing')
     await waitForSourceCount(panel, 1)
     if (await panel.locator('.vision-evidence-source strong').textContent() !== 'missing.mp4') throw new Error('missing 状态筛选未命中缺失来源')
-    await panel.getByTestId('vision-evidence-audit-filter').selectOption('all')
+    await selectAppOption(session.page, panel.getByTestId('vision-evidence-audit-filter'), 'all')
     await waitForSourceCount(panel, 3)
 
     const currentRow = panel.locator('.vision-evidence-source').filter({ hasText: 'current.mp4' })

@@ -140,7 +140,7 @@ export function useEditingTimelineSelection(
 
   const handleTimelineKeyDown = (event: KeyboardEvent<HTMLDivElement>): void => {
     const target = event.target
-    if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) return
+    if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement || target instanceof HTMLElement && Boolean(target.closest('.app-select, .app-select-menu'))) return
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'a') { event.preventDefault(); selectAllTimelineItems(); return }
     if ((event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === 'd') { event.preventDefault(); duplicateTimelineSelection(); return }
     if (selectionCount > 0 && (event.key === 'Delete' || event.key === 'Backspace')) { event.preventDefault(); deleteTimelineSelection() }

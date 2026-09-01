@@ -1,3 +1,4 @@
+import { selectAppOption } from './smoke-select.ts'
 import { execFile } from 'node:child_process'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -111,7 +112,7 @@ async function runSmoke(): Promise<void> {
     if (shownEntries.length !== 2 || shownEntries.some((entry) => entry.hidden)) throw new Error(`批量显示未生效：${JSON.stringify(shownCatalog)}`)
 
     await selectBatchRows(firstSession.page)
-    await firstSession.page.getByRole('combobox', { name: '批量合并目标' }).selectOption('custom-batch-target')
+    await selectAppOption(firstSession.page, firstSession.page.getByRole('combobox', { name: '批量合并目标' }), 'custom-batch-target')
     await firstSession.page.getByRole('button', { name: '批量合并' }).click()
     await firstSession.page.waitForFunction(() => {
       const rows = [...document.querySelectorAll('.vision-entity-catalog-row')]

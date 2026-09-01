@@ -162,7 +162,7 @@ describe('vision clip collection tag manager UI wiring', () => {
     expect(styles).toContain('.vision-collection-tag-manager-note textarea')
     expect(styles).toContain('.vision-collection-tag-manager-favorite')
     expect(styles).toContain('.vision-collection-tag-manager-filter')
-    expect(styles).toContain('.vision-collection-tag-manager-filter label select')
+    expect(styles).toContain('.vision-collection-tag-manager-filter label .app-select')
     expect(styles).toContain('.vision-collection-tag-manager-metadata')
     expect(styles).toContain(".vision-collection-tag-manager-metadata-controls input[type='color']")
     expect(styles).toContain('.vision-collection-tag-manager-undo')

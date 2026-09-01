@@ -1,3 +1,4 @@
+import { AppSelect } from '../../../shared/app-select'
 import { Check, Edit3, Plus, Search, Trash2, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { DramaAsset, DramaAssetInput, DramaAssetStatus, DramaAssetType } from '../../../shared/drama-types'
@@ -81,7 +82,7 @@ export function DramaAssetLibrary({ assets, copy, busy, onSave, onDelete }: Dram
       <div className="drama-asset-editor-heading"><strong>{editingAssetId ? copy.assetEdit : copy.assetAdd}</strong><button className="drama-icon-button" type="button" onClick={cancelEdit} title={copy.assetCancel} aria-label={copy.assetCancel}><X size={13} /></button></div>
       <div className="drama-asset-editor-fields">
         <label><span>{copy.assetName}</span><input value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.currentTarget.value }))} autoFocus /></label>
-        <label><span>{copy.assetFilterAll}</span><select value={draft.assetType} onChange={(event) => setDraft((current) => ({ ...current, assetType: event.currentTarget.value as DramaAssetType }))}><option value="character">{copy.assetFilterCharacter}</option><option value="location">{copy.assetFilterLocation}</option><option value="prop">{copy.assetFilterProp}</option></select></label>
+        <label><span>{copy.assetFilterAll}</span><AppSelect value={draft.assetType} onChange={(event) => setDraft((current) => ({ ...current, assetType: event.currentTarget.value as DramaAssetType }))}><option value="character">{copy.assetFilterCharacter}</option><option value="location">{copy.assetFilterLocation}</option><option value="prop">{copy.assetFilterProp}</option></AppSelect></label>
         <label><span>{copy.assetDescription}</span><textarea value={draft.description} onChange={(event) => setDraft((current) => ({ ...current, description: event.currentTarget.value }))} rows={2} /></label>
         <label><span>{copy.assetVisualPrompt}</span><textarea value={draft.visualPrompt} onChange={(event) => setDraft((current) => ({ ...current, visualPrompt: event.currentTarget.value }))} rows={3} /></label>
       </div>

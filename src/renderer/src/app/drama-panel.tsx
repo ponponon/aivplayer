@@ -1,3 +1,4 @@
+import { AppSelect } from '../../../shared/app-select'
 import { BookOpen, Clapperboard, FilePlus, RefreshCw, Sparkles, TestTube, Upload } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { DramaAsset, DramaAssetInput, DramaAssetStatus, DramaGenerationMediaType, DramaGenerationTask, DramaGenerationTaskInput, DramaGraphTemplate, DramaGraphTemplateInput, DramaMediaProviderSettings, DramaMediaProviderSettingsInput, DramaProject, DramaProjectData, DramaProviderSettings } from '../../../shared/drama-types'
@@ -247,7 +248,7 @@ export function DramaPanel(): React.ReactElement {
 
     <section className="drama-card drama-project-card">
       <div className="drama-section-heading"><strong>{copy.chooseProject}</strong><button className="drama-icon-button" type="button" onClick={() => void refreshProjects()} title={copy.refresh} aria-label={copy.refresh}><RefreshCw size={14} /></button></div>
-      {projects.length > 0 ? <select value={selectedProjectId} onChange={(event) => setSelectedProjectId(event.target.value)} aria-label={copy.chooseProject}>{projects.map((project) => <option key={project.id} value={project.id}>{project.title}</option>)}</select> : <div className="drama-empty"><BookOpen size={18} /><span>{copy.noProjects}</span><small>{copy.createFirst}</small></div>}
+      {projects.length > 0 ? <AppSelect value={selectedProjectId} onChange={(event) => setSelectedProjectId(event.target.value)} aria-label={copy.chooseProject}>{projects.map((project) => <option key={project.id} value={project.id}>{project.title}</option>)}</AppSelect> : <div className="drama-empty"><BookOpen size={18} /><span>{copy.noProjects}</span><small>{copy.createFirst}</small></div>}
       <div className="drama-create-fields"><input value={title} onChange={(event) => setTitle(event.target.value)} placeholder={copy.titlePlaceholder} aria-label={copy.titlePlaceholder} /><input value={genre} onChange={(event) => setGenre(event.target.value)} placeholder={copy.genrePlaceholder} aria-label={copy.genrePlaceholder} /></div>
       <div className="drama-actions"><button className="drama-primary-action" type="button" onClick={createProject} disabled={!title.trim() || busy}><FilePlus size={14} />{copy.create}</button><button className="drama-secondary-action" type="button" onClick={() => fileInputRef.current?.click()} disabled={!selectedProjectId || busy}><Upload size={14} />{copy.import}</button><input ref={fileInputRef} className="drama-file-input" type="file" accept=".txt,.md,.markdown,text/plain,text/markdown" onChange={importNovel} /></div>
     </section>

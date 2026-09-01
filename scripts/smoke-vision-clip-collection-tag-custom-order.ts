@@ -1,3 +1,4 @@
+import { selectAppOption } from './smoke-select.ts'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -62,7 +63,7 @@ async function runSmoke(): Promise<void> {
     await openVisionPanel(page)
 
     const sort = page.locator('.vision-collection-tag-manager-filter').getByRole('combobox', { name: '排序', exact: true })
-    await sort.selectOption('custom')
+    await selectAppOption(page, sort, 'custom')
     const initialOrder = await readTagOrder(page)
     if (initialOrder.length !== 3) throw new Error(`Custom order fixture mismatch: ${JSON.stringify(initialOrder)}`)
     const movableTag = initialOrder[initialOrder.length - 1]!
@@ -70,13 +71,13 @@ async function runSmoke(): Promise<void> {
     await page.getByRole('button', { name: `上移标签: ${movableTag}`, exact: true }).click()
     const movedOrder = await readTagOrder(page)
     if (movedOrder[movedOrder.length - 2] !== movableTag) throw new Error(`Custom order move mismatch: ${JSON.stringify({ initialOrder, movedOrder, movableTag })}`)
-    await page.waitForFunction(() => (document.querySelector('.vision-collection-tag-manager-filter select[aria-label="排序"]') as HTMLSelectElement | null)?.value === 'custom')
+    await page.waitForFunction(() => (document.querySelector('.vision-collection-tag-manager-filter .app-select[aria-label="排序"]') as HTMLElement | null)?.dataset.selectValue === 'custom')
 
     await page.reload({ waitUntil: 'domcontentloaded' })
     await openVisionPanel(page)
     const persistedSort = page.locator('.vision-collection-tag-manager-filter').getByRole('combobox', { name: '排序', exact: true })
     await persistedSort.waitFor({ timeout: 10_000 })
-    await page.waitForFunction(() => (document.querySelector('.vision-collection-tag-manager-filter select[aria-label="排序"]') as HTMLSelectElement | null)?.value === 'custom')
+    await page.waitForFunction(() => (document.querySelector('.vision-collection-tag-manager-filter .app-select[aria-label="排序"]') as HTMLElement | null)?.dataset.selectValue === 'custom')
     const persistedOrder = await readTagOrder(page)
     if (JSON.stringify(persistedOrder) !== JSON.stringify(movedOrder)) throw new Error(`Custom order was not persisted: ${JSON.stringify({ movedOrder, persistedOrder })}`)
 

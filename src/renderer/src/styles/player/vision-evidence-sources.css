@@ -30,7 +30,7 @@
   color: var(--text-muted);
 }
 
-.vision-evidence-audit-filter select {
+.vision-evidence-audit-filter .app-select {
   max-width: 120px;
   min-height: 25px;
   padding: 0 5px;

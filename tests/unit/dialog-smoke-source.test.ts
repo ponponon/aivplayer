@@ -159,7 +159,7 @@ describe('dialog smoke source constraints', () => {
     expect(smokeScript).toContain("subtitleSection?.querySelector('.settings-textarea')")
     expect(smokeScript).toContain('persistedSettings.asr.translationGlossary')
     expect(smokeScript).toContain("subtitleSection.querySelectorAll('.settings-number')")
-    expect(smokeScript).toContain("subtitleSection.querySelectorAll('.settings-select')")
+    expect(smokeScript).toContain("subtitleSection.querySelectorAll<HTMLElement>('.settings-select')")
     expect(smokeScript).toContain("dialogState.subtitleSectionNumberValues.includes('21')")
     expect(smokeScript).toContain("dialogState.subtitleSectionSelectValues.includes('relaxed')")
     expect(smokeScript).toContain("dialogState.subtitleSectionSelectValues.includes('source')")

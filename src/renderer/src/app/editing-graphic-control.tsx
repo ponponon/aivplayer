@@ -1,3 +1,4 @@
+import { AppSelect } from '../../../shared/app-select'
 import { useEffect, useRef, useState } from 'react'
 import type { EditingElementAsset } from '../../../core/editing/element-assets'
 import type { EditingGraphicPosition, EditingGraphicStyle } from '../../../shared/editing-types'
@@ -86,8 +87,8 @@ export function EditingGraphicControl({ title, textLabel, textPlaceholder, addLa
         </div>
       </div>
       <label className="editing-graphic-field"><span>{textLabel}</span><input value={text} onChange={(event) => setText(event.currentTarget.value)} placeholder={textPlaceholder} data-testid="editing-graphic-text" /></label>
-      <label className="editing-graphic-field"><span>{positionLabel}</span><select value={position} onChange={(event) => setPosition(event.currentTarget.value as EditingGraphicPosition)}>{(Object.keys(positionLabels) as EditingGraphicPosition[]).map((key) => <option key={key} value={key}>{positionLabels[key]}</option>)}</select></label>
-      <label className="editing-graphic-field"><span>{styleLabel}</span><select value={style} onChange={(event) => setStyle(event.currentTarget.value as EditingGraphicStyle)}><option value="title">{titleStyleLabel}</option><option value="label">{labelStyleLabel}</option></select></label>
+      <label className="editing-graphic-field"><span>{positionLabel}</span><AppSelect value={position} onChange={(event) => setPosition(event.currentTarget.value as EditingGraphicPosition)}>{(Object.keys(positionLabels) as EditingGraphicPosition[]).map((key) => <option key={key} value={key}>{positionLabels[key]}</option>)}</AppSelect></label>
+      <label className="editing-graphic-field"><span>{styleLabel}</span><AppSelect value={style} onChange={(event) => setStyle(event.currentTarget.value as EditingGraphicStyle)}><option value="title">{titleStyleLabel}</option><option value="label">{labelStyleLabel}</option></AppSelect></label>
       <label className="editing-graphic-duration"><span>{durationLabel}</span><input type="range" min="0.2" max={maxDuration} step="0.1" value={Math.min(durationSeconds, maxDuration)} onChange={(event) => setDurationSeconds(Number(event.currentTarget.value))} /><output>{Math.min(durationSeconds, maxDuration).toFixed(1)}s</output></label>
       <button className="editing-graphic-add" type="submit" disabled={!text.trim() || timelineDuration - currentTime < 0.2} data-testid="editing-graphic-add">{addLabel}</button>
     </form>

@@ -73,7 +73,7 @@ async function main(): Promise<void> {
         ? (Array.from(subtitleSection.querySelectorAll('.settings-number')) as HTMLInputElement[])
         : []
       const selects = subtitleSection
-        ? (Array.from(subtitleSection.querySelectorAll('.settings-select')) as HTMLSelectElement[])
+        ? Array.from(subtitleSection.querySelectorAll<HTMLElement>('.settings-select'))
         : []
       const glossary = subtitleSection?.querySelector('.settings-textarea') as HTMLTextAreaElement | null
 
@@ -81,7 +81,7 @@ async function main(): Promise<void> {
         hasDialog: Boolean(dialog),
         hasSubtitleSection: Boolean(subtitleSection),
         subtitleSectionNumberValues: inputs.map((input) => input.value),
-        subtitleSectionSelectValues: selects.map((select) => select.value),
+        subtitleSectionSelectValues: selects.map((select) => select.dataset.selectValue ?? ''),
         translationGlossary: glossary?.value ?? ''
       }
     })

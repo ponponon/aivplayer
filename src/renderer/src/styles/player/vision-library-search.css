@@ -189,7 +189,7 @@
   font-size: 9px;
 }
 
-.vision-saved-search-import-conflict select {
+.vision-saved-search-import-conflict .app-select {
   min-height: 25px;
   padding: 0 6px;
   color: var(--text-primary);
@@ -199,7 +199,7 @@
   font-size: 9px;
 }
 
-.vision-saved-search-import-conflict select:focus {
+.vision-saved-search-import-conflict .app-select:focus {
   border-color: var(--accent);
   outline: 1px solid var(--accent);
   outline-offset: 1px;

@@ -4,6 +4,7 @@
  * descriptive stylesheet instead of competing for a numeric slot.
  */
 @import './player/app-shell.css';
+@import './player/app-select.css';
 @import './player/app-notification-stack.css';
 @import './player/app-updater.css';
 @import './player/app-update-dialog.css';

@@ -1,3 +1,4 @@
+import { selectAppOption } from './smoke-select.ts'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -76,11 +77,11 @@ async function runSmoke(): Promise<void> {
 
     const historyTypeFilter = historyCard.getByRole('combobox', { name: '操作类型', exact: true })
     const historyStatusFilter = historyCard.getByRole('combobox', { name: '状态', exact: true })
-    await historyTypeFilter.selectOption('flags')
+    await selectAppOption(page, historyTypeFilter, 'flags')
     if (await historyCard.locator('.vision-collection-operation-history-entry').count() !== 1 || !(await historyCard.locator('.vision-collection-operation-history-entry').first().textContent())?.includes('收藏 / 归档')) throw new Error('Collection history type filter should keep only flag operations')
-    await historyStatusFilter.selectOption('undone')
+    await selectAppOption(page, historyStatusFilter, 'undone')
     if (await historyCard.locator('.vision-collection-operation-history-entry').count() !== 0 || await historyCard.getByText('没有符合当前筛选条件的集合历史。', { exact: true }).count() !== 1) throw new Error('Collection history status filter should render its empty state')
-    await historyStatusFilter.selectOption('all')
+    await selectAppOption(page, historyStatusFilter, 'all')
     await page.evaluate(() => {
       const scope = window as unknown as { __aivplayerCollectionHistoryExport?: { blob: Blob; fileName: string } }
       const originalCreateObjectURL = URL.createObjectURL.bind(URL)
@@ -106,7 +107,7 @@ async function runSmoke(): Promise<void> {
     if (exportedHistoryManifest.schemaVersion !== 1 || exportedHistoryManifest.typeFilter !== 'flags' || exportedHistoryManifest.statusFilter !== 'all' || exportedHistoryManifest.entries.length !== 1 || exportedHistoryManifest.entries[0]?.type !== 'flags' || exportedHistoryManifest.entries[0]?.status !== 'active') {
       throw new Error(`Collection history export manifest mismatch: ${JSON.stringify(exportedHistoryManifest)}`)
     }
-    await historyTypeFilter.selectOption('all')
+    await selectAppOption(page, historyTypeFilter, 'all')
 
     await historyCard.getByRole('button', { name: '全选可撤销', exact: true }).click()
     await historyCard.getByRole('button', { name: '批量撤销选中操作', exact: true }).click()

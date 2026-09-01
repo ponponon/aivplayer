@@ -1,3 +1,4 @@
+import { AppSelect } from '../../../shared/app-select'
 import { ScanSearch } from 'lucide-react'
 import type { LocaleCopy } from '../../../shared/i18n'
 import type { VisionSearchResult, VisionSearchResultsExportFormat, VisionSearchSortMode } from '../../../shared/vision-types'
@@ -66,11 +67,11 @@ export function VisionSearchResults({ copy, results, thumbnailUrls, onOpenResult
     <div className="vision-results-toolbar">
       {isSimilarSearch ? <button className="vision-results-selection-action" type="button" data-testid="vision-similar-return" onClick={onReturnToSearch}>{copy.returnToSearchResults}</button> : null}
       <span>{copy.searchSortLabel}</span>
-      <select value={sortMode} aria-label={copy.searchSortLabel} onChange={(event) => onSortModeChange(event.target.value as VisionSearchSortMode)}>
+      <AppSelect value={sortMode} aria-label={copy.searchSortLabel} onChange={(event) => onSortModeChange(event.target.value as VisionSearchSortMode)}>
         <option value="relevance">{copy.searchSortRelevance}</option>
         <option value="source-time">{copy.searchSortSourceTime}</option>
         <option value="file-name">{copy.searchSortFileName}</option>
-      </select>
+      </AppSelect>
       <button className="vision-results-selection-action" type="button" onClick={onSelectAllResults} disabled={sortedResults.length === 0}>{copy.selectAllResults}</button>
       <button className="vision-results-selection-action" type="button" onClick={onClearResults} disabled={selectedIds.size === 0}>{copy.clearSelectedResults}</button>
       <span>{copy.exportSearchResults}</span>

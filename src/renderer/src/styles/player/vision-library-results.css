@@ -14,7 +14,7 @@
   font-size: 9px;
 }
 
-.vision-results-toolbar select {
+.vision-results-toolbar .app-select {
   min-height: 25px;
   max-width: 130px;
   padding: 0 5px;
@@ -120,7 +120,7 @@
   font-size: 9px;
 }
 
-.vision-library-source-filters select {
+.vision-library-source-filters .app-select {
   min-height: 25px;
   max-width: 120px;
   padding: 0 5px;
@@ -481,7 +481,7 @@
 }
 
 .vision-object-detection-filters input,
-.vision-object-detection-filters select {
+.vision-object-detection-filters .app-select {
   min-width: 0;
   min-height: 25px;
   padding: 0 6px;
@@ -494,7 +494,7 @@
 }
 
 .vision-object-detection-filters input:focus,
-.vision-object-detection-filters select:focus {
+.vision-object-detection-filters .app-select:focus {
   border-color: var(--accent);
   outline: none;
 }
@@ -1146,7 +1146,7 @@
   font-size: 9px;
 }
 
-.vision-collection-tag-manager-import-conflict select {
+.vision-collection-tag-manager-import-conflict .app-select {
   min-height: 25px;
   padding: 0 6px;
   color: var(--text-primary);
@@ -1156,7 +1156,7 @@
   font-size: 9px;
 }
 
-.vision-collection-tag-manager-import-conflict select:focus {
+.vision-collection-tag-manager-import-conflict .app-select:focus {
   border-color: var(--accent);
   outline: 1px solid var(--accent);
   outline-offset: 1px;
@@ -1255,7 +1255,7 @@
   outline: 0;
 }
 
-.vision-collection-tag-manager-metadata-controls select {
+.vision-collection-tag-manager-metadata-controls .app-select {
   min-width: 100px;
   min-height: 26px;
   padding: 0 6px;
@@ -1276,7 +1276,7 @@
   cursor: pointer;
 }
 
-.vision-collection-tag-manager-metadata-controls select:focus,
+.vision-collection-tag-manager-metadata-controls .app-select:focus,
 .vision-collection-tag-manager-metadata-controls input[type='color']:focus-visible {
   border-color: var(--accent);
   outline: 1px solid var(--accent);
@@ -1384,7 +1384,7 @@
   font-size: 8px;
 }
 
-.vision-collection-tag-history-toolbar select {
+.vision-collection-tag-history-toolbar .app-select {
   min-width: 116px;
   max-width: 180px;
   min-height: 25px;
@@ -1396,7 +1396,7 @@
   font-size: 9px;
 }
 
-.vision-collection-tag-history-toolbar select:focus-visible {
+.vision-collection-tag-history-toolbar .app-select:focus-visible {
   border-color: var(--accent);
   outline: 0;
 }
@@ -1802,7 +1802,7 @@
   font-size: 8px;
 }
 
-.vision-collection-operation-history-toolbar select {
+.vision-collection-operation-history-toolbar .app-select {
   min-width: 96px;
   min-height: 22px;
   padding: 0 5px;
@@ -1813,7 +1813,7 @@
   font-size: 8px;
 }
 
-.vision-collection-operation-history-toolbar select:focus-visible {
+.vision-collection-operation-history-toolbar .app-select:focus-visible {
   border-color: var(--accent);
   outline: 0;
 }
@@ -2316,7 +2316,7 @@
   accent-color: var(--accent);
 }
 
-.vision-collection-tag-manager-filter label select {
+.vision-collection-tag-manager-filter label .app-select {
   min-height: 26px;
   padding: 0 6px;
   color: var(--text-primary);
@@ -2326,7 +2326,7 @@
   font-size: 9px;
 }
 
-.vision-collection-tag-manager-filter label select:focus {
+.vision-collection-tag-manager-filter label .app-select:focus {
   border-color: var(--accent);
   outline: 0;
 }

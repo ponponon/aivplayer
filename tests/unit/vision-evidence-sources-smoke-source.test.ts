@@ -9,7 +9,7 @@ describe('vision evidence sources smoke', () => {
     const packageJson = JSON.parse(readFileSync(join(projectRoot, 'package.json'), 'utf8')) as { scripts?: Record<string, string> }
     const smoke = readFileSync(join(projectRoot, 'scripts/smoke-vision-evidence-sources.ts'), 'utf8')
     expect(packageJson.scripts?.['smoke:vision-evidence-sources']).toContain('smoke-vision-evidence-sources.ts')
-    expect(smoke).toContain("selectOption('missing')")
+    expect(smoke).toContain("selectAppOption(session.page, panel.getByTestId('vision-evidence-audit-filter'), 'missing')")
     expect(smoke).toContain('baseVisualPreserved')
     expect(smoke).toContain('vision-evidence-clear-selected')
   })

@@ -83,7 +83,7 @@
 .editing-graphic-field,
 .editing-graphic-duration { display: grid; grid-template-columns: 44px minmax(0, 1fr); align-items: center; gap: 7px; font-size: 9px; }
 .editing-graphic-field input,
-.editing-graphic-field select { min-width: 0; height: 25px; padding: 0 6px; color: var(--text-primary); background: var(--bg-surface); border: 1px solid var(--border-soft); border-radius: 4px; font-size: 10px; }
+.editing-graphic-field .app-select { min-width: 0; height: 25px; padding: 0 6px; color: var(--text-primary); background: var(--bg-surface); border: 1px solid var(--border-soft); border-radius: 4px; font-size: 10px; }
 .editing-graphic-duration { grid-template-columns: 44px minmax(70px, 1fr) 32px; }
 .editing-graphic-duration input { width: 100%; accent-color: var(--accent); }
 .editing-graphic-duration output { color: var(--text-muted); font-variant-numeric: tabular-nums; text-align: right; }

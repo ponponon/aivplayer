@@ -1,3 +1,4 @@
+import { selectAppOption } from './smoke-select.ts'
 import { createHash } from 'node:crypto'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { basename, join, normalize, resolve } from 'node:path'
@@ -134,9 +135,9 @@ async function runSmoke(): Promise<void> {
     await library.getByRole('checkbox', { name: '仅看收藏' }).uncheck()
 
     const sort = library.getByRole('combobox', { name: '排序' })
-    await sort.selectOption('name')
+    await selectAppOption(firstSession.page, sort, 'name')
     if ((await sourceNames(firstSession.page)).join('|') !== 'episode-2.mp4|episode-10.mp4|trailer.mp4') throw new Error(`文件名排序错误：${JSON.stringify(await sourceNames(firstSession.page))}`)
-    await sort.selectOption('frames')
+    await selectAppOption(firstSession.page, sort, 'frames')
     if ((await sourceNames(firstSession.page)).join('|') !== 'episode-2.mp4|episode-10.mp4|trailer.mp4') throw new Error(`帧数排序错误：${JSON.stringify(await sourceNames(firstSession.page))}`)
 
     const sidecar = sidecarPath(seeded.sources[0].videoPath)

@@ -27,7 +27,7 @@ export function useKeyboardShortcuts(model: AppModel, actions: KeyboardActions):
       if (model.videoRef.current) model.videoRef.current.playbackRate = previousRate
       model.setState((current) => ({ ...current, playbackRate: previousRate }))
     }
-    const isEditing = (target: EventTarget | null): boolean => target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement || target instanceof HTMLElement && target.isContentEditable
+  const isEditing = (target: EventTarget | null): boolean => target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement || target instanceof HTMLElement && (target.isContentEditable || Boolean(target.closest('.app-select, .app-select-menu')))
     const onKeyDown = (event: KeyboardEvent): void => {
       if (model.isDownloadDialogOpen || model.isSettingsDialogOpen || model.isAboutDialogOpen || model.isClipExportDialogOpen || model.isExportingClip) return
       if (event.key === 'Escape') {

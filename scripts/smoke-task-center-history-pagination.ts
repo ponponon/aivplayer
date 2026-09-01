@@ -1,3 +1,4 @@
+import { selectAppOption } from './smoke-select.ts'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -84,12 +85,12 @@ async function runSmoke(): Promise<void> {
     if (searchRows.length !== 1 || searchRows[0] !== '字幕 QA 历史任务') throw new Error(`Task center search mismatch: ${JSON.stringify(searchRows)}`)
 
     await taskCenter.locator('input[type="search"]').fill('')
-    await taskCenter.locator('select[aria-label="筛选状态"]').selectOption('failed')
+    await selectAppOption(page, taskCenter.locator('.app-select[aria-label="筛选状态"]'), 'failed')
     await waitForTaskRows(page, 5)
     const failedRows = await taskCenter.locator('.task-center-item.is-failed').count()
     if (failedRows !== 5) throw new Error(`Task center status filter mismatch: ${failedRows}`)
 
-    await taskCenter.locator('select[aria-label="筛选状态"]').selectOption('running')
+    await selectAppOption(page, taskCenter.locator('.app-select[aria-label="筛选状态"]'), 'running')
     await waitForTaskRows(page, 0)
     const liveEvent: TaskEvent = {
       id: 'smoke-live-task',

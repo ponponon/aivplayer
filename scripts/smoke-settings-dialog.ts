@@ -1,3 +1,4 @@
+import { selectAppOption } from './smoke-select.ts'
 import { mkdtemp } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -160,10 +161,28 @@ async function main(): Promise<void> {
     }))
     const managedRouteSelect = page.locator('[data-settings-section="ai"] .settings-select')
     const managedRouteSelectCount = await managedRouteSelect.count()
-    await managedRouteSelect.selectOption('worker')
+    const nativeSelectCount = await page.locator('select').count()
+    await managedRouteSelect.click()
+    await page.locator('.app-select-menu').waitFor({ state: 'visible', timeout: 5_000 })
+    const managedRouteMenuState = await page.evaluate(() => {
+      const menu = document.querySelector('.app-select-menu') as HTMLElement | null
+      return {
+        menuCount: document.querySelectorAll('.app-select-menu').length,
+        optionCount: menu?.querySelectorAll('[role="option"]').length ?? 0,
+        position: menu ? window.getComputedStyle(menu).position : 'missing',
+        zIndex: menu ? window.getComputedStyle(menu).zIndex : 'missing'
+      }
+    })
+    const managedRouteMenuScreenshotPath = join(smokeHomeDirectory, 'aivplayer-smoke-settings-route-menu.png')
+    await page.waitForTimeout(200)
+    await page.screenshot({ path: managedRouteMenuScreenshotPath, fullPage: false })
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(100)
+    const managedRouteMenuClosed = await page.locator('.app-select-menu').count() === 0
+    await selectAppOption(page, managedRouteSelect, 'worker')
     await page.waitForTimeout(350)
     const managedRouteWorkerState = await page.evaluate(async () => (await window.aiv.getAppSettings()).ai.managedTranslationRouteMode)
-    await managedRouteSelect.selectOption('domestic')
+    await selectAppOption(page, managedRouteSelect, 'domestic')
     await page.waitForTimeout(350)
     const managedRouteDomesticState = await page.evaluate(async () => (await window.aiv.getAppSettings()).ai.managedTranslationRouteMode)
     await page.locator('.ai-service-add-button').click()
@@ -202,7 +221,7 @@ async function main(): Promise<void> {
     await page.screenshot({ path: interfaceScreenshotPath, fullPage: false })
 
     const themeSelect = page.locator('#settings-section-interface .settings-select')
-    await themeSelect.selectOption('light')
+    await selectAppOption(page, themeSelect, 'light')
     await page.waitForTimeout(250)
 
     const lightThemeState = await page.evaluate(() => ({
@@ -362,7 +381,8 @@ async function main(): Promise<void> {
     console.log(`Light theme state: ${JSON.stringify(lightThemeState)}`)
     console.log(`Settings dialog heights: ${JSON.stringify(dialogHeightByTab)}`)
     console.log(`AI settings layout state: ${JSON.stringify(aiLayoutState)}`)
-    console.log(`AI service configuration state: ${JSON.stringify({ initial: aiServiceInitialState, routeWorker: managedRouteWorkerState, routeDomestic: managedRouteDomesticState, afterAdd: aiServiceEditorState, afterEscape: aiServiceEscapeState, afterCancel: aiServiceCancelState })}`)
+    console.log(`AI service configuration state: ${JSON.stringify({ initial: aiServiceInitialState, routeWorker: managedRouteWorkerState, routeDomestic: managedRouteDomesticState, afterAdd: aiServiceEditorState, afterEscape: aiServiceEscapeState, afterCancel: aiServiceCancelState, nativeSelectCount, managedRouteMenuState, managedRouteMenuClosed })}`)
+    console.log(`AI service route menu screenshot: ${managedRouteMenuScreenshotPath}`)
     console.log(`AI service editor screenshot: ${aiServiceEditorScreenshotPath}`)
     console.log(`Settings panel visibility: ${JSON.stringify(settingsPanelVisibilityByTab)}`)
     console.log(`About visibility by tab: ${JSON.stringify(aboutVisibilityByTab)}`)
@@ -408,6 +428,12 @@ async function main(): Promise<void> {
       managedRouteWorkerState !== 'worker' ||
       managedRouteDomesticState !== 'domestic' ||
       managedRouteSelectCount === 0 ||
+      nativeSelectCount !== 0 ||
+      managedRouteMenuState.menuCount !== 1 ||
+      managedRouteMenuState.optionCount < 3 ||
+      managedRouteMenuState.position !== 'fixed' ||
+      managedRouteMenuState.zIndex === 'auto' ||
+      !managedRouteMenuClosed ||
       aiServiceInitialState.tableRows !== aiServiceInitialState.providerCount ||
       !aiServiceInitialState.tableRadius ||
       aiServiceInitialState.tableRadius === '0px' ||

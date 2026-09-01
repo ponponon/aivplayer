@@ -1,3 +1,4 @@
+import { selectAppOption } from './smoke-select.ts'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -74,7 +75,7 @@ async function runSmoke(): Promise<void> {
     if (metadataHistory.length !== 1 || !metadataHistory[0]?.includes('样式 / 元数据') || !metadataHistory[0]?.includes('已应用')) {
       throw new Error(`Metadata operation should appear in history: ${JSON.stringify(metadataHistory)}`)
     }
-    await page.getByRole('combobox', { name: '操作类型', exact: true }).selectOption('metadata')
+    await selectAppOption(page, page.getByRole('combobox', { name: '操作类型', exact: true }), 'metadata')
     if (await historyEntries.count() !== 1 || !(await historyEntries.first().textContent())?.includes('样式 / 元数据')) throw new Error('Metadata history filter should keep only style operations')
     await page.evaluate(() => {
       const scope = window as unknown as { __aivplayerTagHistoryExport?: { blob: Blob; fileName: string } }
@@ -101,7 +102,7 @@ async function runSmoke(): Promise<void> {
     if (exportedHistoryManifest.schemaVersion !== 1 || exportedHistoryManifest.filter !== 'metadata' || exportedHistoryManifest.entries.length !== 1 || exportedHistoryManifest.entries[0]?.type !== 'metadata') {
       throw new Error(`Tag history export manifest mismatch: ${JSON.stringify(exportedHistoryManifest)}`)
     }
-    await page.getByRole('combobox', { name: '操作类型', exact: true }).selectOption('all')
+    await selectAppOption(page, page.getByRole('combobox', { name: '操作类型', exact: true }), 'all')
     await page.getByRole('button', { name: '海边 · 2 个集合', exact: true }).click()
     await confirmCleanup(page)
     await page.getByRole('status').filter({ hasText: '已从 2 个集合中清理标签：海边' }).waitFor({ timeout: 10_000 })

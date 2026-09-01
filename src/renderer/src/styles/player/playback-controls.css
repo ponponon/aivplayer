@@ -95,7 +95,7 @@
 
 .segment-popover-button,
 .segment-name-input,
-.segment-color-field select {
+.segment-color-field .app-select {
   min-height: 28px;
   color: var(--text-secondary);
   background: rgba(var(--overlay-rgb), 0.07);
@@ -131,7 +131,7 @@
   font-size: 10px;
 }
 
-.segment-color-field select {
+.segment-color-field .app-select {
   min-width: 110px;
   padding: 0 5px;
 }

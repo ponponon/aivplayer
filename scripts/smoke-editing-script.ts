@@ -1,3 +1,4 @@
+import { selectAppOption } from './smoke-select.ts'
 import { _electron as electron } from 'playwright'
 import { execFile } from 'node:child_process'
 import { copyFile, mkdtemp, stat, writeFile } from 'node:fs/promises'
@@ -278,7 +279,7 @@ async function main(): Promise<void> {
     await page.locator('[data-testid="editing-undo"]').click()
     await page.waitForFunction((before) => (document.querySelectorAll('.editing-graphic-item')[document.querySelectorAll('.editing-graphic-item').length - 1] as HTMLElement | undefined)?.style.width === before, graphicTrimBefore)
     await page.locator('[data-testid="editing-video-block-control"] .editing-video-block-summary').click()
-    await page.locator('[data-testid="editing-video-block-position"]').selectOption('split-left')
+    await selectAppOption(page, page.locator('[data-testid="editing-video-block-position"]'), 'split-left')
     await page.locator('[data-testid="editing-video-block-add"]').click()
     await page.waitForSelector('.editing-video-block.is-split-left')
     await page.waitForFunction(() => document.querySelector('video.video-surface')?.classList.contains('is-split-left') === true)
@@ -286,8 +287,8 @@ async function main(): Promise<void> {
     await page.locator('[data-testid="editing-video-block-edit-radius"]').fill('18')
     await page.locator('[data-testid="editing-video-block-edit-border"]').fill('4')
     await page.locator('[data-testid="editing-video-block-edit-source-start"]').fill('10')
-    await page.locator('[data-testid="editing-video-block-edit-enter"]').selectOption('slide-left')
-    await page.locator('[data-testid="editing-video-block-edit-exit"]').selectOption('fade')
+    await selectAppOption(page, page.locator('[data-testid="editing-video-block-edit-enter"]'), 'slide-left')
+    await selectAppOption(page, page.locator('[data-testid="editing-video-block-edit-exit"]'), 'fade')
     await page.locator('[data-testid="editing-video-block-edit-motion-duration"]').fill('0.5')
     await page.waitForFunction(() => { const block = document.querySelector('.editing-video-block') as HTMLVideoElement | null; const surface = document.querySelector('video.video-surface') as HTMLVideoElement | null; return block?.style.width === '60%' && block.style.borderRadius === '18px' && block.style.borderWidth === '4px' && block.style.transform.includes('translateX') && surface?.style.width === '40%' })
     const videoBlockMotionPreview = await page.evaluate(() => { const block = document.querySelector('.editing-video-block') as HTMLVideoElement | null; return { transform: block?.style.transform ?? '', opacity: block?.style.opacity ?? '' } })

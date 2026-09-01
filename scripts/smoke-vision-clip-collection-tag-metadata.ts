@@ -1,3 +1,4 @@
+import { readAppSelectValue, selectAppOption } from './smoke-select.ts'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -70,7 +71,7 @@ async function runSmoke(): Promise<void> {
     await openVisionPanel(page)
     await page.getByRole('button', { name: '海边 · 2 个集合', exact: true }).click()
 
-    await page.getByRole('combobox', { name: '父标签', exact: true }).selectOption({ label: '采访' })
+    await selectAppOption(page, page.getByRole('combobox', { name: '父标签', exact: true }), { label: '采访' })
     await setColorInput(page, 0, '#aabbcc')
     await setColorInput(page, 1, '#101010')
     await page.getByRole('button', { name: '保存样式', exact: true }).click()
@@ -94,7 +95,7 @@ async function runSmoke(): Promise<void> {
     const persistedStyledMetadata = persistedMetadata.find((item) => item.tag === '海边')
     if (JSON.stringify(persistedStyledMetadata) !== JSON.stringify(styledMetadata)) throw new Error(`Metadata should persist after reload: ${JSON.stringify(persistedMetadata)}`)
     if ((await page.locator('input[type="color"]').nth(0).inputValue()) !== '#aabbcc') throw new Error('Background color should reload from metadata')
-    if ((await page.getByRole('combobox', { name: '父标签', exact: true }).inputValue()) !== '采访') throw new Error('Parent tag should reload from metadata')
+    if ((await readAppSelectValue(page.getByRole('combobox', { name: '父标签', exact: true }))) !== '采访') throw new Error('Parent tag should reload from metadata')
 
     if (screenshotPath) {
       await page.locator('.vision-collection-tag-manager').scrollIntoViewIfNeeded()

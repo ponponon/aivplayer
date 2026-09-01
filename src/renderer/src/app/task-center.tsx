@@ -1,3 +1,4 @@
+import { AppSelect } from '../../../shared/app-select'
 import { CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CircleAlert, Clock3, ListTodo, LoaderCircle, PauseCircle, RefreshCw, RotateCcw, Search, Trash2, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { filterTaskCenterEvents, paginateTaskCenterEvents, type TaskCenterFilter } from '../../../core/tasks/task-center-model'
@@ -100,10 +101,10 @@ export function TaskCenter({ copy }: TaskCenterProps): React.ReactElement | null
     {expanded ? <>
       <div className="task-center-filters">
         <label className="task-center-search"><Search size={12} /><input type="search" value={query} aria-label={copy.searchPlaceholder} placeholder={copy.searchPlaceholder} onChange={(event) => updateQuery(event.target.value)} /></label>
-        <select aria-label={copy.filterLabel} value={status} onChange={(event) => updateStatus(event.target.value as TaskCenterFilter)}>
+        <AppSelect aria-label={copy.filterLabel} value={status} onChange={(event) => updateStatus(event.target.value as TaskCenterFilter)}>
           <option value="all">{copy.filterAll}</option>
           {TASK_CENTER_STATUS_OPTIONS.map((item) => <option key={item} value={item}>{copy.statuses[item]}</option>)}
-        </select>
+        </AppSelect>
       </div>
       <div className="task-center-result-count">{copy.resultCount(filteredEvents.length, events.length)}</div>
     <ol className="task-center-list">{visibleEvents.length > 0 ? visibleEvents.map((event) => <TaskRow key={event.id} event={event} copy={copy} onCancel={cancelTask} onRetry={retryTask} onRecreate={recreateTask} onDelete={(task) => removeEvent(task.id)} />) : <li className="task-center-empty">{copy.noResults}</li>}</ol>

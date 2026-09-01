@@ -165,9 +165,35 @@ function renderLocale(locale) {
       ? 'https://releases.quniv.cn/aivplayer/site/screenshots/settings-panel.png'
       : 'https://releases.quniv.cn/aivplayer/site/screenshots/settings-panel-en.png'
   }
-  const select = document.getElementById('language-select')
-  if (select) select.value = localStorage.getItem(STORAGE_KEY) || 'auto'
+  const languageSelect = document.getElementById('language-select')
+  const selectedLanguage = localStorage.getItem(STORAGE_KEY) || 'auto'
+  if (languageSelect) {
+    const selectedOption = languageSelect.closest('.language-picker')?.querySelector(`[data-language-value="${selectedLanguage}"]`)
+    languageSelect.dataset.value = selectedLanguage
+    languageSelect.querySelector('.language-select-value').textContent = selectedLanguage === 'auto'
+      ? getValue(locale, 'language.auto')
+      : selectedOption?.querySelector(':scope > span:not(.language-option-check)')?.textContent?.trim() ?? selectedLanguage
+    languageSelect.setAttribute('aria-expanded', 'false')
+    languageSelect.closest('.language-picker')?.querySelectorAll('[data-language-value]').forEach((option) => {
+      option.setAttribute('aria-selected', String(option.dataset.languageValue === selectedLanguage))
+    })
+  }
   renderDownloadControls(locale)
+}
+
+function closeLanguageMenu() {
+  const picker = document.getElementById('language-picker')
+  const button = document.getElementById('language-select')
+  const menu = picker?.querySelector('.language-select-menu')
+  if (!picker || !button || !menu) return
+  menu.hidden = true
+  button.setAttribute('aria-expanded', 'false')
+}
+
+function setLanguagePreference(value) {
+  localStorage.setItem(STORAGE_KEY, value)
+  closeLanguageMenu()
+  renderLocale(value === 'auto' ? detectLocale() : value)
 }
 
 function detectDownloadPlatform() {
@@ -699,10 +725,53 @@ document.addEventListener('DOMContentLoaded', () => {
   void loadDownloadManifest()
 
   const languageSelect = document.getElementById('language-select')
-  languageSelect?.addEventListener('change', (event) => {
-    const value = event.target.value
-    localStorage.setItem(STORAGE_KEY, value)
-    renderLocale(value === 'auto' ? detectLocale() : value)
+  const languagePicker = document.getElementById('language-picker')
+  const languageMenu = languagePicker?.querySelector('.language-select-menu')
+  const languageOptions = () => Array.from(languageMenu?.querySelectorAll('[data-language-value]') ?? [])
+  languageSelect?.addEventListener('click', () => {
+    if (!languageMenu) return
+    const open = languageMenu.hidden
+    languageMenu.hidden = !open
+    languageSelect.setAttribute('aria-expanded', String(open))
+    if (open) languageMenu.querySelector(`[data-language-value="${languageSelect.dataset.value ?? 'auto'}"]`)?.focus()
+  })
+  languageMenu?.querySelectorAll('[data-language-value]').forEach((option) => option.addEventListener('click', () => {
+    const value = option.dataset.languageValue
+    if (value) setLanguagePreference(value)
+  }))
+  languageSelect?.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      closeLanguageMenu()
+    }
+    if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      languageSelect.click()
+    }
+  })
+  languageMenu?.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      closeLanguageMenu()
+      languageSelect?.focus()
+      return
+    }
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault()
+      const options = languageOptions()
+      const currentIndex = options.indexOf(document.activeElement)
+      const direction = event.key === 'ArrowDown' ? 1 : -1
+      const nextIndex = (currentIndex + direction + options.length) % options.length
+      options[nextIndex]?.focus()
+      return
+    }
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      if (document.activeElement instanceof HTMLElement) document.activeElement.click()
+    }
+  })
+  document.addEventListener('pointerdown', (event) => {
+    if (languagePicker && event.target instanceof Node && !languagePicker.contains(event.target)) closeLanguageMenu()
   })
 
   wirePlatformCards()

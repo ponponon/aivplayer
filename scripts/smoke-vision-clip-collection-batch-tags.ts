@@ -1,3 +1,4 @@
+import { selectAppOption } from './smoke-select.ts'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -103,7 +104,7 @@ async function runSmoke(): Promise<void> {
     for (const title of titles.slice(0, 2)) {
       await page.getByRole('checkbox', { name: `选择集合：${title}`, exact: true }).check()
     }
-    await page.getByRole('combobox', { name: '标签批量操作', exact: true }).selectOption({ label: '追加标签' })
+    await selectAppOption(page, page.getByRole('combobox', { name: '标签批量操作', exact: true }), { label: '追加标签' })
     await page.getByRole('textbox', { name: '输入标签（用逗号分隔）', exact: true }).fill('旅行, 海边')
     await acceptTagConfirmation(page)
     await page.getByRole('status').filter({ hasText: '已追加标签 2 个集合的标签' }).waitFor({ timeout: 10_000 })
@@ -125,7 +126,7 @@ async function runSmoke(): Promise<void> {
     await page.reload({ waitUntil: 'domcontentloaded' })
     await openVisionPanel(page)
     await page.getByRole('checkbox', { name: `选择集合：${titles[2]}`, exact: true }).check()
-    await page.getByRole('combobox', { name: '标签批量操作', exact: true }).selectOption({ label: '移除标签' })
+    await selectAppOption(page, page.getByRole('combobox', { name: '标签批量操作', exact: true }), { label: '移除标签' })
     await page.getByRole('textbox', { name: '输入标签（用逗号分隔）', exact: true }).fill('保留标签')
     await acceptTagConfirmation(page)
     await page.getByRole('status').filter({ hasText: '已移除标签 1 个集合的标签' }).waitFor({ timeout: 10_000 })
@@ -135,7 +136,7 @@ async function runSmoke(): Promise<void> {
     await page.reload({ waitUntil: 'domcontentloaded' })
     await openVisionPanel(page)
     await page.getByRole('checkbox', { name: `选择集合：${titles[0]}`, exact: true }).check()
-    await page.getByRole('combobox', { name: '标签批量操作', exact: true }).selectOption({ label: '追加标签' })
+    await selectAppOption(page, page.getByRole('combobox', { name: '标签批量操作', exact: true }), { label: '追加标签' })
     await page.getByRole('textbox', { name: '输入标签（用逗号分隔）', exact: true }).fill('不应保存')
     const cancelMessage = await dismissTagConfirmation(page)
     if (!cancelMessage.includes('不应保存') || !(await page.getByRole('checkbox', { name: `选择集合：${titles[0]}`, exact: true }).isChecked()) || await page.getByRole('textbox', { name: '输入标签（用逗号分隔）', exact: true }).inputValue() !== '不应保存') throw new Error('Cancelling batch tag confirmation should preserve selection and draft input')

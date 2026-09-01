@@ -1,3 +1,4 @@
+import { AppSelect } from '../../../shared/app-select'
 import { Clipboard, Download } from 'lucide-react'
 import { useState, type ReactElement } from 'react'
 import type { AsrSubtitleSummaryExportFormat } from '../../../shared/media-types'
@@ -16,11 +17,11 @@ export function SummaryExportActions(): ReactElement {
         <Clipboard size={14} />{copy.copyText}
       </button>
       <div className="summary-export-picker">
-        <select className="summary-export-format" value={format} onChange={(event) => setFormat(event.currentTarget.value as AsrSubtitleSummaryExportFormat)} disabled={app.isExportingSummary} aria-label={copy.exportTitle}>
+        <AppSelect className="summary-export-format" value={format} onChange={(event) => setFormat(event.currentTarget.value as AsrSubtitleSummaryExportFormat)} disabled={app.isExportingSummary} aria-label={copy.exportTitle}>
           <option value="markdown">{copy.formatMarkdown}</option>
           <option value="txt">{copy.formatText}</option>
           <option value="json">{copy.formatJson}</option>
-        </select>
+        </AppSelect>
         <button className="summary-export-button primary" type="button" onClick={() => void app.exportSummary(format)} disabled={app.isExportingSummary}>
           <Download size={14} />{copy.export}
         </button>

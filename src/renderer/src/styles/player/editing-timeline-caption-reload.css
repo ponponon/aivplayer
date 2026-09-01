@@ -42,9 +42,9 @@
 .editing-caption-reload-filters { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 5px; margin-top: 6px; }
 .editing-caption-reload-filters label { min-width: 0; }
 .editing-caption-reload-search { display: flex; align-items: center; gap: 5px; min-height: 26px; padding: 0 7px; color: var(--text-muted); background: rgba(var(--overlay-rgb), 0.06); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); }
-.editing-caption-reload-search input, .editing-caption-reload-filters select { min-width: 0; height: 26px; color: var(--text-secondary); background: rgba(var(--overlay-rgb), 0.06); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); font: inherit; font-size: 9px; }
+.editing-caption-reload-search input, .editing-caption-reload-filters .app-select { min-width: 0; height: 26px; color: var(--text-secondary); background: rgba(var(--overlay-rgb), 0.06); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); font: inherit; font-size: 9px; }
 .editing-caption-reload-search input { flex: 1 1 auto; width: 100%; padding: 0; color: var(--text-primary); background: transparent; border: 0; outline: 0; }
-.editing-caption-reload-filters select { max-width: 120px; padding: 0 5px; }
+.editing-caption-reload-filters .app-select { max-width: 120px; padding: 0 5px; }
 .editing-caption-reload-time-filter { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; margin-top: 5px; color: var(--text-muted); font-size: 9px; }
 .editing-caption-reload-time-filter label { display: flex; min-width: 0; }
 .editing-caption-reload-time-filter input { width: 92px; height: 24px; padding: 0 6px; color: var(--text-primary); background: rgba(var(--overlay-rgb), 0.06); border: 1px solid var(--border-soft); border-radius: 4px; font: inherit; font-size: 9px; }
@@ -109,7 +109,7 @@
 @media (max-width: 560px) {
   .editing-caption-reload-filters { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .editing-caption-reload-search { grid-column: 1 / -1; }
-  .editing-caption-reload-filters select { width: 100%; max-width: none; }
+  .editing-caption-reload-filters .app-select { width: 100%; max-width: none; }
   .editing-caption-reload-time-filter input { flex: 1 1 0; width: 0; }
   .editing-caption-reload-incoming-comparison { grid-template-columns: minmax(0, 1fr); }
   .editing-caption-reload-incoming-comparison > svg { display: none; }

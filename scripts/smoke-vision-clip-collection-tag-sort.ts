@@ -1,3 +1,4 @@
+import { selectAppOption } from './smoke-select.ts'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -65,20 +66,20 @@ async function runSmoke(): Promise<void> {
     await page.reload({ waitUntil: 'domcontentloaded' })
     await openVisionPanel(page)
     const sort = page.locator('.vision-collection-tag-manager-filter').getByRole('combobox', { name: '排序', exact: true })
-    await sort.selectOption('usage-desc')
+    await selectAppOption(page, sort, 'usage-desc')
     const usageOrder = await readTagOrder(page)
     if (usageOrder[0] !== '海边') throw new Error(`Usage sort should put the most-used tag first: ${JSON.stringify(usageOrder)}`)
 
-    await sort.selectOption('favorite-first')
+    await selectAppOption(page, sort, 'favorite-first')
     const favoriteOrder = await readTagOrder(page)
     if (favoriteOrder[0] !== '项目') throw new Error(`Favorite sort should put the favorite tag first: ${JSON.stringify(favoriteOrder)}`)
 
-    await sort.selectOption('name')
+    await selectAppOption(page, sort, 'name')
     const nameOrder = await readTagOrder(page)
     const expectedNameOrder = await page.evaluate(() => ['海边', '采访', '项目'].sort((left, right) => left.localeCompare(right, undefined, { sensitivity: 'base' })))
     if (JSON.stringify(nameOrder) !== JSON.stringify(expectedNameOrder)) throw new Error(`Name sort mismatch: ${JSON.stringify({ nameOrder, expectedNameOrder })}`)
 
-    await sort.selectOption('favorite-first')
+    await selectAppOption(page, sort, 'favorite-first')
     const storedCollections = await page.evaluate(() => window.aiv.listVisionClipCollections())
     const originalTagShape = originals.map((collection) => ({ id: collection.id, tags: collection.tags })).sort((left, right) => left.id.localeCompare(right.id))
     const storedTagShape = storedCollections.map((collection) => ({ id: collection.id, tags: collection.tags })).sort((left, right) => left.id.localeCompare(right.id))

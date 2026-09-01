@@ -221,6 +221,12 @@ describe('download publishing integration', () => {
     expect(siteScript).toContain('wireArchitectureChips')
     expect(siteScript).toContain('wireFormatChips')
     expect(siteScript).toContain('wireVersionChips')
+    expect(siteHtml).toContain('id="language-select" class="language-select"')
+    expect(siteHtml).toContain('class="language-select-menu"')
+    expect(siteHtml).not.toContain('<select')
+    expect(siteScript).toContain('setLanguagePreference')
+    expect(siteStyles).toContain('.language-select-menu')
+    expect(siteStyles).not.toContain('.language-picker select')
   })
 
   it('reveals and focuses the manual chooser when architecture detection is unavailable', () => {
