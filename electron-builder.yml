@@ -42,6 +42,8 @@ extraResources:
       - '**/*'
   - from: brand/icon.png
     to: app-icon.png
+  - from: brand/icon-macos.png
+    to: app-icon-macos.png
   - from: resources/whisper.cpp
     to: whisper.cpp
     filter:
