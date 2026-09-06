@@ -79,7 +79,7 @@ async function main(): Promise<void> {
     await page.waitForSelector('#root', { timeout: 10_000 })
     const settings = await page.evaluate(() => window.aiv.getAppSettings())
     const copy = getAppCopy(settings.ui.locale)
-    const shareButton = page.getByRole('button', { name: copy.topbar.toggleWebShare })
+    const shareButton = page.getByRole('button', { name: copy.topbar.startWebShare })
     assertCondition(await shareButton.count() === 1, 'LAN Web share button is missing')
     await shareButton.click()
     await page.waitForSelector('.web-share-dialog', { timeout: 10_000 })

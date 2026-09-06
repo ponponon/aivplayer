@@ -26,6 +26,7 @@ import { createEditingSilenceActions } from './editing-silence-actions'
 import { deleteEditingSelection, duplicateEditingSelection, moveEditingSelection, reorderEditingOverlayTracks } from './editing-selection-actions'
 import { useEditingSourceEffect } from '../use-editing-source-effect'
 import { isMediaPlaying, syncPlayerPlayingState } from './playback-state'
+import { getTransportAction } from './control-state'
 export function useEditingActions(model: AppModel, derived: AppDerived, selectFile: (file: NonNullable<AppModel['state']['currentFile']>) => void) {
   const openEditingMode = (): void => {
     const durationSeconds = Math.max(0, derived.mediaDurationSeconds ?? model.state.duration)
@@ -162,7 +163,7 @@ export function useEditingActions(model: AppModel, derived: AppDerived, selectFi
     const video = model.videoRef.current
     const project = model.editingProject
     if (!video || !project) return
-    if (isMediaPlaying(video)) {
+    if (getTransportAction(isMediaPlaying(video)) === 'pause') {
       video.pause()
       syncPlayerPlayingState(model.setState, video, () => model.videoRef.current)
       return

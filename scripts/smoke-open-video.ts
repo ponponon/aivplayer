@@ -167,6 +167,33 @@ async function main(): Promise<void> {
     await page.waitForTimeout(250)
     const resumedBySpace = await videoLocator.evaluate((video) => (video as HTMLVideoElement).paused)
     const resumedButtonTitle = await playbackButton.getAttribute('title')
+    await page.locator('.stage').hover()
+    const muteButton = page.locator('.volume-group > button')
+    const muteBefore = await muteButton.getAttribute('aria-pressed')
+    const muteExpectedPressed = muteBefore === 'true' ? 'false' : 'true'
+    await muteButton.click()
+    await page.waitForFunction((expected) => document.querySelector('.volume-group > button')?.getAttribute('aria-pressed') === expected, muteExpectedPressed, { timeout: 5_000 })
+    const muteAfter = { pressed: await muteButton.getAttribute('aria-pressed'), label: await muteButton.getAttribute('aria-label'), mediaMuted: await videoLocator.evaluate((video) => (video as HTMLVideoElement).muted) }
+    await muteButton.click()
+    await page.waitForFunction((expected) => document.querySelector('.volume-group > button')?.getAttribute('aria-pressed') === expected, muteBefore, { timeout: 5_000 })
+
+    const shuffleButton = page.locator('.playback-mode-group > button').nth(1)
+    const shuffleBefore = await shuffleButton.getAttribute('aria-pressed')
+    const shuffleExpectedPressed = shuffleBefore === 'true' ? 'false' : 'true'
+    await shuffleButton.click()
+    await page.waitForFunction((expected) => document.querySelector('.playback-mode-group > button:nth-of-type(2)')?.getAttribute('aria-pressed') === expected, shuffleExpectedPressed, { timeout: 5_000 })
+    const shuffleEnabled = { pressed: await shuffleButton.getAttribute('aria-pressed'), label: await shuffleButton.getAttribute('aria-label') }
+    await shuffleButton.click()
+    await page.waitForFunction((expected) => document.querySelector('.playback-mode-group > button:nth-of-type(2)')?.getAttribute('aria-pressed') === expected, shuffleBefore, { timeout: 5_000 })
+
+    const fullscreenButton = page.locator('.secondary-group > button[aria-keyshortcuts="F"]')
+    await fullscreenButton.click()
+    await page.waitForFunction(() => document.fullscreenElement === document.querySelector('.stage'), undefined, { timeout: 10_000 })
+    await page.waitForTimeout(1_000)
+    const fullscreenEntered = await fullscreenButton.evaluate((button) => ({ pressed: button.getAttribute('aria-pressed'), label: button.getAttribute('aria-label'), stageIsTarget: document.fullscreenElement === document.querySelector('.stage') }))
+    await fullscreenButton.click()
+    await page.waitForFunction(() => document.fullscreenElement === null, undefined, { timeout: 10_000 })
+    const fullscreenExited = await fullscreenButton.evaluate((button) => ({ pressed: button.getAttribute('aria-pressed'), label: button.getAttribute('aria-label'), stageIsTarget: document.fullscreenElement === document.querySelector('.stage') }))
     const stopResult = await page.evaluate(() => window.aiv.stopNativePlayer())
 
     console.log('AIVPlayer Smoke Open Video')
@@ -176,6 +203,7 @@ async function main(): Promise<void> {
     console.log(`Video state: ${JSON.stringify(videoState)}`)
     console.log(`Playback UI sync: ${JSON.stringify({ playingButtonTitle, pausedButtonTitle, resumedButtonTitle })}`)
     console.log(`Space shortcut: ${JSON.stringify({ pausedBySpace, resumedBySpace })}`)
+    console.log(`Toggle UI sync: ${JSON.stringify({ muteBefore, muteAfter, shuffleEnabled, fullscreenEntered, fullscreenExited })}`)
     console.log(`Stop native player: ${stopResult.message}`)
 
     if (!videoSrc.startsWith('aiv-media://')) {
@@ -200,6 +228,12 @@ async function main(): Promise<void> {
     }
 
     if (!playingButtonTitle?.includes(copy.controls.pause) || !pausedButtonTitle?.includes(copy.controls.play) || !resumedButtonTitle?.includes(copy.controls.pause)) {
+      process.exitCode = 1
+    }
+
+    const muteExpectedLabel = muteExpectedPressed === 'true' ? copy.controls.unmute : copy.controls.mute
+    const shuffleExpectedLabel = shuffleExpectedPressed === 'true' ? copy.controls.shuffleOff : copy.controls.shuffleEnable
+    if (muteAfter.pressed !== muteExpectedPressed || muteAfter.label !== muteExpectedLabel || muteAfter.mediaMuted !== (muteExpectedPressed === 'true') || shuffleEnabled.pressed !== shuffleExpectedPressed || shuffleEnabled.label !== shuffleExpectedLabel || !fullscreenEntered.stageIsTarget || fullscreenEntered.pressed !== 'true' || fullscreenEntered.label !== copy.controls.exitFullscreen || fullscreenExited.stageIsTarget || fullscreenExited.pressed !== 'false' || fullscreenExited.label !== copy.controls.fullscreen) {
       process.exitCode = 1
     }
 

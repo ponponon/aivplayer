@@ -8,6 +8,7 @@ import { clamp } from '../lib/time'
 import { VIDEO_SINGLE_CLICK_DELAY_MS, getMediaErrorMessage, getPlayFailureMessage } from './app-helpers'
 import { getNextRepeatMode, getPlaybackEndedIndex } from '../../../shared/playback-policy'
 import { isMediaPlaying, syncPlayerPlayingState } from './playback-state'
+import { getFullscreenControlState, getMuteAction, getShuffleAction, getTransportAction } from './control-state'
 
 export function usePlaybackControls(model: AppModel, derived: AppDerived, memory: PlaybackMemoryActions, patchSection: AppSettingsSectionPatcher) {
   const clearControlDeckHideTimer = (): void => { if (model.controlDeckHideTimerRef.current != null) window.clearTimeout(model.controlDeckHideTimerRef.current); model.controlDeckHideTimerRef.current = null }
@@ -24,7 +25,7 @@ export function usePlaybackControls(model: AppModel, derived: AppDerived, memory
   const togglePlay = async (): Promise<void> => {
     revealControlDeck(); const video = model.videoRef.current
     if (!video || !model.state.currentFile) return
-    if (isMediaPlaying(video)) { video.pause(); syncPlaybackState(video); return }
+    if (getTransportAction(isMediaPlaying(video)) === 'pause') { video.pause(); syncPlaybackState(video); return }
     try { await video.play(); syncPlaybackState(video) } catch (error) { syncPlaybackState(video); const message = getPlayFailureMessage(derived.copy, error); if (message) setPlaybackError(message) }
   }
   const seekBy = (seconds: number): void => { revealControlDeck(); const video = model.videoRef.current; if (video) video.currentTime = clamp(video.currentTime + seconds, 0, video.duration || 0) }
@@ -49,7 +50,7 @@ export function usePlaybackControls(model: AppModel, derived: AppDerived, memory
   }
   const togglePlaybackOrder = (): void => {
     revealControlDeck()
-    patchSection('playback', (current) => ({ ...current, order: current.order === 'normal' ? 'shuffle' : 'normal' }))
+    patchSection('playback', (current) => ({ ...current, order: getShuffleAction(current.order === 'shuffle') === 'enable' ? 'shuffle' : 'normal' }))
   }
   const togglePlaybackEndAction = (): void => {
     revealControlDeck()
@@ -91,8 +92,29 @@ export function usePlaybackControls(model: AppModel, derived: AppDerived, memory
     }
     memory.selectFile(model.state.playlist[nextIndex])
   }
-  const toggleMute = (): void => { revealControlDeck(); const video = model.videoRef.current; if (!video) return; const muted = !video.muted; video.muted = muted; model.setState((current) => ({ ...current, muted })); memory.syncPlaybackMemory(model.state.volume, muted, model.state.playbackRate) }
-  const toggleFullscreen = async (): Promise<void> => { revealControlDeck(); const fullscreenTarget = model.fullscreenRef.current; if (!fullscreenTarget) return; if (document.fullscreenElement) await document.exitFullscreen(); else await fullscreenTarget.requestFullscreen() }
+  const toggleMute = (): void => {
+    revealControlDeck()
+    const video = model.videoRef.current
+    if (!video) return
+    const muted = getMuteAction(video.muted) === 'mute'
+    const volume = Number.isFinite(video.volume) ? video.volume : model.state.volume
+    video.muted = muted
+    model.setState((current) => ({ ...current, volume, muted }))
+    memory.syncPlaybackMemory(volume, muted, model.state.playbackRate)
+  }
+  const toggleFullscreen = async (): Promise<void> => {
+    revealControlDeck()
+    const fullscreenTarget = model.fullscreenRef.current
+    const fullscreenState = getFullscreenControlState(document.fullscreenElement, fullscreenTarget)
+    if (!fullscreenState.isAvailable) return
+    try {
+      if (fullscreenState.action === 'exit') await document.exitFullscreen()
+      else if (fullscreenTarget) await fullscreenTarget.requestFullscreen()
+    } catch {
+      // The browser owns fullscreen permissions. A rejected request leaves
+      // the current DOM state untouched, so the next render remains honest.
+    }
+  }
   const clearVideoClickTimer = (): void => { if (model.videoClickTimerRef.current != null) window.clearTimeout(model.videoClickTimerRef.current); model.videoClickTimerRef.current = null }
   const handleVideoClick = (event: ReactMouseEvent<HTMLVideoElement>): void => { event.preventDefault(); if (event.detail > 1) return; revealControlDeck(); if (!model.appSettings.playback.singleClickPause) return; clearVideoClickTimer(); model.videoClickTimerRef.current = window.setTimeout(() => { model.videoClickTimerRef.current = null; void togglePlay() }, VIDEO_SINGLE_CLICK_DELAY_MS) }
   const handleVideoDoubleClick = (event: ReactMouseEvent<HTMLVideoElement>): void => { event.preventDefault(); clearVideoClickTimer(); void toggleFullscreen() }

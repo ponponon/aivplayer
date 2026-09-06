@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import type { AppModel } from './app-types'
 import { syncPlayerPlayingState } from './playback-state'
+import { getFullscreenControlState } from './control-state'
 
 export function useWindowEffects(model: AppModel): void {
   useEffect(() => {
@@ -32,10 +33,13 @@ export function useWindowEffects(model: AppModel): void {
   }, [model.appSettings.playback.pauseWhenMinimized])
 
   useEffect(() => {
-    const onFullscreenChange = (): void => model.setIsFullscreen(document.fullscreenElement === model.fullscreenRef.current)
+    const onFullscreenChange = (): void => {
+      model.setIsFullscreen(getFullscreenControlState(document.fullscreenElement, model.fullscreenRef.current).isActive)
+    }
     document.addEventListener('fullscreenchange', onFullscreenChange)
+    document.addEventListener('fullscreenerror', onFullscreenChange)
     onFullscreenChange()
-    return () => document.removeEventListener('fullscreenchange', onFullscreenChange)
+    return () => { document.removeEventListener('fullscreenchange', onFullscreenChange); document.removeEventListener('fullscreenerror', onFullscreenChange) }
   }, [])
 
   useEffect(() => {

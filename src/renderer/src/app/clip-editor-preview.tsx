@@ -86,7 +86,7 @@ export function ClipEditorPreview(props: ClipEditorPreviewProps): ReactElement {
         />
       </div>
       <div className="clip-editor-preview-controls">
-        <button className="settings-secondary-button clip-editor-preview-button" type="button" onClick={togglePreview} disabled={!canPreview}>
+        <button className="settings-secondary-button clip-editor-preview-button" type="button" onClick={togglePreview} disabled={!canPreview} title={isPlaying ? copy.clipExportDialog.pausePreview : copy.clipExportDialog.preview} aria-label={isPlaying ? copy.clipExportDialog.pausePreview : copy.clipExportDialog.preview} aria-pressed={isPlaying}>
           {isPlaying ? <Pause size={14} /> : <Play size={14} />}
           {isPlaying ? copy.clipExportDialog.pausePreview : copy.clipExportDialog.preview}
         </button>

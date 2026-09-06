@@ -37,8 +37,8 @@ export function EditingTransitionControl({ clip, isFirstClip, title, noneLabel, 
     </summary>
     <div className="editing-transition-popover" onClick={(event) => event.stopPropagation()}>
       <div className="editing-transition-options" role="group" aria-label={title}>
-        <button className={`editing-transition-option ${!active ? 'is-active' : ''}`} type="button" disabled={isFirstClip} onClick={() => onChange(null)} data-testid="editing-transition-none"><TransitionPreview type={null} /><span>{noneLabel}</span></button>
-        {EDITING_TRANSITION_TYPES.map((type) => <button key={type} className={`editing-transition-option ${active && value.type === type ? 'is-active' : ''}`} type="button" disabled={isFirstClip} onClick={() => onChange({ type, durationSeconds: value.durationSeconds })} data-testid={`editing-transition-${type}`}><TransitionPreview type={type} /><span>{transitionLabels[type] ?? type}</span></button>)}
+        <button className={`editing-transition-option ${!active ? 'is-active' : ''}`} type="button" disabled={isFirstClip} aria-pressed={!active} onClick={() => onChange(null)} data-testid="editing-transition-none"><TransitionPreview type={null} /><span>{noneLabel}</span></button>
+        {EDITING_TRANSITION_TYPES.map((type) => <button key={type} className={`editing-transition-option ${active && value.type === type ? 'is-active' : ''}`} type="button" disabled={isFirstClip} aria-pressed={active && value.type === type} onClick={() => onChange({ type, durationSeconds: value.durationSeconds })} data-testid={`editing-transition-${type}`}><TransitionPreview type={type} /><span>{transitionLabels[type] ?? type}</span></button>)}
       </div>
       <label className="editing-transition-duration">
         <span>{durationLabel}</span>

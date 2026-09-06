@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { getEditingPersonMatteSettings } from '../../../core/editing/person-matte'
 import type { EditingPersonMatte, EditingVideoClip } from '../../../shared/editing-types'
 import type { PersonMatteModelDownloadProgress, PersonMatteModelStatus } from '../../../shared/person-matte-types'
+import { getToggleAction } from './control-state'
 
 type EditingPersonMatteControlProps = {
   clip: EditingVideoClip | null
@@ -60,6 +61,7 @@ export function EditingPersonMatteControl({ clip, title, readyLabel, missingLabe
   const percent = progress?.percent === null || progress?.percent === undefined ? null : Math.round(progress.percent * 100)
   const settings = getEditingPersonMatteSettings(clip?.personMatte)
   const hasClip = clip !== null
+  const toggleLabel = getToggleAction(settings.enabled) === 'disable' ? enabledLabel : enableLabel
 
   return <details className="editing-person-matte-control" data-testid="editing-person-matte-control" onClick={(event) => event.stopPropagation()}>
     <summary className="editing-person-matte-summary"><ScanFace size={13} /><span>{title}</span><strong className={status?.available ? 'is-ready' : 'is-missing'}>{statusLabel}</strong></summary>
@@ -69,7 +71,7 @@ export function EditingPersonMatteControl({ clip, title, readyLabel, missingLabe
       {failure ? <p className="editing-person-matte-error" role="alert">{failure}</p> : null}
       {!status?.available ? <button className="editing-person-matte-download" type="button" onClick={() => void download()} disabled={busy} data-testid="editing-person-matte-download"><ScanFace size={13} />{busy ? downloadingLabel : downloadLabel}</button> : null}
       {status?.available && hasClip ? <>
-        <button className={`editing-person-matte-toggle ${settings.enabled ? 'is-active' : ''}`} type="button" onClick={() => onChange({ ...settings, enabled: !settings.enabled })} aria-pressed={settings.enabled} data-testid="editing-person-matte-toggle"><ScanFace size={13} />{settings.enabled ? enabledLabel : enableLabel}</button>
+        <button className={`editing-person-matte-toggle ${settings.enabled ? 'is-active' : ''}`} type="button" onClick={() => onChange({ ...settings, enabled: !settings.enabled })} title={toggleLabel} aria-label={toggleLabel} aria-pressed={settings.enabled} data-testid="editing-person-matte-toggle"><ScanFace size={13} />{toggleLabel}</button>
         {settings.enabled ? <>
           <label className="editing-person-matte-field"><span>{featherLabel}</span><input type="range" min="0" max="12" step="1" value={settings.featherPercent} onChange={(event) => onChange({ ...settings, featherPercent: Number(event.currentTarget.value) })} aria-label={featherLabel} /><output>{settings.featherPercent}%</output></label>
           <label className="editing-person-matte-field"><span>{outlineLabel}</span><input type="range" min="0" max="4" step="0.5" value={settings.outlineWidthPercent} onChange={(event) => onChange({ ...settings, outlineWidthPercent: Number(event.currentTarget.value) })} aria-label={outlineLabel} /><output>{settings.outlineWidthPercent}%</output></label>

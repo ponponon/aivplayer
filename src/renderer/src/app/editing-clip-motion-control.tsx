@@ -21,13 +21,13 @@ export function EditingClipMotionControl({ clip, enterLabel, exitLabel, duration
       <div className="editing-clip-motion-group" role="group" aria-label={enterLabel}>
         <span className="editing-clip-motion-group-label">{enterLabel}</span>
         <div className="editing-clip-motion-options">
-          {EDITING_CLIP_MOTIONS.map((value) => <button className={`editing-clip-motion-option ${motion.enterMotion === value ? 'is-active' : ''}`} key={`enter-${value}`} type="button" onClick={() => onChange({ enterMotion: value })} data-testid={`editing-clip-motion-enter-${value}`}>{motionLabels[value]}</button>)}
+          {EDITING_CLIP_MOTIONS.map((value) => <button className={`editing-clip-motion-option ${motion.enterMotion === value ? 'is-active' : ''}`} key={`enter-${value}`} type="button" aria-pressed={motion.enterMotion === value} onClick={() => onChange({ enterMotion: value })} data-testid={`editing-clip-motion-enter-${value}`}>{motionLabels[value]}</button>)}
         </div>
       </div>
       <div className="editing-clip-motion-group" role="group" aria-label={exitLabel}>
         <span className="editing-clip-motion-group-label">{exitLabel}</span>
         <div className="editing-clip-motion-options">
-          {EDITING_CLIP_MOTIONS.map((value) => <button className={`editing-clip-motion-option ${motion.exitMotion === value ? 'is-active' : ''}`} key={`exit-${value}`} type="button" onClick={() => onChange({ exitMotion: value })} data-testid={`editing-clip-motion-exit-${value}`}>{motionLabels[value]}</button>)}
+          {EDITING_CLIP_MOTIONS.map((value) => <button className={`editing-clip-motion-option ${motion.exitMotion === value ? 'is-active' : ''}`} key={`exit-${value}`} type="button" aria-pressed={motion.exitMotion === value} onClick={() => onChange({ exitMotion: value })} data-testid={`editing-clip-motion-exit-${value}`}>{motionLabels[value]}</button>)}
         </div>
       </div>
       <label className="editing-clip-motion-duration">

@@ -81,7 +81,7 @@ export function BatchPanelJob({
           <div className="batch-task-actions">
             {activeJob ? (
               <>
-                <button className="asr-action-button" type="button" onClick={onPauseOrResume}>
+                <button className="asr-action-button" type="button" onClick={onPauseOrResume} title={job.status === 'paused' ? copy.batchSubtitle.resume : copy.batchSubtitle.pause} aria-label={job.status === 'paused' ? copy.batchSubtitle.resume : copy.batchSubtitle.pause} aria-pressed={job.status === 'paused'}>
                   {job.status === 'paused' ? <Play size={15} /> : <Pause size={15} />}
                   {job.status === 'paused' ? copy.batchSubtitle.resume : copy.batchSubtitle.pause}
                 </button>
