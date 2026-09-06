@@ -83,6 +83,20 @@
       footer: '感谢使用 AIVPlayer。',
       close: '关闭'
     },
+    supportDialog: {
+      kicker: '项目支持',
+      title: '如果 AIVPlayer 对你有帮助',
+      description: 'AIVPlayer 是一个免费、开源的本地媒体播放器，也在持续完善 AI 字幕和视频工作流。',
+      message: '你可以通过关注项目、反馈问题，或把它分享给有需要的人来支持开发。后续确认捐赠入口后，也会统一放在这里。',
+      linksLabel: '支持方式',
+      links: {
+        github: { label: 'GitHub 项目', description: '关注项目进展并反馈问题' },
+        website: { label: '官方网站', description: '了解功能与最新版本' }
+      },
+      footer: '感谢你的理解与支持。',
+      openFromAbout: '支持项目',
+      close: '关闭'
+    },
     webShare: {
       title: '局域网 Web 播放', description: '让同一局域网内的手机、平板和其他电脑通过浏览器播放当前播放列表。', start: '开始共享', stop: '停止共享', running: '共享中', stopped: '未共享', openUrl: '用系统默认浏览器打开', openingUrl: '正在打开…', opened: '已在系统默认浏览器中打开', openFailed: '无法打开系统默认浏览器，请复制地址后手动打开', defaultBrowserHint: '打开按钮会调用本机系统默认浏览器', copyUrl: '复制访问地址', copied: '已复制访问地址', noFiles: '请先打开视频文件，或添加共享目录', sharedCount: (count: number) => `当前共享 ${count} 个视频`, sharedDirectoryCount: (count: number) => `共享 ${count} 个目录`, sharedDirectories: '共享目录', chooseFolder: '添加目录', removeFolder: '移除目录', noDirectory: '未添加目录；也可以只共享当前播放列表。', refresh: '刷新共享列表', accessUrl: '访问地址', scanQrCode: '用手机相机扫描二维码', qrCodeAlt: '局域网访问地址二维码', securityNote: '只共享当前播放列表和选定目录，不上传文件；停止共享后访问地址立即失效。', emptyUrl: '启动共享后，这里会显示局域网访问地址。', close: '关闭'
     },

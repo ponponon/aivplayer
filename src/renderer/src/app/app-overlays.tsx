@@ -10,6 +10,8 @@ import { useAppContext } from './app-context'
 import { WebShareDialog } from './web-share-dialog'
 import { TaskCenter } from './task-center'
 import { AppUpdateDialog } from './app-update-dialog'
+import { SupportDialog } from './support-dialog'
+import { SUPPORT_PROMPT_ENABLED } from '../../../shared/support-prompt'
 
 export function AppOverlays(): React.ReactElement {
   const app = useAppContext()
@@ -64,7 +66,8 @@ export function AppOverlays(): React.ReactElement {
       onCheckForAppUpdate={app.checkForAppUpdate}
       onInstallAppUpdate={app.installAppUpdate}
     /> : null}
-    {app.isAboutDialogOpen ? <AboutDialog copy={app.copy} onClose={() => app.setIsAboutDialogOpen(false)} /> : null}
+    {app.isAboutDialogOpen ? <AboutDialog copy={app.copy} onClose={() => app.setIsAboutDialogOpen(false)} onOpenSupport={() => app.setIsSupportDialogOpen(true)} /> : null}
+    {SUPPORT_PROMPT_ENABLED && app.isSupportDialogOpen ? <SupportDialog copy={app.copy} onClose={() => app.setIsSupportDialogOpen(false)} /> : null}
     {app.isClipExportDialogOpen && app.state.currentFile ? <ClipExportDialog
       copy={app.copy}
       mediaUrl={app.state.currentFile.url}

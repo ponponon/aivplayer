@@ -97,6 +97,7 @@ export type AppStateSetters = {
   setSummaryElapsedMs: React.Dispatch<React.SetStateAction<number | null>>
   setIsMediaDetailsDialogOpen: React.Dispatch<React.SetStateAction<boolean>>
   setIsAboutDialogOpen: React.Dispatch<React.SetStateAction<boolean>>
+  setIsSupportDialogOpen: React.Dispatch<React.SetStateAction<boolean>>
   setRuntimeSetupMessage: React.Dispatch<React.SetStateAction<{ success: boolean; message: string } | null>>
   setTranslationServiceTestMessage: React.Dispatch<React.SetStateAction<AsrTranslationServiceTestResult | null>>
   setIsTestingTranslationService: React.Dispatch<React.SetStateAction<boolean>>
@@ -160,6 +161,7 @@ export type AppModel = AppRefs &
     summaryElapsedMs: number | null
     isMediaDetailsDialogOpen: boolean
     isAboutDialogOpen: boolean
+    isSupportDialogOpen: boolean
     runtimeSetupMessage: { success: boolean; message: string } | null
     translationServiceTestMessage: AsrTranslationServiceTestResult | null
     isTestingTranslationService: boolean

@@ -2,15 +2,17 @@ import { CircleQuestionMark, ExternalLink, X } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { APP_RELEASE_DATE } from '../../../shared/app-release'
 import { OFFICIAL_WEBSITE_URL } from '../../../shared/app-links'
+import { SUPPORT_PROMPT_ENABLED } from '../../../shared/support-prompt'
 import type { LocaleCopy } from '../../../shared/i18n'
 import { useModalFocusTrap } from './use-modal-focus-trap'
 
 type AboutDialogProps = {
   copy: LocaleCopy
   onClose: () => void
+  onOpenSupport: () => void
 }
 
-export function AboutDialog({ copy, onClose }: AboutDialogProps): ReactElement {
+export function AboutDialog({ copy, onClose, onOpenSupport }: AboutDialogProps): ReactElement {
   const dialogRef = useRef<HTMLElement | null>(null)
   const [version, setVersion] = useState('—')
 
@@ -57,6 +59,9 @@ export function AboutDialog({ copy, onClose }: AboutDialogProps): ReactElement {
         <div className="about-dialog-footer">
           <div className="about-dialog-footer-actions">
             <span>{copy.aboutDialog.footer}</span>
+            {SUPPORT_PROMPT_ENABLED ? <button className="settings-secondary-button" type="button" onClick={onOpenSupport}>
+              {copy.supportDialog.openFromAbout}
+            </button> : null}
             <button className="settings-secondary-button" type="button" onClick={() => { void window.aiv.openExternalUrl(OFFICIAL_WEBSITE_URL) }}>
               <ExternalLink size={14} />
               {copy.aboutDialog.openOfficialWebsite}

@@ -83,6 +83,20 @@
       footer: 'Thanks for using AIVPlayer.',
       close: 'Close'
     },
+    supportDialog: {
+      kicker: 'Project support',
+      title: 'If AIVPlayer helps you',
+      description: 'AIVPlayer is a free, open-source local media player that keeps growing its AI subtitle and video workflow tools.',
+      message: 'You can support development by following the project, sharing feedback, or telling someone who may find it useful. Confirmed donation options will be added here later.',
+      linksLabel: 'Ways to support',
+      links: {
+        github: { label: 'GitHub project', description: 'Follow updates and report issues' },
+        website: { label: 'Official website', description: 'Explore features and releases' }
+      },
+      footer: 'Thank you for understanding and supporting the project.',
+      openFromAbout: 'Support project',
+      close: 'Close'
+    },
     webShare: {
       title: 'LAN Web playback', description: 'Play the current playlist from a phone, tablet, or another computer on the same LAN.', start: 'Start sharing', stop: 'Stop sharing', running: 'Sharing', stopped: 'Not sharing', openUrl: 'Open in default browser', openingUrl: 'Opening…', opened: 'Opened in the default browser', openFailed: 'Could not open the default browser. Copy the URL and open it manually.', defaultBrowserHint: 'This button uses your system default browser', copyUrl: 'Copy access URL', copied: 'Access URL copied', noFiles: 'Open a video first or add a shared folder', sharedCount: (count: number) => `Sharing ${count} video${count === 1 ? '' : 's'}`, sharedDirectoryCount: (count: number) => `Sharing ${count} folder${count === 1 ? '' : 's'}`, sharedDirectories: 'Shared folders', chooseFolder: 'Add folder', removeFolder: 'Remove folder', noDirectory: 'No folders added; you can share the current playlist only.', refresh: 'Refresh shared library', accessUrl: 'Access URL', scanQrCode: 'Scan with your phone camera', qrCodeAlt: 'LAN access URL QR code', securityNote: 'Only the current playlist and selected folders are shared. Files stay local, and the URL expires when sharing stops.', emptyUrl: 'Start sharing to see a LAN access URL here.', close: 'Close'
     },

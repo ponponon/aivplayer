@@ -2,6 +2,15 @@ import { useEffect } from 'react'
 import type { MediaFile } from '../../../shared/media-types'
 import type { AppModel } from './app-types'
 import { getPlaybackMediaKey } from '../../../shared/playback-memory'
+import { SUPPORT_PROMPT_DISMISSED_STORAGE_KEY, SUPPORT_PROMPT_ENABLED } from '../../../shared/support-prompt'
+
+function isSupportPromptDismissed(): boolean {
+  try {
+    return window.localStorage.getItem(SUPPORT_PROMPT_DISMISSED_STORAGE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
 
 export function useAppStartupEffects(model: AppModel, loadFiles: (files: MediaFile[]) => void, refreshAsrStatus: () => Promise<unknown>): void {
   useEffect(() => { void refreshAsrStatus() }, [])
@@ -30,6 +39,16 @@ export function useAppStartupEffects(model: AppModel, loadFiles: (files: MediaFi
   }, [])
 
   useEffect(() => window.aiv.onAppMenuOpenSettings(() => model.setIsSettingsDialogOpen(true)), [])
+
+  useEffect(() => {
+    if (!SUPPORT_PROMPT_ENABLED || model.isSupportDialogOpen || model.isSettingsDialogOpen || model.isAboutDialogOpen || model.isDownloadDialogOpen || model.isClipExportDialogOpen || model.isMediaDetailsDialogOpen) return
+
+    const timer = window.setTimeout(() => {
+      if (!isSupportPromptDismissed()) model.setIsSupportDialogOpen(true)
+    }, 1200)
+
+    return () => window.clearTimeout(timer)
+  }, [model.isAboutDialogOpen, model.isClipExportDialogOpen, model.isDownloadDialogOpen, model.isMediaDetailsDialogOpen, model.isSettingsDialogOpen, model.isSupportDialogOpen])
 
   useEffect(() => {
     const cleanupDownload = window.aiv.onAsrModelDownloadProgress(model.setDownloadProgress)
