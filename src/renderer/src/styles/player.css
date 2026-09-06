@@ -89,6 +89,7 @@
 @import './player/download-clip-options.css';
 @import './player/download-clip-actions.css';
 @import './player/responsive-layout.css';
+@import './player/playback-fullscreen.css';
 @import './player/summary-content.css';
 @import './player/summary-details.css';
 @import './player/ai-workflow.css';

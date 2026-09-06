@@ -4,6 +4,7 @@ import type { AppRefs } from './app-types'
 export function useAppRefs(): AppRefs {
   return {
     videoRef: useRef<HTMLVideoElement | null>(null),
+    fullscreenRef: useRef<HTMLElement | null>(null),
     subtitleActionsRef: useRef<HTMLDetailsElement | null>(null),
     subtitleDisplayControlsRef: useRef<HTMLDetailsElement | null>(null),
     downloadDialogRef: useRef<HTMLElement | null>(null),

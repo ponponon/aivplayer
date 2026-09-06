@@ -54,6 +54,7 @@ export type EditingClipPreview = {
 
 export type AppRefs = {
   videoRef: MutableRefObject<HTMLVideoElement | null>
+  fullscreenRef: MutableRefObject<HTMLElement | null>
   subtitleActionsRef: MutableRefObject<HTMLDetailsElement | null>
   subtitleDisplayControlsRef: MutableRefObject<HTMLDetailsElement | null>
   downloadDialogRef: MutableRefObject<HTMLElement | null>

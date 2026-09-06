@@ -92,7 +92,7 @@ export function usePlaybackControls(model: AppModel, derived: AppDerived, memory
     memory.selectFile(model.state.playlist[nextIndex])
   }
   const toggleMute = (): void => { revealControlDeck(); const video = model.videoRef.current; if (!video) return; const muted = !video.muted; video.muted = muted; model.setState((current) => ({ ...current, muted })); memory.syncPlaybackMemory(model.state.volume, muted, model.state.playbackRate) }
-  const toggleFullscreen = async (): Promise<void> => { revealControlDeck(); const video = model.videoRef.current; if (!video) return; if (document.fullscreenElement) await document.exitFullscreen(); else await video.requestFullscreen() }
+  const toggleFullscreen = async (): Promise<void> => { revealControlDeck(); const fullscreenTarget = model.fullscreenRef.current; if (!fullscreenTarget) return; if (document.fullscreenElement) await document.exitFullscreen(); else await fullscreenTarget.requestFullscreen() }
   const clearVideoClickTimer = (): void => { if (model.videoClickTimerRef.current != null) window.clearTimeout(model.videoClickTimerRef.current); model.videoClickTimerRef.current = null }
   const handleVideoClick = (event: ReactMouseEvent<HTMLVideoElement>): void => { event.preventDefault(); if (event.detail > 1) return; revealControlDeck(); if (!model.appSettings.playback.singleClickPause) return; clearVideoClickTimer(); model.videoClickTimerRef.current = window.setTimeout(() => { model.videoClickTimerRef.current = null; void togglePlay() }, VIDEO_SINGLE_CLICK_DELAY_MS) }
   const handleVideoDoubleClick = (event: ReactMouseEvent<HTMLVideoElement>): void => { event.preventDefault(); clearVideoClickTimer(); void toggleFullscreen() }

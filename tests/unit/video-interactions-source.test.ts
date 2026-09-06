@@ -3,7 +3,7 @@ import { readSource } from './test-source-utils'
 
 describe('video surface interaction source constraints', () => {
   it('separates single-click playback from double-click fullscreen', () => {
-    const appSource = `${readSource('src/renderer/src/app/video-surface.tsx')}\n${readSource('src/renderer/src/app/playback-controls.tsx')}\n${readSource('src/renderer/src/app/use-playback-controls.ts')}\n${readSource('src/renderer/src/app/use-keyboard-shortcuts.ts')}\n${readSource('src/renderer/src/app/use-window-effects.ts')}\n${readSource('src/renderer/src/app/clip-editor-preview.tsx')}`
+    const appSource = `${readSource('src/renderer/src/app/video-surface.tsx')}\n${readSource('src/renderer/src/app/player-stage.tsx')}\n${readSource('src/renderer/src/app/playback-controls.tsx')}\n${readSource('src/renderer/src/app/use-playback-controls.ts')}\n${readSource('src/renderer/src/app/use-keyboard-shortcuts.ts')}\n${readSource('src/renderer/src/app/use-window-effects.ts')}\n${readSource('src/renderer/src/app/clip-editor-preview.tsx')}`
     const playerCss = readSource('src/renderer/src/styles/player.css')
 
     expect(appSource).toContain('onClick={app.handleVideoClick}')
@@ -25,6 +25,9 @@ describe('video surface interaction source constraints', () => {
     expect(appSource).toContain('const { volume, muted } = video')
     expect(appSource).not.toContain('volume: event.currentTarget.volume')
     expect(appSource).toContain('app.isFullscreen ? <Minimize2 size={16} /> : <Fullscreen size={16} />')
+    expect(appSource).toContain('ref={app.fullscreenRef}')
+    expect(appSource).toContain('const fullscreenTarget = model.fullscreenRef.current')
+    expect(appSource).toContain('else await fullscreenTarget.requestFullscreen()')
     expect(appSource).toContain("if (event.key === 'Escape')")
     expect(appSource).toContain('void document.exitFullscreen()')
     expect(playerCss).toMatch(/\.video-surface:fullscreen\s*\{[^}]*object-fit:\s*contain;/s)

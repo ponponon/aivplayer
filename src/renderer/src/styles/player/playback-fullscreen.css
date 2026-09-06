@@ -1,0 +1,141 @@
+.stage:fullscreen {
+  position: fixed;
+  inset: 0;
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #050608;
+}
+
+.stage:fullscreen .video-frame {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: #050608;
+}
+
+.stage:fullscreen > .subtitle-overlay:not(.empty) {
+  position: absolute;
+  inset: auto 0 max(108px, calc(env(safe-area-inset-bottom) + 98px)) 0;
+  z-index: 10;
+  display: grid;
+  padding: 0 24px;
+  background: transparent;
+  border: 0;
+  pointer-events: none;
+}
+
+.stage:fullscreen > .subtitle-overlay:not(.empty) .subtitle-text {
+  max-width: min(86vw, 960px);
+  padding: 4px 12px;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.82);
+}
+
+.stage:fullscreen > .subtitle-overlay:not(.empty) .subtitle-display-controls {
+  pointer-events: auto;
+}
+
+.stage:fullscreen .control-deck {
+  position: absolute;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(14px, env(safe-area-inset-bottom));
+  left: max(16px, env(safe-area-inset-left));
+  z-index: 30;
+  width: auto;
+  max-height: 200px;
+  padding: 12px clamp(12px, 2vw, 22px) max(12px, env(safe-area-inset-bottom));
+  gap: 10px;
+  background: rgba(8, 10, 14, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 16px;
+  box-shadow: 0 8px 12px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(20px) saturate(1.08);
+  transition:
+    opacity 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    visibility 0s linear 0s;
+}
+
+.stage:fullscreen .control-deck.is-hidden {
+  max-height: 200px;
+  padding: 12px clamp(12px, 2vw, 22px) max(12px, env(safe-area-inset-bottom));
+  border-color: rgba(255, 255, 255, 0.13);
+  opacity: 0;
+  transform: translateY(18px);
+  visibility: hidden;
+  transition:
+    opacity 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    visibility 0s linear 180ms;
+}
+
+.stage:fullscreen .control-deck .timeline-row {
+  padding: 0 4px;
+  background: transparent;
+  border: 0;
+}
+
+.stage:fullscreen .control-deck .timeline-row span {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.stage:fullscreen .control-deck .controls-row {
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: nowrap;
+}
+
+.stage:fullscreen .control-deck .controls-center-group {
+  gap: 12px;
+}
+
+.stage:fullscreen .control-deck .controls-primary {
+  gap: 8px;
+}
+
+.stage:fullscreen .control-deck .control-group.transport-group,
+.stage:fullscreen .control-deck .control-group.secondary-group {
+  background: rgba(255, 255, 255, 0.055);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.stage:fullscreen .control-deck .control-group.volume-group {
+  flex-basis: min(320px, 24vw);
+  background: rgba(255, 255, 255, 0.055);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.stage:fullscreen .control-deck .quick-subtitle-action {
+  margin-left: auto;
+}
+
+@media (max-width: 920px) {
+  .stage:fullscreen .control-deck {
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(10px, env(safe-area-inset-bottom));
+    left: max(10px, env(safe-area-inset-left));
+  }
+
+  .stage:fullscreen > .subtitle-overlay:not(.empty) {
+    bottom: 142px;
+    padding: 0 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .control-deck,
+  .stage:fullscreen .control-deck {
+    transition: none;
+  }
+}

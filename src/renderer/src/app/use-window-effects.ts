@@ -32,7 +32,7 @@ export function useWindowEffects(model: AppModel): void {
   }, [model.appSettings.playback.pauseWhenMinimized])
 
   useEffect(() => {
-    const onFullscreenChange = (): void => model.setIsFullscreen(document.fullscreenElement === model.videoRef.current)
+    const onFullscreenChange = (): void => model.setIsFullscreen(document.fullscreenElement === model.fullscreenRef.current)
     document.addEventListener('fullscreenchange', onFullscreenChange)
     onFullscreenChange()
     return () => document.removeEventListener('fullscreenchange', onFullscreenChange)
