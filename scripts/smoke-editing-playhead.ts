@@ -51,15 +51,21 @@ async function main(): Promise<void> {
       return Number.isFinite(value) && Math.abs(value - (expected as number)) < 0.8
     }, expectedSeconds, { timeout: 10_000 })
     const finalSeconds = Number(await playhead.getAttribute('aria-valuenow'))
+    const trackLabels = await page.locator('.editing-track-row > .editing-track-label').evaluateAll((elements) => elements.map((element) => {
+      const style = getComputedStyle(element)
+      const bounds = element.getBoundingClientRect()
+      return { text: element.textContent?.trim() ?? '', fontSize: style.fontSize, lineHeight: style.lineHeight, whiteSpace: style.whiteSpace, height: bounds.height }
+    }))
     const screenshotPath = join(smokeHomeDirectory, 'aivplayer-smoke-editing-playhead.png')
     await page.screenshot({ path: screenshotPath, fullPage: true })
 
     console.log('AIVPlayer Smoke Editing Playhead')
     console.log(`Media: ${sourceMediaPath}`)
     console.log(`Playhead drag: ${JSON.stringify({ durationSeconds, targetRatio, expectedSeconds, finalSeconds })}`)
+    console.log(`Timeline labels: ${JSON.stringify(trackLabels)}`)
     console.log(`Screenshot: ${screenshotPath}`)
     console.log(`Renderer errors: ${JSON.stringify(consoleErrors)}`)
-    if (Math.abs(finalSeconds - expectedSeconds) >= 0.8 || consoleErrors.length > 0) process.exitCode = 1
+    if (Math.abs(finalSeconds - expectedSeconds) >= 0.8 || trackLabels.some((label) => label.fontSize !== '8px' || label.whiteSpace !== 'nowrap' || Number.parseFloat(label.lineHeight) > 10) || consoleErrors.length > 0) process.exitCode = 1
   } finally {
     await app.close()
   }
