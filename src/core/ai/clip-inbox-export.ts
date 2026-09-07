@@ -27,7 +27,7 @@ function renderBatchJson(collections: readonly VisionClipCollection[]): string {
 }
 
 function renderCsv(collection: VisionClipCollection): string {
-  const header = ['index', 'source_id', 'video_path', 'file_name', 'start_seconds', 'end_seconds', 'duration_seconds', 'fingerprint', 'text', 'evidence_types']
+  const header = ['index', 'source_id', 'video_path', 'file_name', 'start_seconds', 'end_seconds', 'duration_seconds', 'fingerprint', 'content_hash', 'text', 'evidence_types']
   const rows = collection.selections.map((selection, index) => [
     index + 1,
     selection.sourceId,
@@ -37,6 +37,7 @@ function renderCsv(collection: VisionClipCollection): string {
     selection.endSeconds,
     Number((selection.endSeconds - selection.startSeconds).toFixed(3)),
     selection.fingerprint,
+    selection.contentHash ?? '',
     selection.text ?? '',
     selection.evidenceTypes.join('|')
   ])
@@ -48,6 +49,7 @@ function renderEdlSelection(selection: VisionClipSelection, index: number, timel
   const timelineEndSeconds = timelineStartSeconds + duration
   const event = `${String(index).padStart(3, '0')}  AX       V     C        ${secondsToEdlTimecode(selection.startSeconds, frameRate)} ${secondsToEdlTimecode(selection.endSeconds, frameRate)} ${secondsToEdlTimecode(timelineStartSeconds, frameRate)} ${secondsToEdlTimecode(timelineEndSeconds, frameRate)}`
   const notes = [`* FROM CLIP NAME: ${selection.fileName}`, `* SOURCE FILE: ${selection.videoPath}`]
+  if (selection.contentHash) notes.push(`* SOURCE CONTENT HASH: ${selection.contentHash}`)
   if (selection.text) notes.push(`* NOTE: ${selection.text.replace(/[\r\n]+/g, ' ')}`)
   return [event, ...notes]
 }

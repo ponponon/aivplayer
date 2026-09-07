@@ -19,6 +19,7 @@ const collection: VisionClipCollection = {
     durationSeconds: 12,
     startSeconds: 1,
     endSeconds: 3.5,
+    contentHash: 'a'.repeat(64),
     evidenceIds: ['cue-1'],
     text: '第一句, 带逗号',
     evidenceTypes: ['subtitle']
@@ -39,6 +40,8 @@ describe('clip inbox export', () => {
   it('escapes CSV fields', () => {
     const output = renderVisionClipCollectionExport(collection, 'csv')
     expect(output).toContain('index,source_id,video_path')
+    expect(output).toContain(`content_hash,`)
+    expect(output).toContain('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
     expect(output).toContain('"第一句, 带逗号"')
   })
 
@@ -48,5 +51,6 @@ describe('clip inbox export', () => {
     expect(output).toContain('FCM: NON-DROP FRAME')
     expect(output).toContain('001  AX       V     C        00:00:01:00 00:00:03:15 00:00:00:00 00:00:02:15')
     expect(output).toContain('* SOURCE FILE: /videos/demo.mp4')
+    expect(output).toContain('* SOURCE CONTENT HASH: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
   })
 })
