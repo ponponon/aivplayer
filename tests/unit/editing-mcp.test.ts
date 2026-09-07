@@ -96,8 +96,8 @@ describe('aivplayer editing MCP stdio contract', () => {
         }
       }
     })
-    expect(createEditingMcpClientConfig('/tmp/project.aivproj', '  /opt/aivcli  ')).toMatchObject({
-      mcpServers: { 'aivplayer-editing': { command: '/opt/aivcli' } }
+    expect(createEditingMcpClientConfig('/tmp/project.aivproj', '  /opt/aivcli  ', true)).toEqual({
+      mcpServers: { 'aivplayer-editing': { command: '/opt/aivcli', args: ['mcp', 'serve', '/tmp/project.aivproj', '--desktop'] } }
     })
     expect(() => createEditingMcpClientConfig('/tmp/project.aivproj', '   ')).toThrow('MCP 客户端命令不能为空')
   })

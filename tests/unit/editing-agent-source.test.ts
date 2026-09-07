@@ -19,7 +19,7 @@ describe('editing Agent desktop bridge source contract', () => {
     const mcpConfigSmoke = readSource('scripts/smoke-editing-mcp-config.ts')
 
     expect(cli).toContain('mcp serve <project.aivproj> [--desktop] [--bridge-manifest path]')
-    expect(cli).toContain('mcp config <project.aivproj> [--command aivcli]')
+    expect(cli).toContain('mcp config <project.aivproj> [--command aivcli] [--desktop]')
     expect(cli).toContain('createEditingMcpClientConfig')
     expect(cli).toContain("hasCliOption(parsed, 'desktop')")
     expect(mcp).toContain('proposalSink')

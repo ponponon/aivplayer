@@ -30,7 +30,8 @@ async function main(): Promise<void> {
     'config',
     projectPath,
     '--command',
-    '/opt/aivcli'
+    '/opt/aivcli',
+    '--desktop'
   ], {
     env: { ...process.env, HOME: directory, AIVPLAYER_DISABLE_GPU: '1' },
     stdio: ['ignore', 'pipe', 'pipe']
@@ -47,7 +48,7 @@ async function main(): Promise<void> {
     const config = JSON.parse(Buffer.concat(stdout).toString('utf8')) as McpClientConfig
     const server = config.mcpServers?.['aivplayer-editing']
     assert(server?.command === '/opt/aivcli', 'MCP 配置没有保留自定义命令')
-    assert(JSON.stringify(server.args) === JSON.stringify(['mcp', 'serve', projectPath]), 'MCP 配置参数未固定到目标工程')
+    assert(JSON.stringify(server.args) === JSON.stringify(['mcp', 'serve', projectPath, '--desktop']), 'MCP 配置参数未固定到目标工程或桌面桥接开关')
     console.log(JSON.stringify({ ok: true, command: server.command, args: server.args }))
   } finally {
     if (!child.killed && child.exitCode === null) child.kill()
