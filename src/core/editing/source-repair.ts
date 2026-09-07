@@ -1,5 +1,5 @@
 import type { EditingCaptionPreferredPaths, EditingProject, EditingSource } from '../../shared/editing-types'
-import { normalizeMediaContentHash } from '../media/media-content-hash'
+import { normalizeMediaContentHash } from '../../shared/media-content-hash.ts'
 
 export type EditingSourceRepairCandidate = {
   path: string

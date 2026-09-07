@@ -1,6 +1,6 @@
 import { normalizeVisionCollectionTags, normalizeVisionCollectionSortMode } from './clip-inbox-operations'
 import { normalizeVisionTimeRange } from './vision-evidence'
-import { normalizeMediaContentHash } from '../media/media-content-hash'
+import { normalizeMediaContentHash } from '../../shared/media-content-hash.ts'
 import type { VisionClipCollectionInput, VisionClipSelection, VisionEvidenceType } from '../../shared/vision-types'
 
 const VISION_CLIP_COLLECTION_EXPORT_VERSION = 1

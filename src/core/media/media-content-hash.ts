@@ -1,14 +1,11 @@
 import { createHash } from 'node:crypto'
 import { createReadStream } from 'node:fs'
 import { stat } from 'node:fs/promises'
+import { normalizeMediaContentHash } from '../../shared/media-content-hash.ts'
 
 const CONTENT_HASH_CHUNK_BYTES = 4 * 1024 * 1024
 
-export function normalizeMediaContentHash(value: unknown): string | undefined {
-  if (typeof value !== 'string') return undefined
-  const normalized = value.trim().toLowerCase()
-  return /^[a-f0-9]{64}$/.test(normalized) ? normalized : undefined
-}
+export { normalizeMediaContentHash }
 
 function createAbortError(): Error {
   const error = new Error('媒体内容哈希计算已取消')
