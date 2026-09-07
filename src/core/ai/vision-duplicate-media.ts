@@ -7,7 +7,7 @@ export type VisionDuplicateMediaCandidate = {
   contentHash: string
 }
 
-export type VisionDuplicateMediaHasher = (source: VisionLibrarySource) => Promise<string | null>
+export type VisionDuplicateMediaHasher = (source: VisionLibrarySource, signal?: AbortSignal) => Promise<string | null>
 export type VisionDuplicateMediaHashCacheReader = (source: VisionLibrarySource) => string | null | undefined | Promise<string | null | undefined>
 export type VisionDuplicateMediaHashCacheWriter = (source: VisionLibrarySource, contentHash: string) => void | Promise<void>
 
@@ -28,6 +28,13 @@ function createDuplicateGroup(contentHash: string, candidates: readonly VisionDu
     totalBytes,
     duplicateBytes: Math.max(0, totalBytes - primaryBytes)
   }
+}
+
+function throwIfDuplicateMediaScanAborted(signal?: AbortSignal): void {
+  if (!signal?.aborted) return
+  const error = new Error('重复素材扫描已取消')
+  error.name = 'AbortError'
+  throw error
 }
 
 /** Groups only exact content identities; filename, size, and duration alone never form a duplicate group. */
@@ -62,7 +69,9 @@ async function mapWithConcurrency<T, R>(items: readonly T[], concurrency: number
       results[index] = await mapper(items[index]!)
     }
   }
-  await Promise.all(Array.from({ length: Math.min(Math.max(1, concurrency), items.length) }, worker))
+  const settled = await Promise.allSettled(Array.from({ length: Math.min(Math.max(1, concurrency), items.length) }, worker))
+  const rejected = settled.find((result): result is PromiseRejectedResult => result.status === 'rejected')
+  if (rejected) throw rejected.reason
   return results
 }
 
@@ -70,8 +79,9 @@ async function mapWithConcurrency<T, R>(items: readonly T[], concurrency: number
 export async function scanVisionDuplicateMediaSources(
   sources: readonly VisionLibrarySource[],
   hasher: VisionDuplicateMediaHasher,
-  options: { concurrency?: number; getCachedHash?: VisionDuplicateMediaHashCacheReader; onHashComputed?: VisionDuplicateMediaHashCacheWriter } = {}
+  options: { concurrency?: number; signal?: AbortSignal; getCachedHash?: VisionDuplicateMediaHashCacheReader; onHashComputed?: VisionDuplicateMediaHashCacheWriter } = {}
 ): Promise<import('../../shared/vision-types').VisionDuplicateMediaScanResult> {
+  throwIfDuplicateMediaScanAborted(options.signal)
   const sourceGroups = new Map<string, VisionLibrarySource[]>()
   for (const source of sources) {
     const sizeKey = source.fileSizeBytes > 0 ? String(source.fileSizeBytes) : 'unknown-size'
@@ -82,10 +92,11 @@ export async function scanVisionDuplicateMediaSources(
   const hashableSources = [...sourceGroups.values()].filter((group) => group.length > 1).flat()
   const skippedBySizeCount = sources.length - hashableSources.length
   const hashedResults = await mapWithConcurrency(hashableSources, options.concurrency ?? 2, async (source) => {
+    throwIfDuplicateMediaScanAborted(options.signal)
     const cachedHash = normalizeMediaContentHash(await options.getCachedHash?.(source))
     if (cachedHash) return { source, contentHash: cachedHash, fromCache: true }
     try {
-      const contentHash = normalizeMediaContentHash(await hasher(source))
+      const contentHash = normalizeMediaContentHash(await hasher(source, options.signal))
       if (!contentHash) return null
       try {
         await options.onHashComputed?.(source, contentHash)
@@ -98,7 +109,9 @@ export async function scanVisionDuplicateMediaSources(
     }
   })
   const candidates = hashedResults.filter((candidate): candidate is VisionDuplicateMediaCandidate & { fromCache: boolean } => candidate !== null)
+  throwIfDuplicateMediaScanAborted(options.signal)
   return {
+    status: 'completed',
     scannedCount: sources.length,
     hashedCount: hashableSources.length,
     cachedCount: hashedResults.filter((candidate) => candidate?.fromCache === true).length,

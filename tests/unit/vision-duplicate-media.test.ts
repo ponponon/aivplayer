@@ -50,7 +50,7 @@ describe('vision duplicate media', () => {
     }, { concurrency: 1 })
 
     expect(hashed).toEqual(['source-a', 'source-b'])
-    expect(result).toMatchObject({ scannedCount: 3, hashedCount: 2, cachedCount: 0, unavailableCount: 1, skippedBySizeCount: 1 })
+    expect(result).toMatchObject({ status: 'completed', scannedCount: 3, hashedCount: 2, cachedCount: 0, unavailableCount: 1, skippedBySizeCount: 1 })
     expect(result.groups).toHaveLength(0)
   })
 
@@ -67,5 +67,18 @@ describe('vision duplicate media', () => {
     expect(hashCalls).toBe(0)
     expect(result.cachedCount).toBe(2)
     expect(result.groups).toHaveLength(1)
+  })
+
+  it('cancels before hashing and waits for workers to stop', async () => {
+    const controller = new AbortController()
+    const sources = [source('source-a', '/media/a.mp4', 100), source('source-b', '/media/b.mp4', 100)]
+    let hashCalls = 0
+    await expect(scanVisionDuplicateMediaSources(sources, async (_item, signal) => {
+      hashCalls += 1
+      controller.abort()
+      signal?.throwIfAborted()
+      return hash
+    }, { concurrency: 1, signal: controller.signal })).rejects.toMatchObject({ name: 'AbortError' })
+    expect(hashCalls).toBe(1)
   })
 })

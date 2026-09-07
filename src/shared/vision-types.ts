@@ -116,6 +116,7 @@ export type VisionDuplicateMediaGroup = {
 }
 
 export type VisionDuplicateMediaScanResult = {
+  status: 'completed' | 'cancelled'
   scannedCount: number
   hashedCount: number
   cachedCount: number
