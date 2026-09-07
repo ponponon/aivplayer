@@ -80,8 +80,15 @@
   color: var(--text-muted);
   font-size: 9px;
   font-variant-numeric: tabular-nums;
+  line-height: 1;
+  pointer-events: none;
   transform: translateX(-50%);
+  white-space: nowrap;
 }
+
+.editing-ruler-tick:first-child { transform: none; }
+.editing-ruler-tick:last-child { transform: translateX(-100%); }
+.editing-ruler-tick:first-child:last-child { transform: none; }
 
 .editing-track {
   position: relative;

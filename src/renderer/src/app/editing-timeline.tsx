@@ -27,9 +27,10 @@ import { getEditingUiPreferenceStorage, pruneEditingUiPreferences, readEditingPr
 import { getEditingSubtitleReloadCopy } from '../../../shared/editing-subtitle-reload-copy'
 import { getEditingSubtitleCandidateCopy } from '../../../shared/editing-subtitle-candidate-copy'
 import { getTransportAction } from './control-state'
+import { getEditingRulerTicks } from './editing-ruler'
 import { getEditingSubtitleReloadChangePreview, getEditingSubtitleReloadChangeScriptSegmentId, shareEditingSubtitleReloadScriptSegmentIds, type EditingSubtitleReloadChange, type EditingSubtitleReloadChangePreview, type EditingSubtitleReloadIncomingPreviewTrack } from '../../../core/editing/subtitle-reload'
 import type { EditingProposal } from '../../../shared/editing-proposal'
-const MAX_RULER_TICKS = 121; function formatClipLabel(startSeconds: number, endSeconds: number): string { return `${formatTime(startSeconds)} – ${formatTime(endSeconds)}` }
+function formatClipLabel(startSeconds: number, endSeconds: number): string { return `${formatTime(startSeconds)} – ${formatTime(endSeconds)}` }
 function formatIncomingPreviewRange(track: EditingSubtitleReloadIncomingPreviewTrack): string { return `${formatTime(track.startSeconds)}–${formatTime(track.endSeconds)}` }
 
 function EditingProjectStatusView({ projectId, status, resetLabel, resetAllLabel, resetAllConfirm }: { projectId: string; status: EditingProjectStatus | null; resetLabel: string; resetAllLabel: string; resetAllConfirm: string }): React.ReactElement | null {
@@ -94,6 +95,8 @@ export function EditingTimeline(): React.ReactElement | null {
   const [selectedScriptSegmentId, setSelectedScriptSegmentId] = useState<string | null>(null)
   const [incomingCaptionPreview, setIncomingCaptionPreview] = useState<EditingSubtitleReloadChangePreview | null>(null)
   const timelineContentRef = useRef<HTMLDivElement | null>(null)
+  const rulerRef = useRef<HTMLDivElement | null>(null)
+  const [rulerWidth, setRulerWidth] = useState(0)
   const spans = getVideoClipSpans(project?.videoClips ?? [])
   const durationSeconds = editedDurationSeconds(project?.videoClips ?? [])
   const waveformSegments = getEditingWaveformSegments(spans, waveforms)
@@ -197,7 +200,17 @@ export function EditingTimeline(): React.ReactElement | null {
     setGraphicDefaults({ graphicStyle: theme.graphicStyle, graphicPosition: theme.graphicPosition })
   }
   const exportAudit = auditEditingExport(project, Object.keys(app.editingSourceFiles))
-  const rulerTickCount = Math.min(MAX_RULER_TICKS, Math.max(2, Math.ceil(durationSeconds) + 1))
+  useEffect(() => {
+    const ruler = rulerRef.current
+    if (!ruler) return
+    const updateRulerWidth = (): void => setRulerWidth(ruler.getBoundingClientRect().width)
+    updateRulerWidth()
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(updateRulerWidth)
+    observer.observe(ruler)
+    return () => observer.disconnect()
+  }, [project?.id])
+  const rulerTicks = getEditingRulerTicks(durationSeconds, rulerWidth)
   const playheadPercent = durationSeconds > 0 ? (currentTime / durationSeconds) * 100 : 0
   const framingMarkers = framingKeyframes.slice(1).filter((keyframe) => keyframe.at > 0 && keyframe.at < durationSeconds).map((keyframe) => ({ keyframe, clip: spans.find((span) => Math.abs(span.editedStartSeconds - keyframe.at) < 0.001)?.clip ?? null }))
   const snapPoints = [...new Set([currentTime, ...spans.flatMap((span) => [span.editedStartSeconds, span.editedEndSeconds])])]
@@ -317,8 +330,8 @@ export function EditingTimeline(): React.ReactElement | null {
         <div ref={timelineContentRef} className="editing-timeline-content" style={{ width: `${Math.max(100, zoom * 100)}%` }} onPointerDown={beginTimelineMarquee} onPointerMove={moveTimelineMarquee} onPointerUp={finishTimelineMarquee} onPointerCancel={finishTimelineMarquee} onKeyDown={handleTimelineKeyDown}>
           <div className="editing-ruler-row">
             <span className="editing-track-label" aria-hidden="true"><Grid3X3 size={13} /></span>
-            <div className="editing-ruler" aria-hidden="true">
-              {Array.from({ length: rulerTickCount }, (_, index) => <span key={index} className="editing-ruler-tick" style={{ left: `${durationSeconds > 0 ? (index / (rulerTickCount - 1)) * 100 : 0}%` }}>{formatTime(index)}</span>)}
+            <div ref={rulerRef} className="editing-ruler" aria-hidden="true">
+              {rulerTicks.map((seconds, index) => <span key={seconds} className="editing-ruler-tick" data-ruler-seconds={seconds} style={{ left: `${durationSeconds > 0 ? (index === rulerTicks.length - 1 ? 100 : Math.min(100, (seconds / durationSeconds) * 100)) : 0}%` }}>{formatTime(seconds)}</span>)}
             </div>
           </div>
           <div className="editing-track-row">

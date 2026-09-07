@@ -2423,3 +2423,10 @@
 - 原因：Ubuntu Noble / Resolute 中 `libasound2` 是虚拟包，Snapcraft 可能选择 `liboss4-salsa-asound2`。这个 OSS4 兼容库把 `libasound.so.2` 指向 `liboss4-salsa.so.2`，缺少 Electron 需要的标准 ALSA 符号；命令链先报 `libOSSlib.so` 找不到，补搜索路径后又报 `snd_device_name_get_hint` 未定义。App Center 与应用菜单只是共同调用同一个坏掉的 desktop `Exec`，不是两个独立的 UI 故障。
 - 经验：core24 的 Linux 依赖不能只沿用旧 Electron 文档里的包名；凡是虚拟包都要确认实际 provider 和导出的 ABI。Snap 发布前必须在目标架构上安装产物并执行真实 launcher smoke，不能只检查 SquashFS 文件存在或 Store 上传成功。
 - 处理：将 Snap stage package 改为 `libasound2t64`；先用 `--publish never` 构建，完成 `snap install --dangerous` 与 `snap run aivplayer --version` 后，再通过 `snapcraft upload --release=stable,edge` 发布，并把这条启动检查固化进 workflow 源码测试。
+
+## 2026-09-07：时间轴标尺不能按视频秒数无条件渲染
+
+- 现象：1 分钟视频的剪辑时间轴每秒渲染一个标签，60 多个绝对定位的时间文本挤在同一行，最终重叠成一条不可读的文字带；首尾标签还会被容器边界裁掉。
+- 原因：刻度数量只由时长决定，没有考虑标尺实际像素宽度、时间轴缩放和标签自身的最小可读间距。
+- 经验：时间轴刻度应先根据可用像素计算“好看”的间隔，再生成少量整齐的刻度；缩放改变内容宽度时应通过 ResizeObserver 重新计算，边界刻度要单独处理对齐，不能只靠 `overflow` 或压缩字体掩盖重叠。
+- 处理：新增自适应标尺刻度计算，使用 1/2/5 倍数量级的可读间隔；默认 1 分钟视频显示 5 秒刻度，窄窗口进一步稀疏，放大后恢复更细刻度，并补充纯函数测试和真实 Electron 剪辑页截图验证。

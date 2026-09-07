@@ -130,6 +130,7 @@
     "smoke:settings-dialog:ko": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-settings-dialog.ts --locale ko-KR",
     "smoke:clip-export-dialog": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-clip-export-dialog.ts",
     "smoke:editing-script": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-editing-script.ts",
+    "smoke:editing-ruler": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-editing-ruler.ts",
     "smoke:editing-mcp": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --experimental-loader=./scripts/resolve-ts-loader.mjs scripts/smoke-editing-mcp.ts",
     "smoke:editing-mcp-config": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-editing-mcp-config.ts",
     "smoke:editing-agent-bridge": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-loader=./scripts/resolve-ts-loader.mjs --experimental-strip-types scripts/smoke-editing-agent-bridge.ts",
