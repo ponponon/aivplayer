@@ -3,7 +3,7 @@ import { Copy, Database, Play, ScanSearch, Search, Square, Star } from 'lucide-r
 import { useMemo, useState } from 'react'
 import { filterVisionLibrarySources, type VisionLibrarySourceSortMode } from '../../../core/ai/vision-library-source-filter'
 import type { LocaleCopy } from '../../../shared/i18n'
-import type { VisionDuplicateMediaScanResult, VisionLibrarySource } from '../../../shared/vision-types'
+import type { VisionDuplicateMediaScanResult, VisionLibrarySource, VisionSimilarMediaScanResult } from '../../../shared/vision-types'
 
 type VisionLibrarySourcesProps = {
   copy: LocaleCopy['vision']
@@ -18,6 +18,11 @@ type VisionLibrarySourcesProps = {
   duplicateThumbnailUrls: Record<string, string>
   onScanDuplicates: () => void
   onCancelDuplicates: () => void
+  similarScan: VisionSimilarMediaScanResult | null
+  isScanningSimilar: boolean
+  similarThumbnailUrls: Record<string, string>
+  onScanSimilar: () => void
+  onCancelSimilar: () => void
 }
 
 function formatDuplicateBytes(bytes: number): string {
@@ -28,14 +33,18 @@ function formatDuplicateBytes(bytes: number): string {
   return `${value >= 10 || unitIndex === 0 ? Math.round(value) : value.toFixed(1)} ${units[unitIndex]}`
 }
 
-export function VisionLibrarySources({ copy, sources, thumbnailUrls, hasMoreSources, isLoadingMoreSources, onLoadMore, onOpenSource, duplicateScan, isScanningDuplicates, duplicateThumbnailUrls, onScanDuplicates, onCancelDuplicates }: VisionLibrarySourcesProps): React.ReactElement {
+function formatSimilarScore(score: number): string {
+  return `${Math.round(Math.max(0, Math.min(1, Number.isFinite(score) ? score : 0)) * 100)}%`
+}
+
+export function VisionLibrarySources({ copy, sources, thumbnailUrls, hasMoreSources, isLoadingMoreSources, onLoadMore, onOpenSource, duplicateScan, isScanningDuplicates, duplicateThumbnailUrls, onScanDuplicates, onCancelDuplicates, similarScan, isScanningSimilar, similarThumbnailUrls, onScanSimilar, onCancelSimilar }: VisionLibrarySourcesProps): React.ReactElement {
   const [query, setQuery] = useState('')
   const [favoriteOnly, setFavoriteOnly] = useState(false)
   const [sortMode, setSortMode] = useState<VisionLibrarySourceSortMode>('recent')
   const filteredSources = useMemo(() => filterVisionLibrarySources(sources, { query, favoriteOnly, sortMode }), [favoriteOnly, query, sortMode, sources])
 
   return <section className="vision-card vision-library-sources" aria-label={copy.libraryTitle}>
-    <div className="vision-collections-heading"><span><Database size={14} />{copy.libraryTitle}</span><div className="vision-library-heading-actions"><small>{copy.libraryVisibleCount(filteredSources.length, sources.length)}</small>{isScanningDuplicates ? <button className="vision-secondary-action" type="button" data-testid="vision-duplicate-cancel" onClick={onCancelDuplicates} title={copy.libraryDuplicateCancel}><Square size={12} />{copy.libraryDuplicateCancel}</button> : <button className="vision-secondary-action" type="button" data-testid="vision-duplicate-scan" onClick={onScanDuplicates} title={copy.libraryDuplicateDescription}><Copy size={12} />{copy.libraryDuplicateScan}</button>}</div></div>
+    <div className="vision-collections-heading"><span><Database size={14} />{copy.libraryTitle}</span><div className="vision-library-heading-actions"><small>{copy.libraryVisibleCount(filteredSources.length, sources.length)}</small>{isScanningDuplicates ? <button className="vision-secondary-action" type="button" data-testid="vision-duplicate-cancel" onClick={onCancelDuplicates} title={copy.libraryDuplicateCancel}><Square size={12} />{copy.libraryDuplicateCancel}</button> : <button className="vision-secondary-action" type="button" data-testid="vision-duplicate-scan" onClick={onScanDuplicates} title={copy.libraryDuplicateDescription}><Copy size={12} />{copy.libraryDuplicateScan}</button>}{isScanningSimilar ? <button className="vision-secondary-action" type="button" data-testid="vision-similar-cancel" onClick={onCancelSimilar} title={copy.librarySimilarCancel}><Square size={12} />{copy.librarySimilarCancel}</button> : <button className="vision-secondary-action" type="button" data-testid="vision-similar-scan" onClick={onScanSimilar} title={copy.librarySimilarDescription}><Search size={12} />{copy.librarySimilarScan}</button>}</div></div>
     {sources.length > 0 ? <div className="vision-library-source-filters"><label className="vision-library-source-search"><Search size={13} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={copy.librarySearchPlaceholder} aria-label={copy.librarySearchPlaceholder} /></label><AppSelect value={sortMode} onChange={(event) => setSortMode(event.target.value as VisionLibrarySourceSortMode)} aria-label={copy.librarySortLabel}><option value="recent">{copy.librarySortRecent}</option><option value="name">{copy.librarySortName}</option><option value="frames">{copy.librarySortFrames}</option></AppSelect><label className="vision-folder-option"><input type="checkbox" checked={favoriteOnly} onChange={(event) => setFavoriteOnly(event.target.checked)} /><span>{copy.libraryFavoriteOnly}</span></label></div> : null}
     {sources.length === 0 ? <div className="vision-empty"><ScanSearch size={18} /><span>{copy.libraryEmpty}</span></div> : filteredSources.length === 0 ? <div className="vision-empty"><ScanSearch size={18} /><span>{copy.libraryNoMatch}</span></div> : <div className="vision-library-source-grid">{filteredSources.map((source) => <button className="vision-library-source" type="button" key={source.sourceId} onClick={() => onOpenSource(source)} title={copy.libraryOpen}>
       {source.thumbnailPath && thumbnailUrls[source.sourceId] ? <img src={thumbnailUrls[source.sourceId]} alt="" /> : <span className="vision-library-source-placeholder"><ScanSearch size={18} /></span>}
@@ -52,6 +61,21 @@ export function VisionLibrarySources({ copy, sources, thumbnailUrls, hasMoreSour
             {group.sources.map((source) => <button className="vision-library-duplicate-source" type="button" key={source.sourceId} onClick={() => onOpenSource(source)} title={copy.libraryOpen}>
               {source.thumbnailPath && duplicateThumbnailUrls[source.sourceId] ? <img src={duplicateThumbnailUrls[source.sourceId]} alt="" /> : <span className="vision-library-source-placeholder"><ScanSearch size={16} /></span>}
               <span><strong>{source.fileName}</strong><small title={source.videoPath}>{source.videoPath}</small></span>
+            </button>)}
+          </div>
+        </div>)}
+      </div>}
+    </div> : null}
+    {similarScan ? <div className="vision-library-duplicate-report vision-library-similar-report" data-testid="vision-similar-report" role="status" aria-label={copy.librarySimilarTitle}>
+      <div className="vision-library-duplicate-heading"><div><strong>{copy.librarySimilarTitle}</strong><small>{copy.librarySimilarDescription}</small></div><small>{copy.librarySimilarSummary(similarScan.scannedSourceCount, similarScan.sampledFrameCount, similarScan.comparedPairCount, similarScan.groups.length, similarScan.skippedSourceCount)}</small></div>
+      {similarScan.skippedSourceCount > 0 ? <small className="vision-library-duplicate-warning">{copy.librarySimilarSkipped(similarScan.skippedSourceCount)}</small> : null}
+      {similarScan.groups.length === 0 ? <div className="vision-empty"><Search size={16} /><span>{copy.librarySimilarEmpty}</span></div> : <div className="vision-library-duplicate-groups" role="list">
+        {similarScan.groups.map((group) => <div className="vision-library-duplicate-group vision-library-similar-group" key={group.id} role="listitem">
+          <div className="vision-library-duplicate-group-heading"><strong>{copy.librarySimilarGroup(group.matches.length)}</strong><small>{copy.librarySimilarScore(group.bestScore)}</small></div>
+          <div className="vision-library-duplicate-sources">
+            {group.matches.map((match) => <button className="vision-library-duplicate-source vision-library-similar-source" type="button" key={`${group.id}-${match.frameId}`} onClick={() => onOpenSource(match.source)} title={copy.libraryOpen}>
+              {match.thumbnailPath && similarThumbnailUrls[match.frameId] ? <img src={similarThumbnailUrls[match.frameId]} alt="" /> : <span className="vision-library-source-placeholder"><Search size={16} /></span>}
+              <span><strong>{match.source.fileName}</strong><small title={match.source.videoPath}>{match.source.videoPath}</small><em>{copy.librarySimilarFrame(match.timestampSeconds)} · {copy.librarySimilarScore(match.score)}</em></span>
             </button>)}
           </div>
         </div>)}
