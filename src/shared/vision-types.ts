@@ -108,6 +108,21 @@ export type VisionLibrarySource = {
   metadata: VisionLibrarySourceMetadata | null
 }
 
+export type VisionDuplicateMediaGroup = {
+  id: string
+  sources: VisionLibrarySource[]
+  totalBytes: number
+  duplicateBytes: number
+}
+
+export type VisionDuplicateMediaScanResult = {
+  scannedCount: number
+  hashedCount: number
+  unavailableCount: number
+  skippedBySizeCount: number
+  groups: VisionDuplicateMediaGroup[]
+}
+
 export type VisionIndexRequest = {
   mediaPaths: string[]
   intervalSeconds?: number
