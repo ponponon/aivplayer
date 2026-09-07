@@ -84,6 +84,7 @@ describe('release workflow source constraints', () => {
   })
 
   it('keeps the current release notes in a single English body', async () => {
+    // @ts-expect-error The release helper is intentionally kept as a plain .mjs script.
     const { assertEnglishReleaseNotes, checkReleaseNotesLanguage } = await import('../../scripts/check-release-notes-language.mjs')
     await expect(checkReleaseNotesLanguage({ file: 'docs/releases/v0.6.9.md' })).resolves.toMatchObject({ ok: true })
     expect(() => assertEnglishReleaseNotes('## 中文说明', 'fixture')).toThrow('CJK text found')
