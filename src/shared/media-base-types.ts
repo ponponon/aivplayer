@@ -31,6 +31,19 @@ export type MediaStructureSegment = { id: string; kind: MediaStructureSegmentKin
 export type MediaStructureCorrection = { segmentId: string; kind: MediaStructureSegmentKind; startSeconds: number; endSeconds: number; action: 'ignore'; updatedAt: number }
 export type MediaStructureAnalysisRequest = { mediaPath: string; durationSeconds?: number; minBlackDurationSeconds?: number; pixelThreshold?: number }
 export type MediaStructureAnalysisResult = { success: boolean; message: string; cacheHit: boolean; cacheKey: string | null; segments: MediaStructureSegment[] }
+export type MediaCacheCategory = 'subtitle' | 'summary' | 'index' | 'trickplay' | 'waveform' | 'structure' | 'web-transcode' | 'other'
+export type MediaCacheCategoryStats = { bytes: number; files: number; staleBytes: number; staleFiles: number }
+export type MediaCacheStats = {
+  totalBytes: number
+  totalFiles: number
+  staleBytes: number
+  staleFiles: number
+  temporaryBytes: number
+  temporaryFiles: number
+  categories: Record<MediaCacheCategory, MediaCacheCategoryStats>
+}
+export type MediaCacheStatsResult = { success: boolean; message: string; stats: MediaCacheStats }
+export type MediaCacheClearResult = { success: boolean; message: string; deletedFiles: number; deletedBytes: number; stats: MediaCacheStats }
 export type PlaybackState = { isPlaying: boolean; currentTime: number; duration: number; volume: number; muted: boolean; playbackRate: number }
 export type MediaClipExportRequest = { mediaPath: string; startSeconds: number; durationSeconds: number; mode: ClipExportMode; subtitlePath?: string; subtitleSrtPath?: string; subtitleRender?: SubtitleRenderSettings }
 export type MediaClipExportResult = { success: boolean; message: string; videoPath?: string; videoUrl?: string; subtitleSrtPath?: string; subtitleSrtUrl?: string; canceled?: boolean }
