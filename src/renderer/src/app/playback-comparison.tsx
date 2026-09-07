@@ -12,6 +12,7 @@ export function PlaybackComparison(): React.ReactElement {
   const [secondaryError, setSecondaryError] = useState(false)
   const comparisonCandidates = app.state.playlist.filter((file) => file.path !== app.state.currentFile?.path)
   const comparisonFile = comparisonCandidates.find((file) => file.path === app.comparisonFilePath) ?? comparisonCandidates[0] ?? null
+  const shouldPlaySecondary = app.state.isPlaying || Boolean(app.videoRef.current && !app.videoRef.current.paused)
 
   useEffect(() => {
     const nextPath = comparisonFile?.path ?? null
@@ -32,27 +33,61 @@ export function PlaybackComparison(): React.ReactElement {
     if (!video || !comparisonFile || video.readyState < 1) return
     const nextTime = clampComparisonTime(app.state.currentTime, app.state.duration, secondaryDuration)
     if (Math.abs(video.currentTime - nextTime) > 0.08) video.currentTime = nextTime
-  }, [app.state.currentTime, app.state.duration, comparisonFile?.path, secondaryDuration])
+    if (shouldPlaySecondary && video.paused && !video.ended) void video.play().catch(() => undefined)
+  }, [app.state.currentTime, app.state.duration, comparisonFile?.path, secondaryDuration, shouldPlaySecondary])
 
   useEffect(() => {
     const video = secondaryVideoRef.current
     if (!video || !comparisonFile || secondaryError) return
     video.playbackRate = app.state.playbackRate
-    if (app.state.isPlaying) {
-      void video.play().catch(() => setSecondaryError(true))
+    if (shouldPlaySecondary) {
+      void video.play().catch(() => undefined)
     } else {
       video.pause()
     }
-  }, [app.state.isPlaying, app.state.playbackRate, comparisonFile?.path, secondaryError])
+  }, [app.state.playbackRate, comparisonFile?.path, secondaryError, shouldPlaySecondary])
+
+  useEffect(() => {
+    let active = true
+    let timer: number | null = null
+    const reconcilePlayingState = (): void => {
+      if (!active) return
+      const primaryVideo = app.videoRef.current
+      const secondaryVideo = secondaryVideoRef.current
+      if (primaryVideo && secondaryVideo && comparisonFile && !secondaryError && secondaryVideo.readyState >= 1) {
+        secondaryVideo.muted = true
+        secondaryVideo.playbackRate = app.state.playbackRate
+        if (primaryVideo.paused) {
+          if (!secondaryVideo.paused) secondaryVideo.pause()
+        } else if (secondaryVideo.paused && !secondaryVideo.ended) {
+          void secondaryVideo.play().catch(() => undefined)
+        }
+      }
+      timer = window.setTimeout(reconcilePlayingState, 250)
+    }
+    reconcilePlayingState()
+    return () => {
+      active = false
+      if (timer != null) window.clearTimeout(timer)
+    }
+  }, [app.state.playbackRate, app.videoRef, comparisonFile, secondaryError])
 
   const handleSecondaryLoadedMetadata = (event: React.SyntheticEvent<HTMLVideoElement>): void => {
     const video = event.currentTarget
     const duration = Number.isFinite(video.duration) ? video.duration : 0
     setSecondaryDuration(duration)
+    video.muted = true
     video.playbackRate = app.state.playbackRate
     const nextTime = clampComparisonTime(app.state.currentTime, app.state.duration, duration)
     if (Math.abs(video.currentTime - nextTime) > 0.08) video.currentTime = nextTime
-    if (app.state.isPlaying) void video.play().catch(() => setSecondaryError(true))
+    if (shouldPlaySecondary) void video.play().catch(() => undefined)
+  }
+
+  const handleSecondaryCanPlay = (event: React.SyntheticEvent<HTMLVideoElement>): void => {
+    const video = event.currentTarget
+    video.muted = true
+    video.playbackRate = app.state.playbackRate
+    if (shouldPlaySecondary && video.paused) void video.play().catch(() => undefined)
   }
 
   const handleSecondaryEnded = (): void => {
@@ -98,10 +133,12 @@ export function PlaybackComparison(): React.ReactElement {
                 data-testid="playback-comparison-secondary"
                 src={comparisonFile.url}
                 preload="metadata"
+                autoPlay={shouldPlaySecondary}
                 muted
                 playsInline
                 controls={false}
                 onLoadedMetadata={handleSecondaryLoadedMetadata}
+                onCanPlay={handleSecondaryCanPlay}
                 onError={() => setSecondaryError(true)}
                 onEnded={handleSecondaryEnded}
               />
