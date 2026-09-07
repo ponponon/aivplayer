@@ -58,6 +58,8 @@ export function useAppModel(): AppModel {
   const [isControlDeckVisible, setIsControlDeckVisible] = useState(true)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [mediaMetadata, setMediaMetadata] = useState<MediaProbeMetadata | null>(null)
+  const [isComparisonMode, setIsComparisonMode] = useState(false)
+  const [comparisonFilePath, setComparisonFilePath] = useState<string | null>(null)
   const [isEditingMode, setIsEditingMode] = useState(false)
   const [editingProject, setEditingProject] = useState<EditingProject | null>(null)
   const [editingPast, setEditingPast] = useState<EditingProject[]>([])
@@ -147,6 +149,10 @@ export function useAppModel(): AppModel {
     setIsFullscreen,
     mediaMetadata,
     setMediaMetadata,
+    isComparisonMode,
+    setIsComparisonMode,
+    comparisonFilePath,
+    setComparisonFilePath,
     isEditingMode,
     setIsEditingMode,
     editingProject,

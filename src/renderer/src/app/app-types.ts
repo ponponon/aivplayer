@@ -108,6 +108,8 @@ export type AppStateSetters = {
   setIsControlDeckVisible: React.Dispatch<React.SetStateAction<boolean>>
   setIsFullscreen: React.Dispatch<React.SetStateAction<boolean>>
   setMediaMetadata: React.Dispatch<React.SetStateAction<MediaProbeMetadata | null>>
+  setIsComparisonMode: React.Dispatch<React.SetStateAction<boolean>>
+  setComparisonFilePath: React.Dispatch<React.SetStateAction<string | null>>
   setViewMode: React.Dispatch<React.SetStateAction<'video' | 'image'>>
   setIsEditingMode: React.Dispatch<React.SetStateAction<boolean>>
   setEditingProject: React.Dispatch<React.SetStateAction<EditingProject | null>>
@@ -172,6 +174,8 @@ export type AppModel = AppRefs &
     isControlDeckVisible: boolean
     isFullscreen: boolean
     mediaMetadata: MediaProbeMetadata | null
+    isComparisonMode: boolean
+    comparisonFilePath: string | null
     isEditingMode: boolean
     editingProject: EditingProject | null
     editingPast: EditingProject[]
