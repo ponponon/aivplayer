@@ -125,6 +125,29 @@ export type VisionDuplicateMediaScanResult = {
   groups: VisionDuplicateMediaGroup[]
 }
 
+export type VisionSimilarMediaMatch = {
+  source: VisionLibrarySource
+  frameId: string
+  timestampSeconds: number
+  thumbnailPath: string
+  score: number
+}
+
+export type VisionSimilarMediaGroup = {
+  id: string
+  bestScore: number
+  matches: VisionSimilarMediaMatch[]
+}
+
+export type VisionSimilarMediaScanResult = {
+  status: 'completed' | 'cancelled'
+  scannedSourceCount: number
+  sampledFrameCount: number
+  comparedPairCount: number
+  skippedSourceCount: number
+  groups: VisionSimilarMediaGroup[]
+}
+
 export type VisionIndexRequest = {
   mediaPaths: string[]
   intervalSeconds?: number

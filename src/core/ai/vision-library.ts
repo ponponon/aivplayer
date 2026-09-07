@@ -18,6 +18,7 @@ import { createVisionSceneEvidence } from './vision-scene-evidence'
 import { calculateVisionLexicalMatch, combineVisionHybridScore, getVisionSearchResultKey } from './vision-search'
 import { isVisionObjectDetectionFilterActive, normalizeVisionObjectDetectionFilterState } from './vision-object-detection-filter'
 import { isVisionSimilarSearchTarget, normalizeVisionSimilarSearchRequest } from './vision-similar-search'
+import { selectVisionSimilarMediaFrames, type VisionSimilarMediaFrame } from './vision-similar-media'
 import { createVisionEvidenceId, createVisionSourceFingerprint, createVisionSourceId } from './vision-evidence'
 import {
   VISION_FRAME_INTERVAL_SECONDS,
@@ -638,6 +639,38 @@ export class VisionLibrary {
         thumbnailPath: frames[0]?.thumbnail_path || null,
         metadata: null
       }))
+  }
+
+  async listSimilarMediaFrames(sources: readonly VisionLibrarySource[], signal?: AbortSignal): Promise<VisionSimilarMediaFrame[]> {
+    if (sources.length === 0) return []
+    const sourceByPath = new Map(sources.map((source) => [source.videoPath, source]))
+    const table = await this.getTable()
+    if (!table) return []
+    const rows = await table.query()
+      .select(['id', 'video_path', 'file_name', 'timestamp_seconds', 'thumbnail_path', 'embedding'])
+      .limit(METADATA_SCAN_LIMIT)
+      .toArray() as unknown as Array<Record<string, unknown>>
+    throwIfVisionSearchAborted(signal)
+    const frames: VisionSimilarMediaFrame[] = []
+    for (const row of rows) {
+      const videoPath = String(row.video_path ?? '')
+      const source = sourceByPath.get(videoPath)
+      const frameId = String(row.id ?? '').trim()
+      const embedding = row.embedding
+      if (!source || !frameId || vectorLength(embedding) === 0) continue
+      const values = Array.from({ length: vectorLength(embedding) }, (_, index) => vectorValue(embedding, index))
+      if (values.some((value) => !Number.isFinite(value))) continue
+      frames.push({
+        frameId,
+        sourceId: source.sourceId,
+        videoPath,
+        fileName: String(row.file_name ?? source.fileName),
+        timestampSeconds: Number(row.timestamp_seconds),
+        thumbnailPath: String(row.thumbnail_path ?? ''),
+        embedding: values
+      })
+    }
+    return selectVisionSimilarMediaFrames(frames)
   }
 
   private async getVectorIndex(): Promise<{ name: string; columns: string[]; indexType: string } | null> {
