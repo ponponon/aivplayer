@@ -11,6 +11,9 @@ describe('video layout source constraints', () => {
       /\.video-surface\s*\{[^}]*width:\s*auto;[^}]*max-width:\s*100%;[^}]*height:\s*auto;[^}]*max-height:\s*100%;/s
     )
     expect(playerCss).toMatch(/\.video-surface\s*\{[^}]*object-fit:\s*contain;/s)
+    expect(playerCss).toMatch(
+      /\.stage:fullscreen\s+\.video-surface\s*\{[^}]*width:\s*100%;[^}]*height:\s*100%;[^}]*max-width:\s*none;[^}]*max-height:\s*none;[^}]*object-fit:\s*contain;/s
+    )
     expect(appSource).toContain('aspectRatio: `${state.videoWidth} / ${state.videoHeight}`')
     expect(appSource).toContain('getEditingPersonMatteOutlinePixels')
     expect(appSource).toContain('drop-shadow(0 0 ${personMatteOutlinePixels}px ${personMatteSettings.outlineColor})')

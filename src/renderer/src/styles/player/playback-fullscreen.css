@@ -23,6 +23,14 @@
   background: #050608;
 }
 
+.stage:fullscreen .video-surface {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  object-fit: contain;
+}
+
 .stage:fullscreen > .subtitle-overlay:not(.empty) {
   position: absolute;
   inset: auto 0 max(108px, calc(env(safe-area-inset-bottom) + 98px)) 0;
