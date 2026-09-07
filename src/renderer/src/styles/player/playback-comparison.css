@@ -1,0 +1,166 @@
+.playback-comparison {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  gap: 8px;
+  padding: 8px;
+}
+
+.playback-comparison-toolbar {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 8px;
+  color: var(--text-secondary);
+  background: rgba(var(--overlay-rgb), 0.05);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  font-size: 11px;
+}
+
+.playback-comparison-heading,
+.playback-comparison-target {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+}
+
+.playback-comparison-heading strong {
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.playback-comparison-heading span,
+.playback-comparison-target > span {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.playback-comparison-target {
+  flex: 0 1 auto;
+  gap: 6px;
+}
+
+.playback-comparison-target .app-select {
+  max-width: min(280px, 34vw);
+}
+
+.playback-comparison-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: 0;
+  min-height: 0;
+  gap: 8px;
+}
+
+.playback-comparison-pane {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: rgba(var(--stage-rgb), 0.45);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+}
+
+.playback-comparison-pane-heading {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 6px 8px;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.playback-comparison-pane-heading strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playback-comparison-pane-surface {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  place-items: center;
+  overflow: hidden;
+}
+
+.playback-comparison-pane-surface .video-surface {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.playback-comparison-pane-surface .comparison-secondary-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  background: #000;
+  object-fit: contain;
+}
+
+.playback-comparison-empty {
+  display: grid;
+  height: 100%;
+  align-content: center;
+  justify-items: center;
+  gap: 10px;
+  padding: 20px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.playback-comparison-empty p {
+  margin: 0;
+}
+
+.playback-comparison-error {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  left: 8px;
+  padding: 7px 9px;
+  color: var(--danger);
+  background: rgba(var(--panel-rgb), 0.88);
+  border: 1px solid rgba(var(--danger-rgb), 0.35);
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  text-align: center;
+}
+
+@media (max-width: 700px) {
+  .playback-comparison {
+    gap: 4px;
+    padding: 4px;
+  }
+
+  .playback-comparison-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .playback-comparison-target .app-select {
+    flex: 1;
+    max-width: none;
+  }
+
+  .playback-comparison-grid {
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

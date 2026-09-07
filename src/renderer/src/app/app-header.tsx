@@ -1,4 +1,4 @@
-import { CircleQuestionMark, Clapperboard, FileText, FolderOpen, Image as ImageIcon, Info, ListChecks, Maximize2, Minus, Minimize2, Moon, PanelRight, ScanSearch, Scissors, Settings, Share2, Sparkles, Sun, SunMoon, X } from 'lucide-react'
+import { CircleQuestionMark, Clapperboard, Columns2, FileText, FolderOpen, Image as ImageIcon, Info, ListChecks, Maximize2, Minus, Minimize2, Moon, PanelRight, ScanSearch, Scissors, Settings, Share2, Sparkles, Sun, SunMoon, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { AppThemePreference } from '../../../shared/app-settings'
 import { useAppContext } from './app-context'
@@ -56,6 +56,16 @@ export function AppHeader(): React.ReactElement {
   const toggleImageWorkspace = (): void => {
     app.setViewMode((current) => current === 'image' ? 'video' : 'image')
   }
+  const toggleComparison = (): void => {
+    if (app.isComparisonMode) {
+      app.setIsComparisonMode(false)
+      return
+    }
+    const target = state.playlist.find((file) => file.path !== state.currentFile?.path)
+    if (!target) return
+    app.setComparisonFilePath(target.path)
+    app.setIsComparisonMode(true)
+  }
   const imageWorkspaceLabel = app.viewMode === 'image' ? copy.imageWorkspace.backToVideo : copy.topbar.openImageEditor
   const webShareLabel = app.webShareStatus.running ? copy.topbar.openWebShare : copy.topbar.startWebShare
   return (
@@ -63,6 +73,7 @@ export function AppHeader(): React.ReactElement {
       <div className="brand"><span className="brand-mark">A</span><span>{copy.appName}</span></div>
       <nav className="top-actions" aria-label="Primary">
         <button className="tool-button" type="button" onClick={app.openFiles} title={copy.topbar.openFiles} aria-label={copy.topbar.openFiles}><FolderOpen size={17} /></button>
+        <button className={`tool-button ${app.isComparisonMode ? 'active' : ''}`} type="button" data-testid="playback-comparison-toggle" onClick={toggleComparison} disabled={!app.isComparisonMode && (!app.hasCurrentFile || state.playlist.length < 2 || app.isEditingMode)} title={app.isComparisonMode ? copy.topbar.closeCompare : copy.topbar.openCompare} aria-label={app.isComparisonMode ? copy.topbar.closeCompare : copy.topbar.openCompare} aria-pressed={app.isComparisonMode}><Columns2 size={17} /></button>
         <button className={`tool-button clip-editor-tool-button ${app.isEditingMode ? 'active' : ''}`} type="button" onClick={app.isEditingMode ? app.closeEditingMode : app.openEditingMode} disabled={!app.hasCurrentFile || app.isClipExportDialogOpen || app.isExportingClip} title={app.isEditingMode ? copy.editing.close : copy.topbar.openClipEditor} aria-label={app.isEditingMode ? copy.editing.close : copy.topbar.openClipEditor} aria-pressed={app.isEditingMode}><Scissors size={17} /></button>
         <button className={`tool-button image-editor-tool-button ${app.viewMode === 'image' ? 'active' : ''}`} type="button" onClick={toggleImageWorkspace} title={imageWorkspaceLabel} aria-label={imageWorkspaceLabel} aria-pressed={app.viewMode === 'image'}><ImageIcon size={17} /></button>
         <button className={`tool-button ${state.panelMode === 'playlist' ? 'active' : ''}`} type="button" onClick={() => app.togglePanelMode('playlist')} title={copy.topbar.togglePlaylist} aria-label={copy.topbar.togglePlaylist} aria-pressed={state.panelMode === 'playlist'}><PanelRight size={17} /></button>
