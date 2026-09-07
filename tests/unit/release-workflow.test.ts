@@ -26,6 +26,7 @@ describe('release workflow source constraints', () => {
 
   it('keeps platform builds separate from release publishing', () => {
     expect(releaseWorkflow).not.toContain('GH_TOKEN:')
+    expect(releaseWorkflow).not.toContain('--publish always')
     expect(releaseWorkflow.match(/run: npm run build && npx electron-builder.*--publish never/g)).toHaveLength(5)
     expect(releaseWorkflow).toContain('build-snap-x64:')
     expect(releaseWorkflow).toContain('build-snap-arm64:')
@@ -42,17 +43,25 @@ describe('release workflow source constraints', () => {
     expect(releaseWorkflow).not.toContain('publish-snap')
     expect(releaseWorkflow).toContain('snapcraft upload-metadata --force "$snap_file"')
     expect(releaseWorkflow).toContain('SNAPCRAFT_STORE_CREDENTIALS')
+    expect(electronBuilder).toContain('      - libasound2t64')
+    expect(electronBuilder).not.toContain('      - libasound2\n')
   })
 
-  it('builds and publishes the ARM64 Snap before checking ARM64 release artifacts', () => {
+  it('builds, smoke-tests and publishes the ARM64 Snap before checking ARM64 release artifacts', () => {
     const arm64Workflow = releaseWorkflow.slice(releaseWorkflow.indexOf('  build-linux-arm64:'), releaseWorkflow.indexOf('  publish-release:'))
     const snapArm64Workflow = releaseWorkflow.slice(releaseWorkflow.indexOf('  build-snap-arm64:'), releaseWorkflow.indexOf('  publish-release:'))
     expect(snapArm64Workflow).toContain('name: Install Snapcraft and LXD')
     expect(snapArm64Workflow).toContain('SNAP_CSC_LINK: ${{ secrets.SNAP_CSC_LINK }}')
     expect(snapArm64Workflow).toContain('SNAP_PUBLISH_ENABLED: ${{ github.event_name != \'workflow_dispatch\' || inputs.verify_only != true }}')
-    expect(snapArm64Workflow).toContain('npx electron-builder --linux snap --arm64 --prepackaged release/linux-arm64-unpacked --publish always')
     expect(snapArm64Workflow).toContain('npx electron-builder --linux snap --arm64 --prepackaged release/linux-arm64-unpacked --publish never')
+    expect(snapArm64Workflow).toContain('name: Smoke test Snap launcher')
+    expect(snapArm64Workflow).toContain('sudo snap install --dangerous "$snap_file"')
+    expect(snapArm64Workflow).toContain('timeout 30s snap run aivplayer --version')
+    expect(snapArm64Workflow).toContain('name: Publish verified Snap')
+    expect(snapArm64Workflow).toContain('snapcraft upload --release=stable,edge "$snap_file"')
     expect(snapArm64Workflow).toContain('path: release/*.snap')
+    expect(snapArm64Workflow.indexOf('name: Smoke test Snap launcher')).toBeLessThan(snapArm64Workflow.indexOf('name: Publish verified Snap'))
+    expect(snapArm64Workflow.indexOf('name: Publish verified Snap')).toBeLessThan(snapArm64Workflow.indexOf('name: Verify Snap artifact'))
   })
 
   it('waits for all desktop artifacts before creating a release', () => {

@@ -1443,6 +1443,12 @@
 - 真实 Smoke 截图输出到 `/private/tmp/aivplayer-playback-comparison.png`；分阶段提交：`59665898 feat(对比播放) : 建立同步时序合同`、`8de92275 test(对比播放) : 覆盖同步时序边界`、`33fce7b9 feat(对比播放) : 接入双视频同步预览`、`81f725fd fix(对比播放) : 修复副视频启动同步`、`71b4e459 test(对比播放) : 增加双视频回归验证`。
 - 当前边界：只支持当前播放列表内的两路本地媒体，不做多于两路的网格同步、不持久化对比槽位、不自动寻找外部媒体替代路径；本轮参考 GridPlayer 的 GPL-3.0 产品行为，未复制其代码、界面、图标、商标或素材。
 
+## Snap 启动链路自检与 ALSA 依赖
+
+- Snap core24 改用真实的 `libasound2t64`，避免 Ubuntu 将虚拟包 `libasound2` 解析为 OSS4 兼容实现，导致 Electron 启动时出现 `libOSSlib.so` 或 ALSA 符号错误。
+- x64 与 ARM64 Snap 都先以 `--publish never` 完成构建，再在 GitHub Actions 中安装刚生成的 `.snap`，执行 `snap run aivplayer --version` 验证动态链接和启动器，冒烟通过后才上传 `stable` / `edge` 并同步 Store listing 元数据。
+- 这样把“能生成文件”与“用户能从 App Center / 应用菜单启动”分成两个验收条件，避免再次发布可安装但点击无反应的 Snap。
+
 ## Linux 图标与 Debian 后台更新
 
 - Linux 安装包图标改用带透明外角的 512×512 RGBA 圆角资源，Deb、AppImage 和 Snap 的桌面入口保持统一的圆角展示；Snap 发布任务在上传包后显式同步 Snap Store listing 元数据，避免商店页面继续展示历史图标。

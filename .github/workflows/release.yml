@@ -1237,14 +1237,30 @@ jobs:
       - name: Set up LXD
         uses: canonical/setup-lxd@v1
       - name: Build Snap package
+        run: |
+          sudo -E env "PATH=$PATH" npx electron-builder --linux snap --prepackaged release/linux-unpacked --publish never
+      - name: Smoke test Snap launcher
+        shell: bash
+        run: |
+          set -euo pipefail
+          snap_file="$(find release -maxdepth 1 -type f -name '*.snap' -print -quit)"
+          test -n "$snap_file"
+          sudo snap install --dangerous "$snap_file"
+          cleanup() {
+            sudo snap remove aivplayer >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          timeout 30s snap run aivplayer --version
+      - name: Publish verified Snap
         env:
           SNAP_CSC_LINK: ${{ secrets.SNAP_CSC_LINK }}
           SNAP_PUBLISH_ENABLED: ${{ github.event_name != 'workflow_dispatch' || inputs.verify_only != true }}
         run: |
           if [ -n "$SNAP_CSC_LINK" ] && [ "$SNAP_PUBLISH_ENABLED" = "true" ]; then
-            sudo -E env "PATH=$PATH" SNAP_CSC_LINK="$SNAP_CSC_LINK" npx electron-builder --linux snap --prepackaged release/linux-unpacked --publish always
-          else
-            sudo -E env "PATH=$PATH" npx electron-builder --linux snap --prepackaged release/linux-unpacked --publish never
+            snap_file="$(find release -maxdepth 1 -type f -name '*.snap' -print -quit)"
+            test -n "$snap_file"
+            export SNAPCRAFT_STORE_CREDENTIALS="$(printf '%s' "$SNAP_CSC_LINK" | base64 --decode)"
+            snapcraft upload --release=stable,edge "$snap_file"
           fi
       - name: Update Snap Store listing metadata
         env:
@@ -1298,14 +1314,30 @@ jobs:
       - name: Set up LXD
         uses: canonical/setup-lxd@v1
       - name: Build Snap package
+        run: |
+          sudo -E env "PATH=$PATH" npx electron-builder --linux snap --arm64 --prepackaged release/linux-arm64-unpacked --publish never
+      - name: Smoke test Snap launcher
+        shell: bash
+        run: |
+          set -euo pipefail
+          snap_file="$(find release -maxdepth 1 -type f -name '*.snap' -print -quit)"
+          test -n "$snap_file"
+          sudo snap install --dangerous "$snap_file"
+          cleanup() {
+            sudo snap remove aivplayer >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          timeout 30s snap run aivplayer --version
+      - name: Publish verified Snap
         env:
           SNAP_CSC_LINK: ${{ secrets.SNAP_CSC_LINK }}
           SNAP_PUBLISH_ENABLED: ${{ github.event_name != 'workflow_dispatch' || inputs.verify_only != true }}
         run: |
           if [ -n "$SNAP_CSC_LINK" ] && [ "$SNAP_PUBLISH_ENABLED" = "true" ]; then
-            sudo -E env "PATH=$PATH" SNAP_CSC_LINK="$SNAP_CSC_LINK" npx electron-builder --linux snap --arm64 --prepackaged release/linux-arm64-unpacked --publish always
-          else
-            sudo -E env "PATH=$PATH" SNAP_CSC_LINK="$SNAP_CSC_LINK" npx electron-builder --linux snap --arm64 --prepackaged release/linux-arm64-unpacked --publish never
+            snap_file="$(find release -maxdepth 1 -type f -name '*.snap' -print -quit)"
+            test -n "$snap_file"
+            export SNAPCRAFT_STORE_CREDENTIALS="$(printf '%s' "$SNAP_CSC_LINK" | base64 --decode)"
+            snapcraft upload --release=stable,edge "$snap_file"
           fi
       - name: Update Snap Store listing metadata
         env:

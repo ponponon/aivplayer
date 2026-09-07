@@ -244,7 +244,7 @@
 - Electron 主进程会在应用启动时加载视觉影视库服务，所以 Finder 的“打开方式”只是暴露问题的入口，视频文件名、外置磁盘路径和 MP4 编码都不是根因。凡是被打包运行时代码直接 require 的 peer dependency，都必须在根 `package.json` 的 `dependencies` 中显式固定版本，并通过生产构建检查实际进入应用资源。
 - Snapcraft dump plugin 默认用 `cp --link` 把 Electron 的 `linux-unpacked` 目录放进 part install；当前 Electron 产物包含多平台原生模块和大量文件，GitHub runner 上会在复制阶段只返回 `None` 而退出 1，日志没有给出可操作的源文件。对已生成的本地目录不要继续依赖 dump plugin，改用 nil plugin + `CRAFT_PART_INSTALL` + 普通 `cp -a` 显式复制，才能把构建产物稳定送入 Snap。
 - Snapcraft 的 `apps.<name>.desktop` 路径必须和仓库中的 `snap/gui/*.desktop` 真实路径一致；只把文件放在 `snap/local` 并不能满足 metadata 生成阶段，最终会在 `Copying snap assets` 报 `file does not exist`。
-- Snapcraft 9 已移除 `snapcraft login --with -` 参数；历史上的直接 Snapcraft 发布方案需要把 `SNAPCRAFT_STORE_CREDENTIALS` Secret 注入上传步骤，让 Snapcraft 从环境变量读取凭据，否则会以退出码 64 失败。当前项目已改为通过 electron-builder 的 `SNAP_CSC_LINK` 入口发布，不再直接注入该原生变量。
+- Snapcraft 9 已移除 `snapcraft login --with -` 参数；直接调用 `snapcraft upload` 时必须把唯一的 `SNAP_CSC_LINK` Secret 在上传步骤临时解码为 `SNAPCRAFT_STORE_CREDENTIALS`，让 Snapcraft 从环境变量读取凭据，否则会以退出码 64 失败。该原生变量只存在于发布步骤，不新增第二套 Secret。
 
 ## 真实翻译 smoke 不要把 API Key 写进仓库
 - 真实接口回归需要覆盖应用 IPC 和 renderer overlay，但 Key 不能进入产品源码、默认设置或 smoke 脚本常量。
@@ -2218,8 +2218,8 @@
 
 - 现象：GitHub Actions 同时配置了 `SNAPCRAFT_STORE_CREDENTIALS` 和 `SNAP_CSC_LINK`，容易误以为两者都必须注入。
 - 原因：`SNAPCRAFT_STORE_CREDENTIALS` 是 Snapcraft 原生环境变量，适合直接调用 Snapcraft；`SNAP_CSC_LINK` 是 electron-builder 的 CI 入口，electron-builder 会把它转换并注入 Snapcraft 子进程。
-- 经验：本项目通过 electron-builder 构建并发布 Snap，因此只保留 `SNAP_CSC_LINK`；不要把同一份凭据以两种格式重复配置，避免格式不匹配和凭据入口分叉。
-- 处理：删除 GitHub Actions Secret `SNAPCRAFT_STORE_CREDENTIALS`，保留 `SNAP_CSC_LINK`；工作流继续使用 `SNAP_CSC_LINK`，仓库内不直接依赖 Snapcraft 原生变量。
+- 经验：本项目只保留 `SNAP_CSC_LINK` 这一套 Secret；构建阶段使用 electron-builder，发布阶段如直接调用 Snapcraft，则在同一个步骤临时派生 `SNAPCRAFT_STORE_CREDENTIALS`，避免重复配置和凭据入口分叉。
+- 处理：删除 GitHub Actions Secret `SNAPCRAFT_STORE_CREDENTIALS`，保留 `SNAP_CSC_LINK`；工作流在验证通过后才将其临时解码给 `snapcraft upload` 和 listing 元数据同步。
 
 ## 2026-08-24：R2/CDN 上传后的完整性校验必须容忍短暂不可见
 
@@ -2402,3 +2402,10 @@
 - 原因：Linux 安装图标使用满画布不透明 PNG；Snap 包内的桌面图标与 Snap Store listing 元数据是独立入口；electron-updater 的 Deb 安装器在 Electron 主进程内同步执行 `dpkg` / `pkexec`，阻塞事件循环。
 - 经验：品牌图标必须分别检查安装包资源、桌面入口、运行时窗口和商店 listing；系统包管理器发行版不应再叠加一套没有配置的应用内更新器；涉及权限和包管理器的更新操作不能同步运行在 Electron 主进程中。
 - 处理：Linux 改用带透明外角的 RGBA 512 图标，Deb、Snap、Flatpak 和 Linux 运行时窗口共用该展示资源；发布流程用 `snapcraft upload-metadata --force` 同步商店元数据；Snap / Flatpak 交给系统管理更新，Deb 更新交给脱离主进程的辅助脚本，等待父进程退出后再提权安装、修复依赖并重启。
+
+## 2026-09-07：Snap 可安装不代表 Electron 可启动
+
+- 现象：Ubuntu App Center 的 `Open` 和应用菜单点击 AIVPlayer 都没有窗口；`snap list` 显示已安装且桌面入口存在，但直接执行 `snap run aivplayer --version` 失败。
+- 原因：Ubuntu Noble / Resolute 中 `libasound2` 是虚拟包，Snapcraft 可能选择 `liboss4-salsa-asound2`。这个 OSS4 兼容库把 `libasound.so.2` 指向 `liboss4-salsa.so.2`，缺少 Electron 需要的标准 ALSA 符号；命令链先报 `libOSSlib.so` 找不到，补搜索路径后又报 `snd_device_name_get_hint` 未定义。App Center 与应用菜单只是共同调用同一个坏掉的 desktop `Exec`，不是两个独立的 UI 故障。
+- 经验：core24 的 Linux 依赖不能只沿用旧 Electron 文档里的包名；凡是虚拟包都要确认实际 provider 和导出的 ABI。Snap 发布前必须在目标架构上安装产物并执行真实 launcher smoke，不能只检查 SquashFS 文件存在或 Store 上传成功。
+- 处理：将 Snap stage package 改为 `libasound2t64`；先用 `--publish never` 构建，完成 `snap install --dangerous` 与 `snap run aivplayer --version` 后，再通过 `snapcraft upload --release=stable,edge` 发布，并把这条启动检查固化进 workflow 源码测试。

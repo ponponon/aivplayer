@@ -467,7 +467,10 @@ snapcraft:
     stagePackages:
       - default
       - libgbm1
-      - libasound2
+      # Ubuntu Noble+ exposes libasound2 as a virtual package; resolving it
+      # can select the OSS4 compatibility provider, which breaks Electron's
+      # ALSA symbols at startup. Stage the real t64 package instead.
+      - libasound2t64
       - libatspi2.0-0
       - libdrm2
       - libxkbcommon0
