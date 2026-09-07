@@ -1,7 +1,8 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
 import pkg from 'electron-updater'
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { spawn } from 'node:child_process'
+import { isAbsolute, join } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import { createInitialAppUpdateState, type AppUpdateState } from '../shared/app-update-types'
 
@@ -16,6 +17,12 @@ type UpdatePreferences = {
   skippedVersion: string | null
   dismissedVersion: string | null
   dismissedAt: number | null
+}
+
+type AutoUpdaterWithDownloadedFile = typeof pkg.autoUpdater & {
+  // electron-updater keeps this helper protected, but the downloaded file is
+  // the only reliable way to hand a Debian package to an external installer.
+  downloadedUpdateHelper?: { file?: string | null } | null
 }
 
 let updaterAvailable = false
@@ -186,6 +193,17 @@ function installAppUpdate(): void {
   if (state.status !== 'downloaded') throw new Error('更新尚未下载完成')
   setState({ status: 'installing', version: state.version, error: undefined, progress: undefined })
   try {
+    if (getLinuxPackageType() === 'deb') {
+      const installerPath = getDownloadedUpdateFilePath()
+      if (!installerPath) throw new Error('找不到已下载的 Debian 更新包')
+      startDebUpdateInstaller(installerPath)
+      // electron-updater's Debian implementation invokes dpkg synchronously
+      // in the main process. Let the detached helper wait for this process to
+      // exit before it requests privileges and replaces the installation.
+      app.quit()
+      return
+    }
+
     // Windows NSIS updates should behave like a restart: run the downloaded
     // installer silently, then launch the updated application.
     pkg.autoUpdater.quitAndInstall(true, true)
@@ -193,6 +211,36 @@ function installAppUpdate(): void {
     setError(error)
     throw error
   }
+}
+
+function getLinuxPackageType(): string | null {
+  if (process.platform !== 'linux') return null
+  try {
+    return readFileSync(join(process.resourcesPath, 'package-type'), 'utf8').trim() || null
+  } catch {
+    return null
+  }
+}
+
+function getDownloadedUpdateFilePath(): string | null {
+  const autoUpdater = pkg.autoUpdater as AutoUpdaterWithDownloadedFile
+  const file = autoUpdater.downloadedUpdateHelper?.file
+  return typeof file === 'string' && isAbsolute(file) ? file : null
+}
+
+function startDebUpdateInstaller(installerPath: string): void {
+  const helperPath = join(process.resourcesPath, 'install-deb-update.sh')
+  if (!existsSync(helperPath)) throw new Error('找不到 Debian 更新安装辅助程序')
+
+  const helper = spawn(helperPath, [String(process.pid), installerPath, app.getPath('exe')], {
+    detached: true,
+    env: process.env,
+    stdio: 'ignore'
+  })
+  helper.once('error', (error) => {
+    console.error('[app-updater] Debian update helper failed', error)
+  })
+  helper.unref()
 }
 
 function dismissAppUpdate(): AppUpdateState {

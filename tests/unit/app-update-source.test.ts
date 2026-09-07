@@ -28,6 +28,23 @@ describe('app update source constraints', () => {
     expect(updaterSource).toContain('autoUpdater.quitAndInstall(true, true)')
   })
 
+  it('installs Debian updates through a detached helper', () => {
+    const updaterSource = readSource('src/desktop/app-updater.ts')
+    const helperSource = readSource('resources/install-deb-update.sh')
+    const builderSource = readSource('electron-builder.yml')
+
+    expect(updaterSource).toContain("getLinuxPackageType() === 'deb'")
+    expect(updaterSource).toContain('getDownloadedUpdateFilePath')
+    expect(updaterSource).toContain('startDebUpdateInstaller')
+    expect(updaterSource).toContain('app.quit()')
+    expect(helperSource).toContain('detached')
+    expect(helperSource).toContain('pkexec')
+    expect(helperSource).toContain('/usr/bin/dpkg --install')
+    expect(helperSource).toContain('/usr/bin/apt-get install -f -y')
+    expect(helperSource).toContain('install_status=0\n  run_privileged /usr/bin/apt-get')
+    expect(builderSource).toContain('from: resources/install-deb-update.sh')
+  })
+
   it('uses a low-frequency automatic check and persists a reminder cooldown', () => {
     const updaterSource = readSource('src/desktop/app-updater.ts')
 

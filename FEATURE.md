@@ -1442,3 +1442,8 @@
 - 验证合同：同步时序单测和 UI 源码契约共 4 项通过，`npm run typecheck`、`npm run build` 和真实 Electron Smoke 均通过；Smoke 验证目标选择、同步播放、同步 seek、同步暂停、退出对比和 `consoleErrors: 0`。
 - 真实 Smoke 截图输出到 `/private/tmp/aivplayer-playback-comparison.png`；分阶段提交：`59665898 feat(对比播放) : 建立同步时序合同`、`8de92275 test(对比播放) : 覆盖同步时序边界`、`33fce7b9 feat(对比播放) : 接入双视频同步预览`、`81f725fd fix(对比播放) : 修复副视频启动同步`、`71b4e459 test(对比播放) : 增加双视频回归验证`。
 - 当前边界：只支持当前播放列表内的两路本地媒体，不做多于两路的网格同步、不持久化对比槽位、不自动寻找外部媒体替代路径；本轮参考 GridPlayer 的 GPL-3.0 产品行为，未复制其代码、界面、图标、商标或素材。
+
+## Linux 图标与 Debian 后台更新
+
+- Linux 安装包图标改用带透明外角的 512×512 RGBA 圆角资源，Deb、AppImage 和 Snap 的桌面入口保持统一的圆角展示；Snap 发布任务在上传包后显式同步 Snap Store listing 元数据，避免商店页面继续展示历史图标。
+- Debian 自动更新改由脱离 Electron 主进程的安装辅助程序执行：先等待应用退出，再通过 `pkexec` / `sudo` 调用 `dpkg`，失败时修复依赖并重新启动应用，避免更新期间 Ubuntu 把 AIVPlayer 判定为“无响应”。

@@ -1246,6 +1246,17 @@ jobs:
           else
             sudo -E env "PATH=$PATH" npx electron-builder --linux snap --prepackaged release/linux-unpacked --publish never
           fi
+      - name: Update Snap Store listing metadata
+        env:
+          SNAP_CSC_LINK: ${{ secrets.SNAP_CSC_LINK }}
+          SNAP_PUBLISH_ENABLED: ${{ github.event_name != 'workflow_dispatch' || inputs.verify_only != true }}
+        run: |
+          if [ -n "$SNAP_CSC_LINK" ] && [ "$SNAP_PUBLISH_ENABLED" = "true" ]; then
+            snap_file="$(find release -maxdepth 1 -type f -name '*.snap' -print -quit)"
+            test -n "$snap_file"
+            export SNAPCRAFT_STORE_CREDENTIALS="$(printf '%s' "$SNAP_CSC_LINK" | base64 --decode)"
+            snapcraft upload-metadata --force "$snap_file"
+          fi
       - name: Verify Snap artifact
         run: node scripts/check-snap-release-artifact.mjs --architecture x64 --artifacts-dir release --report-path release/snap-release-report-x64.json
       - name: Upload Snap artifact
@@ -1295,6 +1306,17 @@ jobs:
             sudo -E env "PATH=$PATH" SNAP_CSC_LINK="$SNAP_CSC_LINK" npx electron-builder --linux snap --arm64 --prepackaged release/linux-arm64-unpacked --publish always
           else
             sudo -E env "PATH=$PATH" SNAP_CSC_LINK="$SNAP_CSC_LINK" npx electron-builder --linux snap --arm64 --prepackaged release/linux-arm64-unpacked --publish never
+          fi
+      - name: Update Snap Store listing metadata
+        env:
+          SNAP_CSC_LINK: ${{ secrets.SNAP_CSC_LINK }}
+          SNAP_PUBLISH_ENABLED: ${{ github.event_name != 'workflow_dispatch' || inputs.verify_only != true }}
+        run: |
+          if [ -n "$SNAP_CSC_LINK" ] && [ "$SNAP_PUBLISH_ENABLED" = "true" ]; then
+            snap_file="$(find release -maxdepth 1 -type f -name '*.snap' -print -quit)"
+            test -n "$snap_file"
+            export SNAPCRAFT_STORE_CREDENTIALS="$(printf '%s' "$SNAP_CSC_LINK" | base64 --decode)"
+            snapcraft upload-metadata --force "$snap_file"
           fi
       - name: Verify Snap artifact
         run: node scripts/check-snap-release-artifact.mjs --architecture arm64 --artifacts-dir release --report-path release/snap-release-report-arm64.json

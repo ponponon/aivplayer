@@ -432,6 +432,9 @@ linux:
   extraFiles:
     - from: resources/cli/aivcli
       to: aivcli
+  extraResources:
+    - from: resources/install-deb-update.sh
+      to: install-deb-update.sh
   target:
     - AppImage
     - deb

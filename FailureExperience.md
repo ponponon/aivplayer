@@ -2395,3 +2395,10 @@
 - 原因：通用 `.modal-backdrop` 的 `z-index` 为 20，而播放器 `.control-deck` 的 `z-index` 为 30；设置弹窗使用通用遮罩，却没有建立高于播放控制层的堆叠层级。
 - 经验：排查弹窗遮挡问题时要同时检查遮罩容器和内容本身的 stacking context，不能只提升弹窗内容的 `z-index`；模态遮罩必须整体高于普通播放器控制层，并通过源码回归测试锁定层级关系。
 - 处理：将通用模态遮罩提升到 `z-index: 1000`，使设置、关于和其他通用弹窗覆盖播放控制栏；增加设置 UI 源码测试，验证遮罩层级高于控制栏。
+
+## 2026-09-07：Linux 桌面图标、Snap Store 图标和 Deb 更新是三条链路
+
+- 现象：Ubuntu 桌面上的 Deb 图标仍是方形，App Center 页面展示旧图标；Deb 自动更新安装时短暂出现 “AIVPlayer 无响应”。
+- 原因：Linux 安装图标使用满画布不透明 PNG；Snap 包内的桌面图标与 Snap Store listing 元数据是独立入口；electron-updater 的 Deb 安装器在 Electron 主进程内同步执行 `dpkg` / `pkexec`，阻塞事件循环。
+- 经验：品牌图标必须分别检查安装包资源、桌面入口和商店 listing；涉及权限和包管理器的更新操作不能同步运行在 Electron 主进程中。
+- 处理：Linux 改用带透明外角的 RGBA 512 图标，发布流程用 `snapcraft upload-metadata --force` 同步商店元数据；Deb 更新交给脱离主进程的辅助脚本，等待父进程退出后再提权安装、修复依赖并重启。

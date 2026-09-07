@@ -40,7 +40,8 @@ describe('release workflow source constraints', () => {
     expect(releaseWorkflow).toContain('name: Package notarized macOS app')
     expect(releaseWorkflow).toContain('build-snap-x64:')
     expect(releaseWorkflow).not.toContain('publish-snap')
-    expect(releaseWorkflow).not.toContain('SNAPCRAFT_STORE_CREDENTIALS')
+    expect(releaseWorkflow).toContain('snapcraft upload-metadata --force "$snap_file"')
+    expect(releaseWorkflow).toContain('SNAPCRAFT_STORE_CREDENTIALS')
   })
 
   it('builds and publishes the ARM64 Snap before checking ARM64 release artifacts', () => {
@@ -86,7 +87,7 @@ describe('release workflow source constraints', () => {
     expect(releaseWorkflow).toContain('description: \'Build and validate all release artifacts without creating a release\'')
     expect(releaseWorkflow).toContain('default: false')
     expect(releaseWorkflow).toContain('type: boolean')
-    expect(releaseWorkflow.match(/github\.event_name != 'workflow_dispatch' \|\| inputs\.verify_only != true/g)).toHaveLength(7)
+    expect(releaseWorkflow.match(/github\.event_name != 'workflow_dispatch' \|\| inputs\.verify_only != true/g)).toHaveLength(9)
     expect(releaseWorkflow.indexOf('release:check-evidence')).toBeLessThan(releaseWorkflow.indexOf('Create GitHub Release'))
   })
 
