@@ -34,7 +34,7 @@ export function registerSettingsIpc(): void {
     if (smokeImageOutputDirectory && request.title === getAppCopy(getCurrentLocale()).imageWorkspace.chooseOutputFolder) return smokeImageOutputDirectory
     return promptForDirectory(request)
   })
-  ipcMain.handle(IPC_CHANNELS.LIST_MEDIA_FILES_IN_DIRECTORY, (_event, directoryPath: string) => listMediaFilesInDirectory(directoryPath))
+  ipcMain.handle(IPC_CHANNELS.LIST_MEDIA_FILES_IN_DIRECTORY, (_event, directoryPath: string, recursive = false) => listMediaFilesInDirectory(directoryPath, recursive === true))
   ipcMain.handle(IPC_CHANNELS.CREATE_MEDIA_FILE, (_event, filePath: string) => createMediaFile(filePath))
   ipcMain.handle(IPC_CHANNELS.CHECK_MEDIA_FILE, (_event, filePath: string) => isMediaFileAvailable(filePath))
   ipcMain.handle(IPC_CHANNELS.READ_FILE_CONTENT, (_event, filePath: string): Promise<string> => readFile(filePath, 'utf-8'))

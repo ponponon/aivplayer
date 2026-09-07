@@ -217,8 +217,8 @@ const api = {
   },
   respondEditingAgentProposal: (requestId: string, decision: EditingAgentProposalDecision): Promise<{ ok: boolean }> =>
     ipcRenderer.invoke(IPC_CHANNELS.EDITING_AGENT_PROPOSAL_RESPONSE, { requestId, decision }),
-  listMediaFilesInDirectory: (directoryPath: string): Promise<MediaFile[]> =>
-    ipcRenderer.invoke(IPC_CHANNELS.LIST_MEDIA_FILES_IN_DIRECTORY, directoryPath),
+  listMediaFilesInDirectory: (directoryPath: string, recursive = false): Promise<MediaFile[]> =>
+    ipcRenderer.invoke(IPC_CHANNELS.LIST_MEDIA_FILES_IN_DIRECTORY, directoryPath, recursive),
   scanBatchSubtitleDirectory: (request: BatchSubtitleScanRequest): Promise<MediaFile[]> =>
     ipcRenderer.invoke(IPC_CHANNELS.BATCH_SUBTITLE_SCAN_DIRECTORY, request),
   startBatchSubtitle: (request: BatchSubtitleStartRequest): Promise<BatchSubtitleJob> =>
