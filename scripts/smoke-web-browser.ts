@@ -62,6 +62,24 @@ async function main(): Promise<void> {
 
     try {
       await webPage.goto(accessUrl.toString())
+      const pwaAssets = await webPage.evaluate(async () => {
+        const manifestResponse = await fetch('/manifest.webmanifest', { cache: 'no-store' })
+        const manifest = await manifestResponse.json() as { icons?: Array<{ src?: string; sizes?: string; type?: string }> }
+        const iconPaths = ['/icon-180.png', '/icon-192.png', '/icon-512.png']
+        const iconResponses = await Promise.all(iconPaths.map(async (path) => {
+          const response = await fetch(path, { cache: 'no-store' })
+          return { path, status: response.status, contentType: response.headers.get('content-type'), byteLength: (await response.arrayBuffer()).byteLength }
+        }))
+        return {
+          manifestStatus: manifestResponse.status,
+          manifestIcons: manifest.icons ?? [],
+          iconResponses
+        }
+      })
+      assertCondition(pwaAssets.manifestStatus === 200, `PWA manifest did not load: ${JSON.stringify(pwaAssets)}`)
+      assertCondition(pwaAssets.manifestIcons.some((icon) => icon.src === '/icon-192.png' && icon.sizes === '192x192' && icon.type === 'image/png'), `PWA manifest is missing the 192px icon: ${JSON.stringify(pwaAssets)}`)
+      assertCondition(pwaAssets.manifestIcons.some((icon) => icon.src === '/icon-512.png' && icon.sizes === '512x512' && icon.type === 'image/png'), `PWA manifest is missing the 512px icon: ${JSON.stringify(pwaAssets)}`)
+      assertCondition(pwaAssets.iconResponses.every((icon) => icon.status === 200 && icon.contentType?.includes('image/png') && icon.byteLength > 0), `PWA icon assets did not load: ${JSON.stringify(pwaAssets)}`)
       await webPage.waitForSelector('video', { timeout: 10_000 })
       await webPage.waitForFunction(() => {
         const video = document.querySelector('video') as HTMLVideoElement | null
@@ -114,6 +132,7 @@ async function main(): Promise<void> {
         currentTime: finalState.currentTime,
         initialReadyState: initialState.readyState,
         finalReadyState: finalState.readyState,
+        pwaIconsVerified: true,
         rangeMode: seekRangeRequests.length > 0 ? 'seek-range' : 'initial-range-buffered',
         rangeRequests: seekRangeRequests.length > 0 ? seekRangeRequests : rangeRequests
       }))

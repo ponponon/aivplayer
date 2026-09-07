@@ -18,6 +18,7 @@ async function createFixture(): Promise<{ directory: string; mediaPath: string; 
   await writeFile(join(webRoot, 'index.html'), '<!doctype html><title>AIVPlayer LAN Web</title>')
   await writeFile(join(webRoot, 'manifest.webmanifest'), '{"display":"standalone"}')
   await writeFile(join(webRoot, 'icon.svg'), '<svg xmlns="http://www.w3.org/2000/svg" />')
+  await Promise.all(['icon-180.png', 'icon-192.png', 'icon-512.png'].map((iconName) => writeFile(join(webRoot, iconName), Buffer.from('png-fixture', 'utf8'))))
   const mediaPath = join(directory, 'sample.mp4')
   await writeFile(mediaPath, Buffer.from('0123456789', 'utf8'))
   await writeFile(join(directory, 'sample.srt'), '1\n00:00:00,000 --> 00:00:01,000\nHello\n')
@@ -55,6 +56,12 @@ describe('WebServer', () => {
     const icon = await fetch(new URL('/icon.svg', accessUrl), { headers: { Cookie: cookie! } })
     expect(icon.status).toBe(200)
     expect(icon.headers.get('content-type')).toContain('image/svg+xml')
+
+    await Promise.all(['icon-180.png', 'icon-192.png', 'icon-512.png'].map(async (iconName) => {
+      const pngIcon = await fetch(new URL(`/${iconName}`, accessUrl), { headers: { Cookie: cookie! } })
+      expect(pngIcon.status).toBe(200)
+      expect(pngIcon.headers.get('content-type')).toContain('image/png')
+    }))
 
     const libraryResponse = await fetch(new URL('/api/v1/library', accessUrl), { headers: { Cookie: cookie! } })
     expect(libraryResponse.status).toBe(200)
