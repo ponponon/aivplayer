@@ -1376,3 +1376,12 @@
 - 全屏状态以浏览器 `document.fullscreenElement` 为唯一事实来源，播放器舞台（视频、字幕、控制条）作为同一个全屏目标；全屏请求失败、外部全屏和 `Esc` 退出后，按钮会保持与真实 DOM 状态一致。
 - 播放器全屏会隐藏应用侧栏和标题栏，把自绘控制条放入全屏舞台安全区；窗口最大化按钮、图片工作区入口和面板切换入口也同步使用当前状态对应的图标、文案和 `aria-pressed`。
 - 四语言同步补齐取消静音、开启随机播放和可逆面板动作文案；新增状态契约单测与源码回归约束，防止后续新增按钮重新出现反向图标或反向文案。
+
+## Web/PWA 与 Flatpak 品牌图标同步
+
+- LAN Web 页面新增 180×180、192×192 和 512×512 PNG 图标；HTML、Apple Touch Icon 和 PWA manifest 不再使用旧的金色 A 图标。
+- 旧 `/icon.svg` 入口继续保留兼容，但改为引用当前品牌 512px 图标；Web Server 增加 PNG MIME 类型和三条图标静态资源白名单，并继续要求局域网访问授权。
+- Flatpak 独立 512px 图标与 Web PWA 512px 图标保持同一份品牌图稿，避免系统安装图标遗漏品牌替换。
+- 验证合同：Web 品牌资源契约、Web Server 静态资源回归共 8 项通过；`npm run build:web`、`npm run typecheck` 通过；真实 macOS App LAN Web Smoke 验证 manifest、三种 PNG 图标、1.1 GiB 视频 Range seek 和 `pwaIconsVerified: true`。
+- 分阶段提交：`f7d4f562 feat(品牌) : 补齐 Web 图标资源`（资源、入口和服务）；`2e24cce6 test(品牌) : 验证 Web 图标资源`（契约测试和真实 Smoke）。
+- 当前边界：只同步 Web/PWA 与 Flatpak 的静态品牌资源，不改变官网 Cloudflare Pages 的独立资源，也不替换用户已安装系统缓存中的旧图标。
