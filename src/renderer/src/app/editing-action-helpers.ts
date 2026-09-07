@@ -23,7 +23,7 @@ export function restoreEditingAudio(model: AppModel): void {
   model.editingBaseAudioRef.current = null
 }
 
-export function createEditingSource(model: AppModel, durationSeconds: number): EditingSource | null {
+export function createEditingSource(model: AppModel, durationSeconds: number, contentHash?: string): EditingSource | null {
   const file = model.state.currentFile
   if (!file) return null
   return {
@@ -31,6 +31,7 @@ export function createEditingSource(model: AppModel, durationSeconds: number): E
     path: file.path,
     name: file.name,
     fingerprint: `${file.path}:${durationSeconds}`,
+    ...(contentHash ? { contentHash } : {}),
     durationSeconds,
     width: model.state.videoWidth || undefined,
     height: model.state.videoHeight || undefined

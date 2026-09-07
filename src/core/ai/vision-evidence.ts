@@ -164,6 +164,7 @@ export function createEditingProjectFromVisionSelections(selections: readonly Vi
       ...selection,
       sourceId: metadata.id,
       fingerprint: metadata.fingerprint,
+      ...(metadata.contentHash === undefined ? {} : { contentHash: metadata.contentHash }),
       durationSeconds: metadata.durationSeconds,
       width: metadata.width ?? selection.width,
       height: metadata.height ?? selection.height,

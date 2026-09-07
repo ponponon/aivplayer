@@ -12,11 +12,11 @@ function createId(prefix: string, index: number): string {
   return `${prefix}-${Date.now().toString(36)}-${index}-${Math.random().toString(36).slice(2, 7)}`
 }
 
-function createSource(file: MediaFile, metadata: MediaProbeMetadata | null, existing: EditingSource | undefined): EditingSource | null {
+function createSource(file: MediaFile, metadata: MediaProbeMetadata | null, existing: EditingSource | undefined, contentHash?: string): EditingSource | null {
   if (existing) return existing
   const durationSeconds = metadata?.durationSeconds ?? 0
   if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) return null
-  return { id: `source-${file.id}`, path: file.path, name: file.name, fingerprint: `${file.path}:${durationSeconds}`, durationSeconds, width: metadata?.video?.width ?? undefined, height: metadata?.video?.height ?? undefined }
+  return { id: `source-${file.id}`, path: file.path, name: file.name, fingerprint: `${file.path}:${durationSeconds}`, ...(contentHash ? { contentHash } : {}), durationSeconds, width: metadata?.video?.width ?? undefined, height: metadata?.video?.height ?? undefined }
 }
 
 function buildNextProject(model: AppModel, sources: EditingSource[], clips: EditingVideoClip[]): EditingProject | null {
@@ -35,9 +35,10 @@ export function createEditingSourceActions(model: AppModel, derived: AppDerived)
       const files = await window.aiv.openMediaFiles()
       if (files.length === 0) return
       const metadata = await Promise.all(files.map((file) => window.aiv.getMediaMetadata(file.path)))
+      const contentHashes = await Promise.all(files.map((file) => window.aiv.getMediaContentHash(file.path).catch(() => null)))
       const sourceEntries = files.map((file, index) => {
         const existing = project.sources.find((source) => source.path === file.path)
-        return { file, source: createSource(file, metadata[index] ?? null, existing) }
+        return { file, source: createSource(file, metadata[index] ?? null, existing, contentHashes[index] ?? undefined) }
       }).filter((entry): entry is { file: MediaFile; source: EditingSource } => entry.source !== null)
       if (sourceEntries.length === 0) {
         model.setEditingProjectStatus({ success: false, message: derived.copy.editing.mediaAddFailed })
@@ -102,7 +103,8 @@ export function createEditingSourceActions(model: AppModel, derived: AppDerived)
     try {
       const file = await window.aiv.createMediaFile(filePath)
       const metadata = await window.aiv.getMediaMetadata(file.path)
-      const source = createSource(file, metadata, project.sources.find((item) => item.path === file.path))
+      const contentHash = await window.aiv.getMediaContentHash(file.path).catch(() => null)
+      const source = createSource(file, metadata, project.sources.find((item) => item.path === file.path), contentHash ?? undefined)
       if (!source) throw new Error(derived.copy.editing.mediaAddFailed)
       const insertClips = [{ id: createId('clip', 0), sourceId: source.id, sourceStartSeconds: 0, sourceEndSeconds: source.durationSeconds }]
       const inserted = insertVideoClipsAtEdited(project.videoClips, insertClips, editedDurationSeconds(project.videoClips))

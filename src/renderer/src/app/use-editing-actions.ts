@@ -28,12 +28,17 @@ import { useEditingSourceEffect } from '../use-editing-source-effect'
 import { isMediaPlaying, syncPlayerPlayingState } from './playback-state'
 import { getTransportAction } from './control-state'
 export function useEditingActions(model: AppModel, derived: AppDerived, selectFile: (file: NonNullable<AppModel['state']['currentFile']>) => void) {
-  const openEditingMode = (): void => {
+  const openEditingMode = async (): Promise<void> => {
     const durationSeconds = Math.max(0, derived.mediaDurationSeconds ?? model.state.duration)
     const source = createEditingSource(model, durationSeconds)
     if (!source) return
     const restoredProject = loadEditingProject(source)
-    const project = restoredProject ?? createEditingProject(source)
+    let project = restoredProject
+    if (!project && model.state.currentFile) {
+      const contentHash = await window.aiv.getMediaContentHash(model.state.currentFile.path).catch(() => null)
+      project = createEditingProject(contentHash ? { ...source, contentHash } : source)
+    }
+    if (!project) project = createEditingProject(source)
     captureEditingAudio(model); const video = model.videoRef.current; video?.pause(); syncPlayerPlayingState(model.setState, video, () => model.videoRef.current)
     const sourceTime = clampEditingTime(model.state.currentTime, durationSeconds)
     model.setEditingProject(project); model.setEditingPast([]); model.setEditingFuture([]); model.setEditingCurrentTime(sourceTime); model.setEditingClipPreview(null)
@@ -83,13 +88,14 @@ export function useEditingActions(model: AppModel, derived: AppDerived, selectFi
     model.setEditingProjectStatus({ success: true, message: derived.copy.vision.creatingProject })
     try {
       const entries = await Promise.all(uniquePaths.map(async (path) => {
-        const [file, metadata] = await Promise.all([window.aiv.createMediaFile(path), window.aiv.getMediaMetadata(path)])
+        const [file, metadata, contentHash] = await Promise.all([window.aiv.createMediaFile(path), window.aiv.getMediaMetadata(path), window.aiv.getMediaContentHash(path).catch(() => null)])
         const durationSeconds = metadata?.durationSeconds && metadata.durationSeconds > 0 ? metadata.durationSeconds : 0
         return {
           path,
           file,
           durationSeconds,
-          metadata
+          metadata,
+          contentHash
         }
       }))
       const usableEntries = entries.filter((entry) => entry.file && entry.durationSeconds > 0)
@@ -100,7 +106,8 @@ export function useEditingActions(model: AppModel, derived: AppDerived, selectFi
         fingerprint: `${entry.file.path}:${entry.durationSeconds}`,
         durationSeconds: entry.durationSeconds,
         width: entry.metadata?.video?.width ?? undefined,
-        height: entry.metadata?.video?.height ?? undefined
+        height: entry.metadata?.video?.height ?? undefined,
+        ...(entry.contentHash ? { contentHash: entry.contentHash } : {})
       }]))
       const project = createProject(sourceMetadata, usablePaths)
       const sourceFiles = Object.fromEntries(usableEntries.map((entry) => [`source-${entry.file.id}`, entry.file])) as Record<string, NonNullable<AppModel['state']['currentFile']>>

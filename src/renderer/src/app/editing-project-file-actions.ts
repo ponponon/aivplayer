@@ -10,9 +10,10 @@ import { syncPlayerPlayingState } from './playback-state'
 
 type SelectFile = (file: NonNullable<AppModel['state']['currentFile']>) => void
 
-function getCurrentSource(model: AppModel, derived: AppDerived) {
+async function getCurrentSource(model: AppModel, derived: AppDerived) {
   const durationSeconds = Math.max(0, derived.mediaDurationSeconds ?? model.state.duration)
-  return { source: createEditingSource(model, durationSeconds), durationSeconds }
+  const contentHash = model.state.currentFile ? await window.aiv.getMediaContentHash(model.state.currentFile.path).catch(() => null) : null
+  return { source: createEditingSource(model, durationSeconds, contentHash ?? undefined), durationSeconds }
 }
 
 function formatSourceRepairSummary(copy: AppDerived['copy']['editing'], sources: readonly EditingProject['sources'][number][], match: EditingSourceRepairMatch, sidecarResetCount = 0): string {
@@ -44,8 +45,8 @@ export function setEditingProject(model: AppModel, project: EditingProject, sour
 export function createEditingProjectFileActions(model: AppModel, derived: AppDerived, selectFile: SelectFile) {
   const confirmFreshProject = (): boolean => !model.editingProject || model.editingPast.length === 0 || window.confirm(derived.copy.editing.resetConfirm)
 
-  const createFreshEditingProject = (status: string): void => {
-    const { source } = getCurrentSource(model, derived)
+  const createFreshEditingProject = async (status: string): Promise<void> => {
+    const { source } = await getCurrentSource(model, derived)
     if (!source) return
     const project = createEditingProject(source)
     if (model.state.currentFile) model.setEditingSourceFiles({ [source.id]: model.state.currentFile })
@@ -55,14 +56,14 @@ export function createEditingProjectFileActions(model: AppModel, derived: AppDer
     setEditingProject(model, project, 0)
   }
 
-  const resetEditingProject = (): void => {
+  const resetEditingProject = async (): Promise<void> => {
     if (!confirmFreshProject()) return
-    createFreshEditingProject(derived.copy.editing.projectReset)
+    await createFreshEditingProject(derived.copy.editing.projectReset)
   }
 
-  const newEditingProject = (): void => {
+  const newEditingProject = async (): Promise<void> => {
     if (!confirmFreshProject()) return
-    createFreshEditingProject(derived.copy.editing.projectCreated)
+    await createFreshEditingProject(derived.copy.editing.projectCreated)
   }
 
   const saveEditingProjectFile = async (): Promise<void> => {
@@ -98,8 +99,11 @@ export function createEditingProjectFileActions(model: AppModel, derived: AppDer
           model.setEditingProjectStatus({ success: false, message: derived.copy.editing.projectSourceMissing })
           return
         }
-        const replacementMetadata = await Promise.all(replacementFiles.map((file) => window.aiv.getMediaMetadata(file.path)))
-        const match = matchEditingSourceRepairCandidates(missingSources, replacementFiles.map((file, index) => ({ path: file.path, name: file.name, durationSeconds: replacementMetadata[index]?.durationSeconds ?? 0, width: replacementMetadata[index]?.video?.width ?? undefined, height: replacementMetadata[index]?.video?.height ?? undefined })))
+        const replacementMetadata = await Promise.all(replacementFiles.map(async (file) => {
+          const [metadata, contentHash] = await Promise.all([window.aiv.getMediaMetadata(file.path), window.aiv.getMediaContentHash(file.path).catch(() => null)])
+          return { metadata, contentHash }
+        }))
+        const match = matchEditingSourceRepairCandidates(missingSources, replacementFiles.map((file, index) => ({ path: file.path, name: file.name, durationSeconds: replacementMetadata[index]?.metadata?.durationSeconds ?? 0, ...(replacementMetadata[index]?.contentHash ? { contentHash: replacementMetadata[index].contentHash } : {}), width: replacementMetadata[index]?.metadata?.video?.width ?? undefined, height: replacementMetadata[index]?.metadata?.video?.height ?? undefined })))
         if (match.unresolvedSourceIds.length > 0 || match.ambiguousSourceIds.length > 0 || match.replacements.length !== missingSources.length) {
           model.setEditingProjectStatus({ success: false, message: formatSourceRepairSummary(derived.copy.editing, missingSources, match) })
           return
