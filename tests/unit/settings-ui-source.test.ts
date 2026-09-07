@@ -29,6 +29,14 @@ describe('settings UI source constraints', () => {
     expect(playerCss).toMatch(/\.settings-grid\s*\{[^}]*overflow-y:\s*auto;/s)
   })
 
+  it('keeps modal backdrops above playback controls', () => {
+    const modalCss = readSource('src/renderer/src/styles/player/asr-errors-dialogs.css')
+    const playbackCss = readSource('src/renderer/src/styles/player/playback-layout.css')
+
+    expect(modalCss).toMatch(/\.modal-backdrop\s*\{[^}]*z-index:\s*1000;/s)
+    expect(playbackCss).toMatch(/\.control-deck\s*\{[^}]*z-index:\s*30;/s)
+  })
+
   it('keeps multi-root settings sections packed at the top of the scroll grid', () => {
     const playerCss = readSource('src/renderer/src/styles/player.css')
 
