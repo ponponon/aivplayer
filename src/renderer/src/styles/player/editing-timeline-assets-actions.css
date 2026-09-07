@@ -30,9 +30,13 @@
 
 .editing-assets-filters button:hover,
 .editing-assets-filters button.is-active {
-  color: var(--accent-ink);
-  background: rgba(var(--accent-rgb), 0.12);
-  border-color: rgba(var(--accent-rgb), 0.3);
+  color: var(--text-primary);
+  background: rgba(var(--accent-rgb), 0.16);
+  border-color: rgba(var(--accent-rgb), 0.42);
+}
+
+.editing-assets-filters button.is-active {
+  box-shadow: inset 0 -2px 0 var(--accent);
 }
 
 .editing-assets-selection-actions {

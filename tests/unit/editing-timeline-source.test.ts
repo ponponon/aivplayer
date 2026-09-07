@@ -619,6 +619,7 @@ describe('editing timeline source contracts', () => {
     const captionEffectStyles = readSource('src/renderer/src/styles/player/editing-timeline-caption-effect.css')
     const subtitlePresetStyles = readSource('src/renderer/src/styles/player/subtitle-presets.css')
     const selectionStyles = readSource('src/renderer/src/styles/player/editing-timeline-selection.css')
+    const assetsActionStyles = readSource('src/renderer/src/styles/player/editing-timeline-assets-actions.css')
 
     expect(playerStyles).toContain("@import './player/editing-timeline-shell.css';")
     expect(playerStyles).toContain("@import './player/editing-timeline-actions.css';")
@@ -650,6 +651,8 @@ describe('editing timeline source contracts', () => {
     expect(baseTimelineStyles).not.toMatch(/#[0-9a-fA-F]{3,8}/)
     expect(trackStyles).toContain('white-space: nowrap')
     expect(trackStyles).toContain('.editing-ruler-tick:first-child')
+    expect(assetsActionStyles).toContain('color: var(--text-primary);\n  background: rgba(var(--accent-rgb), 0.16);')
+    expect(assetsActionStyles).toContain('box-shadow: inset 0 -2px 0 var(--accent)')
     expect(themeStyles).toContain('.editing-theme-preview.is-warm')
     expect(captionEffectStyles).toContain('.editing-caption-effect-option.is-active')
     expect(subtitlePresetStyles).toContain('.subtitle-text.is-effect-word-pop')
