@@ -1,9 +1,8 @@
-import { statSync } from 'node:fs'
 import { join } from 'node:path'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { _electron as electron, type ElectronApplication, type Page } from 'playwright'
-import { createVisionSourceFingerprint } from '../src/core/ai/vision-evidence.ts'
+import { createMediaContentHash } from '../src/core/media/media-content-hash.ts'
 
 const mediaPath = process.argv[2] ?? '/Users/ponponon/Music/aivplayer_test_video_1min.mp4'
 const previewScreenshotPath = '/private/tmp/aivplayer-collection-repair-preview.png'
@@ -33,14 +32,15 @@ async function runSmoke(): Promise<void> {
   const userDataDirectory = await mkdtemp(join(tmpdir(), 'aivplayer-smoke-vision-clip-collection-batch-repair-'))
     const prefix = `批量修复 Smoke ${Date.now()}`
     const titles = [`${prefix} 一号`, `${prefix} 二号`]
-    const mediaStat = statSync(mediaPath)
+    const contentHash = await createMediaContentHash(mediaPath)
     const sources = titles.map((title, index) => {
       const videoPath = `/tmp/aivplayer-batch-repair-old-${index}/source-${index}.mp4`
       return {
         title,
         videoPath,
         fileName: `source-${index}.mp4`,
-        fingerprint: createVisionSourceFingerprint(videoPath, mediaStat.size, mediaStat.mtimeMs)
+        fingerprint: 'legacy-fingerprint',
+        contentHash
       }
     })
     const originalsById = new Map<string, { selections: Array<{ videoPath: string }> }>()
@@ -60,6 +60,7 @@ async function runSmoke(): Promise<void> {
         videoPath: source.videoPath,
         fileName: source.fileName,
         fingerprint: source.fingerprint,
+        contentHash: source.contentHash,
         durationSeconds: 30,
         startSeconds: 2 + index,
         endSeconds: 8 + index,
@@ -90,7 +91,7 @@ async function runSmoke(): Promise<void> {
     await preview.waitFor({ timeout: 10_000 })
     const previewItems = preview.locator('.vision-collection-repair-preview-item')
     const previewText = await preview.textContent()
-    if (await previewItems.count() !== 2 || await preview.locator('[data-status="matched"]').count() !== 2 || !previewText?.includes('文件指纹匹配')) throw new Error(`Batch repair fingerprint preview mismatch: ${previewText}`)
+    if (await previewItems.count() !== 2 || await preview.locator('[data-status="matched"]').count() !== 2 || !previewText?.includes('内容哈希匹配')) throw new Error(`Batch repair content hash preview mismatch: ${previewText}`)
     await preview.screenshot({ path: previewScreenshotPath })
 
     await preview.getByRole('button', { name: '确认批量修复', exact: true }).click()
@@ -121,7 +122,7 @@ async function runSmoke(): Promise<void> {
     await page.locator('.vision-collection-operation-history').screenshot({ path: historyScreenshotPath })
 
     if (session.errors.length > 0) throw new Error(`Renderer errors during batch collection repair smoke:\n${session.errors.join('\n')}`)
-    console.log(`AIVPlayer Smoke Vision Clip Collection Batch Repair passed: ${JSON.stringify({ collectionCount: afterRedo.length, matchedCount: 2, fingerprintBasisVerified: true, atomicHistoryVerified: true, undoRedoVerified: true, consoleErrors: session.errors.length, previewScreenshotPath, appliedScreenshotPath, historyScreenshotPath })}`)
+    console.log(`AIVPlayer Smoke Vision Clip Collection Batch Repair passed: ${JSON.stringify({ collectionCount: afterRedo.length, matchedCount: 2, contentHashBasisVerified: true, atomicHistoryVerified: true, undoRedoVerified: true, consoleErrors: session.errors.length, previewScreenshotPath, appliedScreenshotPath, historyScreenshotPath })}`)
   } finally {
     if (app) await app.close().catch(() => undefined)
     await rm(userDataDirectory, { recursive: true, force: true }).catch(() => undefined)
