@@ -31,6 +31,13 @@ export type EditingMcpServerOptions = {
   proposalSink?: (request: EditingAgentProposalRequest) => Promise<EditingAgentProposalDecision>
 }
 
+export type EditingMcpClientConfig = {
+  mcpServers: Record<string, {
+    command: string
+    args: string[]
+  }>
+}
+
 type EditingMcpTool = {
   name: string
   title: string
@@ -232,6 +239,19 @@ export function resolveEditingMcpProjectPath(value: string): string {
   const projectPath = resolve(value)
   if (extname(projectPath).toLowerCase() !== '.aivproj') throw new Error('MCP 只接受 .aivproj 工程文件')
   return projectPath
+}
+
+export function createEditingMcpClientConfig(projectPath: string, command = 'aivcli'): EditingMcpClientConfig {
+  const normalizedCommand = command.trim()
+  if (!normalizedCommand) throw new Error('MCP 客户端命令不能为空')
+  return {
+    mcpServers: {
+      [MCP_SERVER_NAME]: {
+        command: normalizedCommand,
+        args: ['mcp', 'serve', resolveEditingMcpProjectPath(projectPath)]
+      }
+    }
+  }
 }
 
 export const editingMcpToolNames = TOOLS.map((tool) => tool.name)

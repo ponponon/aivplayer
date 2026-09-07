@@ -14,7 +14,7 @@ import { BatchPlanError } from './cli-batch-plan'
 import { runDrama } from './cli-drama'
 import { EditingProjectFileError, inspectEditingProject, loadEditingProjectFile, searchEditingProjectCaptions } from './cli-edit'
 import { buildDeleteScriptProposal, EditingProposalError } from '../core/editing/edit-proposal'
-import { resolveEditingMcpProjectPath, runEditingMcpServer } from './editing-mcp'
+import { createEditingMcpClientConfig, resolveEditingMcpProjectPath, runEditingMcpServer } from './editing-mcp'
 import { getEditingAgentBridgePaths, submitEditingAgentProposal } from '../core/editing/editing-agent-bridge'
 
 const FALLBACK_CLI_VERSION = '0.1.0'
@@ -91,6 +91,7 @@ function printHelp(): void {
   aivcli edit captions <project.aivproj> [--query text] [--limit N] [--json]
   aivcli edit propose delete-script <project.aivproj> <segment-id...> [--json]
   aivcli mcp serve <project.aivproj> [--desktop] [--bridge-manifest path]
+  aivcli mcp config <project.aivproj> [--command aivcli]
   aivcli asr <video...> [--language auto] [--model id] [--format both|vtt|srt] [--output-dir dir] [--force]
   aivcli subtitle convert <input.vtt> [--output output.srt]
   aivcli subtitle translate <input.vtt> --to zh|en|ja|ko [--from auto] [--output-dir dir] [--force]
@@ -261,7 +262,17 @@ async function runEdit(parsed: ParsedCliArgs): Promise<number> {
 }
 
 async function runMcp(parsed: ParsedCliArgs): Promise<number> {
-  if (parsed.positionals[0] !== 'serve') throw new CliError('目前只支持 mcp serve <project.aivproj>')
+  if (parsed.positionals[0] === 'config') {
+    requirePositionals({ ...parsed, positionals: parsed.positionals.slice(1) }, 1, 'aivcli mcp config <project.aivproj> [--command aivcli]')
+    try {
+      writeStdout(JSON.stringify(createEditingMcpClientConfig(parsed.positionals[1] as string, getCliOption(parsed, 'command') ?? 'aivcli'), null, 2))
+    } catch (error) {
+      throw new CliError(error instanceof Error ? error.message : String(error))
+    }
+    return 0
+  }
+
+  if (parsed.positionals[0] !== 'serve') throw new CliError('目前只支持 mcp serve <project.aivproj> 或 mcp config <project.aivproj>')
   requirePositionals({ ...parsed, positionals: parsed.positionals.slice(1) }, 1, 'aivcli mcp serve <project.aivproj>')
   let projectPath: string
   try {
