@@ -1,7 +1,9 @@
 .stage:fullscreen {
   position: fixed;
   inset: 0;
-  display: block;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 0;
   width: 100vw;
   height: 100vh;
   min-width: 0;
@@ -12,11 +14,13 @@
 }
 
 .stage:fullscreen .video-frame {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  inset: auto;
   display: grid;
   width: 100%;
   height: 100%;
+  min-width: 0;
+  min-height: 0;
   border: 0;
   border-radius: 0;
   box-shadow: none;
@@ -32,10 +36,15 @@
 }
 
 .stage:fullscreen > .subtitle-overlay:not(.empty) {
-  position: absolute;
-  inset: auto 0 max(108px, calc(env(safe-area-inset-bottom) + 98px)) 0;
+  position: relative;
+  inset: auto;
+  grid-row: 1;
+  grid-column: 1;
+  align-self: end;
   z-index: 10;
   display: grid;
+  min-height: 0;
+  width: 100%;
   padding: 0 24px;
   background: transparent;
   border: 0;
@@ -53,10 +62,13 @@
 }
 
 .stage:fullscreen .control-deck {
-  position: absolute;
-  right: max(16px, env(safe-area-inset-right));
-  bottom: max(14px, env(safe-area-inset-bottom));
-  left: max(16px, env(safe-area-inset-left));
+  position: relative;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  grid-row: 2;
+  align-self: stretch;
+  margin: 8px max(16px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
   z-index: 30;
   width: auto;
   max-height: 200px;
@@ -74,12 +86,17 @@
 }
 
 .stage:fullscreen .control-deck.is-hidden {
-  max-height: 200px;
-  padding: 12px clamp(12px, 2vw, 22px) max(12px, env(safe-area-inset-bottom));
-  border-color: rgba(255, 255, 255, 0.13);
+  max-height: 0;
+  height: 0;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  border-width: 0;
+  border-color: transparent;
   opacity: 0;
   transform: translateY(18px);
   visibility: hidden;
+  overflow: hidden;
   transition:
     opacity 180ms cubic-bezier(0.16, 1, 0.3, 1),
     transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
@@ -130,13 +147,10 @@
 
 @media (max-width: 920px) {
   .stage:fullscreen .control-deck {
-    right: max(10px, env(safe-area-inset-right));
-    bottom: max(10px, env(safe-area-inset-bottom));
-    left: max(10px, env(safe-area-inset-left));
+    margin: 8px max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
   }
 
   .stage:fullscreen > .subtitle-overlay:not(.empty) {
-    bottom: 142px;
     padding: 0 12px;
   }
 }

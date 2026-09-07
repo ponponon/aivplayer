@@ -207,19 +207,54 @@ async function main(): Promise<void> {
     const fullscreenEntered = await fullscreenButton.evaluate((button) => {
       const stage = document.querySelector('.stage') as HTMLElement | null
       const video = document.querySelector('video.video-surface') as HTMLVideoElement | null
+      const videoFrame = document.querySelector('.video-frame') as HTMLElement | null
+      const controlDeck = document.querySelector('.control-deck') as HTMLElement | null
       const stageBox = stage?.getBoundingClientRect()
       const videoBox = video?.getBoundingClientRect()
-      const videoFillsStage = Boolean(stageBox && videoBox && Math.abs(stageBox.width - videoBox.width) <= 1 && Math.abs(stageBox.height - videoBox.height) <= 1)
+      const videoFrameBox = videoFrame?.getBoundingClientRect()
+      const controlDeckBox = controlDeck?.getBoundingClientRect()
+      const videoFillsVideoFrame = Boolean(videoFrameBox && videoBox && Math.abs(videoFrameBox.width - videoBox.width) <= 1 && Math.abs(videoFrameBox.height - videoBox.height) <= 1)
+      const controlsDoNotCoverVideo = Boolean(videoFrameBox && controlDeckBox && controlDeckBox.top >= videoFrameBox.bottom - 1)
       return {
         pressed: button.getAttribute('aria-pressed'),
         label: button.getAttribute('aria-label'),
         stageIsTarget: document.fullscreenElement === stage,
-        videoFillsStage,
+        videoFillsVideoFrame,
+        controlsDoNotCoverVideo,
         videoBox: videoBox ? { width: Math.round(videoBox.width), height: Math.round(videoBox.height) } : null,
-        stageBox: stageBox ? { width: Math.round(stageBox.width), height: Math.round(stageBox.height) } : null
+        stageBox: stageBox ? { width: Math.round(stageBox.width), height: Math.round(stageBox.height) } : null,
+        videoFrameBox: videoFrameBox ? { top: Math.round(videoFrameBox.top), bottom: Math.round(videoFrameBox.bottom) } : null,
+        controlDeckBox: controlDeckBox ? { top: Math.round(controlDeckBox.top), bottom: Math.round(controlDeckBox.bottom) } : null
       }
     })
-    await fullscreenButton.click()
+    const fullscreenScreenshotPath = join(tmpdir(), 'aivplayer-smoke-open-video-fullscreen.png')
+    await page.screenshot({ path: fullscreenScreenshotPath, fullPage: false })
+    await page.waitForFunction(() => document.querySelector('.control-deck')?.classList.contains('is-hidden') === true, undefined, { timeout: 5_000 })
+    await page.waitForFunction(() => {
+      const controlDeck = document.querySelector('.control-deck') as HTMLElement | null
+      if (!controlDeck || !controlDeck.classList.contains('is-hidden')) return false
+      const style = window.getComputedStyle(controlDeck)
+      return style.visibility === 'hidden' && style.opacity === '0' && controlDeck.getBoundingClientRect().height <= 2
+    }, undefined, { timeout: 5_000 })
+    const fullscreenHidden = await page.evaluate(() => {
+      const stage = document.querySelector('.stage') as HTMLElement | null
+      const videoFrame = document.querySelector('.video-frame') as HTMLElement | null
+      const controlDeck = document.querySelector('.control-deck') as HTMLElement | null
+      const stageBox = stage?.getBoundingClientRect()
+      const videoFrameBox = videoFrame?.getBoundingClientRect()
+      const controlStyle = controlDeck ? window.getComputedStyle(controlDeck) : null
+      return {
+        isHidden: controlDeck?.classList.contains('is-hidden') ?? false,
+        controlVisibility: controlStyle?.visibility ?? 'visible',
+        controlOpacity: controlStyle?.opacity ?? '1',
+        videoFrameFillsStage: Boolean(stageBox && videoFrameBox && Math.abs(stageBox.width - videoFrameBox.width) <= 2 && Math.abs(stageBox.height - videoFrameBox.height) <= 2),
+        stageBox: stageBox ? { width: Math.round(stageBox.width), height: Math.round(stageBox.height) } : null,
+        videoFrameBox: videoFrameBox ? { width: Math.round(videoFrameBox.width), height: Math.round(videoFrameBox.height) } : null
+      }
+    })
+    const fullscreenHiddenScreenshotPath = join(tmpdir(), 'aivplayer-smoke-open-video-fullscreen-hidden.png')
+    await page.screenshot({ path: fullscreenHiddenScreenshotPath, fullPage: false })
+    await page.evaluate(() => document.exitFullscreen())
     await page.waitForFunction(() => document.fullscreenElement === null, undefined, { timeout: 10_000 })
     const fullscreenExited = await fullscreenButton.evaluate((button) => ({ pressed: button.getAttribute('aria-pressed'), label: button.getAttribute('aria-label'), stageIsTarget: document.fullscreenElement === document.querySelector('.stage') }))
     const stopResult = await page.evaluate(() => window.aiv.stopNativePlayer())
@@ -234,6 +269,9 @@ async function main(): Promise<void> {
     console.log(`Playback UI sync: ${JSON.stringify({ playingButtonTitle, pausedButtonTitle, resumedButtonTitle })}`)
     console.log(`Space shortcut: ${JSON.stringify({ pausedBySpace, resumedBySpace })}`)
     console.log(`Toggle UI sync: ${JSON.stringify({ muteBefore, muteAfter, shuffleEnabled, fullscreenEntered, fullscreenExited })}`)
+    console.log(`Fullscreen screenshot: ${fullscreenScreenshotPath}`)
+    console.log(`Fullscreen hidden state: ${JSON.stringify(fullscreenHidden)}`)
+    console.log(`Fullscreen hidden screenshot: ${fullscreenHiddenScreenshotPath}`)
     console.log(`Stop native player: ${stopResult.message}`)
 
     if (!videoSrc.startsWith('aiv-media://')) {
@@ -267,7 +305,7 @@ async function main(): Promise<void> {
 
     const muteExpectedLabel = muteExpectedPressed === 'true' ? copy.controls.unmute : copy.controls.mute
     const shuffleExpectedLabel = shuffleExpectedPressed === 'true' ? copy.controls.shuffleOff : copy.controls.shuffleEnable
-    if (muteAfter.pressed !== muteExpectedPressed || muteAfter.label !== muteExpectedLabel || muteAfter.mediaMuted !== (muteExpectedPressed === 'true') || shuffleEnabled.pressed !== shuffleExpectedPressed || shuffleEnabled.label !== shuffleExpectedLabel || !fullscreenEntered.stageIsTarget || !fullscreenEntered.videoFillsStage || fullscreenEntered.pressed !== 'true' || fullscreenEntered.label !== copy.controls.exitFullscreen || fullscreenExited.stageIsTarget || fullscreenExited.pressed !== 'false' || fullscreenExited.label !== copy.controls.fullscreen) {
+    if (muteAfter.pressed !== muteExpectedPressed || muteAfter.label !== muteExpectedLabel || muteAfter.mediaMuted !== (muteExpectedPressed === 'true') || shuffleEnabled.pressed !== shuffleExpectedPressed || shuffleEnabled.label !== shuffleExpectedLabel || !fullscreenEntered.stageIsTarget || !fullscreenEntered.videoFillsVideoFrame || !fullscreenEntered.controlsDoNotCoverVideo || fullscreenEntered.pressed !== 'true' || fullscreenEntered.label !== copy.controls.exitFullscreen || !fullscreenHidden.isHidden || fullscreenHidden.controlVisibility !== 'hidden' || fullscreenHidden.controlOpacity !== '0' || !fullscreenHidden.videoFrameFillsStage || fullscreenExited.stageIsTarget || fullscreenExited.pressed !== 'false' || fullscreenExited.label !== copy.controls.fullscreen) {
       process.exitCode = 1
     }
 
