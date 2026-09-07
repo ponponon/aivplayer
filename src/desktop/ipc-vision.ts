@@ -84,6 +84,7 @@ const visionSearchCursorStore = new VisionSearchCursorStore()
 let visionModelDownloadPromise: Promise<VisionModelDownloadResult> | null = null
 let visionPackDownloadPromise: Promise<VisionPackDownloadResult> | null = null
 let visionDuplicateMediaScanPromise: Promise<Awaited<ReturnType<typeof scanVisionDuplicateMediaSources>>> | null = null
+let visionDuplicateMediaAbortController: AbortController | null = null
 let visionDuplicateMediaHashCache: VisionDuplicateMediaHashCache | null = null
 
 async function listVisionSourcesWithMetadata(request: VisionLibrarySourceRequest = {}): Promise<ReturnType<typeof mergeVisionLibrarySourceMetadata>> {
@@ -121,12 +122,13 @@ function getVisionDuplicateMediaHashCache(): VisionDuplicateMediaHashCache {
   return visionDuplicateMediaHashCache
 }
 
-async function scanDuplicateMedia(): Promise<Awaited<ReturnType<typeof scanVisionDuplicateMediaSources>>> {
+async function scanDuplicateMedia(signal: AbortSignal): Promise<Awaited<ReturnType<typeof scanVisionDuplicateMediaSources>>> {
   const sources = await refreshVisionSourceSnapshots(await listAllVisionSourcesForDuplicateScan())
   const cache = getVisionDuplicateMediaHashCache()
   await cache.load()
-  const result = await scanVisionDuplicateMediaSources(sources, async (source) => createMediaContentHash(source.videoPath), {
+  const result = await scanVisionDuplicateMediaSources(sources, async (source, hashSignal) => createMediaContentHash(source.videoPath, { signal: hashSignal }), {
     concurrency: 2,
+    signal,
     getCachedHash: (source) => cache.get(source),
     onHashComputed: (source, contentHash) => cache.set(source, contentHash)
   })
@@ -714,11 +716,20 @@ export function registerVisionIpc(): void {
 
   ipcMain.handle(IPC_CHANNELS.VISION_DUPLICATE_MEDIA_SCAN, async () => {
     if (visionDuplicateMediaScanPromise) return visionDuplicateMediaScanPromise
-    const promise = scanDuplicateMedia().finally(() => {
+    const controller = new AbortController()
+    visionDuplicateMediaAbortController = controller
+    const promise = scanDuplicateMedia(controller.signal).finally(() => {
       if (visionDuplicateMediaScanPromise === promise) visionDuplicateMediaScanPromise = null
+      if (visionDuplicateMediaAbortController === controller) visionDuplicateMediaAbortController = null
     })
     visionDuplicateMediaScanPromise = promise
     return promise
+  })
+
+  ipcMain.handle(IPC_CHANNELS.VISION_DUPLICATE_MEDIA_CANCEL, () => {
+    if (!visionDuplicateMediaAbortController) return false
+    visionDuplicateMediaAbortController.abort()
+    return true
   })
 
   ipcMain.handle(IPC_CHANNELS.VISION_ENTITY_CATALOG_GET, () => getVisionEntityCatalogStore().get())

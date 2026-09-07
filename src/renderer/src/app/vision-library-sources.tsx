@@ -1,5 +1,5 @@
 import { AppSelect } from '../../../shared/app-select'
-import { Copy, Database, Play, ScanSearch, Search, Star } from 'lucide-react'
+import { Copy, Database, Play, ScanSearch, Search, Square, Star } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { filterVisionLibrarySources, type VisionLibrarySourceSortMode } from '../../../core/ai/vision-library-source-filter'
 import type { LocaleCopy } from '../../../shared/i18n'
@@ -17,6 +17,7 @@ type VisionLibrarySourcesProps = {
   isScanningDuplicates: boolean
   duplicateThumbnailUrls: Record<string, string>
   onScanDuplicates: () => void
+  onCancelDuplicates: () => void
 }
 
 function formatDuplicateBytes(bytes: number): string {
@@ -27,14 +28,14 @@ function formatDuplicateBytes(bytes: number): string {
   return `${value >= 10 || unitIndex === 0 ? Math.round(value) : value.toFixed(1)} ${units[unitIndex]}`
 }
 
-export function VisionLibrarySources({ copy, sources, thumbnailUrls, hasMoreSources, isLoadingMoreSources, onLoadMore, onOpenSource, duplicateScan, isScanningDuplicates, duplicateThumbnailUrls, onScanDuplicates }: VisionLibrarySourcesProps): React.ReactElement {
+export function VisionLibrarySources({ copy, sources, thumbnailUrls, hasMoreSources, isLoadingMoreSources, onLoadMore, onOpenSource, duplicateScan, isScanningDuplicates, duplicateThumbnailUrls, onScanDuplicates, onCancelDuplicates }: VisionLibrarySourcesProps): React.ReactElement {
   const [query, setQuery] = useState('')
   const [favoriteOnly, setFavoriteOnly] = useState(false)
   const [sortMode, setSortMode] = useState<VisionLibrarySourceSortMode>('recent')
   const filteredSources = useMemo(() => filterVisionLibrarySources(sources, { query, favoriteOnly, sortMode }), [favoriteOnly, query, sortMode, sources])
 
   return <section className="vision-card vision-library-sources" aria-label={copy.libraryTitle}>
-    <div className="vision-collections-heading"><span><Database size={14} />{copy.libraryTitle}</span><div className="vision-library-heading-actions"><small>{copy.libraryVisibleCount(filteredSources.length, sources.length)}</small><button className="vision-secondary-action" type="button" data-testid="vision-duplicate-scan" onClick={onScanDuplicates} disabled={isScanningDuplicates} title={copy.libraryDuplicateDescription}><Copy size={12} />{isScanningDuplicates ? copy.libraryDuplicateScanning : copy.libraryDuplicateScan}</button></div></div>
+    <div className="vision-collections-heading"><span><Database size={14} />{copy.libraryTitle}</span><div className="vision-library-heading-actions"><small>{copy.libraryVisibleCount(filteredSources.length, sources.length)}</small>{isScanningDuplicates ? <button className="vision-secondary-action" type="button" data-testid="vision-duplicate-cancel" onClick={onCancelDuplicates} title={copy.libraryDuplicateCancel}><Square size={12} />{copy.libraryDuplicateCancel}</button> : <button className="vision-secondary-action" type="button" data-testid="vision-duplicate-scan" onClick={onScanDuplicates} title={copy.libraryDuplicateDescription}><Copy size={12} />{copy.libraryDuplicateScan}</button>}</div></div>
     {sources.length > 0 ? <div className="vision-library-source-filters"><label className="vision-library-source-search"><Search size={13} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={copy.librarySearchPlaceholder} aria-label={copy.librarySearchPlaceholder} /></label><AppSelect value={sortMode} onChange={(event) => setSortMode(event.target.value as VisionLibrarySourceSortMode)} aria-label={copy.librarySortLabel}><option value="recent">{copy.librarySortRecent}</option><option value="name">{copy.librarySortName}</option><option value="frames">{copy.librarySortFrames}</option></AppSelect><label className="vision-folder-option"><input type="checkbox" checked={favoriteOnly} onChange={(event) => setFavoriteOnly(event.target.checked)} /><span>{copy.libraryFavoriteOnly}</span></label></div> : null}
     {sources.length === 0 ? <div className="vision-empty"><ScanSearch size={18} /><span>{copy.libraryEmpty}</span></div> : filteredSources.length === 0 ? <div className="vision-empty"><ScanSearch size={18} /><span>{copy.libraryNoMatch}</span></div> : <div className="vision-library-source-grid">{filteredSources.map((source) => <button className="vision-library-source" type="button" key={source.sourceId} onClick={() => onOpenSource(source)} title={copy.libraryOpen}>
       {source.thumbnailPath && thumbnailUrls[source.sourceId] ? <img src={thumbnailUrls[source.sourceId]} alt="" /> : <span className="vision-library-source-placeholder"><ScanSearch size={18} /></span>}

@@ -933,6 +933,7 @@
       libraryDuplicateTitle: 'Duplicate media candidates',
       libraryDuplicateDescription: 'Only exact content hashes are grouped. No files are deleted or moved.',
       libraryDuplicateScan: 'Find duplicates', libraryDuplicateScanning: 'Scanning duplicates…',
+      libraryDuplicateCancel: 'Cancel scan', libraryDuplicateCancelled: 'Duplicate media scan cancelled.',
       libraryDuplicateEmpty: 'No byte-identical media was found.',
       libraryDuplicateSummary: (groups: number, files: number, hashed: number, cached: number, skipped: number) => `Found ${groups} groups with ${files} duplicate files; hashed ${hashed - cached}, reused ${cached} cached, skipped ${skipped} by size`,
       libraryDuplicateGroup: (count: number) => `${count} byte-identical files`,

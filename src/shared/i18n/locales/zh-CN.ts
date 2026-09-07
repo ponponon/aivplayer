@@ -933,6 +933,7 @@
       libraryDuplicateTitle: '重复素材候选',
       libraryDuplicateDescription: '只按完全相同的内容哈希分组，不会删除或移动文件。',
       libraryDuplicateScan: '查找重复素材', libraryDuplicateScanning: '正在扫描重复素材…',
+      libraryDuplicateCancel: '取消扫描', libraryDuplicateCancelled: '重复素材扫描已取消。',
       libraryDuplicateEmpty: '没有发现内容完全相同的素材。',
       libraryDuplicateSummary: (groups: number, files: number, hashed: number, cached: number, skipped: number) => `发现 ${groups} 组、${files} 个重复文件；新校验 ${hashed - cached} 个，复用缓存 ${cached} 个，按大小跳过 ${skipped} 个`,
       libraryDuplicateGroup: (count: number) => `${count} 个完全相同的文件`,

@@ -989,10 +989,16 @@ export function VisionPanel(): React.ReactElement {
     try {
       setDuplicateScan(await window.aiv.scanVisionDuplicateMedia())
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason))
+      if (reason instanceof Error && reason.name === 'AbortError') setError(app.copy.vision.libraryDuplicateCancelled)
+      else setError(reason instanceof Error ? reason.message : String(reason))
     } finally {
       setIsScanningDuplicates(false)
     }
+  }
+
+  const cancelDuplicateMedia = (): void => {
+    if (!isScanningDuplicates) return
+    void window.aiv.cancelVisionDuplicateMedia().catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
   }
 
   const retryVisionFailure = async (failure: VisionIndexFailureRecord): Promise<void> => {
@@ -2700,7 +2706,7 @@ export function VisionPanel(): React.ReactElement {
       {status?.packAvailable && !status.available ? <div className="vision-model-download"><div><strong>{app.copy.vision.visionModelRequired}</strong><small>{app.copy.vision.visionModelDescription}</small></div><button className="vision-primary-action" type="button" onClick={downloadVisionModel} disabled={isDownloadingModel || status.downloadable === false}><Download size={14} />{isDownloadingModel ? app.copy.vision.downloadingModel : app.copy.vision.downloadModel}</button>{modelDownloadProgress?.status === 'downloading' ? <small>{app.copy.vision.modelDownloadProgress(modelDownloadProgress.relativePath, modelDownloadProgress.percent == null ? 0 : Math.round(modelDownloadProgress.percent * 100))}</small> : null}</div> : null}
       <VisionLibraryFolder copy={app.copy.vision} folderPath={folder.folderPath} savedFolders={folder.savedFolders} videoPaths={folder.videoPaths} includeSubfolders={folder.includeSubfolders} scanProgress={folder.scanProgress} batchScanProgress={folder.batchScanProgress} isBusy={isBusy} onChooseFolder={folder.chooseFolder} onScanFolder={folder.scanCurrentFolder} onScanAllFolders={folder.scanAllFolders} onIncludeSubfoldersChange={folder.setIncludeSubfolders} onStartIndex={startFolderIndex} onUseFolder={folder.useSavedFolder} onRemoveFolder={folder.removeSavedFolder} />
       <VisionImportInbox copy={app.copy.vision} directories={importInbox.directories} items={importInbox.items} progress={importInbox.progress} pipelineProgress={importInbox.pipelineProgress} isBusy={importInbox.isBusy} error={importInbox.error} writeSidecars={importInbox.writeSidecars} onAddFolder={importInbox.addFolder} onRemoveFolder={importInbox.removeFolder} onScan={importInbox.scan} onQueue={importInbox.queueItem} onIgnore={importInbox.ignoreItem} onRetry={importInbox.retryItem} onBatchQueue={importInbox.batchQueue} onBatchIgnore={importInbox.batchIgnore} onBatchRetry={importInbox.batchRetry} onBatchClear={importInbox.batchClear} onWriteSidecarsChange={importInbox.setWriteSidecars} onUpdateMetadata={importInbox.updateMetadata} />
-      <VisionLibrarySources copy={app.copy.vision} sources={sources} thumbnailUrls={sourceThumbnailUrls} hasMoreSources={hasMoreSources} isLoadingMoreSources={isLoadingMoreSources} onLoadMore={loadMoreSources} onOpenSource={openSource} duplicateScan={duplicateScan} isScanningDuplicates={isScanningDuplicates} duplicateThumbnailUrls={sourceThumbnailUrls} onScanDuplicates={() => void scanDuplicateMedia()} />
+      <VisionLibrarySources copy={app.copy.vision} sources={sources} thumbnailUrls={sourceThumbnailUrls} hasMoreSources={hasMoreSources} isLoadingMoreSources={isLoadingMoreSources} onLoadMore={loadMoreSources} onOpenSource={openSource} duplicateScan={duplicateScan} isScanningDuplicates={isScanningDuplicates} duplicateThumbnailUrls={sourceThumbnailUrls} onScanDuplicates={() => void scanDuplicateMedia()} onCancelDuplicates={cancelDuplicateMedia} />
       <VisionEntityCatalog copy={app.copy.vision} catalog={entityCatalog} onCreate={createEntityCatalog} onUpdate={updateEntityCatalog} onBatchUpdate={updateEntityCatalogBatch} />
       <VisionIndexFailures copy={app.copy.vision} failures={failures} onRetry={retryVisionFailure} onBatchRetry={retryVisionFailures} />
       <div className="vision-index-actions">

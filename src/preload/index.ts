@@ -383,6 +383,7 @@ const api = {
   updateVisionEntityCatalogBatch: (patch: VisionEntityCatalogBatchPatch): Promise<VisionEntityCatalog> => ipcRenderer.invoke(IPC_CHANNELS.VISION_ENTITY_CATALOG_BATCH_UPDATE, patch),
   listVisionSources: (request: VisionLibrarySourceRequest = {}): Promise<VisionLibrarySource[]> => ipcRenderer.invoke(IPC_CHANNELS.VISION_LIST_SOURCES, request),
   scanVisionDuplicateMedia: (): Promise<VisionDuplicateMediaScanResult> => ipcRenderer.invoke(IPC_CHANNELS.VISION_DUPLICATE_MEDIA_SCAN),
+  cancelVisionDuplicateMedia: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.VISION_DUPLICATE_MEDIA_CANCEL),
   readVisionThumbnail: (thumbnailPath: string): Promise<string> => ipcRenderer.invoke(IPC_CHANNELS.VISION_READ_THUMBNAIL, thumbnailPath),
   listVisionClipCollections: (): Promise<VisionClipCollection[]> => ipcRenderer.invoke(IPC_CHANNELS.VISION_CLIP_COLLECTION_LIST),
   saveVisionClipCollection: (input: VisionClipCollectionInput): Promise<VisionClipCollection> => ipcRenderer.invoke(IPC_CHANNELS.VISION_CLIP_COLLECTION_SAVE, input),
