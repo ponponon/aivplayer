@@ -934,7 +934,7 @@
       libraryDuplicateDescription: '完全一致する内容ハッシュだけをまとめます。ファイルの削除や移動は行いません。',
       libraryDuplicateScan: '重複素材を検索', libraryDuplicateScanning: '重複素材をスキャン中…',
       libraryDuplicateEmpty: '内容が完全に一致する素材はありません。',
-      libraryDuplicateSummary: (groups: number, files: number, hashed: number, skipped: number) => `${groups} グループ、重複ファイル ${files} 件；検証 ${hashed} 件、サイズでスキップ ${skipped} 件`,
+      libraryDuplicateSummary: (groups: number, files: number, hashed: number, cached: number, skipped: number) => `${groups} グループ、重複ファイル ${files} 件；新規検証 ${hashed - cached} 件、キャッシュ再利用 ${cached} 件、サイズでスキップ ${skipped} 件`,
       libraryDuplicateGroup: (count: number) => `完全一致ファイル ${count} 件`,
       libraryDuplicateSavings: (size: string) => `重複使用量：${size}`,
       libraryDuplicateUnavailable: (count: number) => `${count} 件は読み取れないため判定対象外です`,

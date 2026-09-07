@@ -28,6 +28,7 @@ import { getVisionSearchRevisionBody, isVisionSearchRevisionUnavailableError, ty
 import { VISION_INDEX_FAILURE_MAX_RETRY_BATCH } from '../core/ai/vision-index-failure'
 import { mergeVisionLibrarySourceMetadata } from '../core/ai/vision-library-source-metadata'
 import { scanVisionDuplicateMediaSources } from '../core/ai/vision-duplicate-media'
+import { VisionDuplicateMediaHashCache } from '../core/ai/vision-duplicate-media-cache'
 import { createMediaContentHash } from '../core/media/media-content-hash'
 import { applySpeakerDiarizationCatalogToResults, filterSpeakerDiarizationCatalogSearchResults, getSpeakerDiarizationCatalogSearchQueries } from '../core/ai/speaker-diarization-catalog'
 import { downloadVisionModel } from '../core/ai/vision-model-downloader'
@@ -82,6 +83,8 @@ const visionSearchCursorStore = new VisionSearchCursorStore()
 
 let visionModelDownloadPromise: Promise<VisionModelDownloadResult> | null = null
 let visionPackDownloadPromise: Promise<VisionPackDownloadResult> | null = null
+let visionDuplicateMediaScanPromise: Promise<Awaited<ReturnType<typeof scanVisionDuplicateMediaSources>>> | null = null
+let visionDuplicateMediaHashCache: VisionDuplicateMediaHashCache | null = null
 
 async function listVisionSourcesWithMetadata(request: VisionLibrarySourceRequest = {}): Promise<ReturnType<typeof mergeVisionLibrarySourceMetadata>> {
   const sources = await getVisionLibrary().listSources(request.limit, request.offset)
@@ -100,6 +103,35 @@ async function listAllVisionSourcesForDuplicateScan(): Promise<VisionLibrarySour
     if (page.length < pageSize) return sources
     offset += page.length
   }
+}
+
+async function refreshVisionSourceSnapshots(sources: readonly VisionLibrarySource[]): Promise<VisionLibrarySource[]> {
+  return Promise.all(sources.map(async (source) => {
+    try {
+      const current = await stat(source.videoPath)
+      return current.isFile() ? { ...source, fileSizeBytes: current.size, fileMtimeMs: current.mtimeMs } : source
+    } catch {
+      return source
+    }
+  }))
+}
+
+function getVisionDuplicateMediaHashCache(): VisionDuplicateMediaHashCache {
+  if (!visionDuplicateMediaHashCache) visionDuplicateMediaHashCache = new VisionDuplicateMediaHashCache(join(app.getPath('userData'), 'library', 'vision-duplicate-media-hashes.json'))
+  return visionDuplicateMediaHashCache
+}
+
+async function scanDuplicateMedia(): Promise<Awaited<ReturnType<typeof scanVisionDuplicateMediaSources>>> {
+  const sources = await refreshVisionSourceSnapshots(await listAllVisionSourcesForDuplicateScan())
+  const cache = getVisionDuplicateMediaHashCache()
+  await cache.load()
+  const result = await scanVisionDuplicateMediaSources(sources, async (source) => createMediaContentHash(source.videoPath), {
+    concurrency: 2,
+    getCachedHash: (source) => cache.get(source),
+    onHashComputed: (source, contentHash) => cache.set(source, contentHash)
+  })
+  await cache.flush().catch(() => undefined)
+  return result
 }
 
 function mergeVisionSearchResults(resultGroups: readonly VisionSearchResult[][]): VisionSearchResult[] {
@@ -681,8 +713,12 @@ export function registerVisionIpc(): void {
   })
 
   ipcMain.handle(IPC_CHANNELS.VISION_DUPLICATE_MEDIA_SCAN, async () => {
-    const sources = await listAllVisionSourcesForDuplicateScan()
-    return scanVisionDuplicateMediaSources(sources, async (source) => createMediaContentHash(source.videoPath))
+    if (visionDuplicateMediaScanPromise) return visionDuplicateMediaScanPromise
+    const promise = scanDuplicateMedia().finally(() => {
+      if (visionDuplicateMediaScanPromise === promise) visionDuplicateMediaScanPromise = null
+    })
+    visionDuplicateMediaScanPromise = promise
+    return promise
   })
 
   ipcMain.handle(IPC_CHANNELS.VISION_ENTITY_CATALOG_GET, () => getVisionEntityCatalogStore().get())

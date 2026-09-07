@@ -42,7 +42,7 @@ export function VisionLibrarySources({ copy, sources, thumbnailUrls, hasMoreSour
       <Play size={13} aria-hidden="true" />
     </button>)}</div>}
     {duplicateScan ? <div className="vision-library-duplicate-report" data-testid="vision-duplicate-report" role="status" aria-label={copy.libraryDuplicateTitle}>
-      <div className="vision-library-duplicate-heading"><div><strong>{copy.libraryDuplicateTitle}</strong><small>{copy.libraryDuplicateDescription}</small></div><small>{copy.libraryDuplicateSummary(duplicateScan.groups.length, duplicateScan.groups.reduce((total, group) => total + group.sources.length, 0), duplicateScan.hashedCount, duplicateScan.skippedBySizeCount)}</small></div>
+      <div className="vision-library-duplicate-heading"><div><strong>{copy.libraryDuplicateTitle}</strong><small>{copy.libraryDuplicateDescription}</small></div><small>{copy.libraryDuplicateSummary(duplicateScan.groups.length, duplicateScan.groups.reduce((total, group) => total + group.sources.length, 0), duplicateScan.hashedCount, duplicateScan.cachedCount, duplicateScan.skippedBySizeCount)}</small></div>
       {duplicateScan.unavailableCount > 0 ? <small className="vision-library-duplicate-warning">{copy.libraryDuplicateUnavailable(duplicateScan.unavailableCount)}</small> : null}
       {duplicateScan.groups.length === 0 ? <div className="vision-empty"><ScanSearch size={16} /><span>{copy.libraryDuplicateEmpty}</span></div> : <div className="vision-library-duplicate-groups" role="list">
         {duplicateScan.groups.map((group) => <div className="vision-library-duplicate-group" key={group.id} role="listitem">

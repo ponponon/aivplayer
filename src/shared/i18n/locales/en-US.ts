@@ -934,7 +934,7 @@
       libraryDuplicateDescription: 'Only exact content hashes are grouped. No files are deleted or moved.',
       libraryDuplicateScan: 'Find duplicates', libraryDuplicateScanning: 'Scanning duplicates…',
       libraryDuplicateEmpty: 'No byte-identical media was found.',
-      libraryDuplicateSummary: (groups: number, files: number, hashed: number, skipped: number) => `Found ${groups} groups with ${files} duplicate files; hashed ${hashed}, skipped ${skipped} by size`,
+      libraryDuplicateSummary: (groups: number, files: number, hashed: number, cached: number, skipped: number) => `Found ${groups} groups with ${files} duplicate files; hashed ${hashed - cached}, reused ${cached} cached, skipped ${skipped} by size`,
       libraryDuplicateGroup: (count: number) => `${count} byte-identical files`,
       libraryDuplicateSavings: (size: string) => `Duplicate storage: ${size}`,
       libraryDuplicateUnavailable: (count: number) => `${count} files could not be read and were excluded`,

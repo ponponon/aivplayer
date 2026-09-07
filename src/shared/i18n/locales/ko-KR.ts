@@ -934,7 +934,7 @@
       libraryDuplicateDescription: '완전히 같은 콘텐츠 해시만 묶습니다. 파일을 삭제하거나 이동하지 않습니다.',
       libraryDuplicateScan: '중복 미디어 찾기', libraryDuplicateScanning: '중복 미디어를 검색하는 중…',
       libraryDuplicateEmpty: '콘텐츠가 완전히 같은 미디어가 없습니다.',
-      libraryDuplicateSummary: (groups: number, files: number, hashed: number, skipped: number) => `${groups}개 그룹, 중복 파일 ${files}개; 해시 확인 ${hashed}개, 크기로 건너뜀 ${skipped}개`,
+      libraryDuplicateSummary: (groups: number, files: number, hashed: number, cached: number, skipped: number) => `${groups}개 그룹, 중복 파일 ${files}개; 새 해시 확인 ${hashed - cached}개, 캐시 재사용 ${cached}개, 크기로 건너뜀 ${skipped}개`,
       libraryDuplicateGroup: (count: number) => `완전히 같은 파일 ${count}개`,
       libraryDuplicateSavings: (size: string) => `중복 저장 공간: ${size}`,
       libraryDuplicateUnavailable: (count: number) => `${count}개 파일을 읽을 수 없어 제외했습니다`,
