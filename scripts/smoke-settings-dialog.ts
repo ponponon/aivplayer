@@ -296,15 +296,44 @@ async function main(): Promise<void> {
     const settingsScrollScreenshotPath = join(smokeHomeDirectory, 'aivplayer-smoke-settings-scroll.png')
     await page.screenshot({ path: settingsScrollScreenshotPath, fullPage: false })
 
+    const cachePanel = page.locator('#settings-section-subtitles .settings-cache-management')
+    await page.waitForSelector('#settings-section-subtitles .settings-cache-management .settings-meta-grid', { state: 'visible', timeout: 10_000 })
+    const cacheStatsBefore = await page.evaluate(() => window.aiv.getMediaCacheStats())
+    const cacheCategoryKeys = ['subtitle', 'summary', 'index', 'trickplay', 'waveform', 'structure', 'web-transcode', 'other']
     const cachePanelState = await page.evaluate(() => {
       const panel = document.querySelector('#settings-section-subtitles') as HTMLElement | null
       const cachePanel = panel?.querySelector('.settings-cache-management') as HTMLElement | null
       return {
         display: panel ? window.getComputedStyle(panel).display : 'missing',
         cachePanel: cachePanel ? 'present' : 'missing',
-        cacheButtons: cachePanel?.querySelectorAll('.settings-cache-actions button').length ?? 0
+        cacheButtons: cachePanel?.querySelectorAll('.settings-cache-actions button').length ?? 0,
+        metaItems: cachePanel?.querySelectorAll('.settings-meta-grid .settings-meta-item').length ?? 0,
+        statsText: cachePanel?.querySelector('.settings-meta-grid')?.textContent?.trim() ?? ''
       }
     })
+    const cacheRefreshButton = cachePanel.locator('.settings-cache-actions button').nth(0)
+    await cacheRefreshButton.click()
+    await page.waitForTimeout(100)
+    await page.waitForFunction(() => {
+      const button = document.querySelector('#settings-section-subtitles .settings-cache-actions button') as HTMLButtonElement | null
+      return button !== null && !button.disabled
+    }, null, { timeout: 10_000 })
+    const cacheRefreshState = await page.evaluate(() => ({
+      buttonDisabled: (document.querySelector('#settings-section-subtitles .settings-cache-actions button') as HTMLButtonElement | null)?.disabled ?? true,
+      metaItems: document.querySelectorAll('#settings-section-subtitles .settings-meta-grid .settings-meta-item').length
+    }))
+    const cacheClearButton = cachePanel.locator('.settings-cache-actions button').nth(1)
+    await cacheClearButton.click()
+    await page.waitForSelector('#settings-section-subtitles .settings-cache-status', { state: 'visible', timeout: 10_000 })
+    await page.waitForFunction(() => {
+      const button = document.querySelector('#settings-section-subtitles .settings-cache-actions button:nth-child(2)') as HTMLButtonElement | null
+      return button !== null && !button.disabled
+    }, null, { timeout: 10_000 })
+    const cacheClearState = await page.evaluate(() => ({
+      buttonDisabled: (document.querySelector('#settings-section-subtitles .settings-cache-actions button:nth-child(2)') as HTMLButtonElement | null)?.disabled ?? true,
+      statusText: document.querySelector('#settings-section-subtitles .settings-cache-status')?.textContent?.trim() ?? '',
+      stats: document.querySelector('#settings-section-subtitles .settings-meta-grid')?.textContent?.trim() ?? ''
+    }))
 
     const ttsStatus = page.locator('[data-testid="settings-tts-status"]')
     const initialTtsStatus = await ttsStatus.textContent()
@@ -393,7 +422,7 @@ async function main(): Promise<void> {
     console.log(`Settings scroll state: ${JSON.stringify({ before: settingsGridBeforeScroll, after: settingsGridAfterScroll })}`)
     console.log(`Settings scroll screenshot: ${settingsScrollScreenshotPath}`)
     console.log(`Video settings card height: ${JSON.stringify(videoCardHeight)}`)
-    console.log(`Subtitle cache panel: ${JSON.stringify(cachePanelState)}`)
+    console.log(`Subtitle cache panel: ${JSON.stringify({ panel: cachePanelState, before: cacheStatsBefore, refresh: cacheRefreshState, clear: cacheClearState })}`)
     console.log(`TTS settings state: ${JSON.stringify({ ...ttsSettingsState, initialTtsStatus, ttsStatusAfterCheck })}`)
     console.log(`TTS layout state: ${JSON.stringify(ttsLayoutState)}`)
     console.log(`Shortcut panel: ${JSON.stringify({ shortcutCount, ...shortcutPanelState })}`)
@@ -472,6 +501,13 @@ async function main(): Promise<void> {
       cachePanelState.display !== 'grid' ||
       cachePanelState.cachePanel !== 'present' ||
       cachePanelState.cacheButtons !== 2 ||
+      cachePanelState.metaItems < 9 ||
+      !cacheStatsBefore.success ||
+      !cacheCategoryKeys.every((category) => Object.prototype.hasOwnProperty.call(cacheStatsBefore.stats.categories, category)) ||
+      cacheRefreshState.buttonDisabled ||
+      cacheRefreshState.metaItems < 9 ||
+      cacheClearState.buttonDisabled ||
+      cacheClearState.statusText.length === 0 ||
       ttsSettingsState.executablePath !== '/tmp/aivplayer-smoke-tts' ||
       ttsSettingsState.voice !== 'SmokeVoice' ||
       ttsStatusAfterCheck === initialTtsStatus ||
