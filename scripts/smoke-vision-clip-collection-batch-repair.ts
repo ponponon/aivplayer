@@ -1,7 +1,9 @@
-import { basename, join } from 'node:path'
+import { statSync } from 'node:fs'
+import { join } from 'node:path'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { _electron as electron, type ElectronApplication, type Page } from 'playwright'
+import { createVisionSourceFingerprint } from '../src/core/ai/vision-evidence.ts'
 
 const mediaPath = process.argv[2] ?? '/Users/ponponon/Music/aivplayer_test_video_1min.mp4'
 const previewScreenshotPath = '/private/tmp/aivplayer-collection-repair-preview.png'
@@ -29,9 +31,18 @@ async function openVisionPanel(page: Page): Promise<void> {
 
 async function runSmoke(): Promise<void> {
   const userDataDirectory = await mkdtemp(join(tmpdir(), 'aivplayer-smoke-vision-clip-collection-batch-repair-'))
-  const prefix = `批量修复 Smoke ${Date.now()}`
+    const prefix = `批量修复 Smoke ${Date.now()}`
     const titles = [`${prefix} 一号`, `${prefix} 二号`]
-    const fileName = basename(mediaPath)
+    const mediaStat = statSync(mediaPath)
+    const sources = titles.map((title, index) => {
+      const videoPath = `/tmp/aivplayer-batch-repair-old-${index}/source-${index}.mp4`
+      return {
+        title,
+        videoPath,
+        fileName: `source-${index}.mp4`,
+        fingerprint: createVisionSourceFingerprint(videoPath, mediaStat.size, mediaStat.mtimeMs)
+      }
+    })
     const originalsById = new Map<string, { selections: Array<{ videoPath: string }> }>()
   let app: ElectronApplication | null = null
 
@@ -41,14 +52,14 @@ async function runSmoke(): Promise<void> {
     const page = session.page
     await openVisionPanel(page)
 
-    const originals = await page.evaluate(({ titles: nextTitles, fileName: nextFileName }) => Promise.all(nextTitles.map((title, index) => window.aiv.saveVisionClipCollection({
-      title,
+    const originals = await page.evaluate((nextSources) => Promise.all(nextSources.map((source, index) => window.aiv.saveVisionClipCollection({
+      title: source.title,
       tags: ['smoke', 'repair'],
       selections: [{
         sourceId: `source-batch-repair-${index}`,
-        videoPath: `/tmp/aivplayer-batch-repair-old-${index}/${nextFileName}`,
-        fileName: nextFileName,
-        fingerprint: `batch-repair-old-${index}`,
+        videoPath: source.videoPath,
+        fileName: source.fileName,
+        fingerprint: source.fingerprint,
         durationSeconds: 30,
         startSeconds: 2 + index,
         endSeconds: 8 + index,
@@ -56,7 +67,7 @@ async function runSmoke(): Promise<void> {
         text: `批量修复验证 ${index + 1}`,
         evidenceTypes: ['subtitle']
       }]
-    }))), { titles, fileName })
+    }))), sources)
     for (const original of originals) originalsById.set(original.id, original)
 
     await page.reload({ waitUntil: 'domcontentloaded' })
@@ -78,7 +89,8 @@ async function runSmoke(): Promise<void> {
     const preview = page.locator('.vision-collection-repair-preview')
     await preview.waitFor({ timeout: 10_000 })
     const previewItems = preview.locator('.vision-collection-repair-preview-item')
-    if (await previewItems.count() !== 2 || await preview.locator('[data-status="matched"]').count() !== 2) throw new Error(`Batch repair preview mismatch: ${await preview.textContent()}`)
+    const previewText = await preview.textContent()
+    if (await previewItems.count() !== 2 || await preview.locator('[data-status="matched"]').count() !== 2 || !previewText?.includes('文件指纹匹配')) throw new Error(`Batch repair fingerprint preview mismatch: ${previewText}`)
     await preview.screenshot({ path: previewScreenshotPath })
 
     await preview.getByRole('button', { name: '确认批量修复', exact: true }).click()
@@ -109,7 +121,7 @@ async function runSmoke(): Promise<void> {
     await page.locator('.vision-collection-operation-history').screenshot({ path: historyScreenshotPath })
 
     if (session.errors.length > 0) throw new Error(`Renderer errors during batch collection repair smoke:\n${session.errors.join('\n')}`)
-    console.log(`AIVPlayer Smoke Vision Clip Collection Batch Repair passed: ${JSON.stringify({ collectionCount: afterRedo.length, matchedCount: 2, atomicHistoryVerified: true, undoRedoVerified: true, consoleErrors: session.errors.length, previewScreenshotPath, appliedScreenshotPath, historyScreenshotPath })}`)
+    console.log(`AIVPlayer Smoke Vision Clip Collection Batch Repair passed: ${JSON.stringify({ collectionCount: afterRedo.length, matchedCount: 2, fingerprintBasisVerified: true, atomicHistoryVerified: true, undoRedoVerified: true, consoleErrors: session.errors.length, previewScreenshotPath, appliedScreenshotPath, historyScreenshotPath })}`)
   } finally {
     if (app) await app.close().catch(() => undefined)
     await rm(userDataDirectory, { recursive: true, force: true }).catch(() => undefined)
