@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createEditingProject } from '../../src/core/editing/project'
 import { serializeEditingProject } from '../../src/core/editing/project-file'
-import { handleEditingMcpRequest, resolveEditingMcpProjectPath, type EditingMcpResponse } from '../../src/cli/editing-mcp'
+import { createEditingMcpClientConfig, handleEditingMcpRequest, resolveEditingMcpProjectPath, type EditingMcpResponse } from '../../src/cli/editing-mcp'
 import type { EditingSource } from '../../src/shared/editing-types'
 
 const source: EditingSource = {
@@ -85,6 +85,21 @@ describe('aivplayer editing MCP stdio contract', () => {
 
   it('rejects non-project MCP targets before starting the server', () => {
     expect(() => resolveEditingMcpProjectPath('/tmp/project.json')).toThrow('MCP 只接受 .aivproj 工程文件')
+  })
+
+  it('creates a standard read-only MCP client config with a normalized project path', () => {
+    expect(createEditingMcpClientConfig('./project.aivproj')).toEqual({
+      mcpServers: {
+        'aivplayer-editing': {
+          command: 'aivcli',
+          args: ['mcp', 'serve', join(process.cwd(), 'project.aivproj')]
+        }
+      }
+    })
+    expect(createEditingMcpClientConfig('/tmp/project.aivproj', '  /opt/aivcli  ')).toMatchObject({
+      mcpServers: { 'aivplayer-editing': { command: '/opt/aivcli' } }
+    })
+    expect(() => createEditingMcpClientConfig('/tmp/project.aivproj', '   ')).toThrow('MCP 客户端命令不能为空')
   })
 
   it('forwards a desktop-mode Proposal to the confirmation bridge and returns its decision', async () => {

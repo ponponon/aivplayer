@@ -18,6 +18,8 @@ describe('editing Agent desktop bridge source contract', () => {
     const smoke = readSource('scripts/smoke-editing-agent-bridge.ts')
 
     expect(cli).toContain('mcp serve <project.aivproj> [--desktop] [--bridge-manifest path]')
+    expect(cli).toContain('mcp config <project.aivproj> [--command aivcli]')
+    expect(cli).toContain('createEditingMcpClientConfig')
     expect(cli).toContain("hasCliOption(parsed, 'desktop')")
     expect(mcp).toContain('proposalSink')
     expect(mcp).toContain('不会直接写文件、删除媒体或执行 shell')
