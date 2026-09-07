@@ -112,6 +112,8 @@ describe('editing timeline source contracts', () => {
     expect(timeline).toContain('data-testid={`editing-framing-marker-${Math.round(keyframe.at * 1000)}`}')
     expect(timeline).toContain('app.selectEditingClip(clip.id)')
     expect(rangeTrack).toContain('data-testid="editing-track"')
+    expect(timeline).toContain("onClick={(event) => { if (suppressClipClickRef.current) return; selectTimelineItem('clip', span.clip.id, event.metaKey || event.ctrlKey) }}")
+    expect(timeline).not.toContain("onClick={(event) => { event.stopPropagation(); if (suppressClipClickRef.current) return; selectTimelineItem('clip', span.clip.id, event.metaKey || event.ctrlKey) }}")
     expect(timeline).toContain('app.splitEditingClip')
     expect(timeline).toContain('app.trimEditingClipLeft')
     expect(timeline).toContain('app.trimEditingClipRight')

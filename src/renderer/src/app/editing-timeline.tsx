@@ -356,7 +356,7 @@ export function EditingTimeline(): React.ReactElement | null {
                     onPointerMove={(event) => moveClipDrag(event, index)}
                     onPointerUp={finishClipDrag}
                     onPointerCancel={finishClipDrag}
-                    onClick={(event) => { event.stopPropagation(); if (suppressClipClickRef.current) return; selectTimelineItem('clip', span.clip.id, event.metaKey || event.ctrlKey) }}
+                    onClick={(event) => { if (suppressClipClickRef.current) return; selectTimelineItem('clip', span.clip.id, event.metaKey || event.ctrlKey) }}
                     onDragOver={(event) => { if (event.dataTransfer.types.includes(EDITING_SOURCE_DRAG_TYPE)) { event.preventDefault(); event.stopPropagation(); event.dataTransfer.dropEffect = 'copy' } }}
                     onDrop={(event) => { const sourceId = readEditingSourceDrag(event); if (!sourceId) return; event.preventDefault(); event.stopPropagation(); app.replaceEditingClipSource(sourceId, span.clip.id) }}
                     onKeyDown={(event) => { if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return; event.preventDefault(); event.stopPropagation(); app.reorderEditingClips(index, index + (event.key === 'ArrowLeft' ? -1 : 1)) }}

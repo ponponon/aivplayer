@@ -36,6 +36,16 @@ async function main(): Promise<void> {
     const trackBounds = await track.boundingBox()
     const playheadBounds = await playhead.boundingBox()
     if (!trackBounds || !playheadBounds) throw new Error(`Playhead is not measurable: ${JSON.stringify({ trackBounds, playheadBounds })}`)
+    const durationSeconds = await page.locator('video.video-surface').evaluate((video) => (video as HTMLVideoElement).duration)
+
+    const videoTrackTargetRatio = 0.25
+    await page.mouse.click(trackBounds.x + trackBounds.width * videoTrackTargetRatio, trackBounds.y + trackBounds.height / 2)
+    const videoTrackExpectedSeconds = durationSeconds * videoTrackTargetRatio
+    await page.waitForFunction((expected) => {
+      const value = Number(document.querySelector('[data-testid="editing-playhead"]')?.getAttribute('aria-valuenow') ?? NaN)
+      return Number.isFinite(value) && Math.abs(value - (expected as number)) < 0.8
+    }, videoTrackExpectedSeconds, { timeout: 10_000 })
+    const videoTrackFinalSeconds = Number(await playhead.getAttribute('aria-valuenow'))
 
     const targetRatio = 0.35
     const startX = playheadBounds.x + playheadBounds.width / 2
@@ -46,7 +56,6 @@ async function main(): Promise<void> {
     await page.mouse.move(targetX, y, { steps: 8 })
     await page.mouse.up()
 
-    const durationSeconds = await page.locator('video.video-surface').evaluate((video) => (video as HTMLVideoElement).duration)
     const expectedSeconds = durationSeconds * targetRatio
     await page.waitForFunction((expected) => {
       const value = Number(document.querySelector('[data-testid="editing-playhead"]')?.getAttribute('aria-valuenow') ?? NaN)
@@ -78,12 +87,13 @@ async function main(): Promise<void> {
 
     console.log('AIVPlayer Smoke Editing Playhead')
     console.log(`Media: ${sourceMediaPath}`)
+    console.log(`Video track click: ${JSON.stringify({ targetRatio: videoTrackTargetRatio, expectedSeconds: videoTrackExpectedSeconds, finalSeconds: videoTrackFinalSeconds })}`)
     console.log(`Playhead drag: ${JSON.stringify({ durationSeconds, targetRatio, expectedSeconds, finalSeconds })}`)
     console.log(`Timeline labels: ${JSON.stringify(trackLabels)}`)
     console.log(`Editing typography: ${JSON.stringify(typography)}`)
     console.log(`Screenshot: ${screenshotPath}`)
     console.log(`Renderer errors: ${JSON.stringify(consoleErrors)}`)
-    if (Math.abs(finalSeconds - expectedSeconds) >= 0.8 || trackLabels.some((label) => label.fontSize !== '9px' || label.whiteSpace !== 'nowrap' || Number.parseFloat(label.lineHeight) > 11) || typographyMismatch || consoleErrors.length > 0) process.exitCode = 1
+    if (Math.abs(videoTrackFinalSeconds - videoTrackExpectedSeconds) >= 0.8 || Math.abs(finalSeconds - expectedSeconds) >= 0.8 || trackLabels.some((label) => label.fontSize !== '9px' || label.whiteSpace !== 'nowrap' || Number.parseFloat(label.lineHeight) > 11) || typographyMismatch || consoleErrors.length > 0) process.exitCode = 1
   } finally {
     await app.close()
   }
