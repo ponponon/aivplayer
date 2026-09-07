@@ -4,13 +4,14 @@ import { createVisionSourceFingerprint } from './vision-evidence'
 export type VisionClipCollectionRepairFile = {
   path: string
   name: string
+  contentHash?: string
   fileSizeBytes?: number
   fileMtimeMs?: number
   durationSeconds?: number
 }
 
 export type VisionClipCollectionRepairMatchStatus = 'matched' | 'ambiguous' | 'unmatched'
-export type VisionClipCollectionRepairMatchBasis = 'fingerprint' | 'name-duration' | 'name' | 'duration' | 'single'
+export type VisionClipCollectionRepairMatchBasis = 'content-hash' | 'fingerprint' | 'name-duration' | 'name' | 'duration' | 'single'
 
 export type VisionClipCollectionRepairMatch = {
   collectionId: string
@@ -34,15 +35,25 @@ function normalizeName(value: string): string {
   return value.trim().toLocaleLowerCase()
 }
 
-function getMissingSources(collection: VisionClipCollection, availablePaths: ReadonlySet<string>): Array<{ path: string; name: string; fingerprint: string; durationSeconds: number }> {
+function getMissingSources(collection: VisionClipCollection, availablePaths: ReadonlySet<string>): Array<{ path: string; name: string; fingerprint: string; contentHash?: string; durationSeconds: number }> {
   const seen = new Set<string>()
-  const missing: Array<{ path: string; name: string; fingerprint: string; durationSeconds: number }> = []
+  const missing: Array<{ path: string; name: string; fingerprint: string; contentHash?: string; durationSeconds: number }> = []
   for (const selection of collection.selections) {
     if (availablePaths.has(selection.videoPath) || seen.has(selection.videoPath)) continue
     seen.add(selection.videoPath)
-    missing.push({ path: selection.videoPath, name: selection.fileName, fingerprint: selection.fingerprint, durationSeconds: selection.durationSeconds })
+    missing.push({ path: selection.videoPath, name: selection.fileName, fingerprint: selection.fingerprint, contentHash: selection.contentHash, durationSeconds: selection.durationSeconds })
   }
   return missing
+}
+
+function getContentHashCandidates(
+  missing: { contentHash?: string },
+  replacements: readonly VisionClipCollectionRepairFile[],
+  usedReplacementPaths: ReadonlySet<string>
+): VisionClipCollectionRepairFile[] {
+  const expected = missing.contentHash?.trim().toLowerCase()
+  if (!expected) return []
+  return replacements.filter((file) => !usedReplacementPaths.has(file.path) && file.contentHash?.trim().toLowerCase() === expected)
 }
 
 function hasMatchingDuration(sourceDurationSeconds: number, candidateDurationSeconds: number | undefined): boolean {
@@ -78,13 +89,19 @@ export function createVisionClipCollectionRepairPlan(
     const usedReplacementPaths = new Set<string>()
     for (const missing of missingSources) {
       const fingerprintCandidates = getFingerprintCandidates(missing, normalizedReplacements, usedReplacementPaths)
+      const contentHashCandidates = getContentHashCandidates(missing, normalizedReplacements, usedReplacementPaths)
       const sameNameCandidates = normalizedReplacements.filter((file) => !usedReplacementPaths.has(file.path) && normalizeName(file.name) === normalizeName(missing.name))
       const sameNameDurationCandidates = sameNameCandidates.filter((file) => hasMatchingDuration(missing.durationSeconds, file.durationSeconds))
       const durationCandidates = normalizedReplacements.filter((file) => !usedReplacementPaths.has(file.path) && hasMatchingDuration(missing.durationSeconds, file.durationSeconds))
       let candidate: VisionClipCollectionRepairFile | undefined
       let basis: VisionClipCollectionRepairMatchBasis | null = null
       let ambiguous = false
-      if (fingerprintCandidates.length === 1) {
+      if (contentHashCandidates.length === 1) {
+        candidate = contentHashCandidates[0]
+        basis = 'content-hash'
+      } else if (contentHashCandidates.length > 1) {
+        ambiguous = true
+      } else if (fingerprintCandidates.length === 1) {
         candidate = fingerprintCandidates[0]
         basis = 'fingerprint'
       } else if (fingerprintCandidates.length > 1) {

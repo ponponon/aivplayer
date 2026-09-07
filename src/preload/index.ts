@@ -241,6 +241,8 @@ const api = {
     ipcRenderer.invoke(IPC_CHANNELS.BATCH_SUBTITLE_OPEN_LOG_DIRECTORY),
   getMediaMetadata: (filePath: string): Promise<MediaProbeMetadata | null> =>
     ipcRenderer.invoke(IPC_CHANNELS.GET_MEDIA_METADATA, filePath),
+  getMediaContentHash: (filePath: string): Promise<string | null> =>
+    ipcRenderer.invoke(IPC_CHANNELS.GET_MEDIA_CONTENT_HASH, filePath),
   getFfmpegCapabilities: (): Promise<MediaFfmpegCapabilities> => ipcRenderer.invoke(IPC_CHANNELS.MEDIA_GET_FFMPEG_CAPABILITIES),
   extractMediaFilmstrip: (request: MediaFilmstripRequest): Promise<MediaFilmstripResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.EXTRACT_MEDIA_FILMSTRIP, request),

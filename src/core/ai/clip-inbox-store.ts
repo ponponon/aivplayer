@@ -3,6 +3,7 @@ import { mkdirSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { mergeVisionClipSelections, normalizeVisionTimeRange } from './vision-evidence'
+import { normalizeMediaContentHash } from '../media/media-content-hash'
 import { normalizeVisionClipCollectionTagOperationHistoryPageRequest } from './clip-inbox-tag-history'
 import { applyVisionCollectionTags, duplicateVisionCollectionTitle, mergeVisionClipCollections, normalizeVisionClipCollectionIds, normalizeVisionClipCollectionRenamePart, normalizeVisionCollectionSortMode, normalizeVisionCollectionTag, normalizeVisionCollectionTagColor, normalizeVisionCollectionTagFavorite, normalizeVisionCollectionTagNote, normalizeVisionCollectionTags, normalizeVisionCollectionTagsMode, renameVisionCollectionTag, renameVisionClipCollectionTitle, selectVisionClipCollectionsForMerge, sortVisionClipSelections, wouldCreateVisionCollectionTagParentCycle } from './clip-inbox-operations'
 import type { VisionClipCollection, VisionClipCollectionBatchDeleteResult, VisionClipCollectionBatchRenameResult, VisionClipCollectionBatchTagsResult, VisionClipCollectionFlagUpdateRequest, VisionClipCollectionInput, VisionClipCollectionMergeSelection, VisionClipCollectionOperationBatchConflict, VisionClipCollectionOperationBatchConflictReason, VisionClipCollectionOperationBatchRedoResult, VisionClipCollectionOperationBatchUndoResult, VisionClipCollectionOperationCollectionDetail, VisionClipCollectionOperationHistory, VisionClipCollectionOperationHistoryDetail, VisionClipCollectionOperationHistoryEntry, VisionClipCollectionOperationRedoResult, VisionClipCollectionOperationType, VisionClipCollectionOperationUndoResult, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataUpdateRequest, VisionClipCollectionTagOperationBatchConflict, VisionClipCollectionTagOperationBatchConflictReason, VisionClipCollectionTagOperationBatchRedoResult, VisionClipCollectionTagOperationBatchUndoResult, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationHistoryDetail, VisionClipCollectionTagOperationHistoryEntry, VisionClipCollectionTagOperationHistoryPage, VisionClipCollectionTagOperationType, VisionClipCollectionTagRedoResult, VisionClipCollectionTagUndoResult, VisionClipSelection, VisionEvidenceType } from '../../shared/vision-types'
@@ -141,11 +142,13 @@ function normalizeSelection(value: unknown): VisionClipSelection | null {
   const range = normalizeVisionTimeRange({ startSeconds: item.startSeconds, endSeconds: item.endSeconds }, item.durationSeconds)
   if (!range) return null
   const evidenceTypes = Array.isArray(item.evidenceTypes) ? item.evidenceTypes.filter((type): type is VisionEvidenceType => typeof type === 'string' && EVIDENCE_TYPES.includes(type as VisionEvidenceType)) : []
+  const contentHash = normalizeMediaContentHash(item.contentHash)
   return {
     sourceId: item.sourceId.trim(),
     videoPath: item.videoPath.trim(),
     fileName: item.fileName.trim(),
     fingerprint: item.fingerprint,
+    ...(contentHash ? { contentHash } : {}),
     durationSeconds: item.durationSeconds,
     width: typeof item.width === 'number' && Number.isFinite(item.width) && item.width > 0 ? item.width : undefined,
     height: typeof item.height === 'number' && Number.isFinite(item.height) && item.height > 0 ? item.height : undefined,
@@ -163,6 +166,7 @@ function parseSelectionRow(row: SqliteRow): VisionClipSelection | null {
     videoPath: stringValue(row, 'video_path'),
     fileName: stringValue(row, 'file_name'),
     fingerprint: stringValue(row, 'fingerprint'),
+    contentHash: stringValue(row, 'content_hash'),
     durationSeconds: numberValue(row, 'duration_seconds'),
     width: nullableNumberValue(row, 'width'),
     height: nullableNumberValue(row, 'height'),
@@ -202,6 +206,7 @@ export class ClipInboxStore {
         video_path TEXT NOT NULL,
         file_name TEXT NOT NULL,
         fingerprint TEXT NOT NULL,
+        content_hash TEXT,
         duration_seconds REAL NOT NULL,
         width REAL,
         height REAL,
@@ -243,6 +248,7 @@ export class ClipInboxStore {
     `)
     this.ensureTagOperationHistoryColumn('redoable', 'INTEGER NOT NULL DEFAULT 0')
     this.ensureCollectionOperationHistoryColumn('redoable', 'INTEGER NOT NULL DEFAULT 0')
+    this.ensureCollectionItemColumn('content_hash', 'TEXT')
     this.ensureCollectionColumn('tags_json', "TEXT NOT NULL DEFAULT '[]'")
     this.ensureCollectionColumn('sort_mode', "TEXT NOT NULL DEFAULT 'source-time'")
     this.ensureCollectionColumn('is_favorite', 'INTEGER NOT NULL DEFAULT 0')
@@ -1861,12 +1867,12 @@ export class ClipInboxStore {
   private replaceCollectionSelections(collectionId: string, selections: readonly VisionClipSelection[]): void {
     this.database.prepare('DELETE FROM clip_collection_items WHERE collection_id = ?').run(collectionId)
     const insert = this.database.prepare(`
-      INSERT INTO clip_collection_items (id, collection_id, item_index, source_id, video_path, file_name, fingerprint, duration_seconds, width, height, start_seconds, end_seconds, evidence_ids_json, text, evidence_types_json)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO clip_collection_items (id, collection_id, item_index, source_id, video_path, file_name, fingerprint, content_hash, duration_seconds, width, height, start_seconds, end_seconds, evidence_ids_json, text, evidence_types_json)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
     selections.forEach((selection, index) => insert.run(
       randomUUID(), collectionId, index, selection.sourceId, selection.videoPath, selection.fileName, selection.fingerprint,
-      selection.durationSeconds, selection.width ?? null, selection.height ?? null, selection.startSeconds, selection.endSeconds,
+      selection.contentHash ?? null, selection.durationSeconds, selection.width ?? null, selection.height ?? null, selection.startSeconds, selection.endSeconds,
       JSON.stringify(selection.evidenceIds), selection.text ?? '', JSON.stringify(selection.evidenceTypes)
     ))
   }
@@ -1980,6 +1986,12 @@ export class ClipInboxStore {
       collectionTitles: collections.map((collection) => collection.title),
       selectionCount: collections.reduce((total, collection) => total + collection.selections.length, 0)
     }
+  }
+
+  private ensureCollectionItemColumn(name: 'content_hash', definition: string): void {
+    const columns = this.database.prepare('PRAGMA table_info(clip_collection_items)').all() as SqliteRow[]
+    if (columns.some((column) => stringValue(column, 'name') === name)) return
+    this.database.exec(`ALTER TABLE clip_collection_items ADD COLUMN ${name} ${definition}`)
   }
 
   private ensureCollectionColumn(name: 'tags_json' | 'sort_mode' | 'is_favorite' | 'is_archived', definition: string): void {

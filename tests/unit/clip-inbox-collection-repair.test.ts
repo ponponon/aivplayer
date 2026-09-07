@@ -89,6 +89,20 @@ describe('clip inbox collection repair', () => {
     })
   })
 
+  it('prefers a unique content hash before path-bound metadata', () => {
+    const source = collection({ selections: [selection({ contentHash: 'a'.repeat(64) })] })
+    const plan = createVisionClipCollectionRepairPlan([source], new Set(), [
+      { path: '/new/renamed-a.mp4', name: 'renamed.mp4', contentHash: 'A'.repeat(64), fileSizeBytes: 99, fileMtimeMs: 1 },
+      { path: '/new/renamed-b.mp4', name: 'renamed.mp4', fileSizeBytes: 12, fileMtimeMs: 2 }
+    ])
+
+    expect(plan.matches[0]).toMatchObject({
+      replacementPath: '/new/renamed-a.mp4',
+      status: 'matched',
+      basis: 'content-hash'
+    })
+  })
+
   it('uses name and duration before a weaker name-only match', () => {
     const source = collection()
     const plan = createVisionClipCollectionRepairPlan([source], new Set(), [

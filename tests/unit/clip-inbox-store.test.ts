@@ -52,6 +52,16 @@ describe('clip inbox store', () => {
     expect(store.getCollection(saved.id)).toEqual(saved)
   })
 
+  it('persists optional content hashes through a store restart', () => {
+    const contentHash = 'a'.repeat(64)
+    const saved = store.saveCollection({ title: '可迁移内容身份', selections: [selection({ contentHash })] })
+
+    expect(saved.selections[0]?.contentHash).toBe(contentHash)
+    store.close()
+    store = new ClipInboxStore(tempDirectory)
+    expect(store.getCollection(saved.id)?.selections[0]?.contentHash).toBe(contentHash)
+  })
+
   it('updates an existing collection without changing its creation time', () => {
     const created = store.saveCollection({ id: 'collection-1', title: '旧标题', selections: [selection()] })
     const updated = store.saveCollection({ id: created.id, title: '新标题', selections: [selection({ startSeconds: 5, endSeconds: 7 })] })

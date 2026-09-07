@@ -398,6 +398,7 @@ export type VisionClipSelection = {
   videoPath: string
   fileName: string
   fingerprint: string
+  contentHash?: string
   durationSeconds: number
   width?: number
   height?: number

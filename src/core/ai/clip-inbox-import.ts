@@ -1,5 +1,6 @@
 import { normalizeVisionCollectionTags, normalizeVisionCollectionSortMode } from './clip-inbox-operations'
 import { normalizeVisionTimeRange } from './vision-evidence'
+import { normalizeMediaContentHash } from '../media/media-content-hash'
 import type { VisionClipCollectionInput, VisionClipSelection, VisionEvidenceType } from '../../shared/vision-types'
 
 const VISION_CLIP_COLLECTION_EXPORT_VERSION = 1
@@ -42,11 +43,13 @@ function parseSelection(value: unknown, index: number): VisionClipSelection {
     ? [...new Set(value.evidenceTypes.filter((item): item is VisionEvidenceType => typeof item === 'string' && VISION_EVIDENCE_TYPES.includes(item as VisionEvidenceType)))]
     : []
   const text = typeof value.text === 'string' && value.text.trim() ? value.text.trim().slice(0, MAX_SELECTION_TEXT_LENGTH) : undefined
+  const contentHash = normalizeMediaContentHash(value.contentHash)
   return {
     sourceId: requiredString(value.sourceId, '源 ID'),
     videoPath: requiredString(value.videoPath, '视频路径'),
     fileName: typeof value.fileName === 'string' ? value.fileName.trim() : '',
     fingerprint: typeof value.fingerprint === 'string' ? value.fingerprint.trim() : '',
+    ...(contentHash ? { contentHash } : {}),
     durationSeconds,
     width: optionalPositiveNumber(value.width),
     height: optionalPositiveNumber(value.height),

@@ -5,6 +5,7 @@ import type { ImageSaveRequest, ImageSaveResult, MediaProbeMetadata } from '../s
 import type { LivePhotoExportRequest, LivePhotoExportResult } from '../shared/live-photo-types'
 import { getAppCopy } from '../shared/i18n'
 import { createMediaProbeMetadata } from '../core/media/media-metadata'
+import { createMediaContentHash } from '../core/media/media-content-hash'
 import { createMediaFile } from './media/media-protocol'
 import { getNativePlayerStatus, stopNativePlayer } from '../core/media/native-player'
 import { listMediaFilesInDirectory, promptForDirectory, promptForMediaFiles, promptForSavePath, getInitialMediaFiles } from './media-dialogs'
@@ -65,6 +66,13 @@ export function registerSettingsIpc(): void {
     return { success: true, filePath: savePath, message: imageCopy.exportReady }
   })
   ipcMain.handle(IPC_CHANNELS.GET_MEDIA_METADATA, (_event, filePath: string): Promise<MediaProbeMetadata | null> => createMediaProbeMetadata(filePath, { resourcePath: resolveResourcePath(), env: process.env }))
+  ipcMain.handle(IPC_CHANNELS.GET_MEDIA_CONTENT_HASH, async (_event, filePath: string): Promise<string | null> => {
+    try {
+      return await createMediaContentHash(filePath)
+    } catch {
+      return null
+    }
+  })
   ipcMain.handle(IPC_CHANNELS.GET_INITIAL_MEDIA_FILES, () => getInitialMediaFiles())
   ipcMain.handle(IPC_CHANNELS.GET_APP_VERSION, () => app.getVersion())
   ipcMain.handle(IPC_CHANNELS.IMAGE_CONVERT_HEIC, async (_event, filePath: string): Promise<{ success: boolean; dataUrl?: string; error?: string }> => {

@@ -8,6 +8,7 @@ function normalizedSelectionSignature(selection: VisionClipCollection['selection
     videoPath: selection.videoPath,
     fileName: selection.fileName,
     fingerprint: selection.fingerprint,
+    contentHash: selection.contentHash ?? null,
     durationSeconds: selection.durationSeconds,
     width: selection.width ?? null,
     height: selection.height ?? null,
