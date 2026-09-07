@@ -31,6 +31,8 @@ import type {
   AsrJobProgress,
   AsrCacheClearResult,
   AsrCacheStatsResult,
+  MediaCacheClearResult,
+  MediaCacheStatsResult,
   AsrModelDownloadProgress,
   AsrModelDownloadResult,
   AsrModelSourceId,
@@ -277,6 +279,8 @@ const api = {
   checkAsrRuntime: (): Promise<AsrRuntimeStatus> => ipcRenderer.invoke(IPC_CHANNELS.ASR_HEALTH_CHECK),
   getAsrCacheStats: (): Promise<AsrCacheStatsResult> => ipcRenderer.invoke(IPC_CHANNELS.ASR_CACHE_STATS),
   clearStaleAsrCache: (): Promise<AsrCacheClearResult> => ipcRenderer.invoke(IPC_CHANNELS.ASR_CACHE_CLEAR_STALE),
+  getMediaCacheStats: (): Promise<MediaCacheStatsResult> => ipcRenderer.invoke(IPC_CHANNELS.MEDIA_CACHE_STATS),
+  clearStaleMediaCaches: (): Promise<MediaCacheClearResult> => ipcRenderer.invoke(IPC_CHANNELS.MEDIA_CACHE_CLEAR_STALE),
   autoDetectWhisperBinary: (): Promise<AsrRuntimeSetupResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.ASR_AUTO_DETECT_WHISPER_BINARY),
   selectWhisperBinary: (): Promise<AsrRuntimeSetupResult> =>

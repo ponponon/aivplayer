@@ -42,6 +42,8 @@ export const IPC_CHANNELS = {
   ASR_HEALTH_CHECK: 'asr:health-check',
   ASR_CACHE_STATS: 'asr:cache-stats',
   ASR_CACHE_CLEAR_STALE: 'asr:cache-clear-stale',
+  MEDIA_CACHE_STATS: 'media:cache-stats',
+  MEDIA_CACHE_CLEAR_STALE: 'media:cache-clear-stale',
   ASR_AUTO_DETECT_WHISPER_BINARY: 'asr:auto-detect-whisper-binary',
   ASR_SELECT_WHISPER_BINARY: 'asr:select-whisper-binary',
   ASR_DOWNLOAD_MODEL: 'asr:download-model',

@@ -9,6 +9,7 @@ import { registerEditingCaptionWatcherIpc, stopEditingCaptionWatcher } from './i
 import { registerEditingAgentBridgeIpc, startEditingAgentBridge, stopEditingAgentBridge } from './editing-agent-bridge'
 import { registerAsrRuntimeIpc } from './ipc-asr-runtime'
 import { registerAsrCacheIpc } from './ipc-asr-cache'
+import { registerMediaCacheIpc } from './ipc-media-cache'
 import { registerAsrSubtitleIpc } from './ipc-asr-subtitles'
 import { registerAsrTranslationIpc } from './ipc-asr-translation'
 import { registerAsrSummaryIpc } from './ipc-asr-summary'
@@ -76,6 +77,7 @@ function registerIpc(): void {
   registerStructureAnalysisIpc()
   registerAsrRuntimeIpc()
   registerAsrCacheIpc()
+  registerMediaCacheIpc()
   registerAsrSubtitleIpc()
   registerAsrTranslationIpc()
   registerAsrSummaryIpc()
