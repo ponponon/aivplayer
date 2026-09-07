@@ -101,6 +101,7 @@ const STATIC_MIME_TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
+  '.png': 'image/png',
   '.svg': 'image/svg+xml',
   '.webmanifest': 'application/manifest+json; charset=utf-8'
 }
@@ -662,7 +663,13 @@ export class WebServer {
       return
     }
 
-    if (url.pathname === '/manifest.webmanifest' || url.pathname === '/icon.svg') {
+    if (
+      url.pathname === '/manifest.webmanifest' ||
+      url.pathname === '/icon.svg' ||
+      url.pathname === '/icon-180.png' ||
+      url.pathname === '/icon-192.png' ||
+      url.pathname === '/icon-512.png'
+    ) {
       await this.serveStaticFile(response, url.pathname)
       return
     }
