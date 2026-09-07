@@ -15,7 +15,7 @@
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 11px;
+  font-size: 12px;
   list-style: none;
   white-space: nowrap;
 }
@@ -24,7 +24,7 @@
 .editing-subtitle-qa-summary:hover,
 .editing-subtitle-qa[open] .editing-subtitle-qa-summary { color: var(--text-primary); background: rgba(var(--accent-rgb), 0.1); border-color: rgba(var(--accent-rgb), 0.3); }
 .editing-subtitle-qa-summary svg { color: var(--accent); }
-.editing-subtitle-qa-summary small { color: var(--text-muted); font-size: 9px; }
+.editing-subtitle-qa-summary small { color: var(--text-muted); font-size: 10px; }
 
 .editing-subtitle-qa-panel {
   position: absolute;
@@ -42,8 +42,8 @@
   box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
 }
 
-.editing-subtitle-qa-repair { display: flex; align-items: center; justify-content: space-between; gap: 7px; padding: 0 0 6px; color: var(--text-muted); font-size: 9px; }
-.editing-subtitle-qa-repair .editing-tool-button { min-height: 23px; padding: 0 7px; font-size: 9px; }
+.editing-subtitle-qa-repair { display: flex; align-items: center; justify-content: space-between; gap: 7px; padding: 0 0 6px; color: var(--text-muted); font-size: 10px; }
+.editing-subtitle-qa-repair .editing-tool-button { min-height: 23px; padding: 0 7px; font-size: 10px; }
 
 .editing-subtitle-qa-list { display: grid; gap: 4px; max-height: 260px; overflow: auto; }
 .editing-subtitle-qa-item { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; align-items: center; gap: 7px; min-width: 0; padding: 6px; color: var(--text-secondary); background: rgba(var(--overlay-rgb), 0.05); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); cursor: pointer; font: inherit; text-align: left; }

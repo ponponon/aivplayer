@@ -16,13 +16,13 @@
   padding: 0 8px;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 9px;
+  font-size: 11px;
   list-style: none;
   white-space: nowrap;
 }
 
 .editing-graphic-summary::-webkit-details-marker { display: none; }
-.editing-graphic-summary::before { content: 'T'; display: grid; width: 15px; height: 15px; margin-right: 5px; place-items: center; color: var(--accent-ink); background: var(--accent); border-radius: 3px; font-size: 9px; font-weight: 800; }
+.editing-graphic-summary::before { content: 'T'; display: grid; width: 15px; height: 15px; margin-right: 5px; place-items: center; color: var(--accent-ink); background: var(--accent); border-radius: 3px; font-size: 10px; font-weight: 800; }
 
 .editing-graphic-popover {
   position: absolute;
@@ -48,7 +48,7 @@
 
 .editing-graphic-presets-label {
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
 }
 
@@ -66,7 +66,7 @@
   border: 1px solid var(--border-soft);
   border-radius: 4px;
   cursor: pointer;
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .editing-graphic-preset:hover {
@@ -81,14 +81,14 @@
 }
 
 .editing-graphic-field,
-.editing-graphic-duration { display: grid; grid-template-columns: 44px minmax(0, 1fr); align-items: center; gap: 7px; font-size: 9px; }
+.editing-graphic-duration { display: grid; grid-template-columns: 44px minmax(0, 1fr); align-items: center; gap: 7px; font-size: 10px; }
 .editing-graphic-field input,
-.editing-graphic-field .app-select { min-width: 0; height: 25px; padding: 0 6px; color: var(--text-primary); background: var(--bg-surface); border: 1px solid var(--border-soft); border-radius: 4px; font-size: 10px; }
+.editing-graphic-field .app-select { min-width: 0; height: 25px; padding: 0 6px; color: var(--text-primary); background: var(--bg-surface); border: 1px solid var(--border-soft); border-radius: 4px; font-size: 11px; }
 .editing-graphic-duration { grid-template-columns: 44px minmax(70px, 1fr) 32px; }
 .editing-graphic-duration input { width: 100%; accent-color: var(--accent); }
 .editing-graphic-duration output { color: var(--text-muted); font-variant-numeric: tabular-nums; text-align: right; }
 .editing-graphic-add,
-.editing-graphic-save-asset { min-height: 26px; padding: 0 8px; border-radius: 4px; cursor: pointer; font-size: 9px; font-weight: 700; }
+.editing-graphic-save-asset { min-height: 26px; padding: 0 8px; border-radius: 4px; cursor: pointer; font-size: 10px; font-weight: 700; }
 .editing-graphic-save-asset { color: var(--accent); background: transparent; border: 1px solid rgba(var(--accent-rgb), 0.45); }
 .editing-graphic-save-asset:hover { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
 .editing-graphic-add:disabled { cursor: not-allowed; opacity: .45; }

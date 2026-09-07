@@ -15,13 +15,13 @@
   padding: 0 8px;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 9px;
+  font-size: 11px;
   list-style: none;
   white-space: nowrap;
 }
 
 .editing-person-matte-summary::-webkit-details-marker { display: none; }
-.editing-person-matte-summary strong { font-size: 8px; }
+.editing-person-matte-summary strong { font-size: 9px; }
 .editing-person-matte-summary strong.is-ready { color: var(--accent); }
 .editing-person-matte-summary strong.is-missing { color: var(--text-muted); }
 
@@ -43,12 +43,12 @@
 
 .editing-person-matte-status { display: grid; gap: 3px; font-size: 10px; }
 .editing-person-matte-status small { overflow: hidden; color: var(--text-muted); text-overflow: ellipsis; white-space: nowrap; }
-.editing-person-matte-progress { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; align-items: center; color: var(--text-muted); font-size: 9px; }
+.editing-person-matte-progress { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; align-items: center; color: var(--text-muted); font-size: 10px; }
 .editing-person-matte-progress span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .editing-person-matte-progress strong { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
 .editing-person-matte-progress i { grid-column: 1 / -1; display: block; height: 3px; overflow: hidden; background: rgba(var(--overlay-rgb), 0.12); border-radius: 999px; }
 .editing-person-matte-progress b { display: block; height: 100%; background: var(--accent); border-radius: inherit; transition: width 160ms ease; }
-.editing-person-matte-error { margin: 0; color: var(--danger, #d45b5b); font-size: 9px; line-height: 1.4; }
+.editing-person-matte-error { margin: 0; color: var(--danger, #d45b5b); font-size: 10px; line-height: 1.4; }
 
 .editing-person-matte-track-progress {
   position: absolute;
@@ -85,7 +85,7 @@
   border: 1px solid var(--accent);
   border-radius: 4px;
   cursor: pointer;
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .editing-person-matte-download:disabled { cursor: wait; opacity: 0.6; }
@@ -102,7 +102,7 @@
   border: 1px solid var(--border-soft);
   border-radius: 4px;
   cursor: pointer;
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .editing-person-matte-toggle:hover,
@@ -114,10 +114,10 @@
   align-items: center;
   gap: 6px;
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .editing-person-matte-field input { width: 100%; accent-color: var(--accent); }
 .editing-person-matte-field output { color: var(--text-secondary); font-variant-numeric: tabular-nums; text-align: right; }
-.editing-person-matte-color { display: flex; align-items: center; justify-content: space-between; color: var(--text-muted); font-size: 9px; }
+.editing-person-matte-color { display: flex; align-items: center; justify-content: space-between; color: var(--text-muted); font-size: 10px; }
 .editing-person-matte-color input { width: 28px; height: 20px; padding: 1px; border: 1px solid var(--border-soft); border-radius: 4px; background: transparent; cursor: pointer; }

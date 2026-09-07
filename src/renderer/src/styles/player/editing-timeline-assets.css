@@ -22,13 +22,13 @@
   gap: 7px;
   min-width: 0;
   color: var(--text-primary);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 720;
 }
 
 .editing-assets-heading small {
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 600;
 }
 
@@ -60,7 +60,7 @@
   border: 0;
   outline: 0;
   font: inherit;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .editing-assets-list {
@@ -139,10 +139,10 @@
 
 .editing-asset-copy strong {
   color: var(--text-primary);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .editing-asset-copy small {
   color: var(--text-muted);
-  font-size: 8px;
+  font-size: 10px;
 }

@@ -15,7 +15,7 @@
   padding: 0 8px;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 9px;
+  font-size: 11px;
   list-style: none;
   white-space: nowrap;
 }
@@ -51,7 +51,7 @@
   border: 1px solid var(--border-soft);
   border-radius: 4px;
   cursor: pointer;
-  font-size: 9px;
+  font-size: 10px;
   white-space: nowrap;
 }
 

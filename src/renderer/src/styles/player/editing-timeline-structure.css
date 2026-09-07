@@ -15,7 +15,7 @@
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 11px;
+  font-size: 12px;
   list-style: none;
   white-space: nowrap;
 }
@@ -24,7 +24,7 @@
 
 .editing-structure-summary small {
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .editing-structure-analysis[open] .editing-structure-summary,
@@ -58,7 +58,7 @@
   border: 0;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
 }
 

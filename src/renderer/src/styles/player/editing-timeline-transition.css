@@ -15,14 +15,14 @@
   padding: 0 8px;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 9px;
+  font-size: 11px;
   list-style: none;
   white-space: nowrap;
 }
 
 .editing-transition-summary::-webkit-details-marker { display: none; }
 .editing-transition-summary::before { content: '↝'; color: var(--accent); font-size: 14px; }
-.editing-transition-summary strong { color: var(--accent); font-size: 8px; }
+.editing-transition-summary strong { color: var(--accent); font-size: 9px; }
 
 .editing-transition-popover {
   position: absolute;
@@ -50,7 +50,7 @@
   border: 1px solid var(--border-soft);
   border-radius: 4px;
   cursor: pointer;
-  font-size: 9px;
+  font-size: 10px;
   white-space: nowrap;
 }
 
@@ -63,7 +63,7 @@
   grid-template-columns: 42px minmax(90px, 1fr) 38px;
   align-items: center;
   gap: 6px;
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .editing-transition-duration input { width: 100%; accent-color: var(--accent); }

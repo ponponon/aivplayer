@@ -24,6 +24,7 @@ async function main(): Promise<void> {
 
     const waveform = page.locator('[data-testid="editing-waveform-track"]')
     await waveform.waitFor({ timeout: 10_000 })
+    await waveform.scrollIntoViewIfNeeded()
     const waveformBounds = await waveform.boundingBox()
     if (!waveformBounds || waveformBounds.width < 20) throw new Error(`Waveform track is not measurable: ${JSON.stringify(waveformBounds)}`)
     await page.mouse.click(waveformBounds.x + waveformBounds.width * 0.1, waveformBounds.y + waveformBounds.height / 2)
@@ -31,6 +32,7 @@ async function main(): Promise<void> {
 
     const track = page.locator('[data-testid="editing-track"]')
     const playhead = page.locator('[data-testid="editing-playhead"]')
+    await track.scrollIntoViewIfNeeded()
     const trackBounds = await track.boundingBox()
     const playheadBounds = await playhead.boundingBox()
     if (!trackBounds || !playheadBounds) throw new Error(`Playhead is not measurable: ${JSON.stringify({ trackBounds, playheadBounds })}`)
@@ -56,6 +58,21 @@ async function main(): Promise<void> {
       const bounds = element.getBoundingClientRect()
       return { text: element.textContent?.trim() ?? '', fontSize: style.fontSize, lineHeight: style.lineHeight, whiteSpace: style.whiteSpace, height: bounds.height }
     }))
+    const typography = await page.evaluate(() => {
+      const selectors = ['.editing-toolbar-heading strong', '.editing-tool-button', '.editing-assets-heading', '.editing-script-title', '.editing-track-label']
+      return selectors.map((selector) => {
+        const element = document.querySelector<HTMLElement>(selector)
+        return { selector, fontSize: element ? getComputedStyle(element).fontSize : null }
+      })
+    })
+    const expectedTypography: Record<string, string> = {
+      '.editing-toolbar-heading strong': '13px',
+      '.editing-tool-button': '11px',
+      '.editing-assets-heading': '13px',
+      '.editing-script-title': '12px',
+      '.editing-track-label': '9px'
+    }
+    const typographyMismatch = typography.some((item) => item.fontSize !== expectedTypography[item.selector])
     const screenshotPath = join(smokeHomeDirectory, 'aivplayer-smoke-editing-playhead.png')
     await page.screenshot({ path: screenshotPath, fullPage: true })
 
@@ -63,9 +80,10 @@ async function main(): Promise<void> {
     console.log(`Media: ${sourceMediaPath}`)
     console.log(`Playhead drag: ${JSON.stringify({ durationSeconds, targetRatio, expectedSeconds, finalSeconds })}`)
     console.log(`Timeline labels: ${JSON.stringify(trackLabels)}`)
+    console.log(`Editing typography: ${JSON.stringify(typography)}`)
     console.log(`Screenshot: ${screenshotPath}`)
     console.log(`Renderer errors: ${JSON.stringify(consoleErrors)}`)
-    if (Math.abs(finalSeconds - expectedSeconds) >= 0.8 || trackLabels.some((label) => label.fontSize !== '8px' || label.whiteSpace !== 'nowrap' || Number.parseFloat(label.lineHeight) > 10) || consoleErrors.length > 0) process.exitCode = 1
+    if (Math.abs(finalSeconds - expectedSeconds) >= 0.8 || trackLabels.some((label) => label.fontSize !== '9px' || label.whiteSpace !== 'nowrap' || Number.parseFloat(label.lineHeight) > 11) || typographyMismatch || consoleErrors.length > 0) process.exitCode = 1
   } finally {
     await app.close()
   }

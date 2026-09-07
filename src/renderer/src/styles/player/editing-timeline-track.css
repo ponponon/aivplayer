@@ -26,7 +26,7 @@
   min-width: 0;
   overflow: hidden;
   color: var(--text-muted);
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 720;
   letter-spacing: 0.05em;
   line-height: 1.1;
@@ -81,7 +81,7 @@
   position: absolute;
   bottom: 3px;
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: 10px;
   font-variant-numeric: tabular-nums;
   line-height: 1;
   pointer-events: none;

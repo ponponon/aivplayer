@@ -123,14 +123,14 @@
 
 .editing-clip span {
   color: var(--accent);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 780;
 }
 
 .editing-clip small {
   overflow: hidden;
   color: inherit;
-  font-size: 9px;
+  font-size: 10px;
   text-overflow: ellipsis;
 }
 

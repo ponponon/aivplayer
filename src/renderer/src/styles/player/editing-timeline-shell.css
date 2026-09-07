@@ -10,6 +10,7 @@
   gap: 7px;
   min-width: 0;
   padding: 8px 10px 10px;
+  font-size: 12px;
   color: var(--text-secondary);
   background: var(--bg-control);
   border: 1px solid var(--border-soft);
@@ -64,7 +65,7 @@
   max-width: min(48vw, 520px);
   overflow: hidden;
   color: var(--text-primary);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 720;
   line-height: 1.2;
   text-overflow: ellipsis;
@@ -76,7 +77,7 @@
   gap: 3px;
   max-width: min(42vw, 440px);
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: 10px;
   line-height: 1.2;
 }
 
@@ -88,16 +89,16 @@
 }
 
 .editing-project-status-details { min-width: 0; }
-.editing-project-status-details summary { width: fit-content; color: var(--accent); cursor: pointer; font-size: 8px; font-weight: 700; }
+.editing-project-status-details summary { width: fit-content; color: var(--accent); cursor: pointer; font-size: 9px; font-weight: 700; }
 .editing-project-status-details-groups { display: grid; gap: 5px; max-height: 112px; margin-top: 3px; overflow: auto; }
 .editing-project-status-details-group { min-width: 0; }
 .editing-project-status-details-group > summary { color: var(--text-secondary); }
 .editing-project-status-details-group > summary:hover,
 .editing-project-status-details-group[open] > summary { color: var(--text-primary); }
-.editing-project-status-details-list { display: grid; gap: 2px; color: var(--text-muted); font-size: 8px; line-height: 1.35; }
+.editing-project-status-details-list { display: grid; gap: 2px; color: var(--text-muted); font-size: 9px; line-height: 1.35; }
 .editing-project-status-details-list span { min-width: 0; overflow-wrap: anywhere; }
 .editing-project-status-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; }
-.editing-project-status-reset { display: inline-flex; align-items: center; gap: 3px; width: fit-content; padding: 1px 3px; color: var(--text-muted); background: transparent; border: 1px solid transparent; border-radius: var(--radius-sm); cursor: pointer; font: inherit; font-size: 8px; }
+.editing-project-status-reset { display: inline-flex; align-items: center; gap: 3px; width: fit-content; padding: 1px 3px; color: var(--text-muted); background: transparent; border: 1px solid transparent; border-radius: var(--radius-sm); cursor: pointer; font: inherit; font-size: 9px; }
 .editing-project-status-reset:hover { color: var(--text-primary); background: rgba(var(--overlay-rgb), 0.08); border-color: var(--border-soft); }
 .editing-project-status-reset:focus-visible { outline: 2px solid rgba(var(--accent-rgb), 0.72); outline-offset: 2px; }
 .editing-project-status-reset-all { color: var(--danger); }
@@ -113,7 +114,7 @@
 
 .editing-toolbar-kicker {
   color: var(--accent);
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 760;
   letter-spacing: 0.08em;
   text-transform: uppercase;

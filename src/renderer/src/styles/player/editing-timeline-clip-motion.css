@@ -16,7 +16,7 @@
   padding: 0 8px;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 9px;
+  font-size: 11px;
   list-style: none;
   white-space: nowrap;
 }
@@ -24,7 +24,7 @@
 .editing-clip-motion-summary::-webkit-details-marker { display: none; }
 .editing-clip-motion-summary::before { content: '✦'; color: var(--accent); font-size: 12px; }
 .editing-clip-motion-summary span { overflow: hidden; text-overflow: ellipsis; }
-.editing-clip-motion-summary strong { overflow: hidden; color: var(--accent); font-size: 8px; text-overflow: ellipsis; }
+.editing-clip-motion-summary strong { overflow: hidden; color: var(--accent); font-size: 9px; text-overflow: ellipsis; }
 
 .editing-clip-motion-popover {
   position: absolute;
@@ -43,7 +43,7 @@
 }
 
 .editing-clip-motion-group { display: grid; gap: 5px; }
-.editing-clip-motion-group-label { color: var(--text-muted); font-size: 9px; }
+.editing-clip-motion-group-label { color: var(--text-muted); font-size: 10px; }
 .editing-clip-motion-options { display: flex; flex-wrap: wrap; gap: 3px; }
 
 .editing-clip-motion-option {
@@ -54,7 +54,7 @@
   border: 1px solid var(--border-soft);
   border-radius: 4px;
   cursor: pointer;
-  font-size: 9px;
+  font-size: 10px;
   white-space: nowrap;
 }
 
@@ -66,7 +66,7 @@
   grid-template-columns: 58px minmax(110px, 1fr) 40px;
   align-items: center;
   gap: 6px;
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .editing-clip-motion-duration input { width: 100%; accent-color: var(--accent); }
