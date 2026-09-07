@@ -16,6 +16,7 @@ describe('editing Agent desktop bridge source contract', () => {
     const overlays = readSource('src/renderer/src/app/app-overlays.tsx')
     const packageJson = readSource('package.json')
     const smoke = readSource('scripts/smoke-editing-agent-bridge.ts')
+    const mcpConfigSmoke = readSource('scripts/smoke-editing-mcp-config.ts')
 
     expect(cli).toContain('mcp serve <project.aivproj> [--desktop] [--bridge-manifest path]')
     expect(cli).toContain('mcp config <project.aivproj> [--command aivcli]')
@@ -38,6 +39,9 @@ describe('editing Agent desktop bridge source contract', () => {
     expect(overlays).toContain('app.resolveEditingAgentProposal(false)')
     expect(overlays).toContain('app.resolveEditingAgentProposal(true)')
     expect(packageJson).toContain('smoke:editing-agent-bridge')
+    expect(packageJson).toContain('smoke:editing-mcp-config')
+    expect(mcpConfigSmoke).toContain("'mcp',\n    'config'")
+    expect(mcpConfigSmoke).toContain("server?.command === '/opt/aivcli'")
     expect(smoke).toContain('editing-proposal-cancel')
     expect(smoke).toContain('editing-proposal-confirm')
     expect(smoke).toContain('segment-agent-bridge')
