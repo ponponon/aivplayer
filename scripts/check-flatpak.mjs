@@ -11,11 +11,13 @@ const desktopPath = join(flatpakDirectory, 'cn.quniv.aivplayer.desktop')
 const metainfoPath = join(flatpakDirectory, 'cn.quniv.aivplayer.metainfo.xml')
 const generatedSourcesPath = join(flatpakDirectory, 'generated-sources.json')
 
-const [packageText, manifest, electronBuilderConfig, flatpakIcon, desktop, metainfo, generatedSources] = await Promise.all([
+const [packageText, manifest, electronBuilderConfig, flatpakIcon, linuxIcon, flatpakRunScript, desktop, metainfo, generatedSources] = await Promise.all([
   readFile(join(root, 'package.json'), 'utf8'),
   readFile(manifestPath, 'utf8'),
   readFile(electronBuilderConfigPath, 'utf8'),
   readFile(flatpakIconPath),
+  readFile(join(root, 'brand/icon-linux.png')),
+  readFile(join(flatpakDirectory, 'run.sh'), 'utf8'),
   readFile(desktopPath, 'utf8'),
   readFile(metainfoPath, 'utf8'),
   readFile(generatedSourcesPath, 'utf8').catch(() => '')
@@ -50,14 +52,18 @@ assertCondition(manifest.includes('only-arches: [aarch64]'), 'Electron ARM64 归
 assertCondition(manifest.includes('dest: electron-dist'), 'Electron 归档必须解压到独立的本地发行目录')
 assertCondition(electronBuilderConfig.includes('electronVersion: 43.2.0'), 'electron-builder 必须固定 Electron 版本')
 assertCondition(electronBuilderConfig.includes('electronDist: ../electron-dist'), 'electron-builder 必须使用 Flatpak 本地 Electron 发行目录')
+assertCondition(electronBuilderConfig.includes('to: app-icon-linux.png'), 'Flatpak 运行时必须携带 Linux 圆角图标')
+assertCondition(electronBuilderConfig.includes('icon: brand/icon-linux.png'), 'Flatpak electron-builder 必须使用 Linux 圆角图标')
 assertCondition(manifest.includes('app/flatpak/icon-512.png'), 'Flatpak 必须使用独立的 512 图标')
+assertCondition(flatpakRunScript.includes('AIVPLAYER_DISABLE_AUTO_UPDATE=1'), 'Flatpak 必须关闭应用内自动更新，交给 Flatpak 管理器')
 assertCondition(manifest.includes("NPM_CONFIG_AUDIT: 'false'"), 'Flatpak npm 构建不能触发 audit 网络请求')
 assertCondition(manifest.includes("NPM_CONFIG_FUND: 'false'"), 'Flatpak npm 构建不能触发 fund 网络请求')
 assertCondition(manifest.includes("NPM_CONFIG_UPDATE_NOTIFIER: 'false'"), 'Flatpak npm 构建不能触发 npm update 检查')
 assertCondition(
-  flatpakIcon.length >= 24 && flatpakIcon.toString('ascii', 1, 4) === 'PNG' && flatpakIcon.readUInt32BE(16) <= 512 && flatpakIcon.readUInt32BE(20) <= 512,
-  'Flatpak 图标必须是尺寸不超过 512 的 PNG'
+  flatpakIcon.length >= 26 && flatpakIcon.toString('ascii', 1, 4) === 'PNG' && flatpakIcon.readUInt32BE(16) === 512 && flatpakIcon.readUInt32BE(20) === 512 && flatpakIcon[25] === 6,
+  'Flatpak 图标必须是 512x512 的 RGBA PNG'
 )
+assertCondition(flatpakIcon.equals(linuxIcon), 'Flatpak 图标必须与 Linux 安装包图标保持一致')
 assertCondition(manifest.includes('name: ffmpeg'), 'Flatpak 必须从固定源码构建 FFmpeg')
 assertCondition(manifest.includes('https://github.com/FFmpeg/FFmpeg.git'), 'FFmpeg 官方源码地址不正确')
 assertCondition(manifest.includes('tag: n8.1.2'), 'FFmpeg 源码必须固定到 8.1.2 tag')

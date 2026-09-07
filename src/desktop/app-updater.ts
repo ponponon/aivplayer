@@ -54,7 +54,9 @@ export function registerAppUpdaterIpc(): void {
 }
 
 export function startAppUpdater(isCliInvocation: boolean, autoUpdatePreference = true): void {
-  updaterAvailable = app.isPackaged && !process.windowsStore && !isCliInvocation && process.env.AIVPLAYER_DISABLE_AUTO_UPDATE !== '1'
+  const updaterEligible = app.isPackaged && !process.windowsStore && !isCliInvocation && process.env.AIVPLAYER_DISABLE_AUTO_UPDATE !== '1'
+  if (updaterEligible) configureAutoUpdater()
+  updaterAvailable = updaterEligible && pkg.autoUpdater.isUpdaterActive()
   automaticUpdatesEnabled = updaterAvailable && autoUpdatePreference
   skippedUpdateVersion = updaterAvailable ? readSkippedUpdateVersion() : null
   const dismissedReminder = updaterAvailable ? readDismissedUpdateReminder() : { version: null, dismissedAt: null }
@@ -66,7 +68,6 @@ export function startAppUpdater(isCliInvocation: boolean, autoUpdatePreference =
   publishState()
   if (!updaterAvailable) return
 
-  configureAutoUpdater()
   if (automaticUpdatesEnabled) startAutomaticUpdateChecks()
   app.once('will-quit', stopAppUpdater)
 }

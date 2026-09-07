@@ -25,11 +25,11 @@ extraResources:
     to: web
     filter:
       - '**/*'
-  - from: brand/icon.png
-    to: app-icon.png
+  - from: brand/icon-linux.png
+    to: app-icon-linux.png
 linux:
   target:
     - dir
   executableName: aivplayer
   category: AudioVideo
-  icon: brand/icon.png
+  icon: brand/icon-linux.png

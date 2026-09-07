@@ -36,10 +36,11 @@ import { sendTaskCenterEvent } from './task-center-events'
 import { createAutomaticTranslationFetch, createManagedTranslationServiceRouter } from './translation-network'
 
 export function resolveAppIconPath(): string | null {
-  const iconName = process.platform === 'darwin' ? 'icon-macos.png' : 'icon.png'
+  const iconName = process.platform === 'darwin' ? 'icon-macos.png' : process.platform === 'linux' ? 'icon-linux.png' : 'icon.png'
+  const packagedIconName = process.platform === 'darwin' ? 'app-icon-macos.png' : process.platform === 'linux' ? 'app-icon-linux.png' : 'app-icon.png'
   const iconPath = process.env.ELECTRON_RENDERER_URL
     ? resolve(process.cwd(), `brand/${iconName}`)
-    : join(process.resourcesPath, process.platform === 'darwin' ? 'app-icon-macos.png' : 'app-icon.png')
+    : join(process.resourcesPath, packagedIconName)
   return existsSync(iconPath) ? iconPath : null
 }
 

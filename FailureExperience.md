@@ -2400,5 +2400,5 @@
 
 - 现象：Ubuntu 桌面上的 Deb 图标仍是方形，App Center 页面展示旧图标；Deb 自动更新安装时短暂出现 “AIVPlayer 无响应”。
 - 原因：Linux 安装图标使用满画布不透明 PNG；Snap 包内的桌面图标与 Snap Store listing 元数据是独立入口；electron-updater 的 Deb 安装器在 Electron 主进程内同步执行 `dpkg` / `pkexec`，阻塞事件循环。
-- 经验：品牌图标必须分别检查安装包资源、桌面入口和商店 listing；涉及权限和包管理器的更新操作不能同步运行在 Electron 主进程中。
-- 处理：Linux 改用带透明外角的 RGBA 512 图标，发布流程用 `snapcraft upload-metadata --force` 同步商店元数据；Deb 更新交给脱离主进程的辅助脚本，等待父进程退出后再提权安装、修复依赖并重启。
+- 经验：品牌图标必须分别检查安装包资源、桌面入口、运行时窗口和商店 listing；系统包管理器发行版不应再叠加一套没有配置的应用内更新器；涉及权限和包管理器的更新操作不能同步运行在 Electron 主进程中。
+- 处理：Linux 改用带透明外角的 RGBA 512 图标，Deb、Snap、Flatpak 和 Linux 运行时窗口共用该展示资源；发布流程用 `snapcraft upload-metadata --force` 同步商店元数据；Snap / Flatpak 交给系统管理更新，Deb 更新交给脱离主进程的辅助脚本，等待父进程退出后再提权安装、修复依赖并重启。

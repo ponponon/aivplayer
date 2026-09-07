@@ -1446,4 +1446,7 @@
 ## Linux 图标与 Debian 后台更新
 
 - Linux 安装包图标改用带透明外角的 512×512 RGBA 圆角资源，Deb、AppImage 和 Snap 的桌面入口保持统一的圆角展示；Snap 发布任务在上传包后显式同步 Snap Store listing 元数据，避免商店页面继续展示历史图标。
+- Flatpak 的 electron-builder、AppStream 图标也统一复用该 Linux 圆角资源，并通过静态检查锁定 PNG 尺寸、透明通道和跨文件内容一致性。
+- Linux 运行时窗口图标也改用独立的 `app-icon-linux.png`，避免安装包图标已圆角但窗口切换器仍读取旧方形资源。
+- Snap 和 Flatpak 不再启动应用内更新器：Snap 由 Snap Store 管理更新，Flatpak wrapper 显式关闭应用内检查，避免没有更新配置时出现误导性的更新错误。
 - Debian 自动更新改由脱离 Electron 主进程的安装辅助程序执行：先等待应用退出，再通过 `pkexec` / `sudo` 调用 `dpkg`，失败时修复依赖并重新启动应用，避免更新期间 Ubuntu 把 AIVPlayer 判定为“无响应”。

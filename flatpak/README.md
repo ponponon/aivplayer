@@ -11,7 +11,7 @@
 - whisper.cpp `v1.9.1` 已改为 Flatpak manifest 中的固定 Git commit 源码模块，安装到 `/app/bin/whisper-cli`，运行 wrapper 会显式指向该路径；
 - Flatpak npm 构建已显式跳过 `onnxruntime-node` 的 CUDA 扩展下载，兼容新旧安装变量，使用 npm 包随附的 CPU 运行时，避免离线构建访问 NuGet；
 - Electron `v43.2.0` Linux x64 / ARM64 发行包已按架构作为固定 SHA-256 的 Flatpak 源下载并解压到独立目录，electron-builder 通过 `electronDist` 使用本地目录，避免构建阶段访问 GitHub；
-- Flatpak 使用独立的 `icon-512.png` 应用图标，保留桌面端原始 1024 图标不变，满足 Flatpak 导出器的最大图标尺寸限制；
+- Flatpak 使用独立的 512×512 RGBA `icon-512.png` 应用图标，并与 Linux 安装包复用圆角展示资源，满足 Flatpak 导出器的尺寸限制；
 - FFmpeg `8.1.2` 使用 FFmpeg 官方 Git 源码 tag，并固定 commit，关闭 GPL/nonfree 和外部自动探测，静态安装 `/app/bin/ffmpeg` 与 `/app/bin/ffprobe`；
 - libheif `v1.23.1` 已接入固定源码模块，依赖 libde265 `v1.0.16`、libjpeg-turbo `3.1.2` 和 x265 `3.4`，关闭插件加载、宿主可选后端探测并安装 `heif-enc`、`heif-convert`；x265 的 GPL-2.0 许可证边界需要随最终 Flathub 审核材料复核。x265 另带一个只修复 CMake 4 兼容性的最小 patch；
 - LanceDB `v0.31.0` 已改用 npm 官方预编译平台包（`@lancedb/lancedb-linux-x64-gnu` / `lancedb-linux-arm64-gnu`），与 Snap 及其他桌面平台保持一致；预编译 tarball 已包含在离线 npm 源清单中，构建时从 `node_modules` 复制到 `/app/lib/aivplayer/`，不再依赖 Rust SDK extension，也不再有 Cargo 离线源码清单。

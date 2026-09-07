@@ -44,6 +44,8 @@ extraResources:
     to: app-icon.png
   - from: brand/icon-macos.png
     to: app-icon-macos.png
+  - from: brand/icon-linux.png
+    to: app-icon-linux.png
   - from: resources/whisper.cpp
     to: whisper.cpp
     filter:

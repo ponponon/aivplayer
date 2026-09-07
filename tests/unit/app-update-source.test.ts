@@ -17,6 +17,7 @@ describe('app update source constraints', () => {
     expect(updaterSource).toContain('!process.windowsStore')
     expect(updaterSource).toContain('autoUpdatePreference')
     expect(updaterSource).toContain('updateAppUpdaterPreference')
+    expect(updaterSource).toContain('pkg.autoUpdater.isUpdaterActive()')
     expect(updaterSource).toContain('startAutomaticUpdateChecks')
     expect(updaterSource).toContain("status: 'available'")
     expect(updaterSource).toContain('downloadAppUpdate')

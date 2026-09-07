@@ -11,11 +11,12 @@ function readPngDimensions(buffer: Buffer): { width: number; height: number } {
 
 describe('Web and Flatpak branding assets', () => {
   it('keeps PWA sizes, manifest references and packaged 512px artwork aligned', async () => {
-    const [icon180, icon192, icon512, flatpakIcon, manifestText, indexHtml, legacySvg] = await Promise.all([
+    const [icon180, icon192, icon512, flatpakIcon, linuxIcon, manifestText, indexHtml, legacySvg] = await Promise.all([
       readFile(join(projectRoot, 'src/web/public/icon-180.png')),
       readFile(join(projectRoot, 'src/web/public/icon-192.png')),
       readFile(join(projectRoot, 'src/web/public/icon-512.png')),
       readFile(join(projectRoot, 'flatpak/icon-512.png')),
+      readFile(join(projectRoot, 'brand/icon-linux.png')),
       readFile(join(projectRoot, 'src/web/public/manifest.webmanifest'), 'utf8'),
       readFile(join(projectRoot, 'src/web/index.html'), 'utf8'),
       readFile(join(projectRoot, 'src/web/public/icon.svg'), 'utf8')
@@ -26,7 +27,8 @@ describe('Web and Flatpak branding assets', () => {
     expect(readPngDimensions(icon192)).toEqual({ width: 192, height: 192 })
     expect(readPngDimensions(icon512)).toEqual({ width: 512, height: 512 })
     expect(readPngDimensions(flatpakIcon)).toEqual({ width: 512, height: 512 })
-    expect(flatpakIcon).toEqual(icon512)
+    expect(flatpakIcon).toEqual(linuxIcon)
+    expect(flatpakIcon[25]).toBe(6)
     expect(manifest?.icons).toEqual([
       { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
       { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' }
