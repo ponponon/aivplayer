@@ -73,14 +73,19 @@ export function SubtitlesSettingsSection(props: SettingsSectionProps): ReactElem
         {cacheStats ? (
           <div className="settings-meta-grid">
             <div className="settings-meta-item"><span>{copy.settingsDialog.subtitles.cache.total}</span><strong>{formatBytes(cacheStats.totalBytes)} · {cacheStats.totalFiles}</strong></div>
-            <div className="settings-meta-item"><span>{copy.settingsDialog.subtitles.cache.subtitles}</span><strong>{formatBytes(cacheStats.subtitleBytes)} · {cacheStats.subtitleFiles}</strong></div>
-            <div className="settings-meta-item"><span>{copy.settingsDialog.subtitles.cache.summaries}</span><strong>{formatBytes(cacheStats.summaryBytes)} · {cacheStats.summaryFiles}</strong></div>
-            <div className="settings-meta-item"><span>{copy.settingsDialog.subtitles.cache.indexes}</span><strong>{formatBytes(cacheStats.indexBytes)} · {cacheStats.indexFiles}</strong></div>
+            <div className="settings-meta-item"><span>{copy.settingsDialog.subtitles.cache.subtitles}</span><strong>{formatBytes(cacheStats.categories.subtitle.bytes)} · {cacheStats.categories.subtitle.files}</strong></div>
+            <div className="settings-meta-item"><span>{copy.settingsDialog.subtitles.cache.summaries}</span><strong>{formatBytes(cacheStats.categories.summary.bytes)} · {cacheStats.categories.summary.files}</strong></div>
+            <div className="settings-meta-item"><span>{copy.settingsDialog.subtitles.cache.indexes}</span><strong>{formatBytes(cacheStats.categories.index.bytes)} · {cacheStats.categories.index.files}</strong></div>
+            <div className="settings-meta-item"><span>{copy.settingsDialog.subtitles.cache.trickplay}</span><strong>{formatBytes(cacheStats.categories.trickplay.bytes)} · {cacheStats.categories.trickplay.files}</strong></div>
+            <div className="settings-meta-item"><span>{copy.settingsDialog.subtitles.cache.waveforms}</span><strong>{formatBytes(cacheStats.categories.waveform.bytes)} · {cacheStats.categories.waveform.files}</strong></div>
+            <div className="settings-meta-item"><span>{copy.settingsDialog.subtitles.cache.structure}</span><strong>{formatBytes(cacheStats.categories.structure.bytes)} · {cacheStats.categories.structure.files}</strong></div>
+            <div className="settings-meta-item"><span>{copy.settingsDialog.subtitles.cache.webTranscode}</span><strong>{formatBytes(cacheStats.categories['web-transcode'].bytes)} · {cacheStats.categories['web-transcode'].files}</strong></div>
+            <div className="settings-meta-item"><span>{copy.settingsDialog.subtitles.cache.other}</span><strong>{formatBytes(cacheStats.categories.other.bytes)} · {cacheStats.categories.other.files}</strong></div>
           </div>
         ) : (
           <p className="settings-card-note">{isLoadingCacheStats ? copy.settingsDialog.subtitles.cache.loading : copy.settingsDialog.subtitles.cache.unavailable}</p>
         )}
-        {cacheStats ? <p className="settings-card-note">{copy.settingsDialog.subtitles.cache.staleIndexes(cacheStats.staleIndexFiles)}</p> : null}
+        {cacheStats ? <p className="settings-card-note">{copy.settingsDialog.subtitles.cache.staleEntries(cacheStats.staleFiles)} · {copy.settingsDialog.subtitles.cache.temporaryFiles(cacheStats.temporaryFiles)}</p> : null}
         <div className="settings-inline-row settings-cache-actions">
           <button className="settings-secondary-button" type="button" onClick={onRefreshCacheStats} disabled={isLoadingCacheStats || isClearingCache}>
             <RefreshCcw size={14} />

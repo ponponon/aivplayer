@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { AsrCacheStats } from '../../../shared/media-types'
+import type { MediaCacheStats } from '../../../shared/media-types'
 import type { LocaleCopy } from '../../../shared/i18n'
 
 export type SettingsCacheManagement = {
-  cacheStats: AsrCacheStats | null
+  cacheStats: MediaCacheStats | null
   cacheStatus: { success: boolean; message: string } | null
   isLoadingCacheStats: boolean
   isClearingCache: boolean
@@ -12,7 +12,7 @@ export type SettingsCacheManagement = {
 }
 
 export function useSettingsCacheManagement(copy: LocaleCopy): SettingsCacheManagement {
-  const [cacheStats, setCacheStats] = useState<AsrCacheStats | null>(null)
+  const [cacheStats, setCacheStats] = useState<MediaCacheStats | null>(null)
   const [cacheStatus, setCacheStatus] = useState<{ success: boolean; message: string } | null>(null)
   const [isLoadingCacheStats, setIsLoadingCacheStats] = useState(false)
   const [isClearingCache, setIsClearingCache] = useState(false)
@@ -21,7 +21,7 @@ export function useSettingsCacheManagement(copy: LocaleCopy): SettingsCacheManag
   const refreshCacheStats = useCallback(async (): Promise<void> => {
     setIsLoadingCacheStats(true)
     try {
-      const result = await window.aiv.getAsrCacheStats()
+      const result = await window.aiv.getMediaCacheStats()
       setCacheStats(result.stats)
       setCacheStatus(result.success ? null : { success: false, message: result.message })
     } catch (error) {
@@ -34,7 +34,7 @@ export function useSettingsCacheManagement(copy: LocaleCopy): SettingsCacheManag
   const clearStaleCache = useCallback(async (): Promise<void> => {
     setIsClearingCache(true)
     try {
-      const result = await window.aiv.clearStaleAsrCache()
+      const result = await window.aiv.clearStaleMediaCaches()
       setCacheStats(result.stats)
       setCacheStatus({ success: result.success, message: result.success ? cacheCopy.clearDone(result.deletedFiles, result.deletedBytes) : result.message })
     } catch (error) {

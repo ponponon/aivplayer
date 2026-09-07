@@ -14,7 +14,7 @@ import type {
   SubtitleLineHeight,
   SubtitleTargetLanguageId
 } from '../../../shared/app-settings'
-import type { AsrCacheStats, AsrModelSourceId, AsrRuntimeStatus, AsrTranslationServiceTestRequest, AsrTranslationServiceTestResult } from '../../../shared/media-types'
+import type { AsrModelSourceId, AsrRuntimeStatus, AsrTranslationServiceTestRequest, AsrTranslationServiceTestResult, MediaCacheStats } from '../../../shared/media-types'
 import type { LocaleCopy } from '../../../shared/i18n'
 import type { SettingsSelectOption } from './settings-controls'
 
@@ -44,7 +44,7 @@ export type SettingsSectionProps = {
   translationServiceSourceLanguageLabel: string
   translationServiceTargetLanguageLabel: string
   translationServiceEndpointSummary: string
-  cacheStats: AsrCacheStats | null
+  cacheStats: MediaCacheStats | null
   cacheStatus: { success: boolean; message: string } | null
   isLoadingCacheStats: boolean
   isClearingCache: boolean
