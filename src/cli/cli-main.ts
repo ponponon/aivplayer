@@ -91,7 +91,7 @@ function printHelp(): void {
   aivcli edit captions <project.aivproj> [--query text] [--limit N] [--json]
   aivcli edit propose delete-script <project.aivproj> <segment-id...> [--json]
   aivcli mcp serve <project.aivproj> [--desktop] [--bridge-manifest path]
-  aivcli mcp config <project.aivproj> [--command aivcli]
+  aivcli mcp config <project.aivproj> [--command aivcli] [--desktop]
   aivcli asr <video...> [--language auto] [--model id] [--format both|vtt|srt] [--output-dir dir] [--force]
   aivcli subtitle convert <input.vtt> [--output output.srt]
   aivcli subtitle translate <input.vtt> --to zh|en|ja|ko [--from auto] [--output-dir dir] [--force]
@@ -263,9 +263,9 @@ async function runEdit(parsed: ParsedCliArgs): Promise<number> {
 
 async function runMcp(parsed: ParsedCliArgs): Promise<number> {
   if (parsed.positionals[0] === 'config') {
-    requirePositionals({ ...parsed, positionals: parsed.positionals.slice(1) }, 1, 'aivcli mcp config <project.aivproj> [--command aivcli]')
+    requirePositionals({ ...parsed, positionals: parsed.positionals.slice(1) }, 1, 'aivcli mcp config <project.aivproj> [--command aivcli] [--desktop]')
     try {
-      writeStdout(JSON.stringify(createEditingMcpClientConfig(parsed.positionals[1] as string, getCliOption(parsed, 'command') ?? 'aivcli'), null, 2))
+      writeStdout(JSON.stringify(createEditingMcpClientConfig(parsed.positionals[1] as string, getCliOption(parsed, 'command') ?? 'aivcli', hasCliOption(parsed, 'desktop')), null, 2))
     } catch (error) {
       throw new CliError(error instanceof Error ? error.message : String(error))
     }

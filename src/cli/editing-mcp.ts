@@ -241,14 +241,16 @@ export function resolveEditingMcpProjectPath(value: string): string {
   return projectPath
 }
 
-export function createEditingMcpClientConfig(projectPath: string, command = 'aivcli'): EditingMcpClientConfig {
+export function createEditingMcpClientConfig(projectPath: string, command = 'aivcli', desktop = false): EditingMcpClientConfig {
   const normalizedCommand = command.trim()
   if (!normalizedCommand) throw new Error('MCP 客户端命令不能为空')
+  const args = ['mcp', 'serve', resolveEditingMcpProjectPath(projectPath)]
+  if (desktop) args.push('--desktop')
   return {
     mcpServers: {
       [MCP_SERVER_NAME]: {
         command: normalizedCommand,
-        args: ['mcp', 'serve', resolveEditingMcpProjectPath(projectPath)]
+        args
       }
     }
   }
