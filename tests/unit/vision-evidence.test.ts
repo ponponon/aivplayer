@@ -74,6 +74,15 @@ describe('vision evidence bridge', () => {
     expect(parseEditingProject(project)).toEqual(project)
   })
 
+  it('carries a source content hash into a generated editing project', () => {
+    const contentHash = 'a'.repeat(64)
+    const project = createEditingProjectFromVisionSearchResults([result({ startSeconds: 1, endSeconds: 3 })], {
+      sourceMetadata: new Map([['/videos/demo.mp4', { id: 'source-demo', fingerprint: 'source-fingerprint', contentHash, durationSeconds: 12 }]])
+    })
+
+    expect(project.sources[0]?.contentHash).toBe(contentHash)
+  })
+
   it('rebinds persisted selections to the current media source metadata', () => {
     const persistedSelection: VisionClipSelection = {
       sourceId: 'source-vision-old',
