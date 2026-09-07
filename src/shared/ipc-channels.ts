@@ -139,6 +139,8 @@ export const IPC_CHANNELS = {
   VISION_LIST_SOURCES: 'vision:list-sources',
   VISION_DUPLICATE_MEDIA_SCAN: 'vision:duplicate-media-scan',
   VISION_DUPLICATE_MEDIA_CANCEL: 'vision:duplicate-media-cancel',
+  VISION_SIMILAR_MEDIA_SCAN: 'vision:similar-media-scan',
+  VISION_SIMILAR_MEDIA_CANCEL: 'vision:similar-media-cancel',
   VISION_READ_THUMBNAIL: 'vision:read-thumbnail',
   VISION_CLIP_COLLECTION_LIST: 'vision:clip-collection-list',
   VISION_CLIP_COLLECTION_SAVE: 'vision:clip-collection-save',

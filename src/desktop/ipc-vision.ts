@@ -29,6 +29,7 @@ import { VISION_INDEX_FAILURE_MAX_RETRY_BATCH } from '../core/ai/vision-index-fa
 import { mergeVisionLibrarySourceMetadata } from '../core/ai/vision-library-source-metadata'
 import { scanVisionDuplicateMediaSources } from '../core/ai/vision-duplicate-media'
 import { VisionDuplicateMediaHashCache } from '../core/ai/vision-duplicate-media-cache'
+import { scanVisionSimilarMediaSources } from '../core/ai/vision-similar-media'
 import { createMediaContentHash } from '../core/media/media-content-hash'
 import { applySpeakerDiarizationCatalogToResults, filterSpeakerDiarizationCatalogSearchResults, getSpeakerDiarizationCatalogSearchQueries } from '../core/ai/speaker-diarization-catalog'
 import { downloadVisionModel } from '../core/ai/vision-model-downloader'
@@ -86,6 +87,8 @@ let visionPackDownloadPromise: Promise<VisionPackDownloadResult> | null = null
 let visionDuplicateMediaScanPromise: Promise<Awaited<ReturnType<typeof scanVisionDuplicateMediaSources>>> | null = null
 let visionDuplicateMediaAbortController: AbortController | null = null
 let visionDuplicateMediaHashCache: VisionDuplicateMediaHashCache | null = null
+let visionSimilarMediaScanPromise: Promise<Awaited<ReturnType<typeof scanVisionSimilarMediaSources>>> | null = null
+let visionSimilarMediaAbortController: AbortController | null = null
 
 async function listVisionSourcesWithMetadata(request: VisionLibrarySourceRequest = {}): Promise<ReturnType<typeof mergeVisionLibrarySourceMetadata>> {
   const sources = await getVisionLibrary().listSources(request.limit, request.offset)
@@ -134,6 +137,12 @@ async function scanDuplicateMedia(signal: AbortSignal): Promise<Awaited<ReturnTy
   })
   await cache.flush().catch(() => undefined)
   return result
+}
+
+async function scanSimilarMedia(signal: AbortSignal): Promise<Awaited<ReturnType<typeof scanVisionSimilarMediaSources>>> {
+  const sources = await refreshVisionSourceSnapshots(await listAllVisionSourcesForDuplicateScan())
+  const frames = await getVisionLibrary().listSimilarMediaFrames(sources, signal)
+  return scanVisionSimilarMediaSources(sources, frames, { signal })
 }
 
 function mergeVisionSearchResults(resultGroups: readonly VisionSearchResult[][]): VisionSearchResult[] {
@@ -729,6 +738,24 @@ export function registerVisionIpc(): void {
   ipcMain.handle(IPC_CHANNELS.VISION_DUPLICATE_MEDIA_CANCEL, () => {
     if (!visionDuplicateMediaAbortController) return false
     visionDuplicateMediaAbortController.abort()
+    return true
+  })
+
+  ipcMain.handle(IPC_CHANNELS.VISION_SIMILAR_MEDIA_SCAN, async () => {
+    if (visionSimilarMediaScanPromise) return visionSimilarMediaScanPromise
+    const controller = new AbortController()
+    visionSimilarMediaAbortController = controller
+    const promise = scanSimilarMedia(controller.signal).finally(() => {
+      if (visionSimilarMediaScanPromise === promise) visionSimilarMediaScanPromise = null
+      if (visionSimilarMediaAbortController === controller) visionSimilarMediaAbortController = null
+    })
+    visionSimilarMediaScanPromise = promise
+    return promise
+  })
+
+  ipcMain.handle(IPC_CHANNELS.VISION_SIMILAR_MEDIA_CANCEL, () => {
+    if (!visionSimilarMediaAbortController) return false
+    visionSimilarMediaAbortController.abort()
     return true
   })
 
