@@ -22,6 +22,14 @@ describe('editing project files', () => {
     expect(parseEditingProjectFile(serialized)).toEqual(project)
   })
 
+  it('round-trips optional source content hashes and rejects malformed values', () => {
+    const project = createEditingProject({ ...source, contentHash: 'A'.repeat(64) })
+    const parsed = parseEditingProjectFile(serializeEditingProject(project))
+
+    expect(parsed.sources[0]?.contentHash).toBe('a'.repeat(64))
+    expect(() => parseEditingProject({ ...project, sources: [{ ...project.sources[0]!, contentHash: 'not-a-sha256' }] })).toThrow('Invalid editing project source')
+  })
+
   it('round-trips caption canvas layout and rejects unsafe values', () => {
     const project = createEditingProject(source)
     const laidOut = { ...project, captionLayout: { xPercent: 42, yPercent: 76, widthPercent: 68, fontSizePx: 64 } }

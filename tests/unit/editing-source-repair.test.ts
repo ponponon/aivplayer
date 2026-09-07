@@ -32,6 +32,20 @@ describe('editing source repair', () => {
     expect(result.ambiguous).toEqual([{ sourceId: firstSource.id, sourceName: firstSource.name, candidatePaths: ['/new/a/first.mp4', '/new/b/first.mp4'] }])
   })
 
+  it('prefers a unique content hash over same-name ambiguity', () => {
+    const source = { ...firstSource, contentHash: 'a'.repeat(64) }
+    const result = matchEditingSourceRepairCandidates([source], [
+      { path: '/new/a/renamed.mp4', name: 'first.mp4', contentHash: 'A'.repeat(64), durationSeconds: 10 },
+      { path: '/new/b/first.mp4', name: 'first.mp4', contentHash: 'b'.repeat(64), durationSeconds: 10 }
+    ])
+
+    expect(result).toMatchObject({
+      replacements: [{ sourceId: firstSource.id, path: '/new/a/renamed.mp4', contentHash: 'A'.repeat(64) }],
+      unresolvedSourceIds: [],
+      ambiguousSourceIds: []
+    })
+  })
+
   it('keeps an explicit unresolved issue when no candidate is usable', () => {
     const result = matchEditingSourceRepairCandidates([firstSource], [
       { path: '/new/other.mp4', name: 'other.mp4', durationSeconds: 5 }
@@ -48,6 +62,14 @@ describe('editing source repair', () => {
     expect(repaired).toMatchObject({ updatedAt: 200, videoClips: [{ sourceId: secondSource.id }] })
     expect(repaired?.sources).toEqual([{ ...firstSource, path: '/new/first.mp4', fingerprint: '/new/first.mp4:10' }, secondSource])
     expect(relinkedSource(repaired, firstSource.id)).toMatchObject({ id: firstSource.id, path: '/new/first.mp4', fingerprint: '/new/first.mp4:10' })
+  })
+
+  it('replaces the project source content hash when a moved file is relinked', () => {
+    const source = { ...firstSource, contentHash: 'a'.repeat(64) }
+    const project = { ...createEditingProject(source), sources: [source] }
+    const replacement = [{ sourceId: source.id, path: '/new/first.mp4', name: 'first.mp4', contentHash: 'b'.repeat(64), durationSeconds: 10 }]
+
+    expect(relinkEditingProjectSources(project, replacement, 200)?.sources[0]).toMatchObject({ path: '/new/first.mp4', contentHash: 'b'.repeat(64) })
   })
 
   it('clears fixed sidecar paths without portable hints when a source is manually repaired', () => {

@@ -10,6 +10,7 @@ import { EDITING_GRAPHIC_MOTION_MAX_DURATION, EDITING_GRAPHIC_MOTION_MIN_DURATIO
 import { EDITING_VIDEO_BLOCK_MAX_BORDER_RADIUS, EDITING_VIDEO_BLOCK_MAX_BORDER_WIDTH, EDITING_VIDEO_BLOCK_MAX_SIZE_PERCENT, EDITING_VIDEO_BLOCK_MIN_BORDER_RADIUS, EDITING_VIDEO_BLOCK_MIN_BORDER_WIDTH, EDITING_VIDEO_BLOCK_MIN_SIZE_PERCENT, EDITING_VIDEO_BLOCK_MOTION_MAX_DURATION, EDITING_VIDEO_BLOCK_MOTION_MIN_DURATION, EDITING_VIDEO_BLOCK_MOTIONS } from './video-block-operations'
 import { EDITING_CLIP_MOTION_MAX_DURATION, EDITING_CLIP_MOTION_MIN_DURATION, EDITING_CLIP_MOTIONS } from './clip-motion'
 import { isEditingPersonMatte } from './person-matte'
+import { normalizeMediaContentHash } from '../media/media-content-hash'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
@@ -97,6 +98,8 @@ function parseVideoBlock(value: unknown, sourceIds: Set<string>): EditingVideoBl
 function parseSource(value: unknown): EditingSource | null {
   if (!isRecord(value) || !isNonEmptyString(value.id) || !isNonEmptyString(value.path) || !isNonEmptyString(value.name) || !isNonEmptyString(value.fingerprint) || !isFiniteNonNegative(value.durationSeconds)) return null
   if (value.relativePath !== undefined && !isRelativePathHint(value.relativePath)) return null
+  const contentHash = value.contentHash === undefined ? undefined : normalizeMediaContentHash(value.contentHash)
+  if (value.contentHash !== undefined && contentHash === undefined) return null
   if (value.width !== undefined && !isFiniteNonNegative(value.width)) return null
   if (value.height !== undefined && !isFiniteNonNegative(value.height)) return null
   return {
@@ -105,6 +108,7 @@ function parseSource(value: unknown): EditingSource | null {
     ...(value.relativePath === undefined ? {} : { relativePath: value.relativePath }),
     name: value.name,
     fingerprint: value.fingerprint,
+    ...(contentHash === undefined ? {} : { contentHash }),
     durationSeconds: value.durationSeconds,
     ...(value.width === undefined ? {} : { width: value.width }),
     ...(value.height === undefined ? {} : { height: value.height })

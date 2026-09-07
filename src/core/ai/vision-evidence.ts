@@ -4,7 +4,7 @@ import type { VisionClipSelection, VisionEvidenceType, VisionSearchResult } from
 export const DEFAULT_VISION_SELECTION_INTERVAL_SECONDS = 3
 export const DEFAULT_VISION_SELECTION_MERGE_GAP_SECONDS = 0.05
 
-export type VisionSourceMetadata = Pick<EditingSource, 'id' | 'fingerprint' | 'durationSeconds' | 'width' | 'height'>
+export type VisionSourceMetadata = Pick<EditingSource, 'id' | 'fingerprint' | 'contentHash' | 'durationSeconds' | 'width' | 'height'>
 
 export type VisionSearchProjectOptions = {
   projectId?: string
@@ -179,6 +179,7 @@ export function createEditingProjectFromVisionSelections(selections: readonly Vi
     path: selection.videoPath,
     name: selection.fileName,
     fingerprint: selection.fingerprint,
+    ...(selection.contentHash === undefined ? {} : { contentHash: selection.contentHash }),
     durationSeconds: selection.durationSeconds,
     width: selection.width,
     height: selection.height

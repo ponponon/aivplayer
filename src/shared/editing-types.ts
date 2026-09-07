@@ -17,6 +17,8 @@ export type EditingSource = {
   relativePath?: string
   name: string
   fingerprint: string
+  /** Optional content identity used to repair moved project sources. */
+  contentHash?: string
   durationSeconds: number
   width?: number
   height?: number
