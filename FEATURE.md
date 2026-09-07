@@ -222,7 +222,7 @@
 - 新增 `npm run smoke:editing-mcp`，在不启动 GUI 的情况下真实拉起 stdio MCP 子进程，覆盖 initialize、tools/list、inspect、Proposal 和 EOF，确认工具集合没有 apply 且工程路径保持固定。
 - M4 Agent 剪辑第五阶段新增受控桌面确认桥接：`aivcli mcp serve <project.aivproj> --desktop` 通过按用户隔离的 Unix socket / Windows named pipe 把 Proposal 送到已打开的匹配工程，复用现有确认弹窗、revision 校验、撤销 / 重做和工程保存；默认 MCP 仍保持只读，不提供直接 apply、网络监听、任意文件、媒体删除、shell 或 Provider 凭据能力。
 - 新增 `npm run smoke:editing-agent-bridge`，在临时 Electron 用户目录中启动桌面端和 CLI MCP 客户端，覆盖 Proposal 取消、确认、工程缓存落盘和 Renderer 控制台错误检查；该 Smoke 需要宿主 GUI 与本机 IPC 权限，不进入默认无 GUI 测试集合。
-- 新增 `aivcli mcp config <project.aivproj> [--command aivcli]`，输出标准 `mcpServers` JSON 配置，固定只读 stdio MCP 的工程路径；支持为安装包、开发环境或自定义启动器指定命令，不执行该命令、不读取工程内容、不写入配置文件。
+- 新增 `aivcli mcp config <project.aivproj> [--command aivcli] [--desktop]`，输出标准 `mcpServers` JSON 配置，固定只读 stdio MCP 的工程路径；默认不启用桌面写入桥接，只有显式 `--desktop` 才把受控确认参数写入配置；支持为安装包、开发环境或自定义启动器指定命令，不执行该命令、不读取工程内容、不写入配置文件。
 - 新增 `npm run smoke:editing-mcp-config`，通过真实 Electron CLI 验证配置 JSON、命令覆盖、绝对工程路径和带空格路径均可被 MCP 客户端直接使用。
 - LanceDB 的 Apache Arrow peer dependency 已显式声明为桌面运行时依赖，确保 electron-builder 生成的 macOS、Windows、Linux 安装包都把 `apache-arrow` 一起放入应用资源，Finder“打开方式”启动时不会因视觉影视库模块加载失败而崩溃。
 
