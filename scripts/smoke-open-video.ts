@@ -11,6 +11,10 @@ async function readLayoutMetrics(page: any): Promise<{
   workspaceWidth: number
   stageWidth: number
   videoFrameWidth: number
+  videoFrameHeight: number
+  videoSurfaceWidth: number
+  videoSurfaceHeight: number
+  videoFillsFrame: boolean
   sidePanelDisplay: string
   sidePanelWidth: number
   sidePanelResizerWidth: number
@@ -21,6 +25,7 @@ async function readLayoutMetrics(page: any): Promise<{
     const workspace = document.querySelector('.workspace') as HTMLElement | null
     const stage = document.querySelector('.stage') as HTMLElement | null
     const videoFrame = document.querySelector('.video-frame') as HTMLElement | null
+    const videoSurface = document.querySelector('video.video-surface') as HTMLVideoElement | null
     const sidePanel = document.querySelector('.side-panel') as HTMLElement | null
     const sidePanelResizer = document.querySelector('.side-panel-resizer') as HTMLElement | null
     const asrCard = document.querySelector('.asr-card') as HTMLElement | null
@@ -31,11 +36,17 @@ async function readLayoutMetrics(page: any): Promise<{
 
     const sideStyle = window.getComputedStyle(sidePanel)
     const asrStyle = asrCard ? window.getComputedStyle(asrCard) : null
+    const videoFrameBox = videoFrame.getBoundingClientRect()
+    const videoSurfaceBox = videoSurface?.getBoundingClientRect() ?? null
 
     return {
       workspaceWidth: workspace.getBoundingClientRect().width,
       stageWidth: stage.getBoundingClientRect().width,
-      videoFrameWidth: videoFrame.getBoundingClientRect().width,
+      videoFrameWidth: videoFrameBox.width,
+      videoFrameHeight: videoFrameBox.height,
+      videoSurfaceWidth: videoSurfaceBox?.width ?? 0,
+      videoSurfaceHeight: videoSurfaceBox?.height ?? 0,
+      videoFillsFrame: Boolean(videoSurfaceBox && Math.abs(videoFrameBox.width - videoSurfaceBox.width) <= 2 && Math.abs(videoFrameBox.height - videoSurfaceBox.height) <= 2),
       sidePanelDisplay: sideStyle.display,
       sidePanelWidth: sidePanel.getBoundingClientRect().width,
       sidePanelResizerWidth: sidePanelResizer?.getBoundingClientRect().width ?? 0,
@@ -124,6 +135,9 @@ async function main(): Promise<void> {
     })
 
     await page.waitForTimeout(5_000)
+    const initialLayout = await readLayoutMetrics(page)
+    const playerScreenshotPath = join(tmpdir(), 'aivplayer-smoke-open-video-layout.png')
+    await page.screenshot({ path: playerScreenshotPath, fullPage: false })
 
     const statusText = await page.locator('.status-banner').textContent({ timeout: 10_000 }).catch(() => null)
     const playbackButton = page.locator('.transport-group button.primary')
@@ -213,6 +227,8 @@ async function main(): Promise<void> {
     console.log('AIVPlayer Smoke Open Video')
     console.log(`Media: ${mediaPath}`)
     console.log(`Video src: ${videoSrc}`)
+    console.log(`Initial player layout: ${JSON.stringify(initialLayout)}`)
+    console.log(`Player layout screenshot: ${playerScreenshotPath}`)
     console.log(`Status banner: ${statusText ?? 'not shown'}`)
     console.log(`Video state: ${JSON.stringify(videoState)}`)
     console.log(`Playback UI sync: ${JSON.stringify({ playingButtonTitle, pausedButtonTitle, resumedButtonTitle })}`)
@@ -221,6 +237,10 @@ async function main(): Promise<void> {
     console.log(`Stop native player: ${stopResult.message}`)
 
     if (!videoSrc.startsWith('aiv-media://')) {
+      process.exitCode = 1
+    }
+
+    if (!initialLayout.videoFillsFrame) {
       process.exitCode = 1
     }
 
