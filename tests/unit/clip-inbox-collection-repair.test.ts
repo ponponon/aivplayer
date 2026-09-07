@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createVisionClipCollectionRepairPlan } from '../../src/core/ai/clip-inbox-collection-repair'
+import { createVisionSourceFingerprint } from '../../src/core/ai/vision-evidence'
 import type { VisionClipCollection, VisionClipSelection } from '../../src/shared/vision-types'
 
 const selection = (patch: Partial<VisionClipSelection> = {}): VisionClipSelection => ({
@@ -41,7 +42,8 @@ describe('clip inbox collection repair', () => {
         missingFileName: 'demo.mp4',
         replacementPath: '/new/demo.mp4',
         replacementFileName: 'demo.mp4',
-        status: 'matched'
+        status: 'matched',
+        basis: 'name'
       }],
       matchedCount: 1,
       ambiguousCount: 0,
@@ -69,6 +71,49 @@ describe('clip inbox collection repair', () => {
     const plan = createVisionClipCollectionRepairPlan([first, second], new Set(), [{ path: '/new/demo.mp4', name: 'demo.mp4' }])
 
     expect(plan.matches).toHaveLength(2)
-    expect(plan.matches.every((match) => match.status === 'matched' && match.replacementPath === '/new/demo.mp4')).toBe(true)
+    expect(plan.matches.every((match) => match.status === 'matched' && match.replacementPath === '/new/demo.mp4' && match.basis === 'name')).toBe(true)
+  })
+
+  it('prefers a unique source fingerprint over file-name ambiguity', () => {
+    const source = collection({ selections: [selection({ fingerprint: createVisionSourceFingerprint('/old/demo.mp4', 42, 1000) })] })
+    const plan = createVisionClipCollectionRepairPlan([source], new Set(), [
+      { path: '/new/renamed-a.mp4', name: 'renamed.mp4', fileSizeBytes: 42, fileMtimeMs: 1000, durationSeconds: 90 },
+      { path: '/new/renamed-b.mp4', name: 'renamed.mp4', fileSizeBytes: 42, fileMtimeMs: 2000, durationSeconds: 12 }
+    ])
+
+    expect(plan.matches[0]).toMatchObject({
+      replacementPath: '/new/renamed-a.mp4',
+      replacementFileName: 'renamed.mp4',
+      status: 'matched',
+      basis: 'fingerprint'
+    })
+  })
+
+  it('uses name and duration before a weaker name-only match', () => {
+    const source = collection()
+    const plan = createVisionClipCollectionRepairPlan([source], new Set(), [
+      { path: '/new/demo-short.mp4', name: 'demo.mp4', durationSeconds: 8 },
+      { path: '/new/demo.mp4', name: 'demo.mp4', durationSeconds: 12 }
+    ])
+
+    expect(plan.matches[0]).toMatchObject({
+      replacementPath: '/new/demo.mp4',
+      status: 'matched',
+      basis: 'name-duration'
+    })
+  })
+
+  it('uses one unique duration candidate when the source was renamed', () => {
+    const source = collection()
+    const plan = createVisionClipCollectionRepairPlan([source], new Set(), [
+      { path: '/new/renamed.mp4', name: 'renamed.mp4', durationSeconds: 12 },
+      { path: '/new/other.mp4', name: 'other.mp4', durationSeconds: 18 }
+    ])
+
+    expect(plan.matches[0]).toMatchObject({
+      replacementPath: '/new/renamed.mp4',
+      status: 'matched',
+      basis: 'duration'
+    })
   })
 })

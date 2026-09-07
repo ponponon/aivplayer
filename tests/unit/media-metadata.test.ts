@@ -223,6 +223,8 @@ Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '/Users/ponponon/Music/aivplayer_test_vi
     })
 
     expect(metadata?.probeSource).toBe('ffprobe')
+    expect(metadata?.fileSizeBytes).toBeGreaterThan(0)
+    expect(metadata?.fileMtimeMs).toEqual(expect.any(Number))
     expect(metadata?.durationSeconds).toBeCloseTo(60.066667, 3)
     expect(metadata?.details?.streams.length).toBe(2)
     expect(metadata?.chapters).toEqual([])

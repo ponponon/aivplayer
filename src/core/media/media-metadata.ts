@@ -445,6 +445,7 @@ export async function createMediaProbeMetadata(
     if (probe) {
       return {
         fileSizeBytes: fileStat.size,
+        fileMtimeMs: fileStat.mtimeMs,
         probeSource: 'ffprobe',
         ...probe
       }
@@ -459,6 +460,7 @@ export async function createMediaProbeMetadata(
 
     return {
       fileSizeBytes: fileStat.size,
+      fileMtimeMs: fileStat.mtimeMs,
       probeSource: 'ffmpeg',
       details: null,
       chapters: [],
@@ -468,6 +470,7 @@ export async function createMediaProbeMetadata(
 
   return {
     fileSizeBytes: fileStat.size,
+    fileMtimeMs: fileStat.mtimeMs,
     durationSeconds: null,
     overallBitrateKbps: null,
     video: null,
