@@ -35,6 +35,7 @@
     "release:check-formats": "node scripts/check-release-package-formats.mjs",
     "release:check-linux-icon": "node scripts/check-linux-package-icon.mjs",
     "release:check-evidence": "node scripts/check-platform-evidence.mjs",
+    "release:check-notes": "node scripts/check-release-notes-language.mjs",
     "release:assemble-artifacts": "node scripts/assemble-release-artifacts.mjs",
     "release:dry-run": "node scripts/release-dry-run.mjs",
     "release:check-push": "node scripts/check-release-push-readiness.mjs",

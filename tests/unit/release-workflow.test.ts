@@ -77,9 +77,16 @@ describe('release workflow source constraints', () => {
     expect(releaseWorkflow).toContain('--workflow-run-id "${{ github.run_id }}"')
     expect(releaseWorkflow).toContain('--workflow-run-attempt "${{ github.run_attempt }}"')
     expect(releaseWorkflow).toContain('name: Prepare release notes')
+    expect(releaseWorkflow).toContain('npm run release:check-notes -- --file "$notes"')
     expect(releaseWorkflow).toContain('cp "$notes" artifacts/assembled/release-notes.md')
     expect(releaseWorkflow).toContain('generate_release_notes: false')
     expect(releaseWorkflow).toContain('body_path: artifacts/assembled/release-notes.md')
+  })
+
+  it('keeps the current release notes in a single English body', async () => {
+    const { assertEnglishReleaseNotes, checkReleaseNotesLanguage } = await import('../../scripts/check-release-notes-language.mjs')
+    await expect(checkReleaseNotesLanguage({ file: 'docs/releases/v0.6.9.md' })).resolves.toMatchObject({ ok: true })
+    expect(() => assertEnglishReleaseNotes('## 中文说明', 'fixture')).toThrow('CJK text found')
   })
 
   it('publishes Vision Packs to R2 before creating the release', () => {

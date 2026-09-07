@@ -46,9 +46,11 @@
 
 每个正式版本都必须在 `docs/releases/v<version>.md` 保存可直接展示在 GitHub Release 的正文。发布工作流会在创建 Release 前校验该文件并通过 `body_path` 使用它；缺少文案时，发布会在上传资产前失败。
 
-正文按 PicGo v3.0.2 的清晰结构组织：先写用户可感知的 `Features`、`Performance`、`UI Improvements` 和 `Bug Fixes`，随后提供中英文版本；在底部单独放置 `国内可下载链接`，按 Windows、macOS、Linux 分平台，并把架构与安装包格式直接写成链接；最后保留 `Full Changelog`。
+正文只使用英文，不在同一条 Release 中重复放置中文翻译或其他语言版本。按清晰结构组织：先写用户可感知的 `Features`、`Performance and Reliability`、`UI Improvements` 和 `Bug Fixes`；在底部使用英文的 `Downloads` 标题，按 Windows、macOS、Linux 分平台，并把架构与安装包格式直接写成链接；最后保留 `Full Changelog`。需要本地化说明时，放到 README 或官网对应语言页面，不要复制进 GitHub Release 正文。
 
-国内下载链接使用发布工作流同步后的 R2 公共路径：`https://releases.quniv.cn/aivplayer/releases/<version>/<asset>`。链接中的资产名称必须与 `release-manifest.json` 和 GitHub Release 完全一致；如果某个平台没有对应架构，只展示实际存在的安装包，不编造链接。
+下载镜像使用发布工作流同步后的 R2 公共路径：`https://releases.quniv.cn/aivplayer/releases/<version>/<asset>`。Release 正文中统一称为 `Downloads` 或 `Download mirror`，不要使用面向特定地区的标题。链接中的资产名称必须与 `release-manifest.json` 和 GitHub Release 完全一致；如果某个平台没有对应架构，只展示实际存在的安装包，不编造链接。
+
+发布工作流会检查当前版本的 Release 文案不能包含中、日、韩字符。当前版本已按此规则整理；其余历史版本文案不回溯改写，后续新增文案必须遵循英文单一正文规则。
 
 ## 二、发布前准备
 

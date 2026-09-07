@@ -1420,6 +1420,7 @@ jobs:
           version="${version#v}"
           notes="docs/releases/v${version}.md"
           test -s "$notes"
+          npm run release:check-notes -- --file "$notes"
           cp "$notes" artifacts/assembled/release-notes.md
 
       - name: Upload platform-specific Vision Packs to R2
