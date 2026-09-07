@@ -1425,6 +1425,6 @@
 - 设置页现在统一统计字幕、总结、索引、Trickplay 时间轴预览、波形、结构分析、Web 转码和其他派生缓存的占用与文件数量。
 - 统计来自主进程只读扫描，清理仅删除失效 manifest、无输出的 Web 转码元数据以及超过 1 小时的临时文件；失效 Trickplay / 波形缓存只清理其已失效缓存目录，保留有效缓存、字幕正文和原媒体。
 - 扫描不跟随符号链接、不把媒体路径返回 Renderer；旧 ASR 缓存 IPC 保持兼容。
-- 验证合同：核心缓存 2 项、IPC / UI 回归 33 项通过，`npm run typecheck`、`npm run build` 和真实 Electron Smoke 通过；Smoke 验证 9 个统计项、刷新、清理状态和 `success: true`。
+- 验证合同：缓存核心、IPC / UI 定向回归共 31 项通过，`npm run typecheck`、`npm run build` 和真实 Electron Smoke 通过；Smoke 验证 9 个统计项、刷新、清理状态和 `success: true`。
 - 分阶段提交：`15bfe794 feat(缓存) : 增加统一派生缓存管理`（扫描、失效判断和清理）；`8adce0bf feat(缓存) : 接入统一缓存 IPC`（主进程、Preload 和接线回归）；`99889f9c feat(缓存) : 展示统一缓存统计`（设置页、四语文案和统一 API）；`9cfd8add test(缓存) : 验证统一缓存管理`（真实 Electron Smoke）。
 - 当前边界：不清理模型文件、person-matte 模型 / 轨道、LanceDB 数据库和有效转码输出；Web 转码缓存仍由其自身启动时容量 / 年龄策略维护。
