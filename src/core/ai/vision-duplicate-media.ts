@@ -8,6 +8,8 @@ export type VisionDuplicateMediaCandidate = {
 }
 
 export type VisionDuplicateMediaHasher = (source: VisionLibrarySource) => Promise<string | null>
+export type VisionDuplicateMediaHashCacheReader = (source: VisionLibrarySource) => string | null | undefined | Promise<string | null | undefined>
+export type VisionDuplicateMediaHashCacheWriter = (source: VisionLibrarySource, contentHash: string) => void | Promise<void>
 
 function compareSources(left: VisionLibrarySource, right: VisionLibrarySource): number {
   const favoriteDelta = Number(Boolean(right.metadata?.favorite)) - Number(Boolean(left.metadata?.favorite))
@@ -68,7 +70,7 @@ async function mapWithConcurrency<T, R>(items: readonly T[], concurrency: number
 export async function scanVisionDuplicateMediaSources(
   sources: readonly VisionLibrarySource[],
   hasher: VisionDuplicateMediaHasher,
-  options: { concurrency?: number } = {}
+  options: { concurrency?: number; getCachedHash?: VisionDuplicateMediaHashCacheReader; onHashComputed?: VisionDuplicateMediaHashCacheWriter } = {}
 ): Promise<import('../../shared/vision-types').VisionDuplicateMediaScanResult> {
   const sourceGroups = new Map<string, VisionLibrarySource[]>()
   for (const source of sources) {
@@ -80,17 +82,26 @@ export async function scanVisionDuplicateMediaSources(
   const hashableSources = [...sourceGroups.values()].filter((group) => group.length > 1).flat()
   const skippedBySizeCount = sources.length - hashableSources.length
   const hashedResults = await mapWithConcurrency(hashableSources, options.concurrency ?? 2, async (source) => {
+    const cachedHash = normalizeMediaContentHash(await options.getCachedHash?.(source))
+    if (cachedHash) return { source, contentHash: cachedHash, fromCache: true }
     try {
       const contentHash = normalizeMediaContentHash(await hasher(source))
-      return contentHash ? { source, contentHash } : null
+      if (!contentHash) return null
+      try {
+        await options.onHashComputed?.(source, contentHash)
+      } catch {
+        // A cache write must never turn a valid media hash into an unavailable file.
+      }
+      return { source, contentHash, fromCache: false }
     } catch {
       return null
     }
   })
-  const candidates = hashedResults.filter((candidate): candidate is VisionDuplicateMediaCandidate => candidate !== null)
+  const candidates = hashedResults.filter((candidate): candidate is VisionDuplicateMediaCandidate & { fromCache: boolean } => candidate !== null)
   return {
     scannedCount: sources.length,
     hashedCount: hashableSources.length,
+    cachedCount: hashedResults.filter((candidate) => candidate?.fromCache === true).length,
     unavailableCount: hashableSources.length - candidates.length,
     skippedBySizeCount,
     groups: groupVisionDuplicateMediaCandidates(candidates)

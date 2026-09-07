@@ -118,6 +118,7 @@ export type VisionDuplicateMediaGroup = {
 export type VisionDuplicateMediaScanResult = {
   scannedCount: number
   hashedCount: number
+  cachedCount: number
   unavailableCount: number
   skippedBySizeCount: number
   groups: VisionDuplicateMediaGroup[]

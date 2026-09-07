@@ -50,7 +50,22 @@ describe('vision duplicate media', () => {
     }, { concurrency: 1 })
 
     expect(hashed).toEqual(['source-a', 'source-b'])
-    expect(result).toMatchObject({ scannedCount: 3, hashedCount: 2, unavailableCount: 1, skippedBySizeCount: 1 })
+    expect(result).toMatchObject({ scannedCount: 3, hashedCount: 2, cachedCount: 0, unavailableCount: 1, skippedBySizeCount: 1 })
     expect(result.groups).toHaveLength(0)
+  })
+
+  it('reuses a valid cached hash without reading the file again', async () => {
+    const sources = [source('source-a', '/media/a.mp4', 100), source('source-b', '/media/b.mp4', 100)]
+    let hashCalls = 0
+    const result = await scanVisionDuplicateMediaSources(sources, async () => {
+      hashCalls += 1
+      return null
+    }, {
+      getCachedHash: (item) => item.sourceId === 'source-a' || item.sourceId === 'source-b' ? hash : undefined
+    })
+
+    expect(hashCalls).toBe(0)
+    expect(result.cachedCount).toBe(2)
+    expect(result.groups).toHaveLength(1)
   })
 })
