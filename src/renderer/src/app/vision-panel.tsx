@@ -16,7 +16,7 @@ import { filterVisionClipCollectionTagOperationHistory, serializeVisionClipColle
 import { filterVisionClipCollectionOperationHistory, serializeVisionClipCollectionOperationHistory } from '../../../core/ai/clip-inbox-collection-history'
 import { hasVisionCollectionTagChildren, isVisionCollectionTagHiddenByCollapsedAncestor, matchesVisionCollectionTagFilter, mergeVisionClipCollectionTagCollapsePreferences, parseVisionClipCollectionTagCollapsePreferences, serializeVisionClipCollectionTagCollapsePreferences, VISION_CLIP_COLLECTION_TAG_COLLAPSE_PREFERENCES_STORAGE_KEY, type VisionCollectionTagFilterMode } from '../../../core/ai/clip-inbox-tag-tree'
 import { createVisionClipSelections, normalizeVisionTimeRange } from '../../../core/ai/vision-evidence'
-import { createVisionClipCollectionRepairPlan, type VisionClipCollectionRepairMatch, type VisionClipCollectionRepairPlan } from '../../../core/ai/clip-inbox-collection-repair'
+import { createVisionClipCollectionRepairPlan, type VisionClipCollectionRepairFile, type VisionClipCollectionRepairMatch, type VisionClipCollectionRepairPlan } from '../../../core/ai/clip-inbox-collection-repair'
 import { parseVisionClipCollectionOrderPreferences, serializeVisionClipCollectionOrderPreferences, sortVisionClipCollections, VISION_CLIP_COLLECTION_ORDER_PREFERENCES_STORAGE_KEY, type VisionClipCollectionListSortMode } from '../../../core/ai/clip-inbox-collection-order'
 import { summarizeVisionClipCollectionStatuses } from '../../../core/ai/clip-inbox-collection-status'
 import { applyVisionClipCollectionSavedFilterImportPreview, createVisionClipCollectionSavedFilterImportPreview, mergeVisionClipCollectionFilterTags, parseVisionClipCollectionFilterPreferences, parseVisionClipCollectionSavedFilterManifest, parseVisionClipCollectionSavedFilters, removeVisionClipCollectionSavedFilter, serializeVisionClipCollectionFilterPreferences, serializeVisionClipCollectionSavedFilters, upsertVisionClipCollectionSavedFilter, VISION_CLIP_COLLECTION_FILTER_PREFERENCES_STORAGE_KEY, VISION_CLIP_COLLECTION_SAVED_FILTERS_STORAGE_KEY, type VisionClipCollectionFilterVisibility, type VisionClipCollectionSavedFilter, type VisionClipCollectionSavedFilterImportDecision, type VisionClipCollectionSavedFilterImportPreviewItem } from '../../../core/ai/clip-inbox-filter-preferences'
@@ -313,8 +313,19 @@ type CollectionAvailability = { missingPaths: number; availablePaths: number }
 
 type CollectionRepairPreview = {
   collections: VisionClipCollection[]
-  replacements: MediaFile[]
+  replacements: Array<MediaFile & VisionClipCollectionRepairFile>
   plan: VisionClipCollectionRepairPlan
+}
+
+function formatCollectionRepairMatch(copy: LocaleCopy['vision'], match: VisionClipCollectionRepairMatch): string {
+  if (match.status === 'ambiguous') return copy.collectionRepairBatchAmbiguous(match.missingFileName)
+  if (match.status === 'unmatched') return copy.collectionRepairBatchUnmatched(match.missingFileName)
+  const replacement = match.replacementFileName ?? ''
+  if (match.basis === 'fingerprint') return copy.collectionRepairBatchMatchedFingerprint(match.missingFileName, replacement)
+  if (match.basis === 'name-duration') return copy.collectionRepairBatchMatchedNameDuration(match.missingFileName, replacement)
+  if (match.basis === 'duration') return copy.collectionRepairBatchMatchedDuration(match.missingFileName, replacement)
+  if (match.basis === 'single') return copy.collectionRepairBatchMatchedSingle(match.missingFileName, replacement)
+  return copy.collectionRepairBatchMatched(match.missingFileName, replacement)
 }
 
 export function VisionPanel(): React.ReactElement {
@@ -2359,12 +2370,23 @@ export function VisionPanel(): React.ReactElement {
       const availablePaths = new Set(availability.filter(([, available]) => available).map(([path]) => path))
       const replacements = await window.aiv.openMediaFiles()
       if (replacements.length === 0) return
-      const plan = createVisionClipCollectionRepairPlan(selectedCollectionsForRepair, availablePaths, replacements)
+      const replacementMetadata = await Promise.all(replacements.map(async (file) => [file.path, await window.aiv.getMediaMetadata(file.path).catch(() => null)] as const))
+      const metadataByPath = new Map(replacementMetadata)
+      const replacementsWithMetadata = replacements.map((file) => {
+        const metadata = metadataByPath.get(file.path)
+        return {
+          ...file,
+          durationSeconds: metadata?.durationSeconds ?? undefined,
+          fileSizeBytes: metadata?.fileSizeBytes,
+          fileMtimeMs: metadata?.fileMtimeMs
+        }
+      })
+      const plan = createVisionClipCollectionRepairPlan(selectedCollectionsForRepair, availablePaths, replacementsWithMetadata)
       if (plan.matches.length === 0) {
         setError(app.copy.vision.collectionRepairBatchNoMissing)
         return
       }
-      setCollectionRepairPreview({ collections: selectedCollectionsForRepair, replacements, plan })
+      setCollectionRepairPreview({ collections: selectedCollectionsForRepair, replacements: replacementsWithMetadata, plan })
     } catch (reason: unknown) {
       setError(reason instanceof Error ? reason.message : String(reason))
     } finally {
@@ -2583,7 +2605,7 @@ export function VisionPanel(): React.ReactElement {
     <div className="vision-collection-repair-preview-heading"><strong>{app.copy.vision.collectionRepairBatchPreviewTitle}</strong><small>{app.copy.vision.collectionRepairBatchPreviewDescription(collectionRepairPreview.plan.matchedCount, collectionRepairPreview.plan.ambiguousCount, collectionRepairPreview.plan.unmatchedCount)}</small></div>
     <div className="vision-collection-repair-preview-items" role="list" aria-label={app.copy.vision.collectionRepairBatchPreviewTitle}>
       {collectionRepairPreview.plan.matches.map((match: VisionClipCollectionRepairMatch) => <div className="vision-collection-repair-preview-item" key={`${match.collectionId}-${match.missingPath}`} data-status={match.status} role="listitem">
-        <div><strong>{match.collectionTitle}</strong><small>{match.status === 'matched' ? app.copy.vision.collectionRepairBatchMatched(match.missingFileName, match.replacementFileName ?? '') : match.status === 'ambiguous' ? app.copy.vision.collectionRepairBatchAmbiguous(match.missingFileName) : app.copy.vision.collectionRepairBatchUnmatched(match.missingFileName)}</small></div>
+        <div><strong>{match.collectionTitle}</strong><small>{formatCollectionRepairMatch(app.copy.vision, match)}</small></div>
       </div>)}
     </div>
     {collectionRepairPreview.plan.ambiguousCount + collectionRepairPreview.plan.unmatchedCount > 0 ? <small className="vision-collection-repair-preview-warning">{app.copy.vision.collectionRepairBatchNeedComplete}</small> : null}
