@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { readFile, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
-import type { VisionClipCollectionBatchContentUpdateRequest, VisionClipCollectionBatchDeleteRequest, VisionClipCollectionBatchDuplicateRequest, VisionClipCollectionBatchExportRequest, VisionClipCollectionBatchMergeRequest, VisionClipCollectionBatchRenameRequest, VisionClipCollectionBatchTagsRequest, VisionClipCollectionContentUpdateRequest, VisionClipCollectionFlagUpdateRequest, VisionClipCollectionImportApplyRequest, VisionClipCollectionRenameRequest, VisionClipCollectionTagCleanupRequest, VisionClipCollectionTagMetadataImportApplyRequest, VisionClipCollectionTagMetadataUpdateRequest, VisionClipCollectionTagRenameRequest, VisionClipCollectionTagOperationHistoryPageRequest, VisionClipCollectionTagUpdateRequest, VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionEvidenceAuditPage, VisionEvidenceAuditRequest, VisionEvidenceBatchClearResult, VisionEvidenceSourceRequest, VisionEvidenceType, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySourceRequest, VisionModelDownloadResult, VisionPackDownloadResult, VisionSavedSearchInput, VisionSearchFullExportRequest, VisionSearchPageKind, VisionSearchPageRequest, VisionSearchRequest, VisionSearchResult, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchResultsExportRequest, VisionSearchResultsExportResult, VisionSimilarSearchRequest } from '../shared/vision-types'
+import type { VisionClipCollectionBatchContentUpdateRequest, VisionClipCollectionBatchDeleteRequest, VisionClipCollectionBatchDuplicateRequest, VisionClipCollectionBatchExportRequest, VisionClipCollectionBatchMergeRequest, VisionClipCollectionBatchRenameRequest, VisionClipCollectionBatchTagsRequest, VisionClipCollectionContentUpdateRequest, VisionClipCollectionFlagUpdateRequest, VisionClipCollectionImportApplyRequest, VisionClipCollectionRenameRequest, VisionClipCollectionTagCleanupRequest, VisionClipCollectionTagMetadataImportApplyRequest, VisionClipCollectionTagMetadataUpdateRequest, VisionClipCollectionTagRenameRequest, VisionClipCollectionTagOperationHistoryPageRequest, VisionClipCollectionTagUpdateRequest, VisionClipCollectionExportFormat, VisionClipCollectionExportRequest, VisionClipCollectionInput, VisionDirectoryScanRequest, VisionEvidenceAuditPage, VisionEvidenceAuditRequest, VisionEvidenceBatchClearResult, VisionEvidenceSourceRequest, VisionEvidenceType, VisionIndexFailureRetryBatchRequest, VisionIndexFailureRetryRequest, VisionIndexProgress, VisionIndexRequest, VisionLibrarySource, VisionLibrarySourceRequest, VisionModelDownloadResult, VisionPackDownloadResult, VisionSavedSearchInput, VisionSearchFullExportRequest, VisionSearchPageKind, VisionSearchPageRequest, VisionSearchRequest, VisionSearchResult, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchResultsExportRequest, VisionSearchResultsExportResult, VisionSimilarSearchRequest } from '../shared/vision-types'
 import { VISION_SEARCH_FULL_EXPORT_MAX_RESULTS } from '../shared/vision-types'
 import type { VisionEntityCatalogBatchPatch, VisionEntityCatalogCreateInput, VisionEntityCatalogPatch } from '../shared/vision-entity-types'
 import { scanVisionDirectory, isVisionScanAbortError } from '../core/ai/vision-directory-scan'
@@ -27,6 +27,8 @@ import type { VisionSearchExportBatchRecreateRequest, VisionSearchExportBatchRec
 import { getVisionSearchRevisionBody, isVisionSearchRevisionUnavailableError, type VisionSearchCatalogSnapshot, type VisionSearchRevision } from '../shared/vision-search-revision'
 import { VISION_INDEX_FAILURE_MAX_RETRY_BATCH } from '../core/ai/vision-index-failure'
 import { mergeVisionLibrarySourceMetadata } from '../core/ai/vision-library-source-metadata'
+import { scanVisionDuplicateMediaSources } from '../core/ai/vision-duplicate-media'
+import { createMediaContentHash } from '../core/media/media-content-hash'
 import { applySpeakerDiarizationCatalogToResults, filterSpeakerDiarizationCatalogSearchResults, getSpeakerDiarizationCatalogSearchQueries } from '../core/ai/speaker-diarization-catalog'
 import { downloadVisionModel } from '../core/ai/vision-model-downloader'
 import { downloadVisionPack } from '../core/ai/vision-pack-downloader'
@@ -86,6 +88,18 @@ async function listVisionSourcesWithMetadata(request: VisionLibrarySourceRequest
   const inbox = getMediaImportInboxStore()
   await inbox.refreshSidecars(sources.map((source) => source.videoPath))
   return mergeVisionLibrarySourceMetadata(sources, inbox.listItems())
+}
+
+async function listAllVisionSourcesForDuplicateScan(): Promise<VisionLibrarySource[]> {
+  const pageSize = 500
+  const sources: VisionLibrarySource[] = []
+  let offset = 0
+  while (true) {
+    const page = await getVisionLibrary().listSources(pageSize, offset)
+    sources.push(...page)
+    if (page.length < pageSize) return sources
+    offset += page.length
+  }
 }
 
 function mergeVisionSearchResults(resultGroups: readonly VisionSearchResult[][]): VisionSearchResult[] {
@@ -664,6 +678,11 @@ export function registerVisionIpc(): void {
   ipcMain.handle(IPC_CHANNELS.VISION_LIST_SOURCES, (_event, request: VisionLibrarySourceRequest = {}) => {
     if (!getVisionLibrary().visionPackStatus.available) return []
     return listVisionSourcesWithMetadata(request)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.VISION_DUPLICATE_MEDIA_SCAN, async () => {
+    const sources = await listAllVisionSourcesForDuplicateScan()
+    return scanVisionDuplicateMediaSources(sources, async (source) => createMediaContentHash(source.videoPath))
   })
 
   ipcMain.handle(IPC_CHANNELS.VISION_ENTITY_CATALOG_GET, () => getVisionEntityCatalogStore().get())
