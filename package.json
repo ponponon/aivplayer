@@ -87,6 +87,7 @@
     "smoke:vision-clip-collection-batch-tag-undo": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-collection-batch-tag-undo.ts",
     "smoke:vision-clip-collection-batch-export": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-clip-collection-batch-export.ts",
     "smoke:vision-library-pagination": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-library-pagination.ts",
+    "smoke:vision-duplicate-media": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-duplicate-media.ts",
     "smoke:vision-library-filter-sort": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-library-filter-sort.ts",
     "smoke:vision-import-inbox-batch-clear": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-import-inbox-batch-clear.ts",
     "smoke:vision-import-inbox-batch": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/smoke-vision-import-inbox-batch.ts",
