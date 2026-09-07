@@ -13,6 +13,8 @@ describe('vision duplicate media smoke source', () => {
     expect(script).toContain('vision-duplicate-scan')
     expect(script).toContain('vision-duplicate-report')
     expect(script).toContain('groupCount !== 1 || duplicateSourceCount !== 2')
+    expect(script).toContain('exact-duplicate-review')
+    expect(script).toContain('auditManifestVerified')
     expect(script).toContain('复用缓存 2 个')
   })
 })

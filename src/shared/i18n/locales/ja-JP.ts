@@ -939,6 +939,7 @@
       libraryDuplicateGroup: (count: number) => `完全一致ファイル ${count} 件`,
       libraryDuplicateSavings: (size: string) => `重複使用量：${size}`,
       libraryDuplicateUnavailable: (count: number) => `${count} 件は読み取れないため判定対象外です`,
+      libraryDuplicateExport: 'レビュー用マニフェストを出力',
       librarySimilarTitle: '視覚的に類似する素材候補',
       librarySimilarDescription: '既存の視覚ベクトルから類似ショットを探します。ファイル内容の完全一致を証明するものではありません。',
       librarySimilarScan: '類似素材を検索', librarySimilarCancel: 'スキャンをキャンセル', librarySimilarCancelled: '類似素材のスキャンをキャンセルしました。',

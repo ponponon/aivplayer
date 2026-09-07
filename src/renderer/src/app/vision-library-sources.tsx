@@ -1,5 +1,5 @@
 import { AppSelect } from '../../../shared/app-select'
-import { Copy, Database, Play, ScanSearch, Search, Square, Star } from 'lucide-react'
+import { Copy, Database, Download, Play, ScanSearch, Search, Square, Star } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { filterVisionLibrarySources, type VisionLibrarySourceSortMode } from '../../../core/ai/vision-library-source-filter'
 import type { LocaleCopy } from '../../../shared/i18n'
@@ -18,6 +18,7 @@ type VisionLibrarySourcesProps = {
   duplicateThumbnailUrls: Record<string, string>
   onScanDuplicates: () => void
   onCancelDuplicates: () => void
+  onExportDuplicates: () => void
   similarScan: VisionSimilarMediaScanResult | null
   isScanningSimilar: boolean
   similarThumbnailUrls: Record<string, string>
@@ -37,7 +38,7 @@ function formatSimilarScore(score: number): string {
   return `${Math.round(Math.max(0, Math.min(1, Number.isFinite(score) ? score : 0)) * 100)}%`
 }
 
-export function VisionLibrarySources({ copy, sources, thumbnailUrls, hasMoreSources, isLoadingMoreSources, onLoadMore, onOpenSource, duplicateScan, isScanningDuplicates, duplicateThumbnailUrls, onScanDuplicates, onCancelDuplicates, similarScan, isScanningSimilar, similarThumbnailUrls, onScanSimilar, onCancelSimilar }: VisionLibrarySourcesProps): React.ReactElement {
+export function VisionLibrarySources({ copy, sources, thumbnailUrls, hasMoreSources, isLoadingMoreSources, onLoadMore, onOpenSource, duplicateScan, isScanningDuplicates, duplicateThumbnailUrls, onScanDuplicates, onCancelDuplicates, onExportDuplicates, similarScan, isScanningSimilar, similarThumbnailUrls, onScanSimilar, onCancelSimilar }: VisionLibrarySourcesProps): React.ReactElement {
   const [query, setQuery] = useState('')
   const [favoriteOnly, setFavoriteOnly] = useState(false)
   const [sortMode, setSortMode] = useState<VisionLibrarySourceSortMode>('recent')
@@ -52,7 +53,7 @@ export function VisionLibrarySources({ copy, sources, thumbnailUrls, hasMoreSour
       <Play size={13} aria-hidden="true" />
     </button>)}</div>}
     {duplicateScan ? <div className="vision-library-duplicate-report" data-testid="vision-duplicate-report" role="status" aria-label={copy.libraryDuplicateTitle}>
-      <div className="vision-library-duplicate-heading"><div><strong>{copy.libraryDuplicateTitle}</strong><small>{copy.libraryDuplicateDescription}</small></div><small>{copy.libraryDuplicateSummary(duplicateScan.groups.length, duplicateScan.groups.reduce((total, group) => total + group.sources.length, 0), duplicateScan.hashedCount, duplicateScan.cachedCount, duplicateScan.skippedBySizeCount)}</small></div>
+      <div className="vision-library-duplicate-heading"><div><strong>{copy.libraryDuplicateTitle}</strong><small>{copy.libraryDuplicateDescription}</small></div><span className="vision-library-duplicate-heading-actions"><small>{copy.libraryDuplicateSummary(duplicateScan.groups.length, duplicateScan.groups.reduce((total, group) => total + group.sources.length, 0), duplicateScan.hashedCount, duplicateScan.cachedCount, duplicateScan.skippedBySizeCount)}</small>{duplicateScan.groups.length > 0 ? <button className="vision-secondary-action vision-library-duplicate-export" type="button" data-testid="vision-duplicate-export" onClick={onExportDuplicates} title={copy.libraryDuplicateExport}><Download size={12} />{copy.libraryDuplicateExport}</button> : null}</span></div>
       {duplicateScan.unavailableCount > 0 ? <small className="vision-library-duplicate-warning">{copy.libraryDuplicateUnavailable(duplicateScan.unavailableCount)}</small> : null}
       {duplicateScan.groups.length === 0 ? <div className="vision-empty"><ScanSearch size={16} /><span>{copy.libraryDuplicateEmpty}</span></div> : <div className="vision-library-duplicate-groups" role="list">
         {duplicateScan.groups.map((group) => <div className="vision-library-duplicate-group" key={group.id} role="listitem">

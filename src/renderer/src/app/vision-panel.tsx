@@ -16,6 +16,7 @@ import { filterVisionClipCollectionTagOperationHistory, serializeVisionClipColle
 import { filterVisionClipCollectionOperationHistory, serializeVisionClipCollectionOperationHistory } from '../../../core/ai/clip-inbox-collection-history'
 import { hasVisionCollectionTagChildren, isVisionCollectionTagHiddenByCollapsedAncestor, matchesVisionCollectionTagFilter, mergeVisionClipCollectionTagCollapsePreferences, parseVisionClipCollectionTagCollapsePreferences, serializeVisionClipCollectionTagCollapsePreferences, VISION_CLIP_COLLECTION_TAG_COLLAPSE_PREFERENCES_STORAGE_KEY, type VisionCollectionTagFilterMode } from '../../../core/ai/clip-inbox-tag-tree'
 import { createVisionClipSelections, normalizeVisionTimeRange } from '../../../core/ai/vision-evidence'
+import { serializeVisionDuplicateMediaAudit } from '../../../core/ai/vision-duplicate-media-audit'
 import { createVisionClipCollectionRepairPlan, type VisionClipCollectionRepairFile, type VisionClipCollectionRepairMatch, type VisionClipCollectionRepairPlan } from '../../../core/ai/clip-inbox-collection-repair'
 import { parseVisionClipCollectionOrderPreferences, serializeVisionClipCollectionOrderPreferences, sortVisionClipCollections, VISION_CLIP_COLLECTION_ORDER_PREFERENCES_STORAGE_KEY, type VisionClipCollectionListSortMode } from '../../../core/ai/clip-inbox-collection-order'
 import { summarizeVisionClipCollectionStatuses } from '../../../core/ai/clip-inbox-collection-status'
@@ -1002,6 +1003,19 @@ export function VisionPanel(): React.ReactElement {
   const cancelDuplicateMedia = (): void => {
     if (!isScanningDuplicates) return
     void window.aiv.cancelVisionDuplicateMedia().catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
+  }
+
+  const exportDuplicateAudit = (): void => {
+    if (!duplicateScan || duplicateScan.groups.length === 0) return
+    const blob = new Blob([serializeVisionDuplicateMediaAudit(duplicateScan)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = `aivplayer-duplicate-review-${new Date().toISOString().slice(0, 10)}.json`
+    document.body.append(anchor)
+    anchor.click()
+    anchor.remove()
+    window.setTimeout(() => URL.revokeObjectURL(url), 0)
   }
 
   const scanSimilarMedia = async (): Promise<void> => {
@@ -2744,7 +2758,7 @@ export function VisionPanel(): React.ReactElement {
       {status?.packAvailable && !status.available ? <div className="vision-model-download"><div><strong>{app.copy.vision.visionModelRequired}</strong><small>{app.copy.vision.visionModelDescription}</small></div><button className="vision-primary-action" type="button" onClick={downloadVisionModel} disabled={isDownloadingModel || status.downloadable === false}><Download size={14} />{isDownloadingModel ? app.copy.vision.downloadingModel : app.copy.vision.downloadModel}</button>{modelDownloadProgress?.status === 'downloading' ? <small>{app.copy.vision.modelDownloadProgress(modelDownloadProgress.relativePath, modelDownloadProgress.percent == null ? 0 : Math.round(modelDownloadProgress.percent * 100))}</small> : null}</div> : null}
       <VisionLibraryFolder copy={app.copy.vision} folderPath={folder.folderPath} savedFolders={folder.savedFolders} videoPaths={folder.videoPaths} includeSubfolders={folder.includeSubfolders} scanProgress={folder.scanProgress} batchScanProgress={folder.batchScanProgress} isBusy={isBusy} onChooseFolder={folder.chooseFolder} onScanFolder={folder.scanCurrentFolder} onScanAllFolders={folder.scanAllFolders} onIncludeSubfoldersChange={folder.setIncludeSubfolders} onStartIndex={startFolderIndex} onUseFolder={folder.useSavedFolder} onRemoveFolder={folder.removeSavedFolder} />
       <VisionImportInbox copy={app.copy.vision} directories={importInbox.directories} items={importInbox.items} progress={importInbox.progress} pipelineProgress={importInbox.pipelineProgress} isBusy={importInbox.isBusy} error={importInbox.error} writeSidecars={importInbox.writeSidecars} onAddFolder={importInbox.addFolder} onRemoveFolder={importInbox.removeFolder} onScan={importInbox.scan} onQueue={importInbox.queueItem} onIgnore={importInbox.ignoreItem} onRetry={importInbox.retryItem} onBatchQueue={importInbox.batchQueue} onBatchIgnore={importInbox.batchIgnore} onBatchRetry={importInbox.batchRetry} onBatchClear={importInbox.batchClear} onWriteSidecarsChange={importInbox.setWriteSidecars} onUpdateMetadata={importInbox.updateMetadata} />
-      <VisionLibrarySources copy={app.copy.vision} sources={sources} thumbnailUrls={sourceThumbnailUrls} hasMoreSources={hasMoreSources} isLoadingMoreSources={isLoadingMoreSources} onLoadMore={loadMoreSources} onOpenSource={openSource} duplicateScan={duplicateScan} isScanningDuplicates={isScanningDuplicates} duplicateThumbnailUrls={sourceThumbnailUrls} onScanDuplicates={() => void scanDuplicateMedia()} onCancelDuplicates={cancelDuplicateMedia} similarScan={similarScan} isScanningSimilar={isScanningSimilar} similarThumbnailUrls={similarThumbnailUrls} onScanSimilar={() => void scanSimilarMedia()} onCancelSimilar={cancelSimilarMedia} />
+      <VisionLibrarySources copy={app.copy.vision} sources={sources} thumbnailUrls={sourceThumbnailUrls} hasMoreSources={hasMoreSources} isLoadingMoreSources={isLoadingMoreSources} onLoadMore={loadMoreSources} onOpenSource={openSource} duplicateScan={duplicateScan} isScanningDuplicates={isScanningDuplicates} duplicateThumbnailUrls={sourceThumbnailUrls} onScanDuplicates={() => void scanDuplicateMedia()} onCancelDuplicates={cancelDuplicateMedia} onExportDuplicates={exportDuplicateAudit} similarScan={similarScan} isScanningSimilar={isScanningSimilar} similarThumbnailUrls={similarThumbnailUrls} onScanSimilar={() => void scanSimilarMedia()} onCancelSimilar={cancelSimilarMedia} />
       <VisionEntityCatalog copy={app.copy.vision} catalog={entityCatalog} onCreate={createEntityCatalog} onUpdate={updateEntityCatalog} onBatchUpdate={updateEntityCatalogBatch} />
       <VisionIndexFailures copy={app.copy.vision} failures={failures} onRetry={retryVisionFailure} onBatchRetry={retryVisionFailures} />
       <div className="vision-index-actions">

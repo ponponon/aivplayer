@@ -939,6 +939,7 @@
       libraryDuplicateGroup: (count: number) => `완전히 같은 파일 ${count}개`,
       libraryDuplicateSavings: (size: string) => `중복 저장 공간: ${size}`,
       libraryDuplicateUnavailable: (count: number) => `${count}개 파일을 읽을 수 없어 제외했습니다`,
+      libraryDuplicateExport: '검토 매니페스트 내보내기',
       librarySimilarTitle: '시각적으로 유사한 미디어 후보',
       librarySimilarDescription: '기존 시각 벡터로 유사한 장면을 찾습니다. 파일 내용이 완전히 같다는 뜻은 아닙니다.',
       librarySimilarScan: '유사 미디어 찾기', librarySimilarCancel: '검색 취소', librarySimilarCancelled: '유사 미디어 검색을 취소했습니다.',

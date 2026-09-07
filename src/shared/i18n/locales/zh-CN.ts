@@ -939,6 +939,7 @@
       libraryDuplicateGroup: (count: number) => `${count} 个完全相同的文件`,
       libraryDuplicateSavings: (size: string) => `重复占用 ${size}`,
       libraryDuplicateUnavailable: (count: number) => `${count} 个文件无法读取，未参与判断`,
+      libraryDuplicateExport: '导出审计清单',
       librarySimilarTitle: '视觉相似素材候选',
       librarySimilarDescription: '只按已有视觉向量寻找疑似相似画面，不代表文件内容完全相同。',
       librarySimilarScan: '查找相似素材', librarySimilarCancel: '取消扫描', librarySimilarCancelled: '相似素材扫描已取消。',

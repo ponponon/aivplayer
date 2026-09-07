@@ -65,10 +65,28 @@ async function main(): Promise<void> {
     const groupCount = await report.locator('.vision-library-duplicate-group').count()
     const duplicateSourceCount = await report.locator('.vision-library-duplicate-source').count()
     if (groupCount !== 1 || duplicateSourceCount !== 2) throw new Error(`Unexpected duplicate report: ${JSON.stringify({ groupCount, duplicateSourceCount })}`)
+    await page.evaluate(() => {
+      const smokeWindow = window as typeof window & { __duplicateAuditBlob?: Blob }
+      URL.createObjectURL = (blob: Blob) => {
+        smokeWindow.__duplicateAuditBlob = blob
+        return 'blob:aivplayer-duplicate-audit'
+      }
+      URL.revokeObjectURL = () => undefined
+      HTMLAnchorElement.prototype.click = () => undefined
+    })
+    await page.locator('[data-testid="vision-duplicate-export"]').click()
+    await page.waitForFunction(() => Boolean((window as typeof window & { __duplicateAuditBlob?: Blob }).__duplicateAuditBlob), undefined, { timeout: 10_000 })
+    const audit = await page.evaluate(async () => {
+      const smokeWindow = window as typeof window & { __duplicateAuditBlob?: Blob }
+      return JSON.parse(await smokeWindow.__duplicateAuditBlob!.text()) as { type?: string; groups?: Array<{ recommendedSourceId?: string }> }
+    })
+    if (audit.type !== 'exact-duplicate-review' || audit.groups?.[0]?.recommendedSourceId !== 'source-0') {
+      throw new Error(`Unexpected duplicate audit manifest: ${JSON.stringify(audit)}`)
+    }
     await page.locator('[data-testid="vision-duplicate-scan"]').click()
     await page.waitForFunction(() => document.querySelector('[data-testid="vision-duplicate-report"]')?.textContent?.includes('复用缓存 2 个') === true, undefined, { timeout: 30_000 })
     if (session.errors.length > 0) throw new Error(`Renderer errors during duplicate media smoke:\n${session.errors.join('\n')}`)
-    console.log(`AIVPlayer Smoke Vision Duplicate Media passed: ${JSON.stringify({ groupCount, duplicateSourceCount, cachedScanVerified: true, consoleErrors: session.errors.length })}`)
+    console.log(`AIVPlayer Smoke Vision Duplicate Media passed: ${JSON.stringify({ groupCount, duplicateSourceCount, auditManifestVerified: true, cachedScanVerified: true, consoleErrors: session.errors.length })}`)
   } finally {
     if (app) await app.close().catch(() => undefined)
     await Promise.all([

@@ -939,6 +939,7 @@
       libraryDuplicateGroup: (count: number) => `${count} byte-identical files`,
       libraryDuplicateSavings: (size: string) => `Duplicate storage: ${size}`,
       libraryDuplicateUnavailable: (count: number) => `${count} files could not be read and were excluded`,
+      libraryDuplicateExport: 'Export review manifest',
       librarySimilarTitle: 'Visually similar media candidates',
       librarySimilarDescription: 'Uses existing visual vectors to find likely similar shots; this does not prove identical file content.',
       librarySimilarScan: 'Find similar media', librarySimilarCancel: 'Cancel scan', librarySimilarCancelled: 'Similar media scan cancelled.',
