@@ -113,6 +113,7 @@
 @import './player/image-workspace-panels.css';
 @import './player/image-workspace-responsive.css';
 @import './player/vision-library.css';
+@import './player/vision-library-duplicates.css';
 @import './player/vision-library-ocr.css';
 @import './player/vision-library-tts.css';
 @import './player/vision-library-tts-drafts.css';

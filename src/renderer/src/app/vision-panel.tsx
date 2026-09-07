@@ -6,7 +6,7 @@ import type { ChangeEvent, KeyboardEvent, ReactNode } from 'react'
 import type { MediaFile, MediaProbeMetadata, VisionIndexProgress, VisionRuntimeStatus, VisionSearchResult } from '../../../shared/media-types'
 import type { AsrSubtitleResult } from '../../../shared/media-types'
 import type { MediaEvidenceDraftImportResult } from '../../../shared/evidence-task-types'
-import type { VisionClipCollection, VisionClipCollectionBatchTagsMode, VisionClipCollectionExportFormat, VisionClipCollectionMergeSelection, VisionClipCollectionOperationBatchConflict, VisionClipCollectionOperationCollectionDetail, VisionClipCollectionOperationCollectionDiff, VisionClipCollectionOperationDetailField, VisionClipCollectionOperationHistory, VisionClipCollectionOperationHistoryDetail, VisionClipCollectionOperationHistoryEntry, VisionClipCollectionOperationHistoryFilter, VisionClipCollectionOperationHistoryStatusFilter, VisionClipCollectionOperationHistoryTypeFilter, VisionClipCollectionSortMode, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataImportDecision, VisionClipCollectionTagMetadataImportPreviewResult, VisionClipCollectionTagOperationBatchConflict, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationHistoryDetail, VisionClipCollectionTagOperationHistoryEntry, VisionClipCollectionTagSortMode, VisionClipSelection, VisionEvidenceType, VisionIndexFailureRecord, VisionLibrarySource, VisionClipCollectionOperationDetailChange, VisionModelDownloadProgress, VisionSavedSearch, VisionSearchFullExportRequest, VisionSearchPageRequest, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchSortMode } from '../../../shared/vision-types'
+import type { VisionClipCollection, VisionClipCollectionBatchTagsMode, VisionClipCollectionExportFormat, VisionClipCollectionMergeSelection, VisionClipCollectionOperationBatchConflict, VisionClipCollectionOperationCollectionDetail, VisionClipCollectionOperationCollectionDiff, VisionClipCollectionOperationDetailField, VisionClipCollectionOperationHistory, VisionClipCollectionOperationHistoryDetail, VisionClipCollectionOperationHistoryEntry, VisionClipCollectionOperationHistoryFilter, VisionClipCollectionOperationHistoryStatusFilter, VisionClipCollectionOperationHistoryTypeFilter, VisionClipCollectionSortMode, VisionClipCollectionTagMetadata, VisionClipCollectionTagMetadataImportDecision, VisionClipCollectionTagMetadataImportPreviewResult, VisionClipCollectionTagOperationBatchConflict, VisionClipCollectionTagOperationHistory, VisionClipCollectionTagOperationHistoryDetail, VisionClipCollectionTagOperationHistoryEntry, VisionClipCollectionTagSortMode, VisionClipSelection, VisionDuplicateMediaScanResult, VisionEvidenceType, VisionIndexFailureRecord, VisionLibrarySource, VisionClipCollectionOperationDetailChange, VisionModelDownloadProgress, VisionSavedSearch, VisionSearchFullExportRequest, VisionSearchPageRequest, VisionSearchResultPage, VisionSearchResultsExportFormat, VisionSearchSortMode } from '../../../shared/vision-types'
 import type { LocaleCopy } from '../../../shared/i18n'
 import type { VisionObjectDetectionFilterState, VisionObjectDetectionResult } from '../../../shared/vision-object-detection-types'
 import type { VisionClipCollectionTagOperationHistoryFilter } from '../../../shared/vision-types'
@@ -373,6 +373,8 @@ export function VisionPanel(): React.ReactElement {
   const [sources, setSources] = useState<VisionLibrarySource[]>([])
   const [hasMoreSources, setHasMoreSources] = useState(false)
   const [isLoadingMoreSources, setIsLoadingMoreSources] = useState(false)
+  const [duplicateScan, setDuplicateScan] = useState<VisionDuplicateMediaScanResult | null>(null)
+  const [isScanningDuplicates, setIsScanningDuplicates] = useState(false)
   const [failures, setFailures] = useState<VisionIndexFailureRecord[]>([])
   const [entityCatalog, setEntityCatalog] = useState<VisionEntityCatalogState | null>(null)
   const [selectedResultIds, setSelectedResultIds] = useState<Set<string>>(new Set())
@@ -980,6 +982,19 @@ export function VisionPanel(): React.ReactElement {
     }
   }
 
+  const scanDuplicateMedia = async (): Promise<void> => {
+    if (isScanningDuplicates) return
+    setIsScanningDuplicates(true)
+    setError(null)
+    try {
+      setDuplicateScan(await window.aiv.scanVisionDuplicateMedia())
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    } finally {
+      setIsScanningDuplicates(false)
+    }
+  }
+
   const retryVisionFailure = async (failure: VisionIndexFailureRecord): Promise<void> => {
     setError(null)
     try {
@@ -1084,7 +1099,9 @@ export function VisionPanel(): React.ReactElement {
 
   useEffect(() => {
     let active = true
-    void Promise.all(sources.map(async (source) => {
+    const duplicateSources = duplicateScan?.groups.flatMap((group) => group.sources) ?? []
+    const sourcesForThumbnails = [...sources, ...duplicateSources].filter((source, index, all) => all.findIndex((candidate) => candidate.sourceId === source.sourceId) === index)
+    void Promise.all(sourcesForThumbnails.map(async (source) => {
       if (!source.thumbnailPath) return [source.sourceId, ''] as const
       try {
         return [source.sourceId, await window.aiv.readVisionThumbnail(source.thumbnailPath)] as const
@@ -1095,7 +1112,7 @@ export function VisionPanel(): React.ReactElement {
       if (active) setSourceThumbnailUrls(Object.fromEntries(entries))
     })
     return () => { active = false }
-  }, [sources])
+  }, [duplicateScan, sources])
 
   useEffect(() => {
     if (!pendingResultSeek || app.state.currentFile?.path !== pendingResultSeek.videoPath) return
@@ -2683,7 +2700,7 @@ export function VisionPanel(): React.ReactElement {
       {status?.packAvailable && !status.available ? <div className="vision-model-download"><div><strong>{app.copy.vision.visionModelRequired}</strong><small>{app.copy.vision.visionModelDescription}</small></div><button className="vision-primary-action" type="button" onClick={downloadVisionModel} disabled={isDownloadingModel || status.downloadable === false}><Download size={14} />{isDownloadingModel ? app.copy.vision.downloadingModel : app.copy.vision.downloadModel}</button>{modelDownloadProgress?.status === 'downloading' ? <small>{app.copy.vision.modelDownloadProgress(modelDownloadProgress.relativePath, modelDownloadProgress.percent == null ? 0 : Math.round(modelDownloadProgress.percent * 100))}</small> : null}</div> : null}
       <VisionLibraryFolder copy={app.copy.vision} folderPath={folder.folderPath} savedFolders={folder.savedFolders} videoPaths={folder.videoPaths} includeSubfolders={folder.includeSubfolders} scanProgress={folder.scanProgress} batchScanProgress={folder.batchScanProgress} isBusy={isBusy} onChooseFolder={folder.chooseFolder} onScanFolder={folder.scanCurrentFolder} onScanAllFolders={folder.scanAllFolders} onIncludeSubfoldersChange={folder.setIncludeSubfolders} onStartIndex={startFolderIndex} onUseFolder={folder.useSavedFolder} onRemoveFolder={folder.removeSavedFolder} />
       <VisionImportInbox copy={app.copy.vision} directories={importInbox.directories} items={importInbox.items} progress={importInbox.progress} pipelineProgress={importInbox.pipelineProgress} isBusy={importInbox.isBusy} error={importInbox.error} writeSidecars={importInbox.writeSidecars} onAddFolder={importInbox.addFolder} onRemoveFolder={importInbox.removeFolder} onScan={importInbox.scan} onQueue={importInbox.queueItem} onIgnore={importInbox.ignoreItem} onRetry={importInbox.retryItem} onBatchQueue={importInbox.batchQueue} onBatchIgnore={importInbox.batchIgnore} onBatchRetry={importInbox.batchRetry} onBatchClear={importInbox.batchClear} onWriteSidecarsChange={importInbox.setWriteSidecars} onUpdateMetadata={importInbox.updateMetadata} />
-      <VisionLibrarySources copy={app.copy.vision} sources={sources} thumbnailUrls={sourceThumbnailUrls} hasMoreSources={hasMoreSources} isLoadingMoreSources={isLoadingMoreSources} onLoadMore={loadMoreSources} onOpenSource={openSource} />
+      <VisionLibrarySources copy={app.copy.vision} sources={sources} thumbnailUrls={sourceThumbnailUrls} hasMoreSources={hasMoreSources} isLoadingMoreSources={isLoadingMoreSources} onLoadMore={loadMoreSources} onOpenSource={openSource} duplicateScan={duplicateScan} isScanningDuplicates={isScanningDuplicates} duplicateThumbnailUrls={sourceThumbnailUrls} onScanDuplicates={() => void scanDuplicateMedia()} />
       <VisionEntityCatalog copy={app.copy.vision} catalog={entityCatalog} onCreate={createEntityCatalog} onUpdate={updateEntityCatalog} onBatchUpdate={updateEntityCatalogBatch} />
       <VisionIndexFailures copy={app.copy.vision} failures={failures} onRetry={retryVisionFailure} onBatchRetry={retryVisionFailures} />
       <div className="vision-index-actions">
