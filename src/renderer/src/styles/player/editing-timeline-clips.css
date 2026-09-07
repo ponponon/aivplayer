@@ -138,11 +138,32 @@
   position: absolute;
   top: -3px;
   bottom: -3px;
-  z-index: 2;
+  z-index: 5;
+  width: 14px;
+  margin-left: -6px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  appearance: none;
+  font: inherit;
+  cursor: grab;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+}
+
+.editing-playhead::before {
+  position: absolute;
+  inset-block: 0;
+  left: 6px;
   width: 2px;
   background: var(--accent);
+  content: '';
   box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.18), 0 0 10px rgba(var(--accent-rgb), 0.5);
-  pointer-events: none;
+}
+
+.editing-playhead.is-dragging {
+  cursor: grabbing;
 }
 
 .editing-playhead span {

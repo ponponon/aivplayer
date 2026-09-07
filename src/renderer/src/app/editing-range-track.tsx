@@ -6,6 +6,7 @@ import { EDITING_SOURCE_DRAG_TYPE, readEditingSourceDrag } from './editing-asset
 export type EditingTimeRange = { startSeconds: number; endSeconds: number }
 
 type RangeDrag = { startSeconds: number; moved: boolean }
+type PlayheadDrag = { pointerId: number }
 
 type EditingRangeTrackProps = {
   durationSeconds: number
@@ -33,7 +34,9 @@ function normalizeRange(startSeconds: number, endSeconds: number): EditingTimeRa
 
 export function EditingRangeTrack({ durationSeconds, currentTime, trackLabel, deleteRangeLabel, onSeek, onDeleteRange, onDropSource, snapPoints = [], children }: EditingRangeTrackProps): React.ReactElement {
   const [selectedRange, setSelectedRange] = useState<EditingTimeRange | null>(null)
+  const [isPlayheadDragging, setIsPlayheadDragging] = useState(false)
   const dragRef = useRef<RangeDrag | null>(null)
+  const playheadDragRef = useRef<PlayheadDrag | null>(null)
   const rangeRef = useRef<EditingTimeRange | null>(null)
   const suppressSeekRef = useRef(false)
 
@@ -88,6 +91,46 @@ export function EditingRangeTrack({ durationSeconds, currentTime, trackLabel, de
     onDeleteRange(range.startSeconds, range.endSeconds)
   }
 
+  const seekFromPlayheadPointer = (event: React.PointerEvent<HTMLButtonElement>): void => {
+    const track = event.currentTarget.closest('[data-testid="editing-track"]')
+    if (!(track instanceof HTMLElement)) return
+    onSeek(snapEditedTime(timeFromPointer(event.clientX, track, durationSeconds), durationSeconds, snapPoints))
+  }
+
+  const startPlayheadDrag = (event: React.PointerEvent<HTMLButtonElement>): void => {
+    if (event.button !== 0 || durationSeconds <= 0) return
+    playheadDragRef.current = { pointerId: event.pointerId }
+    setIsPlayheadDragging(true)
+    event.preventDefault()
+    event.stopPropagation()
+    seekFromPlayheadPointer(event)
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  const movePlayheadDrag = (event: React.PointerEvent<HTMLButtonElement>): void => {
+    const drag = playheadDragRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+    event.preventDefault()
+    event.stopPropagation()
+    seekFromPlayheadPointer(event)
+  }
+
+  const finishPlayheadDrag = (event: React.PointerEvent<HTMLButtonElement>): void => {
+    const drag = playheadDragRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+    playheadDragRef.current = null
+    setIsPlayheadDragging(false)
+    event.stopPropagation()
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
+  }
+
+  const handlePlayheadKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>): void => {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+    event.preventDefault()
+    event.stopPropagation()
+    onSeek(snapEditedTime(currentTime + (event.key === 'ArrowLeft' ? -0.1 : 0.1), durationSeconds, snapPoints))
+  }
+
   const handleSourceDrop = (event: React.DragEvent<HTMLDivElement>): void => {
     const sourceId = readEditingSourceDrag(event)
     if (!sourceId || !onDropSource) return
@@ -132,6 +175,25 @@ export function EditingRangeTrack({ durationSeconds, currentTime, trackLabel, de
     >
       {range ? <div className="editing-range-selection" style={{ left: `${rangeLeft}%`, width: `${rangeWidth}%` }}><button className="editing-range-delete" type="button" onPointerDown={(event) => event.stopPropagation()} onClick={deleteSelectedRange} title={deleteRangeLabel} aria-label={deleteRangeLabel}><Trash2 size={13} /></button></div> : null}
       {children}
+      <button
+        className={`editing-playhead${isPlayheadDragging ? ' is-dragging' : ''}`}
+        type="button"
+        role="slider"
+        tabIndex={0}
+        aria-label={trackLabel}
+        aria-valuemin={0}
+        aria-valuemax={durationSeconds}
+        aria-valuenow={currentTime}
+        title={trackLabel}
+        data-testid="editing-playhead"
+        style={{ left: `${durationSeconds > 0 ? Math.min(100, Math.max(0, (currentTime / durationSeconds) * 100)) : 0}%` }}
+        onPointerDown={startPlayheadDrag}
+        onPointerMove={movePlayheadDrag}
+        onPointerUp={finishPlayheadDrag}
+        onPointerCancel={finishPlayheadDrag}
+        onKeyDown={handlePlayheadKeyDown}
+        onClick={(event) => event.stopPropagation()}
+      ><span aria-hidden="true" /></button>
     </div>
   )
 }

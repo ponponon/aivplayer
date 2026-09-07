@@ -11,6 +11,8 @@
 }
 
 .editing-waveform-track:focus-visible { border-color: rgba(var(--accent-rgb), 0.7); box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.18); }
+.editing-waveform-track:active,
+.editing-waveform-track.is-dragging { cursor: grabbing; }
 .editing-waveform-segment { position: absolute; inset-block: 0; overflow: hidden; opacity: 0.86; }
 .editing-waveform-segment img { position: absolute; top: 0; max-width: none; height: 100%; object-fit: fill; }
 .editing-waveform-empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--text-muted); font-size: 9px; }

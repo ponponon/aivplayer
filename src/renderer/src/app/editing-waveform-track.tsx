@@ -1,4 +1,4 @@
-import type { PointerEvent as ReactPointerEvent } from 'react'
+import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import type { EditingWaveformSegment } from '../../../core/editing/waveform-operations'
 import { formatTime } from '../lib/time'
 
@@ -19,11 +19,13 @@ function seekFromPointer(event: ReactPointerEvent<HTMLDivElement>, durationSecon
 }
 
 export function EditingWaveformTrack({ segments, durationSeconds, currentTime, trackLabel, emptyLabel, onSeek }: Props): React.ReactElement {
+  const [isDragging, setIsDragging] = useState(false)
+  const dragPointerIdRef = useRef<number | null>(null)
   const playheadPercent = durationSeconds > 0 ? Math.min(100, Math.max(0, (currentTime / durationSeconds) * 100)) : 0
   return <div className="editing-track-row editing-waveform-row">
     <span className="editing-track-label">{trackLabel}</span>
     <div
-      className="editing-waveform-track"
+      className={`editing-waveform-track${isDragging ? ' is-dragging' : ''}`}
       data-testid="editing-waveform-track"
       role="slider"
       tabIndex={0}
@@ -31,7 +33,35 @@ export function EditingWaveformTrack({ segments, durationSeconds, currentTime, t
       aria-valuemin={0}
       aria-valuemax={durationSeconds}
       aria-valuenow={currentTime}
-      onPointerDown={(event) => { event.stopPropagation(); seekFromPointer(event, durationSeconds, onSeek) }}
+      onPointerDown={(event) => {
+        if (event.button !== 0 || durationSeconds <= 0) return
+        event.preventDefault()
+        event.stopPropagation()
+        dragPointerIdRef.current = event.pointerId
+        setIsDragging(true)
+        seekFromPointer(event, durationSeconds, onSeek)
+        event.currentTarget.setPointerCapture(event.pointerId)
+      }}
+      onPointerMove={(event) => {
+        if (dragPointerIdRef.current !== event.pointerId) return
+        event.preventDefault()
+        event.stopPropagation()
+        seekFromPointer(event, durationSeconds, onSeek)
+      }}
+      onPointerUp={(event) => {
+        if (dragPointerIdRef.current !== event.pointerId) return
+        dragPointerIdRef.current = null
+        setIsDragging(false)
+        event.stopPropagation()
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
+      }}
+      onPointerCancel={(event) => {
+        if (dragPointerIdRef.current !== event.pointerId) return
+        dragPointerIdRef.current = null
+        setIsDragging(false)
+        event.stopPropagation()
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
+      }}
       onKeyDown={(event) => {
         if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
         event.preventDefault()

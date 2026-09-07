@@ -211,7 +211,6 @@ export function EditingTimeline(): React.ReactElement | null {
     return () => observer.disconnect()
   }, [project?.id])
   const rulerTicks = getEditingRulerTicks(durationSeconds, rulerWidth)
-  const playheadPercent = durationSeconds > 0 ? (currentTime / durationSeconds) * 100 : 0
   const framingMarkers = framingKeyframes.slice(1).filter((keyframe) => keyframe.at > 0 && keyframe.at < durationSeconds).map((keyframe) => ({ keyframe, clip: spans.find((span) => Math.abs(span.editedStartSeconds - keyframe.at) < 0.001)?.clip ?? null }))
   const snapPoints = [...new Set([currentTime, ...spans.flatMap((span) => [span.editedStartSeconds, span.editedEndSeconds])])]
   const overlaySnapPoints = [...new Set([
@@ -365,7 +364,6 @@ export function EditingTimeline(): React.ReactElement | null {
                 })}
                 {clipDrag?.moved && clipDrag.to !== clipDrag.from ? <span className="editing-clip-drop-marker" style={{ left: `${durationSeconds > 0 ? (((clipDrag.to < clipDrag.from ? spans[clipDrag.to]!.editedStartSeconds : spans[clipDrag.to]!.editedEndSeconds) / durationSeconds) * 100) : 0}%` }} aria-hidden="true" /> : null}
               </div>
-              <div className="editing-playhead" style={{ left: `${playheadPercent}%` }} aria-hidden="true"><span /></div>
               {framingMarkers.map(({ keyframe, clip }) => {
                 const label = keyframe.state.treatment === 'punch-in' ? `${app.copy.editing.punchIn} ${Math.round(keyframe.state.scale * 100)}%` : keyframe.state.treatment === 'corner-br' ? `${app.copy.editing.cornerBottomRight} ${Math.round(keyframe.state.size)}%` : keyframe.state.treatment === 'corner-tl' ? `${app.copy.editing.cornerTopLeft} ${Math.round(keyframe.state.size)}%` : keyframe.state.treatment === 'split-left' ? `${app.copy.editing.splitLeft} ${Math.round(keyframe.state.size)}%` : keyframe.state.treatment === 'split-right' ? `${app.copy.editing.splitRight} ${Math.round(keyframe.state.size)}%` : app.copy.editing.fullFrame
                 const markerLabel = `${formatTime(keyframe.at)} · ${app.copy.editing.treatmentLabel}: ${label}`
