@@ -1239,7 +1239,7 @@ jobs:
       - name: Build Snap package
         run: |
           sudo -E env "PATH=$PATH" npx electron-builder --linux snap --prepackaged release/linux-unpacked --publish never
-      - name: Smoke test Snap launcher
+      - name: Smoke test Snap CLI launcher
         shell: bash
         run: |
           set -euo pipefail
@@ -1250,7 +1250,7 @@ jobs:
             sudo snap remove aivplayer >/dev/null 2>&1 || true
           }
           trap cleanup EXIT
-          timeout 30s snap run aivplayer --version
+          timeout 30s snap run aivplayer --cli --version
       - name: Publish verified Snap
         env:
           SNAP_CSC_LINK: ${{ secrets.SNAP_CSC_LINK }}
@@ -1316,7 +1316,7 @@ jobs:
       - name: Build Snap package
         run: |
           sudo -E env "PATH=$PATH" npx electron-builder --linux snap --arm64 --prepackaged release/linux-arm64-unpacked --publish never
-      - name: Smoke test Snap launcher
+      - name: Smoke test Snap CLI launcher
         shell: bash
         run: |
           set -euo pipefail
@@ -1327,7 +1327,7 @@ jobs:
             sudo snap remove aivplayer >/dev/null 2>&1 || true
           }
           trap cleanup EXIT
-          timeout 30s snap run aivplayer --version
+          timeout 30s snap run aivplayer --cli --version
       - name: Publish verified Snap
         env:
           SNAP_CSC_LINK: ${{ secrets.SNAP_CSC_LINK }}
