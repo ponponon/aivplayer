@@ -213,14 +213,19 @@ async function main(): Promise<void> {
       const videoBox = video?.getBoundingClientRect()
       const videoFrameBox = videoFrame?.getBoundingClientRect()
       const controlDeckBox = controlDeck?.getBoundingClientRect()
+      const stageStyle = stage ? window.getComputedStyle(stage) : null
+      const videoFrameStyle = videoFrame ? window.getComputedStyle(videoFrame) : null
+      const controlDeckStyle = controlDeck ? window.getComputedStyle(controlDeck) : null
       const videoFillsVideoFrame = Boolean(videoFrameBox && videoBox && Math.abs(videoFrameBox.width - videoBox.width) <= 1 && Math.abs(videoFrameBox.height - videoBox.height) <= 1)
       const controlsDoNotCoverVideo = Boolean(videoFrameBox && controlDeckBox && controlDeckBox.top >= videoFrameBox.bottom - 1)
+      const fullscreenAreasAreStable = stageStyle?.gridTemplateAreas === '"media" "controls"' && videoFrameStyle?.gridArea === 'media' && controlDeckStyle?.gridArea === 'controls'
       return {
         pressed: button.getAttribute('aria-pressed'),
         label: button.getAttribute('aria-label'),
         stageIsTarget: document.fullscreenElement === stage,
         videoFillsVideoFrame,
         controlsDoNotCoverVideo,
+        fullscreenAreasAreStable,
         videoBox: videoBox ? { width: Math.round(videoBox.width), height: Math.round(videoBox.height) } : null,
         stageBox: stageBox ? { width: Math.round(stageBox.width), height: Math.round(stageBox.height) } : null,
         videoFrameBox: videoFrameBox ? { top: Math.round(videoFrameBox.top), bottom: Math.round(videoFrameBox.bottom) } : null,
@@ -305,7 +310,7 @@ async function main(): Promise<void> {
 
     const muteExpectedLabel = muteExpectedPressed === 'true' ? copy.controls.unmute : copy.controls.mute
     const shuffleExpectedLabel = shuffleExpectedPressed === 'true' ? copy.controls.shuffleOff : copy.controls.shuffleEnable
-    if (muteAfter.pressed !== muteExpectedPressed || muteAfter.label !== muteExpectedLabel || muteAfter.mediaMuted !== (muteExpectedPressed === 'true') || shuffleEnabled.pressed !== shuffleExpectedPressed || shuffleEnabled.label !== shuffleExpectedLabel || !fullscreenEntered.stageIsTarget || !fullscreenEntered.videoFillsVideoFrame || !fullscreenEntered.controlsDoNotCoverVideo || fullscreenEntered.pressed !== 'true' || fullscreenEntered.label !== copy.controls.exitFullscreen || !fullscreenHidden.isHidden || fullscreenHidden.controlVisibility !== 'hidden' || fullscreenHidden.controlOpacity !== '0' || !fullscreenHidden.videoFrameFillsStage || fullscreenExited.stageIsTarget || fullscreenExited.pressed !== 'false' || fullscreenExited.label !== copy.controls.fullscreen) {
+    if (muteAfter.pressed !== muteExpectedPressed || muteAfter.label !== muteExpectedLabel || muteAfter.mediaMuted !== (muteExpectedPressed === 'true') || shuffleEnabled.pressed !== shuffleExpectedPressed || shuffleEnabled.label !== shuffleExpectedLabel || !fullscreenEntered.stageIsTarget || !fullscreenEntered.videoFillsVideoFrame || !fullscreenEntered.controlsDoNotCoverVideo || !fullscreenEntered.fullscreenAreasAreStable || fullscreenEntered.pressed !== 'true' || fullscreenEntered.label !== copy.controls.exitFullscreen || !fullscreenHidden.isHidden || fullscreenHidden.controlVisibility !== 'hidden' || fullscreenHidden.controlOpacity !== '0' || !fullscreenHidden.videoFrameFillsStage || fullscreenExited.stageIsTarget || fullscreenExited.pressed !== 'false' || fullscreenExited.label !== copy.controls.fullscreen) {
       process.exitCode = 1
     }
 
