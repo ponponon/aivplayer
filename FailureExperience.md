@@ -2508,9 +2508,9 @@
 - 经验：FFmpeg 更新必须先通过各目标平台的实际运行检查；Windows ARM64 的 `-version` 探针失败时，不能继续发布或仅凭其他平台成功推断兼容。
 - 处理：先回到此前 v0.6.11 已验证通过的 FFmpeg 8.1.2，并改用 BtbN 仍保留的 `autobuild-2026-08-31-13-27` 月末构建，固定四个平台的归档 SHA-256。后续 FFmpeg 升级由完整发布验证证明兼容后再合入。
 
-## 2026-10-15：Snap 元数据引用的桌面文件必须留在仓库
+## 2026-10-15：electron-builder core24 的桌面入口路径要在 Snapcraft 调用前补齐
 
-- 现象：x64 和 ARM64 Snap job 均在 Snapcraft 生成桌面元数据时失败：`snap/meta/gui/aivplayer.desktop: file does not exist`。
-- 原因：迁移到 electron-builder 生成 Snap 配置时删除了 `snap/gui/aivplayer.desktop`，但生成的 Snap 应用元数据仍引用这个资源。
-- 经验：Snap 配置里的桌面入口是打包输入，不是可选文档；重构 Snap 配置或目录时，要确认 `apps.<name>.desktop` 对应资源仍被提交。
-- 处理：恢复 `snap/gui/aivplayer.desktop`，保留应用启动命令、图标、分类和支持的视频 MIME 类型。
+- 现象：x64 和 ARM64 Snap job 均在 Snapcraft prime 阶段失败：`snap/meta/gui/aivplayer.desktop: file does not exist`；仅恢复仓库的 `snap/gui/aivplayer.desktop` 后错误仍然存在。
+- 原因：electron-builder core24 在 `release/__snap-*` 临时工程中生成 `.desktop` 文件到 `snap/gui`，其 `apps.<name>.desktop` 元数据却让 Snapcraft 从 `snap/meta/gui` 读取，源码目录里的文件不会自动出现在这个临时路径。
+- 经验：排查打包资源时要检查工具实际生成的临时工程与 Snapcraft 的相对路径；确认日志中的绝对路径后再修输入，不能只在源仓库补同名文件。
+- 处理：在调用 Snapcraft 的 CLI 包装脚本中，将临时工程 `snap/gui` 的生成资源复制到 `snap/meta/gui`；包装脚本仅在 electron-builder 生成的 Snap 工程目录中生效。

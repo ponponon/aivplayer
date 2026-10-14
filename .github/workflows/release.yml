@@ -1260,6 +1260,11 @@ jobs:
           sudo snap install snapcraft --classic
       - name: Set up LXD
         uses: canonical/setup-lxd@v1
+      - name: Prepare Snapcraft desktop path
+        run: |
+          mkdir -p "$RUNNER_TEMP/aivplayer-snapcraft-bin"
+          ln -sf "$GITHUB_WORKSPACE/scripts/snapcraft-cli-wrapper.sh" "$RUNNER_TEMP/aivplayer-snapcraft-bin/snapcraft"
+          echo "$RUNNER_TEMP/aivplayer-snapcraft-bin" >> "$GITHUB_PATH"
       - name: Build Snap package
         run: |
           sudo -E env "PATH=$PATH" npx electron-builder --linux snap --prepackaged release/linux-unpacked --publish never
@@ -1339,6 +1344,11 @@ jobs:
           sudo snap install snapcraft --classic
       - name: Set up LXD
         uses: canonical/setup-lxd@v1
+      - name: Prepare Snapcraft desktop path
+        run: |
+          mkdir -p "$RUNNER_TEMP/aivplayer-snapcraft-bin"
+          ln -sf "$GITHUB_WORKSPACE/scripts/snapcraft-cli-wrapper.sh" "$RUNNER_TEMP/aivplayer-snapcraft-bin/snapcraft"
+          echo "$RUNNER_TEMP/aivplayer-snapcraft-bin" >> "$GITHUB_PATH"
       - name: Build Snap package
         run: |
           sudo -E env "PATH=$PATH" npx electron-builder --linux snap --arm64 --prepackaged release/linux-arm64-unpacked --publish never
