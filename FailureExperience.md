@@ -2500,3 +2500,17 @@
 - 原因：工作流固定引用 `BtbN/FFmpeg-Builds` 的 `autobuild-2026-08-25-13-06`；上游 README 说明日构建只保留最近 14 个，而每月最后一个构建保留两年，因此旧日构建已被清理。
 - 经验：固定 CI 下载源时要确认上游保留策略。BtbN 的发布应使用月末构建 tag，并把同一 tag 的版本、四平台归档名称和 GitHub SHA-256 一起固定；浮动的 `latest` 不适合需要可复现的正式发布。
 - 处理：将 Windows / Linux 归档更新为上游 2026-09-30 月末构建，统一到 FFmpeg 8.1.3，并更新官方源码包 SHA-256；新增发布前 URL 门禁，避免失效地址进入长时间的平台构建。
+
+## 2026-10-15：发布验证要覆盖 Windows ARM64 的 FFmpeg 实际启动
+
+- 现象：改用 FFmpeg 8.1.3 后，Windows ARM64 构建在运行 `ffmpeg.exe -version` 和 `ffprobe.exe -version` 时失败；同一轮 macOS、Windows x64、Linux x64 和 Linux ARM64 构建成功。GitHub Actions 摘要没有保留子进程 stderr，不能据此断言是具体 DLL 或 ABI 问题。
+- 原因：把“下载地址可用、校验和正确”当成 FFmpeg 可执行文件兼容性的充分条件，版本升级后没有通过 Windows ARM64 的运行探针验证。
+- 经验：FFmpeg 更新必须先通过各目标平台的实际运行检查；Windows ARM64 的 `-version` 探针失败时，不能继续发布或仅凭其他平台成功推断兼容。
+- 处理：先回到此前 v0.6.11 已验证通过的 FFmpeg 8.1.2，并改用 BtbN 仍保留的 `autobuild-2026-08-31-13-27` 月末构建，固定四个平台的归档 SHA-256。后续 FFmpeg 升级由完整发布验证证明兼容后再合入。
+
+## 2026-10-15：Snap 元数据引用的桌面文件必须留在仓库
+
+- 现象：x64 和 ARM64 Snap job 均在 Snapcraft 生成桌面元数据时失败：`snap/meta/gui/aivplayer.desktop: file does not exist`。
+- 原因：迁移到 electron-builder 生成 Snap 配置时删除了 `snap/gui/aivplayer.desktop`，但生成的 Snap 应用元数据仍引用这个资源。
+- 经验：Snap 配置里的桌面入口是打包输入，不是可选文档；重构 Snap 配置或目录时，要确认 `apps.<name>.desktop` 对应资源仍被提交。
+- 处理：恢复 `snap/gui/aivplayer.desktop`，保留应用启动命令、图标、分类和支持的视频 MIME 类型。
