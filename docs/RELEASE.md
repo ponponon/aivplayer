@@ -19,6 +19,7 @@
     创建并推送 v<version> tag
       ↓
     GitHub Actions 自动触发
+      ├─ FFmpeg 归档地址预检
       ├─ macOS 构建
       ├─ Windows x64 构建
       ├─ Windows arm64 构建
@@ -75,7 +76,13 @@
 
 如果本次版本包含明显的用户可见功能或修复，同时检查是否需要更新 README、版本说明或 Cloudflare Pages 页面。不要为了发布流程本身编造额外功能说明。
 
-### 3. 本地验证
+### 3. 固定 FFmpeg 构建源
+
+`.github/workflows/release.yml` 中的 Windows / Linux FFmpeg 归档来自 `BtbN/FFmpeg-Builds`。上游只保留最近 14 个日构建；每月最后一个构建会保留两年。发布固定版本时应使用月末构建 tag，避免 pin 到很快过期的日构建；不要使用会浮动的 `latest` 替代固定版本。
+
+更新 FFmpeg 时，需同步修改版本号、构建 revision、月末 release tag、四个平台的归档 URL 和 SHA-256，以及 macOS 官方源码包的 SHA-256。确认四个平台资产都属于同一 tag；发布工作流的 `Verify pinned FFmpeg archives` job 会先检查地址可用性，各平台下载步骤仍会校验归档 SHA-256。
+
+### 4. 本地验证
 
 最低检查集：
 
@@ -87,7 +94,7 @@
 
 完整 `npm test` 如果遇到需要监听本机端口或访问宿主运行时的测试，应在宿主权限环境中重跑并记录真实结果；不能把默认沙盒的 `EPERM` 直接当成代码回归。
 
-### 4. 检查版本差异
+### 5. 检查版本差异
 
 发布前确认工作区只包含预期修改：
 
@@ -97,7 +104,7 @@
 
 提交前检查新增内容中没有 API key、token、密码、私钥或其他敏感信息。尤其不要把本地签名文件、证书、云服务凭据和安装包提交到 Git 仓库。
 
-### 5. GitHub Actions 签名密钥
+### 6. GitHub Actions 签名密钥
 
 macOS 发布需要在 GitHub Actions Secrets 中配置以下变量：
 

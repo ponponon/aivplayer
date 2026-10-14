@@ -2493,3 +2493,10 @@
 - 原因：`npm run flatpak:check` 断言 `flatpak/cn.quniv.aivplayer.metainfo.xml` 里的 `<release version>` 必须等于 `package.json` 当前版本，发版时只 bump 了 `package.json` / `package-lock.json`，漏掉 metainfo 的 release 条目，缺口从 0.6.11 开始累积。
 - 经验：版本号在仓库里有多个载体（package.json、package-lock.json、flatpak metainfo、docs/releases 文案），发版必须当成一个原子变更一起提交；独立于主发布链路的 CI workflow 长期红灯也是失败，不能因为“不阻塞 Release”就放任。
 - 处理：补齐 0.6.11 与 0.6.12 的 release 条目使 `flatpak:check` 通过，并把该检查写进 `docs/RELEASE.md` 的发布前检查清单和命令索引，防止下次再漏。
+
+## 2026-10-14：FFmpeg 发布流水线不能固定到短期保留的日构建
+
+- 现象：v0.6.12 的 Windows x64 / ARM64 与 Linux x64 / ARM64 构建在下载 FFmpeg 时连续收到 HTTP 404，平台 job 失败，`publish-release` 被跳过。
+- 原因：工作流固定引用 `BtbN/FFmpeg-Builds` 的 `autobuild-2026-08-25-13-06`；上游 README 说明日构建只保留最近 14 个，而每月最后一个构建保留两年，因此旧日构建已被清理。
+- 经验：固定 CI 下载源时要确认上游保留策略。BtbN 的发布应使用月末构建 tag，并把同一 tag 的版本、四平台归档名称和 GitHub SHA-256 一起固定；浮动的 `latest` 不适合需要可复现的正式发布。
+- 处理：将 Windows / Linux 归档更新为上游 2026-09-30 月末构建，统一到 FFmpeg 8.1.3，并更新官方源码包 SHA-256；新增发布前 URL 门禁，避免失效地址进入长时间的平台构建。

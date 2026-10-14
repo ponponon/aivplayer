@@ -22,23 +22,43 @@ permissions:
 env:
   LIBHEIF_VERSION: 1.23.1
   WHISPER_CPP_VERSION: 1.9.1
-  FFMPEG_VERSION: 8.1.2
-  FFMPEG_BUILD_REVISION: n8.1.2-44-g7c533d0f86
-  FFMPEG_RELEASE_TAG: autobuild-2026-08-25-13-06
-  FFMPEG_SOURCE_SHA256: 464beb5e7bf0c311e68b45ae2f04e9cc2af88851abb4082231742a74d97b524c
-  FFMPEG_WIN64_URL: https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-08-25-13-06/ffmpeg-n8.1.2-44-g7c533d0f86-win64-gpl-8.1.zip
-  FFMPEG_WIN64_SHA256: 7c2fd45e2e700b291489acc98e4f2274c30bff4256e5a989c3eecbc5912e63b9
-  FFMPEG_WINARM64_URL: https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-08-25-13-06/ffmpeg-n8.1.2-44-g7c533d0f86-winarm64-gpl-8.1.zip
-  FFMPEG_WINARM64_SHA256: 57b7dc944c03991067db38a25976147db127597100f56c10fb3c8b537ff30dcc
-  FFMPEG_LINUX64_URL: https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-08-25-13-06/ffmpeg-n8.1.2-44-g7c533d0f86-linux64-gpl-8.1.tar.xz
-  FFMPEG_LINUX64_SHA256: 30fc0f171f3482491ec4c17dcd62af57fb79cb84b1ae25d5af682d47ca4b1fa8
-  FFMPEG_LINUXARM64_URL: https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-08-25-13-06/ffmpeg-n8.1.2-44-g7c533d0f86-linuxarm64-gpl-8.1.tar.xz
-  FFMPEG_LINUXARM64_SHA256: e2e1f196efc7476a4d175f44ed6c3d180077c0e70b0ec8b182e2e355f7a426d5
+  FFMPEG_VERSION: 8.1.3
+  FFMPEG_BUILD_REVISION: n8.1.3-9-g29e619e767
+  FFMPEG_RELEASE_TAG: autobuild-2026-09-30-13-08
+  FFMPEG_SOURCE_SHA256: 7138d28c96d9d3e3af4ee3d8cad72741f8ffb40da90c1112235dea3ecd3178a3
+  FFMPEG_WIN64_URL: https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-09-30-13-08/ffmpeg-n8.1.3-9-g29e619e767-win64-gpl-8.1.zip
+  FFMPEG_WIN64_SHA256: 7b801cdd3a1a0bb54ae6f572187e68b4ed54f52086cfee133fab2180bfb429fa
+  FFMPEG_WINARM64_URL: https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-09-30-13-08/ffmpeg-n8.1.3-9-g29e619e767-winarm64-gpl-8.1.zip
+  FFMPEG_WINARM64_SHA256: 061a770557c30bbf8e0b6ca3810288a60f72b85088378b84be03277746f34f17
+  FFMPEG_LINUX64_URL: https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-09-30-13-08/ffmpeg-n8.1.3-9-g29e619e767-linux64-gpl-8.1.tar.xz
+  FFMPEG_LINUX64_SHA256: 97ce978979194b5cf7e06a5e68020dbdaa7a4f3294c5452b6a1bc347100dbb79
+  FFMPEG_LINUXARM64_URL: https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-09-30-13-08/ffmpeg-n8.1.3-9-g29e619e767-linuxarm64-gpl-8.1.tar.xz
+  FFMPEG_LINUXARM64_SHA256: 10523d1e0be6b3ce62a9708cc50815c4b5eb5f36ae147fbe2afeecda6f2d6845
   FFMPEG_MACOS_CACHE_VERSION: v1
   NATIVE_RUNTIME_CACHE_VERSION: v1
 
 jobs:
+  verify-ffmpeg-assets:
+    name: Verify pinned FFmpeg archives
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check pinned archive URLs
+        shell: bash
+        run: |
+          for url in \
+            "$FFMPEG_WIN64_URL" \
+            "$FFMPEG_WINARM64_URL" \
+            "$FFMPEG_LINUX64_URL" \
+            "$FFMPEG_LINUXARM64_URL"
+          do
+            curl --fail --location --silent --show-error --head \
+              --retry 2 --retry-all-errors --connect-timeout 15 --max-time 60 \
+              "$url" >/dev/null
+            printf 'Available: %s\n' "$url"
+          done
+
   build-macos:
+    needs: verify-ffmpeg-assets
     runs-on: macos-latest
     env:
       MACOSX_DEPLOYMENT_TARGET: '12.0'
@@ -320,6 +340,7 @@ jobs:
           if-no-files-found: error
 
   build-windows:
+    needs: verify-ffmpeg-assets
     runs-on: windows-latest
     env:
       electron_config_cache: ${{ github.workspace }}/.cache/electron
@@ -573,6 +594,7 @@ jobs:
           if-no-files-found: error
 
   build-windows-arm64:
+    needs: verify-ffmpeg-assets
     runs-on: windows-11-arm
     env:
       electron_config_cache: ${{ github.workspace }}/.cache/electron
@@ -830,6 +852,7 @@ jobs:
           if-no-files-found: error
 
   build-linux:
+    needs: verify-ffmpeg-assets
     runs-on: ubuntu-latest
     env:
       electron_config_cache: ${{ github.workspace }}/.cache/electron
@@ -1031,6 +1054,7 @@ jobs:
           if-no-files-found: error
 
   build-linux-arm64:
+    needs: verify-ffmpeg-assets
     runs-on: ubuntu-24.04-arm
     env:
       electron_config_cache: ${{ github.workspace }}/.cache/electron
