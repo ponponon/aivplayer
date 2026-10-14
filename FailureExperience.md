@@ -2479,3 +2479,10 @@
 - 原因：视频片段使用按钮承载选中和排序交互，并在 `onClick` 中无条件 `stopPropagation()`，导致父级视频轨的按位置 seek 处理器永远收不到点击事件；波形轨没有同样的子按钮拦截，所以两条轨道行为不一致。
 - 经验：时间轴中的“可选择片段”和“可定位轨道”是两个正交语义，子元素可以处理选择，但不能无条件吞掉父级的定位点击；只有播放头、删除和裁切手柄等明确的独立操作才应阻止冒泡。
 - 处理：视频片段点击保留选择逻辑并允许事件冒泡，由父级视频轨统一按点击位置 seek；片段拖拽仍在 pointer 事件阶段阻止冒泡，排序完成后继续抑制一次 click，避免拖拽误定位。
+
+## 2026-10-14：Linux 默认播放器候选不能只检查 video/mp4 是否已声明
+
+- 现象：Ubuntu GNOME 的“设置 → 应用 → 默认应用 → 视频”下拉里找不到已安装的 AIVPlayer，无法把它设为默认视频播放器；但 `gio mime video/mp4` 和 `Gio.AppInfo.get_all_for_type('video/mp4')` 都能看到它，容易误判成桌面数据库或安装流程的问题。
+- 原因：gnome-control-center 的 `video_row` 不按 `video/mp4` 查候选，而是固定用单个代表 mime `video/x-ogm+ogg`（`panels/applications/cc-default-apps-page.blp`），候选列表来自 `g_app_info_get_recommended_for_type()`；aivplayer.desktop 只声明到 `video/ogg`，缺 `.ogm` 对应的 `video/x-ogm+ogg`，因此永远不会进入该列表。
+- 经验：桌面环境的“默认应用”下拉用的是每个类目的单个代表 mime（视频 `video/x-ogm+ogg`、照片 `image/jpeg`、音乐 `audio/x-vorbis+ogg`），与直觉上的 `video/mp4` 完全不同；判断某应用“能否被设为默认”必须直接查该代表 mime 的推荐列表，而不是查通用类型，打包声明里也不能漏掉这些冷门代表类型。
+- 处理：在 `electron-builder.yml` 的 fileAssociations 补 `.ogm → video/x-ogm+ogg` 并同步 flatpak desktop，新增单元测试锁住代表 mime 覆盖；用 `Gio.AppInfo.get_recommended_for_type('video/x-ogm+ogg')` 前后对比验证 AIVPlayer 是否入列。

@@ -1,5 +1,7 @@
 # AIVPlayer 功能列表
 
+- Linux 打包声明 GNOME 默认应用面板的视频代表 mime `video/x-ogm+ogg`：Ubuntu GNOME 的“默认应用 → 视频”下拉按该类型查询候选，缺声明时 AIVPlayer 不会出现、也无法被设为默认视频播放器；`electron-builder.yml` 新增 `.ogm` 关联并同步 flatpak desktop，由 `tests/unit/linux-default-apps-mime.test.ts` 回归锁住。
+
 - 视觉影视库支持主动查找重复素材：按文件大小预筛并流式计算 SHA-256，只将内容完全相同的文件分组，展示重复占用空间和不可读文件统计；扫描只读，不删除或移动原文件。
 
 - 重复素材扫描会把已验证的 SHA-256 按规范化路径、当前文件大小和修改时间写入用户数据目录的 0600 缓存；未变化文件可直接复用，文件变化、缓存损坏或写入失败不会阻断扫描。
