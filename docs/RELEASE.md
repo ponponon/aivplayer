@@ -311,6 +311,7 @@ GitHub Actions 的 `workflow_dispatch` 支持 `verify_only` 输入。使用方�
 - [ ] `npm run typecheck` 通过。
 - [ ] `npm run release:dry-run` 通过。
 - [ ] `npm run release:report-package-size -- --directory release` 已生成体积报告。
+- [ ] `npm run flatpak:check` 通过；`flatpak/cn.quniv.aivplayer.metainfo.xml` 的 `<release version>` 与 `package.json` 版本一致（否则 Flatpak 静态检查会失败）。
 - [ ] `npm test` 通过，宿主相关测试已在正确环境复核。
 - [ ] `git diff --check` 通过。
 - [ ] 没有敏感信息、签名文件或大体积安装包进入 Git 提交。
@@ -336,6 +337,7 @@ GitHub Actions 的 `workflow_dispatch` 支持 `verify_only` 输入。使用方�
 | 产物汇总 | `scripts/assemble-release-artifacts.mjs` / `npm run release:assemble-artifacts` |
 | manifest 生成与校验 | `scripts/release-manifest.mjs` / `npm run release:create-manifest`、`npm run release:check-manifest` |
 | 本地发布演练 | `scripts/release-dry-run.mjs` / `npm run release:dry-run` |
+| Flatpak 静态检查 | `scripts/check-flatpak.mjs` / `npm run flatpak:check` |
 | push 前审计 | `scripts/check-release-push-readiness.mjs` / `npm run release:check-push` |
 | GitHub 远端校验 | `scripts/verify-remote-release.mjs` / `npm run release:verify-remote` |
 | 官网下载同步 | `scripts/publish-release-downloads.mjs` / `npm run release:publish-downloads` |

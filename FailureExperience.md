@@ -2486,3 +2486,10 @@
 - 原因：gnome-control-center 的 `video_row` 不按 `video/mp4` 查候选，而是固定用单个代表 mime `video/x-ogm+ogg`（`panels/applications/cc-default-apps-page.blp`），候选列表来自 `g_app_info_get_recommended_for_type()`；aivplayer.desktop 只声明到 `video/ogg`，缺 `.ogm` 对应的 `video/x-ogm+ogg`，因此永远不会进入该列表。
 - 经验：桌面环境的“默认应用”下拉用的是每个类目的单个代表 mime（视频 `video/x-ogm+ogg`、照片 `image/jpeg`、音乐 `audio/x-vorbis+ogg`），与直觉上的 `video/mp4` 完全不同；判断某应用“能否被设为默认”必须直接查该代表 mime 的推荐列表，而不是查通用类型，打包声明里也不能漏掉这些冷门代表类型。
 - 处理：在 `electron-builder.yml` 的 fileAssociations 补 `.ogm → video/x-ogm+ogg` 并同步 flatpak desktop，新增单元测试锁住代表 mime 覆盖；用 `Gio.AppInfo.get_recommended_for_type('video/x-ogm+ogg')` 前后对比验证 AIVPlayer 是否入列。
+
+## 2026-10-14：发版不能只改 package.json 的版本号
+
+- 现象：v0.6.11 和 v0.6.12 的 Flatpak workflow 都在 `Check manifest and metadata` 步骤失败，而 Release 主流程完全正常，红灯长期存在却没被当成问题处理。
+- 原因：`npm run flatpak:check` 断言 `flatpak/cn.quniv.aivplayer.metainfo.xml` 里的 `<release version>` 必须等于 `package.json` 当前版本，发版时只 bump 了 `package.json` / `package-lock.json`，漏掉 metainfo 的 release 条目，缺口从 0.6.11 开始累积。
+- 经验：版本号在仓库里有多个载体（package.json、package-lock.json、flatpak metainfo、docs/releases 文案），发版必须当成一个原子变更一起提交；独立于主发布链路的 CI workflow 长期红灯也是失败，不能因为“不阻塞 Release”就放任。
+- 处理：补齐 0.6.11 与 0.6.12 的 release 条目使 `flatpak:check` 通过，并把该检查写进 `docs/RELEASE.md` 的发布前检查清单和命令索引，防止下次再漏。
