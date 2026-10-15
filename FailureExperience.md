@@ -2514,3 +2514,10 @@
 - 原因：electron-builder core24 在 `release/__snap-*` 临时工程中生成 `.desktop` 文件到 `snap/gui`，其 `apps.<name>.desktop` 元数据却让 Snapcraft 从 `snap/meta/gui` 读取，源码目录里的文件不会自动出现在这个临时路径。
 - 经验：排查打包资源时要检查工具实际生成的临时工程与 Snapcraft 的相对路径；确认日志中的绝对路径后再修输入，不能只在源仓库补同名文件。
 - 处理：在调用 Snapcraft 的 CLI 包装脚本中，将临时工程 `snap/gui` 的生成资源复制到 `snap/meta/gui`；包装脚本仅在 electron-builder 生成的 Snap 工程目录中生效。
+
+## 2026-10-15：更新 FFmpeg 固定归档时要同步维护流水线回归断言
+
+- 现象：FFmpeg 发布地址已切换到仍保留的月末归档并通过完整平台验证，但本地 `release-workflow.test.ts` 仍断言旧日构建路径和旧 SHA-256，导致发布前测试失败。
+- 原因：更新工作流中的归档 tag、revision 和校验值时，没有同步更新对这些固定值负责的源代码约束测试。
+- 经验：固定外部二进制来源的版本、文件名和 SHA-256 是同一份发布契约；任何一项改变都要一起更新回归断言，并让测试明确锁定新来源。
+- 处理：将测试断言改为当前月末构建的 Windows ARM64 归档路径与 SHA-256，再运行完整测试套件确认。

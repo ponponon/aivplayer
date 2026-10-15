@@ -23,8 +23,8 @@
       ├─ macOS 构建
       ├─ Windows x64 构建
       ├─ Windows arm64 构建
-      ├─ Linux x64 构建
-      └─ Linux arm64 构建
+      ├─ Linux x64 构建 → Snap x64 构建
+      └─ Linux arm64 构建 → Snap arm64 构建
       ↓
     汇总安装包、更新元数据与 Vision Pack
       ↓
@@ -206,7 +206,7 @@ macOS 的 `--dir` 目标不会自动生成 `app-update.yml`；因此必须把固
 
 - macOS：`.dmg`、`.zip`、`latest-mac.yml`；DMG / ZIP 使用 Developer ID Application 签名并由 GitHub Actions 公证；
 - Windows：x64 / arm64 `.exe`、合并后的 `latest.yml`；
-- Linux：x64 / arm64 `.AppImage`、`.deb`、`latest-linux.yml`、`latest-linux-arm64.yml`；x64 额外构建 `.snap`（electron-builder 原生 snapcraft target，core24 / strict，LXD 隔离构建，ARM64 暂不构建）。
+- Linux：x64 / arm64 `.AppImage`、`.deb`、`.snap`、`latest-linux.yml`、`latest-linux-arm64.yml`；x64 和 arm64 Snap 分别由独立的 electron-builder snapcraft target 构建，使用 core24 / strict 和 LXD 隔离，并作为 Release 资产发布；配置 `SNAP_CSC_LINK` 时同时上传到 Snap Store。
 - 更新辅助文件：`.blockmap`；
 - 发布审计清单：`release-manifest.json`。
 
