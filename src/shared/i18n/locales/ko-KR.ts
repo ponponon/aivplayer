@@ -160,7 +160,10 @@
       trickplayLoading: '타임라인 미리보기 생성 중…',
       trickplayUnavailable: '썸네일 미리보기를 사용할 수 없음',
       structureSkipNames: { intro: '인트로 검은 화면', outro: '아웃트로 검은 화면', black: '검은 구간' },
-      skipStructureAt: (label: string, time: string) => `${label} 건너뛰기 · ${time}`
+      skipStructureAt: (label: string, time: string) => `${label} 건너뛰기 · ${time}`,
+      analyzeStructure: '검은 화면 스캔',
+      analyzingStructure: '검은 화면 스캔 중…',
+      analyzeStructureHint: '인트로·아웃트로·검은 화면 구간을 분석합니다. 파일 전체를 디코딩하므로 시간이 걸립니다.'
     },
     editing: {
       resetAllCandidateDetails: '모든 후보 상세 기본 상태로 복원', resetAllCandidateDetailsConfirm: '모든 프로젝트의 후보 상세를 기본 상태로 되돌리고 현재 후보 상세도 닫습니다. 계속하시겠습니까?',

@@ -160,7 +160,10 @@
       trickplayLoading: 'タイムラインプレビューを生成中…',
       trickplayUnavailable: 'サムネイルプレビューはありません',
       structureSkipNames: { intro: 'イントロ黒画面', outro: 'アウトロ黒画面', black: '黒画面' },
-      skipStructureAt: (label: string, time: string) => `${label}をスキップ：${time}`
+      skipStructureAt: (label: string, time: string) => `${label}をスキップ：${time}`,
+      analyzeStructure: '黒画面をスキャン',
+      analyzingStructure: '黒画面をスキャン中…',
+      analyzeStructureHint: 'イントロ・アウトロ・黒画面の区間を解析します。ファイル全体をデコードするため時間がかかります。'
     },
     editing: {
       resetAllCandidateDetails: 'すべての候補詳細を初期状態に戻す', resetAllCandidateDetailsConfirm: 'すべてのプロジェクトの候補詳細を初期状態に戻し、現在の候補詳細も閉じます。続行しますか？',

@@ -41,8 +41,8 @@ async function main(): Promise<void> {
       return Boolean(video && Number.isFinite(video.duration) && video.duration >= 3.5)
     }, undefined, { timeout: 15_000 })
 
-    // PlaybackControls analyzes with the default threshold in the background;
-    // use a smoke-only parameter so this explicit pair still proves a cold run.
+    // Use a smoke-only parameter so this explicit pair still proves a cold run
+    // without colliding with the default-parameter cache the playback scan writes.
     const first = await page.evaluate(async (path) => window.aiv.analyzeMediaStructure({ mediaPath: path, durationSeconds: 4, pixelThreshold: 0.11 }), mediaPath)
     if (!first.success || first.cacheHit || !first.cacheKey || !first.segments.some((segment) => segment.kind === 'intro') || !first.segments.some((segment) => segment.kind === 'outro')) {
       throw new Error(`Structure first analysis mismatch: ${JSON.stringify(first)}`)
@@ -53,12 +53,18 @@ async function main(): Promise<void> {
     }
     console.log(`Structure analysis cache reused: ${JSON.stringify({ firstSegments: first.segments, cacheKey: second.cacheKey })}`)
 
+    // Opening media only probes the cache, so the deck must expose an explicit
+    // scan action; the skip button only shows up after that scan produced ranges.
+    await page.locator('.stage').hover()
+    const scanButton = page.locator('[data-testid="playback-structure-scan"]')
+    await scanButton.waitFor({ timeout: 15_000 })
     await page.locator('video.video-surface').evaluate((element) => {
       const video = element as HTMLVideoElement
       video.currentTime = 0.5
       video.dispatchEvent(new Event('timeupdate'))
     })
-    await page.locator('[data-testid="playback-structure-skip"]').waitFor({ state: 'visible', timeout: 15_000 })
+    await scanButton.click()
+    await page.locator('[data-testid="playback-structure-skip"]').waitFor({ state: 'visible', timeout: 60_000 })
     await page.locator('[data-testid="playback-structure-skip"]').click()
     await page.waitForFunction(() => {
       const video = document.querySelector('video.video-surface') as HTMLVideoElement | null

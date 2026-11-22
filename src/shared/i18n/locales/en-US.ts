@@ -160,7 +160,10 @@
       trickplayLoading: 'Generating timeline preview…',
       trickplayUnavailable: 'No thumbnail preview available',
       structureSkipNames: { intro: 'intro black', outro: 'outro black', black: 'black section' },
-      skipStructureAt: (label: string, time: string) => `Skip ${label} · ${time}`
+      skipStructureAt: (label: string, time: string) => `Skip ${label} · ${time}`,
+      analyzeStructure: 'Scan black frames',
+      analyzingStructure: 'Scanning black frames…',
+      analyzeStructureHint: 'Detect intro, outro and black ranges. This decodes the whole file and can take a while.'
     },
     editing: {
       resetAllCandidateDetails: 'Reset all candidate details', resetAllCandidateDetailsConfirm: 'This resets candidate details for every project and closes the current candidate details. Continue?',

@@ -12,7 +12,7 @@ describe('structure analysis integration', () => {
     expect(ipc).toContain('blackdetect')
     expect(ipc).toContain('media-analysis')
     expect(ipc).toContain('sourceFingerprint')
-    expect(ipc).toContain('rename(temporaryPath, cachePath)')
+    expect(ipc).toContain('rename(temporaryPath, target.cachePath)')
     expect(desktop).toContain('registerStructureAnalysisIpc()')
     expect(preload).toContain('analyzeMediaStructure')
   })
@@ -43,6 +43,31 @@ describe('structure analysis integration', () => {
     expect(analysisHook).toContain("segment.kind === 'black'")
     expect(actionsHook).toContain('structureCorrectionsByFingerprint')
     expect(actionsHook).toContain('restorePlaybackStructureSegment')
+  })
+
+  it('never runs a whole-file black scan just from opening media', () => {
+    const analysisHook = readFileSync(join(projectRoot, 'src/renderer/src/app/use-playback-structure-analysis.ts'), 'utf8')
+    const controls = readFileSync(join(projectRoot, 'src/renderer/src/app/playback-controls.tsx'), 'utf8')
+    // Opening a file may only probe the cache; the full FFmpeg pass is user-triggered.
+    expect(analysisHook).toContain('cacheOnly: true')
+    expect(analysisHook).toContain('requestAnalysis')
+    expect(analysisHook).toContain('cancelMediaStructureAnalysis')
+    expect(analysisHook.indexOf('cacheOnly: true')).toBeLessThan(analysisHook.indexOf('const requestAnalysis'))
+    expect(controls).toContain('playback-structure-scan')
+    expect(controls).toContain('structureScan.onAnalyze')
+  })
+
+  it('bounds the analysis cost and lets the main process abort it', () => {
+    const ipc = readFileSync(join(projectRoot, 'src/desktop/ipc-structure-analysis.ts'), 'utf8')
+    const desktop = readFileSync(join(projectRoot, 'src/desktop/index.ts'), 'utf8')
+    const channels = readFileSync(join(projectRoot, 'src/shared/ipc-channels.ts'), 'utf8')
+    expect(ipc).toContain('STRUCTURE_ANALYSIS_DECODER_THREADS')
+    expect(ipc).toContain("'-threads'")
+    expect(ipc).toContain('AbortController')
+    expect(ipc).toContain('cancelAllStructureAnalyses')
+    expect(ipc).toContain('CANCEL_MEDIA_STRUCTURE_ANALYSIS')
+    expect(channels).toContain("'media:cancel-structure-analysis'")
+    expect(desktop).toContain('cancelAllStructureAnalyses()')
   })
 
   it('keeps a dedicated real-media smoke entry', () => {

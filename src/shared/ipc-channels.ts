@@ -14,6 +14,7 @@ export const IPC_CHANNELS = {
   DETECT_MEDIA_SCENES: 'media:detect-scenes',
   DETECT_MEDIA_SILENCE: 'media:detect-silence',
   ANALYZE_MEDIA_STRUCTURE: 'media:analyze-structure',
+  CANCEL_MEDIA_STRUCTURE_ANALYSIS: 'media:cancel-structure-analysis',
   READ_FILE_CONTENT: 'media:read-file-content',
   GET_FILE_REVISION: 'media:get-file-revision',
   EDITING_CAPTION_WATCH_START: 'editing:caption-watch-start',

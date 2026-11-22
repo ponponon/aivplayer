@@ -74,6 +74,7 @@ import type {
   MediaSceneDetectionResult,
   MediaSilenceDetectionRequest,
   MediaSilenceDetectionResult,
+  MediaStructureAnalysisCancelRequest,
   MediaStructureAnalysisRequest,
   MediaStructureAnalysisResult,
   MediaProbeMetadata,
@@ -258,6 +259,8 @@ const api = {
     ipcRenderer.invoke(IPC_CHANNELS.DETECT_MEDIA_SILENCE, request),
   analyzeMediaStructure: (request: MediaStructureAnalysisRequest): Promise<MediaStructureAnalysisResult> =>
     ipcRenderer.invoke(IPC_CHANNELS.ANALYZE_MEDIA_STRUCTURE, request),
+  cancelMediaStructureAnalysis: (request: MediaStructureAnalysisCancelRequest): Promise<void> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CANCEL_MEDIA_STRUCTURE_ANALYSIS, request),
   getAppVersion: (): Promise<string> => ipcRenderer.invoke(IPC_CHANNELS.GET_APP_VERSION),
   getAppUpdateState: (): Promise<AppUpdateState> => ipcRenderer.invoke(IPC_CHANNELS.APP_UPDATE_GET_STATE),
   checkForAppUpdate: (): Promise<AppUpdateState> => ipcRenderer.invoke(IPC_CHANNELS.APP_UPDATE_CHECK),

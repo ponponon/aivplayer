@@ -18,7 +18,7 @@ import { registerFilmstripIpc } from './ipc-filmstrip'
 import { registerWaveformIpc } from './ipc-waveform'
 import { registerSceneDetectionIpc } from './ipc-scene-detection'
 import { registerSilenceDetectionIpc } from './ipc-silence-detection'
-import { registerStructureAnalysisIpc } from './ipc-structure-analysis'
+import { cancelAllStructureAnalyses, registerStructureAnalysisIpc } from './ipc-structure-analysis'
 import { registerUtilityIpc } from './ipc-utility'
 import { registerWindowControlsIpc } from './ipc-window-controls'
 import { registerVisionIpc, resumeVisionSearchExports } from './ipc-vision'
@@ -141,4 +141,4 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
 
-app.on('before-quit', () => { stopAppUpdater(); stopEditingCaptionWatcher(); stopMediaImportInboxIpc(); void stopEditingAgentBridge(); void stopWebServer() })
+app.on('before-quit', () => { cancelAllStructureAnalyses(); stopAppUpdater(); stopEditingCaptionWatcher(); stopMediaImportInboxIpc(); void stopEditingAgentBridge(); void stopWebServer() })

@@ -293,7 +293,8 @@
   white-space: nowrap;
 }
 
-.round-button.structure-skip-button {
+.round-button.structure-skip-button,
+.round-button.structure-scan-button {
   display: inline-flex;
   width: auto;
   max-width: 220px;
@@ -304,17 +305,24 @@
   border-color: rgba(var(--accent-rgb), 0.28);
 }
 
-.round-button.structure-skip-button:hover {
+.round-button.structure-skip-button:hover,
+.round-button.structure-scan-button:hover:not(:disabled) {
   color: var(--accent-ink);
   background: var(--accent);
 }
 
-.round-button.structure-skip-button span {
+.round-button.structure-skip-button span,
+.round-button.structure-scan-button span {
   overflow: hidden;
   font-size: 10px;
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.round-button.structure-scan-button.is-running {
+  cursor: progress;
+  opacity: 0.72;
 }
 
 .volume {

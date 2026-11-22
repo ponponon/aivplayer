@@ -160,7 +160,10 @@
       trickplayLoading: '正在生成时间轴预览…',
       trickplayUnavailable: '暂无缩略图预览',
       structureSkipNames: { intro: '片头黑场', outro: '片尾黑场', black: '黑场' },
-      skipStructureAt: (label: string, time: string) => `跳过${label} · ${time}`
+      skipStructureAt: (label: string, time: string) => `跳过${label} · ${time}`,
+      analyzeStructure: '扫描黑场',
+      analyzingStructure: '扫描黑场中…',
+      analyzeStructureHint: '分析片头、片尾和黑场区间；需要完整解码整片，耗时较长'
     },
     editing: {
       resetAllCandidateDetails: '恢复所有候选详情默认', resetAllCandidateDetailsConfirm: '将恢复所有工程的候选详情默认状态，当前候选详情也会关闭。是否继续？',
