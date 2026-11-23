@@ -32,6 +32,7 @@
     "release:check-manifest": "node scripts/release-manifest.mjs --verify",
     "release:check-version": "node scripts/check-release-version.mjs",
     "release:check-platform": "node scripts/check-platform-release-artifacts.mjs",
+    "release:refresh-mac-dmg-checksum": "node scripts/refresh-mac-dmg-checksum.mjs",
     "release:check-formats": "node scripts/check-release-package-formats.mjs",
     "release:check-linux-icon": "node scripts/check-linux-package-icon.mjs",
     "release:check-evidence": "node scripts/check-platform-evidence.mjs",

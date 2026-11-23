@@ -1,3 +1,10 @@
+## 2026-11-23：签了 app 不等于签了 DMG，公证也有同一个盲区
+
+- 现象：macOS 侧的签名和公证一直只覆盖 `AIVPlayer.app`。`codesign --verify --deep`、`stapler validate`、`spctl --type execute` 三步全过，但用户下载下来的是 DMG 本身，它在别人的机器上第一次离线打开仍然可能被 Gatekeeper 判成 `no usable signature`。
+- 原因：`electron-builder` 的 `mac.notarize` 只公证 `.app`，DMG 是 `.app` 打包完成之后才生成的容器，天然不在那次公证的范围里；`dmg.sign` 默认不开，因为签名会改文件、默认路径只保证 app 能跑。于是分发链的最外层从来没有被签过，而所有校验脚本又只盯着 app，问题在 CI 里看不出来。
+- 经验：分发物的签名必须按“用户实际拿到的那一层”逐层验证：`.app` 用 `--type execute`，DMG 用 `--type open --context context:primary-signature`（用 `--type execute` 查 DMG 一定失败）；顺序固定为 先签容器 → 再公证容器 → 再 `stapler staple`。还有一个连带问题：`stapler staple` 会改变文件字节，打包阶段写进 `latest-mac.yml` 的 sha512/size 就此失效，必须重算，否则发布元数据和产物对不上——这类“后处理改文件”的步骤一定要回头修元数据。
+- 处理：`electron-builder.yml` 增加 `dmg.sign: true`；`build-macos` 新增 `Notarize macOS disk image` 步骤（submit → 轮询 `notarytool info` → `stapler staple` → `stapler validate`），失败日志走 `release/dmg-notarization-*.json|txt` 证据；新增 `scripts/refresh-mac-dmg-checksum.mjs` 在 staple 之后重写 `latest-mac.yml` 里 DMG 的 `sha512`/`size`（含 5 个单测），并在工作流测试里锁定 staple 早于重算、重算早于上传的顺序。
+
 ## 2026-11-23：外部进程必须有统一登记表，否则退出必留孤儿
 
 - 现象：同一个问题只修一条路径不够。修完黑场分析后，波形、静音检测、场景检测、浏览器转码、时间轴导出、ASR 仍然各自 `execFile`/`spawn`：软件一退出，子进程被 init 收养继续跑；`before-quit` 里的清理只认识结构分析那一个 `AbortController`，对这些进程完全无感。

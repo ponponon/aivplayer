@@ -160,6 +160,27 @@ describe('release workflow source constraints', () => {
     expect(macosFfmpegRuntime).toContain('maximum allowed is ${maxMinos}')
   })
 
+  it('signs, notarizes and staples the disk image users actually download', () => {
+    // electron-builder notarizes the .app only; the DMG is built afterwards, so
+    // without these steps a downloaded, offline first launch is blocked.
+    expect(electronBuilder).toMatch(/^dmg:\n(?: {2}#.*\n)* {2}sign: true$/m)
+    expect(macosWorkflow).toContain('name: Notarize macOS disk image')
+    expect(macosWorkflow).toContain('xcrun stapler staple "$dmg_path"')
+    expect(macosWorkflow).toContain('xcrun stapler validate "$dmg_path"')
+    expect(macosWorkflow).toContain('spctl --assess --type open --context context:primary-signature --verbose=4 "$dmg_path"')
+    expect(macosWorkflow).toContain('codesign --verify --verbose=2 "$dmg_path"')
+    expect(macosWorkflow).toContain('dmg-notarization-info.json')
+    expect(macosWorkflow).toContain('npm run release:refresh-mac-dmg-checksum -- --metadata release/latest-mac.yml --dmg "$dmg_path"')
+    expect(releaseWorkflow).toContain('release/latest*.yml')
+    // Stapling must happen before the checksum is refreshed, and the refresh
+    // must happen before the artifacts are uploaded.
+    expect(macosWorkflow.indexOf('xcrun stapler staple "$dmg_path"'))
+      .toBeLessThan(macosWorkflow.indexOf('npm run release:refresh-mac-dmg-checksum'))
+    expect(macosWorkflow.indexOf('name: Notarize macOS disk image'))
+      .toBeLessThan(macosWorkflow.indexOf('name: Verify macOS signature and notarization'))
+    expect(packageJson).toContain('"release:refresh-mac-dmg-checksum": "node scripts/refresh-mac-dmg-checksum.mjs"')
+  })
+
   it('builds macOS native runtimes with an explicit deployment target', () => {
     expect(releaseWorkflow).toContain("MACOSX_DEPLOYMENT_TARGET: '12.0'")
     expect(macosWorkflow).toContain('CSC_KEYCHAIN: signing_temp.keychain')

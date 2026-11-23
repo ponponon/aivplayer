@@ -284,6 +284,68 @@ jobs:
           test -n "$app_path"
           npx electron-builder --prepackaged "$app_path" --mac dmg zip --publish never -c.mac.notarize=false
 
+      - name: Notarize macOS disk image
+        shell: bash
+        run: |
+          set -euo pipefail
+          dmg_path="$(find release -maxdepth 1 -type f -name '*.dmg' -print -quit)"
+          test -n "$dmg_path"
+          submission_json="$RUNNER_TEMP/aivplayer-dmg-notary-submission.json"
+          notarytool() {
+            python3 -c 'import subprocess, sys; completed = subprocess.run(sys.argv[1:], capture_output=True, text=True, timeout=180); print(completed.stdout, end=""); print(completed.stderr, end="", file=sys.stderr); raise SystemExit(completed.returncode)' "$@"
+          }
+
+          # electron-builder's notarize only covers the .app; the DMG is a container
+          # built afterwards, so it needs its own submission and staple.
+          notarytool xcrun notarytool submit "$dmg_path" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --output-format json > "$submission_json"
+          submission_id="$(node -e 'const fs = require("node:fs"); const value = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); process.stdout.write(value.id ?? "");' "$submission_json")"
+          test -n "$submission_id"
+
+          final_info=""
+          notarization_attempts=120
+          for attempt in $(seq 1 "$notarization_attempts"); do
+            final_info="$(notarytool xcrun notarytool info "$submission_id" \
+              --apple-id "$APPLE_ID" \
+              --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+              --team-id "$APPLE_TEAM_ID" \
+              --output-format json)"
+            status="$(printf '%s' "$final_info" | node -e 'let input=""; process.stdin.on("data", chunk => input += chunk).on("end", () => { const value = JSON.parse(input); process.stdout.write(value.status ?? ""); });')"
+            echo "Apple DMG notarization status ($attempt/$notarization_attempts): $status"
+            case "$status" in
+              Accepted)
+                break
+                ;;
+              Invalid|Rejected)
+                notarytool xcrun notarytool log "$submission_id" \
+                  --apple-id "$APPLE_ID" \
+                  --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+                  --team-id "$APPLE_TEAM_ID" > release/dmg-notarization-log.txt || true
+                printf '%s\n' "$final_info" > release/dmg-notarization-info.json
+                exit 1
+                ;;
+              *)
+                if [[ "$attempt" == "$notarization_attempts" ]]; then
+                  printf '%s\n' "$final_info" > release/dmg-notarization-info.json
+                  echo "Apple DMG notarization did not finish within 60 minutes."
+                  exit 1
+                fi
+                sleep 30
+                ;;
+            esac
+          done
+
+          printf '%s\n' "$final_info" > release/dmg-notarization-info.json
+          xcrun stapler staple "$dmg_path"
+          xcrun stapler validate "$dmg_path"
+          # Stapling appends the ticket to the image, so the sha512/size that
+          # electron-builder recorded before notarization no longer matches the
+          # file users download.
+          npm run release:refresh-mac-dmg-checksum -- --metadata release/latest-mac.yml --dmg "$dmg_path"
+
       - name: Report package size
         run: npm run release:report-package-size -- --directory release --output release/package-size-report-macos.json
 
@@ -299,9 +361,16 @@ jobs:
         run: |
           app_path="$(find release -type d -path '*/AIVPlayer.app' -print -quit)"
           test -n "$app_path"
+          dmg_path="$(find release -maxdepth 1 -type f -name '*.dmg' -print -quit)"
+          test -n "$dmg_path"
           codesign --verify --deep --strict --verbose=2 "$app_path"
           xcrun stapler validate "$app_path"
           spctl --assess --type execute --verbose=4 "$app_path"
+          # The DMG is the artifact users actually download: it must carry its own
+          # signature and stapled ticket, otherwise an offline first launch is blocked.
+          codesign --verify --verbose=2 "$dmg_path"
+          xcrun stapler validate "$dmg_path"
+          spctl --assess --type open --context context:primary-signature --verbose=4 "$dmg_path"
 
       - name: Verify macOS release artifacts
         run: npm run release:check-platform -- --platform macos --artifacts-dir release --report-path release/platform-release-report-macos.json
@@ -319,6 +388,8 @@ jobs:
             release/package-size-report-macos.json
             release/notarization-info.json
             release/notarization-log.txt
+            release/dmg-notarization-info.json
+            release/dmg-notarization-log.txt
           if-no-files-found: ignore
 
       - name: Upload artifacts

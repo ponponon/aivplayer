@@ -138,6 +138,29 @@ macOS 的 `--dir` 目标不会自动生成 `app-update.yml`；因此必须把固
 
 验证方式：改完 Secrets 先跑一次 `verify_only` 的 Release workflow，确认 `build-macos` 的签名与公证通过，再正式发布。
 
+### 8. macOS 分发物的三层签名
+
+用户下载的是 DMG，不是 `.app`，所以 macOS 侧要签三个层次，缺一层都会在别人的机器上被 Gatekeeper 拦：
+
+1. **`.app` 本体**：`electron-builder` 用 `mac.identity` 签，`mac.notarize: true` 公证，然后由 `build-macos` 的 `Notarize macOS app` 步骤 `stapler staple` 到 app 上。
+2. **DMG 容器**：`electron-builder` 默认**不签** DMG。`electron-builder.yml` 里必须显式写 `dmg.sign: true`，否则下载下来的 DMG 被 `spctl` 判成 `no usable signature`。
+3. **DMG 公证**：`stapler staple` 只能盖已经公证过的对象。DMG 是 `.app` 打包完之后才生成的容器，electron-builder 的公证不会覆盖它，所以 `Notarize macOS disk image` 步骤单独提交一次 `notarytool submit`、轮询 `notarytool info`，再 `stapler staple` / `stapler validate`。
+
+顺序不可调换：**先签 DMG → 再公证 DMG → 再 staple**。`stapler staple` 会把 ticket 追加进磁盘映像，改变文件字节和长度，因此这一步之后必须执行 `npm run release:refresh-mac-dmg-checksum -- --metadata release/latest-mac.yml --dmg <dmg>`，把 `latest-mac.yml` 里那条 DMG 的 `sha512` / `size` 重新算一遍；否则发布清单元数据和实际产物不一致（Squirrel 只读 ZIP 那条，但下载页和校验脚本读的是 DMG 那条）。
+
+`Verify macOS signature and notarization` 步骤是验收关口，`.app` 和 DMG 各查一遍：
+
+    codesign --verify --deep --strict --verbose=2 "$app_path"
+    xcrun stapler validate "$app_path"
+    spctl --assess --type execute --verbose=4 "$app_path"
+    codesign --verify --verbose=2 "$dmg_path"
+    xcrun stapler validate "$dmg_path"
+    spctl --assess --type open --context context:primary-signature --verbose=4 "$dmg_path"
+
+注意 DMG 的 `spctl` 必须带 `--type open --context context:primary-signature`：它评估的是"能不能挂载"，用 `--type execute` 查 DMG 一定失败。
+
+公证失败时，`release/dmg-notarization-info.json` 和 `release/dmg-notarization-log.txt` 会作为 `release-evidence-macos` 证据上传，直接看 log 里的 `issues` 字段，不要靠猜。
+
 ## 三、提交、检查并触发正式发布
 
 ### 1. 提交版本变更

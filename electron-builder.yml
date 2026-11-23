@@ -408,6 +408,12 @@ mac:
   hardenedRuntime: true
   notarize: true
   forceCodeSigning: true
+dmg:
+  # electron-builder 默认不签 DMG；未签名的 DMG 会被 Gatekeeper 判成
+  # "no usable signature"，而用户下载的正是 DMG 本身。
+  # 签名之后还必须单独公证并 staple：electron-builder 的 notarize 只覆盖
+  # .app，DMG 是之后才打的容器（见 release.yml 的 DMG 公证步骤）。
+  sign: true
 pkg:
   installLocation: /Applications
   allowCurrentUserHome: false
