@@ -17,6 +17,7 @@ const releaseDryRun = readFileSync(join(projectRoot, 'scripts/release-dry-run.mj
 const macosFfmpegRuntime = readFileSync(join(projectRoot, 'scripts/check-macos-ffmpeg-runtime.ts'), 'utf8')
 const buildWhisperMacos = readFileSync(join(projectRoot, 'scripts/build-whisper-macos.ts'), 'utf8')
 const buildHeifSource = readFileSync(join(projectRoot, 'scripts/build-heif-source.ts'), 'utf8')
+const setSecretsScript = readFileSync(join(projectRoot, 'scripts/set-macos-signing-secrets.sh'), 'utf8')
 
 describe('release workflow source constraints', () => {
   it('uses ZIP payloads for the Windows NSIS installer without differential packaging', () => {
@@ -179,6 +180,29 @@ describe('release workflow source constraints', () => {
     expect(macosWorkflow.indexOf('name: Notarize macOS disk image'))
       .toBeLessThan(macosWorkflow.indexOf('name: Verify macOS signature and notarization'))
     expect(packageJson).toContain('"release:refresh-mac-dmg-checksum": "node scripts/refresh-mac-dmg-checksum.mjs"')
+  })
+
+  it('notarizes with an App Store Connect API Key instead of an Apple ID password', () => {
+    expect(macosWorkflow).toContain('APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}')
+    expect(macosWorkflow).toContain('APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}')
+    expect(macosWorkflow).toContain('APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}')
+    // An API key is not bound to a person and survives password rotation, so the
+    // Apple ID + app-specific-password pair must not come back.
+    expect(releaseWorkflow).not.toContain('APPLE_APP_SPECIFIC_PASSWORD')
+    expect(releaseWorkflow).not.toContain('APPLE_TEAM_ID')
+    expect(releaseWorkflow).not.toContain('--apple-id')
+    expect(releaseWorkflow).toContain('--key "$api_key_path"')
+    expect(releaseWorkflow).toContain('--key-id "$APPLE_API_KEY_ID"')
+    expect(releaseWorkflow).toContain('--issuer "$APPLE_API_ISSUER"')
+    expect(releaseWorkflow).toContain('trap \'rm -f "$api_key_path"\' EXIT')
+    // APPLE_API_KEY holds key *content*, but electron-builder reads it as a path,
+    // so every macOS packaging invocation must turn electron-builder's own
+    // notarization off and leave it to the notarytool steps above.
+    const macosBuilderRuns = macosWorkflow.match(/run: [^\n]*npx electron-builder[^\n]*/g) ?? []
+    expect(macosBuilderRuns.length).toBeGreaterThan(0)
+    for (const line of macosBuilderRuns) expect(line).toContain('-c.mac.notarize=false')
+    expect(setSecretsScript).toContain('gh secret set APPLE_API_KEY --repo "$repo" < "$p8_path"')
+    expect(setSecretsScript).toContain('openssl pkey -in "$p8_path" -noout')
   })
 
   it('builds macOS native runtimes with an explicit deployment target', () => {

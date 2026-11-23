@@ -110,13 +110,17 @@ macOS 发布需要在 GitHub Actions Secrets 中配置以下变量：
 
 - `MACOS_CSC_LINK`：`.p12` 文件的 Base64 内容；
 - `MACOS_CSC_KEY_PASSWORD`：导出 `.p12` 时设置的密码；
-- `APPLE_ID`：用于公证的 Apple 账号邮箱；
-- `APPLE_APP_SPECIFIC_PASSWORD`：该 Apple 账号生成的 App 专用密码；
-- `APPLE_TEAM_ID`：Apple Developer Team ID。
+- `APPLE_API_KEY`：App Store Connect API Key 的 `.p8` **正文**（不是路径）；
+- `APPLE_API_KEY_ID`：该 Key 的 10 位 ID；
+- `APPLE_API_ISSUER`：该 Key 的 Issuer ID（UUID）。
 
-工作流会把 `.p12` 导入临时钥匙串 `signing_temp`，设置 `codesign` 的访问权限，并在任务结束时清理。不要把 `.p12`、私钥、导出密码或 App 专用密码写入仓库文件、workflow 明文或 Release 资产。
+公证用 **App Store Connect API Key**，不走 Apple ID + App 专用密码：API Key 不绑定个人账号、可单独吊销，也不会因为改 Apple ID 密码而失效，更适合 CI 长期使用。证书与 API Key 必须属于同一个团队，否则签名会过、公证一定失败。
 
-这 5 个值用 `scripts/set-macos-signing-secrets.sh --p12 <证书.p12>` 写入：脚本从证书的 OU 字段读出 Team ID 并校验证书类型必须是 `Developer ID Application`，所有密码用 `read -s` 读取、通过 stdin 交给 `gh secret set`，不打印、不进 shell history、不落在命令行参数里。手工设置时也必须遵循同样的约束（`gh secret set NAME < 文件`，不要用 `--body`）。
+`APPLE_API_KEY` 装的是 `.p8` 的文件内容，而 `electron-builder` 会把这个环境变量当成**文件路径**去打开，因此所有打包命令都必须显式带 `-c.mac.notarize=false`，由工作流自己跑 `notarytool`；不能只改环境变量不改打包参数。
+
+工作流会把 `.p12` 导入临时钥匙串 `signing_temp`，设置 `codesign` 的访问权限，并在任务结束时清理。`.p8` 落在 `$RUNNER_TEMP`，步骤结束时 `trap` 删除。不要把 `.p12`、`.p8`、私钥、导出密码或 Issuer ID 写入仓库文件、workflow 明文或 Release 资产。
+
+这 5 个值用 `scripts/set-macos-signing-secrets.sh --p12 <证书.p12> --p8 <AuthKey_XXXX.p8>` 写入：脚本校验证书类型必须是 `Developer ID Application`、校验 `.p8` 是有效私钥，并从文件名推断 Key ID；所有密码用 `read -s` 读取、通过 stdin 交给 `gh secret set`，不打印、不进 shell history、不落在命令行参数里。手工设置时也必须遵循同样的约束（`gh secret set NAME < 文件`，不要用 `--body`）。
 
 判断证书类型：`security find-identity -v -p codesigning` 列出本机全部身份。`Apple Development: xxx (TEAMID)` 只能在本机调试，**不能分发、不能公证**；分发必须 `Developer ID Application: xxx (TEAMID)`。同一台机器同时存在两种身份时，凭据和证书必须来自同一个团队，否则签名会过、公证一定失败。
 
@@ -131,9 +135,9 @@ macOS 的 `--dir` 目标不会自动生成 `app-update.yml`；因此必须把固
 迁移到新的 Apple Developer 团队时，仓库代码不需要改动：`electron-builder.yml` 的 `mac` 段不写死 `identity`，验签步骤只用 `codesign --verify` / `stapler` / `spctl`，不比对团队。只需要替换 5 个 Secrets：
 
 - `MACOS_CSC_LINK` / `MACOS_CSC_KEY_PASSWORD`：新团队的 **Developer ID Application** 证书（含私钥导出的 `.p12`）及其导出密码；
-- `APPLE_ID` / `APPLE_APP_SPECIFIC_PASSWORD` / `APPLE_TEAM_ID`：新账号邮箱、App 专用密码、10 位 Team ID。
+- `APPLE_API_KEY` / `APPLE_API_KEY_ID` / `APPLE_API_ISSUER`：新团队在 App Store Connect → Integrations 生成的 API Key（`.p8` 正文）、Key ID、Issuer ID。`.p8` 只能下载一次，丢失只能吊销重建。
 
-`appId` / bundle identifier 必须保持 `cn.quniv.aivplayer` 不变，否则用户数据目录和更新渠道都会断。新团队在 App Store Connect 的协议必须已经签署，否则公证会返回 `403 A required agreement is missing or has expired`，与证书无关。
+`appId` / bundle identifier 必须保持 `cn.quniv.aivplayer` 不变，否则用户数据目录和更新渠道都会断。新团队在 App Store Connect 的协议必须已经签署，否则公证会返回 `403 A required agreement is missing or has expired`，与证书无关——这个报错通常意味着当前 Secrets 还挂着某个协议过期的旧团队。
 
 更换签名身份有两个必须提前告知用户的后果：
 
@@ -146,7 +150,7 @@ macOS 的 `--dir` 目标不会自动生成 `app-update.yml`；因此必须把固
 
 用户下载的是 DMG，不是 `.app`，所以 macOS 侧要签三个层次，缺一层都会在别人的机器上被 Gatekeeper 拦：
 
-1. **`.app` 本体**：`electron-builder` 用 `mac.identity` 签，`mac.notarize: true` 公证，然后由 `build-macos` 的 `Notarize macOS app` 步骤 `stapler staple` 到 app 上。
+1. **`.app` 本体**：`electron-builder` 用 `mac.identity` 签名（打包必须带 `-c.mac.notarize=false`，见第 6 节的环境变量说明），公证由 `build-macos` 的 `Notarize macOS app` 步骤用 `notarytool` 提交并 `stapler staple` 到 app 上。
 2. **DMG 容器**：`electron-builder` 默认**不签** DMG。`electron-builder.yml` 里必须显式写 `dmg.sign: true`，否则下载下来的 DMG 被 `spctl` 判成 `no usable signature`。
 3. **DMG 公证**：`stapler staple` 只能盖已经公证过的对象。DMG 是 `.app` 打包完之后才生成的容器，electron-builder 的公证不会覆盖它，所以 `Notarize macOS disk image` 步骤单独提交一次 `notarytool submit`、轮询 `notarytool info`，再 `stapler staple` / `stapler validate`。
 

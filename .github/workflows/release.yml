@@ -65,9 +65,12 @@ jobs:
       electron_config_cache: ${{ github.workspace }}/.cache/electron
       ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.cache/electron-builder
       CSC_KEYCHAIN: signing_temp.keychain
-      APPLE_ID: ${{ secrets.APPLE_ID }}
-      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      # 公证走 App Store Connect API Key。注意这三个值只在下面的 notarytool 步骤里
+      # 使用：APPLE_API_KEY 存的是 .p8 的正文，不是路径，所以 electron-builder
+      # 必须以 -c.mac.notarize=false 运行，否则它会把这个值当成路径去打开。
+      APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+      APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+      APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
     steps:
       - uses: actions/checkout@v7
 
@@ -226,6 +229,15 @@ jobs:
           submission_json="$RUNNER_TEMP/aivplayer-notary-submission.json"
           ditto -c -k --sequesterRsrc --keepParent "$app_path" "$notarization_archive"
 
+          # notarytool 只接受 .p8 的文件路径，所以先把 Secret 落到 runner 临时目录。
+          : "${APPLE_API_KEY:?APPLE_API_KEY secret is missing}"
+          : "${APPLE_API_KEY_ID:?APPLE_API_KEY_ID secret is missing}"
+          : "${APPLE_API_ISSUER:?APPLE_API_ISSUER secret is missing}"
+          api_key_path="$RUNNER_TEMP/AuthKey_${APPLE_API_KEY_ID}.p8"
+          printf '%s\n' "$APPLE_API_KEY" > "$api_key_path"
+          chmod 600 "$api_key_path"
+          trap 'rm -f "$api_key_path"' EXIT
+
           # Keep each notarytool request bounded and poll explicitly so an Apple
           # service/network stall is visible instead of hiding inside electron-builder.
           notarytool() {
@@ -233,9 +245,9 @@ jobs:
           }
 
           notarytool xcrun notarytool submit "$notarization_archive" \
-            --apple-id "$APPLE_ID" \
-            --password "$APPLE_APP_SPECIFIC_PASSWORD" \
-            --team-id "$APPLE_TEAM_ID" \
+            --key "$api_key_path" \
+            --key-id "$APPLE_API_KEY_ID" \
+            --issuer "$APPLE_API_ISSUER" \
             --output-format json > "$submission_json"
           submission_id="$(node -e 'const fs = require("node:fs"); const value = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); process.stdout.write(value.id ?? "");' "$submission_json")"
           test -n "$submission_id"
@@ -244,9 +256,9 @@ jobs:
           notarization_attempts=120
           for attempt in $(seq 1 "$notarization_attempts"); do
             final_info="$(notarytool xcrun notarytool info "$submission_id" \
-              --apple-id "$APPLE_ID" \
-              --password "$APPLE_APP_SPECIFIC_PASSWORD" \
-              --team-id "$APPLE_TEAM_ID" \
+              --key "$api_key_path" \
+              --key-id "$APPLE_API_KEY_ID" \
+              --issuer "$APPLE_API_ISSUER" \
               --output-format json)"
             status="$(printf '%s' "$final_info" | node -e 'let input=""; process.stdin.on("data", chunk => input += chunk).on("end", () => { const value = JSON.parse(input); process.stdout.write(value.status ?? ""); });')"
             echo "Apple notarization status ($attempt/$notarization_attempts): $status"
@@ -256,9 +268,9 @@ jobs:
                 ;;
               Invalid|Rejected)
                 notarytool xcrun notarytool log "$submission_id" \
-                  --apple-id "$APPLE_ID" \
-                  --password "$APPLE_APP_SPECIFIC_PASSWORD" \
-                  --team-id "$APPLE_TEAM_ID" > release/notarization-log.txt || true
+                  --key "$api_key_path" \
+                  --key-id "$APPLE_API_KEY_ID" \
+                  --issuer "$APPLE_API_ISSUER" > release/notarization-log.txt || true
                 printf '%s\n' "$final_info" > release/notarization-info.json
                 exit 1
                 ;;
@@ -291,6 +303,14 @@ jobs:
           dmg_path="$(find release -maxdepth 1 -type f -name '*.dmg' -print -quit)"
           test -n "$dmg_path"
           submission_json="$RUNNER_TEMP/aivplayer-dmg-notary-submission.json"
+
+          : "${APPLE_API_KEY:?APPLE_API_KEY secret is missing}"
+          : "${APPLE_API_KEY_ID:?APPLE_API_KEY_ID secret is missing}"
+          : "${APPLE_API_ISSUER:?APPLE_API_ISSUER secret is missing}"
+          api_key_path="$RUNNER_TEMP/AuthKey_${APPLE_API_KEY_ID}.p8"
+          printf '%s\n' "$APPLE_API_KEY" > "$api_key_path"
+          chmod 600 "$api_key_path"
+          trap 'rm -f "$api_key_path"' EXIT
           notarytool() {
             python3 -c 'import subprocess, sys; completed = subprocess.run(sys.argv[1:], capture_output=True, text=True, timeout=180); print(completed.stdout, end=""); print(completed.stderr, end="", file=sys.stderr); raise SystemExit(completed.returncode)' "$@"
           }
@@ -298,9 +318,9 @@ jobs:
           # electron-builder's notarize only covers the .app; the DMG is a container
           # built afterwards, so it needs its own submission and staple.
           notarytool xcrun notarytool submit "$dmg_path" \
-            --apple-id "$APPLE_ID" \
-            --password "$APPLE_APP_SPECIFIC_PASSWORD" \
-            --team-id "$APPLE_TEAM_ID" \
+            --key "$api_key_path" \
+            --key-id "$APPLE_API_KEY_ID" \
+            --issuer "$APPLE_API_ISSUER" \
             --output-format json > "$submission_json"
           submission_id="$(node -e 'const fs = require("node:fs"); const value = JSON.parse(fs.readFileSync(process.argv[1], "utf8")); process.stdout.write(value.id ?? "");' "$submission_json")"
           test -n "$submission_id"
@@ -309,9 +329,9 @@ jobs:
           notarization_attempts=120
           for attempt in $(seq 1 "$notarization_attempts"); do
             final_info="$(notarytool xcrun notarytool info "$submission_id" \
-              --apple-id "$APPLE_ID" \
-              --password "$APPLE_APP_SPECIFIC_PASSWORD" \
-              --team-id "$APPLE_TEAM_ID" \
+              --key "$api_key_path" \
+              --key-id "$APPLE_API_KEY_ID" \
+              --issuer "$APPLE_API_ISSUER" \
               --output-format json)"
             status="$(printf '%s' "$final_info" | node -e 'let input=""; process.stdin.on("data", chunk => input += chunk).on("end", () => { const value = JSON.parse(input); process.stdout.write(value.status ?? ""); });')"
             echo "Apple DMG notarization status ($attempt/$notarization_attempts): $status"
@@ -321,9 +341,9 @@ jobs:
                 ;;
               Invalid|Rejected)
                 notarytool xcrun notarytool log "$submission_id" \
-                  --apple-id "$APPLE_ID" \
-                  --password "$APPLE_APP_SPECIFIC_PASSWORD" \
-                  --team-id "$APPLE_TEAM_ID" > release/dmg-notarization-log.txt || true
+                  --key "$api_key_path" \
+                  --key-id "$APPLE_API_KEY_ID" \
+                  --issuer "$APPLE_API_ISSUER" > release/dmg-notarization-log.txt || true
                 printf '%s\n' "$final_info" > release/dmg-notarization-info.json
                 exit 1
                 ;;
