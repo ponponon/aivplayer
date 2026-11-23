@@ -131,6 +131,12 @@ python3 scripts/upload-r2-multipart.py --file <本地文件> --bucket aivplayer-
 
 ---
 
+## 平台既有决策（已经定过，不要再问也不要"顺手优化"）
+
+- **Linux 不开启 GPU 加速是刻意的**：Chromium 的 GPU 合成在 Wayland 下会花屏 / 黑屏 / 整窗闪烁，而且 Electron 在 Linux 默认不走 VAAPI 硬解，打开只是拿稳定性换有限的界面合成收益。Linux 上播放 CPU 高，正确解法是限制后台 FFmpeg 的线程数与范围，不是打开这个开关。详见 `src/core/gpu-settings.ts` 的文件头注释与 FEATURE.md「视频设置」条目。
+
+---
+
 如果要发布新的版本，注意阅读 docs/RELEASE.md 的要求
 
 
