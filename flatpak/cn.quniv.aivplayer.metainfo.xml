@@ -28,6 +28,11 @@
   <url type="bugtracker">https://github.com/ponponon/aivplayer/issues</url>
   <url type="vcs-browser">https://github.com/ponponon/aivplayer</url>
   <releases>
+    <release version="0.6.13" date="2026-11-23">
+      <description>
+        <p>Playback no longer decodes whole videos in the background, background tools stop when the app quits, and thumbnail extraction uses less CPU.</p>
+      </description>
+    </release>
     <release version="0.6.12" date="2026-10-14">
       <description>
         <p>Fixes AIVPlayer missing from GNOME's default video player list.</p>
