@@ -122,6 +122,22 @@ macOS 的 `--dir` 目标不会自动生成 `app-update.yml`；因此必须把固
 
 同一个 macOS 资源门禁还会递归检查 `Contents/Resources/heif`、`ffmpeg` 和 `whisper.cpp` 下的 native runtime 文件是否具备所有者写权限。可执行文件保持 `0755`，动态库和 sidecar 至少为 `0644`；否则 ShipIt 清理 quarantine 属性时可能以 `Permission denied (Code 13)` 放弃更新。
 
+### 7. 更换 Apple 签名团队
+
+迁移到新的 Apple Developer 团队时，仓库代码不需要改动：`electron-builder.yml` 的 `mac` 段不写死 `identity`，验签步骤只用 `codesign --verify` / `stapler` / `spctl`，不比对团队。只需要替换 5 个 Secrets：
+
+- `MACOS_CSC_LINK` / `MACOS_CSC_KEY_PASSWORD`：新团队的 **Developer ID Application** 证书（含私钥导出的 `.p12`）及其导出密码；
+- `APPLE_ID` / `APPLE_APP_SPECIFIC_PASSWORD` / `APPLE_TEAM_ID`：新账号邮箱、App 专用密码、10 位 Team ID。
+
+`appId` / bundle identifier 必须保持 `cn.quniv.aivplayer` 不变，否则用户数据目录和更新渠道都会断。新团队在 App Store Connect 的协议必须已经签署，否则公证会返回 `403 A required agreement is missing or has expired`，与证书无关。
+
+更换签名身份有两个必须提前告知用户的后果：
+
+1. **macOS 自动更新跨不过签名身份**：Squirrel.Mac 用当前运行 app 的 designated requirement（含 Team ID）校验更新包，旧签名版本拿到新签名 zip 会被拒绝，只能手动下载 DMG 覆盖安装一次；发布说明必须写明。
+2. **`safeStorage` 里保存的密钥会解不出来**：Keychain ACL 绑定签名身份，切换后 `decodeSecretValue` 返回 null，用户需要在设置里重新填写 API Key（代码已降级处理，不会崩溃）。
+
+验证方式：改完 Secrets 先跑一次 `verify_only` 的 Release workflow，确认 `build-macos` 的签名与公证通过，再正式发布。
+
 ## 三、提交、检查并触发正式发布
 
 ### 1. 提交版本变更
