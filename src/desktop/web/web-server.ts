@@ -1310,7 +1310,7 @@ export class WebServer {
     if (!ffmpegPath) return null
     try {
       const result = await execFileBuffer(ffmpegPath, [
-        '-hide_banner', '-loglevel', 'error', '-ss', '1', '-i', sourcePath,
+        '-hide_banner', '-loglevel', 'error', '-ss', '1', '-threads', '1', '-i', sourcePath,
         '-frames:v', '1', '-vf', 'scale=320:-2', '-q:v', '6', '-f', 'image2pipe', '-vcodec', 'mjpeg', 'pipe:1'
       ], { label: 'web-thumbnail', role: 'preview' }, { maxBuffer: THUMBNAIL_MAX_BUFFER_BYTES, timeout: 15_000 })
       const thumbnail = result.stdout

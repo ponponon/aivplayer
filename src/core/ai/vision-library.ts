@@ -318,6 +318,7 @@ async function extractJpegFrame(ffmpegPath: string, videoPath: string, timestamp
     '-hide_banner',
     '-loglevel', 'error',
     '-ss', timestampSeconds.toFixed(3),
+    '-threads', '1',
     '-i', videoPath,
     '-frames:v', '1',
     '-f', 'image2pipe',

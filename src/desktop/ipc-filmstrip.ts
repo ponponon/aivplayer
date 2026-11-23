@@ -9,6 +9,10 @@ import { resolveResourcePath } from './desktop-services'
 
 const MAX_FILMSTRIP_FRAMES = 32
 const DEFAULT_FILMSTRIP_WIDTH = 320
+// One 240px poster frame never needs the whole machine: FFmpeg's default is one
+// decoder thread per core, which turns each trickplay seek into a full-width CPU
+// spike right when playback starts. Single-threaded decode is a few ms slower.
+const FILMSTRIP_DECODER_THREADS = 1
 
 function normalizeRequest(request: MediaFilmstripRequest): { mediaPath: string; timestampsSeconds: number[]; width: number; quality: number } | null {
   if (!request || typeof request.mediaPath !== 'string' || !request.mediaPath.trim() || !Array.isArray(request.timestampsSeconds)) return null
@@ -21,7 +25,7 @@ function normalizeRequest(request: MediaFilmstripRequest): { mediaPath: string; 
 
 async function extractFrame(ffmpegPath: string, request: { mediaPath: string; timestampSeconds: number; width: number; quality: number }): Promise<Buffer | null> {
   try {
-    const { stdout } = await execFileBuffer(ffmpegPath, ['-hide_banner', '-loglevel', 'error', '-ss', String(request.timestampSeconds), '-i', request.mediaPath, '-frames:v', '1', '-vf', `scale=${request.width}:-2`, '-q:v', String(request.quality), '-f', 'image2pipe', '-vcodec', 'mjpeg', 'pipe:1'], { label: 'filmstrip', role: 'preview' }, { maxBuffer: 4 * 1024 * 1024 })
+    const { stdout } = await execFileBuffer(ffmpegPath, ['-hide_banner', '-loglevel', 'error', '-ss', String(request.timestampSeconds), '-threads', String(FILMSTRIP_DECODER_THREADS), '-i', request.mediaPath, '-frames:v', '1', '-vf', `scale=${request.width}:-2`, '-q:v', String(request.quality), '-f', 'image2pipe', '-vcodec', 'mjpeg', 'pipe:1'], { label: 'filmstrip', role: 'preview' }, { maxBuffer: 4 * 1024 * 1024 })
     return stdout.length > 0 ? stdout : null
   } catch {
     return null
