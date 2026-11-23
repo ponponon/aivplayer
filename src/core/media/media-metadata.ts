@@ -1,7 +1,6 @@
 import { existsSync } from 'node:fs'
 import { stat } from 'node:fs/promises'
-import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
+import { execFileText } from '../child-process-registry'
 import { resolveFfprobePath, resolveFfmpegPath } from '../ai/whisper-cpp-runtime'
 import type {
   MediaAudioMetadata,
@@ -12,7 +11,6 @@ import type {
   MediaVideoMetadata
 } from '../../shared/media-types'
 
-const execFileAsync = promisify(execFile)
 const FFPROBE_TIMEOUT_MS = 6000
 const FFPROBE_MAX_BUFFER_BYTES = 2 * 1024 * 1024
 const FFMPEG_TIMEOUT_MS = 6000
@@ -394,13 +392,13 @@ async function readProbeOutput(
   maxBufferBytes: number
 ): Promise<string> {
   try {
-    const result = await execFileAsync(binaryPath, args, {
+    const result = await execFileText(binaryPath, args, { label: 'media-probe', role: 'probe' }, {
       timeout: timeoutMs,
       maxBuffer: maxBufferBytes,
       windowsHide: true
     })
 
-    return outputChannel === 'stdout' ? String(result.stdout ?? '') : String(result.stderr ?? '')
+    return outputChannel === 'stdout' ? result.stdout : result.stderr
   } catch (error) {
     if (error && typeof error === 'object' && outputChannel in error) {
       return String((error as { stdout?: unknown; stderr?: unknown })[outputChannel] ?? '')

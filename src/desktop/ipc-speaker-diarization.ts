@@ -1,10 +1,9 @@
-import { execFile } from 'node:child_process'
 import { mkdtemp, rm, stat } from 'node:fs/promises'
 import { basename, join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { promisify } from 'node:util'
 import { app, ipcMain } from 'electron'
 import { buildFfmpegAudioExtractArgs } from '../core/ai/asr-subtitle-job'
+import { execFileText } from '../core/child-process-registry'
 import { createSpeakerDiarizationEvidence } from '../core/ai/speaker-diarization-evidence'
 import { getSpeakerDiarizationModelStatus } from '../core/ai/speaker-diarization-model'
 import { SpeakerDiarizationRuntime } from '../core/ai/speaker-diarization-runtime'
@@ -16,7 +15,6 @@ import type { SpeakerDiarizationEvidenceBatchClearRequest, SpeakerDiarizationEvi
 import { getSpeakerDiarizationCatalogStore, getVisionLibrary, resolveResourcePath } from './desktop-services'
 import { desktopState } from './desktop-state'
 
-const execFileAsync = promisify(execFile)
 const runPromises = new Map<string, Promise<SpeakerDiarizationRunResult>>()
 const MAX_SPEAKER_EVIDENCE_BATCH = 500
 
@@ -82,7 +80,7 @@ export function registerSpeakerDiarizationIpc(): void {
         if (!status.available) return { success: false, message: status.message, status, result: emptyResult(), evidencePersisted: false, evidenceCount: 0 }
         const ffmpegPath = await resolveFfmpegPath(resolveResourcePath(), process.env, undefined)
         if (!ffmpegPath) return { success: false, message: '找不到 FFmpeg，无法执行说话人分段', status, result: emptyResult(), evidencePersisted: false, evidenceCount: 0 }
-        await execFileAsync(ffmpegPath, buildFfmpegAudioExtractArgs(normalized.mediaPath, audioPath), { maxBuffer: 4 * 1024 * 1024 })
+        await execFileText(ffmpegPath, buildFfmpegAudioExtractArgs(normalized.mediaPath, audioPath), { label: 'diarization-audio', role: 'analysis' }, { maxBuffer: 4 * 1024 * 1024 })
         const runtime = new SpeakerDiarizationRuntime({ userDataPath: app.getPath('userData'), modelDirectory: desktopState.currentAppSettings.vision.speakerModelDirectory })
         await runtime.prepare()
         const result = await runtime.diarizeWaveFile(audioPath, normalized)

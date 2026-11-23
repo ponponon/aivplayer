@@ -1,15 +1,12 @@
-import { app } from 'electron'
-import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
-import { ipcMain } from 'electron'
+import { app, ipcMain } from 'electron'
 import { join } from 'node:path'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type { MediaFilmstripRequest, MediaFilmstripResult } from '../shared/media-types'
+import { execFileBuffer } from '../core/child-process-registry'
 import { resolveFilmstripCache } from '../core/media/filmstrip-cache'
 import { resolveFfmpegPath } from '../core/ai/whisper-cpp-runtime'
 import { resolveResourcePath } from './desktop-services'
 
-const execFileAsync = promisify(execFile)
 const MAX_FILMSTRIP_FRAMES = 32
 const DEFAULT_FILMSTRIP_WIDTH = 320
 
@@ -24,9 +21,8 @@ function normalizeRequest(request: MediaFilmstripRequest): { mediaPath: string; 
 
 async function extractFrame(ffmpegPath: string, request: { mediaPath: string; timestampSeconds: number; width: number; quality: number }): Promise<Buffer | null> {
   try {
-    const { stdout } = await execFileAsync(ffmpegPath, ['-hide_banner', '-loglevel', 'error', '-ss', String(request.timestampSeconds), '-i', request.mediaPath, '-frames:v', '1', '-vf', `scale=${request.width}:-2`, '-q:v', String(request.quality), '-f', 'image2pipe', '-vcodec', 'mjpeg', 'pipe:1'], { encoding: 'buffer', maxBuffer: 4 * 1024 * 1024 })
-    const buffer = Buffer.isBuffer(stdout) ? stdout : Buffer.from(stdout)
-    return buffer.length > 0 ? buffer : null
+    const { stdout } = await execFileBuffer(ffmpegPath, ['-hide_banner', '-loglevel', 'error', '-ss', String(request.timestampSeconds), '-i', request.mediaPath, '-frames:v', '1', '-vf', `scale=${request.width}:-2`, '-q:v', String(request.quality), '-f', 'image2pipe', '-vcodec', 'mjpeg', 'pipe:1'], { label: 'filmstrip', role: 'preview' }, { maxBuffer: 4 * 1024 * 1024 })
+    return stdout.length > 0 ? stdout : null
   } catch {
     return null
   }

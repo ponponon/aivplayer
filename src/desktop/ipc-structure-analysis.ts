@@ -2,15 +2,13 @@ import { app, ipcMain } from 'electron'
 import { createHash } from 'node:crypto'
 import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
+import { execFileText } from '../core/child-process-registry'
 import { buildMediaStructureSegments, DEFAULT_BLACK_PIXEL_THRESHOLD, DEFAULT_MIN_BLACK_DURATION_SECONDS, parseBlackIntervals } from '../core/media/structure-analysis'
 import { resolveFfmpegPath } from '../core/ai/whisper-cpp-runtime'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type { MediaStructureAnalysisRequest, MediaStructureAnalysisResult } from '../shared/media-types'
 import { resolveResourcePath } from './desktop-services'
 
-const execFileAsync = promisify(execFile)
 const analysisQueues = new Map<string, Promise<MediaStructureAnalysisResult>>()
 // Full-file blackdetect decodes every frame. Capping decoder threads keeps a
 // user-triggered analysis from saturating the machine while playback continues.
@@ -81,7 +79,7 @@ async function analyzeUnqueued(request: NormalizedRequest): Promise<MediaStructu
   const controller = new AbortController()
   activeAnalyses.set(request.mediaPath, controller)
   try {
-    const { stdout, stderr } = await execFileAsync(ffmpegPath, ['-hide_banner', '-loglevel', 'info', '-threads', String(STRUCTURE_ANALYSIS_DECODER_THREADS), '-i', request.mediaPath, '-vf', filter, '-an', '-f', 'null', '-'], { encoding: 'utf8', maxBuffer: 12 * 1024 * 1024, signal: controller.signal })
+    const { stdout, stderr } = await execFileText(ffmpegPath, ['-hide_banner', '-loglevel', 'info', '-threads', String(STRUCTURE_ANALYSIS_DECODER_THREADS), '-i', request.mediaPath, '-vf', filter, '-an', '-f', 'null', '-'], { label: 'structure-blackdetect', role: 'analysis' }, { maxBuffer: 12 * 1024 * 1024, signal: controller.signal })
     if (controller.signal.aborted) return { success: false, message: STRUCTURE_ANALYSIS_CANCELLED_MESSAGE, cacheHit: false, cacheKey: target.cacheKey, segments: [] }
     const intervals = parseBlackIntervals(`${stdout}\n${stderr}`, request.durationSeconds, request.minBlackDurationSeconds)
     const segments = buildMediaStructureSegments(intervals, request.durationSeconds)

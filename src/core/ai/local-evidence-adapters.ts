@@ -1,12 +1,10 @@
-import { execFile } from 'node:child_process'
 import { mkdtemp, mkdir, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { promisify } from 'node:util'
+import { execFileText } from '../child-process-registry'
 import type { MediaEvidenceCapabilities, MediaEvidenceEngineCapability, TtsAudioArtifact, OcrEvidenceArtifact } from '../../shared/evidence-task-types'
 import type { MediaEvidenceTaskOperation } from './evidence-task-runner'
 
-const execFileAsync = promisify(execFile)
 const MAX_COMMAND_OUTPUT = 4 * 1024 * 1024
 
 type CommandResult = {
@@ -38,7 +36,7 @@ export type LocalEvidenceEngineProbe = MediaEvidenceEngineCapability
 export type LocalEvidenceCapabilities = MediaEvidenceCapabilities
 
 const defaultRunCommand: EvidenceCommandRunner = async (command, args, signal) => {
-  const result = await execFileAsync(command, [...args], { encoding: 'utf8', maxBuffer: MAX_COMMAND_OUTPUT, signal })
+  const result = await execFileText(command, [...args], { label: 'evidence-engine', role: 'analysis' }, { maxBuffer: MAX_COMMAND_OUTPUT, signal })
   return { stdout: result.stdout, stderr: result.stderr }
 }
 

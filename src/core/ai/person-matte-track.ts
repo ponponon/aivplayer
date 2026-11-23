@@ -1,12 +1,10 @@
 import { createHash } from 'node:crypto'
 import { mkdir, mkdtemp, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { basename, dirname, join, relative, resolve, sep } from 'node:path'
-import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
+import { execFileText } from '../child-process-registry'
 import { getEditingPersonMatteCacheKey, EDITING_PERSON_MATTE_PROVIDER_ID, EDITING_PERSON_MATTE_SAMPLE_FPS } from '../editing/person-matte'
 import { PersonMatteRuntime } from './person-matte-runtime'
 
-const execFileAsync = promisify(execFile)
 const PERSON_MATTE_TRACK_VERSION = 1 as const
 const PERSON_MATTE_TRACK_PROVIDER_ID = `${EDITING_PERSON_MATTE_PROVIDER_ID}-cpu`
 
@@ -122,7 +120,7 @@ async function readValidPersonMatteTrack(manifestPath: string, cacheDirectory: s
 }
 
 async function extractVideoFrame(ffmpegPath: string, sourcePath: string, timestampSeconds: number, outputPath: string): Promise<void> {
-  await execFileAsync(ffmpegPath, ['-hide_banner', '-loglevel', 'error', '-y', '-ss', timestampSeconds.toFixed(3), '-i', sourcePath, '-frames:v', '1', '-q:v', '4', outputPath], { maxBuffer: 2 * 1024 * 1024 })
+  await execFileText(ffmpegPath, ['-hide_banner', '-loglevel', 'error', '-y', '-ss', timestampSeconds.toFixed(3), '-i', sourcePath, '-frames:v', '1', '-q:v', '4', outputPath], { label: 'person-matte-frame', role: 'analysis' }, { maxBuffer: 2 * 1024 * 1024 })
 }
 
 function throwIfAborted(signal: AbortSignal | undefined): void {

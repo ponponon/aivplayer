@@ -1,7 +1,7 @@
-import { spawn } from 'node:child_process'
 import { dirname, join } from 'node:path'
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
+import { spawnTracked } from '../child-process-registry'
 import { convertVttToSrt } from '../ai/subtitle-writer.ts'
 import { getAppCopy } from '../../shared/i18n'
 import type { EditingClipTransitionType, EditingFrameId, EditingGraphic, EditingGraphicMotion, EditingOverlayTrackKind, EditingVideoBlockPosition, EditingVideoBlockMotion } from '../../shared/editing-types'
@@ -103,7 +103,7 @@ function escapeFilterPath(filePath: string): string {
 
 async function runProcess(command: string, args: string[]): Promise<ProcessResult> {
   return await new Promise<ProcessResult>((resolve, reject) => {
-    const child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'] })
+    const child = spawnTracked(command, args, { label: 'timeline-export', role: 'export' }, { stdio: ['ignore', 'pipe', 'pipe'] })
     let output = ''
     child.stdout.on('data', (chunk: Buffer) => { output += chunk.toString() })
     child.stderr.on('data', (chunk: Buffer) => { output += chunk.toString() })

@@ -1,14 +1,12 @@
 import { app, ipcMain } from 'electron'
-import { execFile } from 'node:child_process'
 import { join } from 'node:path'
-import { promisify } from 'node:util'
+import { execFileBuffer } from '../core/child-process-registry'
 import { resolveFfmpegPath } from '../core/ai/whisper-cpp-runtime'
 import { resolveWaveformCache } from '../core/media/waveform-cache'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type { MediaWaveformRequest, MediaWaveformResult } from '../shared/media-types'
 import { resolveResourcePath } from './desktop-services'
 
-const execFileAsync = promisify(execFile)
 const DEFAULT_WAVEFORM_WIDTH = 1200
 const DEFAULT_WAVEFORM_HEIGHT = 64
 const MAX_WAVEFORM_WIDTH = 2400
@@ -23,9 +21,8 @@ function normalizeRequest(request: MediaWaveformRequest): { mediaPath: string; w
 async function renderWaveform(ffmpegPath: string, request: { mediaPath: string; width: number; height: number }): Promise<Buffer | null> {
   try {
     const filter = `[0:a]aformat=channel_layouts=mono,showwavespic=s=${request.width}x${request.height}:colors=0xf2c14eff:scale=sqrt:filter=peak[wave]`
-    const { stdout } = await execFileAsync(ffmpegPath, ['-hide_banner', '-loglevel', 'error', '-i', request.mediaPath, '-filter_complex', filter, '-map', '[wave]', '-frames:v', '1', '-f', 'image2pipe', '-vcodec', 'png', 'pipe:1'], { encoding: 'buffer', maxBuffer: 8 * 1024 * 1024 })
-    const buffer = Buffer.isBuffer(stdout) ? stdout : Buffer.from(stdout)
-    return buffer.length > 0 ? buffer : null
+    const { stdout } = await execFileBuffer(ffmpegPath, ['-hide_banner', '-loglevel', 'error', '-i', request.mediaPath, '-filter_complex', filter, '-map', '[wave]', '-frames:v', '1', '-f', 'image2pipe', '-vcodec', 'png', 'pipe:1'], { label: 'waveform', role: 'analysis' }, { maxBuffer: 8 * 1024 * 1024 })
+    return stdout.length > 0 ? stdout : null
   } catch {
     return null
   }

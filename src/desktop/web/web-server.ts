@@ -2,13 +2,12 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { once } from 'node:events'
 import { createReadStream, existsSync, realpathSync } from 'node:fs'
 import { access, mkdir, readFile, readdir, rename, stat, realpath, writeFile } from 'node:fs/promises'
-import { execFile } from 'node:child_process'
 import { constants } from 'node:fs'
 import { networkInterfaces } from 'node:os'
 import { tmpdir } from 'node:os'
 import { basename, extname, join, relative, resolve, sep } from 'node:path'
 import { createHash, randomBytes } from 'node:crypto'
-import { promisify } from 'node:util'
+import { execFileBuffer, execFileText } from '../../core/child-process-registry'
 import { getContentTypeForFile } from '../../core/media/media-mime'
 import { parseRangeHeader } from '../../core/media/byte-range'
 import { isImageFilePath, isVideoFilePath } from '../../core/media/file-opening'
@@ -32,8 +31,6 @@ import type {
   WebRemoteCommandForDesktop,
   WebTranscodeStatus
 } from '../../shared/web-types'
-
-const execFileAsync = promisify(execFile)
 
 type WebServerOptions = {
   resourcePath: string
@@ -1184,9 +1181,9 @@ export class WebServer {
       const ffmpegPath = await (this.options.getFfmpegPath ?? (async () => null))()
       if (!ffmpegPath) return null
       try {
-        const result = await execFileAsync(ffmpegPath, ['-hide_banner', '-loglevel', 'error', '-i', record.path, '-map', `0:${streamIndex}`, '-f', 'webvtt', 'pipe:1'], {
-          encoding: 'utf8', maxBuffer: EMBEDDED_SUBTITLE_MAX_BUFFER_BYTES, timeout: 30_000
-        }) as unknown as { stdout: string }
+        const result = await execFileText(ffmpegPath, ['-hide_banner', '-loglevel', 'error', '-i', record.path, '-map', `0:${streamIndex}`, '-f', 'webvtt', 'pipe:1'], { label: 'web-subtitle-extract', role: 'preview' }, {
+          maxBuffer: EMBEDDED_SUBTITLE_MAX_BUFFER_BYTES, timeout: 30_000
+        })
         const body = result.stdout.trim()
         return body.startsWith('WEBVTT') ? `${body}\n` : null
       } catch {
@@ -1238,10 +1235,10 @@ export class WebServer {
     const partialPath = `${outputPath}.partial`
     const run = async (audioCodec: readonly string[]): Promise<boolean> => {
       try {
-        await execFileAsync(ffmpegPath, [
+        await execFileText(ffmpegPath, [
           '-hide_banner', '-loglevel', 'error', '-i', sourcePath, '-map', '0:v:0?', '-map', `0:${streamIndex}?`,
           '-dn', '-sn', '-c:v', 'copy', ...audioCodec, '-movflags', '+faststart', '-y', partialPath
-        ], { encoding: 'utf8', maxBuffer: AUDIO_REMAP_MAX_BUFFER_BYTES, timeout: 20 * 60_000 })
+        ], { label: 'web-audio-remux', role: 'export' }, { maxBuffer: AUDIO_REMAP_MAX_BUFFER_BYTES, timeout: 20 * 60_000 })
         const outputStat = await stat(partialPath)
         if (outputStat.size <= 0) return false
         await rename(partialPath, outputPath)
@@ -1312,11 +1309,11 @@ export class WebServer {
     const ffmpegPath = await (this.options.getFfmpegPath ?? (async () => null))()
     if (!ffmpegPath) return null
     try {
-      const result = await execFileAsync(ffmpegPath, [
+      const result = await execFileBuffer(ffmpegPath, [
         '-hide_banner', '-loglevel', 'error', '-ss', '1', '-i', sourcePath,
         '-frames:v', '1', '-vf', 'scale=320:-2', '-q:v', '6', '-f', 'image2pipe', '-vcodec', 'mjpeg', 'pipe:1'
-      ], { encoding: 'buffer', maxBuffer: THUMBNAIL_MAX_BUFFER_BYTES, timeout: 15_000 }) as unknown as { stdout: Buffer | string }
-      const thumbnail = Buffer.isBuffer(result.stdout) ? result.stdout : Buffer.from(result.stdout)
+      ], { label: 'web-thumbnail', role: 'preview' }, { maxBuffer: THUMBNAIL_MAX_BUFFER_BYTES, timeout: 15_000 })
+      const thumbnail = result.stdout
       if (thumbnail.byteLength === 0) return null
       await mkdir(this.thumbnailRoot, { recursive: true })
       const partialPath = `${cachePath}.partial`

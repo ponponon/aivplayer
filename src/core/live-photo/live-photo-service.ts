@@ -1,14 +1,12 @@
 import { copyFile, mkdtemp, readFile, stat, writeFile } from 'node:fs/promises'
 import { basename, dirname, extname, join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
+import { execFileText } from '../child-process-registry'
 import type { LivePhotoEditOptions, LivePhotoExportResult, LivePhotoFormat, LivePhotoProbeResult } from '../../shared/live-photo-types'
 import { encodeHeicCover, isHeicPath, resolveHeicCoverToolPaths, type HeicCoverToolPaths } from './heic-cover.ts'
 import { mergeJpegCoverMetadata } from './jpeg-cover.ts'
 import { parseEmbeddedMotionPhoto, replaceGoogleMotionPhotoLengths, updateGoogleMotionPhotoPresentationTimestamp, updateXiaomiLivePhotoTimeline } from './live-photo-parser.ts'
 
-const execFileAsync = promisify(execFile)
 const livePhotoTempPaths = new Set<string>()
 
 type MotionPhotoSource = {
@@ -90,13 +88,13 @@ async function resolveMotionPhotoSource(sourcePath: string): Promise<MotionPhoto
 }
 
 async function probeVideo(ffprobePath: string, motionPath: string): Promise<ProbeVideoInfo> {
-  const { stdout } = await execFileAsync(ffprobePath, [
+  const { stdout } = await execFileText(ffprobePath, [
     '-v', 'error',
     '-show_streams',
     '-show_format',
     '-of', 'json',
     motionPath
-  ], { maxBuffer: 2 * 1024 * 1024 })
+  ], { label: 'live-photo-probe', role: 'probe' }, { maxBuffer: 2 * 1024 * 1024 })
   const parsed = JSON.parse(stdout) as {
     streams?: Array<{ codec_type?: string; width?: number; height?: number; duration?: string }>
     format?: { duration?: string; tags?: Record<string, string> }
@@ -183,18 +181,18 @@ async function renderMotionVideo(options: {
   args.push('-map_metadata', '0')
   if (options.contentIdentifier) args.push('-metadata', `com.apple.quicktime.content.identifier=${options.contentIdentifier}`)
   args.push('-movflags', '+faststart+use_metadata_tags', options.outputPath)
-  await execFileAsync(options.ffmpegPath, args, { maxBuffer: 2 * 1024 * 1024 })
+  await execFileText(options.ffmpegPath, args, { label: 'live-photo-export', role: 'export' }, { maxBuffer: 2 * 1024 * 1024 })
 }
 
 async function extractVideoFrame(options: { ffmpegPath: string; sourcePath: string; outputPath: string; timestampSeconds: number }): Promise<void> {
-  await execFileAsync(options.ffmpegPath, [
+  await execFileText(options.ffmpegPath, [
     '-hide_banner', '-y',
     '-ss', String(Math.max(0, options.timestampSeconds)),
     '-i', options.sourcePath,
     '-frames:v', '1',
     '-q:v', '2',
     options.outputPath
-  ], { maxBuffer: 2 * 1024 * 1024 })
+  ], { label: 'live-photo-frame', role: 'preview' }, { maxBuffer: 2 * 1024 * 1024 })
 }
 
 function inferFfprobePath(ffmpegPath: string): string {

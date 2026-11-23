@@ -1,10 +1,9 @@
 import { createHash } from 'node:crypto'
-import { execFile } from 'node:child_process'
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { basename, extname, join, relative, resolve, sep } from 'node:path'
-import { promisify } from 'node:util'
 import type { Field, Float64, Schema, Utf8 } from 'apache-arrow'
 import type { Table, VectorQuery } from '@lancedb/lancedb'
+import { execFileBuffer, execFileText } from '../child-process-registry'
 import { isVideoFilePath } from '../media/file-opening'
 import { DEFAULT_MIN_SCENE_DURATION_SECONDS, DEFAULT_SCENE_DETECTION_THRESHOLD } from '../media/scene-detection'
 import { detectSceneCutTimestamps } from '../media/scene-detection-runtime'
@@ -56,7 +55,6 @@ import { loadVisionPackModule, type VisionPackStatus } from './vision-pack'
 type LanceDbModule = typeof import('@lancedb/lancedb')
 type ArrowModule = typeof import('apache-arrow')
 
-const execFileAsync = promisify(execFile)
 const TABLE_NAME = 'video_frames'
 const SOURCE_TABLE_NAME = 'video_sources'
 const CAPTION_TABLE_NAME = 'video_captions'
@@ -305,18 +303,18 @@ export function dotProduct(left: unknown, right: unknown): number {
 }
 
 async function probeDuration(ffprobePath: string, videoPath: string): Promise<number> {
-  const { stdout } = await execFileAsync(ffprobePath, [
+  const { stdout } = await execFileText(ffprobePath, [
     '-v', 'error',
     '-show_entries', 'format=duration',
     '-of', 'default=noprint_wrappers=1:nokey=1',
     videoPath
-  ], { maxBuffer: 1024 * 1024 })
+  ], { label: 'vision-probe', role: 'probe' }, { maxBuffer: 1024 * 1024 })
   const duration = Number(String(stdout).trim())
   return Number.isFinite(duration) && duration > 0 ? duration : 0
 }
 
 async function extractJpegFrame(ffmpegPath: string, videoPath: string, timestampSeconds: number): Promise<Buffer> {
-  const { stdout } = await execFileAsync(ffmpegPath, [
+  const { stdout } = await execFileBuffer(ffmpegPath, [
     '-hide_banner',
     '-loglevel', 'error',
     '-ss', timestampSeconds.toFixed(3),
@@ -326,8 +324,8 @@ async function extractJpegFrame(ffmpegPath: string, videoPath: string, timestamp
     '-vcodec', 'mjpeg',
     '-q:v', '4',
     'pipe:1'
-  ], { encoding: 'buffer', maxBuffer: 16 * 1024 * 1024 })
-  const buffer = Buffer.isBuffer(stdout) ? stdout : Buffer.from(stdout as unknown as Uint8Array)
+  ], { label: 'vision-frame', role: 'analysis' }, { maxBuffer: 16 * 1024 * 1024 })
+  const buffer = stdout
   if (buffer.length === 0) throw new Error(`ffmpeg 没有输出视频帧：${basename(videoPath)}`)
   return buffer
 }

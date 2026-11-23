@@ -1,7 +1,7 @@
-import { spawn } from 'node:child_process'
 import { basename, dirname, extname, join, parse } from 'node:path'
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
+import { spawnTracked } from '../child-process-registry'
 import { convertVttToSrt, writeSrt } from '../ai/subtitle-writer.ts'
 import { getAppCopy } from '../../shared/i18n'
 import type { AppLocale } from '../../shared/localization'
@@ -177,7 +177,7 @@ function tailOutput(output: string): string {
 
 async function runProcess(command: string, args: string[]): Promise<RunProcessResult> {
   return await new Promise<RunProcessResult>((resolve, reject) => {
-    const child = spawn(command, args, {
+    const child = spawnTracked(command, args, { label: 'clip-export', role: 'export' }, {
       stdio: ['ignore', 'pipe', 'pipe']
     })
     let output = ''

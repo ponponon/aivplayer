@@ -13,6 +13,7 @@ import { registerMediaCacheIpc } from './ipc-media-cache'
 import { registerAsrSubtitleIpc } from './ipc-asr-subtitles'
 import { registerAsrTranslationIpc } from './ipc-asr-translation'
 import { registerAsrSummaryIpc } from './ipc-asr-summary'
+import { terminateTrackedChildProcesses } from '../core/child-process-registry'
 import { registerSettingsIpc } from './ipc-settings'
 import { registerFilmstripIpc } from './ipc-filmstrip'
 import { registerWaveformIpc } from './ipc-waveform'
@@ -141,4 +142,14 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
 
-app.on('before-quit', () => { cancelAllStructureAnalyses(); stopAppUpdater(); stopEditingCaptionWatcher(); stopMediaImportInboxIpc(); void stopEditingAgentBridge(); void stopWebServer() })
+app.on('before-quit', () => {
+  cancelAllStructureAnalyses()
+  stopAppUpdater()
+  stopEditingCaptionWatcher()
+  stopMediaImportInboxIpc()
+  void stopEditingAgentBridge()
+  void stopWebServer()
+  // Every FFmpeg / FFprobe / ASR child registers in the shared registry, so this is
+  // the single place that guarantees none of them outlive the window.
+  void terminateTrackedChildProcesses()
+})

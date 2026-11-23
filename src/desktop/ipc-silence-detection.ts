@@ -1,13 +1,10 @@
-import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
 import { ipcMain } from 'electron'
+import { execFileText } from '../core/child-process-registry'
 import { DEFAULT_MIN_SILENCE_DURATION_SECONDS, DEFAULT_SILENCE_NOISE_DB, DEFAULT_SILENCE_PADDING_SECONDS, parseSilenceIntervals } from '../core/media/silence-detection'
 import { resolveFfmpegPath } from '../core/ai/whisper-cpp-runtime'
 import { IPC_CHANNELS } from '../shared/ipc-channels'
 import type { MediaSilenceDetectionRequest, MediaSilenceDetectionResult } from '../shared/media-types'
 import { resolveResourcePath } from './desktop-services'
-
-const execFileAsync = promisify(execFile)
 
 function normalizeRequest(request: MediaSilenceDetectionRequest): { mediaPath: string; durationSeconds?: number; noiseDb: number; minSilenceDurationSeconds: number; paddingSeconds: number } | null {
   if (!request || typeof request.mediaPath !== 'string' || !request.mediaPath.trim()) return null
@@ -26,7 +23,7 @@ export function registerSilenceDetectionIpc(): void {
     if (!ffmpegPath) return { success: false, message: 'FFmpeg is unavailable', intervals: [] }
     try {
       const filter = `silencedetect=noise=${normalized.noiseDb}dB:d=${normalized.minSilenceDurationSeconds}`
-      const { stdout, stderr } = await execFileAsync(ffmpegPath, ['-hide_banner', '-loglevel', 'info', '-i', normalized.mediaPath, '-af', filter, '-vn', '-f', 'null', '-'], { encoding: 'utf8', maxBuffer: 12 * 1024 * 1024 })
+      const { stdout, stderr } = await execFileText(ffmpegPath, ['-hide_banner', '-loglevel', 'info', '-i', normalized.mediaPath, '-af', filter, '-vn', '-f', 'null', '-'], { label: 'silence-detect', role: 'analysis' }, { maxBuffer: 12 * 1024 * 1024 })
       const intervals = parseSilenceIntervals(`${stdout}\n${stderr}`, normalized)
       return { success: true, message: 'Silence detection completed', intervals }
     } catch (error) {

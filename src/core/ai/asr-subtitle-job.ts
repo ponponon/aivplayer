@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto'
-import { spawn } from 'node:child_process'
 import { copyFile, mkdtemp, mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { basename, dirname, extname, join } from 'node:path'
 import { tmpdir } from 'node:os'
+import { spawnTracked } from '../child-process-registry'
 import type { AsrJobProgress, AsrPriorityWindow, AsrSubtitleGenerationStats, TranscriptSegment } from '../../shared/media-types.ts'
 import type { AppLocale } from '../../shared/localization'
 import { getAppCopy } from '../../shared/i18n'
@@ -91,7 +91,7 @@ async function runProcess(
   onOutput?: ProcessOutputListener
 ): Promise<void> {
   await new Promise<void>((resolve, reject) => {
-    const child = spawn(command, args, {
+    const child = spawnTracked(command, args, { label: `asr:${label}`, role: 'analysis' }, {
       stdio: ['ignore', 'pipe', 'pipe']
     })
     let output = ''

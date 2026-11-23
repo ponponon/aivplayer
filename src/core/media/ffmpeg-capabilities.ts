@@ -1,8 +1,5 @@
-import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
+import { execFileText } from '../child-process-registry'
 import type { MediaFfmpegCapabilities } from '../../shared/media-types'
-
-const execFileAsync = promisify(execFile)
 
 export function parseFfmpegSubtitleFilter(output: string): 'subtitles' | 'ass' | null {
   const lines = output.split(/\r?\n/u)
@@ -13,7 +10,7 @@ export function parseFfmpegSubtitleFilter(output: string): 'subtitles' | 'ass' |
 
 export async function probeFfmpegCapabilities(ffmpegPath: string): Promise<MediaFfmpegCapabilities> {
   try {
-    const { stdout, stderr } = await execFileAsync(ffmpegPath, ['-hide_banner', '-filters'], { timeout: 5_000, maxBuffer: 4 * 1024 * 1024 })
+    const { stdout, stderr } = await execFileText(ffmpegPath, ['-hide_banner', '-filters'], { label: 'ffmpeg-capabilities', role: 'probe' }, { timeout: 5_000, maxBuffer: 4 * 1024 * 1024 })
     const subtitleFilter = parseFfmpegSubtitleFilter(`${stdout}\n${stderr}`)
     return { available: true, subtitleBurnIn: subtitleFilter !== null, subtitleFilter }
   } catch {

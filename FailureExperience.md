@@ -1,3 +1,10 @@
+## 2026-11-23：外部进程必须有统一登记表，否则退出必留孤儿
+
+- 现象：同一个问题只修一条路径不够。修完黑场分析后，波形、静音检测、场景检测、浏览器转码、时间轴导出、ASR 仍然各自 `execFile`/`spawn`：软件一退出，子进程被 init 收养继续跑；`before-quit` 里的清理只认识结构分析那一个 `AbortController`，对这些进程完全无感。
+- 原因：全仓库 20 多个子进程调用点各写各的（`promisify(execFile)` + 局部变量），没有任何全局登记；`child_process` 在 POSIX 上不会因为父进程退出而终止子进程，Windows 上也不是 Job Object，所以“关掉软件”和“结束任务”是两件事。
+- 经验：凡是由主进程拉起的外部可执行文件（FFmpeg / FFprobe / whisper / 任何解压器）都必须经过同一个登记表，并在退出时统一结束；只给单个功能加 abort 属于打补丁，新增一条调用路径就会重新漏。登记表要同时提供三条出口：正常退出（`before-quit` 发 SIGTERM 并等待宽限）、异常退出（`process.on('exit')` 同步 SIGKILL）、以及诊断（谁在跑、跑了多久）。
+- 处理：新增 `src/core/child-process-registry.ts`，提供 `execFileText` / `execFileBuffer` / `spawnTracked` 三个包装和 `trackChildProcess`、`terminateTrackedChildProcesses`、`terminateTrackedChildProcessesSync`；把媒体管线（filmstrip、波形、静音、结构分析、说话人分离、网页转码、时间轴/片段导出、缩略图、ASR、ffprobe 探测）全部改为经登记表调用；`before-quit` 统一清理，`process.on('exit')` 兜底。故意登记的两个例外：自动更新 helper 和外部播放器进程必须活过主进程。实测触发一次全片黑场分析后 `app.quit()`，残留 ffmpeg 为 0。
+
 ## 2026-11-23：后台重任务不能挂在“打开文件”主路径上
 
 - 现象：在 AMD 5700G（8 核 16 线程）上打开一个 2 小时、8.6 GB 的 1080p 视频，播放瞬间 CPU 被吃满；关掉软件后 `ffmpeg` 仍在后台持续跑，用户只能手动 kill。实测每个进程约 536% CPU、读了 4 GB，两个文件叠起来就是 11 个核。

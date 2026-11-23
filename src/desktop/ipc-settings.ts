@@ -15,15 +15,13 @@ import { resolveResourcePath } from './desktop-services'
 import { desktopState } from './desktop-state'
 import { findAvailableImagePath, sanitizeImageExtension, sanitizeImageFileName } from '../core/image-save-utils'
 import { resolveFfmpegPath, resolveFfprobePath } from '../core/ai/whisper-cpp-runtime'
-import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
+import { execFileText } from '../core/child-process-registry'
 import { mkdtemp, rm, readdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { editAndExportLivePhoto, getLivePhotoDefaultDirectory, getLivePhotoDefaultName, probeLivePhotoFile } from '../core/live-photo/live-photo-service'
 import { resolveHeicCoverToolPaths } from '../core/live-photo/heic-cover'
 
-const execFileAsync = promisify(execFile)
 const DEV_RESTART_EXIT_CODE = 42
 
 export function registerSettingsIpc(): void {
@@ -81,7 +79,7 @@ export function registerSettingsIpc(): void {
     const tempDir = await mkdtemp(join(tmpdir(), 'aivplayer-heic-'))
     try {
       const outputPath = join(tempDir, 'converted.jpg')
-      await execFileAsync(ffmpegPath, ['-i', filePath, '-q:v', '2', '-y', outputPath])
+      await execFileText(ffmpegPath, ['-i', filePath, '-q:v', '2', '-y', outputPath], { label: 'heic-convert', role: 'preview' })
       const files = await readdir(tempDir)
       const jpgFile = files.find((f) => f.endsWith('.jpg'))
       if (!jpgFile) return { success: false, error: 'Conversion failed' }

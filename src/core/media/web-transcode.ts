@@ -1,7 +1,8 @@
-import { spawn, type ChildProcess } from 'node:child_process'
+import type { ChildProcess } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { mkdir, readdir, rename, rm, stat, statfs, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { spawnTracked } from '../child-process-registry'
 
 export type WebTranscodeInput = {
   id: string
@@ -350,7 +351,7 @@ export class WebTranscodeManager {
     ]
 
     try {
-      const child = spawn(ffmpegPath, args, { stdio: ['ignore', 'ignore', 'pipe'] })
+      const child = spawnTracked(ffmpegPath, args, { label: 'web-transcode', role: 'export' }, { stdio: ['ignore', 'ignore', 'pipe'] })
       job.child = child
       if (!child.stderr) throw new Error('无法读取 FFmpeg 转码进度')
       child.stderr.setEncoding('utf8')
