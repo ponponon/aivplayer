@@ -1291,7 +1291,10 @@ jobs:
             snap_file="$(find release -maxdepth 1 -type f -name '*.snap' -print -quit)"
             test -n "$snap_file"
             export SNAPCRAFT_STORE_CREDENTIALS="$(printf '%s' "$SNAP_CSC_LINK" | base64 --decode)"
-            sudo -E snapcraft upload --release=stable,edge "$snap_file"
+            # `sudo -E` is silently ignored on runners whose sudoers uses env_reset,
+            # which drops SNAPCRAFT_STORE_CREDENTIALS and fails with "No keyring found".
+            # Passing the variable through `sudo env` works on every runner image.
+            sudo env SNAPCRAFT_STORE_CREDENTIALS="$SNAPCRAFT_STORE_CREDENTIALS" snapcraft upload --release=stable,edge "$snap_file"
           fi
       - name: Update Snap Store listing metadata
         env:
@@ -1302,7 +1305,7 @@ jobs:
             snap_file="$(find release -maxdepth 1 -type f -name '*.snap' -print -quit)"
             test -n "$snap_file"
             export SNAPCRAFT_STORE_CREDENTIALS="$(printf '%s' "$SNAP_CSC_LINK" | base64 --decode)"
-            sudo -E snapcraft upload-metadata --force "$snap_file"
+            sudo env SNAPCRAFT_STORE_CREDENTIALS="$SNAPCRAFT_STORE_CREDENTIALS" snapcraft upload-metadata --force "$snap_file"
           fi
       - name: Verify Snap artifact
         run: node scripts/check-snap-release-artifact.mjs --architecture x64 --artifacts-dir release --report-path release/snap-release-report-x64.json
@@ -1375,7 +1378,10 @@ jobs:
             snap_file="$(find release -maxdepth 1 -type f -name '*.snap' -print -quit)"
             test -n "$snap_file"
             export SNAPCRAFT_STORE_CREDENTIALS="$(printf '%s' "$SNAP_CSC_LINK" | base64 --decode)"
-            sudo -E snapcraft upload --release=stable,edge "$snap_file"
+            # `sudo -E` is silently ignored on runners whose sudoers uses env_reset,
+            # which drops SNAPCRAFT_STORE_CREDENTIALS and fails with "No keyring found".
+            # Passing the variable through `sudo env` works on every runner image.
+            sudo env SNAPCRAFT_STORE_CREDENTIALS="$SNAPCRAFT_STORE_CREDENTIALS" snapcraft upload --release=stable,edge "$snap_file"
           fi
       - name: Update Snap Store listing metadata
         env:
@@ -1386,7 +1392,7 @@ jobs:
             snap_file="$(find release -maxdepth 1 -type f -name '*.snap' -print -quit)"
             test -n "$snap_file"
             export SNAPCRAFT_STORE_CREDENTIALS="$(printf '%s' "$SNAP_CSC_LINK" | base64 --decode)"
-            sudo -E snapcraft upload-metadata --force "$snap_file"
+            sudo env SNAPCRAFT_STORE_CREDENTIALS="$SNAPCRAFT_STORE_CREDENTIALS" snapcraft upload-metadata --force "$snap_file"
           fi
       - name: Verify Snap artifact
         run: node scripts/check-snap-release-artifact.mjs --architecture arm64 --artifacts-dir release --report-path release/snap-release-report-arm64.json
