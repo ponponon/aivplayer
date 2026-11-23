@@ -116,6 +116,10 @@ macOS 发布需要在 GitHub Actions Secrets 中配置以下变量：
 
 工作流会把 `.p12` 导入临时钥匙串 `signing_temp`，设置 `codesign` 的访问权限，并在任务结束时清理。不要把 `.p12`、私钥、导出密码或 App 专用密码写入仓库文件、workflow 明文或 Release 资产。
 
+这 5 个值用 `scripts/set-macos-signing-secrets.sh --p12 <证书.p12>` 写入：脚本从证书的 OU 字段读出 Team ID 并校验证书类型必须是 `Developer ID Application`，所有密码用 `read -s` 读取、通过 stdin 交给 `gh secret set`，不打印、不进 shell history、不落在命令行参数里。手工设置时也必须遵循同样的约束（`gh secret set NAME < 文件`，不要用 `--body`）。
+
+判断证书类型：`security find-identity -v -p codesigning` 列出本机全部身份。`Apple Development: xxx (TEAMID)` 只能在本机调试，**不能分发、不能公证**；分发必须 `Developer ID Application: xxx (TEAMID)`。同一台机器同时存在两种身份时，凭据和证书必须来自同一个团队，否则签名会过、公证一定失败。
+
 macOS job 会先只生成签名 `.app`，再使用 `notarytool` 提交并显式轮询公证状态，最多等待 60 分钟；只有状态为 `Accepted`、完成 staple 和验证后，才会用 `--prepackaged` 生成 DMG / ZIP。这样 Apple 公证队列或网络异常会在独立步骤中暴露，不会被误判为 DMG 打包卡住。
 
 macOS 的 `--dir` 目标不会自动生成 `app-update.yml`；因此必须把固定的 `resources/app-update.yml` 配置作为 macOS 专属 `extraResources` 在签名前放入 `.app`。Windows / Linux 继续使用 electron-builder 原有的更新元数据生成流程。不能在签名后再改写应用资源；后续 `release:check-packaged-resources` 只对 macOS 校验该文件存在且包含完整配置，防止自动更新正常构建但在安装后报 `ENOENT`。
